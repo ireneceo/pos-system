@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OrderHere POS - Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #FAFBFC;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* 사이드바 */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 220px;
+            height: 100vh;
+            background: #FAFBFC;
+            border-right: 1px solid #E6EBF1;
+            z-index: 1000;
+        }
+
+        .sidebar-header {
+            padding: 24px 16px;
+            border-bottom: 1px solid #E6EBF1;
+        }
+
+        .logo {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .logo .order {
+            color: #0A2540;
+        }
+
+        .logo .here {
+            color: #635BFF;
+            font-style: italic;
+        }
+
+        .sidebar-nav {
+            padding: 8px 0;
+        }
+
+        .nav-section {
+            margin-bottom: 24px;
+        }
+
+        .nav-title {
+            color: #8898AA;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 0 16px;
+            margin-bottom: 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 16px;
+            color: #6B7C93;
+            text-decoration: none;
+            transition: all 0.15s;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .nav-item:hover {
+            background: #F6F9FC;
+            color: #0A2540;
+        }
+
+        .nav-item.active {
+            background: #F0F4FF;
+            color: #635BFF;
+            border-right: 2px solid #635BFF;
+        }
+
+        .nav-icon {
+            margin-right: 12px;
+            font-size: 14px;
+            width: 16px;
+            text-align: center;
+            transition: all 0.3s ease;
+            display: inline-block;
+            font-family: 'Lucida Console', 'Courier New', monospace;
+        }
+
+        /* 라이브 오더 깜빡임 효과 */
+        .nav-item.live-orders {
+            position: relative;
+        }
+
+        .nav-item.live-orders .nav-icon {
+            color: #6B7C93; /* 다른 메뉴와 동일한 회색 */
+        }
+
+        .nav-item.live-orders.has-pending .nav-icon {
+            animation: pulse 1.5s infinite;
+            color: #6B7C93; /* 아이콘 색상은 그대로 유지 */
+        }
+
+        .nav-item.live-orders.has-pending::after {
+            content: '';
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 8px;
+            height: 8px;
+            background: #FF6B6B;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        /* 메인 컨텐츠 */
+        .main-content {
+            margin-left: 220px;
+            min-height: 100vh;
+            background: #FAFBFC;
+        }
+
+        .header {
+            background: white;
+            padding: 24px 32px;
+            border-bottom: 1px solid #E6EBF1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #0A2540;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: all 0.15s;
+            cursor: pointer;
+        }
+
+        .user-info:hover {
+            background: #F6F9FC;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            background: #635BFF;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 500;
+            font-size: 12px;
+            transition: all 0.15s;
+        }
+
+        .user-info:hover .user-avatar {
+            transform: scale(1.05);
+        }
+
+        .content {
+            padding: 32px;
+        }
+
+        /* 통계 카드 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #E6EBF1;
+            transition: all 0.15s;
+        }
+
+        .stat-card:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            border-color: #C7D2FE;
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .stat-title {
+            color: #6B7C93;
+            font-size: 13px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .stat-icon {
+            color: #8898AA;
+            font-size: 14px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 600;
+            color: #0A2540;
+            margin-bottom: 4px;
+        }
+
+        .stat-change {
+            font-size: 12px;
+            color: #00D924;
+            font-weight: 500;
+        }
+
+        /* 빠른 접속 버튼 */
+        .quick-access {
+            margin-bottom: 32px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #0A2540;
+            margin-bottom: 16px;
+        }
+
+        .quick-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .quick-btn {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #0A2540;
+            transition: all 0.15s;
+            border: 1px solid #E6EBF1;
+        }
+
+        .quick-btn:hover {
+            border-color: #C7D2FE;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .quick-btn-icon {
+            color: #635BFF;
+            font-size: 20px;
+            margin-bottom: 12px;
+        }
+
+        .quick-btn-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #0A2540;
+        }
+
+        .quick-btn-desc {
+            font-size: 12px;
+            color: #6B7C93;
+        }
+
+        /* 실시간 현황 */
+        .status-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 16px;
+        }
+
+        .status-card {
+            background: white;
+            padding: 24px;
+            border-radius: 8px;
+            border: 1px solid #E6EBF1;
+        }
+
+        .orders-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .orders-table th,
+        .orders-table td {
+            padding: 12px 0;
+            text-align: left;
+            border-bottom: 1px solid #F6F9FC;
+            font-size: 13px;
+        }
+
+        .orders-table th {
+            color: #6B7C93;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            font-size: 11px;
+        }
+
+        .orders-table td {
+            color: #0A2540;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .status-pending {
+            background: #FFF4E6;
+            color: #B45309;
+        }
+
+        .status-cooking {
+            background: #EFF6FF;
+            color: #1D4ED8;
+        }
+
+        .status-ready {
+            background: #ECFDF5;
+            color: #059669;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header {
+                padding: 16px 20px;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 사이드바 -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <span class="order">order</span><span class="here">here</span>
+            </div>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <a href="#" class="nav-item active">
+                    <span class="nav-icon">■</span>
+                    Dashboard
+                </a>
+                <a href="live-orders.html" class="nav-item live-orders has-pending">
+                    <span class="nav-icon">◉</span>
+                    Live Orders
+                </a>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-title">System Access</div>
+                <a href="pos-terminal.html" class="nav-item">
+                    <span class="nav-icon">▦</span>
+                    POS Terminal
+                </a>
+                <a href="kitchen.html" class="nav-item">
+                    <span class="nav-icon">◐</span>
+                    Kitchen Display
+                </a>
+                <a href="display.html" class="nav-item">
+                    <span class="nav-icon">□</span>
+                    Customer Display
+                </a>
+                <a href="mobile.html" class="nav-item">
+                    <span class="nav-icon">◯</span>
+                    Mobile Order
+                </a>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-title">Management</div>
+                <a href="menu.html" class="nav-item">
+                    <span class="nav-icon">≡</span>
+                    Menu Management
+                </a>
+                <a href="orders.html" class="nav-item">
+                    <span class="nav-icon">▤</span>
+                    Order Management
+                </a>
+                <a href="sales.html" class="nav-item">
+                    <span class="nav-icon">▲</span>
+                    Sales Management
+                </a>
+                <a href="customers.html" class="nav-item">
+                    <span class="nav-icon">◯</span>
+                    Customer Management
+                </a>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-title">Settings</div>
+                <a href="settings.html" class="nav-item">
+                    <span class="nav-icon">⚙</span>
+                    Store Settings
+                </a>
+                <a href="#" class="nav-item" onclick="logout()">
+                    <span class="nav-icon">↩</span>
+                    Logout
+                </a>
+            </div>
+        </nav>
+    </div>
+
+    <!-- 메인 컨텐츠 -->
+    <div class="main-content">
+        <header class="header">
+            <h1 class="header-title">Dashboard</h1>
+            <div class="header-actions">
+                <div class="user-info">
+                    <div class="user-avatar">A</div>
+                    <span>Admin</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="content">
+            <!-- 통계 카드 -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-title">Today's Sales</div>
+                    </div>
+                    <div class="stat-value">RM 12,500</div>
+                    <div class="stat-change">+12% from yesterday</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-title">Total Orders</div>
+                    </div>
+                    <div class="stat-value">156</div>
+                    <div class="stat-change">Avg order: RM 80.13</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-title">Pending Orders</div>
+                    </div>
+                    <div class="stat-value">8</div>
+                    <div class="stat-change">Avg wait: 12 min</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-title">Customers</div>
+                    </div>
+                    <div class="stat-value">124</div>
+                    <div class="stat-change">18 new customers</div>
+                </div>
+            </div>
+
+            <!-- 빠른 접속 -->
+            <div class="quick-access">
+                <h2 class="section-title">System Quick Access</h2>
+                <div class="quick-buttons">
+                    <a href="pos-terminal.html" class="quick-btn">
+                        <div class="quick-btn-icon">▦</div>
+                        <div class="quick-btn-title">POS Terminal</div>
+                        <div class="quick-btn-desc">Order processing and payment</div>
+                    </a>
+                    
+                    <a href="kitchen.html" class="quick-btn">
+                        <div class="quick-btn-icon">◐</div>
+                        <div class="quick-btn-title">Kitchen Display</div>
+                        <div class="quick-btn-desc">Cooking status and order management</div>
+                    </a>
+                    
+                    <a href="display.html" class="quick-btn">
+                        <div class="quick-btn-icon">□</div>
+                        <div class="quick-btn-title">Customer Display</div>
+                        <div class="quick-btn-desc">Pickup number display screen</div>
+                    </a>
+                    
+                    <a href="#" class="quick-btn" onclick="showQRCode()">
+                        <div class="quick-btn-icon">◯</div>
+                        <div class="quick-btn-title">Mobile Order QR</div>
+                        <div class="quick-btn-desc">Customer mobile ordering QR code</div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- 실시간 현황 -->
+            <div class="status-grid">
+                <div class="status-card">
+                    <h2 class="section-title">Live Order Status</h2>
+                    <table class="orders-table">
+                        <thead>
+                            <tr>
+                                <th>Order #</th>
+                                <th>Items</th>
+                                <th>Status</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>#001</td>
+                                <td>Bulgogi Rice, Kimchi Stew</td>
+                                <td><span class="status-badge status-cooking">Cooking</span></td>
+                                <td>14:25</td>
+                            </tr>
+                            <tr>
+                                <td>#002</td>
+                                <td>Jajangmyeon, Sweet & Sour Pork</td>
+                                <td><span class="status-badge status-ready">Ready</span></td>
+                                <td>14:22</td>
+                            </tr>
+                            <tr>
+                                <td>#003</td>
+                                <td>Sushi Set</td>
+                                <td><span class="status-badge status-pending">Pending</span></td>
+                                <td>14:28</td>
+                            </tr>
+                            <tr>
+                                <td>#004</td>
+                                <td>Ramen, Gyoza</td>
+                                <td><span class="status-badge status-cooking">Cooking</span></td>
+                                <td>14:30</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="status-card">
+                    <h2 class="section-title">Store Status</h2>
+                    <div style="margin-top: 20px;">
+                        <div style="margin-bottom: 15px;">
+                            <div style="color: #6B7C93; font-size: 12px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.3px;">
+                                <span style="margin-right: 8px;">⚙</span>Operation Status
+                            </div>
+                            <div style="color: #059669; font-weight: 600;">● Open & Operating</div>
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <div style="color: #6B7C93; font-size: 12px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.3px;">
+                                <span style="margin-right: 8px;">◯</span>Staff on Duty
+                            </div>
+                            <div style="color: #0A2540; font-weight: 600;">3 Staff Members</div>
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <div style="color: #6B7C93; font-size: 12px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.3px;">
+                                <span style="margin-right: 8px;">◐</span>Kitchen Status
+                            </div>
+                            <div style="color: #059669; font-weight: 600;">● Normal Operation</div>
+                        </div>
+                        <div>
+                            <div style="color: #6B7C93; font-size: 12px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.3px;">
+                                <span style="margin-right: 8px;">◉</span>Next Pickup
+                            </div>
+                            <div style="color: #635BFF; font-weight: 600; font-size: 18px;">#002</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                window.location.href = 'index.html';
+            }
+        }
+        
+        function showQRCode() {
+            alert('Mobile Order QR Code:\npos.orderhere.center/mobile\n\nCustomers can scan this QR code to place mobile orders.');
+        }
+        
+        // 실시간 데이터 업데이트 및 라이브 오더 상태 체크
+        function updateLiveOrderStatus() {
+            // 실제로는 서버에서 대기 중인 주문 개수를 확인
+            const pendingOrders = 8; // 예시 데이터
+            const liveOrdersMenu = document.querySelector('.nav-item.live-orders');
+            
+            if (pendingOrders > 0) {
+                liveOrdersMenu.classList.add('has-pending');
+            } else {
+                liveOrdersMenu.classList.remove('has-pending');
+            }
+            
+            console.log('Updating live data... Pending orders:', pendingOrders);
+        }
+        
+        // 페이지 로드 시 상태 체크
+        document.addEventListener('DOMContentLoaded', function() {
+            updateLiveOrderStatus();
+        });
+        
+        // 30초마다 실시간 업데이트
+        setInterval(updateLiveOrderStatus, 30000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+# UTF-8 인코딩 설정
+AddDefaultCharset UTF-8
+
+# 마크다운 파일 텍스트로 출력
+AddType text/plain .md
+
+# CORS 허용 (클로드가 읽을 수 있게)
+Header always set Access-Control-Allow-Origin "*"
+Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+Header always set Access-Control-Allow-Headers "Content-Type"
+
+# 캐시 방지 (항상 최신 내용)
+<FilesMatch "\.(md|txt)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires 0
+</FilesMatch># 저장 후 나가기 (Ctrl+X, Y, Enter)
+
+# 권한 설정
+chmod 644 .htaccess
+
+# 테스트용 마크다운 파일 생성
+echo "# POS Project Test
+Current status: UTF-8 encoding test
+한글 테스트: 제대로 보이나요?" > test.md
+
+chmod 644 test.md# 브라우저에서 확인
+curl https://pos.orderhere.center/docs/test.md

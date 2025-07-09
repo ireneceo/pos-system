@@ -1,0 +1,5 @@
+# UTF-8 인코딩 설정만
+AddDefaultCharset UTF-8
+
+# 마크다운 파일 텍스트로 출력
+AddType text/plain .md
