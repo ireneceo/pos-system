@@ -1,4 +1,12 @@
 Options -MultiViews
 RewriteEngine On
+
+# Redirect to React app in frontend/build
+RewriteCond %{REQUEST_URI} !^/frontend/build
+RewriteCond %{REQUEST_URI} !^/old-html-files
+RewriteRule ^(.*)$ /frontend/build/$1 [L]
+
+# Handle React Router for SPA
 RewriteCond %{REQUEST_FILENAME} !-f
-RewriteRule ^ index.html [QSA,L]
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ /frontend/build/index.html [L]
