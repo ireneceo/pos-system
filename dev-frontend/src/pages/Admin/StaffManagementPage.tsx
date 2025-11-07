@@ -1,0 +1,2310 @@
+import React, { useState, useEffect } from 'react';
+import styled from 'styled-components';
+import MainLayout from '../../components/Layout/MainLayout';
+import {
+  TabContainer,
+  Tab,
+  Container,
+  Header,
+  Title,
+  ActionSection,
+  Button,
+  Content,
+  StatsGrid,
+  StatCard,
+  StatValue,
+  StatLabel,
+  StatDescription,
+  Table,
+  TableHeader as CommonTableHeader,
+  TableRow as CommonTableRow,
+  MobileLabel,
+  MobileValue,
+  MobileGrid,
+  ActionButtons,
+  ActionButton,
+  IconButton,
+  EmptyState
+} from '../../components/UI';
+import { useAuth } from '../../contexts/AuthContext';
+import { getAPI, postAPI, putAPI, deleteAPI } from '../../utils/api';
+import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+
+interface Staff {
+  id: string;
+  username: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+  department: string;
+  restaurantId?: string;
+  restaurantName?: string;
+  companyName?: string;
+  status: 'active' | 'inactive';
+  joinDate: string;
+  lastActive: string;
+  salary?: number;
+  permissions: string[];
+}
+
+// Common components now imported from ../../components/UI
+// Page-specific styled components below
+
+// 페이지별 반응형 테이블 헤더 (StaffManagement 전용)
+const StaffTableHeader = styled(CommonTableHeader)`
+  @media (max-width: 1400px) {
+    & > span:nth-child(4),
+    & > span:nth-child(5) {
+      display: none;
+    }
+  }
+
+  @media (max-width: 1024px) {
+    & > span:nth-child(3),
+    & > span:nth-child(4),
+    & > span:nth-child(5) {
+      display: none;
+    }
+  }
+`;
+
+// 페이지별 반응형 테이블 행 (StaffManagement 전용)
+const StaffTableRow = styled(CommonTableRow)`
+  @media (max-width: 1400px) {
+    & > div:nth-child(4),
+    & > div:nth-child(5) {
+      display: none;
+    }
+  }
+
+  @media (max-width: 1024px) {
+    & > div:nth-child(3),
+    & > div:nth-child(4),
+    & > div:nth-child(5) {
+      display: none;
+    }
+  }
+`;
+
+const StaffInfo = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  @media (max-width: 768px) {
+    gap: 10px;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #F3F4F6;
+  }
+`;
+
+const StaffAvatar = styled.div<{ role: string }>`
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 16px;
+  color: white;
+  flex-shrink: 0;
+  background: ${props => {
+    switch(props.role) {
+      case 'System Admin': return '#DC2626';
+      case 'Restaurant Admin': return '#059669';
+      case 'Staff': return '#7C3AED';
+      case 'Foodcourt Manager': return '#D97706';
+      case 'Foodcourt General': return '#EA580C';
+      case 'Brand Manager': return '#2563EB';
+      case 'Brand General': return '#1D4ED8';
+      default: return '#6B7280';
+    }
+  }};
+
+  @media (max-width: 768px) {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+`;
+
+const StaffDetails = styled.div``;
+
+const StaffName = styled.div`
+  font-size: 14px;
+  font-weight: 600;
+  color: #0A2540;
+
+  @media (max-width: 768px) {
+    font-size: 13px;
+  }
+`;
+
+const StaffEmail = styled.div`
+  font-size: 12px;
+  color: #6B7280;
+
+  @media (max-width: 768px) {
+    font-size: 11px;
+  }
+`;
+
+const RoleBadge = styled.span<{ role: string }>`
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.4;
+  max-width: 100%;
+  word-wrap: break-word;
+  background: ${props => {
+    switch(props.role) {
+      case 'System Admin': return '#FEE2E2';
+      case 'Restaurant Admin': return '#ECFDF5';
+      case 'Staff': return '#EDE9FE';
+      case 'Foodcourt Manager': return '#FEF3C7';
+      case 'Foodcourt General': return '#FED7AA';
+      case 'Brand Manager': return '#DBEAFE';
+      case 'Brand General': return '#BFDBFE';
+      default: return '#F3F4F6';
+    }
+  }};
+  color: ${props => {
+    switch(props.role) {
+      case 'System Admin': return '#DC2626';
+      case 'Restaurant Admin': return '#059669';
+      case 'Staff': return '#7C3AED';
+      case 'Foodcourt Manager': return '#D97706';
+      case 'Foodcourt General': return '#EA580C';
+      case 'Brand Manager': return '#2563EB';
+      case 'Brand General': return '#1D4ED8';
+      default: return '#6B7280';
+    }
+  }};
+
+  @media (max-width: 768px) {
+    font-size: 10px;
+    padding: 4px 10px;
+  }
+`;
+
+const StatusBadge = styled.span<{ status: string }>`
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: ${props => {
+    switch(props.status) {
+      case 'active': return '#ECFDF5';
+      case 'inactive': return '#FEE2E2';
+      default: return '#F3F4F6';
+    }
+  }};
+  color: ${props => {
+    switch(props.status) {
+      case 'active': return '#059669';
+      case 'inactive': return '#DC2626';
+      default: return '#6B7280';
+    }
+  }};
+
+  @media (max-width: 768px) {
+    font-size: 10px;
+    padding: 4px 10px;
+  }
+`;
+
+const IconSymbol = styled.span`
+  font-size: 16px;
+  font-family: 'Lucida Console', 'Courier New', monospace;
+  color: #6B7C93;
+  display: inline-block;
+  line-height: 1;
+
+  @media (max-width: 768px) {
+    font-size: 14px;
+  }
+`;
+
+const Modal = styled.div<{ show: boolean }>`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: ${props => props.show ? 'flex' : 'none'};
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+`;
+
+const ModalContent = styled.div`
+  background: white;
+  border-radius: 12px;
+  padding: 32px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+`;
+
+const ModalHeader = styled.div`
+  padding: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #E6EBF1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: -32px -32px 24px -32px;
+`;
+
+const ModalTitle = styled.h2`
+  font-size: 24px;
+  font-weight: 700;
+  color: #0A2540;
+  margin: 0;
+`;
+
+const CloseButton = styled.button`
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6B7280;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: #F3F4F6;
+    color: #374151;
+  }
+`;
+
+const FormGrid = styled.div`
+  display: grid;
+  gap: 20px;
+  margin-bottom: 24px;
+`;
+
+const FormGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+`;
+
+const Label = styled.label`
+  font-size: 14px;
+  font-weight: 600;
+  color: #0A2540;
+  margin-bottom: 8px;
+`;
+
+const Input = styled.input`
+  padding: 12px 16px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 14px;
+  
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+`;
+
+const Select = styled.select`
+  padding: 12px 16px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+
+  &:disabled {
+    background: #F8FAFC;
+    color: #6B7280;
+    cursor: not-allowed;
+  }
+`;
+
+const RestaurantSearchInput = styled(Input)`
+  width: 100%;
+`;
+
+const DropdownContainer = styled.div`
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  margin-top: 4px;
+`;
+
+const DropdownItem = styled.div`
+  padding: 12px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid #F3F4F6;
+  transition: background 0.15s;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: #F8FAFC;
+  }
+`;
+
+const DropdownItemTitle = styled.div`
+  font-weight: 500;
+  color: #0A2540;
+  margin-bottom: 4px;
+`;
+
+const DropdownItemSubtitle = styled.div`
+  font-size: 12px;
+  color: #6B7280;
+`;
+
+const SelectedBadge = styled.div`
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: #ECFDF5;
+  border: 1px solid #10B981;
+  border-radius: 6px;
+  margin-top: 8px;
+  font-size: 14px;
+  color: #059669;
+
+  strong {
+    margin-left: 4px;
+    color: #047857;
+  }
+`;
+
+const ModalActions = styled.div`
+  padding: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #E6EBF1;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin: 24px -32px -32px -32px;
+`;
+
+const ErrorMessage = styled.div`
+  padding: 12px 16px;
+  background: #FEE2E2;
+  border: 1px solid #FCA5A5;
+  border-radius: 6px;
+  color: #991B1B;
+  font-size: 14px;
+  line-height: 1.5;
+`;
+
+const AdminStaffManagementPage: React.FC = () => {
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<'all' | 'System Admin' | 'Restaurant Admin' | 'Staff' | 'Managers'>('all');
+  const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [restaurantFilter, setRestaurantFilter] = useState('all');
+  const [restaurants, setRestaurants] = useState<any[]>([]);
+  const [restaurantSearchQuery, setRestaurantSearchQuery] = useState('');
+  const [restaurantSearchResults, setRestaurantSearchResults] = useState<any[]>([]);
+  const [showRestaurantDropdown, setShowRestaurantDropdown] = useState(false);
+  const [selectedRestaurant, setSelectedRestaurant] = useState<any>(null);
+  const [editRestaurantSearchQuery, setEditRestaurantSearchQuery] = useState('');
+  const [editRestaurantSearchResults, setEditRestaurantSearchResults] = useState<any[]>([]);
+  const [showEditRestaurantDropdown, setShowEditRestaurantDropdown] = useState(false);
+  const [editSelectedRestaurant, setEditSelectedRestaurant] = useState<any>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+  const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
+  const [viewingPermissions, setViewingPermissions] = useState<Staff | null>(null);
+  const [editingPermissions, setEditingPermissions] = useState<string[]>([]);
+  const [newStaff, setNewStaff] = useState({
+    username: '',
+    name: '',
+    email: '',
+    phone: '',
+    type: 'restaurant_staff' as 'restaurant_staff' | 'company_staff' | 'freelancer' | 'our_staff',
+    role: '',
+    department: '',
+    restaurantId: '',
+    companyName: '',
+    salary: ''
+  });
+  const [formError, setFormError] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+
+  useEffect(() => {
+    const fetchStaff = async () => {
+      try {
+        console.log('👥 [Admin] Fetching all staff across system...');
+        
+        // Fetch all users in system
+        const usersResponse = await fetch('/api/users');
+        console.log('📡 Users API response status:', usersResponse.status);
+        
+        if (usersResponse.ok) {
+          const usersData = await usersResponse.json();
+          console.log('👥 All users data from API:', usersData);
+          
+          // Fetch all restaurants to map staff to restaurants
+          const restaurantsResponse = await fetch('/api/restaurants');
+          const restaurantsData = restaurantsResponse.ok ? await restaurantsResponse.json() : [];
+          console.log('🏪 All restaurants data:', restaurantsData);
+
+          // Store restaurants in state for form dropdowns
+          if (Array.isArray(restaurantsData)) {
+            setRestaurants(restaurantsData);
+          }
+
+          // Create restaurant map
+          const restaurantMap: Record<number, { name: string; company: string }> = {};
+          if (Array.isArray(restaurantsData)) {
+            restaurantsData.forEach((restaurant: any) => {
+              restaurantMap[restaurant.id] = {
+                name: restaurant.name,
+                company: restaurant.company_name || 'OrderHere'
+              };
+            });
+          }
+          
+          // Transform all users to staff format - handle both data array and direct array
+          const usersArray = usersData.data || usersData;
+          const transformedStaff: Staff[] = usersArray
+            .map((user: any) => {
+              let type: 'restaurant_staff' | 'company_staff' | 'freelancer' | 'our_staff';
+              let companyName = 'OrderHere';
+              let restaurantName;
+
+              // Determine type based on role
+              const managerRoles = ['Foodcourt Manager', 'Foodcourt General', 'Brand Manager', 'Brand General'];
+
+              if (user.role === 'System Admin') {
+                type = 'our_staff';
+                companyName = user.company_name || 'OrderHere';
+              } else if (managerRoles.includes(user.role)) {
+                type = 'company_staff';
+                companyName = user.company_name || 'OrderHere';
+              } else if (user.role === 'Restaurant Admin' || user.role === 'Staff') {
+                if (user.restaurant_id) {
+                  type = 'restaurant_staff';
+                  // Use restaurant_name from API first, fallback to restaurantMap
+                  restaurantName = user.restaurant_name || restaurantMap[user.restaurant_id]?.name || 'Unknown Restaurant';
+                  companyName = restaurantMap[user.restaurant_id]?.company || 'OrderHere';
+                } else {
+                  type = 'our_staff';
+                }
+              } else {
+                // Default fallback
+                type = 'company_staff';
+              }
+              
+              return {
+                id: user.id.toString(),
+                name: user.full_name || user.username || 'Unknown',
+                email: user.email,
+                phone: user.phone || '+60 12-345-6789',
+                type,
+                role: user.role,
+                department: user.restaurant_id ? 'Restaurant Operations' :
+                           user.role === 'System Admin' ? 'Administration' : 'Operations',
+                restaurantId: user.restaurant_id?.toString(),
+                restaurantName,
+                companyName,
+                status: 'active' as const,
+                joinDate: user.createdAt ? new Date(user.createdAt).toISOString().split('T')[0] : '2024-01-01',
+                lastActive: 'Active',
+                salary: 
+                       user.role === 'System Admin' ? 12000 :
+                       user.role === 'Restaurant Admin' ? 5000 : 3000,
+                permissions: user.role === 'System Admin' ? ['all'] : 
+                            user.role === 'Restaurant Admin' ? ['pos', 'inventory', 'reports'] :
+                            ['pos']
+              };
+            });
+          
+          console.log('✅ [Admin] Transformed all staff data:', transformedStaff);
+          setStaffList(transformedStaff);
+        } else {
+          console.error('Failed to fetch users data');
+        }
+      } catch (error) {
+        console.error('Error fetching staff data:', error);
+      }
+    };
+
+    fetchStaff();
+  }, []);
+
+  // Filter staff based on active tab and filters
+  const filteredStaff = staffList.filter(staff => {
+    // Tab filter (now based on role instead of type)
+    if (activeTab !== 'all') {
+      if (activeTab === 'Managers') {
+        // For Managers tab, show all 4 manager roles
+        const managerRoles = ['Foodcourt General', 'Foodcourt Manager', 'Brand General', 'Brand Manager'];
+        if (!managerRoles.includes(staff.role)) return false;
+      } else if (staff.role !== activeTab) {
+        return false;
+      }
+    }
+    
+    // Search filter
+    if (searchQuery && !staff.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        !staff.email.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        !(staff.restaurantName && staff.restaurantName.toLowerCase().includes(searchQuery.toLowerCase()))) {
+      return false;
+    }
+    
+    // Role filter
+    if (roleFilter !== 'all' && staff.role !== roleFilter) {
+      return false;
+    }
+    
+    // Status filter
+    if (statusFilter !== 'all' && staff.status !== statusFilter) {
+      return false;
+    }
+    
+    // Restaurant filter (only for restaurant staff)
+    if (restaurantFilter !== 'all' && staff.restaurantId !== restaurantFilter) {
+      return false;
+    }
+    
+    return true;
+  });
+
+  // Calculate statistics by role
+  const managerRoles = ['Foodcourt General', 'Foodcourt Manager', 'Brand General', 'Brand Manager'];
+  const stats = {
+    total: staffList.length,
+    systemAdmin: staffList.filter(s => s.role === 'System Admin').length,
+    restaurantAdmin: staffList.filter(s => s.role === 'Restaurant Admin').length,
+    staff: staffList.filter(s => s.role === 'Staff').length,
+    managers: staffList.filter(s => managerRoles.includes(s.role)).length,
+    active: staffList.filter(s => s.status === 'active').length,
+    totalSalary: staffList.filter(s => s.salary).reduce((sum, s) => sum + (s.salary || 0), 0)
+  };
+
+  // CSV 변환 함수
+  const convertToCSV = (data: any[]) => {
+    if (data.length === 0) return '';
+
+    const headers = Object.keys(data[0]);
+    const csvHeaders = headers.join(',');
+
+    const csvRows = data.map(row =>
+      headers.map(header => {
+        const value = row[header];
+        // CSV에서 쉼표와 따옴표 처리
+        if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+          return `"${value.replace(/"/g, '""')}"`;
+        }
+        return value || '';
+      }).join(',')
+    );
+
+    return [csvHeaders, ...csvRows].join('\n');
+  };
+
+  const handleExportData = () => {
+    // 현재 필터링된 스탭 리스트를 사용하여 CSV 데이터 생성
+    const csvData = filteredStaff.map(staff => ({
+      'Staff Member': staff.name,
+      'Email': staff.email,
+      'Company & Location': `${staff.companyName} - ${staff.restaurantName || 'Head Office'}`,
+      'Role': staff.role,
+      'Department': staff.department,
+      'Status': staff.status,
+      'Salary': staff.salary ? `RM ${staff.salary.toLocaleString()}` : 'N/A',
+      'Phone': staff.phone,
+      'Join Date': staff.joinDate,
+      'Last Active': staff.lastActive
+    }));
+
+    const csvContent = convertToCSV(csvData);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `staff-export-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleAddStaff = () => {
+    setShowAddModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowAddModal(false);
+    setFormError('');
+    setSelectedRestaurant(null);
+    setRestaurantSearchQuery('');
+    setNewStaff({
+      username: '',
+      name: '',
+      email: '',
+      phone: '',
+      type: 'restaurant_staff',
+      role: '',
+      department: '',
+      restaurantId: '',
+      companyName: '',
+      salary: ''
+    });
+  };
+
+  const handleSubmitStaff = async () => {
+    // Clear previous error
+    setFormError('');
+
+    // Validate required fields in order
+    if (!newStaff.role) {
+      setFormError('Role selection is required');
+      return;
+    }
+
+    if (!newStaff.username || newStaff.username.trim() === '') {
+      setFormError('Staff ID (Username) is required');
+      return;
+    }
+
+    if (!newStaff.name || newStaff.name.trim() === '') {
+      setFormError('Full Name is required');
+      return;
+    }
+
+    if (!newStaff.email || newStaff.email.trim() === '') {
+      setFormError('Email address is required');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newStaff.email)) {
+      setFormError('Please enter a valid email address');
+      return;
+    }
+
+    // Validate restaurant selection for Restaurant Admin and Staff roles
+    if ((newStaff.role === 'Restaurant Admin' || newStaff.role === 'Staff') && !selectedRestaurant && !newStaff.restaurantId) {
+      setFormError('Please select a restaurant for Restaurant Admin and Staff roles');
+      return;
+    }
+
+    try {
+      // Create new staff/user in database
+      const staffUserData = {
+        username: newStaff.username.trim(),
+        email: newStaff.email.trim(),
+        password: '1234',
+        role: newStaff.role,
+        full_name: newStaff.name.trim(),
+        phone: newStaff.phone ? newStaff.phone.trim() : null,
+        department: newStaff.department ? newStaff.department.trim() : null,
+        company_name: newStaff.companyName ? newStaff.companyName.trim() : null,
+        restaurant_id: newStaff.restaurantId ? parseInt(newStaff.restaurantId) : null,
+        manager_id: null
+      };
+
+      console.log('🔄 [Admin] Creating new staff user:', staffUserData);
+
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(staffUserData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('❌ [Admin] Failed to create staff:', errorData);
+        setFormError(errorData.error || 'Failed to create staff. Please try again.');
+        return; // Don't proceed if creation failed
+      }
+
+      // Only proceed if response is OK
+      const result = await response.json();
+      console.log('✅ [Admin] Staff created successfully:', result);
+
+      // Close modal first
+      handleCloseModal();
+
+      // Show success message with password
+      setSuccessMessage(`Staff member created successfully!\n\nUsername: ${newStaff.username}\nDefault Password: 1234\n\nPlease save this information and share it securely with the staff member.`);
+      setShowSuccessModal(true);
+
+      // Refresh staff list only after successful creation
+      const usersResponse = await fetch('/api/users');
+      if (usersResponse.ok) {
+        const usersData = await usersResponse.json();
+        const restaurantsResponse = await fetch('/api/restaurants');
+        const restaurantsData = restaurantsResponse.ok ? await restaurantsResponse.json() : [];
+
+        const restaurantMap: Record<number, { name: string; company: string }> = {};
+        if (Array.isArray(restaurantsData)) {
+          restaurantsData.forEach((restaurant: any) => {
+            restaurantMap[restaurant.id] = {
+              name: restaurant.name,
+              company: restaurant.company_name || 'OrderHere'
+            };
+          });
+        }
+
+        // Handle both response formats: { data: [...] } or { success: true, data: [...] }
+        const usersList = usersData.data || usersData;
+        if (!Array.isArray(usersList)) {
+          console.error('Invalid users data format:', usersData);
+          throw new Error('Invalid users data format');
+        }
+
+        const transformedStaff: Staff[] = usersList
+          .map((user: any) => {
+            let type: 'restaurant_staff' | 'company_staff' | 'freelancer' | 'our_staff';
+            let companyName = 'OrderHere';
+            let restaurantName;
+
+            // Determine type based on role
+            const managerRoles = ['Foodcourt Manager', 'Foodcourt General', 'Brand Manager', 'Brand General'];
+
+            if (user.role === 'System Admin') {
+              type = 'our_staff';
+              companyName = user.company_name || 'OrderHere';
+            } else if (managerRoles.includes(user.role)) {
+              type = 'company_staff';
+              companyName = user.company_name || 'OrderHere';
+            } else if (user.role === 'Restaurant Admin' || user.role === 'Staff') {
+              if (user.restaurant_id) {
+                type = 'restaurant_staff';
+                const restaurantInfo = restaurantMap[user.restaurant_id];
+                // Use restaurant_name from API first, fallback to restaurantMap
+                restaurantName = user.restaurant_name || restaurantInfo?.name || 'Unknown Restaurant';
+                companyName = restaurantInfo?.company || 'OrderHere';
+              } else {
+                type = 'our_staff';
+              }
+            } else {
+              // Default fallback
+              type = 'company_staff';
+            }
+
+            return {
+              id: user.id.toString(),
+              username: user.username || '',
+              name: user.full_name || user.username || 'Unknown',
+              email: user.email,
+              phone: user.phone || '',
+              type,
+              role: user.role,
+              department: user.department || '',
+              restaurantId: user.restaurant_id?.toString(),
+              restaurantName,
+              companyName,
+              status: 'active' as const,
+              joinDate: user.createdAt ? new Date(user.createdAt).toISOString().split('T')[0] : '2024-01-01',
+              lastActive: 'Active',
+              salary: 0,
+              permissions: user.permissions || []
+            };
+          });
+
+        setStaffList(transformedStaff);
+      }
+    } catch (error) {
+      console.error('Error creating staff:', error);
+      setFormError('An error occurred while creating staff. Please try again.');
+    }
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setNewStaff(prev => {
+      const updated = { ...prev, [field]: value };
+
+      // Automatically set type based on role
+      if (field === 'role') {
+        switch (value) {
+          case 'Staff':
+          case 'Restaurant Admin':
+            updated.type = 'restaurant_staff';
+            break;
+          case 'System Admin':
+            updated.type = 'our_staff';
+            break;
+          default:
+            updated.type = 'company_staff';
+        }
+      }
+
+      return updated;
+    });
+
+    // Clear restaurant selection when role changes to non-restaurant roles
+    if (field === 'role' && value !== 'Restaurant Admin' && value !== 'Staff') {
+      setSelectedRestaurant(null);
+      setRestaurantSearchQuery('');
+      setRestaurantSearchResults([]);
+      setShowRestaurantDropdown(false);
+    }
+  };
+
+  const handleRestaurantSearch = (query: string) => {
+    setRestaurantSearchQuery(query);
+    setShowRestaurantDropdown(true);
+
+    if (query.length < 1) {
+      setRestaurantSearchResults(restaurants.slice(0, 10));
+      return;
+    }
+
+    const filtered = restaurants.filter(restaurant =>
+      restaurant.name && restaurant.name.toLowerCase().includes(query.toLowerCase())
+    );
+    setRestaurantSearchResults(filtered.slice(0, 10));
+  };
+
+  const handleRestaurantSelect = (restaurant: any) => {
+    setSelectedRestaurant(restaurant);
+    setRestaurantSearchQuery(restaurant.name);
+    setShowRestaurantDropdown(false);
+    setNewStaff(prev => ({ ...prev, restaurantId: restaurant.id }));
+  };
+
+  const handleEditRestaurantSearch = (query: string) => {
+    setEditRestaurantSearchQuery(query);
+    setShowEditRestaurantDropdown(true);
+
+    if (query.length < 1) {
+      setEditRestaurantSearchResults(restaurants.slice(0, 10));
+      return;
+    }
+
+    const filtered = restaurants.filter(restaurant =>
+      restaurant.name && restaurant.name.toLowerCase().includes(query.toLowerCase())
+    );
+    setEditRestaurantSearchResults(filtered.slice(0, 10));
+  };
+
+  const handleEditRestaurantSelect = (restaurant: any) => {
+    setEditSelectedRestaurant(restaurant);
+    setEditRestaurantSearchQuery(restaurant.name);
+    setShowEditRestaurantDropdown(false);
+    setEditingStaff(prev => ({ ...prev!, restaurantId: restaurant.id }));
+  };
+
+  const handleEditStaff = (staff: Staff) => {
+    setEditingStaff(staff);
+
+    // Set restaurant search query for edit modal
+    if (staff.restaurantId) {
+      const restaurant = restaurants.find(r => r.id === staff.restaurantId);
+      if (restaurant) {
+        setEditRestaurantSearchQuery(restaurant.name);
+        setEditSelectedRestaurant(restaurant);
+      }
+    } else {
+      setEditRestaurantSearchQuery('');
+      setEditSelectedRestaurant(null);
+    }
+
+    setShowEditModal(true);
+  };
+
+  const handleViewPermissions = (staff: Staff) => {
+    setViewingPermissions(staff);
+    setEditingPermissions([...getPermissionsByRole(staff.role)]);
+    setShowPermissionsModal(true);
+  };
+
+  const handleClosePermissionsModal = () => {
+    setShowPermissionsModal(false);
+    setViewingPermissions(null);
+    setEditingPermissions([]);
+  };
+
+  const handleUpdatePermissions = async () => {
+    if (!viewingPermissions) return;
+
+    try {
+      console.log('🔄 [Admin] Updating permissions for user:', viewingPermissions.id, 'New role:', viewingPermissions.role);
+
+      const response = await fetch(`/api/users/${viewingPermissions.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          role: viewingPermissions.role
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('❌ [Admin] Failed to update permissions:', errorData);
+        alert(`권한 업데이트 실패: ${errorData.error || 'Unknown error'}`);
+        return;
+      }
+
+      const responseData = await response.json();
+      console.log('✅ [Admin] Permissions update successful:', responseData);
+
+      // Close modal first
+      setShowPermissionsModal(false);
+      setViewingPermissions(null);
+
+      // Reload fresh data from database to ensure sync
+      const updatedResponse = await fetch(`/api/users/${viewingPermissions.id}`);
+      if (updatedResponse.ok) {
+        const updatedResult = await updatedResponse.json();
+        const updatedUser = updatedResult.data || updatedResult;
+
+        // Fetch restaurants data to recalculate type and company info
+        const restaurantsResponse = await fetch('/api/restaurants');
+        const restaurantsData = restaurantsResponse.ok ? await restaurantsResponse.json() : [];
+
+        const restaurantMap: Record<number, { name: string; company: string }> = {};
+        if (Array.isArray(restaurantsData)) {
+          restaurantsData.forEach((restaurant: any) => {
+            restaurantMap[restaurant.id] = {
+              name: restaurant.name,
+              company: restaurant.company_name || 'OrderHere'
+            };
+          });
+        }
+
+        // Recalculate type, companyName, and restaurantName based on updated role
+        let type: 'restaurant_staff' | 'company_staff' | 'freelancer' | 'our_staff';
+        let companyName = 'OrderHere';
+        let restaurantName;
+
+        const managerRoles = ['Foodcourt Manager', 'Foodcourt General', 'Brand Manager', 'Brand General'];
+
+        if (updatedUser.role === 'System Admin') {
+          type = 'our_staff';
+          companyName = updatedUser.company_name || 'OrderHere';
+        } else if (managerRoles.includes(updatedUser.role)) {
+          type = 'company_staff';
+          companyName = updatedUser.company_name || 'OrderHere';
+        } else if (updatedUser.role === 'Restaurant Admin' || updatedUser.role === 'Staff') {
+          if (updatedUser.restaurant_id) {
+            type = 'restaurant_staff';
+            const restaurantInfo = restaurantMap[updatedUser.restaurant_id];
+            restaurantName = updatedUser.restaurant_name || restaurantInfo?.name || 'Unknown Restaurant';
+            companyName = restaurantInfo?.company || 'OrderHere';
+          } else {
+            type = 'our_staff';
+          }
+        } else {
+          type = 'company_staff';
+        }
+
+        // Update the specific staff member in local state
+        setStaffList(prevStaff =>
+          prevStaff.map(staff =>
+            staff.id === viewingPermissions.id
+              ? {
+                  ...staff,
+                  role: updatedUser.role,
+                  permissions: editingPermissions,
+                  type,
+                  companyName,
+                  restaurantName
+                }
+              : staff
+          )
+        );
+      } else {
+        // If we can't get fresh data, just force reload
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error('Error updating role:', error);
+      // 실패 시 모달은 열어둔 채로 유지
+    }
+  };
+
+  const togglePermission = (permission: string) => {
+    setEditingPermissions(prev => 
+      prev.includes(permission) 
+        ? prev.filter(p => p !== permission)
+        : [...prev, permission]
+    );
+  };
+
+  const getPermissionsByRole = (role: string): string[] => {
+    switch (role) {
+      case 'System Admin':
+        return ['Full System Management', 'All User Management', 'Subscription Management', 'Invoice Management', 'System Settings'];
+      case 'Restaurant Admin':
+        return ['POS System', 'Menu Management', 'Order Management', 'Staff Management', 'Sales Reports'];
+      case 'Staff':
+        return ['POS System', 'Order Processing', 'Customer Service'];
+      default:
+        return ['Basic Access'];
+    }
+  };
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingStaff, setDeletingStaff] = useState<Staff | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<'toggle' | 'resetPassword' | null>(null);
+  const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
+
+  const deleteStaff = async (staff: Staff) => {
+    setDeletingStaff(staff);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleToggleStaffStatus = (staff: Staff) => {
+    setSelectedStaff(staff);
+    setConfirmAction('toggle');
+    setShowConfirmModal(true);
+  };
+
+  const handleResetStaffPassword = (staff: Staff) => {
+    setSelectedStaff(staff);
+    setConfirmAction('resetPassword');
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmAction = async () => {
+    if (!selectedStaff || !confirmAction) return;
+
+    try {
+      if (confirmAction === 'toggle') {
+        const newStatus = selectedStaff.status === 'active' ? 'inactive' : 'active';
+
+        const response = await fetch(`/api/users/${selectedStaff.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            status: newStatus
+          })
+        });
+
+        if (response.ok) {
+          // Update local state
+          setStaffList(prev => prev.map(staff =>
+            staff.id === selectedStaff.id ? { ...staff, status: newStatus } : staff
+          ));
+          alert(`Staff ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`);
+        } else {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Status update failed');
+        }
+      } else if (confirmAction === 'resetPassword') {
+        const response = await fetch(`/api/users/${selectedStaff.id}/reset-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          const defaultPassword = result.defaultPassword || '1234';
+
+          // Show success message in modal
+          setSuccessMessage(`Password reset successfully!\n\nUsername: ${selectedStaff.username || selectedStaff.email}\nNew Password: ${defaultPassword}\n\nPlease save this information and share it securely with the staff member.`);
+          setShowSuccessModal(true);
+        } else {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Password reset failed');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Action failed:', error);
+      alert(`Action failed: ${error.message}. Please try again.`);
+    }
+
+    setShowConfirmModal(false);
+    setSelectedStaff(null);
+    setConfirmAction(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingStaff) return;
+
+    try {
+      console.log(`🔄 [Admin] Deleting staff: ${deletingStaff.name}...`);
+      
+      const response = await fetch(`/api/users/${deletingStaff.id}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        // Remove from local state
+        setStaffList(prevStaff => prevStaff.filter(s => s.id !== deletingStaff.id));
+      } else {
+        console.error('Failed to delete staff');
+      }
+    } catch (error) {
+      console.error('Error deleting staff:', error);
+    }
+    
+    setShowDeleteConfirm(false);
+    setDeletingStaff(null);
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteConfirm(false);
+    setDeletingStaff(null);
+  };
+
+  const handleUpdateStaff = async () => {
+    if (!editingStaff) return;
+
+    // Validate required fields
+    if (!editingStaff.name || editingStaff.name.trim() === '') {
+      alert('Full Name is required');
+      return;
+    }
+
+    if (!editingStaff.email || editingStaff.email.trim() === '') {
+      alert('Email is required');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(editingStaff.email)) {
+      alert('Please enter a valid email address');
+      return;
+    }
+
+    if (!editingStaff.role) {
+      alert('Role is required');
+      return;
+    }
+
+    try {
+      console.log('🔄 [Admin] Updating staff:', editingStaff);
+
+      const requestData = {
+        full_name: editingStaff.name.trim(),
+        email: editingStaff.email.trim(),
+        role: editingStaff.role,
+        department: editingStaff.department ? editingStaff.department.trim() : null,
+        phone: editingStaff.phone ? editingStaff.phone.trim() : null
+      };
+
+      console.log('📝 [Admin] Request data:', requestData);
+
+      const response = await fetch(`/api/users/${editingStaff.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData)
+      });
+
+      console.log('📝 [Admin] Response status:', response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('❌ [Admin] Failed to update staff:', errorData);
+        alert(`Failed to update staff: ${errorData.error || 'Unknown error'}`);
+        return;
+      }
+
+      const responseData = await response.json();
+      console.log('✅ [Admin] Update successful:', responseData);
+
+      // Close modal first
+      setShowEditModal(false);
+      setEditingStaff(null);
+
+      // Reload fresh data from database to ensure sync
+      const updatedResponse = await fetch(`/api/users/${editingStaff.id}`);
+      if (updatedResponse.ok) {
+        const updatedResult = await updatedResponse.json();
+        const updatedUser = updatedResult.data || updatedResult;
+
+        // Fetch restaurants data to recalculate type and company info
+        const restaurantsResponse = await fetch('/api/restaurants');
+        const restaurantsData = restaurantsResponse.ok ? await restaurantsResponse.json() : [];
+
+        const restaurantMap: Record<number, { name: string; company: string }> = {};
+        if (Array.isArray(restaurantsData)) {
+          restaurantsData.forEach((restaurant: any) => {
+            restaurantMap[restaurant.id] = {
+              name: restaurant.name,
+              company: restaurant.company_name || 'OrderHere'
+            };
+          });
+        }
+
+        // Recalculate type, companyName, and restaurantName based on updated role
+        let type: 'restaurant_staff' | 'company_staff' | 'freelancer' | 'our_staff';
+        let companyName = 'OrderHere';
+        let restaurantName;
+
+        const managerRoles = ['Foodcourt Manager', 'Foodcourt General', 'Brand Manager', 'Brand General'];
+
+        if (updatedUser.role === 'System Admin') {
+          type = 'our_staff';
+          companyName = updatedUser.company_name || 'OrderHere';
+        } else if (managerRoles.includes(updatedUser.role)) {
+          type = 'company_staff';
+          companyName = updatedUser.company_name || 'OrderHere';
+        } else if (updatedUser.role === 'Restaurant Admin' || updatedUser.role === 'Staff') {
+          if (updatedUser.restaurant_id) {
+            type = 'restaurant_staff';
+            const restaurantInfo = restaurantMap[updatedUser.restaurant_id];
+            restaurantName = updatedUser.restaurant_name || restaurantInfo?.name || 'Unknown Restaurant';
+            companyName = restaurantInfo?.company || 'OrderHere';
+          } else {
+            type = 'our_staff';
+          }
+        } else {
+          type = 'company_staff';
+        }
+
+        // Update the specific staff member in local state
+        setStaffList(prevStaff =>
+          prevStaff.map(staff =>
+            staff.id === editingStaff.id
+              ? {
+                  ...staff,
+                  name: updatedUser.full_name,
+                  email: updatedUser.email,
+                  role: updatedUser.role,
+                  department: updatedUser.department,
+                  phone: updatedUser.phone,
+                  type,
+                  companyName,
+                  restaurantName
+                }
+              : staff
+          )
+        );
+      } else {
+        // If we can't get fresh data, just force reload
+        window.location.reload();
+      }
+
+    } catch (error) {
+      console.error('❌ [Admin] Error updating staff:', error);
+      alert(`스탭 정보 업데이트 에러: ${error.message}`);
+    }
+  };
+
+  const handleCloseEditModal = () => {
+    setShowEditModal(false);
+    setEditingStaff(null);
+  };
+
+  const handlePromoteStaff = async (staff: Staff) => {
+    const roles = ['Staff', 'Restaurant Admin', 'System Admin'];
+    const currentIndex = roles.indexOf(staff.role);
+    if (currentIndex >= roles.length - 1) {
+      alert(`${staff.name} already has the highest authority.`);
+      return;
+    }
+
+    const nextRole = roles[currentIndex + 1];
+    const confirmPromote = confirm(`Do you want to promote ${staff.name} from ${staff.role} to ${nextRole}?`);
+    if (!confirmPromote) return;
+
+    try {
+      console.log(`🔄 [Admin] Promoting ${staff.name} to ${nextRole}...`);
+      console.log('API Request:', {
+        url: `/api/users/${staff.id}`,
+        method: 'PUT',
+        body: { role: nextRole }
+      });
+      
+      const response = await fetch(`/api/users/${staff.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          role: nextRole
+        })
+      });
+
+      console.log('API Response status:', response.status);
+      const responseText = await response.text();
+      console.log('API Response text:', responseText);
+
+      if (response.ok) {
+        let result;
+        try {
+          result = JSON.parse(responseText);
+        } catch (e) {
+          result = { success: true };
+        }
+        console.log('✅ [Admin] Staff promoted successfully:', result);
+        
+        // Refresh staff list
+        const usersResponse = await fetch('/api/users');
+        if (usersResponse.ok) {
+          const usersData = await usersResponse.json();
+          const restaurantsResponse = await fetch('/api/restaurants');
+          const restaurantsData = restaurantsResponse.ok ? await restaurantsResponse.json() : [];
+          
+          const restaurantMap: Record<number, { name: string; company: string }> = {};
+          if (Array.isArray(restaurantsData)) {
+            restaurantsData.forEach((restaurant: any) => {
+              restaurantMap[restaurant.id] = {
+                name: restaurant.name,
+                company: restaurant.company_name || 'OrderHere'
+              };
+            });
+          }
+
+          const transformedStaff: Staff[] = usersData.data
+            .map((user: any) => {
+              let type: 'restaurant_staff' | 'company_staff' | 'freelancer' | 'our_staff';
+              let companyName = 'OrderHere';
+              let restaurantName;
+
+              // Determine type based on role
+              const managerRoles = ['Foodcourt Manager', 'Foodcourt General', 'Brand Manager', 'Brand General'];
+
+              if (user.role === 'System Admin') {
+                type = 'our_staff';
+                companyName = user.company_name || 'OrderHere';
+              } else if (managerRoles.includes(user.role)) {
+                type = 'company_staff';
+                companyName = user.company_name || 'OrderHere';
+              } else if (user.role === 'Restaurant Admin' || user.role === 'Staff') {
+                if (user.restaurant_id) {
+                  type = 'restaurant_staff';
+                  const restaurantInfo = restaurantMap[user.restaurant_id];
+                  // Use restaurant_name from API first, fallback to restaurantMap
+                  restaurantName = user.restaurant_name || restaurantInfo?.name || 'Unknown Restaurant';
+                  companyName = restaurantInfo?.company || 'OrderHere';
+                } else {
+                  type = 'our_staff';
+                }
+              } else {
+                // Default fallback
+                type = 'company_staff';
+              }
+
+              return {
+                id: user.id.toString(),
+                name: user.full_name || user.username || 'Unknown',
+                email: user.email,
+                phone: user.phone || '+60 12-345-6789',
+                type,
+                role: user.role,
+                department: user.restaurant_id ? 'Restaurant Operations' :
+                           user.role === 'System Admin' ? 'Administration' : 'Operations',
+                restaurantId: user.restaurant_id?.toString(),
+                restaurantName,
+                companyName,
+                status: 'active' as const,
+                joinDate: user.createdAt ? new Date(user.createdAt).toISOString().split('T')[0] : '2024-01-01',
+                lastActive: 'Active',
+                salary: 
+                       user.role === 'System Admin' ? 12000 :
+                       user.role === 'Restaurant Admin' ? 5000 : 3000,
+                permissions: user.role === 'System Admin' ? ['all'] : 
+                            user.role === 'Restaurant Admin' ? ['pos', 'inventory', 'reports'] :
+                            ['pos']
+              };
+            });
+          
+          setStaffList(transformedStaff);
+        }
+        
+        alert(`${staff.name} has been successfully promoted to ${nextRole}!`);
+      } else {
+        console.error('Failed to promote staff. Status:', response.status);
+        console.error('Response:', responseText);
+        alert(`Promotion failed. (Status: ${response.status})\nResponse: ${responseText}`);
+      }
+    } catch (error) {
+      console.error('Error promoting staff:', error);
+      alert('Error promoting staff: ' + (error as Error).message);
+    }
+  };
+
+  const getInitials = (name: string) => {
+    if (!name) return '?';
+
+    const words = name.trim().split(' ').filter(word => word.length > 0);
+
+    if (words.length === 0) return '?';
+
+    // If single word, take first 2 characters
+    if (words.length === 1) {
+      return words[0].substring(0, 2).toUpperCase();
+    }
+
+    // If multiple words, take first character of each word (max 2)
+    return words
+      .slice(0, 2)
+      .map(word => word[0])
+      .join('')
+      .toUpperCase();
+  };
+
+  // Get unique restaurants for filter
+  const uniqueRestaurants = Array.from(
+    new Map(staffList
+      .filter(s => s.restaurantId && s.restaurantName && s.restaurantName.trim() !== '')
+      .map(s => [s.restaurantId!, { id: s.restaurantId!, name: s.restaurantName! }])
+    ).values()
+  );
+
+  // Get unique roles for filter (exclude Manager)
+  const roles = Array.from(new Set(staffList.map(s => s.role))).filter(role => role !== 'Manager');
+
+  return (
+    <MainLayout>
+      <Container>
+        <Header>
+          <Title>Staff Management</Title>
+          <ActionSection>
+            <Button variant="secondary" onClick={handleExportData}>Export</Button>
+            <Button variant="primary" onClick={handleAddStaff}>
+              Add Staff
+            </Button>
+          </ActionSection>
+        </Header>
+        
+        <Content>
+          <StatsGrid>
+            <StatCard color="#059669">
+              <StatValue>{stats.total}</StatValue>
+              <StatLabel>Total Staff</StatLabel>
+              <StatDescription>Across entire system</StatDescription>
+            </StatCard>
+            <StatCard color="#2563EB">
+              <StatValue>{stats.managers}</StatValue>
+              <StatLabel>Managers</StatLabel>
+              <StatDescription>4 manager roles</StatDescription>
+            </StatCard>
+            <StatCard color="#7C3AED">
+              <StatValue>{stats.active}</StatValue>
+              <StatLabel>Active Staff</StatLabel>
+              <StatDescription>{Math.round((stats.active/stats.total)*100)}% of total</StatDescription>
+            </StatCard>
+            <StatCard color="#D97706">
+              <StatValue>RM {stats.totalSalary.toLocaleString()}</StatValue>
+              <StatLabel>Monthly Payroll</StatLabel>
+              <StatDescription>All staff combined</StatDescription>
+            </StatCard>
+          </StatsGrid>
+
+          <TabContainer>
+            <Tab active={activeTab === 'all'} onClick={() => setActiveTab('all')}>
+              All Staff ({stats.total})
+            </Tab>
+            <Tab active={activeTab === 'System Admin'} onClick={() => setActiveTab('System Admin')}>
+              System Admin ({stats.systemAdmin || 0})
+            </Tab>
+            <Tab active={activeTab === 'Managers'} onClick={() => setActiveTab('Managers')}>
+              Managers ({stats.managers || 0})
+            </Tab>
+            <Tab active={activeTab === 'Restaurant Admin'} onClick={() => setActiveTab('Restaurant Admin')}>
+              Restaurant Admin ({stats.restaurantAdmin || 0})
+            </Tab>
+            <Tab active={activeTab === 'Staff'} onClick={() => setActiveTab('Staff')}>
+              Staff ({stats.staff || 0})
+            </Tab>
+          </TabContainer>
+
+          <FilterBar>
+            <SearchInput
+              type="text"
+              placeholder="Search by name, email, or restaurant..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+
+            <FilterSelect
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+            >
+              <option value="all">All Roles</option>
+              {roles.map(role => (
+                <option key={role} value={role}>{role}</option>
+              ))}
+            </FilterSelect>
+
+            <FilterSelect
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </FilterSelect>
+
+            <FilterSelect
+              value={restaurantFilter}
+              onChange={(e) => setRestaurantFilter(e.target.value)}
+              style={{ display: activeTab === 'all' || activeTab === 'Restaurant Admin' || activeTab === 'Staff' ? 'block' : 'none' }}
+            >
+              <option value="all">All Restaurants</option>
+              {uniqueRestaurants.map(rest => (
+                <option key={rest.id} value={rest.id}>{rest.name}</option>
+              ))}
+            </FilterSelect>
+          </FilterBar>
+
+          <Table>
+            <StaffTableHeader columns="2.5fr 2.5fr 1fr 1fr 1fr 1fr 220px">
+              <span>Staff Member</span>
+              <span>Company & Location</span>
+              <span>Role</span>
+              <span>Department</span>
+              <span>Status</span>
+              <span>Salary</span>
+              <span>Actions</span>
+            </StaffTableHeader>
+
+            {filteredStaff.length === 0 ? (
+              <EmptyState>
+                <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
+                  No staff found
+                </div>
+                <div style={{ fontSize: '14px' }}>
+                  Try adjusting your filters or add new staff members
+                </div>
+              </EmptyState>
+            ) : (
+              filteredStaff.map(staff => (
+                <StaffTableRow columns="2.5fr 2.5fr 1fr 1fr 1fr 1fr 220px" key={staff.id}>
+                  <StaffInfo>
+                    <StaffAvatar role={staff.role}>
+                      {getInitials(staff.name)}
+                    </StaffAvatar>
+                    <StaffDetails>
+                      <StaffName>{staff.name}</StaffName>
+                      <StaffEmail>{staff.email}</StaffEmail>
+                    </StaffDetails>
+                  </StaffInfo>
+
+                  <MobileGrid>
+                    <MobileValue>
+                      <MobileLabel>Company & Location</MobileLabel>
+                      <div style={{ fontSize: '13px', fontWeight: '600', color: '#0A2540', marginBottom: '2px' }}>
+                        {staff.companyName}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#6B7280' }}>
+                        {staff.restaurantName || 'Head Office'}
+                      </div>
+                    </MobileValue>
+
+                    <MobileValue>
+                      <MobileLabel>Role</MobileLabel>
+                      <RoleBadge role={staff.role}>
+                        {staff.role}
+                      </RoleBadge>
+                    </MobileValue>
+
+                    <MobileValue>
+                      <MobileLabel>Department</MobileLabel>
+                      <div style={{ fontSize: '13px', color: '#6B7280' }}>
+                        {staff.department}
+                      </div>
+                    </MobileValue>
+
+                    <MobileValue>
+                      <MobileLabel>Status</MobileLabel>
+                      <StatusBadge status={staff.status}>
+                        {staff.status === 'active' ? 'Active' : 'Inactive'}
+                      </StatusBadge>
+                    </MobileValue>
+
+                    <MobileValue>
+                      <MobileLabel>Salary</MobileLabel>
+                      <div style={{ fontSize: '13px', color: '#374151', fontWeight: '600' }}>
+                        {staff.salary ? `RM ${staff.salary.toLocaleString()}` : 'N/A'}
+                      </div>
+                    </MobileValue>
+                  </MobileGrid>
+
+                  <ActionButtons>
+                    <ActionButton onClick={() => handleEditStaff(staff)}>
+                      Edit
+                    </ActionButton>
+                    <IconButton
+                      onClick={() => handleToggleStaffStatus(staff)}
+                      title={staff.status === 'active' ? 'Deactivate Staff' : 'Activate Staff'}
+                    >
+                      <IconSymbol>{staff.status === 'active' ? '⊗' : '◉'}</IconSymbol>
+                    </IconButton>
+                    <IconButton
+                      onClick={() => handleResetStaffPassword(staff)}
+                      title="Reset Password"
+                    >
+                      <IconSymbol>⚷</IconSymbol>
+                    </IconButton>
+                    {staff.role !== 'System Admin' && (
+                      <IconButton
+                        onClick={() => deleteStaff(staff)}
+                        title="Delete Staff"
+                      >
+                        <IconSymbol>×</IconSymbol>
+                      </IconButton>
+                    )}
+                  </ActionButtons>
+                </StaffTableRow>
+              ))
+            )}
+          </Table>
+        </Content>
+        
+        <Modal show={showAddModal} onClick={handleCloseModal}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <ModalTitle>Add Staff</ModalTitle>
+              <CloseButton onClick={handleCloseModal}>&times;</CloseButton>
+            </ModalHeader>
+            
+            <FormGrid>
+              <FormGroup>
+                <Label>Role *</Label>
+                <Select
+                  value={newStaff.role}
+                  onChange={(e) => handleInputChange('role', e.target.value)}
+                >
+                  <option value="">Select Role</option>
+                  <option value="Staff">Staff</option>
+                  <option value="Restaurant Admin">Restaurant Admin</option>
+                  <option value="Foodcourt Manager">Foodcourt Manager</option>
+                  <option value="Foodcourt General">Foodcourt General</option>
+                  <option value="Brand Manager">Brand Manager</option>
+                  <option value="Brand General">Brand General</option>
+                  <option value="System Admin">System Admin</option>
+                </Select>
+              </FormGroup>
+
+
+              <FormGroup>
+                <Label>Staff ID (Username) *</Label>
+                <Input
+                  type="text"
+                  value={newStaff.username}
+                  onChange={(e) => handleInputChange('username', e.target.value)}
+                  placeholder="Enter unique staff ID"
+                />
+                <div style={{
+                  fontSize: '12px',
+                  color: '#6B7280',
+                  marginTop: '6px',
+                  padding: '8px',
+                  background: '#F3F4F6',
+                  borderRadius: '4px'
+                }}>
+                  ℹ️ Default password: <strong>1234</strong> (User must change after first login)
+                </div>
+              </FormGroup>
+
+              <FormGroup>
+                <Label>Full Name *</Label>
+                <Input
+                  type="text"
+                  value={newStaff.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  placeholder="Enter full name"
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <Label>Email *</Label>
+                <Input
+                  type="email"
+                  value={newStaff.email}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  placeholder="Enter email address"
+                  required
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <Label>Phone</Label>
+                <Input
+                  type="text"
+                  value={newStaff.phone}
+                  onChange={(e) => handleInputChange('phone', e.target.value)}
+                  placeholder="Enter phone number"
+                />
+              </FormGroup>
+              
+              {/* Manager Role - Company Name */}
+              {(newStaff.role === 'foodcourt_manager' ||
+                newStaff.role === 'foodcourt_general' ||
+                newStaff.role === 'brand_manager' ||
+                newStaff.role === 'brand_general') && (
+                <FormGroup>
+                  <Label>Company Name</Label>
+                  <Input
+                    type="text"
+                    value={newStaff.companyName || ''}
+                    onChange={(e) => handleInputChange('companyName', e.target.value)}
+                    placeholder="Enter company name"
+                  />
+                </FormGroup>
+              )}
+
+              {/* Restaurant Admin & Staff Role - Restaurant Selection */}
+              {(newStaff.role === 'Restaurant Admin' || newStaff.role === 'Staff') && (
+                <FormGroup style={{ position: 'relative' }}>
+                  <Label>Restaurant *</Label>
+                  <RestaurantSearchInput
+                    type="text"
+                    value={restaurantSearchQuery}
+                    onChange={(e) => handleRestaurantSearch(e.target.value)}
+                    onFocus={() => {
+                      setShowRestaurantDropdown(true);
+                      if (restaurantSearchQuery.length === 0) {
+                        setRestaurantSearchResults(restaurants.slice(0, 10));
+                      }
+                    }}
+                    onBlur={() => setTimeout(() => setShowRestaurantDropdown(false), 200)}
+                    placeholder="Type to search for restaurants"
+                  />
+                  {showRestaurantDropdown && restaurantSearchResults.length > 0 && (
+                    <DropdownContainer>
+                      {restaurantSearchResults.map(restaurant => (
+                        <DropdownItem
+                          key={restaurant.id}
+                          onClick={() => handleRestaurantSelect(restaurant)}
+                        >
+                          <DropdownItemTitle>{restaurant.name}</DropdownItemTitle>
+                          <DropdownItemSubtitle>
+                            {restaurant.address || 'No address provided'}
+                          </DropdownItemSubtitle>
+                        </DropdownItem>
+                      ))}
+                    </DropdownContainer>
+                  )}
+                  {selectedRestaurant && (
+                    <SelectedBadge>
+                      ✓ Selected: <strong>{selectedRestaurant.name}</strong>
+                    </SelectedBadge>
+                  )}
+                </FormGroup>
+              )}
+
+              {/* System Admin Role - Company Name */}
+              {newStaff.role === 'System Admin' && (
+                <FormGroup>
+                  <Label>Company Name</Label>
+                  <Input
+                    type="text"
+                    value={newStaff.companyName || ''}
+                    onChange={(e) => handleInputChange('companyName', e.target.value)}
+                    placeholder="Enter company name"
+                  />
+                </FormGroup>
+              )}
+
+              <FormGroup>
+                <Label>Department</Label>
+                <Input
+                  type="text"
+                  value={newStaff.department}
+                  onChange={(e) => handleInputChange('department', e.target.value)}
+                  placeholder="e.g. Operations, Service, Kitchen, Management"
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <Label>Monthly Salary (RM)</Label>
+                <Input
+                  type="number"
+                  value={newStaff.salary}
+                  onChange={(e) => handleInputChange('salary', e.target.value)}
+                  placeholder="Enter monthly salary"
+                />
+              </FormGroup>
+            </FormGrid>
+
+            {formError && (
+              <ErrorMessage style={{ marginTop: '16px' }}>{formError}</ErrorMessage>
+            )}
+
+            <ModalActions>
+              <Button variant="secondary" onClick={handleCloseModal}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={handleSubmitStaff}>
+                Add Staff
+              </Button>
+            </ModalActions>
+          </ModalContent>
+        </Modal>
+
+        {/* Edit Staff Modal */}
+        <Modal show={showEditModal} onClick={handleCloseEditModal}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <ModalTitle>Edit Staff Member</ModalTitle>
+              <CloseButton onClick={handleCloseEditModal}>&times;</CloseButton>
+            </ModalHeader>
+            
+            {editingStaff && (
+              <>
+                <FormGrid>
+                  <FormGroup>
+                    <Label>Role *</Label>
+                    <Select
+                      value={editingStaff.role}
+                      onChange={(e) => setEditingStaff({...editingStaff, role: e.target.value})}
+                    >
+                      <option value="">Select Role</option>
+                      <option value="Staff">Staff</option>
+                      <option value="Restaurant Admin">Restaurant Admin</option>
+                      <option value="Foodcourt Manager">Foodcourt Manager</option>
+                      <option value="Foodcourt General">Foodcourt General</option>
+                      <option value="Brand Manager">Brand Manager</option>
+                      <option value="Brand General">Brand General</option>
+                      <option value="System Admin">System Admin</option>
+                    </Select>
+                  </FormGroup>
+
+
+                  <FormGroup>
+                    <Label>Staff ID (Username)</Label>
+                    <Input
+                      type="text"
+                      value={editingStaff.username}
+                      disabled
+                      style={{ backgroundColor: '#F8FAFC', color: '#6B7280' }}
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <Label>Full Name *</Label>
+                    <Input
+                      type="text"
+                      value={editingStaff.name}
+                      onChange={(e) => setEditingStaff({...editingStaff, name: e.target.value})}
+                      placeholder="Enter full name"
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <Label>Email *</Label>
+                    <Input
+                      type="email"
+                      value={editingStaff.email}
+                      onChange={(e) => setEditingStaff({...editingStaff, email: e.target.value})}
+                      placeholder="Enter email address"
+                      required
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <Label>Phone</Label>
+                    <Input
+                      type="text"
+                      value={editingStaff.phone}
+                      onChange={(e) => setEditingStaff({...editingStaff, phone: e.target.value})}
+                      placeholder="Enter phone number"
+                    />
+                  </FormGroup>
+
+                  {/* Manager Role - Company Name */}
+                  {editingStaff.role === 'Manager' && (
+                    <FormGroup>
+                      <Label>Company Name</Label>
+                      <Input
+                        type="text"
+                        value={editingStaff.companyName || ''}
+                        onChange={(e) => setEditingStaff({...editingStaff, companyName: e.target.value})}
+                        placeholder="Enter company name"
+                      />
+                    </FormGroup>
+                  )}
+
+                  {/* Restaurant Admin & Staff Role - Restaurant Selection */}
+                  {(editingStaff.role === 'Restaurant Admin' || editingStaff.role === 'Staff') && (
+                    <FormGroup style={{ position: 'relative' }}>
+                      <Label>Restaurant</Label>
+                      <RestaurantSearchInput
+                        type="text"
+                        value={editRestaurantSearchQuery}
+                        onChange={(e) => handleEditRestaurantSearch(e.target.value)}
+                        onFocus={() => {
+                          setShowEditRestaurantDropdown(true);
+                          if (editRestaurantSearchQuery.length === 0) {
+                            setEditRestaurantSearchResults(restaurants.slice(0, 10));
+                          }
+                        }}
+                        onBlur={() => setTimeout(() => setShowEditRestaurantDropdown(false), 200)}
+                        placeholder="Type to search for restaurants"
+                      />
+                      {showEditRestaurantDropdown && editRestaurantSearchResults.length > 0 && (
+                        <DropdownContainer>
+                          {editRestaurantSearchResults.map(restaurant => (
+                            <DropdownItem
+                              key={restaurant.id}
+                              onClick={() => handleEditRestaurantSelect(restaurant)}
+                            >
+                              <DropdownItemTitle>{restaurant.name}</DropdownItemTitle>
+                              <DropdownItemSubtitle>
+                                {restaurant.address || 'No address provided'}
+                              </DropdownItemSubtitle>
+                            </DropdownItem>
+                          ))}
+                        </DropdownContainer>
+                      )}
+                      {editSelectedRestaurant && (
+                        <SelectedBadge>
+                          ✓ Selected: <strong>{editSelectedRestaurant.name}</strong>
+                        </SelectedBadge>
+                      )}
+                    </FormGroup>
+                  )}
+
+                  {/* System Admin Role - Company Name */}
+                  {editingStaff.role === 'System Admin' && (
+                    <FormGroup>
+                      <Label>Company Name</Label>
+                      <Input
+                        type="text"
+                        value={editingStaff.companyName || ''}
+                        onChange={(e) => setEditingStaff({...editingStaff, companyName: e.target.value})}
+                        placeholder="Enter company name"
+                      />
+                    </FormGroup>
+                  )}
+
+                  <FormGroup>
+                    <Label>Department</Label>
+                    <Input
+                      type="text"
+                      value={editingStaff.department}
+                      onChange={(e) => setEditingStaff({...editingStaff, department: e.target.value})}
+                      placeholder="e.g. Operations, Service, Kitchen, Management"
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <Label>Monthly Salary (RM)</Label>
+                    <Input
+                      type="number"
+                      value={editingStaff.salary?.toString() || ''}
+                      onChange={(e) => setEditingStaff({...editingStaff, salary: parseFloat(e.target.value) || 0})}
+                      placeholder="Enter monthly salary"
+                    />
+                  </FormGroup>
+                </FormGrid>
+                
+                <ModalActions>
+                  <Button variant="secondary" onClick={handleCloseEditModal}>
+                    Cancel
+                  </Button>
+                  <Button variant="primary" onClick={handleUpdateStaff}>
+                    Update Staff
+                  </Button>
+                </ModalActions>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+
+        {/* Permissions Modal */}
+        <Modal show={showPermissionsModal} onClick={handleClosePermissionsModal}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <ModalTitle>Permission Management</ModalTitle>
+              <CloseButton onClick={handleClosePermissionsModal}>&times;</CloseButton>
+            </ModalHeader>
+            
+            {viewingPermissions && (
+              <>
+                <div style={{ marginBottom: '24px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                    <StaffAvatar role={viewingPermissions.role}>
+                      {getInitials(viewingPermissions.name)}
+                    </StaffAvatar>
+                    <div>
+                      <div style={{ fontSize: '18px', fontWeight: '600', color: '#0A2540' }}>
+                        {viewingPermissions.name}
+                      </div>
+                      <div style={{ fontSize: '14px', color: '#6B7280' }}>
+                        {viewingPermissions.role} - {viewingPermissions.companyName}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '24px' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540', marginBottom: '12px' }}>
+                    Select Role
+                  </h3>
+                  <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '16px' }}>
+                    Select an appropriate role. Each role includes predefined permissions.
+                  </div>
+
+                  <div style={{ display: 'grid', gap: '12px' }}>
+                    {[
+                      {
+                        role: 'Staff',
+                        title: 'General Staff',
+                        description: 'Basic POS system usage',
+                        permissions: ['POS System', 'Order Processing', 'Customer Service'],
+                        color: '#059669'
+                      },
+                      {
+                        role: 'Restaurant Admin',
+                        title: 'Restaurant Manager',
+                        description: 'Overall restaurant operations management',
+                        permissions: ['POS System', 'Menu Management', 'Order Management', 'Staff Management', 'Sales Reports'],
+                        color: '#DC2626'
+                      },
+                      {
+                        role: 'System Admin',
+                        title: 'System Administrator',
+                        description: 'Full system management',
+                        permissions: ['Full System Management', 'All User Management', 'Subscription Management', 'Invoice Management', 'System Settings'],
+                        color: '#DC2626'
+                      }
+                    ].map((roleData, index) => (
+                      <div 
+                        key={index}
+                        onClick={() => {
+                          if (viewingPermissions) {
+                            setViewingPermissions({...viewingPermissions, role: roleData.role});
+                            setEditingPermissions(roleData.permissions);
+                          }
+                        }}
+                        style={{ 
+                          padding: '16px',
+                          backgroundColor: viewingPermissions?.role === roleData.role ? '#F0F4FF' : '#F8FAFC',
+                          borderRadius: '8px',
+                          border: viewingPermissions?.role === roleData.role ? '2px solid #635BFF' : '1px solid #E6EBF1',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                          <div 
+                            style={{ 
+                              width: '12px', 
+                              height: '12px', 
+                              borderRadius: '50%', 
+                              backgroundColor: roleData.color,
+                              marginRight: '12px'
+                            }}
+                          />
+                          <div style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540' }}>
+                            {roleData.title}
+                          </div>
+                          {viewingPermissions?.role === roleData.role && (
+                            <span style={{ marginLeft: 'auto', color: '#635BFF', fontSize: '14px' }}>✓</span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '12px' }}>
+                          {roleData.description}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#374151' }}>
+                          <strong>Included Permissions:</strong>
+                          <div style={{ marginTop: '4px', fontSize: '11px', color: '#6B7280' }}>
+                            {roleData.permissions.join(', ')}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <ModalActions>
+                  <Button variant="secondary" onClick={handleClosePermissionsModal}>
+                    Cancel
+                  </Button>
+                  <Button variant="primary" onClick={handleUpdatePermissions}>
+                    Change Role
+                  </Button>
+                </ModalActions>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+
+        {/* Delete Confirmation Modal */}
+        <Modal show={showDeleteConfirm} onClick={cancelDelete}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <ModalTitle>Delete Staff</ModalTitle>
+              <CloseButton onClick={cancelDelete}>&times;</CloseButton>
+            </ModalHeader>
+            
+            {deletingStaff && (
+              <>
+                <div style={{ marginBottom: '24px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                    <StaffAvatar role={deletingStaff.role}>
+                      {getInitials(deletingStaff.name)}
+                    </StaffAvatar>
+                    <div>
+                      <div style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540' }}>
+                        {deletingStaff.name}
+                      </div>
+                      <div style={{ fontSize: '14px', color: '#6B7280' }}>
+                        {deletingStaff.role} - {deletingStaff.companyName}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div style={{ padding: '16px', backgroundColor: '#FEF2F2', borderRadius: '8px', border: '1px solid #FECACA' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                      <span style={{ color: '#DC2626', fontSize: '16px' }}>⚠️</span>
+                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#DC2626' }}>
+                        Are you sure you want to delete?
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#991B1B', lineHeight: '1.4' }}>
+                      이 작업은 되돌릴 수 없습니다. 직원의 모든 데이터가 영구적으로 삭제됩니다.
+                    </div>
+                  </div>
+                </div>
+                
+                <ModalActions>
+                  <Button variant="secondary" onClick={cancelDelete}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    variant="primary" 
+                    onClick={confirmDelete}
+                    style={{ 
+                      backgroundColor: '#DC2626',
+                      borderColor: '#DC2626'
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </ModalActions>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+
+        {/* Confirm Action Modal */}
+        {showConfirmModal && (
+          <Modal show={showConfirmModal} onClick={() => setShowConfirmModal(false)}>
+            <ModalContent onClick={(e) => e.stopPropagation()}>
+              <ModalHeader>
+                <ModalTitle>Confirm Action</ModalTitle>
+                <CloseButton onClick={() => setShowConfirmModal(false)}>&times;</CloseButton>
+              </ModalHeader>
+
+              {selectedStaff && (
+                <>
+                  <div style={{ marginBottom: '24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                      <StaffAvatar role={selectedStaff.role}>
+                        {getInitials(selectedStaff.name)}
+                      </StaffAvatar>
+                      <div>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540' }}>
+                          {selectedStaff.name}
+                        </div>
+                        <div style={{ fontSize: '14px', color: '#6B7280' }}>
+                          {selectedStaff.role} - {selectedStaff.companyName}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ padding: '16px', backgroundColor: '#F3F4F6', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+                        {confirmAction === 'toggle' && `${selectedStaff.status === 'active' ? 'Deactivate' : 'Activate'} Staff Member?`}
+                        {confirmAction === 'resetPassword' && 'Reset Password?'}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.4' }}>
+                        {confirmAction === 'toggle' && `This will ${selectedStaff.status === 'active' ? 'deactivate' : 'activate'} ${selectedStaff.name}'s account.`}
+                        {confirmAction === 'resetPassword' && `This will reset ${selectedStaff.name}'s password to the default password: 1234`}
+                      </div>
+                    </div>
+                  </div>
+
+                  <ModalActions>
+                    <Button variant="secondary" onClick={() => setShowConfirmModal(false)}>
+                      Cancel
+                    </Button>
+                    <Button variant="primary" onClick={handleConfirmAction}>
+                      {confirmAction === 'toggle' ? 'Confirm' : 'Reset Password'}
+                    </Button>
+                  </ModalActions>
+                </>
+              )}
+            </ModalContent>
+          </Modal>
+        )}
+
+        {/* Success Message Modal */}
+        {showSuccessModal && (
+          <Modal show={showSuccessModal} onClick={() => setShowSuccessModal(false)}>
+            <ModalContent onClick={(e) => e.stopPropagation()}>
+              <ModalHeader>
+                <ModalTitle>Success</ModalTitle>
+                <CloseButton onClick={() => setShowSuccessModal(false)}>&times;</CloseButton>
+              </ModalHeader>
+
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{
+                  padding: '20px',
+                  backgroundColor: '#ECFDF5',
+                  borderRadius: '8px',
+                  border: '1px solid #10B981'
+                }}>
+                  <div style={{
+                    fontSize: '14px',
+                    color: '#047857',
+                    whiteSpace: 'pre-line',
+                    lineHeight: '1.8',
+                    fontFamily: 'monospace'
+                  }}>
+                    {successMessage}
+                  </div>
+                </div>
+              </div>
+
+              <ModalActions>
+                <Button variant="primary" onClick={() => setShowSuccessModal(false)}>
+                  OK
+                </Button>
+              </ModalActions>
+            </ModalContent>
+          </Modal>
+        )}
+      </Container>
+    </MainLayout>
+  );
+};
+
+export default AdminStaffManagementPage;

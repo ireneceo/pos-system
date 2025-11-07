@@ -1,0 +1,486 @@
+.invoice-manager {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.invoice-manager .header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.invoice-manager .header h1 {
+  margin: 0;
+  color: #333;
+}
+
+.invoice-manager .header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.invoice-manager .header-actions select {
+  width: 200px;
+}
+
+.invoice-list {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.invoice-list .table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.invoice-list .table th {
+  background-color: #f8f9fa;
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #495057;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.invoice-list .table td {
+  padding: 12px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.invoice-list .table tr:hover {
+  background-color: #f8f9fa;
+}
+
+.badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.badge-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.badge-primary {
+  background-color: #007bff;
+  color: white;
+}
+
+.badge-success {
+  background-color: #28a745;
+  color: white;
+}
+
+.badge-danger {
+  background-color: #dc3545;
+  color: white;
+}
+
+.badge-dark {
+  background-color: #343a40;
+  color: white;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-content.large {
+  max-width: 1000px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: #333;
+}
+
+.modal-header .close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #999;
+}
+
+.modal-header .close:hover {
+  color: #333;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.modal-footer {
+  padding: 20px;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #495057;
+}
+
+.form-control {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.15s ease-in-out;
+}
+
+.form-control:focus {
+  border-color: #80bdff;
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+.form-control[type="checkbox"] {
+  width: auto;
+  margin-right: 8px;
+}
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.btn-primary {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #0056b3;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background-color: #545b62;
+}
+
+.btn-success {
+  background-color: #28a745;
+  color: white;
+}
+
+.btn-success:hover {
+  background-color: #218838;
+}
+
+.btn-info {
+  background-color: #17a2b8;
+  color: white;
+}
+
+.btn-info:hover {
+  background-color: #138496;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: #c82333;
+}
+
+.btn-sm {
+  padding: 4px 8px;
+  font-size: 12px;
+  margin: 0 2px;
+}
+
+.invoice-item {
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.invoice-item .row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.invoice-item .col-md-1,
+.invoice-item .col-md-2,
+.invoice-item .col-md-3 {
+  flex: 1;
+}
+
+.total-section {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  text-align: right;
+}
+
+.total-section h4 {
+  margin: 0;
+  color: #333;
+}
+
+.invoice-details .row {
+  display: flex;
+  margin-bottom: 20px;
+}
+
+.invoice-details .col-md-6 {
+  flex: 1;
+}
+
+.invoice-details p {
+  margin: 8px 0;
+}
+
+.invoice-details .notes {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+.invoice-details .notes h4 {
+  margin-top: 0;
+  color: #333;
+}
+
+.mb-1 {
+  margin-bottom: 4px;
+}
+
+.mb-3 {
+  margin-bottom: 16px;
+}
+
+.text-right {
+  text-align: right;
+}
+
+/* Actions cell styling */
+.actions-cell {
+  white-space: nowrap;
+  min-width: 200px;
+  background-color: red !important; /* TEST - 이것이 보이면 CSS가 적용됨 */
+}
+
+.btn-group {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.btn-group .btn {
+  font-size: 11px;
+  padding: 3px 6px;
+  min-width: auto;
+}
+
+.btn-warning {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.btn-warning:hover {
+  background-color: #e0a800;
+  color: #212529;
+}
+
+/* Improved status badges */
+.badge {
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-warning {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+/* Table improvements */
+.invoice-list .table th:nth-child(7),
+.invoice-list .table td:nth-child(7) {
+  width: 200px;
+  text-align: center;
+}
+
+/* Action buttons - matching other admin pages exactly */
+.action-buttons {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  color: #6B7280;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  border-color: #635BFF;
+  color: #635BFF;
+  background: #F4F3FF;
+}
+
+/* Styled action buttons for different states */
+.action-btn.primary {
+  background: #635BFF;
+  color: white;
+  border-color: #635BFF;
+}
+
+.action-btn.primary:hover {
+  background: #5A51E6;
+  border-color: #5A51E6;
+}
+
+.action-btn.success {
+  background: #059669;
+  color: white;
+  border-color: #059669;
+}
+
+.action-btn.success:hover {
+  background: #047857;
+  border-color: #047857;
+}
+
+.action-btn.warning {
+  background: #D97706;
+  color: white;
+  border-color: #D97706;
+}
+
+.action-btn.warning:hover {
+  background: #B45309;
+  border-color: #B45309;
+}
+
+.action-btn.danger {
+  background: #DC2626;
+  color: white;
+  border-color: #DC2626;
+}
+
+.action-btn.danger:hover {
+  background: #B91C1C;
+  border-color: #B91C1C;
+}
+
+/* Delete button - matching other admin pages exactly */
+.action-btn.delete {
+  padding: 8px;
+  background: #F6F9FC;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-left: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-family: 'Lucida Console', 'Courier New', monospace;
+  color: #6B7C93;
+  line-height: 1;
+  min-width: 32px;
+  height: 32px;
+}
+
+.action-btn.delete:hover {
+  background: #E3E8EE;
+  border-color: #CBD5E0;
+  color: #2D3748;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .btn-group {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .btn-group .btn {
+    margin-bottom: 2px;
+    width: 100%;
+    min-width: 60px;
+  }
+
+  .btn-group .btn-icon {
+    width: auto;
+    min-width: 28px;
+  }
+
+  .actions-cell {
+    min-width: 100px;
+  }
+}

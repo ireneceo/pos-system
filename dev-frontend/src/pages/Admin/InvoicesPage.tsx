@@ -1,0 +1,2800 @@
+import React, { useState, useEffect } from 'react';
+import styled from 'styled-components';
+import MainLayout from '../../components/Layout/MainLayout';
+import { BaseButton, StatusBadge as CommonStatusBadge, ActionButtonGroup, MultiLineText } from '../../components/UI/CommonStyles';
+import {
+  Container,
+  Header,
+  Title,
+  ActionSection,
+  Content,
+  StatsGrid,
+  StatCard,
+  StatValue,
+  StatLabel,
+  StatDescription,
+  Table,
+  TableHeader as CommonTableHeader,
+  TableRow as CommonTableRow,
+  MobileLabel,
+  MobileValue,
+  MobileGrid,
+  ActionButtons,
+  EmptyState
+} from '../../components/UI';
+import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+
+interface Invoice {
+  id: string;
+  invoiceNumber: string;
+  managerId: string;
+  managerName: string;
+  companyName: string;
+  customerName: string;
+  customerAddress: string;
+  restaurantId?: string;
+  restaurantName?: string;
+  issueDate: string;
+  dueDate: string;
+  paidDate?: string;
+  status: 'draft' | 'pending_payment' | 'payment_submitted' | 'paid' | 'overdue' | 'cancelled' | '';
+  amount: number;
+  tax: number;
+  total: number;
+  items: InvoiceItem[];
+  billingPeriod: string;
+  planType: string;
+  paymentMethod?: string;
+  transactionId?: string;
+  receiptUrl?: string;
+  hasPaymentInfo?: boolean;
+  type?: 'automatic' | 'manual';
+  payerType?: 'restaurant' | 'foodcourt_manager' | 'brand_manager';
+  payerId?: string;
+  invoiceCategory?: 'subscription' | 'service' | 'consulting' | 'others';
+  customDescription?: string;
+  serviceDescription?: string;
+  categoryDisplayName?: string;
+}
+
+interface InvoiceItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
+interface Manager {
+  id: string;
+  fullName: string;
+  email: string;
+  role: string;
+  companyName?: string;
+}
+
+interface Restaurant {
+  id: string;
+  name: string;
+  manager_id: string;
+  status: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+}
+
+interface Subscription {
+  id: string;
+  restaurant_id: string;
+  plan_type: 'basic' | 'professional' | 'enterprise';
+  status: 'Active' | 'Trial' | 'Expired' | 'Suspended' | 'Cancelled';
+  billing_cycle: 'monthly' | 'annual';
+  menu_limit: number;
+  monthly_price: number;
+  annual_price: number;
+  start_date: string;
+  end_date?: string;
+}
+
+interface CompanySettings {
+  companyName: string;
+  address: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  phone: string;
+  email: string;
+  website: string;
+  taxNumber: string;
+  registrationNumber: string;
+  companyLogo?: string; // Company logo for invoices
+}
+
+// Common components now imported from ../../components/UI
+// Page-specific styled components below
+
+// Button 컴포넌트는 BaseButton으로 교체됨
+const Button = styled(BaseButton)``;
+
+const InvoiceInfo = styled.div``;
+
+const InvoiceNumber = styled.div`
+  font-weight: 600;
+  color: #0A2540;
+  margin-bottom: 4px;
+`;
+
+const CompanyName = styled.div`
+  font-size: 13px;
+  color: #6B7280;
+`;
+
+const AutoBadge = styled.span`
+  display: inline-block;
+  background: #10B981;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  vertical-align: middle;
+`;
+
+// StatusBadge 컴포넌트는 CommonStatusBadge로 교체됨
+const StatusBadge = styled(CommonStatusBadge)``;
+
+const Amount = styled.div<{ highlight?: boolean }>`
+  font-weight: ${props => props.highlight ? '700' : '500'};
+  color: #374151;
+`;
+
+const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'email' | 'cancel' }>`
+  padding: 6px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+
+  ${props => props.variant === 'primary' ? `
+    background: #635BFF;
+    color: white;
+    border-color: #635BFF;
+    padding: 6px 12px;
+    min-width: auto;
+
+    &:hover {
+      background: #5A51E6;
+    }
+  ` : props.variant === 'danger' ? `
+    background: transparent;
+    color: #DC2626;
+    border-color: #FCA5A5;
+    padding: 6px 12px;
+    min-width: auto;
+
+    &:hover {
+      background: #FEE2E2;
+    }
+  ` : props.variant === 'email' ? `
+    background: #F3F4F6;
+    color: #6B7280;
+    border-color: #E5E7EB;
+
+    &:hover {
+      background: #E5E7EB;
+      color: #374151;
+    }
+  ` : props.variant === 'cancel' ? `
+    background: #F6F9FC;
+    color: #6B7C93;
+    border-color: #E6EBF1;
+
+    &:hover {
+      background: #E6EBF1;
+      transform: translateY(-1px);
+    }
+  ` : `
+    background: transparent;
+    color: #6B7280;
+    border-color: #E6EBF1;
+    padding: 6px 12px;
+    min-width: auto;
+
+    &:hover {
+      border-color: #635BFF;
+      color: #635BFF;
+      background: #F4F3FF;
+    }
+  `}
+`;
+
+const LocalIconButton = styled.button`
+  padding: 6px;
+  background: #F6F9FC;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-left: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: #E6EBF1;
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+`;
+
+const IconSymbol = styled.span`
+  font-size: 16px;
+  font-family: 'Lucida Console', 'Courier New', monospace;
+  color: #6B7C93;
+  display: inline-block;
+  line-height: 1;
+`;
+
+const Modal = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+`;
+
+const ModalContent = styled.div`
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+`;
+
+const ModalHeader = styled.div`
+  padding: 24px;
+  border-bottom: 1px solid #E6EBF1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+`;
+
+const ModalTitle = styled.h3`
+  font-size: 24px;
+  font-weight: 700;
+  color: #0A2540;
+  margin: 0;
+`;
+
+const CloseButton = styled.button`
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6B7280;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: #F3F4F6;
+    color: #374151;
+  }
+`;
+
+const ModalBody = styled.div`
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+`;
+
+const ModalFooter = styled.div`
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 24px;
+  border-top: 1px solid #E6EBF1;
+  flex-shrink: 0;
+`;
+
+const FormRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const FormGroup = styled.div`
+  margin-bottom: 20px;
+`;
+
+const FormLabel = styled.label`
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 8px;
+`;
+
+const FormInput = styled.input`
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s;
+  
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+`;
+
+const FormTextarea = styled.textarea`
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s;
+  resize: vertical;
+  font-family: inherit;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+`;
+
+const FormSelect = styled.select`
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  transition: all 0.2s;
+  
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+`;
+
+const FormTextArea = styled.textarea`
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 14px;
+  resize: vertical;
+  min-height: 80px;
+  transition: all 0.2s;
+  
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+`;
+
+const FormHelp = styled.div`
+  font-size: 12px;
+  color: #6B7280;
+  margin-top: 4px;
+`;
+
+const InvoiceSummary = styled.div`
+  background: #F8FAFC;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+`;
+
+const SummaryRow = styled.div<{ highlight?: boolean }>`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+
+  ${props => props.highlight ? `
+    border-top: 1px solid #E6EBF1;
+    margin-top: 8px;
+    padding-top: 16px;
+    font-size: 16px;
+  ` : ''}
+`;
+
+// 페이지별 반응형 테이블 헤더 (Invoices 전용)
+const InvoiceTableHeader = styled(CommonTableHeader)`
+  @media (max-width: 1400px) {
+    & > span:nth-child(3),
+    & > span:nth-child(4) {
+      display: none;
+    }
+  }
+
+  @media (max-width: 1024px) {
+    & > span:nth-child(5),
+    & > span:nth-child(6),
+    & > span:nth-child(7) {
+      display: none;
+    }
+  }
+`;
+
+// 페이지별 반응형 테이블 행 (Invoices 전용)
+const InvoiceTableRow = styled(CommonTableRow)`
+  @media (max-width: 1400px) {
+    & > div:nth-child(3),
+    & > div:nth-child(4) {
+      display: none;
+    }
+  }
+
+  @media (max-width: 1024px) {
+    & > div:nth-child(5),
+    & > div:nth-child(6),
+    & > div:nth-child(7) {
+      display: none;
+    }
+  }
+`;
+
+const InvoicesPage: React.FC = () => {
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterType, setFilterType] = useState('all');
+  const [filterMonth, setFilterMonth] = useState('all');
+  const [showCreateInvoiceModal, setShowCreateInvoiceModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showPaymentConfirmModal, setShowPaymentConfirmModal] = useState(false);
+  const [showSendConfirmModal, setShowSendConfirmModal] = useState(false);
+  const [showResendConfirmModal, setShowResendConfirmModal] = useState(false);
+  const [showCancelConfirmModal, setShowCancelConfirmModal] = useState(false);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [editInvoice, setEditInvoice] = useState<any>(null);
+  const [editSearchQuery, setEditSearchQuery] = useState('');
+  const [editSearchResults, setEditSearchResults] = useState<{managers: Manager[], restaurants: Restaurant[]}>({managers: [], restaurants: []});
+  const [showEditSearchDropdown, setShowEditSearchDropdown] = useState(false);
+  const [editSelectedTarget, setEditSelectedTarget] = useState<{type: 'manager' | 'restaurant', data: Manager | Restaurant} | null>(null);
+  const [managers, setManagers] = useState<Manager[]>([]);
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [searchResults, setSearchResults] = useState<{managers: Manager[], restaurants: Restaurant[]}>({managers: [], restaurants: []});
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const [selectedTarget, setSelectedTarget] = useState<{type: 'manager' | 'restaurant', data: Manager | Restaurant} | null>(null);
+  const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
+  const [newInvoice, setNewInvoice] = useState({
+    managerId: '',
+    managerName: '',
+    companyName: '',
+    restaurantId: '',
+    restaurantName: '',
+    amount: '',
+    tax: '0',
+    total: '0',
+    description: '',
+    dueDate: '',
+    planType: 'professional',
+    billingCycle: 'monthly',
+    invoiceCategory: 'service',
+    customDescription: '',
+    serviceDescription: ''
+  });
+
+  // Fetch invoices from API
+  const fetchInvoices = async () => {
+    try {
+      const response = await fetch('/api/invoices');
+      if (response.ok) {
+        const invoicesData = await response.json();
+        console.log('Fetched invoices:', invoicesData);
+        setInvoices(invoicesData);
+      } else {
+        console.error('Failed to fetch invoices');
+        setInvoices([]);
+      }
+    } catch (error) {
+      console.error('Error fetching invoices:', error);
+      setInvoices([]);
+    }
+  };
+
+  // Sample data fallback
+  const setSampleData = () => {
+    const sampleInvoices: Invoice[] = [
+      {
+        id: 'inv-001',
+        invoiceNumber: 'INV-2025-001',
+        managerId: 'mgr-001',
+        managerName: 'Ahmad Rahman',
+        companyName: 'Sunway Food Court',
+        customerName: 'Ahmad Rahman',
+        customerAddress: 'Sunway Food Court',
+        issueDate: '2025-01-01',
+        dueDate: '2025-01-31',
+        paidDate: '2025-01-15',
+        status: 'paid',
+        amount: 2190,
+        tax: 131.4,
+        total: 2321.4,
+        billingPeriod: 'Jan 2025 - Dec 2025',
+        planType: 'Enterprise',
+        items: [
+          { description: 'Enterprise Plan - Annual', quantity: 1, unitPrice: 2190, total: 2190 }
+        ]
+      },
+      {
+        id: 'inv-002',
+        invoiceNumber: 'INV-2025-002',
+        managerId: 'mgr-002',
+        managerName: 'Sarah Lim',
+        companyName: 'IOI Mall Restaurants',
+        customerName: 'Sarah Lim',
+        customerAddress: 'IOI Mall Restaurants',
+        issueDate: '2025-01-15',
+        dueDate: '2025-02-15',
+        status: 'pending_payment',
+        amount: 99,
+        tax: 5.94,
+        total: 104.94,
+        billingPeriod: 'Feb 2025',
+        planType: 'Professional',
+        hasPaymentInfo: false,
+        items: [
+          { description: 'Professional Plan - Monthly', quantity: 1, unitPrice: 99, total: 99 }
+        ]
+      },
+      {
+        id: 'inv-003',
+        invoiceNumber: 'INV-2025-003',
+        managerId: 'mgr-003',
+        managerName: 'David Tan',
+        companyName: 'Pavilion Food Hub',
+        customerName: 'David Tan',
+        customerAddress: 'Pavilion Food Hub',
+        issueDate: '2024-12-10',
+        dueDate: '2025-01-10',
+        status: 'overdue',
+        amount: 2190,
+        tax: 131.4,
+        total: 2321.4,
+        billingPeriod: 'Nov 2024 - Oct 2025',
+        planType: 'Enterprise',
+        items: [
+          { description: 'Enterprise Plan - Annual Renewal', quantity: 1, unitPrice: 2190, total: 2190 }
+        ]
+      },
+      {
+        id: 'inv-004',
+        invoiceNumber: 'INV-2025-004',
+        managerId: 'mgr-005',
+        managerName: 'John Doe',
+        companyName: 'Single Restaurant Chain',
+        customerName: 'John Doe',
+        customerAddress: 'Single Restaurant Chain',
+        issueDate: '2025-01-20',
+        dueDate: '2025-02-20',
+        status: 'draft',
+        amount: 29,
+        tax: 1.74,
+        total: 30.74,
+        billingPeriod: 'Feb 2025',
+        planType: 'Basic',
+        items: [
+          { description: 'Basic Plan - Monthly', quantity: 1, unitPrice: 29, total: 29 }
+        ]
+      },
+      {
+        id: 'inv-005',
+        invoiceNumber: 'INV-2024-125',
+        managerId: 'mgr-004',
+        managerName: 'Lisa Wong',
+        companyName: 'Mid Valley Dining',
+        customerName: 'Lisa Wong',
+        customerAddress: 'Mid Valley Dining',
+        issueDate: '2024-12-20',
+        dueDate: '2025-01-20',
+        status: 'cancelled',
+        amount: 99,
+        tax: 5.94,
+        total: 104.94,
+        billingPeriod: 'Jan 2025',
+        planType: 'Professional',
+        items: [
+          { description: 'Professional Plan - Trial Conversion', quantity: 1, unitPrice: 99, total: 99 }
+        ]
+      },
+      {
+        id: 'inv-006',
+        invoiceNumber: 'INV-2025-006',
+        managerId: 'mgr-006',
+        managerName: 'Michael Chen',
+        companyName: 'Gateway Mall Food Court',
+        customerName: 'Michael Chen',
+        customerAddress: 'Gateway Mall Food Court',
+        issueDate: '2025-01-20',
+        dueDate: '2025-02-20',
+        status: 'payment_submitted',
+        amount: 290,
+        tax: 17.4,
+        total: 307.4,
+        billingPeriod: 'Feb 2025 - Jan 2026',
+        planType: 'Basic',
+        paymentMethod: 'Bank Transfer',
+        transactionId: 'TXN-2025-001',
+        receiptUrl: '/receipts/inv-006-receipt.pdf',
+        hasPaymentInfo: true,
+        items: [
+          { description: 'Basic Plan - Annual', quantity: 1, unitPrice: 290, total: 290 }
+        ]
+      }
+    ];
+    
+    setInvoices(sampleInvoices);
+  };
+
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchInvoices();
+    fetchManagers();
+    fetchRestaurants();
+    fetchSubscriptions();
+    fetchCompanySettings();
+  }, []);
+
+  const fetchManagers = async () => {
+    try {
+      const response = await fetch('/api/users?role=Manager');
+      if (response.ok) {
+        const data = await response.json();
+        // Transform API data to match interface
+        const transformedManagers = data.map((user: any) => ({
+          id: user.id.toString(),
+          fullName: user.full_name || user.username,
+          email: user.email,
+          role: user.role,
+          companyName: user.company_name || 'Unknown Company'
+        }));
+        setManagers(transformedManagers);
+      } else {
+        console.error('Failed to fetch managers');
+        setManagers([]);
+      }
+    } catch (error) {
+      console.error('Error fetching managers:', error);
+      setManagers([]);
+    }
+  };
+
+  const fetchRestaurants = async () => {
+    try {
+      const response = await fetch('/api/restaurants');
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Fetched restaurants:', data);
+        // Transform API data to match interface
+        const transformedRestaurants = data.map((restaurant: any) => ({
+          id: restaurant.id.toString(),
+          name: restaurant.name,
+          manager_id: restaurant.manager_id?.toString() || restaurant.managerId?.toString() || '',
+          status: restaurant.status,
+          address: restaurant.address || ''
+        }));
+        setRestaurants(transformedRestaurants);
+        console.log('Transformed restaurants:', transformedRestaurants);
+      } else {
+        console.error('Failed to fetch restaurants');
+        setRestaurants([]);
+      }
+    } catch (error) {
+      console.error('Error fetching restaurants:', error);
+      setRestaurants([]);
+    }
+  };
+
+  const fetchSubscriptions = async () => {
+    try {
+      const response = await fetch('/api/subscriptions');
+      if (response.ok) {
+        const data = await response.json();
+        setSubscriptions(data);
+      } else {
+        console.warn('Subscription API not available, using sample data');
+        // Use sample data for development
+        setSubscriptions([
+          {
+            id: 'sub-001',
+            restaurant_id: 'rest-001',
+            plan_type: 'enterprise',
+            status: 'Active',
+            billing_cycle: 'annual',
+            menu_limit: -1,
+            monthly_price: 199,
+            annual_price: 1990,
+            start_date: '2025-01-01',
+            end_date: '2025-12-31'
+          },
+          {
+            id: 'sub-002',
+            restaurant_id: 'rest-002',
+            plan_type: 'professional',
+            status: 'Active',
+            billing_cycle: 'monthly',
+            menu_limit: 200,
+            monthly_price: 99,
+            annual_price: 990,
+            start_date: '2025-01-15'
+          }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error fetching subscriptions:', error);
+      // Use sample data as fallback
+      setSubscriptions([
+        {
+          id: 'sub-001',
+          restaurant_id: 'rest-001',
+          plan_type: 'enterprise',
+          status: 'Active',
+          billing_cycle: 'annual',
+          menu_limit: -1,
+          monthly_price: 199,
+          annual_price: 1990,
+          start_date: '2025-01-01',
+          end_date: '2025-12-31'
+        },
+        {
+          id: 'sub-002',
+          restaurant_id: 'rest-002',
+          plan_type: 'professional',
+          status: 'Active',
+          billing_cycle: 'monthly',
+          menu_limit: 200,
+          monthly_price: 99,
+          annual_price: 990,
+          start_date: '2025-01-15'
+        }
+      ]);
+    }
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    setShowSearchDropdown(true);
+
+    if (query.length < 2) {
+      setSearchResults({managers: [], restaurants: []});
+      return;
+    }
+
+    console.log('Searching with query:', query);
+    console.log('Available managers:', managers);
+    console.log('Available restaurants:', restaurants);
+
+    const filteredManagers = managers.filter(manager =>
+      (manager.fullName && manager.fullName.toLowerCase().includes(query.toLowerCase())) ||
+      (manager.companyName && manager.companyName.toLowerCase().includes(query.toLowerCase()))
+    );
+
+    const filteredRestaurants = restaurants.filter(restaurant =>
+      restaurant.name && restaurant.name.toLowerCase().includes(query.toLowerCase())
+    );
+
+    console.log('Filtered managers:', filteredManagers);
+    console.log('Filtered restaurants:', filteredRestaurants);
+
+    setSearchResults({
+      managers: filteredManagers.slice(0, 5),
+      restaurants: filteredRestaurants.slice(0, 5)
+    });
+  };
+
+  const handleEditSearch = (query: string) => {
+    setEditSearchQuery(query);
+    setShowEditSearchDropdown(true);
+
+    if (query.length < 2) {
+      setEditSearchResults({managers: [], restaurants: []});
+      return;
+    }
+
+    const filteredManagers = managers.filter(manager =>
+      (manager.fullName && manager.fullName.toLowerCase().includes(query.toLowerCase())) ||
+      (manager.companyName && manager.companyName.toLowerCase().includes(query.toLowerCase()))
+    );
+
+    const filteredRestaurants = restaurants.filter(restaurant =>
+      restaurant.name && restaurant.name.toLowerCase().includes(query.toLowerCase())
+    );
+
+    setEditSearchResults({
+      managers: filteredManagers.slice(0, 5),
+      restaurants: filteredRestaurants.slice(0, 5)
+    });
+  };
+
+  const handleEditTargetSelect = (type: 'manager' | 'restaurant', data: Manager | Restaurant) => {
+    setEditSelectedTarget({type, data});
+    setEditSearchQuery(type === 'manager' ? (data as Manager).fullName : (data as Restaurant).name);
+    setShowEditSearchDropdown(false);
+
+    // Update editInvoice with new target data
+    if (type === 'manager') {
+      const manager = data as Manager;
+      setEditInvoice({
+        ...editInvoice,
+        managerId: manager.id,
+        managerName: manager.fullName,
+        companyName: manager.companyName || '',
+        restaurantId: '',
+        restaurantName: ''
+      });
+    } else {
+      const restaurant = data as Restaurant;
+      const manager = managers.find(m => m.id === restaurant.manager_id);
+      setEditInvoice({
+        ...editInvoice,
+        managerId: manager?.id || '',
+        managerName: manager?.fullName || '',
+        companyName: manager?.companyName || '',
+        restaurantId: restaurant.id,
+        restaurantName: restaurant.name
+      });
+    }
+  };
+
+  const selectTarget = (type: 'manager' | 'restaurant', data: Manager | Restaurant) => {
+    setSelectedTarget({type, data});
+    setShowSearchDropdown(false);
+    setSearchQuery(type === 'manager' ? (data as Manager).fullName : (data as Restaurant).name);
+
+    // Auto-populate invoice data
+    if (type === 'manager') {
+      const manager = data as Manager;
+      setNewInvoice({
+        ...newInvoice,
+        managerId: manager.id,
+        managerName: manager.fullName,
+        companyName: manager.companyName || '',
+        restaurantId: '',
+        restaurantName: ''
+      });
+    } else {
+      const restaurant = data as Restaurant;
+      const manager = managers.find(m => m.id === restaurant.manager_id);
+      setNewInvoice({
+        ...newInvoice,
+        restaurantId: restaurant.id,
+        restaurantName: restaurant.name,
+        managerId: restaurant.manager_id,
+        managerName: manager ? manager.fullName : '',
+        companyName: restaurant.name
+      });
+    }
+  };
+
+  const fetchCompanySettings = async () => {
+    try {
+      const response = await fetch('/api/admin/settings');
+      if (response.ok) {
+        const data = await response.json();
+        setCompanySettings(data);
+      } else {
+        // Try to load from adminSettings localStorage
+        const adminSettings = localStorage.getItem('adminSettings');
+        let companyLogo = '';
+        if (adminSettings) {
+          try {
+            const parsed = JSON.parse(adminSettings);
+            companyLogo = parsed.companyLogo || parsed.logo || '';
+          } catch (e) {
+            console.error('Error parsing adminSettings:', e);
+          }
+        }
+
+        // Use default company settings
+        setCompanySettings({
+          companyName: 'OrderHere POS System',
+          address: 'Level 12, Menara UOA Bangsar',
+          city: 'Kuala Lumpur',
+          state: 'Federal Territory',
+          postalCode: '59200',
+          country: 'Malaysia',
+          phone: '+60 3-2266 8888',
+          email: 'admin@orderhere.my',
+          website: 'www.orderhere.my',
+          taxNumber: '001234567890',
+          registrationNumber: 'ROC 202301234567',
+          companyLogo: companyLogo
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching company settings:', error);
+
+      // Try to load from adminSettings localStorage
+      const adminSettings = localStorage.getItem('adminSettings');
+      let companyLogo = '';
+      if (adminSettings) {
+        try {
+          const parsed = JSON.parse(adminSettings);
+          companyLogo = parsed.companyLogo || parsed.logo || '';
+        } catch (e) {
+          console.error('Error parsing adminSettings:', e);
+        }
+      }
+
+      setCompanySettings({
+        companyName: 'OrderHere POS System',
+        address: 'Level 12, Menara UOA Bangsar',
+        city: 'Kuala Lumpur',
+        state: 'Federal Territory',
+        postalCode: '59200',
+        country: 'Malaysia',
+        phone: '+60 3-2266 8888',
+        email: 'admin@orderhere.my',
+        website: 'www.orderhere.my',
+        taxNumber: '001234567890',
+        registrationNumber: 'ROC 202301234567',
+        companyLogo: companyLogo
+      });
+    }
+  };
+
+  const generateInvoicePDF = (invoice: Invoice) => {
+    if (!companySettings) {
+      setSuccessMessage('Company settings not loaded. Please try again.');
+      setShowSuccessModal(true);
+      return;
+    }
+
+    const invoiceHTML = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Invoice ${invoice.invoiceNumber}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4; color: #333; }
+        .invoice-container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 2px solid #635BFF; padding-bottom: 20px; }
+        .logo-section { flex: 1; }
+        .company-name { font-size: 24px; font-weight: bold; color: #0A2540; margin-bottom: 5px; }
+        .company-details { color: #6B7280; line-height: 1.6; }
+        .invoice-title { flex: 1; text-align: right; }
+        .invoice-number { font-size: 28px; font-weight: bold; color: #635BFF; margin-bottom: 5px; }
+        .invoice-status { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 10px; font-weight: bold; text-transform: uppercase; }
+        .status-paid { background: #ECFDF5; color: #059669; }
+        .status-sent { background: #DBEAFE; color: #1E40AF; }
+        .status-draft { background: #F3F4F6; color: #6B7280; }
+        .status-overdue { background: #FEE2E2; color: #DC2626; }
+        .status-cancelled { background: #FEF2F2; color: #DC2626; }
+        .billing-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
+        .billing-section { flex: 1; }
+        .billing-title { font-weight: bold; color: #0A2540; margin-bottom: 10px; font-size: 14px; }
+        .billing-details { color: #6B7280; line-height: 1.6; }
+        .invoice-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+        .invoice-table th { background: #F8FAFC; padding: 12px; text-align: left; font-weight: bold; color: #0A2540; border-bottom: 1px solid #E6EBF1; }
+        .invoice-table td { padding: 12px; border-bottom: 1px solid #F3F4F6; }
+        .item-description { font-weight: 500; color: #0A2540; }
+        .text-right { text-align: right; }
+        .totals-section { margin-left: auto; width: 300px; }
+        .total-row { display: flex; justify-content: space-between; padding: 8px 0; }
+        .total-row.subtotal, .total-row.tax { color: #6B7280; }
+        .total-row.final { font-weight: bold; font-size: 16px; color: #0A2540; border-top: 2px solid #635BFF; padding-top: 12px; margin-top: 8px; }
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #E6EBF1; text-align: center; color: #6B7280; font-size: 11px; }
+        .payment-terms { margin-top: 30px; padding: 15px; background: #F8FAFC; border-radius: 6px; }
+        .payment-terms h4 { color: #0A2540; margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+    <div class="invoice-container">
+        <div class="header">
+            <div class="logo-section">
+                ${companySettings.companyLogo ? `<img src="${companySettings.companyLogo}" alt="Company Logo" style="max-height: 60px; margin-bottom: 10px;">` : ''}
+                <div class="company-name">${companySettings.companyName}</div>
+                <div class="company-details">
+                    ${companySettings.address}<br>
+                    ${companySettings.city}, ${companySettings.state} ${companySettings.postalCode}<br>
+                    ${companySettings.country}<br>
+                    Phone: ${companySettings.phone}<br>
+                    Email: ${companySettings.email}
+                    ${companySettings.website ? `<br>Web: ${companySettings.website}` : ''}
+                    ${companySettings.taxNumber ? `<br>Tax No: ${companySettings.taxNumber}` : ''}
+                    ${companySettings.registrationNumber ? `<br>Reg No: ${companySettings.registrationNumber}` : ''}
+                </div>
+            </div>
+            <div class="invoice-title">
+                <div class="invoice-number">INVOICE</div>
+                <div class="invoice-number">${invoice.invoiceNumber}</div>
+                <span class="invoice-status status-${invoice.status}">${invoice.status}</span>
+            </div>
+        </div>
+        
+        <div class="billing-info">
+            <div class="billing-section">
+                <div class="billing-title">Bill To:</div>
+                <div class="billing-details">
+                    <strong>${invoice.customerName || invoice.managerName || 'Customer'}</strong><br>
+                    ${invoice.companyName && invoice.companyName !== invoice.customerName ? `${invoice.companyName}<br>` : ''}
+                    ${invoice.customerAddress ? invoice.customerAddress.split('\n').join('<br>') : ''}
+                </div>
+            </div>
+            <div class="billing-section" style="text-align: right;">
+                <div class="billing-title">Invoice Details:</div>
+                <div class="billing-details">
+                    <strong>Issue Date:</strong> ${formatDate(invoice.issueDate)}<br>
+                    <strong>Due Date:</strong> ${formatDate(invoice.dueDate)}<br>
+                    ${invoice.paidDate ? `<strong>Paid Date:</strong> ${formatDate(invoice.paidDate)}<br>` : ''}
+                    <strong>Billing Period:</strong> ${invoice.billingPeriod}<br>
+                    <strong>Plan Type:</strong> ${invoice.planType}
+                </div>
+            </div>
+        </div>
+        
+        <table class="invoice-table">
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th class="text-right">Quantity</th>
+                    <th class="text-right">Unit Price</th>
+                    <th class="text-right">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${invoice.items.map(item => `
+                    <tr>
+                        <td class="item-description">${item.description}</td>
+                        <td class="text-right">${item.quantity}</td>
+                        <td class="text-right">${formatCurrency(item.unitPrice)}</td>
+                        <td class="text-right">${formatCurrency(item.total)}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+        
+        <div class="totals-section">
+            <div class="total-row subtotal">
+                <span>Subtotal:</span>
+                <span>${formatCurrency(invoice.amount)}</span>
+            </div>
+            <div class="total-row tax">
+                <span>Tax (6%):</span>
+                <span>${formatCurrency(invoice.tax)}</span>
+            </div>
+            <div class="total-row final">
+                <span>Total Amount:</span>
+                <span>${formatCurrency(invoice.total)}</span>
+            </div>
+        </div>
+        
+        <div class="payment-terms">
+            <h4>Payment Terms & Conditions:</h4>
+            <p>• Payment is due within 30 days of invoice date<br>
+            • Late payments may incur additional charges<br>
+            • Please reference invoice number ${invoice.invoiceNumber} when making payment<br>
+            • For any queries, please contact us at ${companySettings.email}</p>
+        </div>
+        
+        <div class="footer">
+            <p>Thank you for your business!</p>
+            <p>This is a computer-generated invoice and does not require a signature.</p>
+        </div>
+    </div>
+</body>
+</html>`;
+
+    // Create blob and download directly
+    const blob = new Blob([invoiceHTML], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Invoice-${invoice.invoiceNumber}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const resetInvoiceForm = () => {
+    setNewInvoice({
+      managerId: '',
+      managerName: '',
+      companyName: '',
+      restaurantId: '',
+      restaurantName: '',
+      amount: '',
+      tax: '0',
+      total: '0',
+      description: '',
+      dueDate: '',
+      planType: 'professional',
+      billingCycle: 'monthly',
+      invoiceCategory: 'service',
+      customDescription: '',
+      serviceDescription: ''
+    });
+    setSelectedTarget(null);
+    setSearchQuery('');
+    setShowSearchDropdown(false);
+  };
+
+  // Get unique months from invoices
+  const monthsArray = invoices.map(invoice => {
+    const date = new Date(invoice.issueDate);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const availableMonths = Array.from(new Set(monthsArray)).sort().reverse();
+
+  const filteredInvoices = invoices.filter(invoice => {
+    const matchesSearch = invoice.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         invoice.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         invoice.managerName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = filterStatus === 'all' || invoice.status === filterStatus || (filterStatus === 'pending_payment' && (invoice.status === '' || !invoice.status));
+    const matchesType = filterType === 'all' || invoice.type === filterType;
+
+    let matchesMonth = true;
+    if (filterMonth !== 'all') {
+      const invoiceDate = new Date(invoice.issueDate);
+      const invoiceMonth = `${invoiceDate.getFullYear()}-${String(invoiceDate.getMonth() + 1).padStart(2, '0')}`;
+      matchesMonth = invoiceMonth === filterMonth;
+    }
+
+    return matchesSearch && matchesStatus && matchesType && matchesMonth;
+  });
+
+  const totalInvoices = invoices.length;
+  const paidInvoices = invoices.filter(i => i.status === 'paid').length;
+  const overdueInvoices = invoices.filter(i => i.status === 'overdue').length;
+  const totalRevenue = invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + i.total, 0);
+
+  const formatCurrency = (amount: number) => `RM ${amount.toFixed(2)}`;
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-MY');
+  };
+
+  const getStatusDisplay = (status: string) => {
+    switch(status) {
+      case 'draft': return 'Draft';
+      case 'pending_payment': return 'Pending';
+      case 'payment_submitted': return 'Payment Submitted';
+      case 'paid': return 'Paid';
+      case 'overdue': return 'Overdue';
+      case 'cancelled': return 'Cancelled';
+      case '': case null: case undefined: return 'Pending';
+      default: return status;
+    }
+  };
+
+  const getPayerDisplay = (payerType: string) => {
+    switch(payerType) {
+      case 'restaurant': return 'Restaurant Admin';
+      case 'foodcourt_manager': return 'Foodcourt General';
+      case 'brand_manager': return 'Brand General';
+      default: return 'Restaurant Admin';
+    }
+  };
+
+  const handleExportInvoices = () => {
+    const exportData = {
+      exportDate: new Date().toISOString(),
+      totalInvoices: invoices.length,
+      summary: {
+        totalAmount: invoices.reduce((sum, inv) => sum + inv.total, 0),
+        paidInvoices: invoices.filter(inv => inv.status === 'paid').length,
+        overdueInvoices: invoices.filter(inv => inv.status === 'overdue').length,
+        draftInvoices: invoices.filter(inv => inv.status === 'draft').length,
+        paidAmount: invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.total, 0),
+        outstandingAmount: invoices.filter(inv => inv.status !== 'paid' && inv.status !== 'cancelled').reduce((sum, inv) => sum + inv.total, 0)
+      },
+      statusBreakdown: {
+        draft: invoices.filter(inv => inv.status === 'draft').length,
+        pending_payment: invoices.filter(inv => inv.status === 'pending_payment').length,
+        paid: invoices.filter(inv => inv.status === 'paid').length,
+        overdue: invoices.filter(inv => inv.status === 'overdue').length,
+        cancelled: invoices.filter(inv => inv.status === 'cancelled').length
+      },
+      invoices: invoices.map(invoice => ({
+        invoiceNumber: invoice.invoiceNumber,
+        managerName: invoice.managerName,
+        companyName: invoice.companyName,
+        issueDate: invoice.issueDate,
+        dueDate: invoice.dueDate,
+        paidDate: invoice.paidDate || 'N/A',
+        status: invoice.status,
+        amount: invoice.amount,
+        tax: invoice.tax,
+        total: invoice.total,
+        billingPeriod: invoice.billingPeriod,
+        planType: invoice.planType
+      }))
+    };
+
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `invoices-export-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCreateInvoice = () => {
+    resetInvoiceForm();
+    setShowCreateInvoiceModal(true);
+  };
+
+  const handleGenerateSubscriptionInvoices = async () => {
+    try {
+      const response = await fetch('/api/invoices/generate-for-subscriptions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        await fetchInvoices(); // Refresh the invoice list
+        setSuccessMessage(`Successfully generated ${result.generated} subscription invoices!`);
+        setShowSuccessModal(true);
+      } else {
+        const errorData = await response.json();
+        setSuccessMessage(`Failed to generate subscription invoices: ${errorData.error || 'Unknown error'}`);
+        setShowSuccessModal(true);
+      }
+    } catch (error) {
+      console.error('Error generating subscription invoices:', error);
+      setSuccessMessage('Error generating subscription invoices. Please try again.');
+      setShowSuccessModal(true);
+    }
+  };
+
+  const handleViewInvoice = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setShowViewModal(true);
+  };
+
+  const handleEditInvoice = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+
+    // Set up editInvoice with all Create Invoice fields
+    setEditInvoice({
+      managerId: invoice.managerId,
+      managerName: invoice.managerName,
+      companyName: invoice.companyName || '',
+      restaurantId: invoice.restaurantId || '',
+      restaurantName: invoice.restaurantName || '',
+      amount: invoice.amount.toString(),
+      tax: invoice.tax.toString(),
+      total: invoice.total.toString(),
+      dueDate: invoice.dueDate,
+      status: invoice.status,
+      planType: invoice.planType,
+      billingCycle: 'monthly', // Default, can be derived from planType
+      description: invoice.items?.[0]?.description || '',
+      payerType: invoice.payerType || 'restaurant',
+      payerId: invoice.payerId || '',
+      items: invoice.items
+    });
+
+    // Set up edit target selection
+    if (invoice.restaurantId) {
+      const restaurant = restaurants.find(r => r.id === invoice.restaurantId);
+      if (restaurant) {
+        setEditSelectedTarget({type: 'restaurant', data: restaurant});
+        setEditSearchQuery(restaurant.name);
+      }
+    } else if (invoice.managerId) {
+      const manager = managers.find(m => m.id === invoice.managerId);
+      if (manager) {
+        setEditSelectedTarget({type: 'manager', data: manager});
+        setEditSearchQuery(manager.fullName);
+      }
+    }
+
+    setShowEditModal(true);
+  };
+
+  const handleSendInvoice = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setShowSendConfirmModal(true);
+  };
+
+  const confirmSendInvoice = async () => {
+    if (!selectedInvoice) return;
+
+    try {
+      const response = await fetch(`/api/invoices/${selectedInvoice.id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'pending_payment'
+        })
+      });
+
+      if (response.ok) {
+        // Refresh invoices list
+        await fetchInvoices();
+        setShowSendConfirmModal(false);
+        setSelectedInvoice(null);
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to send invoice: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error sending invoice:', error);
+      alert('Error sending invoice. Please try again.');
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedInvoice || !editInvoice) return;
+
+    try {
+      const response = await fetch(`/api/invoices/${selectedInvoice.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: parseFloat(editInvoice.amount),
+          tax: parseFloat(editInvoice.tax),
+          total: parseFloat(editInvoice.total),
+          dueDate: editInvoice.dueDate,
+          status: editInvoice.status,
+          payerType: editInvoice.payerType,
+          payerId: editInvoice.payerId,
+          items: editInvoice.items
+        }),
+      });
+
+      if (response.ok) {
+        const updatedInvoice = {
+          ...selectedInvoice,
+          amount: parseFloat(editInvoice.amount),
+          tax: parseFloat(editInvoice.tax),
+          total: parseFloat(editInvoice.total),
+          dueDate: editInvoice.dueDate,
+          status: editInvoice.status,
+          payerType: editInvoice.payerType,
+          payerId: editInvoice.payerId,
+          items: editInvoice.items
+        };
+
+        setInvoices(invoices.map(inv =>
+          inv.id === selectedInvoice.id ? updatedInvoice : inv
+        ));
+
+        setShowEditModal(false);
+        setSelectedInvoice(null);
+        setEditInvoice(null);
+        setSuccessMessage('Invoice updated successfully!');
+        setShowSuccessModal(true);
+      } else {
+        const errorData = await response.json();
+        setSuccessMessage(`Failed to update invoice: ${errorData.error || 'Unknown error'}`);
+        setShowSuccessModal(true);
+      }
+    } catch (error) {
+      console.error('Error updating invoice:', error);
+      setSuccessMessage('Error updating invoice. Please try again.');
+      setShowSuccessModal(true);
+    }
+  };
+
+  const handleSubmitInvoice = async () => {
+    if (!selectedTarget || !newInvoice.amount || !newInvoice.dueDate) {
+      alert('Please select a manager/restaurant, enter amount, and set due date.');
+      return;
+    }
+
+    try {
+      const amount = parseFloat(newInvoice.amount);
+      const tax = parseFloat(newInvoice.tax);
+      const total = parseFloat(newInvoice.total);
+
+      // Prepare data for API
+      const billingPeriodStart = new Date();
+      billingPeriodStart.setDate(1); // First day of current month
+
+      const billingPeriodEnd = new Date();
+      billingPeriodEnd.setMonth(billingPeriodEnd.getMonth() + 1);
+      billingPeriodEnd.setDate(0); // Last day of current month
+
+      let description = '';
+      if (newInvoice.invoiceCategory === 'others') {
+        description = newInvoice.customDescription || '';
+      } else {
+        description = newInvoice.serviceDescription || '';
+      }
+
+      // Prepare customer information based on target type
+      let customerName = '';
+      let customerAddress = '';
+      let companyName = '';
+      let restaurantName = '';
+
+      if (selectedTarget.type === 'restaurant') {
+        const restaurant = selectedTarget.data as Restaurant;
+        customerName = restaurant.name;
+        restaurantName = restaurant.name;
+        companyName = restaurant.name;
+
+        // Build full address from restaurant data
+        const addressParts = [];
+        if (restaurant.address) addressParts.push(restaurant.address);
+        if (restaurant.phone) addressParts.push(`Phone: ${restaurant.phone}`);
+        if (restaurant.email) addressParts.push(`Email: ${restaurant.email}`);
+        customerAddress = addressParts.join('\n');
+      } else if (selectedTarget.type === 'manager') {
+        const manager = selectedTarget.data as Manager;
+        customerName = manager.fullName;
+        companyName = manager.companyName || manager.fullName;
+
+        // Build address from manager data
+        const addressParts = [];
+        if (manager.companyName) addressParts.push(manager.companyName);
+        if (manager.email) addressParts.push(`Email: ${manager.email}`);
+        customerAddress = addressParts.join('\n');
+      }
+
+      const invoiceData = {
+        restaurant_id: selectedTarget.type === 'restaurant' ? (selectedTarget.data as Restaurant).id : null,
+        manager_id: selectedTarget.type === 'manager' ? (selectedTarget.data as Manager).id : null,
+        customer_name: customerName,
+        customer_address: customerAddress,
+        company_name: companyName,
+        restaurant_name: restaurantName,
+        type: 'manual',
+        billing_period_start: billingPeriodStart.toISOString(),
+        billing_period_end: billingPeriodEnd.toISOString(),
+        due_date: new Date(newInvoice.dueDate).toISOString(),
+        total_amount: total,
+        status: 'draft',
+        notes: description,
+        issued_by: 1, // Current admin user ID
+        issued_at: new Date().toISOString()
+      };
+
+      const items = [{
+        item_type: newInvoice.invoiceCategory,
+        description: description,
+        calculation_method: 'fixed',
+        fixed_amount: amount,
+        calculated_amount: amount,
+        tax_rate: 6,
+        tax_amount: tax,
+        total_amount: total
+      }];
+
+      const response = await fetch('/api/invoices', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          invoice_data: invoiceData,
+          items: items
+        })
+      });
+
+      if (response.ok) {
+        // Refresh invoices list
+        await fetchInvoices();
+        setShowCreateInvoiceModal(false);
+        resetInvoiceForm();
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to create invoice: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error creating invoice:', error);
+      alert('Error creating invoice. Please try again.');
+    }
+  };
+
+  const handleConfirmPayment = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setShowPaymentConfirmModal(true);
+  };
+
+  const handleMarkAsPaid = async () => {
+    if (!selectedInvoice) return;
+
+    try {
+      const response = await fetch(`/api/invoices/${selectedInvoice.id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'paid',
+          paid_at: new Date().toISOString()
+        })
+      });
+
+      if (response.ok) {
+        // Refresh invoices list
+        await fetchInvoices();
+        setShowPaymentConfirmModal(false);
+        setSelectedInvoice(null);
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to update payment status: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+      alert('Error updating payment status. Please try again.');
+    }
+  };
+
+  const handleResendInvoice = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setShowResendConfirmModal(true);
+  };
+
+  const confirmResendInvoice = () => {
+    if (!selectedInvoice) return;
+
+    setShowResendConfirmModal(false);
+    setSelectedInvoice(null);
+  };
+
+
+  const handleDeleteInvoice = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setShowDeleteConfirmModal(true);
+  };
+
+  const confirmCancelInvoice = async () => {
+    if (!selectedInvoice) return;
+
+    try {
+      const response = await fetch(`/api/invoices/${selectedInvoice.id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'cancelled'
+        })
+      });
+
+      if (response.ok) {
+        // Refresh invoices list
+        await fetchInvoices();
+        setShowCancelConfirmModal(false);
+        setSelectedInvoice(null);
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to cancel invoice: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error cancelling invoice:', error);
+      alert('Error cancelling invoice. Please try again.');
+    }
+  };
+
+  const confirmDeleteInvoice = async () => {
+    if (!selectedInvoice) return;
+
+    try {
+      const response = await fetch(`/api/invoices/${selectedInvoice.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (response.ok) {
+        // Refresh invoices list
+        await fetchInvoices();
+        setShowDeleteConfirmModal(false);
+        setSelectedInvoice(null);
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to delete invoice: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error deleting invoice:', error);
+      alert('Error deleting invoice. Please try again.');
+    }
+  };
+
+  return (
+    <MainLayout>
+      <Container>
+        <Header>
+          <Title>Invoices</Title>
+          <ActionSection>
+            <Button variant="secondary" onClick={handleExportInvoices}>Export</Button>
+            <Button variant="secondary" onClick={handleGenerateSubscriptionInvoices}>Generate Subscription Invoices</Button>
+            <Button variant="primary" onClick={handleCreateInvoice}>Create Invoice</Button>
+          </ActionSection>
+        </Header>
+        <Content>
+
+        <StatsGrid>
+          <StatCard color="#059669">
+            <StatValue>{totalInvoices}</StatValue>
+            <StatLabel>Total Invoices</StatLabel>
+            <StatDescription>All invoice records</StatDescription>
+          </StatCard>
+          <StatCard color="#2563EB">
+            <StatValue>{paidInvoices}</StatValue>
+            <StatLabel>Paid Invoices</StatLabel>
+            <StatDescription>{totalInvoices > 0 ? Math.round((paidInvoices/totalInvoices)*100) : 0}% completed</StatDescription>
+          </StatCard>
+          <StatCard color="#DC2626">
+            <StatValue>{overdueInvoices}</StatValue>
+            <StatLabel>Overdue Invoices</StatLabel>
+            <StatDescription>Requires attention</StatDescription>
+          </StatCard>
+          <StatCard color="#7C3AED">
+            <StatValue>{formatCurrency(totalRevenue)}</StatValue>
+            <StatLabel>Total Revenue</StatLabel>
+            <StatDescription>From paid invoices</StatDescription>
+          </StatCard>
+        </StatsGrid>
+
+        <FilterBar>
+          <SearchInput
+            placeholder="Search by invoice #, company, restaurant..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+
+          <FilterSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+            <option value="all">All Status</option>
+            <option value="draft">Draft</option>
+            <option value="pending_payment">Pending Payment</option>
+            <option value="payment_submitted">Payment Submitted</option>
+            <option value="paid">Paid</option>
+            <option value="overdue">Overdue</option>
+            <option value="cancelled">Cancelled</option>
+          </FilterSelect>
+
+          <FilterSelect value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+            <option value="all">All Types</option>
+            <option value="automatic">Automatic</option>
+            <option value="manual">Manual</option>
+          </FilterSelect>
+
+          <FilterSelect value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}>
+            <option value="all">All Months</option>
+            {availableMonths.map(month => {
+              const [year, monthNum] = month.split('-');
+              const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                                 'July', 'August', 'September', 'October', 'November', 'December'];
+              const monthName = monthNames[parseInt(monthNum) - 1];
+              return (
+                <option key={month} value={month}>
+                  {monthName} {year}
+                </option>
+              );
+            })}
+          </FilterSelect>
+        </FilterBar>
+
+        <Table>
+          <InvoiceTableHeader columns="2fr 2fr 1fr 1fr 1fr 1fr 1fr 200px">
+            <span>Invoice</span>
+            <span>Customer</span>
+            <span>Plan/Item</span>
+            <span>Due Date</span>
+            <span>Status</span>
+            <span>Amount</span>
+            <span>Total</span>
+            <span>Actions</span>
+          </InvoiceTableHeader>
+
+          {filteredInvoices.map(invoice => (
+            <InvoiceTableRow columns="2fr 2fr 1fr 1fr 1fr 1fr 1fr 200px" key={invoice.id}>
+              <MobileGrid>
+                <MobileValue>
+                  <MobileLabel>Invoice</MobileLabel>
+                  <InvoiceInfo>
+                    <InvoiceNumber>
+                      {invoice.invoiceNumber}
+                      {invoice.type === 'automatic' && <AutoBadge>AUTO</AutoBadge>}
+                    </InvoiceNumber>
+                    <CompanyName>Issued: {formatDate(invoice.issueDate)}</CompanyName>
+                  </InvoiceInfo>
+                </MobileValue>
+
+                <MobileValue>
+                  <MobileLabel>Customer</MobileLabel>
+                  <InvoiceInfo>
+                    <InvoiceNumber>{invoice.customerName || invoice.restaurantName || 'Unknown'}</InvoiceNumber>
+                    <CompanyName>{getPayerDisplay(invoice.payerType || 'restaurant')}</CompanyName>
+                  </InvoiceInfo>
+                </MobileValue>
+
+                <MobileValue>
+                  <MobileLabel>Plan/Item</MobileLabel>
+                  <div>
+                    {invoice.categoryDisplayName || invoice.planType || 'Service'}
+                  </div>
+                </MobileValue>
+
+                <MobileValue>
+                  <MobileLabel>Due Date</MobileLabel>
+                  <div>{formatDate(invoice.dueDate)}</div>
+                </MobileValue>
+
+                <MobileValue>
+                  <MobileLabel>Status</MobileLabel>
+                  <div>
+                    <StatusBadge status={invoice.status}>
+                      {getStatusDisplay(invoice.status)}
+                    </StatusBadge>
+                  </div>
+                </MobileValue>
+
+                <MobileValue>
+                  <MobileLabel>Amount</MobileLabel>
+                  <Amount>{formatCurrency(invoice.amount)}</Amount>
+                </MobileValue>
+
+                <MobileValue>
+                  <MobileLabel>Total</MobileLabel>
+                  <Amount highlight>{formatCurrency(invoice.total)}</Amount>
+                </MobileValue>
+              </MobileGrid>
+
+              <ActionButtons>
+                      <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</LocalActionButton>
+                      {invoice.status === 'draft' && (
+                        <>
+                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
+                          <LocalActionButton onClick={() => handleSendInvoice(invoice)}>Send</LocalActionButton>
+                        </>
+                      )}
+                      {/* 미결제 상태: 편집, 다운로드, 이메일발송, 삭제 */}
+                      {(invoice.status === 'pending_payment' || invoice.status === '' || !invoice.status) && (
+                        <>
+                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
+                          <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download Invoice">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                              <polyline points="7,10 12,15 17,10"/>
+                              <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                          </LocalActionButton>
+                          <LocalActionButton variant="email" onClick={() => handleResendInvoice(invoice)} title="Send Invoice">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                              <polyline points="22,6 12,13 2,6"/>
+                            </svg>
+                          </LocalActionButton>
+                          <LocalIconButton onClick={() => handleDeleteInvoice(invoice)} title="Delete Invoice">
+                            <IconSymbol>×</IconSymbol>
+                          </LocalIconButton>
+                        </>
+                      )}
+
+                      {/* 결제정보 확인중 상태: 결제확인, 편집, 다운로드, 이메일발송 */}
+                      {invoice.status === 'payment_submitted' && (
+                        <>
+                          {invoice.hasPaymentInfo && (
+                            <LocalActionButton variant="primary" onClick={() => handleConfirmPayment(invoice)}>Confirm</LocalActionButton>
+                          )}
+                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
+                          <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download Invoice">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                              <polyline points="7,10 12,15 17,10"/>
+                              <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                          </LocalActionButton>
+                          <LocalActionButton variant="email" onClick={() => handleResendInvoice(invoice)} title="Resend Invoice">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                              <polyline points="22,6 12,13 2,6"/>
+                            </svg>
+                          </LocalActionButton>
+                        </>
+                      )}
+
+                      {/* 연체 상태: 편집, 다운로드, 이메일발송, 삭제 */}
+                      {invoice.status === 'overdue' && (
+                        <>
+                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
+                          <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download Invoice">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                              <polyline points="7,10 12,15 17,10"/>
+                              <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                          </LocalActionButton>
+                          <LocalActionButton variant="email" onClick={() => handleResendInvoice(invoice)} title="Resend Invoice">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                              <polyline points="22,6 12,13 2,6"/>
+                            </svg>
+                          </LocalActionButton>
+                          <LocalIconButton onClick={() => handleDeleteInvoice(invoice)} title="Delete Invoice">
+                            <IconSymbol>×</IconSymbol>
+                          </LocalIconButton>
+                        </>
+                      )}
+                      {invoice.status === 'paid' && (
+                        <LocalActionButton variant="primary" onClick={() => generateInvoicePDF(invoice)}>Download PDF</LocalActionButton>
+                      )}
+                      {/* 취소됨 상태: View만 가능 */}
+                      {invoice.status === 'cancelled' && (
+                        <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download Invoice">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7,10 12,15 17,10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                          </svg>
+                        </LocalActionButton>
+                      )}
+              </ActionButtons>
+            </InvoiceTableRow>
+          ))}
+
+          {filteredInvoices.length === 0 && (
+            <EmptyState>
+              <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>No Invoices Found</div>
+              <div style={{ fontSize: '14px' }}>
+                {invoices.length === 0 ? 'Create your first invoice to get started' : 'Try adjusting your filters'}
+              </div>
+            </EmptyState>
+          )}
+        </Table>
+
+        {/* Create Invoice Modal */}
+        {showCreateInvoiceModal && (
+          <Modal onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowCreateInvoiceModal(false);
+              resetInvoiceForm();
+            }
+          }}>
+            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+              <ModalHeader>
+                <ModalTitle>Create Invoice</ModalTitle>
+                <CloseButton onClick={() => {
+                  setShowCreateInvoiceModal(false);
+                  resetInvoiceForm();
+                }}>×</CloseButton>
+              </ModalHeader>
+              <ModalBody>
+                <FormGroup>
+                  <FormLabel>Search Manager or Restaurant *</FormLabel>
+                  <div style={{position: 'relative'}}>
+                    <FormInput
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => handleSearch(e.target.value)}
+                      onFocus={() => setShowSearchDropdown(true)}
+                      onBlur={() => setTimeout(() => setShowSearchDropdown(false), 200)}
+                      placeholder="Type to search for managers or restaurants"
+                      required
+                    />
+                    {showSearchDropdown && (searchResults.managers.length > 0 || searchResults.restaurants.length > 0) && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        background: 'white',
+                        border: '1px solid #E6EBF1',
+                        borderRadius: '8px',
+                        maxHeight: '300px',
+                        overflowY: 'auto',
+                        zIndex: 1000,
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
+                      }}>
+                        {searchResults.managers.length > 0 && (
+                          <div>
+                            <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>
+                              MANAGERS
+                            </div>
+                            {searchResults.managers.map(manager => (
+                              <div
+                                key={manager.id}
+                                onClick={() => selectTarget('manager', manager)}
+                                style={{
+                                  padding: '12px',
+                                  cursor: 'pointer',
+                                  borderBottom: '1px solid #F3F4F6',
+                                  transition: 'background 0.2s'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                              >
+                                <div style={{fontWeight: '500', color: '#0A2540'}}>{manager.fullName}</div>
+                                <div style={{fontSize: '13px', color: '#6B7280'}}>{manager.companyName || manager.email}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {searchResults.restaurants.length > 0 && (
+                          <div>
+                            <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>
+                              RESTAURANTS
+                            </div>
+                            {searchResults.restaurants.map(restaurant => {
+                              const manager = managers.find(m => m.id === restaurant.manager_id);
+                              return (
+                                <div
+                                  key={restaurant.id}
+                                  onClick={() => selectTarget('restaurant', restaurant)}
+                                  style={{
+                                    padding: '12px',
+                                    cursor: 'pointer',
+                                    borderBottom: '1px solid #F3F4F6',
+                                    transition: 'background 0.2s'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                                >
+                                  <div style={{fontWeight: '500', color: '#0A2540'}}>{restaurant.name}</div>
+                                  <div style={{fontSize: '13px', color: '#6B7280'}}>Manager: {manager?.fullName || 'Unknown'}</div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {selectedTarget && (
+                    <div style={{
+                      marginTop: '8px',
+                      padding: '12px',
+                      background: '#F0F7FF',
+                      border: '1px solid #B3D9FF',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <div>
+                        <div style={{fontWeight: '500', color: '#0A2540'}}>
+                          {selectedTarget.type === 'manager'
+                            ? (selectedTarget.data as Manager).fullName
+                            : (selectedTarget.data as Restaurant).name}
+                        </div>
+                        <div style={{fontSize: '13px', color: '#6B7280'}}>
+                          {selectedTarget.type === 'manager'
+                            ? `${(selectedTarget.data as Manager).companyName} • Manager`
+                            : `${(selectedTarget.data as Restaurant).address || 'No address'} • Restaurant`}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setSelectedTarget(null);
+                          setSearchQuery('');
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#6B7280',
+                          cursor: 'pointer',
+                          fontSize: '18px',
+                          lineHeight: '1',
+                          padding: '4px'
+                        }}
+                        title="Remove selection"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                </FormGroup>
+                <FormRow>
+                  <FormGroup>
+                    <FormLabel>Amount (RM) *</FormLabel>
+                    <FormInput
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={newInvoice.amount}
+                      onChange={(e) => {
+                        const amount = parseFloat(e.target.value) || 0;
+                        const tax = amount * 0.06;
+                        const total = amount + tax;
+                        setNewInvoice({
+                          ...newInvoice,
+                          amount: e.target.value,
+                          tax: tax.toFixed(2),
+                          total: total.toFixed(2)
+                        });
+                      }}
+                      placeholder="0.00"
+                      required
+                    />
+                  </FormGroup>
+                  <FormGroup>
+                    <FormLabel>Due Date *</FormLabel>
+                    <FormInput
+                      type="date"
+                      value={newInvoice.dueDate}
+                      onChange={(e) => setNewInvoice({...newInvoice, dueDate: e.target.value})}
+                      required
+                      min={new Date().toISOString().split('T')[0]}
+                    />
+                  </FormGroup>
+                </FormRow>
+
+                <FormGroup>
+                  <FormLabel>Invoice Category</FormLabel>
+                  <FormSelect
+                    value={newInvoice.invoiceCategory || 'service'}
+                    onChange={(e) => setNewInvoice({...newInvoice, invoiceCategory: e.target.value})}
+                  >
+                    <option value="service">Service</option>
+                    <option value="consulting">Consulting</option>
+                    <option value="others">Others</option>
+                  </FormSelect>
+                </FormGroup>
+
+                {newInvoice.invoiceCategory === 'others' && (
+                  <FormGroup>
+                    <FormLabel>Plan/Item</FormLabel>
+                    <FormTextarea
+                      value={newInvoice.customDescription || ''}
+                      onChange={(e) => setNewInvoice({...newInvoice, customDescription: e.target.value})}
+                      rows={3}
+                    />
+                  </FormGroup>
+                )}
+
+                {((newInvoice.invoiceCategory || 'service') === 'service' || newInvoice.invoiceCategory === 'consulting') && (
+                  <FormGroup>
+                    <FormLabel>Plan/Item</FormLabel>
+                    <FormTextarea
+                      value={newInvoice.serviceDescription || ''}
+                      onChange={(e) => setNewInvoice({...newInvoice, serviceDescription: e.target.value})}
+                      rows={3}
+                    />
+                  </FormGroup>
+                )}
+                <InvoiceSummary>
+                  <SummaryRow>
+                    <span>Subtotal:</span>
+                    <span>RM {parseFloat(newInvoice.amount || '0').toFixed(2)}</span>
+                  </SummaryRow>
+                  <SummaryRow>
+                    <span>Tax (6%):</span>
+                    <span>RM {parseFloat(newInvoice.tax || '0').toFixed(2)}</span>
+                  </SummaryRow>
+                  <SummaryRow highlight>
+                    <span>Total:</span>
+                    <span><strong>RM {parseFloat(newInvoice.total || '0').toFixed(2)}</strong></span>
+                  </SummaryRow>
+                </InvoiceSummary>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="secondary" onClick={() => {
+                  setShowCreateInvoiceModal(false);
+                  resetInvoiceForm();
+                }}>
+                  Cancel
+                </Button>
+                <Button 
+                  variant="primary" 
+                  onClick={handleSubmitInvoice}
+                  disabled={!selectedTarget || !newInvoice.amount || !newInvoice.dueDate}
+                >
+                  Create Invoice
+                </Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
+        )}
+
+        {/* View Invoice Modal */}
+        {showViewModal && selectedInvoice && (
+          <Modal onClick={() => setShowViewModal(false)}>
+            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+              <ModalHeader>
+                <ModalTitle>Invoice Details - {selectedInvoice.invoiceNumber}</ModalTitle>
+                <CloseButton onClick={() => setShowViewModal(false)}>×</CloseButton>
+              </ModalHeader>
+              <ModalBody>
+                <FormRow>
+                  <FormGroup>
+                    <FormLabel>Invoice Number</FormLabel>
+                    <div>{selectedInvoice.invoiceNumber}</div>
+                  </FormGroup>
+                  <FormGroup>
+                    <FormLabel>Status</FormLabel>
+                    <StatusBadge status={selectedInvoice.status}>
+                      {getStatusDisplay(selectedInvoice.status)}
+                    </StatusBadge>
+                  </FormGroup>
+                </FormRow>
+                <FormRow>
+                  <FormGroup>
+                    <FormLabel>Customer</FormLabel>
+                    <div>{selectedInvoice.customerName}</div>
+                  </FormGroup>
+                  <FormGroup>
+                    <FormLabel>Address</FormLabel>
+                    <div>{selectedInvoice.customerAddress}</div>
+                  </FormGroup>
+                </FormRow>
+                <FormRow>
+                  <FormGroup>
+                    <FormLabel>Customer</FormLabel>
+                    <div>{getPayerDisplay(selectedInvoice.payerType || 'restaurant')}</div>
+                  </FormGroup>
+                  <FormGroup>
+                    <FormLabel>Restaurant</FormLabel>
+                    <div>{selectedInvoice.restaurantName}</div>
+                  </FormGroup>
+                </FormRow>
+                <FormRow>
+                  <FormGroup>
+                    <FormLabel>Issue Date</FormLabel>
+                    <div>{selectedInvoice.issueDate}</div>
+                  </FormGroup>
+                  <FormGroup>
+                    <FormLabel>Due Date</FormLabel>
+                    <div>{selectedInvoice.dueDate}</div>
+                  </FormGroup>
+                </FormRow>
+                <FormGroup>
+                  <FormLabel>Items</FormLabel>
+                  {selectedInvoice.items.map((item, index) => (
+                    <div key={index} style={{ padding: '8px', background: '#F8FAFC', borderRadius: '4px', marginBottom: '8px' }}>
+                      {item.description} - RM {item.total.toFixed(2)}
+                    </div>
+                  ))}
+                </FormGroup>
+                <InvoiceSummary>
+                  <SummaryRow>
+                    <span>Subtotal:</span>
+                    <span>RM {selectedInvoice.amount.toFixed(2)}</span>
+                  </SummaryRow>
+                  <SummaryRow>
+                    <span>Tax (6%):</span>
+                    <span>RM {selectedInvoice.tax.toFixed(2)}</span>
+                  </SummaryRow>
+                  <SummaryRow highlight>
+                    <span>Total:</span>
+                    <span><strong>RM {selectedInvoice.total.toFixed(2)}</strong></span>
+                  </SummaryRow>
+                </InvoiceSummary>
+              </ModalBody>
+            </ModalContent>
+          </Modal>
+        )}
+
+        {/* Payment Confirmation Modal */}
+        {showPaymentConfirmModal && selectedInvoice && (
+          <Modal onClick={() => setShowPaymentConfirmModal(false)}>
+            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+              <ModalHeader>
+                <ModalTitle>Confirm Payment - {selectedInvoice.invoiceNumber}</ModalTitle>
+                <CloseButton onClick={() => setShowPaymentConfirmModal(false)}>×</CloseButton>
+              </ModalHeader>
+              <ModalBody>
+                <FormGroup>
+                  <FormLabel>Payment Confirmation</FormLabel>
+                  <InvoiceSummary>
+                    <SummaryRow>
+                      <span>Manager:</span>
+                      <span>{selectedInvoice.managerName}</span>
+                    </SummaryRow>
+                    <SummaryRow>
+                      <span>Company:</span>
+                      <span>{selectedInvoice.companyName}</span>
+                    </SummaryRow>
+                    <SummaryRow>
+                      <span>Invoice Number:</span>
+                      <span>{selectedInvoice.invoiceNumber}</span>
+                    </SummaryRow>
+                    <SummaryRow>
+                      <span>Due Date:</span>
+                      <span>{formatDate(selectedInvoice.dueDate)}</span>
+                    </SummaryRow>
+                    <SummaryRow highlight>
+                      <span><strong>Payment Amount:</strong></span>
+                      <span><strong>{formatCurrency(selectedInvoice.total)}</strong></span>
+                    </SummaryRow>
+                  </InvoiceSummary>
+                </FormGroup>
+                
+                <div style={{ 
+                  background: '#FEF3C7', 
+                  border: '1px solid #F59E0B', 
+                  borderRadius: '8px', 
+                  padding: '16px', 
+                  margin: '16px 0' 
+                }}>
+                  <p style={{ margin: 0, color: '#92400E', fontSize: '14px' }}>
+                    <strong>⚠️ Confirm Payment Receipt</strong><br />
+                    Only mark this invoice as paid if you have received and verified the payment from the manager.
+                    This action will update the invoice status to "Paid" and cannot be easily undone.
+                  </p>
+                </div>
+                
+                <FormGroup>
+                  <FormLabel>Confirmation Details</FormLabel>
+                  <div style={{ 
+                    fontSize: '14px', 
+                    lineHeight: '1.6',
+                    color: '#374151',
+                    background: '#F8FAFC',
+                    padding: '12px',
+                    borderRadius: '6px'
+                  }}>
+                    • Payment Date: {new Date().toLocaleDateString('en-MY')}<br />
+                    • Status Change: {selectedInvoice.status} → Paid<br />
+                    • This will update the invoice status immediately
+                  </div>
+                </FormGroup>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="secondary" onClick={() => setShowPaymentConfirmModal(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" onClick={handleMarkAsPaid}>
+                  Confirm Payment Received
+                </Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
+        )}
+
+        {/* Edit Invoice Modal */}
+        {showEditModal && selectedInvoice && editInvoice && (
+          <Modal onClick={() => setShowEditModal(false)}>
+            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+              <ModalHeader>
+                <ModalTitle>Edit Invoice - {selectedInvoice.invoiceNumber}</ModalTitle>
+                <CloseButton onClick={() => setShowEditModal(false)}>×</CloseButton>
+              </ModalHeader>
+              <ModalBody>
+                <FormGroup>
+                  <FormLabel>Search Manager or Restaurant *</FormLabel>
+                  <div style={{position: 'relative'}}>
+                    <FormInput
+                      type="text"
+                      value={editSearchQuery}
+                      onChange={(e) => handleEditSearch(e.target.value)}
+                      onFocus={() => setShowEditSearchDropdown(true)}
+                      onBlur={() => setTimeout(() => setShowEditSearchDropdown(false), 200)}
+                      placeholder="Type to search for managers or restaurants"
+                      required
+                    />
+                    {showEditSearchDropdown && (editSearchResults.managers.length > 0 || editSearchResults.restaurants.length > 0) && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        background: 'white',
+                        border: '1px solid #E6EBF1',
+                        borderRadius: '8px',
+                        maxHeight: '300px',
+                        overflowY: 'auto',
+                        zIndex: 1000,
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
+                      }}>
+                        {editSearchResults.managers.length > 0 && (
+                          <div>
+                            <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>
+                              MANAGERS
+                            </div>
+                            {editSearchResults.managers.map(manager => (
+                              <div
+                                key={manager.id}
+                                onClick={() => handleEditTargetSelect('manager', manager)}
+                                style={{
+                                  padding: '12px',
+                                  cursor: 'pointer',
+                                  borderBottom: '1px solid #F3F4F6',
+                                  transition: 'background 0.2s'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                              >
+                                <div style={{fontWeight: '500', color: '#0A2540'}}>{manager.fullName}</div>
+                                <div style={{fontSize: '13px', color: '#6B7280'}}>{manager.companyName || manager.email}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {editSearchResults.restaurants.length > 0 && (
+                          <div>
+                            <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>
+                              RESTAURANTS
+                            </div>
+                            {editSearchResults.restaurants.map(restaurant => {
+                              const manager = managers.find(m => m.id === restaurant.manager_id);
+                              return (
+                                <div
+                                  key={restaurant.id}
+                                  onClick={() => handleEditTargetSelect('restaurant', restaurant)}
+                                  style={{
+                                    padding: '12px',
+                                    cursor: 'pointer',
+                                    borderBottom: '1px solid #F3F4F6',
+                                    transition: 'background 0.2s'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                                >
+                                  <div style={{fontWeight: '500', color: '#0A2540'}}>{restaurant.name}</div>
+                                  <div style={{fontSize: '13px', color: '#6B7280'}}>
+                                    {manager ? `Manager: ${manager.fullName}` : 'No manager assigned'} • {restaurant.address || 'No address'}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {editSelectedTarget && (
+                    <div style={{
+                      marginTop: '8px',
+                      padding: '12px',
+                      background: '#F0F7FF',
+                      border: '1px solid #B3D9FF',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <div>
+                        <div style={{fontWeight: '500', color: '#0A2540'}}>
+                          {editSelectedTarget.type === 'manager'
+                            ? (editSelectedTarget.data as Manager).fullName
+                            : (editSelectedTarget.data as Restaurant).name}
+                        </div>
+                        <div style={{fontSize: '13px', color: '#6B7280'}}>
+                          {editSelectedTarget.type === 'manager'
+                            ? `${(editSelectedTarget.data as Manager).companyName} • Manager`
+                            : `${(editSelectedTarget.data as Restaurant).address || 'No address'} • Restaurant`}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setEditSelectedTarget(null);
+                          setEditSearchQuery('');
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#6B7280',
+                          cursor: 'pointer',
+                          fontSize: '16px',
+                          padding: '4px'
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                </FormGroup>
+
+
+                <FormRow>
+                  <FormGroup>
+                    <FormLabel>Amount (RM)</FormLabel>
+                    <FormInput
+                      type="number"
+                      value={editInvoice.amount}
+                      onChange={(e) => {
+                        const amount = parseFloat(e.target.value) || 0;
+                        const tax = amount * 0.06;
+                        const total = amount + tax;
+                        setEditInvoice({
+                          ...editInvoice,
+                          amount: e.target.value,
+                          tax: tax.toFixed(2),
+                          total: total.toFixed(2)
+                        });
+                      }}
+                    />
+                  </FormGroup>
+                  <FormGroup>
+                    <FormLabel>Due Date</FormLabel>
+                    <FormInput
+                      type="date"
+                      value={editInvoice.dueDate}
+                      onChange={(e) => setEditInvoice({...editInvoice, dueDate: e.target.value})}
+                    />
+                  </FormGroup>
+                </FormRow>
+
+                <FormGroup>
+                  <FormLabel>Status</FormLabel>
+                  <FormSelect
+                    value={editInvoice.status}
+                    onChange={(e) => setEditInvoice({...editInvoice, status: e.target.value})}
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="pending_payment">Pending Payment</option>
+                    <option value="payment_submitted">Payment Submitted</option>
+                    <option value="paid">Paid</option>
+                    <option value="overdue">Overdue</option>
+                    <option value="cancelled">Cancelled</option>
+                  </FormSelect>
+                </FormGroup>
+                <FormGroup>
+                  <FormLabel>Invoice Category</FormLabel>
+                  <FormSelect
+                    value={editInvoice.invoiceCategory || 'service'}
+                    onChange={(e) => setEditInvoice({...editInvoice, invoiceCategory: e.target.value})}
+                  >
+                    <option value="service">Service</option>
+                    <option value="consulting">Consulting</option>
+                    <option value="others">Others</option>
+                  </FormSelect>
+                </FormGroup>
+
+
+                {editInvoice.invoiceCategory === 'others' && (
+                  <FormGroup>
+                    <FormLabel>Plan/Item</FormLabel>
+                    <FormTextarea
+                      value={editInvoice.customDescription || ''}
+                      onChange={(e) => setEditInvoice({...editInvoice, customDescription: e.target.value})}
+                      rows={3}
+                    />
+                  </FormGroup>
+                )}
+
+                {((editInvoice.invoiceCategory || 'service') === 'service' || editInvoice.invoiceCategory === 'consulting') && (
+                  <FormGroup>
+                    <FormLabel>Plan/Item</FormLabel>
+                    <FormTextarea
+                      value={editInvoice.serviceDescription || ''}
+                      onChange={(e) => setEditInvoice({...editInvoice, serviceDescription: e.target.value})}
+                      rows={3}
+                    />
+                  </FormGroup>
+                )}
+
+                <InvoiceSummary>
+                  <SummaryRow>
+                    <span>Subtotal:</span>
+                    <span>RM {parseFloat(editInvoice.amount || '0').toFixed(2)}</span>
+                  </SummaryRow>
+                  <SummaryRow>
+                    <span>Tax (6%):</span>
+                    <span>RM {parseFloat(editInvoice.tax || '0').toFixed(2)}</span>
+                  </SummaryRow>
+                  <SummaryRow highlight>
+                    <span>Total:</span>
+                    <span><strong>RM {parseFloat(editInvoice.total || '0').toFixed(2)}</strong></span>
+                  </SummaryRow>
+                </InvoiceSummary>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="secondary" onClick={() => setShowEditModal(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" onClick={handleSaveEdit}>
+                  Save Changes
+                </Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
+        )}
+
+        {/* Send Invoice Confirmation Modal */}
+        {showSendConfirmModal && selectedInvoice && (
+          <Modal onClick={() => setShowSendConfirmModal(false)}>
+            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+              <ModalHeader>
+                <ModalTitle>Send Invoice</ModalTitle>
+                <CloseButton onClick={() => setShowSendConfirmModal(false)}>×</CloseButton>
+              </ModalHeader>
+              <ModalBody>
+                <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                  <h3 style={{
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: '#0A2540',
+                    marginBottom: '12px'
+                  }}>Send Invoice to Manager</h3>
+                  <p style={{ 
+                    fontSize: '14px', 
+                    color: '#6B7280', 
+                    marginBottom: '20px',
+                    lineHeight: '1.6' 
+                  }}>
+                    Are you sure you want to send invoice <strong>{selectedInvoice.invoiceNumber}</strong> to <strong>{selectedInvoice.managerName}</strong>?
+                  </p>
+                  <div style={{
+                    background: '#F8FAFC',
+                    padding: '16px',
+                    borderRadius: '8px',
+                    border: '1px solid #E6EBF1'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ color: '#6B7280' }}>Invoice:</span>
+                      <span style={{ fontWeight: '500' }}>{selectedInvoice.invoiceNumber}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ color: '#6B7280' }}>Manager:</span>
+                      <span style={{ fontWeight: '500' }}>{selectedInvoice.managerName}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ color: '#6B7280' }}>Company:</span>
+                      <span style={{ fontWeight: '500' }}>{selectedInvoice.companyName}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#6B7280' }}>Amount:</span>
+                      <span style={{ fontWeight: '600', color: '#059669' }}>{formatCurrency(selectedInvoice.total)}</span>
+                    </div>
+                  </div>
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="secondary" onClick={() => setShowSendConfirmModal(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" onClick={confirmSendInvoice}>
+                  Send Invoice
+                </Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
+        )}
+
+        {/* Resend Invoice Confirmation Modal */}
+        {showResendConfirmModal && selectedInvoice && (
+          <Modal onClick={() => setShowResendConfirmModal(false)}>
+            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+              <ModalHeader>
+                <ModalTitle>Resend Invoice</ModalTitle>
+                <CloseButton onClick={() => setShowResendConfirmModal(false)}>×</CloseButton>
+              </ModalHeader>
+              <ModalBody>
+                <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                  <h3 style={{
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: '#0A2540',
+                    marginBottom: '12px'
+                  }}>Resend Invoice</h3>
+                  <p style={{ 
+                    fontSize: '14px', 
+                    color: '#6B7280', 
+                    marginBottom: '20px',
+                    lineHeight: '1.6' 
+                  }}>
+                    Resend invoice <strong>{selectedInvoice.invoiceNumber}</strong> to <strong>{selectedInvoice.managerName}</strong>?
+                  </p>
+                  <div style={{
+                    background: '#FEF3C7',
+                    padding: '12px',
+                    borderRadius: '6px',
+                    border: '1px solid #F59E0B',
+                    fontSize: '13px',
+                    color: '#92400E'
+                  }}>
+                    ℹ️ This will send another copy of the invoice to the manager's email.
+                  </div>
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="secondary" onClick={() => setShowResendConfirmModal(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" onClick={confirmResendInvoice}>
+                  Resend Invoice
+                </Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
+        )}
+
+        {/* Cancel Invoice Confirmation Modal */}
+        {showCancelConfirmModal && selectedInvoice && (
+          <Modal onClick={() => setShowCancelConfirmModal(false)}>
+            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+              <ModalHeader>
+                <ModalTitle>Cancel Invoice</ModalTitle>
+                <CloseButton onClick={() => setShowCancelConfirmModal(false)}>×</CloseButton>
+              </ModalHeader>
+              <ModalBody>
+                <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                  <h3 style={{
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: '#0A2540',
+                    marginBottom: '12px'
+                  }}>Cancel Invoice</h3>
+                  <p style={{ 
+                    fontSize: '14px', 
+                    color: '#6B7280', 
+                    marginBottom: '20px',
+                    lineHeight: '1.6' 
+                  }}>
+                    Are you sure you want to cancel invoice <strong>{selectedInvoice.invoiceNumber}</strong>?
+                  </p>
+                  <div style={{
+                    background: '#FEE2E2',
+                    padding: '16px',
+                    borderRadius: '8px',
+                    border: '1px solid #FCA5A5',
+                    marginBottom: '16px'
+                  }}>
+                    <p style={{ 
+                      margin: 0, 
+                      color: '#991B1B', 
+                      fontSize: '14px', 
+                      fontWeight: '500'
+                    }}>
+                      <strong>⚠️ This action cannot be undone</strong>
+                    </p>
+                    <p style={{ 
+                      margin: '8px 0 0 0', 
+                      color: '#7F1D1D', 
+                      fontSize: '13px'
+                    }}>
+                      The invoice will be marked as cancelled and cannot be sent or processed for payment.
+                    </p>
+                  </div>
+                  <div style={{
+                    background: '#F8FAFC',
+                    padding: '16px',
+                    borderRadius: '8px',
+                    border: '1px solid #E6EBF1'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ color: '#6B7280' }}>Invoice:</span>
+                      <span style={{ fontWeight: '500' }}>{selectedInvoice.invoiceNumber}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ color: '#6B7280' }}>Manager:</span>
+                      <span style={{ fontWeight: '500' }}>{selectedInvoice.managerName}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#6B7280' }}>Amount:</span>
+                      <span style={{ fontWeight: '600', color: '#DC2626' }}>{formatCurrency(selectedInvoice.total)}</span>
+                    </div>
+                  </div>
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="secondary" onClick={() => setShowCancelConfirmModal(false)}>
+                  Keep Invoice
+                </Button>
+                <Button 
+                  variant="primary" 
+                  onClick={confirmCancelInvoice}
+                  style={{ background: '#DC2626', borderColor: '#DC2626' }}
+                >
+                  Cancel Invoice
+                </Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
+        )}
+
+        {/* Delete Invoice Confirmation Modal */}
+        {showDeleteConfirmModal && selectedInvoice && (
+          <Modal onClick={() => setShowDeleteConfirmModal(false)}>
+            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+              <ModalHeader>
+                <ModalTitle>Delete Invoice</ModalTitle>
+                <CloseButton onClick={() => setShowDeleteConfirmModal(false)}>×</CloseButton>
+              </ModalHeader>
+              <ModalBody>
+                <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                  <h3 style={{
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: '#0A2540',
+                    marginBottom: '12px'
+                  }}>Delete Invoice</h3>
+                  <p style={{
+                    fontSize: '14px',
+                    color: '#6B7280',
+                    lineHeight: '1.5'
+                  }}>
+                    Are you sure you want to permanently delete invoice <strong>#{selectedInvoice.invoiceNumber}</strong>?
+                    <br />This action cannot be undone.
+                  </p>
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="secondary" onClick={() => setShowDeleteConfirmModal(false)}>
+                  Keep Invoice
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={confirmDeleteInvoice}
+                  style={{ background: '#DC2626', borderColor: '#DC2626' }}
+                >
+                  Delete Invoice
+                </Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
+        )}
+
+        {/* Success Modal */}
+        {showSuccessModal && (
+          <Modal onClick={() => setShowSuccessModal(false)}>
+            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+              <ModalHeader>
+                <ModalTitle>Success</ModalTitle>
+                <CloseButton onClick={() => setShowSuccessModal(false)}>×</CloseButton>
+              </ModalHeader>
+              <ModalBody>
+                <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                  <p style={{
+                    fontSize: '16px',
+                    color: '#0A2540',
+                    marginBottom: '8px',
+                    fontWeight: '500'
+                  }}>{successMessage}</p>
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="primary" onClick={() => setShowSuccessModal(false)}>
+                  OK
+                </Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
+        )}
+
+        {/* Download Success Modal */}
+        </Content>
+      </Container>
+    </MainLayout>
+  );
+};
+
+export default InvoicesPage;
