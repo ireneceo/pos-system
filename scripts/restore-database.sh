@@ -2,9 +2,9 @@
 # 데이터베이스 복원 스크립트
 
 BACKUP_DIR="/var/backups/orderhere"
-DB_NAME="orderhere_db"
-DB_USER="root"
-DB_PASS="rootpassword"  # 실제 비밀번호로 변경 필요
+DB_NAME="purple_dev_db"
+DB_USER="dev_admin"
+DB_PASS="djiflmdjdhue"
 
 # 사용법 출력
 if [ $# -eq 0 ]; then

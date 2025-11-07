@@ -4,9 +4,9 @@
 
 # 설정
 BACKUP_DIR="/var/backups/orderhere"
-DB_NAME="orderhere_db"
-DB_USER="root"
-DB_PASS="rootpassword"  # 실제 비밀번호로 변경 필요
+DB_NAME="purple_dev_db"
+DB_USER="dev_admin"
+DB_PASS="djiflmdjdhue"
 TIMESTAMP=$(date +%Y-%m-%d_%H%M%S)
 DATE=$(date +%Y-%m-%d)
 
@@ -31,6 +31,7 @@ mysqldump -u $DB_USER -p$DB_PASS \
   --lock-tables=false \
   --routines \
   --triggers \
+  --no-tablespaces \
   $DB_NAME | gzip > $BACKUP_FILE
 
 # 백업 성공 여부 확인
