@@ -10,28 +10,41 @@ import styled, { createGlobalStyle } from 'styled-components';
 import { useStore } from '../../contexts/StoreContext';
 
 // Global print styles
-const PrintStyles = createGlobalStyle<{ isPrinting: boolean }>`
+const PrintStyles = createGlobalStyle`
   @media print {
-    ${props => props.isPrinting && `
-      body * {
-        visibility: hidden !important;
-      }
-      
-      #order-complete-bill-print, #order-complete-bill-print * {
-        visibility: visible !important;
-      }
-      
-      #order-complete-bill-print {
-        display: block !important;
-        position: absolute !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 80mm !important;
-        background: white !important;
-        padding: 10mm !important;
-        margin: 0 !important;
-      }
-    `}
+    /* Hide everything by removing from layout */
+    body > *:not(#order-complete-bill-print) {
+      display: none !important;
+    }
+
+    /* Reset body for print */
+    body {
+      margin: 0 !important;
+      padding: 0 !important;
+      background: white !important;
+    }
+
+    /* Position and style the bill for printing */
+    #order-complete-bill-print {
+      display: block !important;
+      position: static !important;
+      width: 80mm !important;
+      max-width: 80mm !important;
+      background: white !important;
+      padding: 10mm !important;
+      margin: 0 !important;
+      visibility: visible !important;
+    }
+
+    #order-complete-bill-print * {
+      visibility: visible !important;
+    }
+
+    /* Ensure proper page settings */
+    @page {
+      size: 80mm auto;
+      margin: 0;
+    }
   }
 `;
 
@@ -231,27 +244,26 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
   orderData,
   onPrintBill
 }) => {
-  const [isPrinting, setIsPrinting] = React.useState(false);
   const { getStoreInfo } = useStore();
   const storeInfo = getStoreInfo();
-  
+
   const formatDateTime = (date: Date) => {
     return date.toLocaleString('en-MY', {
       year: 'numeric',
-      month: '2-digit', 
+      month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
       hour12: true
     });
   };
-  
+
   const handlePrintBill = () => {
-    setIsPrinting(true);
+    // Small delay to ensure DOM is ready
     setTimeout(() => {
       window.print();
+      // Callback after print dialog
       setTimeout(() => {
-        setIsPrinting(false);
         onPrintBill();
       }, 100);
     }, 100);
@@ -270,7 +282,7 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
 
   return (
     <>
-      <PrintStyles isPrinting={isPrinting} />
+      <PrintStyles />
       <Modal
         isOpen={isOpen}
         onClose={onClose}

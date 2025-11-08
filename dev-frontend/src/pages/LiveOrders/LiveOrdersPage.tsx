@@ -745,28 +745,41 @@ const BillPrintContainer = styled.div`
 `;
 
 // Global print styles
-const PrintStyles = createGlobalStyle<{ isPrinting: boolean }>`
+const PrintStyles = createGlobalStyle`
   @media print {
-    ${props => props.isPrinting && `
-      body * {
-        visibility: hidden !important;
-      }
-      
-      #bill-print-content, #bill-print-content * {
-        visibility: visible !important;
-      }
-      
-      #bill-print-content {
-        display: block !important;
-        position: absolute !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 80mm !important;
-        background: white !important;
-        padding: 10mm !important;
-        margin: 0 !important;
-      }
-    `}
+    /* Hide everything by removing from layout */
+    body > *:not(#bill-print-content) {
+      display: none !important;
+    }
+
+    /* Reset body for print */
+    body {
+      margin: 0 !important;
+      padding: 0 !important;
+      background: white !important;
+    }
+
+    /* Position and style the bill for printing */
+    #bill-print-content {
+      display: block !important;
+      position: static !important;
+      width: 80mm !important;
+      max-width: 80mm !important;
+      background: white !important;
+      padding: 10mm !important;
+      margin: 0 !important;
+      visibility: visible !important;
+    }
+
+    #bill-print-content * {
+      visibility: visible !important;
+    }
+
+    /* Ensure proper page settings */
+    @page {
+      size: 80mm auto;
+      margin: 0;
+    }
   }
 `;
 
@@ -857,7 +870,6 @@ const LiveOrdersPage: React.FC = () => {
   const [completedOrderData, setCompletedOrderData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo | null>(null);
-  const [isPrinting, setIsPrinting] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
   const [timeDisplayKey, setTimeDisplayKey] = useState(0); // Time display update key
   const [audioEnabled, setAudioEnabled] = useState(true); // Audio notification toggle
@@ -1188,12 +1200,8 @@ const LiveOrdersPage: React.FC = () => {
 
   const handlePrintReceipt = () => {
     if (selectedOrder) {
-      setIsPrinting(true);
       setTimeout(() => {
         window.print();
-        setTimeout(() => {
-          setIsPrinting(false);
-        }, 100);
       }, 100);
     }
   };
@@ -1202,12 +1210,8 @@ const LiveOrdersPage: React.FC = () => {
     const orderToPrint = order || selectedOrder;
     if (orderToPrint) {
       setSelectedOrder(orderToPrint);
-      setIsPrinting(true);
       setTimeout(() => {
         window.print();
-        setTimeout(() => {
-          setIsPrinting(false);
-        }, 100);
       }, 100);
     }
   };
@@ -1488,7 +1492,7 @@ const LiveOrdersPage: React.FC = () => {
 
   return (
     <MainLayout>
-      <PrintStyles isPrinting={isPrinting} />
+      <PrintStyles />
       <Container>
         <Header>
           <HeaderTitle>Live Orders Management</HeaderTitle>

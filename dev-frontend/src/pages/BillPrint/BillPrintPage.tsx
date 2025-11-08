@@ -252,7 +252,7 @@ const BillPrintPage: React.FC = () => {
         </SearchSection>
 
         {selectedOrder ? (
-          <BillContainer>
+          <BillContainer data-print-bill>
             <BillHeader>
               <StoreName>FOODCOURT CENTRAL</StoreName>
               <StoreInfo>
@@ -380,16 +380,45 @@ const BillPrintPage: React.FC = () => {
       {/* Print-only styles */}
       <style>{`
         @media print {
-          .no-print {
+          /* Hide everything by removing from layout */
+          body > *:not([data-print-bill]) {
             display: none !important;
           }
-          
-          ${BillContainer} {
-            border: none;
-            box-shadow: none;
-            max-width: 80mm;
-            margin: 0 auto;
-            padding: 10mm;
+
+          /* Reset body for print */
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+          }
+
+          /* Position bill container for print */
+          [data-print-bill] {
+            display: block !important;
+            position: static !important;
+            width: 80mm !important;
+            max-width: 80mm !important;
+            margin: 0 !important;
+            padding: 10mm !important;
+            border: none !important;
+            box-shadow: none !important;
+            background: white !important;
+            visibility: visible !important;
+          }
+
+          [data-print-bill] * {
+            visibility: visible !important;
+          }
+
+          /* Hide print button */
+          [data-print-bill] button {
+            display: none !important;
+          }
+
+          /* Ensure proper page breaks */
+          @page {
+            size: 80mm auto;
+            margin: 0;
           }
         }
       `}</style>
