@@ -737,7 +737,13 @@ const BillPrintContainer = styled.div`
   font-size: 12px;
   line-height: 1.4;
   color: #000;
-  
+
+  @media print {
+    display: block !important;
+    position: static !important;
+    left: 0 !important;
+  }
+
   * {
     color: #000 !important;
     background: white !important;
@@ -747,11 +753,6 @@ const BillPrintContainer = styled.div`
 // Global print styles
 const PrintStyles = createGlobalStyle`
   @media print {
-    /* Hide everything by removing from layout */
-    body > *:not(#bill-print-content) {
-      display: none !important;
-    }
-
     /* Reset body for print */
     body {
       margin: 0 !important;
@@ -759,20 +760,22 @@ const PrintStyles = createGlobalStyle`
       background: white !important;
     }
 
-    /* Position and style the bill for printing */
-    #bill-print-content {
-      display: block !important;
-      position: static !important;
-      width: 80mm !important;
-      max-width: 80mm !important;
-      background: white !important;
-      padding: 10mm !important;
-      margin: 0 !important;
+    /* Hide all elements except bill and its parents */
+    body * {
+      visibility: hidden !important;
+    }
+
+    /* Show bill and its children */
+    #bill-print-content,
+    #bill-print-content * {
       visibility: visible !important;
     }
 
-    #bill-print-content * {
-      visibility: visible !important;
+    /* Position bill for print */
+    #bill-print-content {
+      position: absolute !important;
+      left: 0 !important;
+      top: 0 !important;
     }
 
     /* Ensure proper page settings */

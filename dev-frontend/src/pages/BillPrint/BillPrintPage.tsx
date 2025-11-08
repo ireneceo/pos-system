@@ -69,6 +69,16 @@ const BillContainer = styled.div`
   padding: 32px;
   margin-bottom: 24px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+
+  @media print {
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 10mm !important;
+    margin: 0 !important;
+    width: 80mm !important;
+    max-width: 80mm !important;
+  }
 `;
 
 const BillHeader = styled.div`
@@ -380,11 +390,6 @@ const BillPrintPage: React.FC = () => {
       {/* Print-only styles */}
       <style>{`
         @media print {
-          /* Hide everything by removing from layout */
-          body > *:not([data-print-bill]) {
-            display: none !important;
-          }
-
           /* Reset body for print */
           body {
             margin: 0 !important;
@@ -392,22 +397,22 @@ const BillPrintPage: React.FC = () => {
             background: white !important;
           }
 
-          /* Position bill container for print */
-          [data-print-bill] {
-            display: block !important;
-            position: static !important;
-            width: 80mm !important;
-            max-width: 80mm !important;
-            margin: 0 !important;
-            padding: 10mm !important;
-            border: none !important;
-            box-shadow: none !important;
-            background: white !important;
+          /* Hide all elements except bill and its parents */
+          body * {
+            visibility: hidden !important;
+          }
+
+          /* Show bill and its children */
+          [data-print-bill],
+          [data-print-bill] * {
             visibility: visible !important;
           }
 
-          [data-print-bill] * {
-            visibility: visible !important;
+          /* Position bill for print */
+          [data-print-bill] {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
           }
 
           /* Hide print button */

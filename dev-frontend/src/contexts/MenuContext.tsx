@@ -156,12 +156,16 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         // 카테고리 추출 및 변환
         const categoryEmojis = ['🍔', '🍕', '🥤', '🍰', '🍜', '🥗', '🍣', '🌮'];
 
-        const cats = data.data.categories.map((cat: any, idx: number) => ({
-          id: cat.id || cat.name.toLowerCase().replace(/\s+/g, '_'),
-          name: cat.name,
-          emoji: cat.emoji || categoryEmojis[idx % categoryEmojis.length],
-          order: idx
-        }));
+        const cats = data.data.categories.map((cat: any, idx: number) => {
+          const categoryId = cat.id ? cat.id.toString() : cat.name.toLowerCase().replace(/\s+/g, '_');
+          console.log(`Category "${cat.name}" - ID from API: ${cat.id}, final ID: ${categoryId}`);
+          return {
+            id: categoryId,
+            name: cat.name,
+            emoji: cat.emoji || categoryEmojis[idx % categoryEmojis.length],
+            order: idx
+          };
+        });
 
         console.log('MenuContext - Transformed categories:', cats);
         setCategories(cats);
@@ -181,11 +185,21 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             }
           }
 
+          // 카테고리 ID 결정: categoryId를 문자열로 변환
+          let categoryId = '';
+          if (item.categoryId) {
+            categoryId = item.categoryId.toString();
+          } else if (item.category) {
+            categoryId = item.category.toLowerCase().replace(/\s+/g, '_');
+          }
+
+          console.log(`Item "${item.name}" - categoryId from API: ${item.categoryId}, final category: ${categoryId}`);
+
           return {
             id: item.id.toString(),
             name: item.name,
             price: parseFloat(item.price),
-            category: item.categoryId || item.category?.toLowerCase().replace(/\s+/g, '_') || '',
+            category: categoryId,
             description: item.description || '',
             emoji: item.emoji || '🍽️',  // API에서 받은 emoji 사용, 없으면 기본값
             soldOut: item.soldOut || false,

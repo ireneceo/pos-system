@@ -44,18 +44,41 @@ router.get('/', async (req, res) => {
     }));
 
     // Transform products to ensure emoji and optionGroups are included
-    const items = products.map(prod => ({
-      id: prod.id,
-      name: prod.name,
-      description: prod.description,
-      price: prod.price,
-      categoryId: prod.category,  // Use 'category' field from DB, map to 'categoryId'
-      emoji: prod.emoji || '🍽️',
-      image: prod.image,
-      restaurant_id: prod.restaurant_id,
-      soldOut: prod.soldOut || false,
-      optionGroups: prod.optionGroups || []  // Include optionGroups data
-    }));
+    const items = products.map(prod => {
+      // Find matching category by ID or name
+      let categoryId = null;
+
+      // Try to match by ID first (if category is a number)
+      const categoryById = dbCategories.find(cat => cat.id.toString() === prod.category);
+      if (categoryById) {
+        categoryId = categoryById.id.toString();
+      } else {
+        // Try to match by name (if category is a string)
+        const categoryByName = dbCategories.find(cat =>
+          cat.name.toLowerCase().replace(/\s+/g, '_') === prod.category ||
+          cat.name === prod.category
+        );
+        if (categoryByName) {
+          categoryId = categoryByName.id.toString();
+        } else {
+          // Fallback: use the category value as-is
+          categoryId = prod.category;
+        }
+      }
+
+      return {
+        id: prod.id,
+        name: prod.name,
+        description: prod.description,
+        price: prod.price,
+        categoryId: categoryId,  // Use matched category ID
+        emoji: prod.emoji || '🍽️',
+        image: prod.image,
+        restaurant_id: prod.restaurant_id,
+        soldOut: prod.soldOut || false,
+        optionGroups: prod.optionGroups || []  // Include optionGroups data
+      };
+    });
 
     res.json({
       success: true,

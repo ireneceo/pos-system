@@ -265,11 +265,34 @@ router.get('/menu/:slug', async (req, res) => {
             }))
         }));
 
-      const categoryName = categoryMap[product.category_id] || '';
+      // Find matching category by ID or name
+      let categoryId = null;
+      let categoryName = '';
+
+      // Try to match by ID first (if category is a number)
+      const categoryById = dbCategories.find(cat => cat.id.toString() === product.category);
+      if (categoryById) {
+        categoryId = categoryById.id.toString();
+        categoryName = categoryById.name;
+      } else {
+        // Try to match by name (if category is a string)
+        const categoryByName = dbCategories.find(cat =>
+          cat.name.toLowerCase().replace(/\s+/g, '_') === product.category ||
+          cat.name === product.category
+        );
+        if (categoryByName) {
+          categoryId = categoryByName.id.toString();
+          categoryName = categoryByName.name;
+        } else {
+          // Fallback: use the category value as-is
+          categoryId = product.category || '';
+          categoryName = '';
+        }
+      }
 
       return {
         id: product.id.toString(),
-        categoryId: product.category_id ? product.category_id.toString() : '',
+        categoryId: categoryId,
         categoryName: categoryName,
         name: product.name,
         price: parseFloat(product.price),
