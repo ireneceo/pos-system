@@ -369,20 +369,53 @@ router.delete('/:id', async (req, res) => {
 // Get orders by restaurant ID
 router.get('/restaurant/:restaurantId', async (req, res) => {
   try {
-    const { status, limit = 100 } = req.query;
+    const {
+      status,
+      page = 1,
+      limit = 50,
+      includeCompleted = 'true'
+    } = req.query;
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const offset = (pageNum - 1) * limitNum;
 
     let whereCondition = { restaurant_id: req.params.restaurantId };
+
+    // Filter by status if provided
     if (status) {
       whereCondition.status = status;
     }
 
+    // By default, exclude completed orders unless explicitly requested
+    if (includeCompleted === 'false') {
+      whereCondition.status = { [Op.ne]: 'completed' };
+    }
+
+    // Get total count
+    const totalCount = await Order.count({ where: whereCondition });
+
+    // Get paginated orders
     const orders = await Order.findAll({
       where: whereCondition,
       order: [['order_date', 'DESC'], ['createdAt', 'DESC']],
-      limit: parseInt(limit)
+      limit: limitNum,
+      offset: offset
     });
 
-    res.json({ success: true, data: orders });
+    const totalPages = Math.ceil(totalCount / limitNum);
+
+    res.json({
+      success: true,
+      data: orders,
+      pagination: {
+        currentPage: pageNum,
+        totalPages: totalPages,
+        totalCount: totalCount,
+        limit: limitNum,
+        hasMore: pageNum < totalPages
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

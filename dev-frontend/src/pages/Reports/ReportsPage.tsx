@@ -205,7 +205,7 @@ const ProgressBar = styled.div<{ percentage: number }>`
   border-radius: 2px;
   overflow: hidden;
   position: relative;
-  
+
   &::after {
     content: '';
     position: absolute;
@@ -218,8 +218,40 @@ const ProgressBar = styled.div<{ percentage: number }>`
   }
 `;
 
+// Drilldown Table Styles
+const DrilldownRow = styled.tr<{ level?: number; clickable?: boolean }>`
+  background: ${props =>
+    props.level === 0 ? '#FAFBFC' :
+    props.level === 1 ? '#FFFFFF' :
+    '#F8FAFC'};
+  cursor: ${props => props.clickable ? 'pointer' : 'default'};
+  transition: all 0.2s;
+
+  &:hover {
+    background: ${props => props.clickable ? '#F6F9FC' : 'inherit'};
+  }
+`;
+
+const DrilldownCell = styled.td<{ level?: number; bold?: boolean }>`
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid #F3F4F6;
+  font-size: 13px;
+  color: ${props => props.bold ? '#0A2540' : '#6B7280'};
+  font-weight: ${props => props.bold ? 600 : 400};
+  padding-left: ${props => props.level ? `${16 + (props.level * 24)}px` : '16px'};
+`;
+
+const ExpandIcon = styled.span<{ expanded?: boolean }>`
+  display: inline-block;
+  margin-right: 8px;
+  transition: transform 0.2s;
+  transform: ${props => props.expanded ? 'rotate(90deg)' : 'rotate(0deg)'};
+  color: #6B7280;
+`;
+
 // 타입 정의
-type TabType = 'sales' | 'menu' | 'customers' | 'operations';
+type TabType = 'sales' | 'details' | 'menu' | 'customers' | 'operations';
 type PeriodType = 'today' | 'week' | 'month' | 'year';
 
 // 차트 색상
@@ -250,6 +282,10 @@ const ReportsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
   const [customers, setCustomers] = useState<any[]>([]);
+
+  // Drilldown state for Sales Details tab
+  const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set());
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
 
   // activeTab 변경 시 localStorage에 저장
   useEffect(() => {
@@ -283,16 +319,14 @@ const ReportsPage: React.FC = () => {
       const orderDate = new Date(orderDateValue);
       const isInRange = orderDate >= startDate && orderDate <= endDate;
 
-      // IMPORTANT: Only include completed orders for revenue calculation
-      // This matches the backend API calculation in dashboard.js
-      const isCompleted = order.status === 'completed';
-
-      return isInRange && isCompleted;
+      // Include ALL orders (not just completed) for reports
+      // Reports should show all restaurant activity
+      return isInRange;
     });
 
-    console.log('📊 Filtered orders (completed only):', {
+    console.log('📊 Filtered orders (all statuses):', {
       filteredCount: filtered.length,
-      completedOnly: true,
+      allStatuses: true,
       sampleOrder: filtered[0]
     });
 
@@ -573,6 +607,87 @@ const ReportsPage: React.FC = () => {
 
   const peakTimesData = getPeakTimesData();
 
+  // Get drilldown sales data grouped by year -> month -> day
+  const getDrilldownSalesData = () => {
+    if (filteredOrders.length === 0) return {};
+
+    const getOrderDate = (order: any) => new Date(order.order_date || order.createdAt || order.created_at);
+    const getOrderAmount = (order: any) => parseFloat(order.final_price || order.total_amount || order.total_price || 0);
+
+    const yearData: Record<string, any> = {};
+
+    filteredOrders.forEach(order => {
+      const orderDate = getOrderDate(order);
+      const year = orderDate.getFullYear().toString();
+      const month = orderDate.toLocaleString('en-US', { year: 'numeric', month: '2-digit' }); // "2025-11"
+      const day = orderDate.toISOString().split('T')[0]; // "2025-11-09"
+
+      // Initialize year
+      if (!yearData[year]) {
+        yearData[year] = {
+          year,
+          revenue: 0,
+          orders: 0,
+          months: {}
+        };
+      }
+
+      // Initialize month
+      if (!yearData[year].months[month]) {
+        yearData[year].months[month] = {
+          month,
+          revenue: 0,
+          orders: 0,
+          days: {}
+        };
+      }
+
+      // Initialize day
+      if (!yearData[year].months[month].days[day]) {
+        yearData[year].months[month].days[day] = {
+          day,
+          revenue: 0,
+          orders: 0
+        };
+      }
+
+      const amount = getOrderAmount(order);
+
+      // Aggregate data
+      yearData[year].revenue += amount;
+      yearData[year].orders += 1;
+      yearData[year].months[month].revenue += amount;
+      yearData[year].months[month].orders += 1;
+      yearData[year].months[month].days[day].revenue += amount;
+      yearData[year].months[month].days[day].orders += 1;
+    });
+
+    return yearData;
+  };
+
+  const drilldownData = getDrilldownSalesData();
+
+  // Toggle functions for drilldown
+  const toggleYear = (year: string) => {
+    const newExpanded = new Set(expandedYears);
+    if (newExpanded.has(year)) {
+      newExpanded.delete(year);
+    } else {
+      newExpanded.add(year);
+    }
+    setExpandedYears(newExpanded);
+  };
+
+  const toggleMonth = (yearMonth: string) => {
+    const newExpanded = new Set(expandedMonths);
+    if (newExpanded.has(yearMonth)) {
+      newExpanded.delete(yearMonth);
+    } else {
+      newExpanded.add(yearMonth);
+    }
+    setExpandedMonths(newExpanded);
+  };
+
   // 날짜 범위 처리 함수
   const handlePeriodChange = (period: PeriodType) => {
     setActivePeriod(period);
@@ -748,6 +863,9 @@ const ReportsPage: React.FC = () => {
             <Tab active={activeTab === 'sales'} onClick={() => setActiveTab('sales')}>
               Sales Report
             </Tab>
+            <Tab active={activeTab === 'details'} onClick={() => setActiveTab('details')}>
+              Sales Details
+            </Tab>
             <Tab active={activeTab === 'menu'} onClick={() => setActiveTab('menu')}>
               Menu Analysis
             </Tab>
@@ -797,21 +915,21 @@ const ReportsPage: React.FC = () => {
                 <ChartCard>
                   <ChartTitle>Revenue Trend</ChartTitle>
                   <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={salesData}>
+                    <LineChart data={salesData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#F6F9FC" />
                       <XAxis dataKey="date" stroke="#6B7C93" fontSize={12} />
-                      <YAxis stroke="#6B7C93" fontSize={12} />
-                      <Tooltip 
-                        contentStyle={{ 
-                          background: 'white', 
+                      <YAxis stroke="#6B7C93" fontSize={12} width={60} />
+                      <Tooltip
+                        contentStyle={{
+                          background: 'white',
                           border: '1px solid #E6EBF1',
                           borderRadius: '6px'
                         }}
                       />
-                      <Line 
-                        type="monotone" 
-                        dataKey="sales" 
-                        stroke="#635BFF" 
+                      <Line
+                        type="monotone"
+                        dataKey="sales"
+                        stroke="#635BFF"
                         strokeWidth={2}
                         dot={{ fill: '#635BFF', r: 4 }}
                       />
@@ -827,9 +945,9 @@ const ReportsPage: React.FC = () => {
                         data={categoryData}
                         cx="50%"
                         cy="50%"
-                        labelLine={false}
-                        label={({ name, value }) => `${name} ${value}%`}
-                        outerRadius={80}
+                        labelLine={true}
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={70}
                         fill="#8884d8"
                         dataKey="value"
                       >
@@ -837,7 +955,7 @@ const ReportsPage: React.FC = () => {
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip />
+                      <Tooltip formatter={(value) => `${value}%`} />
                     </PieChart>
                   </ResponsiveContainer>
                 </ChartCard>
@@ -846,13 +964,13 @@ const ReportsPage: React.FC = () => {
               <ChartCard>
                 <ChartTitle>Hourly Orders Distribution</ChartTitle>
                 <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={hourlyData}>
+                  <BarChart data={hourlyData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#F6F9FC" />
                     <XAxis dataKey="hour" stroke="#6B7C93" fontSize={12} />
-                    <YAxis stroke="#6B7C93" fontSize={12} />
-                    <Tooltip 
-                      contentStyle={{ 
-                        background: 'white', 
+                    <YAxis stroke="#6B7C93" fontSize={12} width={60} />
+                    <Tooltip
+                      contentStyle={{
+                        background: 'white',
                         border: '1px solid #E6EBF1',
                         borderRadius: '6px'
                       }}
@@ -861,6 +979,141 @@ const ReportsPage: React.FC = () => {
                   </BarChart>
                 </ResponsiveContainer>
               </ChartCard>
+                </div>
+              )}
+          </div>
+
+          {/* Sales Details Tab - Drilldown by Year/Month/Day */}
+          <div style={{ display: activeTab === 'details' ? 'block' : 'none' }}>
+              <FilterComponent />
+              {loading ? (
+                <div style={{ textAlign: 'center', padding: '40px' }}>Loading...</div>
+              ) : filteredOrders.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
+                  No order data available for the selected period
+                </div>
+              ) : (
+                <div>
+                  <StatsRow>
+                    <StatCard color="#059669">
+                      <StatLabel>Total Revenue</StatLabel>
+                      <StatValue>RM {salesData.reduce((sum, item) => sum + item.sales, 0).toLocaleString()}</StatValue>
+                      <StatDescription>{filteredOrders.length} orders in selected period</StatDescription>
+                    </StatCard>
+                    <StatCard color="#2563EB">
+                      <StatLabel>Total Orders</StatLabel>
+                      <StatValue>{filteredOrders.length.toLocaleString()}</StatValue>
+                      <StatDescription>For selected period</StatDescription>
+                    </StatCard>
+                    <StatCard color="#DC2626">
+                      <StatLabel>Average Order Value</StatLabel>
+                      <StatValue>RM {filteredOrders.length > 0 ? (salesData.reduce((sum, item) => sum + item.sales, 0) / filteredOrders.length).toFixed(2) : '0.00'}</StatValue>
+                      <StatDescription>Per order</StatDescription>
+                    </StatCard>
+                    <StatCard color="#7C3AED">
+                      <StatLabel>Date Range</StatLabel>
+                      <StatValue>{Object.keys(drilldownData).length}</StatValue>
+                      <StatDescription>Year{Object.keys(drilldownData).length > 1 ? 's' : ''} of data</StatDescription>
+                    </StatCard>
+                  </StatsRow>
+
+                  <TableCard>
+                    <ChartTitle>Detailed Sales Breakdown ({isCustomDateRange ? `${dateRange.start} to ${dateRange.end}` : activePeriod})</ChartTitle>
+                    <Table>
+                      <thead>
+                        <tr>
+                          <TableHeader style={{ width: '40%' }}>Period</TableHeader>
+                          <TableHeader style={{ textAlign: 'right' }}>Revenue</TableHeader>
+                          <TableHeader style={{ textAlign: 'right' }}>Orders</TableHeader>
+                          <TableHeader style={{ textAlign: 'right' }}>Avg Order Value</TableHeader>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.keys(drilldownData).sort((a, b) => b.localeCompare(a)).map(year => {
+                          const yearInfo = drilldownData[year];
+                          const isYearExpanded = expandedYears.has(year);
+
+                          return (
+                            <React.Fragment key={year}>
+                              {/* Year Row */}
+                              <DrilldownRow level={0} clickable onClick={() => toggleYear(year)}>
+                                <DrilldownCell level={0} bold>
+                                  <ExpandIcon expanded={isYearExpanded}>▶</ExpandIcon>
+                                  {year}
+                                </DrilldownCell>
+                                <DrilldownCell level={0} bold style={{ textAlign: 'right' }}>
+                                  RM {yearInfo.revenue.toFixed(2)}
+                                </DrilldownCell>
+                                <DrilldownCell level={0} bold style={{ textAlign: 'right' }}>
+                                  {yearInfo.orders}
+                                </DrilldownCell>
+                                <DrilldownCell level={0} bold style={{ textAlign: 'right' }}>
+                                  RM {(yearInfo.revenue / yearInfo.orders).toFixed(2)}
+                                </DrilldownCell>
+                              </DrilldownRow>
+
+                              {/* Month Rows (only if year is expanded) */}
+                              {isYearExpanded && Object.keys(yearInfo.months).sort((a, b) => b.localeCompare(a)).map(month => {
+                                const monthInfo = yearInfo.months[month];
+                                const yearMonthKey = `${year}-${month}`;
+                                const isMonthExpanded = expandedMonths.has(yearMonthKey);
+                                const monthName = new Date(month + '-01').toLocaleString('en-US', { year: 'numeric', month: 'long' });
+
+                                return (
+                                  <React.Fragment key={yearMonthKey}>
+                                    {/* Month Row */}
+                                    <DrilldownRow level={1} clickable onClick={() => toggleMonth(yearMonthKey)}>
+                                      <DrilldownCell level={1} bold>
+                                        <ExpandIcon expanded={isMonthExpanded}>▶</ExpandIcon>
+                                        {monthName}
+                                      </DrilldownCell>
+                                      <DrilldownCell level={1} style={{ textAlign: 'right' }}>
+                                        RM {monthInfo.revenue.toFixed(2)}
+                                      </DrilldownCell>
+                                      <DrilldownCell level={1} style={{ textAlign: 'right' }}>
+                                        {monthInfo.orders}
+                                      </DrilldownCell>
+                                      <DrilldownCell level={1} style={{ textAlign: 'right' }}>
+                                        RM {(monthInfo.revenue / monthInfo.orders).toFixed(2)}
+                                      </DrilldownCell>
+                                    </DrilldownRow>
+
+                                    {/* Day Rows (only if month is expanded) */}
+                                    {isMonthExpanded && Object.keys(monthInfo.days).sort((a, b) => b.localeCompare(a)).map(day => {
+                                      const dayInfo = monthInfo.days[day];
+                                      const dayName = new Date(day).toLocaleString('en-US', {
+                                        weekday: 'short',
+                                        year: 'numeric',
+                                        month: 'short',
+                                        day: 'numeric'
+                                      });
+
+                                      return (
+                                        <DrilldownRow key={day} level={2}>
+                                          <DrilldownCell level={2}>
+                                            {dayName}
+                                          </DrilldownCell>
+                                          <DrilldownCell level={2} style={{ textAlign: 'right', color: '#059669', fontWeight: 500 }}>
+                                            RM {dayInfo.revenue.toFixed(2)}
+                                          </DrilldownCell>
+                                          <DrilldownCell level={2} style={{ textAlign: 'right' }}>
+                                            {dayInfo.orders}
+                                          </DrilldownCell>
+                                          <DrilldownCell level={2} style={{ textAlign: 'right' }}>
+                                            RM {(dayInfo.revenue / dayInfo.orders).toFixed(2)}
+                                          </DrilldownCell>
+                                        </DrilldownRow>
+                                      );
+                                    })}
+                                  </React.Fragment>
+                                );
+                              })}
+                            </React.Fragment>
+                          );
+                        })}
+                      </tbody>
+                    </Table>
+                  </TableCard>
                 </div>
               )}
           </div>

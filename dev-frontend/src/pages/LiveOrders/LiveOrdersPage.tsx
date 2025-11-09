@@ -875,6 +875,54 @@ const BillFooter = styled.div`
   padding-top: 10px;
 `;
 
+const PaginationContainer = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 32px;
+  background: white;
+  border-top: 1px solid #E6EBF1;
+
+  @media (max-width: 768px) {
+    padding: 16px 20px;
+    flex-direction: column;
+    gap: 12px;
+  }
+`;
+
+const PaginationInfo = styled.div`
+  font-size: 14px;
+  color: #6B7280;
+`;
+
+const PaginationControls = styled.div`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+`;
+
+const PageButton = styled.button<{ active?: boolean }>`
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
+  background: ${props => props.active ? '#635BFF' : 'white'};
+  color: ${props => props.active ? 'white' : '#6B7280'};
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    background: ${props => props.active ? '#5A51E6' : '#F6F9FC'};
+    border-color: ${props => props.active ? '#5A51E6' : '#C7D2FE'};
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+`;
+
 interface CompanyInfo {
   companyName: string;
   address: string;
@@ -902,6 +950,9 @@ const LiveOrdersPage: React.FC = () => {
   const [showOrderCompleteModal, setShowOrderCompleteModal] = useState(false);
   const [completedOrderData, setCompletedOrderData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
   const [timeDisplayKey, setTimeDisplayKey] = useState(0); // Time display update key
@@ -972,15 +1023,23 @@ const LiveOrdersPage: React.FC = () => {
   }, []);
 
   // Fetch orders from database
-  const fetchOrders = useCallback(async () => {
+  const fetchOrders = useCallback(async (page = 1) => {
     if (!user?.restaurantId) return;
 
     try {
-      const response = await fetch(`/api/orders/restaurant/${user.restaurantId}`, getFetchOptions());
+      const response = await fetch(
+        `/api/orders/restaurant/${user.restaurantId}?page=${page}&limit=50&includeCompleted=true`,
+        getFetchOptions()
+      );
       const result = await response.json();
 
       if (result.success && result.data) {
         setOrders(result.data);
+        if (result.pagination) {
+          setCurrentPage(result.pagination.currentPage);
+          setTotalPages(result.pagination.totalPages);
+          setTotalCount(result.pagination.totalCount);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch orders:', error);
@@ -1053,8 +1112,8 @@ const LiveOrdersPage: React.FC = () => {
 
   // Initial fetch
   useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
+    fetchOrders(currentPage);
+  }, [fetchOrders, currentPage]);
 
   // Load company information for bill printing
   useEffect(() => {
@@ -2201,6 +2260,66 @@ const LiveOrdersPage: React.FC = () => {
         {/* Order Complete Modal - 라이브 오더에서는 사용하지 않음 */}
         {/* POS Terminal에서만 사용하는 모달이므로 여기서는 렌더링하지 않음 */}
         </Content>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <PaginationContainer>
+            <PaginationInfo>
+              Showing {((currentPage - 1) * 50) + 1}-{Math.min(currentPage * 50, totalCount)} of {totalCount} orders
+            </PaginationInfo>
+            <PaginationControls>
+              <PageButton
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+              >
+                First
+              </PageButton>
+              <PageButton
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </PageButton>
+
+              {/* Page numbers */}
+              {[...Array(Math.min(5, totalPages))].map((_, idx) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = idx + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = idx + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + idx;
+                } else {
+                  pageNum = currentPage - 2 + idx;
+                }
+
+                return (
+                  <PageButton
+                    key={pageNum}
+                    active={currentPage === pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                  >
+                    {pageNum}
+                  </PageButton>
+                );
+              })}
+
+              <PageButton
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </PageButton>
+              <PageButton
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+              >
+                Last
+              </PageButton>
+            </PaginationControls>
+          </PaginationContainer>
+        )}
       </Container>
     </MainLayout>
   );

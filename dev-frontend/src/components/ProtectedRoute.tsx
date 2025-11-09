@@ -119,23 +119,13 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     const shouldCheckAccess = !isSystemAdmin && userRestaurantId && userRestaurantId !== urlRestaurantId;
 
     if (shouldCheckAccess) {
-      return (
-        <AccessDeniedContainer>
-          <AccessDeniedBox>
-            <Title>Access Denied</Title>
-            <Message>
-              You can only access your own restaurant's pages.
-              <br />
-              Your restaurant ID: {userRestaurantId}
-              <br />
-              Requested restaurant ID: {urlRestaurantId}
-            </Message>
-            <Button onClick={() => navigate(`/restaurant/${userRestaurantId}${location.pathname.split('/').slice(3).join('/')}`)}>
-              Go to Your Restaurant
-            </Button>
-          </AccessDeniedBox>
-        </AccessDeniedContainer>
-      );
+      // Automatically redirect to user's own restaurant dashboard
+      const pathParts = location.pathname.split('/').filter(Boolean);
+      const pagePath = pathParts.slice(2).join('/'); // Get path after /restaurant/:id/
+      const redirectPath = `/restaurant/${userRestaurantId}/${pagePath || 'dashboard'}`;
+
+      console.log('[ProtectedRoute] Redirecting to own restaurant:', redirectPath);
+      return <Navigate to={redirectPath} replace />;
     }
   }
 
