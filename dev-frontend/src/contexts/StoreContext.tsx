@@ -131,23 +131,27 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
             // Map restaurant data to store settings format
             const storeData: StoreSettings = {
               name: result.data.name || defaultStoreSettings.name,
-              businessRegistration: result.data.id?.toString() || defaultStoreSettings.businessRegistration,
+              businessRegistration: result.data.business_registration || result.data.id?.toString() || defaultStoreSettings.businessRegistration,
               phone: result.data.phone || defaultStoreSettings.phone,
               email: result.data.email || defaultStoreSettings.email,
               address: result.data.address || defaultStoreSettings.address,
               city: result.data.city || defaultStoreSettings.city,
               state: result.data.state || defaultStoreSettings.state,
               postalCode: result.data.postal_code || defaultStoreSettings.postalCode,
-              gstRegNo: result.data.operation_settings?.gstRegNo || defaultStoreSettings.gstRegNo
+              gstRegNo: result.data.tax_id || defaultStoreSettings.gstRegNo
             };
 
             setStoreSettings(storeData);
 
             // Set operation settings if available
             if (result.data.operation_settings) {
+              const parsedOperationSettings = typeof result.data.operation_settings === 'string'
+                ? JSON.parse(result.data.operation_settings)
+                : result.data.operation_settings;
+
               setOperationSettings({
                 ...defaultOperationSettings,
-                ...result.data.operation_settings
+                ...parsedOperationSettings
               });
             }
           }

@@ -445,27 +445,6 @@ const OrderSection = styled.div`
   flex-direction: column;
 `;
 
-const OrderHeader = styled.div`
-  padding: 16px 24px;
-  border-bottom: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const OrderTitle = styled.h2`
-  font-size: 18px;
-  font-weight: 600;
-  color: #0A2540;
-  margin: 0;
-`;
-
-const OrderInfo = styled.div`
-  font-size: 13px;
-  color: #6B7C93;
-  font-weight: 500;
-`;
-
 const TableNumberSection = styled.div`
   padding: 16px 24px;
   background: #F7F9FC;
@@ -522,6 +501,15 @@ const ScrollableOrderContent = styled.div`
 
 const OrderItems = styled.div`
   padding: 16px 24px;
+`;
+
+const OrderItemsHeader = styled.div`
+  font-size: 13px;
+  font-weight: 600;
+  color: #6B7C93;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #E6EBF1;
 `;
 
 const OrderItem = styled.div`
@@ -880,6 +868,7 @@ const CustomerSearchSection = styled.div`
 
 const CustomerSearchContainer = styled.div`
   position: relative;
+  padding-right: 12px;
 `;
 
 const CustomerSearchLabel = styled.div`
@@ -1848,11 +1837,6 @@ const POSTerminalPage: React.FC = () => {
         </MenuSection>
 
         <OrderSection>
-          <OrderHeader>
-            <OrderTitle>Current Order</OrderTitle>
-            <OrderInfo>{orderItems.length} items</OrderInfo>
-          </OrderHeader>
-          
           <OrderTypeToggle>
             <OrderTypeBtn
               active={orderType === 'dine-in'}
@@ -1945,6 +1929,7 @@ const POSTerminalPage: React.FC = () => {
           ) : (
             <ScrollableOrderContent>
               <OrderItems>
+                <OrderItemsHeader>{orderItems.length} {orderItems.length === 1 ? 'item' : 'items'}</OrderItemsHeader>
                 {orderItems.map(item => (
                   <OrderItem key={item.id}>
                     <ItemInfo>

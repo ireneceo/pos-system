@@ -8,7 +8,7 @@ import {
 } from '../common/Modal';
 import styled, { createGlobalStyle } from 'styled-components';
 import { useStore } from '../../contexts/StoreContext';
-import { printBill, isMobileOrTablet } from '../../utils/thermalPrinter';
+import { printBill } from '../../utils/thermalPrinter';
 
 // Global print styles
 const PrintStyles = createGlobalStyle`
