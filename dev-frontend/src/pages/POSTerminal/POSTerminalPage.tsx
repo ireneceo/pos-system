@@ -2147,8 +2147,8 @@ const POSTerminalPage: React.FC = () => {
           }}
           orderData={completedOrderData}
           onPrintBill={() => {
-            // Trigger print dialog for kitchen bill
-            window.print();
+            // Print is now handled inside OrderCompleteModal
+            // No action needed here
           }}
         />
       )}

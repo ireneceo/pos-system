@@ -94,18 +94,62 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
     const loadSettingsFromDB = async () => {
       try {
         const token = localStorage.getItem('auth_token');
-        const response = await fetch('/api/store/settings', {
+
+        // Get user info to retrieve restaurant_id
+        const userInfoResponse = await fetch('/api/auth/me', {
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
             ...(token ? { 'Authorization': `Bearer ${token}` } : {})
           }
         });
+
+        let restaurantId = null;
+        if (userInfoResponse.ok) {
+          const userInfo = await userInfoResponse.json();
+          restaurantId = userInfo.restaurant_id;
+        }
+
+        // If no restaurant_id, use default settings
+        if (!restaurantId) {
+          console.warn('No restaurant_id found, using default settings');
+          return;
+        }
+
+        // Fetch restaurant settings with restaurantId
+        const response = await fetch(`/api/store/settings?restaurantId=${restaurantId}`, {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          }
+        });
+
         if (response.ok) {
           const result = await response.json();
           if (result.success && result.data) {
-            setStoreSettings(result.data.store || defaultStoreSettings);
-            setOperationSettings(result.data.operations || defaultOperationSettings);
+            // Map restaurant data to store settings format
+            const storeData: StoreSettings = {
+              name: result.data.name || defaultStoreSettings.name,
+              businessRegistration: result.data.id?.toString() || defaultStoreSettings.businessRegistration,
+              phone: result.data.phone || defaultStoreSettings.phone,
+              email: result.data.email || defaultStoreSettings.email,
+              address: result.data.address || defaultStoreSettings.address,
+              city: result.data.city || defaultStoreSettings.city,
+              state: result.data.state || defaultStoreSettings.state,
+              postalCode: result.data.postal_code || defaultStoreSettings.postalCode,
+              gstRegNo: result.data.operation_settings?.gstRegNo || defaultStoreSettings.gstRegNo
+            };
+
+            setStoreSettings(storeData);
+
+            // Set operation settings if available
+            if (result.data.operation_settings) {
+              setOperationSettings({
+                ...defaultOperationSettings,
+                ...result.data.operation_settings
+              });
+            }
           }
         }
       } catch (error) {

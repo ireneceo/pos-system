@@ -8,6 +8,7 @@ import {
 } from '../common/Modal';
 import styled, { createGlobalStyle } from 'styled-components';
 import { useStore } from '../../contexts/StoreContext';
+import { printBill, isMobileOrTablet } from '../../utils/thermalPrinter';
 
 // Global print styles
 const PrintStyles = createGlobalStyle`
@@ -261,14 +262,13 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
     });
   };
 
-  const handlePrintBill = () => {
-    // Small delay to ensure DOM is ready
+  const handlePrintBill = async () => {
+    // Use thermal printer utility - automatically detects device type
+    await printBill(orderData, storeInfo);
+
+    // Callback after print
     setTimeout(() => {
-      window.print();
-      // Callback after print dialog
-      setTimeout(() => {
-        onPrintBill();
-      }, 100);
+      onPrintBill();
     }, 100);
   };
 
