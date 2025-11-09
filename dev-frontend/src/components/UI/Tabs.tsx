@@ -8,6 +8,25 @@ export const TabContainer = styled.div`
   gap: 24px;
   margin-bottom: 32px;
   border-bottom: 1px solid #E6EBF1;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar {
+    height: 3px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #F8FAFC;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: #94A3B8;
+  }
 `;
 
 // 공통 탭 버튼
@@ -21,6 +40,8 @@ export const Tab = styled.button<{ active?: boolean }>`
   cursor: pointer;
   position: relative;
   transition: all 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
 
   &:hover {
     color: #635BFF;

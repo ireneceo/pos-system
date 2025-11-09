@@ -210,6 +210,29 @@ const PaymentMethodTabs = styled.div`
   grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   gap: 8px;
   margin-bottom: 20px;
+
+  @media (max-width: 768px) {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+
+    &::-webkit-scrollbar {
+      height: 3px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: #F8FAFC;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
+      border-radius: 3px;
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+      background: #94A3B8;
+    }
+  }
 `;
 
 const Tab = styled.button<{ active: boolean }>`
@@ -224,6 +247,8 @@ const Tab = styled.button<{ active: boolean }>`
   cursor: pointer;
   transition: all 0.15s;
   text-align: center;
+  white-space: nowrap;
+  flex-shrink: 0;
 
   &:hover {
     border-color: ${props => props.active ? '#635BFF' : '#D1D5DB'};
