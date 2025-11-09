@@ -129,7 +129,9 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
           price: item.menuItem.price,
           quantity: item.quantity,
           options: item.options || [],
-          menuItem: item.menuItem
+          menuItem: item.menuItem,
+          is_set_menu: item.menuItem.is_set_menu || false,
+          set_items: item.menuItem.set_items || []
         }))
       };
 

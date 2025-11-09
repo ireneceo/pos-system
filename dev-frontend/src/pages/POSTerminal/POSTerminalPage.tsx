@@ -1290,15 +1290,13 @@ const POSTerminalPage: React.FC = () => {
   const handleConfirmOptions = (quantity: number, selectedOptions: string[]) => {
     if (!selectedMenuItem) return;
 
-    // For set menus, merge set items with regular options
-    let allOptions = [...selectedOptions];
-    if (selectedMenuItem.is_set_menu && selectedMenuItem.set_items && selectedMenuItem.set_items.length > 0) {
-      const setMenuOptions = selectedMenuItem.set_items.map(item => `${item.name} x${item.quantity}`);
-      allOptions = [...setMenuOptions, ...selectedOptions];
-    }
+    // For set menus, do NOT merge set items into options
+    // Set items are already in menuItem.set_items
+    // Only use selectedOptions (regular options like spice level, etc.)
+    const regularOptions = selectedOptions;
 
     // Check if same item with same options exists
-    const optionsKey = allOptions.sort().join(',');
+    const optionsKey = regularOptions.sort().join(',');
     const existingItem = orderItems.find(item =>
       item.menuItem.id === selectedMenuItem.id &&
       item.options?.sort().join(',') === optionsKey
@@ -1315,7 +1313,7 @@ const POSTerminalPage: React.FC = () => {
         id: `order-${Date.now()}`,
         menuItem: selectedMenuItem,
         quantity: quantity,
-        options: allOptions
+        options: regularOptions.length > 0 ? regularOptions : undefined
       }]);
     }
 

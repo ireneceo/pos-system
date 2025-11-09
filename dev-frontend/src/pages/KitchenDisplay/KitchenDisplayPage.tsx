@@ -478,11 +478,25 @@ const KitchenDisplayPage: React.FC = () => {
               customerName: order.customer_name || undefined,
               tableNumber: order.table_number || undefined,
               orderType: (order.order_type || 'dine-in') as 'dine-in' | 'takeaway' | 'delivery'
-            };
+            } as KitchenOrder;
           });
 
         console.log('Kitchen orders after filter:', kitchenOrders.length);
-        setOrders(kitchenOrders);
+
+        // Check for new orders and play sound
+        setOrders(prevOrders => {
+          // Find new orders by comparing IDs
+          const prevOrderIds = new Set(prevOrders.map(o => o.id));
+          const newOrders = kitchenOrders.filter(o => !prevOrderIds.has(o.id));
+
+          // Play notification sound for each new order
+          if (newOrders.length > 0) {
+            console.log('New orders detected:', newOrders.length);
+            playNotificationSound();
+          }
+
+          return kitchenOrders;
+        });
       } else {
         console.error('API error:', result.error);
       }
@@ -691,17 +705,19 @@ const KitchenDisplayPage: React.FC = () => {
   };
 
   const updateItemStatus = async (orderId: string, itemId: string) => {
-    // Always set to completed (no toggle, no undo)
-    const newStatus: 'pending' | 'completed' = 'completed';
-
     // Save to database first
     try {
       const order = orders.find(o => o.id === orderId);
       if (!order) return;
 
-      const updatedItems = order.items.map(item =>
-        item.id === itemId ? { ...item, status: newStatus } : item
-      );
+      const updatedItems = order.items.map(item => {
+        if (item.id === itemId) {
+          // Toggle status
+          const newStatus = item.status === 'completed' ? 'pending' : 'completed';
+          return { ...item, status: newStatus };
+        }
+        return item;
+      });
 
       // Check if all items will be completed
       const allItemsCompleted = updatedItems.every(item => item.status === 'completed');
@@ -755,19 +771,22 @@ const KitchenDisplayPage: React.FC = () => {
     }
   };
 
-  // Update set menu sub-item status
+  // Update set menu sub-item status (toggle between pending and completed)
   const updateSetItemStatus = async (orderId: string, parentItemId: string, setItemId: string) => {
-    const newStatus: 'pending' | 'completed' = 'completed';
-
     try {
       const order = orders.find(o => o.id === orderId);
       if (!order) return;
 
       const updatedItems = order.items.map(item => {
         if (item.id === parentItemId && item.set_items) {
-          const updatedSetItems = item.set_items.map(setItem =>
-            setItem.id === setItemId ? { ...setItem, status: newStatus } : setItem
-          );
+          const updatedSetItems = item.set_items.map(setItem => {
+            if (setItem.id === setItemId) {
+              // Toggle status
+              const newStatus = setItem.status === 'completed' ? 'pending' : 'completed';
+              return { ...setItem, status: newStatus };
+            }
+            return setItem;
+          });
 
           // Check if all set items are completed
           const allSetItemsCompleted = updatedSetItems.every(si => si.status === 'completed');
@@ -775,7 +794,7 @@ const KitchenDisplayPage: React.FC = () => {
           return {
             ...item,
             set_items: updatedSetItems,
-            status: allSetItemsCompleted ? 'completed' : item.status
+            status: allSetItemsCompleted ? 'completed' : 'pending'
           };
         }
         return item;
@@ -913,16 +932,42 @@ const KitchenDisplayPage: React.FC = () => {
                       <OrderItem key={index}>
                         <ItemInfo>
                           <ItemName>{item.name}</ItemName>
-                          {item.options && (
-                            <ItemOptions>⭐ {item.options.join(', ')}</ItemOptions>
-                          )}
+                          {item.options && item.options.length > 0 && (() => {
+                            // Separate set menu items and regular options
+                            const setItems: string[] = [];
+                            const regularOptions: string[] = [];
+
+                            item.options.forEach(option => {
+                              // Check if this is a set menu item (format: "item name xN")
+                              if (/^.+\sx\d+$/.test(option)) {
+                                setItems.push(option);
+                              } else {
+                                regularOptions.push(option);
+                              }
+                            });
+
+                            return (
+                              <>
+                                {setItems.length > 0 && (
+                                  <ItemOptions style={{ fontWeight: 600 }}>
+                                    {setItems.join(', ')}
+                                  </ItemOptions>
+                                )}
+                                {regularOptions.length > 0 && (
+                                  <ItemOptions>
+                                    ⭐ {regularOptions.join(', ')}
+                                  </ItemOptions>
+                                )}
+                              </>
+                            );
+                          })()}
                         </ItemInfo>
                         <ItemQuantity>×{item.quantity}</ItemQuantity>
                       </OrderItem>
                     ))}
                   </OrderItems>
 
-                  <ActionButton 
+                  <ActionButton
                     variant="primary"
                     onClick={() => updateOrderStatus(order.id, 'preparing')}
                   >
@@ -985,20 +1030,49 @@ const KitchenDisplayPage: React.FC = () => {
                             <ItemName style={{ textDecoration: item.status === 'completed' ? 'line-through' : 'none' }}>
                               {item.name}
                             </ItemName>
-                            {item.options && (
-                              <ItemOptions>⭐ {item.options.join(', ')}</ItemOptions>
-                            )}
+                            {item.options && item.options.length > 0 && (() => {
+                              // Separate set menu items and regular options
+                              const setItems: string[] = [];
+                              const regularOptions: string[] = [];
+
+                              item.options.forEach(option => {
+                                // Check if this is a set menu item (format: "item name xN")
+                                if (/^.+\sx\d+$/.test(option)) {
+                                  setItems.push(option);
+                                } else {
+                                  regularOptions.push(option);
+                                }
+                              });
+
+                              return (
+                                <>
+                                  {setItems.length > 0 && (
+                                    <ItemOptions style={{ fontWeight: 600 }}>
+                                      {setItems.join(', ')}
+                                    </ItemOptions>
+                                  )}
+                                  {regularOptions.length > 0 && (
+                                    <ItemOptions>
+                                      ⭐ {regularOptions.join(', ')}
+                                    </ItemOptions>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </ItemInfo>
                           <ItemQuantity>×{item.quantity}</ItemQuantity>
                           {!item.is_set_menu && (
                             <ItemActions>
-                              {item.status === 'completed' ? (
-                                <span style={{ fontSize: '18px', color: '#3B82F6', fontWeight: 'bold' }}>✓</span>
-                              ) : (
-                                <ItemButton onClick={() => updateItemStatus(order.id, item.id!)}>
-                                  Done
-                                </ItemButton>
-                              )}
+                              <ItemButton
+                                onClick={() => updateItemStatus(order.id, item.id!)}
+                                style={{
+                                  background: item.status === 'completed' ? '#3B82F6' : '#F3F4F6',
+                                  color: item.status === 'completed' ? 'white' : '#6B7280',
+                                  border: item.status === 'completed' ? '1px solid #3B82F6' : '1px solid #E5E7EB'
+                                }}
+                              >
+                                {item.status === 'completed' ? '✓ Done' : 'Done'}
+                              </ItemButton>
                             </ItemActions>
                           )}
                         </OrderItem>
@@ -1015,13 +1089,16 @@ const KitchenDisplayPage: React.FC = () => {
                                   • {setItem.name} x{setItem.quantity}
                                 </SetItemName>
                                 <ItemActions>
-                                  {setItem.status === 'completed' ? (
-                                    <span style={{ fontSize: '16px', color: '#3B82F6', fontWeight: 'bold' }}>✓</span>
-                                  ) : (
-                                    <ItemButton onClick={() => updateSetItemStatus(order.id, item.id!, setItem.id!)}>
-                                      Done
-                                    </ItemButton>
-                                  )}
+                                  <ItemButton
+                                    onClick={() => updateSetItemStatus(order.id, item.id!, setItem.id!)}
+                                    style={{
+                                      background: setItem.status === 'completed' ? '#3B82F6' : '#F3F4F6',
+                                      color: setItem.status === 'completed' ? 'white' : '#6B7280',
+                                      border: setItem.status === 'completed' ? '1px solid #3B82F6' : '1px solid #E5E7EB'
+                                    }}
+                                  >
+                                    {setItem.status === 'completed' ? '✓ Done' : 'Done'}
+                                  </ItemButton>
                                 </ItemActions>
                               </SetItemRow>
                             ))}
