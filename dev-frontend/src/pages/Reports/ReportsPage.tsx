@@ -252,7 +252,7 @@ const ExpandIcon = styled.span<{ expanded?: boolean }>`
 
 // 타입 정의
 type TabType = 'sales' | 'details' | 'menu' | 'customers' | 'operations';
-type PeriodType = 'today' | 'week' | 'month' | 'year';
+type PeriodType = 'today' | 'week' | 'month' | 'year' | 'all';
 
 // 차트 색상
 const COLORS = ['#635BFF', '#00D924', '#FF6B6B', '#FFB800', '#0EA5E9', '#8B5CF6'];
@@ -619,7 +619,8 @@ const ReportsPage: React.FC = () => {
     filteredOrders.forEach(order => {
       const orderDate = getOrderDate(order);
       const year = orderDate.getFullYear().toString();
-      const month = orderDate.toLocaleString('en-US', { year: 'numeric', month: '2-digit' }); // "2025-11"
+      const monthNum = (orderDate.getMonth() + 1).toString().padStart(2, '0');
+      const month = `${year}-${monthNum}`; // "2025-11"
       const day = orderDate.toISOString().split('T')[0]; // "2025-11-09"
 
       // Initialize year
@@ -667,11 +668,62 @@ const ReportsPage: React.FC = () => {
 
   const drilldownData = getDrilldownSalesData();
 
+  // Calculate date range in days
+  const getDateRangeDays = () => {
+    const start = new Date(dateRange.start);
+    const end = new Date(dateRange.end);
+    return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  };
+
+  // Determine appropriate display level based on date range
+  const getDisplayLevel = () => {
+    const days = getDateRangeDays();
+    if (days <= 1) return 'day'; // Today - show just day details
+    if (days <= 31) return 'day'; // Up to month - show days
+    if (days <= 365) return 'month'; // Up to year - show months
+    return 'year'; // Multiple years - show years
+  };
+
+  const displayLevel = getDisplayLevel();
+
+  // Auto-expand logic based on display level
+  React.useEffect(() => {
+    const days = getDateRangeDays();
+
+    if (days <= 31) {
+      // For today/week/month - auto expand all years and months to show days
+      const allYears = new Set(Object.keys(drilldownData));
+      const allMonths = new Set<string>();
+      Object.keys(drilldownData).forEach(year => {
+        Object.keys(drilldownData[year].months).forEach(month => {
+          allMonths.add(`${year}-${month}`);
+        });
+      });
+      setExpandedYears(allYears);
+      setExpandedMonths(allMonths);
+    } else if (days <= 365) {
+      // For year - auto expand years to show months, but not days
+      const allYears = new Set(Object.keys(drilldownData));
+      setExpandedYears(allYears);
+      setExpandedMonths(new Set());
+    } else {
+      // For all - collapse everything
+      setExpandedYears(new Set());
+      setExpandedMonths(new Set());
+    }
+  }, [dateRange.start, dateRange.end, filteredOrders.length]);
+
   // Toggle functions for drilldown
   const toggleYear = (year: string) => {
     const newExpanded = new Set(expandedYears);
     if (newExpanded.has(year)) {
       newExpanded.delete(year);
+      // Also collapse all months in this year
+      const newMonthsExpanded = new Set(expandedMonths);
+      Object.keys(drilldownData[year]?.months || {}).forEach(month => {
+        newMonthsExpanded.delete(`${year}-${month}`);
+      });
+      setExpandedMonths(newMonthsExpanded);
     } else {
       newExpanded.add(year);
     }
@@ -699,6 +751,7 @@ const ReportsPage: React.FC = () => {
     switch (period) {
       case 'today':
         start = new Date(now);
+        start.setHours(0, 0, 0, 0);
         break;
       case 'week':
         start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -708,6 +761,18 @@ const ReportsPage: React.FC = () => {
         break;
       case 'year':
         start = new Date(now.getFullYear(), 0, 1);
+        break;
+      case 'all':
+        // Get the earliest order date, or default to 5 years ago
+        if (orders.length > 0) {
+          const earliestOrder = orders.reduce((earliest, order) => {
+            const orderDate = new Date(order.order_date || order.createdAt || order.created_at);
+            return orderDate < earliest ? orderDate : earliest;
+          }, new Date());
+          start = earliestOrder;
+        } else {
+          start = new Date(now.getFullYear() - 5, 0, 1);
+        }
         break;
     }
 
@@ -721,28 +786,49 @@ const ReportsPage: React.FC = () => {
 
   // 다운로드 기능
   const handleDownloadReport = () => {
+    // Calculate actual data from filtered orders
+    const totalRevenue = salesData.reduce((sum, item) => sum + item.sales, 0);
+    const totalOrders = filteredOrders.length;
+    const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+    const completedOrders = filteredOrders.filter(o => o.status === 'completed').length;
+    const repeatCustomers = customers.filter((c: any) => c.total_orders > 1).length;
+
     const reportData = {
       period: isCustomDateRange ? `${dateRange.start} to ${dateRange.end}` : activePeriod,
       generatedAt: new Date().toISOString(),
+      restaurantId: user?.restaurantId,
       tab: activeTab,
       data: {
         sales: {
-          totalRevenue: 'RM 25,320',
-          totalOrders: 892,
-          averageOrderValue: 'RM 28.40',
+          totalRevenue: totalRevenue,
+          totalOrders: totalOrders,
+          completedOrders: completedOrders,
+          averageOrderValue: avgOrderValue,
           salesData: salesData,
-          categoryData: categoryData
+          categoryData: categoryData,
+          hourlyData: hourlyData
         },
         menu: {
-          topPerformers: topMenus,
-          totalItems: 48,
-          outOfStock: 5
+          menuItems: allMenuData,
+          totalItems: allMenuData.length,
+          totalRevenue: allMenuData.reduce((sum, item) => sum + item.revenue, 0),
+          totalOrders: allMenuData.reduce((sum, item) => sum + item.orders, 0)
         },
         customers: {
-          totalCustomers: 3245,
-          repeatRate: '68%',
-          avgVisitFrequency: '2.4x/week',
-          satisfaction: '4.8/5.0'
+          totalCustomers: customers.length,
+          repeatCustomers: repeatCustomers,
+          repeatRate: customers.length > 0 ? (repeatCustomers / customers.length * 100).toFixed(1) : '0',
+          customerList: customers,
+          totalRevenue: customers.reduce((sum: number, c: any) => sum + parseFloat(c.total_spent || 0), 0),
+          avgSpent: customers.length > 0 ? customers.reduce((sum: number, c: any) => sum + parseFloat(c.total_spent || 0), 0) / customers.length : 0
+        },
+        operations: {
+          peakTimes: peakTimesData,
+          totalOrders: totalOrders,
+          avgPreparationTime: '15 mins' // This would need to be calculated from actual data
+        },
+        details: {
+          drilldownData: drilldownData
         }
       }
     };
@@ -752,53 +838,107 @@ const ReportsPage: React.FC = () => {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `restaurant_report_${activeTab}_${dateRange.start}_to_${dateRange.end}.csv`;
+    link.download = `restaurant_${user?.restaurantId}_report_${activeTab}_${dateRange.start}_to_${dateRange.end}.csv`;
     link.click();
   };
 
   // CSV 생성 함수
   const generateCSV = (data: any) => {
     let csv = `Restaurant Analytics Report\n`;
-    csv += `Generated: ${new Date().toLocaleString()}\n`;
-    csv += `Period: ${data.period}\n`;
-    csv += `Report Type: ${data.tab.toUpperCase()}\n\n`;
+    csv += `Restaurant ID,${data.restaurantId || 'N/A'}\n`;
+    csv += `Generated,${new Date().toLocaleString('en-MY', { timeZone: 'Asia/Kuala_Lumpur' })}\n`;
+    csv += `Period,${data.period}\n`;
+    csv += `Report Type,${data.tab.toUpperCase()}\n\n`;
 
     if (activeTab === 'sales') {
       csv += `SALES SUMMARY\n`;
-      csv += `Total Revenue,${data.data.sales.totalRevenue}\n`;
+      csv += `Total Revenue,RM ${data.data.sales.totalRevenue.toFixed(2)}\n`;
       csv += `Total Orders,${data.data.sales.totalOrders}\n`;
-      csv += `Average Order Value,${data.data.sales.averageOrderValue}\n\n`;
-      
-      csv += `DAILY SALES\n`;
-      csv += `Date,Revenue\n`;
-      salesData.forEach(item => {
-        csv += `${item.date},RM ${item.sales}\n`;
+      csv += `Completed Orders,${data.data.sales.completedOrders}\n`;
+      csv += `Average Order Value,RM ${data.data.sales.averageOrderValue.toFixed(2)}\n\n`;
+
+      csv += `DAILY SALES TREND\n`;
+      csv += `Date,Revenue (RM),Orders\n`;
+      data.data.sales.salesData.forEach((item: any) => {
+        csv += `${item.date},${item.sales.toFixed(2)},${item.orders || 0}\n`;
       });
-      
+
       csv += `\nCATEGORY PERFORMANCE\n`;
-      csv += `Category,Percentage,Revenue\n`;
-      categoryData.forEach(item => {
-        csv += `${item.name},${item.value}%,RM ${item.sales}\n`;
+      csv += `Category,Percentage,Revenue (RM)\n`;
+      data.data.sales.categoryData.forEach((item: any) => {
+        csv += `${item.name},${item.value}%,${item.sales?.toFixed(2) || '0.00'}\n`;
       });
+
+      csv += `\nHOURLY ORDER DISTRIBUTION\n`;
+      csv += `Hour,Orders\n`;
+      data.data.sales.hourlyData.forEach((item: any) => {
+        csv += `${item.hour},${item.orders}\n`;
+      });
+
+    } else if (activeTab === 'details') {
+      csv += `DETAILED SALES BREAKDOWN\n`;
+      csv += `Period,Revenue (RM),Orders,Avg Order Value (RM)\n`;
+
+      // Year level
+      Object.keys(data.data.details.drilldownData).sort((a, b) => b.localeCompare(a)).forEach(year => {
+        const yearInfo = data.data.details.drilldownData[year];
+        csv += `${year},${yearInfo.revenue.toFixed(2)},${yearInfo.orders},${(yearInfo.revenue / yearInfo.orders).toFixed(2)}\n`;
+
+        // Month level
+        Object.keys(yearInfo.months).sort((a, b) => b.localeCompare(a)).forEach(month => {
+          const monthInfo = yearInfo.months[month];
+          const monthName = new Date(month + '-01').toLocaleString('en-US', { year: 'numeric', month: 'long' });
+          csv += `  ${monthName},${monthInfo.revenue.toFixed(2)},${monthInfo.orders},${(monthInfo.revenue / monthInfo.orders).toFixed(2)}\n`;
+
+          // Day level
+          Object.keys(monthInfo.days).sort((a, b) => b.localeCompare(a)).forEach(day => {
+            const dayInfo = monthInfo.days[day];
+            const dayName = new Date(day).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            csv += `    ${dayName},${dayInfo.revenue.toFixed(2)},${dayInfo.orders},${(dayInfo.revenue / dayInfo.orders).toFixed(2)}\n`;
+          });
+        });
+      });
+
     } else if (activeTab === 'menu') {
       csv += `MENU PERFORMANCE ANALYSIS\n`;
-      csv += `Rank,Item Name,Category,Price,Orders,Revenue,Performance\n`;
-      allMenuData.forEach((item, index) => {
-        const maxOrders = allMenuData[0]?.orders || 1;
+      csv += `Total Menu Items,${data.data.menu.totalItems}\n`;
+      csv += `Total Revenue,RM ${data.data.menu.totalRevenue.toFixed(2)}\n`;
+      csv += `Total Orders,${data.data.menu.totalOrders}\n\n`;
+
+      csv += `COMPLETE MENU RANKING\n`;
+      csv += `Rank,Item Name,Category,Price (RM),Orders,Revenue (RM),Performance %\n`;
+      data.data.menu.menuItems.forEach((item: any, index: number) => {
+        const maxOrders = data.data.menu.menuItems[0]?.orders || 1;
         const performance = Math.round((item.orders / maxOrders) * 100);
-        csv += `${index + 1},${item.name},${item.category},RM ${item.price.toFixed(2)},${item.orders},RM ${item.revenue},${performance}%\n`;
+        csv += `${index + 1},${item.name},${item.category},${item.price.toFixed(2)},${item.orders},${item.revenue.toFixed(2)},${performance}\n`;
       });
+
     } else if (activeTab === 'customers') {
-      csv += `CUSTOMER INSIGHTS\n`;
+      csv += `CUSTOMER INSIGHTS SUMMARY\n`;
       csv += `Total Customers,${data.data.customers.totalCustomers}\n`;
-      csv += `Repeat Rate,${data.data.customers.repeatRate}\n`;
-      csv += `Avg Visit Frequency,${data.data.customers.avgVisitFrequency}\n`;
-      csv += `Customer Satisfaction,${data.data.customers.satisfaction}\n`;
+      csv += `Repeat Customers,${data.data.customers.repeatCustomers}\n`;
+      csv += `Repeat Rate,${data.data.customers.repeatRate}%\n`;
+      csv += `Total Revenue,RM ${data.data.customers.totalRevenue.toFixed(2)}\n`;
+      csv += `Average Spent per Customer,RM ${data.data.customers.avgSpent.toFixed(2)}\n\n`;
+
+      csv += `TOP CUSTOMERS\n`;
+      csv += `Rank,Name,Phone,Type,Total Orders,Total Spent (RM),Points,Tier\n`;
+      data.data.customers.customerList
+        .sort((a: any, b: any) => parseFloat(b.total_spent || 0) - parseFloat(a.total_spent || 0))
+        .slice(0, 50) // Top 50 customers
+        .forEach((customerData: any, index: number) => {
+          csv += `${index + 1},${customerData.customer.name},${customerData.customer.phone},${customerData.customer.type},${customerData.total_orders},${parseFloat(customerData.total_spent || 0).toFixed(2)},${customerData.points || 0},${customerData.tier || 'Bronze'}\n`;
+        });
+
     } else if (activeTab === 'operations') {
       csv += `OPERATIONS PERFORMANCE\n`;
-      csv += `Time Slot,Orders,Revenue,Efficiency\n`;
-      peakTimesData.forEach(item => {
-        csv += `${item.time},${item.orders},RM ${item.revenue},${item.efficiency}%\n`;
+      csv += `Total Orders,${data.data.operations.totalOrders}\n`;
+      csv += `Average Preparation Time,${data.data.operations.avgPreparationTime}\n\n`;
+
+      csv += `PEAK TIMES ANALYSIS\n`;
+      csv += `Time Slot,Orders,Revenue (RM),Efficiency %\n`;
+      data.data.operations.peakTimes.forEach((item: any) => {
+        csv += `${item.time},${item.orders},${item.revenue},${item.efficiency}\n`;
       });
     }
 
@@ -820,6 +960,9 @@ const ReportsPage: React.FC = () => {
         </DateButton>
         <DateButton active={activePeriod === 'year' && !isCustomDateRange} onClick={() => handlePeriodChange('year')}>
           Year
+        </DateButton>
+        <DateButton active={activePeriod === 'all' && !isCustomDateRange} onClick={() => handlePeriodChange('all')}>
+          All
         </DateButton>
         <CustomDateRange>
           <DateRangeInput
@@ -1003,17 +1146,17 @@ const ReportsPage: React.FC = () => {
                     <StatCard color="#2563EB">
                       <StatLabel>Total Orders</StatLabel>
                       <StatValue>{filteredOrders.length.toLocaleString()}</StatValue>
-                      <StatDescription>For selected period</StatDescription>
+                      <StatDescription>{filteredOrders.filter(o => o.status === 'completed').length} completed</StatDescription>
                     </StatCard>
                     <StatCard color="#DC2626">
                       <StatLabel>Average Order Value</StatLabel>
                       <StatValue>RM {filteredOrders.length > 0 ? (salesData.reduce((sum, item) => sum + item.sales, 0) / filteredOrders.length).toFixed(2) : '0.00'}</StatValue>
-                      <StatDescription>Per order</StatDescription>
+                      <StatDescription>Per order average</StatDescription>
                     </StatCard>
                     <StatCard color="#7C3AED">
-                      <StatLabel>Date Range</StatLabel>
-                      <StatValue>{Object.keys(drilldownData).length}</StatValue>
-                      <StatDescription>Year{Object.keys(drilldownData).length > 1 ? 's' : ''} of data</StatDescription>
+                      <StatLabel>Period</StatLabel>
+                      <StatValue>{isCustomDateRange ? getDateRangeDays() : activePeriod === 'today' ? '1' : activePeriod === 'week' ? '7' : activePeriod === 'month' ? '30' : activePeriod === 'year' ? '365' : getDateRangeDays()}</StatValue>
+                      <StatDescription>{isCustomDateRange ? `${dateRange.start} to ${dateRange.end}` : activePeriod === 'today' ? 'Day' : activePeriod === 'week' ? 'Days' : activePeriod === 'month' ? 'Days' : activePeriod === 'year' ? 'Days' : 'Days'}</StatDescription>
                     </StatCard>
                   </StatsRow>
 

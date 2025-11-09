@@ -5,6 +5,8 @@ import { io, Socket } from 'socket.io-client';
 import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import PaymentModal from '../../components/POSTerminal/PaymentModal';
+import { useStore } from '../../contexts/StoreContext';
+import { printBill } from '../../utils/thermalPrinter';
 
 // Helper function to get fetch options with auth token
 const getFetchOptions = (options: RequestInit = {}): RequestInit => {
@@ -87,6 +89,9 @@ interface DbOrder {
   createdAt: string;
   updatedAt: string;
 }
+
+// Period type for date filtering
+type PeriodType = 'today' | 'week' | 'month' | 'year' | 'all';
 
 const Container = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -190,6 +195,81 @@ const Content = styled.main`
 
   @media (max-width: 768px) {
     padding: 20px;
+  }
+`;
+
+const FilterControls = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+`;
+
+const FilterRow = styled.div`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+`;
+
+const DateButton = styled.button<{ active?: boolean }>`
+  padding: 8px 16px;
+  background: ${props => props.active ? '#635BFF' : '#FFFFFF'};
+  color: ${props => props.active ? '#FFFFFF' : '#6B7C93'};
+  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: ${props => props.active ? '#5A51E6' : '#F8FAFC'};
+    border-color: ${props => props.active ? '#5A51E6' : '#CBD5E1'};
+  }
+`;
+
+const DateInput = styled.input`
+  padding: 8px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #1F2937;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+  }
+`;
+
+const DownloadButton = styled.button`
+  padding: 12px 16px;
+  background: #635BFF;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  &:hover {
+    background: #5A51E6;
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
   }
 `;
 
@@ -936,7 +1016,9 @@ interface CompanyInfo {
 
 const LiveOrdersPage: React.FC = () => {
   const { user } = useAuth();
-  const [orders, setOrders] = useState<DbOrder[]>([]);
+  const { getStoreInfo } = useStore();
+  const [orders, setOrders] = useState<DbOrder[]>([]); // Paginated orders for display
+  const [allOrders, setAllOrders] = useState<DbOrder[]>([]); // ALL orders for tab counts
   const [socket, setSocket] = useState<Socket | null>(null);
   const [activeTab, setActiveTab] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState<DbOrder | null>(null);
@@ -957,6 +1039,14 @@ const LiveOrdersPage: React.FC = () => {
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
   const [timeDisplayKey, setTimeDisplayKey] = useState(0); // Time display update key
   const [audioEnabled, setAudioEnabled] = useState(true); // Audio notification toggle
+
+  // Date filter state (default to 'today')
+  const [activePeriod, setActivePeriod] = useState<PeriodType>('today');
+  const [dateRange, setDateRange] = useState({
+    start: new Date().toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0]
+  });
+  const [isCustomDateRange, setIsCustomDateRange] = useState(false);
 
   // Audio notification for new orders
   const playNotificationSound = useCallback(() => {
@@ -1048,6 +1138,25 @@ const LiveOrdersPage: React.FC = () => {
     }
   }, [user?.restaurantId]);
 
+  // Fetch ALL orders (not paginated) for tab counts
+  const fetchAllOrders = useCallback(async () => {
+    if (!user?.restaurantId) return;
+
+    try {
+      const response = await fetch(
+        `/api/orders/restaurant/${user.restaurantId}?page=1&limit=10000&includeCompleted=true`,
+        getFetchOptions()
+      );
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        setAllOrders(result.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch all orders:', error);
+    }
+  }, [user?.restaurantId]);
+
   // Initialize Socket.IO connection
   useEffect(() => {
     if (!user?.restaurantId) {
@@ -1079,6 +1188,7 @@ const LiveOrdersPage: React.FC = () => {
         status: order.status
       });
       setOrders(prev => [order, ...prev]);
+      setAllOrders(prev => [order, ...prev]); // Add to allOrders for tab counts
 
       // Play notification sound for new order
       playNotificationSound();
@@ -1091,11 +1201,13 @@ const LiveOrdersPage: React.FC = () => {
         status: order.status
       });
       setOrders(prev => prev.map(o => o.id === order.id ? order : o));
+      setAllOrders(prev => prev.map(o => o.id === order.id ? order : o)); // Update in allOrders too
     });
 
     newSocket.on('order-deleted', ({ id }: { id: number }) => {
       console.log('🗑️ Order deleted via Socket.IO:', id);
       setOrders(prev => prev.filter(o => o.id !== id));
+      setAllOrders(prev => prev.filter(o => o.id !== id)); // Remove from allOrders too
     });
 
     newSocket.on('disconnect', (reason) => {
@@ -1114,6 +1226,129 @@ const LiveOrdersPage: React.FC = () => {
   useEffect(() => {
     fetchOrders(currentPage);
   }, [fetchOrders, currentPage]);
+
+  // Fetch all orders for tab counts
+  useEffect(() => {
+    fetchAllOrders();
+  }, [fetchAllOrders]);
+
+  // Initialize date filter to 'today' on mount
+  useEffect(() => {
+    handlePeriodChange('today');
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Handle period change
+  const handlePeriodChange = (period: PeriodType) => {
+    setActivePeriod(period);
+    setIsCustomDateRange(false);
+
+    const now = new Date();
+    let start = new Date();
+
+    switch (period) {
+      case 'today':
+        start = new Date(now);
+        start.setHours(0, 0, 0, 0);
+        break;
+      case 'week':
+        start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'month':
+        start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case 'year':
+        start = new Date(now.getFullYear(), 0, 1);
+        break;
+      case 'all':
+        if (allOrders.length > 0) {
+          const earliestOrder = allOrders.reduce((earliest, order) => {
+            const orderDate = new Date(order.order_date || order.createdAt);
+            return orderDate < earliest ? orderDate : earliest;
+          }, new Date());
+          start = earliestOrder;
+        } else {
+          start = new Date(now.getFullYear() - 5, 0, 1);
+        }
+        break;
+    }
+
+    setDateRange({
+      start: start.toISOString().split('T')[0],
+      end: now.toISOString().split('T')[0]
+    });
+  };
+
+  // Filter orders by date range
+  const getFilteredOrders = () => {
+    if (!dateRange.start || !dateRange.end) return allOrders;
+
+    const startDate = new Date(dateRange.start);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(dateRange.end);
+    endDate.setHours(23, 59, 59, 999);
+
+    return allOrders.filter(order => {
+      const orderDate = new Date(order.order_date || order.createdAt);
+      return orderDate >= startDate && orderDate <= endDate;
+    });
+  };
+
+  // Handle custom date range change
+  const handleDateRangeChange = (field: 'start' | 'end', value: string) => {
+    setDateRange(prev => ({ ...prev, [field]: value }));
+    setIsCustomDateRange(true);
+    setActivePeriod('today'); // Reset active period when using custom dates
+  };
+
+  // CSV Download function
+  const handleDownloadCSV = () => {
+    const filtered = getFilteredOrders();
+
+    if (filtered.length === 0) {
+      alert('No orders to download');
+      return;
+    }
+
+    // CSV Headers
+    const headers = ['Order Number', 'Customer Name', 'Status', 'Payment Method', 'Amount', 'Date', 'Items'];
+
+    // CSV Rows
+    const rows = filtered.map(order => {
+      const orderDate = new Date(order.order_date || order.createdAt);
+      const items = order.order_items?.map((item: any) =>
+        `${item.quantity}x ${item.menu_item?.name || 'Unknown'}`
+      ).join('; ') || '';
+
+      return [
+        order.order_number || '',
+        order.customer_name || 'Guest',
+        order.status || '',
+        order.payment_method || '',
+        `RM ${(order.total_amount || 0).toFixed(2)}`,
+        orderDate.toLocaleString('en-MY'),
+        items
+      ];
+    });
+
+    // Generate CSV content
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    // Create download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+
+    link.setAttribute('href', url);
+    link.setAttribute('download', `live_orders_${dateRange.start}_to_${dateRange.end}.csv`);
+    link.style.visibility = 'hidden';
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Load company information for bill printing
   useEffect(() => {
@@ -1176,14 +1411,17 @@ const LiveOrdersPage: React.FC = () => {
       .join(' ');
   };
 
-  const getFilteredOrders = () => {
+  const getFilteredOrdersByTab = () => {
+    // Start with date-filtered orders (all orders, not paginated)
+    const dateFiltered = getFilteredOrders();
+
     let filtered;
     if (activeTab === 'all') {
-      filtered = orders;
+      filtered = dateFiltered;
     } else if (activeTab === 'outstanding') {
-      filtered = orders.filter(order => isOutstanding(order));
+      filtered = dateFiltered.filter(order => isOutstanding(order));
     } else {
-      filtered = orders.filter(order => order.status === activeTab);
+      filtered = dateFiltered.filter(order => order.status === activeTab);
     }
 
     // Sort by createdAt descending (newest first)
@@ -1195,11 +1433,13 @@ const LiveOrdersPage: React.FC = () => {
   };
 
   const getStatusCount = (status: string) => {
-    if (status === 'all') return orders.length;
+    const dateFiltered = getFilteredOrders();
+
+    if (status === 'all') return dateFiltered.length;
     if (status === 'outstanding') {
-      return orders.filter(order => isOutstanding(order)).length;
+      return dateFiltered.filter(order => isOutstanding(order)).length;
     }
-    return orders.filter(order => order.status === status).length;
+    return dateFiltered.filter(order => order.status === status).length;
   };
 
   const handleStatusChange = async (orderId: number, newStatus: DbOrder['status'], setKitchenReady: boolean = false) => {
@@ -1290,21 +1530,72 @@ const LiveOrdersPage: React.FC = () => {
     setSelectedOrder(null);
   };
 
-  const handlePrintReceipt = () => {
+  const handlePrintReceipt = async () => {
     if (selectedOrder) {
-      setTimeout(() => {
-        window.print();
-      }, 100);
+      const storeInfo = getStoreInfo();
+
+      // Convert DB order to thermalPrinter format
+      const orderData = {
+        orderNumber: selectedOrder.order_number,
+        pickupNumber: selectedOrder.order_number.split('-')[1],
+        date: new Date(selectedOrder.order_date || selectedOrder.created_at),
+        items: selectedOrder.order_items.map((item: any) => ({
+          menuItem: {
+            name: item.menu_item_name,
+            price: parseFloat(item.price)
+          },
+          quantity: item.quantity,
+          options: item.options || []
+        })),
+        subtotal: parseFloat(selectedOrder.subtotal || '0'),
+        discount: parseFloat(selectedOrder.discount || '0'),
+        coupon: selectedOrder.coupon_code ? {
+          code: selectedOrder.coupon_code,
+          discount: parseFloat(selectedOrder.coupon_discount || '0')
+        } : null,
+        tax: parseFloat(selectedOrder.tax || '0'),
+        total: parseFloat(selectedOrder.final_price || selectedOrder.total_amount || '0'),
+        paymentMethod: selectedOrder.payment_method || 'cash',
+        amountReceived: parseFloat(selectedOrder.amount_received || '0'),
+        change: parseFloat(selectedOrder.change || '0')
+      };
+
+      await printBill(orderData, storeInfo);
     }
   };
 
-  const handlePrintBill = (order?: DbOrder) => {
+  const handlePrintBill = async (order?: DbOrder) => {
     const orderToPrint = order || selectedOrder;
     if (orderToPrint) {
-      setSelectedOrder(orderToPrint);
-      setTimeout(() => {
-        window.print();
-      }, 100);
+      const storeInfo = getStoreInfo();
+
+      // Convert DB order to thermalPrinter format
+      const orderData = {
+        orderNumber: orderToPrint.order_number,
+        pickupNumber: orderToPrint.order_number.split('-')[1],
+        date: new Date(orderToPrint.order_date || orderToPrint.created_at),
+        items: orderToPrint.order_items.map((item: any) => ({
+          menuItem: {
+            name: item.menu_item_name,
+            price: parseFloat(item.price)
+          },
+          quantity: item.quantity,
+          options: item.options || []
+        })),
+        subtotal: parseFloat(orderToPrint.subtotal || '0'),
+        discount: parseFloat(orderToPrint.discount || '0'),
+        coupon: orderToPrint.coupon_code ? {
+          code: orderToPrint.coupon_code,
+          discount: parseFloat(orderToPrint.coupon_discount || '0')
+        } : null,
+        tax: parseFloat(orderToPrint.tax || '0'),
+        total: parseFloat(orderToPrint.final_price || orderToPrint.total_amount || '0'),
+        paymentMethod: orderToPrint.payment_method || 'cash',
+        amountReceived: parseFloat(orderToPrint.amount_received || '0'),
+        change: parseFloat(orderToPrint.change || '0')
+      };
+
+      await printBill(orderData, storeInfo);
     }
   };
 
@@ -1609,6 +1900,60 @@ const LiveOrdersPage: React.FC = () => {
         </Header>
 
         <Content>
+          <FilterControls>
+            <FilterRow>
+              <DateButton
+                active={activePeriod === 'today' && !isCustomDateRange}
+                onClick={() => handlePeriodChange('today')}
+              >
+                Today
+              </DateButton>
+              <DateButton
+                active={activePeriod === 'week' && !isCustomDateRange}
+                onClick={() => handlePeriodChange('week')}
+              >
+                Week
+              </DateButton>
+              <DateButton
+                active={activePeriod === 'month' && !isCustomDateRange}
+                onClick={() => handlePeriodChange('month')}
+              >
+                Month
+              </DateButton>
+              <DateButton
+                active={activePeriod === 'year' && !isCustomDateRange}
+                onClick={() => handlePeriodChange('year')}
+              >
+                Year
+              </DateButton>
+              <DateButton
+                active={activePeriod === 'all' && !isCustomDateRange}
+                onClick={() => handlePeriodChange('all')}
+              >
+                All
+              </DateButton>
+
+              <DateInput
+                type="date"
+                value={dateRange.start}
+                onChange={(e) => handleDateRangeChange('start', e.target.value)}
+              />
+              <span style={{ color: '#6B7C93' }}>to</span>
+              <DateInput
+                type="date"
+                value={dateRange.end}
+                onChange={(e) => handleDateRangeChange('end', e.target.value)}
+              />
+            </FilterRow>
+
+            <DownloadButton onClick={handleDownloadCSV}>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Download CSV
+            </DownloadButton>
+          </FilterControls>
+
           <StatusTabs>
             <StatusTab
               active={activeTab === 'all'}
@@ -1669,7 +2014,7 @@ const LiveOrdersPage: React.FC = () => {
           </StatusTabs>
 
           <OrdersCard>
-          {getFilteredOrders().length > 0 ? (
+          {getFilteredOrdersByTab().length > 0 ? (
             <OrdersTable>
               <TableHeader>
                 <tr>
@@ -1682,7 +2027,7 @@ const LiveOrdersPage: React.FC = () => {
                 </tr>
               </TableHeader>
               <tbody>
-                {getFilteredOrders().map(order => (
+                {getFilteredOrdersByTab().map(order => (
                   <TableRow key={order.id}>
                     <TableCell data-label="ORDER">
                       <OrderNumber onClick={() => handleOrderClick(order)}>
