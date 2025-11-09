@@ -310,8 +310,8 @@ const ReportsPage: React.FC = () => {
     });
 
     const filtered = orders.filter(order => {
-      // Check multiple date fields: order_date, createdAt, or created_at
-      const orderDateValue = order.order_date || order.createdAt || order.created_at;
+      // Check date fields: order_date or createdAt (database columns)
+      const orderDateValue = order.order_date || order.createdAt;
       if (!orderDateValue) {
         console.warn('⚠️ Order without date:', order);
         return false;
@@ -319,14 +319,15 @@ const ReportsPage: React.FC = () => {
       const orderDate = new Date(orderDateValue);
       const isInRange = orderDate >= startDate && orderDate <= endDate;
 
-      // Include ALL orders (not just completed) for reports
-      // Reports should show all restaurant activity
-      return isInRange;
+      // Only include COMPLETED orders for reports
+      const isCompleted = order.status === 'completed';
+
+      return isInRange && isCompleted;
     });
 
-    console.log('📊 Filtered orders (all statuses):', {
+    console.log('📊 Filtered orders (completed only):', {
       filteredCount: filtered.length,
-      allStatuses: true,
+      completedOnly: true,
       sampleOrder: filtered[0]
     });
 
@@ -339,7 +340,7 @@ const ReportsPage: React.FC = () => {
   const getSalesData = () => {
     if (filteredOrders.length === 0) return [];
 
-    const getOrderDate = (order: any) => new Date(order.order_date || order.createdAt || order.created_at);
+    const getOrderDate = (order: any) => new Date(order.order_date || order.createdAt);
     const getOrderAmount = (order: any) => parseFloat(order.final_price || order.total_amount || order.total_price || 0);
 
     if (activePeriod === 'today') {
@@ -469,7 +470,7 @@ const ReportsPage: React.FC = () => {
   const getHourlyData = () => {
     if (filteredOrders.length === 0) return [];
 
-    const getOrderDate = (order: any) => new Date(order.order_date || order.createdAt || order.created_at);
+    const getOrderDate = (order: any) => new Date(order.order_date || order.createdAt);
     const hourlyStats: Record<string, number> = {};
 
     filteredOrders.forEach(order => {
@@ -576,7 +577,7 @@ const ReportsPage: React.FC = () => {
   const getPeakTimesData = () => {
     if (filteredOrders.length === 0) return [];
 
-    const getOrderDate = (order: any) => new Date(order.order_date || order.createdAt || order.created_at);
+    const getOrderDate = (order: any) => new Date(order.order_date || order.createdAt);
     const getOrderAmount = (order: any) => parseFloat(order.final_price || order.total_amount || order.total_price || 0);
     const hourlySlots: Record<string, { orders: number; revenue: number }> = {};
 
@@ -611,7 +612,7 @@ const ReportsPage: React.FC = () => {
   const getDrilldownSalesData = () => {
     if (filteredOrders.length === 0) return {};
 
-    const getOrderDate = (order: any) => new Date(order.order_date || order.createdAt || order.created_at);
+    const getOrderDate = (order: any) => new Date(order.order_date || order.createdAt);
     const getOrderAmount = (order: any) => parseFloat(order.final_price || order.total_amount || order.total_price || 0);
 
     const yearData: Record<string, any> = {};
@@ -766,7 +767,7 @@ const ReportsPage: React.FC = () => {
         // Get the earliest order date, or default to 5 years ago
         if (orders.length > 0) {
           const earliestOrder = orders.reduce((earliest, order) => {
-            const orderDate = new Date(order.order_date || order.createdAt || order.created_at);
+            const orderDate = new Date(order.order_date || order.createdAt);
             return orderDate < earliest ? orderDate : earliest;
           }, new Date());
           start = earliestOrder;

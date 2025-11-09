@@ -1042,9 +1042,17 @@ const LiveOrdersPage: React.FC = () => {
 
   // Date filter state (default to 'today')
   const [activePeriod, setActivePeriod] = useState<PeriodType>('today');
-  const [dateRange, setDateRange] = useState({
-    start: new Date().toISOString().split('T')[0],
-    end: new Date().toISOString().split('T')[0]
+  const [dateRange, setDateRange] = useState(() => {
+    // Get today's date in LOCAL timezone (not UTC)
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const localDate = `${year}-${month}-${day}`;
+    return {
+      start: localDate,
+      end: localDate
+    };
   });
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
 
@@ -1140,7 +1148,9 @@ const LiveOrdersPage: React.FC = () => {
 
   // Fetch ALL orders (not paginated) for tab counts
   const fetchAllOrders = useCallback(async () => {
-    if (!user?.restaurantId) return;
+    if (!user?.restaurantId) {
+      return;
+    }
 
     try {
       const response = await fetch(
@@ -1160,33 +1170,22 @@ const LiveOrdersPage: React.FC = () => {
   // Initialize Socket.IO connection
   useEffect(() => {
     if (!user?.restaurantId) {
-      console.warn('⚠️ Cannot initialize Socket.IO: No restaurantId');
       return;
     }
-
-    console.log('🔌 Initializing Socket.IO connection to /orders namespace...');
-    console.log('   Restaurant ID:', user.restaurantId);
 
     const newSocket = io('/orders', {
       transports: ['websocket', 'polling']
     });
 
     newSocket.on('connect', () => {
-      console.log('✅ Connected to /orders namespace, Socket ID:', newSocket.id);
-      console.log('   Joining restaurant room:', user.restaurantId);
       newSocket.emit('join-restaurant', user.restaurantId);
     });
 
     newSocket.on('connect_error', (error) => {
-      console.error('❌ Socket.IO connection error:', error);
+      console.error('Socket.IO connection error:', error);
     });
 
     newSocket.on('order-created', (order: DbOrder) => {
-      console.log('📥 New order received via Socket.IO:', {
-        id: order.id,
-        orderNumber: order.order_number,
-        status: order.status
-      });
       setOrders(prev => [order, ...prev]);
       setAllOrders(prev => [order, ...prev]); // Add to allOrders for tab counts
 
@@ -1195,29 +1194,18 @@ const LiveOrdersPage: React.FC = () => {
     });
 
     newSocket.on('order-updated', (order: DbOrder) => {
-      console.log('📝 Order updated via Socket.IO:', {
-        id: order.id,
-        orderNumber: order.order_number,
-        status: order.status
-      });
       setOrders(prev => prev.map(o => o.id === order.id ? order : o));
       setAllOrders(prev => prev.map(o => o.id === order.id ? order : o)); // Update in allOrders too
     });
 
     newSocket.on('order-deleted', ({ id }: { id: number }) => {
-      console.log('🗑️ Order deleted via Socket.IO:', id);
       setOrders(prev => prev.filter(o => o.id !== id));
       setAllOrders(prev => prev.filter(o => o.id !== id)); // Remove from allOrders too
-    });
-
-    newSocket.on('disconnect', (reason) => {
-      console.warn('⚠️ Disconnected from /orders namespace. Reason:', reason);
     });
 
     setSocket(newSocket);
 
     return () => {
-      console.log('🔌 Cleaning up Socket.IO connection');
       newSocket.disconnect();
     };
   }, [user?.restaurantId, playNotificationSound]);
@@ -1237,6 +1225,11 @@ const LiveOrdersPage: React.FC = () => {
     handlePeriodChange('today');
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Reset page to 1 when tab or date filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, dateRange.start, dateRange.end, activePeriod]);
+
   // Handle period change
   const handlePeriodChange = (period: PeriodType) => {
     setActivePeriod(period);
@@ -1244,6 +1237,14 @@ const LiveOrdersPage: React.FC = () => {
 
     const now = new Date();
     let start = new Date();
+
+    // Helper to format date as YYYY-MM-DD in LOCAL timezone
+    const formatLocalDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
 
     switch (period) {
       case 'today':
@@ -1273,8 +1274,8 @@ const LiveOrdersPage: React.FC = () => {
     }
 
     setDateRange({
-      start: start.toISOString().split('T')[0],
-      end: now.toISOString().split('T')[0]
+      start: formatLocalDate(start),
+      end: formatLocalDate(now)
     });
   };
 
@@ -1287,10 +1288,25 @@ const LiveOrdersPage: React.FC = () => {
     const endDate = new Date(dateRange.end);
     endDate.setHours(23, 59, 59, 999);
 
-    return allOrders.filter(order => {
-      const orderDate = new Date(order.order_date || order.createdAt);
-      return orderDate >= startDate && orderDate <= endDate;
+    const filtered = allOrders.filter(order => {
+      // Use order_date or createdAt (database columns)
+      const dateValue = order.order_date || order.createdAt;
+      if (!dateValue) {
+        return false;
+      }
+
+      const orderDate = new Date(dateValue);
+
+      // Check if date is valid
+      if (isNaN(orderDate.getTime())) {
+        return false;
+      }
+
+      const isInRange = orderDate >= startDate && orderDate <= endDate;
+      return isInRange;
     });
+
+    return filtered;
   };
 
   // Handle custom date range change
@@ -1538,7 +1554,7 @@ const LiveOrdersPage: React.FC = () => {
       const orderData = {
         orderNumber: selectedOrder.order_number,
         pickupNumber: selectedOrder.order_number.split('-')[1],
-        date: new Date(selectedOrder.order_date || selectedOrder.created_at),
+        date: new Date(selectedOrder.order_date || selectedOrder.createdAt),
         items: selectedOrder.order_items.map((item: any) => ({
           menuItem: {
             name: item.menu_item_name,
@@ -1573,7 +1589,7 @@ const LiveOrdersPage: React.FC = () => {
       const orderData = {
         orderNumber: orderToPrint.order_number,
         pickupNumber: orderToPrint.order_number.split('-')[1],
-        date: new Date(orderToPrint.order_date || orderToPrint.created_at),
+        date: new Date(orderToPrint.order_date || orderToPrint.createdAt),
         items: orderToPrint.order_items.map((item: any) => ({
           menuItem: {
             name: item.menu_item_name,
@@ -1600,15 +1616,10 @@ const LiveOrdersPage: React.FC = () => {
   };
 
   const handleConfirmPayment = async () => {
-    console.log('💳 Confirm Payment clicked');
-
     if (!selectedOrder) {
-      console.error('❌ No selected order');
       alert('No order selected');
       return;
     }
-
-    console.log('💳 Confirming payment for order:', selectedOrder.id);
 
     // Stop notification sound when payment confirmed
     setAudioEnabled(false);
@@ -1622,35 +1633,24 @@ const LiveOrdersPage: React.FC = () => {
         })
       }));
 
-      console.log('📨 Response status:', response.status);
-
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ API error:', errorText);
         throw new Error('Failed to confirm payment');
       }
 
-      console.log('✅ Payment confirmed successfully');
-
       // 결제 완료 후 awaiting_payment이면 pending으로 변경 (주방에 전송)
       if (selectedOrder.status === 'awaiting_payment') {
-        console.log('🍳 Sending to kitchen (awaiting_payment → pending)...');
-        const statusResponse = await fetch(`/api/orders/${selectedOrder.id}`, getFetchOptions({
+        await fetch(`/api/orders/${selectedOrder.id}`, getFetchOptions({
           method: 'PATCH',
           body: JSON.stringify({
             status: 'pending'
           })
         }));
-
-        if (statusResponse.ok) {
-          console.log('✅ Order sent to kitchen');
-        }
       }
 
       handleCloseModal();
       fetchOrders(); // Refresh orders list
     } catch (error) {
-      console.error('❌ Error confirming payment:', error);
+      console.error('Error confirming payment:', error);
       alert('Failed to confirm payment. Please try again.');
     }
   };
@@ -1947,10 +1947,10 @@ const LiveOrdersPage: React.FC = () => {
             </FilterRow>
 
             <DownloadButton onClick={handleDownloadCSV}>
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              Download CSV
+              Download
             </DownloadButton>
           </FilterControls>
 
@@ -2027,7 +2027,9 @@ const LiveOrdersPage: React.FC = () => {
                 </tr>
               </TableHeader>
               <tbody>
-                {getFilteredOrdersByTab().map(order => (
+                {getFilteredOrdersByTab()
+                  .slice((currentPage - 1) * 50, currentPage * 50)
+                  .map(order => (
                   <TableRow key={order.id}>
                     <TableCell data-label="ORDER">
                       <OrderNumber onClick={() => handleOrderClick(order)}>
@@ -2607,10 +2609,13 @@ const LiveOrdersPage: React.FC = () => {
         </Content>
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {(() => {
+          const filteredOrdersCount = getFilteredOrdersByTab().length;
+          const filteredTotalPages = Math.ceil(filteredOrdersCount / 50);
+          return filteredTotalPages > 1 && (
           <PaginationContainer>
             <PaginationInfo>
-              Showing {((currentPage - 1) * 50) + 1}-{Math.min(currentPage * 50, totalCount)} of {totalCount} orders
+              Showing {((currentPage - 1) * 50) + 1}-{Math.min(currentPage * 50, filteredOrdersCount)} of {filteredOrdersCount} orders
             </PaginationInfo>
             <PaginationControls>
               <PageButton
@@ -2627,14 +2632,14 @@ const LiveOrdersPage: React.FC = () => {
               </PageButton>
 
               {/* Page numbers */}
-              {[...Array(Math.min(5, totalPages))].map((_, idx) => {
+              {[...Array(Math.min(5, filteredTotalPages))].map((_, idx) => {
                 let pageNum;
-                if (totalPages <= 5) {
+                if (filteredTotalPages <= 5) {
                   pageNum = idx + 1;
                 } else if (currentPage <= 3) {
                   pageNum = idx + 1;
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + idx;
+                } else if (currentPage >= filteredTotalPages - 2) {
+                  pageNum = filteredTotalPages - 4 + idx;
                 } else {
                   pageNum = currentPage - 2 + idx;
                 }
@@ -2651,20 +2656,21 @@ const LiveOrdersPage: React.FC = () => {
               })}
 
               <PageButton
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(prev => Math.min(filteredTotalPages, prev + 1))}
+                disabled={currentPage === filteredTotalPages}
               >
                 Next
               </PageButton>
               <PageButton
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(filteredTotalPages)}
+                disabled={currentPage === filteredTotalPages}
               >
                 Last
               </PageButton>
             </PaginationControls>
           </PaginationContainer>
-        )}
+        );
+        })()}
       </Container>
     </MainLayout>
   );
