@@ -51,12 +51,16 @@ const Container = styled.div`
 
 const Header = styled.div`
   background: white;
-  padding: 32px;
+  padding: 16px 32px;
   border-bottom: 1px solid #E6EBF1;
   margin-bottom: 0;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
 
   @media (max-width: 768px) {
-    padding: 20px;
+    padding: 16px 20px;
+    min-height: auto;
   }
 `;
 
@@ -80,7 +84,7 @@ const Title = styled.h1`
 const Subtitle = styled.p`
   font-size: 14px;
   color: #6B7280;
-  margin: 8px 0 0 0;
+  margin: 8px 0 0 16px;
 `;
 
 const MainGrid = styled.div`

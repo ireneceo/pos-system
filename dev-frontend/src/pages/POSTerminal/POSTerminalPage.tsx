@@ -31,13 +31,15 @@ const POSContainer = styled.div`
 
 const Header = styled.header`
   background: white;
-  padding: 20px 32px;
+  padding: 16px 32px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid #E6EBF1;
+  height: 56px;
 
   @media (max-width: 768px) {
+    height: auto;
     padding: 16px 20px;
   }
 `;

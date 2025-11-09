@@ -95,13 +95,15 @@ const Container = styled.div`
 
 const Header = styled.header`
   background: white;
-  padding: 24px 32px;
+  padding: 16px 32px;
   border-bottom: 1px solid #E6EBF1;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  height: 56px;
 
   @media (max-width: 768px) {
+    height: auto;
     padding: 16px 20px;
     flex-direction: column;
     gap: 16px;
@@ -774,35 +776,48 @@ const BillPrintContainer = styled.div`
 // Global print styles
 const PrintStyles = createGlobalStyle`
   @media print {
-    /* Reset body for print */
-    body {
-      margin: 0 !important;
-      padding: 0 !important;
-      background: white !important;
-    }
-
-    /* Hide all elements except bill and its parents */
-    body * {
-      visibility: hidden !important;
-    }
-
-    /* Show bill and its children */
-    #bill-print-content,
-    #bill-print-content * {
-      visibility: visible !important;
-    }
-
-    /* Position bill for print */
-    #bill-print-content {
-      position: absolute !important;
-      left: 0 !important;
-      top: 0 !important;
-    }
-
-    /* Ensure proper page settings */
     @page {
       size: 80mm auto;
+      margin: 0mm;
+    }
+
+    * {
       margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 80mm;
+      margin: 0;
+      padding: 0;
+      background: white;
+      overflow: hidden;
+    }
+
+    /* Hide everything */
+    body > * {
+      display: none !important;
+    }
+
+    /* Show only bill content - make it direct body child with important */
+    #bill-print-content {
+      display: block !important;
+      position: static !important;
+      width: 80mm !important;
+      max-width: 80mm !important;
+      margin: 0 !important;
+      padding: 5mm !important;
+      background: white !important;
+      page-break-after: avoid !important;
+      page-break-inside: avoid !important;
+    }
+
+    /* Force immediate page break after bill */
+    #bill-print-content::after {
+      content: "";
+      display: block;
+      page-break-after: always;
     }
   }
 `;

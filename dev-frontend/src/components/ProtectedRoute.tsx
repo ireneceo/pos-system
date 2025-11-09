@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate, useLocation, useParams } from 'react-router-dom';
+import { Navigate, useLocation, useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import styled from 'styled-components';
 
@@ -25,11 +25,6 @@ const AccessDeniedBox = styled.div`
   text-align: center;
   max-width: 400px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-`;
-
-const Icon = styled.div`
-  font-size: 48px;
-  margin-bottom: 20px;
 `;
 
 const Title = styled.h2`
@@ -88,6 +83,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const { user, isAuthenticated, isLoading, hasPermission, canAccessRoute } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const params = useParams<{ restaurantId?: string }>();
 
   // 로딩 중일 때는 스피너 표시
@@ -134,7 +130,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
               <br />
               Requested restaurant ID: {urlRestaurantId}
             </Message>
-            <Button onClick={() => window.location.href = `/restaurant/${userRestaurantId}${location.pathname.split('/').slice(3).join('/')}`}>
+            <Button onClick={() => navigate(`/restaurant/${userRestaurantId}${location.pathname.split('/').slice(3).join('/')}`)}>
               Go to Your Restaurant
             </Button>
           </AccessDeniedBox>
@@ -143,23 +139,27 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     }
   }
 
-  // 역할 확인
+  // 역할 확인 - 권한이 없으면 역할별 대시보드로 리다이렉트
   if (requiredRole && user && !requiredRole.includes(user.role)) {
-    return (
-      <AccessDeniedContainer>
-        <AccessDeniedBox>
-          <Title>Access Denied</Title>
-          <Message>
-            You don't have permission to access this page.
-            <br />
-            Required role: {requiredRole.join(' or ')}
-          </Message>
-          <Button onClick={() => window.history.back()}>
-            Go Back
-          </Button>
-        </AccessDeniedBox>
-      </AccessDeniedContainer>
-    );
+    // 역할별 대시보드로 리다이렉트
+    switch (user.role) {
+      case 'System Admin':
+        return <Navigate to="/pos/admin/dashboard" replace />;
+      case 'Foodcourt General':
+        return <Navigate to="/pos/foodcourt/general/dashboard" replace />;
+      case 'Brand General':
+        return <Navigate to="/pos/brand/general/dashboard" replace />;
+      case 'Foodcourt Manager':
+        return <Navigate to="/pos/foodcourt/dashboard" replace />;
+      case 'Brand Manager':
+        return <Navigate to="/pos/brand/dashboard" replace />;
+      case 'Restaurant Admin':
+        return <Navigate to={`/restaurant/${user.restaurantId || '1'}/dashboard`} replace />;
+      case 'Staff':
+        return <Navigate to={`/restaurant/${user.restaurantId || '1'}/basic`} replace />;
+      default:
+        return <Navigate to="/pos" replace />;
+    }
   }
 
   // 권한 확인
@@ -171,7 +171,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           <Message>
             You don't have the required permission to perform this action.
           </Message>
-          <Button onClick={() => window.history.back()}>
+          <Button onClick={() => navigate(-1)}>
             Go Back
           </Button>
         </AccessDeniedBox>
@@ -184,19 +184,25 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (requiredRole && requiredRole.length > 0) {
     // requiredRole이 지정된 경우만 엄격하게 체크
     if (!canAccessRoute(location.pathname)) {
-      return (
-        <AccessDeniedContainer>
-          <AccessDeniedBox>
-            <Title>Unauthorized Access</Title>
-            <Message>
-              Your role ({user?.role}) cannot access this section.
-            </Message>
-            <Button onClick={() => window.history.back()}>
-              Go Back
-            </Button>
-          </AccessDeniedBox>
-        </AccessDeniedContainer>
-      );
+      // 역할별 대시보드로 리다이렉트
+      switch (user?.role) {
+        case 'System Admin':
+          return <Navigate to="/pos/admin/dashboard" replace />;
+        case 'Foodcourt General':
+          return <Navigate to="/pos/foodcourt/general/dashboard" replace />;
+        case 'Brand General':
+          return <Navigate to="/pos/brand/general/dashboard" replace />;
+        case 'Foodcourt Manager':
+          return <Navigate to="/pos/foodcourt/dashboard" replace />;
+        case 'Brand Manager':
+          return <Navigate to="/pos/brand/dashboard" replace />;
+        case 'Restaurant Admin':
+          return <Navigate to={`/restaurant/${user.restaurantId || '1'}/dashboard`} replace />;
+        case 'Staff':
+          return <Navigate to={`/restaurant/${user.restaurantId || '1'}/basic`} replace />;
+        default:
+          return <Navigate to="/pos" replace />;
+      }
     }
   }
 

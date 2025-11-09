@@ -105,68 +105,6 @@ const SidebarOpenButton = styled.button<{ isCollapsed?: boolean }>`
   }
 `;
 
-const FloatingFullscreenButton = styled.button`
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  z-index: 1001;
-  width: 56px;
-  height: 56px;
-  background: white;
-  border: 1px solid #E6EBF1;
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #6B7C93;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transition: all 0.2s;
-
-  &:hover {
-    background: #635BFF;
-    color: white;
-    box-shadow: 0 6px 20px rgba(99, 91, 255, 0.4);
-    transform: scale(1.05);
-  }
-
-  svg {
-    width: 24px;
-    height: 24px;
-  }
-`;
-
-const FullscreenButton = styled.button`
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 8px 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #6B7C93;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s;
-
-  &:hover {
-    background: #E6EBF1;
-    color: #0A2540;
-  }
-
-  svg {
-    width: 18px;
-    height: 18px;
-  }
-
-  .fullscreen-text {
-    @media (max-width: 480px) {
-      display: none;
-    }
-  }
-`;
-
 const Logo = styled.div`
   font-size: 20px;
   font-weight: 600;
@@ -568,8 +506,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [userWantsFullscreen, setUserWantsFullscreen] = useState(false);
   const [brandLogo, setBrandLogo] = useState<string>('');
   const { logout, currentStaff, isLoggedIn } = useStaff();
   const { user, logout: authLogout } = useAuth();
@@ -622,129 +558,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const toggleSidebarCollapse = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };
-
-  const toggleFullscreen = () => {
-    const elem = document.documentElement as any;
-
-    if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
-      // User wants to enter fullscreen
-      setUserWantsFullscreen(true);
-
-      // Try standard requestFullscreen first
-      if (elem.requestFullscreen) {
-        elem.requestFullscreen().then(() => {
-          setIsFullscreen(true);
-        }).catch((err: Error) => {
-          console.error('Error attempting to enable fullscreen:', err);
-          setUserWantsFullscreen(false);
-        });
-      }
-      // iOS Safari fallback
-      else if (elem.webkitRequestFullscreen) {
-        elem.webkitRequestFullscreen();
-        setIsFullscreen(true);
-      }
-      // iOS Safari webkitEnterFullscreen (for video elements)
-      else if (elem.webkitEnterFullscreen) {
-        elem.webkitEnterFullscreen();
-        setIsFullscreen(true);
-      }
-    } else {
-      // User wants to exit fullscreen
-      setUserWantsFullscreen(false);
-
-      // Exit fullscreen
-      if (document.exitFullscreen) {
-        document.exitFullscreen().then(() => {
-          setIsFullscreen(false);
-        });
-      } else if ((document as any).webkitExitFullscreen) {
-        (document as any).webkitExitFullscreen();
-        setIsFullscreen(false);
-      }
-    }
-  };
-
-  // Listen for fullscreen changes and maintain fullscreen state
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      const isCurrentlyFullscreen = !!document.fullscreenElement || !!(document as any).webkitFullscreenElement;
-      setIsFullscreen(isCurrentlyFullscreen);
-
-      // If browser exited fullscreen but user still wants it, re-enter immediately
-      if (!isCurrentlyFullscreen && userWantsFullscreen) {
-        const elem = document.documentElement as any;
-
-        // Re-enter fullscreen
-        setTimeout(() => {
-          if (elem.requestFullscreen) {
-            elem.requestFullscreen().catch((err: Error) => {
-              console.error('Error re-entering fullscreen:', err);
-            });
-          } else if (elem.webkitRequestFullscreen) {
-            elem.webkitRequestFullscreen();
-          }
-        }, 100);
-      }
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-    };
-  }, [userWantsFullscreen]);
-
-  // Prevent page scroll/pull-to-refresh gestures when in fullscreen mode
-  useEffect(() => {
-    if (!userWantsFullscreen) return;
-
-    // Disable pull-to-refresh and overscroll
-    const preventOverscroll = (e: Event) => {
-      e.preventDefault();
-    };
-
-    // Prevent touchmove that would trigger browser chrome
-    const preventTouchMove = (e: TouchEvent) => {
-      // Allow scrolling within scrollable elements
-      const target = e.target as HTMLElement;
-      const scrollableParent = target.closest('[data-scrollable]');
-
-      if (!scrollableParent) {
-        // Only prevent if at the top or bottom of the page
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-        const scrollHeight = document.documentElement.scrollHeight;
-        const clientHeight = document.documentElement.clientHeight;
-
-        // Prevent overscroll at top and bottom
-        if ((scrollTop <= 0 && e.touches[0].clientY > e.touches[0].clientY) ||
-            (scrollTop + clientHeight >= scrollHeight - 1)) {
-          e.preventDefault();
-        }
-      }
-    };
-
-    // Apply styles to prevent overscroll
-    document.body.style.overscrollBehavior = 'none';
-    document.documentElement.style.overscrollBehavior = 'none';
-
-    // Prevent default touch behaviors
-    document.addEventListener('touchmove', preventTouchMove, { passive: false });
-    document.addEventListener('gesturestart', preventOverscroll);
-    document.addEventListener('gesturechange', preventOverscroll);
-    document.addEventListener('gestureend', preventOverscroll);
-
-    return () => {
-      document.body.style.overscrollBehavior = '';
-      document.documentElement.style.overscrollBehavior = '';
-      document.removeEventListener('touchmove', preventTouchMove);
-      document.removeEventListener('gesturestart', preventOverscroll);
-      document.removeEventListener('gesturechange', preventOverscroll);
-      document.removeEventListener('gestureend', preventOverscroll);
-    };
-  }, [userWantsFullscreen]);
 
   // 페이지 접근 권한 체크
 
@@ -1512,22 +1325,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           <path d="M9 18l6-6-6-6"/>
         </svg>
       </SidebarOpenButton>
-
-      {/* Floating Fullscreen Button (always visible on all pages) */}
-      <FloatingFullscreenButton
-        onClick={toggleFullscreen}
-        title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-      >
-        {isFullscreen ? (
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>
-          </svg>
-        ) : (
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
-          </svg>
-        )}
-      </FloatingFullscreenButton>
 
       <MainContent isCollapsed={isSidebarCollapsed}>
         <MobileContent>

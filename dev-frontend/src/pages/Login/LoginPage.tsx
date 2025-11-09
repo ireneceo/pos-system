@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -300,6 +300,7 @@ const QuickLoginHint = styled.div`
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -337,34 +338,42 @@ const LoginPage: React.FC = () => {
   // Redirect if already logged in
   useEffect(() => {
     if (!authLoading && isAuthenticated && user) {
-      // Redirect to role-specific dashboard
-      switch (user.role) {
-        case 'System Admin':
-          navigate('/pos/admin/dashboard', { replace: true });
-          break;
-        case 'Foodcourt General':
-          navigate('/pos/foodcourt/general/dashboard', { replace: true });
-          break;
-        case 'Brand General':
-          navigate('/pos/brand/general/dashboard', { replace: true });
-          break;
-        case 'Foodcourt Manager':
-          navigate('/pos/foodcourt/dashboard', { replace: true });
-          break;
-        case 'Brand Manager':
-          navigate('/pos/brand/dashboard', { replace: true });
-          break;
-        case 'Restaurant Admin':
-          navigate('/pos/restaurant/dashboard', { replace: true });
-          break;
-        case 'Staff':
-          navigate('/pos/basic', { replace: true });
-          break;
-        default:
-          navigate('/pos/basic', { replace: true });
+      // Check if there's a redirect path from location state
+      const from = (location.state as any)?.from?.pathname;
+
+      if (from && from !== '/pos') {
+        // Redirect to the originally requested page
+        navigate(from, { replace: true });
+      } else {
+        // Redirect to role-specific dashboard
+        switch (user.role) {
+          case 'System Admin':
+            navigate('/pos/admin/dashboard', { replace: true });
+            break;
+          case 'Foodcourt General':
+            navigate('/pos/foodcourt/general/dashboard', { replace: true });
+            break;
+          case 'Brand General':
+            navigate('/pos/brand/general/dashboard', { replace: true });
+            break;
+          case 'Foodcourt Manager':
+            navigate('/pos/foodcourt/dashboard', { replace: true });
+            break;
+          case 'Brand Manager':
+            navigate('/pos/brand/dashboard', { replace: true });
+            break;
+          case 'Restaurant Admin':
+            navigate('/pos/restaurant/dashboard', { replace: true });
+            break;
+          case 'Staff':
+            navigate('/pos/basic', { replace: true });
+            break;
+          default:
+            navigate('/pos/basic', { replace: true });
+        }
       }
     }
-  }, [authLoading, isAuthenticated, user, navigate]);
+  }, [authLoading, isAuthenticated, user, navigate, location]);
 
   const handleQuickLogin = (account: typeof REAL_ACCOUNTS[0]) => {
     setEmail(account.email);

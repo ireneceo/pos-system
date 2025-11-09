@@ -28,11 +28,12 @@ const Container = styled.div`
 
 const Header = styled.header`
   background: white;
-  padding: 24px 32px;
+  padding: 16px 32px;
   border-bottom: 1px solid #E6EBF1;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  height: 56px;
 `;
 
 const HeaderTitle = styled.h1`

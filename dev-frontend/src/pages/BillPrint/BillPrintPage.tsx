@@ -390,29 +390,44 @@ const BillPrintPage: React.FC = () => {
       {/* Print-only styles */}
       <style>{`
         @media print {
-          /* Reset body for print */
+          @page {
+            size: 80mm auto;
+            margin: 0mm;
+          }
+
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+
           body {
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
+            width: 80mm;
+            margin: 0;
+            padding: 0;
+            background: white;
+            overflow: hidden;
           }
 
-          /* Hide all elements except bill and its parents */
-          body * {
-            visibility: hidden !important;
+          /* Hide everything */
+          body > * {
+            display: none !important;
           }
 
-          /* Show bill and its children */
-          [data-print-bill],
-          [data-print-bill] * {
-            visibility: visible !important;
-          }
-
-          /* Position bill for print */
+          /* Show only bill content */
           [data-print-bill] {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
+            display: block !important;
+            position: static !important;
+            width: 80mm !important;
+            max-width: 80mm !important;
+            margin: 0 !important;
+            padding: 5mm !important;
+            background: white !important;
+            border: none !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            page-break-after: avoid !important;
+            page-break-inside: avoid !important;
           }
 
           /* Hide print button */
@@ -420,10 +435,11 @@ const BillPrintPage: React.FC = () => {
             display: none !important;
           }
 
-          /* Ensure proper page breaks */
-          @page {
-            size: 80mm auto;
-            margin: 0;
+          /* Force immediate page break after bill */
+          [data-print-bill]::after {
+            content: "";
+            display: block;
+            page-break-after: always;
           }
         }
       `}</style>

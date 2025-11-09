@@ -386,22 +386,22 @@ function App() {
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/live-orders" element={
-                        <ProtectedRoute requireRestaurantMatch={true}>
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
                           <LiveOrdersPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/pos-terminal" element={
-                        <ProtectedRoute requireRestaurantMatch={true}>
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
                           <POSTerminalPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/kitchen" element={
-                        <ProtectedRoute requireRestaurantMatch={true}>
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
                           <KitchenDisplayPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/display" element={
-                        <ProtectedRoute requireRestaurantMatch={true}>
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
                           <CustomerDisplayPage />
                         </ProtectedRoute>
                       } />
