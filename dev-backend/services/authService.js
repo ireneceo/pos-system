@@ -3,13 +3,21 @@ const bcrypt = require('bcrypt');
 const User = require('../models/User');
 
 async function login(emailOrUsername, password) {
-  // Try to find user by email or username
+  // Try to find user by email or username (case-insensitive)
   const { Op } = require('sequelize');
+  const sequelize = require('../db').sequelize;
+
   const user = await User.findOne({
     where: {
       [Op.or]: [
-        { email: emailOrUsername },
-        { username: emailOrUsername }
+        sequelize.where(
+          sequelize.fn('LOWER', sequelize.col('email')),
+          sequelize.fn('LOWER', emailOrUsername)
+        ),
+        sequelize.where(
+          sequelize.fn('LOWER', sequelize.col('username')),
+          sequelize.fn('LOWER', emailOrUsername)
+        )
       ]
     }
   });

@@ -60,6 +60,19 @@ const LogoImage = styled.img`
   object-fit: contain;
 `;
 
+const LogoPlaceholder = styled.div`
+  width: 140px;
+  height: 40px;
+  background: #E5E7EB;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9CA3AF;
+  font-size: 11px;
+  font-weight: 500;
+`;
+
 const OrderText = styled.span`
   color: #0A2540;
 `;
@@ -480,20 +493,28 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   useEffect(() => {
     const loadBrandLogo = async () => {
       try {
-        const response = await fetch('/api/admin/settings');
+        console.log('[MainLayout] Fetching brand logo from /api/admin-settings');
+        const response = await fetch('/api/admin-settings');
+        console.log('[MainLayout] Response status:', response.status);
         if (response.ok) {
           const settings = await response.json();
+          console.log('[MainLayout] Settings:', settings);
           if (settings.brandLogo) {
+            console.log('[MainLayout] Setting brandLogo');
             setBrandLogo(settings.brandLogo);
           } else if (settings.logo) {
+            console.log('[MainLayout] Using fallback logo');
             // Fallback to old 'logo' field for backward compatibility
             setBrandLogo(settings.logo);
           } else {
+            console.log('[MainLayout] No logo found');
             setBrandLogo('');
           }
+        } else {
+          console.error('[MainLayout] Response not OK:', response.status);
         }
       } catch (error) {
-        console.error('Failed to load brand logo from API:', error);
+        console.error('[MainLayout] Failed to load brand logo from API:', error);
         setBrandLogo('');
       }
     };

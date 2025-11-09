@@ -107,10 +107,33 @@ const Logo = styled.div`
   font-weight: 800;
   color: #0A2540;
   margin-bottom: 10px;
-  
+
   span {
     color: #635BFF;
   }
+`;
+
+const LogoImage = styled.img`
+  max-width: 200px;
+  max-height: 80px;
+  object-fit: contain;
+  object-position: left center;
+  margin-bottom: 24px;
+  display: block;
+`;
+
+const LogoPlaceholder = styled.div`
+  width: 200px;
+  height: 80px;
+  background: #E5E7EB;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+  color: #9CA3AF;
+  font-size: 12px;
+  text-align: center;
 `;
 
 const Subtitle = styled.p`
@@ -282,6 +305,34 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [brandLogo, setBrandLogo] = useState<string>('');
+
+  // Fetch company settings for brand logo
+  useEffect(() => {
+    const fetchCompanySettings = async () => {
+      try {
+        console.log('Fetching company settings from /api/admin-settings');
+        const response = await fetch('/api/admin-settings');
+        console.log('Response status:', response.status);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Company settings data:', data);
+          if (data.brandLogo) {
+            console.log('Setting brand logo');
+            setBrandLogo(data.brandLogo);
+          } else {
+            console.log('No brandLogo in response');
+          }
+        } else {
+          console.error('Response not OK:', response.status);
+        }
+      } catch (error) {
+        console.error('Failed to fetch company settings:', error);
+      }
+    };
+
+    fetchCompanySettings();
+  }, []);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -347,11 +398,10 @@ const LoginPage: React.FC = () => {
     <Container>
       <LoginBox>
         <LeftSection>
-          <Logo>
-            Order<span>Here</span>
-          </Logo>
-          <Subtitle>Multi-tenant POS & Restaurant Management System</Subtitle>
-          
+          {brandLogo && (
+            <LogoImage src={brandLogo} alt="Brand Logo" />
+          )}
+
           <Form onSubmit={handleSubmit}>
             <InputGroup>
               <Label>Email or Username</Label>

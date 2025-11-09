@@ -165,6 +165,7 @@ app.use('/api/restaurants', restaurantsRouter);
 app.use('/api/plans', plansRouter);
 app.use('/api/admin-analytics', adminAnalyticsRouter);
 app.use('/api/admin/settings', adminSettingsRouter);
+app.use('/api/admin-settings', adminSettingsRouter); // Alternative route for backward compatibility
 app.use('/api/support-tickets', supportTicketsRouter);
 app.use('/api/customers', customersRouter);
 app.use('/api/operation-tickets', operationTicketsRouter);
