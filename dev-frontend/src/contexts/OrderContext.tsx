@@ -86,13 +86,11 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
   useEffect(() => {
     const loadOrders = async () => {
       try {
-        console.log('OrderContext - Loading orders from API...');
         const response = await fetch('/api/orders?limit=100', getFetchOptions());
         const result = await response.json();
 
         if (result.success) {
           const apiOrders = result.data || result;
-          console.log('OrderContext - Loaded orders from API:', apiOrders.length);
           setOrders(apiOrders);
         } else {
           console.error('OrderContext - Failed to load orders:', result.error);
@@ -110,7 +108,6 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
   // No localStorage sync - using real-time API only
 
   const addOrder = async (order: Order, restaurantId?: number): Promise<Order | undefined> => {
-    console.log('OrderContext - Adding order:', order.id, order.customer.name);
 
     try {
       // Map frontend order format to backend format
@@ -136,14 +133,12 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
         }))
       };
 
-      console.log('OrderContext - Saving order to database:', backendOrder);
 
       const response = await fetch('/api/orders', getFetchOptions({
         method: 'POST',
         body: JSON.stringify(backendOrder),
       }));
 
-      console.log('OrderContext - Response status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -152,14 +147,12 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
       }
 
       const result = await response.json();
-      console.log('OrderContext - Response data:', result);
 
       if (!result.success) {
         console.error('OrderContext - Failed to save order to database:', result.error);
         throw new Error(result.error || 'Failed to create order');
       }
 
-      console.log('OrderContext - Order saved to database successfully:', result.data);
 
       const savedOrder = result.data;
 
@@ -182,7 +175,6 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
   };
 
   const updateOrderStatus = async (orderId: string, status: Order['status']) => {
-    console.log('OrderContext - Updating status:', orderId, status);
 
     try {
       const response = await fetch(`/api/orders/${orderId}/status`, getFetchOptions({
@@ -197,7 +189,6 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
         throw new Error(result.error || 'Failed to update order status');
       }
 
-      console.log('OrderContext - Order status updated successfully:', result.data);
 
       // Update local state after successful API update
       setOrders(prev =>
@@ -212,7 +203,6 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
   };
 
   const deleteOrder = async (orderId: string) => {
-    console.log('OrderContext - Deleting order:', orderId);
 
     try {
       const response = await fetch(`/api/orders/${orderId}`, getFetchOptions({
@@ -226,7 +216,6 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
         throw new Error(result.error || 'Failed to delete order');
       }
 
-      console.log('OrderContext - Order deleted successfully');
 
       // Update local state after successful API delete
       setOrders(prev => prev.filter(order => order.id !== orderId));

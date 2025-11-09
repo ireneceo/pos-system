@@ -285,26 +285,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const checkSession = async () => {
       try {
         const token = localStorage.getItem('auth_token');
-        console.log('🔐 Checking JWT token:', token ? 'Token exists' : 'No token');
 
         if (!token) {
-          console.log('❌ No token found, user not authenticated');
           setIsLoading(false);
           return;
         }
 
-        console.log('📡 Fetching user info from /api/auth/me');
         const response = await fetch('/api/auth/me', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
 
-        console.log('📥 Response status:', response.status);
-
         if (response.ok) {
           const result = await response.json();
-          console.log('✅ User data received:', result);
           if (result.success && result.data) {
             const apiUser = result.data;
             const userData: User = {
@@ -318,7 +312,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               restaurantStatus: apiUser.restaurantStatus,
               restaurantName: apiUser.restaurantName
             };
-            console.log('🔥 AuthContext: user:', userData);
             setUser(userData);
           }
         } else {
@@ -460,9 +453,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const isAuthenticated = !!user;
-  console.log('🔥 AuthContext: user:', user);
-  console.log('🔥 AuthContext: isAuthenticated:', isAuthenticated);
-  console.log('🔥 AuthContext: isLoading:', isLoading);
 
   const value: AuthContextType = {
     user,

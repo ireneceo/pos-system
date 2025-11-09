@@ -140,10 +140,8 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           isActive: true
         }));
 
-        console.log(`✅ Loaded ${customersData.length} customers from database`);
         setCustomers(customersData);
       } else {
-        console.log('⚠️ No customers found, using empty list');
         setCustomers([]);
       }
     } catch (error) {

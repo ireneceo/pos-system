@@ -111,7 +111,6 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
   // 메뉴 로드 함수를 별도로 분리 (useCallback으로 감싸서 안정적인 참조 유지)
   const loadMenuFromAPI = useCallback(async () => {
     try {
-      console.log('MenuContext - Loading menu from API...');
 
       // Get restaurantId from URL path (e.g., /restaurant/5/menu)
       const pathParts = window.location.pathname.split('/');
@@ -134,11 +133,9 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
 
       // Skip loading if no restaurant context
       if (!restaurantId && !slug) {
-        console.log('MenuContext - No restaurant/slug in URL, skipping menu load');
         return;
       }
 
-      console.log('MenuContext - Fetching from:', url);
 
       const response = await fetch(url, {
         ...getFetchOptions()
@@ -150,7 +147,6 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
       }
 
       const data = await response.json();
-      console.log('MenuContext - API response:', data);
 
       if (data.success && data.data) {
         // 카테고리 추출 및 변환
@@ -158,7 +154,6 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
 
         const cats = data.data.categories.map((cat: any, idx: number) => {
           const categoryId = cat.id ? cat.id.toString() : cat.name.toLowerCase().replace(/\s+/g, '_');
-          console.log(`Category "${cat.name}" - ID from API: ${cat.id}, final ID: ${categoryId}`);
           return {
             id: categoryId,
             name: cat.name,
@@ -167,7 +162,6 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
           };
         });
 
-        console.log('MenuContext - Transformed categories:', cats);
         setCategories(cats);
 
         // 메뉴 아이템 변환
@@ -193,8 +187,6 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             categoryId = item.category.toLowerCase().replace(/\s+/g, '_');
           }
 
-          console.log(`Item "${item.name}" - categoryId from API: ${item.categoryId}, final category: ${categoryId}`);
-
           return {
             id: item.id.toString(),
             name: item.name,
@@ -210,8 +202,6 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
           };
         });
 
-        console.log('MenuContext - Transformed menu items:', items);
-        console.log('MenuContext - Sample item emojis:', items.map(i => `${i.name}: ${i.emoji}`).join(', '));
         setMenuItems(items);
       } else {
         console.warn('MenuContext - Invalid API response format');
@@ -224,7 +214,6 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
   // 옵션 그룹 로드 함수 (useCallback으로 감싸서 안정적인 참조 유지)
   const loadOptionGroupsFromAPI = useCallback(async () => {
     try {
-      console.log('MenuContext - Loading option groups from API...');
 
       // Get restaurantId from URL path
       const pathParts = window.location.pathname.split('/');
@@ -233,7 +222,6 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
 
       // Skip loading if no restaurant context (e.g., admin pages, manager pages)
       if (!restaurantId) {
-        console.log('MenuContext - No restaurant in URL, skipping option groups load');
         return;
       }
 
@@ -249,13 +237,9 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
       }
 
       const data = await response.json();
-      console.log('MenuContext - Option groups API response:', data);
-      console.log('MenuContext - Option groups count:', data.data ? data.data.length : 0);
-      console.log('MenuContext - Setting option groups:', data.data);
 
       if (data.success && data.data) {
         setOptionGroups(data.data);
-        console.log('MenuContext - Option groups set successfully, count:', data.data.length);
       } else {
         console.warn('MenuContext - Invalid option groups response:', data);
       }
@@ -273,7 +257,6 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
     const restaurantId = restaurantIndex >= 0 ? pathParts[restaurantIndex + 1] : null;
     const slug = mobileIndex >= 0 ? pathParts[mobileIndex + 1] : null;
 
-    console.log('MenuContext - URL changed, restaurant ID:', restaurantId, ', slug:', slug);
 
     // Only load if we're on a restaurant or mobile page
     if (restaurantId || slug) {
@@ -338,7 +321,6 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         item.id === updatedItem.id ? { ...savedItem, id: String(savedItem.id) } : item
       );
       setMenuItems(newItems);
-      console.log('Menu item updated:', updatedItem.id, 'emoji:', savedItem.emoji);
     } catch (error) {
       console.error('Failed to update menu item:', error);
       throw error;
@@ -384,7 +366,6 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
       // 성공 시 로컬 상태 업데이트 (API에서 받은 데이터 사용)
       const newItems = [...menuItems, createdItem];
       setMenuItems(newItems);
-      console.log('Menu item added:', createdItem.id, 'emoji:', createdItem.emoji);
     } catch (error) {
       console.error('Failed to add menu item:', error);
       throw error;
@@ -461,7 +442,6 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         i.id === itemId ? updatedItem : i
       );
       setMenuItems(newItems);
-      console.log('Menu item sold out toggled:', itemId, updatedItem.soldOut);
     } catch (error) {
       console.error('Failed to toggle sold out:', error);
       throw error;

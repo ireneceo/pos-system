@@ -16,13 +16,11 @@ window.fetch = (url: string | URL | Request, init?: RequestInit) => {
   // If it's an API call and we have a base URL, prepend it
   if (urlString.startsWith('/api/') && API_BASE_URL) {
     const fullUrl = `${API_BASE_URL}${urlString}`;
-    console.log(`🌐 API Call: ${urlString} → ${fullUrl}`);
     return originalFetch(fullUrl, init);
   }
 
   // If it's an API call but API_BASE_URL is empty (like in Codespaces), use relative path
   if (urlString.startsWith('/api/')) {
-    console.log(`🌐 API Call (relative): ${urlString}`);
     return originalFetch(url, init);
   }
 

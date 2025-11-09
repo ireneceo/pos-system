@@ -112,7 +112,6 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
 
         // If no restaurant_id, use default settings
         if (!restaurantId) {
-          console.warn('No restaurant_id found, using default settings');
           return;
         }
 

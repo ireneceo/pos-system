@@ -1100,8 +1100,6 @@ const LiveOrdersPage: React.FC = () => {
         oscillator2.start(audioContext.currentTime);
         oscillator2.stop(audioContext.currentTime + 0.5);
       }, 200);
-
-      console.log('🔔 New order notification sound played');
     } catch (error) {
       console.error('Failed to play notification sound:', error);
     }
@@ -1485,9 +1483,7 @@ const LiveOrdersPage: React.FC = () => {
       }));
 
       const result = await response.json();
-      if (result.success) {
-        console.log('Status updated successfully');
-      } else {
+      if (!result.success) {
         // Revert on error
         fetchOrders();
       }
@@ -1657,7 +1653,6 @@ const LiveOrdersPage: React.FC = () => {
 
   const handleQuickConfirmPayment = async (orderId: number, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent opening the modal
-    console.log('⚡ Quick Confirm clicked for order:', orderId);
 
     // Stop notification sound when payment confirmed
     setAudioEnabled(false);
@@ -1674,34 +1669,23 @@ const LiveOrdersPage: React.FC = () => {
         })
       }));
 
-      console.log('📨 Quick confirm response status:', response.status);
-
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Quick confirm API error:', errorText);
         throw new Error('Failed to confirm payment');
       }
 
-      console.log('✅ Quick confirm successful');
-
       // 결제 완료 후 awaiting_payment이면 pending으로 변경 (주방에 전송)
       if (order && order.status === 'awaiting_payment') {
-        console.log('🍳 Sending to kitchen (awaiting_payment → pending)...');
-        const statusResponse = await fetch(`/api/orders/${orderId}`, getFetchOptions({
+        await fetch(`/api/orders/${orderId}`, getFetchOptions({
           method: 'PATCH',
           body: JSON.stringify({
             status: 'pending'
           })
         }));
-
-        if (statusResponse.ok) {
-          console.log('✅ Order sent to kitchen');
-        }
       }
 
       fetchOrders(); // Refresh orders list
     } catch (error) {
-      console.error('❌ Error in quick confirm:', error);
+      console.error('Error in quick confirm:', error);
       alert('Failed to confirm payment. Please try again.');
     }
   };

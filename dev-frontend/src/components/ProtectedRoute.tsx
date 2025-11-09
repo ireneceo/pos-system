@@ -105,14 +105,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     const urlRestaurantId = parseInt(params.restaurantId, 10);
     const userRestaurantId = user.restaurantId ? Number(user.restaurantId) : undefined;
 
-    console.log('[ProtectedRoute] Restaurant ID Check:', {
-      requireRestaurantMatch,
-      urlRestaurantId,
-      userRestaurantId,
-      userRole: user.role,
-      shouldBlock: (user.role === 'Restaurant Admin' || user.role === 'Staff') && userRestaurantId && userRestaurantId !== urlRestaurantId
-    });
-
     // System Admin만 모든 레스토랑 접근 가능
     // 나머지 모든 역할은 자신의 restaurantId와 일치하는 레스토랑만 접근 가능
     const isSystemAdmin = user.role === 'System Admin';
@@ -124,7 +116,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       const pagePath = pathParts.slice(2).join('/'); // Get path after /restaurant/:id/
       const redirectPath = `/restaurant/${userRestaurantId}/${pagePath || 'dashboard'}`;
 
-      console.log('[ProtectedRoute] Redirecting to own restaurant:', redirectPath);
       return <Navigate to={redirectPath} replace />;
     }
   }

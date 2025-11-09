@@ -565,31 +565,22 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   useEffect(() => {
     const loadBrandLogo = async () => {
       try {
-        console.log('[MainLayout] Fetching brand logo from /api/site-settings');
         const response = await fetch('/api/site-settings');
-        console.log('[MainLayout] Response status:', response.status);
         if (response.ok) {
           const settings = await response.json();
-          console.log('[MainLayout] Settings:', settings);
           if (settings.brand_logo) {
-            console.log('[MainLayout] Setting brand_logo from site-settings');
             setBrandLogo(settings.brand_logo);
           } else if (settings.brandLogo) {
-            console.log('[MainLayout] Setting brandLogo from site-settings');
             setBrandLogo(settings.brandLogo);
           } else if (settings.logo) {
-            console.log('[MainLayout] Using fallback logo');
             // Fallback to old 'logo' field for backward compatibility
             setBrandLogo(settings.logo);
           } else {
-            console.log('[MainLayout] No logo found');
             setBrandLogo('');
           }
-        } else {
-          console.error('[MainLayout] Response not OK:', response.status);
         }
       } catch (error) {
-        console.error('[MainLayout] Failed to load brand logo from API:', error);
+        console.error('Failed to load brand logo from API:', error);
         setBrandLogo('');
       }
     };

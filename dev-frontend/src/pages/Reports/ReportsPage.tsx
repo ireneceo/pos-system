@@ -273,9 +273,26 @@ const ReportsPage: React.FC = () => {
   }, [activeTab, setSearchParams]);
 
   const [activePeriod, setActivePeriod] = useState<PeriodType>('week');
-  const [dateRange, setDateRange] = useState({
-    start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    end: new Date().toISOString().split('T')[0]
+  const [dateRange, setDateRange] = useState(() => {
+    // Get today's date in LOCAL timezone (not UTC)
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const localToday = `${year}-${month}-${day}`;
+
+    // Get 7 days ago in LOCAL timezone
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const weekYear = weekAgo.getFullYear();
+    const weekMonth = String(weekAgo.getMonth() + 1).padStart(2, '0');
+    const weekDay = String(weekAgo.getDate()).padStart(2, '0');
+    const localWeekAgo = `${weekYear}-${weekMonth}-${weekDay}`;
+
+    return {
+      start: localWeekAgo,
+      end: localToday
+    };
   });
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
@@ -295,7 +312,6 @@ const ReportsPage: React.FC = () => {
   // Filter orders by date range
   const getFilteredOrders = () => {
     if (!orders || orders.length === 0) {
-      console.log('📊 getFilteredOrders: No orders available', { ordersCount: orders?.length });
       return [];
     }
 
@@ -304,16 +320,10 @@ const ReportsPage: React.FC = () => {
     const endDate = new Date(dateRange.end);
     endDate.setHours(23, 59, 59, 999);
 
-    console.log('📊 Filtering orders:', {
-      totalOrders: orders.length,
-      dateRange: { start: startDate, end: endDate }
-    });
-
     const filtered = orders.filter(order => {
       // Check date fields: order_date or createdAt (database columns)
       const orderDateValue = order.order_date || order.createdAt;
       if (!orderDateValue) {
-        console.warn('⚠️ Order without date:', order);
         return false;
       }
       const orderDate = new Date(orderDateValue);
@@ -323,12 +333,6 @@ const ReportsPage: React.FC = () => {
       const isCompleted = order.status === 'completed';
 
       return isInRange && isCompleted;
-    });
-
-    console.log('📊 Filtered orders (completed only):', {
-      filteredCount: filtered.length,
-      completedOnly: true,
-      sampleOrder: filtered[0]
     });
 
     return filtered;
@@ -509,8 +513,6 @@ const ReportsPage: React.FC = () => {
         return;
       }
 
-      console.log('📡 Fetching restaurant data for:', user.restaurantId);
-
       // Fetch stats from standardized API
       const statsResponse = await fetch(`/api/dashboard/restaurant/${user.restaurantId}/stats`, {
         headers: {
@@ -537,19 +539,16 @@ const ReportsPage: React.FC = () => {
 
       if (statsResponse.ok) {
         const statsData = await statsResponse.json();
-        console.log('✅ Stats loaded:', statsData);
         setStats(statsData.data || statsData);
       }
 
       if (ordersResponse.ok) {
         const ordersData = await ordersResponse.json();
-        console.log('✅ Orders loaded:', ordersData);
         setOrders(ordersData.data || ordersData || []);
       }
 
       if (customersResponse.ok) {
         const customersData = await customersResponse.json();
-        console.log('✅ Customers loaded:', customersData);
         if (customersData.success && Array.isArray(customersData.data)) {
           setCustomers(customersData.data);
         }
@@ -777,11 +776,20 @@ const ReportsPage: React.FC = () => {
         break;
     }
 
-    console.log('📅 Period changed:', { period, start, end: now });
+    // Convert to LOCAL timezone date strings (not UTC)
+    const startYear = start.getFullYear();
+    const startMonth = String(start.getMonth() + 1).padStart(2, '0');
+    const startDay = String(start.getDate()).padStart(2, '0');
+    const startLocal = `${startYear}-${startMonth}-${startDay}`;
+
+    const endYear = now.getFullYear();
+    const endMonth = String(now.getMonth() + 1).padStart(2, '0');
+    const endDay = String(now.getDate()).padStart(2, '0');
+    const endLocal = `${endYear}-${endMonth}-${endDay}`;
 
     setDateRange({
-      start: start.toISOString().split('T')[0],
-      end: now.toISOString().split('T')[0]
+      start: startLocal,
+      end: endLocal
     });
   };
 

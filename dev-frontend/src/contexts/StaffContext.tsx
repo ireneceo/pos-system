@@ -127,8 +127,6 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // AuthContext에서 로그인한 사용자 정보를 사용하여 자동 로그인
   useEffect(() => {
     if (isAuthenticated && user && !currentStaff) {
-      console.log('🔑 Auto-login from AuthContext user:', user);
-
       // AuthContext의 user를 Staff 형태로 변환
       const staffFromAuth: Staff = {
         id: user.id,
@@ -161,7 +159,6 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       };
 
       setCurrentStaff(staffFromAuth);
-      console.log('✅ Staff auto-login successful');
     }
   }, [isAuthenticated, user]);
 
@@ -187,9 +184,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       if (data.success && Array.isArray(data.data)) {
         setStaffList(data.data);
-        console.log('✅ Loaded staff from database:', data.data.length);
       } else {
-        console.warn('⚠️ No staff found, using empty list');
         setStaffList([]);
       }
     } catch (error) {
@@ -211,11 +206,10 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       if (response.ok && data.success) {
         setCurrentStaff(data.data);
-        console.log('✅ Staff logged in:', data.data.username);
         return true;
       }
 
-      console.error('❌ Staff login failed:', data.message);
+      console.error('Staff login failed:', data.message);
       return false;
     } catch (error) {
       console.error('Staff login error:', error);
@@ -236,7 +230,6 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       setCurrentStaff(null);
       setCurrentShift(null);
-      console.log('✅ Staff logged out');
     } catch (error) {
       console.error('Logout error:', error);
     }
