@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 // Updated with new UI components
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
-import { useMenu, MenuItem as MenuItemType } from '../../contexts/MenuContext';
+import { useMenu, MenuItem as MenuItemType, SetMenuItem } from '../../contexts/MenuContext';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import NumberInputModal from '../../components/common/NumberInputModal';
 import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
@@ -420,6 +420,156 @@ const ImagePreview = styled.img`
   margin-top: 12px;
 `;
 
+const SetBadge = styled.div`
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  z-index: 1;
+`;
+
+const SetItemsList = styled.div`
+  background: #F6F9FC;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+`;
+
+const SetItemRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: white;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  border: 1px solid #E6EBF1;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+`;
+
+const SetItemInfo = styled.div`
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+`;
+
+const SetItemName = styled.span`
+  font-size: 14px;
+  font-weight: 500;
+  color: #0A2540;
+`;
+
+const SetItemQuantity = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const QuantityButton = styled.button`
+  width: 28px;
+  height: 28px;
+  border: 1px solid #E6EBF1;
+  background: white;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  color: #635BFF;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #F0F4FF;
+    border-color: #635BFF;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const QuantityDisplay = styled.span`
+  min-width: 24px;
+  text-align: center;
+  font-weight: 600;
+  color: #0A2540;
+`;
+
+const RemoveButton = styled.button`
+  padding: 4px 12px;
+  background: #FFF4F4;
+  color: #FF6B6B;
+  border: 1px solid #FFE6E6;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #FFE6E6;
+  }
+`;
+
+const MenuItemSelector = styled.div`
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+`;
+
+const MenuItemOption = styled.div<{ selected?: boolean }>`
+  padding: 12px;
+  border-bottom: 1px solid #F6F9FC;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: ${props => props.selected ? '#F0F4FF' : 'white'};
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: #F6F9FC;
+  }
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+`;
+
+const MenuItemOptionEmoji = styled.span`
+  font-size: 24px;
+`;
+
+const MenuItemOptionInfo = styled.div`
+  flex: 1;
+`;
+
+const MenuItemOptionName = styled.div`
+  font-weight: 500;
+  color: #0A2540;
+  font-size: 14px;
+`;
+
+const MenuItemOptionPrice = styled.div`
+  font-size: 12px;
+  color: #6B7C93;
+`;
+
 
 const MenuManagementPage: React.FC = () => {
   const { categories, menuItems, optionGroups, updateMenuItem, addMenuItem, removeMenuItem, toggleItemSoldOut } = useMenu();
@@ -432,7 +582,12 @@ const MenuManagementPage: React.FC = () => {
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [priceEditItem, setPriceEditItem] = useState<MenuItemType | null>(null);
-  
+
+  // Set menu states
+  const [showSetMenuModal, setShowSetMenuModal] = useState(false);
+  const [setMenuItems, setSetMenuItems] = useState<SetMenuItem[]>([]);
+  const [setMenuDisplayOrder, setSetMenuDisplayOrder] = useState(0);
+
   // Form state
   const [formData, setFormData] = useState<Partial<MenuItemType>>({
     name: '',
@@ -441,7 +596,10 @@ const MenuManagementPage: React.FC = () => {
     emoji: '🍽️',
     description: '',
     image: '',
-    optionGroups: []
+    optionGroups: [],
+    is_set_menu: false,
+    set_items: [],
+    set_display_order: 0
   });
 
   const [selectedOptionGroups, setSelectedOptionGroups] = useState<string[]>([]);
@@ -502,10 +660,32 @@ const MenuManagementPage: React.FC = () => {
       emoji: '🍽️',
       description: '',
       image: '',
-      optionGroups: []
+      optionGroups: [],
+      is_set_menu: false,
+      set_items: [],
+      set_display_order: 0
     });
     setSelectedOptionGroups([]);
+    setSetMenuItems([]);
     setShowAddModal(true);
+  };
+
+  const handleAddSetMenu = () => {
+    setFormData({
+      name: '',
+      price: 0,
+      category: 'korean',
+      emoji: '🍽️',
+      description: '',
+      image: '',
+      optionGroups: [],
+      is_set_menu: true,
+      set_items: [],
+      set_display_order: 0
+    });
+    setSelectedOptionGroups([]);
+    setSetMenuItems([]);
+    setShowSetMenuModal(true);
   };
 
   const handleEditItem = (item: MenuItemType) => {
@@ -514,10 +694,57 @@ const MenuManagementPage: React.FC = () => {
       ...item,
       emoji: item.emoji || '🍽️',  // Preserve emoji or use default
       image: item.image || '',      // Preserve image or empty string
-      optionGroups: item.optionGroups || []
+      optionGroups: item.optionGroups || [],
+      is_set_menu: item.is_set_menu || false,
+      set_items: item.set_items || [],
+      set_display_order: item.set_display_order || 0
     });
     setSelectedOptionGroups(item.optionGroups || []);
-    setShowEditModal(true);
+    setSetMenuItems(item.set_items || []);
+
+    // Open appropriate modal based on item type
+    if (item.is_set_menu) {
+      setShowSetMenuModal(true);
+    } else {
+      setShowEditModal(true);
+    }
+  };
+
+  // Set menu item handlers
+  const handleAddSetMenuItem = (menuItemId: number) => {
+    const menuItem = menuItems.find(item => item.id === menuItemId.toString());
+    if (!menuItem || menuItem.is_set_menu) return; // Don't allow adding sets to sets
+
+    const existingItem = setMenuItems.find(item => item.menuItemId === menuItemId);
+    if (existingItem) {
+      // Increase quantity if already added
+      setSetMenuItems(setMenuItems.map(item =>
+        item.menuItemId === menuItemId
+          ? { ...item, quantity: item.quantity + 1 }
+          : item
+      ));
+    } else {
+      // Add new item
+      setSetMenuItems([...setMenuItems, {
+        menuItemId,
+        name: menuItem.name,
+        quantity: 1
+      }]);
+    }
+  };
+
+  const handleRemoveSetMenuItem = (menuItemId: number) => {
+    setSetMenuItems(setMenuItems.filter(item => item.menuItemId !== menuItemId));
+  };
+
+  const handleUpdateSetMenuItemQuantity = (menuItemId: number, delta: number) => {
+    setSetMenuItems(setMenuItems.map(item => {
+      if (item.menuItemId === menuItemId) {
+        const newQuantity = Math.max(1, item.quantity + delta);
+        return { ...item, quantity: newQuantity };
+      }
+      return item;
+    }));
   };
 
   const handleDeleteItem = (itemId: string) => {
@@ -557,11 +784,46 @@ const MenuManagementPage: React.FC = () => {
       description: formData.description,
       image: formData.image,
       optionGroups: selectedOptionGroups,
-      soldOut: false
+      soldOut: false,
+      is_set_menu: false,
+      set_items: [],
+      set_display_order: 0
     };
-    
+
     addMenuItem(newItem);
     setShowAddModal(false);
+  };
+
+  const handleSaveSetMenu = () => {
+    if (setMenuItems.length === 0) {
+      alert('Set menu must contain at least one menu item.');
+      return;
+    }
+
+    const newSetMenu: MenuItemType = {
+      id: editingItem?.id || `item-${Date.now()}`,
+      name: formData.name || '',
+      price: formData.price || 0,
+      category: formData.category || 'korean',
+      emoji: formData.emoji || '🍽️',
+      description: formData.description,
+      image: formData.image,
+      optionGroups: selectedOptionGroups,
+      soldOut: false,
+      is_set_menu: true,
+      set_items: setMenuItems,
+      set_display_order: formData.set_display_order || 0
+    };
+
+    if (editingItem) {
+      updateMenuItem(newSetMenu);
+    } else {
+      addMenuItem(newSetMenu);
+    }
+
+    setShowSetMenuModal(false);
+    setEditingItem(null);
+    setSetMenuItems([]);
   };
 
   const handleSaveEdit = () => {
@@ -593,6 +855,7 @@ const MenuManagementPage: React.FC = () => {
         <Header>
           <HeaderTitle>Menu</HeaderTitle>
           <HeaderActions>
+            <UIButton variant="secondary" onClick={handleAddSetMenu}>+ Create Set Menu</UIButton>
             <UIButton variant="primary" onClick={handleAddItem}>+ Add New Item</UIButton>
           </HeaderActions>
         </Header>
@@ -664,6 +927,7 @@ const MenuManagementPage: React.FC = () => {
               {filteredItems.map(item => (
               <MenuCard key={item.id} soldOut={item.soldOut}>
                 <MenuImage>
+                  {item.is_set_menu && <SetBadge>SET</SetBadge>}
                   {item.image && item.image.trim() !== '' ? (
                     <img
                       src={item.image}
@@ -696,9 +960,16 @@ const MenuManagementPage: React.FC = () => {
                   <MenuDescription>
                     {item.description || 'No description available'}
                   </MenuDescription>
+                  {item.is_set_menu && item.set_items && item.set_items.length > 0 && (
+                    <MenuDescription style={{ fontSize: '11px', color: '#667eea', fontWeight: 500 }}>
+                      Set includes: {item.set_items.map(setItem =>
+                        `${setItem.name} x${setItem.quantity}`
+                      ).join(', ')}
+                    </MenuDescription>
+                  )}
                   {item.optionGroups && item.optionGroups.length > 0 && (
                     <MenuDescription style={{ fontSize: '11px', color: '#8898AA' }}>
-                      Option Groups: {item.optionGroups.map(groupId => 
+                      Option Groups: {item.optionGroups.map(groupId =>
                         optionGroups.find(g => g.id === groupId)?.name
                       ).filter(Boolean).join(', ')}
                     </MenuDescription>
@@ -928,6 +1199,176 @@ const MenuManagementPage: React.FC = () => {
 
           <UIFormGroup>
             <FormLabel>Option Groups</FormLabel>
+            <CheckboxGroup>
+              {optionGroups.map(group => (
+                <CheckboxLabel key={group.id}>
+                  <input
+                    type="checkbox"
+                    checked={selectedOptionGroups.includes(group.id)}
+                    onChange={() => handleOptionGroupToggle(group.id)}
+                  />
+                  {group.name} ({group.required ? 'Required' : 'Optional'}, {group.multiple ? 'Multi' : 'Single'})
+                </CheckboxLabel>
+              ))}
+            </CheckboxGroup>
+          </UIFormGroup>
+        </UIModal>
+
+        {/* Set Menu Modal */}
+        <UIModal
+          isOpen={showSetMenuModal}
+          onClose={() => {
+            setShowSetMenuModal(false);
+            setEditingItem(null);
+            setSetMenuItems([]);
+          }}
+          title={editingItem ? "Edit Set Menu" : "Create Set Menu"}
+          size="large"
+          footer={
+            <>
+              <UIButton variant="secondary" onClick={() => {
+                setShowSetMenuModal(false);
+                setEditingItem(null);
+                setSetMenuItems([]);
+              }}>
+                Cancel
+              </UIButton>
+              <UIButton variant="primary" onClick={handleSaveSetMenu}>
+                {editingItem ? "Save Changes" : "Create Set Menu"}
+              </UIButton>
+            </>
+          }
+        >
+          <UIFormGroup>
+            <FormLabel>Set Menu Name *</FormLabel>
+            <FormInput
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="e.g., Family Set, Lunch Combo"
+            />
+          </UIFormGroup>
+
+          <UIFormGroup>
+            <FormLabel>Set Price (RM) *</FormLabel>
+            <FormInput
+              type="number"
+              value={formData.price}
+              onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
+              onFocus={(e) => {
+                if (parseFloat(e.target.value) === 0) {
+                  e.target.select();
+                }
+              }}
+              step="0.01"
+              min="0"
+            />
+          </UIFormGroup>
+
+          <UIFormGroup>
+            <FormLabel>Category *</FormLabel>
+            <FormSelect
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+            >
+              {categories.map(cat => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.emoji} {cat.name}
+                </option>
+              ))}
+            </FormSelect>
+          </UIFormGroup>
+
+          <UIFormGroup>
+            <FormLabel>Emoji Icon</FormLabel>
+            <EmojiPicker>
+              {emojiOptions['other'].map((emoji: string) => (
+                <EmojiOption
+                  key={emoji}
+                  selected={formData.emoji === emoji}
+                  onClick={() => setFormData({ ...formData, emoji })}
+                >
+                  {emoji}
+                </EmojiOption>
+              ))}
+            </EmojiPicker>
+          </UIFormGroup>
+
+          <UIFormGroup>
+            <FormLabel>Description</FormLabel>
+            <FormTextArea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Brief description of this set menu..."
+            />
+          </UIFormGroup>
+
+          <UIFormGroup>
+            <FormLabel>Display Order (for sorting set menus)</FormLabel>
+            <FormInput
+              type="number"
+              value={formData.set_display_order || 0}
+              onChange={(e) => setFormData({ ...formData, set_display_order: parseInt(e.target.value) || 0 })}
+              min="0"
+            />
+          </UIFormGroup>
+
+          <UIFormGroup>
+            <FormLabel>Set Menu Items * (at least 1 item required)</FormLabel>
+            {setMenuItems.length > 0 && (
+              <SetItemsList>
+                {setMenuItems.map(setItem => (
+                  <SetItemRow key={setItem.menuItemId}>
+                    <SetItemInfo>
+                      <SetItemName>{setItem.name}</SetItemName>
+                    </SetItemInfo>
+                    <SetItemQuantity>
+                      <QuantityButton
+                        onClick={() => handleUpdateSetMenuItemQuantity(setItem.menuItemId, -1)}
+                        disabled={setItem.quantity <= 1}
+                      >
+                        −
+                      </QuantityButton>
+                      <QuantityDisplay>{setItem.quantity}</QuantityDisplay>
+                      <QuantityButton
+                        onClick={() => handleUpdateSetMenuItemQuantity(setItem.menuItemId, 1)}
+                      >
+                        +
+                      </QuantityButton>
+                    </SetItemQuantity>
+                    <RemoveButton onClick={() => handleRemoveSetMenuItem(setItem.menuItemId)}>
+                      Remove
+                    </RemoveButton>
+                  </SetItemRow>
+                ))}
+              </SetItemsList>
+            )}
+            <div style={{ marginTop: '12px' }}>
+              <FormLabel>Available Menu Items (select items to add to set)</FormLabel>
+              <MenuItemSelector>
+                {menuItems
+                  .filter(item => !item.is_set_menu) // Don't show other set menus
+                  .map(item => (
+                    <MenuItemOption
+                      key={item.id}
+                      selected={setMenuItems.some(si => si.menuItemId === parseInt(item.id))}
+                      onClick={() => handleAddSetMenuItem(parseInt(item.id))}
+                    >
+                      <MenuItemOptionEmoji>{item.emoji || '🍽️'}</MenuItemOptionEmoji>
+                      <MenuItemOptionInfo>
+                        <MenuItemOptionName>{item.name}</MenuItemOptionName>
+                        <MenuItemOptionPrice>
+                          RM {item.price.toFixed(2)} · {categories.find(c => c.id === item.category)?.name}
+                        </MenuItemOptionPrice>
+                      </MenuItemOptionInfo>
+                    </MenuItemOption>
+                  ))}
+              </MenuItemSelector>
+            </div>
+          </UIFormGroup>
+
+          <UIFormGroup>
+            <FormLabel>Set Menu Options (options for entire set)</FormLabel>
             <CheckboxGroup>
               {optionGroups.map(group => (
                 <CheckboxLabel key={group.id}>

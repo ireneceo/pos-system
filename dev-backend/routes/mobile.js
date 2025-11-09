@@ -303,7 +303,10 @@ router.get('/menu/:slug', async (req, res) => {
         preparationTime: product.preparation_time || 15,
         calories: product.calories || 0,
         isPopular: product.isPopular || false,
-        optionGroups: productOptionGroups
+        optionGroups: productOptionGroups,
+        is_set_menu: product.is_set_menu || false,
+        set_items: product.set_items || undefined,
+        set_display_order: product.set_display_order || 0
       };
     });
 

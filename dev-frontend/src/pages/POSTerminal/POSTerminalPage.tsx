@@ -400,7 +400,30 @@ const MenuName = styled.div`
 const MenuPrice = styled.div`
   font-size: 16px;
   font-weight: 600;
-  color: #635BFF;
+  color: #1F2937;
+`;
+
+const SetBadge = styled.div`
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+  z-index: 1;
+`;
+
+const SetItemsPreview = styled.div`
+  font-size: 10px;
+  color: #6B7280;
+  margin-top: 4px;
+  line-height: 1.3;
+  font-weight: 500;
 `;
 
 const MenuItemActions = styled.div`
@@ -1829,6 +1852,7 @@ const POSTerminalPage: React.FC = () => {
                     soldOut={item.soldOut}
                     onClick={() => handleAddItemDirectly(item)}
                   >
+                    {item.is_set_menu && <SetBadge>SET</SetBadge>}
                     <MenuImage hasImage={!!item.image}>
                       {item.image ? (
                         <img src={item.image} alt={item.name} />
@@ -1838,9 +1862,14 @@ const POSTerminalPage: React.FC = () => {
                     </MenuImage>
                     <MenuName>{item.name}</MenuName>
                     <MenuPrice>RM {item.price.toFixed(2)}</MenuPrice>
+                    {item.is_set_menu && item.set_items && item.set_items.length > 0 && (
+                      <SetItemsPreview>
+                        {item.set_items.map(si => `${si.name} x${si.quantity}`).join(', ')}
+                      </SetItemsPreview>
+                    )}
                     {hasOptions && (
                       <MenuItemActions>
-                        <OptionButton 
+                        <OptionButton
                           onClick={(e) => handleShowOptions(item, e)}
                           disabled={item.soldOut}
                         >

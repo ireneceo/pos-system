@@ -199,6 +199,15 @@ export interface OptionGroup {
 }
 
 /**
+ * Set menu item reference
+ */
+export interface SetMenuItem {
+  menuItemId: number;
+  name: string;
+  quantity: number;
+}
+
+/**
  * Product/Menu item
  */
 export interface Product {
@@ -212,6 +221,9 @@ export interface Product {
   image?: string;
   emoji?: string;
   soldOut: boolean;
+  is_set_menu?: boolean;
+  set_items?: SetMenuItem[];
+  set_display_order?: number;
   created_at?: string;
   updated_at?: string;
 }

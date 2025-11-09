@@ -131,6 +131,27 @@ const ItemBadge = styled.div`
   border-radius: 4px;
 `;
 
+const SetBadge = styled.div`
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  z-index: 1;
+`;
+
+const SetItemsPreview = styled.div`
+  font-size: 11px;
+  color: #667eea;
+  margin-top: 4px;
+  line-height: 1.3;
+`;
+
 const LoadingContainer = styled.div`
   display: flex;
   justify-content: center;
@@ -287,11 +308,12 @@ const MenuPage: React.FC = () => {
       {filteredItems.length > 0 ? (
         <MenuGrid>
           {filteredItems.map(item => (
-            <MenuItemCard 
+            <MenuItemCard
               key={item.id}
               onClick={() => handleItemClick(item)}
               style={{ position: 'relative' }}
             >
+              {item.is_set_menu && <SetBadge>SET</SetBadge>}
               <ItemImage hasImage={!!item.image}>
                 {item.image ? (
                   <img src={item.image} alt={item.name} onError={(e) => {
@@ -305,6 +327,11 @@ const MenuPage: React.FC = () => {
               <ItemInfo>
                 <ItemName>{item.name}</ItemName>
                 <ItemPrice>RM {item.price.toFixed(2)}</ItemPrice>
+                {item.is_set_menu && item.set_items && item.set_items.length > 0 && (
+                  <SetItemsPreview>
+                    {item.set_items.map(si => `${si.name} x${si.quantity}`).join(', ')}
+                  </SetItemsPreview>
+                )}
               </ItemInfo>
             </MenuItemCard>
           ))}

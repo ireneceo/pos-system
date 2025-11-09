@@ -1,6 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 
+export interface SetMenuItem {
+  menuItemId: number;
+  name: string;
+  quantity: number;
+}
+
 export interface MenuItem {
   id: string;
   name: string;
@@ -13,6 +19,9 @@ export interface MenuItem {
   options?: MenuOption[];
   optionGroups?: string[];
   preparationTime?: number;
+  is_set_menu?: boolean;
+  set_items?: SetMenuItem[];
+  set_display_order?: number;
 }
 
 export interface MenuOption {
@@ -198,8 +207,31 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             image: item.image || undefined,
             options: item.options || [],
             optionGroups: parsedOptionGroups,
-            preparationTime: item.preparationTime || 15
+            preparationTime: item.preparationTime || 15,
+            is_set_menu: item.is_set_menu || false,
+            set_items: item.set_items || undefined,
+            set_display_order: item.set_display_order || 0
           };
+        });
+
+        // Sort items: set menus first within each category
+        items.sort((a: MenuItem, b: MenuItem) => {
+          // Different categories - maintain category order
+          if (a.category !== b.category) {
+            return 0;
+          }
+
+          // Same category - set menus first
+          if (a.is_set_menu && !b.is_set_menu) return -1;
+          if (!a.is_set_menu && b.is_set_menu) return 1;
+
+          // Both are set menus - sort by set_display_order
+          if (a.is_set_menu && b.is_set_menu) {
+            return (a.set_display_order || 0) - (b.set_display_order || 0);
+          }
+
+          // Both are regular menus - sort by ID (creation order)
+          return parseInt(a.id) - parseInt(b.id);
         });
 
         setMenuItems(items);
@@ -294,7 +326,10 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         image: updatedItem.image,
         emoji: updatedItem.emoji,
         soldOut: updatedItem.soldOut,
-        optionGroups: updatedItem.optionGroups
+        optionGroups: updatedItem.optionGroups,
+        is_set_menu: updatedItem.is_set_menu,
+        set_items: updatedItem.set_items,
+        set_display_order: updatedItem.set_display_order
       };
       console.log('🔵 Updating menu item with data:', requestBody);
 
@@ -343,6 +378,9 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         image: newItem.image,
         emoji: newItem.emoji,
         optionGroups: newItem.optionGroups,
+        is_set_menu: newItem.is_set_menu,
+        set_items: newItem.set_items,
+        set_display_order: newItem.set_display_order,
         ...(restaurantId && { restaurant_id: restaurantId })
       };
       console.log('🟢 Creating menu item with data:', requestBody);

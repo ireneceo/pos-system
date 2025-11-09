@@ -45,6 +45,19 @@ Product.init({
   soldOut: {
     type: DataTypes.BOOLEAN,
     defaultValue: false
+  },
+  is_set_menu: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  set_items: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: null
+  },
+  set_display_order: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
   }
 }, {
   sequelize: database.sequelize,

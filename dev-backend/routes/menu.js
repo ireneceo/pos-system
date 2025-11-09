@@ -76,8 +76,33 @@ router.get('/', async (req, res) => {
         image: prod.image,
         restaurant_id: prod.restaurant_id,
         soldOut: prod.soldOut || false,
-        optionGroups: prod.optionGroups || []  // Include optionGroups data
+        optionGroups: prod.optionGroups || [],  // Include optionGroups data
+        // 세트 메뉴 관련 필드
+        is_set_menu: prod.is_set_menu || false,
+        set_items: prod.set_items || null,
+        set_display_order: prod.set_display_order || 0
       };
+    });
+
+    // 정렬: 같은 카테고리 내에서 세트 메뉴 우선
+    items.sort((a, b) => {
+      // 카테고리가 다르면 카테고리 순서대로
+      if (a.categoryId !== b.categoryId) {
+        return 0;
+      }
+
+      // 같은 카테고리 내에서
+      // 1순위: 세트 메뉴 우선
+      if (a.is_set_menu && !b.is_set_menu) return -1;
+      if (!a.is_set_menu && b.is_set_menu) return 1;
+
+      // 2순위: 세트 메뉴끼리는 set_display_order
+      if (a.is_set_menu && b.is_set_menu) {
+        return a.set_display_order - b.set_display_order;
+      }
+
+      // 3순위: 일반 메뉴끼리는 ID 순서 (생성 순)
+      return a.id - b.id;
     });
 
     res.json({
@@ -145,6 +170,52 @@ router.post('/product', async (req, res) => {
       }
     }
 
+    // Set menu validation
+    if (req.body.is_set_menu) {
+      // Check if set_items exists and has at least one item
+      if (!req.body.set_items || !Array.isArray(req.body.set_items) || req.body.set_items.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Set menu must contain at least one item'
+        });
+      }
+
+      // Validate each set item structure
+      for (const item of req.body.set_items) {
+        if (!item.menuItemId || !item.name || !item.quantity || item.quantity < 1) {
+          return res.status(400).json({
+            success: false,
+            error: 'Each set item must have menuItemId, name, and quantity (minimum 1)'
+          });
+        }
+      }
+
+      // Check for circular references (prevent sets containing other sets)
+      const menuItemIds = req.body.set_items.map(item => item.menuItemId);
+      const referencedProducts = await Product.findAll({
+        where: {
+          id: menuItemIds,
+          restaurant_id: restaurantId
+        }
+      });
+
+      const hasSetMenu = referencedProducts.some(prod => prod.is_set_menu === true);
+      if (hasSetMenu) {
+        return res.status(400).json({
+          success: false,
+          error: 'Set menu cannot contain other set menus'
+        });
+      }
+
+      // Verify all referenced menu items exist
+      if (referencedProducts.length !== menuItemIds.length) {
+        return res.status(400).json({
+          success: false,
+          error: 'One or more referenced menu items do not exist'
+        });
+      }
+    }
+
     // Automatically set restaurant_id from authenticated user
     const productData = {
       ...req.body,
@@ -173,6 +244,58 @@ router.put('/product/:id', async (req, res) => {
 
     if (!product) {
       return res.status(404).json({ success: false, error: 'Product not found' });
+    }
+
+    // Set menu validation (if updating to set menu or already is set menu)
+    const willBeSetMenu = req.body.is_set_menu !== undefined ? req.body.is_set_menu : product.is_set_menu;
+
+    if (willBeSetMenu) {
+      const setItems = req.body.set_items !== undefined ? req.body.set_items : product.set_items;
+
+      // Check if set_items exists and has at least one item
+      if (!setItems || !Array.isArray(setItems) || setItems.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Set menu must contain at least one item'
+        });
+      }
+
+      // Validate each set item structure
+      for (const item of setItems) {
+        if (!item.menuItemId || !item.name || !item.quantity || item.quantity < 1) {
+          return res.status(400).json({
+            success: false,
+            error: 'Each set item must have menuItemId, name, and quantity (minimum 1)'
+          });
+        }
+      }
+
+      // Check for circular references (prevent sets containing other sets)
+      const menuItemIds = setItems.map(item => item.menuItemId);
+
+      // Exclude self from circular reference check
+      const referencedProducts = await Product.findAll({
+        where: {
+          id: menuItemIds,
+          restaurant_id: restaurantId
+        }
+      });
+
+      const hasSetMenu = referencedProducts.some(prod => prod.is_set_menu === true);
+      if (hasSetMenu) {
+        return res.status(400).json({
+          success: false,
+          error: 'Set menu cannot contain other set menus'
+        });
+      }
+
+      // Verify all referenced menu items exist
+      if (referencedProducts.length !== menuItemIds.length) {
+        return res.status(400).json({
+          success: false,
+          error: 'One or more referenced menu items do not exist'
+        });
+      }
     }
 
     // Prevent changing restaurant_id
