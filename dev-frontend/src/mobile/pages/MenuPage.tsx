@@ -134,7 +134,7 @@ const ItemBadge = styled.div`
 const SetBadge = styled.div`
   position: absolute;
   top: 8px;
-  left: 8px;
+  right: 8px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   font-size: 10px;
@@ -147,7 +147,7 @@ const SetBadge = styled.div`
 
 const SetItemsPreview = styled.div`
   font-size: 11px;
-  color: #667eea;
+  color: #6B7280;
   margin-top: 4px;
   line-height: 1.3;
 `;

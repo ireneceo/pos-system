@@ -70,6 +70,41 @@ const DetailItem = styled.div`
   }
 `;
 
+const SetMenuSection = styled.div`
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+`;
+
+const SetMenuTitle = styled.h3`
+  font-size: 16px;
+  font-weight: 600;
+  color: #1F2937;
+  margin: 0 0 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const SetMenuItems = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const SetMenuItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: #F9FAFB;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #4B5563;
+`;
+
 const OptionSection = styled.div`
   background: white;
   border-radius: 12px;
@@ -463,7 +498,23 @@ const ItemDetailPage: React.FC = () => {
           </ItemDetails>
         </ItemInfo>
       </ItemHeader>
-      
+
+      {/* Set Menu Items Display */}
+      {item.is_set_menu && item.set_items && item.set_items.length > 0 && (
+        <SetMenuSection>
+          <SetMenuTitle>
+            🍱 This set includes:
+          </SetMenuTitle>
+          <SetMenuItems>
+            {item.set_items.map((setItem: any, index: number) => (
+              <SetMenuItem key={index}>
+                • {setItem.name} x{setItem.quantity}
+              </SetMenuItem>
+            ))}
+          </SetMenuItems>
+        </SetMenuSection>
+      )}
+
       {availableOptionGroups?.map((group: any) => (
         <OptionSection key={group.id}>
           <OptionTitle>

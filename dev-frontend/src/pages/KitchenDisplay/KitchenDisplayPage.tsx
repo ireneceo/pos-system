@@ -267,6 +267,27 @@ const ItemOptions = styled.div`
   margin-top: 2px;
 `;
 
+const SetItemsContainer = styled.div`
+  margin-left: 16px;
+  margin-top: 8px;
+  border-left: 2px solid #667eea;
+  padding-left: 12px;
+`;
+
+const SetItemRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+`;
+
+const SetItemName = styled.div`
+  font-size: 13px;
+  color: #667eea;
+  font-weight: 500;
+  flex: 1;
+`;
+
 const ItemQuantity = styled.div`
   font-size: 14px;
   font-weight: 600;
@@ -339,6 +360,13 @@ interface KitchenOrder {
     quantity: number;
     options?: string[];
     status?: 'pending' | 'completed';
+    is_set_menu?: boolean;
+    set_items?: Array<{
+      id?: string;
+      name: string;
+      quantity: number;
+      status?: 'pending' | 'completed';
+    }>;
   }>;
   status: 'pending' | 'preparing' | 'ready' | 'served' | 'completed';
   orderTime: Date;
@@ -404,17 +432,46 @@ const KitchenDisplayPage: React.FC = () => {
               }
             }
 
+            // Process order items (regular and set menus)
+            const processedItems: any[] = [];
+            orderItems.forEach((item: any, itemIndex: number) => {
+              // Check if this is a set menu from the database
+              if (item.is_set_menu && item.set_items && item.set_items.length > 0) {
+                // This is a set menu - keep parent item and sub-items
+                const setItems = item.set_items.map((setItem: any, setIndex: number) => ({
+                  id: `item-${order.id}-${itemIndex}-set-${setIndex}`,
+                  name: setItem.name,
+                  quantity: setItem.quantity * (item.quantity || 1),
+                  status: setItem.status || 'pending'
+                }));
+
+                processedItems.push({
+                  id: `item-${order.id}-${itemIndex}`,
+                  name: item.name || item.menuItem?.name || 'Set Menu',
+                  quantity: item.quantity,
+                  options: item.options || [],
+                  status: item.status || 'pending',
+                  is_set_menu: true,
+                  set_items: setItems
+                });
+              } else {
+                // Regular item - add as is
+                processedItems.push({
+                  id: `item-${order.id}-${itemIndex}`,
+                  name: item.name || item.menuItem?.name || 'Item',
+                  quantity: item.quantity,
+                  options: item.options || [],
+                  status: item.status || 'pending',
+                  is_set_menu: false
+                });
+              }
+            });
+
             return {
               id: order.id.toString(),
               orderNumber: order.order_number,
               pickupNumber: order.order_number.split('-')[1] || order.order_number.slice(-3),
-              items: orderItems.map((item: any, index: number) => ({
-                id: `item-${order.id}-${index}`,
-                name: item.name || item.menuItem?.name || 'Item',
-                quantity: item.quantity,
-                options: item.options || [],
-                status: item.status || 'pending'
-              })),
+              items: processedItems,
               status: order.status as 'pending' | 'preparing' | 'ready' | 'served' | 'completed',
               orderTime: new Date(order.createdAt),
               paymentStatus: order.payment_status as 'pending' | 'completed',
@@ -477,17 +534,63 @@ const KitchenDisplayPage: React.FC = () => {
         }
       }
 
+      // Expand set menu items into individual items for kitchen preparation
+      const expandedItems: any[] = [];
+      orderItems.forEach((item: any, itemIndex: number) => {
+        const specialInstructions = item.special_instructions || '';
+
+        // Check if this is a set menu by looking for [item1 x1, item2 x2] pattern
+        const setMenuMatch = specialInstructions.match(/^\[(.*?)\]/);
+
+        if (setMenuMatch) {
+          // This is a set menu - extract individual items
+          const setItemsText = setMenuMatch[1];
+          const setItems = setItemsText.split(',').map((s: string) => s.trim());
+
+          // Add each set item as a separate kitchen item
+          setItems.forEach((setItemText: string, setIndex: number) => {
+            const match = setItemText.match(/^(.*?)\s+x(\d+)$/);
+            if (match) {
+              const [, itemName, itemQty] = match;
+              expandedItems.push({
+                id: `item-${order.id}-${itemIndex}-set-${setIndex}`,
+                name: itemName.trim(),
+                quantity: parseInt(itemQty) * item.quantity,
+                options: [],
+                status: item.status || 'pending',
+                isSetItem: true,
+                parentSetName: item.name
+              });
+            }
+          });
+
+          // Also add options if the set menu has any
+          if (item.options && item.options.length > 0) {
+            expandedItems.push({
+              id: `item-${order.id}-${itemIndex}`,
+              name: `${item.name} (Options)`,
+              quantity: item.quantity,
+              options: item.options,
+              status: item.status || 'pending'
+            });
+          }
+        } else {
+          // Regular item - add as is
+          expandedItems.push({
+            id: `item-${order.id}-${itemIndex}`,
+            name: item.name || item.menuItem?.name || 'Item',
+            quantity: item.quantity,
+            options: item.options || [],
+            status: item.status || 'pending'
+          });
+        }
+      });
+
       const newOrder: KitchenOrder = {
         id: order.id.toString(),
         orderNumber: order.order_number,
         pickupNumber: order.order_number.split('-')[1] || order.order_number.slice(-3),
-        items: orderItems.map((item: any, index: number) => ({
-          id: `item-${order.id}-${index}`,
-          name: item.name || item.menuItem?.name || 'Item',
-          quantity: item.quantity,
-          options: item.options || [],
-          status: item.status || 'pending'
-        })),
+        items: expandedItems,
         status: order.status || 'pending',
         orderTime: new Date(order.createdAt || Date.now()),
         tableNumber: order.table_number,
@@ -652,6 +755,86 @@ const KitchenDisplayPage: React.FC = () => {
     }
   };
 
+  // Update set menu sub-item status
+  const updateSetItemStatus = async (orderId: string, parentItemId: string, setItemId: string) => {
+    const newStatus: 'pending' | 'completed' = 'completed';
+
+    try {
+      const order = orders.find(o => o.id === orderId);
+      if (!order) return;
+
+      const updatedItems = order.items.map(item => {
+        if (item.id === parentItemId && item.set_items) {
+          const updatedSetItems = item.set_items.map(setItem =>
+            setItem.id === setItemId ? { ...setItem, status: newStatus } : setItem
+          );
+
+          // Check if all set items are completed
+          const allSetItemsCompleted = updatedSetItems.every(si => si.status === 'completed');
+
+          return {
+            ...item,
+            set_items: updatedSetItems,
+            status: allSetItemsCompleted ? 'completed' : item.status
+          };
+        }
+        return item;
+      });
+
+      // Check if all items (including set menus) are completed
+      const allItemsCompleted = updatedItems.every(item => item.status === 'completed');
+
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/orders/${orderId}/items`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          order_items: updatedItems.map(item => ({
+            name: item.name,
+            quantity: item.quantity,
+            options: item.options || [],
+            status: item.status,
+            is_set_menu: item.is_set_menu,
+            set_items: item.set_items
+          }))
+        })
+      });
+
+      const result = await response.json();
+      if (!result.success) {
+        console.error('Failed to update set item status');
+        return;
+      }
+
+      // Update UI after successful save
+      setOrders(prevOrders =>
+        prevOrders.map(o => {
+          if (o.id === orderId) {
+            return {
+              ...o,
+              items: updatedItems,
+              status: o.status
+            };
+          }
+          return o;
+        })
+      );
+
+      // If all items completed, auto-advance to ready
+      if (allItemsCompleted && order.status === 'preparing') {
+        console.log('All items completed, advancing to ready:', orderId);
+        await updateOrderStatus(orderId, 'ready', true);
+      }
+    } catch (error) {
+      console.error('Failed to update set item status:', error);
+      fetchOrders();
+    }
+  };
+
   const getOrdersByStatus = (status: KitchenOrder['status']) => {
     return orders.filter(order => order.status === status);
   };
@@ -718,9 +901,11 @@ const KitchenDisplayPage: React.FC = () => {
                         👤 {order.customerName}
                       </MetaItem>
                     )}
-                    <MetaItem>
-                      {order.orderType === 'dine-in' ? '🍽️' : '🥡'} {order.orderType.toUpperCase()}
-                    </MetaItem>
+                    {order.orderType === 'takeaway' && (
+                      <MetaItem>
+                        🥡 TAKEAWAY
+                      </MetaItem>
+                    )}
                   </OrderMeta>
 
                   <OrderItems>
@@ -729,7 +914,7 @@ const KitchenDisplayPage: React.FC = () => {
                         <ItemInfo>
                           <ItemName>{item.name}</ItemName>
                           {item.options && (
-                            <ItemOptions>{item.options.join(', ')}</ItemOptions>
+                            <ItemOptions>⭐ {item.options.join(', ')}</ItemOptions>
                           )}
                         </ItemInfo>
                         <ItemQuantity>×{item.quantity}</ItemQuantity>
@@ -794,26 +979,55 @@ const KitchenDisplayPage: React.FC = () => {
 
                   <OrderItems>
                     {order.items.map((item) => (
-                      <OrderItem key={item.id}>
-                        <ItemInfo style={{ opacity: item.status === 'completed' ? 0.5 : 1 }}>
-                          <ItemName style={{ textDecoration: item.status === 'completed' ? 'line-through' : 'none' }}>
-                            {item.name}
-                          </ItemName>
-                          {item.options && (
-                            <ItemOptions>{item.options.join(', ')}</ItemOptions>
+                      <React.Fragment key={item.id}>
+                        <OrderItem>
+                          <ItemInfo style={{ opacity: item.status === 'completed' ? 0.5 : 1 }}>
+                            <ItemName style={{ textDecoration: item.status === 'completed' ? 'line-through' : 'none' }}>
+                              {item.name}
+                            </ItemName>
+                            {item.options && (
+                              <ItemOptions>⭐ {item.options.join(', ')}</ItemOptions>
+                            )}
+                          </ItemInfo>
+                          <ItemQuantity>×{item.quantity}</ItemQuantity>
+                          {!item.is_set_menu && (
+                            <ItemActions>
+                              {item.status === 'completed' ? (
+                                <span style={{ fontSize: '18px', color: '#3B82F6', fontWeight: 'bold' }}>✓</span>
+                              ) : (
+                                <ItemButton onClick={() => updateItemStatus(order.id, item.id!)}>
+                                  Done
+                                </ItemButton>
+                              )}
+                            </ItemActions>
                           )}
-                        </ItemInfo>
-                        <ItemQuantity>×{item.quantity}</ItemQuantity>
-                        <ItemActions>
-                          {item.status === 'completed' ? (
-                            <span style={{ fontSize: '18px', color: '#3B82F6', fontWeight: 'bold' }}>✓</span>
-                          ) : (
-                            <ItemButton onClick={() => updateItemStatus(order.id, item.id!)}>
-                              Done
-                            </ItemButton>
-                          )}
-                        </ItemActions>
-                      </OrderItem>
+                        </OrderItem>
+
+                        {/* Show set menu items individually */}
+                        {item.is_set_menu && item.set_items && item.set_items.length > 0 && (
+                          <SetItemsContainer>
+                            {item.set_items.map((setItem) => (
+                              <SetItemRow key={setItem.id}>
+                                <SetItemName style={{
+                                  textDecoration: setItem.status === 'completed' ? 'line-through' : 'none',
+                                  opacity: setItem.status === 'completed' ? 0.5 : 1
+                                }}>
+                                  • {setItem.name} x{setItem.quantity}
+                                </SetItemName>
+                                <ItemActions>
+                                  {setItem.status === 'completed' ? (
+                                    <span style={{ fontSize: '16px', color: '#3B82F6', fontWeight: 'bold' }}>✓</span>
+                                  ) : (
+                                    <ItemButton onClick={() => updateSetItemStatus(order.id, item.id!, setItem.id!)}>
+                                      Done
+                                    </ItemButton>
+                                  )}
+                                </ItemActions>
+                              </SetItemRow>
+                            ))}
+                          </SetItemsContainer>
+                        )}
+                      </React.Fragment>
                     ))}
                   </OrderItems>
 
@@ -875,9 +1089,11 @@ const KitchenDisplayPage: React.FC = () => {
                         👤 {order.customerName}
                       </MetaItem>
                     )}
-                    <MetaItem>
-                      {order.orderType === 'dine-in' ? '🍽️' : '🥡'} {order.orderType.toUpperCase()}
-                    </MetaItem>
+                    {order.orderType === 'takeaway' && (
+                      <MetaItem>
+                        🥡 TAKEAWAY
+                      </MetaItem>
+                    )}
                   </OrderMeta>
 
                   <OrderItems>
@@ -886,7 +1102,7 @@ const KitchenDisplayPage: React.FC = () => {
                         <ItemInfo>
                           <ItemName>{item.name}</ItemName>
                           {item.options && (
-                            <ItemOptions>{item.options.join(', ')}</ItemOptions>
+                            <ItemOptions>⭐ {item.options.join(', ')}</ItemOptions>
                           )}
                         </ItemInfo>
                         <ItemQuantity>×{item.quantity}</ItemQuantity>

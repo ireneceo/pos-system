@@ -10,6 +10,12 @@ interface Store {
   openingHours: Record<string, string>;
 }
 
+interface SetMenuItem {
+  menuItemId: number;
+  name: string;
+  quantity: number;
+}
+
 interface MenuItem {
   id: string;
   categoryId: string;
@@ -23,6 +29,8 @@ interface MenuItem {
   calories?: number;
   isPopular?: boolean;
   optionGroups?: OptionGroup[];
+  is_set_menu?: boolean;
+  set_items?: SetMenuItem[];
 }
 
 interface OptionGroup {
@@ -132,13 +140,24 @@ export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ childr
   
   // Add item to cart
   const addToCart = useCallback((
-    item: MenuItem, 
-    quantity: number, 
-    options: string[], 
+    item: MenuItem,
+    quantity: number,
+    options: string[],
     instructions?: string
   ) => {
+    // For set menus, add set_items as special instructions prefix
+    let finalInstructions = instructions || '';
+    if (item.is_set_menu && item.set_items && item.set_items.length > 0) {
+      const setItemsText = item.set_items
+        .map(setItem => `${setItem.name} x${setItem.quantity}`)
+        .join(', ');
+      finalInstructions = finalInstructions
+        ? `[${setItemsText}] ${finalInstructions}`
+        : `[${setItemsText}]`;
+    }
+
     const cartItemId = `${item.id}-${options.join('-')}-${Date.now()}`;
-    
+
     // Calculate total price including options
     let totalPrice = item.price;
     if (item.optionGroups) {
@@ -152,16 +171,16 @@ export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ childr
       });
     }
     totalPrice *= quantity;
-    
+
     const newCartItem: CartItem = {
       id: cartItemId,
       menuItem: item,
       quantity,
       selectedOptions: options,
-      specialInstructions: instructions,
+      specialInstructions: finalInstructions,
       totalPrice
     };
-    
+
     setCartItems(prev => [...prev, newCartItem]);
   }, []);
   

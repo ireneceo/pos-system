@@ -263,6 +263,13 @@ const ItemQuantity = styled.div`
   color: #6B7280;
 `;
 
+const ItemSetItems = styled.div`
+  font-size: 12px;
+  color: #667eea;
+  margin-top: 4px;
+  font-weight: 500;
+`;
+
 const ItemPrice = styled.div`
   font-size: 14px;
   font-weight: 600;
@@ -844,7 +851,8 @@ const PaymentPage: React.FC = () => {
                 name: item.menuItem.name,
                 quantity: item.quantity,
                 price: item.menuItem.price,
-                options: item.selectedOptions || []
+                options: item.selectedOptions || [],
+                special_instructions: item.specialInstructions || null
               }))
             };
 
@@ -952,7 +960,8 @@ const PaymentPage: React.FC = () => {
                 name: item.menuItem.name,
                 quantity: item.quantity,
                 price: item.menuItem.price,
-                options: item.selectedOptions || []
+                options: item.selectedOptions || [],
+                special_instructions: item.specialInstructions || null
               }))
             };
 
@@ -1096,6 +1105,13 @@ const PaymentPage: React.FC = () => {
                 <ItemInfo>
                   <ItemName>{item.menuItem.emoji} {item.menuItem.name}</ItemName>
                   <ItemQuantity>Qty: {item.quantity}</ItemQuantity>
+                  {item.menuItem.is_set_menu && item.menuItem.set_items && item.menuItem.set_items.length > 0 && (
+                    <ItemSetItems>
+                      🍱 Includes: {item.menuItem.set_items.map((setItem: any) =>
+                        `${setItem.name} x${setItem.quantity}`
+                      ).join(', ')}
+                    </ItemSetItems>
+                  )}
                 </ItemInfo>
                 <ItemPrice>RM {item.totalPrice.toFixed(2)}</ItemPrice>
               </ItemRow>

@@ -400,7 +400,7 @@ const MenuName = styled.div`
 const MenuPrice = styled.div`
   font-size: 16px;
   font-weight: 600;
-  color: #1F2937;
+  color: #635BFF;
 `;
 
 const SetBadge = styled.div`
@@ -1068,6 +1068,13 @@ interface MenuItemType {
   emoji: string;
   soldOut?: boolean;
   image?: string;
+  is_set_menu?: boolean;
+  set_items?: Array<{
+    menuItemId: number;
+    name: string;
+    quantity: number;
+  }>;
+  optionGroups?: string[];
 }
 
 interface OrderItemType {
@@ -1244,13 +1251,19 @@ const POSTerminalPage: React.FC = () => {
 
   const handleAddItemDirectly = (menuItem: MenuItemType) => {
     if (menuItem.soldOut) return;
-    
+
+    // For set menus, convert set_items to options format (as strings)
+    let setMenuOptions: string[] = [];
+    if (menuItem.is_set_menu && menuItem.set_items && menuItem.set_items.length > 0) {
+      setMenuOptions = menuItem.set_items.map(item => `${item.name} x${item.quantity}`);
+    }
+
     // Add directly without options (use default options for items that have them)
-    const existingItem = orderItems.find(item => 
-      item.menuItem.id === menuItem.id && (!item.options || item.options.length === 0)
+    const existingItem = orderItems.find(item =>
+      item.menuItem.id === menuItem.id && (!item.options || item.options.length === 0) && !menuItem.is_set_menu
     );
-    
-    if (existingItem) {
+
+    if (existingItem && !menuItem.is_set_menu) {
       setOrderItems(orderItems.map(item =>
         item.id === existingItem.id
           ? { ...item, quantity: item.quantity + 1 }
@@ -1260,7 +1273,8 @@ const POSTerminalPage: React.FC = () => {
       setOrderItems([...orderItems, {
         id: `order-${Date.now()}`,
         menuItem,
-        quantity: 1
+        quantity: 1,
+        options: setMenuOptions.length > 0 ? setMenuOptions : undefined
       }]);
     }
   };
@@ -1275,14 +1289,21 @@ const POSTerminalPage: React.FC = () => {
 
   const handleConfirmOptions = (quantity: number, selectedOptions: string[]) => {
     if (!selectedMenuItem) return;
-    
+
+    // For set menus, merge set items with regular options
+    let allOptions = [...selectedOptions];
+    if (selectedMenuItem.is_set_menu && selectedMenuItem.set_items && selectedMenuItem.set_items.length > 0) {
+      const setMenuOptions = selectedMenuItem.set_items.map(item => `${item.name} x${item.quantity}`);
+      allOptions = [...setMenuOptions, ...selectedOptions];
+    }
+
     // Check if same item with same options exists
-    const optionsKey = selectedOptions.sort().join(',');
-    const existingItem = orderItems.find(item => 
-      item.menuItem.id === selectedMenuItem.id && 
+    const optionsKey = allOptions.sort().join(',');
+    const existingItem = orderItems.find(item =>
+      item.menuItem.id === selectedMenuItem.id &&
       item.options?.sort().join(',') === optionsKey
     );
-    
+
     if (existingItem) {
       setOrderItems(orderItems.map(item =>
         item.id === existingItem.id
@@ -1294,10 +1315,10 @@ const POSTerminalPage: React.FC = () => {
         id: `order-${Date.now()}`,
         menuItem: selectedMenuItem,
         quantity: quantity,
-        options: selectedOptions
+        options: allOptions
       }]);
     }
-    
+
     setShowOptionModal(false);
     setSelectedMenuItem(null);
   };
@@ -1992,9 +2013,35 @@ const POSTerminalPage: React.FC = () => {
                   <OrderItem key={item.id}>
                     <ItemInfo>
                       <ItemName>{item.menuItem.name}</ItemName>
-                      {item.options && (
-                        <ItemOptions>{item.options.join(', ')}</ItemOptions>
-                      )}
+                      {item.options && item.options.length > 0 && (() => {
+                        // Separate set menu items and regular options
+                        const setItems: string[] = [];
+                        const regularOptions: string[] = [];
+
+                        item.options.forEach(option => {
+                          // Check if this is a set menu item (format: "item name xN")
+                          if (/^.+\sx\d+$/.test(option)) {
+                            setItems.push(option);
+                          } else {
+                            regularOptions.push(option);
+                          }
+                        });
+
+                        return (
+                          <>
+                            {setItems.length > 0 && (
+                              <ItemOptions style={{ fontWeight: 600 }}>
+                                {setItems.join(', ')}
+                              </ItemOptions>
+                            )}
+                            {regularOptions.length > 0 && (
+                              <ItemOptions>
+                                ⭐ {regularOptions.join(', ')}
+                              </ItemOptions>
+                            )}
+                          </>
+                        );
+                      })()}
                     </ItemInfo>
                     <ItemControls>
                       <QuantityControl>

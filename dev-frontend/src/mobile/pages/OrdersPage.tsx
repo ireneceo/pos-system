@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useParams } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
+import { useMobileOrder } from '../contexts/MobileOrderContext';
 
 const OrdersContainer = styled.div`
   display: flex;
@@ -150,44 +151,62 @@ const OrdersPage: React.FC = () => {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   const [orders, setOrders] = useState<any[]>([]);
+  const { currentStore, setCurrentStore } = useMobileOrder();
+
+  // Load restaurant data from slug on mount
+  useEffect(() => {
+    const loadRestaurant = async () => {
+      if (!currentStore && slug) {
+        try {
+          const response = await fetch(`/api/restaurants/slug/${slug}`);
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success && result.data) {
+              setCurrentStore({
+                id: result.data.id.toString(),
+                name: result.data.name,
+                slug: result.data.slug,
+                description: result.data.description || '',
+                logo: result.data.logo || '',
+                isOpen: result.data.is_open || true,
+                openingHours: result.data.opening_hours || {}
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Failed to load restaurant:', error);
+        }
+      }
+    };
+    loadRestaurant();
+  }, [slug, currentStore, setCurrentStore]);
 
   useEffect(() => {
-    loadOrders();
-
-    // Listen for storage events (updates from other tabs)
-    const handleStorageChange = () => {
+    if (currentStore) {
       loadOrders();
-    };
 
-    window.addEventListener('storage', handleStorageChange);
+      // Poll for updates every 5 seconds
+      const interval = setInterval(() => {
+        loadOrders();
+      }, 5000);
 
-    // Poll for updates every 5 seconds
-    const interval = setInterval(() => {
-      loadOrders();
-    }, 5000);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
-    };
-  }, []);
+      return () => {
+        clearInterval(interval);
+      };
+    }
+  }, [currentStore]);
 
   const loadOrders = async () => {
+    if (!currentStore) {
+      console.warn('No currentStore available');
+      return;
+    }
+
     try {
       console.log('🔄 Loading orders from DATABASE...');
 
-      // Get restaurant ID from currentStore
-      const currentStoreStr = localStorage.getItem('currentStore');
-      let restaurantId = 1;
-
-      if (currentStoreStr) {
-        try {
-          const currentStore = JSON.parse(currentStoreStr);
-          restaurantId = currentStore.id || 1;
-        } catch (e) {
-          console.warn('Failed to parse currentStore, using default restaurant ID');
-        }
-      }
+      // Get restaurant ID from currentStore context
+      const restaurantId = currentStore.id || 1;
 
       // Fetch orders from database API
       try {
