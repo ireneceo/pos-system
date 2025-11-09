@@ -5,6 +5,9 @@ export * from './Tabs';
 export * from './Modal';
 export * from './SelectComponents';
 
+// Explicitly export AlertMessage
+export { AlertMessage } from './CommonStyles';
+
 // Explicitly export Table components
 export {
   Table,

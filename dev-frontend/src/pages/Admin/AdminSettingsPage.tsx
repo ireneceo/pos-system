@@ -368,42 +368,8 @@ const AdminSettingsPage: React.FC = () => {
           <PageTitle>Company Information</PageTitle>
         </Header>
         <Content>
-            
-            <FormRow>
-              <FormGroup>
-                <FormLabel>Brand Logo</FormLabel>
-                <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '12px', lineHeight: '1.5' }}>
-                  Displayed in site navigation
-                </div>
-                <LogoUpload
-                  isDragging={isDragging}
-                  onClick={() => document.getElementById('brand-logo-input')?.click()}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                >
-                  {settings.brandLogo ? (
-                    <LogoPreview src={settings.brandLogo} alt="Brand Logo" />
-                  ) : (
-                    <div>
-                      <div style={{ fontSize: '14px', color: '#6B7280', fontWeight: 500, marginBottom: '8px' }}>
-                        {isDragging ? 'Drop logo here' : 'Click or drag & drop to upload'}
-                      </div>
-                      <div style={{ fontSize: '12px', color: '#9CA3AF' }}>
-                        PNG or JPG (Max 2MB)
-                      </div>
-                    </div>
-                  )}
-                </LogoUpload>
-                <input
-                  id="brand-logo-input"
-                  type="file"
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                  onChange={handleBrandLogoUpload}
-                />
-              </FormGroup>
 
+            <FormRow>
               <FormGroup>
                 <FormLabel>Company Logo</FormLabel>
                 <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '12px', lineHeight: '1.5' }}>

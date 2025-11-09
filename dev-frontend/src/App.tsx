@@ -1,3 +1,4 @@
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { OrderProvider } from './contexts/OrderContext';
@@ -140,6 +141,73 @@ const LegacyRestaurantRedirect: React.FC = () => {
 };
 
 function App() {
+  // Load site settings and update SEO on mount
+  React.useEffect(() => {
+    const loadSiteSettings = async () => {
+      try {
+        const response = await fetch('/api/site-settings');
+        if (response.ok) {
+          const settings = await response.json();
+
+          // Update document title
+          if (settings.seo_title) {
+            document.title = settings.seo_title;
+          }
+
+          // Update favicon
+          if (settings.favicon_url) {
+            const favicon = document.getElementById('favicon') as HTMLLinkElement;
+            if (favicon) {
+              favicon.href = settings.favicon_url;
+            }
+          }
+
+          // Update meta description
+          if (settings.seo_description) {
+            const metaDesc = document.getElementById('meta-description');
+            if (metaDesc) {
+              metaDesc.setAttribute('content', settings.seo_description);
+            }
+          }
+
+          // Update meta keywords
+          if (settings.seo_keywords) {
+            const metaKeywords = document.getElementById('meta-keywords');
+            if (metaKeywords) {
+              metaKeywords.setAttribute('content', settings.seo_keywords);
+            }
+          }
+
+          // Update Open Graph tags
+          if (settings.seo_title) {
+            const ogTitle = document.getElementById('og-title');
+            const twitterTitle = document.getElementById('twitter-title');
+            if (ogTitle) ogTitle.setAttribute('content', settings.seo_title);
+            if (twitterTitle) twitterTitle.setAttribute('content', settings.seo_title);
+          }
+
+          if (settings.seo_description) {
+            const ogDesc = document.getElementById('og-description');
+            const twitterDesc = document.getElementById('twitter-description');
+            if (ogDesc) ogDesc.setAttribute('content', settings.seo_description);
+            if (twitterDesc) twitterDesc.setAttribute('content', settings.seo_description);
+          }
+
+          if (settings.og_image_url) {
+            const ogImage = document.getElementById('og-image');
+            const twitterImage = document.getElementById('twitter-image');
+            if (ogImage) ogImage.setAttribute('content', settings.og_image_url);
+            if (twitterImage) twitterImage.setAttribute('content', settings.og_image_url);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load site settings:', error);
+      }
+    };
+
+    loadSiteSettings();
+  }, []);
+
   return (
     <ThemeProvider>
       <StoreProvider>

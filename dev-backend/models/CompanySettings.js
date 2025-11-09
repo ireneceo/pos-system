@@ -68,6 +68,33 @@ CompanySettings.init({
     type: DataTypes.TEXT('long'),
     allowNull: true,
     comment: 'Base64 encoded company logo for invoices/documents'
+  },
+  site_name: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    defaultValue: 'OrderHere POS'
+  },
+  favicon_url: {
+    type: DataTypes.TEXT('long'),
+    allowNull: true,
+    comment: 'Base64 encoded favicon'
+  },
+  seo_title: {
+    type: DataTypes.STRING(255),
+    allowNull: true
+  },
+  seo_description: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  seo_keywords: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  og_image_url: {
+    type: DataTypes.TEXT('long'),
+    allowNull: true,
+    comment: 'Base64 encoded Open Graph image'
   }
 }, {
   sequelize: database.sequelize,

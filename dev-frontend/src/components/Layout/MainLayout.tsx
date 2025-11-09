@@ -1239,6 +1239,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>⚙</NavIcon>
                   Company Information
                 </NavItem>
+                <NavItem to="/pos/admin/site-settings" active={isActive('/pos/admin/site-settings')} onClick={closeSidebar}>
+                  <NavIcon>◈</NavIcon>
+                  Site Settings
+                </NavItem>
                 <NavItem to="/pos/admin/system-config" active={isActive('/pos/admin/system-config')} onClick={closeSidebar}>
                   <NavIcon>⚙</NavIcon>
                   System Config
