@@ -363,10 +363,20 @@ const LoginPage: React.FC = () => {
             navigate('/pos/brand/dashboard', { replace: true });
             break;
           case 'Restaurant Admin':
-            navigate('/pos/restaurant/dashboard', { replace: true });
+            // Use user's restaurant_id for the dashboard URL
+            if (user.restaurant_id) {
+              navigate(`/restaurant/${user.restaurant_id}/dashboard`, { replace: true });
+            } else {
+              navigate('/pos/restaurant/dashboard', { replace: true });
+            }
             break;
           case 'Staff':
-            navigate('/pos/basic', { replace: true });
+            // Use user's restaurant_id for the basic POS URL
+            if (user.restaurant_id) {
+              navigate(`/restaurant/${user.restaurant_id}/pos-terminal`, { replace: true });
+            } else {
+              navigate('/pos/basic', { replace: true });
+            }
             break;
           default:
             navigate('/pos/basic', { replace: true });

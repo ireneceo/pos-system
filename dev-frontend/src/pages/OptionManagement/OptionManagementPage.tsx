@@ -551,7 +551,7 @@ const OptionManagementPage: React.FC = () => {
     <MainLayout>
       <Container>
         <Header>
-          <HeaderTitle>Option Management</HeaderTitle>
+          <HeaderTitle>Options</HeaderTitle>
           <HeaderActions>
             <Button onClick={() => handleOpenModal()}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">

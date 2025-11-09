@@ -591,7 +591,7 @@ const MenuManagementPage: React.FC = () => {
     <MainLayout>
       <Container>
         <Header>
-          <HeaderTitle>Menu Management</HeaderTitle>
+          <HeaderTitle>Menu</HeaderTitle>
           <HeaderActions>
             <UIButton variant="primary" onClick={handleAddItem}>+ Add New Item</UIButton>
           </HeaderActions>

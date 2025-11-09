@@ -436,7 +436,7 @@ const CategoryManagementPage: React.FC = () => {
     <MainLayout>
       <Container>
         <Header>
-          <HeaderTitle>Category Management</HeaderTitle>
+          <HeaderTitle>Categories</HeaderTitle>
           <HeaderActions>
           <Button onClick={() => handleOpenModal()}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">

@@ -324,6 +324,11 @@ const QuickActionsGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 20px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
 `;
 
 const QuickActionCard = styled.div`
@@ -391,6 +396,7 @@ interface SalesChartData {
 const RestaurantDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const restaurantId = user?.restaurantId || user?.id || '';
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [timePeriod, setTimePeriod] = useState<'week' | 'month' | 'year'>('week');
@@ -796,27 +802,27 @@ const RestaurantDashboard: React.FC = () => {
           <QuickActionsSection>
             <h3>Quick Actions</h3>
             <QuickActionsGrid>
-              <QuickActionCard onClick={() => window.open('/pos/pos-terminal', '_blank')}>
+              <QuickActionCard onClick={() => window.open(`/restaurant/${restaurantId}/pos-terminal`, '_blank')}>
                 <div className="icon">▦</div>
                 <div className="title">POS Terminal</div>
                 <div className="description">Process orders</div>
               </QuickActionCard>
 
-              <QuickActionCard onClick={() => window.open('/pos/kitchen', '_blank')}>
+              <QuickActionCard onClick={() => window.open(`/restaurant/${restaurantId}/kitchen`, '_blank')}>
                 <div className="icon">◐</div>
                 <div className="title">Kitchen Display</div>
                 <div className="description">View kitchen orders</div>
               </QuickActionCard>
 
-              <QuickActionCard onClick={() => navigate('/pos/live-orders')}>
+              <QuickActionCard onClick={() => navigate(`/restaurant/${restaurantId}/live-orders`)}>
                 <div className="icon">◉</div>
                 <div className="title">Live Orders</div>
                 <div className="description">Monitor all orders</div>
               </QuickActionCard>
 
-              <QuickActionCard onClick={() => navigate('/pos/menu')}>
+              <QuickActionCard onClick={() => navigate(`/restaurant/${restaurantId}/menu`)}>
                 <div className="icon">≡</div>
-                <div className="title">Menu Management</div>
+                <div className="title">Menu</div>
                 <div className="description">Edit menu items</div>
               </QuickActionCard>
             </QuickActionsGrid>

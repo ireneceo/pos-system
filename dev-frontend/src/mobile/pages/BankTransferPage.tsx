@@ -387,45 +387,65 @@ const BankTransferPage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      // Update order with payment proof
-      const updatedOrder = {
-        ...orderData,
-        paymentStatus: 'payment_verification_pending',
-        paymentProof: {
+      // Get pending order data from sessionStorage
+      const pendingOrderDataStr = sessionStorage.getItem('pendingOrderData');
+      if (!pendingOrderDataStr) {
+        alert('Order data not found. Please go back and try again.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const pendingOrderData = JSON.parse(pendingOrderDataStr);
+
+      // Create order in DATABASE with payment proof
+      const dbOrderData = {
+        ...pendingOrderData,
+        payment_status: 'payment_verification_pending',
+        payment_proof: {
           image: paymentProofImage,
           reference: transferReference,
-          fileName: uploadedFileName,
-          uploadedAt: new Date().toISOString()
+          file_name: uploadedFileName,
+          uploaded_at: new Date().toISOString()
         }
       };
 
-      // Update backend database
-      const response = await fetch(`/api/orders/${orderId}`, {
-        method: 'PATCH',
+      console.log('💾 Creating order with payment proof in DATABASE...');
+      const response = await fetch('/api/orders', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          payment_status: 'payment_verification_pending',
-          payment_proof: {
-            image: paymentProofImage,
-            reference: transferReference,
-            file_name: uploadedFileName,
-            uploaded_at: new Date().toISOString()
-          }
-        })
+        body: JSON.stringify(dbOrderData)
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update order in database');
+        throw new Error('Failed to create order in database');
       }
 
-      console.log('✅ Order updated in database with payment proof');
+      const result = await response.json();
+      const savedOrder = result.data;
+      console.log('✅ Order created in DB with ID:', savedOrder.id);
+
+      // Get order number and pickup number from backend response
+      const backendOrderNumber = savedOrder.order_number;
+      const backendPickupNumber = backendOrderNumber ? backendOrderNumber.split('-')[1] : '001';
 
       // Set current order and clear cart
-      setCurrentOrder(updatedOrder);
+      setCurrentOrder({
+        id: savedOrder.id,
+        pickupNumber: backendPickupNumber,
+        items: pendingOrderData.order_items,
+        total: pendingOrderData.total_amount,
+        status: 'awaiting_payment',
+        createdAt: new Date(),
+        estimatedPickupTime: new Date(Date.now() + 30 * 60000),
+        paymentStatus: 'payment_verification_pending'
+      });
       clearCart();
 
+      // Clear pending order data
+      sessionStorage.removeItem('pendingOrderData');
+
       // Navigate to order tracking
-      navigate(`/mobile/${slug}/order/${orderId}`);
+      navigate(`/mobile/${slug}/order/${savedOrder.id}`);
     } catch (error) {
       console.error('Error submitting payment proof:', error);
       alert('Failed to submit payment proof. Please try again.');

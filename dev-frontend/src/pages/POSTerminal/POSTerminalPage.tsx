@@ -31,29 +31,35 @@ const POSContainer = styled.div`
 
 const Header = styled.header`
   background: white;
-  padding: 16px 32px;
+  padding: 12px 32px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid #E6EBF1;
-  height: 56px;
+  height: 48px;
 
   @media (max-width: 768px) {
     height: auto;
-    padding: 16px 20px;
+    padding: 12px 20px;
   }
 `;
 
 const Logo = styled.div`
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 0.8;
+  }
 `;
 
 const LogoImage = styled.img`
-  max-width: 160px;
+  max-width: 180px;
   max-height: 40px;
   object-fit: contain;
 `;
@@ -868,7 +874,6 @@ const CustomerSearchSection = styled.div`
 
 const CustomerSearchContainer = styled.div`
   position: relative;
-  padding-right: 12px;
 `;
 
 const CustomerSearchLabel = styled.div`
@@ -887,6 +892,7 @@ const CustomerSearchInput = styled.input`
   background: white;
   cursor: pointer;
   transition: all 0.15s;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -1092,14 +1098,16 @@ const POSTerminalPage: React.FC = () => {
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [selectedCustomerForOrder, setSelectedCustomerForOrder] = useState<any>(null);
 
-  // Load brand logo from system settings
+  // Load brand logo from site settings
   useEffect(() => {
     const loadBrandLogo = async () => {
       try {
-        const response = await fetch('/api/admin/settings');
+        const response = await fetch('/api/site-settings');
         if (response.ok) {
           const settings = await response.json();
-          if (settings.brandLogo) {
+          if (settings.brand_logo) {
+            setBrandLogo(settings.brand_logo);
+          } else if (settings.brandLogo) {
             setBrandLogo(settings.brandLogo);
           } else if (settings.logo) {
             setBrandLogo(settings.logo);
@@ -1300,6 +1308,27 @@ const POSTerminalPage: React.FC = () => {
     setSelectedCustomerForOrder(null);
     setCustomerSearchQuery('');
     setShowClearConfirm(false);
+  };
+
+  const handleResetPOS = () => {
+    // Reset all states to initial values
+    setOrderItems([]);
+    setDiscount(0);
+    setAppliedCoupon(null);
+    setAppliedDiscountPolicy(null);
+    setCouponCode('');
+    setSelectedCustomerForOrder(null);
+    setCustomerSearchQuery('');
+    setOrderType('dine-in');
+    setTableNumber('');
+    setSearchQuery('');
+    setSelectedCategory('all');
+    setShowClearConfirm(false);
+    setShowPaymentModal(false);
+    setShowOptionModal(false);
+    setShowOrderCompleteModal(false);
+    setCompletedOrderData(null);
+    setSelectedMenuItem(null);
   };
 
   const handleApplyDiscount = (amount: number) => {
@@ -1723,7 +1752,7 @@ const POSTerminalPage: React.FC = () => {
   return (
     <POSContainer>
       <Header>
-        <Logo>
+        <Logo onClick={handleResetPOS}>
           {brandLogo ? (
             <>
               <LogoImage src={brandLogo} alt="Brand Logo" />

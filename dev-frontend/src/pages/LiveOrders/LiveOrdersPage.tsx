@@ -106,9 +106,8 @@ const Header = styled.header`
   @media (max-width: 768px) {
     height: auto;
     padding: 16px 20px;
-    flex-direction: column;
-    gap: 16px;
-    align-items: stretch;
+    align-items: center;
+    gap: 12px;
   }
 `;
 
@@ -116,15 +115,22 @@ const HeaderTitle = styled.h1`
   font-size: 24px;
   font-weight: 600;
   color: #0A2540;
+
+  @media (max-width: 768px) {
+    font-size: 18px;
+    flex: 1;
+    min-width: 0;
+  }
 `;
 
 const HeaderActions = styled.div`
   display: flex;
   gap: 12px;
   align-items: center;
+  flex-shrink: 0;
 
   @media (max-width: 768px) {
-    flex-wrap: wrap;
+    gap: 8px;
   }
 `;
 

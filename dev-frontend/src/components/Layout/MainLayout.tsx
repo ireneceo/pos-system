@@ -565,14 +565,17 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   useEffect(() => {
     const loadBrandLogo = async () => {
       try {
-        console.log('[MainLayout] Fetching brand logo from /api/admin-settings');
-        const response = await fetch('/api/admin-settings');
+        console.log('[MainLayout] Fetching brand logo from /api/site-settings');
+        const response = await fetch('/api/site-settings');
         console.log('[MainLayout] Response status:', response.status);
         if (response.ok) {
           const settings = await response.json();
           console.log('[MainLayout] Settings:', settings);
-          if (settings.brandLogo) {
-            console.log('[MainLayout] Setting brandLogo');
+          if (settings.brand_logo) {
+            console.log('[MainLayout] Setting brand_logo from site-settings');
+            setBrandLogo(settings.brand_logo);
+          } else if (settings.brandLogo) {
+            console.log('[MainLayout] Setting brandLogo from site-settings');
             setBrandLogo(settings.brandLogo);
           } else if (settings.logo) {
             console.log('[MainLayout] Using fallback logo');
