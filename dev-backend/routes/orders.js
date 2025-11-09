@@ -9,9 +9,15 @@ const { executeQuery, executeTransaction } = require('../utils/queryWrapper');
 // Get all orders
 router.get('/', async (req, res) => {
   try {
-    const { status, date, limit = 50 } = req.query;
-    
+    const { status, date, limit = 50, restaurant_id } = req.query;
+
     let whereCondition = {};
+
+    // Restaurant ID 필터링 (필수)
+    if (restaurant_id) {
+      whereCondition.restaurant_id = parseInt(restaurant_id);
+    }
+
     if (status) {
       whereCondition.status = status;
     }
@@ -23,7 +29,7 @@ router.get('/', async (req, res) => {
         $between: [startDate, endDate]
       };
     }
-    
+
     // 쿼리 래퍼 사용 (자동 재시도)
     const orders = await executeQuery(async () => {
       return await Order.findAll({
@@ -32,7 +38,7 @@ router.get('/', async (req, res) => {
         limit: parseInt(limit)
       });
     }, { maxRetries: 3 });
-    
+
     res.json({ success: true, data: orders });
   } catch (error) {
     console.error('❌ Orders 조회 실패:', error.message);
