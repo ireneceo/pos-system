@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import styled, { createGlobalStyle } from 'styled-components';
 import { io, Socket } from 'socket.io-client';
 import MainLayout from '../../components/Layout/MainLayout';
@@ -781,43 +782,30 @@ const PrintStyles = createGlobalStyle`
       margin: 0mm;
     }
 
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
     body {
-      width: 80mm;
       margin: 0;
       padding: 0;
       background: white;
-      overflow: hidden;
     }
 
-    /* Hide everything */
-    body > * {
+    .no-print {
       display: none !important;
     }
 
-    /* Show only bill content - make it direct body child with important */
     #bill-print-content {
       display: block !important;
-      position: static !important;
       width: 80mm !important;
       max-width: 80mm !important;
       margin: 0 !important;
       padding: 5mm !important;
       background: white !important;
-      page-break-after: avoid !important;
-      page-break-inside: avoid !important;
+      border: none !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
     }
 
-    /* Force immediate page break after bill */
-    #bill-print-content::after {
-      content: "";
-      display: block;
-      page-break-after: always;
+    #bill-print-content button {
+      display: none !important;
     }
   }
 `;
@@ -1532,7 +1520,7 @@ const LiveOrdersPage: React.FC = () => {
   return (
     <MainLayout>
       <PrintStyles />
-      <Container>
+      <Container className="no-print">
         <Header>
           <HeaderTitle>Live Orders</HeaderTitle>
           <HeaderActions>
@@ -1993,8 +1981,8 @@ const LiveOrdersPage: React.FC = () => {
           </ModalContent>
         </ModalOverlay>
 
-        {/* Bill Print Content - Hidden until print */}
-        {selectedOrder && (
+        {/* Bill Print Content - Portal to body */}
+        {selectedOrder && ReactDOM.createPortal(
           <BillPrintContainer id="bill-print-content">
             <BillHeader>
               <BillTitle>{companyInfo?.companyName || 'Restaurant'}</BillTitle>
@@ -2113,7 +2101,8 @@ const LiveOrdersPage: React.FC = () => {
               <div>Thank you for your purchase!</div>
               <div>Please keep this receipt for your records</div>
             </BillFooter>
-          </BillPrintContainer>
+          </BillPrintContainer>,
+          document.body
         )}
 
         {/* Delete Confirmation Modal */}

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ReactDOM from 'react-dom';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { useOrders } from '../../contexts/OrderContext';
@@ -261,7 +262,7 @@ const BillPrintPage: React.FC = () => {
           </SearchButton>
         </SearchSection>
 
-        {selectedOrder ? (
+        {selectedOrder && ReactDOM.createPortal(
           <BillContainer data-print-bill>
             <BillHeader>
               <StoreName>FOODCOURT CENTRAL</StoreName>
@@ -379,8 +380,11 @@ const BillPrintPage: React.FC = () => {
               </svg>
               Print Bill
             </PrintButton>
-          </BillContainer>
-        ) : searchTerm && (
+          </BillContainer>,
+          document.body
+        )}
+
+        {!selectedOrder && searchTerm && (
           <EmptyState>
             <p>No order found with that order number or phone number.</p>
           </EmptyState>
@@ -395,29 +399,18 @@ const BillPrintPage: React.FC = () => {
             margin: 0mm;
           }
 
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-
           body {
-            width: 80mm;
             margin: 0;
             padding: 0;
             background: white;
-            overflow: hidden;
           }
 
-          /* Hide everything */
-          body > * {
+          .no-print {
             display: none !important;
           }
 
-          /* Show only bill content */
           [data-print-bill] {
             display: block !important;
-            position: static !important;
             width: 80mm !important;
             max-width: 80mm !important;
             margin: 0 !important;
@@ -426,20 +419,10 @@ const BillPrintPage: React.FC = () => {
             border: none !important;
             box-shadow: none !important;
             border-radius: 0 !important;
-            page-break-after: avoid !important;
-            page-break-inside: avoid !important;
           }
 
-          /* Hide print button */
           [data-print-bill] button {
             display: none !important;
-          }
-
-          /* Force immediate page break after bill */
-          [data-print-bill]::after {
-            content: "";
-            display: block;
-            page-break-after: always;
           }
         }
       `}</style>

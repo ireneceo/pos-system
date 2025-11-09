@@ -1331,8 +1331,23 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           {children}
         </MobileContent>
       </MainContent>
-      
+
       </LayoutContainer>
+
+      {/* Global print styles for MainLayout */}
+      <style>{`
+        @media print {
+          /* Hide EVERYTHING except print content */
+          body > *:not(#bill-print-content):not([data-print-bill]) {
+            display: none !important;
+          }
+
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+        }
+      `}</style>
     </BrandThemeProvider>
   );
 };

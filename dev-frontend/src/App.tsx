@@ -66,6 +66,7 @@ import ManagerCustomersPage from './pages/Manager/ManagerCustomersPage';
 import ManagerPromotionsPage from './pages/Manager/ManagerPromotionsPage';
 import ManagerPlansPage from './pages/Manager/PlansPage';
 import AdminSettingsPage from './pages/Admin/AdminSettingsPage';
+import SiteSettingsPage from './pages/Admin/SiteSettingsPage';
 import RestaurantDashboard from './pages/Restaurant/RestaurantDashboard';
 import BasicDashboard from './pages/Basic/BasicDashboard';
 
@@ -231,6 +232,11 @@ function App() {
                       <Route path="/pos/admin/settings" element={
                         <ProtectedRoute requiredRole={['System Admin']}>
                           <AdminSettingsPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/admin/site-settings" element={
+                        <ProtectedRoute requiredRole={['System Admin']}>
+                          <SiteSettingsPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/admin/restaurant-subscriptions" element={
