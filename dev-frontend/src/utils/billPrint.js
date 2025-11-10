@@ -55,13 +55,7 @@ function formatLine(left, right, width = 32) {
   return left + ' '.repeat(Math.max(spaces, 1)) + right;
 }
 
-/**
- * Center text in 32 character width
- */
-function centerText(text, width = 32) {
-  const spaces = Math.floor((width - text.length) / 2);
-  return ' '.repeat(Math.max(spaces, 0)) + text;
-}
+// centerText function removed - not used in current implementation
 
 // ============================================
 // ESC/POS Receipt Content Generation
@@ -220,7 +214,7 @@ export function generateBillContent(orderData, storeInfo) {
 // ============================================
 
 /**
- * Print bill via RawBT app using URL schema
+ * Print bill via RawBT app using Android Intent
  *
  * @param {Object} orderData - Order data
  * @param {Object} storeInfo - Store info
@@ -228,26 +222,28 @@ export function generateBillContent(orderData, storeInfo) {
  */
 export async function printBillViaRawBT(orderData, storeInfo) {
   try {
-    console.log('🖨️ Starting RawBT bill print...');
+    console.log('🖨️ Starting RawBT bill print (Intent method)...');
     console.log('📦 Order:', orderData.orderNumber, '| Total: RM', orderData.total);
 
     // Generate ESC/POS content
     const escposContent = generateBillContent(orderData, storeInfo);
     console.log('📄 ESC/POS content generated:', escposContent.length, 'chars');
 
-    // Convert to Base64
-    const encoder = new TextEncoder();
-    const bytes = encoder.encode(escposContent);
-    const base64Content = btoa(String.fromCharCode(...Array.from(bytes)));
+    // Convert to Base64 using proper encoding
+    // Use unescape + encodeURIComponent for Korean/special characters
+    const base64Content = btoa(unescape(encodeURIComponent(escposContent)));
     console.log('🔐 Base64 encoded:', base64Content.length, 'chars');
 
-    // Build RawBT URL schema
-    const rawbtUrl = `rawbt:base64,${base64Content}`;
-    console.log('🔗 RawBT URL schema created');
+    // Build Android Intent URL for RawBT
+    const intentScheme = '#Intent;scheme=rawbt;';
+    const intentPackage = 'package=ru.a402d.rawbtprinter;end;';
+    const intentUrl = 'intent:base64,' + base64Content + intentScheme + intentPackage;
 
-    // Open RawBT app
-    window.location.href = rawbtUrl;
-    console.log('✅ RawBT app opened successfully');
+    console.log('🔗 RawBT Intent URL created');
+
+    // Open RawBT app via Intent
+    window.location.href = intentUrl;
+    console.log('✅ RawBT app opened successfully via Intent');
 
     return true;
 
