@@ -18,6 +18,10 @@ interface OperationSettings {
   timeZone: string;
   orderNumberReset: 'daily' | 'weekly' | 'monthly' | 'never';
   defaultPreparationTime: number;
+  taxEnabled: boolean;
+  taxRate: number;
+  serviceChargeEnabled: boolean;
+  serviceChargeRate: number;
   takeawayPricing: {
     enabled: boolean;
     pricingType: 'per-item' | 'per-category';
@@ -57,6 +61,10 @@ const defaultOperationSettings: OperationSettings = {
   timeZone: 'Asia/Kuala_Lumpur',
   orderNumberReset: 'daily',
   defaultPreparationTime: 15,
+  taxEnabled: true,
+  taxRate: 6,
+  serviceChargeEnabled: false,
+  serviceChargeRate: 10,
   takeawayPricing: {
     enabled: false,
     pricingType: 'per-item',
@@ -94,28 +102,46 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
     const loadSettingsFromDB = async () => {
       try {
         const token = localStorage.getItem('auth_token');
+        console.log('🔑 StoreContext: Auth token exists:', !!token);
 
-        // Get user info to retrieve restaurant_id
-        const userInfoResponse = await fetch('/api/auth/me', {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        // Try to get restaurant_id from URL first
+        const urlMatch = window.location.pathname.match(/\/restaurant\/(\d+)/);
+        let restaurantId = urlMatch ? parseInt(urlMatch[1]) : null;
+        console.log('🌐 StoreContext: Restaurant ID from URL:', restaurantId);
+
+        // If not in URL, get from user info
+        if (!restaurantId) {
+          console.log('🔍 StoreContext: Fetching user info from /api/auth/me');
+          const userInfoResponse = await fetch('/api/auth/me', {
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            }
+          });
+
+          console.log('📡 StoreContext: /api/auth/me response status:', userInfoResponse.status);
+          if (userInfoResponse.ok) {
+            const userInfo = await userInfoResponse.json();
+            console.log('👤 StoreContext: User info:', userInfo);
+            restaurantId = userInfo.restaurant_id;
+          } else {
+            console.error('❌ StoreContext: Failed to get user info');
+            const errorText = await userInfoResponse.text();
+            console.error('Error details:', errorText);
           }
-        });
-
-        let restaurantId = null;
-        if (userInfoResponse.ok) {
-          const userInfo = await userInfoResponse.json();
-          restaurantId = userInfo.restaurant_id;
         }
 
         // If no restaurant_id, use default settings
         if (!restaurantId) {
+          console.warn('⚠️ StoreContext: No restaurant_id found, using default settings');
           return;
         }
 
+        console.log('🎯 StoreContext: Using restaurant_id:', restaurantId);
+
         // Fetch restaurant settings with restaurantId
+        console.log('📞 StoreContext: Fetching settings from /api/store/settings?restaurantId=' + restaurantId);
         const response = await fetch(`/api/store/settings?restaurantId=${restaurantId}`, {
           credentials: 'include',
           headers: {
@@ -124,22 +150,25 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
           }
         });
 
+        console.log('📡 StoreContext: /api/store/settings response status:', response.status);
         if (response.ok) {
           const result = await response.json();
+          console.log('🏪 StoreContext: API response:', result);
           if (result.success && result.data) {
             // Map restaurant data to store settings format
             const storeData: StoreSettings = {
-              name: result.data.name || defaultStoreSettings.name,
-              businessRegistration: result.data.business_registration || result.data.id?.toString() || defaultStoreSettings.businessRegistration,
-              phone: result.data.phone || defaultStoreSettings.phone,
-              email: result.data.email || defaultStoreSettings.email,
-              address: result.data.address || defaultStoreSettings.address,
-              city: result.data.city || defaultStoreSettings.city,
-              state: result.data.state || defaultStoreSettings.state,
-              postalCode: result.data.postal_code || defaultStoreSettings.postalCode,
-              gstRegNo: result.data.tax_id || defaultStoreSettings.gstRegNo
+              name: result.data.name || '',
+              businessRegistration: result.data.business_registration || '',
+              phone: result.data.phone || '',
+              email: result.data.email || '',
+              address: result.data.address || '',
+              city: result.data.city || '',
+              state: result.data.state || '',
+              postalCode: result.data.postal_code || '',
+              gstRegNo: result.data.tax_id || ''
             };
 
+            console.log('🏪 StoreContext: Loaded store data:', storeData);
             setStoreSettings(storeData);
 
             // Set operation settings if available
@@ -154,9 +183,14 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
               });
             }
           }
+        } else {
+          console.error('❌ StoreContext: Failed to fetch store settings');
+          const errorText = await response.text();
+          console.error('Error details:', errorText);
         }
       } catch (error) {
-        console.error('Error loading store settings:', error);
+        console.error('❌ StoreContext: Error loading store settings:', error);
+        console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       }
     };
 
@@ -174,7 +208,10 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
     }
   };
 
-  const getStoreInfo = () => storeSettings;
+  const getStoreInfo = () => {
+    console.log('🏪 StoreContext: getStoreInfo() called, returning:', storeSettings);
+    return storeSettings;
+  };
 
   const getTakeawayCharge = (category?: string): number => {
     if (!operationSettings.takeawayPricing.enabled) {

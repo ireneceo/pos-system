@@ -79,6 +79,52 @@ Order.init({
     set(value) {
       this.setDataValue('payment_proof', value ? JSON.stringify(value) : null);
     }
+  },
+  subtotal: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    comment: 'Subtotal before tax and service charge'
+  },
+  tax: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0,
+    comment: 'Tax amount'
+  },
+  tax_rate: {
+    type: DataTypes.DECIMAL(5, 2),
+    allowNull: true,
+    defaultValue: 6,
+    comment: 'Tax rate percentage'
+  },
+  service_charge: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0,
+    comment: 'Service charge amount'
+  },
+  service_charge_rate: {
+    type: DataTypes.DECIMAL(5, 2),
+    allowNull: true,
+    defaultValue: 10,
+    comment: 'Service charge rate percentage'
+  },
+  discount: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0,
+    comment: 'Discount amount'
+  },
+  coupon_code: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    comment: 'Coupon code applied'
+  },
+  coupon_discount: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0,
+    comment: 'Coupon discount amount'
   }
 }, {
   sequelize: database.sequelize,

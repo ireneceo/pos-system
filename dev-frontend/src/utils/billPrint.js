@@ -72,7 +72,10 @@ function formatLine(left, right, width = 48) {
  * @param {number} orderData.subtotal - Subtotal
  * @param {number} orderData.discount - Discount amount
  * @param {Object} orderData.coupon - Coupon info (code, discount)
+ * @param {number} orderData.serviceCharge - Service charge amount
+ * @param {number} orderData.serviceChargeRate - Service charge rate (%)
  * @param {number} orderData.tax - Tax amount
+ * @param {number} orderData.taxRate - Tax rate (%)
  * @param {number} orderData.total - Total amount
  * @param {string} orderData.paymentMethod - Payment method
  * @param {number} orderData.amountReceived - Amount received (cash)
@@ -96,16 +99,22 @@ export function generateBillContent(orderData, storeInfo) {
   content += CMD.ALIGN_CENTER;
   content += CMD.TEXT_DOUBLE;
   content += CMD.BOLD_ON;
-  content += storeInfo.name + CMD.LINE_FEED;
+  if (storeInfo.name) {
+    content += storeInfo.name + CMD.LINE_FEED;
+  }
   content += CMD.TEXT_NORMAL;
   content += CMD.BOLD_OFF;
   content += CMD.LINE_FEED;
 
-  // Store info
-  content += storeInfo.address + CMD.LINE_FEED;
-  content += 'Tel: ' + storeInfo.phone + CMD.LINE_FEED;
+  // Store info (only show if not empty)
+  if (storeInfo.address) {
+    content += storeInfo.address + CMD.LINE_FEED;
+  }
+  if (storeInfo.phone) {
+    content += 'Tel: ' + storeInfo.phone + CMD.LINE_FEED;
+  }
   if (storeInfo.gstRegNo) {
-    content += 'GST Reg: ' + storeInfo.gstRegNo + CMD.LINE_FEED;
+    content += 'Tax No: ' + storeInfo.gstRegNo + CMD.LINE_FEED;
   }
   content += CMD.LINE_FEED;
 
@@ -170,8 +179,14 @@ export function generateBillContent(orderData, storeInfo) {
     content += formatLine('Coupon (' + orderData.coupon.code + '):', '- RM ' + orderData.coupon.discount.toFixed(2)) + CMD.LINE_FEED;
   }
 
-  if (orderData.tax > 0) {
-    content += formatLine('Tax:', 'RM ' + orderData.tax.toFixed(2)) + CMD.LINE_FEED;
+  if (orderData.serviceCharge && orderData.serviceCharge > 0) {
+    const scLabel = 'Service Charge (' + (orderData.serviceChargeRate || 10) + '%):';
+    content += formatLine(scLabel, 'RM ' + orderData.serviceCharge.toFixed(2)) + CMD.LINE_FEED;
+  }
+
+  if (orderData.tax && orderData.tax > 0) {
+    const taxLabel = 'Tax (' + (orderData.taxRate || 6) + '%):';
+    content += formatLine(taxLabel, 'RM ' + orderData.tax.toFixed(2)) + CMD.LINE_FEED;
   }
 
   content += CMD.DASHED_LINE + CMD.LINE_FEED;

@@ -121,10 +121,15 @@ interface PaymentModalProps {
   total: number;
   subtotal: number;
   tax: number;
+  serviceCharge?: number;
   discountAmount?: number;
   couponDiscount?: number;
   onConfirmPayment: (paymentMethod: string, amountReceived?: number, change?: number) => void;
   paymentMethods?: any;
+  taxRate?: number;
+  serviceChargeRate?: number;
+  taxEnabled?: boolean;
+  serviceChargeEnabled?: boolean;
 }
 
 const PaymentModal: React.FC<PaymentModalProps> = ({
@@ -133,10 +138,15 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   total,
   subtotal,
   tax,
+  serviceCharge = 0,
   discountAmount = 0,
   couponDiscount = 0,
   onConfirmPayment,
-  paymentMethods
+  paymentMethods,
+  taxRate = 6,
+  serviceChargeRate = 10,
+  taxEnabled = true,
+  serviceChargeEnabled = false
 }) => {
   // Get available payment methods for POS
   const getAvailablePaymentMethods = () => {
@@ -244,10 +254,18 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
             <SummaryValue>-RM {couponDiscount.toFixed(2)}</SummaryValue>
           </DiscountRow>
         )}
-        <SummaryRow>
-          <SummaryLabel>Tax (6%)</SummaryLabel>
-          <SummaryValue>RM {tax.toFixed(2)}</SummaryValue>
-        </SummaryRow>
+        {serviceChargeEnabled && serviceCharge > 0 && (
+          <SummaryRow>
+            <SummaryLabel>Service Charge ({serviceChargeRate}%)</SummaryLabel>
+            <SummaryValue>RM {serviceCharge.toFixed(2)}</SummaryValue>
+          </SummaryRow>
+        )}
+        {taxEnabled && tax > 0 && (
+          <SummaryRow>
+            <SummaryLabel>Tax ({taxRate}%)</SummaryLabel>
+            <SummaryValue>RM {tax.toFixed(2)}</SummaryValue>
+          </SummaryRow>
+        )}
       </OrderSummary>
 
       <TotalSection>

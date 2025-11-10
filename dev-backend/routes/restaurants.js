@@ -308,7 +308,8 @@ router.put('/:id', async (req, res) => {
       status: req.body.status === 'active' ? 'active' : 'inactive',
       subscription_start: req.body.subscriptionStart ? new Date(req.body.subscriptionStart) : null,
       subscription_end: req.body.subscriptionEnd ? new Date(req.body.subscriptionEnd) : null,
-      payment_settings: req.body.payment_settings
+      payment_settings: req.body.payment_settings,
+      operation_settings: req.body.operation_settings
     };
 
     // Get manager name if managerId is being updated

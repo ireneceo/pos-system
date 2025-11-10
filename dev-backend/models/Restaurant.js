@@ -271,7 +271,7 @@ Restaurant.init({
   operation_settings: {
     type: DataTypes.TEXT,
     allowNull: true,
-    comment: 'JSON settings for restaurant operations (timezone, opening hours, etc.)',
+    comment: 'JSON settings for restaurant operations (timezone, opening hours, tax, service charge, etc.)',
     get() {
       const rawValue = this.getDataValue('operation_settings');
       if (!rawValue) {
@@ -280,18 +280,39 @@ Restaurant.init({
           closingTime: '22:00',
           timeZone: 'Asia/Kuala_Lumpur',
           orderNumberReset: 'daily',
-          defaultPreparationTime: 15
+          defaultPreparationTime: 15,
+          taxEnabled: true,
+          taxRate: 6,
+          serviceChargeEnabled: false,
+          serviceChargeRate: 10
         };
       }
       try {
-        return JSON.parse(rawValue);
+        const parsed = JSON.parse(rawValue);
+        // Add default values for new fields if not present
+        return {
+          openingTime: '09:00',
+          closingTime: '22:00',
+          timeZone: 'Asia/Kuala_Lumpur',
+          orderNumberReset: 'daily',
+          defaultPreparationTime: 15,
+          taxEnabled: true,
+          taxRate: 6,
+          serviceChargeEnabled: false,
+          serviceChargeRate: 10,
+          ...parsed
+        };
       } catch (e) {
         return {
           openingTime: '09:00',
           closingTime: '22:00',
           timeZone: 'Asia/Kuala_Lumpur',
           orderNumberReset: 'daily',
-          defaultPreparationTime: 15
+          defaultPreparationTime: 15,
+          taxEnabled: true,
+          taxRate: 6,
+          serviceChargeEnabled: false,
+          serviceChargeRate: 10
         };
       }
     },

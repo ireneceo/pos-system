@@ -425,6 +425,10 @@ interface OperationSettings {
   timeZone: string;
   orderNumberReset: 'daily' | 'weekly' | 'monthly' | 'never';
   defaultPreparationTime: number;
+  taxEnabled: boolean;
+  taxRate: number;
+  serviceChargeEnabled: boolean;
+  serviceChargeRate: number;
   takeawayPricing: {
     enabled: boolean;
     pricingType: 'per-item' | 'per-category';
@@ -518,6 +522,10 @@ const SettingsPage: React.FC = () => {
         timeZone: 'Asia/Kuala_Lumpur',
         orderNumberReset: 'daily',
         defaultPreparationTime: 15,
+        taxEnabled: true,
+        taxRate: 6,
+        serviceChargeEnabled: false,
+        serviceChargeRate: 10,
         takeawayPricing: {
           enabled: false,
           pricingType: 'per-item',
@@ -910,13 +918,15 @@ const SettingsPage: React.FC = () => {
           postal_code: storeSettings.postalCode,
           tax_id: storeSettings.gstRegNo,
           logo_url: storeSettings.logo,
-          payment_settings: normalizedPaymentMethods
+          payment_settings: normalizedPaymentMethods,
+          operation_settings: operationSettings
         };
 
         console.log('📦 Request body (first 500 chars):', JSON.stringify(requestBody).substring(0, 500));
         console.log('💳 Payment settings being saved:', JSON.stringify(paymentMethods).substring(0, 300));
+        console.log('⚙️ Operation settings being saved:', JSON.stringify(operationSettings));
 
-        const response = await fetch(`/api/restaurants/${user.restaurantId}`, {
+        const response = await fetch(`/api/store/settings?restaurantId=${user.restaurantId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(requestBody)
@@ -933,6 +943,13 @@ const SettingsPage: React.FC = () => {
 
         const result = await response.json();
         console.log('✅ Database save successful:', result);
+
+        // Update StoreContext with new operation settings
+        console.log('🔄 Updating StoreContext with new operation settings');
+        updateSettings({
+          store: storeSettings,
+          operations: operationSettings
+        });
 
         // Reload data from DB to verify it was saved correctly
         console.log('🔄 Reloading payment settings from DB to verify...');
@@ -2044,15 +2061,15 @@ const SettingsPage: React.FC = () => {
                   />
                 </FormGroup>
                 <FormGroup>
-                  <Label>GST Registration No</Label>
-                  <Input 
-                    type="text" 
+                  <Label>Tax No</Label>
+                  <Input
+                    type="text"
                     value={storeSettings.gstRegNo}
                     onChange={(e) => {
                       setStoreSettings(prev => ({ ...prev, gstRegNo: e.target.value }));
                       setHasChanges(true);
                     }}
-                    placeholder="000123456789" 
+                    placeholder="Enter tax registration number (optional)"
                   />
                 </FormGroup>
                 <FormGroup>
@@ -2233,7 +2250,91 @@ const SettingsPage: React.FC = () => {
                   <span style={{ color: '#6B7C93', fontSize: '14px' }}>minutes</span>
                 </FormGroup>
               </SettingsCard>
-              
+
+              <SettingsCard>
+                <CardTitle>Tax Settings</CardTitle>
+                <Toggle>
+                  <ToggleLabel>Enable Tax</ToggleLabel>
+                  <ToggleSwitch>
+                    <ToggleInput
+                      type="checkbox"
+                      checked={operationSettings.taxEnabled}
+                      onChange={(e) => {
+                        setOperationSettings(prev => ({
+                          ...prev,
+                          taxEnabled: e.target.checked
+                        }));
+                        setHasChanges(true);
+                      }}
+                    />
+                    <ToggleSlider />
+                  </ToggleSwitch>
+                </Toggle>
+
+                {operationSettings.taxEnabled && (
+                  <>
+                    <Divider />
+                    <FormGroup>
+                      <Label>Tax Rate (%)</Label>
+                      <FeeInput
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={operationSettings.taxRate}
+                        onChange={(e) => {
+                          setOperationSettings(prev => ({ ...prev, taxRate: Number(e.target.value) }));
+                          setHasChanges(true);
+                        }}
+                      />
+                      <span style={{ color: '#6B7C93', fontSize: '14px' }}>%</span>
+                    </FormGroup>
+                  </>
+                )}
+              </SettingsCard>
+
+              <SettingsCard>
+                <CardTitle>Service Charge Settings</CardTitle>
+                <Toggle>
+                  <ToggleLabel>Enable Service Charge</ToggleLabel>
+                  <ToggleSwitch>
+                    <ToggleInput
+                      type="checkbox"
+                      checked={operationSettings.serviceChargeEnabled}
+                      onChange={(e) => {
+                        setOperationSettings(prev => ({
+                          ...prev,
+                          serviceChargeEnabled: e.target.checked
+                        }));
+                        setHasChanges(true);
+                      }}
+                    />
+                    <ToggleSlider />
+                  </ToggleSwitch>
+                </Toggle>
+
+                {operationSettings.serviceChargeEnabled && (
+                  <>
+                    <Divider />
+                    <FormGroup>
+                      <Label>Service Charge Rate (%)</Label>
+                      <FeeInput
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={operationSettings.serviceChargeRate}
+                        onChange={(e) => {
+                          setOperationSettings(prev => ({ ...prev, serviceChargeRate: Number(e.target.value) }));
+                          setHasChanges(true);
+                        }}
+                      />
+                      <span style={{ color: '#6B7C93', fontSize: '14px' }}>%</span>
+                    </FormGroup>
+                  </>
+                )}
+              </SettingsCard>
+
               <SettingsCard style={{ gridColumn: '1 / -1' }}>
                 <CardTitle>Takeaway Pricing Settings</CardTitle>
                 <Toggle>

@@ -1624,7 +1624,10 @@ const POSTerminalPage: React.FC = () => {
         subtotal,
         discount: discountAmount,
         coupon: appliedCoupon,
+        serviceCharge,
+        serviceChargeRate: operationSettings.serviceChargeRate,
         tax,
+        taxRate: operationSettings.taxRate,
         total,
         paymentMethod: method,
         amountReceived: amountReceived || total,
@@ -1632,7 +1635,7 @@ const POSTerminalPage: React.FC = () => {
       };
 
       // Add to OrderContext for LiveOrders
-      const newOrder = {
+      const newOrder: any = {
         id: `order-${Date.now()}`,
         // Backend will set orderNumber and pickupNumber
         orderNumber: '',
@@ -1661,6 +1664,9 @@ const POSTerminalPage: React.FC = () => {
       createdAt: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
       subtotal,
       tax,
+      taxRate: operationSettings.taxRate,
+      serviceCharge,
+      serviceChargeRate: operationSettings.serviceChargeRate,
       discount: discountAmount,
       coupon: appliedCoupon ? { code: appliedCoupon.code, amount: appliedCoupon.discount } : undefined,
       discountPolicy: appliedDiscountPolicy ? { name: appliedDiscountPolicy.name, amount: appliedDiscountPolicy.discount } : undefined,
@@ -1746,12 +1752,23 @@ const POSTerminalPage: React.FC = () => {
     const couponDiscount = appliedCoupon ? appliedCoupon.discount : 0;
     const policyDiscount = appliedDiscountPolicy ? appliedDiscountPolicy.discount : 0;
     const afterDiscount = Math.max(0, subtotalWithTakeaway - discountAmount - couponDiscount - policyDiscount);
-    const tax = afterDiscount * 0.06; // 6% tax
-    const total = afterDiscount + tax;
-    return { subtotal, tax, total, discountAmount, couponDiscount, policyDiscount, takeawayCharge };
+
+    // Apply service charge if enabled
+    const serviceCharge = operationSettings.serviceChargeEnabled
+      ? afterDiscount * (operationSettings.serviceChargeRate / 100)
+      : 0;
+    const afterServiceCharge = afterDiscount + serviceCharge;
+
+    // Apply tax if enabled
+    const tax = operationSettings.taxEnabled
+      ? afterServiceCharge * (operationSettings.taxRate / 100)
+      : 0;
+
+    const total = afterServiceCharge + tax;
+    return { subtotal, tax, total, discountAmount, couponDiscount, policyDiscount, takeawayCharge, serviceCharge };
   };
 
-  const { subtotal, tax, total, discountAmount, couponDiscount, policyDiscount, takeawayCharge } = calculateTotal();
+  const { subtotal, tax, total, discountAmount, couponDiscount, policyDiscount, takeawayCharge, serviceCharge } = calculateTotal();
 
   const formatDateTime = (date: Date) => {
     return date.toLocaleString('en-US', {
@@ -2208,10 +2225,15 @@ const POSTerminalPage: React.FC = () => {
         total={total}
         subtotal={subtotal}
         tax={tax}
+        serviceCharge={serviceCharge}
         discountAmount={discountAmount}
         couponDiscount={couponDiscount}
         onConfirmPayment={handleConfirmPayment}
         paymentMethods={paymentMethods}
+        taxRate={operationSettings.taxRate}
+        serviceChargeRate={operationSettings.serviceChargeRate}
+        taxEnabled={operationSettings.taxEnabled}
+        serviceChargeEnabled={operationSettings.serviceChargeEnabled}
       />
       
       {selectedMenuItem && (

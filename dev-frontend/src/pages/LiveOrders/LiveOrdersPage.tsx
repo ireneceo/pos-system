@@ -1568,7 +1568,10 @@ const LiveOrdersPage: React.FC = () => {
           code: selectedOrder.coupon_code,
           discount: parseFloat(selectedOrder.coupon_discount || '0')
         } : null,
+        serviceCharge: parseFloat((selectedOrder as any).service_charge || '0'),
+        serviceChargeRate: parseFloat((selectedOrder as any).service_charge_rate || '10'),
         tax: parseFloat(selectedOrder.tax || '0'),
+        taxRate: parseFloat((selectedOrder as any).tax_rate || '6'),
         total: parseFloat(selectedOrder.final_price || selectedOrder.total_amount || '0'),
         paymentMethod: selectedOrder.payment_method || 'cash',
         amountReceived: parseFloat(selectedOrder.amount_received || '0'),
@@ -1624,7 +1627,10 @@ const LiveOrdersPage: React.FC = () => {
           code: (orderToPrint as any).coupon_code,
           discount: parseFloat((orderToPrint as any).coupon_discount || '0')
         } : null,
+        serviceCharge: parseFloat((orderToPrint as any).service_charge || '0'),
+        serviceChargeRate: parseFloat((orderToPrint as any).service_charge_rate || '10'),
         tax: parseFloat((orderToPrint as any).tax || '0'),
+        taxRate: parseFloat((orderToPrint as any).tax_rate || '6'),
         total: parseFloat((orderToPrint as any).final_price || orderToPrint.total_amount || '0'),
         paymentMethod: orderToPrint.payment_method || 'cash',
         amountReceived: parseFloat((orderToPrint as any).amount_received || '0'),
@@ -2253,7 +2259,10 @@ const LiveOrdersPage: React.FC = () => {
                             code: (selectedOrder as any).coupon_code,
                             discount: parseFloat((selectedOrder as any).coupon_discount || '0')
                           } : null,
+                          serviceCharge: parseFloat((selectedOrder as any).service_charge || '0'),
+                          serviceChargeRate: parseFloat((selectedOrder as any).service_charge_rate || '10'),
                           tax: parseFloat((selectedOrder as any).tax || '0'),
+                          taxRate: parseFloat((selectedOrder as any).tax_rate || '6'),
                           total: parseFloat((selectedOrder as any).final_price || selectedOrder.total_amount || '0'),
                           paymentMethod: selectedOrder.payment_method || 'cash',
                           amountReceived: parseFloat((selectedOrder as any).amount_received || '0'),
