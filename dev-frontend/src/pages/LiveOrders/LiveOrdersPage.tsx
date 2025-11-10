@@ -1572,7 +1572,10 @@ const LiveOrdersPage: React.FC = () => {
         change: parseFloat(selectedOrder.change || '0')
       };
 
-      await printBill(orderData, storeInfo);
+      const success = await printBill(orderData, storeInfo);
+      if (success) {
+        console.log('Receipt printed successfully');
+      }
     }
   };
 
@@ -1594,20 +1597,23 @@ const LiveOrdersPage: React.FC = () => {
           quantity: item.quantity,
           options: item.options || []
         })),
-        subtotal: parseFloat(orderToPrint.subtotal || '0'),
-        discount: parseFloat(orderToPrint.discount || '0'),
-        coupon: orderToPrint.coupon_code ? {
-          code: orderToPrint.coupon_code,
-          discount: parseFloat(orderToPrint.coupon_discount || '0')
+        subtotal: parseFloat((orderToPrint as any).subtotal || '0'),
+        discount: parseFloat((orderToPrint as any).discount || '0'),
+        coupon: (orderToPrint as any).coupon_code ? {
+          code: (orderToPrint as any).coupon_code,
+          discount: parseFloat((orderToPrint as any).coupon_discount || '0')
         } : null,
-        tax: parseFloat(orderToPrint.tax || '0'),
-        total: parseFloat(orderToPrint.final_price || orderToPrint.total_amount || '0'),
+        tax: parseFloat((orderToPrint as any).tax || '0'),
+        total: parseFloat((orderToPrint as any).final_price || orderToPrint.total_amount || '0'),
         paymentMethod: orderToPrint.payment_method || 'cash',
-        amountReceived: parseFloat(orderToPrint.amount_received || '0'),
-        change: parseFloat(orderToPrint.change || '0')
+        amountReceived: parseFloat((orderToPrint as any).amount_received || '0'),
+        change: parseFloat((orderToPrint as any).change || '0')
       };
 
-      await printBill(orderData, storeInfo);
+      const success = await printBill(orderData, storeInfo);
+      if (success) {
+        console.log('Bill printed successfully');
+      }
     }
   };
 
