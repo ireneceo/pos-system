@@ -302,8 +302,24 @@ export const printBill = async (orderData: OrderData, storeInfo: StoreInfo): Pro
     const success = await printToRawBT(orderData, storeInfo);
 
     if (!success) {
-      // Fallback: Open browser print dialog which will open RawBT app
-      console.log('⚠️ RawBT direct connection failed - opening browser print dialog for RawBT');
+      // Fallback: Always open print dialog
+      // On mobile, this will show RawBT as an option if installed
+      console.log('⚠️ RawBT direct connection failed - opening browser print dialog');
+
+      // Try to open RawBT app directly via URL scheme (Android)
+      const userAgent = navigator.userAgent.toLowerCase();
+      if (userAgent.includes('android')) {
+        // Try to open RawBT app directly
+        try {
+          window.location.href = 'rawbt://print';
+          // Wait a bit, if app doesn't open, fallback to print dialog
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (e) {
+          console.log('RawBT app not found, using print dialog');
+        }
+      }
+
+      // Open print dialog as final fallback
       window.print();
     }
   } else {
