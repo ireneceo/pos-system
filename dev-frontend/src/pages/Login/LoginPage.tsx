@@ -308,31 +308,27 @@ const LoginPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [brandLogo, setBrandLogo] = useState<string>('');
 
-  // Fetch company settings for brand logo
+  // Fetch site settings for brand logo
   useEffect(() => {
-    const fetchCompanySettings = async () => {
+    const fetchSiteSettings = async () => {
       try {
-        console.log('Fetching company settings from /api/admin-settings');
-        const response = await fetch('/api/admin-settings');
-        console.log('Response status:', response.status);
+        const response = await fetch('/api/site-settings');
         if (response.ok) {
-          const data = await response.json();
-          console.log('Company settings data:', data);
-          if (data.brandLogo) {
-            console.log('Setting brand logo');
-            setBrandLogo(data.brandLogo);
-          } else {
-            console.log('No brandLogo in response');
+          const settings = await response.json();
+          if (settings.brand_logo) {
+            setBrandLogo(settings.brand_logo);
+          } else if (settings.brandLogo) {
+            setBrandLogo(settings.brandLogo);
+          } else if (settings.logo) {
+            setBrandLogo(settings.logo);
           }
-        } else {
-          console.error('Response not OK:', response.status);
         }
       } catch (error) {
-        console.error('Failed to fetch company settings:', error);
+        console.error('Failed to fetch site settings:', error);
       }
     };
 
-    fetchCompanySettings();
+    fetchSiteSettings();
   }, []);
 
   // Redirect if already logged in
