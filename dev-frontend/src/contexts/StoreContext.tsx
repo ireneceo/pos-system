@@ -141,11 +141,15 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
         console.log('🎯 StoreContext: Using restaurant_id:', restaurantId);
 
         // Fetch restaurant settings with restaurantId
+        // Add timestamp to prevent caching
+        const timestamp = new Date().getTime();
         console.log('📞 StoreContext: Fetching settings from /api/store/settings?restaurantId=' + restaurantId);
-        const response = await fetch(`/api/store/settings?restaurantId=${restaurantId}`, {
+        const response = await fetch(`/api/store/settings?restaurantId=${restaurantId}&_t=${timestamp}`, {
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
             ...(token ? { 'Authorization': `Bearer ${token}` } : {})
           }
         });

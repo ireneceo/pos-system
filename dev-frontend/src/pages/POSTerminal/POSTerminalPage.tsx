@@ -2106,10 +2106,18 @@ const POSTerminalPage: React.FC = () => {
                     <SummaryValue style={{ color: '#10B981' }}>-RM {policyDiscount.toFixed(2)}</SummaryValue>
                   </SummaryRow>
                 )}
-                <SummaryRow>
-                  <SummaryLabel>Tax (6%)</SummaryLabel>
-                  <SummaryValue>RM {tax.toFixed(2)}</SummaryValue>
-                </SummaryRow>
+                {operationSettings.serviceChargeEnabled && serviceCharge > 0 && (
+                  <SummaryRow>
+                    <SummaryLabel>Service Charge ({operationSettings.serviceChargeRate}%)</SummaryLabel>
+                    <SummaryValue>RM {serviceCharge.toFixed(2)}</SummaryValue>
+                  </SummaryRow>
+                )}
+                {operationSettings.taxEnabled && tax > 0 && (
+                  <SummaryRow>
+                    <SummaryLabel>Tax ({operationSettings.taxRate}%)</SummaryLabel>
+                    <SummaryValue>RM {tax.toFixed(2)}</SummaryValue>
+                  </SummaryRow>
+                )}
                 <TotalRow>
                   <SummaryLabel>Total</SummaryLabel>
                   <SummaryValue>RM {total.toFixed(2)}</SummaryValue>

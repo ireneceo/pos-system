@@ -160,11 +160,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       ];
     }
 
+    // Fixed order: Cash first, then others
+    const methodOrder = ['cash', 'card', 'ewallet', 'bankTransfer'];
     const methods: any[] = [];
-    Object.keys(paymentMethods).forEach(key => {
+
+    methodOrder.forEach(key => {
       const method = paymentMethods[key];
-      // Only show enabled methods that are available in POS
-      if (method.enabled && method.availableIn && method.availableIn.includes('pos')) {
+      if (method && method.enabled && method.availableIn && method.availableIn.includes('pos')) {
         methods.push({
           key,
           label: method.label

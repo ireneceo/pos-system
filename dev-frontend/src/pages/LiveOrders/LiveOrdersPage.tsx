@@ -2674,10 +2674,11 @@ const LiveOrdersPage: React.FC = () => {
               }, 100);
             }}
             total={Number(orderForPayment.total_amount)}
-            subtotal={Number(orderForPayment.total_amount) / 1.06}
-            tax={Number(orderForPayment.total_amount) * 0.06 / 1.06}
-            discountAmount={0}
-            couponDiscount={0}
+            subtotal={Number((orderForPayment as any).subtotal || 0)}
+            tax={Number((orderForPayment as any).tax || 0)}
+            serviceCharge={Number((orderForPayment as any).service_charge || 0)}
+            discountAmount={Number((orderForPayment as any).discount || 0)}
+            couponDiscount={Number((orderForPayment as any).coupon_discount || 0)}
             onConfirmPayment={handlePaymentConfirm}
             paymentMethods={paymentMethods}
           />

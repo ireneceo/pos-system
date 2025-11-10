@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useNavigate, useParams } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
+import { useStore } from '../../contexts/StoreContext';
 
 const CartContainer = styled.div`
   display: flex;
@@ -220,10 +221,12 @@ const CartPage: React.FC = () => {
     removeFromCart,
     currentStore
   } = useMobileOrder();
-  
+  const { operationSettings } = useStore();
+
   const subtotal = cartTotal;
-  const tax = subtotal * 0.06;
-  const total = subtotal + tax;
+  const serviceCharge = operationSettings.serviceChargeEnabled ? subtotal * (operationSettings.serviceChargeRate / 100) : 0;
+  const tax = operationSettings.taxEnabled ? subtotal * (operationSettings.taxRate / 100) : 0;
+  const total = subtotal + serviceCharge + tax;
   
   const handleQuantityChange = (cartItemId: string, newQuantity: number) => {
     if (newQuantity === 0) {
@@ -315,10 +318,18 @@ const CartPage: React.FC = () => {
             <span>Subtotal</span>
             <span>RM {subtotal.toFixed(2)}</span>
           </SummaryRow>
-          <SummaryRow>
-            <span>Tax (6%)</span>
-            <span>RM {tax.toFixed(2)}</span>
-          </SummaryRow>
+          {operationSettings.serviceChargeEnabled && serviceCharge > 0 && (
+            <SummaryRow>
+              <span>Service Charge ({operationSettings.serviceChargeRate}%)</span>
+              <span>RM {serviceCharge.toFixed(2)}</span>
+            </SummaryRow>
+          )}
+          {operationSettings.taxEnabled && tax > 0 && (
+            <SummaryRow>
+              <span>Tax ({operationSettings.taxRate}%)</span>
+              <span>RM {tax.toFixed(2)}</span>
+            </SummaryRow>
+          )}
           <SummaryRow>
             <span>Total</span>
             <span>RM {total.toFixed(2)}</span>

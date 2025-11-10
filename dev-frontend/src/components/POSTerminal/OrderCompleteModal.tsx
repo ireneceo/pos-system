@@ -373,10 +373,18 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
               <DetailValue style={{ color: '#10B981' }}>-RM {orderData.coupon.discount.toFixed(2)}</DetailValue>
             </DetailRow>
           )}
-          <DetailRow>
-            <DetailLabel>Tax (6%)</DetailLabel>
-            <DetailValue>RM {orderData.tax.toFixed(2)}</DetailValue>
-          </DetailRow>
+          {orderData.serviceCharge > 0 && (
+            <DetailRow>
+              <DetailLabel>Service Charge ({orderData.serviceChargeRate || 10}%)</DetailLabel>
+              <DetailValue>RM {orderData.serviceCharge.toFixed(2)}</DetailValue>
+            </DetailRow>
+          )}
+          {orderData.tax > 0 && (
+            <DetailRow>
+              <DetailLabel>Tax ({orderData.taxRate || 6}%)</DetailLabel>
+              <DetailValue>RM {orderData.tax.toFixed(2)}</DetailValue>
+            </DetailRow>
+          )}
         </Section>
         
         <TotalSection style={{ marginTop: 0 }}>
@@ -463,10 +471,18 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
               <span>-RM {orderData.coupon.discount.toFixed(2)}</span>
             </PrintRow>
           )}
-          <PrintRow>
-            <span>Tax (6%):</span>
-            <span>RM {orderData.tax.toFixed(2)}</span>
-          </PrintRow>
+          {orderData.serviceCharge > 0 && (
+            <PrintRow>
+              <span>Service Charge ({orderData.serviceChargeRate || 10}%):</span>
+              <span>RM {orderData.serviceCharge.toFixed(2)}</span>
+            </PrintRow>
+          )}
+          {orderData.tax > 0 && (
+            <PrintRow>
+              <span>Tax ({orderData.taxRate || 6}%):</span>
+              <span>RM {orderData.tax.toFixed(2)}</span>
+            </PrintRow>
+          )}
           <PrintRow style={{ borderTop: '1px solid #000', paddingTop: '5px', fontSize: '14px', fontWeight: 'bold' }}>
             <span>TOTAL:</span>
             <span>RM {orderData.total.toFixed(2)}</span>

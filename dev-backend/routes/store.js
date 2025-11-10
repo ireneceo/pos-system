@@ -142,11 +142,8 @@ router.put('/settings', authenticateToken, async (req, res) => {
           : req.body[field]);
 
         if (field === 'payment_settings' || field === 'operation_settings') {
-          const value = typeof req.body[field] === 'string'
-            ? req.body[field]
-            : JSON.stringify(req.body[field]);
-          console.log(`  📝 ${field} stringified length:`, value.length);
-          restaurant[field] = value;
+          // Model setter will handle JSON.stringify, just pass the object
+          restaurant[field] = req.body[field];
         } else {
           restaurant[field] = req.body[field];
         }
