@@ -1753,18 +1753,16 @@ const POSTerminalPage: React.FC = () => {
     const policyDiscount = appliedDiscountPolicy ? appliedDiscountPolicy.discount : 0;
     const afterDiscount = Math.max(0, subtotalWithTakeaway - discountAmount - couponDiscount - policyDiscount);
 
-    // Apply service charge if enabled
+    // Apply service charge and tax in parallel (both on afterDiscount amount)
     const serviceCharge = operationSettings.serviceChargeEnabled
       ? afterDiscount * (operationSettings.serviceChargeRate / 100)
       : 0;
-    const afterServiceCharge = afterDiscount + serviceCharge;
 
-    // Apply tax if enabled
     const tax = operationSettings.taxEnabled
-      ? afterServiceCharge * (operationSettings.taxRate / 100)
+      ? afterDiscount * (operationSettings.taxRate / 100)
       : 0;
 
-    const total = afterServiceCharge + tax;
+    const total = afterDiscount + serviceCharge + tax;
     return { subtotal, tax, total, discountAmount, couponDiscount, policyDiscount, takeawayCharge, serviceCharge };
   };
 

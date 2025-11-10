@@ -4,10 +4,18 @@ const Restaurant = require('../models/Restaurant');
 
 const authenticateToken = async (req, res, next) => {
   try {
+    console.log('🔐 [AUTH] authenticateToken middleware called');
+    console.log('📋 [AUTH] Request URL:', req.method, req.originalUrl);
+    console.log('📋 [AUTH] Request headers:', JSON.stringify(req.headers, null, 2));
+
     const authHeader = req.headers['authorization'];
+    console.log('🔑 [AUTH] Authorization header:', authHeader ? `${authHeader.substring(0, 20)}...` : 'NOT PRESENT');
+
     const token = authHeader && authHeader.split(' ')[1];
+    console.log('🔑 [AUTH] Extracted token:', token ? `${token.substring(0, 20)}...` : 'NONE');
 
     if (!token) {
+      console.error('❌ [AUTH] No token found in request');
       return res.status(401).json({ error: 'Access token required' });
     }
 

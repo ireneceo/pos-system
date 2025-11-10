@@ -4,6 +4,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 import MainLayout from '../../components/Layout/MainLayout';
 import { TabContainer, Tab } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
+import { useStore } from '../../contexts/StoreContext';
 import { useBrandTheme } from '../../contexts/BrandThemeContext';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
@@ -485,6 +486,7 @@ interface Manager {
 
 const SettingsPage: React.FC = () => {
   const { user } = useAuth();
+  const { updateSettings } = useStore();
   const { setTheme, resetTheme, isDefaultTheme } = useBrandTheme();
 
   // Use custom hook for tab URL parameter management
@@ -926,18 +928,36 @@ const SettingsPage: React.FC = () => {
         console.log('💳 Payment settings being saved:', JSON.stringify(paymentMethods).substring(0, 300));
         console.log('⚙️ Operation settings being saved:', JSON.stringify(operationSettings));
 
-        const response = await fetch(`/api/store/settings?restaurantId=${user.restaurantId}`, {
+        const token = localStorage.getItem('auth_token');
+        console.log('🔑 Auth token length:', token?.length || 0);
+        console.log('👤 User restaurantId:', user.restaurantId);
+        console.log('📡 Sending PUT request to:', `/api/store/settings?restaurantId=${user.restaurantId}`);
+
+        const response = await fetch(`/api/store/settings?restaurantId=${user.restaurantId}&_t=${Date.now()}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
           body: JSON.stringify(requestBody)
         });
 
         console.log('📨 Response received:', response.status, response.statusText);
+        console.log('📨 Response headers:', Object.fromEntries(response.headers.entries()));
 
         if (!response.ok) {
           const errorText = await response.text();
           console.error('❌ Failed to save store info to database. Status:', response.status, 'Error:', errorText);
-          setSaveStatus({ type: 'error', message: 'Failed to save settings to database' });
+          console.error('❌ Full error response:', errorText);
+          setSaveStatus({ type: 'error', message: `❌ Failed to save settings to database (${response.status}: ${response.statusText})` });
+
+          // Auto-clear error message after 8 seconds
+          setTimeout(() => {
+            setSaveStatus(null);
+          }, 8000);
           return;
         }
 
@@ -968,12 +988,22 @@ const SettingsPage: React.FC = () => {
         console.log('⚠️  No restaurantId found, skipping database save');
       }
 
-      setSaveStatus({ type: 'success', message: 'Settings saved successfully!' });
+      setSaveStatus({ type: 'success', message: '✅ Settings saved successfully!' });
       setHasChanges(false);
       console.log('✅ Save completed successfully');
+
+      // Auto-clear success message after 5 seconds
+      setTimeout(() => {
+        setSaveStatus(null);
+      }, 5000);
     } catch (error) {
       console.error('❌ Error saving settings:', error);
-      setSaveStatus({ type: 'error', message: 'Failed to save settings' });
+      setSaveStatus({ type: 'error', message: '❌ Failed to save settings' });
+
+      // Auto-clear error message after 8 seconds
+      setTimeout(() => {
+        setSaveStatus(null);
+      }, 8000);
     }
   };
 
