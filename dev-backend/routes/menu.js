@@ -36,11 +36,12 @@ router.get('/', async (req, res) => {
       where: { restaurant_id: restaurantId }
     });
 
-    // Transform categories with emoji and id
+    // Transform categories with emoji, id, and displayOrder
     const categories = dbCategories.map(cat => ({
       id: cat.id,
       name: cat.name,
-      emoji: cat.emoji || '🍽️'
+      emoji: cat.emoji || '🍽️',
+      displayOrder: cat.displayOrder
     }));
 
     // Transform products to ensure emoji and optionGroups are included

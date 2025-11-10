@@ -154,6 +154,48 @@ router.put('/id/:categoryId', async (req, res) => {
   }
 });
 
+// Update category display orders (reorder) - MUST BE BEFORE /:oldName
+router.put('/reorder', async (req, res) => {
+  try {
+    const { categories } = req.body;
+    const restaurantId = req.user.restaurant_id;
+
+    console.log('🔄 Reorder categories API called');
+    console.log('   Restaurant ID:', restaurantId);
+    console.log('   Categories:', JSON.stringify(categories));
+
+    if (!Array.isArray(categories)) {
+      return res.status(400).json({ success: false, error: 'Categories array is required' });
+    }
+
+    // Update each category's displayOrder
+    await Promise.all(
+      categories.map(async (cat) => {
+        console.log(`   Updating category ${cat.id} (${cat.name}) to order ${cat.order}`);
+        await Category.update(
+          { displayOrder: cat.order },
+          {
+            where: {
+              id: cat.id,
+              restaurant_id: restaurantId
+            }
+          }
+        );
+      })
+    );
+
+    console.log('✅ Category order updated successfully');
+
+    res.json({
+      success: true,
+      message: 'Category order updated successfully'
+    });
+  } catch (error) {
+    console.error('❌ Reorder error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Update category name (updates all products in that category) - Legacy endpoint
 router.put('/:oldName', async (req, res) => {
   try {

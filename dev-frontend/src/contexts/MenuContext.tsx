@@ -167,7 +167,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             id: categoryId,
             name: cat.name,
             emoji: cat.emoji || categoryEmojis[idx % categoryEmojis.length],
-            order: idx
+            order: cat.displayOrder !== undefined ? cat.displayOrder : idx
           };
         });
 
@@ -597,8 +597,58 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
     }
   };
 
-  const reorderCategories = (newCategories: MenuCategory[]) => {
-    setCategories(newCategories);
+  const reorderCategories = async (newCategories: MenuCategory[]) => {
+    console.log('🔄 reorderCategories called with:', newCategories);
+    try {
+      // Update local state immediately for responsiveness
+      setCategories(newCategories);
+
+      // Get restaurantId from URL
+      const pathParts = window.location.pathname.split('/');
+      const restaurantIndex = pathParts.indexOf('restaurant');
+      const restaurantId = restaurantIndex >= 0 ? pathParts[restaurantIndex + 1] : null;
+
+      console.log('📍 Restaurant ID from URL:', restaurantId);
+
+      if (!restaurantId) {
+        console.error('❌ Restaurant ID not found in URL');
+        return;
+      }
+
+      const token = localStorage.getItem('auth_token');
+      console.log('🔑 Token exists:', !!token);
+
+      const payload = { categories: newCategories };
+      console.log('📦 Sending payload:', JSON.stringify(payload, null, 2));
+
+      // Save to backend
+      const url = `/api/categories/reorder?restaurantId=${restaurantId}`;
+      console.log('🌐 Calling API:', url);
+
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      console.log('📡 Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Response error:', errorText);
+        throw new Error(`Failed to reorder categories: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ Category order saved to backend:', result);
+    } catch (error) {
+      console.error('❌ Failed to reorder categories:', error);
+      // Reload to get correct order from backend
+      await loadMenuFromAPI();
+    }
   };
 
   const addOptionGroup = async (group: OptionGroup) => {
