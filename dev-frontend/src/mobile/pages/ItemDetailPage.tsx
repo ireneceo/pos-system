@@ -465,7 +465,7 @@ const ItemDetailPage: React.FC = () => {
   }
   
   return (
-    <MobileLayout title={item.name} showBack onBack={() => navigate(-1)}>
+    <MobileLayout title={item.code ? `${item.code} ${item.name}` : item.name} showBack onBack={() => navigate(-1)}>
       <ItemHeader>
         <ItemImage hasImage={!!item.image}>
           {item.image ? (
@@ -475,7 +475,7 @@ const ItemDetailPage: React.FC = () => {
           )}
         </ItemImage>
         <ItemInfo>
-          <ItemName>{item.name}</ItemName>
+          <ItemName>{item.code ? `${item.code} ` : ''}{item.name}</ItemName>
           <ItemDescription>{item.description}</ItemDescription>
           <ItemDetails>
             {item.preparationTime > 0 && (

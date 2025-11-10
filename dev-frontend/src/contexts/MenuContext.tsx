@@ -9,6 +9,7 @@ export interface SetMenuItem {
 
 export interface MenuItem {
   id: string;
+  code?: string;
   name: string;
   price: number;
   category: string;
@@ -198,6 +199,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
 
           return {
             id: item.id.toString(),
+            code: item.code || undefined,
             name: item.name,
             price: parseFloat(item.price),
             category: categoryId,

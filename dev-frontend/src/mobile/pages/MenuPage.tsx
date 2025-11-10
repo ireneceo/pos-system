@@ -325,7 +325,7 @@ const MenuPage: React.FC = () => {
                 )}
               </ItemImage>
               <ItemInfo>
-                <ItemName>{item.name}</ItemName>
+                <ItemName>{item.code ? `${item.code} ` : ''}{item.name}</ItemName>
                 <ItemPrice>RM {item.price.toFixed(2)}</ItemPrice>
                 {item.is_set_menu && item.set_items && item.set_items.length > 0 && (
                   <SetItemsPreview>

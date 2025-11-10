@@ -14,6 +14,10 @@ Product.init({
     allowNull: false,
     defaultValue: 1
   },
+  code: {
+    type: DataTypes.STRING(20),
+    allowNull: true
+  },
   name: {
     type: DataTypes.STRING(100),
     allowNull: false

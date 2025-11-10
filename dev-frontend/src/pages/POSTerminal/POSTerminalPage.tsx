@@ -1894,7 +1894,7 @@ const POSTerminalPage: React.FC = () => {
                         item.emoji
                       )}
                     </MenuImage>
-                    <MenuName>{item.name}</MenuName>
+                    <MenuName>{item.code ? `${item.code} ` : ''}{item.name}</MenuName>
                     <MenuPrice>RM {item.price.toFixed(2)}</MenuPrice>
                     {item.is_set_menu && item.set_items && item.set_items.length > 0 && (
                       <SetItemsPreview>
@@ -2025,7 +2025,7 @@ const POSTerminalPage: React.FC = () => {
                 {orderItems.map(item => (
                   <OrderItem key={item.id}>
                     <ItemInfo>
-                      <ItemName>{item.menuItem.name}</ItemName>
+                      <ItemName>{item.menuItem.code ? `${item.menuItem.code} ` : ''}{item.menuItem.name}</ItemName>
                       {item.options && item.options.length > 0 && (() => {
                         // Separate set menu items and regular options
                         const setItems: string[] = [];

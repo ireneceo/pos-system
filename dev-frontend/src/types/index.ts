@@ -213,6 +213,7 @@ export interface SetMenuItem {
 export interface Product {
   id: number;
   restaurant_id: number;
+  code?: string;
   name: string;
   price: number;
   category: string;

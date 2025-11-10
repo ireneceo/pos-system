@@ -1103,7 +1103,7 @@ const PaymentPage: React.FC = () => {
             {cartItems.map((item, index) => (
               <ItemRow key={index}>
                 <ItemInfo>
-                  <ItemName>{item.menuItem.emoji} {item.menuItem.name}</ItemName>
+                  <ItemName>{item.menuItem.emoji} {item.menuItem.code ? `${item.menuItem.code} ` : ''}{item.menuItem.name}</ItemName>
                   <ItemQuantity>Qty: {item.quantity}</ItemQuantity>
                   {item.menuItem.is_set_menu && item.menuItem.set_items && item.menuItem.set_items.length > 0 && (
                     <ItemSetItems>

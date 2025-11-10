@@ -609,25 +609,21 @@ const MenuManagementPage: React.FC = () => {
       // Food
       '🍖', '🍲', '🍚', '🥓', '🍜', '🍗', '🥟', '🥘', '🍣', '🍤', '🍔', '🍟', '🍝', '🥗',
       '🌮', '🌯', '🥙', '🫔', '🥪', '🌭', '🍕', '🍞', '🥐', '🥖', '🥨', '🥯', '🧇', '🥞',
-      '🍳', '🥚', '🧈', '🥩', '🍙', '🍘', '🍥', '🍢', '🍠', '🥟', '🥠', '🧆', '🥙',
+      '🍳', '🥚', '🧈', '🥩', '🍙', '🍘', '🍥', '🍢', '🍠', '🥠', '🧆',
       // Beverages
       '☕', '🍵', '🥤', '🍺', '🍷', '🥛', '🧃', '🧋', '🍹', '🍸', '🍶', '🥃', '🍾', '🧉',
-      '🫖', '🍼', '🥛', '🧊', '🧋', '🥤', '🧃', '🧉', '☕', '🍵', '🫗',
+      '🫖', '🍼', '🧊', '🫗',
       // Desserts
-      '🍰', '🍨', '🍡', '🍮', '🍩', '🍪', '🧁', '🍫', '🍬', '🥧', '🍭', '🍯', '🧇', '🥮',
-      '🍦', '🍧', '🥧', '🎂', '🧈', '🫘', '🥜', '🌰', '🥥', '🍓', '🫐', '🍇', '🍈', '🍉',
+      '🍰', '🍨', '🍡', '🍮', '🍩', '🍪', '🧁', '🍫', '🍬', '🥧', '🍭', '🍯', '🥮',
+      '🍦', '🍧', '🎂', '🫘', '🥜', '🌰', '🥥',
       // Fruits & Vegetables
-      '🍊', '🍋', '🍌', '🍍', '🥭', '🍎', '🍏', '🍐', '🍑', '🍒', '🍓', '🫐', '🥝', '🍅',
-      '🫒', '🥑', '🌶️', '🫑', '🥒', '🥬', '🥦', '🧄', '🧅', '🌽', '🥕', '🫛', '🥔', '🍠',
-      '🫚', '🥜', '🌰', '🫘', '🥥', '🥨', '🍄', '🧄', '🧅', '🌶️', '🫑', '🥒',
+      '🍓', '🫐', '🍇', '🍈', '🍉', '🍊', '🍋', '🍌', '🍍', '🥭', '🍎', '🍏', '🍐', '🍑',
+      '🍒', '🥝', '🍅', '🫒', '🥑', '🌶️', '🫑', '🥒', '🥬', '🥦', '🧄', '🧅', '🌽', '🥕',
+      '🫛', '🥔', '🫚', '🍄',
       // Kitchenware & Utensils
-      '🍽️', '🥄', '🍴', '🥢', '🍱', '🥡', '🔪', '🧂', '🫗', '🧊', '🥤', '🍷', '🍸', '🍹',
-      // Asian Food
-      '🍜', '🍝', '🍱', '🍙', '🍘', '🍣', '🍤', '🍥', '🥟', '🍢', '🍡', '🧆', '🥠',
-      // Fast Food
-      '🍔', '🍟', '🌭', '🍕', '🥪', '🌮', '🌯', '🥙', '🫔', '🧇', '🥞', '🍳',
+      '🍽️', '🥄', '🍴', '🥢', '🍱', '🥡', '🔪', '🧂',
       // International
-      '🥘', '🍲', '🫕', '🥗', '🥙', '🌯', '🌮', '🫔', '🥪', '🍞', '🥐', '🥖', '🥨', '🥯'
+      '🫕'
     ]
   };
 
@@ -1018,6 +1014,16 @@ const MenuManagementPage: React.FC = () => {
           }
         >
           <UIFormGroup>
+            <FormLabel>Item Code</FormLabel>
+            <FormInput
+              type="text"
+              value={formData.code || ''}
+              onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+              placeholder="e.g., A01, B02 (optional)"
+            />
+          </UIFormGroup>
+
+          <UIFormGroup>
             <FormLabel>Item Name *</FormLabel>
             <FormInput
               type="text"
@@ -1124,6 +1130,16 @@ const MenuManagementPage: React.FC = () => {
             </>
           }
         >
+          <UIFormGroup>
+            <FormLabel>Item Code</FormLabel>
+            <FormInput
+              type="text"
+              value={formData.code || ''}
+              onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+              placeholder="e.g., A01, B02 (optional)"
+            />
+          </UIFormGroup>
+
           <UIFormGroup>
             <FormLabel>Item Name *</FormLabel>
             <FormInput

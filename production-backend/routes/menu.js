@@ -69,6 +69,7 @@ router.get('/', async (req, res) => {
 
       return {
         id: prod.id,
+        code: prod.code || null,
         name: prod.name,
         description: prod.description,
         price: prod.price,
