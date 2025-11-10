@@ -1582,13 +1582,22 @@ const LiveOrdersPage: React.FC = () => {
   const handlePrintBill = async (order?: DbOrder) => {
     const orderToPrint = order || selectedOrder;
     if (orderToPrint) {
+      console.log('🔍 Print Bill - Full order object:', orderToPrint);
+      console.log('📦 order_items field:', orderToPrint.order_items);
+      console.log('📦 order_items type:', typeof orderToPrint.order_items);
+      console.log('📦 Is array?:', Array.isArray(orderToPrint.order_items));
+
       const storeInfo = getStoreInfo();
 
       // Ensure order_items is an array
       const orderItems = Array.isArray(orderToPrint.order_items) ? orderToPrint.order_items : [];
 
+      console.log('📦 Processed orderItems:', orderItems);
+      console.log('📦 orderItems length:', orderItems.length);
+
       if (orderItems.length === 0) {
-        alert('Cannot print: Order has no items');
+        console.error('❌ No items found in order!');
+        alert('Cannot print: Order has no items. Check console for details.');
         return;
       }
 
