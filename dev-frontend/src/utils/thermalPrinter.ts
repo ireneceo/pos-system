@@ -292,40 +292,37 @@ export const printToRawBT = async (orderData: OrderData, storeInfo: StoreInfo): 
 
 /**
  * Print bill - automatically detects device and uses appropriate method
+ * Returns true if print was successful, false otherwise
  */
-export const printBill = async (orderData: OrderData, storeInfo: StoreInfo): Promise<void> => {
+export const printBill = async (orderData: OrderData, storeInfo: StoreInfo): Promise<boolean> => {
   const isTabletOrMobile = isMobileOrTablet();
 
   if (isTabletOrMobile) {
-    // Mobile/Tablet: Try RawBT first
-    console.log('📱 Mobile/Tablet detected - attempting RawBT print');
+    // Mobile/Tablet: Use RawBT for thermal printer
+    console.log('📱 Mobile/Tablet detected - using RawBT thermal printer');
     const success = await printToRawBT(orderData, storeInfo);
 
-    if (!success) {
-      // Fallback: Always open print dialog
-      // On mobile, this will show RawBT as an option if installed
-      console.log('⚠️ RawBT direct connection failed - opening browser print dialog');
-
-      // Try to open RawBT app directly via URL scheme (Android)
-      const userAgent = navigator.userAgent.toLowerCase();
-      if (userAgent.includes('android')) {
-        // Try to open RawBT app directly
-        try {
-          window.location.href = 'rawbt://print';
-          // Wait a bit, if app doesn't open, fallback to print dialog
-          await new Promise(resolve => setTimeout(resolve, 500));
-        } catch (e) {
-          console.log('RawBT app not found, using print dialog');
-        }
-      }
-
-      // Open print dialog as final fallback
-      window.print();
+    if (success) {
+      console.log('✅ Bill printed successfully via RawBT');
+      return true;
+    } else {
+      console.error('❌ RawBT print failed');
+      // Show user-friendly error
+      alert(
+        'Unable to connect to RawBT printer.\n\n' +
+        'Please ensure:\n' +
+        '1. RawBT app is installed and running\n' +
+        '2. Bluetooth printer is connected in RawBT\n' +
+        '3. RawBT service is started (check notification bar)\n\n' +
+        'Then try printing again.'
+      );
+      return false;
     }
   } else {
     // Desktop/PC: Use browser print dialog
     console.log('🖥️ Desktop detected - using browser print dialog');
     window.print();
+    return true;
   }
 };
 

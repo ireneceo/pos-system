@@ -265,12 +265,15 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
 
   const handlePrintBill = async () => {
     // Use thermal printer utility - automatically detects device type
-    await printBill(orderData, storeInfo);
+    const success = await printBill(orderData, storeInfo);
 
-    // Callback after print
-    setTimeout(() => {
-      onPrintBill();
-    }, 100);
+    // Only trigger callback if print was successful or on desktop
+    if (success) {
+      setTimeout(() => {
+        onPrintBill();
+      }, 100);
+    }
+    // If failed, printBill already showed error message to user
   };
 
   const footer = (
