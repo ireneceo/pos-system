@@ -5,8 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js",
-    "dev:watch": "nodemon",
+    "dev": "node server.js",
     "production": "node server.js",
     "staging": "node server.js",
     "plesk": "node server.js",
@@ -23,8 +22,5 @@
     "node-cron": "^4.2.1",
     "sequelize": "^6.37.7",
     "socket.io": "^4.8.1"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.10"
   }
 }
