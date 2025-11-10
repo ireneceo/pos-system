@@ -235,13 +235,22 @@ export const generateReceiptContent = (orderData: OrderData, storeInfo: StoreInf
  */
 export const printToRawBT = async (orderData: OrderData, storeInfo: StoreInfo): Promise<boolean> => {
   try {
+    console.log('🔍 Starting RawBT print process...');
+    console.log('📦 Order data:', {
+      orderNumber: orderData.orderNumber,
+      total: orderData.total,
+      itemCount: orderData.items.length
+    });
+
     const content = generateReceiptContent(orderData, storeInfo);
+    console.log('📄 Receipt content length:', content.length, 'characters');
 
     // Convert content to Base64 for RawBT
     // Use TextEncoder for proper encoding without deprecated unescape
     const encoder = new TextEncoder();
     const bytes = encoder.encode(content);
     const base64Content = btoa(String.fromCharCode(...Array.from(bytes)));
+    console.log('🔐 Base64 content length:', base64Content.length, 'characters');
 
     // RawBT listens on localhost:19100 by default (standard RawBT port)
     // Try multiple endpoints in case user configured differently
@@ -254,6 +263,7 @@ export const printToRawBT = async (orderData: OrderData, storeInfo: StoreInfo): 
     ];
 
     console.log('📱 Attempting to connect to RawBT...');
+    console.log('🔌 Will try these endpoints:', endpoints);
 
     for (const endpoint of endpoints) {
       try {
@@ -270,22 +280,31 @@ export const printToRawBT = async (orderData: OrderData, storeInfo: StoreInfo): 
           })
         });
 
+        console.log(`📡 ${endpoint} response status:`, response.status);
+
         if (response.ok) {
+          const responseText = await response.text();
           console.log(`✅ Print sent to RawBT successfully via ${endpoint}`);
+          console.log('📨 Response:', responseText);
           return true;
         } else {
-          console.log(`⚠️ ${endpoint} responded with ${response.status}`);
+          const errorText = await response.text();
+          console.log(`⚠️ ${endpoint} responded with ${response.status}:`, errorText);
         }
       } catch (err) {
-        console.log(`⚠️ ${endpoint} not available:`, err instanceof Error ? err.message : 'Unknown error');
+        const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+        console.log(`⚠️ ${endpoint} not available:`, errorMsg);
+        console.log('🔍 Error details:', err);
         continue;
       }
     }
 
     console.error('❌ All RawBT endpoints failed');
+    console.log('💡 Make sure RawBT app is running and check notification bar');
     return false;
   } catch (error) {
     console.error('❌ Error sending to RawBT:', error);
+    console.log('🔍 Full error:', error);
     return false;
   }
 };
