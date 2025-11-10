@@ -20,22 +20,22 @@ const PrintStyles = createGlobalStyle`
       background: white !important;
     }
 
-    /* Hide all elements except bill and its parents */
-    body * {
-      visibility: hidden !important;
+    /* Hide all elements by default */
+    body > * {
+      display: none !important;
     }
 
-    /* Show bill and its children */
-    #order-complete-bill-print,
-    #order-complete-bill-print * {
+    /* Show only the print content */
+    #order-complete-bill-print {
+      display: block !important;
+      position: static !important;
+      left: 0 !important;
+      top: 0 !important;
       visibility: visible !important;
     }
 
-    /* Position bill for print */
-    #order-complete-bill-print {
-      position: absolute !important;
-      left: 0 !important;
-      top: 0 !important;
+    #order-complete-bill-print * {
+      visibility: visible !important;
     }
 
     /* Ensure proper page settings */
@@ -134,9 +134,8 @@ const SectionTitle = styled.h3`
 
 // Bill print styles for kitchen
 const BillPrintContent = styled.div`
-  display: none;
-  position: absolute;
-  top: 0;
+  position: fixed;
+  top: -9999px;
   left: -9999px;
   width: 80mm;
   background: white;
@@ -145,11 +144,13 @@ const BillPrintContent = styled.div`
   font-size: 12px;
   line-height: 1.4;
   color: #000;
+  z-index: -1;
 
   @media print {
-    display: block !important;
     position: static !important;
+    top: 0 !important;
     left: 0 !important;
+    z-index: 9999 !important;
   }
 
   * {
