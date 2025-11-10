@@ -7,7 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import PaymentModal from '../../components/POSTerminal/PaymentModal';
 import { useStore } from '../../contexts/StoreContext';
 // OLD: import { printBill } from '../../utils/thermalPrinter';
-import { printBillViaRawBT } from '../../utils/billPrint';
+import { printBillViaRawBT, generateBillContent } from '../../utils/billPrint';
 
 // Helper function to get fetch options with auth token
 const getFetchOptions = (options: RequestInit = {}): RequestInit => {
@@ -1032,6 +1032,7 @@ const LiveOrdersPage: React.FC = () => {
   const [orderForPayment, setOrderForPayment] = useState<DbOrder | null>(null);
   const [showOrderCompleteModal, setShowOrderCompleteModal] = useState(false);
   const [completedOrderData, setCompletedOrderData] = useState<any>(null);
+  const [showReceiptView, setShowReceiptView] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -1541,6 +1542,7 @@ const LiveOrdersPage: React.FC = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedOrder(null);
+    setShowReceiptView(false);
   };
 
   const handlePrintReceipt = async () => {
@@ -2213,10 +2215,56 @@ const LiveOrdersPage: React.FC = () => {
             {selectedOrder && (
               <>
                 <ModalHeader>
-                  <ModalTitle>Order {selectedOrder.order_number}</ModalTitle>
+                  <ModalTitle>{showReceiptView ? 'Receipt Preview' : `Order ${selectedOrder.order_number}`}</ModalTitle>
                   <CloseButton onClick={handleCloseModal}>×</CloseButton>
                 </ModalHeader>
 
+                {showReceiptView ? (
+                  <ModalBody>
+                    <div style={{
+                      padding: '20px',
+                      fontFamily: 'monospace',
+                      whiteSpace: 'pre-wrap',
+                      backgroundColor: '#f5f5f5',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      maxHeight: '500px',
+                      overflowY: 'auto'
+                    }}>
+                      {(() => {
+                        const storeInfo = getStoreInfo();
+                        const orderItems = Array.isArray(selectedOrder.order_items) ? selectedOrder.order_items : [];
+
+                        const orderData = {
+                          orderNumber: selectedOrder.order_number,
+                          pickupNumber: selectedOrder.order_number.split('-')[1],
+                          date: new Date(selectedOrder.order_date || selectedOrder.createdAt),
+                          items: orderItems.map((item: any) => ({
+                            menuItem: {
+                              name: item.menu_item_name || 'Unknown Item',
+                              price: parseFloat(item.price || '0')
+                            },
+                            quantity: item.quantity || 1,
+                            options: item.options || []
+                          })),
+                          subtotal: parseFloat((selectedOrder as any).subtotal || '0'),
+                          discount: parseFloat((selectedOrder as any).discount || '0'),
+                          coupon: (selectedOrder as any).coupon_code ? {
+                            code: (selectedOrder as any).coupon_code,
+                            discount: parseFloat((selectedOrder as any).coupon_discount || '0')
+                          } : null,
+                          tax: parseFloat((selectedOrder as any).tax || '0'),
+                          total: parseFloat((selectedOrder as any).final_price || selectedOrder.total_amount || '0'),
+                          paymentMethod: selectedOrder.payment_method || 'cash',
+                          amountReceived: parseFloat((selectedOrder as any).amount_received || '0'),
+                          change: parseFloat((selectedOrder as any).change || '0')
+                        };
+
+                        return generateBillContent(orderData, storeInfo);
+                      })()}
+                    </div>
+                  </ModalBody>
+                ) : (
                 <ModalBody>
                   {/* Customer Information */}
                   <OrderDetailSection>
@@ -2363,11 +2411,18 @@ const LiveOrdersPage: React.FC = () => {
                     </TotalRow>
                   </TotalSection>
                 </ModalBody>
+                )}
 
                 <ModalFooter>
-                  <ActionButton variant="secondary" onClick={handleCloseModal}>
-                    Close
-                  </ActionButton>
+                  {showReceiptView ? (
+                    <ActionButton onClick={() => setShowReceiptView(false)}>
+                      Back to Order Details
+                    </ActionButton>
+                  ) : (
+                    <>
+                      <ActionButton variant="secondary" onClick={handleCloseModal}>
+                        Close
+                      </ActionButton>
                   {selectedOrder.status !== 'cancelled' && selectedOrder.status !== 'completed' && (
                     <ActionButton
                       onClick={() => handleCancelOrder(selectedOrder.id)}
@@ -2394,9 +2449,14 @@ const LiveOrdersPage: React.FC = () => {
                       Confirm Payment
                     </ActionButton>
                   )}
+                  <ActionButton onClick={() => setShowReceiptView(true)} style={{ marginRight: '10px' }}>
+                    View Receipt
+                  </ActionButton>
                   <ActionButton onClick={handlePrintReceipt}>
                     Print Bill
                   </ActionButton>
+                    </>
+                  )}
                 </ModalFooter>
               </>
             )}

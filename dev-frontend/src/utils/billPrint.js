@@ -35,8 +35,8 @@ const CMD = {
   // Line feed
   LINE_FEED: '\n',
 
-  // Separators
-  DASHED_LINE: '--------------------------------',
+  // Separators (80mm = 48 chars)
+  DASHED_LINE: '------------------------------------------------',
 
   // Paper cut (partial)
   CUT_PARTIAL: GS + 'V' + '\x41' + '\x00'
@@ -47,10 +47,10 @@ const CMD = {
 // ============================================
 
 /**
- * Pad text to fit 32 characters (58mm printer)
+ * Pad text to fit 48 characters (80mm printer)
  * Left-aligned text with right-aligned value
  */
-function formatLine(left, right, width = 32) {
+function formatLine(left, right, width = 48) {
   const spaces = width - left.length - right.length;
   return left + ' '.repeat(Math.max(spaces, 1)) + right;
 }
@@ -224,6 +224,7 @@ export async function printBillViaRawBT(orderData, storeInfo) {
   try {
     console.log('🖨️ Starting RawBT bill print (Intent method)...');
     console.log('📦 Order:', orderData.orderNumber, '| Total: RM', orderData.total);
+    console.log('🏪 Store Info:', storeInfo);
 
     // Generate ESC/POS content
     const escposContent = generateBillContent(orderData, storeInfo);
@@ -241,9 +242,19 @@ export async function printBillViaRawBT(orderData, storeInfo) {
 
     console.log('🔗 RawBT Intent URL created');
 
-    // Open RawBT app via Intent
-    window.location.href = intentUrl;
-    console.log('✅ RawBT app opened successfully via Intent');
+    // Open RawBT app via Intent using hidden iframe
+    // This prevents the page from navigating away
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = intentUrl;
+    document.body.appendChild(iframe);
+
+    // Remove iframe after a short delay
+    setTimeout(() => {
+      document.body.removeChild(iframe);
+    }, 1000);
+
+    console.log('✅ RawBT app opened via hidden iframe (page stays)');
 
     return true;
 
