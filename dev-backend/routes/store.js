@@ -61,6 +61,8 @@ router.get('/settings', authenticateToken, async (req, res) => {
         state: restaurant.state,
         postal_code: restaurant.postal_code,
         country: restaurant.country,
+        business_registration: restaurant.business_registration,
+        tax_id: restaurant.tax_id,
         website: restaurant.website,
         logo_url: restaurant.logo_url,
         payment_settings: paymentSettings,

@@ -302,8 +302,9 @@ export const printBill = async (orderData: OrderData, storeInfo: StoreInfo): Pro
     const success = await printToRawBT(orderData, storeInfo);
 
     if (!success) {
-      // Fallback: Show error message
-      alert('Failed to print. Please ensure RawBT app is running and printer is connected.');
+      // Fallback: Open browser print dialog which will open RawBT app
+      console.log('⚠️ RawBT direct connection failed - opening browser print dialog for RawBT');
+      window.print();
     }
   } else {
     // Desktop/PC: Use browser print dialog
