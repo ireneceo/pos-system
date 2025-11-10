@@ -1584,17 +1584,25 @@ const LiveOrdersPage: React.FC = () => {
     if (orderToPrint) {
       const storeInfo = getStoreInfo();
 
+      // Ensure order_items is an array
+      const orderItems = Array.isArray(orderToPrint.order_items) ? orderToPrint.order_items : [];
+
+      if (orderItems.length === 0) {
+        alert('Cannot print: Order has no items');
+        return;
+      }
+
       // Convert DB order to thermalPrinter format
       const orderData = {
         orderNumber: orderToPrint.order_number,
         pickupNumber: orderToPrint.order_number.split('-')[1],
         date: new Date(orderToPrint.order_date || orderToPrint.createdAt),
-        items: orderToPrint.order_items.map((item: any) => ({
+        items: orderItems.map((item: any) => ({
           menuItem: {
-            name: item.menu_item_name,
-            price: parseFloat(item.price)
+            name: item.menu_item_name || 'Unknown Item',
+            price: parseFloat(item.price || '0')
           },
-          quantity: item.quantity,
+          quantity: item.quantity || 1,
           options: item.options || []
         })),
         subtotal: parseFloat((orderToPrint as any).subtotal || '0'),
