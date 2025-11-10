@@ -6,7 +6,8 @@ import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import PaymentModal from '../../components/POSTerminal/PaymentModal';
 import { useStore } from '../../contexts/StoreContext';
-import { printBill } from '../../utils/thermalPrinter';
+// OLD: import { printBill } from '../../utils/thermalPrinter';
+import { printBillViaRawBT } from '../../utils/billPrint';
 
 // Helper function to get fetch options with auth token
 const getFetchOptions = (options: RequestInit = {}): RequestInit => {
@@ -1572,9 +1573,10 @@ const LiveOrdersPage: React.FC = () => {
         change: parseFloat(selectedOrder.change || '0')
       };
 
-      const success = await printBill(orderData, storeInfo);
+      // OLD: const success = await printBill(orderData, storeInfo);
+      const success = await printBillViaRawBT(orderData, storeInfo);
       if (success) {
-        console.log('Receipt printed successfully');
+        console.log('Receipt printed successfully via RawBT');
       }
     }
   };
@@ -1627,9 +1629,10 @@ const LiveOrdersPage: React.FC = () => {
         change: parseFloat((orderToPrint as any).change || '0')
       };
 
-      const success = await printBill(orderData, storeInfo);
+      // OLD: const success = await printBill(orderData, storeInfo);
+      const success = await printBillViaRawBT(orderData, storeInfo);
       if (success) {
-        console.log('Bill printed successfully');
+        console.log('Bill printed successfully via RawBT');
       }
     }
   };

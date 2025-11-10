@@ -8,7 +8,8 @@ import {
 } from '../common/Modal';
 import styled, { createGlobalStyle } from 'styled-components';
 import { useStore } from '../../contexts/StoreContext';
-import { printBill } from '../../utils/thermalPrinter';
+// OLD: import { printBill } from '../../utils/thermalPrinter';
+import { printBillViaRawBT } from '../../utils/billPrint';
 
 // Global print styles
 const PrintStyles = createGlobalStyle`
@@ -264,16 +265,17 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
   };
 
   const handlePrintBill = async () => {
-    // Use thermal printer utility - automatically detects device type
-    const success = await printBill(orderData, storeInfo);
+    // Use RawBT printer with proper URL schema
+    // OLD: const success = await printBill(orderData, storeInfo);
+    const success = await printBillViaRawBT(orderData, storeInfo);
 
-    // Only trigger callback if print was successful or on desktop
+    // Only trigger callback if print was successful
     if (success) {
       setTimeout(() => {
         onPrintBill();
       }, 100);
     }
-    // If failed, printBill already showed error message to user
+    // If failed, printBillViaRawBT already showed error message to user
   };
 
   const footer = (
