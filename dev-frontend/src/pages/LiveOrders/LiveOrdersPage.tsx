@@ -8,6 +8,7 @@ import PaymentModal from '../../components/POSTerminal/PaymentModal';
 import { useStore } from '../../contexts/StoreContext';
 // OLD: import { printBill } from '../../utils/thermalPrinter';
 import { printBillViaRawBT, generateBillContent } from '../../utils/billPrint';
+import { formatDateTime as formatDateTimeUtil, getTimeElapsed } from '../../utils/timezone';
 
 // Helper function to get fetch options with auth token
 const getFetchOptions = (options: RequestInit = {}): RequestInit => {
@@ -23,43 +24,13 @@ const getFetchOptions = (options: RequestInit = {}): RequestInit => {
   };
 };
 
-// Time Ago Display Component - 실시간 업데이트용 (타임존 고려)
+// Time Ago Display Component - 실시간 업데이트용 (글로벌 유틸리티 사용)
 const TimeAgoDisplay: React.FC<{ dateString: string }> = ({ dateString }) => {
   const [display, setDisplay] = React.useState('calculating...');
 
   React.useEffect(() => {
     const updateDisplay = () => {
-      if (!dateString) {
-        setDisplay('just now');
-        return;
-      }
-
-      // 서버에서 받은 시간을 UTC로 파싱
-      const orderTime = new Date(dateString).getTime();
-      if (isNaN(orderTime)) {
-        console.warn('Invalid dateString:', dateString);
-        setDisplay('just now');
-        return;
-      }
-
-      // 현재 시간도 UTC로 계산
-      const now = Date.now();
-
-      const diffMs = now - orderTime;
-      const diffMins = Math.floor(diffMs / 60000);
-      const diffHours = Math.floor(diffMs / 3600000);
-      const diffDays = Math.floor(diffMs / 86400000);
-
-      let result: string;
-      if (diffMins < 1) result = 'just now';
-      else if (diffMins === 1) result = '1 min ago';
-      else if (diffMins < 60) result = `${diffMins} mins ago`;
-      else if (diffHours === 1) result = '1 hour ago';
-      else if (diffHours < 24) result = `${diffHours} hours ago`;
-      else if (diffDays === 1) result = '1 day ago';
-      else result = `${diffDays} days ago`;
-
-      setDisplay(result);
+      setDisplay(getTimeElapsed(dateString));
     };
 
     updateDisplay(); // 즉시 계산
@@ -203,16 +174,12 @@ const Content = styled.main`
 `;
 
 const FilterControls = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   margin-bottom: 24px;
-  gap: 16px;
-  flex-wrap: wrap;
 
   @media (max-width: 768px) {
+    display: flex;
     flex-direction: column;
-    align-items: stretch;
+    gap: 12px;
   }
 `;
 
@@ -221,6 +188,20 @@ const FilterRow = styled.div`
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+
+    &::-webkit-scrollbar {
+      height: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: #E6EBF1;
+      border-radius: 4px;
+    }
+  }
 `;
 
 const DateButton = styled.button<{ active?: boolean }>`
@@ -253,6 +234,68 @@ const DateInput = styled.input`
   }
 `;
 
+const SearchInputContainer = styled.div`
+  position: relative;
+  width: 250px;
+  flex-shrink: 0;
+
+  @media (max-width: 768px) {
+    width: 100%;
+  }
+`;
+
+const SearchIcon = styled.span`
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  pointer-events: none;
+`;
+
+const SearchInput = styled.input`
+  width: 100%;
+  padding: 10px 40px 10px 40px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+
+  &::placeholder {
+    color: #9CA3AF;
+  }
+`;
+
+const ClearSearchBtn = styled.button`
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #E5E7EB;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  color: #6B7280;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #D1D5DB;
+    color: #374151;
+  }
+`;
+
 const DownloadButton = styled.button`
   padding: 12px 16px;
   background: #635BFF;
@@ -266,6 +309,9 @@ const DownloadButton = styled.button`
   display: flex;
   align-items: center;
   gap: 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: 12px;
 
   &:hover {
     background: #5A51E6;
@@ -1060,6 +1106,7 @@ const LiveOrdersPage: React.FC = () => {
     };
   });
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Audio notification for new orders
   const playNotificationSound = useCallback(() => {
@@ -1282,7 +1329,7 @@ const LiveOrdersPage: React.FC = () => {
     });
   };
 
-  // Filter orders by date range
+  // Filter orders by date range and search query
   const getFilteredOrders = () => {
     if (!dateRange.start || !dateRange.end) return allOrders;
 
@@ -1291,7 +1338,7 @@ const LiveOrdersPage: React.FC = () => {
     const endDate = new Date(dateRange.end);
     endDate.setHours(23, 59, 59, 999);
 
-    const filtered = allOrders.filter(order => {
+    let filtered = allOrders.filter(order => {
       // Use order_date or createdAt (database columns)
       const dateValue = order.order_date || order.createdAt;
       if (!dateValue) {
@@ -1308,6 +1355,35 @@ const LiveOrdersPage: React.FC = () => {
       const isInRange = orderDate >= startDate && orderDate <= endDate;
       return isInRange;
     });
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(order => {
+        // Search in order number
+        if (order.order_number?.toLowerCase().includes(query)) return true;
+
+        // Search in customer name
+        if (order.customer_name?.toLowerCase().includes(query)) return true;
+
+        // Search in table number
+        if (order.table_number?.toString().includes(query)) return true;
+
+        // Search in order items
+        if (order.order_items && Array.isArray(order.order_items)) {
+          const hasMatchingItem = order.order_items.some((item: any) =>
+            item.menu_item_name?.toLowerCase().includes(query) ||
+            item.name?.toLowerCase().includes(query)
+          );
+          if (hasMatchingItem) return true;
+        }
+
+        // Search in payment method
+        if (order.payment_method?.toLowerCase().includes(query)) return true;
+
+        return false;
+      });
+    }
 
     return filtered;
   };
@@ -1344,7 +1420,7 @@ const LiveOrdersPage: React.FC = () => {
         order.status || '',
         order.payment_method || '',
         `RM ${(order.total_amount || 0).toFixed(2)}`,
-        orderDate.toLocaleString('en-MY'),
+        formatDateTime(orderDate),
         items
       ];
     });
@@ -1882,16 +1958,9 @@ const LiveOrdersPage: React.FC = () => {
     }
   };
 
-  const formatDateTime = () => {
-    const now = new Date();
-    return now.toLocaleString('en-MY', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
+  // Format date/time with restaurant timezone (using global utility)
+  const formatDateTime = (date?: Date | string) => {
+    return formatDateTimeUtil(date, (companyInfo as any)?.operation_settings);
   };
 
   return (
@@ -1967,12 +2036,32 @@ const LiveOrdersPage: React.FC = () => {
               />
             </FilterRow>
 
-            <DownloadButton onClick={handleDownloadCSV}>
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              Download
-            </DownloadButton>
+            <div style={{ display: 'flex', alignItems: 'center', marginTop: '12px' }}>
+              <SearchInputContainer>
+                <SearchIcon>🔍</SearchIcon>
+                <SearchInput
+                  type="text"
+                  placeholder="Search orders..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <ClearSearchBtn
+                    onClick={() => setSearchQuery('')}
+                    title="Clear search"
+                  >
+                    ×
+                  </ClearSearchBtn>
+                )}
+              </SearchInputContainer>
+
+              <DownloadButton onClick={handleDownloadCSV}>
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Download
+              </DownloadButton>
+            </FilterRow>
           </FilterControls>
 
           <StatusTabs>
@@ -2091,7 +2180,7 @@ const LiveOrdersPage: React.FC = () => {
                     </TableCell>
                     <TableCell data-label="TIME">
                       <TimeInfo>
-                        {new Date(order.createdAt || order.order_date).toLocaleString()}<br />
+                        {formatDateTime(order.createdAt || order.order_date)}<br />
                         {/* TimeAgoDisplay 컴포넌트 사용 - 각 주문마다 독립적으로 시간 계산 */}
                         <TimeAgoDisplay 
                           key={`time-${order.id}-${timeDisplayKey}`}
@@ -2308,7 +2397,7 @@ const LiveOrdersPage: React.FC = () => {
                     <SectionTitle>Order Information</SectionTitle>
                     <DetailRow>
                       <DetailLabel>Order Time:</DetailLabel>
-                      <DetailValue>{new Date(selectedOrder.createdAt).toLocaleString()}</DetailValue>
+                      <DetailValue>{formatDateTime(selectedOrder.createdAt)}</DetailValue>
                     </DetailRow>
                     <DetailRow>
                       <DetailLabel>Status:</DetailLabel>
@@ -2362,7 +2451,7 @@ const LiveOrdersPage: React.FC = () => {
                           <DetailRow>
                             <DetailLabel>Submitted At:</DetailLabel>
                             <DetailValue>
-                              {new Date((selectedOrder as any).payment_proof.uploaded_at).toLocaleString()}
+                              {formatDateTime((selectedOrder as any).payment_proof.uploaded_at)}
                             </DetailValue>
                           </DetailRow>
                         )}

@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import io, { Socket } from 'socket.io-client';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMenu } from '../../contexts/MenuContext';
+import { formatTime } from '../../utils/timezone';
 
 const Container = styled.div`
   background: #FAFBFC;
@@ -384,6 +385,7 @@ const KitchenDisplayPage: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [operationSettings, setOperationSettings] = useState<any>(null);
 
   // Fetch orders from database
   const fetchOrders = useCallback(async () => {
@@ -505,6 +507,33 @@ const KitchenDisplayPage: React.FC = () => {
     } catch (error) {
       console.error('Failed to fetch orders:', error);
     }
+  }, [user?.restaurantId]);
+
+  // Load operation settings for timezone
+  useEffect(() => {
+    const loadSettings = async () => {
+      if (!user?.restaurantId) return;
+
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch(`/api/restaurants/${user.restaurantId}`, {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setOperationSettings(data.operation_settings);
+        }
+      } catch (error) {
+        console.error('Failed to load operation settings:', error);
+      }
+    };
+
+    loadSettings();
   }, [user?.restaurantId]);
 
   // Initial fetch and periodic refresh
@@ -924,7 +953,7 @@ const KitchenDisplayPage: React.FC = () => {
             <ConnectionDot connected={isConnected} />
             {isConnected ? 'Connected' : 'Disconnected'}
           </ConnectionStatus>
-          <Clock>{format(currentTime, 'HH:mm:ss')}</Clock>
+          <Clock>{formatTime(currentTime, operationSettings)}</Clock>
         </HeaderInfo>
       </Header>
 
