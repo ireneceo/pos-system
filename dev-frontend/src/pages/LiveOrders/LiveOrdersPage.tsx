@@ -236,8 +236,7 @@ const DateInput = styled.input`
 
 const SearchInputContainer = styled.div`
   position: relative;
-  width: 250px;
-  flex-shrink: 0;
+  width: 280px;
 
   @media (max-width: 768px) {
     width: 100%;
@@ -297,7 +296,7 @@ const ClearSearchBtn = styled.button`
 `;
 
 const DownloadButton = styled.button`
-  padding: 12px 16px;
+  padding: 10px 20px;
   background: #635BFF;
   color: white;
   border: none;
@@ -310,8 +309,6 @@ const DownloadButton = styled.button`
   align-items: center;
   gap: 8px;
   white-space: nowrap;
-  flex-shrink: 0;
-  margin-left: 12px;
 
   &:hover {
     background: #5A51E6;
@@ -320,6 +317,20 @@ const DownloadButton = styled.button`
   svg {
     width: 16px;
     height: 16px;
+  }
+`;
+
+const SearchDownloadRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
   }
 `;
 
@@ -1404,29 +1415,64 @@ const LiveOrdersPage: React.FC = () => {
       return;
     }
 
-    // CSV Headers
-    const headers = ['Order Number', 'Customer Name', 'Status', 'Payment Method', 'Amount', 'Date', 'Items'];
+    // CSV Headers - 모든 컬럼 포함
+    const headers = [
+      'Order Number',
+      'Date & Time',
+      'Customer Name',
+      'Phone',
+      'Order Type',
+      'Table Number',
+      'Status',
+      'Payment Method',
+      'Payment Status',
+      'Subtotal',
+      'Service Charge',
+      'Tax',
+      'Discount',
+      'Total Amount',
+      'Items'
+    ];
 
-    // CSV Rows
+    // CSV Rows - 모든 항목 포함
     const rows = filtered.map(order => {
       const orderDate = new Date(order.order_date || order.createdAt);
+      const formattedDate = orderDate.toLocaleString('en-MY', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+
       const items = order.order_items?.map((item: any) =>
-        `${item.quantity}x ${item.menu_item?.name || 'Unknown'}`
+        `${item.quantity}x ${item.menu_item_name || item.name || 'Unknown'}`
       ).join('; ') || '';
+
+      const orderAny = order as any;
 
       return [
         order.order_number || '',
+        formattedDate,
         order.customer_name || 'Guest',
+        order.customer_phone || '',
+        (order.order_type || '').replace('_', ' ').toUpperCase(),
+        order.table_number || '',
         order.status || '',
         order.payment_method || '',
+        order.payment_status || 'completed',
+        `RM ${(orderAny.subtotal || order.total_amount || 0).toFixed(2)}`,
+        `RM ${(orderAny.service_charge || 0).toFixed(2)}`,
+        `RM ${(orderAny.tax || 0).toFixed(2)}`,
+        `RM ${(orderAny.discount || 0).toFixed(2)}`,
         `RM ${(order.total_amount || 0).toFixed(2)}`,
-        formatDateTime(orderDate),
         items
       ];
     });
 
-    // Generate CSV content
-    const csvContent = [
+    // Generate CSV content with UTF-8 BOM for Excel compatibility
+    const csvContent = '\uFEFF' + [
       headers.join(','),
       ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
     ].join('\n');
@@ -1694,8 +1740,8 @@ const LiveOrdersPage: React.FC = () => {
         date: new Date(orderToPrint.order_date || orderToPrint.createdAt),
         items: orderItems.map((item: any) => ({
           menuItem: {
-            name: item.menu_item_name || 'Unknown Item',
-            price: parseFloat(item.price || '0')
+            name: item.menu_item_name || item.name || (item.menuItem && item.menuItem.name) || 'Unknown Item',
+            price: parseFloat(item.price || (item.menuItem && item.menuItem.price) || '0')
           },
           quantity: item.quantity || 1,
           options: item.options || []
@@ -2034,33 +2080,85 @@ const LiveOrdersPage: React.FC = () => {
                 value={dateRange.end}
                 onChange={(e) => handleDateRangeChange('end', e.target.value)}
               />
-            </FilterRow>
 
-            <div style={{ display: 'flex', alignItems: 'center', marginTop: '12px' }}>
-              <SearchInputContainer>
-                <SearchIcon>🔍</SearchIcon>
-                <SearchInput
+              <div style={{
+                position: 'relative',
+                width: '250px',
+                marginLeft: '16px'
+              }}>
+                <span style={{
+                  position: 'absolute',
+                  left: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  fontSize: '16px',
+                  pointerEvents: 'none',
+                  zIndex: 1
+                }}>🔍</span>
+                <input
                   type="text"
                   placeholder="Search orders..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 40px 10px 40px',
+                    border: '1px solid #E6EBF1',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    outline: 'none',
+                    transition: 'all 0.2s',
+                    boxSizing: 'border-box'
+                  }}
                 />
                 {searchQuery && (
-                  <ClearSearchBtn
+                  <button
                     onClick={() => setSearchQuery('')}
                     title="Clear search"
+                    style={{
+                      position: 'absolute',
+                      right: '8px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: '#E5E7EB',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: '24px',
+                      height: '24px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      fontSize: '18px',
+                      color: '#6B7280',
+                      zIndex: 2
+                    }}
                   >
                     ×
-                  </ClearSearchBtn>
+                  </button>
                 )}
-              </SearchInputContainer>
+              </div>
 
-              <DownloadButton onClick={handleDownloadCSV}>
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <button
+                onClick={handleDownloadCSV}
+                title="Download CSV"
+                style={{
+                  padding: '10px',
+                  background: '#635BFF',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginLeft: '8px'
+                }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '18px', height: '18px' }}>
                   <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                Download
-              </DownloadButton>
+              </button>
             </FilterRow>
           </FilterControls>
 
@@ -2339,8 +2437,8 @@ const LiveOrdersPage: React.FC = () => {
                           date: new Date(selectedOrder.order_date || selectedOrder.createdAt),
                           items: orderItems.map((item: any) => ({
                             menuItem: {
-                              name: item.menu_item_name || 'Unknown Item',
-                              price: parseFloat(item.price || '0')
+                              name: item.menu_item_name || item.name || (item.menuItem && item.menuItem.name) || 'Unknown Item',
+                              price: parseFloat(item.price || (item.menuItem && item.menuItem.price) || '0')
                             },
                             quantity: item.quantity || 1,
                             options: item.options || []
@@ -2361,7 +2459,10 @@ const LiveOrdersPage: React.FC = () => {
                           change: parseFloat((selectedOrder as any).change || '0')
                         };
 
-                        return generateBillContent(orderData, storeInfo);
+                        // Generate bill content and remove ESC/POS control characters for display
+                        const billContent = generateBillContent(orderData, storeInfo);
+                        // Remove all ESC/POS control sequences (up to 3 bytes: control char + command + optional param)
+                        return billContent.replace(/[\x1B\x1D].{1,2}/g, '');
                       })()}
                     </div>
                   </ModalBody>
