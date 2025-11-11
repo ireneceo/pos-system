@@ -10,6 +10,7 @@ import styled, { createGlobalStyle } from 'styled-components';
 import { useStore } from '../../contexts/StoreContext';
 // OLD: import { printBill } from '../../utils/thermalPrinter';
 import { printBillViaRawBT } from '../../utils/billPrint';
+import { formatDateTime as formatDateTimeUtil } from '../../utils/timezone';
 
 // Global print styles
 const PrintStyles = createGlobalStyle`
@@ -235,7 +236,11 @@ interface OrderCompleteModalProps {
     subtotal: number;
     discount: number;
     coupon: { code: string; discount: number } | null;
+    takeawayCharge?: number;
+    serviceCharge?: number;
+    serviceChargeRate?: number;
     tax: number;
+    taxRate?: number;
     total: number;
     paymentMethod: string;
     amountReceived: number;
@@ -250,18 +255,12 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
   orderData,
   onPrintBill
 }) => {
-  const { getStoreInfo } = useStore();
+  const { getStoreInfo, companyInfo } = useStore();
   const storeInfo = getStoreInfo();
 
-  const formatDateTime = (date: Date) => {
-    return date.toLocaleString('en-MY', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
+  // Format date/time with restaurant timezone
+  const formatDateTime = (date?: Date | string) => {
+    return formatDateTimeUtil(date, (companyInfo as any)?.operation_settings);
   };
 
   const handlePrintBill = async () => {
@@ -361,6 +360,12 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
             <DetailLabel>Subtotal</DetailLabel>
             <DetailValue>RM {orderData.subtotal.toFixed(2)}</DetailValue>
           </DetailRow>
+          {orderData.takeawayCharge && orderData.takeawayCharge > 0 && (
+            <DetailRow>
+              <DetailLabel>Takeaway Charge</DetailLabel>
+              <DetailValue>RM {orderData.takeawayCharge.toFixed(2)}</DetailValue>
+            </DetailRow>
+          )}
           {orderData.discount > 0 && (
             <DetailRow>
               <DetailLabel>Discount</DetailLabel>
@@ -373,7 +378,7 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
               <DetailValue style={{ color: '#10B981' }}>-RM {orderData.coupon.discount.toFixed(2)}</DetailValue>
             </DetailRow>
           )}
-          {orderData.serviceCharge > 0 && (
+          {orderData.serviceCharge && orderData.serviceCharge > 0 && (
             <DetailRow>
               <DetailLabel>Service Charge ({orderData.serviceChargeRate || 10}%)</DetailLabel>
               <DetailValue>RM {orderData.serviceCharge.toFixed(2)}</DetailValue>
@@ -459,6 +464,12 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
             <span>Subtotal:</span>
             <span>RM {orderData.subtotal.toFixed(2)}</span>
           </PrintRow>
+          {orderData.takeawayCharge && orderData.takeawayCharge > 0 && (
+            <PrintRow>
+              <span>Takeaway Charge:</span>
+              <span>RM {orderData.takeawayCharge.toFixed(2)}</span>
+            </PrintRow>
+          )}
           {orderData.discount > 0 && (
             <PrintRow>
               <span>Discount:</span>
@@ -471,7 +482,7 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
               <span>-RM {orderData.coupon.discount.toFixed(2)}</span>
             </PrintRow>
           )}
-          {orderData.serviceCharge > 0 && (
+          {orderData.serviceCharge && orderData.serviceCharge > 0 && (
             <PrintRow>
               <span>Service Charge ({orderData.serviceChargeRate || 10}%):</span>
               <span>RM {orderData.serviceCharge.toFixed(2)}</span>

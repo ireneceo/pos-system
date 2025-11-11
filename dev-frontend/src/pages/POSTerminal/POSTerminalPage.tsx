@@ -1545,7 +1545,11 @@ const POSTerminalPage: React.FC = () => {
         subtotal,
         discount: discountAmount,
         coupon: appliedCoupon,
+        takeawayCharge,
+        serviceCharge,
+        serviceChargeRate: operationSettings.serviceChargeRate,
         tax,
+        taxRate: operationSettings.taxRate,
         total,
         paymentMethod: 'Pending',
         amountReceived: 0,
@@ -1653,6 +1657,7 @@ const POSTerminalPage: React.FC = () => {
         subtotal,
         discount: discountAmount,
         coupon: appliedCoupon,
+        takeawayCharge,
         serviceCharge,
         serviceChargeRate: operationSettings.serviceChargeRate,
         tax,
@@ -2266,6 +2271,7 @@ const POSTerminalPage: React.FC = () => {
         subtotal={subtotal}
         tax={tax}
         serviceCharge={serviceCharge}
+        takeawayCharge={takeawayCharge}
         discountAmount={discountAmount}
         couponDiscount={couponDiscount}
         onConfirmPayment={handleConfirmPayment}

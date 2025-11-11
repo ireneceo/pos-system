@@ -68,11 +68,6 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const orderData = req.body;
-    console.log('🔍 [TAKEAWAY DEBUG] Received order data:', {
-      takeaway_charge: orderData.takeaway_charge,
-      order_type: orderData.order_type,
-      total_amount: orderData.total_amount
-    });
 
     // Check order limit if restaurant_id is provided
     if (orderData.restaurant_id) {
@@ -198,26 +193,15 @@ router.post('/', async (req, res) => {
           }
 
           console.log('Creating order with order_number:', generatedOrderNumber);
-          console.log('🔍 [TAKEAWAY DEBUG] Data being saved to DB:', {
-            takeaway_charge: orderData.takeaway_charge,
-            order_type: orderData.order_type,
-            total_amount: orderData.total_amount
-          });
           // Create order within transaction with generated number
           // Note: We bypass validation because order_number is generated dynamically
-          const createdOrder = await Order.create({
+          return await Order.create({
             ...orderData,
             order_number: generatedOrderNumber
           }, {
             transaction: t,
             validate: false  // Skip validation since we're generating order_number
           });
-          console.log('🔍 [TAKEAWAY DEBUG] Order created in DB:', {
-            id: createdOrder.id,
-            takeaway_charge: createdOrder.takeaway_charge,
-            order_type: createdOrder.order_type
-          });
-          return createdOrder;
         });
 
         // Success - break the retry loop

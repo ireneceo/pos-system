@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { useOrders } from '../../contexts/OrderContext';
+import { useStore } from '../../contexts/StoreContext';
+import { formatDateTime as formatDateTimeUtil } from '../../utils/timezone';
 
 const PageContainer = styled.div`
   padding: 32px;
@@ -214,11 +216,12 @@ const Footer = styled.div`
 
 const BillPrintPage: React.FC = () => {
   const { orders } = useOrders();
+  const { companyInfo } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
   const handleSearch = () => {
-    const order = orders.find(o => 
+    const order = orders.find(o =>
       o.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       o.customer.phone.includes(searchTerm)
     );
@@ -229,17 +232,9 @@ const BillPrintPage: React.FC = () => {
     window.print();
   };
 
-  const formatDateTime = (dateStr: string) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return date.toLocaleString('en-MY', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
+  // Format date/time with restaurant timezone
+  const formatDateTime = (date?: Date | string) => {
+    return formatDateTimeUtil(date, (companyInfo as any)?.operation_settings);
   };
 
   return (

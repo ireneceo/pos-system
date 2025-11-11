@@ -122,6 +122,7 @@ interface PaymentModalProps {
   subtotal: number;
   tax: number;
   serviceCharge?: number;
+  takeawayCharge?: number;
   discountAmount?: number;
   couponDiscount?: number;
   onConfirmPayment: (paymentMethod: string, amountReceived?: number, change?: number) => void;
@@ -139,6 +140,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   subtotal,
   tax,
   serviceCharge = 0,
+  takeawayCharge = 0,
   discountAmount = 0,
   couponDiscount = 0,
   onConfirmPayment,
@@ -244,6 +246,12 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           <SummaryLabel>Subtotal</SummaryLabel>
           <SummaryValue>RM {subtotal.toFixed(2)}</SummaryValue>
         </SummaryRow>
+        {takeawayCharge > 0 && (
+          <SummaryRow>
+            <SummaryLabel>Takeaway Charge</SummaryLabel>
+            <SummaryValue>RM {takeawayCharge.toFixed(2)}</SummaryValue>
+          </SummaryRow>
+        )}
         {discountAmount > 0 && (
           <DiscountRow>
             <SummaryLabel>Discount</SummaryLabel>

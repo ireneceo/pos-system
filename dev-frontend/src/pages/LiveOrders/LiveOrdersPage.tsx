@@ -2635,6 +2635,12 @@ const LiveOrdersPage: React.FC = () => {
                         <span>RM {Number((selectedOrder as any).tax).toFixed(2)}</span>
                       </TotalRow>
                     )}
+                    {(selectedOrder as any).takeaway_charge > 0 && (
+                      <TotalRow>
+                        <span>Takeaway Charge</span>
+                        <span>RM {Number((selectedOrder as any).takeaway_charge).toFixed(2)}</span>
+                      </TotalRow>
+                    )}
                     <TotalRow isTotal>
                       <span>Total</span>
                       <span>RM {Number(selectedOrder.total_amount).toFixed(2)}</span>
@@ -2733,7 +2739,7 @@ const LiveOrdersPage: React.FC = () => {
               </BillRow>
               <BillRow>
                 <strong>Date:</strong>
-                <span>{formatDateTime()}</span>
+                <span>{formatDateTime(selectedOrder.order_date || selectedOrder.createdAt)}</span>
               </BillRow>
               <BillRow>
                 <strong>Customer:</strong>
