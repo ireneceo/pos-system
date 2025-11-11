@@ -1922,7 +1922,7 @@ const POSTerminalPage: React.FC = () => {
                     {item.is_set_menu && <SetBadge>SET</SetBadge>}
                     <MenuImage hasImage={!!item.image}>
                       {item.image ? (
-                        <img src={item.image} alt={item.name} />
+                        <img src={item.image} alt={item.name} loading="lazy" />
                       ) : (
                         item.emoji
                       )}

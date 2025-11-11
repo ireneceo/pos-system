@@ -929,6 +929,7 @@ const MenuManagementPage: React.FC = () => {
                     <img
                       src={item.image}
                       alt={item.name}
+                      loading="lazy"
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       onError={(e) => {
                         // Fallback to emoji if image fails to load
@@ -1401,6 +1402,7 @@ const MenuManagementPage: React.FC = () => {
                         <img
                           src={item.image}
                           alt={item.name}
+                          loading="lazy"
                           style={{
                             width: '48px',
                             height: '48px',
