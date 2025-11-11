@@ -626,12 +626,7 @@ const PaymentPage: React.FC = () => {
   // Calculate takeaway charge (using existing function from StoreContext)
   const orderType = sessionStorage.getItem('orderType') as 'dine-in' | 'takeaway' || 'dine-in';
   const calculateTakeawayCharge = () => {
-    console.log('🔍 [TAKEAWAY DEBUG] Starting calculation...');
-    console.log('🔍 [TAKEAWAY DEBUG] orderType:', orderType);
-    console.log('🔍 [TAKEAWAY DEBUG] operationSettings.takeawayPricing:', JSON.stringify(operationSettings.takeawayPricing, null, 2));
-
     if (orderType !== 'takeaway' || !operationSettings.takeawayPricing.enabled) {
-      console.log('🔍 [TAKEAWAY DEBUG] Early return 0 - orderType:', orderType, 'enabled:', operationSettings.takeawayPricing.enabled);
       return 0;
     }
 
@@ -640,19 +635,13 @@ const PaymentPage: React.FC = () => {
       // Per-item charge
       const totalQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0);
       charge = totalQuantity * operationSettings.takeawayPricing.perItemCharge;
-      console.log('🔍 [TAKEAWAY DEBUG] Per-item pricing - totalQuantity:', totalQuantity, 'perItemCharge:', operationSettings.takeawayPricing.perItemCharge, 'total charge:', charge);
     } else {
       // Per-category charge
-      console.log('🔍 [TAKEAWAY DEBUG] Per-category pricing - cartItems:', cartItems.length);
       cartItems.forEach(item => {
-        console.log('🔍 [TAKEAWAY DEBUG] Item:', item.menuItem.name, 'category:', item.menuItem.category, 'quantity:', item.quantity);
         const itemCharge = getTakeawayCharge(item.menuItem.category);
-        console.log('🔍 [TAKEAWAY DEBUG] getTakeawayCharge result:', itemCharge);
         charge += itemCharge * item.quantity;
       });
-      console.log('🔍 [TAKEAWAY DEBUG] Total category charge:', charge);
     }
-    console.log('🔍 [TAKEAWAY DEBUG] Final charge:', charge);
     return charge;
   };
 
@@ -896,11 +885,6 @@ const PaymentPage: React.FC = () => {
             };
 
             console.log('💾 Saving order to DATABASE...');
-            console.log('🔍 [TAKEAWAY DEBUG] Order data being sent to backend:', {
-              orderType: dbOrderData.order_type,
-              takeawayCharge: dbOrderData.takeaway_charge,
-              totalAmount: dbOrderData.total_amount
-            });
             const response = await fetch('/api/orders', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -972,12 +956,6 @@ const PaymentPage: React.FC = () => {
             customer_id: currentCustomer?.id || null
           };
 
-          console.log('🔍 [TAKEAWAY DEBUG] Pending order data (QR/Bank):', {
-            orderType: pendingOrderData.order_type,
-            takeawayCharge: pendingOrderData.takeaway_charge,
-            totalAmount: pendingOrderData.total_amount
-          });
-
           // Store pending order data in sessionStorage (will be created after payment confirmation)
           sessionStorage.setItem('pendingOrderData', JSON.stringify(pendingOrderData));
 
@@ -1020,11 +998,6 @@ const PaymentPage: React.FC = () => {
             };
 
             console.log('💾 Saving card/FPX order to DATABASE...');
-            console.log('🔍 [TAKEAWAY DEBUG] Order data (Card/FPX):', {
-              orderType: dbOrderData.order_type,
-              takeawayCharge: dbOrderData.takeaway_charge,
-              totalAmount: dbOrderData.total_amount
-            });
 
             // Simulate payment processing
             await new Promise(resolve => setTimeout(resolve, 2000));
