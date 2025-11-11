@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { format } from 'date-fns';
 import io, { Socket } from 'socket.io-client';
 import { useAuth } from '../../contexts/AuthContext';
+import { useMenu } from '../../contexts/MenuContext';
 
 const Container = styled.div`
   background: #FAFBFC;
@@ -378,6 +379,7 @@ interface KitchenOrder {
 
 const KitchenDisplayPage: React.FC = () => {
   const { user } = useAuth();
+  const { menuItems } = useMenu();
   const [orders, setOrders] = useState<KitchenOrder[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -519,23 +521,49 @@ const KitchenDisplayPage: React.FC = () => {
     if (!user?.restaurantId) return;
 
     const newSocket = io('/orders', {
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 10
     });
 
     newSocket.on('connect', () => {
-      console.log('Connected to /orders namespace');
+      console.log('✅ Kitchen Display connected to /orders namespace');
       setIsConnected(true);
       newSocket.emit('join-restaurant', user.restaurantId);
+      console.log(`✅ Joined restaurant_${user.restaurantId}`);
+      // Fetch orders immediately on connection
+      fetchOrders();
     });
 
     newSocket.on('disconnect', () => {
-      console.log('Disconnected from /orders namespace');
+      console.log('⚠️ Kitchen Display disconnected from /orders namespace');
       setIsConnected(false);
     });
 
+    newSocket.on('connect_error', (error) => {
+      console.error('❌ Socket.IO connection error:', error);
+      setIsConnected(false);
+    });
+
+    newSocket.on('reconnect', (attemptNumber) => {
+      console.log(`🔄 Reconnected after ${attemptNumber} attempts`);
+      setIsConnected(true);
+      fetchOrders();
+    });
+
     newSocket.on('order-created', (order: any) => {
-      console.log('New order received:', order);
-      if (order.restaurant_id !== user.restaurantId) return;
+      console.log('🔔 KITCHEN: New order received:', {
+        orderId: order.id,
+        orderNumber: order.order_number,
+        restaurant_id: order.restaurant_id,
+        status: order.status,
+        timestamp: new Date().toISOString()
+      });
+      if (order.restaurant_id !== user.restaurantId) {
+        console.log('⚠️ Order restaurant_id mismatch, ignoring');
+        return;
+      }
 
       // Parse order_items if it's a string
       let orderItems = order.order_items || [];
@@ -612,8 +640,13 @@ const KitchenDisplayPage: React.FC = () => {
         orderType: order.order_type || 'dine-in'
       };
 
-      setOrders(prev => [newOrder, ...prev]);
+      console.log('✅ KITCHEN: Adding order to display:', newOrder.orderNumber);
+      setOrders(prev => {
+        console.log(`📊 KITCHEN: Current orders count: ${prev.length}, adding new order`);
+        return [newOrder, ...prev];
+      });
       playNotificationSound();
+      console.log('🔔 KITCHEN: Notification sound played');
     });
 
     newSocket.on('order-updated', (order: any) => {
@@ -659,6 +692,18 @@ const KitchenDisplayPage: React.FC = () => {
   const playNotificationSound = () => {
     const audio = new Audio('/notification.mp3');
     audio.play().catch(e => console.log('Could not play notification sound:', e));
+  };
+
+  // Helper function to get item code from menu items by matching name
+  const getItemCode = (itemName: string): string => {
+    const menuItem = menuItems.find(m => m.name === itemName);
+    return menuItem?.code || '';
+  };
+
+  // Helper function to format item name with code
+  const formatItemName = (itemName: string): string => {
+    const code = getItemCode(itemName);
+    return code ? `${code} ${itemName}` : itemName;
   };
 
   const getElapsedTime = (orderTime: Date) => {
@@ -931,7 +976,7 @@ const KitchenDisplayPage: React.FC = () => {
                     {order.items.map((item, index) => (
                       <OrderItem key={index}>
                         <ItemInfo>
-                          <ItemName>{item.name}</ItemName>
+                          <ItemName>{formatItemName(item.name)}</ItemName>
                           {item.options && item.options.length > 0 && (() => {
                             // Separate set menu items and regular options
                             const setItems: string[] = [];
@@ -1028,7 +1073,7 @@ const KitchenDisplayPage: React.FC = () => {
                         <OrderItem>
                           <ItemInfo style={{ opacity: item.status === 'completed' ? 0.5 : 1 }}>
                             <ItemName style={{ textDecoration: item.status === 'completed' ? 'line-through' : 'none' }}>
-                              {item.name}
+                              {formatItemName(item.name)}
                             </ItemName>
                             {item.options && item.options.length > 0 && (() => {
                               // Separate set menu items and regular options
@@ -1086,7 +1131,7 @@ const KitchenDisplayPage: React.FC = () => {
                                   textDecoration: setItem.status === 'completed' ? 'line-through' : 'none',
                                   opacity: setItem.status === 'completed' ? 0.5 : 1
                                 }}>
-                                  • {setItem.name} x{setItem.quantity}
+                                  • {formatItemName(setItem.name)} x{setItem.quantity}
                                 </SetItemName>
                                 <ItemActions>
                                   <ItemButton
@@ -1177,7 +1222,7 @@ const KitchenDisplayPage: React.FC = () => {
                     {order.items.map((item, index) => (
                       <OrderItem key={index}>
                         <ItemInfo>
-                          <ItemName>{item.name}</ItemName>
+                          <ItemName>{formatItemName(item.name)}</ItemName>
                           {item.options && (
                             <ItemOptions>⭐ {item.options.join(', ')}</ItemOptions>
                           )}

@@ -18,6 +18,7 @@ interface SetMenuItem {
 
 interface MenuItem {
   id: string;
+  code?: string;
   categoryId: string;
   name: string;
   price: number;

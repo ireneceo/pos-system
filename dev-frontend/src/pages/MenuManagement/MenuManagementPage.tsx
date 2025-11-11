@@ -951,7 +951,7 @@ const MenuManagementPage: React.FC = () => {
                     {categories.find(c => c.id === item.category)?.name}
                   </MenuCategory>
                   <MenuHeader>
-                    <MenuName>{item.name}</MenuName>
+                    <MenuName>{item.code ? `${item.code} ` : ''}{item.name}</MenuName>
                     <MenuPrice>RM {item.price.toFixed(2)}</MenuPrice>
                   </MenuHeader>
                   <MenuDescription>
@@ -959,9 +959,11 @@ const MenuManagementPage: React.FC = () => {
                   </MenuDescription>
                   {item.is_set_menu && item.set_items && item.set_items.length > 0 && (
                     <MenuDescription style={{ fontSize: '11px', color: '#667eea', fontWeight: 500 }}>
-                      Set includes: {item.set_items.map(setItem =>
-                        `${setItem.name} x${setItem.quantity}`
-                      ).join(', ')}
+                      Set includes: {item.set_items.map(setItem => {
+                        const menuItem = menuItems.find(m => m.id === setItem.menuItemId.toString());
+                        const itemCode = menuItem?.code;
+                        return `${itemCode ? `${itemCode} ` : ''}${setItem.name} x${setItem.quantity}`;
+                      }).join(', ')}
                     </MenuDescription>
                   )}
                   {item.optionGroups && item.optionGroups.length > 0 && (

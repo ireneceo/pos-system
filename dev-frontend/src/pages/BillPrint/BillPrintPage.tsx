@@ -339,10 +339,12 @@ const BillPrintPage: React.FC = () => {
                   <Value style={{ color: '#10B981' }}>-RM {selectedOrder.coupon.amount.toFixed(2)}</Value>
                 </BillRow>
               )}
-              <BillRow>
-                <Label>Tax (6%):</Label>
-                <Value>RM {selectedOrder.tax.toFixed(2)}</Value>
-              </BillRow>
+              {selectedOrder.tax > 0 && (
+                <BillRow>
+                  <Label>Tax (6%):</Label>
+                  <Value>RM {selectedOrder.tax.toFixed(2)}</Value>
+                </BillRow>
+              )}
               <BillRow className="total">
                 <Label>TOTAL:</Label>
                 <Value>RM {selectedOrder.total.toFixed(2)}</Value>

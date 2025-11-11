@@ -1306,13 +1306,22 @@ const POSTerminalPage: React.FC = () => {
   const handleConfirmOptions = (quantity: number, selectedOptions: string[]) => {
     if (!selectedMenuItem) return;
 
-    // For set menus, do NOT merge set items into options
-    // Set items are already in menuItem.set_items
-    // Only use selectedOptions (regular options like spice level, etc.)
-    const regularOptions = selectedOptions;
+    // For set menus, add set items to options array (for display purposes)
+    // Regular options (like spice level) are also included
+    let finalOptions = [...selectedOptions];
+
+    if (selectedMenuItem.is_set_menu && selectedMenuItem.set_items && selectedMenuItem.set_items.length > 0) {
+      const setMenuOptions = selectedMenuItem.set_items.map(item => {
+        const itemDetails = menuItems.find(m => parseInt(m.id) === item.menuItemId);
+        const itemCode = itemDetails?.code;
+        return `${itemCode ? `${itemCode} ` : ''}${item.name} x${item.quantity}`;
+      });
+      // Set items first, then regular options
+      finalOptions = [...setMenuOptions, ...selectedOptions];
+    }
 
     // Check if same item with same options exists
-    const optionsKey = regularOptions.sort().join(',');
+    const optionsKey = finalOptions.sort().join(',');
     const existingItem = orderItems.find(item =>
       item.menuItem.id === selectedMenuItem.id &&
       item.options?.sort().join(',') === optionsKey
@@ -1329,7 +1338,7 @@ const POSTerminalPage: React.FC = () => {
         id: `order-${Date.now()}`,
         menuItem: selectedMenuItem,
         quantity: quantity,
-        options: regularOptions.length > 0 ? regularOptions : undefined
+        options: finalOptions.length > 0 ? finalOptions : undefined
       }]);
     }
 
@@ -1561,12 +1570,16 @@ const POSTerminalPage: React.FC = () => {
         id: item.id,
         menuItem: {
           id: item.menuItem.id,
-          name: item.menuItem.name,
+          name: item.menuItem.code ? `${item.menuItem.code} ${item.menuItem.name}` : item.menuItem.name,
           price: item.menuItem.price,
-          emoji: item.menuItem.emoji
+          emoji: item.menuItem.emoji,
+          is_set_menu: item.menuItem.is_set_menu,
+          set_items: item.menuItem.set_items
         },
         quantity: item.quantity,
-        options: item.options
+        options: item.options,
+        is_set_menu: item.menuItem.is_set_menu || false,
+        set_items: item.menuItem.set_items || []
       })),
       status: 'pending' as const,
       createdAt: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
@@ -1669,12 +1682,16 @@ const POSTerminalPage: React.FC = () => {
         id: item.id,
         menuItem: {
           id: item.menuItem.id,
-          name: item.menuItem.name,
+          name: item.menuItem.code ? `${item.menuItem.code} ${item.menuItem.name}` : item.menuItem.name,
           price: item.menuItem.price,
-          emoji: item.menuItem.emoji
+          emoji: item.menuItem.emoji,
+          is_set_menu: item.menuItem.is_set_menu,
+          set_items: item.menuItem.set_items
         },
         quantity: item.quantity,
-        options: item.options
+        options: item.options,
+        is_set_menu: item.menuItem.is_set_menu || false,
+        set_items: item.menuItem.set_items || []
       })),
       status: 'pending' as const,
       createdAt: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
