@@ -774,6 +774,7 @@ const MenuManagementPage: React.FC = () => {
   const handleSaveNew = () => {
     const newItem: MenuItemType = {
       id: `item-${Date.now()}`,
+      code: formData.code || '',
       name: formData.name || '',
       price: formData.price || 0,
       category: formData.category || 'korean',
@@ -799,6 +800,7 @@ const MenuManagementPage: React.FC = () => {
 
     const newSetMenu: MenuItemType = {
       id: editingItem?.id || `item-${Date.now()}`,
+      code: formData.code || '',
       name: formData.name || '',
       price: formData.price || 0,
       category: formData.category || 'korean',

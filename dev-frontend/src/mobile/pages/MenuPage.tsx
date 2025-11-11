@@ -288,13 +288,16 @@ const MenuPage: React.FC = () => {
       )}
       
       <CategoryTabs>
-        <CategoryTab 
+        <CategoryTab
           active={selectedCategory === 'all'}
           onClick={() => setSelectedCategory('all')}
         >
           All Items
         </CategoryTab>
-        {categories.map(category => (
+        {categories
+          .slice()
+          .sort((a, b) => a.order - b.order)
+          .map(category => (
           <CategoryTab
             key={category.id}
             active={selectedCategory === category.id}
