@@ -1262,6 +1262,16 @@ const MenuManagementPage: React.FC = () => {
           }
         >
           <UIFormGroup>
+            <FormLabel>Item Code</FormLabel>
+            <FormInput
+              type="text"
+              value={formData.code || ''}
+              onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+              placeholder="e.g., S01, S02 (optional)"
+            />
+          </UIFormGroup>
+
+          <UIFormGroup>
             <FormLabel>Set Menu Name *</FormLabel>
             <FormInput
               type="text"
