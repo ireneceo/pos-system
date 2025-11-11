@@ -603,6 +603,7 @@ const PaymentPage: React.FC = () => {
     setGuestInfo,
     logoutCustomer
   } = useCustomer();
+  const { getTakeawayCharge, operationSettings } = useStore();
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
@@ -622,10 +623,44 @@ const PaymentPage: React.FC = () => {
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [couponError, setCouponError] = useState('');
 
+  // Calculate takeaway charge (using existing function from StoreContext)
+  const orderType = sessionStorage.getItem('orderType') as 'dine-in' | 'takeaway' || 'dine-in';
+  const calculateTakeawayCharge = () => {
+    console.log('🔍 [TAKEAWAY DEBUG] Starting calculation...');
+    console.log('🔍 [TAKEAWAY DEBUG] orderType:', orderType);
+    console.log('🔍 [TAKEAWAY DEBUG] operationSettings.takeawayPricing:', JSON.stringify(operationSettings.takeawayPricing, null, 2));
+
+    if (orderType !== 'takeaway' || !operationSettings.takeawayPricing.enabled) {
+      console.log('🔍 [TAKEAWAY DEBUG] Early return 0 - orderType:', orderType, 'enabled:', operationSettings.takeawayPricing.enabled);
+      return 0;
+    }
+
+    let charge = 0;
+    if (operationSettings.takeawayPricing.pricingType === 'per-item') {
+      // Per-item charge
+      const totalQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+      charge = totalQuantity * operationSettings.takeawayPricing.perItemCharge;
+      console.log('🔍 [TAKEAWAY DEBUG] Per-item pricing - totalQuantity:', totalQuantity, 'perItemCharge:', operationSettings.takeawayPricing.perItemCharge, 'total charge:', charge);
+    } else {
+      // Per-category charge
+      console.log('🔍 [TAKEAWAY DEBUG] Per-category pricing - cartItems:', cartItems.length);
+      cartItems.forEach(item => {
+        console.log('🔍 [TAKEAWAY DEBUG] Item:', item.menuItem.name, 'category:', item.menuItem.category, 'quantity:', item.quantity);
+        const itemCharge = getTakeawayCharge(item.menuItem.category);
+        console.log('🔍 [TAKEAWAY DEBUG] getTakeawayCharge result:', itemCharge);
+        charge += itemCharge * item.quantity;
+      });
+      console.log('🔍 [TAKEAWAY DEBUG] Total category charge:', charge);
+    }
+    console.log('🔍 [TAKEAWAY DEBUG] Final charge:', charge);
+    return charge;
+  };
+
   const subtotal = cartTotal;
+  const takeawayCharge = calculateTakeawayCharge();
   const tax = subtotal * 0.06;
   const discountedSubtotal = subtotal - couponDiscount;
-  const total = discountedSubtotal + tax;
+  const total = discountedSubtotal + tax + takeawayCharge;
 
   // Get available payment methods for mobile - recalculates when paymentMethods changes
   const availableMethods = React.useMemo(() => {
@@ -842,6 +877,7 @@ const PaymentPage: React.FC = () => {
               customer_phone: currentCustomer ? currentCustomer.phone : (guestInfo ? guestInfo.phone || null : null),
               table_number: selectedTable || null,
               total_amount: total,
+              takeaway_charge: takeawayCharge,
               status: 'awaiting_payment',
               order_type: orderType === 'dine-in' ? 'dine_in' : orderType,
               payment_method: 'counter',
@@ -860,6 +896,11 @@ const PaymentPage: React.FC = () => {
             };
 
             console.log('💾 Saving order to DATABASE...');
+            console.log('🔍 [TAKEAWAY DEBUG] Order data being sent to backend:', {
+              orderType: dbOrderData.order_type,
+              takeawayCharge: dbOrderData.takeaway_charge,
+              totalAmount: dbOrderData.total_amount
+            });
             const response = await fetch('/api/orders', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -915,6 +956,7 @@ const PaymentPage: React.FC = () => {
             customer_phone: currentCustomer ? currentCustomer.phone : (guestInfo ? guestInfo.phone || null : null),
             table_number: selectedTable || null,
             total_amount: total,
+            takeaway_charge: takeawayCharge,
             status: 'awaiting_payment',
             order_type: orderType === 'dine-in' ? 'dine_in' : orderType,
             payment_method: (paymentMethod === 'qr' || paymentMethod === 'qrPayment' || paymentMethod === 'qr_payment') ? 'QR Payment' : 'Bank Transfer',
@@ -929,6 +971,12 @@ const PaymentPage: React.FC = () => {
             })),
             customer_id: currentCustomer?.id || null
           };
+
+          console.log('🔍 [TAKEAWAY DEBUG] Pending order data (QR/Bank):', {
+            orderType: pendingOrderData.order_type,
+            takeawayCharge: pendingOrderData.takeaway_charge,
+            totalAmount: pendingOrderData.total_amount
+          });
 
           // Store pending order data in sessionStorage (will be created after payment confirmation)
           sessionStorage.setItem('pendingOrderData', JSON.stringify(pendingOrderData));
@@ -953,6 +1001,7 @@ const PaymentPage: React.FC = () => {
               customer_phone: currentCustomer ? currentCustomer.phone : (guestInfo ? guestInfo.phone || null : null),
               table_number: selectedTable || null,
               total_amount: total,
+              takeaway_charge: takeawayCharge,
               status: 'pending',
               order_type: orderType === 'dine-in' ? 'dine_in' : orderType,
               payment_method: paymentMethod === 'card' ? 'Card' : 'FPX',
@@ -971,6 +1020,11 @@ const PaymentPage: React.FC = () => {
             };
 
             console.log('💾 Saving card/FPX order to DATABASE...');
+            console.log('🔍 [TAKEAWAY DEBUG] Order data (Card/FPX):', {
+              orderType: dbOrderData.order_type,
+              takeawayCharge: dbOrderData.takeaway_charge,
+              totalAmount: dbOrderData.total_amount
+            });
 
             // Simulate payment processing
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -1131,6 +1185,12 @@ const PaymentPage: React.FC = () => {
             <SummaryRow>
               <span>Discount</span>
               <span style={{ color: '#059669' }}>-RM {couponDiscount.toFixed(2)}</span>
+            </SummaryRow>
+          )}
+          {takeawayCharge > 0 && (
+            <SummaryRow>
+              <span>Takeaway Charge</span>
+              <span>RM {takeawayCharge.toFixed(2)}</span>
             </SummaryRow>
           )}
           <SummaryRow>

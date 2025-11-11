@@ -1703,6 +1703,7 @@ const POSTerminalPage: React.FC = () => {
       discount: discountAmount,
       coupon: appliedCoupon ? { code: appliedCoupon.code, amount: appliedCoupon.discount } : undefined,
       discountPolicy: appliedDiscountPolicy ? { name: appliedDiscountPolicy.name, amount: appliedDiscountPolicy.discount } : undefined,
+      takeawayCharge: takeawayCharge,
       total,
       paymentMethod: method,
       paymentStatus: 'completed' as const,

@@ -126,6 +126,7 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
         discount: order.discount || 0,
         coupon_code: order.coupon?.code || null,
         coupon_discount: order.coupon?.amount || 0,
+        takeaway_charge: (order as any).takeawayCharge || 0,
         status: order.status,
         order_type: order.orderType === 'dine-in' ? 'dine_in' : order.orderType,
         payment_method: order.paymentMethod || null,

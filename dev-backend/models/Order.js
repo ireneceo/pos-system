@@ -125,6 +125,12 @@ Order.init({
     allowNull: true,
     defaultValue: 0,
     comment: 'Coupon discount amount'
+  },
+  takeaway_charge: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0,
+    comment: 'Takeaway charge amount'
   }
 }, {
   sequelize: database.sequelize,

@@ -5,6 +5,7 @@ import MainLayout from '../../components/Layout/MainLayout';
 import { TabContainer, Tab } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
+import { useMenu } from '../../contexts/MenuContext';
 import { useBrandTheme } from '../../contexts/BrandThemeContext';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
@@ -488,6 +489,7 @@ interface Manager {
 const SettingsPage: React.FC = () => {
   const { user } = useAuth();
   const { updateSettings } = useStore();
+  const { categories } = useMenu();
   const { setTheme, resetTheme, isDefaultTheme } = useBrandTheme();
 
   // Use custom hook for tab URL parameter management
@@ -2428,94 +2430,30 @@ const SettingsPage: React.FC = () => {
                       <>
                         <Label style={{ marginBottom: '16px' }}>Category Charges</Label>
                         <SettingsGrid>
-                          <FormGroup>
-                            <Label>Food Items</Label>
-                            <FeeInput 
-                              type="number" 
-                              step="0.10"
-                              value={operationSettings.takeawayPricing.categoryCharges.food}
-                              onChange={(e) => {
-                                setOperationSettings(prev => ({
-                                  ...prev,
-                                  takeawayPricing: {
-                                    ...prev.takeawayPricing,
-                                    categoryCharges: {
-                                      ...prev.takeawayPricing.categoryCharges,
-                                      food: Number(e.target.value)
+                          {categories.map(category => (
+                            <FormGroup key={category.id}>
+                              <Label>{category.emoji} {category.name}</Label>
+                              <FeeInput
+                                type="number"
+                                step="0.10"
+                                value={operationSettings.takeawayPricing.categoryCharges[category.id.toLowerCase()] || 0}
+                                onChange={(e) => {
+                                  setOperationSettings(prev => ({
+                                    ...prev,
+                                    takeawayPricing: {
+                                      ...prev.takeawayPricing,
+                                      categoryCharges: {
+                                        ...prev.takeawayPricing.categoryCharges,
+                                        [category.id.toLowerCase()]: Number(e.target.value)
+                                      }
                                     }
-                                  }
-                                }));
-                                setHasChanges(true);
-                              }}
-                            />
-                            <span style={{ color: '#6B7C93', fontSize: '14px' }}>RM</span>
-                          </FormGroup>
-                          <FormGroup>
-                            <Label>Beverage Items</Label>
-                            <FeeInput 
-                              type="number" 
-                              step="0.10"
-                              value={operationSettings.takeawayPricing.categoryCharges.beverage}
-                              onChange={(e) => {
-                                setOperationSettings(prev => ({
-                                  ...prev,
-                                  takeawayPricing: {
-                                    ...prev.takeawayPricing,
-                                    categoryCharges: {
-                                      ...prev.takeawayPricing.categoryCharges,
-                                      beverage: Number(e.target.value)
-                                    }
-                                  }
-                                }));
-                                setHasChanges(true);
-                              }}
-                            />
-                            <span style={{ color: '#6B7C93', fontSize: '14px' }}>RM</span>
-                          </FormGroup>
-                          <FormGroup>
-                            <Label>Dessert Items</Label>
-                            <FeeInput 
-                              type="number" 
-                              step="0.10"
-                              value={operationSettings.takeawayPricing.categoryCharges.dessert}
-                              onChange={(e) => {
-                                setOperationSettings(prev => ({
-                                  ...prev,
-                                  takeawayPricing: {
-                                    ...prev.takeawayPricing,
-                                    categoryCharges: {
-                                      ...prev.takeawayPricing.categoryCharges,
-                                      dessert: Number(e.target.value)
-                                    }
-                                  }
-                                }));
-                                setHasChanges(true);
-                              }}
-                            />
-                            <span style={{ color: '#6B7C93', fontSize: '14px' }}>RM</span>
-                          </FormGroup>
-                          <FormGroup>
-                            <Label>Other Items</Label>
-                            <FeeInput 
-                              type="number" 
-                              step="0.10"
-                              value={operationSettings.takeawayPricing.categoryCharges.other}
-                              onChange={(e) => {
-                                setOperationSettings(prev => ({
-                                  ...prev,
-                                  takeawayPricing: {
-                                    ...prev.takeawayPricing,
-                                    categoryCharges: {
-                                      ...prev.takeawayPricing.categoryCharges,
-                                      other: Number(e.target.value)
-                                    }
-                                  }
-                                }));
-                                setHasChanges(true);
-                              }}
-                            />
-                            <span style={{ color: '#6B7C93', fontSize: '14px' }}>RM</span>
-                          </FormGroup>
+                                  }));
+                                  setHasChanges(true);
+                                }}
+                              />
+                              <span style={{ color: '#6B7C93', fontSize: '14px' }}>RM</span>
+                            </FormGroup>
+                          ))}
                         </SettingsGrid>
                         <HelpText>These amounts will be added to items based on their category for takeaway orders</HelpText>
                       </>
