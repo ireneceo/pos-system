@@ -900,7 +900,9 @@ const KitchenDisplayPage: React.FC = () => {
   };
 
   const getOrdersByStatus = (status: KitchenOrder['status']) => {
-    return orders.filter(order => order.status === status);
+    return orders
+      .filter(order => order.status === status)
+      .sort((a, b) => a.orderTime.getTime() - b.orderTime.getTime()); // 오래된 주문 먼저 (오름차순)
   };
 
   const getStatusCounts = () => {

@@ -23,30 +23,33 @@ const getFetchOptions = (options: RequestInit = {}): RequestInit => {
   };
 };
 
-// Time Ago Display Component - 실시간 업데이트용
+// Time Ago Display Component - 실시간 업데이트용 (타임존 고려)
 const TimeAgoDisplay: React.FC<{ dateString: string }> = ({ dateString }) => {
   const [display, setDisplay] = React.useState('calculating...');
-  
+
   React.useEffect(() => {
     const updateDisplay = () => {
       if (!dateString) {
         setDisplay('just now');
         return;
       }
-      
-      const now = new Date().getTime();
+
+      // 서버에서 받은 시간을 UTC로 파싱
       const orderTime = new Date(dateString).getTime();
       if (isNaN(orderTime)) {
         console.warn('Invalid dateString:', dateString);
         setDisplay('just now');
         return;
       }
-      
+
+      // 현재 시간도 UTC로 계산
+      const now = Date.now();
+
       const diffMs = now - orderTime;
       const diffMins = Math.floor(diffMs / 60000);
       const diffHours = Math.floor(diffMs / 3600000);
       const diffDays = Math.floor(diffMs / 86400000);
-      
+
       let result: string;
       if (diffMins < 1) result = 'just now';
       else if (diffMins === 1) result = '1 min ago';
@@ -55,18 +58,18 @@ const TimeAgoDisplay: React.FC<{ dateString: string }> = ({ dateString }) => {
       else if (diffHours < 24) result = `${diffHours} hours ago`;
       else if (diffDays === 1) result = '1 day ago';
       else result = `${diffDays} days ago`;
-      
+
       setDisplay(result);
     };
-    
+
     updateDisplay(); // 즉시 계산
-    
+
     // 10초마다 업데이트
     const timer = setInterval(updateDisplay, 10000);
-    
+
     return () => clearInterval(timer);
   }, [dateString]);
-  
+
   return <span style={{ fontSize: '12px' }}>{display}</span>;
 };
 
@@ -2414,6 +2417,34 @@ const LiveOrdersPage: React.FC = () => {
 
                   {/* Payment Summary */}
                   <TotalSection>
+                    <TotalRow>
+                      <span>Subtotal</span>
+                      <span>RM {Number((selectedOrder as any).subtotal || selectedOrder.total_amount).toFixed(2)}</span>
+                    </TotalRow>
+                    {(selectedOrder as any).discount > 0 && (
+                      <TotalRow>
+                        <span>Discount</span>
+                        <span>- RM {Number((selectedOrder as any).discount).toFixed(2)}</span>
+                      </TotalRow>
+                    )}
+                    {(selectedOrder as any).coupon_discount > 0 && (
+                      <TotalRow>
+                        <span>Coupon Discount ({(selectedOrder as any).coupon_code})</span>
+                        <span>- RM {Number((selectedOrder as any).coupon_discount).toFixed(2)}</span>
+                      </TotalRow>
+                    )}
+                    {(selectedOrder as any).service_charge > 0 && (
+                      <TotalRow>
+                        <span>Service Charge ({(selectedOrder as any).service_charge_rate || 10}%)</span>
+                        <span>RM {Number((selectedOrder as any).service_charge).toFixed(2)}</span>
+                      </TotalRow>
+                    )}
+                    {(selectedOrder as any).tax > 0 && (
+                      <TotalRow>
+                        <span>Tax ({(selectedOrder as any).tax_rate || 6}%)</span>
+                        <span>RM {Number((selectedOrder as any).tax).toFixed(2)}</span>
+                      </TotalRow>
+                    )}
                     <TotalRow isTotal>
                       <span>Total</span>
                       <span>RM {Number(selectedOrder.total_amount).toFixed(2)}</span>
@@ -2570,6 +2601,34 @@ const LiveOrdersPage: React.FC = () => {
             </BillSection>
 
             <BillSection style={{ borderTop: '1px dashed #000', paddingTop: '10px' }}>
+              <BillRow>
+                <span>Subtotal:</span>
+                <span>RM {Number((selectedOrder as any).subtotal || selectedOrder.total_amount).toFixed(2)}</span>
+              </BillRow>
+              {(selectedOrder as any).discount > 0 && (
+                <BillRow>
+                  <span>Discount:</span>
+                  <span>-RM {Number((selectedOrder as any).discount).toFixed(2)}</span>
+                </BillRow>
+              )}
+              {(selectedOrder as any).coupon_discount > 0 && (
+                <BillRow>
+                  <span>Coupon ({(selectedOrder as any).coupon_code}):</span>
+                  <span>-RM {Number((selectedOrder as any).coupon_discount).toFixed(2)}</span>
+                </BillRow>
+              )}
+              {(selectedOrder as any).service_charge > 0 && (
+                <BillRow>
+                  <span>Service Charge ({(selectedOrder as any).service_charge_rate || 10}%):</span>
+                  <span>RM {Number((selectedOrder as any).service_charge).toFixed(2)}</span>
+                </BillRow>
+              )}
+              {(selectedOrder as any).tax > 0 && (
+                <BillRow>
+                  <span>Tax ({(selectedOrder as any).tax_rate || 6}%):</span>
+                  <span>RM {Number((selectedOrder as any).tax).toFixed(2)}</span>
+                </BillRow>
+              )}
               <BillRow style={{ borderTop: '1px solid #000', paddingTop: '5px', fontSize: '14px', fontWeight: 'bold' }}>
                 <span>TOTAL:</span>
                 <span>RM {Number(selectedOrder.total_amount).toFixed(2)}</span>
