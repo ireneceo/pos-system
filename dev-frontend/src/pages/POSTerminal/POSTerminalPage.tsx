@@ -1062,6 +1062,7 @@ const QuickActionBtn = styled.button`
 
 interface MenuItemType {
   id: string;
+  code?: string;
   name: string;
   price: number;
   category: string;
@@ -1235,15 +1236,26 @@ const POSTerminalPage: React.FC = () => {
   // Filter menu items based on category and search query
   const getFilteredItems = () => {
     let items = selectedCategory === 'all' ? menuItems : getItemsByCategory(selectedCategory);
-    
+
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      items = items.filter(item => 
+      items = items.filter(item =>
         item.name.toLowerCase().includes(query) ||
+        (item.code && item.code.toLowerCase().includes(query)) ||
         (item.description && item.description.toLowerCase().includes(query))
       );
     }
-    
+
+    // Debug: Log first item with code
+    const itemWithCode = items.find(i => i.code);
+    if (itemWithCode) {
+      console.log('🔍 POS Menu Item with code:', {
+        id: itemWithCode.id,
+        code: itemWithCode.code,
+        name: itemWithCode.name
+      });
+    }
+
     return items;
   };
   
@@ -1255,7 +1267,11 @@ const POSTerminalPage: React.FC = () => {
     // For set menus, convert set_items to options format (as strings)
     let setMenuOptions: string[] = [];
     if (menuItem.is_set_menu && menuItem.set_items && menuItem.set_items.length > 0) {
-      setMenuOptions = menuItem.set_items.map(item => `${item.name} x${item.quantity}`);
+      setMenuOptions = menuItem.set_items.map(item => {
+        const itemDetails = menuItems.find(m => parseInt(m.id) === item.menuItemId);
+        const itemCode = itemDetails?.code;
+        return `${itemCode ? `${itemCode} ` : ''}${item.name} x${item.quantity}`;
+      });
     }
 
     // Add directly without options (use default options for items that have them)

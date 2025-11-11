@@ -321,6 +321,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
 
       // API 호출
       const requestBody = {
+        code: updatedItem.code,
         name: updatedItem.name,
         price: updatedItem.price,
         category: updatedItem.category,
@@ -373,6 +374,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
 
       // API 호출
       const requestBody = {
+        code: newItem.code,
         name: newItem.name,
         price: newItem.price,
         category: newItem.category,

@@ -1,4 +1,6 @@
 const socketIO = require('socket.io');
+const { createAdapter } = require('@socket.io/redis-adapter');
+const { createClient } = require('redis');
 
 function initSocketServer(server) {
   // Configure Socket.IO with CORS
@@ -23,6 +25,38 @@ function initSocketServer(server) {
     'https://orderhere.wor-pro.com',
     'https://purplehere.com'
   ]);
+
+  // Setup Redis adapter for PM2 cluster mode
+  const isPM2Cluster = process.env.pm_id !== undefined && process.env.exec_mode === 'cluster_mode';
+
+  if (isPM2Cluster) {
+    console.log('🔧 PM2 cluster mode detected, setting up Redis adapter...');
+
+    const pubClient = createClient({
+      host: 'localhost',
+      port: 6379,
+      // Add error handler to prevent crashes
+      retry_strategy: (options) => {
+        console.warn('⚠️ Redis connection retry:', options.attempt);
+        if (options.attempt > 10) {
+          console.error('❌ Redis connection failed after 10 attempts');
+          return undefined; // Stop retrying
+        }
+        return Math.min(options.attempt * 100, 3000);
+      }
+    });
+    const subClient = pubClient.duplicate();
+
+    Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
+      io.adapter(createAdapter(pubClient, subClient));
+      console.log('✅ Redis adapter connected for Socket.IO cluster mode');
+    }).catch((err) => {
+      console.error('❌ Redis adapter connection failed:', err.message);
+      console.log('⚠️ Socket.IO will work in single instance mode only');
+    });
+  } else {
+    console.log('ℹ️ Running in single instance mode, Redis adapter not needed');
+  }
 
   // Connection error handling
   io.engine.on('connection_error', (err) => {

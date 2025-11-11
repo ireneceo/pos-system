@@ -587,6 +587,7 @@ const MenuManagementPage: React.FC = () => {
   const [showSetMenuModal, setShowSetMenuModal] = useState(false);
   const [setMenuItems, setSetMenuItems] = useState<SetMenuItem[]>([]);
   const [setMenuDisplayOrder, setSetMenuDisplayOrder] = useState(0);
+  const [setMenuSearchQuery, setSetMenuSearchQuery] = useState('');
 
   // Form state
   const [formData, setFormData] = useState<Partial<MenuItemType>>({
@@ -1319,6 +1320,12 @@ const MenuManagementPage: React.FC = () => {
             />
           </UIFormGroup>
 
+          <ImageUploadDropzone
+            value={formData.image || ''}
+            onChange={(base64) => setFormData({ ...formData, image: base64 })}
+            label="Set Menu Image"
+          />
+
           <UIFormGroup>
             <FormLabel>Display Order (for sorting set menus)</FormLabel>
             <FormInput
@@ -1333,46 +1340,78 @@ const MenuManagementPage: React.FC = () => {
             <FormLabel>Set Menu Items * (at least 1 item required)</FormLabel>
             {setMenuItems.length > 0 && (
               <SetItemsList>
-                {setMenuItems.map(setItem => (
-                  <SetItemRow key={setItem.menuItemId}>
-                    <SetItemInfo>
-                      <SetItemName>{setItem.name}</SetItemName>
-                    </SetItemInfo>
-                    <SetItemQuantity>
-                      <QuantityButton
-                        onClick={() => handleUpdateSetMenuItemQuantity(setItem.menuItemId, -1)}
-                        disabled={setItem.quantity <= 1}
-                      >
-                        −
-                      </QuantityButton>
-                      <QuantityDisplay>{setItem.quantity}</QuantityDisplay>
-                      <QuantityButton
-                        onClick={() => handleUpdateSetMenuItemQuantity(setItem.menuItemId, 1)}
-                      >
-                        +
-                      </QuantityButton>
-                    </SetItemQuantity>
-                    <RemoveButton onClick={() => handleRemoveSetMenuItem(setItem.menuItemId)}>
-                      Remove
-                    </RemoveButton>
-                  </SetItemRow>
-                ))}
+                {setMenuItems.map(setItem => {
+                  const menuItem = menuItems.find(m => parseInt(m.id) === setItem.menuItemId);
+                  const itemCode = menuItem?.code;
+                  return (
+                    <SetItemRow key={setItem.menuItemId}>
+                      <SetItemInfo>
+                        <SetItemName>{itemCode ? `${itemCode} ` : ''}{setItem.name}</SetItemName>
+                      </SetItemInfo>
+                      <SetItemQuantity>
+                        <QuantityButton
+                          onClick={() => handleUpdateSetMenuItemQuantity(setItem.menuItemId, -1)}
+                          disabled={setItem.quantity <= 1}
+                        >
+                          −
+                        </QuantityButton>
+                        <QuantityDisplay>{setItem.quantity}</QuantityDisplay>
+                        <QuantityButton
+                          onClick={() => handleUpdateSetMenuItemQuantity(setItem.menuItemId, 1)}
+                        >
+                          +
+                        </QuantityButton>
+                      </SetItemQuantity>
+                      <RemoveButton onClick={() => handleRemoveSetMenuItem(setItem.menuItemId)}>
+                        Remove
+                      </RemoveButton>
+                    </SetItemRow>
+                  );
+                })}
               </SetItemsList>
             )}
             <div style={{ marginTop: '12px' }}>
               <FormLabel>Available Menu Items (select items to add to set)</FormLabel>
+              <FormInput
+                type="text"
+                value={setMenuSearchQuery}
+                onChange={(e) => setSetMenuSearchQuery(e.target.value)}
+                placeholder="Search by code or name..."
+                style={{ marginBottom: '12px' }}
+              />
               <MenuItemSelector>
                 {menuItems
                   .filter(item => !item.is_set_menu) // Don't show other set menus
+                  .filter(item => {
+                    if (!setMenuSearchQuery) return true;
+                    const query = setMenuSearchQuery.toLowerCase();
+                    const matchCode = item.code?.toLowerCase().includes(query);
+                    const matchName = item.name.toLowerCase().includes(query);
+                    return matchCode || matchName;
+                  })
                   .map(item => (
                     <MenuItemOption
                       key={item.id}
                       selected={setMenuItems.some(si => si.menuItemId === parseInt(item.id))}
                       onClick={() => handleAddSetMenuItem(parseInt(item.id))}
                     >
-                      <MenuItemOptionEmoji>{item.emoji || '🍽️'}</MenuItemOptionEmoji>
+                      {item.image ? (
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          style={{
+                            width: '48px',
+                            height: '48px',
+                            objectFit: 'cover',
+                            borderRadius: '8px',
+                            marginRight: '12px'
+                          }}
+                        />
+                      ) : (
+                        <MenuItemOptionEmoji>{item.emoji || '🍽️'}</MenuItemOptionEmoji>
+                      )}
                       <MenuItemOptionInfo>
-                        <MenuItemOptionName>{item.name}</MenuItemOptionName>
+                        <MenuItemOptionName>{item.code ? `${item.code} ` : ''}{item.name}</MenuItemOptionName>
                         <MenuItemOptionPrice>
                           RM {item.price.toFixed(2)} · {categories.find(c => c.id === item.category)?.name}
                         </MenuItemOptionPrice>
