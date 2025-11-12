@@ -292,6 +292,11 @@ router.patch('/:id/status', async (req, res) => {
       updateData.kitchen_ready = kitchen_ready;
     }
 
+    // Record served_at timestamp when status changes to 'served'
+    if (status === 'served' && order.status !== 'served') {
+      updateData.served_at = new Date();
+    }
+
     // If reverting to pending, reset all item statuses
     if (status === 'pending' && order.order_items) {
       try {

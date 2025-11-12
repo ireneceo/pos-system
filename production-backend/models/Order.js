@@ -29,6 +29,11 @@ Order.init({
     type: DataTypes.STRING(10),
     allowNull: true
   },
+  pager_number: {
+    type: DataTypes.STRING(10),
+    allowNull: true,
+    comment: 'Pager device number for order notification'
+  },
   total_amount: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false
@@ -125,6 +130,17 @@ Order.init({
     allowNull: true,
     defaultValue: 0,
     comment: 'Coupon discount amount'
+  },
+  takeaway_charge: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0,
+    comment: 'Takeaway charge amount'
+  },
+  served_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Timestamp when order status changed to served'
   }
 }, {
   sequelize: database.sequelize,

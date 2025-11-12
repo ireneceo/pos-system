@@ -274,46 +274,57 @@ Restaurant.init({
     comment: 'JSON settings for restaurant operations (timezone, opening hours, tax, service charge, etc.)',
     get() {
       const rawValue = this.getDataValue('operation_settings');
+      const defaultSettings = {
+        openingTime: '09:00',
+        closingTime: '22:00',
+        timeZone: 'Asia/Kuala_Lumpur',
+        orderNumberReset: 'daily',
+        defaultPreparationTime: 15,
+        taxEnabled: true,
+        taxRate: 6,
+        serviceChargeEnabled: false,
+        serviceChargeRate: 10,
+        pagerSystem: {
+          enabled: false,
+          totalPagers: 50
+        },
+        takeawayPricing: {
+          enabled: false,
+          pricingType: 'per-item',
+          perItemCharge: 0.50,
+          categoryCharges: {
+            food: 1.00,
+            beverage: 0.50,
+            dessert: 0.50,
+            other: 0.50
+          }
+        }
+      };
+
       if (!rawValue) {
-        return {
-          openingTime: '09:00',
-          closingTime: '22:00',
-          timeZone: 'Asia/Kuala_Lumpur',
-          orderNumberReset: 'daily',
-          defaultPreparationTime: 15,
-          taxEnabled: true,
-          taxRate: 6,
-          serviceChargeEnabled: false,
-          serviceChargeRate: 10
-        };
+        return defaultSettings;
       }
       try {
         const parsed = JSON.parse(rawValue);
-        // Add default values for new fields if not present
+        // Merge defaults with parsed values, ensuring nested objects are properly merged
         return {
-          openingTime: '09:00',
-          closingTime: '22:00',
-          timeZone: 'Asia/Kuala_Lumpur',
-          orderNumberReset: 'daily',
-          defaultPreparationTime: 15,
-          taxEnabled: true,
-          taxRate: 6,
-          serviceChargeEnabled: false,
-          serviceChargeRate: 10,
-          ...parsed
+          ...defaultSettings,
+          ...parsed,
+          pagerSystem: {
+            ...defaultSettings.pagerSystem,
+            ...(parsed.pagerSystem || {})
+          },
+          takeawayPricing: {
+            ...defaultSettings.takeawayPricing,
+            ...(parsed.takeawayPricing || {}),
+            categoryCharges: {
+              ...defaultSettings.takeawayPricing.categoryCharges,
+              ...((parsed.takeawayPricing && parsed.takeawayPricing.categoryCharges) || {})
+            }
+          }
         };
       } catch (e) {
-        return {
-          openingTime: '09:00',
-          closingTime: '22:00',
-          timeZone: 'Asia/Kuala_Lumpur',
-          orderNumberReset: 'daily',
-          defaultPreparationTime: 15,
-          taxEnabled: true,
-          taxRate: 6,
-          serviceChargeEnabled: false,
-          serviceChargeRate: 10
-        };
+        return defaultSettings;
       }
     },
     set(value) {
