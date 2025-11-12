@@ -2351,10 +2351,7 @@ const LiveOrdersPage: React.FC = () => {
                       </OrderNumber>
                       <CustomerInfo>
                         {order.customer_name || 'Guest'}<br />
-                        {order.customer_phone}
-                        {order.table_number && (
-                          <><br />Table: {order.table_number}</>
-                        )}
+                        {order.customer_phone || 'POS Terminal'}
                         {order.pager_number && (
                           <><br />Pager: {order.pager_number}</>
                         )}

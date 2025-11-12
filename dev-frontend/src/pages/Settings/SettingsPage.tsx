@@ -2503,11 +2503,14 @@ const SettingsPage: React.FC = () => {
                   <ToggleSwitch>
                     <ToggleInput
                       type="checkbox"
-                      checked={operationSettings.pagerSystem.enabled}
+                      checked={operationSettings?.pagerSystem?.enabled || false}
                       onChange={(e) => {
                         setOperationSettings(prev => ({
                           ...prev,
-                          pagerSystem: { ...prev.pagerSystem, enabled: e.target.checked }
+                          pagerSystem: {
+                            enabled: e.target.checked,
+                            totalPagers: prev?.pagerSystem?.totalPagers || 50
+                          }
                         }));
                         setHasChanges(true);
                       }}
@@ -2516,7 +2519,7 @@ const SettingsPage: React.FC = () => {
                   </ToggleSwitch>
                 </Toggle>
 
-                {operationSettings.pagerSystem.enabled && (
+                {operationSettings?.pagerSystem?.enabled && (
                   <>
                     <Divider />
                     <FormGroup>
@@ -2525,11 +2528,14 @@ const SettingsPage: React.FC = () => {
                         type="number"
                         min="1"
                         max="999"
-                        value={operationSettings.pagerSystem.totalPagers}
+                        value={operationSettings?.pagerSystem?.totalPagers || 50}
                         onChange={(e) => {
                           setOperationSettings(prev => ({
                             ...prev,
-                            pagerSystem: { ...prev.pagerSystem, totalPagers: Number(e.target.value) }
+                            pagerSystem: {
+                              enabled: prev?.pagerSystem?.enabled || false,
+                              totalPagers: Number(e.target.value)
+                            }
                           }));
                           setHasChanges(true);
                         }}

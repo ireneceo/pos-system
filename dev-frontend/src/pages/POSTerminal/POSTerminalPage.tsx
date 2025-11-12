@@ -1012,6 +1012,90 @@ const SelectedCustomerMeta = styled.div`
   color: #6B7C93;
 `;
 
+// Pager Search Components (same style as Customer Search)
+const PagerSearchContainer = styled.div`
+  position: relative;
+  width: 140px;
+`;
+
+const PagerSearchInput = styled.input`
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.15s;
+  box-sizing: border-box;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+
+  &:hover {
+    border-color: #D1D5DB;
+  }
+
+  &::placeholder {
+    color: #8898AA;
+  }
+`;
+
+const PagerSearchDropdown = styled.div<{ show: boolean }>`
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  display: ${props => props.show ? 'block' : 'none'};
+  margin-top: 4px;
+
+  /* 스크롤바 스타일 */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #F1F3F5;
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #CBD5E0;
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: #A0AEC0;
+  }
+`;
+
+const PagerSearchItem = styled.div`
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid #F1F3F5;
+  transition: background-color 0.2s;
+  font-size: 14px;
+  color: #0A2540;
+
+  &:hover {
+    background: #F8FAFC;
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
 const ClearCustomerBtn = styled.button`
   background: none;
   border: none;
@@ -1127,6 +1211,8 @@ const POSTerminalPage: React.FC = () => {
   const [tableNumber, setTableNumber] = useState('');
   const [availableTables, setAvailableTables] = useState<string[]>([]);
   const [pagerNumber, setPagerNumber] = useState('');
+  const [pagerSearchQuery, setPagerSearchQuery] = useState('');
+  const [showPagerDropdown, setShowPagerDropdown] = useState(false);
   const [showCustomAmountModal, setShowCustomAmountModal] = useState(false);
   // Staff login modal removed - authentication handled by ProtectedRoute
   const [showCustomPercentModal, setShowCustomPercentModal] = useState(false);
@@ -1384,7 +1470,44 @@ const POSTerminalPage: React.FC = () => {
     setSelectedCustomerForOrder(null);
     setCustomerSearchQuery('');
     setPagerNumber('');
+    setPagerSearchQuery('');
     setShowClearConfirm(false);
+  };
+
+  // Pager Search Handlers
+  const handlePagerSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setPagerSearchQuery(value);
+
+    // Also update pagerNumber directly when typing
+    setPagerNumber(value);
+
+    // Show dropdown if there's input
+    if (value.trim()) {
+      setShowPagerDropdown(true);
+    } else {
+      setShowPagerDropdown(false);
+    }
+  };
+
+  const handleSelectPager = (pagerNum: number) => {
+    setPagerNumber(pagerNum.toString());
+    setPagerSearchQuery(pagerNum.toString());
+    setShowPagerDropdown(false);
+  };
+
+  const getFilteredPagers = () => {
+    const total = operationSettings.pagerSystem.totalPagers;
+    const query = pagerSearchQuery.trim();
+
+    if (!query) {
+      // 입력이 없으면 전체 목록 표시
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+
+    // 입력값으로 시작하는 번호들 필터링
+    return Array.from({ length: total }, (_, i) => i + 1)
+      .filter(num => num.toString().startsWith(query));
   };
 
   const handleResetPOS = () => {
@@ -1399,6 +1522,7 @@ const POSTerminalPage: React.FC = () => {
     setOrderType('dine-in');
     setTableNumber('');
     setPagerNumber('');
+    setPagerSearchQuery('');
     setSearchQuery('');
     setSelectedCategory('all');
     setShowClearConfirm(false);
@@ -1646,6 +1770,7 @@ const POSTerminalPage: React.FC = () => {
       setCouponCode('');
       setTableNumber('');
       setPagerNumber('');
+      setPagerSearchQuery('');
       setSelectedCustomerForOrder(null);
       setCustomerSearchQuery('');
 
@@ -1792,6 +1917,7 @@ const POSTerminalPage: React.FC = () => {
       setCouponCode('');
       setTableNumber('');
       setPagerNumber('');
+      setPagerSearchQuery('');
       setSelectedCustomerForOrder(null);
       setCustomerSearchQuery('');
 
@@ -2295,22 +2421,36 @@ const POSTerminalPage: React.FC = () => {
           {operationSettings.pagerSystem.enabled && orderItems.length > 0 && (
             <TableNumberSection>
               <TableNumberLabel>Pager Number:</TableNumberLabel>
-              <TableNumberSelect
-                value={pagerNumber}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  // Allow only numbers and limit to 3 digits
-                  if (value === '' || (/^\d+$/.test(value) && Number(value) <= operationSettings.pagerSystem.totalPagers)) {
-                    setPagerNumber(value);
-                  }
-                }}
-                style={{ width: '120px' }}
-              >
-                <option value="">None</option>
-                {Array.from({ length: operationSettings.pagerSystem.totalPagers }, (_, i) => i + 1).map(num => (
-                  <option key={num} value={num}>{num}</option>
-                ))}
-              </TableNumberSelect>
+              <PagerSearchContainer>
+                <PagerSearchInput
+                  type="text"
+                  value={pagerSearchQuery}
+                  onChange={handlePagerSearchChange}
+                  onFocus={() => {
+                    if (pagerSearchQuery.trim() || !pagerNumber) {
+                      setShowPagerDropdown(true);
+                    }
+                  }}
+                  onBlur={() => setTimeout(() => setShowPagerDropdown(false), 200)}
+                  placeholder={pagerNumber ? `#${pagerNumber}` : "Type or click..."}
+                />
+                <PagerSearchDropdown show={showPagerDropdown}>
+                  {getFilteredPagers().length > 0 ? (
+                    getFilteredPagers().map(num => (
+                      <PagerSearchItem
+                        key={num}
+                        onClick={() => handleSelectPager(num)}
+                      >
+                        Pager #{num}
+                      </PagerSearchItem>
+                    ))
+                  ) : (
+                    <PagerSearchItem style={{ cursor: 'default', color: '#6B7C93' }}>
+                      No matching pagers
+                    </PagerSearchItem>
+                  )}
+                </PagerSearchDropdown>
+              </PagerSearchContainer>
             </TableNumberSection>
           )}
 

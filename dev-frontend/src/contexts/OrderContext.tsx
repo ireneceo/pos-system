@@ -117,6 +117,7 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
         customer_name: order.customer.name,
         customer_phone: order.customer.phone,
         table_number: order.tableNumber || null,
+        pager_number: (order as any).pagerNumber || null,
         total_amount: order.total,
         subtotal: order.subtotal,
         tax: order.tax,
