@@ -9,7 +9,7 @@ import {
 import styled, { createGlobalStyle } from 'styled-components';
 import { useStore } from '../../contexts/StoreContext';
 // OLD: import { printBill } from '../../utils/thermalPrinter';
-import { printBillViaRawBT } from '../../utils/billPrint';
+import { printBillViaRawBT, printKitchenTicketViaRawBT } from '../../utils/billPrint';
 import { formatDateTime as formatDateTimeUtil } from '../../utils/timezone';
 
 // Global print styles
@@ -278,10 +278,17 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
     // If failed, printBillViaRawBT already showed error message to user
   };
 
+  const handlePrintKitchenTicket = async () => {
+    await printKitchenTicketViaRawBT(orderData, storeInfo);
+  };
+
   const footer = (
     <>
       <Button variant="secondary" onClick={handlePrintBill}>
         Print Bill
+      </Button>
+      <Button variant="secondary" onClick={handlePrintKitchenTicket}>
+        Print Order Ticket
       </Button>
       <Button variant="primary" onClick={onClose}>
         Close

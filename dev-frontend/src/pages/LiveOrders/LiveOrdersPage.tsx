@@ -7,7 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import PaymentModal from '../../components/POSTerminal/PaymentModal';
 import { useStore } from '../../contexts/StoreContext';
 // OLD: import { printBill } from '../../utils/thermalPrinter';
-import { printBillViaRawBT, generateBillContent } from '../../utils/billPrint';
+import { printBillViaRawBT, generateBillContent, printKitchenTicketViaRawBT, generateKitchenTicketPreview } from '../../utils/billPrint';
 import { formatDateTime as formatDateTimeUtil, getTimeElapsed } from '../../utils/timezone';
 
 // Helper function to get fetch options with auth token
@@ -1125,6 +1125,7 @@ const LiveOrdersPage: React.FC = () => {
   const [showOrderCompleteModal, setShowOrderCompleteModal] = useState(false);
   const [completedOrderData, setCompletedOrderData] = useState<any>(null);
   const [showReceiptView, setShowReceiptView] = useState(false);
+  const [showKitchenTicketView, setShowKitchenTicketView] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -1754,6 +1755,7 @@ const LiveOrdersPage: React.FC = () => {
     setIsModalOpen(false);
     setSelectedOrder(null);
     setShowReceiptView(false);
+    setShowKitchenTicketView(false);
   };
 
   const handlePrintReceipt = async () => {
@@ -1852,6 +1854,48 @@ const LiveOrdersPage: React.FC = () => {
       const success = await printBillViaRawBT(orderData, storeInfo);
       if (success) {
         console.log('Bill printed successfully via RawBT');
+      }
+    }
+  };
+
+  const handlePrintKitchenTicket = async (order?: DbOrder) => {
+    const orderToPrint = order || selectedOrder;
+    if (orderToPrint) {
+      const storeInfo = getStoreInfo();
+      const orderItems = Array.isArray(orderToPrint.order_items) ? orderToPrint.order_items : [];
+
+      if (orderItems.length === 0) {
+        console.error('❌ No items found in order!');
+        alert('Cannot print: Order has no items.');
+        return;
+      }
+
+      const orderData = {
+        orderNumber: orderToPrint.order_number,
+        pickupNumber: orderToPrint.order_number.split('-')[1],
+        date: new Date(orderToPrint.order_date || orderToPrint.createdAt),
+        orderType: orderToPrint.order_type,
+        orderSource: (orderToPrint as any).order_source || 'pos',
+        tableNumber: orderToPrint.table_number || null,
+        pagerNumber: orderToPrint.pager_number || null,
+        customerName: orderToPrint.customer_name || 'Walk-in Customer',
+        items: orderItems.map((item: any) => ({
+          menuItem: {
+            name: item.menu_item_name || item.name || (item.menuItem && item.menuItem.name) || 'Unknown Item',
+            price: parseFloat(item.price || (item.menuItem && item.menuItem.price) || '0'),
+            is_set_menu: item.is_set_menu || false,
+            set_items: item.set_items || []
+          },
+          quantity: item.quantity || 1,
+          options: item.options || []
+        })),
+        notes: (orderToPrint as any).notes || '',
+        takeawayCharge: parseFloat((orderToPrint as any).takeaway_charge || '0')
+      };
+
+      const success = await printKitchenTicketViaRawBT(orderData, storeInfo);
+      if (success) {
+        console.log('Kitchen ticket printed successfully via RawBT');
       }
     }
   };
@@ -2503,6 +2547,17 @@ const LiveOrdersPage: React.FC = () => {
                         <IconButton
                           onClick={(e) => {
                             e.stopPropagation();
+                            handlePrintKitchenTicket(order);
+                          }}
+                          title="Print Kitchen Ticket"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                          </svg>
+                        </IconButton>
+                        <IconButton
+                          onClick={(e) => {
+                            e.stopPropagation();
                             handleDeleteOrder(order.id);
                           }}
                           title="Delete Order"
@@ -2528,11 +2583,62 @@ const LiveOrdersPage: React.FC = () => {
             {selectedOrder && (
               <>
                 <ModalHeader>
-                  <ModalTitle>{showReceiptView ? 'Receipt Preview' : `Order ${selectedOrder.order_number}`}</ModalTitle>
+                  <ModalTitle>
+                    {showReceiptView ? 'Receipt Preview' : showKitchenTicketView ? 'Kitchen Order Ticket Preview' : `Order ${selectedOrder.order_number}`}
+                  </ModalTitle>
                   <CloseButton onClick={handleCloseModal}>×</CloseButton>
                 </ModalHeader>
 
-                {showReceiptView ? (
+                {showKitchenTicketView ? (
+                  <ModalBody style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
+                    <div style={{
+                      width: '302px',
+                      padding: '20px',
+                      fontFamily: 'monospace',
+                      fontSize: '11px',
+                      lineHeight: '1.3',
+                      whiteSpace: 'pre',
+                      backgroundColor: '#ffffff',
+                      border: '2px solid #333',
+                      borderRadius: '4px',
+                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                      maxHeight: '600px',
+                      overflowY: 'auto',
+                      overflowX: 'hidden'
+                    }}>
+                      {(() => {
+                        const storeInfo = getStoreInfo();
+                        const orderItems = Array.isArray(selectedOrder.order_items) ? selectedOrder.order_items : [];
+
+                        const orderData = {
+                          orderNumber: selectedOrder.order_number,
+                          pickupNumber: selectedOrder.order_number.split('-')[1],
+                          date: new Date(selectedOrder.order_date || selectedOrder.createdAt),
+                          orderType: selectedOrder.order_type,
+                          orderSource: (selectedOrder as any).order_source || 'pos',
+                          tableNumber: selectedOrder.table_number || null,
+                          pagerNumber: selectedOrder.pager_number || null,
+                          customerName: selectedOrder.customer_name || 'Walk-in Customer',
+                          items: orderItems.map((item: any) => ({
+                            menuItem: {
+                              name: item.menu_item_name || item.name || 'Unknown Item',
+                              price: parseFloat(item.price || '0'),
+                              is_set_menu: item.is_set_menu || false,
+                              set_items: item.set_items || []
+                            },
+                            quantity: item.quantity || 1,
+                            options: item.options || []
+                          })),
+                          notes: (selectedOrder as any).notes || '',
+                          takeawayCharge: parseFloat((selectedOrder as any).takeaway_charge || '0')
+                        };
+
+                        const content = generateKitchenTicketPreview(orderData, storeInfo);
+                        return content.split('\n').map((line, i) => <div key={i}>{line || '\u00A0'}</div>);
+                      })()}
+                    </div>
+                  </ModalBody>
+                ) : showReceiptView ? (
                   <ModalBody style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
                     <div style={{
                       width: '302px',
@@ -2785,6 +2891,10 @@ const LiveOrdersPage: React.FC = () => {
                     <ActionButton onClick={() => setShowReceiptView(false)}>
                       Back to Order Details
                     </ActionButton>
+                  ) : showKitchenTicketView ? (
+                    <ActionButton onClick={() => setShowKitchenTicketView(false)}>
+                      Back to Order Details
+                    </ActionButton>
                   ) : (
                     <>
                       <ActionButton variant="secondary" onClick={handleCloseModal}>
@@ -2818,6 +2928,9 @@ const LiveOrdersPage: React.FC = () => {
                   )}
                   <ActionButton onClick={() => setShowReceiptView(true)} style={{ marginRight: '10px' }}>
                     View Receipt
+                  </ActionButton>
+                  <ActionButton onClick={() => setShowKitchenTicketView(true)} style={{ marginRight: '10px' }}>
+                    View Order Ticket
                   </ActionButton>
                   <ActionButton onClick={handlePrintReceipt}>
                     Print Bill
