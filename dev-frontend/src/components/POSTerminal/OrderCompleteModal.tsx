@@ -226,6 +226,7 @@ interface OrderCompleteModalProps {
   orderData: {
     orderNumber: string;
     pickupNumber?: string;
+    pagerNumber?: string;
     date: Date;
     items: Array<{
       id: string;
@@ -255,12 +256,12 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
   orderData,
   onPrintBill
 }) => {
-  const { getStoreInfo, companyInfo } = useStore();
+  const { getStoreInfo, operationSettings } = useStore();
   const storeInfo = getStoreInfo();
 
   // Format date/time with restaurant timezone
   const formatDateTime = (date?: Date | string) => {
-    return formatDateTimeUtil(date, (companyInfo as any)?.operation_settings);
+    return formatDateTimeUtil(date, operationSettings);
   };
 
   const handlePrintBill = async () => {
@@ -312,8 +313,24 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
               {orderData.pickupNumber || orderData.orderNumber.split('-')[1] || '000'}
             </div>
           </div>
+          {orderData.pagerNumber && (
+            <div style={{
+              background: '#10B981',
+              color: 'white',
+              borderRadius: '12px',
+              padding: '16px 24px',
+              margin: '0 auto 24px',
+              display: 'inline-block',
+              marginLeft: '16px'
+            }}>
+              <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>Pager Number</div>
+              <div style={{ fontSize: '36px', fontWeight: '700', lineHeight: 1 }}>
+                {orderData.pagerNumber}
+              </div>
+            </div>
+          )}
         </div>
-        
+
         <OrderDetails>
           <DetailRow>
             <DetailLabel>Date & Time</DetailLabel>
@@ -425,6 +442,11 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
           <div style={{ fontSize: '20px', fontWeight: 'bold', textAlign: 'center', margin: '10px 0' }}>
             PICKUP #{orderData.pickupNumber || orderData.orderNumber.split('-')[1] || '000'}
           </div>
+          {orderData.pagerNumber && (
+            <div style={{ fontSize: '16px', fontWeight: 'bold', textAlign: 'center', margin: '5px 0' }}>
+              PAGER #{orderData.pagerNumber}
+            </div>
+          )}
         </PrintSection>
 
         <PrintSection style={{ borderTop: '1px dashed #000', paddingTop: '10px' }}>

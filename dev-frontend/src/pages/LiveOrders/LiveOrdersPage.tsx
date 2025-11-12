@@ -53,6 +53,7 @@ interface DbOrder {
   customer_name: string | null;
   customer_phone: string | null;
   table_number: string | null;
+  pager_number: string | null;
   total_amount: number;
   status: 'awaiting_payment' | 'pending' | 'preparing' | 'ready' | 'served' | 'completed' | 'cancelled';
   order_type: 'dine_in' | 'takeaway' | 'delivery';
@@ -2353,6 +2354,9 @@ const LiveOrdersPage: React.FC = () => {
                         {order.customer_phone}
                         {order.table_number && (
                           <><br />Table: {order.table_number}</>
+                        )}
+                        {order.pager_number && (
+                          <><br />Pager: {order.pager_number}</>
                         )}
                       </CustomerInfo>
                     </TableCell>

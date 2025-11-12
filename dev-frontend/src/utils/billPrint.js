@@ -147,6 +147,10 @@ export function generateBillContent(orderData, storeInfo) {
     content += formatLine('Pickup #:', orderData.pickupNumber) + CMD.LINE_FEED;
   }
 
+  if (orderData.pagerNumber) {
+    content += formatLine('Pager #:', orderData.pagerNumber) + CMD.LINE_FEED;
+  }
+
   const dateStr = orderData.date.toLocaleDateString('en-MY');
   const timeStr = orderData.date.toLocaleTimeString('en-MY', {
     hour: '2-digit',

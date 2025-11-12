@@ -22,6 +22,10 @@ interface OperationSettings {
   taxRate: number;
   serviceChargeEnabled: boolean;
   serviceChargeRate: number;
+  pagerSystem: {
+    enabled: boolean;
+    totalPagers: number;
+  };
   takeawayPricing: {
     enabled: boolean;
     pricingType: 'per-item' | 'per-category';
@@ -65,6 +69,10 @@ const defaultOperationSettings: OperationSettings = {
   taxRate: 6,
   serviceChargeEnabled: false,
   serviceChargeRate: 10,
+  pagerSystem: {
+    enabled: false,
+    totalPagers: 50
+  },
   takeawayPricing: {
     enabled: false,
     pricingType: 'per-item',

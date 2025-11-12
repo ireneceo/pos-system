@@ -29,6 +29,11 @@ Order.init({
     type: DataTypes.STRING(10),
     allowNull: true
   },
+  pager_number: {
+    type: DataTypes.STRING(10),
+    allowNull: true,
+    comment: 'Pager device number for order notification'
+  },
   total_amount: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false

@@ -1126,6 +1126,7 @@ const POSTerminalPage: React.FC = () => {
   const [orderType, setOrderType] = useState<'dine-in' | 'takeaway'>('dine-in');
   const [tableNumber, setTableNumber] = useState('');
   const [availableTables, setAvailableTables] = useState<string[]>([]);
+  const [pagerNumber, setPagerNumber] = useState('');
   const [showCustomAmountModal, setShowCustomAmountModal] = useState(false);
   // Staff login modal removed - authentication handled by ProtectedRoute
   const [showCustomPercentModal, setShowCustomPercentModal] = useState(false);
@@ -1382,6 +1383,7 @@ const POSTerminalPage: React.FC = () => {
     setCouponCode('');
     setSelectedCustomerForOrder(null);
     setCustomerSearchQuery('');
+    setPagerNumber('');
     setShowClearConfirm(false);
   };
 
@@ -1396,6 +1398,7 @@ const POSTerminalPage: React.FC = () => {
     setCustomerSearchQuery('');
     setOrderType('dine-in');
     setTableNumber('');
+    setPagerNumber('');
     setSearchQuery('');
     setSelectedCategory('all');
     setShowClearConfirm(false);
@@ -1617,7 +1620,8 @@ const POSTerminalPage: React.FC = () => {
       paymentStatus: 'pending' as const,
       orderType: orderType,
       orderSource: 'pos' as const,
-      tableNumber: orderType === 'dine-in' && tableNumber ? tableNumber : undefined
+      tableNumber: orderType === 'dine-in' && tableNumber ? tableNumber : undefined,
+      pagerNumber: pagerNumber || undefined
     };
 
       console.log('🟡 Calling addOrder with orderNumber:', newOrder.orderNumber);
@@ -1629,7 +1633,8 @@ const POSTerminalPage: React.FC = () => {
       setCompletedOrderData({
         ...orderData,
         orderNumber: savedOrder?.order_number || savedOrder?.orderNumber || newOrder.orderNumber,
-        pickupNumber: savedOrder?.pickupNumber || (savedOrder?.order_number ? savedOrder.order_number.split('-')[1] : newOrder.pickupNumber)
+        pickupNumber: savedOrder?.pickupNumber || (savedOrder?.order_number ? savedOrder.order_number.split('-')[1] : newOrder.pickupNumber),
+        pagerNumber: savedOrder?.pager_number || pagerNumber || undefined
       });
       setShowOrderCompleteModal(true);
 
@@ -1640,6 +1645,7 @@ const POSTerminalPage: React.FC = () => {
       setAppliedDiscountPolicy(null);
       setCouponCode('');
       setTableNumber('');
+      setPagerNumber('');
       setSelectedCustomerForOrder(null);
       setCustomerSearchQuery('');
 
@@ -1742,7 +1748,8 @@ const POSTerminalPage: React.FC = () => {
       paymentStatus: 'completed' as const,
       orderType: orderType,
       orderSource: 'pos' as const,
-      tableNumber: orderType === 'dine-in' && tableNumber ? tableNumber : undefined
+      tableNumber: orderType === 'dine-in' && tableNumber ? tableNumber : undefined,
+      pagerNumber: pagerNumber || undefined
     };
 
       const savedOrder: any = await addOrder(newOrder, user?.restaurantId ? Number(user.restaurantId) : undefined);
@@ -1771,7 +1778,8 @@ const POSTerminalPage: React.FC = () => {
       setCompletedOrderData({
         ...orderData,
         orderNumber: savedOrder?.order_number || savedOrder?.orderNumber || '',
-        pickupNumber: savedOrder?.pickupNumber || (savedOrder?.order_number ? savedOrder.order_number.split('-')[1] : '')
+        pickupNumber: savedOrder?.pickupNumber || (savedOrder?.order_number ? savedOrder.order_number.split('-')[1] : ''),
+        pagerNumber: savedOrder?.pager_number || pagerNumber || undefined
       });
       setShowOrderCompleteModal(true);
       setShowPaymentModal(false);
@@ -1783,6 +1791,7 @@ const POSTerminalPage: React.FC = () => {
       setAppliedDiscountPolicy(null);
       setCouponCode('');
       setTableNumber('');
+      setPagerNumber('');
       setSelectedCustomerForOrder(null);
       setCustomerSearchQuery('');
 
@@ -2281,6 +2290,28 @@ const POSTerminalPage: React.FC = () => {
                 </DiscountRow>
               </DiscountSection>
             </ScrollableOrderContent>
+          )}
+
+          {operationSettings.pagerSystem.enabled && orderItems.length > 0 && (
+            <TableNumberSection>
+              <TableNumberLabel>Pager Number:</TableNumberLabel>
+              <TableNumberSelect
+                value={pagerNumber}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow only numbers and limit to 3 digits
+                  if (value === '' || (/^\d+$/.test(value) && Number(value) <= operationSettings.pagerSystem.totalPagers)) {
+                    setPagerNumber(value);
+                  }
+                }}
+                style={{ width: '120px' }}
+              >
+                <option value="">None</option>
+                {Array.from({ length: operationSettings.pagerSystem.totalPagers }, (_, i) => i + 1).map(num => (
+                  <option key={num} value={num}>{num}</option>
+                ))}
+              </TableNumberSelect>
+            </TableNumberSection>
           )}
 
           <OrderActions>

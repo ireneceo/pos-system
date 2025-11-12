@@ -432,6 +432,10 @@ interface OperationSettings {
   taxRate: number;
   serviceChargeEnabled: boolean;
   serviceChargeRate: number;
+  pagerSystem: {
+    enabled: boolean;
+    totalPagers: number;
+  };
   takeawayPricing: {
     enabled: boolean;
     pricingType: 'per-item' | 'per-category';
@@ -531,6 +535,10 @@ const SettingsPage: React.FC = () => {
         taxRate: 6,
         serviceChargeEnabled: false,
         serviceChargeRate: 10,
+        pagerSystem: {
+          enabled: false,
+          totalPagers: 50
+        },
         takeawayPricing: {
           enabled: false,
           pricingType: 'per-item',
@@ -661,6 +669,32 @@ const SettingsPage: React.FC = () => {
               console.log('✅ Loaded payment methods:', Object.keys(restaurant.payment_settings));
             } else {
               console.log('⚠️  No payment settings found in DB, using default values');
+            }
+
+            // Load operation settings from DB
+            if (restaurant.operation_settings) {
+              console.log('✅ Loading operation settings from DB:', restaurant.operation_settings);
+              // Merge with defaults to ensure all fields exist
+              const defaultOps = loadSettings().operations;
+              const mergedSettings = {
+                ...defaultOps,
+                ...restaurant.operation_settings,
+                pagerSystem: {
+                  ...defaultOps.pagerSystem,
+                  ...(restaurant.operation_settings.pagerSystem || {})
+                },
+                takeawayPricing: {
+                  ...defaultOps.takeawayPricing,
+                  ...(restaurant.operation_settings.takeawayPricing || {}),
+                  categoryCharges: {
+                    ...defaultOps.takeawayPricing.categoryCharges,
+                    ...((restaurant.operation_settings.takeawayPricing && restaurant.operation_settings.takeawayPricing.categoryCharges) || {})
+                  }
+                }
+              };
+              setOperationSettings(mergedSettings);
+            } else {
+              console.log('⚠️  No operation settings found in DB, using default values');
             }
           }
         } catch (error) {
@@ -2461,7 +2495,54 @@ const SettingsPage: React.FC = () => {
                   </>
                 )}
               </SettingsCard>
-              
+
+              <SettingsCard style={{ gridColumn: '1 / -1' }}>
+                <CardTitle>Pager System Settings</CardTitle>
+                <Toggle>
+                  <ToggleLabel>Enable Pager System</ToggleLabel>
+                  <ToggleSwitch>
+                    <ToggleInput
+                      type="checkbox"
+                      checked={operationSettings.pagerSystem.enabled}
+                      onChange={(e) => {
+                        setOperationSettings(prev => ({
+                          ...prev,
+                          pagerSystem: { ...prev.pagerSystem, enabled: e.target.checked }
+                        }));
+                        setHasChanges(true);
+                      }}
+                    />
+                    <ToggleSlider />
+                  </ToggleSwitch>
+                </Toggle>
+
+                {operationSettings.pagerSystem.enabled && (
+                  <>
+                    <Divider />
+                    <FormGroup>
+                      <Label>Total Number of Pagers</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="999"
+                        value={operationSettings.pagerSystem.totalPagers}
+                        onChange={(e) => {
+                          setOperationSettings(prev => ({
+                            ...prev,
+                            pagerSystem: { ...prev.pagerSystem, totalPagers: Number(e.target.value) }
+                          }));
+                          setHasChanges(true);
+                        }}
+                      />
+                    </FormGroup>
+                    <HelpText>
+                      Set the total number of pager devices available in your restaurant.
+                      The POS Terminal will allow staff to assign pager numbers to orders.
+                    </HelpText>
+                  </>
+                )}
+              </SettingsCard>
+
               <SettingsCard style={{ gridColumn: '1 / -1' }}>
                 <CardTitle>Table Management</CardTitle>
                 <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
