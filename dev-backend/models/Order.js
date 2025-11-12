@@ -131,6 +131,11 @@ Order.init({
     allowNull: true,
     defaultValue: 0,
     comment: 'Takeaway charge amount'
+  },
+  served_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Timestamp when order status changed to served'
   }
 }, {
   sequelize: database.sequelize,

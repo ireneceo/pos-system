@@ -61,6 +61,7 @@ interface DbOrder {
   kitchen_ready?: boolean;
   order_date: string;
   order_items: any;
+  served_at?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -402,6 +403,36 @@ const TabBadge = styled.span`
   border-radius: 10px;
   font-size: 12px;
   font-weight: 600;
+`;
+
+const StatisticsBar = styled.div`
+  background: #F8FAFC;
+  border-radius: 8px;
+  border: 1px solid #E6EBF1;
+  padding: 12px 20px;
+  margin: 16px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  font-size: 13px;
+  color: #6B7280;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+  @media (max-width: 768px) {
+    gap: 10px;
+    padding: 10px 14px;
+    font-size: 11px;
+  }
+`;
+
+const StatItem = styled.span`
+  white-space: nowrap;
+
+  strong {
+    color: #0A2540;
+    font-weight: 600;
+    margin-left: 4px;
+  }
 `;
 
 const OrdersCard = styled.div`
@@ -1573,6 +1604,60 @@ const LiveOrdersPage: React.FC = () => {
     });
   };
 
+  // Calculate statistics from filtered orders
+  const calculateStatistics = () => {
+    const orders = getFilteredOrdersByTab();
+
+    if (orders.length === 0) {
+      return {
+        totalSales: 0,
+        avgOrderAmount: 0,
+        maxOrderAmount: 0,
+        ordersAbove20Percent: 0,
+        avgServeTime: 0,
+        maxServeTime: 0,
+        minServeTime: 0
+      };
+    }
+
+    // Calculate sales
+    const totalSales = orders.reduce((sum, order) => sum + parseFloat(order.total_amount.toString()), 0);
+    const avgOrderAmount = totalSales / orders.length;
+    const maxOrderAmount = Math.max(...orders.map(o => parseFloat(o.total_amount.toString())));
+
+    // Calculate percentage of orders >= RM 20
+    const ordersAbove20 = orders.filter(o => parseFloat(o.total_amount.toString()) >= 20).length;
+    const ordersAbove20Percent = (ordersAbove20 / orders.length) * 100;
+
+    // Calculate serve times (only for orders that have been served)
+    const servedOrders = orders.filter(o => o.served_at && o.createdAt);
+    let avgServeTime = 0;
+    let maxServeTime = 0;
+    let minServeTime = 0;
+
+    if (servedOrders.length > 0) {
+      const serveTimes = servedOrders.map(o => {
+        const created = new Date(o.createdAt).getTime();
+        const served = new Date(o.served_at!).getTime();
+        return (served - created) / 1000 / 60; // Convert to minutes
+      });
+
+      avgServeTime = serveTimes.reduce((sum, time) => sum + time, 0) / serveTimes.length;
+      maxServeTime = Math.max(...serveTimes);
+      minServeTime = Math.min(...serveTimes);
+    }
+
+    return {
+      totalSales,
+      avgOrderAmount,
+      maxOrderAmount,
+      ordersAbove20Percent,
+      avgServeTime,
+      maxServeTime,
+      minServeTime
+    };
+  };
+
   const getStatusCount = (status: string) => {
     const dateFiltered = getFilteredOrders();
 
@@ -2221,6 +2306,23 @@ const LiveOrdersPage: React.FC = () => {
             </StatusTab>
           </StatusTabs>
 
+          <StatisticsBar>
+            {(() => {
+              const stats = calculateStatistics();
+              return (
+                <>
+                  <StatItem>Total Sales <strong>RM{stats.totalSales.toFixed(2)}</strong></StatItem>
+                  <StatItem>Avg <strong>RM{stats.avgOrderAmount.toFixed(2)}</strong></StatItem>
+                  <StatItem>Max <strong>RM{stats.maxOrderAmount.toFixed(2)}</strong></StatItem>
+                  <StatItem>≥RM20 <strong>{stats.ordersAbove20Percent.toFixed(1)}%</strong></StatItem>
+                  <StatItem>Avg Serve <strong>{stats.avgServeTime.toFixed(1)}m</strong></StatItem>
+                  <StatItem>Max Serve <strong>{stats.maxServeTime.toFixed(1)}m</strong></StatItem>
+                  <StatItem>Min Serve <strong>{stats.minServeTime.toFixed(1)}m</strong></StatItem>
+                </>
+              );
+            })()}
+          </StatisticsBar>
+
           <OrdersCard>
           {getFilteredOrdersByTab().length > 0 ? (
             <OrdersTable>
@@ -2279,11 +2381,25 @@ const LiveOrdersPage: React.FC = () => {
                     <TableCell data-label="TIME">
                       <TimeInfo>
                         {formatDateTime(order.createdAt || order.order_date)}<br />
-                        {/* TimeAgoDisplay 컴포넌트 사용 - 각 주문마다 독립적으로 시간 계산 */}
-                        <TimeAgoDisplay 
-                          key={`time-${order.id}-${timeDisplayKey}`}
-                          dateString={order.createdAt || order.order_date || ''}
-                        />
+                        {/* Show elapsed time only if not served yet */}
+                        {!order.served_at && (
+                          <TimeAgoDisplay
+                            key={`time-${order.id}-${timeDisplayKey}`}
+                            dateString={order.createdAt || order.order_date || ''}
+                          />
+                        )}
+                        {/* Show served time for served and completed orders */}
+                        {order.served_at && (
+                          <span style={{ fontSize: '11px', color: '#0A2540' }}>
+                            Served: {formatDateTime(order.served_at)}
+                            {(() => {
+                              const orderTime = new Date(order.createdAt || order.order_date).getTime();
+                              const servedTime = new Date(order.served_at).getTime();
+                              const diffMinutes = Math.round((servedTime - orderTime) / 1000 / 60);
+                              return ` (${diffMinutes}min)`;
+                            })()}
+                          </span>
+                        )}
                       </TimeInfo>
                     </TableCell>
                     <TableCell data-label="AMOUNT">
