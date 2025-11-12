@@ -2416,16 +2416,21 @@ const LiveOrdersPage: React.FC = () => {
                 </ModalHeader>
 
                 {showReceiptView ? (
-                  <ModalBody>
+                  <ModalBody style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
                     <div style={{
+                      width: '302px',
                       padding: '20px',
                       fontFamily: 'monospace',
-                      whiteSpace: 'pre-wrap',
-                      backgroundColor: '#f5f5f5',
-                      border: '1px solid #ddd',
+                      fontSize: '11px',
+                      lineHeight: '1.3',
+                      whiteSpace: 'pre',
+                      backgroundColor: '#ffffff',
+                      border: '2px solid #333',
                       borderRadius: '4px',
-                      maxHeight: '500px',
-                      overflowY: 'auto'
+                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                      maxHeight: '600px',
+                      overflowY: 'auto',
+                      overflowX: 'hidden'
                     }}>
                       {(() => {
                         const storeInfo = getStoreInfo();
@@ -2449,6 +2454,7 @@ const LiveOrdersPage: React.FC = () => {
                             code: (selectedOrder as any).coupon_code,
                             discount: parseFloat((selectedOrder as any).coupon_discount || '0')
                           } : null,
+                          takeawayCharge: parseFloat((selectedOrder as any).takeaway_charge || '0'),
                           serviceCharge: parseFloat((selectedOrder as any).service_charge || '0'),
                           serviceChargeRate: parseFloat((selectedOrder as any).service_charge_rate || '10'),
                           tax: parseFloat((selectedOrder as any).tax || '0'),
@@ -2461,8 +2467,16 @@ const LiveOrdersPage: React.FC = () => {
 
                         // Generate bill content and remove ESC/POS control characters for display
                         const billContent = generateBillContent(orderData, storeInfo);
-                        // Remove all ESC/POS control sequences (up to 3 bytes: control char + command + optional param)
-                        return billContent.replace(/[\x1B\x1D].{1,2}/g, '');
+                        // Remove all ESC/POS control sequences
+                        // ESC sequences: \x1B followed by 1-3 characters
+                        // GS sequences: \x1D followed by 1-3 characters
+                        return billContent
+                          .replace(/\x1B[@E][\x00\x01]/g, '')  // INIT, BOLD ON/OFF
+                          .replace(/\x1Ba[\x00-\x02]/g, '')    // ALIGN LEFT/CENTER/RIGHT
+                          .replace(/\x1D![\x00-\x11]/g, '')    // TEXT SIZE
+                          .replace(/\x1DB[\x00\x01]/g, '')     // REVERSE ON/OFF
+                          .replace(/\x1DV\x41\x00/g, '')       // PAPER CUT
+                          .replace(/[\x1B\x1D]./g, '');        // Any remaining ESC/GS sequences
                       })()}
                     </div>
                   </ModalBody>
@@ -2635,10 +2649,10 @@ const LiveOrdersPage: React.FC = () => {
                         <span>RM {Number((selectedOrder as any).tax).toFixed(2)}</span>
                       </TotalRow>
                     )}
-                    {Number((selectedOrder as any).takeaway_charge || 0) > 0 && (
+                    {parseFloat((selectedOrder as any).takeaway_charge || 0) > 0 && (
                       <TotalRow>
                         <span>Takeaway Charge</span>
-                        <span>RM {Number((selectedOrder as any).takeaway_charge).toFixed(2)}</span>
+                        <span>RM {parseFloat((selectedOrder as any).takeaway_charge).toFixed(2)}</span>
                       </TotalRow>
                     )}
                     <TotalRow isTotal>
@@ -2813,10 +2827,10 @@ const LiveOrdersPage: React.FC = () => {
                   <span>-RM {Number((selectedOrder as any).coupon_discount).toFixed(2)}</span>
                 </BillRow>
               )}
-              {Number((selectedOrder as any).takeaway_charge || 0) > 0 && (
+              {parseFloat((selectedOrder as any).takeaway_charge || 0) > 0 && (
                 <BillRow>
                   <span>Takeaway Charge:</span>
-                  <span>RM {Number((selectedOrder as any).takeaway_charge).toFixed(2)}</span>
+                  <span>RM {parseFloat((selectedOrder as any).takeaway_charge).toFixed(2)}</span>
                 </BillRow>
               )}
               {(selectedOrder as any).service_charge > 0 && (

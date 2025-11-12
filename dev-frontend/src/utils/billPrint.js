@@ -32,6 +32,10 @@ const CMD = {
   BOLD_ON: ESC + 'E' + '\x01',
   BOLD_OFF: ESC + 'E' + '\x00',
 
+  // Reverse mode (white text on black background)
+  REVERSE_ON: GS + 'B' + '\x01',
+  REVERSE_OFF: GS + 'B' + '\x00',
+
   // Line feed
   LINE_FEED: '\n',
 
@@ -94,6 +98,22 @@ export function generateBillContent(orderData, storeInfo) {
 
   // Initialize printer
   content += CMD.INIT;
+
+  // === TAKEAWAY INDICATOR (if applicable) ===
+  if (orderData.takeawayCharge && orderData.takeawayCharge > 0) {
+    content += CMD.ALIGN_CENTER;
+    content += CMD.TEXT_DOUBLE;
+    content += CMD.BOLD_ON;
+    content += CMD.REVERSE_ON;
+    content += '                                ' + CMD.LINE_FEED;
+    content += '        ** TAKEAWAY **          ' + CMD.LINE_FEED;
+    content += '                                ' + CMD.LINE_FEED;
+    content += CMD.REVERSE_OFF;
+    content += CMD.BOLD_OFF;
+    content += CMD.TEXT_NORMAL;
+    content += CMD.LINE_FEED;
+    content += CMD.LINE_FEED;
+  }
 
   // === HEADER ===
   content += CMD.ALIGN_CENTER;
@@ -179,6 +199,10 @@ export function generateBillContent(orderData, storeInfo) {
     content += formatLine('Coupon (' + orderData.coupon.code + '):', '- RM ' + orderData.coupon.discount.toFixed(2)) + CMD.LINE_FEED;
   }
 
+  if (orderData.takeawayCharge && orderData.takeawayCharge > 0) {
+    content += formatLine('Takeaway Charge:', 'RM ' + orderData.takeawayCharge.toFixed(2)) + CMD.LINE_FEED;
+  }
+
   if (orderData.serviceCharge && orderData.serviceCharge > 0) {
     const scLabel = 'Service Charge (' + (orderData.serviceChargeRate || 10) + '%):';
     content += formatLine(scLabel, 'RM ' + orderData.serviceCharge.toFixed(2)) + CMD.LINE_FEED;
@@ -237,25 +261,17 @@ export function generateBillContent(orderData, storeInfo) {
  */
 export async function printBillViaRawBT(orderData, storeInfo) {
   try {
-    console.log('🖨️ Starting RawBT bill print (Intent method)...');
-    console.log('📦 Order:', orderData.orderNumber, '| Total: RM', orderData.total);
-    console.log('🏪 Store Info:', storeInfo);
-
     // Generate ESC/POS content
     const escposContent = generateBillContent(orderData, storeInfo);
-    console.log('📄 ESC/POS content generated:', escposContent.length, 'chars');
 
     // Convert to Base64 using proper encoding
     // Use unescape + encodeURIComponent for Korean/special characters
     const base64Content = btoa(unescape(encodeURIComponent(escposContent)));
-    console.log('🔐 Base64 encoded:', base64Content.length, 'chars');
 
     // Build Android Intent URL for RawBT
     const intentScheme = '#Intent;scheme=rawbt;';
     const intentPackage = 'package=ru.a402d.rawbtprinter;end;';
     const intentUrl = 'intent:base64,' + base64Content + intentScheme + intentPackage;
-
-    console.log('🔗 RawBT Intent URL created');
 
     // Open RawBT app via Intent using hidden iframe
     // This prevents the page from navigating away
@@ -268,8 +284,6 @@ export async function printBillViaRawBT(orderData, storeInfo) {
     setTimeout(() => {
       document.body.removeChild(iframe);
     }, 1000);
-
-    console.log('✅ RawBT app opened via hidden iframe (page stays)');
 
     return true;
 

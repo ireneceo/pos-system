@@ -360,7 +360,7 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
             <DetailLabel>Subtotal</DetailLabel>
             <DetailValue>RM {orderData.subtotal.toFixed(2)}</DetailValue>
           </DetailRow>
-          {orderData.takeawayCharge && orderData.takeawayCharge > 0 && (
+          {(orderData.takeawayCharge || 0) > 0 && (
             <DetailRow>
               <DetailLabel>Takeaway Charge</DetailLabel>
               <DetailValue>RM {orderData.takeawayCharge.toFixed(2)}</DetailValue>
@@ -464,7 +464,7 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
             <span>Subtotal:</span>
             <span>RM {orderData.subtotal.toFixed(2)}</span>
           </PrintRow>
-          {orderData.takeawayCharge && orderData.takeawayCharge > 0 && (
+          {(orderData.takeawayCharge || 0) > 0 && (
             <PrintRow>
               <span>Takeaway Charge:</span>
               <span>RM {orderData.takeawayCharge.toFixed(2)}</span>
