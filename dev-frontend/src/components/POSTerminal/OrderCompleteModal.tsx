@@ -360,34 +360,34 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
             <DetailLabel>Subtotal</DetailLabel>
             <DetailValue>RM {orderData.subtotal.toFixed(2)}</DetailValue>
           </DetailRow>
-          {(orderData.takeawayCharge || 0) > 0 && (
+          {orderData.takeawayCharge && Number(orderData.takeawayCharge) > 0 && (
             <DetailRow>
               <DetailLabel>Takeaway Charge</DetailLabel>
-              <DetailValue>RM {orderData.takeawayCharge.toFixed(2)}</DetailValue>
+              <DetailValue>RM {Number(orderData.takeawayCharge).toFixed(2)}</DetailValue>
             </DetailRow>
           )}
-          {orderData.discount > 0 && (
+          {orderData.discount && Number(orderData.discount) > 0 && (
             <DetailRow>
               <DetailLabel>Discount</DetailLabel>
-              <DetailValue style={{ color: '#10B981' }}>-RM {orderData.discount.toFixed(2)}</DetailValue>
+              <DetailValue style={{ color: '#10B981' }}>-RM {Number(orderData.discount).toFixed(2)}</DetailValue>
             </DetailRow>
           )}
-          {orderData.coupon && (
+          {orderData.coupon && orderData.coupon.discount && Number(orderData.coupon.discount) > 0 && (
             <DetailRow>
               <DetailLabel>Coupon ({orderData.coupon.code})</DetailLabel>
-              <DetailValue style={{ color: '#10B981' }}>-RM {orderData.coupon.discount.toFixed(2)}</DetailValue>
+              <DetailValue style={{ color: '#10B981' }}>-RM {Number(orderData.coupon.discount).toFixed(2)}</DetailValue>
             </DetailRow>
           )}
-          {orderData.serviceCharge && orderData.serviceCharge > 0 && (
+          {orderData.serviceCharge && Number(orderData.serviceCharge) > 0 && (
             <DetailRow>
               <DetailLabel>Service Charge ({orderData.serviceChargeRate || 10}%)</DetailLabel>
-              <DetailValue>RM {orderData.serviceCharge.toFixed(2)}</DetailValue>
+              <DetailValue>RM {Number(orderData.serviceCharge).toFixed(2)}</DetailValue>
             </DetailRow>
           )}
-          {orderData.tax > 0 && (
+          {orderData.tax && Number(orderData.tax) > 0 && (
             <DetailRow>
               <DetailLabel>Tax ({orderData.taxRate || 6}%)</DetailLabel>
-              <DetailValue>RM {orderData.tax.toFixed(2)}</DetailValue>
+              <DetailValue>RM {Number(orderData.tax).toFixed(2)}</DetailValue>
             </DetailRow>
           )}
         </Section>
@@ -464,34 +464,34 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
             <span>Subtotal:</span>
             <span>RM {orderData.subtotal.toFixed(2)}</span>
           </PrintRow>
-          {(orderData.takeawayCharge || 0) > 0 && (
+          {orderData.takeawayCharge && Number(orderData.takeawayCharge) > 0 && (
             <PrintRow>
               <span>Takeaway Charge:</span>
-              <span>RM {orderData.takeawayCharge.toFixed(2)}</span>
+              <span>RM {Number(orderData.takeawayCharge).toFixed(2)}</span>
             </PrintRow>
           )}
-          {orderData.discount > 0 && (
+          {orderData.discount && Number(orderData.discount) > 0 && (
             <PrintRow>
               <span>Discount:</span>
-              <span>-RM {orderData.discount.toFixed(2)}</span>
+              <span>-RM {Number(orderData.discount).toFixed(2)}</span>
             </PrintRow>
           )}
-          {orderData.coupon && (
+          {orderData.coupon && orderData.coupon.discount && Number(orderData.coupon.discount) > 0 && (
             <PrintRow>
               <span>Coupon ({orderData.coupon.code}):</span>
-              <span>-RM {orderData.coupon.discount.toFixed(2)}</span>
+              <span>-RM {Number(orderData.coupon.discount).toFixed(2)}</span>
             </PrintRow>
           )}
-          {orderData.serviceCharge && orderData.serviceCharge > 0 && (
+          {orderData.serviceCharge && Number(orderData.serviceCharge) > 0 && (
             <PrintRow>
               <span>Service Charge ({orderData.serviceChargeRate || 10}%):</span>
-              <span>RM {orderData.serviceCharge.toFixed(2)}</span>
+              <span>RM {Number(orderData.serviceCharge).toFixed(2)}</span>
             </PrintRow>
           )}
-          {orderData.tax > 0 && (
+          {orderData.tax && Number(orderData.tax) > 0 && (
             <PrintRow>
               <span>Tax ({orderData.taxRate || 6}%):</span>
-              <span>RM {orderData.tax.toFixed(2)}</span>
+              <span>RM {Number(orderData.tax).toFixed(2)}</span>
             </PrintRow>
           )}
           <PrintRow style={{ borderTop: '1px solid #000', paddingTop: '5px', fontSize: '14px', fontWeight: 'bold' }}>

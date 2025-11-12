@@ -1078,11 +1078,18 @@ interface MenuItemType {
   optionGroups?: string[];
 }
 
+interface SelectedOption {
+  id: string;
+  name: string;
+  price: number;
+}
+
 interface OrderItemType {
   id: string;
   menuItem: MenuItemType;
   quantity: number;
-  options?: string[];
+  options?: string[];  // For display purposes (option names)
+  selectedOptions?: SelectedOption[];  // For price calculation
 }
 
 const POSTerminalPage: React.FC = () => {
@@ -1303,7 +1310,7 @@ const POSTerminalPage: React.FC = () => {
     setShowOptionModal(true);
   };
 
-  const handleConfirmOptions = (quantity: number, selectedOptions: string[]) => {
+  const handleConfirmOptions = (quantity: number, selectedOptions: string[], selectedOptionsData: SelectedOption[]) => {
     if (!selectedMenuItem) return;
 
     // For set menus, add set items to options array (for display purposes)
@@ -1338,7 +1345,8 @@ const POSTerminalPage: React.FC = () => {
         id: `order-${Date.now()}`,
         menuItem: selectedMenuItem,
         quantity: quantity,
-        options: finalOptions.length > 0 ? finalOptions : undefined
+        options: finalOptions.length > 0 ? finalOptions : undefined,
+        selectedOptions: selectedOptionsData
       }]);
     }
 
@@ -1570,28 +1578,40 @@ const POSTerminalPage: React.FC = () => {
         loyaltyTier: selectedCustomerForOrder?.loyaltyTier,
         points: selectedCustomerForOrder?.points
       },
-      items: orderItems.map(item => ({
-        id: item.id,
-        menuItem: {
-          id: item.menuItem.id,
-          name: item.menuItem.code ? `${item.menuItem.code} ${item.menuItem.name}` : item.menuItem.name,
-          price: item.menuItem.price,
-          emoji: item.menuItem.emoji,
-          is_set_menu: item.menuItem.is_set_menu,
-          set_items: item.menuItem.set_items
-        },
-        quantity: item.quantity,
-        options: item.options,
-        is_set_menu: item.menuItem.is_set_menu || false,
-        set_items: item.menuItem.set_items || []
-      })),
+      items: orderItems.map(item => {
+        // Calculate item price including options
+        let itemPrice = item.menuItem.price;
+        if (item.selectedOptions && item.selectedOptions.length > 0) {
+          const optionsTotal = item.selectedOptions.reduce((sum, opt) => sum + opt.price, 0);
+          itemPrice += optionsTotal;
+        }
+        return {
+          id: item.id,
+          menuItem: {
+            id: item.menuItem.id,
+            name: item.menuItem.code ? `${item.menuItem.code} ${item.menuItem.name}` : item.menuItem.name,
+            price: itemPrice,  // Include option prices in the item price
+            emoji: item.menuItem.emoji,
+            is_set_menu: item.menuItem.is_set_menu,
+            set_items: item.menuItem.set_items
+          },
+          quantity: item.quantity,
+          options: item.options,
+          is_set_menu: item.menuItem.is_set_menu || false,
+          set_items: item.menuItem.set_items || []
+        };
+      }),
       status: 'pending' as const,
       createdAt: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
       subtotal,
       tax,
+      taxRate: operationSettings.taxRate,
+      serviceCharge,
+      serviceChargeRate: operationSettings.serviceChargeRate,
       discount: discountAmount,
       coupon: appliedCoupon ? { code: appliedCoupon.code, amount: appliedCoupon.discount } : undefined,
       discountPolicy: appliedDiscountPolicy ? { name: appliedDiscountPolicy.name, amount: appliedDiscountPolicy.discount } : undefined,
+      takeawayCharge: takeawayCharge,
       total,
       paymentMethod: 'Pending',
       paymentStatus: 'pending' as const,
@@ -1683,21 +1703,29 @@ const POSTerminalPage: React.FC = () => {
         loyaltyTier: selectedCustomerForOrder?.loyaltyTier,
         points: selectedCustomerForOrder?.points
       },
-      items: orderItems.map(item => ({
-        id: item.id,
-        menuItem: {
-          id: item.menuItem.id,
-          name: item.menuItem.code ? `${item.menuItem.code} ${item.menuItem.name}` : item.menuItem.name,
-          price: item.menuItem.price,
-          emoji: item.menuItem.emoji,
-          is_set_menu: item.menuItem.is_set_menu,
-          set_items: item.menuItem.set_items
-        },
-        quantity: item.quantity,
-        options: item.options,
-        is_set_menu: item.menuItem.is_set_menu || false,
-        set_items: item.menuItem.set_items || []
-      })),
+      items: orderItems.map(item => {
+        // Calculate item price including options
+        let itemPrice = item.menuItem.price;
+        if (item.selectedOptions && item.selectedOptions.length > 0) {
+          const optionsTotal = item.selectedOptions.reduce((sum, opt) => sum + opt.price, 0);
+          itemPrice += optionsTotal;
+        }
+        return {
+          id: item.id,
+          menuItem: {
+            id: item.menuItem.id,
+            name: item.menuItem.code ? `${item.menuItem.code} ${item.menuItem.name}` : item.menuItem.name,
+            price: itemPrice,  // Include option prices in the item price
+            emoji: item.menuItem.emoji,
+            is_set_menu: item.menuItem.is_set_menu,
+            set_items: item.menuItem.set_items
+          },
+          quantity: item.quantity,
+          options: item.options,
+          is_set_menu: item.menuItem.is_set_menu || false,
+          set_items: item.menuItem.set_items || []
+        };
+      }),
       status: 'pending' as const,
       createdAt: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
       subtotal,
@@ -1768,7 +1796,15 @@ const POSTerminalPage: React.FC = () => {
   };
 
   const calculateTotal = () => {
-    const subtotal = orderItems.reduce((sum, item) => sum + (item.menuItem.price * item.quantity), 0);
+    const subtotal = orderItems.reduce((sum, item) => {
+      let itemTotal = item.menuItem.price * item.quantity;
+      // Add option prices
+      if (item.selectedOptions && item.selectedOptions.length > 0) {
+        const optionsTotal = item.selectedOptions.reduce((optSum, opt) => optSum + opt.price, 0);
+        itemTotal += optionsTotal * item.quantity;
+      }
+      return sum + itemTotal;
+    }, 0);
     
     // Calculate takeaway charges if applicable
     let takeawayCharge = 0;
@@ -2106,7 +2142,14 @@ const POSTerminalPage: React.FC = () => {
                         </QuantityBtn>
                       </QuantityControl>
                       <ItemPrice>
-                        RM {(item.menuItem.price * item.quantity).toFixed(2)}
+                        RM {(() => {
+                          let itemTotal = item.menuItem.price * item.quantity;
+                          if (item.selectedOptions && item.selectedOptions.length > 0) {
+                            const optionsTotal = item.selectedOptions.reduce((sum, opt) => sum + opt.price, 0);
+                            itemTotal += optionsTotal * item.quantity;
+                          }
+                          return itemTotal.toFixed(2);
+                        })()}
                       </ItemPrice>
                       <DeleteBtn onClick={() => handleDeleteItem(item.id)}>
                         ×

@@ -38,6 +38,12 @@ interface OptionGroup {
   options: Option[];
 }
 
+interface SelectedOptionData {
+  id: string;
+  name: string;
+  price: number;
+}
+
 interface OptionModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -49,7 +55,7 @@ interface OptionModalProps {
     image?: string;
     optionGroups?: string[];
   };
-  onConfirm: (quantity: number, selectedOptions: string[]) => void;
+  onConfirm: (quantity: number, selectedOptions: string[], selectedOptionsData: SelectedOptionData[]) => void;
 }
 
 const OptionModal: React.FC<OptionModalProps> = ({ isOpen, onClose, menuItem, onConfirm }) => {
@@ -117,8 +123,15 @@ const OptionModal: React.FC<OptionModalProps> = ({ isOpen, onClose, menuItem, on
           .find(o => o.id === optionId);
         return option ? option.name : '';
       }).filter(Boolean);
-      
-      onConfirm(quantity, selectedOptionNames);
+
+      const selectedOptionsData: SelectedOptionData[] = selectedOptions.map(optionId => {
+        const option = availableOptionGroups
+          .flatMap(g => g.options)
+          .find(o => o.id === optionId);
+        return option ? { id: option.id, name: option.name, price: option.price } : null;
+      }).filter((opt): opt is SelectedOptionData => opt !== null);
+
+      onConfirm(quantity, selectedOptionNames, selectedOptionsData);
       // Reset state
       setQuantity(1);
       setSelectedOptions([]);
