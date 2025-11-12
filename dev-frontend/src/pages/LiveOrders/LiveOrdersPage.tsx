@@ -2635,7 +2635,7 @@ const LiveOrdersPage: React.FC = () => {
                         <span>RM {Number((selectedOrder as any).tax).toFixed(2)}</span>
                       </TotalRow>
                     )}
-                    {(selectedOrder as any).takeaway_charge > 0 && (
+                    {Number((selectedOrder as any).takeaway_charge || 0) > 0 && (
                       <TotalRow>
                         <span>Takeaway Charge</span>
                         <span>RM {Number((selectedOrder as any).takeaway_charge).toFixed(2)}</span>
@@ -2813,7 +2813,7 @@ const LiveOrdersPage: React.FC = () => {
                   <span>-RM {Number((selectedOrder as any).coupon_discount).toFixed(2)}</span>
                 </BillRow>
               )}
-              {(selectedOrder as any).takeaway_charge > 0 && (
+              {Number((selectedOrder as any).takeaway_charge || 0) > 0 && (
                 <BillRow>
                   <span>Takeaway Charge:</span>
                   <span>RM {Number((selectedOrder as any).takeaway_charge).toFixed(2)}</span>

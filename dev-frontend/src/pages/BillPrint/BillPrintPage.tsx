@@ -334,10 +334,10 @@ const BillPrintPage: React.FC = () => {
                   <Value style={{ color: '#10B981' }}>-RM {selectedOrder.coupon.amount.toFixed(2)}</Value>
                 </BillRow>
               )}
-              {selectedOrder.takeawayCharge > 0 && (
+              {Number(selectedOrder.takeawayCharge || 0) > 0 && (
                 <BillRow>
                   <Label>Takeaway Charge:</Label>
-                  <Value>RM {selectedOrder.takeawayCharge.toFixed(2)}</Value>
+                  <Value>RM {Number(selectedOrder.takeawayCharge).toFixed(2)}</Value>
                 </BillRow>
               )}
               {selectedOrder.tax > 0 && (
