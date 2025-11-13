@@ -262,7 +262,7 @@ const SystemConfigPage: React.FC = () => {
         category: 'general',
         key: 'app.name',
         displayName: 'Application Name',
-        value: 'OrderHere POS System',
+        value: 'Purple Here POS',
         dataType: 'string',
         description: 'The display name of the application shown to users',
         isEditable: true,

@@ -493,7 +493,7 @@ const AdminStaffManagementPage: React.FC = () => {
             restaurantsData.forEach((restaurant: any) => {
               restaurantMap[restaurant.id] = {
                 name: restaurant.name,
-                company: restaurant.company_name || 'OrderHere'
+                company: restaurant.company_name || 'Purple Here'
               };
             });
           }
@@ -503,7 +503,7 @@ const AdminStaffManagementPage: React.FC = () => {
           const transformedStaff: Staff[] = usersArray
             .map((user: any) => {
               let type: 'restaurant_staff' | 'company_staff' | 'freelancer' | 'our_staff';
-              let companyName = 'OrderHere';
+              let companyName = 'Purple Here';
               let restaurantName;
 
               // Determine type based on role
@@ -511,16 +511,16 @@ const AdminStaffManagementPage: React.FC = () => {
 
               if (user.role === 'System Admin') {
                 type = 'our_staff';
-                companyName = user.company_name || 'OrderHere';
+                companyName = user.company_name || 'Purple Here';
               } else if (managerRoles.includes(user.role)) {
                 type = 'company_staff';
-                companyName = user.company_name || 'OrderHere';
+                companyName = user.company_name || 'Purple Here';
               } else if (user.role === 'Restaurant Admin' || user.role === 'Staff') {
                 if (user.restaurant_id) {
                   type = 'restaurant_staff';
                   // Use restaurant_name from API first, fallback to restaurantMap
                   restaurantName = user.restaurant_name || restaurantMap[user.restaurant_id]?.name || 'Unknown Restaurant';
-                  companyName = restaurantMap[user.restaurant_id]?.company || 'OrderHere';
+                  companyName = restaurantMap[user.restaurant_id]?.company || 'Purple Here';
                 } else {
                   type = 'our_staff';
                 }
@@ -803,17 +803,17 @@ const AdminStaffManagementPage: React.FC = () => {
 
             if (user.role === 'System Admin') {
               type = 'our_staff';
-              companyName = user.company_name || 'OrderHere';
+              companyName = user.company_name || 'Purple Here';
             } else if (managerRoles.includes(user.role)) {
               type = 'company_staff';
-              companyName = user.company_name || 'OrderHere';
+              companyName = user.company_name || 'Purple Here';
             } else if (user.role === 'Restaurant Admin' || user.role === 'Staff') {
               if (user.restaurant_id) {
                 type = 'restaurant_staff';
                 const restaurantInfo = restaurantMap[user.restaurant_id];
                 // Use restaurant_name from API first, fallback to restaurantMap
                 restaurantName = user.restaurant_name || restaurantInfo?.name || 'Unknown Restaurant';
-                companyName = restaurantInfo?.company || 'OrderHere';
+                companyName = restaurantInfo?.company || 'Purple Here';
               } else {
                 type = 'our_staff';
               }
@@ -1023,7 +1023,7 @@ const AdminStaffManagementPage: React.FC = () => {
             type = 'restaurant_staff';
             const restaurantInfo = restaurantMap[updatedUser.restaurant_id];
             restaurantName = updatedUser.restaurant_name || restaurantInfo?.name || 'Unknown Restaurant';
-            companyName = restaurantInfo?.company || 'OrderHere';
+            companyName = restaurantInfo?.company || 'Purple Here';
           } else {
             type = 'our_staff';
           }
@@ -1285,7 +1285,7 @@ const AdminStaffManagementPage: React.FC = () => {
             type = 'restaurant_staff';
             const restaurantInfo = restaurantMap[updatedUser.restaurant_id];
             restaurantName = updatedUser.restaurant_name || restaurantInfo?.name || 'Unknown Restaurant';
-            companyName = restaurantInfo?.company || 'OrderHere';
+            companyName = restaurantInfo?.company || 'Purple Here';
           } else {
             type = 'our_staff';
           }
@@ -1382,7 +1382,7 @@ const AdminStaffManagementPage: React.FC = () => {
             restaurantsData.forEach((restaurant: any) => {
               restaurantMap[restaurant.id] = {
                 name: restaurant.name,
-                company: restaurant.company_name || 'OrderHere'
+                company: restaurant.company_name || 'Purple Here'
               };
             });
           }
@@ -1390,7 +1390,7 @@ const AdminStaffManagementPage: React.FC = () => {
           const transformedStaff: Staff[] = usersData.data
             .map((user: any) => {
               let type: 'restaurant_staff' | 'company_staff' | 'freelancer' | 'our_staff';
-              let companyName = 'OrderHere';
+              let companyName = 'Purple Here';
               let restaurantName;
 
               // Determine type based on role
@@ -1398,17 +1398,17 @@ const AdminStaffManagementPage: React.FC = () => {
 
               if (user.role === 'System Admin') {
                 type = 'our_staff';
-                companyName = user.company_name || 'OrderHere';
+                companyName = user.company_name || 'Purple Here';
               } else if (managerRoles.includes(user.role)) {
                 type = 'company_staff';
-                companyName = user.company_name || 'OrderHere';
+                companyName = user.company_name || 'Purple Here';
               } else if (user.role === 'Restaurant Admin' || user.role === 'Staff') {
                 if (user.restaurant_id) {
                   type = 'restaurant_staff';
                   const restaurantInfo = restaurantMap[user.restaurant_id];
                   // Use restaurant_name from API first, fallback to restaurantMap
                   restaurantName = user.restaurant_name || restaurantInfo?.name || 'Unknown Restaurant';
-                  companyName = restaurantInfo?.company || 'OrderHere';
+                  companyName = restaurantInfo?.company || 'Purple Here';
                 } else {
                   type = 'our_staff';
                 }

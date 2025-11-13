@@ -668,7 +668,7 @@ const RestaurantInvoicesPage: React.FC = () => {
 <body>
   <div class="invoice-header">
     <div class="company-info">
-      <h1>${companySettings?.companyName || 'OrderHere Center'}</h1>
+      <h1>${companySettings?.companyName || 'Purple Here Center'}</h1>
       <p>${companySettings?.address || ''}</p>
       ${companySettings?.city && companySettings?.state ? `<p>${companySettings.city}, ${companySettings.state} ${companySettings.postalCode || ''}</p>` : ''}
       ${companySettings?.phone ? `<p>Phone: ${companySettings.phone}</p>` : ''}

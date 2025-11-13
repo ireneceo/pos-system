@@ -430,7 +430,7 @@ const ProfilePage: React.FC = () => {
     username: dbUser.username || dbUser.email,
     role: dbUser.role,
     department: dbUser.department || dbUser.position || (dbUser.role === 'System Admin' ? 'System Administration' : 'Administration'),
-    company_name: dbUser.company_name || (dbUser.role === 'System Admin' ? 'OrderHere Technologies Sdn Bhd' : ''),
+    company_name: dbUser.company_name || (dbUser.role === 'System Admin' ? 'Purple Here Technologies Sdn Bhd' : ''),
     joinDate: dbUser.createdAt || new Date().toISOString(),
     lastLogin: new Date().toISOString(), // Always show current time since we don't track last_login
     schedule: {

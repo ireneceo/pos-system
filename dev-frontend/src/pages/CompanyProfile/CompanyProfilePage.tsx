@@ -326,7 +326,7 @@ const CompanyProfilePage: React.FC = () => {
     const sampleData: CompanyProfile = {
       id: 'prof-001',
       level: level,
-      companyName: user?.role === 'System Admin' ? 'OrderHere Technologies Sdn Bhd' :
+      companyName: user?.role === 'System Admin' ? 'Purple Here Technologies Sdn Bhd' :
                    isManager ? 'Sunway Food Court Management' :
                    'ABC Restaurant',
       registrationNo: '202401234567',
@@ -344,7 +344,7 @@ const CompanyProfilePage: React.FC = () => {
       taxNo: 'W10-1234-56789012',
       bankName: 'Maybank',
       bankAccount: '514123456789',
-      bankAccountName: user?.role === 'System Admin' ? 'OrderHere Technologies Sdn Bhd' :
+      bankAccountName: user?.role === 'System Admin' ? 'Purple Here Technologies Sdn Bhd' :
                         isManager ? 'Sunway Food Court Management' :
                         'ABC Trading Sdn Bhd',
       operationMode: 'manager',

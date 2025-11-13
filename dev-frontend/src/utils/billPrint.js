@@ -104,11 +104,7 @@ export function generateBillContent(orderData, storeInfo) {
     content += CMD.ALIGN_CENTER;
     content += CMD.TEXT_DOUBLE;
     content += CMD.BOLD_ON;
-    content += CMD.REVERSE_ON;
-    content += '                                ' + CMD.LINE_FEED;
-    content += '        ** TAKEAWAY **          ' + CMD.LINE_FEED;
-    content += '                                ' + CMD.LINE_FEED;
-    content += CMD.REVERSE_OFF;
+    content += '** TAKEAWAY **' + CMD.LINE_FEED;
     content += CMD.BOLD_OFF;
     content += CMD.TEXT_NORMAL;
     content += CMD.LINE_FEED;
@@ -327,18 +323,14 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
     content += CMD.ALIGN_CENTER;
     content += CMD.TEXT_DOUBLE;
     content += CMD.BOLD_ON;
-    content += CMD.REVERSE_ON;
-    content += ' ** TAKEAWAY ** ' + CMD.LINE_FEED;
-    content += CMD.REVERSE_OFF;
+    content += '** TAKEAWAY **' + CMD.LINE_FEED;
     content += CMD.BOLD_OFF;
     content += CMD.TEXT_NORMAL;
   } else if (orderData.orderType === 'delivery') {
     content += CMD.ALIGN_CENTER;
     content += CMD.TEXT_DOUBLE;
     content += CMD.BOLD_ON;
-    content += CMD.REVERSE_ON;
-    content += ' ** DELIVERY ** ' + CMD.LINE_FEED;
-    content += CMD.REVERSE_OFF;
+    content += '** DELIVERY **' + CMD.LINE_FEED;
     content += CMD.BOLD_OFF;
     content += CMD.TEXT_NORMAL;
   }
@@ -348,15 +340,10 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
   if (orderData.pagerNumber) {
     // PAGER EXISTS - Show only PAGER on one line with large bold number
     content += CMD.ALIGN_CENTER;
-    content += CMD.TEXT_NORMAL;
-    content += CMD.BOLD_ON;
-    content += 'PAGER  ';
     content += CMD.TEXT_DOUBLE;
-    content += CMD.REVERSE_ON;
-    content += '  ' + orderData.pagerNumber + '  ';
-    content += CMD.REVERSE_OFF;
+    content += CMD.BOLD_ON;
+    content += 'PAGER  ' + orderData.pagerNumber + CMD.LINE_FEED;
     content += CMD.TEXT_NORMAL;
-    content += CMD.LINE_FEED;
     content += CMD.BOLD_OFF;
     content += CMD.LINE_FEED;
     content += CMD.LINE_FEED;
@@ -418,16 +405,16 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
 
     // Item: Quantity x Name (LARGE & BOLD)
     content += CMD.BOLD_ON;
-    content += CMD.TEXT_DOUBLE_HEIGHT;
+    content += CMD.TEXT_DOUBLE;
     content += qty + ' x ' + itemName + CMD.LINE_FEED;
     content += CMD.TEXT_NORMAL;
     content += CMD.BOLD_OFF;
 
-    // Options with STAR (★) marker
+    // Options with marker
     if (item.options && item.options.length > 0) {
       item.options.forEach(option => {
         content += CMD.BOLD_ON;
-        content += '  ★ ' + option + CMD.LINE_FEED;
+        content += '  + ' + option + CMD.LINE_FEED;
         content += CMD.BOLD_OFF;
       });
     }
@@ -537,9 +524,7 @@ export function generateKitchenTicketPreview(orderData, storeInfo) {
   if (orderData.pagerNumber) {
     // PAGER EXISTS - Show title and number on one line (large)
     lines.push('');
-    lines.push('================================================');
-    lines.push('        PAGER:    ███  ' + orderData.pagerNumber + '  ███');
-    lines.push('================================================');
+    lines.push('                PAGER: ' + orderData.pagerNumber);
     lines.push('');
   } else {
     // NO PAGER - Show PICKUP NUMBER
