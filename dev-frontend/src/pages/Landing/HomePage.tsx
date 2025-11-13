@@ -205,7 +205,7 @@ const HomePage: React.FC = () => {
   return (
     <Container>
       <Header>
-        <Logo>OrderHere</Logo>
+        <Logo>Purple Here</Logo>
         <Nav>
           <NavLink onClick={() => navigate('/about')}>회사 소개</NavLink>
           <NavLink onClick={() => navigate('/service')}>서비스</NavLink>
@@ -216,7 +216,7 @@ const HomePage: React.FC = () => {
       <Hero>
         <Title>스마트한 매장 운영의 시작</Title>
         <Subtitle>
-          OrderHere POS 시스템으로 푸드코트, 브랜드, 레스토랑을 효율적으로 관리하세요
+          Purple Here POS 시스템으로 푸드코트, 브랜드, 레스토랑을 효율적으로 관리하세요
         </Subtitle>
         <ButtonGroup>
           <PrimaryButton onClick={() => navigate('/pos')}>
@@ -255,7 +255,7 @@ const HomePage: React.FC = () => {
       </Features>
 
       <Footer>
-        © 2025 OrderHere. All rights reserved.
+        © 2025 Purple Here. All rights reserved.
       </Footer>
     </Container>
   );

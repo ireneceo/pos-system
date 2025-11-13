@@ -934,7 +934,7 @@ const InvoicesPage: React.FC = () => {
 
         // Use default company settings
         setCompanySettings({
-          companyName: 'OrderHere POS System',
+          companyName: 'Purple Here POS',
           address: 'Level 12, Menara UOA Bangsar',
           city: 'Kuala Lumpur',
           state: 'Federal Territory',

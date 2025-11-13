@@ -170,7 +170,7 @@ const AboutPage: React.FC = () => {
   return (
     <Container>
       <Header>
-        <Logo onClick={() => navigate('/')}>OrderHere</Logo>
+        <Logo onClick={() => navigate('/')}>Purple Here</Logo>
         <Nav>
           <NavLink onClick={() => navigate('/about')}>회사 소개</NavLink>
           <NavLink onClick={() => navigate('/service')}>서비스</NavLink>
@@ -184,14 +184,14 @@ const AboutPage: React.FC = () => {
         <Section>
           <SectionTitle>Our Vision</SectionTitle>
           <Paragraph>
-            OrderHere는 푸드코트, 브랜드, 레스토랑을 위한 통합 POS 솔루션을 제공합니다.
+            Purple Here는 푸드코트, 브랜드, 레스토랑을 위한 통합 POS 솔루션을 제공합니다.
             우리의 목표는 매장 운영의 모든 과정을 디지털화하여 효율성을 극대화하고,
             데이터 기반의 의사결정을 지원하는 것입니다.
           </Paragraph>
         </Section>
 
         <Section>
-          <SectionTitle>Why OrderHere?</SectionTitle>
+          <SectionTitle>Why Purple Here?</SectionTitle>
           <List>
             <ListItem>
               <strong>다중 계층 관리:</strong> 푸드코트 총괄매니저부터 브랜드 매니저까지

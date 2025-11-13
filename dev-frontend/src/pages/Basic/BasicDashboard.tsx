@@ -111,7 +111,7 @@ const BasicDashboard: React.FC = () => {
       case 'Staff':
         return 'You have access to POS terminal, kitchen display, and order management functions.';
       default:
-        return 'Welcome to the OrderHere POS System.';
+        return 'Welcome to the Purple Here POS System.';
     }
   };
 
@@ -119,7 +119,7 @@ const BasicDashboard: React.FC = () => {
     <MainLayout>
       <Container>
         <WelcomeCard>
-          <Title>Welcome to OrderHere POS</Title>
+          <Title>Welcome to Purple Here POS</Title>
           <RoleBadge role={user?.role || 'User'}>
             {user?.role}
           </RoleBadge>

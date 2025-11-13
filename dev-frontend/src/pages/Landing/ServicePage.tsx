@@ -204,7 +204,7 @@ const ServicePage: React.FC = () => {
   return (
     <Container>
       <Header>
-        <Logo onClick={() => navigate('/')}>OrderHere</Logo>
+        <Logo onClick={() => navigate('/')}>Purple Here</Logo>
         <Nav>
           <NavLink onClick={() => navigate('/about')}>회사 소개</NavLink>
           <NavLink onClick={() => navigate('/service')}>서비스</NavLink>

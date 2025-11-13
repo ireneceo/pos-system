@@ -231,7 +231,7 @@ const OrderTypePage: React.FC = () => {
       </OptionsContainer>
 
       <Footer>
-        Powered by orderhere POS System
+        Powered by Purple Here POS
       </Footer>
     </Container>
   );

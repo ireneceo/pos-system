@@ -401,7 +401,7 @@ const SiteSettingsPage: React.FC = () => {
                     name="site_name"
                     value={settings.site_name}
                     onChange={handleInputChange}
-                    placeholder="OrderHere POS"
+                    placeholder="Purple Here POS"
                   />
                   <HelpText>The name of your site/solution</HelpText>
                 </FormGroup>
@@ -486,7 +486,7 @@ const SiteSettingsPage: React.FC = () => {
                   name="seo_title"
                   value={settings.seo_title}
                   onChange={handleInputChange}
-                  placeholder="OrderHere - Restaurant POS System"
+                  placeholder="Purple Here - Restaurant POS System"
                   maxLength={60}
                 />
                 <HelpText>Page title for search engines (50-60 characters recommended)</HelpText>
