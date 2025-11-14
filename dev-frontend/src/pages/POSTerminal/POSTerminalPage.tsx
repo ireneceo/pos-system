@@ -15,7 +15,7 @@ import { useStaff } from '../../contexts/StaffContext';
 import { useAuth } from '../../contexts/AuthContext';
 import CustomerModal from '../../components/Customer/CustomerModal';
 // StaffLoginModal removed - authentication handled by ProtectedRoute
-import { generateOrderNumber, normalizeCustomerName } from '../../utils/orderUtils';
+import { normalizeCustomerName } from '../../utils/orderUtils';
 import { useRestaurantId } from '../../hooks/useRestaurantId';
 
 const POSContainer = styled.div`
@@ -64,15 +64,6 @@ const LogoImage = styled.img`
   object-fit: contain;
 `;
 
-const OrderText = styled.span`
-  color: #0A2540;
-`;
-
-const HereText = styled.span`
-  color: #635BFF;
-  font-style: italic;
-`;
-
 const HeaderInfo = styled.div`
   display: flex;
   align-items: center;
@@ -101,52 +92,6 @@ const DateTime = styled.div`
   font-size: 14px;
   font-weight: 500;
   color: #6B7C93;
-`;
-
-const CustomerSection = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-`;
-
-const CustomerButton = styled.button<{ hasCustomer?: boolean }>`
-  background: ${props => props.hasCustomer ? '#F0F4FF' : 'white'};
-  color: ${props => props.hasCustomer ? '#635BFF' : '#6B7C93'};
-  border: 1px solid ${props => props.hasCustomer ? '#635BFF' : '#E6EBF1'};
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  &:hover {
-    background: ${props => props.hasCustomer ? '#E6F0FF' : '#F6F9FC'};
-    border-color: #635BFF;
-    color: #635BFF;
-    transform: translateY(-1px);
-  }
-`;
-
-const CustomerInfo = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  font-size: 13px;
-`;
-
-const CustomerName = styled.div`
-  color: #0A2540;
-  font-weight: 600;
-  font-size: 13px;
-`;
-
-const CustomerDetails = styled.div`
-  color: #6B7C93;
-  font-size: 12px;
 `;
 
 const MainLayout = styled.div`
@@ -502,12 +447,6 @@ const TableNumberSelect = styled.select`
     outline: none;
     border-color: #635BFF;
   }
-`;
-
-const OptionalTag = styled.span`
-  font-size: 12px;
-  color: #8898AA;
-  font-style: italic;
 `;
 
 const ScrollableOrderContent = styled.div`
@@ -899,13 +838,6 @@ const CustomerSearchContainer = styled.div`
   position: relative;
 `;
 
-const CustomerSearchLabel = styled.div`
-  font-size: 13px;
-  font-weight: 500;
-  color: #6B7C93;
-  margin-bottom: 8px;
-`;
-
 const CustomerSearchInput = styled.input`
   width: 100%;
   padding: 12px 16px 12px 40px;
@@ -1202,10 +1134,8 @@ const POSTerminalPage: React.FC = () => {
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<{code: string; discount: number} | null>(null);
   const [appliedDiscountPolicy, setAppliedDiscountPolicy] = useState<{name: string; discount: number; requiresApproval: boolean} | null>(null);
-  const [showDiscountPolicyModal, setShowDiscountPolicyModal] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showFeatureAlert, setShowFeatureAlert] = useState(false);
-  const [featureAlertMessage, setFeatureAlertMessage] = useState('');
   const [showCouponError, setShowCouponError] = useState(false);
   const [orderType, setOrderType] = useState<'dine-in' | 'takeaway'>('dine-in');
   const [tableNumber, setTableNumber] = useState('');
@@ -1222,6 +1152,11 @@ const POSTerminalPage: React.FC = () => {
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [selectedCustomerForOrder, setSelectedCustomerForOrder] = useState<any>(null);
+
+  // Currency and rounding settings
+  const [currency, setCurrency] = useState<string>('RM');
+  const [cashRounding, setCashRounding] = useState<number | null>(null);
+  const [roundingApplyTo, setRoundingApplyTo] = useState<'cash_only' | 'all'>('cash_only');
 
   // Load brand logo from site settings
   useEffect(() => {
@@ -1305,7 +1240,7 @@ const POSTerminalPage: React.FC = () => {
     loadTableSettings();
   }, [user?.restaurantId]);
 
-  // Load payment settings from restaurant API
+  // Load payment settings and currency settings from restaurant API
   useEffect(() => {
     const loadPaymentSettings = async () => {
       if (user?.restaurantId) {
@@ -1317,6 +1252,10 @@ const POSTerminalPage: React.FC = () => {
             if (restaurant.payment_settings) {
               setPaymentMethods(restaurant.payment_settings);
             }
+            // Load currency settings
+            setCurrency(restaurant.currency || 'RM');
+            setCashRounding(restaurant.cash_rounding ? parseFloat(restaurant.cash_rounding) : null);
+            setRoundingApplyTo(restaurant.rounding_apply_to || 'cash_only');
           }
         } catch (error) {
           console.error('Failed to load payment settings:', error);
@@ -1623,10 +1562,6 @@ const POSTerminalPage: React.FC = () => {
         setDiscount(0); // Clear fixed discount when applying percentage
       }
     }
-  };
-
-  const handleRemoveDiscountPolicy = () => {
-    setAppliedDiscountPolicy(null);
   };
 
   const handleCustomAmountConfirm = (value: string) => {
@@ -1940,7 +1875,7 @@ const POSTerminalPage: React.FC = () => {
       }
       return sum + itemTotal;
     }, 0);
-    
+
     // Calculate takeaway charges if applicable
     let takeawayCharge = 0;
     if (orderType === 'takeaway' && operationSettings.takeawayPricing.enabled) {
@@ -1956,7 +1891,7 @@ const POSTerminalPage: React.FC = () => {
         });
       }
     }
-    
+
     const subtotalWithTakeaway = subtotal + takeawayCharge;
     const discountAmount = discount;
     const couponDiscount = appliedCoupon ? appliedCoupon.discount : 0;
@@ -1972,7 +1907,14 @@ const POSTerminalPage: React.FC = () => {
       ? afterDiscount * (operationSettings.taxRate / 100)
       : 0;
 
-    const total = afterDiscount + serviceCharge + tax;
+    const totalBeforeRounding = afterDiscount + serviceCharge + tax;
+
+    // Apply rounding based on settings
+    let total = totalBeforeRounding;
+    if (roundingApplyTo === 'all' && cashRounding) {
+      total = Math.round(totalBeforeRounding / cashRounding) * cashRounding;
+    }
+
     return { subtotal, tax, total, discountAmount, couponDiscount, policyDiscount, takeawayCharge, serviceCharge };
   };
 
@@ -2105,7 +2047,7 @@ const POSTerminalPage: React.FC = () => {
                       )}
                     </MenuImage>
                     <MenuName>{item.code ? `${item.code} ` : ''}{item.name}</MenuName>
-                    <MenuPrice>RM {item.price.toFixed(2)}</MenuPrice>
+                    <MenuPrice>{currency} {item.price.toFixed(2)}</MenuPrice>
                     {item.is_set_menu && item.set_items && item.set_items.length > 0 && (
                       <SetItemsPreview>
                         {item.set_items.map(si => `${si.name} x${si.quantity}`).join(', ')}
@@ -2277,7 +2219,7 @@ const POSTerminalPage: React.FC = () => {
                         </QuantityBtn>
                       </QuantityControl>
                       <ItemPrice>
-                        RM {(() => {
+                        {currency} {(() => {
                           let itemTotal = item.menuItem.price * item.quantity;
                           if (item.selectedOptions && item.selectedOptions.length > 0) {
                             const optionsTotal = item.selectedOptions.reduce((sum, opt) => sum + opt.price, 0);
@@ -2297,47 +2239,47 @@ const POSTerminalPage: React.FC = () => {
               <OrderSummary>
                 <SummaryRow>
                   <SummaryLabel>Subtotal</SummaryLabel>
-                  <SummaryValue>RM {subtotal.toFixed(2)}</SummaryValue>
+                  <SummaryValue>{currency} {subtotal.toFixed(2)}</SummaryValue>
                 </SummaryRow>
                 {takeawayCharge > 0 && (
                   <SummaryRow>
                     <SummaryLabel>Takeaway Charge</SummaryLabel>
-                    <SummaryValue>RM {takeawayCharge.toFixed(2)}</SummaryValue>
+                    <SummaryValue>{currency} {takeawayCharge.toFixed(2)}</SummaryValue>
                   </SummaryRow>
                 )}
                 {discountAmount > 0 && (
                   <SummaryRow>
                     <SummaryLabel>Discount</SummaryLabel>
-                    <SummaryValue style={{ color: '#10B981' }}>-RM {discountAmount.toFixed(2)}</SummaryValue>
+                    <SummaryValue style={{ color: '#10B981' }}>-{currency} {discountAmount.toFixed(2)}</SummaryValue>
                   </SummaryRow>
                 )}
                 {appliedCoupon && (
                   <SummaryRow>
                     <SummaryLabel>Coupon ({appliedCoupon.code})</SummaryLabel>
-                    <SummaryValue style={{ color: '#10B981' }}>-RM {couponDiscount.toFixed(2)}</SummaryValue>
+                    <SummaryValue style={{ color: '#10B981' }}>-{currency} {couponDiscount.toFixed(2)}</SummaryValue>
                   </SummaryRow>
                 )}
                 {appliedDiscountPolicy && (
                   <SummaryRow>
                     <SummaryLabel>Discount ({appliedDiscountPolicy.name})</SummaryLabel>
-                    <SummaryValue style={{ color: '#10B981' }}>-RM {policyDiscount.toFixed(2)}</SummaryValue>
+                    <SummaryValue style={{ color: '#10B981' }}>-{currency} {policyDiscount.toFixed(2)}</SummaryValue>
                   </SummaryRow>
                 )}
                 {operationSettings.serviceChargeEnabled && serviceCharge > 0 && (
                   <SummaryRow>
                     <SummaryLabel>Service Charge ({operationSettings.serviceChargeRate}%)</SummaryLabel>
-                    <SummaryValue>RM {serviceCharge.toFixed(2)}</SummaryValue>
+                    <SummaryValue>{currency} {serviceCharge.toFixed(2)}</SummaryValue>
                   </SummaryRow>
                 )}
                 {operationSettings.taxEnabled && tax > 0 && (
                   <SummaryRow>
                     <SummaryLabel>Tax ({operationSettings.taxRate}%)</SummaryLabel>
-                    <SummaryValue>RM {tax.toFixed(2)}</SummaryValue>
+                    <SummaryValue>{currency} {tax.toFixed(2)}</SummaryValue>
                   </SummaryRow>
                 )}
                 <TotalRow>
                   <SummaryLabel>Total</SummaryLabel>
-                  <SummaryValue>RM {total.toFixed(2)}</SummaryValue>
+                  <SummaryValue>{currency} {total.toFixed(2)}</SummaryValue>
                 </TotalRow>
               </OrderSummary>
 
@@ -2345,7 +2287,7 @@ const POSTerminalPage: React.FC = () => {
                 <DiscountRow>
                   {appliedCoupon ? (
                     <AppliedCoupon>
-                      <span>Coupon: {appliedCoupon.code} (-RM {appliedCoupon.discount.toFixed(2)})</span>
+                      <span>Coupon: {appliedCoupon.code} (-{currency} {appliedCoupon.discount.toFixed(2)})</span>
                       <RemoveBtn onClick={handleRemoveCoupon}>×</RemoveBtn>
                     </AppliedCoupon>
                   ) : (
@@ -2538,7 +2480,7 @@ const POSTerminalPage: React.FC = () => {
         isOpen={showFeatureAlert}
         onClose={() => setShowFeatureAlert(false)}
         title="Coming Soon"
-        message={featureAlertMessage}
+        message="This feature is coming soon"
         variant="info"
       />
       

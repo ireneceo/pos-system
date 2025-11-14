@@ -15,23 +15,8 @@ const AlertDialog: React.FC<AlertDialogProps> = ({
   onClose,
   title,
   message,
-  buttonText = 'OK',
-  variant = 'info'
+  buttonText = 'OK'
 }) => {
-  const getIcon = () => {
-    switch (variant) {
-      case 'success':
-        return '✓';
-      case 'error':
-        return '×';
-      case 'warning':
-        return '!';
-      case 'info':
-      default:
-        return 'i';
-    }
-  };
-
   const footer = (
     <Button onClick={onClose} style={{ maxWidth: '200px', margin: '0 auto' }}>
       {buttonText}

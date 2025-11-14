@@ -8,6 +8,9 @@ interface Store {
   logo: string;
   isOpen: boolean;
   openingHours: Record<string, string>;
+  currency?: string;
+  cash_rounding?: number | null;
+  rounding_apply_to?: 'cash_only' | 'all';
 }
 
 interface SetMenuItem {

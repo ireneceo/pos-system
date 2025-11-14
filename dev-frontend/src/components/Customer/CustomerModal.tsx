@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { useCustomer, Customer } from '../../contexts/CustomerContext';
+import { useCustomer } from '../../contexts/CustomerContext';
 import { Modal, ModalButton, FormLabel as Label } from '../UI/Modal';
-import { Section } from '../common/Modal';
 import PhoneInput from '../common/PhoneInput';
 
 const SwitchLink = styled.button`

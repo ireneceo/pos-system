@@ -154,9 +154,4 @@ export const QuickFilters: React.FC<QuickFiltersProps> = ({
   </FilterBar>
 );
 
-export default {
-  FilterBar,
-  SearchInput,
-  FilterSelect,
-  QuickFilters
-};
+// Named exports only - no default export to avoid anonymous-default-export warning

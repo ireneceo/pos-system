@@ -645,11 +645,28 @@ const PaymentPage: React.FC = () => {
     return charge;
   };
 
+  // Currency and rounding settings
+  const currency = currentStore?.currency || 'RM';
+  const cashRounding = currentStore?.cash_rounding;
+  const roundingApplyTo = currentStore?.rounding_apply_to || 'cash_only';
+
+  // Helper function for rounding
+  const applyRounding = (amount: number): number => {
+    if (!cashRounding) return amount;
+    // Round to nearest cash_rounding value
+    return Math.round(amount / cashRounding) * cashRounding;
+  };
+
   const subtotal = cartTotal;
   const takeawayCharge = calculateTakeawayCharge();
   const tax = subtotal * 0.06;
   const discountedSubtotal = subtotal - couponDiscount;
-  const total = discountedSubtotal + tax + takeawayCharge;
+  const totalBeforeRounding = discountedSubtotal + tax + takeawayCharge;
+
+  // Apply rounding based on settings
+  const total = roundingApplyTo === 'all' && cashRounding
+    ? applyRounding(totalBeforeRounding)
+    : totalBeforeRounding;
 
   // Get available payment methods for mobile - recalculates when paymentMethods changes
   const availableMethods = React.useMemo(() => {
@@ -1145,34 +1162,34 @@ const PaymentPage: React.FC = () => {
                     </ItemSetItems>
                   )}
                 </ItemInfo>
-                <ItemPrice>RM {item.totalPrice.toFixed(2)}</ItemPrice>
+                <ItemPrice>{currency} {item.totalPrice.toFixed(2)}</ItemPrice>
               </ItemRow>
             ))}
           </ItemsList>
 
           <SummaryRow>
             <span>Subtotal</span>
-            <span>RM {subtotal.toFixed(2)}</span>
+            <span>{currency} {subtotal.toFixed(2)}</span>
           </SummaryRow>
           {couponDiscount > 0 && (
             <SummaryRow>
               <span>Discount</span>
-              <span style={{ color: '#059669' }}>-RM {couponDiscount.toFixed(2)}</span>
+              <span style={{ color: '#059669' }}>-{currency} {couponDiscount.toFixed(2)}</span>
             </SummaryRow>
           )}
           {takeawayCharge > 0 && (
             <SummaryRow>
               <span>Takeaway Charge</span>
-              <span>RM {takeawayCharge.toFixed(2)}</span>
+              <span>{currency} {takeawayCharge.toFixed(2)}</span>
             </SummaryRow>
           )}
           <SummaryRow>
             <span>Tax (6%)</span>
-            <span>RM {tax.toFixed(2)}</span>
+            <span>{currency} {tax.toFixed(2)}</span>
           </SummaryRow>
           <SummaryRow className="total">
             <span>Total</span>
-            <span>RM {total.toFixed(2)}</span>
+            <span>{currency} {total.toFixed(2)}</span>
           </SummaryRow>
         </OrderSummary>
         
