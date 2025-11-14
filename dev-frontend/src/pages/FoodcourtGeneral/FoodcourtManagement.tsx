@@ -55,11 +55,6 @@ const Subtitle = styled.p`
 `;
 
 
-const StatDescription = styled.div`
-  font-size: 12px;
-  color: #9CA3AF;
-  margin-top: 4px;
-`;
 
 const ContentCard = styled.div`
   background: white;

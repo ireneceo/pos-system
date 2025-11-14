@@ -6,8 +6,6 @@ import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { useCustomer } from '../../contexts/CustomerContext';
 import { useStore } from '../../contexts/StoreContext';
 import CustomerModal from '../../components/Customer/CustomerModal';
-import api from '../services/api';
-import { generateOrderNumber } from '../../utils/orderUtils';
 
 const Container = styled.div`
   padding-bottom: 100px;
@@ -28,73 +26,6 @@ const SectionTitle = styled.h3`
   margin: 0 0 12px 0;
 `;
 
-const CustomerSection = styled.div`
-  background: white;
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-`;
-
-const CustomerCard = styled.div<{ hasCustomer: boolean }>`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px;
-  border: 2px solid ${props => props.hasCustomer ? '#10B981' : '#E5E7EB'};
-  border-radius: 12px;
-  background: ${props => props.hasCustomer ? 'rgba(16, 185, 129, 0.05)' : '#F9FAFB'};
-  cursor: pointer;
-  transition: all 0.2s;
-  
-  &:active {
-    transform: scale(0.98);
-  }
-`;
-
-const CustomerInfo = styled.div`
-  flex: 1;
-`;
-
-const CustomerName = styled.div`
-  font-size: 16px;
-  font-weight: 600;
-  color: #1F2937;
-  margin-bottom: 4px;
-`;
-
-const CustomerDetails = styled.div`
-  font-size: 14px;
-  color: #6B7280;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-`;
-
-const CustomerBadge = styled.span<{ type: 'guest' | 'member' }>`
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  background: ${props => props.type === 'member' ? '#EBF8FF' : '#F3F4F6'};
-  color: ${props => props.type === 'member' ? '#1E40AF' : '#6B7280'};
-`;
-
-const ChangeButton = styled.button`
-  background: none;
-  border: 1px solid #E5E7EB;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 14px;
-  color: #6B7280;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    background: #F3F4F6;
-    color: #374151;
-  }
-`;
 
 const QuickOrderCheckbox = styled.label`
   display: flex;
@@ -198,11 +129,6 @@ const MethodName = styled.div`
   font-size: 14px;
   font-weight: 500;
   color: #1F2937;
-`;
-
-const MethodIcon = styled.span`
-  font-size: 20px;
-  margin-right: 8px;
 `;
 
 const OrderSummary = styled.div`
@@ -389,144 +315,6 @@ const TableSelect = styled.select`
   &:focus {
     outline: none;
     border-color: #635BFF;
-  }
-`;
-
-const PaymentProofSection = styled.div`
-  margin-top: 16px;
-  padding: 16px;
-  background: #F9FAFB;
-  border-radius: 8px;
-`;
-
-const ProofTitle = styled.div`
-  font-size: 14px;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 12px;
-`;
-
-const UploadButton = styled.label`
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: white;
-  border: 1px solid #E5E7EB;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  color: #374151;
-  transition: all 0.2s;
-
-  &:hover {
-    border-color: #635BFF;
-    background: rgba(99, 91, 255, 0.05);
-  }
-
-  input[type="file"] {
-    display: none;
-  }
-`;
-
-const ImagePreview = styled.div`
-  margin-top: 12px;
-  position: relative;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid #E5E7EB;
-
-  img {
-    width: 100%;
-    height: auto;
-    display: block;
-  }
-`;
-
-const RemoveImageButton = styled.button`
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  background: rgba(0, 0, 0, 0.6);
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 16px;
-
-  &:hover {
-    background: rgba(0, 0, 0, 0.8);
-  }
-`;
-
-const BankDetails = styled.div`
-  background: white;
-  padding: 12px;
-  border-radius: 8px;
-  margin-bottom: 12px;
-  border: 1px solid #E5E7EB;
-`;
-
-const BankDetailRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 0;
-  font-size: 13px;
-
-  strong {
-    color: #6B7280;
-    font-weight: 500;
-  }
-
-  span {
-    color: #1F2937;
-    font-weight: 600;
-  }
-`;
-
-const QRCodeContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  padding: 16px;
-  background: white;
-  border-radius: 8px;
-  border: 1px solid #E5E7EB;
-  margin-bottom: 12px;
-
-  img {
-    width: 200px;
-    height: 200px;
-  }
-`;
-
-const OrDivider = styled.div`
-  text-align: center;
-  margin: 12px 0;
-  color: #9CA3AF;
-  font-size: 12px;
-  position: relative;
-
-  &:before, &:after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    width: 40%;
-    height: 1px;
-    background: #E5E7EB;
-  }
-
-  &:before {
-    left: 0;
-  }
-
-  &:after {
-    right: 0;
   }
 `;
 
@@ -750,6 +538,7 @@ const PaymentPage: React.FC = () => {
         phone: ''
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Load payment settings from restaurant
@@ -1195,7 +984,7 @@ const PaymentPage: React.FC = () => {
         
         {error && <ErrorMessage>{error}</ErrorMessage>}
         
-        <CustomerSection>
+        <Section>
           <SectionTitle>Customer Information</SectionTitle>
 
           {/* Quick Order 체크박스 */}
@@ -1279,7 +1068,7 @@ const PaymentPage: React.FC = () => {
               </ClearButton>
             </CustomerInfoBox>
           )}
-        </CustomerSection>
+        </Section>
         
         <Section>
           <SectionTitle>Coupon Code</SectionTitle>

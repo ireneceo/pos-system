@@ -222,7 +222,8 @@ const OrderTrackingPage: React.FC = () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('storage', handleCustomStorageChange);
     };
-  }, [orderId]); // Remove order?.status from dependencies to prevent infinite loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId]);
   
   const loadOrder = async (silent = false) => {
     if (!orderId) {

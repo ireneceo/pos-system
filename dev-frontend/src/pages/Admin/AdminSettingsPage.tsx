@@ -184,7 +184,7 @@ const LogoPreview = styled.img`
 const AdminSettingsPage: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
-  const [isDragging, setIsDragging] = useState(false);
+  const [, ] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const [savedSuccessfully, setSavedSuccessfully] = useState(false);
@@ -294,12 +294,12 @@ const AdminSettingsPage: React.FC = () => {
     }
   }, [settings, initialSettings, savedSuccessfully]);
 
-  const handleBrandLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      validateAndUploadFile(file, 'brand');
-    }
-  };
+  // const handleBrandLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  //   const file = event.target.files?.[0];
+  //   if (file) {
+  //     validateAndUploadFile(file, 'brand');
+  //   }
+  // };
 
   const handleCompanyLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -341,25 +341,25 @@ const AdminSettingsPage: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
+  // const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+  //   e.preventDefault();
+  //   setIsDragging(true);
+  // };
 
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
+  // const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+  //   e.preventDefault();
+  //   setIsDragging(false);
+  // };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
+  // const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  //   e.preventDefault();
+  //   setIsDragging(false);
 
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      validateAndUploadFile(file, 'brand'); // Drag & drop only for brand logo
-    }
-  };
+  //   const file = e.dataTransfer.files?.[0];
+  //   if (file) {
+  //     validateAndUploadFile(file, 'brand'); // Drag & drop only for brand logo
+  //   }
+  // };
 
   return (
     <MainLayout>

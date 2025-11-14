@@ -160,7 +160,7 @@ const LoadingText = styled.div`
 `;
 
 const ManagerCustomersPage: React.FC = () => {
-  const { user } = useAuth();
+  // const { } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');

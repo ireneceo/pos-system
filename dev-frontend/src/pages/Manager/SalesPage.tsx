@@ -37,10 +37,6 @@ const PageTitle = styled.h1`
   margin: 0;
 `;
 
-const Controls = styled.div`
-  display: flex;
-  gap: 12px;
-`;
 
 const FilterSelect = styled.select`
   padding: 12px 16px;
@@ -73,11 +69,6 @@ const Button = styled.button`
   }
 `;
 
-const FilterBar = styled.div`
-  display: flex;
-  gap: 16px;
-  align-items: center;
-`;
 
 const DateRangeSelector = styled.div`
   display: flex;
@@ -258,7 +249,7 @@ const ActionButton = styled.button`
 `;
 
 const ManagerSalesPage: React.FC = () => {
-  const { user } = useAuth();
+  // const { } = useAuth();
   const [selectedRestaurant, setSelectedRestaurant] = useState('all');
   const [dateRange, setDateRange] = useState('today');
   const [restaurantSales, setRestaurantSales] = useState<RestaurantSales[]>([]);

@@ -318,7 +318,7 @@ const BrandGeneralDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [managers, setManagers] = useState<BrandManager[]>([]);
-  const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
+  const [, setRevenueData] = useState<RevenueData[]>([]);
   const [timePeriod, setTimePeriod] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
   const [showManagerModal, setShowManagerModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -421,6 +421,7 @@ const BrandGeneralDashboard: React.FC = () => {
     };
 
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleAddManager = () => {

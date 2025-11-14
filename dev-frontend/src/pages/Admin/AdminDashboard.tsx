@@ -291,24 +291,25 @@ const Badge = styled.span<{ variant: string }>`
   }}
 `;
 
-const ActionButton = styled.button`
-  padding: 6px 12px;
-  background: transparent;
-  border: 1px solid #E6EBF1;
-  border-radius: 6px;
-  color: #6B7280;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-right: 8px;
-
-  &:hover {
-    border-color: #635BFF;
-    color: #635BFF;
-    background: #F4F3FF;
-  }
-`;
+// Unused component - commented out for future use if needed
+// const ActionButton = styled.button`
+//   padding: 6px 12px;
+//   background: transparent;
+//   border: 1px solid #E6EBF1;
+//   border-radius: 6px;
+//   color: #6B7280;
+//   font-size: 13px;
+//   font-weight: 500;
+//   cursor: pointer;
+//   transition: all 0.2s;
+//   margin-right: 8px;
+//
+//   &:hover {
+//     border-color: #635BFF;
+//     color: #635BFF;
+//     background: #F4F3FF;
+//   }
+// `;
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -547,9 +548,9 @@ const AdminDashboard: React.FC = () => {
         const thisMonth = new Date().getMonth();
         const thisYear = new Date().getFullYear();
         const monthlyCompletedInvoices = currentInvoicesData.filter((invoice: any) => {
-          if (!invoice.createdAt || invoice.status !== 'completed' && invoice.status !== 'paid') return false;
+          if (!invoice.createdAt || (invoice.status !== 'completed' && invoice.status !== 'paid')) return false;
           const invoiceDate = new Date(invoice.createdAt);
-          return invoiceDate.getMonth() === thisMonth && invoiceDate.getFullYear() === thisYear;
+          return (invoiceDate.getMonth() === thisMonth && invoiceDate.getFullYear() === thisYear);
         });
 
         const monthlyRevenue = monthlyCompletedInvoices.reduce((sum: number, invoice: any) => {

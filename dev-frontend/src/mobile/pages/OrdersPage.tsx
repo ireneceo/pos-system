@@ -133,20 +133,6 @@ const OrderType = styled.div`
   gap: 4px;
 `;
 
-interface Order {
-  id: string;
-  pickupNumber: string;
-  items: Array<{
-    name: string;
-    quantity: number;
-    price: number;
-  }>;
-  total: number;
-  status: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
-  createdAt: string;
-  orderType: 'dine-in' | 'takeaway';
-}
-
 const OrdersPage: React.FC = () => {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
@@ -194,6 +180,7 @@ const OrdersPage: React.FC = () => {
         clearInterval(interval);
       };
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStore]);
 
   const loadOrders = async () => {

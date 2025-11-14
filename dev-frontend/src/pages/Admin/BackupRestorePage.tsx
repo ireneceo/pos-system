@@ -395,7 +395,7 @@ const BackupRestorePage: React.FC = () => {
   const [showCreateBackupModal, setShowCreateBackupModal] = useState(false);
   const [showAddScheduleModal, setShowAddScheduleModal] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
-  const [selectedBackup, setSelectedBackup] = useState<BackupRecord | null>(null);
+  const [, ] = useState<BackupRecord | null>(null);
   const [backupType, setBackupType] = useState<'full' | 'incremental' | 'differential'>('full');
   const [backupDescription, setBackupDescription] = useState('');
 

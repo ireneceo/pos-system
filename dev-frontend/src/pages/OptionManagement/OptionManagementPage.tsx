@@ -226,61 +226,10 @@ const OptionItemPrice = styled.span`
   margin-left: 8px;
 `;
 
-const StyledModal = styled.div<{ isOpen: boolean }>`
-  display: ${props => props.isOpen ? 'flex' : 'none'};
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  animation: fadeIn 0.2s;
 
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-`;
 
-const ModalContent = styled.div`
-  background: white;
-  border-radius: 16px;
-  width: 600px;
-  max-width: 90%;
-  max-height: 90vh;
-  overflow: auto;
-  animation: slideUp 0.3s;
-  
-  @keyframes slideUp {
-    from {
-      transform: translateY(20px);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-`;
 
-const ModalHeader = styled.div`
-  padding: 24px;
-  border-bottom: 1px solid #E5E7EB;
-`;
 
-const ModalTitle = styled.h2`
-  font-size: 20px;
-  font-weight: 600;
-  color: #1F2937;
-  margin: 0;
-`;
-
-const ModalBody = styled.div`
-  padding: 24px;
-`;
 
 const FormGroup = styled.div`
   margin-bottom: 20px;
@@ -311,23 +260,6 @@ const Input = styled.input`
   }
 `;
 
-const Select = styled.select`
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  padding: 10px 12px;
-  border: 1px solid #E5E7EB;
-  border-radius: 8px;
-  font-size: 14px;
-  background: white;
-  transition: all 0.2s;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
 
 const CheckboxGroup = styled.div`
   display: flex;
@@ -349,13 +281,6 @@ const Checkbox = styled.input`
   accent-color: #635BFF;
 `;
 
-const ModalFooter = styled.div`
-  padding: 24px;
-  border-top: 1px solid #E5E7EB;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-`;
 
 const EmptyState = styled.div`
   text-align: center;
@@ -418,20 +343,6 @@ const RemoveOptionButton = styled.button`
   }
 `;
 
-const AddOptionButton = styled.button`
-  background: #F0F9FF;
-  color: #0369A1;
-  border: 1px solid #BAE6FD;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  margin-top: 12px;
-  
-  &:hover {
-    background: #E0F2FE;
-  }
-`;
 
 interface OptionGroup {
   id: string;

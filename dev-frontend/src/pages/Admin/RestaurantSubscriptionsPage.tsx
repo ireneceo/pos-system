@@ -207,12 +207,12 @@ const ManagerInfo = styled.div`
   color: #6B7280;
 `;
 
-const PaymentInfo = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-`;
+// const PaymentInfo = styled.div`
+//   display: flex;
+//   align-items: center;
+//   gap: 8px;
+//   margin-top: 8px;
+// `;
 
 const PaymentBadge = styled.span<{ type: string }>`
   padding: 4px 8px;
@@ -668,13 +668,13 @@ const RestaurantSubscriptionsPage: React.FC = () => {
     setNewPlan(subscription.planType);
     setShowPlanModal(true);
   };
-  
-  const handleSwitchPayment = (subscription: RestaurantSubscription) => {
-    setSelectedSubscription(subscription);
-    setNewPaymentModel(subscription.paymentModel);
-    setShowPaymentModal(true);
-  };
-  
+
+  // const handleSwitchPayment = (subscription: RestaurantSubscription) => {
+  //   setSelectedSubscription(subscription);
+  //   setNewPaymentModel(subscription.paymentModel);
+  //   setShowPaymentModal(true);
+  // };
+
   const handleSuspend = (subscription: RestaurantSubscription) => {
     setSelectedSubscription(subscription);
     setSuspendReason('');

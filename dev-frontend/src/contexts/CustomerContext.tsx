@@ -109,6 +109,7 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // 초기 고객 데이터 로드
   useEffect(() => {
     loadInitialCustomers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // localStorage 동기화 제거 - 메모리 상태만 사용

@@ -324,7 +324,7 @@ const CrossMark = styled.span`
 `;
 
 const PlansPage: React.FC = () => {
-  const { user } = useAuth();
+  // const { } = useAuth();
   const navigate = useNavigate();
   const [isAnnual, setIsAnnual] = useState(false);
 

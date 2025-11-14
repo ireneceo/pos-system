@@ -299,11 +299,6 @@ const EmptyState = styled.div`
   color: #6B7C93;
 `;
 
-const EmptyStateIcon = styled.div`
-  font-size: 48px;
-  margin-bottom: 16px;
-  opacity: 0.5;
-`;
 
 const EmptyStateText = styled.p`
   font-size: 16px;
@@ -432,17 +427,6 @@ const DetailValue = styled.span`
   font-weight: 500;
 `;
 
-const OrderHistoryItem = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid #F3F4F6;
-  
-  &:last-child {
-    border-bottom: none;
-  }
-`;
 
 const CustomersPage: React.FC = () => {
   const {

@@ -88,12 +88,6 @@ interface MenuProviderProps {
 // 기본 메뉴 카테고리 (DB에서 가져옴)
 const DEFAULT_CATEGORIES: MenuCategory[] = [];
 
-// 기본 메뉴 옵션들
-const DEFAULT_OPTIONS: MenuOption[] = [];
-
-// POS에서 가져온 메뉴 데이터 (통합된 버전)
-const DEFAULT_MENU_ITEMS: MenuItem[] = [];
-
 // localStorage 사용 안함
 
 const DEFAULT_OPTION_GROUPS: OptionGroup[] = [];

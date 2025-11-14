@@ -437,7 +437,7 @@ const OperationInquiryPage: React.FC = () => {
 
   // Get current user info (for demo, using hardcoded manager ID)
   const currentManagerId = localStorage.getItem('userId') || '2';
-  const currentManagerName = localStorage.getItem('userName') || 'Manager';
+  // const currentManagerName = localStorage.getItem('userName') || 'Manager';
 
   useEffect(() => {
     fetchTickets();

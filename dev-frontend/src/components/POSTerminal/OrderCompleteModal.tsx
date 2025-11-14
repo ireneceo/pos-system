@@ -186,32 +186,6 @@ const PrintRow = styled.div`
   margin: 3px 0;
 `;
 
-const PrintItem = styled.div`
-  margin: 8px 0;
-  border-bottom: 1px dashed #ccc;
-  padding-bottom: 5px;
-`;
-
-const PrintItemName = styled.div`
-  font-weight: bold;
-  margin-bottom: 2px;
-`;
-
-const PrintItemOptions = styled.div`
-  font-size: 11px;
-  margin-left: 10px;
-  font-style: italic;
-`;
-
-const PrintTotal = styled.div`
-  border-top: 2px solid #000;
-  margin-top: 10px;
-  padding-top: 10px;
-  font-size: 16px;
-  font-weight: bold;
-  text-align: right;
-`;
-
 const PrintFooter = styled.div`
   text-align: center;
   margin-top: 20px;

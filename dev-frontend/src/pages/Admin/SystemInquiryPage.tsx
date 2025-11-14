@@ -599,6 +599,7 @@ const SystemInquiryPage: React.FC = () => {
 
   // Calculate average response time from resolved/closed tickets only
   const ticketsWithResponseTime = tickets.filter(t => t.responseTime && t.responseTime > 0);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const avgResponseTime = ticketsWithResponseTime.length > 0
     ? Math.round(ticketsWithResponseTime.reduce((sum, t) => sum + t.responseTime, 0) / ticketsWithResponseTime.length)
     : 0;

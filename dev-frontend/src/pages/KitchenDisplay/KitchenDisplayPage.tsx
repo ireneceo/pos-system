@@ -383,7 +383,7 @@ const KitchenDisplayPage: React.FC = () => {
   const { menuItems } = useMenu();
   const [orders, setOrders] = useState<KitchenOrder[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const [, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [operationSettings, setOperationSettings] = useState<any>(null);
 
@@ -826,7 +826,7 @@ const KitchenDisplayPage: React.FC = () => {
           if (o.id === orderId) {
             return {
               ...o,
-              items: updatedItems,
+              items: updatedItems as any,
               status: o.status
             };
           }
@@ -909,7 +909,7 @@ const KitchenDisplayPage: React.FC = () => {
           if (o.id === orderId) {
             return {
               ...o,
-              items: updatedItems,
+              items: updatedItems as any,
               status: o.status
             };
           }

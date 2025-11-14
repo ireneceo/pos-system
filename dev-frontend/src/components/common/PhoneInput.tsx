@@ -3,7 +3,6 @@ import styled from 'styled-components';
 import {
   formatPhoneInput,
   getPhoneErrorMessage,
-  displayPhoneNumber,
   formatPhoneNumber,
   COUNTRIES,
   getCountryByCode

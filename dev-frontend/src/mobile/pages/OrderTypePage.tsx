@@ -75,12 +75,6 @@ const OptionTitle = styled.h3`
   margin: 0 0 6px 0;
 `;
 
-const OptionDescription = styled.p`
-  font-size: 14px;
-  color: #6B7C93;
-  margin: 0;
-`;
-
 const Footer = styled.div`
   position: fixed;
   bottom: 24px;

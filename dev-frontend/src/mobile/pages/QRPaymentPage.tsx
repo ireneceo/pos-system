@@ -34,12 +34,6 @@ const AmountDisplay = styled.div`
   margin: 16px 0;
 `;
 
-const AmountLabel = styled.div`
-  font-size: 14px;
-  color: #6B7280;
-  margin-bottom: 8px;
-`;
-
 const QRCodeContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -90,11 +84,6 @@ const UploadArea = styled.div`
     border-color: #635BFF;
     background: rgba(99, 91, 255, 0.02);
   }
-`;
-
-const UploadIcon = styled.div`
-  font-size: 48px;
-  margin-bottom: 12px;
 `;
 
 const UploadText = styled.div`

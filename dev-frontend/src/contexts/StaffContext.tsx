@@ -160,11 +160,13 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       setCurrentStaff(staffFromAuth);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, user]);
 
   // 초기 데이터 로드 - DB에서 가져오기
   useEffect(() => {
     loadInitialData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // localStorage 세션 체크 제거 - 서버 세션만 사용

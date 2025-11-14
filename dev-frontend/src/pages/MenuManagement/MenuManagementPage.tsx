@@ -210,26 +210,6 @@ const MenuImage = styled.div`
   overflow: hidden;
 `;
 
-const ImageUploadOverlay = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  opacity: 0;
-  transition: opacity 0.3s;
-  cursor: pointer;
-  
-  ${MenuImage}:hover & {
-    opacity: 1;
-  }
-`;
 
 const MenuContent = styled.div`
   padding: 16px;
@@ -392,33 +372,7 @@ const CheckboxLabel = styled.label`
   }
 `;
 
-const ImageUploadButton = styled.label`
-  display: inline-block;
-  padding: 10px 16px;
-  background: #F0F4FF;
-  color: #635BFF;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s;
-  
-  &:hover {
-    background: #E0E7FF;
-  }
-  
-  input {
-    display: none;
-  }
-`;
 
-const ImagePreview = styled.img`
-  width: 100%;
-  height: 200px;
-  object-fit: cover;
-  border-radius: 8px;
-  margin-top: 12px;
-`;
 
 const SetBadge = styled.div`
   position: absolute;
@@ -586,7 +540,7 @@ const MenuManagementPage: React.FC = () => {
   // Set menu states
   const [showSetMenuModal, setShowSetMenuModal] = useState(false);
   const [setMenuItems, setSetMenuItems] = useState<SetMenuItem[]>([]);
-  const [setMenuDisplayOrder, setSetMenuDisplayOrder] = useState(0);
+  const [, ] = useState(0);
   const [setMenuSearchQuery, setSetMenuSearchQuery] = useState('');
 
   // Form state

@@ -116,25 +116,6 @@ const HeaderActions = styled.div`
   }
 `;
 
-const RefreshButton = styled.button`
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s;
-  border: 1px solid #E6EBF1;
-  background: white;
-  color: #6B7C93;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  &:hover {
-    background: #F6F9FC;
-    border-color: #C7D2FE;
-  }
-`;
 
 const AudioToggleButton = styled.button<{ enabled: boolean }>`
   width: 44px;
@@ -236,105 +217,11 @@ const DateInput = styled.input`
   }
 `;
 
-const SearchInputContainer = styled.div`
-  position: relative;
-  width: 280px;
 
-  @media (max-width: 768px) {
-    width: 100%;
-  }
-`;
 
-const SearchIcon = styled.span`
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 16px;
-  pointer-events: none;
-`;
 
-const SearchInput = styled.input`
-  width: 100%;
-  padding: 10px 40px 10px 40px;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  font-size: 14px;
-  transition: all 0.2s;
 
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
 
-  &::placeholder {
-    color: #9CA3AF;
-  }
-`;
-
-const ClearSearchBtn = styled.button`
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: #E5E7EB;
-  border: none;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 18px;
-  color: #6B7280;
-  transition: all 0.2s;
-
-  &:hover {
-    background: #D1D5DB;
-    color: #374151;
-  }
-`;
-
-const DownloadButton = styled.button`
-  padding: 10px 20px;
-  background: #635BFF;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
-
-  &:hover {
-    background: #5A51E6;
-  }
-
-  svg {
-    width: 16px;
-    height: 16px;
-  }
-`;
-
-const SearchDownloadRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-top: 12px;
-  flex-wrap: wrap;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-  }
-`;
 
 const StatusTabs = styled.div`
   display: flex;
@@ -576,17 +463,6 @@ const OrderTypeBadge = styled.span`
   vertical-align: middle;
 `;
 
-const PickupNumber = styled.div`
-  display: inline-flex;
-  align-items: center;
-  background: #635BFF;
-  color: white;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  margin-top: 4px;
-`;
 
 const CustomerInfo = styled.div`
   color: #6B7C93;
@@ -868,12 +744,6 @@ const ItemDetail = styled.div`
   }
 `;
 
-const ItemImage = styled.img`
-  width: 60px;
-  height: 60px;
-  border-radius: 8px;
-  object-fit: cover;
-`;
 
 const ItemInfo = styled.div`
   flex: 1;
@@ -1014,31 +884,9 @@ const BillRow = styled.div`
   margin: 3px 0;
 `;
 
-const BillItem = styled.div`
-  margin: 8px 0;
-  border-bottom: 1px dashed #ccc;
-  padding-bottom: 5px;
-`;
 
-const BillItemName = styled.div`
-  font-weight: bold;
-  margin-bottom: 2px;
-`;
 
-const BillItemOptions = styled.div`
-  font-size: 11px;
-  margin-left: 10px;
-  font-style: italic;
-`;
 
-const BillTotal = styled.div`
-  border-top: 2px solid #000;
-  margin-top: 10px;
-  padding-top: 10px;
-  font-size: 16px;
-  font-weight: bold;
-  text-align: right;
-`;
 
 const BillFooter = styled.div`
   text-align: center;
@@ -1112,7 +960,7 @@ const LiveOrdersPage: React.FC = () => {
   const { getStoreInfo } = useStore();
   const [orders, setOrders] = useState<DbOrder[]>([]); // Paginated orders for display
   const [allOrders, setAllOrders] = useState<DbOrder[]>([]); // ALL orders for tab counts
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const [, setSocket] = useState<Socket | null>(null);
   const [activeTab, setActiveTab] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState<DbOrder | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -1122,8 +970,8 @@ const LiveOrdersPage: React.FC = () => {
   const [orderToCancel, setOrderToCancel] = useState<number | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [orderForPayment, setOrderForPayment] = useState<DbOrder | null>(null);
-  const [showOrderCompleteModal, setShowOrderCompleteModal] = useState(false);
-  const [completedOrderData, setCompletedOrderData] = useState<any>(null);
+  const [, ] = useState(false);
+  const [, ] = useState<any>(null);
   const [showReceiptView, setShowReceiptView] = useState(false);
   const [showKitchenTicketView, setShowKitchenTicketView] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -1775,20 +1623,20 @@ const LiveOrdersPage: React.FC = () => {
           quantity: item.quantity,
           options: item.options || []
         })),
-        subtotal: parseFloat(selectedOrder.subtotal || '0'),
-        discount: parseFloat(selectedOrder.discount || '0'),
-        coupon: selectedOrder.coupon_code ? {
-          code: selectedOrder.coupon_code,
-          discount: parseFloat(selectedOrder.coupon_discount || '0')
+        subtotal: parseFloat((selectedOrder as any).subtotal || '0'),
+        discount: parseFloat((selectedOrder as any).discount || '0'),
+        coupon: (selectedOrder as any).coupon_code ? {
+          code: (selectedOrder as any).coupon_code,
+          discount: parseFloat((selectedOrder as any).coupon_discount || '0')
         } : null,
         serviceCharge: parseFloat((selectedOrder as any).service_charge || '0'),
         serviceChargeRate: parseFloat((selectedOrder as any).service_charge_rate || '10'),
-        tax: parseFloat(selectedOrder.tax || '0'),
+        tax: parseFloat((selectedOrder as any).tax || '0'),
         taxRate: parseFloat((selectedOrder as any).tax_rate || '6'),
-        total: parseFloat(selectedOrder.final_price || selectedOrder.total_amount || '0'),
+        total: parseFloat((selectedOrder as any).final_price || selectedOrder.total_amount || '0'),
         paymentMethod: selectedOrder.payment_method || 'cash',
-        amountReceived: parseFloat(selectedOrder.amount_received || '0'),
-        change: parseFloat(selectedOrder.change || '0')
+        amountReceived: parseFloat((selectedOrder as any).amount_received || '0'),
+        change: parseFloat((selectedOrder as any).change || '0')
       };
 
       // OLD: const success = await printBill(orderData, storeInfo);

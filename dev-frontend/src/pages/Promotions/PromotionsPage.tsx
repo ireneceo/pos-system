@@ -96,11 +96,6 @@ const EmptyState = styled.div`
   color: #6B7C93;
 `;
 
-const EmptyStateIcon = styled.div`
-  font-size: 48px;
-  margin-bottom: 16px;
-  opacity: 0.5;
-`;
 
 const EmptyStateText = styled.p`
   font-size: 14px;

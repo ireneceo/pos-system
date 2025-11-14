@@ -24,19 +24,11 @@ import {
   ProductPrice
 } from '../common/Modal';
 
-interface Option {
-  id: string;
-  name: string;
-  price: number;
-}
-
-interface OptionGroup {
-  id: string;
-  name: string;
-  required: boolean;
-  multiple: boolean;
-  options: Option[];
-}
+// interface Option {
+//   id: string;
+//   name: string;
+//   price: number;
+// }
 
 interface SelectedOptionData {
   id: string;

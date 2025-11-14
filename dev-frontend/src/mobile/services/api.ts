@@ -146,4 +146,5 @@ class MobileApiService {
   }
 }
 
-export default new MobileApiService();
+const mobileApiService = new MobileApiService();
+export default mobileApiService;

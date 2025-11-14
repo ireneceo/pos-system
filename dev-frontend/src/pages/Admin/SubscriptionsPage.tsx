@@ -21,8 +21,7 @@ import {
   MobileGrid,
   ActionButtons,
   ActionButton as CommonActionButton,
-  IconButton as CommonIconButton,
-  EmptyState
+  IconButton as CommonIconButton
 } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 
@@ -384,6 +383,7 @@ const SubscriptionsPage: React.FC = () => {
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [searchResults, setSearchResults] = useState<{managers: any[], restaurants: any[]}>({managers: [], restaurants: []});
   const [selectedTarget, setSelectedTarget] = useState<{type: 'manager' | 'restaurant', data: any} | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [availableRestaurants, setAvailableRestaurants] = useState<any[]>([]);
   const [availableManagers, setAvailableManagers] = useState<any[]>([]);
   const [allRestaurantsData, setAllRestaurantsData] = useState<any[]>([]);
@@ -588,6 +588,7 @@ const SubscriptionsPage: React.FC = () => {
   };
 
   // Restaurant 선택 시 매니저 자동 채우기
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleRestaurantSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const restaurantId = e.target.value;
     const selectedRestaurant = allRestaurantsData.find(r => r.id.toString() === restaurantId);

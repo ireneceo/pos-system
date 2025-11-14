@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
-import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { FilterBar, FilterSelect } from '../../components/Common/FilterComponents';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 
 interface Restaurant {
@@ -63,23 +63,8 @@ const PageTitle = styled.h1`
   margin: 0;
 `;
 
-const Controls = styled.div`
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  
-  @media (max-width: 768px) {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-`;
 
 
-const DateRangeSelector = styled.div`
-  display: flex;
-  gap: 8px;
-  align-items: center;
-`;
 
 const DateButton = styled.button<{ active?: boolean }>`
   padding: 8px 16px;

@@ -524,6 +524,7 @@ const PlansPage: React.FC = () => {
     if (Object.keys(subscriptionStats).length >= 0) {
       fetchPlans();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subscriptionStats]);
 
   const fetchSubscriptionStats = async () => {

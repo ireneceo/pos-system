@@ -91,10 +91,11 @@ export const PaymentStatusProvider: React.FC<PaymentStatusProviderProps> = ({ ch
 
   useEffect(() => {
     refreshPaymentStatus();
-    
+
     // 30분마다 결제 상태 체크
     const interval = setInterval(refreshPaymentStatus, 30 * 60 * 1000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   return (

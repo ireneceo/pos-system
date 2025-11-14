@@ -13,8 +13,7 @@ import {
   Header,
   Title,
   ActionSection,
-  Content,
-  Button
+  Content
 } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 // API imports removed - using direct fetch like StaffManagementPage and ManagersPage
@@ -644,6 +643,7 @@ const RestaurantsPage: React.FC = () => {
       setFilterManager(managerId);
       setFilterManagerSearchQuery(decodeURIComponent(managerName)); // Set manager name to show in search input
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // searchParams 의존성 제거 - 첫 로드시에만 실행
 
   const fetchRestaurants = async () => {

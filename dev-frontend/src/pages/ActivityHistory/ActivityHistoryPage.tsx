@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { Container, Header, Title, Content } from '../../components/UI/PageComponents';
 import { BaseButton, StatusBadge } from '../../components/UI/CommonStyles';
-import { FilterBar, FilterSelect } from '../../components/Common/FilterComponents';
+import { FilterSelect } from '../../components/Common/FilterComponents';
 import { useAuth } from '../../contexts/AuthContext';
 
 const FilterSection = styled.div`
@@ -178,6 +178,7 @@ const ActivityHistoryPage: React.FC = () => {
 
   useEffect(() => {
     fetchActivityLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, entityType, actionType, userId, startDate, endDate]);
 
   const fetchActivityLogs = async () => {

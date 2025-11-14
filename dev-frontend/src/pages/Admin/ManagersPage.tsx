@@ -83,14 +83,7 @@ const ManagerTableRow = styled(CommonTableRow)`
   }
 `;
 
-const TitleSection = styled.div`
-  flex: 1;
-`;
 
-const Subtitle = styled.p`
-  font-size: 16px;
-  color: #6B7280;
-`;
 
 const ManagerInfo = styled.div``;
 
@@ -137,19 +130,8 @@ const IconSymbol = styled.span`
 `;
 
 // Validation helpers
-const validateEmail = (email: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
 
-const validatePhone = (phone: string): boolean => {
-  const phoneRegex = /^[\d\s\-\+\(\)]+$/;
-  return phone.length >= 8 && phoneRegex.test(phone);
-};
 
-const validatePassword = (password: string): boolean => {
-  return password.length >= 8;
-};
 
 // Modal styled components
 const ModalOverlay = styled.div<{ show?: boolean }>`
@@ -259,20 +241,6 @@ const FormInput = styled.input`
   }
 `;
 
-const FormSelect = styled.select`
-  padding: 10px 12px;
-  border: 1px solid #E6EBF1;
-  border-radius: 6px;
-  font-size: 14px;
-  transition: all 0.2s;
-  background: white;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
 
 const FormTextarea = styled.textarea`
   padding: 10px 12px;
@@ -615,16 +583,16 @@ const ManagersPage: React.FC = () => {
     setShowConfirmModal(true);
   };
 
-  const handleViewManager = (manager: Manager) => {
-    setSelectedManager(manager);
-    setShowViewModal(true);
-  };
-
-  const handleEditManager = (manager: Manager) => {
-    setEditingManager(manager);
-    setShowEditModal(true);
-  };
-
+//   const handleViewManager = (manager: Manager) => {
+//     setSelectedManager(manager);
+//     setShowViewModal(true);
+//   };
+// 
+//   const handleEditManager = (manager: Manager) => {
+//     setEditingManager(manager);
+//     setShowEditModal(true);
+//   };
+// 
   const handleUpdateManager = async () => {
     if (!editingManager) return;
 

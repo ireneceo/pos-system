@@ -8,7 +8,6 @@ import { useOrders } from '../../contexts/OrderContext';
 import { BrandThemeProvider } from '../../contexts/BrandThemeContext';
 import { PaymentStatusModals } from '../PaymentStatus/PaymentStatusModals';
 import { AccessBlocked } from '../PaymentStatus/AccessBlocked';
-import { useRestaurantId } from '../../hooks/useRestaurantId';
 
 const LayoutContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -117,28 +116,6 @@ const LogoImage = styled.img`
   max-width: 140px;
   max-height: 60px;
   object-fit: contain;
-`;
-
-const LogoPlaceholder = styled.div`
-  width: 140px;
-  height: 40px;
-  background: #E5E7EB;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #9CA3AF;
-  font-size: 11px;
-  font-weight: 500;
-`;
-
-const OrderText = styled.span`
-  color: #0A2540;
-`;
-
-const HereText = styled.span`
-  color: #635BFF;
-  font-style: italic;
 `;
 
 const SidebarNav = styled.nav`

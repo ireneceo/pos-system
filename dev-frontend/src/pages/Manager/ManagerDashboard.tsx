@@ -57,12 +57,6 @@ const Title = styled.h1`
 `;
 
 
-const StatTrend = styled.div<{ positive?: boolean }>`
-  font-size: 14px;
-  color: ${props => props.positive ? '#059669' : '#DC2626'};
-  font-weight: 500;
-  margin-top: 4px;
-`;
 
 const SectionTitle = styled.h2`
   font-size: 20px;

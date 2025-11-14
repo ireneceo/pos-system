@@ -324,7 +324,7 @@ const ItemDetailPage: React.FC = () => {
   
   useEffect(() => {
     if (!itemId) return;
-    
+
     const foundItem = getItemById(itemId);
     if (foundItem) {
       setItem(foundItem);
@@ -333,7 +333,8 @@ const ItemDetailPage: React.FC = () => {
       // Fetch from API if not in context
       loadItemDetails();
     }
-  }, [itemId, getItemById]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemId]);
   
   const loadItemDetails = async () => {
     if (!itemId) return;

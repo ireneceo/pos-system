@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
-import { TabContainer, Tab, DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue, DashboardStatDescription } from '../../components/UI';
+import { TabContainer, Tab, DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
 
 interface BrandMetrics {
   assignedBrand: string;
@@ -240,7 +240,7 @@ const BrandManagerDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [franchises, setFranchises] = useState<FranchiseStore[]>([]);
-  const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
+  const [, setRevenueData] = useState<RevenueData[]>([]);
   const [timePeriod, setTimePeriod] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
   const [metrics, setMetrics] = useState<BrandMetrics>({
     assignedBrand: '',

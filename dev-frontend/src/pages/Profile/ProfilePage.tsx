@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import MainLayout from '../../components/Layout/MainLayout';
-import { useStaff, Staff } from '../../contexts/StaffContext';
+import { useStaff } from '../../contexts/StaffContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton } from '../../components/UI/Modal';
 import Tabs from '../../components/UI/Tabs';
@@ -40,13 +40,6 @@ const Content = styled.main`
   }
 `;
 
-const ProfileSection = styled.div`
-  margin-bottom: 32px;
-  
-  &:last-child {
-    margin-bottom: 0;
-  }
-`;
 
 const SectionTitle = styled.h3`
   font-size: 18px;
@@ -164,11 +157,6 @@ const ContentCard = styled.div`
   padding: 32px;
 `;
 
-const FormContainer = styled.form`
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-`;
 
 const FormGrid = styled.div`
   display: grid;
@@ -346,9 +334,9 @@ const SaveStatusMessage = styled.div<{ show: boolean }>`
 `;
 
 const ProfilePage: React.FC = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { restaurantId } = useParams<{ restaurantId?: string }>();
+  // const navigate = useNavigate();
+  // const location = useLocation();
+  // const { restaurantId } = useParams<{ restaurantId?: string }>();
   const { currentStaff, updateStaff, isLoggedIn } = useStaff();
   const { user: authUser, isAuthenticated, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState<'profile' | 'schedule' | 'performance' | 'security'>('profile');

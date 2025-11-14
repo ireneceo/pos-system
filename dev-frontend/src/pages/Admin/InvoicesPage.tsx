@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
-import { BaseButton, StatusBadge as CommonStatusBadge, ActionButtonGroup, MultiLineText } from '../../components/UI/CommonStyles';
+import { BaseButton, StatusBadge as CommonStatusBadge } from '../../components/UI/CommonStyles';
 import {
   Container,
   Header,
@@ -392,28 +392,7 @@ const FormSelect = styled.select`
   }
 `;
 
-const FormTextArea = styled.textarea`
-  width: 100%;
-  padding: 12px 16px;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  font-size: 14px;
-  resize: vertical;
-  min-height: 80px;
-  transition: all 0.2s;
-  
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
 
-const FormHelp = styled.div`
-  font-size: 12px;
-  color: #6B7280;
-  margin-top: 4px;
-`;
 
 const InvoiceSummary = styled.div`
   background: #F8FAFC;
@@ -497,7 +476,7 @@ const InvoicesPage: React.FC = () => {
   const [editSelectedTarget, setEditSelectedTarget] = useState<{type: 'manager' | 'restaurant', data: Manager | Restaurant} | null>(null);
   const [managers, setManagers] = useState<Manager[]>([]);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [, setSubscriptions] = useState<Subscription[]>([]);
   const [searchResults, setSearchResults] = useState<{managers: Manager[], restaurants: Restaurant[]}>({managers: [], restaurants: []});
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
@@ -539,7 +518,8 @@ const InvoicesPage: React.FC = () => {
     }
   };
 
-  // Sample data fallback
+  // Sample data fallback - kept for reference but not currently used
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const setSampleData = () => {
     const sampleInvoices: Invoice[] = [
       {

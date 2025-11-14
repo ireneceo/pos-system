@@ -102,16 +102,6 @@ const RightSection = styled.div`
   }
 `;
 
-const Logo = styled.div`
-  font-size: 32px;
-  font-weight: 800;
-  color: #0A2540;
-  margin-bottom: 10px;
-
-  span {
-    color: #635BFF;
-  }
-`;
 
 const LogoImage = styled.img`
   max-width: 200px;
@@ -122,25 +112,7 @@ const LogoImage = styled.img`
   display: block;
 `;
 
-const LogoPlaceholder = styled.div`
-  width: 200px;
-  height: 80px;
-  background: #E5E7EB;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 24px;
-  color: #9CA3AF;
-  font-size: 12px;
-  text-align: center;
-`;
 
-const Subtitle = styled.p`
-  color: #6B7C93;
-  font-size: 16px;
-  margin-bottom: 40px;
-`;
 
 const Form = styled.form`
   display: flex;
@@ -359,17 +331,17 @@ const LoginPage: React.FC = () => {
             navigate('/pos/brand/dashboard', { replace: true });
             break;
           case 'Restaurant Admin':
-            // Use user's restaurant_id for the dashboard URL
-            if (user.restaurant_id) {
-              navigate(`/restaurant/${user.restaurant_id}/dashboard`, { replace: true });
+            // Use user's restaurantId for the dashboard URL
+            if (user.restaurantId) {
+              navigate(`/restaurant/${user.restaurantId}/dashboard`, { replace: true });
             } else {
               navigate('/pos/restaurant/dashboard', { replace: true });
             }
             break;
           case 'Staff':
-            // Use user's restaurant_id for the basic POS URL
-            if (user.restaurant_id) {
-              navigate(`/restaurant/${user.restaurant_id}/pos-terminal`, { replace: true });
+            // Use user's restaurantId for the basic POS URL
+            if (user.restaurantId) {
+              navigate(`/restaurant/${user.restaurantId}/pos-terminal`, { replace: true });
             } else {
               navigate('/pos/basic', { replace: true });
             }

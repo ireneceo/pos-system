@@ -63,14 +63,14 @@ export const checkPaymentStatus = (userRole: string, userId: string): PaymentSta
 };
 
 // 연체 일수 계산
-const calculateOverdueDays = (dueDate: string): number => {
-  const due = new Date(dueDate);
-  const today = new Date();
-  const diffTime = today.getTime() - due.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return Math.max(0, diffDays);
-};
-
+// const calculateOverdueDays = (dueDate: string): number => {
+//   const due = new Date(dueDate);
+//   const today = new Date();
+//   const diffTime = today.getTime() - due.getTime();
+//   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+//   return Math.max(0, diffDays);
+// };
+// 
 // 날짜 추가 유틸리티
 const addDays = (date: Date, days: number): Date => {
   const result = new Date(date);

@@ -179,53 +179,11 @@ const FilterSelect = styled.select`
   }
 `;
 
-const TableContainer = styled.div`
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #E6EBF1;
-  overflow: hidden;
-`;
 
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-`;
 
-const Thead = styled.thead`
-  background: #F8FAFC;
-  border-bottom: 1px solid #E6EBF1;
-`;
 
-const Th = styled.th`
-  padding: 16px;
-  text-align: left;
-  font-size: 12px;
-  font-weight: 600;
-  color: #6B7C93;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
 
-const Tbody = styled.tbody``;
 
-const Tr = styled.tr`
-  border-bottom: 1px solid #F3F4F6;
-  transition: background 0.2s;
-  
-  &:hover {
-    background: #F8FAFC;
-  }
-  
-  &:last-child {
-    border-bottom: none;
-  }
-`;
-
-const Td = styled.td`
-  padding: 16px;
-  font-size: 14px;
-  color: #374151;
-`;
 
 const InvoiceInfo = styled.div``;
 

@@ -4,7 +4,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { useMenu } from '../../contexts/MenuContext';
-import api from '../services/api';
 
 const StoreHeader = styled.div`
   background: white;
@@ -119,18 +118,6 @@ const ItemPrice = styled.div`
   color: #635BFF;
 `;
 
-const ItemBadge = styled.div`
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  background: #FEF3C7;
-  color: #D97706;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 8px;
-  border-radius: 4px;
-`;
-
 const SetBadge = styled.div`
   position: absolute;
   top: 8px;
@@ -220,6 +207,7 @@ const MenuPage: React.FC = () => {
 
   useEffect(() => {
     loadMenu();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
   const loadMenu = async () => {

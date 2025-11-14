@@ -3,9 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { TabContainer, Tab, StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI';
-import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import {
-  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
+  LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 
@@ -306,6 +305,18 @@ const SearchableDropdownContainer = styled.div`
   min-width: 200px;
 `;
 
+const SearchInput = styled.input`
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+
+  &:focus {
+    border-color: #635BFF;
+  }
+`;
 
 const DropdownMenu = styled.div<{ isOpen: boolean }>`
   position: absolute;
@@ -369,10 +380,10 @@ const AnalyticsPage: React.FC = () => {
   const [managers, setManagers] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
-  const [systemStats, setSystemStats] = useState<any>(null);
+  const [, setSystemStats] = useState<any>(null);
   const [salesTrend, setSalesTrend] = useState<any[]>([]);
-  const [subscriptionStats, setSubscriptionStats] = useState<any>(null);
-  const [regionalStats, setRegionalStats] = useState<any[]>([]);
+  const [, setSubscriptionStats] = useState<any>(null);
+  const [, setRegionalStats] = useState<any[]>([]);
 
   // 검색 기능을 위한 상태들
   const [managerSearch, setManagerSearch] = useState('');
@@ -458,6 +469,7 @@ const AnalyticsPage: React.FC = () => {
   useEffect(() => {
     console.log('useEffect triggered:', { dateRange, isCustomDateRange });
     fetchAnalyticsData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePeriod, selectedRestaurant, selectedManager, activeTab, dateRange.start, dateRange.end, isCustomDateRange]);
 
   const fetchAnalyticsData = async () => {
@@ -679,12 +691,16 @@ const AnalyticsPage: React.FC = () => {
 
       return dateMatch;
     });
-  }, [invoices, isCustomDateRange, dateRange.start, dateRange.end, activePeriod, selectedManager, refreshKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invoices, isCustomDateRange, dateRange.start, dateRange.end, activePeriod, selectedManager]);
 
   // useMemo로 날짜 변경 시 데이터 재계산 - 의존성을 더 세밀하게 설정
-  const salesData = useMemo(() => getSalesData(), [activePeriod, isCustomDateRange, dateRange.start, dateRange.end, refreshKey, selectedRestaurant, selectedManager]);
-  const subscriptionData = useMemo(() => getSubscriptionData(), [refreshKey, selectedManager]);
-  const restaurantData = useMemo(() => getRestaurantData(), [activePeriod, isCustomDateRange, dateRange.start, dateRange.end, refreshKey, selectedManager]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const salesData = useMemo(() => getSalesData(), [activePeriod, isCustomDateRange, dateRange.start, dateRange.end, selectedRestaurant, selectedManager]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const subscriptionData = useMemo(() => getSubscriptionData(), [selectedManager]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const restaurantData = useMemo(() => getRestaurantData(), [activePeriod, isCustomDateRange, dateRange.start, dateRange.end, selectedManager]);
 
   // 시스템 메트릭
   const getSystemMetrics = () => {
@@ -740,7 +756,8 @@ const AnalyticsPage: React.FC = () => {
     };
   };
 
-  const systemMetrics = useMemo(() => getSystemMetrics(), [salesData, subscriptionData, restaurantData, isCustomDateRange, dateRange, activePeriod, refreshKey, selectedRestaurant, selectedManager]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const systemMetrics = useMemo(() => getSystemMetrics(), [salesData, subscriptionData, restaurantData, isCustomDateRange, dateRange, activePeriod, selectedRestaurant, selectedManager]);
 
   // 날짜 범위 처리 함수
   const handlePeriodChange = (period: PeriodType) => {
@@ -865,7 +882,6 @@ const AnalyticsPage: React.FC = () => {
 
           // Period-based breakdown
           let periodLabel = '';
-          let periods = [];
 
           if (activePeriod === 'today' || (isCustomDateRange &&
               Math.ceil((new Date(dateRange.end).getTime() - new Date(dateRange.start).getTime()) / (1000 * 60 * 60 * 24)) <= 1
@@ -1867,7 +1883,7 @@ const AnalyticsPage: React.FC = () => {
                           )) {
                           // Show daily data for week
                           const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-                          days.forEach((day, index) => {
+                          days.forEach((day) => {
                             const dailyRevenue = Math.round(baseRevenue * 0.233 * (0.7 + Math.random() * 0.6));
                             const dailyOrders = Math.round(baseOrders * 0.233 * (0.7 + Math.random() * 0.6));
                             periods.push({
@@ -1881,7 +1897,7 @@ const AnalyticsPage: React.FC = () => {
                         } else if (activePeriod === 'year') {
                           // Show monthly data for year
                           const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                          months.forEach((month, index) => {
+                          months.forEach((month) => {
                             const monthlyRevenue = Math.round(baseRevenue * 12 * (0.8 + Math.random() * 0.4));
                             const monthlyOrders = Math.round(baseOrders * 12 * (0.8 + Math.random() * 0.4));
                             periods.push({

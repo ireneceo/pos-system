@@ -27,7 +27,6 @@ import {
   EmptyState
 } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
-import { getAPI, postAPI, putAPI, deleteAPI } from '../../utils/api';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 
 interface Staff {
@@ -426,7 +425,8 @@ const ErrorMessage = styled.div`
 `;
 
 const AdminStaffManagementPage: React.FC = () => {
-  const { user } = useAuth();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const auth = useAuth();
   const [activeTab, setActiveTab] = useState<'all' | 'System Admin' | 'Restaurant Admin' | 'Staff' | 'Managers'>('all');
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -943,6 +943,7 @@ const AdminStaffManagementPage: React.FC = () => {
     setShowEditModal(true);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleViewPermissions = (staff: Staff) => {
     setViewingPermissions(staff);
     setEditingPermissions([...getPermissionsByRole(staff.role)]);
@@ -1056,9 +1057,10 @@ const AdminStaffManagementPage: React.FC = () => {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const togglePermission = (permission: string) => {
-    setEditingPermissions(prev => 
-      prev.includes(permission) 
+    setEditingPermissions(prev =>
+      prev.includes(permission)
         ? prev.filter(p => p !== permission)
         : [...prev, permission]
     );
@@ -1327,6 +1329,7 @@ const AdminStaffManagementPage: React.FC = () => {
     setEditingStaff(null);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handlePromoteStaff = async (staff: Staff) => {
     const roles = ['Staff', 'Restaurant Admin', 'System Admin'];
     const currentIndex = roles.indexOf(staff.role);

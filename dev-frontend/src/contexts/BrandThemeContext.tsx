@@ -46,6 +46,7 @@ export const BrandThemeProvider: React.FC<BrandThemeProviderProps> = ({ children
   useEffect(() => {
     // Initialize theme on mount
     setTheme(theme);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

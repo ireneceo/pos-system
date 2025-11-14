@@ -209,7 +209,7 @@ const CustomerDisplayPage: React.FC = () => {
   const [dbOrders, setDbOrders] = useState<DbOrder[]>([]);
   const [orders, setOrders] = useState<DisplayOrder[]>([]);
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const [, setSocket] = useState<Socket | null>(null);
 
   // Fetch orders from database
   const fetchOrders = useCallback(async () => {

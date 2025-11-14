@@ -240,7 +240,7 @@ const FoodcourtManagerDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [tenants, setTenants] = useState<TenantStore[]>([]);
-  const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
+  const [, setRevenueData] = useState<RevenueData[]>([]);
   const [timePeriod, setTimePeriod] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
   const [metrics, setMetrics] = useState<FoodcourtMetrics>({
     assignedFoodcourt: '',

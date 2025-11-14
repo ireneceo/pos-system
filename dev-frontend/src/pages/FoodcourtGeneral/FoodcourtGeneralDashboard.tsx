@@ -402,6 +402,7 @@ const FoodcourtGeneralDashboard: React.FC = () => {
 
           // Generate revenue data
           const periods = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const revenueArray = periods.map(period => ({
             period,
             revenue: Math.floor(Math.random() * 100000) + 50000,
@@ -414,6 +415,7 @@ const FoodcourtGeneralDashboard: React.FC = () => {
     };
 
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleAddManager = () => {

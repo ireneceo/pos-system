@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 
 interface Store {
   id: string;
@@ -119,23 +119,11 @@ export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ childr
 
   // Order state - localStorage 제거, 메모리 기반 상태 관리
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
-  const [orderHistory, setOrderHistory] = useState<Order[]>([]);
+  const [orderHistory] = useState<Order[]>([]);
 
   // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Helper function to get fetch options with credentials
-  const getFetchOptions = (options: RequestInit = {}): RequestInit => {
-    return {
-      ...options,
-      credentials: 'include', // 쿠키를 포함하여 요청
-      headers: {
-        'Content-Type': 'application/json',
-        ...(options.headers || {})
-      }
-    };
-  };
 
   // localStorage 동기화 제거 - 필요시 서버에 카트 저장 기능 추가 가능
   
