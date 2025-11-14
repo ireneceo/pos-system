@@ -280,7 +280,7 @@ router.patch('/:id', async (req, res) => {
 // Update order status
 router.patch('/:id/status', async (req, res) => {
   try {
-    const { status, kitchen_ready } = req.body;
+    const { status, kitchen_ready, served_at } = req.body;
     const order = await Order.findByPk(req.params.id);
 
     if (!order) {
@@ -292,9 +292,10 @@ router.patch('/:id/status', async (req, res) => {
       updateData.kitchen_ready = kitchen_ready;
     }
 
-    // Record served_at timestamp when status changes to 'served'
-    if (status === 'served' && order.status !== 'served') {
-      updateData.served_at = new Date();
+    // Record served_at timestamp when status changes to 'served' or 'completed'
+    // Accept from frontend if provided, otherwise generate (only if not already set)
+    if ((status === 'served' || status === 'completed') && !order.served_at) {
+      updateData.served_at = served_at ? new Date(served_at) : new Date();
     }
 
     // If reverting to pending, reset all item statuses

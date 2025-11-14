@@ -1526,12 +1526,16 @@ const LiveOrdersPage: React.FC = () => {
     // Stop notification sound when status changes
     setAudioEnabled(false);
 
+    // Get current timestamp for served_at
+    const now = new Date().toISOString();
+
     // Optimistically update UI immediately
     setOrders(prev => prev.map(order =>
       order.id === orderId ? {
         ...order,
         status: newStatus,
-        ...(setKitchenReady && { kitchen_ready: true })
+        ...(setKitchenReady && { kitchen_ready: true }),
+        ...((newStatus === 'served' || newStatus === 'completed') && !order.served_at && { served_at: now })
       } : order
     ));
 
@@ -1541,6 +1545,12 @@ const LiveOrdersPage: React.FC = () => {
       // If setting kitchen_ready, include it in the update
       if (setKitchenReady) {
         updateData.kitchen_ready = true;
+      }
+
+      // If changing to served or completed status, include served_at timestamp (if not already set)
+      const order = orders.find(o => o.id === orderId);
+      if ((newStatus === 'served' || newStatus === 'completed') && !order?.served_at) {
+        updateData.served_at = now;
       }
 
       const response = await fetch(`/api/orders/${orderId}/status`, getFetchOptions({
@@ -2514,6 +2524,7 @@ const LiveOrdersPage: React.FC = () => {
                         const orderData = {
                           orderNumber: selectedOrder.order_number,
                           pickupNumber: selectedOrder.order_number.split('-')[1],
+                          pagerNumber: selectedOrder.pager_number || null,
                           date: new Date(selectedOrder.order_date || selectedOrder.createdAt),
                           items: orderItems.map((item: any) => ({
                             menuItem: {

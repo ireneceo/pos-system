@@ -507,6 +507,9 @@ const SettingsPage: React.FC = () => {
         taxRate: 6,
         serviceChargeEnabled: false,
         serviceChargeRate: 10,
+        currency: 'RM',
+        cashRounding: 0.05,
+        roundingApplyTo: 'cash_only',
         pagerSystem: {
           enabled: false,
           totalPagers: 50
@@ -528,10 +531,13 @@ const SettingsPage: React.FC = () => {
   
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(loadSettings().store);
   const [operationSettings, setOperationSettings] = useState<OperationSettings>(loadSettings().operations);
+
+  // Initialize currencySettings from operationSettings (will be overridden by DB values in useEffect)
+  const defaultOps = loadSettings().operations;
   const [currencySettings, setCurrencySettings] = useState({
-    currency: 'RM',
-    cashRounding: null as number | null,
-    roundingApplyTo: 'cash_only' as 'cash_only' | 'all'
+    currency: defaultOps.currency || 'RM',
+    cashRounding: defaultOps.cashRounding !== null && defaultOps.cashRounding !== undefined ? defaultOps.cashRounding : null,
+    roundingApplyTo: defaultOps.roundingApplyTo || 'cash_only' as 'cash_only' | 'all'
   });
   const [companySettings, setCompanySettings] = useState<CompanySettings>({
     name: 'Food Court Management Corp',
@@ -621,6 +627,13 @@ const SettingsPage: React.FC = () => {
             const data = await response.json();
             const restaurant = data.data || data;
 
+            console.log('🔍 RAW API Response for restaurant:', {
+              currency: restaurant.currency,
+              cash_rounding: restaurant.cash_rounding,
+              rounding_apply_to: restaurant.rounding_apply_to,
+              raw_cash_rounding_type: typeof restaurant.cash_rounding
+            });
+
             // Update store settings with restaurant data
             setStoreSettings({
               name: restaurant.name || '',
@@ -648,39 +661,55 @@ const SettingsPage: React.FC = () => {
             }
 
             // Load operation settings from DB
-            if (restaurant.operation_settings) {
-              console.log('✅ Loading operation settings from DB:', restaurant.operation_settings);
-              // Merge with defaults to ensure all fields exist
-              const defaultOps = loadSettings().operations;
-              const mergedSettings = {
-                ...defaultOps,
-                ...restaurant.operation_settings,
-                pagerSystem: {
-                  ...defaultOps.pagerSystem,
-                  ...(restaurant.operation_settings.pagerSystem || {})
-                },
-                takeawayPricing: {
-                  ...defaultOps.takeawayPricing,
-                  ...(restaurant.operation_settings.takeawayPricing || {}),
-                  categoryCharges: {
-                    ...defaultOps.takeawayPricing.categoryCharges,
-                    ...((restaurant.operation_settings.takeawayPricing && restaurant.operation_settings.takeawayPricing.categoryCharges) || {})
-                  }
-                }
-              };
-              setOperationSettings(mergedSettings);
-            } else {
-              console.log('⚠️  No operation settings found in DB, using default values');
-            }
+            const defaultOps = loadSettings().operations;
 
-            // Load currency settings
-            if (restaurant.currency || restaurant.cash_rounding !== undefined || restaurant.rounding_apply_to) {
-              setCurrencySettings({
-                currency: restaurant.currency || 'RM',
-                cashRounding: restaurant.cash_rounding ? parseFloat(restaurant.cash_rounding) : null,
-                roundingApplyTo: restaurant.rounding_apply_to || 'cash_only'
-              });
-            }
+            // Merge operation_settings from DB
+            const mergedSettings = restaurant.operation_settings ? {
+              ...defaultOps,
+              ...restaurant.operation_settings,
+              pagerSystem: {
+                ...defaultOps.pagerSystem,
+                ...(restaurant.operation_settings.pagerSystem || {})
+              },
+              takeawayPricing: {
+                ...defaultOps.takeawayPricing,
+                ...(restaurant.operation_settings.takeawayPricing || {}),
+                categoryCharges: {
+                  ...defaultOps.takeawayPricing.categoryCharges,
+                  ...((restaurant.operation_settings.takeawayPricing && restaurant.operation_settings.takeawayPricing.categoryCharges) || {})
+                }
+              }
+            } : defaultOps;
+
+            // Override with currency settings from restaurant table (these take priority)
+            const currencyFromDB = restaurant.currency || 'RM';
+            const cashRoundingFromDB = restaurant.cash_rounding !== null && restaurant.cash_rounding !== undefined
+              ? parseFloat(restaurant.cash_rounding)
+              : 0.05;
+            const roundingApplyToFromDB = restaurant.rounding_apply_to || 'cash_only';
+
+            const finalOperationSettings = {
+              ...mergedSettings,
+              currency: currencyFromDB,
+              cashRounding: cashRoundingFromDB,
+              roundingApplyTo: roundingApplyToFromDB
+            };
+
+            console.log('✅ Loading currency from DB:', {
+              currency: currencyFromDB,
+              cashRounding: cashRoundingFromDB,
+              roundingApplyTo: roundingApplyToFromDB,
+              raw_cash_rounding: restaurant.cash_rounding
+            });
+            console.log('✅ Final operation settings with currency:', finalOperationSettings);
+            setOperationSettings(finalOperationSettings);
+
+            // Also update currencySettings state for the UI (same values as operationSettings)
+            setCurrencySettings({
+              currency: currencyFromDB,
+              cashRounding: restaurant.cash_rounding !== null && restaurant.cash_rounding !== undefined ? parseFloat(restaurant.cash_rounding) : null,
+              roundingApplyTo: roundingApplyToFromDB
+            });
           }
         } catch (error) {
           console.error('Failed to load store data:', error);
@@ -937,6 +966,11 @@ const SettingsPage: React.FC = () => {
         console.log('📦 Request body (first 500 chars):', JSON.stringify(requestBody).substring(0, 500));
         console.log('💳 Payment settings being saved:', JSON.stringify(paymentMethods).substring(0, 300));
         console.log('⚙️ Operation settings being saved:', JSON.stringify(operationSettings));
+        console.log('💰 Currency settings being saved:', {
+          currency: currencySettings.currency,
+          cashRounding: currencySettings.cashRounding,
+          roundingApplyTo: currencySettings.roundingApplyTo
+        });
 
         const token = localStorage.getItem('auth_token');
         console.log('🔑 Auth token length:', token?.length || 0);
@@ -974,15 +1008,20 @@ const SettingsPage: React.FC = () => {
         const result = await response.json();
         console.log('✅ Database save successful:', result);
 
-        // Update StoreContext with new operation settings
+        // Update StoreContext with new operation settings (including currency settings)
         console.log('🔄 Updating StoreContext with new operation settings');
         updateSettings({
           store: storeSettings,
-          operations: operationSettings
+          operations: {
+            ...operationSettings,
+            currency: currencySettings.currency,
+            cashRounding: currencySettings.cashRounding || 0.05,
+            roundingApplyTo: currencySettings.roundingApplyTo
+          }
         });
 
         // Reload data from DB to verify it was saved correctly
-        console.log('🔄 Reloading payment settings from DB to verify...');
+        console.log('🔄 Reloading settings from DB to verify...');
         const verifyResponse = await fetch(`/api/restaurants/${user.restaurantId}`);
         if (verifyResponse.ok) {
           const verifyData = await verifyResponse.json();
@@ -993,6 +1032,18 @@ const SettingsPage: React.FC = () => {
           } else {
             console.log('⚠️  Payment settings not found in DB after save!');
           }
+
+          // Reload currency settings from DB
+          console.log('✅ Verified currency settings from DB:', {
+            currency: verifyRestaurant.currency,
+            cash_rounding: verifyRestaurant.cash_rounding,
+            rounding_apply_to: verifyRestaurant.rounding_apply_to
+          });
+          setCurrencySettings({
+            currency: verifyRestaurant.currency || 'RM',
+            cashRounding: verifyRestaurant.cash_rounding !== null && verifyRestaurant.cash_rounding !== undefined ? parseFloat(verifyRestaurant.cash_rounding) : null,
+            roundingApplyTo: verifyRestaurant.rounding_apply_to || 'cash_only'
+          });
         }
       } else {
         console.log('⚠️  No restaurantId found, skipping database save');
