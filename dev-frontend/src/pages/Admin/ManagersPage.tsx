@@ -21,7 +21,7 @@ import {
   MobileValue,
   MobileGrid,
   ActionButtons,
-  ActionButton,
+  // ActionButton, // Removed - not used after handleEditManager was commented out
   IconButton
 } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
@@ -1011,7 +1011,7 @@ const ManagersPage: React.FC = () => {
                 </MobileGrid>
 
                 <ActionButtons>
-                  <ActionButton onClick={() => handleEditManager(manager)}>Edit</ActionButton>
+                  {/* <ActionButton onClick={() => handleEditManager(manager)}>Edit</ActionButton> */}
                   <IconButton
                     onClick={() => handleToggleStatus(manager)}
                     title={manager.status === 'active' ? 'Deactivate Manager' : 'Activate Manager'}

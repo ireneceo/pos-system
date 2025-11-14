@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
+import { formatCurrency } from '../../utils/currency';
 
 const Container = styled.div`
   padding: 24px 16px 100px;
@@ -259,7 +260,7 @@ const BankTransferPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { setCurrentOrder, clearCart, currentStore } = useMobileOrder();
+  const { setCurrentOrder, clearCart, currentStore, currency } = useMobileOrder();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Get order data from sessionStorage or location state
@@ -436,7 +437,7 @@ const BankTransferPage: React.FC = () => {
         status: 'awaiting_payment',
         createdAt: new Date(),
         estimatedPickupTime: new Date(Date.now() + 30 * 60000),
-        paymentStatus: 'payment_verification_pending'
+        paymentStatus: 'pending' as any // payment_verification_pending is backend only
       });
       clearCart();
 
@@ -461,7 +462,7 @@ const BankTransferPage: React.FC = () => {
     >
       <Container>
         <BankDetailsSection>
-          <AmountDisplay>RM {total.toFixed(2)}</AmountDisplay>
+          <AmountDisplay>{formatCurrency(total, currency)}</AmountDisplay>
 
           <BankDetailCard>
             <DetailRow>
@@ -497,7 +498,7 @@ const BankTransferPage: React.FC = () => {
         <InstructionBox>
           <InstructionTitle>⚠️ Important</InstructionTitle>
           <InstructionText>
-            1. Transfer exactly <strong>RM {total.toFixed(2)}</strong> to the account above<br />
+            1. Transfer exactly <strong>{formatCurrency(total, currency)}</strong> to the account above<br />
             2. Keep your transaction receipt<br />
             3. Upload the receipt or enter reference number below<br />
             4. Your order will be confirmed after verification

@@ -9,6 +9,8 @@ import {
   TotalPrice
 } from '../common/Modal';
 import styled from 'styled-components';
+import { formatCurrency } from '../../utils/currency';
+import { useStore } from '../../contexts/StoreContext';
 
 const OrderSummary = styled.div`
   background: linear-gradient(to bottom, #F8FAFC, #F1F5F9);
@@ -150,6 +152,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   taxEnabled = true,
   serviceChargeEnabled = false
 }) => {
+  const { operationSettings } = useStore();
+
   // Get available payment methods for POS
   const getAvailablePaymentMethods = () => {
     if (!paymentMethods) {
@@ -244,43 +248,43 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       <OrderSummary>
         <SummaryRow>
           <SummaryLabel>Subtotal</SummaryLabel>
-          <SummaryValue>RM {subtotal.toFixed(2)}</SummaryValue>
+          <SummaryValue>{formatCurrency(subtotal, operationSettings.currency)}</SummaryValue>
         </SummaryRow>
         {takeawayCharge > 0 && (
           <SummaryRow>
             <SummaryLabel>Takeaway Charge</SummaryLabel>
-            <SummaryValue>RM {takeawayCharge.toFixed(2)}</SummaryValue>
+            <SummaryValue>{formatCurrency(takeawayCharge, operationSettings.currency)}</SummaryValue>
           </SummaryRow>
         )}
         {discountAmount > 0 && (
           <DiscountRow>
             <SummaryLabel>Discount</SummaryLabel>
-            <SummaryValue>-RM {discountAmount.toFixed(2)}</SummaryValue>
+            <SummaryValue>{formatCurrency(-discountAmount, operationSettings.currency)}</SummaryValue>
           </DiscountRow>
         )}
         {couponDiscount > 0 && (
           <DiscountRow>
             <SummaryLabel>Coupon Discount</SummaryLabel>
-            <SummaryValue>-RM {couponDiscount.toFixed(2)}</SummaryValue>
+            <SummaryValue>{formatCurrency(-couponDiscount, operationSettings.currency)}</SummaryValue>
           </DiscountRow>
         )}
         {serviceChargeEnabled && serviceCharge > 0 && (
           <SummaryRow>
             <SummaryLabel>Service Charge ({serviceChargeRate}%)</SummaryLabel>
-            <SummaryValue>RM {serviceCharge.toFixed(2)}</SummaryValue>
+            <SummaryValue>{formatCurrency(serviceCharge, operationSettings.currency)}</SummaryValue>
           </SummaryRow>
         )}
         {taxEnabled && tax > 0 && (
           <SummaryRow>
             <SummaryLabel>Tax ({taxRate}%)</SummaryLabel>
-            <SummaryValue>RM {tax.toFixed(2)}</SummaryValue>
+            <SummaryValue>{formatCurrency(tax, operationSettings.currency)}</SummaryValue>
           </SummaryRow>
         )}
       </OrderSummary>
 
       <TotalSection>
         <TotalLabel>Total Amount</TotalLabel>
-        <TotalPrice>RM {total.toFixed(2)}</TotalPrice>
+        <TotalPrice>{formatCurrency(total, operationSettings.currency)}</TotalPrice>
       </TotalSection>
 
       <Section>
@@ -315,15 +319,15 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                 selected={cashAmount === amount.toString()}
                 onClick={() => setCashAmount(amount.toString())}
               >
-                RM {amount}
+                {formatCurrency(amount, operationSettings.currency)}
               </QuickAmountBtn>
             ))}
           </QuickAmountGrid>
-          
+
           {parseFloat(cashAmount) >= total && (
             <ChangeDisplay>
               <ChangeLabel>Change</ChangeLabel>
-              <ChangeAmount>RM {calculateChange().toFixed(2)}</ChangeAmount>
+              <ChangeAmount>{formatCurrency(calculateChange(), operationSettings.currency)}</ChangeAmount>
             </ChangeDisplay>
           )}
         </InputSection>

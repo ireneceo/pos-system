@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { useStore } from '../../contexts/StoreContext';
+import { formatCurrency } from '../../utils/currency';
 
 const CartContainer = styled.div`
   display: flex;
@@ -218,7 +219,8 @@ const CartPage: React.FC = () => {
     cartItems,
     cartTotal,
     updateCartItem,
-    removeFromCart
+    removeFromCart,
+    currency
   } = useMobileOrder();
   const { operationSettings } = useStore();
 
@@ -307,7 +309,7 @@ const CartPage: React.FC = () => {
                   </svg>
                 </QuantityButton>
               </QuantityControl>
-              <ItemPrice>RM {item.totalPrice.toFixed(2)}</ItemPrice>
+              <ItemPrice>{formatCurrency(item.totalPrice, currency)}</ItemPrice>
             </ItemFooter>
           </CartItem>
         ))}
@@ -315,23 +317,23 @@ const CartPage: React.FC = () => {
         <OrderSummary>
           <SummaryRow>
             <span>Subtotal</span>
-            <span>RM {subtotal.toFixed(2)}</span>
+            <span>{formatCurrency(subtotal, currency)}</span>
           </SummaryRow>
           {operationSettings.serviceChargeEnabled && serviceCharge > 0 && (
             <SummaryRow>
               <span>Service Charge ({operationSettings.serviceChargeRate}%)</span>
-              <span>RM {serviceCharge.toFixed(2)}</span>
+              <span>{formatCurrency(serviceCharge, currency)}</span>
             </SummaryRow>
           )}
           {operationSettings.taxEnabled && tax > 0 && (
             <SummaryRow>
               <span>Tax ({operationSettings.taxRate}%)</span>
-              <span>RM {tax.toFixed(2)}</span>
+              <span>{formatCurrency(tax, currency)}</span>
             </SummaryRow>
           )}
           <SummaryRow>
             <span>Total</span>
-            <span>RM {total.toFixed(2)}</span>
+            <span>{formatCurrency(total, currency)}</span>
           </SummaryRow>
         </OrderSummary>
       </CartContainer>

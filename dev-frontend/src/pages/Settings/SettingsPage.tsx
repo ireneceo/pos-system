@@ -279,10 +279,11 @@ const StatusMessage = styled.div<{ type: 'success' | 'error' }>`
   `}
 `;
 
-const TabContentWrapper = styled.div`
-  position: relative;
-  min-height: 500px;
-`;
+// Unused styled component - kept for reference
+// const TabContentWrapper = styled.div`
+//   position: relative;
+//   min-height: 500px;
+// `;
 
 const SaveButtonContainer = styled.div`
   display: flex;
@@ -449,36 +450,7 @@ interface OperationSettings {
   };
 }
 
-interface PaymentSettings {
-  cash: {
-    enabled: boolean;
-    floatAmount: number;
-  };
-  card: {
-    enabled: boolean;
-    feePercentage: number;
-    minimumAmount: number;
-  };
-  online: {
-    stripe: {
-      enabled: boolean;
-      publicKey: string;
-      secretKey: string;
-    };
-    paypal: {
-      enabled: boolean;
-      clientId: string;
-      clientSecret: string;
-    };
-  };
-  policies: {
-    allowPartialPayment: boolean;
-    allowRefunds: boolean;
-    refundTimeLimit: number;
-    allowTips: boolean;
-    defaultTipPercentage: number;
-  };
-}
+// PaymentSettings interface removed - not used
 
 interface Manager {
   id: string;
@@ -637,13 +609,12 @@ const SettingsPage: React.FC = () => {
   const [tables, setTables] = useState<Table[]>([]);
   const [managers, setManagers] = useState<Manager[]>([]);
   const [loadingManagers, setLoadingManagers] = useState(false);
-  const [loadingStoreData, setLoadingStoreData] = useState(false);
+  // loadingStoreData removed - not used
 
   // Load store data from restaurants API on mount
   useEffect(() => {
     const loadStoreData = async () => {
       if (user?.restaurantId) {
-        setLoadingStoreData(true);
         try {
           const response = await fetch(`/api/restaurants/${user.restaurantId}`);
           if (response.ok) {
@@ -713,8 +684,6 @@ const SettingsPage: React.FC = () => {
           }
         } catch (error) {
           console.error('Failed to load store data:', error);
-        } finally {
-          setLoadingStoreData(false);
         }
       }
     };
@@ -784,21 +753,8 @@ const SettingsPage: React.FC = () => {
       }
     }
   }, []);
-  
-  const generateTables = (count: number) => {
-    const newTables: Table[] = [];
-    for (let i = 1; i <= count; i++) {
-      const tableNumber = `${tableSettings.tablePrefix}${String(i).padStart(3, '0')}`;
-      const qrData = `${tableSettings.qrCodeBaseUrl}/mobile?table=${tableNumber}`;
-      newTables.push({
-        id: `table-${i}`,
-        number: i,
-        qrCode: qrData,
-        isActive: true
-      });
-    }
-    setTables(newTables);
-  };
+
+  // generateTables function removed - not used
   
   const handleGenerateQRCodes = () => {
     const newTables: Table[] = [];

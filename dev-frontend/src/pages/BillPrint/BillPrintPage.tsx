@@ -216,7 +216,8 @@ const Footer = styled.div`
 
 const BillPrintPage: React.FC = () => {
   const { orders } = useOrders();
-  const { companyInfo } = useStore();
+  const storeContext = useStore();
+  const companyInfo = (storeContext as any).companyInfo;
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
 

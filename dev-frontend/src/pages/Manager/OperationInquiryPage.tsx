@@ -443,6 +443,7 @@ const OperationInquiryPage: React.FC = () => {
     fetchTickets();
     const interval = setInterval(fetchTickets, 10000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchTickets = async () => {

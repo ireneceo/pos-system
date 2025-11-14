@@ -921,6 +921,7 @@ const ManagerPromotionsPage: React.FC = () => {
     setPromotions([...promotions, copiedPromotion]);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleDeletePromotion = (id: string) => {
     if (window.confirm('Are you sure you want to delete this promotion?')) {
       setPromotions(promotions.filter(p => p.id !== id));

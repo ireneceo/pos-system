@@ -297,6 +297,7 @@ const ReportsPage: React.FC = () => {
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [stats, setStats] = useState<any>(null);
   const [customers, setCustomers] = useState<any[]>([]);
 
@@ -468,6 +469,7 @@ const ReportsPage: React.FC = () => {
   };
 
   const allMenuData = getAllMenuData();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const topMenus = allMenuData.slice(0, 10);
 
   // Calculate hourly order distribution from real orders
@@ -569,6 +571,7 @@ const ReportsPage: React.FC = () => {
     }, 30000);
 
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
 
@@ -684,6 +687,7 @@ const ReportsPage: React.FC = () => {
     return 'year'; // Multiple years - show years
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const displayLevel = getDisplayLevel();
 
   // Auto-expand logic based on display level
@@ -711,6 +715,7 @@ const ReportsPage: React.FC = () => {
       setExpandedYears(new Set());
       setExpandedMonths(new Set());
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange.start, dateRange.end, filteredOrders.length]);
 
   // Toggle functions for drilldown

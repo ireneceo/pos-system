@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 // Updated with new UI components
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';

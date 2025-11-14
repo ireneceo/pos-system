@@ -111,10 +111,11 @@ const StatTrend = styled.div<{ positive?: boolean }>`
   margin-top: 4px;
 `;
 
-const StatDetail = styled.div`
-  font-size: 12px;
-  color: #9CA3AF;
-`;
+// Unused styled component - kept for reference
+// const StatDetail = styled.div`
+//   font-size: 12px;
+//   color: #9CA3AF;
+// `;
 
 const SubscriptionGrid = styled.div`
   display: grid;
@@ -154,10 +155,11 @@ const RestaurantName = styled.h3`
   margin-bottom: 4px;
 `;
 
-const Location = styled.p`
-  font-size: 14px;
-  color: #6B7280;
-`;
+// Unused styled component - kept for reference
+// const Location = styled.p`
+//   font-size: 14px;
+//   color: #6B7280;
+// `;
 
 const StatusBadge = styled.span<{ status: string }>`
   padding: 6px 12px;
@@ -553,6 +555,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
   const formatCurrency = (amount: number) => `RM ${amount.toFixed(0)}`;
 
   const handleExportData = () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const exportData = {
       exportDate: new Date().toISOString(),
       manager: user?.name || 'Manager',
@@ -677,8 +680,9 @@ const ManagerSubscriptionsPage: React.FC = () => {
       });
 
       if (response.ok) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const result = await response.json();
-        
+
         // Refresh subscriptions list
         const subscriptionsResponse = await fetch(`${API_BASE_URL}/api/restaurants/subscriptions/manager/${managerId}`);
         if (subscriptionsResponse.ok) {

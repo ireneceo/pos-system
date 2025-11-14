@@ -610,6 +610,7 @@ const SalesPage: React.FC = () => {
   // 실제 주문 데이터 로드
   useEffect(() => {
     loadSalesData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orders]);
 
   // 기간 필터 변경 시 데이터 재로드
@@ -617,6 +618,7 @@ const SalesPage: React.FC = () => {
     if (viewMode !== 'transactions') {
       generateAggregateData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode, yearFilter, monthFilter, weekFilter, currentPage]);
 
   // 필터링된 데이터 계산

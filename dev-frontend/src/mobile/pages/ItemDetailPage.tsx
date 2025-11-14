@@ -5,6 +5,7 @@ import MobileLayout from '../components/common/MobileLayout';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { useMenu } from '../../contexts/MenuContext';
 import api from '../services/api';
+import { formatCurrency } from '../../utils/currency';
 
 const ItemHeader = styled.div`
   background: white;
@@ -313,7 +314,7 @@ const PriceDisplay = styled.span`
 const ItemDetailPage: React.FC = () => {
   const { slug, itemId } = useParams<{ slug: string; itemId: string }>();
   const navigate = useNavigate();
-  const { addToCart } = useMobileOrder();
+  const { addToCart, currency } = useMobileOrder();
   const { getItemById, optionGroups } = useMenu();
   
   const [item, setItem] = useState<any>(null);
@@ -341,9 +342,9 @@ const ItemDetailPage: React.FC = () => {
 
     try {
       // Fetch item details from API
-      const response = await api.get(`/menu/item/${itemId}`);
+      const response = await api.getItemDetails(itemId);
 
-      if (response.data.success && response.data.data) {
+      if (response.data && response.data.success && response.data.data) {
         const itemData = response.data.data;
 
         // Transform API data to match component format
@@ -534,7 +535,7 @@ const ItemDetailPage: React.FC = () => {
                   <div>{option.name}</div>
                   {option.price > 0 && (
                     <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
-                      +RM {option.price.toFixed(2)}
+                      +{formatCurrency(option.price, currency)}
                     </div>
                   )}
                 </RadioButton>
@@ -553,7 +554,7 @@ const ItemDetailPage: React.FC = () => {
                     <CheckboxText>{option.name}</CheckboxText>
                   </div>
                   {option.price > 0 && (
-                    <CheckboxPrice>+RM {option.price.toFixed(2)}</CheckboxPrice>
+                    <CheckboxPrice>+{formatCurrency(option.price, currency)}</CheckboxPrice>
                   )}
                 </CheckboxLabel>
               ))}
@@ -596,12 +597,12 @@ const ItemDetailPage: React.FC = () => {
         />
       </SpecialInstructions>
       
-      <AddToCartButton 
+      <AddToCartButton
         onClick={handleAddToCart}
         disabled={!isValid()}
       >
         <span>Add to Cart</span>
-        <PriceDisplay>RM {calculateTotal().toFixed(2)}</PriceDisplay>
+        <PriceDisplay>{formatCurrency(calculateTotal(), currency)}</PriceDisplay>
       </AddToCartButton>
     </MobileLayout>
   );

@@ -23,6 +23,8 @@ import {
   ProductName,
   ProductPrice
 } from '../common/Modal';
+import { formatCurrency } from '../../utils/currency';
+import { useStore } from '../../contexts/StoreContext';
 
 // interface Option {
 //   id: string;
@@ -52,6 +54,7 @@ interface OptionModalProps {
 
 const OptionModal: React.FC<OptionModalProps> = ({ isOpen, onClose, menuItem, onConfirm }) => {
   const { optionGroups: allOptionGroups } = useMenu();
+  const { operationSettings } = useStore();
   const [quantity, setQuantity] = useState(1);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
 
@@ -165,7 +168,7 @@ const OptionModal: React.FC<OptionModalProps> = ({ isOpen, onClose, menuItem, on
         </ProductIcon>
         <ProductDetails>
           <ProductName>{menuItem.name}</ProductName>
-          <ProductPrice>RM {menuItem.price.toFixed(2)}</ProductPrice>
+          <ProductPrice>{formatCurrency(menuItem.price, operationSettings.currency)}</ProductPrice>
         </ProductDetails>
       </ProductInfo>
 
@@ -192,7 +195,7 @@ const OptionModal: React.FC<OptionModalProps> = ({ isOpen, onClose, menuItem, on
                   <div>{option.name}</div>
                   {option.price > 0 && (
                     <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
-                      +RM {option.price.toFixed(2)}
+                      +{formatCurrency(option.price, operationSettings.currency)}
                     </div>
                   )}
                 </RadioButton>
@@ -211,7 +214,7 @@ const OptionModal: React.FC<OptionModalProps> = ({ isOpen, onClose, menuItem, on
                     <CheckboxText>{option.name}</CheckboxText>
                   </div>
                   {option.price > 0 && (
-                    <CheckboxPrice>+RM {option.price.toFixed(2)}</CheckboxPrice>
+                    <CheckboxPrice>+{formatCurrency(option.price, operationSettings.currency)}</CheckboxPrice>
                   )}
                 </CheckboxLabel>
               ))}
@@ -242,7 +245,7 @@ const OptionModal: React.FC<OptionModalProps> = ({ isOpen, onClose, menuItem, on
 
       <TotalSection>
         <TotalLabel>Total:</TotalLabel>
-        <TotalPrice>RM {calculateTotal().toFixed(2)}</TotalPrice>
+        <TotalPrice>{formatCurrency(calculateTotal(), operationSettings.currency)}</TotalPrice>
       </TotalSection>
     </Modal>
   );

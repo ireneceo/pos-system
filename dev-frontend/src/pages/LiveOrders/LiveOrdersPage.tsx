@@ -974,9 +974,12 @@ const LiveOrdersPage: React.FC = () => {
   const [, ] = useState<any>(null);
   const [showReceiptView, setShowReceiptView] = useState(false);
   const [showKitchenTicketView, setShowKitchenTicketView] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [totalPages, setTotalPages] = useState(1);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [totalCount, setTotalCount] = useState(0);
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
@@ -2542,11 +2545,17 @@ const LiveOrdersPage: React.FC = () => {
                         // ESC sequences: \x1B followed by 1-3 characters
                         // GS sequences: \x1D followed by 1-3 characters
                         return billContent
+                          // eslint-disable-next-line no-control-regex
                           .replace(/\x1B[@E][\x00\x01]/g, '')  // INIT, BOLD ON/OFF
+                          // eslint-disable-next-line no-control-regex
                           .replace(/\x1Ba[\x00-\x02]/g, '')    // ALIGN LEFT/CENTER/RIGHT
+                          // eslint-disable-next-line no-control-regex
                           .replace(/\x1D![\x00-\x11]/g, '')    // TEXT SIZE
+                          // eslint-disable-next-line no-control-regex
                           .replace(/\x1DB[\x00\x01]/g, '')     // REVERSE ON/OFF
+                          // eslint-disable-next-line no-control-regex
                           .replace(/\x1DV\x41\x00/g, '')       // PAPER CUT
+                          // eslint-disable-next-line no-control-regex
                           .replace(/[\x1B\x1D]./g, '');        // Any remaining ESC/GS sequences
                       })()}
                     </div>

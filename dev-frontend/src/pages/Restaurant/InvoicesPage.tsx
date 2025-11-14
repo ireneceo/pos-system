@@ -297,6 +297,7 @@ const RestaurantInvoicesPage: React.FC = () => {
 
   useEffect(() => {
     fetchInvoices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const fetchInvoices = async () => {

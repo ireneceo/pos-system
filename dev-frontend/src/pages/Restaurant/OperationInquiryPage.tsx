@@ -422,6 +422,7 @@ const OperationInquiryPage: React.FC = () => {
       const interval = setInterval(fetchTickets, 10000);
       return () => clearInterval(interval);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   // Auto-select inquiry type if only one type of manager is connected

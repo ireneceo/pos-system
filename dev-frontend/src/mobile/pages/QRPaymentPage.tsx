@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
+import { formatCurrency } from '../../utils/currency';
 // import QRCode from 'qrcode'; // Temporarily disabled for testing
 
 const Container = styled.div`
@@ -235,7 +236,7 @@ const QRPaymentPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { setCurrentOrder, clearCart, currentStore } = useMobileOrder();
+  const { setCurrentOrder, clearCart, currentStore, currency } = useMobileOrder();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Get order data from sessionStorage or location state
@@ -407,7 +408,7 @@ const QRPaymentPage: React.FC = () => {
         status: 'awaiting_payment',
         createdAt: new Date(),
         estimatedPickupTime: new Date(Date.now() + 30 * 60000),
-        paymentStatus: 'payment_verification_pending'
+        paymentStatus: 'pending' as any // payment_verification_pending is backend only
       });
       clearCart();
 
@@ -432,7 +433,7 @@ const QRPaymentPage: React.FC = () => {
     >
       <Container>
         <QRSection>
-          <AmountDisplay>RM {total.toFixed(2)}</AmountDisplay>
+          <AmountDisplay>{formatCurrency(total, currency)}</AmountDisplay>
 
           <QRCodeContainer>
             {qrCodeImage ? (
@@ -469,7 +470,7 @@ const QRPaymentPage: React.FC = () => {
               }}>
                 QR Code<br/>
                 (Loading...)<br/>
-                RM {total.toFixed(2)}
+                {formatCurrency(total, currency)}
               </div>
             )}
           </QRCodeContainer>

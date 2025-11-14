@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
-import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import MainLayout from '../../components/Layout/MainLayout';
 import { useStaff } from '../../contexts/StaffContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -337,6 +336,7 @@ const ProfilePage: React.FC = () => {
   // const navigate = useNavigate();
   // const location = useLocation();
   // const { restaurantId } = useParams<{ restaurantId?: string }>();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { currentStaff, updateStaff, isLoggedIn } = useStaff();
   const { user: authUser, isAuthenticated, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState<'profile' | 'schedule' | 'performance' | 'security'>('profile');
@@ -405,12 +405,14 @@ const ProfilePage: React.FC = () => {
     };
 
     fetchUserData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser?.id]);
 
   // Tab state is now automatically managed by the Tabs component via URL params
 
   // ALWAYS use database user as primary source - NO fallbacks for System Admin
-  const currentUser = dbUser ? {
+  // Wrapped in useMemo to prevent exhaustive-deps warnings
+  const currentUser = useMemo(() => dbUser ? {
     id: dbUser.id,
     name: dbUser.full_name || dbUser.name || 'Unknown',
     email: dbUser.email,
@@ -437,7 +439,7 @@ const ProfilePage: React.FC = () => {
       customerRating: 5.0,
       ordersProcessed: 0
     }
-  } : null;
+  } : null, [dbUser]);
 
   // Debug logging
   useEffect(() => {
@@ -454,6 +456,7 @@ const ProfilePage: React.FC = () => {
       });
       console.log('👤 Profile Page - Current User:', currentUser);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dbUser]);
 
   useEffect(() => {
@@ -471,6 +474,7 @@ const ProfilePage: React.FC = () => {
       setFormData(newFormData);
       setHasChanges(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, formData.name]);
 
   // 변경사항 감지

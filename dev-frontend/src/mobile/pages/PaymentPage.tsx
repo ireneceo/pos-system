@@ -6,6 +6,8 @@ import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { useCustomer } from '../../contexts/CustomerContext';
 import { useStore } from '../../contexts/StoreContext';
 import CustomerModal from '../../components/Customer/CustomerModal';
+import api from '../services/api';
+import { formatCurrency } from '../../utils/currency';
 
 const Container = styled.div`
   padding-bottom: 100px;
@@ -381,7 +383,7 @@ const VALID_COUPONS: Record<string, { type: 'percentage' | 'fixed'; value: numbe
 const PaymentPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const { cartItems, cartTotal, clearCart, setCurrentOrder, currentStore, setCurrentStore } = useMobileOrder();
+  const { cartItems, cartTotal, clearCart, setCurrentOrder, currentStore, setCurrentStore, currency } = useMobileOrder();
   const {
     currentCustomer,
     guestInfo,
@@ -426,15 +428,14 @@ const PaymentPage: React.FC = () => {
     } else {
       // Per-category charge
       cartItems.forEach(item => {
-        const itemCharge = getTakeawayCharge(item.menuItem.category);
+        const itemCharge = getTakeawayCharge((item.menuItem as any).categoryId || (item.menuItem as any).category);
         charge += itemCharge * item.quantity;
       });
     }
     return charge;
   };
 
-  // Currency and rounding settings
-  const currency = currentStore?.currency || 'RM';
+  // Rounding settings
   const cashRounding = currentStore?.cash_rounding;
   const roundingApplyTo = currentStore?.rounding_apply_to || 'cash_only';
 
@@ -685,8 +686,8 @@ const PaymentPage: React.FC = () => {
                 price: item.menuItem.price,
                 options: item.selectedOptions || [],
                 special_instructions: item.specialInstructions || null,
-                is_set_menu: item.menuItem.is_set_menu || false,
-                set_items: item.menuItem.set_items || []
+                is_set_menu: (item.menuItem as any).is_set_menu || false,
+                set_items: (item.menuItem as any).set_items || []
               }))
             };
 
@@ -798,8 +799,8 @@ const PaymentPage: React.FC = () => {
                 price: item.menuItem.price,
                 options: item.selectedOptions || [],
                 special_instructions: item.specialInstructions || null,
-                is_set_menu: item.menuItem.is_set_menu || false,
-                set_items: item.menuItem.set_items || []
+                is_set_menu: (item.menuItem as any).is_set_menu || false,
+                set_items: (item.menuItem as any).set_items || []
               }))
             };
 
@@ -916,7 +917,7 @@ const PaymentPage: React.FC = () => {
     }
 
     if (coupon.minOrder && subtotal < coupon.minOrder) {
-      setCouponError(`Minimum order of RM ${coupon.minOrder.toFixed(2)} required`);
+      setCouponError(`Minimum order of ${formatCurrency(coupon.minOrder, currency)} required`);
       setCouponDiscount(0);
       return;
     }
@@ -951,34 +952,34 @@ const PaymentPage: React.FC = () => {
                     </ItemSetItems>
                   )}
                 </ItemInfo>
-                <ItemPrice>{currency} {item.totalPrice.toFixed(2)}</ItemPrice>
+                <ItemPrice>{formatCurrency(item.totalPrice, currency)}</ItemPrice>
               </ItemRow>
             ))}
           </ItemsList>
 
           <SummaryRow>
             <span>Subtotal</span>
-            <span>{currency} {subtotal.toFixed(2)}</span>
+            <span>{formatCurrency(subtotal, currency)}</span>
           </SummaryRow>
           {couponDiscount > 0 && (
             <SummaryRow>
               <span>Discount</span>
-              <span style={{ color: '#059669' }}>-{currency} {couponDiscount.toFixed(2)}</span>
+              <span style={{ color: '#059669' }}>-{formatCurrency(couponDiscount, currency)}</span>
             </SummaryRow>
           )}
           {takeawayCharge > 0 && (
             <SummaryRow>
               <span>Takeaway Charge</span>
-              <span>{currency} {takeawayCharge.toFixed(2)}</span>
+              <span>{formatCurrency(takeawayCharge, currency)}</span>
             </SummaryRow>
           )}
           <SummaryRow>
             <span>Tax (6%)</span>
-            <span>{currency} {tax.toFixed(2)}</span>
+            <span>{formatCurrency(tax, currency)}</span>
           </SummaryRow>
           <SummaryRow className="total">
             <span>Total</span>
-            <span>{currency} {total.toFixed(2)}</span>
+            <span>{formatCurrency(total, currency)}</span>
           </SummaryRow>
         </OrderSummary>
         
@@ -1106,7 +1107,7 @@ const PaymentPage: React.FC = () => {
           )}
           {couponDiscount > 0 && (
             <div style={{ color: '#059669', fontSize: '12px', marginTop: '8px' }}>
-              Coupon applied! You saved RM {couponDiscount.toFixed(2)}
+              Coupon applied! You saved {formatCurrency(couponDiscount, currency)}
             </div>
           )}
         </Section>
@@ -1208,7 +1209,7 @@ const PaymentPage: React.FC = () => {
           </>
         ) : (
           <>
-            Pay RM {total.toFixed(2)}
+            Pay {formatCurrency(total, currency)}
           </>
         )}
       </PayButton>

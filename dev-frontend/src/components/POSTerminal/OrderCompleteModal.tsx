@@ -11,6 +11,7 @@ import { useStore } from '../../contexts/StoreContext';
 // OLD: import { printBill } from '../../utils/thermalPrinter';
 import { printBillViaRawBT, printKitchenTicketViaRawBT } from '../../utils/billPrint';
 import { formatDateTime as formatDateTimeUtil } from '../../utils/timezone';
+import { formatCurrency } from '../../utils/currency';
 
 // Global print styles
 const PrintStyles = createGlobalStyle`
@@ -325,11 +326,11 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
             <>
               <DetailRow>
                 <DetailLabel>Amount Received</DetailLabel>
-                <DetailValue>RM {orderData.amountReceived.toFixed(2)}</DetailValue>
+                <DetailValue>{formatCurrency(orderData.amountReceived, operationSettings.currency)}</DetailValue>
               </DetailRow>
               <DetailRow>
                 <DetailLabel>Change</DetailLabel>
-                <DetailValue>RM {orderData.change.toFixed(2)}</DetailValue>
+                <DetailValue>{formatCurrency(orderData.change, operationSettings.currency)}</DetailValue>
               </DetailRow>
             </>
           )}
@@ -347,7 +348,7 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
                   )}
                 </ItemInfo>
                 <ItemQuantity>{item.quantity}x</ItemQuantity>
-                <ItemPrice>RM {(item.menuItem.price * item.quantity).toFixed(2)}</ItemPrice>
+                <ItemPrice>{formatCurrency(item.menuItem.price * item.quantity, operationSettings.currency)}</ItemPrice>
               </ItemRow>
             ))}
           </ItemsList>
@@ -356,43 +357,43 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
         <Section>
           <DetailRow>
             <DetailLabel>Subtotal</DetailLabel>
-            <DetailValue>RM {orderData.subtotal.toFixed(2)}</DetailValue>
+            <DetailValue>{formatCurrency(orderData.subtotal, operationSettings.currency)}</DetailValue>
           </DetailRow>
           {orderData.takeawayCharge && Number(orderData.takeawayCharge) > 0 && (
             <DetailRow>
               <DetailLabel>Takeaway Charge</DetailLabel>
-              <DetailValue>RM {Number(orderData.takeawayCharge).toFixed(2)}</DetailValue>
+              <DetailValue>{formatCurrency(Number(orderData.takeawayCharge), operationSettings.currency)}</DetailValue>
             </DetailRow>
           )}
           {orderData.discount && Number(orderData.discount) > 0 && (
             <DetailRow>
               <DetailLabel>Discount</DetailLabel>
-              <DetailValue style={{ color: '#10B981' }}>-RM {Number(orderData.discount).toFixed(2)}</DetailValue>
+              <DetailValue style={{ color: '#10B981' }}>{formatCurrency(-Number(orderData.discount), operationSettings.currency)}</DetailValue>
             </DetailRow>
           )}
           {orderData.coupon && orderData.coupon.discount && Number(orderData.coupon.discount) > 0 && (
             <DetailRow>
               <DetailLabel>Coupon ({orderData.coupon.code})</DetailLabel>
-              <DetailValue style={{ color: '#10B981' }}>-RM {Number(orderData.coupon.discount).toFixed(2)}</DetailValue>
+              <DetailValue style={{ color: '#10B981' }}>{formatCurrency(-Number(orderData.coupon.discount), operationSettings.currency)}</DetailValue>
             </DetailRow>
           )}
           {orderData.serviceCharge && Number(orderData.serviceCharge) > 0 && (
             <DetailRow>
               <DetailLabel>Service Charge ({orderData.serviceChargeRate || 10}%)</DetailLabel>
-              <DetailValue>RM {Number(orderData.serviceCharge).toFixed(2)}</DetailValue>
+              <DetailValue>{formatCurrency(Number(orderData.serviceCharge), operationSettings.currency)}</DetailValue>
             </DetailRow>
           )}
           {orderData.tax && Number(orderData.tax) > 0 && (
             <DetailRow>
               <DetailLabel>Tax ({orderData.taxRate || 6}%)</DetailLabel>
-              <DetailValue>RM {Number(orderData.tax).toFixed(2)}</DetailValue>
+              <DetailValue>{formatCurrency(Number(orderData.tax), operationSettings.currency)}</DetailValue>
             </DetailRow>
           )}
         </Section>
-        
+
         <TotalSection style={{ marginTop: 0 }}>
           <TotalLabel>Total</TotalLabel>
-          <TotalPrice>RM {orderData.total.toFixed(2)}</TotalPrice>
+          <TotalPrice>{formatCurrency(orderData.total, operationSettings.currency)}</TotalPrice>
         </TotalSection>
       </Modal>
       
@@ -465,41 +466,41 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
         <PrintSection style={{ borderTop: '1px dashed #000', paddingTop: '10px' }}>
           <PrintRow>
             <span>Subtotal:</span>
-            <span>RM {orderData.subtotal.toFixed(2)}</span>
+            <span>{formatCurrency(orderData.subtotal, operationSettings.currency)}</span>
           </PrintRow>
           {orderData.takeawayCharge && Number(orderData.takeawayCharge) > 0 && (
             <PrintRow>
               <span>Takeaway Charge:</span>
-              <span>RM {Number(orderData.takeawayCharge).toFixed(2)}</span>
+              <span>{formatCurrency(Number(orderData.takeawayCharge), operationSettings.currency)}</span>
             </PrintRow>
           )}
           {orderData.discount && Number(orderData.discount) > 0 && (
             <PrintRow>
               <span>Discount:</span>
-              <span>-RM {Number(orderData.discount).toFixed(2)}</span>
+              <span>{formatCurrency(-Number(orderData.discount), operationSettings.currency)}</span>
             </PrintRow>
           )}
           {orderData.coupon && orderData.coupon.discount && Number(orderData.coupon.discount) > 0 && (
             <PrintRow>
               <span>Coupon ({orderData.coupon.code}):</span>
-              <span>-RM {Number(orderData.coupon.discount).toFixed(2)}</span>
+              <span>{formatCurrency(-Number(orderData.coupon.discount), operationSettings.currency)}</span>
             </PrintRow>
           )}
           {orderData.serviceCharge && Number(orderData.serviceCharge) > 0 && (
             <PrintRow>
               <span>Service Charge ({orderData.serviceChargeRate || 10}%):</span>
-              <span>RM {Number(orderData.serviceCharge).toFixed(2)}</span>
+              <span>{formatCurrency(Number(orderData.serviceCharge), operationSettings.currency)}</span>
             </PrintRow>
           )}
           {orderData.tax && Number(orderData.tax) > 0 && (
             <PrintRow>
               <span>Tax ({orderData.taxRate || 6}%):</span>
-              <span>RM {Number(orderData.tax).toFixed(2)}</span>
+              <span>{formatCurrency(Number(orderData.tax), operationSettings.currency)}</span>
             </PrintRow>
           )}
           <PrintRow style={{ borderTop: '1px solid #000', paddingTop: '5px', fontSize: '14px', fontWeight: 'bold' }}>
             <span>TOTAL:</span>
-            <span>RM {orderData.total.toFixed(2)}</span>
+            <span>{formatCurrency(orderData.total, operationSettings.currency)}</span>
           </PrintRow>
         </PrintSection>
 
@@ -512,11 +513,11 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
             <>
               <PrintRow>
                 <span>Amount Received:</span>
-                <span>RM {orderData.amountReceived.toFixed(2)}</span>
+                <span>{formatCurrency(orderData.amountReceived, operationSettings.currency)}</span>
               </PrintRow>
               <PrintRow>
                 <span>Change:</span>
-                <span>RM {orderData.change.toFixed(2)}</span>
+                <span>{formatCurrency(orderData.change, operationSettings.currency)}</span>
               </PrintRow>
             </>
           )}

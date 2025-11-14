@@ -22,6 +22,9 @@ interface OperationSettings {
   taxRate: number;
   serviceChargeEnabled: boolean;
   serviceChargeRate: number;
+  currency: string; // Currency code (RM, USD, SGD, JPY, THB)
+  cashRounding: number; // Cash rounding precision (0.05, 0.10, 0.50, 1.00)
+  roundingApplyTo: 'cash_only' | 'all'; // Apply rounding to cash only or all payments
   pagerSystem: {
     enabled: boolean;
     totalPagers: number;
@@ -69,6 +72,9 @@ const defaultOperationSettings: OperationSettings = {
   taxRate: 6,
   serviceChargeEnabled: false,
   serviceChargeRate: 10,
+  currency: 'RM', // Default currency
+  cashRounding: 0.05, // Default cash rounding
+  roundingApplyTo: 'cash_only', // Default rounding application
   pagerSystem: {
     enabled: false,
     totalPagers: 50
@@ -191,7 +197,19 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
 
               setOperationSettings({
                 ...defaultOperationSettings,
-                ...parsedOperationSettings
+                ...parsedOperationSettings,
+                // Load currency settings from restaurant table
+                currency: result.data.currency || 'RM',
+                cashRounding: result.data.cash_rounding || 0.05,
+                roundingApplyTo: result.data.rounding_apply_to || 'cash_only'
+              });
+            } else {
+              // Even if no operation_settings, load currency from restaurant table
+              setOperationSettings({
+                ...defaultOperationSettings,
+                currency: result.data.currency || 'RM',
+                cashRounding: result.data.cash_rounding || 0.05,
+                roundingApplyTo: result.data.rounding_apply_to || 'cash_only'
               });
             }
           }

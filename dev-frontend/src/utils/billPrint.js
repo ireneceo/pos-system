@@ -18,23 +18,23 @@ const CMD = {
   INIT: ESC + '@',
 
   // Text alignment
-  ALIGN_LEFT: ESC + 'a' + '\x00',
-  ALIGN_CENTER: ESC + 'a' + '\x01',
-  ALIGN_RIGHT: ESC + 'a' + '\x02',
+  ALIGN_LEFT: ESC + 'a\x00',
+  ALIGN_CENTER: ESC + 'a\x01',
+  ALIGN_RIGHT: ESC + 'a\x02',
 
   // Text size
-  TEXT_NORMAL: GS + '!' + '\x00',
-  TEXT_DOUBLE_HEIGHT: GS + '!' + '\x01',
-  TEXT_DOUBLE_WIDTH: GS + '!' + '\x10',
-  TEXT_DOUBLE: GS + '!' + '\x11',
+  TEXT_NORMAL: GS + '!\x00',
+  TEXT_DOUBLE_HEIGHT: GS + '!\x01',
+  TEXT_DOUBLE_WIDTH: GS + '!\x10',
+  TEXT_DOUBLE: GS + '!\x11',
 
   // Text style
-  BOLD_ON: ESC + 'E' + '\x01',
-  BOLD_OFF: ESC + 'E' + '\x00',
+  BOLD_ON: ESC + 'E\x01',
+  BOLD_OFF: ESC + 'E\x00',
 
   // Reverse mode (white text on black background)
-  REVERSE_ON: GS + 'B' + '\x01',
-  REVERSE_OFF: GS + 'B' + '\x00',
+  REVERSE_ON: GS + 'B\x01',
+  REVERSE_OFF: GS + 'B\x00',
 
   // Line feed
   LINE_FEED: '\n',
@@ -43,7 +43,7 @@ const CMD = {
   DASHED_LINE: '------------------------------------------------',
 
   // Paper cut (partial)
-  CUT_PARTIAL: GS + 'V' + '\x41' + '\x00'
+  CUT_PARTIAL: GS + 'V\x41\x00'
 };
 
 // ============================================
@@ -606,14 +606,4 @@ export function generateKitchenTicketPreview(orderData, storeInfo) {
   return lines.join('\n');
 }
 
-// ============================================
-// Exports
-// ============================================
-
-export default {
-  generateBillContent,
-  printBillViaRawBT,
-  generateKitchenTicketContent,
-  printKitchenTicketViaRawBT,
-  generateKitchenTicketPreview
-};
+// All functions are already exported individually above

@@ -75,7 +75,7 @@ interface MobileOrderContextType {
   // Store
   currentStore: Store | null;
   setCurrentStore: (store: Store | null) => void;
-  
+
   // Cart
   cartItems: CartItem[];
   cartTotal: number;
@@ -83,17 +83,20 @@ interface MobileOrderContextType {
   updateCartItem: (cartItemId: string, quantity: number) => void;
   removeFromCart: (cartItemId: string) => void;
   clearCart: () => void;
-  
+
   // Order
   currentOrder: Order | null;
   setCurrentOrder: (order: Order | null) => void;
   orderHistory: Order[];
-  
+
   // UI State
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
   error: string | null;
   setError: (error: string | null) => void;
+
+  // Currency
+  currency: string;
 }
 
 const MobileOrderContext = createContext<MobileOrderContextType | undefined>(undefined);
@@ -201,11 +204,14 @@ export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ childr
     setCartItems([]);
   }, []);
   
+  // Get currency from current store or default to 'RM'
+  const currency = currentStore?.currency || 'RM';
+
   const value: MobileOrderContextType = {
     // Store
     currentStore,
     setCurrentStore,
-    
+
     // Cart
     cartItems,
     cartTotal,
@@ -213,17 +219,20 @@ export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ childr
     updateCartItem,
     removeFromCart,
     clearCart,
-    
+
     // Order
     currentOrder,
     setCurrentOrder,
     orderHistory,
-    
+
     // UI State
     isLoading,
     setIsLoading,
     error,
-    setError
+    setError,
+
+    // Currency
+    currency
   };
   
   return (

@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useNavigate, useParams } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
+import { formatCurrency } from '../../utils/currency';
 
 const OrdersContainer = styled.div`
   display: flex;
@@ -137,7 +138,7 @@ const OrdersPage: React.FC = () => {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   const [orders, setOrders] = useState<any[]>([]);
-  const { currentStore, setCurrentStore } = useMobileOrder();
+  const { currentStore, setCurrentStore, currency } = useMobileOrder();
 
   // Load restaurant data from slug on mount
   useEffect(() => {
@@ -333,7 +334,7 @@ const OrdersPage: React.FC = () => {
                       return (
                         <OrderItem key={`item-${index}`}>
                           <span>{itemQuantity}x {itemName}</span>
-                          <span>RM {(Number(itemPrice) * itemQuantity).toFixed(2)}</span>
+                          <span>{formatCurrency(Number(itemPrice) * itemQuantity, currency)}</span>
                         </OrderItem>
                       );
                     })}
@@ -354,7 +355,7 @@ const OrdersPage: React.FC = () => {
                 )}
 
                 <OrderFooter>
-                  <OrderTotal>RM {Number(totalAmount).toFixed(2)}</OrderTotal>
+                  <OrderTotal>{formatCurrency(Number(totalAmount), currency)}</OrderTotal>
                   <OrderType>
                     {orderType === 'dine-in' || orderType === 'dine_in' ? 'Dine In' : 'Takeaway'}
                   </OrderType>

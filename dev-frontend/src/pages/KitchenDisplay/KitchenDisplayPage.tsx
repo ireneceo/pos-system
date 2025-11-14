@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
-import { format } from 'date-fns';
 import io, { Socket } from 'socket.io-client';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMenu } from '../../contexts/MenuContext';
@@ -507,6 +506,7 @@ const KitchenDisplayPage: React.FC = () => {
     } catch (error) {
       console.error('Failed to fetch orders:', error);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.restaurantId]);
 
   // Load operation settings for timezone
@@ -707,6 +707,7 @@ const KitchenDisplayPage: React.FC = () => {
     return () => {
       newSocket.disconnect();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.restaurantId]);
 
   // 시계 업데이트

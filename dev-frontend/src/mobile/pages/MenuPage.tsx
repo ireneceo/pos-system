@@ -224,7 +224,10 @@ const MenuPage: React.FC = () => {
             id: result.data.id.toString(),
             name: result.data.name,
             slug: result.data.slug,
-            isOpen: result.data.status === 'active'
+            description: result.data.description || '',
+            logo: result.data.logo_url || '',
+            isOpen: result.data.status === 'active',
+            openingHours: result.data.opening_hours || {}
           });
         }
       }

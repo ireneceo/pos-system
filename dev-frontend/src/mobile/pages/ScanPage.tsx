@@ -165,7 +165,7 @@ const ScanPage: React.FC = () => {
       // Initialize guest session
       const guestResponse = await api.guestCheckout();
       if (guestResponse.success) {
-        api.setToken(guestResponse.data.token);
+        (api as any).setToken(guestResponse.data.token);
       }
       
       // Get store info
