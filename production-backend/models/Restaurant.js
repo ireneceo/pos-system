@@ -330,6 +330,22 @@ Restaurant.init({
     set(value) {
       this.setDataValue('operation_settings', value ? JSON.stringify(value) : null);
     }
+  },
+  currency: {
+    type: DataTypes.STRING(10),
+    defaultValue: 'RM',
+    allowNull: false,
+    comment: 'Currency code (RM, USD, SGD, JPY, THB)'
+  },
+  cash_rounding: {
+    type: DataTypes.DECIMAL(4, 2),
+    allowNull: true,
+    comment: 'Cash rounding precision (0.05, 0.10, 1.00, or NULL for disabled)'
+  },
+  rounding_apply_to: {
+    type: DataTypes.ENUM('cash_only', 'all'),
+    defaultValue: 'cash_only',
+    comment: 'Apply rounding to cash only or all payments'
   }
 }, {
   sequelize: database.sequelize,

@@ -556,6 +556,11 @@ const SettingsPage: React.FC = () => {
   
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(loadSettings().store);
   const [operationSettings, setOperationSettings] = useState<OperationSettings>(loadSettings().operations);
+  const [currencySettings, setCurrencySettings] = useState({
+    currency: 'RM',
+    cashRounding: null as number | null,
+    roundingApplyTo: 'cash_only' as 'cash_only' | 'all'
+  });
   const [companySettings, setCompanySettings] = useState<CompanySettings>({
     name: 'Food Court Management Corp',
     businessRegistration: '202301234567',
@@ -695,6 +700,15 @@ const SettingsPage: React.FC = () => {
               setOperationSettings(mergedSettings);
             } else {
               console.log('⚠️  No operation settings found in DB, using default values');
+            }
+
+            // Load currency settings
+            if (restaurant.currency || restaurant.cash_rounding !== undefined || restaurant.rounding_apply_to) {
+              setCurrencySettings({
+                currency: restaurant.currency || 'RM',
+                cashRounding: restaurant.cash_rounding ? parseFloat(restaurant.cash_rounding) : null,
+                roundingApplyTo: restaurant.rounding_apply_to || 'cash_only'
+              });
             }
           }
         } catch (error) {
@@ -958,7 +972,10 @@ const SettingsPage: React.FC = () => {
           tax_id: storeSettings.gstRegNo,
           logo_url: storeSettings.logo,
           payment_settings: normalizedPaymentMethods,
-          operation_settings: operationSettings
+          operation_settings: operationSettings,
+          currency: currencySettings.currency,
+          cash_rounding: currencySettings.cashRounding,
+          rounding_apply_to: currencySettings.roundingApplyTo
         };
 
         console.log('📦 Request body (first 500 chars):', JSON.stringify(requestBody).substring(0, 500));
@@ -2400,6 +2417,65 @@ const SettingsPage: React.FC = () => {
                     </FormGroup>
                   </>
                 )}
+              </SettingsCard>
+
+              <SettingsCard style={{ gridColumn: '1 / -1' }}>
+                <CardTitle>Currency & Rounding Settings</CardTitle>
+                <p style={{ color: '#6B7C93', marginBottom: '24px', fontSize: '14px' }}>
+                  Configure currency and cash rounding for payments
+                </p>
+
+                <FormGroup>
+                  <Label>Currency</Label>
+                  <Select
+                    value={currencySettings.currency}
+                    onChange={(e) => {
+                      setCurrencySettings(prev => ({ ...prev, currency: e.target.value }));
+                      setHasChanges(true);
+                    }}
+                  >
+                    <option value="RM">Malaysian Ringgit (RM)</option>
+                    <option value="USD">US Dollar (USD)</option>
+                    <option value="SGD">Singapore Dollar (SGD)</option>
+                    <option value="JPY">Japanese Yen (JPY)</option>
+                    <option value="THB">Thai Baht (THB)</option>
+                  </Select>
+                </FormGroup>
+
+                <FormGroup>
+                  <Label>Cash Rounding</Label>
+                  <Select
+                    value={currencySettings.cashRounding !== null ? currencySettings.cashRounding.toFixed(2) : ''}
+                    onChange={(e) => {
+                      const value = e.target.value ? parseFloat(e.target.value) : null;
+                      setCurrencySettings(prev => ({ ...prev, cashRounding: value }));
+                      setHasChanges(true);
+                    }}
+                  >
+                    <option value="">Disabled (No Rounding)</option>
+                    <option value="0.05">0.05 (5 sen/cent)</option>
+                    <option value="0.10">0.10 (10 sen/cent)</option>
+                    <option value="0.50">0.50 (50 sen/cent)</option>
+                    <option value="1.00">1.00 (1 dollar/ringgit)</option>
+                  </Select>
+                  <HelpText>Round total amount to nearest value (e.g., RM 12.52 → RM 12.50 with 0.05 rounding)</HelpText>
+                </FormGroup>
+
+                <FormGroup>
+                  <Label>Apply Rounding To</Label>
+                  <Select
+                    value={currencySettings.roundingApplyTo}
+                    onChange={(e) => {
+                      setCurrencySettings(prev => ({ ...prev, roundingApplyTo: e.target.value as 'cash_only' | 'all' }));
+                      setHasChanges(true);
+                    }}
+                    disabled={!currencySettings.cashRounding}
+                  >
+                    <option value="cash_only">Cash Payments Only</option>
+                    <option value="all">All Payments</option>
+                  </Select>
+                  <HelpText>Choose whether to apply rounding to cash only or all payment methods</HelpText>
+                </FormGroup>
               </SettingsCard>
 
               <SettingsCard style={{ gridColumn: '1 / -1' }}>
