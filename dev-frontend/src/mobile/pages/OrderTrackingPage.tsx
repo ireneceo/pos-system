@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { useParams, useNavigate } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
+import { useMobileOrder } from '../contexts/MobileOrderContext';
+import { formatCurrency } from '../../utils/currency';
 
 const Container = styled.div`
   display: flex;
@@ -183,6 +185,7 @@ const HomeButton = styled(Button)`
 const OrderTrackingPage: React.FC = () => {
   const { slug, orderId } = useParams<{ slug: string; orderId: string }>();
   const navigate = useNavigate();
+  const { currency } = useMobileOrder();
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -465,7 +468,7 @@ const OrderTrackingPage: React.FC = () => {
           </DetailRow>
           <DetailRow>
             <span style={{ color: '#6B7280' }}>Total Amount</span>
-            <span style={{ fontWeight: 600 }}>RM {getTotalAmount()}</span>
+            <span style={{ fontWeight: 600 }}>{formatCurrency(getTotalAmount(), currency)}</span>
           </DetailRow>
           <DetailRow>
             <span style={{ color: '#6B7280' }}>Payment</span>

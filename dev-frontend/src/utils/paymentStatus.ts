@@ -144,7 +144,5 @@ export const getRestrictedFeatures = (restrictionLevel: PaymentStatus['restricti
   }
 };
 
-// 통화 포맷
-export const formatCurrency = (amount: number): string => {
-  return `RM ${amount.toFixed(0)}`;
-};
+// Re-export formatCurrency from currency utility for backward compatibility
+export { formatCurrency } from './currency';

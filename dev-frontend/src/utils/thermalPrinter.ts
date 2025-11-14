@@ -3,6 +3,8 @@
  * Handles direct printing to thermal printers via RawBT app
  */
 
+import { formatCurrency } from './currency';
+
 interface OrderItem {
   menuItem: { name: string; price: number };
   quantity: number;
@@ -114,7 +116,7 @@ const formatDateTime = (date: Date): string => {
 /**
  * Generate ESC/POS receipt content
  */
-export const generateReceiptContent = (orderData: OrderData, storeInfo: StoreInfo): string => {
+export const generateReceiptContent = (orderData: OrderData, storeInfo: StoreInfo, currency: string = 'MYR'): string => {
   let content = '';
 
   // Initialize
@@ -183,22 +185,22 @@ export const generateReceiptContent = (orderData: OrderData, storeInfo: StoreInf
   content += CMD.DASHED_LINE + CMD.LINE_FEED;
 
   // Totals
-  content += formatLine('Subtotal:', 'RM ' + orderData.subtotal.toFixed(2)) + CMD.LINE_FEED;
+  content += formatLine('Subtotal:', formatCurrency(orderData.subtotal, currency)) + CMD.LINE_FEED;
 
   if (orderData.discount > 0) {
-    content += formatLine('Discount:', '-RM ' + orderData.discount.toFixed(2)) + CMD.LINE_FEED;
+    content += formatLine('Discount:', formatCurrency(-orderData.discount, currency)) + CMD.LINE_FEED;
   }
 
   if (orderData.coupon) {
-    content += formatLine('Coupon (' + orderData.coupon.code + '):', '-RM ' + orderData.coupon.discount.toFixed(2)) + CMD.LINE_FEED;
+    content += formatLine('Coupon (' + orderData.coupon.code + '):', formatCurrency(-orderData.coupon.discount, currency)) + CMD.LINE_FEED;
   }
 
-  content += formatLine('Tax (6%):', 'RM ' + orderData.tax.toFixed(2)) + CMD.LINE_FEED;
+  content += formatLine('Tax (6%):', formatCurrency(orderData.tax, currency)) + CMD.LINE_FEED;
 
   // Total (bold, larger)
   content += CMD.BOLD_ON;
   content += CMD.TEXT_DOUBLE_HEIGHT;
-  content += formatLine('TOTAL:', 'RM ' + orderData.total.toFixed(2)) + CMD.LINE_FEED;
+  content += formatLine('TOTAL:', formatCurrency(orderData.total, currency)) + CMD.LINE_FEED;
   content += CMD.TEXT_NORMAL;
   content += CMD.BOLD_OFF;
 
@@ -209,8 +211,8 @@ export const generateReceiptContent = (orderData: OrderData, storeInfo: StoreInf
   content += formatLine('Payment:', orderData.paymentMethod.toUpperCase()) + CMD.LINE_FEED;
 
   if (orderData.paymentMethod === 'cash') {
-    content += formatLine('Received:', 'RM ' + orderData.amountReceived.toFixed(2)) + CMD.LINE_FEED;
-    content += formatLine('Change:', 'RM ' + orderData.change.toFixed(2)) + CMD.LINE_FEED;
+    content += formatLine('Received:', formatCurrency(orderData.amountReceived, currency)) + CMD.LINE_FEED;
+    content += formatLine('Change:', formatCurrency(orderData.change, currency)) + CMD.LINE_FEED;
   }
 
   // Footer
@@ -233,7 +235,7 @@ export const generateReceiptContent = (orderData: OrderData, storeInfo: StoreInf
 /**
  * Send to RawBT printer
  */
-export const printToRawBT = async (orderData: OrderData, storeInfo: StoreInfo): Promise<boolean> => {
+export const printToRawBT = async (orderData: OrderData, storeInfo: StoreInfo, currency: string = 'MYR'): Promise<boolean> => {
   try {
     console.log('🔍 Starting RawBT print process...');
     console.log('📦 Order data:', {
@@ -242,7 +244,7 @@ export const printToRawBT = async (orderData: OrderData, storeInfo: StoreInfo): 
       itemCount: orderData.items.length
     });
 
-    const content = generateReceiptContent(orderData, storeInfo);
+    const content = generateReceiptContent(orderData, storeInfo, currency);
     console.log('📄 Receipt content length:', content.length, 'characters');
 
     // Convert content to Base64 for RawBT
@@ -313,13 +315,13 @@ export const printToRawBT = async (orderData: OrderData, storeInfo: StoreInfo): 
  * Print bill - automatically detects device and uses appropriate method
  * Returns true if print was successful, false otherwise
  */
-export const printBill = async (orderData: OrderData, storeInfo: StoreInfo): Promise<boolean> => {
+export const printBill = async (orderData: OrderData, storeInfo: StoreInfo, currency: string = 'MYR'): Promise<boolean> => {
   const isTabletOrMobile = isMobileOrTablet();
 
   if (isTabletOrMobile) {
     // Mobile/Tablet: Use RawBT for thermal printer
     console.log('📱 Mobile/Tablet detected - using RawBT thermal printer');
-    const success = await printToRawBT(orderData, storeInfo);
+    const success = await printToRawBT(orderData, storeInfo, currency);
 
     if (success) {
       console.log('✅ Bill printed successfully via RawBT');

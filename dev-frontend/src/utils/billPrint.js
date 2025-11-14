@@ -139,12 +139,11 @@ export function generateBillContent(orderData, storeInfo) {
   content += CMD.ALIGN_LEFT;
   content += formatLine('Order:', orderData.orderNumber) + CMD.LINE_FEED;
 
-  if (orderData.pickupNumber) {
-    content += formatLine('Pickup #:', orderData.pickupNumber) + CMD.LINE_FEED;
-  }
-
+  // Show Pager if exists, otherwise show Pickup (same as Order Ticket)
   if (orderData.pagerNumber) {
     content += formatLine('Pager #:', orderData.pagerNumber) + CMD.LINE_FEED;
+  } else if (orderData.pickupNumber) {
+    content += formatLine('Pickup #:', orderData.pickupNumber) + CMD.LINE_FEED;
   }
 
   const dateStr = orderData.date.toLocaleDateString('en-MY');
@@ -410,20 +409,10 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
     content += CMD.TEXT_NORMAL;
     content += CMD.BOLD_OFF;
 
-    // Options with marker
+    // Options with marker (same as Bill format)
     if (item.options && item.options.length > 0) {
       item.options.forEach(option => {
-        content += CMD.BOLD_ON;
-        content += '  + ' + option + CMD.LINE_FEED;
-        content += CMD.BOLD_OFF;
-      });
-    }
-
-    // Set menu items (if applicable)
-    if (item.menuItem?.is_set_menu && item.menuItem?.set_items) {
-      content += '   [Set Items:]' + CMD.LINE_FEED;
-      item.menuItem.set_items.forEach(setItem => {
-        content += '   - ' + setItem.quantity + 'x ' + setItem.name + CMD.LINE_FEED;
+        content += '  ★ ' + option + CMD.LINE_FEED;
       });
     }
 
@@ -571,18 +560,10 @@ export function generateKitchenTicketPreview(orderData, storeInfo) {
 
     lines.push(qty + ' x ' + itemName);
 
-    // Options with STAR marker
+    // Options with STAR marker (same as Bill format)
     if (item.options && item.options.length > 0) {
       item.options.forEach(option => {
         lines.push('  ★ ' + option);
-      });
-    }
-
-    // Set menu items
-    if (item.menuItem?.is_set_menu && item.menuItem?.set_items) {
-      lines.push('   [Set Items:]');
-      item.menuItem.set_items.forEach(setItem => {
-        lines.push('   - ' + setItem.quantity + 'x ' + setItem.name);
       });
     }
 

@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { useMenu } from '../../contexts/MenuContext';
+import { formatCurrency } from '../../utils/currency';
 
 const StoreHeader = styled.div`
   background: white;
@@ -196,6 +197,7 @@ const MenuPage: React.FC = () => {
     currentStore,
     setCurrentStore,
     cartItems,
+    currency,
     isLoading,
     setIsLoading,
     setError
@@ -320,7 +322,7 @@ const MenuPage: React.FC = () => {
               </ItemImage>
               <ItemInfo>
                 <ItemName>{item.code ? `${item.code} ` : ''}{item.name}</ItemName>
-                <ItemPrice>RM {item.price.toFixed(2)}</ItemPrice>
+                <ItemPrice>{formatCurrency(item.price, currency)}</ItemPrice>
                 {item.is_set_menu && item.set_items && item.set_items.length > 0 && (
                   <SetItemsPreview>
                     {item.set_items.map(si => `${si.name} x${si.quantity}`).join(', ')}

@@ -28,6 +28,8 @@ import {
 } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { formatCurrency } from '../../utils/currency';
+import { useStore } from '../../contexts/StoreContext';
 
 interface Staff {
   id: string;
@@ -427,6 +429,7 @@ const ErrorMessage = styled.div`
 const AdminStaffManagementPage: React.FC = () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const auth = useAuth();
+  const { operationSettings } = useStore();
   const [activeTab, setActiveTab] = useState<'all' | 'System Admin' | 'Restaurant Admin' | 'Staff' | 'Managers'>('all');
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -646,7 +649,7 @@ const AdminStaffManagementPage: React.FC = () => {
       'Role': staff.role,
       'Department': staff.department,
       'Status': staff.status,
-      'Salary': staff.salary ? `RM ${staff.salary.toLocaleString()}` : 'N/A',
+      'Salary': staff.salary ? formatCurrency(staff.salary, operationSettings.currency) : 'N/A',
       'Phone': staff.phone,
       'Join Date': staff.joinDate,
       'Last Active': staff.lastActive
@@ -1521,7 +1524,7 @@ const AdminStaffManagementPage: React.FC = () => {
               <StatDescription>{Math.round((stats.active/stats.total)*100)}% of total</StatDescription>
             </StatCard>
             <StatCard color="#D97706">
-              <StatValue>RM {stats.totalSalary.toLocaleString()}</StatValue>
+              <StatValue>{formatCurrency(stats.totalSalary, operationSettings.currency)}</StatValue>
               <StatLabel>Monthly Payroll</StatLabel>
               <StatDescription>All staff combined</StatDescription>
             </StatCard>
@@ -1652,7 +1655,7 @@ const AdminStaffManagementPage: React.FC = () => {
                     <MobileValue>
                       <MobileLabel>Salary</MobileLabel>
                       <div style={{ fontSize: '13px', color: '#374151', fontWeight: '600' }}>
-                        {staff.salary ? `RM ${staff.salary.toLocaleString()}` : 'N/A'}
+                        {staff.salary ? formatCurrency(staff.salary, operationSettings.currency) : 'N/A'}
                       </div>
                     </MobileValue>
                   </MobileGrid>

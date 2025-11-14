@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { useOrders } from '../../contexts/OrderContext';
 import { useStore } from '../../contexts/StoreContext';
+import { formatCurrency } from '../../utils/currency';
 import { formatDateTime as formatDateTimeUtil } from '../../utils/timezone';
 
 const PageContainer = styled.div`
@@ -218,6 +219,7 @@ const BillPrintPage: React.FC = () => {
   const { orders } = useOrders();
   const storeContext = useStore();
   const companyInfo = (storeContext as any).companyInfo;
+  const { operationSettings } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
@@ -311,8 +313,8 @@ const BillPrintPage: React.FC = () => {
                       )}
                     </TableCell>
                     <TableCell>{item.quantity}</TableCell>
-                    <TableCell>RM {item.menuItem.price.toFixed(2)}</TableCell>
-                    <TableCell>RM {(item.quantity * item.menuItem.price).toFixed(2)}</TableCell>
+                    <TableCell>{formatCurrency(item.menuItem.price, operationSettings.currency)}</TableCell>
+                    <TableCell>{formatCurrency(item.quantity * item.menuItem.price, operationSettings.currency)}</TableCell>
                   </TableRow>
                 ))}
               </tbody>
@@ -321,35 +323,35 @@ const BillPrintPage: React.FC = () => {
             <BillSection>
               <BillRow>
                 <Label>Subtotal:</Label>
-                <Value>RM {selectedOrder.subtotal.toFixed(2)}</Value>
+                <Value>{formatCurrency(selectedOrder.subtotal, operationSettings.currency)}</Value>
               </BillRow>
               {selectedOrder.discount > 0 && (
                 <BillRow>
                   <Label>Discount:</Label>
-                  <Value style={{ color: '#10B981' }}>-RM {selectedOrder.discount.toFixed(2)}</Value>
+                  <Value style={{ color: '#10B981' }}>{formatCurrency(-selectedOrder.discount, operationSettings.currency)}</Value>
                 </BillRow>
               )}
               {selectedOrder.coupon && (
                 <BillRow>
                   <Label>Coupon ({selectedOrder.coupon.code}):</Label>
-                  <Value style={{ color: '#10B981' }}>-RM {selectedOrder.coupon.amount.toFixed(2)}</Value>
+                  <Value style={{ color: '#10B981' }}>{formatCurrency(-selectedOrder.coupon.amount, operationSettings.currency)}</Value>
                 </BillRow>
               )}
               {Number(selectedOrder.takeawayCharge || 0) > 0 && (
                 <BillRow>
                   <Label>Takeaway Charge:</Label>
-                  <Value>RM {Number(selectedOrder.takeawayCharge).toFixed(2)}</Value>
+                  <Value>{formatCurrency(Number(selectedOrder.takeawayCharge), operationSettings.currency)}</Value>
                 </BillRow>
               )}
               {selectedOrder.tax > 0 && (
                 <BillRow>
                   <Label>Tax (6%):</Label>
-                  <Value>RM {selectedOrder.tax.toFixed(2)}</Value>
+                  <Value>{formatCurrency(selectedOrder.tax, operationSettings.currency)}</Value>
                 </BillRow>
               )}
               <BillRow className="total">
                 <Label>TOTAL:</Label>
-                <Value>RM {selectedOrder.total.toFixed(2)}</Value>
+                <Value>{formatCurrency(selectedOrder.total, operationSettings.currency)}</Value>
               </BillRow>
             </BillSection>
 

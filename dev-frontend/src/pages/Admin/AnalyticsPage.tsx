@@ -7,6 +7,8 @@ import {
   LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
+import { useStore } from '../../contexts/StoreContext';
+import { formatCurrency } from '../../utils/currency';
 
 // 스타일 컴포넌트
 const ReportsContainer = styled.div`
@@ -365,6 +367,7 @@ type PeriodType = 'today' | 'week' | 'month' | 'year';
 const COLORS = ['#635BFF', '#00D924', '#FF6B6B', '#FFB800', '#0EA5E9', '#8B5CF6'];
 
 const AnalyticsPage: React.FC = () => {
+  const { currency } = useStore();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabType>('system');
   const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
@@ -823,9 +826,9 @@ const AnalyticsPage: React.FC = () => {
 
     if (activeTab === 'manager_sales') {
       csv += `MANAGER SALES REPORT (Invoice Revenue - Royalty & Rent)\n`;
-      csv += `Invoice Revenue,RM ${(data.metrics.totalRevenue * 0.15).toLocaleString()}\n`;
+      csv += `Invoice Revenue,${formatCurrency((data.metrics.totalRevenue * 0.15), currency)}\n`;
       csv += `Total Invoices,${Math.round(data.metrics.totalOrders / 100).toLocaleString()}\n`;
-      csv += `Average Invoice Value,RM ${(data.metrics.avgOrderValue * 10).toFixed(2)}\n`;
+      csv += `Average Invoice Value,${formatCurrency((data.metrics.avgOrderValue * 10), currency)}\n`;
       csv += `Active Managers,${Math.round(data.metrics.totalRestaurants / 10)}\n\n`;
 
       // Manager Rankings
@@ -835,7 +838,7 @@ const AnalyticsPage: React.FC = () => {
       })).sort((a, b) => b.revenue - a.revenue);
 
       csv += `MANAGER RANKINGS\n`;
-      csv += `Rank,Manager Name,Revenue (RM)\n`;
+      csv += `Rank,Manager Name,Revenue (${currency})\n`;
       managerRankings.forEach((manager, index) => {
         csv += `${index + 1},${manager.name},${manager.revenue.toLocaleString()}\n`;
       });
@@ -852,7 +855,7 @@ const AnalyticsPage: React.FC = () => {
 
         if (managerRestaurants.length > 0) {
           csv += `${selectedManagerName}'S RESTAURANTS\n`;
-          csv += `Restaurant Name,Revenue (RM),Orders,Performance\n`;
+          csv += `Restaurant Name,Revenue (${currency}),Orders,Performance\n`;
           managerRestaurants.forEach(restaurant => {
             const revenue = Math.round((5000 + (restaurant.id * 1000) % 15000) * (activePeriod === 'today' ? 0.033 : activePeriod === 'week' ? 0.233 : activePeriod === 'month' ? 1 : 12));
             const orders = Math.round((50 + (restaurant.id * 10) % 100) * (activePeriod === 'today' ? 0.033 : activePeriod === 'week' ? 0.233 : activePeriod === 'month' ? 1 : 12));
@@ -864,9 +867,9 @@ const AnalyticsPage: React.FC = () => {
 
     } else if (activeTab === 'restaurant_sales') {
       csv += `RESTAURANT SALES REPORT (Actual Restaurant Sales)\n`;
-      csv += `Restaurant Revenue,RM ${(data.metrics.totalRevenue * 0.85).toLocaleString()}\n`;
+      csv += `Restaurant Revenue,${formatCurrency((data.metrics.totalRevenue * 0.85), currency)}\n`;
       csv += `Total Orders,${data.metrics.totalOrders.toLocaleString()}\n`;
-      csv += `Average Order Value,RM ${data.metrics.avgOrderValue.toFixed(2)}\n`;
+      csv += `Average Order Value,${formatCurrency(data.metrics.avgOrderValue, currency)}\n`;
       csv += `Total Restaurants,${data.metrics.totalRestaurants}\n\n`;
 
       if (selectedRestaurant !== 'all') {
@@ -888,7 +891,7 @@ const AnalyticsPage: React.FC = () => {
             )) {
             periodLabel = 'HOURLY BREAKDOWN';
             csv += `${periodLabel}\n`;
-            csv += `Hour,Sales (RM),Orders,Avg Order Value (RM),Performance\n`;
+            csv += `Hour,Sales (${currency}),Orders,Avg Order Value (${currency}),Performance\n`;
             for (let hour = 8; hour <= 22; hour++) {
               const hourlyRevenue = Math.round(baseRevenue * 0.033 * (0.3 + Math.random() * 1.4));
               const hourlyOrders = Math.round(baseOrders * 0.033 * (0.3 + Math.random() * 1.4));
@@ -900,7 +903,7 @@ const AnalyticsPage: React.FC = () => {
             )) {
             periodLabel = 'DAILY BREAKDOWN (WEEK)';
             csv += `${periodLabel}\n`;
-            csv += `Day,Sales (RM),Orders,Avg Order Value (RM),Performance\n`;
+            csv += `Day,Sales (${currency}),Orders,Avg Order Value (${currency}),Performance\n`;
             const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
             days.forEach(day => {
               const dailyRevenue = Math.round(baseRevenue * 0.233 * (0.7 + Math.random() * 0.6));
@@ -911,7 +914,7 @@ const AnalyticsPage: React.FC = () => {
           } else if (activePeriod === 'year') {
             periodLabel = 'MONTHLY BREAKDOWN';
             csv += `${periodLabel}\n`;
-            csv += `Month,Sales (RM),Orders,Avg Order Value (RM),Performance\n`;
+            csv += `Month,Sales (${currency}),Orders,Avg Order Value (${currency}),Performance\n`;
             const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
             months.forEach(month => {
               const monthlyRevenue = Math.round(baseRevenue * 12 * (0.8 + Math.random() * 0.4));
@@ -922,7 +925,7 @@ const AnalyticsPage: React.FC = () => {
           } else {
             periodLabel = 'DAILY BREAKDOWN';
             csv += `${periodLabel}\n`;
-            csv += `Date,Sales (RM),Orders,Avg Order Value (RM),Performance\n`;
+            csv += `Date,Sales (${currency}),Orders,Avg Order Value (${currency}),Performance\n`;
             const startDate = isCustomDateRange ? new Date(dateRange.start) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
             const endDate = isCustomDateRange ? new Date(dateRange.end) : new Date();
             const diffDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
@@ -947,7 +950,7 @@ const AnalyticsPage: React.FC = () => {
         })).sort((a, b) => b.revenue - a.revenue);
 
         csv += `RESTAURANT RANKINGS\n`;
-        csv += `Rank,Restaurant Name,Manager,Revenue (RM),Orders,Avg Order Value (RM)\n`;
+        csv += `Rank,Restaurant Name,Manager,Revenue (${currency}),Orders,Avg Order Value (${currency})\n`;
         restaurantRankings.forEach((restaurant, index) => {
           csv += `${index + 1},${restaurant.name},${restaurant.manager},${restaurant.revenue.toLocaleString()},${restaurant.orders},${Math.round(restaurant.revenue / restaurant.orders)}\n`;
         });
@@ -975,12 +978,12 @@ const AnalyticsPage: React.FC = () => {
 
       csv += `Total Subscriptions,${totalSubscriptions}\n`;
       csv += `Active Subscriptions,${activeSubscriptions}\n`;
-      csv += `Total Monthly Revenue,RM ${totalMonthlyRevenue.toFixed(2)}\n`;
-      csv += `Average Monthly Revenue per Restaurant,RM ${totalSubscriptions > 0 ? (totalMonthlyRevenue / totalSubscriptions).toFixed(2) : '0.00'}\n\n`;
+      csv += `Total Monthly Revenue,${formatCurrency(totalMonthlyRevenue, currency)}\n`;
+      csv += `Average Monthly Revenue per Restaurant,${formatCurrency(totalSubscriptions > 0 ? (totalMonthlyRevenue / totalSubscriptions) : 0, currency)}\n\n`;
 
       // Subscription details table
       csv += `RESTAURANT SUBSCRIPTION DETAILS\n`;
-      csv += `Restaurant Name,Manager,Plan Type,Monthly Fee (RM),Status,Subscription Start,Subscription End,Location\n`;
+      csv += `Restaurant Name,Manager,Plan Type,Monthly Fee (${currency}),Status,Subscription Start,Subscription End,Location\n`;
 
       filteredRestaurantsForSubscription.forEach(restaurant => {
         const restaurantName = restaurant.name || 'Unknown Restaurant';
@@ -1011,7 +1014,7 @@ const AnalyticsPage: React.FC = () => {
         planRevenue[planType] = (planRevenue[planType] || 0) + monthlyFee;
       });
 
-      csv += `Plan Type,Subscribers,Monthly Revenue (RM),Avg Revenue per Subscriber (RM)\n`;
+      csv += `Plan Type,Subscribers,Monthly Revenue (${currency}),Avg Revenue per Subscriber (${currency})\n`;
       Object.keys(planCounts).forEach(planType => {
         const subscribers = planCounts[planType];
         const revenue = planRevenue[planType];
@@ -1030,7 +1033,7 @@ const AnalyticsPage: React.FC = () => {
       const periodMultiplier = activePeriod === 'today' ? 0.033 : activePeriod === 'week' ? 0.25 : activePeriod === 'month' ? 1 : 12;
       const totalBusinessVolume = Math.round(baseRevenue * periodMultiplier * 150);
 
-      csv += `Total Business Volume,RM ${totalBusinessVolume.toLocaleString()}\n`;
+      csv += `Total Business Volume,${formatCurrency(totalBusinessVolume, currency)}\n`;
       csv += `Growth Rate,${(12.5 + (Math.random() * 10 - 5)).toFixed(1)}%\n`;
       csv += `Market Penetration,${Math.round(restaurants.length * 0.15)}%\n`;
       csv += `Customer Satisfaction,${(4.2 + Math.random() * 0.6).toFixed(1)}/5.0\n\n`;
@@ -1064,7 +1067,7 @@ const AnalyticsPage: React.FC = () => {
         });
 
       csv += `\nMANAGER PERFORMANCE RANKING\n`;
-      csv += `Rank,Manager,Restaurants,Total Revenue (RM)\n`;
+      csv += `Rank,Manager,Restaurants,Total Revenue (${currency})\n`;
 
       const managerStats: Record<string, { restaurants: number; revenue: number }> = {};
       restaurants.forEach(restaurant => {
@@ -1091,7 +1094,7 @@ const AnalyticsPage: React.FC = () => {
         });
 
       csv += `\nKEY PERFORMANCE INDICATORS\n`;
-      csv += `Average Revenue per Restaurant,RM ${(restaurants.reduce((sum, r) => sum + parseFloat(r.planAmount || r.plan_amount || '29'), 0) / restaurants.length).toFixed(2)}\n`;
+      csv += `Average Revenue per Restaurant,${formatCurrency(restaurants.reduce((sum, r) => sum + parseFloat(r.planAmount || r.plan_amount || '29'), 0) / restaurants.length, currency)}\n`;
       csv += `Manager Coverage Rate,${Math.round((managers.length / restaurants.length) * 100)}%\n`;
       csv += `System Adoption Rate,${Math.round((restaurants.filter(r => r.status === 'active').length / restaurants.length) * 100)}%\n`;
       csv += `Market Expansion Potential,${100 - Math.round(restaurants.length * 0.15)}% remaining\n`;
@@ -1304,8 +1307,8 @@ const AnalyticsPage: React.FC = () => {
 
               <StatsGrid key={`manager-sales-stats-${refreshKey}-${activePeriod}-${selectedManager}-${dateRange.start}-${dateRange.end}`}>
                 <StatCard color="#059669">
-                  <StatValue>RM {(() => {
-                    if (!invoices.length) return '0';
+                  <StatValue>{formatCurrency((() => {
+                    if (!invoices.length) return 0;
 
                     const startDate = isCustomDateRange ? new Date(dateRange.start) : getPeriodStartDate(activePeriod);
                     const endDate = isCustomDateRange ? new Date(dateRange.end) : new Date();
@@ -1327,8 +1330,8 @@ const AnalyticsPage: React.FC = () => {
                       return sum + parseFloat(invoice.total || invoice.total_amount || 0);
                     }, 0);
 
-                    return Math.round(totalRevenue).toLocaleString();
-                  })()}</StatValue>
+                    return Math.round(totalRevenue);
+                  })(), currency)}</StatValue>
                   <StatLabel>Invoice Revenue</StatLabel>
                   <StatDescription>
                     {selectedManager !== 'all' ? `${selectedManagerName}'s revenue` : 'All managers revenue'}
@@ -1361,7 +1364,7 @@ const AnalyticsPage: React.FC = () => {
                 </StatCard>
                 <StatCard color="#DC2626">
                   <StatValue>{(() => {
-                    if (!invoices.length) return 'RM 0';
+                    if (!invoices.length) return formatCurrency(0, currency);
 
                     const startDate = isCustomDateRange ? new Date(dateRange.start) : getPeriodStartDate(activePeriod);
                     const endDate = isCustomDateRange ? new Date(dateRange.end) : new Date();
@@ -1379,14 +1382,14 @@ const AnalyticsPage: React.FC = () => {
                       return dateMatch && managerMatch;
                     });
 
-                    if (!filteredInvoices.length) return 'RM 0';
+                    if (!filteredInvoices.length) return formatCurrency(0, currency);
 
                     const totalRevenue = filteredInvoices.reduce((sum, invoice) => {
                       return sum + parseFloat(invoice.total || invoice.total_amount || 0);
                     }, 0);
 
                     const avgAmount = totalRevenue / filteredInvoices.length;
-                    return `RM ${Math.round(avgAmount).toLocaleString()}`;
+                    return formatCurrency(Math.round(avgAmount), currency);
                   })()}</StatValue>
                   <StatLabel>Average Invoice Value</StatLabel>
                   <StatDescription>Per invoice average</StatDescription>
@@ -1542,8 +1545,8 @@ const AnalyticsPage: React.FC = () => {
                       <tr key={restaurant.id || index}>
                         <TableCell style={{ fontWeight: 600 }}>{restaurant.name}</TableCell>
                         <TableCell>{restaurant.manager}</TableCell>
-                        <TableCell>RM {restaurant.revenue.toLocaleString()}</TableCell>
-                        <TableCell>RM {restaurant.monthlyFee.toLocaleString()}</TableCell>
+                        <TableCell>{formatCurrency(restaurant.revenue, currency)}</TableCell>
+                        <TableCell>{formatCurrency(restaurant.monthlyFee, currency)}</TableCell>
                         <TableCell>
                           <span style={{
                             color: restaurant.status === 'Active' ? '#059669' : '#DC2626',
@@ -1595,9 +1598,9 @@ const AnalyticsPage: React.FC = () => {
                             <TableCell style={{ fontWeight: 600 }}>
                               {manager.full_name || manager.username || `Manager ${rank}`}
                             </TableCell>
-                            <TableCell>RM {revenue.toLocaleString()}</TableCell>
+                            <TableCell>{formatCurrency(revenue, currency)}</TableCell>
                             <TableCell>{restaurantCount}</TableCell>
-                            <TableCell>RM {Math.round(revenue / restaurantCount).toLocaleString()}</TableCell>
+                            <TableCell>{formatCurrency(Math.round(revenue / restaurantCount), currency)}</TableCell>
                             <TableCell style={{ color: rank <= 3 ? '#059669' : '#DC2626' }}>
                               {rank <= 3 ? '+' : '-'}{Math.abs(20 - rank * 3)}%
                             </TableCell>
@@ -1668,8 +1671,8 @@ const AnalyticsPage: React.FC = () => {
 
               <StatsGrid key={`restaurant-sales-stats-${refreshKey}-${activePeriod}-${selectedRestaurant}-${dateRange.start}-${dateRange.end}`}>
                 <StatCard color="#059669">
-                  <StatValue>RM {(() => {
-                    if (!orders.length) return '0';
+                  <StatValue>{formatCurrency((() => {
+                    if (!orders.length) return 0;
 
                     const startDate = isCustomDateRange ? new Date(dateRange.start) : getPeriodStartDate(activePeriod);
                     const endDate = isCustomDateRange ? new Date(dateRange.end) : new Date();
@@ -1688,8 +1691,8 @@ const AnalyticsPage: React.FC = () => {
                       return sum + parseFloat(order.total_amount || 0);
                     }, 0);
 
-                    return Math.round(totalRevenue).toLocaleString();
-                  })()}</StatValue>
+                    return Math.round(totalRevenue);
+                  })(), currency)}</StatValue>
                   <StatLabel>Restaurant Revenue</StatLabel>
                   <StatDescription>
                     {selectedRestaurant !== 'all' ? `${selectedRestaurantName} sales` : 'All restaurants sales'}
@@ -1719,7 +1722,7 @@ const AnalyticsPage: React.FC = () => {
                 </StatCard>
                 <StatCard color="#DC2626">
                   <StatValue>{(() => {
-                    if (!orders.length) return 'RM 0';
+                    if (!orders.length) return formatCurrency(0, currency);
 
                     const startDate = isCustomDateRange ? new Date(dateRange.start) : getPeriodStartDate(activePeriod);
                     const endDate = isCustomDateRange ? new Date(dateRange.end) : new Date();
@@ -1734,14 +1737,14 @@ const AnalyticsPage: React.FC = () => {
                       return dateMatch && restaurantMatch && order.status === 'completed';
                     });
 
-                    if (!filteredOrders.length) return 'RM 0';
+                    if (!filteredOrders.length) return formatCurrency(0, currency);
 
                     const totalRevenue = filteredOrders.reduce((sum, order) => {
                       return sum + parseFloat(order.total_amount || 0);
                     }, 0);
 
                     const avgValue = totalRevenue / filteredOrders.length;
-                    return `RM ${Math.round(avgValue).toLocaleString()}`;
+                    return formatCurrency(Math.round(avgValue), currency);
                   })()}</StatValue>
                   <StatLabel>Average Order Value</StatLabel>
                   <StatDescription>Per order average</StatDescription>
@@ -1932,9 +1935,9 @@ const AnalyticsPage: React.FC = () => {
                         return periods.slice(0, 15).map((period, index) => (
                           <tr key={index}>
                             <TableCell style={{ fontWeight: 600 }}>{period.period}</TableCell>
-                            <TableCell>RM {period.revenue.toLocaleString()}</TableCell>
+                            <TableCell>{formatCurrency(period.revenue, currency)}</TableCell>
                             <TableCell>{period.orders}</TableCell>
-                            <TableCell>RM {Math.round(period.avgOrder)}</TableCell>
+                            <TableCell>{formatCurrency(Math.round(period.avgOrder), currency)}</TableCell>
                             <TableCell style={{
                               color: period.performance === 'Good' ? '#059669' :
                                      period.performance === 'Average' ? '#F59E0B' : '#DC2626',
@@ -1978,9 +1981,9 @@ const AnalyticsPage: React.FC = () => {
                               <RankBadge rank={rank}>{rank}</RankBadge>
                             </TableCell>
                             <TableCell style={{ fontWeight: 600 }}>{restaurant.name}</TableCell>
-                            <TableCell>RM {restaurant.revenue.toLocaleString()}</TableCell>
+                            <TableCell>{formatCurrency(restaurant.revenue, currency)}</TableCell>
                             <TableCell>{restaurant.orders.toLocaleString()}</TableCell>
-                            <TableCell>RM {Math.round(restaurant.revenue / restaurant.orders)}</TableCell>
+                            <TableCell>{formatCurrency(Math.round(restaurant.revenue / restaurant.orders), currency)}</TableCell>
                             <TableCell style={{ color: rank <= 5 ? '#059669' : '#DC2626' }}>
                               {rank <= 5 ? '+' : '-'}{Math.abs(20 - rank * 2)}%
                             </TableCell>
@@ -2124,7 +2127,7 @@ const AnalyticsPage: React.FC = () => {
                   <StatDescription>Most common in period</StatDescription>
                 </StatCard>
                 <StatCard color="#059669">
-                  <StatValue>RM {(() => {
+                  <StatValue>{formatCurrency((() => {
                     // Filter by manager first
                     let filteredRestaurants = selectedManager !== 'all' ?
                       restaurants.filter(restaurant => {
@@ -2166,8 +2169,8 @@ const AnalyticsPage: React.FC = () => {
                       return sum + (planAmount * Math.min(monthsActive, activePeriod === 'today' ? 0.033 : activePeriod === 'week' ? 0.25 : activePeriod === 'month' ? 1 : 12));
                     }, 0);
 
-                    return totalRevenue.toFixed(2);
-                  })()}</StatValue>
+                    return totalRevenue;
+                  })(), currency)}</StatValue>
                   <StatLabel>Total Revenue</StatLabel>
                   <StatDescription>Revenue for selected period</StatDescription>
                 </StatCard>
@@ -2261,7 +2264,7 @@ const AnalyticsPage: React.FC = () => {
                               {restaurant.planType || restaurant.plan_type || 'Basic'}
                             </span>
                           </TableCell>
-                          <TableCell>RM {(restaurant.planAmount || restaurant.plan_amount || '29.00')}</TableCell>
+                          <TableCell>{formatCurrency(parseFloat(restaurant.planAmount || restaurant.plan_amount || '29.00'), currency)}</TableCell>
                           <TableCell>
                             <span style={{
                               color: restaurant.status === 'active' ? '#059669' :
@@ -2346,8 +2349,8 @@ const AnalyticsPage: React.FC = () => {
 
               <StatsGrid key={`system-analytics-${refreshKey}-${activePeriod}-${dateRange.start}-${dateRange.end}`}>
                 <StatCard color="#635BFF">
-                  <StatValue>RM {(() => {
-                    if (!invoices.length) return '0';
+                  <StatValue>{formatCurrency((() => {
+                    if (!invoices.length) return 0;
 
                     // Filter invoices by selected date range
                     const startDate = isCustomDateRange ? new Date(dateRange.start) : getPeriodStartDate(activePeriod);
@@ -2362,8 +2365,8 @@ const AnalyticsPage: React.FC = () => {
                       return sum + parseFloat(invoice.total || invoice.total_amount || 0);
                     }, 0);
 
-                    return Math.round(totalRevenue).toLocaleString();
-                  })()}</StatValue>
+                    return Math.round(totalRevenue);
+                  })(), currency)}</StatValue>
                   <StatLabel>Total Business Volume</StatLabel>
                   <StatDescription>Invoice-based revenue for period</StatDescription>
                 </StatCard>
@@ -2551,7 +2554,7 @@ const AnalyticsPage: React.FC = () => {
                               </TableCell>
                               <TableCell>{managerName}</TableCell>
                               <TableCell>{stats.restaurants}</TableCell>
-                              <TableCell>RM {stats.invoiceRevenue.toFixed(2)}</TableCell>
+                              <TableCell>{formatCurrency(stats.invoiceRevenue, currency)}</TableCell>
                             </tr>
                           ));
                       })()}
@@ -2617,8 +2620,8 @@ const AnalyticsPage: React.FC = () => {
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                           <span style={{ fontSize: '14px', color: '#6B7C93' }}>Average Invoice Revenue per Restaurant</span>
                           <span style={{ fontSize: '14px', fontWeight: 600, color: '#2B3674' }}>
-                            RM {(() => {
-                              if (!invoices.length || !restaurants.length) return '0.00';
+                            {(() => {
+                              if (!invoices.length || !restaurants.length) return formatCurrency(0, currency);
 
                               const startDate = isCustomDateRange ? new Date(dateRange.start) : getPeriodStartDate(activePeriod);
                               const endDate = isCustomDateRange ? new Date(dateRange.end) : new Date();
@@ -2632,7 +2635,7 @@ const AnalyticsPage: React.FC = () => {
                                 sum + parseFloat(inv.total || inv.total_amount || 0), 0
                               );
 
-                              return (totalRevenue / restaurants.length).toFixed(2);
+                              return formatCurrency(totalRevenue / restaurants.length, currency);
                             })()}
                           </span>
                         </div>
@@ -2655,8 +2658,8 @@ const AnalyticsPage: React.FC = () => {
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                           <span style={{ fontSize: '14px', color: '#6B7C93' }}>Revenue per Manager</span>
                           <span style={{ fontSize: '14px', fontWeight: 600, color: '#7C3AED' }}>
-                            RM {(() => {
-                              if (!invoices.length || !managers.length) return '0.00';
+                            {(() => {
+                              if (!invoices.length || !managers.length) return formatCurrency(0, currency);
 
                               const startDate = isCustomDateRange ? new Date(dateRange.start) : getPeriodStartDate(activePeriod);
                               const endDate = isCustomDateRange ? new Date(dateRange.end) : new Date();
@@ -2670,7 +2673,7 @@ const AnalyticsPage: React.FC = () => {
                                 sum + parseFloat(inv.total || inv.total_amount || 0), 0
                               );
 
-                              return (totalRevenue / managers.length).toFixed(2);
+                              return formatCurrency(totalRevenue / managers.length, currency);
                             })()}
                           </span>
                         </div>

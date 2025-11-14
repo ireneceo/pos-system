@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
+import { formatCurrency } from '../../utils/currency';
+import { useStore } from '../../contexts/StoreContext';
 import { BaseButton, StatusBadge as CommonStatusBadge } from '../../components/UI/CommonStyles';
 import {
   Container,
@@ -453,6 +455,7 @@ const InvoiceTableRow = styled(CommonTableRow)`
 `;
 
 const InvoicesPage: React.FC = () => {
+  const { operationSettings } = useStore();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -2082,15 +2085,15 @@ const InvoicesPage: React.FC = () => {
                 <InvoiceSummary>
                   <SummaryRow>
                     <span>Subtotal:</span>
-                    <span>RM {parseFloat(newInvoice.amount || '0').toFixed(2)}</span>
+                    <span>{formatCurrency(parseFloat(newInvoice.amount || '0'), operationSettings.currency)}</span>
                   </SummaryRow>
                   <SummaryRow>
                     <span>Tax (6%):</span>
-                    <span>RM {parseFloat(newInvoice.tax || '0').toFixed(2)}</span>
+                    <span>{formatCurrency(parseFloat(newInvoice.tax || '0'), operationSettings.currency)}</span>
                   </SummaryRow>
                   <SummaryRow highlight>
                     <span>Total:</span>
-                    <span><strong>RM {parseFloat(newInvoice.total || '0').toFixed(2)}</strong></span>
+                    <span><strong>{formatCurrency(parseFloat(newInvoice.total || '0'), operationSettings.currency)}</strong></span>
                   </SummaryRow>
                 </InvoiceSummary>
               </ModalBody>
@@ -2168,22 +2171,22 @@ const InvoicesPage: React.FC = () => {
                   <FormLabel>Items</FormLabel>
                   {selectedInvoice.items.map((item, index) => (
                     <div key={index} style={{ padding: '8px', background: '#F8FAFC', borderRadius: '4px', marginBottom: '8px' }}>
-                      {item.description} - RM {item.total.toFixed(2)}
+                      {item.description} - {formatCurrency(item.total, operationSettings.currency)}
                     </div>
                   ))}
                 </FormGroup>
                 <InvoiceSummary>
                   <SummaryRow>
                     <span>Subtotal:</span>
-                    <span>RM {selectedInvoice.amount.toFixed(2)}</span>
+                    <span>{formatCurrency(selectedInvoice.amount, operationSettings.currency)}</span>
                   </SummaryRow>
                   <SummaryRow>
                     <span>Tax (6%):</span>
-                    <span>RM {selectedInvoice.tax.toFixed(2)}</span>
+                    <span>{formatCurrency(selectedInvoice.tax, operationSettings.currency)}</span>
                   </SummaryRow>
                   <SummaryRow highlight>
                     <span>Total:</span>
-                    <span><strong>RM {selectedInvoice.total.toFixed(2)}</strong></span>
+                    <span><strong>{formatCurrency(selectedInvoice.total, operationSettings.currency)}</strong></span>
                   </SummaryRow>
                 </InvoiceSummary>
               </ModalBody>
@@ -2484,15 +2487,15 @@ const InvoicesPage: React.FC = () => {
                 <InvoiceSummary>
                   <SummaryRow>
                     <span>Subtotal:</span>
-                    <span>RM {parseFloat(editInvoice.amount || '0').toFixed(2)}</span>
+                    <span>{formatCurrency(parseFloat(editInvoice.amount || '0'), operationSettings.currency)}</span>
                   </SummaryRow>
                   <SummaryRow>
                     <span>Tax (6%):</span>
-                    <span>RM {parseFloat(editInvoice.tax || '0').toFixed(2)}</span>
+                    <span>{formatCurrency(parseFloat(editInvoice.tax || '0'), operationSettings.currency)}</span>
                   </SummaryRow>
                   <SummaryRow highlight>
                     <span>Total:</span>
-                    <span><strong>RM {parseFloat(editInvoice.total || '0').toFixed(2)}</strong></span>
+                    <span><strong>{formatCurrency(parseFloat(editInvoice.total || '0'), operationSettings.currency)}</strong></span>
                   </SummaryRow>
                 </InvoiceSummary>
               </ModalBody>

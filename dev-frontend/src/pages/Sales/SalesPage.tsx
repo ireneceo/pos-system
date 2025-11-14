@@ -3,6 +3,8 @@ import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { useStaff } from '../../contexts/StaffContext';
 import { useOrders } from '../../contexts/OrderContext';
+import { useStore } from '../../contexts/StoreContext';
+import { formatCurrency } from '../../utils/currency';
 import { TabContainer, Tab } from '../../components/UI';
 
 // 매출 데이터 타입 정의
@@ -588,6 +590,7 @@ const PageInfo = styled.span`
 const SalesPage: React.FC = () => {
   const { currentStaff, isLoggedIn } = useStaff();
   const { orders } = useOrders();
+  const { operationSettings } = useStore();
   const [viewMode, setViewMode] = useState<ViewMode>('transactions');
   const [dateFilter, setDateFilter] = useState('today');
   const [startDate, setStartDate] = useState('');
@@ -1380,10 +1383,6 @@ const SalesPage: React.FC = () => {
     downloadFile(reportContent, `sales-${viewModeText}-report-${new Date().toISOString().split('T')[0]}.html`);
   };
 
-  const formatCurrency = (amount: number) => {
-    return `RM ${amount.toFixed(2)}`;
-  };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -1542,22 +1541,22 @@ const SalesPage: React.FC = () => {
             <StatsRow>
               <StatCard color="#059669">
                 <StatLabel>Total Sales</StatLabel>
-                <StatValue>{formatCurrency(summary.totalSales)}</StatValue>
+                <StatValue>{formatCurrency(summary.totalSales, operationSettings.currency)}</StatValue>
                 <StatDescription>{summary.totalTransactions} transactions</StatDescription>
               </StatCard>
               <StatCard color="#2563EB">
                 <StatLabel>Average Order</StatLabel>
-                <StatValue>{formatCurrency(summary.averageOrderValue)}</StatValue>
+                <StatValue>{formatCurrency(summary.averageOrderValue, operationSettings.currency)}</StatValue>
                 <StatDescription>+12.5% vs last period</StatDescription>
               </StatCard>
               <StatCard color="#DC2626">
                 <StatLabel>Total Tax</StatLabel>
-                <StatValue>{formatCurrency(summary.totalTax)}</StatValue>
+                <StatValue>{formatCurrency(summary.totalTax, operationSettings.currency)}</StatValue>
                 <StatDescription>GST collected</StatDescription>
               </StatCard>
               <StatCard color="#7C3AED">
                 <StatLabel>Total Discounts</StatLabel>
-                <StatValue>{formatCurrency(summary.totalDiscount)}</StatValue>
+                <StatValue>{formatCurrency(summary.totalDiscount, operationSettings.currency)}</StatValue>
                 <StatDescription>Promotions applied</StatDescription>
               </StatCard>
             </StatsRow>
@@ -1610,10 +1609,10 @@ const SalesPage: React.FC = () => {
                     <div style={{ fontSize: '14px', color: '#1F2937' }}>
                       {transaction.staff.name}
                     </div>
-                    
-                    <Amount>{formatCurrency(transaction.subtotal)}</Amount>
-                    <Amount>{formatCurrency(transaction.total)}</Amount>
-                    
+
+                    <Amount>{formatCurrency(transaction.subtotal, operationSettings.currency)}</Amount>
+                    <Amount>{formatCurrency(transaction.total, operationSettings.currency)}</Amount>
+
                     <PaymentBadge method={transaction.paymentMethod}>
                       {transaction.paymentMethod.replace('_', ' ')}
                     </PaymentBadge>
@@ -1633,7 +1632,7 @@ const SalesPage: React.FC = () => {
                         <DateTime>{formatDate(transaction.date)} • {transaction.time}</DateTime>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                        <Amount>{formatCurrency(transaction.total)}</Amount>
+                        <Amount>{formatCurrency(transaction.total, operationSettings.currency)}</Amount>
                         <StatusBadge status={transaction.status}>
                           {transaction.status}
                         </StatusBadge>
@@ -1804,16 +1803,17 @@ const SalesPage: React.FC = () => {
                   </StatCard>
                   <StatCard color="#635BFF">
                     <StatLabel>Total Sales</StatLabel>
-                    <StatValue>{formatCurrency(aggregateData.reduce((sum, item) => sum + item.totalSales, 0))}</StatValue>
+                    <StatValue>{formatCurrency(aggregateData.reduce((sum, item) => sum + item.totalSales, 0), operationSettings.currency)}</StatValue>
                     <StatDescription>Cumulative Amount</StatDescription>
                   </StatCard>
                   <StatCard color="#635BFF">
                     <StatLabel>Average Sales</StatLabel>
                     <StatValue>
                       {formatCurrency(
-                        aggregateData.length > 0 
-                          ? aggregateData.reduce((sum, item) => sum + item.totalSales, 0) / aggregateData.length 
-                          : 0
+                        aggregateData.length > 0
+                          ? aggregateData.reduce((sum, item) => sum + item.totalSales, 0) / aggregateData.length
+                          : 0,
+                        operationSettings.currency
                       )}
                     </StatValue>
                     <StatDescription>Per Period Average</StatDescription>
@@ -1822,9 +1822,10 @@ const SalesPage: React.FC = () => {
                     <StatLabel>Highest Sales</StatLabel>
                     <StatValue>
                       {formatCurrency(
-                        aggregateData.length > 0 
+                        aggregateData.length > 0
                           ? Math.max(...aggregateData.map(item => item.totalSales))
-                          : 0
+                          : 0,
+                        operationSettings.currency
                       )}
                     </StatValue>
                     <StatDescription>Peak Record</StatDescription>
@@ -1844,8 +1845,8 @@ const SalesPage: React.FC = () => {
                       })} Transaction History
                     </DetailTitle>
                     <DetailSubtitle>
-                      Total {detailTransactions.length} transactions • 
-                      Total sales {formatCurrency(detailTransactions.reduce((sum, t) => sum + t.total, 0))}
+                      Total {detailTransactions.length} transactions •
+                      Total sales {formatCurrency(detailTransactions.reduce((sum, t) => sum + t.total, 0), operationSettings.currency)}
                     </DetailSubtitle>
                   </DetailHeader>
                   
@@ -1887,10 +1888,10 @@ const SalesPage: React.FC = () => {
                         <div style={{ fontSize: '14px', color: '#1F2937' }}>
                           {transaction.staff.name}
                         </div>
-                        
-                        <Amount>{formatCurrency(transaction.subtotal)}</Amount>
-                        <Amount>{formatCurrency(transaction.total)}</Amount>
-                        
+
+                        <Amount>{formatCurrency(transaction.subtotal, operationSettings.currency)}</Amount>
+                        <Amount>{formatCurrency(transaction.total, operationSettings.currency)}</Amount>
+
                         <PaymentBadge method={transaction.paymentMethod}>
                           {transaction.paymentMethod.replace('_', ' ')}
                         </PaymentBadge>
@@ -1910,7 +1911,7 @@ const SalesPage: React.FC = () => {
                             <DateTime>{transaction.time}</DateTime>
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                            <Amount>{formatCurrency(transaction.total)}</Amount>
+                            <Amount>{formatCurrency(transaction.total, operationSettings.currency)}</Amount>
                             <StatusBadge status={transaction.status}>
                               {transaction.status}
                             </StatusBadge>
@@ -1973,15 +1974,15 @@ const SalesPage: React.FC = () => {
                           <PeriodTitle style={{ fontSize: '16px', fontWeight: '600' }}>
                             {aggregate.period}
                           </PeriodTitle>
-                          
-                          <Amount>{formatCurrency(aggregate.totalSales)}</Amount>
-                          
+
+                          <Amount>{formatCurrency(aggregate.totalSales, operationSettings.currency)}</Amount>
+
                           <div style={{ fontSize: '14px', fontWeight: '500', color: '#1F2937' }}>
                             {aggregate.totalTransactions.toLocaleString()}
                           </div>
-                          
-                          <Amount>{formatCurrency(aggregate.averageOrderValue)}</Amount>
-                          
+
+                          <Amount>{formatCurrency(aggregate.averageOrderValue, operationSettings.currency)}</Amount>
+
                           <div>
                             {aggregate.growth !== undefined ? (
                               <GrowthBadge positive={aggregate.growth > 0}>
@@ -2017,7 +2018,7 @@ const SalesPage: React.FC = () => {
                               </div>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                              <Amount>{formatCurrency(aggregate.totalSales)}</Amount>
+                              <Amount>{formatCurrency(aggregate.totalSales, operationSettings.currency)}</Amount>
                               {aggregate.growth !== undefined && (
                                 <GrowthBadge positive={aggregate.growth > 0}>
                                   {aggregate.growth > 0 ? '+' : ''}{aggregate.growth.toFixed(1)}%
@@ -2025,11 +2026,11 @@ const SalesPage: React.FC = () => {
                               )}
                             </div>
                           </div>
-                          
+
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
                               <div style={{ fontSize: '14px', fontWeight: '500', color: '#1F2937' }}>
-                                Avg Order: {formatCurrency(aggregate.averageOrderValue)}
+                                Avg Order: {formatCurrency(aggregate.averageOrderValue, operationSettings.currency)}
                               </div>
                             </div>
                             

@@ -16,6 +16,8 @@ import {
   Content
 } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { useStore } from '../../contexts/StoreContext';
+import { formatCurrency } from '../../utils/currency';
 // API imports removed - using direct fetch like StaffManagementPage and ManagersPage
 
 interface Restaurant {
@@ -547,6 +549,7 @@ const SuccessMessage = styled.p`
 `;
 
 const RestaurantsPage: React.FC = () => {
+  const { operationSettings } = useStore();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -740,7 +743,7 @@ const RestaurantsPage: React.FC = () => {
       'Cuisine': restaurant.cuisine,
       'Status': restaurant.status,
       'Rating': restaurant.rating,
-      'Today Sales': `RM ${restaurant.todaySales.toLocaleString()}`,
+      'Today Sales': formatCurrency(restaurant.todaySales, operationSettings.currency),
       'Today Orders': restaurant.todayOrders,
       'Staff Count': restaurant.staffCount,
       'Phone': restaurant.phone,
@@ -1203,7 +1206,7 @@ const RestaurantsPage: React.FC = () => {
             <StatDescription>{totalRestaurants > 0 ? Math.round((activeRestaurants/totalRestaurants)*100) : 0}% operational</StatDescription>
           </StatCard>
           <StatCard color="#7C3AED">
-            <StatValue>RM {totalSales.toLocaleString()}</StatValue>
+            <StatValue>{formatCurrency(totalSales, operationSettings.currency)}</StatValue>
             <StatLabel>Today's Total Sales</StatLabel>
             <StatDescription>Combined revenue</StatDescription>
           </StatCard>
@@ -1318,7 +1321,7 @@ const RestaurantsPage: React.FC = () => {
 
               <MetricsGrid>
                 <Metric>
-                  <MetricValue>RM {restaurant.todaySales.toLocaleString()}</MetricValue>
+                  <MetricValue>{formatCurrency(restaurant.todaySales, operationSettings.currency)}</MetricValue>
                   <MetricLabel>Today's Sales</MetricLabel>
                 </Metric>
                 <Metric>
@@ -1468,15 +1471,15 @@ const RestaurantsPage: React.FC = () => {
                           'Enterprise Plan': '199.00'
                         };
                         setNewRestaurant({
-                          ...newRestaurant, 
+                          ...newRestaurant,
                           planType: e.target.value,
                           planAmount: planAmounts[e.target.value] || '29.00'
                         });
                       }}
                     >
-                      <option value="Basic Plan">Basic Plan (RM 29/month)</option>
-                      <option value="Professional Plan">Professional Plan (RM 99/month)</option>
-                      <option value="Enterprise Plan">Enterprise Plan (RM 199/month)</option>
+                      <option value="Basic Plan">Basic Plan ({formatCurrency(29, operationSettings.currency)}/month)</option>
+                      <option value="Professional Plan">Professional Plan ({formatCurrency(99, operationSettings.currency)}/month)</option>
+                      <option value="Enterprise Plan">Enterprise Plan ({formatCurrency(199, operationSettings.currency)}/month)</option>
                     </FormSelect>
                   </FormGroup>
 
@@ -1708,9 +1711,9 @@ const RestaurantsPage: React.FC = () => {
                         });
                       }}
                     >
-                      <option value="Basic Plan">Basic Plan (RM 29/month)</option>
-                      <option value="Professional Plan">Professional Plan (RM 99/month)</option>
-                      <option value="Enterprise Plan">Enterprise Plan (RM 199/month)</option>
+                      <option value="Basic Plan">Basic Plan ({formatCurrency(29, operationSettings.currency)}/month)</option>
+                      <option value="Professional Plan">Professional Plan ({formatCurrency(99, operationSettings.currency)}/month)</option>
+                      <option value="Enterprise Plan">Enterprise Plan ({formatCurrency(199, operationSettings.currency)}/month)</option>
                     </FormSelect>
                   </FormGroup>
 

@@ -16,6 +16,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import CustomerModal from '../../components/Customer/CustomerModal';
 // StaffLoginModal removed - authentication handled by ProtectedRoute
 import { normalizeCustomerName } from '../../utils/orderUtils';
+import { formatCurrency } from '../../utils/currency';
 import { useRestaurantId } from '../../hooks/useRestaurantId';
 
 const POSContainer = styled.div`
@@ -1486,10 +1487,10 @@ const POSTerminalPage: React.FC = () => {
     // Get coupons from promotion management system
     const coupons: {[key: string]: {discount: string; status: string}} = {
       'SUMMER2025': { discount: '10%', status: 'active' },
-      'NEWUSER': { discount: 'RM 5', status: 'active' },
+      'NEWUSER': { discount: `${operationSettings.currency} 5`, status: 'active' },
       'SAVE10': { discount: '10%', status: 'active' },
       'SAVE20': { discount: '20%', status: 'active' },
-      'WELCOME5': { discount: 'RM 5', status: 'active' },
+      'WELCOME5': { discount: `${operationSettings.currency} 5`, status: 'active' },
       'LUNCH15': { discount: '15%', status: 'active' }
     };
     
@@ -1503,11 +1504,11 @@ const POSTerminalPage: React.FC = () => {
         // Percentage discount
         const percentage = parseFloat(coupon.discount.replace('%', ''));
         discountValue = subtotal * (percentage / 100);
-      } else if (coupon.discount.includes('RM')) {
+      } else if (coupon.discount.includes(operationSettings.currency)) {
         // Fixed amount discount
-        discountValue = parseFloat(coupon.discount.replace('RM ', ''));
+        discountValue = parseFloat(coupon.discount.replace(`${operationSettings.currency} `, ''));
       }
-      
+
       setAppliedCoupon({ code: upperCode, discount: discountValue });
       setCouponCode('');
     } else if (couponCode) {
@@ -2315,24 +2316,24 @@ const POSTerminalPage: React.FC = () => {
                       active={discount === 5}
                       onClick={() => handleApplyDiscount(5)}
                     >
-                      RM 5
+                      {operationSettings.currency} 5
                     </QuickDiscountBtn>
                     <QuickDiscountBtn
                       active={discount === 10}
                       onClick={() => handleApplyDiscount(10)}
                     >
-                      RM 10
+                      {operationSettings.currency} 10
                     </QuickDiscountBtn>
                     <QuickDiscountBtn
                       active={discount === 15}
                       onClick={() => handleApplyDiscount(15)}
                     >
-                      RM 15
+                      {operationSettings.currency} 15
                     </QuickDiscountBtn>
                     <QuickDiscountBtn
                       onClick={() => setShowCustomAmountModal(true)}
                     >
-                      Custom RM
+                      Custom {operationSettings.currency}
                     </QuickDiscountBtn>
                   </QuickDiscountButtons>
                 </DiscountRow>

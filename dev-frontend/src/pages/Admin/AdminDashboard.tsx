@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { TabContainer, Tab, DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
+import { formatCurrency } from '../../utils/currency';
+import { useStore } from '../../contexts/StoreContext';
 
 interface BusinessMetrics {
   totalManagers: number;
@@ -313,6 +315,7 @@ const Badge = styled.span<{ variant: string }>`
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { operationSettings } = useStore();
   const [activeTab, setActiveTab] = useState('overview');
   const [managers, setManagers] = useState<Manager[]>([]);
   const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
@@ -723,7 +726,7 @@ const AdminDashboard: React.FC = () => {
             onClick={() => navigate('/pos/admin/report')}
           >
             <DashboardStatLabel>Monthly Revenue</DashboardStatLabel>
-            <DashboardStatValue>RM {metrics.monthlyRevenue.toLocaleString()}</DashboardStatValue>
+            <DashboardStatValue>{formatCurrency(metrics.monthlyRevenue, operationSettings.currency)}</DashboardStatValue>
           </DashboardStatCard>
 
           <DashboardStatCard
@@ -732,7 +735,7 @@ const AdminDashboard: React.FC = () => {
             onClick={() => navigate('/pos/admin/report')}
           >
             <DashboardStatLabel>Annual Revenue</DashboardStatLabel>
-            <DashboardStatValue>RM {(metrics.monthlyRevenue * 12).toLocaleString()}</DashboardStatValue>
+            <DashboardStatValue>{formatCurrency(metrics.monthlyRevenue * 12, operationSettings.currency)}</DashboardStatValue>
           </DashboardStatCard>
 
           <DashboardStatCard
@@ -741,7 +744,7 @@ const AdminDashboard: React.FC = () => {
             onClick={() => navigate('/pos/admin/report')}
           >
             <DashboardStatLabel>Cumulative Revenue</DashboardStatLabel>
-            <DashboardStatValue>RM {metrics.cumulativeRevenue.toLocaleString()}</DashboardStatValue>
+            <DashboardStatValue>{formatCurrency(metrics.cumulativeRevenue, operationSettings.currency)}</DashboardStatValue>
           </DashboardStatCard>
 
           <DashboardStatCard
@@ -877,7 +880,7 @@ const AdminDashboard: React.FC = () => {
                             borderRadius: '4px 4px 0 0',
                             marginBottom: '8px'
                           }}
-                          title={`${data.period}: RM ${data.revenue.toLocaleString()}`}
+                          title={`${data.period}: ${formatCurrency(data.revenue, operationSettings.currency)}`}
                         />
                         <div style={{ fontSize: '11px', color: '#6B7280', textAlign: 'center' }}>
                           {timePeriod === 'week'
@@ -890,7 +893,7 @@ const AdminDashboard: React.FC = () => {
                           }
                         </div>
                         <div style={{ fontSize: '10px', color: '#6B7280', textAlign: 'center' }}>
-                          {data.revenue > 0 ? `RM ${(data.revenue / 1000).toFixed(0)}K` : 'RM 0'}
+                          {data.revenue > 0 ? `${formatCurrency(data.revenue / 1000, operationSettings.currency).replace(/\.\d+/, '')}K` : formatCurrency(0, operationSettings.currency)}
                         </div>
                         <div style={{ fontSize: '9px', color: '#9CA3AF', textAlign: 'center' }}>
                           {data.invoiceCount || 0} inv
@@ -920,7 +923,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
               ) : (
                 <div style={{ textAlign: 'center', color: '#6B7280', paddingTop: '40px' }}>
-                  <p>Total Revenue: RM {(metrics.monthlyRevenue / 1000).toFixed(0)}K</p>
+                  <p>Total Revenue: {formatCurrency(metrics.monthlyRevenue / 1000, operationSettings.currency).replace(/\.\d+/, '')}K</p>
                   <p>Growth Rate: +{metrics.growthRate.toFixed(1)}% YoY</p>
                   <p>Invoice data loading...</p>
                 </div>
@@ -973,10 +976,10 @@ const AdminDashboard: React.FC = () => {
               >
                 <div className="title">New Revenue Generated</div>
                 <div className="description">
-                  RM {invoicesData.filter((invoice: any) => {
+                  {formatCurrency(invoicesData.filter((invoice: any) => {
                     const today = new Date().toDateString();
                     return new Date(invoice.createdAt).toDateString() === today;
-                  }).reduce((sum: number, invoice: any) => sum + parseFloat(invoice.total_amount || invoice.amount || 0), 0).toFixed(2)}
+                  }).reduce((sum: number, invoice: any) => sum + parseFloat(invoice.total_amount || invoice.amount || 0), 0), operationSettings.currency)}
                   earned today from {invoicesData.filter((invoice: any) => {
                     const today = new Date().toDateString();
                     return new Date(invoice.createdAt).toDateString() === today;
@@ -1057,7 +1060,7 @@ const AdminDashboard: React.FC = () => {
                       </Badge>
                     </Td>
                     <Td>{manager.restaurantCount}</Td>
-                    <Td>RM {manager.totalRevenue.toLocaleString()}</Td>
+                    <Td>{formatCurrency(manager.totalRevenue, operationSettings.currency)}</Td>
                     <Td>
                       <HealthScore score={manager.healthScore}>
                         <span className="score">{manager.healthScore}%</span>
@@ -1082,7 +1085,7 @@ const AdminDashboard: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
               <div style={{ padding: '20px', background: '#F8FAFC', borderRadius: '12px' }}>
                 <h4 style={{ color: '#059669', marginBottom: '10px' }}>Revenue Insights</h4>
-                <p>• Average deal size: RM {(metrics.averageRevenuePerUser / 1000).toFixed(1)}K</p>
+                <p>• Average deal size: {formatCurrency(metrics.averageRevenuePerUser / 1000, operationSettings.currency).replace(/\.\d$/, '')}K</p>
                 <p>• Revenue growth: +{metrics.growthRate.toFixed(1)}% YoY</p>
                 <p>• Top performing tier: Enterprise</p>
               </div>

@@ -25,6 +25,8 @@ import {
   IconButton
 } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { formatCurrency } from '../../utils/currency';
+import { useStore } from '../../contexts/StoreContext';
 
 interface Manager {
   id: string;
@@ -298,6 +300,7 @@ const SuccessMessage = styled.p`
 `;
 
 const ManagersPage: React.FC = () => {
+  const { operationSettings } = useStore();
   const [managers, setManagers] = useState<Manager[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -913,7 +916,7 @@ const ManagersPage: React.FC = () => {
             <StatDescription>Across all managers</StatDescription>
           </StatCard>
           <StatCard color="#D97706">
-            <StatValue>RM {(totalRevenue / 1000).toFixed(0)}k</StatValue>
+            <StatValue>{formatCurrency(totalRevenue / 1000, operationSettings.currency).replace(/\.\d+/, '')}k</StatValue>
             <StatLabel>Total Revenue</StatLabel>
             <StatDescription>From actual invoices</StatDescription>
           </StatCard>
@@ -1209,7 +1212,7 @@ const ManagersPage: React.FC = () => {
                 </FormGroup>
                 <FormGroup>
                   <FormLabel>Total Revenue</FormLabel>
-                  <FormInput type="text" value={`RM ${selectedManager.totalRevenue.toLocaleString()}`} disabled />
+                  <FormInput type="text" value={formatCurrency(selectedManager.totalRevenue, operationSettings.currency)} disabled />
                 </FormGroup>
                 <FormGroup>
                   <FormLabel>Created Date</FormLabel>

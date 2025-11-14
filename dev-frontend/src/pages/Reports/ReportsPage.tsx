@@ -4,6 +4,8 @@ import { useSearchParams } from 'react-router-dom';
 import MainLayout from '../../components/Layout/MainLayout';
 import { TabContainer, Tab, StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
+import { useStore } from '../../contexts/StoreContext';
+import { formatCurrency } from '../../utils/currency';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -259,6 +261,7 @@ const COLORS = ['#635BFF', '#00D924', '#FF6B6B', '#FFB800', '#0EA5E9', '#8B5CF6'
 
 const ReportsPage: React.FC = () => {
   const { user } = useAuth();
+  const { operationSettings } = useStore();
 
   // localStorage에서 마지막 활성 탭 복원
   const [searchParams, setSearchParams] = useSearchParams();
@@ -866,10 +869,10 @@ const ReportsPage: React.FC = () => {
 
     if (activeTab === 'sales') {
       csv += `SALES SUMMARY\n`;
-      csv += `Total Revenue,RM ${data.data.sales.totalRevenue.toFixed(2)}\n`;
+      csv += `Total Revenue,${formatCurrency(data.data.sales.totalRevenue, operationSettings.currency)}\n`;
       csv += `Total Orders,${data.data.sales.totalOrders}\n`;
       csv += `Completed Orders,${data.data.sales.completedOrders}\n`;
-      csv += `Average Order Value,RM ${data.data.sales.averageOrderValue.toFixed(2)}\n\n`;
+      csv += `Average Order Value,${formatCurrency(data.data.sales.averageOrderValue, operationSettings.currency)}\n\n`;
 
       csv += `DAILY SALES TREND\n`;
       csv += `Date,Revenue (RM),Orders\n`;
@@ -916,7 +919,7 @@ const ReportsPage: React.FC = () => {
     } else if (activeTab === 'menu') {
       csv += `MENU PERFORMANCE ANALYSIS\n`;
       csv += `Total Menu Items,${data.data.menu.totalItems}\n`;
-      csv += `Total Revenue,RM ${data.data.menu.totalRevenue.toFixed(2)}\n`;
+      csv += `Total Revenue,${formatCurrency(data.data.menu.totalRevenue, operationSettings.currency)}\n`;
       csv += `Total Orders,${data.data.menu.totalOrders}\n\n`;
 
       csv += `COMPLETE MENU RANKING\n`;
@@ -932,8 +935,8 @@ const ReportsPage: React.FC = () => {
       csv += `Total Customers,${data.data.customers.totalCustomers}\n`;
       csv += `Repeat Customers,${data.data.customers.repeatCustomers}\n`;
       csv += `Repeat Rate,${data.data.customers.repeatRate}%\n`;
-      csv += `Total Revenue,RM ${data.data.customers.totalRevenue.toFixed(2)}\n`;
-      csv += `Average Spent per Customer,RM ${data.data.customers.avgSpent.toFixed(2)}\n\n`;
+      csv += `Total Revenue,${formatCurrency(data.data.customers.totalRevenue, operationSettings.currency)}\n`;
+      csv += `Average Spent per Customer,${formatCurrency(data.data.customers.avgSpent, operationSettings.currency)}\n\n`;
 
       csv += `TOP CUSTOMERS\n`;
       csv += `Rank,Name,Phone,Type,Total Orders,Total Spent (RM),Points,Tier\n`;
@@ -1048,7 +1051,7 @@ const ReportsPage: React.FC = () => {
                   <StatsRow>
                     <StatCard color="#059669">
                       <StatLabel>Total Revenue</StatLabel>
-                      <StatValue>RM {salesData.reduce((sum, item) => sum + item.sales, 0).toLocaleString()}</StatValue>
+                      <StatValue>{formatCurrency(salesData.reduce((sum, item) => sum + item.sales, 0), operationSettings.currency)}</StatValue>
                       <StatDescription>{filteredOrders.length} orders in selected period</StatDescription>
                     </StatCard>
                     <StatCard color="#2563EB">
@@ -1058,7 +1061,7 @@ const ReportsPage: React.FC = () => {
                     </StatCard>
                     <StatCard color="#DC2626">
                       <StatLabel>Average Order Value</StatLabel>
-                      <StatValue>RM {filteredOrders.length > 0 ? (salesData.reduce((sum, item) => sum + item.sales, 0) / filteredOrders.length).toFixed(2) : '0.00'}</StatValue>
+                      <StatValue>{formatCurrency(filteredOrders.length > 0 ? (salesData.reduce((sum, item) => sum + item.sales, 0) / filteredOrders.length) : 0, operationSettings.currency)}</StatValue>
                       <StatDescription>Per order</StatDescription>
                     </StatCard>
                     <StatCard color="#7C3AED">
@@ -1154,7 +1157,7 @@ const ReportsPage: React.FC = () => {
                   <StatsRow>
                     <StatCard color="#059669">
                       <StatLabel>Total Revenue</StatLabel>
-                      <StatValue>RM {salesData.reduce((sum, item) => sum + item.sales, 0).toLocaleString()}</StatValue>
+                      <StatValue>{formatCurrency(salesData.reduce((sum, item) => sum + item.sales, 0), operationSettings.currency)}</StatValue>
                       <StatDescription>{filteredOrders.length} orders in selected period</StatDescription>
                     </StatCard>
                     <StatCard color="#2563EB">
@@ -1164,7 +1167,7 @@ const ReportsPage: React.FC = () => {
                     </StatCard>
                     <StatCard color="#DC2626">
                       <StatLabel>Average Order Value</StatLabel>
-                      <StatValue>RM {filteredOrders.length > 0 ? (salesData.reduce((sum, item) => sum + item.sales, 0) / filteredOrders.length).toFixed(2) : '0.00'}</StatValue>
+                      <StatValue>{formatCurrency(filteredOrders.length > 0 ? (salesData.reduce((sum, item) => sum + item.sales, 0) / filteredOrders.length) : 0, operationSettings.currency)}</StatValue>
                       <StatDescription>Per order average</StatDescription>
                     </StatCard>
                     <StatCard color="#7C3AED">
@@ -1199,13 +1202,13 @@ const ReportsPage: React.FC = () => {
                                   {year}
                                 </DrilldownCell>
                                 <DrilldownCell level={0} bold style={{ textAlign: 'right' }}>
-                                  RM {yearInfo.revenue.toFixed(2)}
+                                  {formatCurrency(yearInfo.revenue, operationSettings.currency)}
                                 </DrilldownCell>
                                 <DrilldownCell level={0} bold style={{ textAlign: 'right' }}>
                                   {yearInfo.orders}
                                 </DrilldownCell>
                                 <DrilldownCell level={0} bold style={{ textAlign: 'right' }}>
-                                  RM {(yearInfo.revenue / yearInfo.orders).toFixed(2)}
+                                  {formatCurrency(yearInfo.revenue / yearInfo.orders, operationSettings.currency)}
                                 </DrilldownCell>
                               </DrilldownRow>
 
@@ -1225,13 +1228,13 @@ const ReportsPage: React.FC = () => {
                                         {monthName}
                                       </DrilldownCell>
                                       <DrilldownCell level={1} style={{ textAlign: 'right' }}>
-                                        RM {monthInfo.revenue.toFixed(2)}
+                                        {formatCurrency(monthInfo.revenue, operationSettings.currency)}
                                       </DrilldownCell>
                                       <DrilldownCell level={1} style={{ textAlign: 'right' }}>
                                         {monthInfo.orders}
                                       </DrilldownCell>
                                       <DrilldownCell level={1} style={{ textAlign: 'right' }}>
-                                        RM {(monthInfo.revenue / monthInfo.orders).toFixed(2)}
+                                        {formatCurrency(monthInfo.revenue / monthInfo.orders, operationSettings.currency)}
                                       </DrilldownCell>
                                     </DrilldownRow>
 
@@ -1251,13 +1254,13 @@ const ReportsPage: React.FC = () => {
                                             {dayName}
                                           </DrilldownCell>
                                           <DrilldownCell level={2} style={{ textAlign: 'right', color: '#059669', fontWeight: 500 }}>
-                                            RM {dayInfo.revenue.toFixed(2)}
+                                            {formatCurrency(dayInfo.revenue, operationSettings.currency)}
                                           </DrilldownCell>
                                           <DrilldownCell level={2} style={{ textAlign: 'right' }}>
                                             {dayInfo.orders}
                                           </DrilldownCell>
                                           <DrilldownCell level={2} style={{ textAlign: 'right' }}>
-                                            RM {(dayInfo.revenue / dayInfo.orders).toFixed(2)}
+                                            {formatCurrency(dayInfo.revenue / dayInfo.orders, operationSettings.currency)}
                                           </DrilldownCell>
                                         </DrilldownRow>
                                       );
@@ -1296,7 +1299,7 @@ const ReportsPage: React.FC = () => {
                 </StatCard>
                 <StatCard color="#8B5CF6">
                   <StatLabel>Total Revenue</StatLabel>
-                  <StatValue>RM {allMenuData.reduce((sum, item) => sum + item.revenue, 0).toLocaleString()}</StatValue>
+                  <StatValue>{formatCurrency(allMenuData.reduce((sum, item) => sum + item.revenue, 0), operationSettings.currency)}</StatValue>
                   <StatDescription>For selected period</StatDescription>
                 </StatCard>
               </StatsRow>
@@ -1343,9 +1346,9 @@ const ReportsPage: React.FC = () => {
                               {menu.category}
                             </span>
                           </TableCell>
-                          <TableCell>RM {menu.price.toFixed(2)}</TableCell>
+                          <TableCell>{formatCurrency(menu.price, operationSettings.currency)}</TableCell>
                           <TableCell>{menu.orders.toLocaleString()}</TableCell>
-                          <TableCell>RM {menu.revenue.toLocaleString()}</TableCell>
+                          <TableCell>{formatCurrency(menu.revenue, operationSettings.currency)}</TableCell>
                           <TableCell>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <ProgressBar percentage={(menu.orders / maxOrders) * 100} />
@@ -1386,7 +1389,7 @@ const ReportsPage: React.FC = () => {
                     </StatCard>
                     <StatCard color="#FFB800">
                       <StatLabel>Average Spent</StatLabel>
-                      <StatValue>RM {customers.length > 0 ? (customers.reduce((sum: number, c: any) => sum + parseFloat(c.total_spent || 0), 0) / customers.length).toFixed(2) : '0.00'}</StatValue>
+                      <StatValue>{formatCurrency(customers.length > 0 ? (customers.reduce((sum: number, c: any) => sum + parseFloat(c.total_spent || 0), 0) / customers.length) : 0, operationSettings.currency)}</StatValue>
                       <StatDescription>Per customer</StatDescription>
                     </StatCard>
                     <StatCard color="#8B5CF6">
@@ -1442,7 +1445,7 @@ const ReportsPage: React.FC = () => {
                                 </span>
                               </TableCell>
                               <TableCell>{customerData.total_orders || 0}</TableCell>
-                              <TableCell>RM {parseFloat(customerData.total_spent || 0).toFixed(2)}</TableCell>
+                              <TableCell>{formatCurrency(parseFloat(customerData.total_spent || 0), operationSettings.currency)}</TableCell>
                               <TableCell>{customerData.points || 0}</TableCell>
                               <TableCell>
                                 <span style={{
@@ -1506,7 +1509,7 @@ const ReportsPage: React.FC = () => {
                       <tr key={index}>
                         <TableCell style={{ fontWeight: 600 }}>{item.time}</TableCell>
                         <TableCell>{item.orders}</TableCell>
-                        <TableCell>RM {item.revenue}</TableCell>
+                        <TableCell>{formatCurrency(item.revenue, operationSettings.currency)}</TableCell>
                         <TableCell>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <ProgressBar percentage={item.efficiency} />

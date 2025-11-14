@@ -6,6 +6,7 @@ import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import PaymentModal from '../../components/POSTerminal/PaymentModal';
 import { useStore } from '../../contexts/StoreContext';
+import { formatCurrency } from '../../utils/currency';
 // OLD: import { printBill } from '../../utils/thermalPrinter';
 import { printBillViaRawBT, generateBillContent, printKitchenTicketViaRawBT, generateKitchenTicketPreview } from '../../utils/billPrint';
 import { formatDateTime as formatDateTimeUtil, getTimeElapsed } from '../../utils/timezone';
@@ -957,7 +958,7 @@ interface CompanyInfo {
 
 const LiveOrdersPage: React.FC = () => {
   const { user } = useAuth();
-  const { getStoreInfo } = useStore();
+  const { getStoreInfo, operationSettings } = useStore();
   const [orders, setOrders] = useState<DbOrder[]>([]); // Paginated orders for display
   const [allOrders, setAllOrders] = useState<DbOrder[]>([]); // ALL orders for tab counts
   const [, setSocket] = useState<Socket | null>(null);
@@ -1346,11 +1347,11 @@ const LiveOrdersPage: React.FC = () => {
         order.status || '',
         order.payment_method || '',
         order.payment_status || 'completed',
-        `RM ${(orderAny.subtotal || order.total_amount || 0).toFixed(2)}`,
-        `RM ${(orderAny.service_charge || 0).toFixed(2)}`,
-        `RM ${(orderAny.tax || 0).toFixed(2)}`,
-        `RM ${(orderAny.discount || 0).toFixed(2)}`,
-        `RM ${(order.total_amount || 0).toFixed(2)}`,
+        formatCurrency(orderAny.subtotal || order.total_amount || 0, operationSettings.currency),
+        formatCurrency(orderAny.service_charge || 0, operationSettings.currency),
+        formatCurrency(orderAny.tax || 0, operationSettings.currency),
+        formatCurrency(orderAny.discount || 0, operationSettings.currency),
+        formatCurrency(order.total_amount || 0, operationSettings.currency),
         items
       ];
     });
@@ -2299,7 +2300,7 @@ const LiveOrdersPage: React.FC = () => {
                       </TimeInfo>
                     </TableCell>
                     <TableCell data-label="AMOUNT">
-                      <Amount>RM {Number(order.total_amount).toFixed(2)}</Amount>
+                      <Amount>{formatCurrency(Number(order.total_amount), operationSettings.currency)}</Amount>
                       <PaymentMethod
                         isPending={order.payment_status === 'pending'}
                         isVerificationPending={order.payment_status === 'payment_verification_pending'}
@@ -2689,8 +2690,8 @@ const LiveOrdersPage: React.FC = () => {
                             </ItemOptions>
                           )}
                           <ItemPrice>
-                            <span>{item.quantity} × RM {parseFloat(item.price || item.menuItem?.price || 0).toFixed(2)}</span>
-                            <span>RM {(item.quantity * parseFloat(item.price || item.menuItem?.price || 0)).toFixed(2)}</span>
+                            <span>{item.quantity} × {formatCurrency(parseFloat(item.price || item.menuItem?.price || 0), operationSettings.currency)}</span>
+                            <span>{formatCurrency(item.quantity * parseFloat(item.price || item.menuItem?.price || 0), operationSettings.currency)}</span>
                           </ItemPrice>
                         </ItemInfo>
                       </ItemDetail>
@@ -2703,41 +2704,41 @@ const LiveOrdersPage: React.FC = () => {
                   <TotalSection>
                     <TotalRow>
                       <span>Subtotal</span>
-                      <span>RM {Number((selectedOrder as any).subtotal || selectedOrder.total_amount).toFixed(2)}</span>
+                      <span>{formatCurrency(Number((selectedOrder as any).subtotal || selectedOrder.total_amount), operationSettings.currency)}</span>
                     </TotalRow>
                     {(selectedOrder as any).discount > 0 && (
                       <TotalRow>
                         <span>Discount</span>
-                        <span>- RM {Number((selectedOrder as any).discount).toFixed(2)}</span>
+                        <span>{formatCurrency(-Number((selectedOrder as any).discount), operationSettings.currency)}</span>
                       </TotalRow>
                     )}
                     {(selectedOrder as any).coupon_discount > 0 && (
                       <TotalRow>
                         <span>Coupon Discount ({(selectedOrder as any).coupon_code})</span>
-                        <span>- RM {Number((selectedOrder as any).coupon_discount).toFixed(2)}</span>
+                        <span>{formatCurrency(-Number((selectedOrder as any).coupon_discount), operationSettings.currency)}</span>
                       </TotalRow>
                     )}
                     {(selectedOrder as any).service_charge > 0 && (
                       <TotalRow>
                         <span>Service Charge ({(selectedOrder as any).service_charge_rate || 10}%)</span>
-                        <span>RM {Number((selectedOrder as any).service_charge).toFixed(2)}</span>
+                        <span>{formatCurrency(Number((selectedOrder as any).service_charge), operationSettings.currency)}</span>
                       </TotalRow>
                     )}
                     {(selectedOrder as any).tax > 0 && (
                       <TotalRow>
                         <span>Tax ({(selectedOrder as any).tax_rate || 6}%)</span>
-                        <span>RM {Number((selectedOrder as any).tax).toFixed(2)}</span>
+                        <span>{formatCurrency(Number((selectedOrder as any).tax), operationSettings.currency)}</span>
                       </TotalRow>
                     )}
                     {parseFloat((selectedOrder as any).takeaway_charge || 0) > 0 && (
                       <TotalRow>
                         <span>Takeaway Charge</span>
-                        <span>RM {parseFloat((selectedOrder as any).takeaway_charge).toFixed(2)}</span>
+                        <span>{formatCurrency(parseFloat((selectedOrder as any).takeaway_charge), operationSettings.currency)}</span>
                       </TotalRow>
                     )}
                     <TotalRow isTotal>
                       <span>Total</span>
-                      <span>RM {Number(selectedOrder.total_amount).toFixed(2)}</span>
+                      <span>{formatCurrency(Number(selectedOrder.total_amount), operationSettings.currency)}</span>
                     </TotalRow>
                   </TotalSection>
                 </ModalBody>
@@ -2900,41 +2901,41 @@ const LiveOrdersPage: React.FC = () => {
             <BillSection style={{ borderTop: '1px dashed #000', paddingTop: '10px' }}>
               <BillRow>
                 <span>Subtotal:</span>
-                <span>RM {Number((selectedOrder as any).subtotal || selectedOrder.total_amount).toFixed(2)}</span>
+                <span>{formatCurrency(Number((selectedOrder as any).subtotal || selectedOrder.total_amount), operationSettings.currency)}</span>
               </BillRow>
               {(selectedOrder as any).discount > 0 && (
                 <BillRow>
                   <span>Discount:</span>
-                  <span>-RM {Number((selectedOrder as any).discount).toFixed(2)}</span>
+                  <span>{formatCurrency(-Number((selectedOrder as any).discount), operationSettings.currency)}</span>
                 </BillRow>
               )}
               {(selectedOrder as any).coupon_discount > 0 && (
                 <BillRow>
                   <span>Coupon ({(selectedOrder as any).coupon_code}):</span>
-                  <span>-RM {Number((selectedOrder as any).coupon_discount).toFixed(2)}</span>
+                  <span>{formatCurrency(-Number((selectedOrder as any).coupon_discount), operationSettings.currency)}</span>
                 </BillRow>
               )}
               {parseFloat((selectedOrder as any).takeaway_charge || 0) > 0 && (
                 <BillRow>
                   <span>Takeaway Charge:</span>
-                  <span>RM {parseFloat((selectedOrder as any).takeaway_charge).toFixed(2)}</span>
+                  <span>{formatCurrency(parseFloat((selectedOrder as any).takeaway_charge), operationSettings.currency)}</span>
                 </BillRow>
               )}
               {(selectedOrder as any).service_charge > 0 && (
                 <BillRow>
                   <span>Service Charge ({(selectedOrder as any).service_charge_rate || 10}%):</span>
-                  <span>RM {Number((selectedOrder as any).service_charge).toFixed(2)}</span>
+                  <span>{formatCurrency(Number((selectedOrder as any).service_charge), operationSettings.currency)}</span>
                 </BillRow>
               )}
               {(selectedOrder as any).tax > 0 && (
                 <BillRow>
                   <span>Tax ({(selectedOrder as any).tax_rate || 6}%):</span>
-                  <span>RM {Number((selectedOrder as any).tax).toFixed(2)}</span>
+                  <span>{formatCurrency(Number((selectedOrder as any).tax), operationSettings.currency)}</span>
                 </BillRow>
               )}
               <BillRow style={{ borderTop: '1px solid #000', paddingTop: '5px', fontSize: '14px', fontWeight: 'bold' }}>
                 <span>TOTAL:</span>
-                <span>RM {Number(selectedOrder.total_amount).toFixed(2)}</span>
+                <span>{formatCurrency(Number(selectedOrder.total_amount), operationSettings.currency)}</span>
               </BillRow>
             </BillSection>
 
