@@ -67,6 +67,9 @@ router.get('/settings', authenticateToken, async (req, res) => {
         logo_url: restaurant.logo_url,
         payment_settings: paymentSettings,
         operation_settings: operationSettings,
+        currency: restaurant.currency,
+        cash_rounding: restaurant.cash_rounding,
+        rounding_apply_to: restaurant.rounding_apply_to,
         plan_type: restaurant.plan_type,
         status: restaurant.status
       }
@@ -131,7 +134,8 @@ router.put('/settings', authenticateToken, async (req, res) => {
     const allowedFields = [
       'name', 'email', 'phone', 'address', 'city', 'state',
       'postal_code', 'country', 'website', 'logo_url',
-      'payment_settings', 'operation_settings'
+      'payment_settings', 'operation_settings',
+      'currency', 'cash_rounding', 'rounding_apply_to'
     ];
 
     console.log('🔄 Updating fields...');
