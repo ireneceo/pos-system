@@ -2388,6 +2388,18 @@ const LiveOrdersPage: React.FC = () => {
                             Confirm
                           </ActionButton>
                         )}
+                        {/* Quick Complete Button - Show for all statuses except completed, cancelled, and payment pending */}
+                        {order.status !== 'completed' && order.status !== 'cancelled' && order.payment_status !== 'pending' && (
+                          <IconButton
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStatusChange(order.id, 'completed');
+                            }}
+                            title="Mark as Completed"
+                          >
+                            <IconSymbol>✓</IconSymbol>
+                          </IconButton>
+                        )}
                         <IconButton
                           onClick={(e) => {
                             e.stopPropagation();
