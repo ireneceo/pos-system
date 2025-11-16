@@ -232,6 +232,7 @@ interface ModalComponentProps {
   footer?: React.ReactNode;
   maxWidth?: string;
   size?: 'small' | 'medium' | 'large';
+  headerActions?: React.ReactNode;
 }
 
 const ModalComponentInternal: React.FC<ModalComponentProps> = ({
@@ -241,7 +242,8 @@ const ModalComponentInternal: React.FC<ModalComponentProps> = ({
   children,
   footer,
   maxWidth,
-  size = 'medium'
+  size = 'medium',
+  headerActions
 }) => {
   if (!isOpen) return null;
 
@@ -262,7 +264,10 @@ const ModalComponentInternal: React.FC<ModalComponentProps> = ({
       <ModalContent style={{ maxWidth: getMaxWidth() }} onClick={e => e.stopPropagation()}>
         <ModalHeader>
           <ModalTitle>{title}</ModalTitle>
-          <CloseButton onClick={onClose}>×</CloseButton>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {headerActions}
+            <CloseButton onClick={onClose}>×</CloseButton>
+          </div>
         </ModalHeader>
         <ModalBody>
           {children}

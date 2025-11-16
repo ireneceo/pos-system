@@ -195,6 +195,31 @@ const PrintFooter = styled.div`
   padding-top: 10px;
 `;
 
+const HeaderActionButton = styled.button`
+  background: none;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: #6B7C93;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+  font-weight: 500;
+
+  &:hover {
+    background: #F8FAFC;
+    color: #0A2540;
+    border-color: #CBD5E1;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+`;
+
 interface OrderCompleteModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -271,6 +296,19 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
     </>
   );
 
+  const headerActions = (
+    <>
+      <HeaderActionButton onClick={handlePrintBill} title="Print Bill">
+        <span>🖨️</span>
+        <span>Bill</span>
+      </HeaderActionButton>
+      <HeaderActionButton onClick={handlePrintKitchenTicket} title="Print Order Ticket">
+        <span>📋</span>
+        <span>Ticket</span>
+      </HeaderActionButton>
+    </>
+  );
+
   return (
     <>
       <PrintStyles />
@@ -279,6 +317,7 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
         onClose={onClose}
         title="Order Complete!"
         footer={footer}
+        headerActions={headerActions}
       >
         <div style={{ textAlign: 'center' }}>
           <OrderNumber>Order {orderData.orderNumber}</OrderNumber>
