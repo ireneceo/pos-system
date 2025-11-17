@@ -484,6 +484,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [brandLogo, setBrandLogo] = useState<string>('');
+  const sidebarNavRef = React.useRef<HTMLDivElement>(null);
+  const savedScrollPosition = React.useRef<number>(0);
   const { logout, currentStaff, isLoggedIn } = useStaff();
   const { user, logout: authLogout } = useAuth();
   const { paymentStatus, canAccess } = usePaymentStatus();
@@ -529,7 +531,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   };
 
   const closeSidebar = () => {
-    setIsSidebarOpen(false);
+    // Only close sidebar on mobile (when it's in overlay mode)
+    // Desktop sidebar stays open and maintains scroll position
+    if (window.innerWidth <= 768) {
+      setIsSidebarOpen(false);
+    }
   };
 
   const toggleSidebarCollapse = () => {
@@ -598,7 +604,34 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       }
     }
   }, [location.pathname, paymentStatus.restrictionLevel, canAccess, navigate, user]);
-  
+
+  // Save scroll position on scroll
+  useEffect(() => {
+    const sidebarNav = sidebarNavRef.current;
+    if (!sidebarNav) return;
+
+    const handleScroll = () => {
+      savedScrollPosition.current = sidebarNav.scrollTop;
+    };
+
+    sidebarNav.addEventListener('scroll', handleScroll);
+
+    return () => {
+      sidebarNav.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
+  // Restore scroll position after navigation
+  useEffect(() => {
+    const sidebarNav = sidebarNavRef.current;
+    if (!sidebarNav) return;
+
+    // Use requestAnimationFrame to ensure DOM is ready
+    requestAnimationFrame(() => {
+      sidebarNav.scrollTop = savedScrollPosition.current;
+    });
+  }, [location.pathname]);
+
   // Inactive 레스토랑 체크 (Restaurant Admin과 Staff만)
   if ((user?.role === 'Restaurant Admin' || user?.role === 'Staff') && user?.restaurantStatus === 'inactive') {
     return (
@@ -726,8 +759,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             )}
           </SidebarToggleButton>
         </SidebarHeader>
-        
-        <SidebarNav>
+
+        <SidebarNav ref={sidebarNavRef}>
           <NavSection>
             {/* System Admin Menu */}
             {user?.role === 'System Admin' && (
@@ -754,7 +787,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 </NavItem>
                 <NavItem to="/pos/admin/invoices" active={isActive('/pos/admin/invoices')} onClick={closeSidebar}>
                   <NavIcon>▦</NavIcon>
-                  Invoices
+                  Invoices⟤
                 </NavItem>
                 <NavItem to="/pos/admin/plans" active={isActive('/pos/admin/plans')} onClick={closeSidebar}>
                   <NavIcon>≡</NavIcon>
