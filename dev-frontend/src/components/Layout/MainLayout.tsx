@@ -605,31 +605,22 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     }
   }, [location.pathname, paymentStatus.restrictionLevel, canAccess, navigate, user]);
 
-  // Save scroll position on scroll
+  // Save sidebar scroll position before navigation and restore after
   useEffect(() => {
     const sidebarNav = sidebarNavRef.current;
     if (!sidebarNav) return;
 
-    const handleScroll = () => {
-      savedScrollPosition.current = sidebarNav.scrollTop;
-    };
+    // Save current scroll position
+    savedScrollPosition.current = sidebarNav.scrollTop;
 
-    sidebarNav.addEventListener('scroll', handleScroll);
+    // Restore scroll position after navigation
+    const timer = setTimeout(() => {
+      if (sidebarNav && savedScrollPosition.current !== undefined) {
+        sidebarNav.scrollTop = savedScrollPosition.current;
+      }
+    }, 0);
 
-    return () => {
-      sidebarNav.removeEventListener('scroll', handleScroll);
-    };
-  }, []);
-
-  // Restore scroll position after navigation
-  useEffect(() => {
-    const sidebarNav = sidebarNavRef.current;
-    if (!sidebarNav) return;
-
-    // Use requestAnimationFrame to ensure DOM is ready
-    requestAnimationFrame(() => {
-      sidebarNav.scrollTop = savedScrollPosition.current;
-    });
+    return () => clearTimeout(timer);
   }, [location.pathname]);
 
   // Inactive 레스토랑 체크 (Restaurant Admin과 Staff만)
