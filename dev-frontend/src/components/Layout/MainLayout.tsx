@@ -786,11 +786,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 </NavItem>
                 <NavItem to="/pos/admin/report" active={isActive('/pos/admin/report')} onClick={closeSidebar}>
                   <NavIcon>▲</NavIcon>
-                  Report
+                  Report⟤
                 </NavItem>
                 <NavItem to="/pos/admin/support" active={isActive('/pos/admin/support')} onClick={closeSidebar}>
                   <NavIcon>◎</NavIcon>
-                  System Inquiry
+                  System Inquiry⟤
                 </NavItem>
               </>
             )}
@@ -1177,15 +1177,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </NavItem>
               <NavItem to={`/restaurant/${restaurantId}/customers`} active={isActive(`/restaurant/${restaurantId}/customers`)} onClick={closeSidebar}>
                 <NavIcon>◯</NavIcon>
-                Customers
+                Customers⟤
               </NavItem>
               <NavItem to={`/restaurant/${restaurantId}/staff`} active={isActive(`/restaurant/${restaurantId}/staff`)} onClick={closeSidebar}>
                 <NavIcon>◆</NavIcon>
-                Staff
+                Staff⟤
               </NavItem>
               <NavItem to={`/restaurant/${restaurantId}/promotions`} active={isActive(`/restaurant/${restaurantId}/promotions`)} onClick={closeSidebar}>
                 <NavIcon>%</NavIcon>
-                Promotions
+                Promotions⟤
               </NavItem>
               <NavItem to={`/restaurant/${restaurantId}/reports`} active={isActive(`/restaurant/${restaurantId}/reports`)} onClick={closeSidebar}>
                 <NavIcon>☰</NavIcon>
@@ -1193,19 +1193,19 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </NavItem>
               <NavItem to={`/restaurant/${restaurantId}/support`} active={isActive(`/restaurant/${restaurantId}/support`)} onClick={closeSidebar}>
                 <NavIcon>◎</NavIcon>
-                System Inquiry
+                System Inquiry⟤
               </NavItem>
               <NavItem to={`/restaurant/${restaurantId}/operation-inquiry`} active={isActive(`/restaurant/${restaurantId}/operation-inquiry`)} onClick={closeSidebar}>
                 <NavIcon>▲</NavIcon>
-                Operation Inquiry
+                Operation Inquiry⟤
               </NavItem>
               <NavItem to={`/restaurant/${restaurantId}/invoices`} active={isActive(`/restaurant/${restaurantId}/invoices`)} onClick={closeSidebar}>
                 <NavIcon>$</NavIcon>
-                Invoices
+                Invoices⟤
               </NavItem>
               <NavItem to={`/restaurant/${restaurantId}/history`} active={isActive(`/restaurant/${restaurantId}/history`)} onClick={closeSidebar}>
                 <NavIcon>≡</NavIcon>
-                Activity History
+                Activity History⟤
               </NavItem>
             </NavSection>
           )}
@@ -1240,19 +1240,19 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 </NavItem>
                 <NavItem to="/pos/admin/system-config" active={isActive('/pos/admin/system-config')} onClick={closeSidebar}>
                   <NavIcon>⚙</NavIcon>
-                  System Config
+                  System Config⟤
                 </NavItem>
                 <NavItem to="/pos/admin/security" active={isActive('/pos/admin/security')} onClick={closeSidebar}>
                   <NavIcon>◎</NavIcon>
-                  Security
+                  Security⟤
                 </NavItem>
                 <NavItem to="/pos/admin/backup" active={isActive('/pos/admin/backup')} onClick={closeSidebar}>
                   <NavIcon>□</NavIcon>
-                  Backup & Restore
+                  Backup & Restore⟤
                 </NavItem>
                 <NavItem to="/pos/admin/logs" active={isActive('/pos/admin/logs')} onClick={closeSidebar}>
                   <NavIcon>☰</NavIcon>
-                  System Logs
+                  System Logs⟤
                 </NavItem>
               </>
             )}

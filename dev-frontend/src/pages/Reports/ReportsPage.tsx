@@ -6,6 +6,7 @@ import { TabContainer, Tab, StatsGrid, StatCard, StatValue, StatLabel, StatDescr
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
+import { getRestaurantTimezone, getNow, formatDateTime } from '../../utils/timezone';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -263,6 +264,41 @@ const ReportsPage: React.FC = () => {
   const { user } = useAuth();
   const { operationSettings } = useStore();
 
+  // Helper function to get current date in restaurant's timezone
+  const getTodayInRestaurantTZ = (): Date => {
+    const timezone = getRestaurantTimezone(operationSettings);
+    const nowUTC = new Date();
+
+    // Get the current time in the restaurant's timezone
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+
+    const parts = formatter.formatToParts(nowUTC);
+    const year = parseInt(parts.find(p => p.type === 'year')?.value || '0');
+    const month = parseInt(parts.find(p => p.type === 'month')?.value || '0');
+    const day = parseInt(parts.find(p => p.type === 'day')?.value || '0');
+
+    // Return a Date object representing today in the restaurant's timezone
+    // Note: This Date object is in local time, but represents the restaurant's "today"
+    return new Date(year, month - 1, day);
+  };
+
+  // Helper function to format date to YYYY-MM-DD string
+  const formatDateString = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // localStorage에서 마지막 활성 탭 복원
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabType>(() => {
@@ -277,20 +313,15 @@ const ReportsPage: React.FC = () => {
 
   const [activePeriod, setActivePeriod] = useState<PeriodType>('week');
   const [dateRange, setDateRange] = useState(() => {
-    // Get today's date in LOCAL timezone (not UTC)
+    // Use restaurant timezone for date calculations
+    // Note: Initial render uses default timezone, will be updated after operationSettings loads
     const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const localToday = `${year}-${month}-${day}`;
+    const localToday = formatDateString(today);
 
-    // Get 7 days ago in LOCAL timezone
+    // Get 6 days ago (today + 6 previous days = 7 days total, ending today)
     const weekAgo = new Date(today);
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    const weekYear = weekAgo.getFullYear();
-    const weekMonth = String(weekAgo.getMonth() + 1).padStart(2, '0');
-    const weekDay = String(weekAgo.getDate()).padStart(2, '0');
-    const localWeekAgo = `${weekYear}-${weekMonth}-${weekDay}`;
+    weekAgo.setDate(weekAgo.getDate() - 6);
+    const localWeekAgo = formatDateString(weekAgo);
 
     return {
       start: localWeekAgo,
@@ -303,6 +334,7 @@ const ReportsPage: React.FC = () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [stats, setStats] = useState<any>(null);
   const [customers, setCustomers] = useState<any[]>([]);
+  const [menuItems, setMenuItems] = useState<any[]>([]);
 
   // Drilldown state for Sales Details tab
   const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set());
@@ -312,6 +344,14 @@ const ReportsPage: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('reports_active_tab', activeTab);
   }, [activeTab]);
+
+  // Re-initialize date range when operationSettings loads (to apply correct timezone)
+  useEffect(() => {
+    if (operationSettings && !isCustomDateRange) {
+      handlePeriodChange(activePeriod);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [operationSettings?.timeZone]);
 
   // Filter orders by date range
   const getFilteredOrders = () => {
@@ -362,15 +402,40 @@ const ReportsPage: React.FC = () => {
 
       return Object.entries(hourlyData).map(([date, sales]) => ({ date, sales: Math.round(sales) }));
     } else if (activePeriod === 'week') {
-      // Group by day of week
+      // Group by actual dates in the week range (only days up to today)
+      const today = getTodayInRestaurantTZ();
       const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+      // Create array of the last 7 days (today + 6 previous days)
+      const dates: Date[] = [];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        dates.push(date);
+      }
+
+      console.log('Week mode - Today:', today, 'Dates:', dates.map(d => formatDateString(d)));
+
+      // Group orders by date
       const dailyData: Record<string, number> = {};
       filteredOrders.forEach(order => {
-        const day = dayNames[getOrderDate(order).getDay()];
-        dailyData[day] = (dailyData[day] || 0) + getOrderAmount(order);
+        const orderDate = getOrderDate(order);
+        const dateKey = formatDateString(orderDate);
+        dailyData[dateKey] = (dailyData[dateKey] || 0) + getOrderAmount(order);
       });
 
-      return dayNames.map(day => ({ date: day, sales: Math.round(dailyData[day] || 0) }));
+      // Map dates to sales data with day names
+      const result = dates.map(date => {
+        const dateKey = formatDateString(date);
+        const dayName = dayNames[date.getDay()];
+        return {
+          date: dayName,
+          sales: Math.round(dailyData[dateKey] || 0)
+        };
+      });
+
+      console.log('Week mode - Result:', result);
+      return result;
     } else if (activePeriod === 'month') {
       // Group by day of month
       const dailyData: Record<string, number> = {};
@@ -397,18 +462,28 @@ const ReportsPage: React.FC = () => {
   const getCategoryData = () => {
     if (filteredOrders.length === 0) return [];
 
+    // Create a map of product_id to category from menu items
+    const productCategoryMap: Record<string, string> = {};
+    menuItems.forEach((item: any) => {
+      if (item.id && item.category) {
+        productCategoryMap[item.id.toString()] = item.category;
+      }
+    });
+
     const categoryTotals: Record<string, number> = {};
     let totalSales = 0;
 
     filteredOrders.forEach(order => {
-      const orderTotal = parseFloat(order.final_price || order.total_amount || order.total_price || 0);
-      totalSales += orderTotal;
-
-      // Try to get category from order items
+      // Get order items
       if (order.order_items && Array.isArray(order.order_items)) {
         order.order_items.forEach((item: any) => {
-          const category = item.category || 'Other';
           const itemTotal = parseFloat(item.price || 0) * parseInt(item.quantity || 1);
+          totalSales += itemTotal;
+
+          // Get category from product_id mapping
+          const productId = item.product_id?.toString() || item.id?.toString();
+          const category = productId ? (productCategoryMap[productId] || 'Other') : 'Other';
+
           categoryTotals[category] = (categoryTotals[category] || 0) + itemTotal;
         });
       }
@@ -542,6 +617,14 @@ const ReportsPage: React.FC = () => {
         }
       });
 
+      // Fetch menu data to get categories
+      const menuResponse = await fetch(`/api/menu?restaurantId=${user.restaurantId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
       if (statsResponse.ok) {
         const statsData = await statsResponse.json();
         setStats(statsData.data || statsData);
@@ -556,6 +639,13 @@ const ReportsPage: React.FC = () => {
         const customersData = await customersResponse.json();
         if (customersData.success && Array.isArray(customersData.data)) {
           setCustomers(customersData.data);
+        }
+      }
+
+      if (menuResponse.ok) {
+        const menuData = await menuResponse.json();
+        if (menuData.success && menuData.data?.items) {
+          setMenuItems(menuData.data.items);
         }
       }
     } catch (error) {
@@ -753,21 +843,26 @@ const ReportsPage: React.FC = () => {
     setActivePeriod(period);
     setIsCustomDateRange(false);
 
-    const now = new Date();
-    let start = new Date();
+    // Get today in restaurant timezone
+    const now = getTodayInRestaurantTZ();
+    let start = new Date(now);
 
     switch (period) {
       case 'today':
         start = new Date(now);
-        start.setHours(0, 0, 0, 0);
         break;
       case 'week':
-        start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        // Last 7 days including today (today + 6 previous days)
+        start = new Date(now);
+        start.setDate(start.getDate() - 6);
         break;
       case 'month':
-        start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        // Last 30 days including today
+        start = new Date(now);
+        start.setDate(start.getDate() - 29);
         break;
       case 'year':
+        // From January 1 of current year to today
         start = new Date(now.getFullYear(), 0, 1);
         break;
       case 'all':
@@ -784,16 +879,9 @@ const ReportsPage: React.FC = () => {
         break;
     }
 
-    // Convert to LOCAL timezone date strings (not UTC)
-    const startYear = start.getFullYear();
-    const startMonth = String(start.getMonth() + 1).padStart(2, '0');
-    const startDay = String(start.getDate()).padStart(2, '0');
-    const startLocal = `${startYear}-${startMonth}-${startDay}`;
-
-    const endYear = now.getFullYear();
-    const endMonth = String(now.getMonth() + 1).padStart(2, '0');
-    const endDay = String(now.getDate()).padStart(2, '0');
-    const endLocal = `${endYear}-${endMonth}-${endDay}`;
+    // Convert to date strings
+    const startLocal = formatDateString(start);
+    const endLocal = formatDateString(now);
 
     setDateRange({
       start: startLocal,
@@ -861,9 +949,10 @@ const ReportsPage: React.FC = () => {
 
   // CSV 생성 함수
   const generateCSV = (data: any) => {
+    const timezone = getRestaurantTimezone(operationSettings);
     let csv = `Restaurant Analytics Report\n`;
     csv += `Restaurant ID,${data.restaurantId || 'N/A'}\n`;
-    csv += `Generated,${new Date().toLocaleString('en-MY', { timeZone: 'Asia/Kuala_Lumpur' })}\n`;
+    csv += `Generated,${new Date().toLocaleString('en-MY', { timeZone: timezone })}\n`;
     csv += `Period,${data.period}\n`;
     csv += `Report Type,${data.tab.toUpperCase()}\n\n`;
 

@@ -85,8 +85,12 @@ const SearchIcon = styled.div`
   transform: translateY(-50%);
   color: #6B7C93;
   font-size: 16px;
+  pointer-events: none;
 `;
 
+const SearchInputWithIcon = styled(SearchInput)`
+  padding-left: 44px;
+`;
 
 const CustomersTable = styled.div`
   background: white;
