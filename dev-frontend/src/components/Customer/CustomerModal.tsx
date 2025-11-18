@@ -187,6 +187,7 @@ const CustomerModal: React.FC = () => {
 
   const getTitle = () => {
     if (customerModalMode === 'guest') return 'Guest Order';
+    if (customerModalMode === 'register') return 'Add New Customer';
     return memberTab === 'login' ? 'Member Login' : 'Create Account';
   };
 
@@ -208,6 +209,28 @@ const CustomerModal: React.FC = () => {
           </ButtonRow>
           <ErrorArea show={false}>
             {/* Guest Order doesn't have errors */}
+          </ErrorArea>
+        </FooterWrapper>
+      );
+    }
+
+    if (customerModalMode === 'register') {
+      return (
+        <FooterWrapper>
+          <ButtonRow>
+            <ModalButton variant="secondary" onClick={handleClose}>
+              Cancel
+            </ModalButton>
+            <ModalButton
+              variant="primary"
+              disabled={!registerForm.name || !registerForm.phone || isLoading}
+              onClick={handleRegister}
+            >
+              {isLoading ? 'Adding...' : 'Add Customer'}
+            </ModalButton>
+          </ButtonRow>
+          <ErrorArea show={!!registerError}>
+            {registerError && <ErrorMessage>{registerError}</ErrorMessage>}
           </ErrorArea>
         </FooterWrapper>
       );
@@ -288,6 +311,66 @@ const CustomerModal: React.FC = () => {
             />
           </FormGroup>
         </GuestSection>
+      )}
+
+      {/* Register New Customer (from Customers page) */}
+      {customerModalMode === 'register' && (
+        <>
+          <FormGroup>
+            <Label>Full Name *</Label>
+            <Input
+              type="text"
+              placeholder="Enter customer's full name"
+              value={registerForm.name}
+              onChange={(e) => {
+                setRegisterForm({ ...registerForm, name: e.target.value });
+                setRegisterError('');
+              }}
+              disabled={isLoading}
+            />
+          </FormGroup>
+
+          <FormGroup>
+            <Label>Phone Number *</Label>
+            <PhoneInput
+              value={registerForm.phone}
+              onChange={(value) => {
+                setRegisterForm({ ...registerForm, phone: value });
+                setRegisterError('');
+              }}
+              required
+              disabled={isLoading}
+            />
+          </FormGroup>
+
+          <FormGroup>
+            <Label>Email Address</Label>
+            <Input
+              type="email"
+              placeholder="Enter email (optional)"
+              value={registerForm.email}
+              onChange={(e) => {
+                setRegisterForm({ ...registerForm, email: e.target.value });
+                setRegisterError('');
+              }}
+              disabled={isLoading}
+            />
+          </FormGroup>
+
+          <FormGroup>
+            <Label>Password *</Label>
+            <Input
+              type="password"
+              placeholder="Create a password (min 6 characters)"
+              value={registerForm.password}
+              onChange={(e) => {
+                setRegisterForm({ ...registerForm, password: e.target.value });
+                setRegisterError('');
+              }}
+              disabled={isLoading}
+            />
+          </FormGroup>
+        </>
       )}
 
       {/* Member View: Login or Register */}

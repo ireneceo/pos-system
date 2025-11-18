@@ -573,7 +573,7 @@ const CustomersPage: React.FC = () => {
           <FilterBar>
             <SearchContainer>
               <SearchIcon>🔍</SearchIcon>
-              <SearchInput
+              <SearchInputWithIcon
                 type="text"
                 placeholder="Search customers by name, phone, or email..."
                 value={searchQuery}

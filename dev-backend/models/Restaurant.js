@@ -298,6 +298,25 @@ Restaurant.init({
             dessert: 0.50,
             other: 0.50
           }
+        },
+        loyaltyTiers: {
+          enabled: true,
+          bronze: {
+            minOrders: 0,
+            minSpent: 0
+          },
+          silver: {
+            minOrders: 5,
+            minSpent: 500
+          },
+          gold: {
+            minOrders: 15,
+            minSpent: 1500
+          },
+          vip: {
+            minOrders: 30,
+            minSpent: 3000
+          }
         }
       };
 
@@ -320,6 +339,26 @@ Restaurant.init({
             categoryCharges: {
               ...defaultSettings.takeawayPricing.categoryCharges,
               ...((parsed.takeawayPricing && parsed.takeawayPricing.categoryCharges) || {})
+            }
+          },
+          loyaltyTiers: {
+            ...defaultSettings.loyaltyTiers,
+            ...(parsed.loyaltyTiers || {}),
+            bronze: {
+              ...defaultSettings.loyaltyTiers.bronze,
+              ...((parsed.loyaltyTiers && parsed.loyaltyTiers.bronze) || {})
+            },
+            silver: {
+              ...defaultSettings.loyaltyTiers.silver,
+              ...((parsed.loyaltyTiers && parsed.loyaltyTiers.silver) || {})
+            },
+            gold: {
+              ...defaultSettings.loyaltyTiers.gold,
+              ...((parsed.loyaltyTiers && parsed.loyaltyTiers.gold) || {})
+            },
+            vip: {
+              ...defaultSettings.loyaltyTiers.vip,
+              ...((parsed.loyaltyTiers && parsed.loyaltyTiers.vip) || {})
             }
           }
         };
