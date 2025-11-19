@@ -70,6 +70,7 @@ import AdminSettingsPage from './pages/Admin/AdminSettingsPage';
 import SiteSettingsPage from './pages/Admin/SiteSettingsPage';
 import RestaurantDashboard from './pages/Restaurant/RestaurantDashboard';
 import BasicDashboard from './pages/Basic/BasicDashboard';
+import NotificationSettingsPage from './pages/NotificationSettings/NotificationSettingsPage';
 
 // New Manager Role Dashboards
 import FoodcourtGeneralDashboard from './pages/FoodcourtGeneral/FoodcourtGeneralDashboard';
@@ -312,6 +313,11 @@ function App() {
                           <RestaurantSubscriptionsPage />
                         </ProtectedRoute>
                       } />
+                      <Route path="/pos/admin/notification-settings" element={
+                        <ProtectedRoute requiredRole={['System Admin']}>
+                          <NotificationSettingsPage />
+                        </ProtectedRoute>
+                      } />
 
                       {/* Common Profile Route for All Roles */}
                       <Route path="/pos/profile" element={
@@ -449,6 +455,11 @@ function App() {
                           <ManagerInvoicesPage />
                         </ProtectedRoute>
                       } />
+                      <Route path="/pos/manager/notification-settings" element={
+                        <ProtectedRoute requiredRole={['Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager']}>
+                          <NotificationSettingsPage />
+                        </ProtectedRoute>
+                      } />
 
                       {/* Legacy /pos/restaurant/* routes - redirect to new /restaurant/:restaurantId/* structure */}
                       <Route path="/pos/restaurant/*" element={<LegacyRestaurantRedirect />} />
@@ -564,6 +575,11 @@ function App() {
                       <Route path="/restaurant/:restaurantId/history" element={
                         <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin']}>
                           <ActivityHistoryPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/restaurant/:restaurantId/notification-settings" element={
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin']}>
+                          <NotificationSettingsPage />
                         </ProtectedRoute>
                       } />
                     </Routes>

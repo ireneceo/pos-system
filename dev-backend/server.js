@@ -149,6 +149,7 @@ const staffRouter = require('./routes/staff');
 const storeRouter = require('./routes/store');
 const siteSettingsRouter = require('./routes/siteSettings');
 const addonModulesRouter = require('./routes/addon-modules');
+const notificationSettingsRouter = require('./routes/notification-settings');
 
 // Health check endpoint - PM2 모니터링 및 로드밸런서용 (가장 먼저)
 app.get('/api/health', (req, res) => {
@@ -190,6 +191,7 @@ app.use('/api/option-groups', optionGroupsRouter);
 app.use('/api/staff', staffRouter);
 app.use('/api/store', storeRouter);
 app.use('/api/site-settings', siteSettingsRouter);
+app.use('/api/notification-settings', notificationSettingsRouter);
 
 // GitHub Webhook for Auto-Deployment
 const { exec } = require('child_process');

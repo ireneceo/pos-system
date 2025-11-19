@@ -1274,6 +1274,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>◈</NavIcon>
                   Site Settings
                 </NavItem>
+                <NavItem to="/pos/admin/notification-settings" active={isActive('/pos/admin/notification-settings')} onClick={closeSidebar}>
+                  <NavIcon>✉</NavIcon>
+                  Notification Settings
+                </NavItem>
                 <NavItem to="/pos/admin/system-config" active={isActive('/pos/admin/system-config')} onClick={closeSidebar}>
                   <NavIcon>⚙</NavIcon>
                   System Config⟤
@@ -1304,6 +1308,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>◐</NavIcon>
                   Company Information
                 </NavItem>
+                <NavItem to={`/restaurant/${restaurantId}/notification-settings`} active={isActive(`/restaurant/${restaurantId}/notification-settings`)} onClick={closeSidebar}>
+                  <NavIcon>✉</NavIcon>
+                  Notification Settings
+                </NavItem>
               </>
             )}
 
@@ -1313,6 +1321,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <NavItem to="/pos/settings" active={isActive('/pos/settings')} onClick={closeSidebar}>
                   <NavIcon>⚙</NavIcon>
                   Settings
+                </NavItem>
+                <NavItem to="/pos/manager/notification-settings" active={isActive('/pos/manager/notification-settings')} onClick={closeSidebar}>
+                  <NavIcon>✉</NavIcon>
+                  Notification Settings
                 </NavItem>
               </>
             )}
