@@ -23,8 +23,13 @@ AddonModule.init({
     allowNull: true
   },
   category: {
-    type: DataTypes.ENUM('revenue', 'operation', 'analytics'),
+    type: DataTypes.ENUM('basic', 'advanced', 'revenue', 'operation', 'analytics'),
     allowNull: false
+  },
+  target_user_type: {
+    type: DataTypes.ENUM('restaurant', 'manager', 'both'),
+    allowNull: false,
+    defaultValue: 'restaurant'
   },
   base_price_monthly: {
     type: DataTypes.DECIMAL(10, 2),

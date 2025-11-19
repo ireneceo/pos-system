@@ -23,6 +23,7 @@ interface Plan {
   displayName: string;
   description: string;
   category: 'basic' | 'custom';
+  planTarget: 'restaurant' | 'manager';
   monthlyPrice: number;
   annualPrice: number;
   restaurantLimit: number;
@@ -37,6 +38,7 @@ interface Plan {
 
 interface AddonModule {
   id: number;
+  target_user_type: 'restaurant' | 'manager' | 'both';
   module_code: string;
   name: string;
   description: string;
@@ -539,6 +541,7 @@ const PlansPage: React.FC = () => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [subscriptionStats, setSubscriptionStats] = useState<{[key: string]: number}>({});
   const [searchTerm, setSearchTerm] = useState('');
+  const [planTargetFilter, setPlanTargetFilter] = useState<'all' | 'restaurant' | 'manager'>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'basic' | 'custom'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
@@ -551,6 +554,7 @@ const PlansPage: React.FC = () => {
     display_name: '',
     description: '',
     category: 'basic' as 'basic' | 'custom',
+    plan_target: 'restaurant' as 'restaurant' | 'manager',
     base_price_monthly: '',
     base_price_annual: '',
     order_limit: '',
@@ -569,6 +573,7 @@ const PlansPage: React.FC = () => {
     display_name: '',
     description: '',
     category: 'basic' as 'basic' | 'custom',
+    plan_target: 'restaurant' as 'restaurant' | 'manager',
     base_price_monthly: '',
     base_price_annual: '',
     order_limit: '',
@@ -666,6 +671,7 @@ const PlansPage: React.FC = () => {
           displayName: plan.display_name,
           description: getDefaultDescription(plan.name),
           category: plan.category || 'basic',
+          planTarget: plan.plan_target || 'restaurant',
           monthlyPrice: parseFloat(plan.base_price_monthly),
           annualPrice: parseFloat(plan.base_price_annual),
           restaurantLimit: plan.staff_limit, // Using staff_limit as restaurant limit
@@ -698,6 +704,7 @@ const PlansPage: React.FC = () => {
         display_name: createFormData.display_name,
         description: createFormData.description,
         category: createFormData.category,
+        plan_target: createFormData.plan_target,
         base_price_monthly: parseFloat(createFormData.base_price_monthly) || 0,
         base_price_annual: parseFloat(createFormData.base_price_annual) || 0,
         order_limit: isCustom ? -1 : (parseInt(createFormData.order_limit) || -1),
@@ -730,6 +737,7 @@ const PlansPage: React.FC = () => {
         display_name: '',
         description: '',
         category: 'basic' as 'basic' | 'custom',
+        plan_target: 'restaurant' as 'restaurant' | 'manager',
         base_price_monthly: '',
         base_price_annual: '',
         order_limit: '',
@@ -762,6 +770,7 @@ const PlansPage: React.FC = () => {
         display_name: editFormData.display_name,
         description: editFormData.description,
         category: editFormData.category,
+        plan_target: editFormData.plan_target,
         base_price_monthly: parseFloat(editFormData.base_price_monthly) || 0,
         base_price_annual: parseFloat(editFormData.base_price_annual) || 0,
         order_limit: isCustom ? -1 : (parseInt(editFormData.order_limit) || -1),
@@ -844,6 +853,7 @@ const PlansPage: React.FC = () => {
         displayName: 'Basic',
         description: 'Perfect for single restaurant owners starting their POS journey',
         category: 'basic',
+        planTarget: 'restaurant',
         monthlyPrice: 29,
         annualPrice: 290,
         restaurantLimit: 1,
@@ -867,6 +877,7 @@ const PlansPage: React.FC = () => {
         displayName: 'Professional',
         description: 'Ideal for growing businesses with multiple locations',
         category: 'basic',
+        planTarget: 'restaurant',
         monthlyPrice: 99,
         annualPrice: 990,
         restaurantLimit: 5,
@@ -892,6 +903,7 @@ const PlansPage: React.FC = () => {
         displayName: 'Enterprise',
         description: 'Comprehensive solution for large restaurant chains and food courts',
         category: 'basic',
+        planTarget: 'restaurant',
         monthlyPrice: 199,
         annualPrice: 2190,
         restaurantLimit: -1,
@@ -959,6 +971,7 @@ const PlansPage: React.FC = () => {
       display_name: plan.displayName,
       description: plan.description,
       category: plan.category,
+      plan_target: plan.planTarget,
       base_price_monthly: plan.monthlyPrice.toString(),
       base_price_annual: plan.annualPrice.toString(),
       order_limit: plan.orderLimit.toString(),
@@ -989,11 +1002,12 @@ const PlansPage: React.FC = () => {
   const filteredPlans = plans.filter(plan => {
     const matchesSearch = plan.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          plan.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesPlanTarget = planTargetFilter === 'all' || plan.planTarget === planTargetFilter;
     const matchesCategory = categoryFilter === 'all' || plan.category === categoryFilter;
     const matchesStatus = statusFilter === 'all' ||
                          (statusFilter === 'active' && plan.isActive) ||
                          (statusFilter === 'inactive' && !plan.isActive);
-    return matchesSearch && matchesCategory && matchesStatus;
+    return matchesSearch && matchesPlanTarget && matchesCategory && matchesStatus;
   });
 
   const basicPlansCount = plans.filter(p => p.category === 'basic').length;
@@ -1041,6 +1055,14 @@ const PlansPage: React.FC = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+          <FilterSelect
+            value={planTargetFilter}
+            onChange={(e) => setPlanTargetFilter(e.target.value as any)}
+          >
+            <option value="all">All Plans</option>
+            <option value="restaurant">Restaurant Plans</option>
+            <option value="manager">Manager Plans</option>
+          </FilterSelect>
           <FilterSelect
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value as any)}
@@ -1094,7 +1116,7 @@ const PlansPage: React.FC = () => {
               {plan.category === 'basic' && (
                 <PlanLimits>
                   <LimitItem>
-                    <LimitLabel>Restaurants</LimitLabel>
+                    <LimitLabel>Staff Limit</LimitLabel>
                     <LimitValue>{formatLimit(plan.restaurantLimit)}</LimitValue>
                   </LimitItem>
                   <LimitItem>
@@ -1122,7 +1144,7 @@ const PlansPage: React.FC = () => {
                   <>
                     {basicModules.length > 0 && (
                       <ModulesSection>
-                        <ModulesSectionTitle>🔵 Basic Modules ({basicModules.length})</ModulesSectionTitle>
+                        <ModulesSectionTitle>Basic Modules ({basicModules.length})</ModulesSectionTitle>
                         <ModulesList>
                           {basicModules.map((module, index) => (
                             <ModuleTag key={index}>{module!.name}</ModuleTag>
@@ -1132,7 +1154,7 @@ const PlansPage: React.FC = () => {
                     )}
                     {advancedModules.length > 0 && (
                       <ModulesSection>
-                        <ModulesSectionTitle>⭐ Advanced Modules ({advancedModules.length})</ModulesSectionTitle>
+                        <ModulesSectionTitle>Advanced Modules ({advancedModules.length})</ModulesSectionTitle>
                         <ModulesList>
                           {advancedModules.map((module, index) => (
                             <ModuleTag key={index}>{module!.name}</ModuleTag>
@@ -1190,13 +1212,23 @@ const PlansPage: React.FC = () => {
         
         {/* Create Plan Modal */}
         {showCreateModal && (
-          <Modal>
-            <ModalContent>
+          <Modal onClick={() => setShowCreateModal(false)}>
+            <ModalContent onClick={(e) => e.stopPropagation()}>
               <ModalHeader>
                 <ModalTitle>Create New Plan</ModalTitle>
                 <CloseButton onClick={() => setShowCreateModal(false)}>×</CloseButton>
               </ModalHeader>
               <ModalBody>
+                <FormGroup>
+                  <FormLabel>Plan Target *</FormLabel>
+                  <FormSelect
+                    value={createFormData.plan_target}
+                    onChange={(e) => setCreateFormData(prev => ({...prev, plan_target: e.target.value as 'restaurant' | 'manager'}))}
+                  >
+                    <option value="restaurant">Restaurant Plan</option>
+                    <option value="manager">Manager Plan</option>
+                  </FormSelect>
+                </FormGroup>
                 <FormGroup>
                   <FormLabel>Plan Category *</FormLabel>
                   <FormSelect
@@ -1208,21 +1240,24 @@ const PlansPage: React.FC = () => {
                   </FormSelect>
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Plan Name</FormLabel>
-                  <FormInput
-                    type="text"
-                    placeholder="Enter plan name..."
-                    value={createFormData.name}
-                    onChange={(e) => setCreateFormData(prev => ({...prev, name: e.target.value}))}
-                  />
-                </FormGroup>
-                <FormGroup>
-                  <FormLabel>Display Name</FormLabel>
+                  <FormLabel>Display Name *</FormLabel>
                   <FormInput
                     type="text"
                     placeholder="Enter display name..."
                     value={createFormData.display_name}
-                    onChange={(e) => setCreateFormData(prev => ({...prev, display_name: e.target.value}))}
+                    onChange={(e) => {
+                      const displayName = e.target.value;
+                      const internalName = displayName
+                        .toLowerCase()
+                        .replace(/[^a-z0-9\s]/g, '')
+                        .replace(/\s+/g, '_')
+                        .trim();
+                      setCreateFormData(prev => ({
+                        ...prev,
+                        display_name: displayName,
+                        name: internalName
+                      }));
+                    }}
                   />
                 </FormGroup>
                 <FormGroup>
@@ -1303,14 +1338,14 @@ const PlansPage: React.FC = () => {
                     <FormLabel>Included Modules</FormLabel>
 
                     {/* Basic Modules */}
-                    {availableModules.filter(m => m.category === 'basic').length > 0 && (
+                    {availableModules.filter(m => m.category === 'basic' && (m.target_user_type === createFormData.plan_target || m.target_user_type === 'both')).length > 0 && (
                     <>
                       <div style={{marginTop: '16px', marginBottom: '8px', fontSize: '14px', fontWeight: 600, color: '#3B82F6'}}>
-                        🔵 Basic Modules
+                        Basic Modules
                       </div>
                       <CheckboxGroup>
                         {availableModules
-                          .filter(m => m.category === 'basic')
+                          .filter(m => m.category === 'basic' && (m.target_user_type === createFormData.plan_target || m.target_user_type === 'both'))
                           .map((module) => {
                             const isChecked = createFormData.included_modules.includes(module.module_code);
                             return (
@@ -1346,14 +1381,14 @@ const PlansPage: React.FC = () => {
                   )}
 
                   {/* Advanced Modules */}
-                  {availableModules.filter(m => m.category === 'advanced').length > 0 && (
+                  {availableModules.filter(m => m.category === 'advanced' && (m.target_user_type === createFormData.plan_target || m.target_user_type === 'both')).length > 0 && (
                     <>
                       <div style={{marginTop: '24px', marginBottom: '8px', fontSize: '14px', fontWeight: 600, color: '#8B5CF6'}}>
-                        🟣 Advanced Modules
+                        Advanced Modules
                       </div>
                       <CheckboxGroup>
                         {availableModules
-                          .filter(m => m.category === 'advanced')
+                          .filter(m => m.category === 'advanced' && (m.target_user_type === createFormData.plan_target || m.target_user_type === 'both'))
                           .map((module) => {
                             const isChecked = createFormData.included_modules.includes(module.module_code);
                             return (
@@ -1421,8 +1456,8 @@ const PlansPage: React.FC = () => {
         
         {/* Edit Plan Modal */}
         {showEditModal && selectedPlan && (
-          <Modal>
-            <ModalContent>
+          <Modal onClick={() => setShowEditModal(false)}>
+            <ModalContent onClick={(e) => e.stopPropagation()}>
               <ModalHeader>
                 <ModalTitle>Edit Plan: {selectedPlan.displayName}</ModalTitle>
                 <CloseButton onClick={() => setShowEditModal(false)}>×</CloseButton>
@@ -1446,6 +1481,16 @@ const PlansPage: React.FC = () => {
                     value={editFormData.display_name}
                     onChange={(e) => setEditFormData(prev => ({...prev, display_name: e.target.value}))}
                   />
+                </FormGroup>
+                <FormGroup>
+                  <FormLabel>Plan Target *</FormLabel>
+                  <FormSelect
+                    value={editFormData.plan_target}
+                    onChange={(e) => setEditFormData(prev => ({...prev, plan_target: e.target.value as 'restaurant' | 'manager'}))}
+                  >
+                    <option value="restaurant">Restaurant Plan</option>
+                    <option value="manager">Manager Plan</option>
+                  </FormSelect>
                 </FormGroup>
                 <FormGroup>
                   <FormLabel>Plan Category *</FormLabel>
@@ -1526,14 +1571,14 @@ const PlansPage: React.FC = () => {
                     <FormLabel>Included Modules</FormLabel>
 
                     {/* Basic Modules */}
-                    {availableModules.filter(m => m.category === 'basic').length > 0 && (
+                    {availableModules.filter(m => m.category === 'basic' && (m.target_user_type === editFormData.plan_target || m.target_user_type === 'both')).length > 0 && (
                       <>
                         <div style={{marginTop: '16px', marginBottom: '8px', fontSize: '14px', fontWeight: 600, color: '#3B82F6'}}>
-                          🔵 Basic Modules
+                          Basic Modules
                         </div>
                         <CheckboxGroup>
                           {availableModules
-                            .filter(m => m.category === 'basic')
+                            .filter(m => m.category === 'basic' && (m.target_user_type === editFormData.plan_target || m.target_user_type === 'both'))
                             .map((module) => {
                               const isChecked = editFormData.included_modules.includes(module.module_code);
                               return (
@@ -1569,14 +1614,14 @@ const PlansPage: React.FC = () => {
                     )}
 
                     {/* Advanced Modules */}
-                    {availableModules.filter(m => m.category === 'advanced').length > 0 && (
+                    {availableModules.filter(m => m.category === 'advanced' && (m.target_user_type === editFormData.plan_target || m.target_user_type === 'both')).length > 0 && (
                       <>
                         <div style={{marginTop: '24px', marginBottom: '8px', fontSize: '14px', fontWeight: 600, color: '#8B5CF6'}}>
-                          🟣 Advanced Modules
+                          Advanced Modules
                         </div>
                         <CheckboxGroup>
                           {availableModules
-                            .filter(m => m.category === 'advanced')
+                            .filter(m => m.category === 'advanced' && (m.target_user_type === editFormData.plan_target || m.target_user_type === 'both'))
                             .map((module) => {
                               const isChecked = editFormData.included_modules.includes(module.module_code);
                               return (
@@ -1645,8 +1690,8 @@ const PlansPage: React.FC = () => {
         
         {/* View Details Modal */}
         {showDetailsModal && selectedPlan && (
-          <Modal>
-            <ModalContent>
+          <Modal onClick={() => setShowDetailsModal(false)}>
+            <ModalContent onClick={(e) => e.stopPropagation()}>
               <ModalHeader>
                 <ModalTitle>Plan Details: {selectedPlan.displayName}</ModalTitle>
                 <CloseButton onClick={() => setShowDetailsModal(false)}>×</CloseButton>
