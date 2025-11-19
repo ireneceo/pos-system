@@ -594,6 +594,7 @@ const RestaurantsPage: React.FC = () => {
     subscriptionEnd: ''
   });
   const [availableManagers, setAvailableManagers] = useState<any[]>([]);
+  const [availablePlans, setAvailablePlans] = useState<any[]>([]);
 
   // Filter Manager Search Functions
   const handleFilterManagerSearch = (query: string) => {
@@ -636,6 +637,7 @@ const RestaurantsPage: React.FC = () => {
     console.log('🎯 searchParams:', searchParams.toString());
 
     fetchRestaurants();
+    fetchPlans();
 
     // URL 파라미터에서 매니저 ID를 읽어서 필터 설정
     const managerId = searchParams.get('managerId');
@@ -648,6 +650,30 @@ const RestaurantsPage: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // searchParams 의존성 제거 - 첫 로드시에만 실행
+
+  const fetchPlans = async () => {
+    try {
+      const response = await fetch('/api/plans');
+      if (response.ok) {
+        const plans = await response.json();
+        // Filter only restaurant plans
+        const restaurantPlans = plans.filter((p: any) => p.plan_target === 'restaurant' && p.is_active);
+        setAvailablePlans(restaurantPlans);
+
+        // Set first plan as default if available
+        if (restaurantPlans.length > 0) {
+          const firstPlan = restaurantPlans[0];
+          setNewRestaurant(prev => ({
+            ...prev,
+            planType: firstPlan.display_name,
+            planAmount: firstPlan.base_price_monthly
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching plans:', error);
+    }
+  };
 
   const fetchRestaurants = async () => {
     try {
@@ -768,6 +794,9 @@ const RestaurantsPage: React.FC = () => {
     const endDate = new Date();
     endDate.setFullYear(endDate.getFullYear() + 1); // 1년 후
 
+    // Get first available plan or use defaults
+    const firstPlan = availablePlans.length > 0 ? availablePlans[0] : null;
+
     setNewRestaurant({
       name: '',
       managerId: '',
@@ -775,8 +804,8 @@ const RestaurantsPage: React.FC = () => {
       phone: '',
       address: '',
       cuisine: '',
-      planType: 'Basic Plan',
-      planAmount: '29.00',
+      planType: firstPlan ? firstPlan.display_name : 'Basic Plan',
+      planAmount: firstPlan ? firstPlan.base_price_monthly : '29.00',
       status: 'active',
       billingCycle: 'monthly',
       paymentModel: 'restaurant',
@@ -861,18 +890,23 @@ const RestaurantsPage: React.FC = () => {
     console.log('🔍 Restaurant managers array:', restaurant.managers);
     console.log('🔍 Available managers:', availableManagers);
 
+    // Get first available plan or use existing planType
+    const firstPlan = availablePlans.length > 0 ? availablePlans[0] : null;
+    const defaultPlanType = restaurant.planType || (firstPlan ? firstPlan.display_name : 'Basic Plan');
+    const defaultPlanAmount = restaurant.planAmount || (firstPlan ? firstPlan.base_price_monthly : '29.00');
+
     const editData = {
       ...restaurant,
       email: restaurant.email || '',
       phone: restaurant.phone || '',
       address: restaurant.location || '',
-      planType: 'Basic Plan', // Default for editing
-      planAmount: '29.00',
-      billingCycle: 'monthly' as 'monthly' | 'annual',
-      paymentModel: 'restaurant' as 'manager' | 'restaurant',
-      autoRenew: true,
-      subscriptionStart: new Date().toISOString().split('T')[0],
-      subscriptionEnd: new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0] // 1년 후
+      planType: defaultPlanType,
+      planAmount: defaultPlanAmount,
+      billingCycle: (restaurant.billingCycle as 'monthly' | 'annual') || 'monthly',
+      paymentModel: (restaurant.paymentModel as 'manager' | 'restaurant') || 'restaurant',
+      autoRenew: restaurant.autoRenew !== undefined ? restaurant.autoRenew : true,
+      subscriptionStart: restaurant.subscriptionStart || new Date().toISOString().split('T')[0],
+      subscriptionEnd: restaurant.subscriptionEnd || new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0]
     };
 
     setEditingRestaurant(editData);
@@ -1465,21 +1499,19 @@ const RestaurantsPage: React.FC = () => {
                     <FormSelect
                       value={newRestaurant.planType}
                       onChange={(e) => {
-                        const planAmounts: { [key: string]: string } = {
-                          'Basic Plan': '29.00',
-                          'Professional Plan': '99.00',
-                          'Enterprise Plan': '199.00'
-                        };
+                        const selectedPlan = availablePlans.find(p => p.display_name === e.target.value);
                         setNewRestaurant({
                           ...newRestaurant,
                           planType: e.target.value,
-                          planAmount: planAmounts[e.target.value] || '29.00'
+                          planAmount: selectedPlan?.base_price_monthly?.toString() || '29.00'
                         });
                       }}
                     >
-                      <option value="Basic Plan">Basic Plan ({formatCurrency(29, operationSettings.currency)}/month)</option>
-                      <option value="Professional Plan">Professional Plan ({formatCurrency(99, operationSettings.currency)}/month)</option>
-                      <option value="Enterprise Plan">Enterprise Plan ({formatCurrency(199, operationSettings.currency)}/month)</option>
+                      {availablePlans.map(plan => (
+                        <option key={plan.id} value={plan.display_name}>
+                          {plan.display_name} ({formatCurrency(parseFloat(plan.base_price_monthly), operationSettings.currency)}/month)
+                        </option>
+                      ))}
                     </FormSelect>
                   </FormGroup>
 
@@ -1699,21 +1731,19 @@ const RestaurantsPage: React.FC = () => {
                     <FormSelect
                       value={editingRestaurant.planType || 'Basic Plan'}
                       onChange={(e) => {
-                        const planAmounts: { [key: string]: string } = {
-                          'Basic Plan': '29.00',
-                          'Professional Plan': '99.00',
-                          'Enterprise Plan': '199.00'
-                        };
+                        const selectedPlan = availablePlans.find(p => p.display_name === e.target.value);
                         setEditingRestaurant({
                           ...editingRestaurant,
                           planType: e.target.value,
-                          planAmount: planAmounts[e.target.value] || '29.00'
+                          planAmount: selectedPlan?.base_price_monthly?.toString() || '29.00'
                         });
                       }}
                     >
-                      <option value="Basic Plan">Basic Plan ({formatCurrency(29, operationSettings.currency)}/month)</option>
-                      <option value="Professional Plan">Professional Plan ({formatCurrency(99, operationSettings.currency)}/month)</option>
-                      <option value="Enterprise Plan">Enterprise Plan ({formatCurrency(199, operationSettings.currency)}/month)</option>
+                      {availablePlans.map(plan => (
+                        <option key={plan.id} value={plan.display_name}>
+                          {plan.display_name} ({formatCurrency(parseFloat(plan.base_price_monthly), operationSettings.currency)}/month)
+                        </option>
+                      ))}
                     </FormSelect>
                   </FormGroup>
 

@@ -388,12 +388,28 @@ const SubscriptionsPage: React.FC = () => {
   const [availableManagers, setAvailableManagers] = useState<any[]>([]);
   const [allRestaurantsData, setAllRestaurantsData] = useState<any[]>([]);
   const [customPlans, setCustomPlans] = useState<any[]>([]);
+  const [availablePlans, setAvailablePlans] = useState<any[]>([]);
+  const [userType, setUserType] = useState<'restaurant' | 'brand' | 'foodcourt'>('restaurant');
 
   useEffect(() => {
     fetchSubscriptions();
     fetchAvailableData();
     fetchCustomPlans();
+    fetchPlans();
   }, []);
+
+  const fetchPlans = async () => {
+    try {
+      const response = await fetch('/api/plans');
+      if (response.ok) {
+        const plans = await response.json();
+        const activePlans = plans.filter((p: any) => p.is_active);
+        setAvailablePlans(activePlans);
+      }
+    } catch (error) {
+      console.error('Error fetching plans:', error);
+    }
+  };
 
   const fetchSubscriptions = async () => {
     try {
@@ -512,6 +528,33 @@ const SubscriptionsPage: React.FC = () => {
   const totalRevenue = subscriptions.filter(s => s.status === 'active').reduce((sum, s) => sum + s.monthlyFee, 0);
 
   const handleAddSubscription = () => {
+    // Get first available plan for current user type
+    const filteredPlans = availablePlans.filter(p => p.plan_target === userType);
+    const firstPlan = filteredPlans.length > 0 ? filteredPlans[0] : null;
+
+    // Reset form with appropriate defaults
+    setNewSubscription({
+      restaurantId: '',
+      managerId: '',
+      managerName: '',
+      restaurantName: '',
+      planType: firstPlan ? firstPlan.display_name : 'basic',
+      customPlanName: '',
+      status: 'trial',
+      billingCycle: 'monthly',
+      paymentModel: userType === 'restaurant' ? 'restaurant' : (userType === 'brand' ? 'brand_manager' : 'foodcourt_manager'),
+      autoRenew: false,
+      email: '',
+      phone: '',
+      address: '',
+      monthlyFee: firstPlan ? parseFloat(firstPlan.base_price_monthly) : 29,
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: ''
+    });
+
+    setSelectedTarget(null);
+    setSearchQuery('');
+
     setShowAddModal(true);
   };
 
@@ -1095,7 +1138,38 @@ const SubscriptionsPage: React.FC = () => {
                 <ModalBody>
                   <FormGrid>
                     <FormGroup style={{gridColumn: '1 / -1'}}>
-                      <FormLabel>Search Manager or Restaurant *</FormLabel>
+                      <FormLabel>User Type *</FormLabel>
+                      <FilterSelect
+                        value={userType}
+                        onChange={(e) => {
+                          const newType = e.target.value as 'restaurant' | 'brand' | 'foodcourt';
+                          setUserType(newType);
+                          setSelectedTarget(null);
+                          setSearchQuery('');
+
+                          // Update plan to first available for new user type
+                          const filteredPlans = availablePlans.filter(p => p.plan_target === newType);
+                          const firstPlan = filteredPlans.length > 0 ? filteredPlans[0] : null;
+                          if (firstPlan) {
+                            setNewSubscription(prev => ({
+                              ...prev,
+                              planType: firstPlan.display_name,
+                              monthlyFee: parseFloat(firstPlan.base_price_monthly),
+                              paymentModel: newType === 'restaurant' ? 'restaurant' : (newType === 'brand' ? 'brand_manager' : 'foodcourt_manager')
+                            }));
+                          }
+                        }}
+                      >
+                        <option value="restaurant">Restaurant</option>
+                        <option value="brand">Brand Manager</option>
+                        <option value="foodcourt">Foodcourt Manager</option>
+                      </FilterSelect>
+                    </FormGroup>
+
+                    <FormGroup style={{gridColumn: '1 / -1'}}>
+                      <FormLabel>
+                        {userType === 'restaurant' ? 'Search Restaurant *' : 'Search Manager *'}
+                      </FormLabel>
                       <div style={{position: 'relative', width: '100%'}}>
                         <FormInput
                           type="text"
@@ -1103,7 +1177,7 @@ const SubscriptionsPage: React.FC = () => {
                           onChange={(e) => handleSearch(e.target.value)}
                           onFocus={() => setShowSearchDropdown(true)}
                           onBlur={() => setTimeout(() => setShowSearchDropdown(false), 200)}
-                          placeholder="Type to search for managers or restaurants"
+                          placeholder={userType === 'restaurant' ? 'Type to search for restaurants' : 'Type to search for managers'}
                           required
                           style={{width: '100%'}}
                         />
@@ -1121,7 +1195,7 @@ const SubscriptionsPage: React.FC = () => {
                             zIndex: 1000,
                             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
                           }}>
-                            {searchResults.managers.length > 0 && (
+                            {userType !== 'restaurant' && searchResults.managers.length > 0 && (
                               <div>
                                 <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>
                                   MANAGERS
@@ -1145,7 +1219,7 @@ const SubscriptionsPage: React.FC = () => {
                                 ))}
                               </div>
                             )}
-                            {searchResults.restaurants.length > 0 && (
+                            {userType === 'restaurant' && searchResults.restaurants.length > 0 && (
                               <div>
                                 <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>
                                   RESTAURANTS
@@ -1223,7 +1297,7 @@ const SubscriptionsPage: React.FC = () => {
                     </FormGroup>
 
                     <FormGroup style={{gridColumn: '1 / -1'}}>
-                      <FormLabel>Custom Subscription Plan *</FormLabel>
+                      <FormLabel>Subscription Plan *</FormLabel>
                       <FormSelect
                         value={newSubscription.customPlanName || ''}
                         onChange={(e) => {
@@ -1237,12 +1311,12 @@ const SubscriptionsPage: React.FC = () => {
                             });
                           } else if (selectedValue) {
                             // Find the selected plan to get its monthly fee
-                            const selectedPlan = customPlans.find(p => p.name === selectedValue);
+                            const selectedPlan = availablePlans.find(p => p.display_name === selectedValue);
                             setNewSubscription({
                               ...newSubscription,
                               planType: 'custom',
                               customPlanName: selectedValue,
-                              monthlyFee: selectedPlan?.monthly_price || 0
+                              monthlyFee: parseFloat(selectedPlan?.base_price_monthly) || 0
                             });
                           } else {
                             setNewSubscription({
@@ -1255,11 +1329,13 @@ const SubscriptionsPage: React.FC = () => {
                         }}
                       >
                         <option value="">Select Plan</option>
-                        {customPlans.map((plan) => (
-                          <option key={plan.id} value={plan.name}>
-                            {plan.display_name} - RM {plan.monthly_price}
-                          </option>
-                        ))}
+                        {availablePlans
+                          .filter(p => p.plan_target === userType)
+                          .map((plan) => (
+                            <option key={plan.id} value={plan.display_name}>
+                              {plan.display_name} - RM {plan.base_price_monthly}
+                            </option>
+                          ))}
                         <option value="others">Others</option>
                       </FormSelect>
                     </FormGroup>

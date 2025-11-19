@@ -23,7 +23,7 @@ interface Plan {
   displayName: string;
   description: string;
   category: 'basic' | 'custom';
-  planTarget: 'restaurant' | 'manager';
+  planTarget: 'restaurant' | 'brand' | 'foodcourt';
   monthlyPrice: number;
   annualPrice: number;
   restaurantLimit: number;
@@ -38,7 +38,7 @@ interface Plan {
 
 interface AddonModule {
   id: number;
-  target_user_type: 'restaurant' | 'manager' | 'both';
+  target_user_type: 'restaurant' | 'brand' | 'foodcourt' | 'all';
   module_code: string;
   name: string;
   description: string;
@@ -142,7 +142,7 @@ const PricingNote = styled.div`
 `;
 
 const PlanLimits = styled.div`
-  margin: 12px 0;
+  margin: 8px 0;
   padding: 16px;
   background: #F8FAFC;
   border-radius: 12px;
@@ -173,7 +173,7 @@ const LimitValue = styled.span`
 const FeaturesList = styled.ul`
   list-style: none;
   padding: 0;
-  margin: 12px 0;
+  margin: 8px 0;
 `;
 
 const FeatureItem = styled.li`
@@ -186,7 +186,7 @@ const FeatureItem = styled.li`
 `;
 
 const ModulesSection = styled.div`
-  margin: 12px 0;
+  margin: 8px 0;
   padding: 12px;
   background: #F8FAFC;
   border-radius: 8px;
@@ -472,15 +472,17 @@ const CheckboxGroup = styled.div`
 
 const CheckboxItem = styled.div`
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
-  
+
   input[type="checkbox"] {
     width: 16px;
     height: 16px;
+    margin-top: 2px;
+    flex-shrink: 0;
     accent-color: #635BFF;
   }
-  
+
   label {
     font-size: 14px;
     color: #0A2540;
@@ -541,7 +543,7 @@ const PlansPage: React.FC = () => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [subscriptionStats, setSubscriptionStats] = useState<{[key: string]: number}>({});
   const [searchTerm, setSearchTerm] = useState('');
-  const [planTargetFilter, setPlanTargetFilter] = useState<'all' | 'restaurant' | 'manager'>('all');
+  const [planTargetFilter, setPlanTargetFilter] = useState<'all' | 'restaurant' | 'brand' | 'foodcourt'>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'basic' | 'custom'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
@@ -554,7 +556,7 @@ const PlansPage: React.FC = () => {
     display_name: '',
     description: '',
     category: 'basic' as 'basic' | 'custom',
-    plan_target: 'restaurant' as 'restaurant' | 'manager',
+    plan_target: 'restaurant' as 'restaurant' | 'brand' | 'foodcourt',
     base_price_monthly: '',
     base_price_annual: '',
     order_limit: '',
@@ -573,7 +575,7 @@ const PlansPage: React.FC = () => {
     display_name: '',
     description: '',
     category: 'basic' as 'basic' | 'custom',
-    plan_target: 'restaurant' as 'restaurant' | 'manager',
+    plan_target: 'restaurant' as 'restaurant' | 'brand' | 'foodcourt',
     base_price_monthly: '',
     base_price_annual: '',
     order_limit: '',
@@ -737,7 +739,7 @@ const PlansPage: React.FC = () => {
         display_name: '',
         description: '',
         category: 'basic' as 'basic' | 'custom',
-        plan_target: 'restaurant' as 'restaurant' | 'manager',
+        plan_target: 'restaurant' as 'restaurant' | 'brand' | 'foodcourt',
         base_price_monthly: '',
         base_price_annual: '',
         order_limit: '',
@@ -1061,7 +1063,8 @@ const PlansPage: React.FC = () => {
           >
             <option value="all">All Plans</option>
             <option value="restaurant">Restaurant Plans</option>
-            <option value="manager">Manager Plans</option>
+            <option value="brand">Brand Plans</option>
+            <option value="foodcourt">Foodcourt Plans</option>
           </FilterSelect>
           <FilterSelect
             value={categoryFilter}
@@ -1126,12 +1129,6 @@ const PlansPage: React.FC = () => {
                 </PlanLimits>
               )}
 
-              <FeaturesList>
-                {(Array.isArray(plan.features) ? plan.features : []).map((feature, index) => (
-                  <FeatureItem key={index}>{feature}</FeatureItem>
-                ))}
-              </FeaturesList>
-
               {plan.includedModules && plan.includedModules.length > 0 && (() => {
                 const basicModules = plan.includedModules
                   .map(code => availableModules.find(m => m.module_code === code))
@@ -1165,6 +1162,12 @@ const PlansPage: React.FC = () => {
                   </>
                 );
               })()}
+
+              <FeaturesList>
+                {(Array.isArray(plan.features) ? plan.features : []).map((feature, index) => (
+                  <FeatureItem key={index}>{feature}</FeatureItem>
+                ))}
+              </FeaturesList>
 
               <PlanStats>
                 <StatItem>
@@ -1223,10 +1226,11 @@ const PlansPage: React.FC = () => {
                   <FormLabel>Plan Target *</FormLabel>
                   <FormSelect
                     value={createFormData.plan_target}
-                    onChange={(e) => setCreateFormData(prev => ({...prev, plan_target: e.target.value as 'restaurant' | 'manager'}))}
+                    onChange={(e) => setCreateFormData(prev => ({...prev, plan_target: e.target.value as 'restaurant' | 'brand' | 'foodcourt'}))}
                   >
                     <option value="restaurant">Restaurant Plan</option>
-                    <option value="manager">Manager Plan</option>
+                    <option value="brand">Brand Plan</option>
+                    <option value="foodcourt">Foodcourt Plan</option>
                   </FormSelect>
                 </FormGroup>
                 <FormGroup>
@@ -1240,10 +1244,10 @@ const PlansPage: React.FC = () => {
                   </FormSelect>
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Display Name *</FormLabel>
+                  <FormLabel>Plan Name *</FormLabel>
                   <FormInput
                     type="text"
-                    placeholder="Enter display name..."
+                    placeholder="e.g., Basic Plan, Manager Professional"
                     value={createFormData.display_name}
                     onChange={(e) => {
                       const displayName = e.target.value;
@@ -1322,15 +1326,6 @@ const PlansPage: React.FC = () => {
                     </FormGroup>
                   </>
                 )}
-                <FormGroup>
-                  <FormLabel>Features (one per line)</FormLabel>
-                  <FormTextArea
-                    placeholder="Enter features, one per line..."
-                    rows={6}
-                    value={createFormData.features}
-                    onChange={(e) => setCreateFormData(prev => ({...prev, features: e.target.value}))}
-                  />
-                </FormGroup>
 
                 {/* Only show module selection for Basic plans */}
                 {createFormData.category === 'basic' && (
@@ -1338,14 +1333,14 @@ const PlansPage: React.FC = () => {
                     <FormLabel>Included Modules</FormLabel>
 
                     {/* Basic Modules */}
-                    {availableModules.filter(m => m.category === 'basic' && (m.target_user_type === createFormData.plan_target || m.target_user_type === 'both')).length > 0 && (
+                    {availableModules.filter(m => m.category === 'basic' && (m.target_user_type === createFormData.plan_target || m.target_user_type === 'all')).length > 0 && (
                     <>
                       <div style={{marginTop: '16px', marginBottom: '8px', fontSize: '14px', fontWeight: 600, color: '#3B82F6'}}>
                         Basic Modules
                       </div>
                       <CheckboxGroup>
                         {availableModules
-                          .filter(m => m.category === 'basic' && (m.target_user_type === createFormData.plan_target || m.target_user_type === 'both'))
+                          .filter(m => m.category === 'basic' && (m.target_user_type === createFormData.plan_target || m.target_user_type === 'all'))
                           .map((module) => {
                             const isChecked = createFormData.included_modules.includes(module.module_code);
                             return (
@@ -1381,14 +1376,14 @@ const PlansPage: React.FC = () => {
                   )}
 
                   {/* Advanced Modules */}
-                  {availableModules.filter(m => m.category === 'advanced' && (m.target_user_type === createFormData.plan_target || m.target_user_type === 'both')).length > 0 && (
+                  {availableModules.filter(m => m.category === 'advanced' && (m.target_user_type === createFormData.plan_target || m.target_user_type === 'all')).length > 0 && (
                     <>
                       <div style={{marginTop: '24px', marginBottom: '8px', fontSize: '14px', fontWeight: 600, color: '#8B5CF6'}}>
                         Advanced Modules
                       </div>
                       <CheckboxGroup>
                         {availableModules
-                          .filter(m => m.category === 'advanced' && (m.target_user_type === createFormData.plan_target || m.target_user_type === 'both'))
+                          .filter(m => m.category === 'advanced' && (m.target_user_type === createFormData.plan_target || m.target_user_type === 'all'))
                           .map((module) => {
                             const isChecked = createFormData.included_modules.includes(module.module_code);
                             return (
@@ -1424,6 +1419,16 @@ const PlansPage: React.FC = () => {
                   )}
                   </FormGroup>
                 )}
+
+                <FormGroup>
+                  <FormLabel>Features (one per line)</FormLabel>
+                  <FormTextArea
+                    placeholder="Enter features, one per line..."
+                    rows={6}
+                    value={createFormData.features}
+                    onChange={(e) => setCreateFormData(prev => ({...prev, features: e.target.value}))}
+                  />
+                </FormGroup>
 
                 <CheckboxGroup>
                   <CheckboxItem>
@@ -1464,32 +1469,26 @@ const PlansPage: React.FC = () => {
               </ModalHeader>
               <ModalBody>
                 <FormGroup>
-                  <FormLabel>Plan Name (Internal) *</FormLabel>
+                  <FormLabel>Plan Name *</FormLabel>
                   <FormInput
                     type="text"
-                    placeholder="e.g., basic, professional"
-                    value={editFormData.name}
-                    disabled
-                  />
-                  <small style={{color: '#6B7280'}}>Internal identifier (cannot be changed)</small>
-                </FormGroup>
-                <FormGroup>
-                  <FormLabel>Display Name *</FormLabel>
-                  <FormInput
-                    type="text"
-                    placeholder="e.g., Basic Plan"
+                    placeholder="e.g., Basic Plan, Manager Professional"
                     value={editFormData.display_name}
                     onChange={(e) => setEditFormData(prev => ({...prev, display_name: e.target.value}))}
                   />
+                  <small style={{color: '#9CA3AF', fontSize: '12px', marginTop: '4px', display: 'block'}}>
+                    Internal code: {editFormData.name}
+                  </small>
                 </FormGroup>
                 <FormGroup>
                   <FormLabel>Plan Target *</FormLabel>
                   <FormSelect
                     value={editFormData.plan_target}
-                    onChange={(e) => setEditFormData(prev => ({...prev, plan_target: e.target.value as 'restaurant' | 'manager'}))}
+                    onChange={(e) => setEditFormData(prev => ({...prev, plan_target: e.target.value as 'restaurant' | 'brand' | 'foodcourt'}))}
                   >
                     <option value="restaurant">Restaurant Plan</option>
-                    <option value="manager">Manager Plan</option>
+                    <option value="brand">Brand Plan</option>
+                    <option value="foodcourt">Foodcourt Plan</option>
                   </FormSelect>
                 </FormGroup>
                 <FormGroup>
@@ -1555,15 +1554,6 @@ const PlansPage: React.FC = () => {
                     </FormGroup>
                   </>
                 )}
-                <FormGroup>
-                  <FormLabel>Features (one per line)</FormLabel>
-                  <FormTextArea
-                    placeholder="Enter features, one per line..."
-                    rows={6}
-                    value={editFormData.features}
-                    onChange={(e) => setEditFormData(prev => ({...prev, features: e.target.value}))}
-                  />
-                </FormGroup>
 
                 {/* Only show module selection for Basic plans */}
                 {editFormData.category === 'basic' && (
@@ -1571,14 +1561,14 @@ const PlansPage: React.FC = () => {
                     <FormLabel>Included Modules</FormLabel>
 
                     {/* Basic Modules */}
-                    {availableModules.filter(m => m.category === 'basic' && (m.target_user_type === editFormData.plan_target || m.target_user_type === 'both')).length > 0 && (
+                    {availableModules.filter(m => m.category === 'basic' && (m.target_user_type === editFormData.plan_target || m.target_user_type === 'all')).length > 0 && (
                       <>
                         <div style={{marginTop: '16px', marginBottom: '8px', fontSize: '14px', fontWeight: 600, color: '#3B82F6'}}>
                           Basic Modules
                         </div>
                         <CheckboxGroup>
                           {availableModules
-                            .filter(m => m.category === 'basic' && (m.target_user_type === editFormData.plan_target || m.target_user_type === 'both'))
+                            .filter(m => m.category === 'basic' && (m.target_user_type === editFormData.plan_target || m.target_user_type === 'all'))
                             .map((module) => {
                               const isChecked = editFormData.included_modules.includes(module.module_code);
                               return (
@@ -1614,14 +1604,14 @@ const PlansPage: React.FC = () => {
                     )}
 
                     {/* Advanced Modules */}
-                    {availableModules.filter(m => m.category === 'advanced' && (m.target_user_type === editFormData.plan_target || m.target_user_type === 'both')).length > 0 && (
+                    {availableModules.filter(m => m.category === 'advanced' && (m.target_user_type === editFormData.plan_target || m.target_user_type === 'all')).length > 0 && (
                       <>
                         <div style={{marginTop: '24px', marginBottom: '8px', fontSize: '14px', fontWeight: 600, color: '#8B5CF6'}}>
                           Advanced Modules
                         </div>
                         <CheckboxGroup>
                           {availableModules
-                            .filter(m => m.category === 'advanced' && (m.target_user_type === editFormData.plan_target || m.target_user_type === 'both'))
+                            .filter(m => m.category === 'advanced' && (m.target_user_type === editFormData.plan_target || m.target_user_type === 'all'))
                             .map((module) => {
                               const isChecked = editFormData.included_modules.includes(module.module_code);
                               return (
@@ -1657,6 +1647,16 @@ const PlansPage: React.FC = () => {
                     )}
                   </FormGroup>
                 )}
+
+                <FormGroup>
+                  <FormLabel>Features (one per line)</FormLabel>
+                  <FormTextArea
+                    placeholder="Enter features, one per line..."
+                    rows={6}
+                    value={editFormData.features}
+                    onChange={(e) => setEditFormData(prev => ({...prev, features: e.target.value}))}
+                  />
+                </FormGroup>
 
                 <CheckboxGroup>
                   <CheckboxItem>

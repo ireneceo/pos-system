@@ -324,6 +324,7 @@ const ManagersPage: React.FC = () => {
     address: '',
     role: 'Foodcourt Manager' as 'Foodcourt General' | 'Foodcourt Manager' | 'Brand General' | 'Brand Manager'
   });
+  const [availablePlans, setAvailablePlans] = useState<any[]>([]);
 
   const navigate = useNavigate();
 
@@ -449,7 +450,34 @@ const ManagersPage: React.FC = () => {
 
   useEffect(() => {
     fetchManagers();
+    fetchPlans();
   }, []);
+
+  const fetchPlans = async () => {
+    try {
+      const response = await fetch('/api/plans');
+      if (response.ok) {
+        const plans = await response.json();
+        // Filter brand and foodcourt plans
+        const managerPlans = plans.filter((p: any) =>
+          (p.plan_target === 'brand' || p.plan_target === 'foodcourt') && p.is_active
+        );
+        setAvailablePlans(managerPlans);
+      }
+    } catch (error) {
+      console.error('Error fetching plans:', error);
+    }
+  };
+
+  // Filter plans based on manager role
+  const getFilteredPlans = (role: string) => {
+    if (role === 'Brand General' || role === 'Brand Manager') {
+      return availablePlans.filter(p => p.plan_target === 'brand');
+    } else if (role === 'Foodcourt General' || role === 'Foodcourt Manager') {
+      return availablePlans.filter(p => p.plan_target === 'foodcourt');
+    }
+    return [];
+  };
 
   console.log('🔍 Filtering managers:', {
     totalManagers: managers.length,
