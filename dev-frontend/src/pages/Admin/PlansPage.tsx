@@ -40,7 +40,7 @@ interface AddonModule {
   module_code: string;
   name: string;
   description: string;
-  category: 'revenue' | 'operation' | 'analytics';
+  category: 'basic' | 'advanced' | 'revenue' | 'operation' | 'analytics';
   base_price_monthly: number;
   base_price_annual: number;
   features: string[];
@@ -535,6 +535,24 @@ const PlansPage: React.FC = () => {
     is_active: true
   });
 
+  // Form data for edit plan
+  const [editFormData, setEditFormData] = useState({
+    id: '',
+    name: '',
+    display_name: '',
+    description: '',
+    category: 'basic' as 'basic' | 'custom',
+    base_price_monthly: '',
+    base_price_annual: '',
+    order_limit: '',
+    menu_item_limit: '',
+    staff_limit: '',
+    features: '',
+    included_modules: [] as string[],
+    is_popular: false,
+    is_active: true
+  });
+
   useEffect(() => {
     fetchSubscriptionStats();
     fetchAvailableModules();
@@ -705,6 +723,56 @@ const PlansPage: React.FC = () => {
     }
   };
 
+  const updatePlan = async () => {
+    try {
+      if (!editFormData.display_name) {
+        alert('Please enter a display name');
+        return;
+      }
+
+      const isCustom = editFormData.category === 'custom';
+
+      const planData = {
+        display_name: editFormData.display_name,
+        description: editFormData.description,
+        category: editFormData.category,
+        base_price_monthly: parseFloat(editFormData.base_price_monthly) || 0,
+        base_price_annual: parseFloat(editFormData.base_price_annual) || 0,
+        order_limit: isCustom ? -1 : (parseInt(editFormData.order_limit) || -1),
+        menu_item_limit: isCustom ? -1 : (parseInt(editFormData.menu_item_limit) || -1),
+        staff_limit: isCustom ? -1 : (parseInt(editFormData.staff_limit) || -1),
+        features: editFormData.features.split('\n').filter(f => f.trim()),
+        included_modules: editFormData.included_modules,
+        is_popular: editFormData.is_popular,
+        is_active: editFormData.is_active
+      };
+
+      console.log('Updating plan with data:', planData);
+
+      const planId = editFormData.id.replace('plan-', '');
+      const response = await fetch(`/api/plans/${planId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(planData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update plan');
+      }
+
+      // Close modal and refresh plans
+      setShowEditModal(false);
+      fetchPlans();
+      alert('Plan updated successfully');
+    } catch (error) {
+      console.error('Error updating plan:', error);
+      alert('Failed to update plan: ' + (error as Error).message);
+    }
+  };
+
   const deletePlan = async (planId: string) => {
     if (!window.confirm('Are you sure you want to delete this plan? This action cannot be undone.')) {
       return;
@@ -860,6 +928,23 @@ const PlansPage: React.FC = () => {
   
   const handleEditPlan = (plan: Plan) => {
     setSelectedPlan(plan);
+    // Initialize edit form data with selected plan
+    setEditFormData({
+      id: plan.id,
+      name: plan.name,
+      display_name: plan.displayName,
+      description: plan.description,
+      category: plan.category,
+      base_price_monthly: plan.monthlyPrice.toString(),
+      base_price_annual: plan.annualPrice.toString(),
+      order_limit: plan.orderLimit.toString(),
+      menu_item_limit: '50', // default value
+      staff_limit: plan.restaurantLimit.toString(),
+      features: plan.features.join('\n'),
+      included_modules: plan.includedModules || [],
+      is_popular: plan.isPopular,
+      is_active: plan.isActive
+    });
     setShowEditModal(true);
   };
   
@@ -1154,42 +1239,98 @@ const PlansPage: React.FC = () => {
                   />
                 </FormGroup>
 
-                <FormGroup>
-                  <FormLabel>Included Modules</FormLabel>
-                  <CheckboxGroup>
-                    {availableModules.map((module) => {
-                      const isChecked = createFormData.included_modules.includes(module.module_code);
+                {/* Only show module selection for Basic plans */}
+                {createFormData.category === 'basic' && (
+                  <FormGroup>
+                    <FormLabel>Included Modules</FormLabel>
 
-                      return (
-                        <CheckboxItem key={module.module_code}>
-                          <input
-                            type="checkbox"
-                            id={`module-${module.module_code}`}
-                            checked={isChecked}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setCreateFormData(prev => ({
-                                  ...prev,
-                                  included_modules: [...prev.included_modules, module.module_code]
-                                }));
-                              } else {
-                                setCreateFormData(prev => ({
-                                  ...prev,
-                                  included_modules: prev.included_modules.filter(m => m !== module.module_code)
-                                }));
-                              }
-                            }}
-                          />
-                          <label htmlFor={`module-${module.module_code}`}>
-                            <strong>{module.name}</strong>
-                            <br />
-                            <small style={{color: '#6B7280'}}>{module.description}</small>
-                          </label>
-                        </CheckboxItem>
-                      );
-                    })}
-                  </CheckboxGroup>
-                </FormGroup>
+                    {/* Basic Modules */}
+                    {availableModules.filter(m => m.category === 'basic').length > 0 && (
+                    <>
+                      <div style={{marginTop: '16px', marginBottom: '8px', fontSize: '14px', fontWeight: 600, color: '#3B82F6'}}>
+                        🔵 Basic Modules
+                      </div>
+                      <CheckboxGroup>
+                        {availableModules
+                          .filter(m => m.category === 'basic')
+                          .map((module) => {
+                            const isChecked = createFormData.included_modules.includes(module.module_code);
+                            return (
+                              <CheckboxItem key={module.module_code}>
+                                <input
+                                  type="checkbox"
+                                  id={`module-${module.module_code}`}
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setCreateFormData(prev => ({
+                                        ...prev,
+                                        included_modules: [...prev.included_modules, module.module_code]
+                                      }));
+                                    } else {
+                                      setCreateFormData(prev => ({
+                                        ...prev,
+                                        included_modules: prev.included_modules.filter(m => m !== module.module_code)
+                                      }));
+                                    }
+                                  }}
+                                />
+                                <label htmlFor={`module-${module.module_code}`}>
+                                  <strong>{module.name}</strong>
+                                  <br />
+                                  <small style={{color: '#6B7280'}}>{module.description}</small>
+                                </label>
+                              </CheckboxItem>
+                            );
+                          })}
+                      </CheckboxGroup>
+                    </>
+                  )}
+
+                  {/* Advanced Modules */}
+                  {availableModules.filter(m => m.category === 'advanced').length > 0 && (
+                    <>
+                      <div style={{marginTop: '24px', marginBottom: '8px', fontSize: '14px', fontWeight: 600, color: '#8B5CF6'}}>
+                        🟣 Advanced Modules
+                      </div>
+                      <CheckboxGroup>
+                        {availableModules
+                          .filter(m => m.category === 'advanced')
+                          .map((module) => {
+                            const isChecked = createFormData.included_modules.includes(module.module_code);
+                            return (
+                              <CheckboxItem key={module.module_code}>
+                                <input
+                                  type="checkbox"
+                                  id={`module-${module.module_code}`}
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setCreateFormData(prev => ({
+                                        ...prev,
+                                        included_modules: [...prev.included_modules, module.module_code]
+                                      }));
+                                    } else {
+                                      setCreateFormData(prev => ({
+                                        ...prev,
+                                        included_modules: prev.included_modules.filter(m => m !== module.module_code)
+                                      }));
+                                    }
+                                  }}
+                                />
+                                <label htmlFor={`module-${module.module_code}`}>
+                                  <strong>{module.name}</strong>
+                                  <br />
+                                  <small style={{color: '#6B7280'}}>{module.description}</small>
+                                </label>
+                              </CheckboxItem>
+                            );
+                          })}
+                      </CheckboxGroup>
+                    </>
+                  )}
+                  </FormGroup>
+                )}
 
                 <CheckboxGroup>
                   <CheckboxItem>
@@ -1230,55 +1371,215 @@ const PlansPage: React.FC = () => {
               </ModalHeader>
               <ModalBody>
                 <FormGroup>
-                  <FormLabel>Display Name</FormLabel>
-                  <FormInput type="text" defaultValue={selectedPlan.displayName} />
+                  <FormLabel>Plan Name (Internal) *</FormLabel>
+                  <FormInput
+                    type="text"
+                    placeholder="e.g., basic, professional"
+                    value={editFormData.name}
+                    disabled
+                  />
+                  <small style={{color: '#6B7280'}}>Internal identifier (cannot be changed)</small>
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Description</FormLabel>
-                  <FormTextArea defaultValue={selectedPlan.description} rows={3} />
+                  <FormLabel>Display Name *</FormLabel>
+                  <FormInput
+                    type="text"
+                    placeholder="e.g., Basic Plan"
+                    value={editFormData.display_name}
+                    onChange={(e) => setEditFormData(prev => ({...prev, display_name: e.target.value}))}
+                  />
+                </FormGroup>
+                <FormGroup>
+                  <FormLabel>Plan Category *</FormLabel>
+                  <FormSelect
+                    value={editFormData.category}
+                    onChange={(e) => setEditFormData(prev => ({...prev, category: e.target.value as 'basic' | 'custom'}))}
+                  >
+                    <option value="basic">Basic Subscription</option>
+                    <option value="custom">Custom Subscription</option>
+                  </FormSelect>
                 </FormGroup>
                 <PricingRow>
                   <FormGroup>
                     <FormLabel>Monthly Price (RM)</FormLabel>
-                    <FormInput type="number" defaultValue={selectedPlan.monthlyPrice} />
+                    <FormInput
+                      type="number"
+                      placeholder="0"
+                      value={editFormData.base_price_monthly}
+                      onChange={(e) => setEditFormData(prev => ({...prev, base_price_monthly: e.target.value}))}
+                    />
                   </FormGroup>
                   <FormGroup>
                     <FormLabel>Annual Price (RM)</FormLabel>
-                    <FormInput type="number" defaultValue={selectedPlan.annualPrice} />
+                    <FormInput
+                      type="number"
+                      placeholder="0"
+                      value={editFormData.base_price_annual}
+                      onChange={(e) => setEditFormData(prev => ({...prev, base_price_annual: e.target.value}))}
+                    />
                   </FormGroup>
                 </PricingRow>
-                <LimitsRow>
-                  <FormGroup>
-                    <FormLabel>Restaurant Limit</FormLabel>
-                    <FormInput type="number" defaultValue={selectedPlan.restaurantLimit} />
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>Order Limit (per month)</FormLabel>
-                    <FormInput type="number" defaultValue={selectedPlan.orderLimit} />
-                  </FormGroup>
-                </LimitsRow>
+                {editFormData.category === 'basic' && (
+                  <>
+                    <LimitsRow>
+                      <FormGroup>
+                        <FormLabel>Menu Item Limit</FormLabel>
+                        <FormInput
+                          type="number"
+                          placeholder="-1 for unlimited"
+                          value={editFormData.menu_item_limit}
+                          onChange={(e) => setEditFormData(prev => ({...prev, menu_item_limit: e.target.value}))}
+                        />
+                      </FormGroup>
+                      <FormGroup>
+                        <FormLabel>Order Limit (per month)</FormLabel>
+                        <FormInput
+                          type="number"
+                          placeholder="-1 for unlimited"
+                          value={editFormData.order_limit}
+                          onChange={(e) => setEditFormData(prev => ({...prev, order_limit: e.target.value}))}
+                        />
+                      </FormGroup>
+                    </LimitsRow>
+                    <FormGroup>
+                      <FormLabel>Staff Limit</FormLabel>
+                      <FormInput
+                        type="number"
+                        placeholder="-1 for unlimited"
+                        value={editFormData.staff_limit}
+                        onChange={(e) => setEditFormData(prev => ({...prev, staff_limit: e.target.value}))}
+                      />
+                    </FormGroup>
+                  </>
+                )}
                 <FormGroup>
                   <FormLabel>Features (one per line)</FormLabel>
-                  <FormTextArea defaultValue={selectedPlan.features.join('\n')} rows={6} />
+                  <FormTextArea
+                    placeholder="Enter features, one per line..."
+                    rows={6}
+                    value={editFormData.features}
+                    onChange={(e) => setEditFormData(prev => ({...prev, features: e.target.value}))}
+                  />
                 </FormGroup>
+
+                {/* Only show module selection for Basic plans */}
+                {editFormData.category === 'basic' && (
+                  <FormGroup>
+                    <FormLabel>Included Modules</FormLabel>
+
+                    {/* Basic Modules */}
+                    {availableModules.filter(m => m.category === 'basic').length > 0 && (
+                      <>
+                        <div style={{marginTop: '16px', marginBottom: '8px', fontSize: '14px', fontWeight: 600, color: '#3B82F6'}}>
+                          🔵 Basic Modules
+                        </div>
+                        <CheckboxGroup>
+                          {availableModules
+                            .filter(m => m.category === 'basic')
+                            .map((module) => {
+                              const isChecked = editFormData.included_modules.includes(module.module_code);
+                              return (
+                                <CheckboxItem key={module.module_code}>
+                                  <input
+                                    type="checkbox"
+                                    id={`edit-module-${module.module_code}`}
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setEditFormData(prev => ({
+                                          ...prev,
+                                          included_modules: [...prev.included_modules, module.module_code]
+                                        }));
+                                      } else {
+                                        setEditFormData(prev => ({
+                                          ...prev,
+                                          included_modules: prev.included_modules.filter(m => m !== module.module_code)
+                                        }));
+                                      }
+                                    }}
+                                  />
+                                  <label htmlFor={`edit-module-${module.module_code}`}>
+                                    <strong>{module.name}</strong>
+                                    <br />
+                                    <small style={{color: '#6B7280'}}>{module.description}</small>
+                                  </label>
+                                </CheckboxItem>
+                              );
+                            })}
+                        </CheckboxGroup>
+                      </>
+                    )}
+
+                    {/* Advanced Modules */}
+                    {availableModules.filter(m => m.category === 'advanced').length > 0 && (
+                      <>
+                        <div style={{marginTop: '24px', marginBottom: '8px', fontSize: '14px', fontWeight: 600, color: '#8B5CF6'}}>
+                          🟣 Advanced Modules
+                        </div>
+                        <CheckboxGroup>
+                          {availableModules
+                            .filter(m => m.category === 'advanced')
+                            .map((module) => {
+                              const isChecked = editFormData.included_modules.includes(module.module_code);
+                              return (
+                                <CheckboxItem key={module.module_code}>
+                                  <input
+                                    type="checkbox"
+                                    id={`edit-module-${module.module_code}`}
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setEditFormData(prev => ({
+                                          ...prev,
+                                          included_modules: [...prev.included_modules, module.module_code]
+                                        }));
+                                      } else {
+                                        setEditFormData(prev => ({
+                                          ...prev,
+                                          included_modules: prev.included_modules.filter(m => m !== module.module_code)
+                                        }));
+                                      }
+                                    }}
+                                  />
+                                  <label htmlFor={`edit-module-${module.module_code}`}>
+                                    <strong>{module.name}</strong>
+                                    <br />
+                                    <small style={{color: '#6B7280'}}>{module.description}</small>
+                                  </label>
+                                </CheckboxItem>
+                              );
+                            })}
+                        </CheckboxGroup>
+                      </>
+                    )}
+                  </FormGroup>
+                )}
+
                 <CheckboxGroup>
                   <CheckboxItem>
-                    <input type="checkbox" id="edit-popular" defaultChecked={selectedPlan.isPopular} />
+                    <input
+                      type="checkbox"
+                      id="edit-popular"
+                      checked={editFormData.is_popular}
+                      onChange={(e) => setEditFormData(prev => ({...prev, is_popular: e.target.checked}))}
+                    />
                     <label htmlFor="edit-popular">Mark as Most Popular</label>
                   </CheckboxItem>
                   <CheckboxItem>
-                    <input type="checkbox" id="edit-active" defaultChecked={selectedPlan.isActive} />
+                    <input
+                      type="checkbox"
+                      id="edit-active"
+                      checked={editFormData.is_active}
+                      onChange={(e) => setEditFormData(prev => ({...prev, is_active: e.target.checked}))}
+                    />
                     <label htmlFor="edit-active">Set as Active</label>
                   </CheckboxItem>
                 </CheckboxGroup>
               </ModalBody>
               <ModalActions>
-                <ThemedButton variant="cancel" onClick={() => setShowEditModal(false)}>Cancel</ThemedButton>
-                <ThemedButton variant="danger-outline" onClick={() => deletePlan(selectedPlan.id)}>Delete</ThemedButton>
-                <ThemedButton variant="primary" onClick={() => {
-                  setShowEditModal(false);
-                  fetchPlans(); // Refresh plan list
-                }}>Update Plan</ThemedButton>
+                <Button variant="secondary" onClick={() => setShowEditModal(false)}>Cancel</Button>
+                <Button variant="danger" onClick={() => deletePlan(selectedPlan.id)}>Delete</Button>
+                <Button variant="primary" onClick={updatePlan}>Update</Button>
               </ModalActions>
             </ModalContent>
           </Modal>
