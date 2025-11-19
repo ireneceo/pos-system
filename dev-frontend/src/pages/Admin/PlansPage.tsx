@@ -140,8 +140,8 @@ const PricingNote = styled.div`
 `;
 
 const PlanLimits = styled.div`
-  margin: 24px 0;
-  padding: 20px;
+  margin: 12px 0;
+  padding: 16px;
   background: #F8FAFC;
   border-radius: 12px;
 `;
@@ -171,23 +171,50 @@ const LimitValue = styled.span`
 const FeaturesList = styled.ul`
   list-style: none;
   padding: 0;
-  margin: 24px 0;
+  margin: 12px 0;
 `;
 
 const FeatureItem = styled.li`
   display: flex;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   font-size: 14px;
   color: #374151;
-  
-  &:before {
-    content: '✓';
-    color: #059669;
-    font-weight: bold;
-    margin-right: 12px;
-    font-size: 16px;
-  }
+  line-height: 1.5;
+`;
+
+const ModulesSection = styled.div`
+  margin: 12px 0;
+  padding: 12px;
+  background: #F8FAFC;
+  border-radius: 8px;
+  border: 1px solid #E6EBF1;
+`;
+
+const ModulesSectionTitle = styled.div`
+  font-size: 13px;
+  font-weight: 600;
+  color: #6B7280;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const ModulesList = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+`;
+
+const ModuleTag = styled.span`
+  display: inline-block;
+  padding: 6px 12px;
+  background: #FFFFFF;
+  border: 1px solid #D1D5DB;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #374151;
+  font-weight: 500;
 `;
 
 const PlanStats = styled.div`
@@ -196,8 +223,8 @@ const PlanStats = styled.div`
   align-items: center;
   margin-top: auto;
   margin-bottom: 0;
-  padding-top: 20px;
-  padding-bottom: 20px;
+  padding-top: 16px;
+  padding-bottom: 16px;
   border-top: 1px solid #E6EBF1;
   border-bottom: 1px solid #E6EBF1;
 `;
@@ -252,7 +279,7 @@ const BadgeContainer = styled.div`
 const ActionButtons = styled.div`
   display: flex;
   gap: 12px;
-  margin-top: 24px;
+  margin-top: 16px;
 `;
 
 const PlanButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
@@ -719,14 +746,13 @@ const PlansPage: React.FC = () => {
       fetchPlans();
     } catch (error) {
       console.error('Error creating plan:', error);
-      alert('Failed to create plan: ' + error.message);
     }
   };
 
   const updatePlan = async () => {
     try {
       if (!editFormData.display_name) {
-        alert('Please enter a display name');
+        console.log('Display name is required');
         return;
       }
 
@@ -766,10 +792,8 @@ const PlansPage: React.FC = () => {
       // Close modal and refresh plans
       setShowEditModal(false);
       fetchPlans();
-      alert('Plan updated successfully');
     } catch (error) {
       console.error('Error updating plan:', error);
-      alert('Failed to update plan: ' + (error as Error).message);
     }
   };
 
@@ -794,10 +818,8 @@ const PlansPage: React.FC = () => {
       // Close modal and refresh plans
       setShowEditModal(false);
       fetchPlans();
-      alert('Plan deleted successfully');
     } catch (error) {
       console.error('Error deleting plan:', error);
-      alert('Failed to delete plan: ' + error.message);
     }
   };
 
@@ -929,6 +951,8 @@ const PlansPage: React.FC = () => {
   const handleEditPlan = (plan: Plan) => {
     setSelectedPlan(plan);
     // Initialize edit form data with selected plan
+    console.log('Edit Plan - Available Modules:', availableModules.length);
+    console.log('Edit Plan - Plan included modules:', plan.includedModules);
     setEditFormData({
       id: plan.id,
       name: plan.name,
@@ -1085,6 +1109,40 @@ const PlansPage: React.FC = () => {
                   <FeatureItem key={index}>{feature}</FeatureItem>
                 ))}
               </FeaturesList>
+
+              {plan.includedModules && plan.includedModules.length > 0 && (() => {
+                const basicModules = plan.includedModules
+                  .map(code => availableModules.find(m => m.module_code === code))
+                  .filter(m => m && m.category === 'basic');
+                const advancedModules = plan.includedModules
+                  .map(code => availableModules.find(m => m.module_code === code))
+                  .filter(m => m && m.category !== 'basic');
+
+                return (
+                  <>
+                    {basicModules.length > 0 && (
+                      <ModulesSection>
+                        <ModulesSectionTitle>🔵 Basic Modules ({basicModules.length})</ModulesSectionTitle>
+                        <ModulesList>
+                          {basicModules.map((module, index) => (
+                            <ModuleTag key={index}>{module!.name}</ModuleTag>
+                          ))}
+                        </ModulesList>
+                      </ModulesSection>
+                    )}
+                    {advancedModules.length > 0 && (
+                      <ModulesSection>
+                        <ModulesSectionTitle>⭐ Advanced Modules ({advancedModules.length})</ModulesSectionTitle>
+                        <ModulesList>
+                          {advancedModules.map((module, index) => (
+                            <ModuleTag key={index}>{module!.name}</ModuleTag>
+                          ))}
+                        </ModulesList>
+                      </ModulesSection>
+                    )}
+                  </>
+                );
+              })()}
 
               <PlanStats>
                 <StatItem>
