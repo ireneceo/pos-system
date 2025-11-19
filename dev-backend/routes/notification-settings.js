@@ -165,21 +165,49 @@ router.post('/:entityType/:entityId', authenticateToken, async (req, res) => {
 // POST - 테스트 이메일 발송
 router.post('/:entityType/:entityId/test-email', authenticateToken, async (req, res) => {
   try {
+    const { entityType, entityId } = req.params;
     const { testEmail } = req.body;
 
     if (!testEmail) {
-      return res.status(400).json({ error: '테스트 이메일 주소가 필요합니다.' });
+      return res.status(400).json({ error: 'Test email address is required' });
     }
 
-    // 실제 이메일 발송 로직은 email service에서 처리
-    // 여기서는 간단히 성공 응답만
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(testEmail)) {
+      return res.status(400).json({ error: 'Invalid email address' });
+    }
+
+    // Import email service
+    const emailService = require('../utils/emailService');
+
+    // Send test email
+    const result = await emailService.sendTestEmail(entityType, entityId, testEmail);
+
     res.json({
       success: true,
-      message: `테스트 이메일이 ${testEmail}로 발송되었습니다.`
+      message: `Test email sent successfully to ${testEmail}`,
+      messageId: result.messageId
     });
   } catch (error) {
-    console.error('테스트 이메일 발송 에러:', error);
-    res.status(500).json({ error: '테스트 이메일을 발송할 수 없습니다.' });
+    console.error('Test email sending error:', error);
+
+    // Provide user-friendly error messages
+    let errorMessage = 'Failed to send test email';
+    if (error.message.includes('not enabled')) {
+      errorMessage = 'Email notifications are not enabled. Please enable them first.';
+    } else if (error.message.includes('incomplete')) {
+      errorMessage = 'SMTP settings are incomplete. Please fill in all required fields.';
+    } else if (error.code === 'EAUTH') {
+      errorMessage = 'SMTP authentication failed. Please check your username and password.';
+    } else if (error.code === 'ECONNECTION') {
+      errorMessage = 'Cannot connect to SMTP server. Please check your server and port settings.';
+    }
+
+    res.status(500).json({
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 

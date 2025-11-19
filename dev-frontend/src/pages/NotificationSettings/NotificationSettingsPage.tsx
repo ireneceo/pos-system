@@ -31,42 +31,38 @@ const HeaderTitle = styled.h1`
 `;
 
 const Content = styled.main`
-  padding: 24px 32px 32px;
+  padding: 32px;
   max-width: 1200px;
   margin: 0 auto;
 
   @media (max-width: 768px) {
-    padding: 16px 20px 24px;
+    padding: 20px;
   }
 `;
 
 const SettingsCard = styled.div`
   background: white;
-  padding: 32px;
+  padding: 24px;
   border-radius: 8px;
   border: 1px solid #E6EBF1;
-
-  @media (max-width: 768px) {
-    padding: 24px;
-  }
 `;
 
 const FormGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin-top: 24px;
+  gap: 24px;
 
-  @media (max-width: 968px) {
+  @media (max-width: 768px) {
     grid-template-columns: 1fr;
-    gap: 16px;
   }
 `;
 
 const FormGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  margin-bottom: 20px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
 `;
 
 const Label = styled.label`
@@ -81,13 +77,14 @@ const Label = styled.label`
 
 const Input = styled.input`
   width: 100%;
-  padding: 8px 12px;
+  padding: 12px 16px;
   border: 1px solid #E6EBF1;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
   color: #0A2540;
   background: white;
   transition: all 0.15s;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -120,84 +117,69 @@ const Checkbox = styled.input`
 const CheckboxLabel = styled.label`
   display: flex;
   align-items: center;
-  font-size: 15px;
+  font-size: 14px;
   color: #0A2540;
   cursor: pointer;
-  font-weight: 600;
-  padding: 16px 0;
-  border-bottom: 1px solid #E6EBF1;
+  font-weight: 500;
+  margin-bottom: 24px;
 `;
 
 const HelpText = styled.small`
   display: block;
   font-size: 12px;
-  color: #6B7C93;
-  line-height: 1.5;
+  color: #6B7280;
+  margin-top: 4px;
 `;
 
 const ButtonContainer = styled.div`
   display: flex;
   gap: 12px;
-  margin-top: 32px;
-  padding-top: 24px;
-  border-top: 1px solid #E6EBF1;
+  margin-top: 24px;
   justify-content: flex-end;
 
   @media (max-width: 768px) {
     flex-direction: column;
-    gap: 10px;
   }
 `;
 
 const SaveButton = styled.button`
-  padding: 10px 20px;
+  padding: 8px 16px;
   border-radius: 6px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
   border: none;
   background: #635BFF;
   color: white;
-  min-width: 140px;
 
-  &:hover:not(:disabled) {
+  &:hover {
     background: #5A51E6;
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(99, 91, 255, 0.3);
   }
 
   &:disabled {
-    background: #9CA3AF;
+    background: #635BFF;
+    color: white;
     cursor: not-allowed;
     opacity: 0.6;
     transform: none;
   }
-
-  @media (max-width: 768px) {
-    width: 100%;
-  }
 `;
 
 const SecondaryButton = styled.button`
-  padding: 10px 20px;
+  padding: 8px 16px;
   border-radius: 6px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
   background: white;
   color: #635BFF;
   border: 1px solid #635BFF;
-  min-width: 140px;
 
-  &:hover:not(:disabled) {
+  &:hover {
     background: #F0F4FF;
-    transform: translateY(-1px);
-  }
-
-  @media (max-width: 768px) {
-    width: 100%;
   }
 `;
 
@@ -210,11 +192,9 @@ const Alert = styled.div<{ type: 'success' | 'error' }>`
   ${props => props.type === 'success' ? `
     background: #D1FAE5;
     color: #065F46;
-    border: 1px solid #10B981;
   ` : `
     background: #FEE2E2;
     color: #991B1B;
-    border: 1px solid #EF4444;
   `}
 `;
 
@@ -397,22 +377,18 @@ const NotificationSettingsPage: React.FC = () => {
           <HeaderTitle>Notification Settings</HeaderTitle>
         </Header>
 
-        <TabContainer>
-          <Tab active={activeTab === 'email'} onClick={() => setActiveTab('email')}>
-            Email
-          </Tab>
-          <Tab active={activeTab === 'sms'} onClick={() => setActiveTab('sms')}>
-            SMS
-          </Tab>
-          <Tab active={activeTab === 'whatsapp'} onClick={() => setActiveTab('whatsapp')}>
-            WhatsApp
-          </Tab>
-        </TabContainer>
-
         <Content>
-          {message && (
-            <Alert type={message.type}>{message.text}</Alert>
-          )}
+          <TabContainer>
+            <Tab active={activeTab === 'email'} onClick={() => setActiveTab('email')}>
+              Email
+            </Tab>
+            <Tab active={activeTab === 'sms'} onClick={() => setActiveTab('sms')}>
+              SMS
+            </Tab>
+            <Tab active={activeTab === 'whatsapp'} onClick={() => setActiveTab('whatsapp')}>
+              WhatsApp
+            </Tab>
+          </TabContainer>
 
           {activeTab === 'email' && (
             <SettingsCard>
@@ -499,7 +475,7 @@ const NotificationSettingsPage: React.FC = () => {
                 </FormGroup>
               </FormGrid>
 
-              <FormGroup style={{ marginTop: '24px', gridColumn: '1 / -1' }}>
+              <FormGroup>
                 <Label>Reply-To Email (Optional)</Label>
                 <Input
                   type="email"
