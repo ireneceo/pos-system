@@ -1,6 +1,35 @@
-# OrderHere POS System
+# Purple POS System
 
-Multi-tenant restaurant management and POS system with mobile ordering capabilities.
+구독 기반 Multi-tenant restaurant management and POS system with mobile ordering capabilities.
+
+---
+
+## 🚀 빠른 시작
+
+### 개발 시작하기 (Claude Code 명령어)
+
+```bash
+/dev-start          # 개발 환경 전체 컨텍스트 로드
+/개발시작            # 한국어 명령어 (간단 버전)
+/progress           # 현재 개발 진행 현황만 빠르게 확인
+```
+
+### 📋 개발 진행 현황 확인 (중요!)
+
+**가장 먼저 읽어야 할 문서:**
+```
+/var/www/DEVELOPMENT_PLAN.md
+```
+
+이 문서에서 확인 가능:
+- ✅ 완료된 작업 히스토리
+- 🚧 진행 중인 작업
+- 📅 예정된 작업
+- 🗄️ 데이터베이스 스키마
+- 🏗️ 시스템 구조
+- 📁 주요 파일 목록
+
+---
 
 ## 🏗️ Project Structure
 

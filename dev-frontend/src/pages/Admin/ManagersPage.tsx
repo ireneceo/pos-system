@@ -322,7 +322,15 @@ const ManagersPage: React.FC = () => {
     department: '',
     phone: '',
     address: '',
-    role: 'Foodcourt Manager' as 'Foodcourt General' | 'Foodcourt Manager' | 'Brand General' | 'Brand Manager'
+    role: 'Foodcourt General' as 'Foodcourt General' | 'Brand General',
+    // Subscription fields
+    planType: '',
+    planAmount: '149.00',
+    billingCycle: 'monthly' as 'monthly' | 'annual',
+    paymentModel: 'foodcourt_manager' as 'foodcourt_manager' | 'brand_manager',
+    autoRenew: true,
+    subscriptionStart: new Date().toISOString().split('T')[0],
+    subscriptionEnd: ''
   });
   const [availablePlans, setAvailablePlans] = useState<any[]>([]);
 
@@ -517,6 +525,32 @@ const ManagersPage: React.FC = () => {
   const handleAddManager = () => {
     console.log('🔵 Add Manager button clicked');
     try {
+      // Get first foodcourt plan as default (since default role is Foodcourt General)
+      const foodcourtPlans = availablePlans.filter(p => p.plan_target === 'foodcourt');
+      const firstPlan = foodcourtPlans.length > 0 ? foodcourtPlans[0] : null;
+
+      const endDate = new Date();
+      endDate.setFullYear(endDate.getFullYear() + 1);
+
+      setNewManager({
+        managerId: '',
+        fullName: '',
+        companyName: '',
+        email: '',
+        position: '',
+        department: '',
+        phone: '',
+        address: '',
+        role: 'Foodcourt General',
+        planType: firstPlan ? firstPlan.display_name : '',
+        planAmount: firstPlan ? firstPlan.base_price_monthly : '149.00',
+        billingCycle: 'monthly',
+        paymentModel: 'foodcourt_manager',
+        autoRenew: true,
+        subscriptionStart: new Date().toISOString().split('T')[0],
+        subscriptionEnd: endDate.toISOString().split('T')[0]
+      });
+
       setShowAddModal(true);
       console.log('✅ Modal state updated to true');
     } catch (error) {
@@ -576,6 +610,12 @@ const ManagersPage: React.FC = () => {
 
   const handleCloseModal = () => {
     setShowAddModal(false);
+
+    const foodcourtPlans = availablePlans.filter(p => p.plan_target === 'foodcourt');
+    const firstPlan = foodcourtPlans.length > 0 ? foodcourtPlans[0] : null;
+    const endDate = new Date();
+    endDate.setFullYear(endDate.getFullYear() + 1);
+
     setNewManager({
       managerId: '',
       fullName: '',
@@ -585,14 +625,21 @@ const ManagersPage: React.FC = () => {
       department: '',
       phone: '',
       address: '',
-      role: 'Foodcourt Manager'
+      role: 'Foodcourt General',
+      planType: firstPlan ? firstPlan.display_name : '',
+      planAmount: firstPlan ? firstPlan.base_price_monthly : '149.00',
+      billingCycle: 'monthly',
+      paymentModel: 'foodcourt_manager',
+      autoRenew: true,
+      subscriptionStart: new Date().toISOString().split('T')[0],
+      subscriptionEnd: endDate.toISOString().split('T')[0]
     });
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | boolean) => {
     setNewManager(prev => ({
       ...prev,
-      [field]: value
+      [field]: field === 'autoRenew' ? value === 'true' || value === true : value
     }));
   };
 
@@ -614,16 +661,34 @@ const ManagersPage: React.FC = () => {
     setShowConfirmModal(true);
   };
 
-//   const handleViewManager = (manager: Manager) => {
-//     setSelectedManager(manager);
-//     setShowViewModal(true);
-//   };
-// 
-//   const handleEditManager = (manager: Manager) => {
-//     setEditingManager(manager);
-//     setShowEditModal(true);
-//   };
-// 
+  const handleViewManager = (manager: Manager) => {
+    setSelectedManager(manager);
+    setShowViewModal(true);
+  };
+
+  const handleEditManager = (manager: Manager) => {
+    // Get plans for the manager's role (only General roles allowed)
+    const role = manager.role as 'Foodcourt General' | 'Brand General';
+    const filteredPlans = getFilteredPlans(role);
+    const firstPlan = filteredPlans.length > 0 ? filteredPlans[0] : null;
+
+    // Set editing manager with subscription defaults
+    const endDate = new Date();
+    endDate.setFullYear(endDate.getFullYear() + 1);
+
+    setEditingManager({
+      ...manager,
+      planType: firstPlan ? firstPlan.display_name : '',
+      planAmount: firstPlan ? firstPlan.base_price_monthly : '149.00',
+      billingCycle: 'monthly' as 'monthly' | 'annual',
+      paymentModel: role === 'Brand General' ? 'brand_manager' : 'foodcourt_manager',
+      autoRenew: true,
+      subscriptionStart: new Date().toISOString().split('T')[0],
+      subscriptionEnd: endDate.toISOString().split('T')[0]
+    });
+    setShowEditModal(true);
+  };
+
   const handleUpdateManager = async () => {
     if (!editingManager) return;
 
@@ -1042,7 +1107,12 @@ const ManagersPage: React.FC = () => {
                 </MobileGrid>
 
                 <ActionButtons>
-                  {/* <ActionButton onClick={() => handleEditManager(manager)}>Edit</ActionButton> */}
+                  <IconButton
+                    onClick={() => handleEditManager(manager)}
+                    title="Edit Manager"
+                  >
+                    <IconSymbol>✎</IconSymbol>
+                  </IconButton>
                   <IconButton
                     onClick={() => handleToggleStatus(manager)}
                     title={manager.status === 'active' ? 'Deactivate Manager' : 'Activate Manager'}
@@ -1111,12 +1181,28 @@ const ManagersPage: React.FC = () => {
                   <FormLabel>Manager Role *</FormLabel>
                   <FilterSelect
                     value={newManager.role}
-                    onChange={(e) => handleInputChange('role', e.target.value)}
+                    onChange={(e) => {
+                      const newRole = e.target.value as 'Foodcourt General' | 'Brand General';
+                      handleInputChange('role', newRole);
+
+                      // Update plan and payment model based on role
+                      const filteredPlans = getFilteredPlans(newRole);
+                      const firstPlan = filteredPlans.length > 0 ? filteredPlans[0] : null;
+                      const paymentModel = newRole === 'Brand General' ? 'brand_manager' : 'foodcourt_manager';
+
+                      if (firstPlan) {
+                        setNewManager(prev => ({
+                          ...prev,
+                          role: newRole,
+                          planType: firstPlan.display_name,
+                          planAmount: firstPlan.base_price_monthly,
+                          paymentModel: paymentModel
+                        }));
+                      }
+                    }}
                   >
                     <option value="Foodcourt General">Foodcourt General</option>
-                    <option value="Foodcourt Manager">Foodcourt Manager</option>
                     <option value="Brand General">Brand General</option>
-                    <option value="Brand Manager">Brand Manager</option>
                   </FilterSelect>
                 </FormGroup>
 
@@ -1167,6 +1253,71 @@ const ManagersPage: React.FC = () => {
                     value={newManager.address}
                     onChange={(e) => handleInputChange('address', e.target.value)}
                   />
+                </FormGroup>
+
+                {/* Subscription Settings */}
+                <FormGroup style={{gridColumn: '1 / -1', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E6EBF1'}}>
+                  <h3 style={{fontSize: '14px', fontWeight: '600', color: '#0A2540', marginBottom: '12px'}}>Subscription Settings</h3>
+                </FormGroup>
+
+                <FormGroup>
+                  <FormLabel>Subscription Plan *</FormLabel>
+                  <FilterSelect
+                    value={newManager.planType}
+                    onChange={(e) => {
+                      const selectedPlan = getFilteredPlans(newManager.role).find(p => p.display_name === e.target.value);
+                      handleInputChange('planType', e.target.value);
+                      if (selectedPlan) {
+                        handleInputChange('planAmount', selectedPlan.base_price_monthly);
+                      }
+                    }}
+                  >
+                    <option value="">Select Plan</option>
+                    {getFilteredPlans(newManager.role).map(plan => (
+                      <option key={plan.id} value={plan.display_name}>
+                        {plan.display_name} (RM {plan.base_price_monthly}/month)
+                      </option>
+                    ))}
+                  </FilterSelect>
+                </FormGroup>
+
+                <FormGroup>
+                  <FormLabel>Billing Cycle *</FormLabel>
+                  <FilterSelect
+                    value={newManager.billingCycle}
+                    onChange={(e) => handleInputChange('billingCycle', e.target.value)}
+                  >
+                    <option value="monthly">Monthly</option>
+                    <option value="annual">Annual</option>
+                  </FilterSelect>
+                </FormGroup>
+
+                <FormGroup>
+                  <FormLabel>Subscription Start Date *</FormLabel>
+                  <FormInput
+                    type="date"
+                    value={newManager.subscriptionStart}
+                    onChange={(e) => handleInputChange('subscriptionStart', e.target.value)}
+                  />
+                </FormGroup>
+
+                <FormGroup>
+                  <FormLabel>Subscription End Date</FormLabel>
+                  <FormInput
+                    type="date"
+                    value={newManager.subscriptionEnd}
+                    onChange={(e) => handleInputChange('subscriptionEnd', e.target.value)}
+                  />
+                </FormGroup>
+
+                <FormGroup style={{gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                  <input
+                    type="checkbox"
+                    checked={newManager.autoRenew}
+                    onChange={(e) => handleInputChange('autoRenew', e.target.checked ? 'true' : 'false')}
+                    style={{width: '16px', height: '16px', accentColor: '#635BFF'}}
+                  />
+                  <FormLabel style={{marginBottom: 0}}>Auto-renew subscription</FormLabel>
                 </FormGroup>
               </FormGrid>
             </ModalBody>
@@ -1336,6 +1487,72 @@ const ManagersPage: React.FC = () => {
                     value={editingManager.address}
                     onChange={(e) => setEditingManager({...editingManager, address: e.target.value})}
                   />
+                </FormGroup>
+
+                {/* Subscription Settings */}
+                <FormGroup style={{gridColumn: '1 / -1', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E6EBF1'}}>
+                  <h3 style={{fontSize: '14px', fontWeight: '600', color: '#0A2540', marginBottom: '12px'}}>Subscription Settings</h3>
+                </FormGroup>
+
+                <FormGroup>
+                  <FormLabel>Subscription Plan *</FormLabel>
+                  <FilterSelect
+                    value={editingManager.planType || ''}
+                    onChange={(e) => {
+                      const selectedPlan = getFilteredPlans(editingManager.role).find(p => p.display_name === e.target.value);
+                      setEditingManager({
+                        ...editingManager,
+                        planType: e.target.value,
+                        planAmount: selectedPlan ? selectedPlan.base_price_monthly : editingManager.planAmount
+                      });
+                    }}
+                  >
+                    <option value="">Select Plan</option>
+                    {getFilteredPlans(editingManager.role).map(plan => (
+                      <option key={plan.id} value={plan.display_name}>
+                        {plan.display_name} (RM {plan.base_price_monthly}/month)
+                      </option>
+                    ))}
+                  </FilterSelect>
+                </FormGroup>
+
+                <FormGroup>
+                  <FormLabel>Billing Cycle *</FormLabel>
+                  <FilterSelect
+                    value={editingManager.billingCycle || 'monthly'}
+                    onChange={(e) => setEditingManager({...editingManager, billingCycle: e.target.value as 'monthly' | 'annual'})}
+                  >
+                    <option value="monthly">Monthly</option>
+                    <option value="annual">Annual</option>
+                  </FilterSelect>
+                </FormGroup>
+
+                <FormGroup>
+                  <FormLabel>Subscription Start Date *</FormLabel>
+                  <FormInput
+                    type="date"
+                    value={editingManager.subscriptionStart || new Date().toISOString().split('T')[0]}
+                    onChange={(e) => setEditingManager({...editingManager, subscriptionStart: e.target.value})}
+                  />
+                </FormGroup>
+
+                <FormGroup>
+                  <FormLabel>Subscription End Date</FormLabel>
+                  <FormInput
+                    type="date"
+                    value={editingManager.subscriptionEnd || ''}
+                    onChange={(e) => setEditingManager({...editingManager, subscriptionEnd: e.target.value})}
+                  />
+                </FormGroup>
+
+                <FormGroup style={{gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                  <input
+                    type="checkbox"
+                    checked={editingManager.autoRenew !== undefined ? editingManager.autoRenew : true}
+                    onChange={(e) => setEditingManager({...editingManager, autoRenew: e.target.checked})}
+                    style={{width: '16px', height: '16px', accentColor: '#635BFF'}}
+                  />
+                  <FormLabel style={{marginBottom: 0}}>Auto-renew subscription</FormLabel>
                 </FormGroup>
               </FormGrid>
             </ModalBody>
