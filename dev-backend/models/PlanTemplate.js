@@ -61,6 +61,16 @@ PlanTemplate.init({
       this.setDataValue('features', JSON.stringify(value));
     }
   },
+  included_modules: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: null,
+    comment: 'Array of included addon module codes',
+    get() {
+      const rawValue = this.getDataValue('included_modules');
+      return rawValue ? (typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue) : [];
+    }
+  },
   is_active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true

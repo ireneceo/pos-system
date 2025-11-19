@@ -28,10 +28,25 @@ interface Plan {
   restaurantLimit: number;
   orderLimit: number;
   features: string[];
+  includedModules?: string[];
   isPopular: boolean;
   isActive: boolean;
   createdAt: string;
   subscriptionCount: number;
+}
+
+interface AddonModule {
+  id: number;
+  module_code: string;
+  name: string;
+  description: string;
+  category: 'revenue' | 'operation' | 'analytics';
+  base_price_monthly: number;
+  base_price_annual: number;
+  features: string[];
+  dependencies: string[];
+  is_active: boolean;
+  sort_order: number;
 }
 
 // Common components now imported from ../../components/UI
@@ -500,6 +515,9 @@ const PlansPage: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'basic' | 'custom'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
+  // Addon modules
+  const [availableModules, setAvailableModules] = useState<AddonModule[]>([]);
+
   // Form data for create plan
   const [createFormData, setCreateFormData] = useState({
     name: '',
@@ -512,12 +530,14 @@ const PlansPage: React.FC = () => {
     menu_item_limit: '',
     staff_limit: '',
     features: '',
+    included_modules: [] as string[],
     is_popular: false,
     is_active: true
   });
 
   useEffect(() => {
     fetchSubscriptionStats();
+    fetchAvailableModules();
   }, []);
 
   useEffect(() => {
@@ -526,6 +546,18 @@ const PlansPage: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subscriptionStats]);
+
+  const fetchAvailableModules = async () => {
+    try {
+      const response = await fetch('/api/addon-modules?active_only=true');
+      if (!response.ok) throw new Error('Failed to fetch addon modules');
+      const data = await response.json();
+      setAvailableModules(data);
+    } catch (error) {
+      console.error('Error fetching addon modules:', error);
+      setAvailableModules([]);
+    }
+  };
 
   const fetchSubscriptionStats = async () => {
     try {
@@ -570,6 +602,19 @@ const PlansPage: React.FC = () => {
           features = [];
         }
 
+        // Parse included_modules
+        let includedModules: string[] = [];
+        try {
+          if (typeof plan.included_modules === 'string') {
+            includedModules = JSON.parse(plan.included_modules);
+          } else if (Array.isArray(plan.included_modules)) {
+            includedModules = plan.included_modules;
+          }
+        } catch (e) {
+          console.warn('Failed to parse included_modules for plan:', plan.name, e);
+          includedModules = [];
+        }
+
         return {
           id: `plan-${plan.id}`,
           name: plan.name,
@@ -581,6 +626,7 @@ const PlansPage: React.FC = () => {
           restaurantLimit: plan.staff_limit, // Using staff_limit as restaurant limit
           orderLimit: plan.order_limit,
           features: features,
+          includedModules: includedModules,
           isPopular: plan.name === 'professional',
           isActive: plan.is_active,
           createdAt: plan.createdAt ? new Date(plan.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
@@ -613,6 +659,7 @@ const PlansPage: React.FC = () => {
         menu_item_limit: isCustom ? -1 : (parseInt(createFormData.menu_item_limit) || -1),
         staff_limit: isCustom ? -1 : (parseInt(createFormData.staff_limit) || -1),
         features: createFormData.features.split('\n').filter(f => f.trim()),
+        included_modules: createFormData.included_modules,
         is_popular: createFormData.is_popular,
         is_active: createFormData.is_active
       };
@@ -644,6 +691,7 @@ const PlansPage: React.FC = () => {
         menu_item_limit: '',
         staff_limit: '',
         features: '',
+        included_modules: [],
         is_popular: false,
         is_active: true
       });
@@ -1105,6 +1153,44 @@ const PlansPage: React.FC = () => {
                     onChange={(e) => setCreateFormData(prev => ({...prev, features: e.target.value}))}
                   />
                 </FormGroup>
+
+                <FormGroup>
+                  <FormLabel>Included Modules</FormLabel>
+                  <CheckboxGroup>
+                    {availableModules.map((module) => {
+                      const isChecked = createFormData.included_modules.includes(module.module_code);
+
+                      return (
+                        <CheckboxItem key={module.module_code}>
+                          <input
+                            type="checkbox"
+                            id={`module-${module.module_code}`}
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setCreateFormData(prev => ({
+                                  ...prev,
+                                  included_modules: [...prev.included_modules, module.module_code]
+                                }));
+                              } else {
+                                setCreateFormData(prev => ({
+                                  ...prev,
+                                  included_modules: prev.included_modules.filter(m => m !== module.module_code)
+                                }));
+                              }
+                            }}
+                          />
+                          <label htmlFor={`module-${module.module_code}`}>
+                            <strong>{module.name}</strong>
+                            <br />
+                            <small style={{color: '#6B7280'}}>{module.description}</small>
+                          </label>
+                        </CheckboxItem>
+                      );
+                    })}
+                  </CheckboxGroup>
+                </FormGroup>
+
                 <CheckboxGroup>
                   <CheckboxItem>
                     <input

@@ -14,6 +14,7 @@ const Product = require('./Product');
 const Category = require('./Category');
 const OptionGroup = require('./OptionGroup');
 const Option = require('./Option');
+const AddonModule = require('./AddonModule');
 
 // Define associations
 // Keep old single manager relationship for backward compatibility
@@ -123,5 +124,6 @@ module.exports = {
   Product,
   Category,
   OptionGroup,
-  Option
+  Option,
+  AddonModule
 };
