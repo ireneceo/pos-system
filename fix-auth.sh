@@ -1,4 +1,4 @@
-#!/bin/bash
+111111111111111개발시#!/bin/bash
 # 인증 문제 완전 해결 스크립트
 
 echo "🔧 Starting authentication fix..."
