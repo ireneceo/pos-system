@@ -78,6 +78,10 @@ import BrandGeneralDashboard from './pages/BrandGeneral/BrandGeneralDashboard';
 import FoodcourtManagerDashboard from './pages/Foodcourt/FoodcourtManagerDashboard';
 import BrandManagerDashboard from './pages/Brand/BrandManagerDashboard';
 
+// Recipe Management
+import RecipesPage from './pages/Recipes/RecipesPage';
+import IngredientsPage from './pages/Ingredients/IngredientsPage';
+
 // New Manager Role Specific Pages
 import FoodcourtManagement from './pages/FoodcourtGeneral/FoodcourtManagement';
 import FoodcourtStats from './pages/FoodcourtGeneral/FoodcourtStats';
@@ -357,6 +361,18 @@ function App() {
                       <Route path="/pos/brand/general/performance" element={
                         <ProtectedRoute requiredRole={['Brand General']}>
                           <BrandPerformance />
+                        </ProtectedRoute>
+                      } />
+
+                      {/* Recipe Management Routes - Brand General & Brand Manager */}
+                      <Route path="/pos/recipes" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager', 'Restaurant Admin']}>
+                          <RecipesPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/ingredients" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager', 'Restaurant Admin']}>
+                          <IngredientsPage />
                         </ProtectedRoute>
                       } />
 

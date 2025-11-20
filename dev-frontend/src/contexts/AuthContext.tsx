@@ -10,10 +10,16 @@ export interface User {
   full_name?: string;
   role: UserRole;
   restaurantId?: string | null;
+  restaurant_id?: number | null;
+  brand_id?: number | null;
+  foodcourt_id?: number | null;
   managerId?: string | null;
   permissions?: string[];
   restaurantStatus?: 'active' | 'inactive' | 'pending' | null;
   restaurantName?: string | null;
+  company_name?: string;
+  restaurant_name?: string;
+  department?: string;
 }
 
 interface AuthContextType {
