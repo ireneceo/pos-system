@@ -124,34 +124,73 @@
 
 **목표:** 브랜드 매니저가 레시피 생성 및 공유
 
-#### 작업 목록
+**📄 상세 설계 문서:** `/var/www/docs/RECIPE_MANAGEMENT_SYSTEM.md`
 
-**2.1 DB 스키마**
-```sql
-- recipes (레시피 마스터)
-- ingredients (재료 마스터)
-- recipe_ingredients (레시피-재료 매핑)
+#### 권한 구조
+```javascript
+if (restaurant.brand_id !== null) {
+  // 브랜드 가맹점
+  레시피 관리: Brand General/Manager
+  Restaurant Admin: 읽기만 (메뉴 등록 시 가격만 설정)
+} else {
+  // 독립 레스토랑
+  레시피 관리: Restaurant Admin (생성/수정/삭제 모두 가능)
+}
+
+// Foodcourt는 레시피와 무관 (임대 관리만)
 ```
 
-**2.2 Backend**
+#### 작업 목록
+
+**2.1 DB 스키마 (1일)**
+```sql
+- recipes (레시피 마스터, Products와 동일한 구조)
+  - brand_id OR restaurant_id (둘 중 하나만)
+  - option_groups, is_set_menu (Products와 동일)
+  - total_ingredient_cost (자동 계산)
+
+- ingredients (재료 마스터)
+  - brand_id OR restaurant_id
+  - unit_cost (단위당 원가)
+
+- recipe_ingredients (레시피-재료 매핑)
+  - quantity, unit, cost (자동 계산)
+
+- products 테이블 수정
+  - recipe_id 추가 (연결)
+```
+
+**2.2 Backend (3-4일)**
 - [ ] Models: Recipe, Ingredient, RecipeIngredient
+- [ ] Routes: `/api/brands/:id/recipes`, `/api/restaurants/:id/recipes`
 - [ ] APIs: CRUD for recipes, ingredients
-- [ ] 권한 체크: Brand Manager만 생성/수정
+- [ ] 권한 체크 미들웨어 (canEditRecipe, canViewRecipe)
+- [ ] 원가 자동 계산 로직
 
-**2.3 Frontend**
-- [ ] `/pos/recipes` - 레시피 목록
-- [ ] `/pos/recipes/create` - 레시피 생성
-- [ ] `/pos/recipes/:id/edit` - 레시피 수정
-- [ ] `/pos/ingredients` - 재료 마스터
+**2.3 Frontend - Brand General (3일)**
+- [ ] `/brand-general/recipes` - 브랜드 레시피 목록
+- [ ] `/brand-general/recipes/create` - 레시피 생성
+- [ ] `/brand-general/recipes/:id/edit` - 레시피 수정
+- [ ] `/brand-general/ingredients` - 재료 마스터
 
-**2.4 Integration**
-- [ ] Product에 Recipe 연결
-- [ ] 원가 자동 계산
+**2.4 Frontend - Restaurant Admin (3일)**
+- [ ] `/restaurant/:id/recipes` - 레시피 조회
+  - 브랜드 가맹점: 브랜드 레시피 조회만
+  - 독립 레스토랑: 레시피 CRUD
+- [ ] **[메뉴로 등록]** 버튼 → 레시피를 Products로 복사
+- [ ] 독립 레스토랑 레시피 생성/수정 페이지
+- [ ] 재료 관리 페이지
+
+**2.5 Integration (2일)**
+- [ ] 레시피 → 메뉴 등록 API (create-from-recipe)
+- [ ] 원가 자동 계산 및 권장가 제안
+- [ ] 브랜드 레시피 업데이트 시 알림 시스템
 
 **산출물:**
-- ✅ 레시피 생성/수정/삭제
+- ✅ 레시피 생성/수정/삭제 (권한별)
 - ✅ 재료 관리
-- ✅ 메뉴-레시피 연결
+- ✅ 레시피 → 메뉴 등록 (가격만 설정)
+- ✅ 원가 자동 계산
 
 ---
 

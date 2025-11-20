@@ -1,0 +1,125 @@
+const { DataTypes, Model } = require('sequelize');
+const database = require('../config/database');
+
+class Recipe extends Model {}
+
+Recipe.init({
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  // 소유권
+  brand_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Brand General이 생성한 레시피'
+  },
+  restaurant_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Restaurant Admin이 생성한 레시피'
+  },
+  // 기본 정보
+  code: {
+    type: DataTypes.STRING(20),
+    allowNull: true
+  },
+  name: {
+    type: DataTypes.STRING(100),
+    allowNull: false
+  },
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  category: {
+    type: DataTypes.STRING(50),
+    allowNull: false
+  },
+  // 이미지/이모지
+  image: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  emoji: {
+    type: DataTypes.STRING(10),
+    allowNull: true
+  },
+  // 옵션 (Products와 동일)
+  option_groups: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: null,
+    field: 'option_groups',
+    get() {
+      const rawValue = this.getDataValue('option_groups');
+      return rawValue ? (typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue) : [];
+    }
+  },
+  // 세트 메뉴
+  is_set_menu: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  set_items: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: null,
+    get() {
+      const rawValue = this.getDataValue('set_items');
+      return rawValue ? (typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue) : null;
+    }
+  },
+  set_display_order: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  },
+  // 원가 정보
+  total_ingredient_cost: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0.00,
+    comment: '재료 원가 합계'
+  },
+  suggested_price: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    comment: '권장 판매가'
+  },
+  // 조리 정보
+  prep_time: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: '준비 시간 (분)'
+  },
+  cook_time: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: '조리 시간 (분)'
+  },
+  instructions: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: '조리 방법'
+  },
+  // 상태
+  is_active: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
+  },
+  version: {
+    type: DataTypes.INTEGER,
+    defaultValue: 1,
+    comment: '레시피 버전'
+  }
+}, {
+  sequelize: database.sequelize,
+  modelName: 'Recipe',
+  tableName: 'recipes',
+  timestamps: true,
+  underscored: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at'
+});
+
+module.exports = Recipe;

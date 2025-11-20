@@ -212,7 +212,21 @@ WHERE module_code = 'foodcourt_management';
 
 ## 🚧 진행 중인 작업
 
-**현재 진행 중인 작업 없음**
+### Phase 2: Recipe Management - 설계 완료 (2025-11-20)
+
+**상세 설계 문서:** `/var/www/docs/RECIPE_MANAGEMENT_SYSTEM.md`
+
+#### 설계 완료 항목:
+- ✅ 권한 구조 정의 (Brand vs Restaurant 기반)
+- ✅ 데이터베이스 스키마 설계 (recipes, ingredients, recipe_ingredients)
+- ✅ API 설계 완료
+- ✅ UI/UX 설계 완료
+- ✅ 사용 시나리오 문서화
+
+#### 다음 작업:
+- [ ] DB 스키마 생성
+- [ ] Backend Models 구현
+- [ ] Backend APIs 구현
 
 ---
 
