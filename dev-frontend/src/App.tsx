@@ -521,6 +521,16 @@ function App() {
                           <OptionManagementPage />
                         </ProtectedRoute>
                       } />
+                      <Route path="/restaurant/:restaurantId/recipes" element={
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
+                          <RecipesPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/restaurant/:restaurantId/ingredients" element={
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
+                          <IngredientsPage />
+                        </ProtectedRoute>
+                      } />
                       <Route path="/restaurant/:restaurantId/customers" element={
                         <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
                           <CustomersPage />

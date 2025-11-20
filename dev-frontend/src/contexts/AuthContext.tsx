@@ -252,8 +252,6 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
     '/pos/menu',
     '/pos/categories',
     '/pos/options',
-    '/pos/recipes',
-    '/pos/ingredients',
     '/pos/customers',
     '/pos/staff',
     '/pos/promotions',

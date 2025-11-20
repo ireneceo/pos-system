@@ -16,6 +16,7 @@ import {
 } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useAuth } from '../../contexts/AuthContext';
+import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea, FormRow as UIFormRow } from '../../components/UI/Modal';
 
 interface Recipe {
   id: number;
@@ -207,76 +208,6 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger
   }}
 `;
 
-const Modal = styled.div<{ isOpen: boolean }>`
-  display: ${props => props.isOpen ? 'flex' : 'none'};
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 10000;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  backdrop-filter: blur(4px);
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  border-radius: 16px;
-  padding: 32px;
-  max-width: 800px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-
-  &::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: #F1F5F9;
-    border-radius: 4px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: #CBD5E1;
-    border-radius: 4px;
-  }
-`;
-
-const ModalHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: #6B7280;
-  cursor: pointer;
-  padding: 4px 8px;
-  line-height: 1;
-  border-radius: 6px;
-  transition: all 0.2s;
-
-  &:hover {
-    background: #F3F4F6;
-    color: #0A2540;
-  }
-`;
-
 const EmptyState = styled.div`
   text-align: center;
   padding: 60px 20px;
@@ -298,81 +229,6 @@ const EmptyDescription = styled.p`
   font-size: 14px;
   color: #6B7280;
   margin-bottom: 24px;
-`;
-
-const Form = styled.form`
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-`;
-
-const FormRow = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const FormGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-`;
-
-const Label = styled.label`
-  font-size: 14px;
-  font-weight: 600;
-  color: #0A2540;
-`;
-
-const Input = styled.input`
-  padding: 10px 12px;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  font-size: 14px;
-  transition: all 0.2s;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
-
-const TextArea = styled.textarea`
-  padding: 10px 12px;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  font-size: 14px;
-  min-height: 80px;
-  resize: vertical;
-  font-family: inherit;
-  transition: all 0.2s;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
-
-const Select = styled.select`
-  padding: 10px 12px;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  font-size: 14px;
-  background: white;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
 `;
 
 const SectionTitle = styled.h3`
@@ -881,69 +737,68 @@ const RecipesPage: React.FC = () => {
       </Container>
 
       {/* Modal for create/edit */}
-      <Modal isOpen={showModal} onClick={handleCloseModal}>
-        <ModalContent onClick={(e) => e.stopPropagation()}>
-          <ModalHeader>
-            <ModalTitle>{selectedRecipe ? 'Edit Recipe' : 'New Recipe'}</ModalTitle>
-            <CloseButton onClick={handleCloseModal}>×</CloseButton>
-          </ModalHeader>
-
-          <Form onSubmit={handleSubmit}>
+      <Modal
+        isOpen={showModal}
+        onClose={handleCloseModal}
+        title={selectedRecipe ? 'Edit Recipe' : 'New Recipe'}
+        size="large"
+      >
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {/* Basic Information */}
-            <FormRow>
-              <FormGroup>
-                <Label>Recipe Name *</Label>
-                <Input
+            <UIFormRow>
+              <UIFormGroup>
+                <FormLabel>Recipe Name *</FormLabel>
+                <FormInput
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="e.g., Nasi Lemak Special"
                   required
                 />
-              </FormGroup>
-              <FormGroup>
-                <Label>Category *</Label>
-                <Input
+              </UIFormGroup>
+              <UIFormGroup>
+                <FormLabel>Category *</FormLabel>
+                <FormInput
                   type="text"
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   placeholder="e.g., Main Dish"
                   required
                 />
-              </FormGroup>
-            </FormRow>
+              </UIFormGroup>
+            </UIFormRow>
 
-            <FormRow>
-              <FormGroup>
-                <Label>Emoji</Label>
-                <Input
+            <UIFormRow>
+              <UIFormGroup>
+                <FormLabel>Emoji</FormLabel>
+                <FormInput
                   type="text"
                   value={formData.emoji}
                   onChange={(e) => setFormData({ ...formData, emoji: e.target.value })}
                   placeholder="🍛"
                   maxLength={4}
                 />
-              </FormGroup>
-              <FormGroup>
-                <Label>Suggested Price (RM)</Label>
-                <Input
+              </UIFormGroup>
+              <UIFormGroup>
+                <FormLabel>Suggested Price (RM)</FormLabel>
+                <FormInput
                   type="number"
                   step="0.01"
                   value={formData.suggested_price}
                   onChange={(e) => setFormData({ ...formData, suggested_price: e.target.value })}
                   placeholder="0.00"
                 />
-              </FormGroup>
-            </FormRow>
+              </UIFormGroup>
+            </UIFormRow>
 
-            <FormGroup>
-              <Label>Description</Label>
-              <TextArea
+            <UIFormGroup>
+              <FormLabel>Description</FormLabel>
+              <FormTextArea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Brief description of the recipe..."
               />
-            </FormGroup>
+            </UIFormGroup>
 
             {/* Ingredients Section */}
             <div>
@@ -951,9 +806,9 @@ const RecipesPage: React.FC = () => {
               <IngredientsList>
                 {recipeIngredients.map((ri, index) => (
                   <IngredientRow key={index}>
-                    <FormGroup>
-                      <Label>Ingredient</Label>
-                      <Select
+                    <UIFormGroup>
+                      <FormLabel>Ingredient</FormLabel>
+                      <FormSelect
                         value={ri.ingredient_id}
                         onChange={(e) => updateIngredient(index, 'ingredient_id', parseInt(e.target.value))}
                         required
@@ -964,11 +819,11 @@ const RecipesPage: React.FC = () => {
                             {ing.name} (RM {Number(ing.unit_cost).toFixed(2)}/{ing.unit})
                           </option>
                         ))}
-                      </Select>
-                    </FormGroup>
-                    <FormGroup>
-                      <Label>Quantity</Label>
-                      <Input
+                      </FormSelect>
+                    </UIFormGroup>
+                    <UIFormGroup>
+                      <FormLabel>Quantity</FormLabel>
+                      <FormInput
                         type="number"
                         step="0.01"
                         value={ri.quantity}
@@ -976,26 +831,26 @@ const RecipesPage: React.FC = () => {
                         placeholder="0"
                         required
                       />
-                    </FormGroup>
-                    <FormGroup>
-                      <Label>Unit</Label>
-                      <Input
+                    </UIFormGroup>
+                    <UIFormGroup>
+                      <FormLabel>Unit</FormLabel>
+                      <FormInput
                         type="text"
                         value={ri.unit}
                         onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
                         placeholder="kg/g/ml"
                         required
                       />
-                    </FormGroup>
-                    <FormGroup>
-                      <Label>Notes</Label>
-                      <Input
+                    </UIFormGroup>
+                    <UIFormGroup>
+                      <FormLabel>Notes</FormLabel>
+                      <FormInput
                         type="text"
                         value={ri.notes}
                         onChange={(e) => updateIngredient(index, 'notes', e.target.value)}
                         placeholder="Optional"
                       />
-                    </FormGroup>
+                    </UIFormGroup>
                     <RemoveButton type="button" onClick={() => removeIngredient(index)}>
                       ×
                     </RemoveButton>
@@ -1017,15 +872,14 @@ const RecipesPage: React.FC = () => {
 
             {/* Action Buttons */}
             <ButtonGroup>
-              <ThemedButton type="button" variant="secondary" onClick={handleCloseModal}>
+              <ModalButton type="button" variant="secondary" onClick={handleCloseModal}>
                 Cancel
-              </ThemedButton>
-              <ThemedButton type="submit" variant="primary">
+              </ModalButton>
+              <ModalButton type="submit" variant="primary">
                 {selectedRecipe ? 'Update Recipe' : 'Create Recipe'}
-              </ThemedButton>
+              </ModalButton>
             </ButtonGroup>
-          </Form>
-        </ModalContent>
+          </form>
       </Modal>
     </MainLayout>
   );

@@ -16,6 +16,7 @@ import {
 } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useAuth } from '../../contexts/AuthContext';
+import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormRow as UIFormRow } from '../../components/UI/Modal';
 
 interface Ingredient {
   id: number;
@@ -146,118 +147,6 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger
         `;
     }
   }}
-`;
-
-const Modal = styled.div<{ isOpen: boolean }>`
-  display: ${props => props.isOpen ? 'flex' : 'none'};
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 10000;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  backdrop-filter: blur(4px);
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  border-radius: 16px;
-  padding: 32px;
-  max-width: 600px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-
-  &::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: #F1F5F9;
-    border-radius: 4px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: #CBD5E1;
-    border-radius: 4px;
-  }
-`;
-
-const ModalHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: #6B7280;
-  cursor: pointer;
-  padding: 4px 8px;
-  line-height: 1;
-  border-radius: 6px;
-  transition: all 0.2s;
-
-  &:hover {
-    background: #F3F4F6;
-    color: #0A2540;
-  }
-`;
-
-const Form = styled.form`
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-`;
-
-const FormRow = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const FormGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-`;
-
-const Label = styled.label`
-  font-size: 14px;
-  font-weight: 600;
-  color: #0A2540;
-`;
-
-const Input = styled.input`
-  padding: 10px 12px;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  font-size: 14px;
-  transition: all 0.2s;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
 `;
 
 const ButtonGroup = styled.div`
@@ -604,102 +493,100 @@ const IngredientsPage: React.FC = () => {
         </Content>
       </Container>
 
-      <Modal isOpen={showModal} onClick={handleCloseModal}>
-        <ModalContent onClick={(e) => e.stopPropagation()}>
-          <ModalHeader>
-            <ModalTitle>{selectedIngredient ? 'Edit Ingredient' : 'New Ingredient'}</ModalTitle>
-            <CloseButton onClick={handleCloseModal}>×</CloseButton>
-          </ModalHeader>
-
-          <Form onSubmit={handleSubmit}>
-            <FormRow>
-              <FormGroup>
-                <Label>Ingredient Name *</Label>
-                <Input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g., Rice"
-                  required
-                />
-              </FormGroup>
-              <FormGroup>
-                <Label>Code</Label>
-                <Input
-                  type="text"
-                  value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  placeholder="ING-001"
-                />
-              </FormGroup>
-            </FormRow>
-
-            <FormRow>
-              <FormGroup>
-                <Label>Category *</Label>
-                <Input
-                  type="text"
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  placeholder="e.g., Grains"
-                  required
-                />
-              </FormGroup>
-              <FormGroup>
-                <Label>Supplier</Label>
-                <Input
-                  type="text"
-                  value={formData.supplier_name}
-                  onChange={(e) => setFormData({ ...formData, supplier_name: e.target.value })}
-                  placeholder="Supplier name"
-                />
-              </FormGroup>
-            </FormRow>
-
-            <FormRow>
-              <FormGroup>
-                <Label>Unit *</Label>
-                <Input
-                  type="text"
-                  value={formData.unit}
-                  onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                  placeholder="kg, g, L, ml"
-                  required
-                />
-              </FormGroup>
-              <FormGroup>
-                <Label>Unit Cost (RM) *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={formData.unit_cost}
-                  onChange={(e) => setFormData({ ...formData, unit_cost: e.target.value })}
-                  placeholder="0.00"
-                  required
-                />
-              </FormGroup>
-            </FormRow>
-
-            <FormGroup>
-              <Label>Minimum Stock</Label>
-              <Input
-                type="number"
-                value={formData.min_stock}
-                onChange={(e) => setFormData({ ...formData, min_stock: e.target.value })}
-                placeholder="0"
+      <Modal
+        isOpen={showModal}
+        onClose={handleCloseModal}
+        title={selectedIngredient ? 'Edit Ingredient' : 'New Ingredient'}
+        size="medium"
+      >
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <UIFormRow>
+            <UIFormGroup>
+              <FormLabel>Ingredient Name *</FormLabel>
+              <FormInput
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g., Rice"
+                required
               />
-            </FormGroup>
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>Code</FormLabel>
+              <FormInput
+                type="text"
+                value={formData.code}
+                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                placeholder="ING-001"
+              />
+            </UIFormGroup>
+          </UIFormRow>
 
-            <ButtonGroup>
-              <ThemedButton type="button" variant="secondary" onClick={handleCloseModal}>
-                Cancel
-              </ThemedButton>
-              <ThemedButton type="submit" variant="primary">
-                {selectedIngredient ? 'Update Ingredient' : 'Create Ingredient'}
-              </ThemedButton>
-            </ButtonGroup>
-          </Form>
-        </ModalContent>
+          <UIFormRow>
+            <UIFormGroup>
+              <FormLabel>Category *</FormLabel>
+              <FormInput
+                type="text"
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                placeholder="e.g., Grains"
+                required
+              />
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>Supplier</FormLabel>
+              <FormInput
+                type="text"
+                value={formData.supplier_name}
+                onChange={(e) => setFormData({ ...formData, supplier_name: e.target.value })}
+                placeholder="Supplier name"
+              />
+            </UIFormGroup>
+          </UIFormRow>
+
+          <UIFormRow>
+            <UIFormGroup>
+              <FormLabel>Unit *</FormLabel>
+              <FormInput
+                type="text"
+                value={formData.unit}
+                onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                placeholder="kg, g, L, ml"
+                required
+              />
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>Unit Cost (RM) *</FormLabel>
+              <FormInput
+                type="number"
+                step="0.01"
+                value={formData.unit_cost}
+                onChange={(e) => setFormData({ ...formData, unit_cost: e.target.value })}
+                placeholder="0.00"
+                required
+              />
+            </UIFormGroup>
+          </UIFormRow>
+
+          <UIFormGroup>
+            <FormLabel>Minimum Stock</FormLabel>
+            <FormInput
+              type="number"
+              value={formData.min_stock}
+              onChange={(e) => setFormData({ ...formData, min_stock: e.target.value })}
+              placeholder="0"
+            />
+          </UIFormGroup>
+
+          <ButtonGroup>
+            <ModalButton type="button" variant="secondary" onClick={handleCloseModal}>
+              Cancel
+            </ModalButton>
+            <ModalButton type="submit" variant="primary">
+              {selectedIngredient ? 'Update Ingredient' : 'Create Ingredient'}
+            </ModalButton>
+          </ButtonGroup>
+        </form>
       </Modal>
     </MainLayout>
   );
