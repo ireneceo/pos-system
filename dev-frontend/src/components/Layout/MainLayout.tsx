@@ -1199,62 +1199,78 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           {user?.role === 'Restaurant Admin' && (
             <NavSection>
               <NavTitle>Management</NavTitle>
-              <NavItem to={`/restaurant/${restaurantId}/menu`} active={isActive(`/restaurant/${restaurantId}/menu`)} onClick={closeSidebar}>
-                <NavIcon>≡</NavIcon>
-                Menu
-              </NavItem>
-              <NavItem to={`/restaurant/${restaurantId}/categories`} active={isActive(`/restaurant/${restaurantId}/categories`)} onClick={closeSidebar}>
-                <NavIcon>◈</NavIcon>
-                Categories
-              </NavItem>
-              <NavItem to={`/restaurant/${restaurantId}/options`} active={isActive(`/restaurant/${restaurantId}/options`)} onClick={closeSidebar}>
-                <NavIcon>⚙</NavIcon>
-                Options
-              </NavItem>
-              {isRouteAllowed(`/restaurant/${restaurantId}/recipes`) && (
-                <NavItem to={`/restaurant/${restaurantId}/recipes`} active={isActive(`/restaurant/${restaurantId}/recipes`)} onClick={closeSidebar}>
+              {isRouteAllowed(`/restaurant/${restaurantId}/menu`) && (
+                <NavItem to={`/restaurant/${restaurantId}/menu`} active={isActive(`/restaurant/${restaurantId}/menu`)} onClick={closeSidebar}>
+                  <NavIcon>≡</NavIcon>
+                  Menu
+                </NavItem>
+              )}
+              {isRouteAllowed(`/restaurant/${restaurantId}/categories`) && (
+                <NavItem to={`/restaurant/${restaurantId}/categories`} active={isActive(`/restaurant/${restaurantId}/categories`)} onClick={closeSidebar}>
+                  <NavIcon>◈</NavIcon>
+                  Categories
+                </NavItem>
+              )}
+              {isRouteAllowed(`/restaurant/${restaurantId}/options`) && (
+                <NavItem to={`/restaurant/${restaurantId}/options`} active={isActive(`/restaurant/${restaurantId}/options`)} onClick={closeSidebar}>
+                  <NavIcon>⚙</NavIcon>
+                  Options
+                </NavItem>
+              )}
+              {isRouteAllowed(`/restaurant/${restaurantId}/recipe-management`) && (
+                <NavItem to={`/restaurant/${restaurantId}/recipe-management`} active={isActive(`/restaurant/${restaurantId}/recipe-management`)} onClick={closeSidebar}>
                   <NavIcon>◘</NavIcon>
-                  Recipes
+                  Recipe
                 </NavItem>
               )}
-              {isRouteAllowed(`/restaurant/${restaurantId}/ingredients`) && (
-                <NavItem to={`/restaurant/${restaurantId}/ingredients`} active={isActive(`/restaurant/${restaurantId}/ingredients`)} onClick={closeSidebar}>
-                  <NavIcon>▣</NavIcon>
-                  Ingredients
+              {isRouteAllowed(`/restaurant/${restaurantId}/customers`) && (
+                <NavItem to={`/restaurant/${restaurantId}/customers`} active={isActive(`/restaurant/${restaurantId}/customers`)} onClick={closeSidebar}>
+                  <NavIcon>◯</NavIcon>
+                  Customers⟤
                 </NavItem>
               )}
-              <NavItem to={`/restaurant/${restaurantId}/customers`} active={isActive(`/restaurant/${restaurantId}/customers`)} onClick={closeSidebar}>
-                <NavIcon>◯</NavIcon>
-                Customers
-              </NavItem>
-              <NavItem to={`/restaurant/${restaurantId}/staff`} active={isActive(`/restaurant/${restaurantId}/staff`)} onClick={closeSidebar}>
-                <NavIcon>◆</NavIcon>
-                Staff
-              </NavItem>
-              <NavItem to={`/restaurant/${restaurantId}/promotions`} active={isActive(`/restaurant/${restaurantId}/promotions`)} onClick={closeSidebar}>
-                <NavIcon>%</NavIcon>
-                Promotions
-              </NavItem>
-              <NavItem to={`/restaurant/${restaurantId}/reports`} active={isActive(`/restaurant/${restaurantId}/reports`)} onClick={closeSidebar}>
-                <NavIcon>☰</NavIcon>
-                Reports
-              </NavItem>
-              <NavItem to={`/restaurant/${restaurantId}/support`} active={isActive(`/restaurant/${restaurantId}/support`)} onClick={closeSidebar}>
-                <NavIcon>◎</NavIcon>
-                System Inquiry
-              </NavItem>
-              <NavItem to={`/restaurant/${restaurantId}/operation-inquiry`} active={isActive(`/restaurant/${restaurantId}/operation-inquiry`)} onClick={closeSidebar}>
-                <NavIcon>▲</NavIcon>
-                Operation Inquiry
-              </NavItem>
-              <NavItem to={`/restaurant/${restaurantId}/invoices`} active={isActive(`/restaurant/${restaurantId}/invoices`)} onClick={closeSidebar}>
-                <NavIcon>$</NavIcon>
-                Invoices
-              </NavItem>
-              <NavItem to={`/restaurant/${restaurantId}/history`} active={isActive(`/restaurant/${restaurantId}/history`)} onClick={closeSidebar}>
-                <NavIcon>≡</NavIcon>
-                Activity History
-              </NavItem>
+              {isRouteAllowed(`/restaurant/${restaurantId}/staff`) && (
+                <NavItem to={`/restaurant/${restaurantId}/staff`} active={isActive(`/restaurant/${restaurantId}/staff`)} onClick={closeSidebar}>
+                  <NavIcon>◆</NavIcon>
+                  Staff⟤
+                </NavItem>
+              )}
+              {isRouteAllowed(`/restaurant/${restaurantId}/promotions`) && (
+                <NavItem to={`/restaurant/${restaurantId}/promotions`} active={isActive(`/restaurant/${restaurantId}/promotions`)} onClick={closeSidebar}>
+                  <NavIcon>%</NavIcon>
+                  Promotions⟤
+                </NavItem>
+              )}
+              {isRouteAllowed(`/restaurant/${restaurantId}/reports`) && (
+                <NavItem to={`/restaurant/${restaurantId}/reports`} active={isActive(`/restaurant/${restaurantId}/reports`)} onClick={closeSidebar}>
+                  <NavIcon>☰</NavIcon>
+                  Reports
+                </NavItem>
+              )}
+              {isRouteAllowed(`/restaurant/${restaurantId}/support`) && (
+                <NavItem to={`/restaurant/${restaurantId}/support`} active={isActive(`/restaurant/${restaurantId}/support`)} onClick={closeSidebar}>
+                  <NavIcon>◎</NavIcon>
+                  System Inquiry⟤
+                </NavItem>
+              )}
+              {isRouteAllowed(`/restaurant/${restaurantId}/operation-inquiry`) && (
+                <NavItem to={`/restaurant/${restaurantId}/operation-inquiry`} active={isActive(`/restaurant/${restaurantId}/operation-inquiry`)} onClick={closeSidebar}>
+                  <NavIcon>▲</NavIcon>
+                  Operation Inquiry⟤
+                </NavItem>
+              )}
+              {isRouteAllowed(`/restaurant/${restaurantId}/invoices`) && (
+                <NavItem to={`/restaurant/${restaurantId}/invoices`} active={isActive(`/restaurant/${restaurantId}/invoices`)} onClick={closeSidebar}>
+                  <NavIcon>$</NavIcon>
+                  Invoices⟤
+                </NavItem>
+              )}
+              {isRouteAllowed(`/restaurant/${restaurantId}/history`) && (
+                <NavItem to={`/restaurant/${restaurantId}/history`} active={isActive(`/restaurant/${restaurantId}/history`)} onClick={closeSidebar}>
+                  <NavIcon>≡</NavIcon>
+                  Activity History⟤
+                </NavItem>
+              )}
             </NavSection>
           )}
           

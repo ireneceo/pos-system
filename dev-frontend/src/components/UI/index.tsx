@@ -31,3 +31,9 @@ export {
   Content,
   Button
 } from './PageComponents';
+
+// Explicitly export Tab components
+export {
+  TabContainer,
+  Tab
+} from './Tabs';

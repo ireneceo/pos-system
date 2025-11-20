@@ -79,8 +79,7 @@ import FoodcourtManagerDashboard from './pages/Foodcourt/FoodcourtManagerDashboa
 import BrandManagerDashboard from './pages/Brand/BrandManagerDashboard';
 
 // Recipe Management
-import RecipesPage from './pages/Recipes/RecipesPage';
-import IngredientsPage from './pages/Ingredients/IngredientsPage';
+import RecipeManagementPage from './pages/RecipeManagement/RecipeManagementPage';
 
 // New Manager Role Specific Pages
 import FoodcourtManagement from './pages/FoodcourtGeneral/FoodcourtManagement';
@@ -364,17 +363,6 @@ function App() {
                         </ProtectedRoute>
                       } />
 
-                      {/* Recipe Management Routes - Brand General & Brand Manager */}
-                      <Route path="/pos/recipes" element={
-                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager', 'Restaurant Admin']}>
-                          <RecipesPage />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/pos/ingredients" element={
-                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager', 'Restaurant Admin']}>
-                          <IngredientsPage />
-                        </ProtectedRoute>
-                      } />
 
                       {/* Foodcourt Manager Routes */}
                       <Route path="/pos/foodcourt/dashboard" element={
@@ -521,14 +509,9 @@ function App() {
                           <OptionManagementPage />
                         </ProtectedRoute>
                       } />
-                      <Route path="/restaurant/:restaurantId/recipes" element={
+                      <Route path="/restaurant/:restaurantId/recipe-management" element={
                         <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
-                          <RecipesPage />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/restaurant/:restaurantId/ingredients" element={
-                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
-                          <IngredientsPage />
+                          <RecipeManagementPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/customers" element={

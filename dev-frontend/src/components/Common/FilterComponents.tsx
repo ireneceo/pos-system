@@ -89,11 +89,12 @@ interface CommonFilterSelectProps extends React.SelectHTMLAttributes<HTMLSelectE
 interface CommonFilterBarProps {
   children: React.ReactNode;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 // Export styled components as React components with proper props
-export const FilterBar: React.FC<CommonFilterBarProps> = ({ children, className, ...props }) => (
-  <CommonFilterBar className={className} {...props}>
+export const FilterBar: React.FC<CommonFilterBarProps> = ({ children, className, style, ...props }) => (
+  <CommonFilterBar className={className} style={style} {...props}>
     {children}
   </CommonFilterBar>
 );
