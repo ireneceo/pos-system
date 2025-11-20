@@ -24,7 +24,10 @@ export const useAllowedRoutes = (restaurantId: number | null) => {
 
   useEffect(() => {
     const fetchAllowedRoutes = async () => {
+      console.log('🔍 useAllowedRoutes: restaurantId =', restaurantId);
+
       if (!restaurantId) {
+        console.log('❌ useAllowedRoutes: No restaurantId, setting empty array');
         setAllowedRoutes([]);
         setLoading(false);
         return;
@@ -32,6 +35,7 @@ export const useAllowedRoutes = (restaurantId: number | null) => {
 
       try {
         setLoading(true);
+        console.log('📡 useAllowedRoutes: Fetching from /api/restaurants/' + restaurantId + '/allowed-routes');
         const response = await fetch(`/api/restaurants/${restaurantId}/allowed-routes`);
 
         if (!response.ok) {
@@ -39,10 +43,11 @@ export const useAllowedRoutes = (restaurantId: number | null) => {
         }
 
         const data: AllowedRoutesResponse = await response.json();
+        console.log('✅ useAllowedRoutes: Got allowed routes:', data.allowed_routes);
         setAllowedRoutes(data.allowed_routes || []);
         setError(null);
       } catch (err) {
-        console.error('Error fetching allowed routes:', err);
+        console.error('❌ useAllowedRoutes Error:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
         // On error, allow all routes (fail open for safety)
         setAllowedRoutes([]);
@@ -60,23 +65,37 @@ export const useAllowedRoutes = (restaurantId: number | null) => {
    * @returns true if route is allowed or if no restrictions apply
    */
   const isRouteAllowed = (route: string): boolean => {
+    console.log('🔍 isRouteAllowed checking:', route);
+    console.log('📋 Available routes:', allowedRoutes);
+
     // If no routes are restricted (empty array), allow all
     if (allowedRoutes.length === 0) {
+      console.log('⚠️ No routes loaded, allowing all by default');
       return true;
     }
 
     // Replace :restaurantId with actual ID for matching
     const normalizedRoute = route.replace(/:restaurantId/g, restaurantId?.toString() || '');
+    console.log('🔄 Normalized route:', normalizedRoute);
 
     // Check if route matches any allowed pattern
-    return allowedRoutes.some(allowedRoute => {
+    const isAllowed = allowedRoutes.some(allowedRoute => {
       const pattern = allowedRoute
         .replace(/:restaurantId/g, restaurantId?.toString() || '')
         .replace(/:slug/g, '[^/]+');
 
       const regex = new RegExp(`^${pattern}$`);
-      return regex.test(normalizedRoute);
+      const matches = regex.test(normalizedRoute);
+
+      if (matches) {
+        console.log('✅ Route matched:', allowedRoute, '→', pattern);
+      }
+
+      return matches;
     });
+
+    console.log(isAllowed ? '✅ Route ALLOWED' : '❌ Route BLOCKED');
+    return isAllowed;
   };
 
   return {
