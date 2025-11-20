@@ -452,15 +452,19 @@ const ManagerRestaurantsPage: React.FC = () => {
           return;
         }
 
-        const managerId = user?.managerId || user?.id || '8';
         console.log(' Current user object:', user);
-        console.log('🔍 user.managerId:', user?.managerId);
         console.log('🔍 user.id:', user?.id);
-        console.log(' Fetching restaurants for manager:', managerId);
-        console.log('🌐 API URL:', `/api/restaurants/manager/${managerId}`);
+        console.log('🔍 user.role:', user?.role);
+        console.log(' Fetching restaurants (role-based filtering on server)');
+        console.log('🌐 API URL:', `/api/restaurants`);
         console.log('⚡ MAKING API CALL NOW...');
-        
-        const response = await fetch(`/api/restaurants/manager/${managerId}`);
+
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch(`/api/restaurants`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         console.log('📡 Restaurants API response status:', response.status);
         
         if (response.ok) {

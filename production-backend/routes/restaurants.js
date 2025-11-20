@@ -9,19 +9,64 @@ const PlanTemplate = require('../models/PlanTemplate');
 const Category = require('../models/Category');
 const Product = require('../models/Product');
 const { Op } = require('sequelize');
+const { authenticateToken } = require('../middleware/auth');
+const jwt = require('jsonwebtoken');
 
-// Get all restaurants
-router.get('/', async (req, res) => {
+// Optional authentication middleware
+const optionalAuth = async (req, res, next) => {
   try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (token) {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
+      const user = await User.findByPk(decoded.userId);
+      if (user) {
+        req.user = {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          restaurant_id: user.restaurant_id
+        };
+      }
+    }
+    next();
+  } catch (error) {
+    // If token is invalid, just continue without user
+    next();
+  }
+};
+
+// Get all restaurants (with role-based filtering)
+router.get('/', optionalAuth, async (req, res) => {
+  try {
+    console.log(`🏢 GET /api/restaurants - User: ${req.user ? req.user.email : 'anonymous'} (${req.user ? req.user.role : 'no auth'})`);
+
+    // Build include options for managers
+    const managersInclude = {
+      model: User,
+      as: 'managers',
+      attributes: ['id', 'full_name', 'username', 'email', 'role'],
+      through: { attributes: ['is_primary'] }
+    };
+
+    // Filter restaurants based on user role
+    if (req.user && (req.user.role === 'Brand General' || req.user.role === 'Brand Manager')) {
+      // Brand General/Manager: Only see assigned restaurants
+      managersInclude.where = { id: req.user.id };
+      managersInclude.required = true;
+      console.log(`🔐 Filtering restaurants for ${req.user.role}: manager_id = ${req.user.id}`);
+    } else {
+      // System Admin or no auth: See all restaurants
+      console.log(`👑 ${req.user ? req.user.role : 'No auth'}: Returning all restaurants`);
+    }
+
     const restaurants = await Restaurant.findAll({
-      include: [{
-        model: User,
-        as: 'managers',
-        attributes: ['id', 'full_name', 'username', 'email', 'role'],
-        through: { attributes: ['is_primary'] }
-      }],
+      include: [managersInclude],
       order: [['createdAt', 'DESC']]
     });
+
+    console.log(`📊 Found ${restaurants.length} restaurants`);
 
     // Transform data to match frontend interface
     const transformedRestaurants = restaurants.map(restaurant => {
