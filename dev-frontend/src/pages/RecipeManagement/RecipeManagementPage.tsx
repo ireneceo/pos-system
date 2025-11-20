@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { useSearchParams } from 'react-router-dom';
 import MainLayout from '../../components/Layout/MainLayout';
 import { Container, Header, Title, Content, TabContainer, Tab } from '../../components/UI';
 import RecipesTab from './RecipesTab';
@@ -23,9 +24,15 @@ const TabBadge = styled.span`
 interface RecipeManagementPageProps {}
 
 const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
-  const [activeTab, setActiveTab] = useState<'recipes' | 'ingredients'>('recipes');
+  const [searchParams, setSearchParams] = useSearchParams();
   const [recipesCount, setRecipesCount] = useState(0);
   const [ingredientsCount, setIngredientsCount] = useState(0);
+
+  const activeTab = (searchParams.get('tab') as 'recipes' | 'ingredients') || 'recipes';
+
+  const handleTabChange = (tab: 'recipes' | 'ingredients') => {
+    setSearchParams({ tab });
+  };
 
   return (
     <MainLayout>
@@ -36,11 +43,11 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
 
         <Content>
           <TabContainer>
-            <Tab active={activeTab === 'recipes'} onClick={() => setActiveTab('recipes')}>
+            <Tab active={activeTab === 'recipes'} onClick={() => handleTabChange('recipes')}>
               Recipes
               <TabBadge>{recipesCount}</TabBadge>
             </Tab>
-            <Tab active={activeTab === 'ingredients'} onClick={() => setActiveTab('ingredients')}>
+            <Tab active={activeTab === 'ingredients'} onClick={() => handleTabChange('ingredients')}>
               Ingredients
               <TabBadge>{ingredientsCount}</TabBadge>
             </Tab>

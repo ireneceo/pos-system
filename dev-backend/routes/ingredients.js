@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { Ingredient } = require('../models');
-const { authenticateToken } = require('../middleware/auth');
-const { isBrandManager, isRestaurantManager } = require('../middleware/recipeAuth');
+const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
+const { isBrandManager } = require('../middleware/recipeAuth');
 
 // ============================================
 // Brand Ingredients
@@ -118,7 +118,7 @@ router.delete('/brands/:brand_id/ingredients/:ingredient_id', authenticateToken,
  * GET /api/restaurants/:restaurant_id/ingredients
  * 레스토랑 재료 목록 조회
  */
-router.get('/restaurants/:restaurant_id/ingredients', authenticateToken, isRestaurantManager, async (req, res) => {
+router.get('/restaurants/:restaurant_id/ingredients', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurant_id } = req.params;
 
@@ -138,7 +138,7 @@ router.get('/restaurants/:restaurant_id/ingredients', authenticateToken, isResta
  * POST /api/restaurants/:restaurant_id/ingredients
  * 레스토랑 재료 생성
  */
-router.post('/restaurants/:restaurant_id/ingredients', authenticateToken, isRestaurantManager, async (req, res) => {
+router.post('/restaurants/:restaurant_id/ingredients', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurant_id } = req.params;
     const { code, name, category, unit, unit_cost, supplier_name, min_stock } = req.body;
@@ -167,7 +167,7 @@ router.post('/restaurants/:restaurant_id/ingredients', authenticateToken, isRest
  * PUT /api/restaurants/:restaurant_id/ingredients/:ingredient_id
  * 레스토랑 재료 수정
  */
-router.put('/restaurants/:restaurant_id/ingredients/:ingredient_id', authenticateToken, isRestaurantManager, async (req, res) => {
+router.put('/restaurants/:restaurant_id/ingredients/:ingredient_id', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { ingredient_id } = req.params;
     const { code, name, category, unit, unit_cost, supplier_name, min_stock } = req.body;
@@ -198,7 +198,7 @@ router.put('/restaurants/:restaurant_id/ingredients/:ingredient_id', authenticat
  * DELETE /api/restaurants/:restaurant_id/ingredients/:ingredient_id
  * 레스토랑 재료 삭제
  */
-router.delete('/restaurants/:restaurant_id/ingredients/:ingredient_id', authenticateToken, isRestaurantManager, async (req, res) => {
+router.delete('/restaurants/:restaurant_id/ingredients/:ingredient_id', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { ingredient_id } = req.params;
 

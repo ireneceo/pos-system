@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { Recipe, Ingredient, RecipeIngredient, Restaurant, Product } = require('../models');
-const { authenticateToken } = require('../middleware/auth');
-const { canEditRecipe, canViewRecipe, isBrandManager, isRestaurantManager } = require('../middleware/recipeAuth');
+const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
+const { canEditRecipe, canViewRecipe, isBrandManager } = require('../middleware/recipeAuth');
 
 // ============================================
 // Brand Recipes (Brand General/Manager)
@@ -202,7 +202,7 @@ router.delete('/brands/:brand_id/recipes/:recipe_id', authenticateToken, canEdit
  * GET /api/restaurants/:restaurant_id/recipes
  * 레스토랑에서 사용 가능한 모든 레시피 조회
  */
-router.get('/restaurants/:restaurant_id/recipes', authenticateToken, isRestaurantManager, async (req, res) => {
+router.get('/restaurants/:restaurant_id/recipes', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurant_id } = req.params;
 
@@ -269,7 +269,7 @@ router.get('/restaurants/:restaurant_id/recipes', authenticateToken, isRestauran
  * POST /api/restaurants/:restaurant_id/recipes
  * 독립 레스토랑 레시피 생성
  */
-router.post('/restaurants/:restaurant_id/recipes', authenticateToken, isRestaurantManager, async (req, res) => {
+router.post('/restaurants/:restaurant_id/recipes', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurant_id } = req.params;
     const restaurant = await Restaurant.findByPk(restaurant_id);
@@ -341,7 +341,7 @@ router.post('/restaurants/:restaurant_id/recipes', authenticateToken, isRestaura
  * POST /api/restaurants/:restaurant_id/products/create-from-recipe
  * 레시피를 메뉴로 등록
  */
-router.post('/restaurants/:restaurant_id/products/create-from-recipe', authenticateToken, isRestaurantManager, async (req, res) => {
+router.post('/restaurants/:restaurant_id/products/create-from-recipe', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurant_id } = req.params;
     const { recipe_id, price } = req.body;

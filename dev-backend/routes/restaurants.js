@@ -75,17 +75,29 @@ router.get('/', async (req, res) => {
 router.get('/manager/:managerId', async (req, res) => {
   try {
     const { managerId } = req.params;
-    console.log(`🏢 GET /api/restaurants/manager/${managerId} - Request received`);
+    console.log(`🏢 🔥 UPDATED CODE 🔥 GET /api/restaurants/manager/${managerId} - Request received`);
     console.log('📋 Request headers:', req.headers);
+
+    // Find restaurants where user is manager through restaurant_managers table
+    console.log('🔍 Executing query with include...');
     const restaurants = await Restaurant.findAll({
-      where: { manager_id: managerId },
+      include: [{
+        model: User,
+        as: 'managers',
+        where: { id: managerId },
+        attributes: [],
+        through: { attributes: [] }
+      }],
       order: [['createdAt', 'DESC']]
     });
+
     console.log(`🏪 Found ${restaurants.length} restaurants for manager ${managerId}`);
+    console.log('📝 Restaurant details:', restaurants.map(r => ({ id: r.id, name: r.name })));
     res.json(restaurants);
   } catch (error) {
-    console.error('Error fetching manager restaurants:', error);
-    res.status(500).json({ error: 'Failed to fetch manager restaurants' });
+    console.error('❌ ERROR fetching manager restaurants:', error.message);
+    console.error('❌ Full error:', error);
+    res.status(500).json({ error: 'Failed to fetch manager restaurants', details: error.message });
   }
 });
 

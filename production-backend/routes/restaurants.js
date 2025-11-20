@@ -76,10 +76,19 @@ router.get('/manager/:managerId', async (req, res) => {
     const { managerId } = req.params;
     console.log(`🏢 GET /api/restaurants/manager/${managerId} - Request received`);
     console.log('📋 Request headers:', req.headers);
+
+    // Find restaurants where user is manager through restaurant_managers table
     const restaurants = await Restaurant.findAll({
-      where: { manager_id: managerId },
+      include: [{
+        model: User,
+        as: 'managers',
+        where: { id: managerId },
+        attributes: [],
+        through: { attributes: [] }
+      }],
       order: [['createdAt', 'DESC']]
     });
+
     console.log(`🏪 Found ${restaurants.length} restaurants for manager ${managerId}`);
     res.json(restaurants);
   } catch (error) {

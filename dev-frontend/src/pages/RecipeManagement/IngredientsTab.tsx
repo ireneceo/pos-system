@@ -186,6 +186,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ onCountChange }) => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [isRestaurantAdmin, setIsRestaurantAdmin] = useState(false);
   const [formData, setFormData] = useState({
     code: '',
     name: '',
@@ -198,6 +199,10 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ onCountChange }) => {
 
   useEffect(() => {
     fetchIngredients();
+    // Restaurant Admin은 항상 재료 수정 불가
+    if (user?.role === 'Restaurant Admin') {
+      setIsRestaurantAdmin(true);
+    }
   }, [user]);
 
   const fetchIngredients = async () => {
@@ -386,13 +391,15 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ onCountChange }) => {
           </FilterSelect>
         </FilterBar>
 
-        <ThemedButton
-          variant="primary"
-          onClick={() => handleOpenModal(null)}
-          style={{ whiteSpace: 'nowrap' }}
-        >
-          + New Ingredient
-        </ThemedButton>
+        {!isRestaurantAdmin && (
+          <ThemedButton
+            variant="primary"
+            onClick={() => handleOpenModal(null)}
+            style={{ whiteSpace: 'nowrap' }}
+          >
+            + New Ingredient
+          </ThemedButton>
+        )}
       </HeaderSection>
 
       {loading ? (
@@ -407,7 +414,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ onCountChange }) => {
               ? 'Try adjusting your filters'
               : 'Create your first ingredient to get started'}
           </EmptyDescription>
-          {!searchTerm && selectedCategory === 'all' && (
+          {!searchTerm && selectedCategory === 'all' && !isRestaurantAdmin && (
             <ThemedButton
               variant="primary"
               onClick={() => handleOpenModal(null)}
@@ -450,20 +457,22 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ onCountChange }) => {
                 )}
               </IngredientInfo>
 
-              <IngredientActions>
-                <ActionButton
-                  variant="secondary"
-                  onClick={() => handleOpenModal(ingredient)}
-                >
-                  Edit
-                </ActionButton>
-                <ActionButton
-                  variant="danger"
-                  onClick={() => handleDelete(ingredient.id)}
-                >
-                  Delete
-                </ActionButton>
-              </IngredientActions>
+              {!isRestaurantAdmin && (
+                <IngredientActions>
+                  <ActionButton
+                    variant="secondary"
+                    onClick={() => handleOpenModal(ingredient)}
+                  >
+                    Edit
+                  </ActionButton>
+                  <ActionButton
+                    variant="danger"
+                    onClick={() => handleDelete(ingredient.id)}
+                  >
+                    Delete
+                  </ActionButton>
+                </IngredientActions>
+              )}
             </IngredientCard>
           ))}
         </IngredientsGrid>
