@@ -493,14 +493,19 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const { orders } = useOrders();
 
   // Get restaurantId from URL or user context
-  const restaurantId = user?.restaurantId || '1';
+  const urlRestaurantId = location.pathname.match(/\/restaurant\/(\d+)/)?.[1];
+  const restaurantId = urlRestaurantId || user?.restaurantId || user?.restaurant_id?.toString() || '1';
 
   // Debug logging
   console.log('MainLayout Debug:', {
     user: user,
+    urlRestaurantId: urlRestaurantId,
     restaurantId: restaurantId,
     role: user?.role,
-    restaurantStatus: user?.restaurantStatus
+    restaurantStatus: user?.restaurantStatus,
+    pathname: location.pathname,
+    'user.restaurantId': user?.restaurantId,
+    'user.restaurant_id': user?.restaurant_id
   });
 
   // Get allowed routes based on restaurant's subscription plan
