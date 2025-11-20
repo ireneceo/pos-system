@@ -754,7 +754,7 @@ const RecipesPage: React.FC = () => {
     <MainLayout>
       <Container>
         <Header>
-          <Title>🍳 Recipes</Title>
+          <Title>Recipes</Title>
           <ActionSection>
             <ThemedButton
               variant="primary"
@@ -807,12 +807,10 @@ const RecipesPage: React.FC = () => {
         <Content>
           {loading ? (
             <EmptyState>
-              <EmptyIcon>⏳</EmptyIcon>
               <EmptyTitle>Loading...</EmptyTitle>
             </EmptyState>
           ) : filteredRecipes.length === 0 ? (
             <EmptyState>
-              <EmptyIcon>📖</EmptyIcon>
               <EmptyTitle>No recipes found</EmptyTitle>
               <EmptyDescription>
                 {searchTerm || selectedCategory !== 'all'
@@ -857,7 +855,7 @@ const RecipesPage: React.FC = () => {
 
                   <RecipeIngredients>
                     <IngredientsCount>
-                      📦 {recipe.recipeIngredients?.length || 0} ingredients
+                      {recipe.recipeIngredients?.length || 0} ingredients
                     </IngredientsCount>
                   </RecipeIngredients>
 
@@ -866,13 +864,13 @@ const RecipesPage: React.FC = () => {
                       variant="secondary"
                       onClick={() => handleOpenModal(recipe)}
                     >
-                      ✏️ Edit
+                      Edit
                     </ActionButton>
                     <ActionButton
                       variant="danger"
                       onClick={() => handleDelete(recipe.id)}
                     >
-                      🗑️ Delete
+                      Delete
                     </ActionButton>
                   </RecipeActions>
                 </RecipeCard>
@@ -949,7 +947,7 @@ const RecipesPage: React.FC = () => {
 
             {/* Ingredients Section */}
             <div>
-              <SectionTitle>📦 Ingredients</SectionTitle>
+              <SectionTitle>Ingredients</SectionTitle>
               <IngredientsList>
                 {recipeIngredients.map((ri, index) => (
                   <IngredientRow key={index}>

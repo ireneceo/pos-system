@@ -479,7 +479,7 @@ const IngredientsPage: React.FC = () => {
     <MainLayout>
       <Container>
         <Header>
-          <Title>📦 Ingredients</Title>
+          <Title>Ingredients</Title>
           <ActionSection>
             <ThemedButton
               variant="primary"
@@ -530,12 +530,10 @@ const IngredientsPage: React.FC = () => {
         <Content>
           {loading ? (
             <EmptyState>
-              <EmptyIcon>⏳</EmptyIcon>
               <EmptyTitle>Loading...</EmptyTitle>
             </EmptyState>
           ) : filteredIngredients.length === 0 ? (
             <EmptyState>
-              <EmptyIcon>📦</EmptyIcon>
               <EmptyTitle>No ingredients found</EmptyTitle>
               <EmptyDescription>
                 {searchTerm || selectedCategory !== 'all'
@@ -590,13 +588,13 @@ const IngredientsPage: React.FC = () => {
                       variant="secondary"
                       onClick={() => handleOpenModal(ingredient)}
                     >
-                      ✏️ Edit
+                      Edit
                     </ActionButton>
                     <ActionButton
                       variant="danger"
                       onClick={() => handleDelete(ingredient.id)}
                     >
-                      🗑️ Delete
+                      Delete
                     </ActionButton>
                   </IngredientActions>
                 </IngredientCard>
