@@ -901,11 +901,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   Performance Analysis
                 </NavItem>
                 <NavItem to="/pos/recipes" active={isActive('/pos/recipes')} onClick={closeSidebar}>
-                  <NavIcon>📖</NavIcon>
+                  <NavIcon>◘</NavIcon>
                   Recipes
                 </NavItem>
                 <NavItem to="/pos/ingredients" active={isActive('/pos/ingredients')} onClick={closeSidebar}>
-                  <NavIcon>📦</NavIcon>
+                  <NavIcon>▣</NavIcon>
                   Ingredients
                 </NavItem>
                 <NavItem to="/pos/manager/restaurants" active={isActive('/pos/manager/restaurants')} onClick={closeSidebar}>
@@ -1227,13 +1227,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               )}
               {isRouteAllowed('/pos/recipes') && (
                 <NavItem to="/pos/recipes" active={isActive('/pos/recipes')} onClick={closeSidebar}>
-                  <NavIcon>📖</NavIcon>
+                  <NavIcon>◘</NavIcon>
                   Recipes⟤
                 </NavItem>
               )}
               {isRouteAllowed('/pos/ingredients') && (
                 <NavItem to="/pos/ingredients" active={isActive('/pos/ingredients')} onClick={closeSidebar}>
-                  <NavIcon>📦</NavIcon>
+                  <NavIcon>▣</NavIcon>
                   Ingredients⟤
                 </NavItem>
               )}
