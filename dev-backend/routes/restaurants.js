@@ -3,6 +3,7 @@ const router = express.Router();
 require('../models'); // Load associations
 const Restaurant = require('../models/Restaurant');
 const User = require('../models/User');
+const Brand = require('../models/Brand');
 const Invoice = require('../models/Invoice');
 const Order = require('../models/Order');
 const PlanTemplate = require('../models/PlanTemplate');
@@ -10,19 +11,84 @@ const Category = require('../models/Category');
 const Product = require('../models/Product');
 const AddonModule = require('../models/AddonModule');
 const { Op } = require('sequelize');
+const { authenticateToken } = require('../middleware/auth');
+const jwt = require('jsonwebtoken');
 
-// Get all restaurants
-router.get('/', async (req, res) => {
+// Optional authentication middleware
+const optionalAuth = async (req, res, next) => {
   try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (token) {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
+      const user = await User.findByPk(decoded.userId);
+      if (user) {
+        req.user = {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          restaurant_id: user.restaurant_id
+        };
+      }
+    }
+    next();
+  } catch (error) {
+    // If token is invalid, just continue without user
+    next();
+  }
+};
+
+// Get all restaurants (with role-based filtering)
+router.get('/', optionalAuth, async (req, res) => {
+  try {
+    console.log(`🏢 GET /api/restaurants - User: ${req.user ? req.user.email : 'anonymous'} (${req.user ? req.user.role : 'no auth'})`);
+
+    const { brand_id } = req.query;
+    console.log(`🔍 Query params - brand_id: ${brand_id}`);
+
+    // Build include options for managers
+    const managersInclude = {
+      model: User,
+      as: 'managers',
+      attributes: ['id', 'full_name', 'username', 'email', 'role'],
+      through: { attributes: ['is_primary'] }
+    };
+
+    // Build where clause
+    const whereClause = {};
+
+    // Filter by brand_id if provided
+    if (brand_id) {
+      whereClause.brand_id = brand_id;
+      console.log(`🏢 Filtering by brand_id: ${brand_id}`);
+    }
+
+    // Filter restaurants based on user role
+    if (req.user && (req.user.role === 'Brand General' || req.user.role === 'Brand Manager')) {
+      // Brand General/Manager: Only see assigned restaurants
+      managersInclude.where = { id: req.user.id };
+      managersInclude.required = true;
+      console.log(`🔐 Filtering restaurants for ${req.user.role}: manager_id = ${req.user.id}`);
+    } else {
+      // System Admin or no auth: See all restaurants
+      console.log(`👑 ${req.user ? req.user.role : 'No auth'}: Returning all restaurants`);
+    }
+
     const restaurants = await Restaurant.findAll({
-      include: [{
-        model: User,
-        as: 'managers',
-        attributes: ['id', 'full_name', 'username', 'email', 'role'],
-        through: { attributes: ['is_primary'] }
-      }],
+      where: whereClause,
+      include: [
+        managersInclude,
+        {
+          model: Brand,
+          as: 'brand',
+          attributes: ['id', 'name', 'code', 'logo_url']
+        }
+      ],
       order: [['createdAt', 'DESC']]
     });
+
+    console.log(`📊 Found ${restaurants.length} restaurants`);
 
     // Transform data to match frontend interface
     const transformedRestaurants = restaurants.map(restaurant => {
@@ -44,6 +110,13 @@ router.get('/', async (req, res) => {
           role: m.role,
           isPrimary: m.RestaurantManager?.is_primary || false
         })),
+        brandId: restaurantData.brand_id ? restaurantData.brand_id.toString() : null,
+        brand: restaurantData.brand ? {
+          id: restaurantData.brand.id.toString(),
+          name: restaurantData.brand.name,
+          code: restaurantData.brand.code,
+          logoUrl: restaurantData.brand.logo_url
+        } : null,
         location: restaurantData.address || '',
         cuisine: 'Various', // Default value as it's not in Restaurant model
         status: restaurantData.status === 'active' ? 'active' : 'inactive',

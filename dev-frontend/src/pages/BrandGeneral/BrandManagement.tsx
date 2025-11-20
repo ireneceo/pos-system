@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
-import { ModalComponent, FormGroup, FormLabel, FormInput, Button, StatsGrid, StatCard, StatValue, StatLabel, StatTrend } from '../../components/UI';
+import { Modal, FormLabel, FormInput, StatsGrid, StatCard, StatValue, StatLabel, StatTrend } from '../../components/UI';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import ConfirmModal from '../../components/ConfirmModal';
 
@@ -164,20 +164,84 @@ const ActionButton = styled.button<{ variant: 'edit' | 'delete' | 'view' }>`
   }}
 `;
 
+const ErrorMessage = styled.div`
+  color: #DC2626;
+  font-size: 14px;
+  margin-top: 12px;
+  padding: 12px;
+  background: #FEF2F2;
+  border: 1px solid #FEE2E2;
+  border-radius: 8px;
+`;
+
+const FormGroup = styled.div`
+  margin-bottom: 20px;
+`;
+
+const ButtonGroup = styled.div`
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  justify-content: flex-end;
+`;
+
+const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid;
+
+  ${props => props.variant === 'secondary' ? `
+    background: white;
+    border-color: #E6EBF1;
+    color: #0A2540;
+    &:hover { background: #F8FAFC; }
+  ` : `
+    background: #635BFF;
+    border-color: #635BFF;
+    color: white;
+    &:hover { background: #5A51E6; }
+  `}
+`;
+
 interface Brand {
-  id: string;
+  id: number;
   name: string;
-  stores: number;
-  manager: string;
-  monthlyRevenue: number;
-  category: string;
-  established: string;
+  code: string;
+  description?: string;
+  logo_url?: string;
+  owner_id: number;
+  status: 'active' | 'inactive';
+  email?: string;
+  phone?: string;
+  address?: string;
+  website?: string;
+  created_at: string;
+  updated_at: string;
+  owner?: {
+    id: number;
+    full_name: string;
+    email: string;
+    role: string;
+  };
+  restaurants?: Array<{
+    id: number;
+    name: string;
+    status: string;
+  }>;
 }
 
 interface BrandFormData {
   name: string;
-  manager: string;
-  category: string;
+  code: string;
+  description: string;
+  email: string;
+  phone: string;
+  address: string;
+  website: string;
 }
 
 const BrandManagement: React.FC = () => {
@@ -195,97 +259,80 @@ const BrandManagement: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<BrandFormData>({
     name: '',
-    manager: '',
-    category: ''
+    code: '',
+    description: '',
+    email: '',
+    phone: '',
+    address: '',
+    website: ''
   });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
 
   useEffect(() => {
-    // Generate mock brands data
-    const mockBrands: Brand[] = [
-      {
-        id: '1',
-        name: 'K-DINE Korean Restaurant',
-        stores: 25,
-        manager: 'Kim Sujin',
-        monthlyRevenue: 450000000,
-        category: 'Korean Food',
-        established: '2019-03-15'
-      },
-      {
-        id: '2',
-        name: 'Delicious Chicken',
-        stores: 18,
-        manager: 'Park Junyoung',
-        monthlyRevenue: 320000000,
-        category: 'Chicken',
-        established: '2020-07-20'
-      },
-      {
-        id: '3',
-        name: 'Healthy Salad',
-        stores: 12,
-        manager: 'Lee Younghee',
-        monthlyRevenue: 180000000,
-        category: 'Salad',
-        established: '2021-01-10'
-      },
-      {
-        id: '4',
-        name: 'Premium Burger',
-        stores: 15,
-        manager: 'Choi Minsu',
-        monthlyRevenue: 275000000,
-        category: 'Burger',
-        established: '2020-11-05'
-      },
-      {
-        id: '5',
-        name: 'Asia Noodle',
-        stores: 10,
-        manager: 'Jung Hana',
-        monthlyRevenue: 150000000,
-        category: 'Asian Cuisine',
-        established: '2021-05-18'
-      },
-      {
-        id: '6',
-        name: 'Cafe Break',
-        stores: 20,
-        manager: 'Yoon Seojun',
-        monthlyRevenue: 380000000,
-        category: 'Cafe',
-        established: '2019-09-12'
-      },
-    ];
-
-    setBrands(mockBrands);
-
-    const totalRevenue = mockBrands.reduce((sum, brand) => sum + brand.monthlyRevenue, 0);
-    const totalStores = mockBrands.reduce((sum, brand) => sum + brand.stores, 0);
-    const activeManagers = new Set(mockBrands.map(brand => brand.manager)).size;
-
-    setStats({
-      totalBrands: mockBrands.length,
-      totalStores,
-      activeManagers,
-      monthlyRevenue: totalRevenue,
-    });
+    fetchBrands();
   }, []);
+
+  const fetchBrands = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/brands', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setBrands(data);
+
+        const totalStores = data.reduce((sum: number, brand: Brand) => sum + (brand.restaurants?.length || 0), 0);
+
+        setStats({
+          totalBrands: data.length,
+          totalStores,
+          activeManagers: data.length, // Each brand has one owner
+          monthlyRevenue: 0, // We don't have revenue data yet
+        });
+      } else {
+        console.error('Failed to fetch brands');
+      }
+    } catch (error) {
+      console.error('Error fetching brands:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAddBrand = () => {
     setIsEditing(false);
     setSelectedBrand(null);
-    setFormData({ name: '', manager: '', category: '' });
+    setError('');
+    setFormData({
+      name: '',
+      code: '',
+      description: '',
+      email: '',
+      phone: '',
+      address: '',
+      website: ''
+    });
     setShowModal(true);
   };
 
   const handleEditBrand = (brand: Brand) => {
     setIsEditing(true);
     setSelectedBrand(brand);
+    setError('');
     setFormData({
       name: brand.name,
-      manager: brand.manager,
-      category: brand.category
+      code: brand.code,
+      description: brand.description || '',
+      email: brand.email || '',
+      phone: brand.phone || '',
+      address: brand.address || '',
+      website: brand.website || ''
     });
     setShowModal(true);
   };
@@ -295,31 +342,78 @@ const BrandManagement: React.FC = () => {
     setShowDeleteModal(true);
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isEditing && selectedBrand) {
-      setBrands(prev => prev.map(brand =>
-        brand.id === selectedBrand.id
-          ? { ...brand, ...formData }
-          : brand
-      ));
-    } else {
-      const newBrand: Brand = {
-        id: (brands.length + 1).toString(),
-        ...formData,
-        stores: 0,
-        monthlyRevenue: 0,
-        established: new Date().toISOString().split('T')[0]
-      };
-      setBrands(prev => [...prev, newBrand]);
+    setError('');
+
+    try {
+      const token = localStorage.getItem('auth_token');
+
+      if (isEditing && selectedBrand) {
+        // Update existing brand
+        const response = await fetch(`/api/brands/${selectedBrand.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(formData)
+        });
+
+        if (response.ok) {
+          setShowModal(false);
+          fetchBrands();
+        } else {
+          const errorData = await response.json();
+          setError(errorData.error || 'Failed to update brand');
+        }
+      } else {
+        // Create new brand
+        const response = await fetch('/api/brands', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            ...formData,
+            status: 'active'
+          })
+        });
+
+        if (response.ok) {
+          setShowModal(false);
+          fetchBrands();
+        } else {
+          const errorData = await response.json();
+          setError(errorData.error || 'Failed to create brand');
+        }
+      }
+    } catch (error) {
+      console.error('Error saving brand:', error);
+      setError('Failed to save brand. Please try again.');
     }
-    setShowModal(false);
   };
 
-  const confirmDelete = () => {
-    if (selectedBrand) {
-      setBrands(prev => prev.filter(brand => brand.id !== selectedBrand.id));
+  const confirmDelete = async () => {
+    if (!selectedBrand) return;
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/brands/${selectedBrand.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        fetchBrands();
+      }
+    } catch (error) {
+      console.error('Error deleting brand:', error);
     }
+
     setShowDeleteModal(false);
   };
 
@@ -369,82 +463,135 @@ const BrandManagement: React.FC = () => {
               </ThemedButton>
             </SectionHeader>
 
-            <BrandList>
-              {brands.map((brand) => (
-                <BrandCard key={brand.id}>
-                  <BrandInfo>
-                    <BrandName>{brand.name}</BrandName>
-                    <BrandDetails>
-                      <div><strong>Category:</strong> {brand.category}</div>
-                      <div><strong>Manager:</strong> {brand.manager}</div>
-                      <div><strong>Stores:</strong> {brand.stores}</div>
-                      <div><strong>Monthly Revenue:</strong> RM {(brand.monthlyRevenue / 1000000).toFixed(0)}M</div>
-                      <div><strong>Established:</strong> {brand.established}</div>
-                    </BrandDetails>
-                  </BrandInfo>
-                  <ActionButtons>
-                    <ActionButton variant="view">
-                      View Details
-                    </ActionButton>
-                    <ActionButton variant="edit" onClick={() => handleEditBrand(brand)}>
-                      Edit
-                    </ActionButton>
-                    <ActionButton variant="delete" onClick={() => handleDeleteBrand(brand)}>
-                      Delete
-                    </ActionButton>
-                  </ActionButtons>
-                </BrandCard>
-              ))}
-            </BrandList>
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
+                Loading brands...
+              </div>
+            ) : brands.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
+                No brands found. Create your first brand to get started.
+              </div>
+            ) : (
+              <BrandList>
+                {brands.map((brand) => (
+                  <BrandCard key={brand.id}>
+                    <BrandInfo>
+                      <BrandName>{brand.name}</BrandName>
+                      <BrandDetails>
+                        <div><strong>Code:</strong> {brand.code}</div>
+                        <div><strong>Owner:</strong> {brand.owner?.full_name || 'N/A'}</div>
+                        <div><strong>Restaurants:</strong> {brand.restaurants?.length || 0}</div>
+                        <div><strong>Status:</strong> {brand.status}</div>
+                        {brand.description && <div><strong>Description:</strong> {brand.description}</div>}
+                        {brand.email && <div><strong>Email:</strong> {brand.email}</div>}
+                        {brand.phone && <div><strong>Phone:</strong> {brand.phone}</div>}
+                      </BrandDetails>
+                    </BrandInfo>
+                    <ActionButtons>
+                      <ActionButton variant="edit" onClick={() => handleEditBrand(brand)}>
+                        Edit
+                      </ActionButton>
+                      <ActionButton variant="delete" onClick={() => handleDeleteBrand(brand)}>
+                        Delete
+                      </ActionButton>
+                    </ActionButtons>
+                  </BrandCard>
+                ))}
+              </BrandList>
+            )}
           </ContentCard>
 
           {/* Add/Edit Modal */}
-          <ModalComponent
+          <Modal
             isOpen={showModal}
             onClose={() => setShowModal(false)}
             title={isEditing ? 'Edit Brand' : 'Add New Brand'}
           >
             <form onSubmit={handleFormSubmit}>
               <FormGroup>
-                <FormLabel>Brand Name</FormLabel>
+                <FormLabel>Brand Name *</FormLabel>
                 <FormInput
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g., K-DINE Korean Restaurant"
                   required
                 />
               </FormGroup>
 
               <FormGroup>
-                <FormLabel>Category</FormLabel>
+                <FormLabel>Brand Code *</FormLabel>
                 <FormInput
                   type="text"
-                  value={formData.category}
-                  onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                  value={formData.code}
+                  onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value }))}
+                  placeholder="e.g., KDINE"
                   required
                 />
               </FormGroup>
 
               <FormGroup>
-                <FormLabel>Manager</FormLabel>
+                <FormLabel>Description</FormLabel>
                 <FormInput
                   type="text"
-                  value={formData.manager}
-                  onChange={(e) => setFormData(prev => ({ ...prev, manager: e.target.value }))}
-                  required
+                  value={formData.description}
+                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Brief description of the brand"
                 />
               </FormGroup>
 
-              <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+              <FormGroup>
+                <FormLabel>Email</FormLabel>
+                <FormInput
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="contact@brand.com"
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <FormLabel>Phone</FormLabel>
+                <FormInput
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="+60123456789"
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <FormLabel>Address</FormLabel>
+                <FormInput
+                  type="text"
+                  value={formData.address}
+                  onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                  placeholder="Street address"
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <FormLabel>Website</FormLabel>
+                <FormInput
+                  type="url"
+                  value={formData.website}
+                  onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
+                  placeholder="https://www.brand.com"
+                />
+              </FormGroup>
+
+              {error && <ErrorMessage>{error}</ErrorMessage>}
+
+              <ButtonGroup>
                 <Button type="button" variant="secondary" onClick={() => setShowModal(false)}>
                   Cancel
                 </Button>
                 <Button type="submit">
-                  {isEditing ? 'Update' : 'Add'}
+                  {isEditing ? 'Update Brand' : 'Create Brand'}
                 </Button>
-              </div>
+              </ButtonGroup>
             </form>
-          </ModalComponent>
+          </Modal>
 
           {/* Delete Confirmation Modal */}
           <ConfirmModal

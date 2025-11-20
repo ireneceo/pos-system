@@ -1,5 +1,6 @@
 const User = require('./User');
 const Restaurant = require('./Restaurant');
+const Brand = require('./Brand');
 const Invoice = require('./Invoice');
 const InvoiceItem = require('./InvoiceItem');
 const InvoiceSettings = require('./InvoiceSettings');
@@ -20,6 +21,14 @@ const Ingredient = require('./Ingredient');
 const RecipeIngredient = require('./RecipeIngredient');
 
 // Define associations
+// Brand - Restaurant associations
+Brand.hasMany(Restaurant, { foreignKey: 'brand_id', as: 'restaurants' });
+Restaurant.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
+
+// Brand - User (owner) associations
+Brand.belongsTo(User, { foreignKey: 'owner_id', as: 'owner' });
+User.hasMany(Brand, { foreignKey: 'owner_id', as: 'brands' });
+
 // Keep old single manager relationship for backward compatibility
 Restaurant.belongsTo(User, { foreignKey: 'manager_id', as: 'manager' });
 User.hasMany(Restaurant, { foreignKey: 'manager_id', as: 'managedRestaurants' });
@@ -126,6 +135,7 @@ Recipe.hasMany(Product, { foreignKey: 'recipe_id', as: 'products' });
 module.exports = {
   User,
   Restaurant,
+  Brand,
   Invoice,
   InvoiceItem,
   InvoiceSettings,
