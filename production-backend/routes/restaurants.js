@@ -3,6 +3,7 @@ const router = express.Router();
 require('../models'); // Load associations
 const Restaurant = require('../models/Restaurant');
 const User = require('../models/User');
+const Brand = require('../models/Brand');
 const Invoice = require('../models/Invoice');
 const Order = require('../models/Order');
 const PlanTemplate = require('../models/PlanTemplate');
@@ -42,6 +43,9 @@ router.get('/', optionalAuth, async (req, res) => {
   try {
     console.log(`🏢 GET /api/restaurants - User: ${req.user ? req.user.email : 'anonymous'} (${req.user ? req.user.role : 'no auth'})`);
 
+    const { brand_id } = req.query;
+    console.log(`🔍 Query params - brand_id: ${brand_id}`);
+
     // Build include options for managers
     const managersInclude = {
       model: User,
@@ -49,6 +53,15 @@ router.get('/', optionalAuth, async (req, res) => {
       attributes: ['id', 'full_name', 'username', 'email', 'role'],
       through: { attributes: ['is_primary'] }
     };
+
+    // Build where clause
+    const whereClause = {};
+
+    // Filter by brand_id if provided
+    if (brand_id) {
+      whereClause.brand_id = brand_id;
+      console.log(`🏢 Filtering by brand_id: ${brand_id}`);
+    }
 
     // Filter restaurants based on user role
     if (req.user && (req.user.role === 'Brand General' || req.user.role === 'Brand Manager')) {
@@ -62,7 +75,15 @@ router.get('/', optionalAuth, async (req, res) => {
     }
 
     const restaurants = await Restaurant.findAll({
-      include: [managersInclude],
+      where: whereClause,
+      include: [
+        managersInclude,
+        {
+          model: Brand,
+          as: 'brand',
+          attributes: ['id', 'name', 'code', 'logo_url']
+        }
+      ],
       order: [['createdAt', 'DESC']]
     });
 
@@ -88,6 +109,13 @@ router.get('/', optionalAuth, async (req, res) => {
           role: m.role,
           isPrimary: m.RestaurantManager?.is_primary || false
         })),
+        brandId: restaurantData.brand_id ? restaurantData.brand_id.toString() : null,
+        brand: restaurantData.brand ? {
+          id: restaurantData.brand.id.toString(),
+          name: restaurantData.brand.name,
+          code: restaurantData.brand.code,
+          logoUrl: restaurantData.brand.logo_url
+        } : null,
         location: restaurantData.address || '',
         cuisine: 'Various', // Default value as it's not in Restaurant model
         status: restaurantData.status === 'active' ? 'active' : 'inactive',

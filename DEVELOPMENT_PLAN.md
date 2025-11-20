@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2025-11-19
+> **최종 업데이트:** 2025-11-20
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -13,6 +13,7 @@
 4. [예정된 작업](#예정된-작업)
 5. [데이터베이스 스키마](#데이터베이스-스키마)
 6. [주요 파일 목록](#주요-파일-목록)
+7. [트러블슈팅 히스토리](#트러블슈팅-히스토리)
 
 ---
 
@@ -438,6 +439,47 @@ Foodcourt Plans:
 
 ---
 
+## 🔧 트러블슈팅 히스토리
+
+### 문제 1: Brand General 사용자 레스토랑 필터링 미작동 (2025-11-20 해결)
+
+**증상:**
+- Brand General 사용자가 연결된 2개 레스토랑만 봐야 하는데 전체 9개 레스토랑 표시
+- URL: https://dev.purplehere.com/pos/manager/restaurants
+- DB `restaurant_managers` 테이블에는 정상적으로 연결되어 있음
+
+**근본 원인:**
+```typescript
+// 문제 코드: RestaurantsPage.tsx:462
+const token = localStorage.getItem('token'); // ❌ null 반환
+// 실제 사용: 'auth_token' 키 사용 중
+```
+- localStorage 키 불일치로 인해 Authorization 헤더가 `Bearer null`로 전송됨
+- 백엔드가 익명 사용자로 인식하여 role-based 필터링 미작동
+
+**해결 방법:**
+```typescript
+// 수정: RestaurantsPage.tsx:462
+const token = localStorage.getItem('auth_token'); // ✅ 정상 작동
+```
+
+**수정 파일:**
+- `/var/www/dev-frontend/src/pages/Manager/RestaurantsPage.tsx` (Line 462)
+- `/var/www/production-backend/routes/restaurants.js` (optionalAuth 미들웨어 추가)
+
+**디버깅 팁:**
+1. 백엔드 로그에서 Authorization header 확인
+2. localStorage 키 이름 일치 여부 확인
+3. 빌드 파일에서 실제 사용 키 검증: `grep 'localStorage.getItem' build/static/js/main.*.js`
+4. 네트워크 탭에서 실제 헤더 값 확인
+
+**예방책:**
+- localStorage 키를 상수로 관리
+- API 헬퍼 함수로 인증 헤더 통일
+- 타입스크립트 유틸리티 함수 사용
+
+---
+
 ## 🐛 알려진 이슈
 
 **현재 알려진 이슈 없음**
@@ -449,4 +491,4 @@ Foodcourt Plans:
 **프로젝트:** Purple POS System
 **개발 환경:** Development Server
 **데이터베이스:** purple_dev_db (MySQL)
-**마지막 업데이트:** 2025-11-19
+**마지막 업데이트:** 2025-11-20

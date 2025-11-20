@@ -363,6 +363,12 @@ function App() {
                         </ProtectedRoute>
                       } />
 
+                      {/* Recipe Management for Brand General */}
+                      <Route path="/pos/recipes" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'System Admin']}>
+                          <RecipeManagementPage />
+                        </ProtectedRoute>
+                      } />
 
                       {/* Foodcourt Manager Routes */}
                       <Route path="/pos/foodcourt/dashboard" element={

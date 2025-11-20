@@ -19,6 +19,11 @@ Restaurant.init({
     unique: true,
     comment: 'URL-friendly restaurant identifier'
   },
+  brand_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Brand that this restaurant belongs to'
+  },
   manager_id: {
     type: DataTypes.INTEGER,
     allowNull: true

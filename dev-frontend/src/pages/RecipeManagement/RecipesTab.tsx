@@ -4,8 +4,10 @@ import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI/Modal';
+import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
 
 interface RecipesTabProps {
+  brandId: number | null;
   onCountChange: (count: number) => void;
 }
 
@@ -308,6 +310,56 @@ const ButtonGroup = styled.div`
   margin-top: 8px;
 `;
 
+const TagsContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+`;
+
+const Tag = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #F0F4FF;
+  color: #635BFF;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+`;
+
+const RemoveTagButton = styled.button`
+  background: none;
+  border: none;
+  color: #635BFF;
+  cursor: pointer;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+
+  &:hover {
+    color: #5A51E6;
+  }
+`;
+
+const TagInput = styled.input`
+  padding: 8px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  font-size: 14px;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+  }
+`;
+
 const HeaderSection = styled.div`
   display: flex;
   justify-content: space-between;
@@ -321,7 +373,7 @@ const HeaderSection = styled.div`
   }
 `;
 
-const RecipesTab: React.FC<RecipesTabProps> = ({ onCountChange }) => {
+const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
   const { user } = useAuth();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
@@ -341,6 +393,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ onCountChange }) => {
     instructions: '',
     suggested_price: ''
   });
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
   const [recipeIngredients, setRecipeIngredients] = useState<Array<{
     ingredient_id: number;
     quantity: string;
@@ -350,20 +404,22 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ onCountChange }) => {
 
   // Fetch recipes and ingredients
   useEffect(() => {
-    fetchRecipes();
-    fetchIngredients();
+    if (brandId || user?.restaurant_id) {
+      fetchRecipes();
+      fetchIngredients();
+    }
     // Restaurant Admin은 항상 레시피 수정 불가
     if (user?.role === 'Restaurant Admin') {
       setIsBrandAffiliate(true);
     }
-  }, [user]);
+  }, [brandId, user]);
 
   const fetchIngredients = async () => {
     try {
       let url = '';
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
-        if (user.brand_id) {
-          url = `/api/brands/${user.brand_id}/ingredients`;
+        if (brandId) {
+          url = `/api/brands/${brandId}/ingredients`;
         }
       } else if (user?.role === 'Restaurant Admin') {
         if (user.restaurant_id) {
@@ -391,8 +447,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ onCountChange }) => {
 
       // Brand General/Manager
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
-        if (user.brand_id) {
-          url = `/api/brands/${user.brand_id}/recipes`;
+        if (brandId) {
+          url = `/api/brands/${brandId}/recipes`;
         }
       }
       // Restaurant Admin
@@ -434,7 +490,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ onCountChange }) => {
     try {
       let url = '';
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
-        url = `/api/brands/${user?.brand_id}/recipes/${recipeId}`;
+        url = `/api/brands/${brandId}/recipes/${recipeId}`;
       } else if (user?.role === 'Restaurant Admin') {
         url = `/api/restaurants/${user?.restaurant_id}/recipes/${recipeId}`;
       }
@@ -452,6 +508,20 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ onCountChange }) => {
     }
   };
 
+  const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && tagInput.trim()) {
+      e.preventDefault();
+      if (!tags.includes(tagInput.trim())) {
+        setTags([...tags, tagInput.trim()]);
+      }
+      setTagInput('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
+  };
+
   const handleOpenModal = (recipe: Recipe | null) => {
     if (recipe) {
       // Edit mode
@@ -466,6 +536,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ onCountChange }) => {
         instructions: '',
         suggested_price: recipe.suggested_price?.toString() || ''
       });
+      setTags(recipe.category ? recipe.category.split(',').map(t => t.trim()) : []);
       setRecipeIngredients(recipe.recipeIngredients?.map(ri => ({
         ingredient_id: ri.ingredient_id,
         quantity: ri.quantity.toString(),
@@ -485,6 +556,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ onCountChange }) => {
         instructions: '',
         suggested_price: ''
       });
+      setTags([]);
       setRecipeIngredients([]);
     }
     setShowModal(true);
@@ -504,13 +576,15 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ onCountChange }) => {
       suggested_price: ''
     });
     setRecipeIngredients([]);
+    setTags([]);
+    setTagInput('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.category) {
-      alert('레시피 이름과 카테고리는 필수입니다');
+    if (!formData.name || tags.length === 0) {
+      alert('레시피 이름과 태그는 필수입니다');
       return;
     }
 
@@ -520,9 +594,9 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ onCountChange }) => {
 
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
         if (selectedRecipe) {
-          url = `/api/brands/${user.brand_id}/recipes/${selectedRecipe.id}`;
+          url = `/api/brands/${brandId}/recipes/${selectedRecipe.id}`;
         } else {
-          url = `/api/brands/${user.brand_id}/recipes`;
+          url = `/api/brands/${brandId}/recipes`;
         }
       } else if (user?.role === 'Restaurant Admin') {
         if (selectedRecipe) {
@@ -537,6 +611,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ onCountChange }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
+          category: tags.join(', '),
           suggested_price: parseFloat(formData.suggested_price) || 0,
           ingredients: recipeIngredients.map(ri => ({
             ingredient_id: ri.ingredient_id,
@@ -680,6 +755,26 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ onCountChange }) => {
         <RecipesGrid>
           {filteredRecipes.map(recipe => (
             <RecipeCard key={recipe.id} isActive={recipe.is_active}>
+              {recipe.image && (
+                <div style={{
+                  width: '100%',
+                  height: '180px',
+                  borderRadius: '8px 8px 0 0',
+                  overflow: 'hidden',
+                  marginBottom: '16px'
+                }}>
+                  <img
+                    src={recipe.image}
+                    alt={recipe.name}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover'
+                    }}
+                  />
+                </div>
+              )}
+
               <RecipeHeader>
                 {recipe.emoji && <RecipeEmoji>{recipe.emoji}</RecipeEmoji>}
                 <RecipeInfo>
@@ -751,14 +846,35 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ onCountChange }) => {
             </UIFormGroup>
 
             <UIFormGroup>
-              <FormLabel>Category *</FormLabel>
-              <FormInput
-                type="text"
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                placeholder="e.g., Main Dish"
-                required
+              <FormLabel>Recipe Image</FormLabel>
+              <ImageUploadDropzone
+                value={formData.image}
+                onChange={(value) => setFormData({ ...formData, image: value })}
+                label="Drop recipe image here or click to upload"
               />
+            </UIFormGroup>
+
+            <UIFormGroup>
+              <FormLabel>Tags * (Press Enter to add)</FormLabel>
+              <TagInput
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={handleAddTag}
+                placeholder="e.g., Main Dish, Spicy, Popular"
+              />
+              {tags.length > 0 && (
+                <TagsContainer>
+                  {tags.map(tag => (
+                    <Tag key={tag}>
+                      {tag}
+                      <RemoveTagButton type="button" onClick={() => handleRemoveTag(tag)}>
+                        ×
+                      </RemoveTagButton>
+                    </Tag>
+                  ))}
+                </TagsContainer>
+              )}
             </UIFormGroup>
 
             <UIFormGroup>
@@ -778,6 +894,38 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ onCountChange }) => {
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Brief description of the recipe..."
+              />
+            </UIFormGroup>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <UIFormGroup>
+                <FormLabel>Prep Time (minutes)</FormLabel>
+                <FormInput
+                  type="number"
+                  value={formData.prep_time}
+                  onChange={(e) => setFormData({ ...formData, prep_time: e.target.value })}
+                  placeholder="e.g., 15"
+                />
+              </UIFormGroup>
+
+              <UIFormGroup>
+                <FormLabel>Cook Time (minutes)</FormLabel>
+                <FormInput
+                  type="number"
+                  value={formData.cook_time}
+                  onChange={(e) => setFormData({ ...formData, cook_time: e.target.value })}
+                  placeholder="e.g., 30"
+                />
+              </UIFormGroup>
+            </div>
+
+            <UIFormGroup>
+              <FormLabel>Cooking Instructions</FormLabel>
+              <FormTextArea
+                value={formData.instructions}
+                onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
+                placeholder="Step-by-step cooking instructions..."
+                rows={6}
               />
             </UIFormGroup>
 

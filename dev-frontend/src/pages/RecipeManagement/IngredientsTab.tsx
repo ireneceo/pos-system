@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormRow as UIFormRow } from '../../components/UI/Modal';
 
 interface IngredientsTabProps {
+  brandId: number | null;
   onCountChange: (count: number) => void;
 }
 
@@ -178,7 +179,7 @@ const HeaderSection = styled.div`
   }
 `;
 
-const IngredientsTab: React.FC<IngredientsTabProps> = ({ onCountChange }) => {
+const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange }) => {
   const { user } = useAuth();
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -198,12 +199,14 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ onCountChange }) => {
   });
 
   useEffect(() => {
-    fetchIngredients();
+    if (brandId || user?.restaurant_id) {
+      fetchIngredients();
+    }
     // Restaurant Admin은 항상 재료 수정 불가
     if (user?.role === 'Restaurant Admin') {
       setIsRestaurantAdmin(true);
     }
-  }, [user]);
+  }, [brandId, user]);
 
   const fetchIngredients = async () => {
     try {
@@ -211,8 +214,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ onCountChange }) => {
       let url = '';
 
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
-        if (user.brand_id) {
-          url = `/api/brands/${user.brand_id}/ingredients`;
+        if (brandId) {
+          url = `/api/brands/${brandId}/ingredients`;
         }
       } else if (user?.role === 'Restaurant Admin') {
         if (user.restaurant_id) {
@@ -246,7 +249,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ onCountChange }) => {
     try {
       let url = '';
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
-        url = `/api/brands/${user?.brand_id}/ingredients/${ingredientId}`;
+        url = `/api/brands/${brandId}/ingredients/${ingredientId}`;
       } else if (user?.role === 'Restaurant Admin') {
         url = `/api/restaurants/${user?.restaurant_id}/ingredients/${ingredientId}`;
       }
@@ -319,9 +322,9 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ onCountChange }) => {
 
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
         if (selectedIngredient) {
-          url = `/api/brands/${user.brand_id}/ingredients/${selectedIngredient.id}`;
+          url = `/api/brands/${brandId}/ingredients/${selectedIngredient.id}`;
         } else {
-          url = `/api/brands/${user.brand_id}/ingredients`;
+          url = `/api/brands/${brandId}/ingredients`;
         }
       } else if (user?.role === 'Restaurant Admin') {
         if (selectedIngredient) {
