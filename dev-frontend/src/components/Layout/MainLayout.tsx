@@ -495,6 +495,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   // Get restaurantId from URL or user context
   const restaurantId = user?.restaurantId || '1';
 
+  // Debug logging
+  console.log('MainLayout Debug:', {
+    user: user,
+    restaurantId: restaurantId,
+    role: user?.role,
+    restaurantStatus: user?.restaurantStatus
+  });
+
   // Get allowed routes based on restaurant's subscription plan
   const { isRouteAllowed } = useAllowedRoutes(
     (user?.role === 'Restaurant Admin' || user?.role === 'Staff') ? Number(restaurantId) : null
