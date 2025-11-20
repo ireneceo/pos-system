@@ -496,17 +496,26 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const urlRestaurantId = location.pathname.match(/\/restaurant\/(\d+)/)?.[1];
   const restaurantId = urlRestaurantId || user?.restaurantId || user?.restaurant_id?.toString() || '1';
 
-  // Debug logging
-  console.log('MainLayout Debug:', {
-    user: user,
-    urlRestaurantId: urlRestaurantId,
-    restaurantId: restaurantId,
-    role: user?.role,
-    restaurantStatus: user?.restaurantStatus,
-    pathname: location.pathname,
-    'user.restaurantId': user?.restaurantId,
-    'user.restaurant_id': user?.restaurant_id
-  });
+  // Debug logging - CRITICAL: Check if this appears in console!
+  console.log('='.repeat(80));
+  console.log('MainLayout Debug - PLEASE CHECK THIS LOG:');
+  console.log('='.repeat(80));
+  console.log('User object:', user);
+  console.log('User role:', user?.role);
+  console.log('URL restaurantId:', urlRestaurantId);
+  console.log('Final restaurantId:', restaurantId);
+  console.log('user.restaurantId:', user?.restaurantId);
+  console.log('user.restaurant_id:', user?.restaurant_id);
+  console.log('pathname:', location.pathname);
+  console.log('='.repeat(80));
+
+  // EMERGENCY: Alert if user is null
+  if (!user) {
+    console.error('❌ USER IS NULL! Not logged in or auth context failed!');
+  }
+  if (user && !user.role) {
+    console.error('❌ USER HAS NO ROLE!', user);
+  }
 
   // Get allowed routes based on restaurant's subscription plan
   const { isRouteAllowed } = useAllowedRoutes(
