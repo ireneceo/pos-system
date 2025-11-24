@@ -241,14 +241,18 @@ const OrderTrackingPage: React.FC = () => {
     }
 
     try {
+      console.log('�� Loading order with ID:', orderId);
       // Try to fetch from API first for real-time data
       try {
         const response = await fetch(`/api/mobile/order/${orderId}`);
+        console.log('📡 API response status:', response.status);
+
         if (response.ok) {
           const data = await response.json();
+          console.log('📦 API response data:', data);
           const apiOrder = data.data || data;
 
-          if (apiOrder && apiOrder.id) {
+          if (apiOrder && (apiOrder.id || apiOrder.orderNumber)) {
             console.log('✅ Loaded order from API:', apiOrder);
             setOrder({
               ...apiOrder,
@@ -258,9 +262,13 @@ const OrderTrackingPage: React.FC = () => {
             setError(null);
             if (!silent) setLoading(false);
             return;
+          } else {
+            console.warn('⚠️ API order data is incomplete:', apiOrder);
           }
         } else {
           console.log('⚠️ API response not OK:', response.status);
+          const errorText = await response.text();
+          console.log('⚠️ Error response:', errorText);
         }
       } catch (apiError) {
         console.error('❌ Failed to load order from database:', apiError);
@@ -376,9 +384,12 @@ const OrderTrackingPage: React.FC = () => {
         if (parts.length > 1) return parts[parts.length - 1];
       }
 
-      // Use order ID as fallback
+      // Use order ID as fallback (handle both "ORD123" and "123" formats)
       if (order.id) {
-        return String(order.id).padStart(3, '0');
+        const idStr = String(order.id);
+        // Extract numeric part if ID starts with "ORD"
+        const numericId = idStr.startsWith('ORD') ? idStr.substring(3) : idStr;
+        return numericId.padStart(3, '0');
       }
 
       return '000';
@@ -400,10 +411,16 @@ const OrderTrackingPage: React.FC = () => {
   const getTotalAmount = () => {
     try {
       const total = order.total_amount || order.total || 0;
-      return Number(total).toFixed(2);
+      // Parse the value to ensure it's a valid number
+      const numericTotal = parseFloat(total);
+      if (isNaN(numericTotal)) {
+        console.error('Invalid total amount:', total);
+        return 0;
+      }
+      return numericTotal;
     } catch (error) {
       console.error('Error getting total amount:', error);
-      return '0.00';
+      return 0;
     }
   };
 

@@ -191,36 +191,45 @@ const OrdersPage: React.FC = () => {
     }
 
     try {
-      console.log('🔄 Loading orders from DATABASE...');
+      console.log('🔄 Loading customer orders from localStorage...');
 
-      // Get restaurant ID from currentStore context
-      const restaurantId = currentStore.id || 1;
+      // Get customer's order IDs from localStorage
+      const customerOrderIds = JSON.parse(localStorage.getItem('customerOrderIds') || '[]');
 
-      // Fetch orders from database API
-      try {
-        const response = await fetch(`/api/orders/restaurant/${restaurantId}?limit=50`);
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch orders from database');
-        }
-
-        const result = await response.json();
-        const dbOrders = result.data || [];
-
-        console.log(`✅ Loaded ${dbOrders.length} orders from database`);
-
-        // Sort by date (newest first)
-        const sortedOrders = [...dbOrders].sort((a: any, b: any) => {
-          const dateA = new Date(a.createdAt || a.order_date || a.created_at).getTime();
-          const dateB = new Date(b.createdAt || b.order_date || b.created_at).getTime();
-          return dateB - dateA;
-        });
-
-        setOrders(sortedOrders);
-      } catch (apiError) {
-        console.error('❌ Failed to load orders from database:', apiError);
+      if (customerOrderIds.length === 0) {
+        console.log('ℹ️ No orders found in localStorage');
         setOrders([]);
+        return;
       }
+
+      console.log(`📋 Found ${customerOrderIds.length} order IDs in localStorage:`, customerOrderIds);
+
+      // Fetch each order from API
+      const orderPromises = customerOrderIds.map(async (orderId: number) => {
+        try {
+          const response = await fetch(`/api/mobile/order/${orderId}`);
+          if (response.ok) {
+            const result = await response.json();
+            return result.data;
+          }
+          return null;
+        } catch (error) {
+          console.error(`Failed to load order ${orderId}:`, error);
+          return null;
+        }
+      });
+
+      const loadedOrders = (await Promise.all(orderPromises)).filter(order => order !== null);
+      console.log(`✅ Loaded ${loadedOrders.length} orders from API`);
+
+      // Sort by date (newest first)
+      const sortedOrders = [...loadedOrders].sort((a: any, b: any) => {
+        const dateA = new Date(a.createdAt || a.order_date || a.created_at).getTime();
+        const dateB = new Date(b.createdAt || b.order_date || b.created_at).getTime();
+        return dateB - dateA;
+      });
+
+      setOrders(sortedOrders);
     } catch (error) {
       console.error('❌ Error loading orders:', error);
       setOrders([]);
@@ -291,7 +300,12 @@ const OrdersPage: React.FC = () => {
                                  String(orderId).padStart(3, '0');
 
             const createdAt = order.createdAt || order.order_date || order.created_at || new Date().toISOString();
-            const orderItems = order.order_items || order.items || [];
+            // Ensure orderItems is always an array
+            let orderItems = order.order_items || order.items || [];
+            if (!Array.isArray(orderItems)) {
+              console.warn(`Order ${orderId}: orderItems is not an array:`, orderItems);
+              orderItems = [];
+            }
             const totalAmount = order.total_amount || order.total || 0;
             const orderType = order.order_type || order.orderType || 'takeaway';
             const paymentStatus = order.payment_status || order.paymentStatus;

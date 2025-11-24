@@ -264,9 +264,9 @@ const BankTransferPage: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Get order data from sessionStorage or location state
-  const sessionData = sessionStorage.getItem('paymentPageData');
+  const sessionData = sessionStorage.getItem('pendingOrderData');
   const orderData = sessionData ? JSON.parse(sessionData) : (location.state as any);
-  const total = orderData?.total || 0;
+  const total = orderData?.total_amount || orderData?.total || 0;
 
   const [paymentProofImage, setPaymentProofImage] = useState<string | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState('');

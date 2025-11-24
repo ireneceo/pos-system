@@ -715,6 +715,13 @@ const PaymentPage: React.FC = () => {
               updateCustomerOrderStats(currentCustomer.id, total);
             }
 
+            // Save order ID to localStorage for customer order history
+            const customerOrderIds = JSON.parse(localStorage.getItem('customerOrderIds') || '[]');
+            if (!customerOrderIds.includes(savedOrder.id)) {
+              customerOrderIds.push(savedOrder.id);
+              localStorage.setItem('customerOrderIds', JSON.stringify(customerOrderIds));
+            }
+
             // Set order as current and clear cart
             setCurrentOrder({
               id: savedOrder.id,
