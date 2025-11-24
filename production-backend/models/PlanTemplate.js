@@ -50,6 +50,12 @@ PlanTemplate.init({
     defaultValue: 'basic',
     comment: 'Plan category: basic for standard plans, custom for custom plans'
   },
+  plan_target: {
+    type: DataTypes.ENUM('restaurant', 'brand', 'foodcourt'),
+    allowNull: false,
+    defaultValue: 'restaurant',
+    comment: 'Target user type: restaurant for restaurant owners, brand for brand managers, foodcourt for foodcourt managers'
+  },
   features: {
     type: DataTypes.TEXT,
     allowNull: true,
@@ -59,6 +65,16 @@ PlanTemplate.init({
     },
     set(value) {
       this.setDataValue('features', JSON.stringify(value));
+    }
+  },
+  included_modules: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: null,
+    comment: 'Array of included addon module codes',
+    get() {
+      const rawValue = this.getDataValue('included_modules');
+      return rawValue ? (typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue) : [];
     }
   },
   is_active: {

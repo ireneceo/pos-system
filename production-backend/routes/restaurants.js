@@ -9,6 +9,7 @@ const Order = require('../models/Order');
 const PlanTemplate = require('../models/PlanTemplate');
 const Category = require('../models/Category');
 const Product = require('../models/Product');
+const AddonModule = require('../models/AddonModule');
 const { Op } = require('sequelize');
 const { authenticateToken } = require('../middleware/auth');
 const jwt = require('jsonwebtoken');
@@ -147,10 +148,11 @@ router.get('/', optionalAuth, async (req, res) => {
 router.get('/manager/:managerId', async (req, res) => {
   try {
     const { managerId } = req.params;
-    console.log(`🏢 GET /api/restaurants/manager/${managerId} - Request received`);
+    console.log(`🏢 🔥 UPDATED CODE 🔥 GET /api/restaurants/manager/${managerId} - Request received`);
     console.log('📋 Request headers:', req.headers);
 
     // Find restaurants where user is manager through restaurant_managers table
+    console.log('🔍 Executing query with include...');
     const restaurants = await Restaurant.findAll({
       include: [{
         model: User,
@@ -163,10 +165,12 @@ router.get('/manager/:managerId', async (req, res) => {
     });
 
     console.log(`🏪 Found ${restaurants.length} restaurants for manager ${managerId}`);
+    console.log('📝 Restaurant details:', restaurants.map(r => ({ id: r.id, name: r.name })));
     res.json(restaurants);
   } catch (error) {
-    console.error('Error fetching manager restaurants:', error);
-    res.status(500).json({ error: 'Failed to fetch manager restaurants' });
+    console.error('❌ ERROR fetching manager restaurants:', error.message);
+    console.error('❌ Full error:', error);
+    res.status(500).json({ error: 'Failed to fetch manager restaurants', details: error.message });
   }
 });
 
@@ -748,6 +752,79 @@ router.get('/:id/categories', async (req, res) => {
   } catch (error) {
     console.error('Error fetching restaurant categories:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get allowed routes for a restaurant based on their plan
+router.get('/:id/allowed-routes', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Find restaurant
+    const restaurant = await Restaurant.findByPk(id);
+    if (!restaurant) {
+      return res.status(404).json({ error: 'Restaurant not found' });
+    }
+
+    // Find plan
+    const plan = await PlanTemplate.findOne({
+      where: { display_name: restaurant.plan_type }
+    });
+
+    if (!plan) {
+      // If no plan found, return empty routes (restricted access)
+      return res.json({
+        restaurant_id: restaurant.id,
+        plan_type: restaurant.plan_type,
+        included_modules: [],
+        allowed_routes: []
+      });
+    }
+
+    // Get included modules from plan
+    const includedModuleCodes = plan.included_modules || [];
+
+    if (includedModuleCodes.length === 0) {
+      // No modules included, return empty routes
+      return res.json({
+        restaurant_id: restaurant.id,
+        plan_type: restaurant.plan_type,
+        included_modules: [],
+        allowed_routes: []
+      });
+    }
+
+    // Find all modules with these codes
+    const modules = await AddonModule.findAll({
+      where: {
+        module_code: includedModuleCodes,
+        is_active: true
+      }
+    });
+
+    // Collect all UI routes from modules
+    const allowedRoutes = modules.reduce((routes, module) => {
+      const moduleRoutes = module.ui_routes || [];
+      return [...routes, ...moduleRoutes];
+    }, []);
+
+    // Remove duplicates
+    const uniqueRoutes = [...new Set(allowedRoutes)];
+
+    res.json({
+      restaurant_id: restaurant.id,
+      plan_type: restaurant.plan_type,
+      included_modules: includedModuleCodes,
+      allowed_routes: uniqueRoutes,
+      modules: modules.map(m => ({
+        code: m.module_code,
+        name: m.name,
+        category: m.category
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching allowed routes:', error);
+    res.status(500).json({ error: 'Failed to fetch allowed routes' });
   }
 });
 

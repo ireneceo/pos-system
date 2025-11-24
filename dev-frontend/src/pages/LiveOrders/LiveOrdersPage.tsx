@@ -2597,6 +2597,10 @@ const LiveOrdersPage: React.FC = () => {
                           })),
                           subtotal: parseFloat((selectedOrder as any).subtotal || '0'),
                           discount: parseFloat((selectedOrder as any).discount || '0'),
+                          discountPolicy: (selectedOrder as any).discount_policy_name ? {
+                            name: (selectedOrder as any).discount_policy_name,
+                            amount: parseFloat((selectedOrder as any).discount_policy_amount || '0')
+                          } : undefined,
                           coupon: (selectedOrder as any).coupon_code ? {
                             code: (selectedOrder as any).coupon_code,
                             discount: parseFloat((selectedOrder as any).coupon_discount || '0')
@@ -2778,15 +2782,27 @@ const LiveOrdersPage: React.FC = () => {
                       <span>Subtotal</span>
                       <span>{formatCurrency(Number((selectedOrder as any).subtotal || selectedOrder.total_amount), operationSettings.currency)}</span>
                     </TotalRow>
+                    {(selectedOrder as any).takeaway_charge && parseFloat((selectedOrder as any).takeaway_charge) > 0 && (
+                      <TotalRow>
+                        <span>Takeaway Charge</span>
+                        <span>{formatCurrency(parseFloat((selectedOrder as any).takeaway_charge), operationSettings.currency)}</span>
+                      </TotalRow>
+                    )}
                     {(selectedOrder as any).discount > 0 && (
                       <TotalRow>
                         <span>Discount</span>
                         <span>{formatCurrency(-Number((selectedOrder as any).discount), operationSettings.currency)}</span>
                       </TotalRow>
                     )}
+                    {(selectedOrder as any).discount_policy_amount > 0 && (
+                      <TotalRow>
+                        <span>Discount ({(selectedOrder as any).discount_policy_name})</span>
+                        <span>{formatCurrency(-Number((selectedOrder as any).discount_policy_amount), operationSettings.currency)}</span>
+                      </TotalRow>
+                    )}
                     {(selectedOrder as any).coupon_discount > 0 && (
                       <TotalRow>
-                        <span>Coupon Discount ({(selectedOrder as any).coupon_code})</span>
+                        <span>Coupon ({(selectedOrder as any).coupon_code})</span>
                         <span>{formatCurrency(-Number((selectedOrder as any).coupon_discount), operationSettings.currency)}</span>
                       </TotalRow>
                     )}
@@ -2800,12 +2816,6 @@ const LiveOrdersPage: React.FC = () => {
                       <TotalRow>
                         <span>Tax ({(selectedOrder as any).tax_rate || 6}%)</span>
                         <span>{formatCurrency(Number((selectedOrder as any).tax), operationSettings.currency)}</span>
-                      </TotalRow>
-                    )}
-                    {parseFloat((selectedOrder as any).takeaway_charge || 0) > 0 && (
-                      <TotalRow>
-                        <span>Takeaway Charge</span>
-                        <span>{formatCurrency(parseFloat((selectedOrder as any).takeaway_charge), operationSettings.currency)}</span>
                       </TotalRow>
                     )}
                     <TotalRow isTotal>

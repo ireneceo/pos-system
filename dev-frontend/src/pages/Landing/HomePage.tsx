@@ -207,23 +207,23 @@ const HomePage: React.FC = () => {
       <Header>
         <Logo>Purple Here</Logo>
         <Nav>
-          <NavLink onClick={() => navigate('/about')}>회사 소개</NavLink>
-          <NavLink onClick={() => navigate('/service')}>서비스</NavLink>
-          <NavLink onClick={() => navigate('/pos')}>로그인</NavLink>
+          <NavLink onClick={() => navigate('/about')}>About Us</NavLink>
+          <NavLink onClick={() => navigate('/service')}>Services</NavLink>
+          <NavLink onClick={() => navigate('/pos')}>POS System Access</NavLink>
         </Nav>
       </Header>
 
       <Hero>
-        <Title>스마트한 매장 운영의 시작</Title>
+        <Title>Smart Store Management Starts Here</Title>
         <Subtitle>
-          Purple Here POS 시스템으로 푸드코트, 브랜드, 레스토랑을 효율적으로 관리하세요
+          Efficiently manage your food courts, brands, and restaurants with Purple Here POS System
         </Subtitle>
         <ButtonGroup>
           <PrimaryButton onClick={() => navigate('/pos')}>
-            시작하기
+            Get Started
           </PrimaryButton>
           <SecondaryButton onClick={() => navigate('/service')}>
-            서비스 알아보기
+            Learn More
           </SecondaryButton>
         </ButtonGroup>
       </Hero>
@@ -231,25 +231,25 @@ const HomePage: React.FC = () => {
       <Features>
         <FeatureCard>
           <FeatureIcon>🏪</FeatureIcon>
-          <FeatureTitle>푸드코트 관리</FeatureTitle>
+          <FeatureTitle>Food Court Management</FeatureTitle>
           <FeatureDescription>
-            여러 매장을 효율적으로 관리하고 실시간으로 모니터링할 수 있습니다
+            Efficiently manage multiple stores and monitor them in real-time
           </FeatureDescription>
         </FeatureCard>
 
         <FeatureCard>
           <FeatureIcon>📊</FeatureIcon>
-          <FeatureTitle>브랜드 통합 관리</FeatureTitle>
+          <FeatureTitle>Brand Integration</FeatureTitle>
           <FeatureDescription>
-            다양한 지점의 데이터를 한눈에 확인하고 성과를 분석할 수 있습니다
+            View data from all branches at a glance and analyze performance
           </FeatureDescription>
         </FeatureCard>
 
         <FeatureCard>
           <FeatureIcon>💳</FeatureIcon>
-          <FeatureTitle>간편한 주문 & 결제</FeatureTitle>
+          <FeatureTitle>Easy Order & Payment</FeatureTitle>
           <FeatureDescription>
-            모바일 주문부터 POS 결제까지 모든 과정을 편리하게 처리합니다
+            Handle everything from mobile orders to POS payments conveniently
           </FeatureDescription>
         </FeatureCard>
       </Features>

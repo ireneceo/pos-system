@@ -15,6 +15,10 @@ const Product = require('./Product');
 const Category = require('./Category');
 const OptionGroup = require('./OptionGroup');
 const Option = require('./Option');
+const AddonModule = require('./AddonModule');
+const Recipe = require('./Recipe');
+const Ingredient = require('./Ingredient');
+const RecipeIngredient = require('./RecipeIngredient');
 
 // Define associations
 // Brand - Restaurant associations
@@ -24,6 +28,7 @@ Restaurant.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
 // Brand - User (owner) associations
 Brand.belongsTo(User, { foreignKey: 'owner_id', as: 'owner' });
 User.hasMany(Brand, { foreignKey: 'owner_id', as: 'brands' });
+
 // Keep old single manager relationship for backward compatibility
 Restaurant.belongsTo(User, { foreignKey: 'manager_id', as: 'manager' });
 User.hasMany(Restaurant, { foreignKey: 'manager_id', as: 'managedRestaurants' });
@@ -115,6 +120,18 @@ Option.belongsTo(OptionGroup, {
 OptionGroup.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
 Restaurant.hasMany(OptionGroup, { foreignKey: 'restaurant_id', as: 'optionGroups' });
 
+// Recipe associations
+Recipe.hasMany(RecipeIngredient, { foreignKey: 'recipe_id', as: 'recipeIngredients' });
+RecipeIngredient.belongsTo(Recipe, { foreignKey: 'recipe_id', as: 'recipe' });
+
+// Ingredient associations
+Ingredient.hasMany(RecipeIngredient, { foreignKey: 'ingredient_id', as: 'recipeIngredients' });
+RecipeIngredient.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as: 'ingredient' });
+
+// Recipe - Product association
+Product.belongsTo(Recipe, { foreignKey: 'recipe_id', as: 'recipe' });
+Recipe.hasMany(Product, { foreignKey: 'recipe_id', as: 'products' });
+
 module.exports = {
   User,
   Restaurant,
@@ -132,5 +149,9 @@ module.exports = {
   Product,
   Category,
   OptionGroup,
-  Option
+  Option,
+  AddonModule,
+  Recipe,
+  Ingredient,
+  RecipeIngredient
 };

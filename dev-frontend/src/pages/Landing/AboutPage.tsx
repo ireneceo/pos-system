@@ -172,21 +172,21 @@ const AboutPage: React.FC = () => {
       <Header>
         <Logo onClick={() => navigate('/')}>Purple Here</Logo>
         <Nav>
-          <NavLink onClick={() => navigate('/about')}>회사 소개</NavLink>
-          <NavLink onClick={() => navigate('/service')}>서비스</NavLink>
-          <NavLink onClick={() => navigate('/pos')}>로그인</NavLink>
+          <NavLink onClick={() => navigate('/about')}>About Us</NavLink>
+          <NavLink onClick={() => navigate('/service')}>Services</NavLink>
+          <NavLink onClick={() => navigate('/pos')}>POS System Access</NavLink>
         </Nav>
       </Header>
 
       <Content>
-        <Title>회사 소개</Title>
+        <Title>About Us</Title>
 
         <Section>
           <SectionTitle>Our Vision</SectionTitle>
           <Paragraph>
-            Purple Here는 푸드코트, 브랜드, 레스토랑을 위한 통합 POS 솔루션을 제공합니다.
-            우리의 목표는 매장 운영의 모든 과정을 디지털화하여 효율성을 극대화하고,
-            데이터 기반의 의사결정을 지원하는 것입니다.
+            Purple Here provides an integrated POS solution for food courts, brands, and restaurants.
+            Our goal is to digitize every aspect of store operations to maximize efficiency
+            and support data-driven decision making.
           </Paragraph>
         </Section>
 
@@ -194,24 +194,24 @@ const AboutPage: React.FC = () => {
           <SectionTitle>Why Purple Here?</SectionTitle>
           <List>
             <ListItem>
-              <strong>다중 계층 관리:</strong> 푸드코트 총괄매니저부터 브랜드 매니저까지
-              계층별 관리 시스템을 제공합니다
+              <strong>Multi-tier Management:</strong> From food court general managers to brand managers,
+              we provide a hierarchical management system
             </ListItem>
             <ListItem>
-              <strong>실시간 데이터:</strong> 모든 매장의 주문, 매출, 재고 데이터를
-              실시간으로 확인할 수 있습니다
+              <strong>Real-time Data:</strong> Monitor orders, sales, and inventory data
+              from all stores in real-time
             </ListItem>
             <ListItem>
-              <strong>모바일 주문:</strong> QR 코드 기반 모바일 주문으로 고객 편의성을
-              높이고 매장 운영 효율을 개선합니다
+              <strong>Mobile Ordering:</strong> QR code-based mobile ordering improves customer convenience
+              and store operation efficiency
             </ListItem>
             <ListItem>
-              <strong>통합 관리:</strong> 메뉴, 직원, 고객, 청구서를 하나의 시스템에서
-              관리할 수 있습니다
+              <strong>Unified Management:</strong> Manage menus, staff, customers, and invoices
+              in one integrated system
             </ListItem>
             <ListItem>
-              <strong>클라우드 기반:</strong> 언제 어디서나 접속 가능한 클라우드 시스템으로
-              원격 관리가 가능합니다
+              <strong>Cloud-based:</strong> Access anywhere, anytime with our cloud system
+              for remote management capabilities
             </ListItem>
           </List>
         </Section>
@@ -219,14 +219,14 @@ const AboutPage: React.FC = () => {
         <Section>
           <SectionTitle>Our Technology</SectionTitle>
           <Paragraph>
-            최신 웹 기술과 클라우드 인프라를 기반으로 안정적이고 확장 가능한
-            시스템을 구축했습니다. React 기반의 직관적인 UI와 실시간 Socket.IO
-            통신으로 빠르고 편리한 사용 경험을 제공합니다.
+            Built on the latest web technologies and cloud infrastructure for a stable and scalable system.
+            We provide a fast and convenient user experience with React-based intuitive UI
+            and real-time Socket.IO communication.
           </Paragraph>
         </Section>
 
         <CTAButton onClick={() => navigate('/service')}>
-          서비스 자세히 알아보기
+          Learn More About Our Services
         </CTAButton>
       </Content>
     </Container>

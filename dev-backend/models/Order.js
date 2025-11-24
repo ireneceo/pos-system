@@ -118,7 +118,18 @@ Order.init({
     type: DataTypes.DECIMAL(10, 2),
     allowNull: true,
     defaultValue: 0,
-    comment: 'Discount amount'
+    comment: 'Fixed discount amount'
+  },
+  discount_policy_name: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    comment: 'Discount policy name (e.g., "20%", "Staff", "VIP")'
+  },
+  discount_policy_amount: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0,
+    comment: 'Percentage-based discount policy amount'
   },
   coupon_code: {
     type: DataTypes.STRING(50),

@@ -206,118 +206,118 @@ const ServicePage: React.FC = () => {
       <Header>
         <Logo onClick={() => navigate('/')}>Purple Here</Logo>
         <Nav>
-          <NavLink onClick={() => navigate('/about')}>회사 소개</NavLink>
-          <NavLink onClick={() => navigate('/service')}>서비스</NavLink>
-          <NavLink onClick={() => navigate('/pos')}>로그인</NavLink>
+          <NavLink onClick={() => navigate('/about')}>About Us</NavLink>
+          <NavLink onClick={() => navigate('/service')}>Services</NavLink>
+          <NavLink onClick={() => navigate('/pos')}>POS System Access</NavLink>
         </Nav>
       </Header>
 
       <Content>
-        <Title>서비스 소개</Title>
+        <Title>Our Services</Title>
 
         <ServiceGrid>
           <ServiceCard>
             <ServiceIcon>🏪</ServiceIcon>
-            <ServiceTitle>푸드코트 관리</ServiceTitle>
+            <ServiceTitle>Food Court Management</ServiceTitle>
             <ServiceDescription>
-              여러 매장이 모인 푸드코트를 효율적으로 관리할 수 있는 통합 솔루션
+              An integrated solution for efficiently managing food courts with multiple stores
             </ServiceDescription>
             <ServiceFeatures>
-              <ServiceFeature>푸드코트 총괄매니저 계층 관리</ServiceFeature>
-              <ServiceFeature>렌트비 및 계약서 관리</ServiceFeature>
-              <ServiceFeature>입점 매장 실시간 모니터링</ServiceFeature>
-              <ServiceFeature>통합 매출 분석 및 리포트</ServiceFeature>
-              <ServiceFeature>테넌트 지원 티켓 시스템</ServiceFeature>
+              <ServiceFeature>Food court general manager hierarchy</ServiceFeature>
+              <ServiceFeature>Rent and contract management</ServiceFeature>
+              <ServiceFeature>Real-time monitoring of tenant stores</ServiceFeature>
+              <ServiceFeature>Integrated sales analysis and reports</ServiceFeature>
+              <ServiceFeature>Tenant support ticket system</ServiceFeature>
             </ServiceFeatures>
           </ServiceCard>
 
           <ServiceCard>
             <ServiceIcon>🏢</ServiceIcon>
-            <ServiceTitle>브랜드 통합 관리</ServiceTitle>
+            <ServiceTitle>Brand Integration</ServiceTitle>
             <ServiceDescription>
-              다수의 지점을 운영하는 브랜드를 위한 중앙 집중식 관리 시스템
+              A centralized management system for brands operating multiple locations
             </ServiceDescription>
             <ServiceFeatures>
-              <ServiceFeature>브랜드 총괄매니저 권한 시스템</ServiceFeature>
-              <ServiceFeature>전체 지점 성과 대시보드</ServiceFeature>
-              <ServiceFeature>통합 메뉴 및 가격 관리</ServiceFeature>
-              <ServiceFeature>프랜차이즈 지원 시스템</ServiceFeature>
-              <ServiceFeature>지점별 비교 분석</ServiceFeature>
+              <ServiceFeature>Brand general manager authority system</ServiceFeature>
+              <ServiceFeature>All-branch performance dashboard</ServiceFeature>
+              <ServiceFeature>Unified menu and pricing management</ServiceFeature>
+              <ServiceFeature>Franchise support system</ServiceFeature>
+              <ServiceFeature>Branch-by-branch comparative analysis</ServiceFeature>
             </ServiceFeatures>
           </ServiceCard>
 
           <ServiceCard>
             <ServiceIcon>💳</ServiceIcon>
-            <ServiceTitle>POS 시스템</ServiceTitle>
+            <ServiceTitle>POS System</ServiceTitle>
             <ServiceDescription>
-              직관적이고 빠른 매장 운영을 위한 올인원 POS 솔루션
+              An all-in-one POS solution for intuitive and fast store operations
             </ServiceDescription>
             <ServiceFeatures>
-              <ServiceFeature>터치 기반 직관적 UI</ServiceFeature>
-              <ServiceFeature>실시간 주문 관리 및 주방 디스플레이</ServiceFeature>
-              <ServiceFeature>다양한 결제 수단 지원</ServiceFeature>
-              <ServiceFeature>메뉴, 옵션, 카테고리 관리</ServiceFeature>
-              <ServiceFeature>고객 디스플레이 연동</ServiceFeature>
+              <ServiceFeature>Touch-based intuitive UI</ServiceFeature>
+              <ServiceFeature>Real-time order management and kitchen display</ServiceFeature>
+              <ServiceFeature>Multiple payment method support</ServiceFeature>
+              <ServiceFeature>Menu, option, and category management</ServiceFeature>
+              <ServiceFeature>Customer display integration</ServiceFeature>
             </ServiceFeatures>
           </ServiceCard>
 
           <ServiceCard>
             <ServiceIcon>📱</ServiceIcon>
-            <ServiceTitle>모바일 주문</ServiceTitle>
+            <ServiceTitle>Mobile Ordering</ServiceTitle>
             <ServiceDescription>
-              QR 코드를 통한 간편한 모바일 주문 시스템
+              A convenient mobile ordering system via QR codes
             </ServiceDescription>
             <ServiceFeatures>
-              <ServiceFeature>QR 코드 스캔으로 즉시 주문</ServiceFeature>
-              <ServiceFeature>테이블 번호 자동 인식</ServiceFeature>
-              <ServiceFeature>실시간 주문 알림</ServiceFeature>
-              <ServiceFeature>고객 주문 히스토리 관리</ServiceFeature>
-              <ServiceFeature>모바일 결제 연동</ServiceFeature>
+              <ServiceFeature>Instant ordering via QR code scan</ServiceFeature>
+              <ServiceFeature>Automatic table number recognition</ServiceFeature>
+              <ServiceFeature>Real-time order notifications</ServiceFeature>
+              <ServiceFeature>Customer order history management</ServiceFeature>
+              <ServiceFeature>Mobile payment integration</ServiceFeature>
             </ServiceFeatures>
           </ServiceCard>
 
           <ServiceCard>
             <ServiceIcon>📊</ServiceIcon>
-            <ServiceTitle>분석 & 리포트</ServiceTitle>
+            <ServiceTitle>Analytics & Reports</ServiceTitle>
             <ServiceDescription>
-              데이터 기반 의사결정을 위한 강력한 분석 도구
+              Powerful analytics tools for data-driven decision making
             </ServiceDescription>
             <ServiceFeatures>
-              <ServiceFeature>일별/주별/월별 매출 분석</ServiceFeature>
-              <ServiceFeature>인기 메뉴 및 트렌드 분석</ServiceFeature>
-              <ServiceFeature>시간대별 주문 패턴 분석</ServiceFeature>
-              <ServiceFeature>고객 분석 및 재방문율</ServiceFeature>
-              <ServiceFeature>커스터마이징 가능한 리포트</ServiceFeature>
+              <ServiceFeature>Daily/weekly/monthly sales analysis</ServiceFeature>
+              <ServiceFeature>Popular menu and trend analysis</ServiceFeature>
+              <ServiceFeature>Time-based order pattern analysis</ServiceFeature>
+              <ServiceFeature>Customer analysis and return rates</ServiceFeature>
+              <ServiceFeature>Customizable reports</ServiceFeature>
             </ServiceFeatures>
           </ServiceCard>
 
           <ServiceCard>
             <ServiceIcon>👥</ServiceIcon>
-            <ServiceTitle>통합 관리</ServiceTitle>
+            <ServiceTitle>Unified Management</ServiceTitle>
             <ServiceDescription>
-              직원, 고객, 청구서를 한 곳에서 관리
+              Manage staff, customers, and invoices all in one place
             </ServiceDescription>
             <ServiceFeatures>
-              <ServiceFeature>직원 계정 및 권한 관리</ServiceFeature>
-              <ServiceFeature>고객 정보 및 포인트 관리</ServiceFeature>
-              <ServiceFeature>자동 청구서 발행 시스템</ServiceFeature>
-              <ServiceFeature>프로모션 및 할인 관리</ServiceFeature>
-              <ServiceFeature>재고 관리 (옵션)</ServiceFeature>
+              <ServiceFeature>Staff account and permission management</ServiceFeature>
+              <ServiceFeature>Customer information and points management</ServiceFeature>
+              <ServiceFeature>Automatic invoice generation system</ServiceFeature>
+              <ServiceFeature>Promotion and discount management</ServiceFeature>
+              <ServiceFeature>Inventory management (optional)</ServiceFeature>
             </ServiceFeatures>
           </ServiceCard>
         </ServiceGrid>
 
         <PricingSection>
-          <PricingTitle>맞춤형 요금제</PricingTitle>
+          <PricingTitle>Flexible Pricing Plans</PricingTitle>
           <PricingText>
-            매장의 규모와 필요에 따라 다양한 요금제를 제공합니다.
-            소규모 레스토랑부터 대형 푸드코트까지, 최적의 솔루션을 찾아드립니다.
+            We offer various pricing plans based on your store size and needs.
+            From small restaurants to large food courts, we'll find the optimal solution for you.
           </PricingText>
           <PricingText>
-            <strong>지금 바로 시작하고 30일 무료 체험</strong>을 경험해보세요!
+            <strong>Start now and experience a 30-day free trial!</strong>
           </PricingText>
           <CTAButton onClick={() => navigate('/pos')}>
-            무료로 시작하기
+            Start Free Trial
           </CTAButton>
         </PricingSection>
       </Content>

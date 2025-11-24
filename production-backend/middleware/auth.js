@@ -59,8 +59,8 @@ const requireRole = (...allowedRoles) => {
 // Check if Restaurant Admin/Staff can access the restaurant
 const checkRestaurantAccess = async (req, res, next) => {
   try {
-    const { restaurantId, id } = req.params;
-    const targetRestaurantId = restaurantId || id;
+    const { restaurantId, id, restaurant_id } = req.params;
+    const targetRestaurantId = restaurantId || id || restaurant_id;
 
     if (!req.user) {
       return res.status(401).json({ error: 'Authentication required' });
