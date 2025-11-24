@@ -488,7 +488,8 @@ const PaymentPage: React.FC = () => {
     updateCustomer,
     setGuestInfo,
     logoutCustomer,
-    loginCustomer
+    loginCustomer,
+    registerCustomer
   } = useCustomer();
   const { getTakeawayCharge, operationSettings } = useStore();
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
@@ -523,6 +524,11 @@ const PaymentPage: React.FC = () => {
   const [guestEmail, setGuestEmail] = useState('');
   const [showGuestForm, setShowGuestForm] = useState(false);
   const [showMemberForm, setShowMemberForm] = useState(false);
+
+  // Registration state
+  const [showRegisterForm, setShowRegisterForm] = useState(false);
+  const [registerPassword, setRegisterPassword] = useState('');
+  const [registerConfirmPassword, setRegisterConfirmPassword] = useState('');
 
   // Calculate takeaway charge (using existing function from StoreContext)
   const orderType = sessionStorage.getItem('orderType') as 'dine-in' | 'takeaway' | 'delivery' || 'dine-in';
@@ -761,14 +767,32 @@ const PaymentPage: React.FC = () => {
 
   // Load delivery zones from operationSettings
   React.useEffect(() => {
-    if (orderType === 'delivery' && operationSettings.deliveryPricing) {
-      const zones = operationSettings.deliveryPricing.zones || [];
-      console.log('🚚 Loading delivery zones:', zones);
-      setDeliveryZones(zones);
+    console.log('🔍 Delivery zone effect triggered');
+    console.log('Order type:', orderType);
+    console.log('operationSettings.deliveryPricing:', operationSettings.deliveryPricing);
 
-      // Set default zone if available
-      if (zones.length > 0 && !selectedZone) {
-        setSelectedZone(zones[0].id);
+    if (orderType === 'delivery') {
+      if (operationSettings.deliveryPricing && operationSettings.deliveryPricing.zones) {
+        const zones = operationSettings.deliveryPricing.zones;
+        console.log('🚚 Loading delivery zones:', zones);
+        setDeliveryZones(zones);
+
+        // Set default zone if available
+        if (zones.length > 0 && !selectedZone) {
+          console.log('Setting default zone:', zones[0].id);
+          setSelectedZone(zones[0].id);
+        }
+      } else {
+        console.warn('⚠️ No delivery zones configured in operationSettings');
+        // Set default zones if not configured
+        const defaultZones = [
+          { id: 'zone-a', name: 'Zone A (City Center)', fee: 3.00, description: 'Within 3km' },
+          { id: 'zone-b', name: 'Zone B (Near City)', fee: 5.00, description: '3-5km' },
+          { id: 'zone-c', name: 'Zone C (Suburbs)', fee: 8.00, description: '5-10km' }
+        ];
+        console.log('Using default zones:', defaultZones);
+        setDeliveryZones(defaultZones);
+        setSelectedZone(defaultZones[0].id);
       }
     }
   }, [orderType, operationSettings.deliveryPricing, selectedZone]);
@@ -1377,6 +1401,10 @@ const PaymentPage: React.FC = () => {
                     name: 'Guest',
                     phone: ''
                   });
+                  // Reset Guest/Member button selection
+                  setShowGuestForm(false);
+                  setShowMemberForm(false);
+                  setShowRegisterForm(false);
                 } else {
                   // 체크 해제 - guestInfo 초기화
                   setGuestInfo(null);
@@ -1388,15 +1416,16 @@ const PaymentPage: React.FC = () => {
 
           <CustomerChoiceContainer>
             <CustomerChoiceButton
-              selected={showGuestForm || (guestInfo && guestInfo.name !== 'Guest')}
+              selected={showGuestForm || showRegisterForm || (guestInfo && guestInfo.name !== 'Guest')}
               onClick={() => {
                 setShowGuestForm(!showGuestForm);
                 setShowMemberForm(false);
+                setShowRegisterForm(false);
                 if (currentCustomer) logoutCustomer();
               }}
             >
-              <ChoiceTitle>Guest Order</ChoiceTitle>
-              <ChoiceSubtitle>Enter basic info</ChoiceSubtitle>
+              <ChoiceTitle>Guest Or Register</ChoiceTitle>
+              <ChoiceSubtitle>Order as guest or sign up</ChoiceSubtitle>
             </CustomerChoiceButton>
 
             <CustomerChoiceButton
@@ -1404,17 +1433,28 @@ const PaymentPage: React.FC = () => {
               onClick={() => {
                 setShowMemberForm(!showMemberForm);
                 setShowGuestForm(false);
+                setShowRegisterForm(false);
                 setGuestInfo(null);
               }}
             >
               <ChoiceTitle>Member</ChoiceTitle>
-              <ChoiceSubtitle>Login / Sign up</ChoiceSubtitle>
+              <ChoiceSubtitle>Login</ChoiceSubtitle>
             </CustomerChoiceButton>
           </CustomerChoiceContainer>
 
           {/* Guest Form - Inline */}
           {showGuestForm && !currentCustomer && (
             <div style={{ marginTop: '16px' }}>
+              {/* Registration checkbox */}
+              <QuickOrderCheckbox>
+                <input
+                  type="checkbox"
+                  checked={showRegisterForm}
+                  onChange={(e) => setShowRegisterForm(e.target.checked)}
+                />
+                <span>Register as a Member (Earn points & benefits)</span>
+              </QuickOrderCheckbox>
+
               <FormGroup>
                 <Label>Name *</Label>
                 <Input
@@ -1434,7 +1474,7 @@ const PaymentPage: React.FC = () => {
                 />
               </FormGroup>
               <FormGroup>
-                <Label>Email (Optional)</Label>
+                <Label>Email {showRegisterForm ? '*' : '(Optional)'}</Label>
                 <Input
                   type="email"
                   placeholder="your.email@example.com"
@@ -1442,17 +1482,81 @@ const PaymentPage: React.FC = () => {
                   onChange={(e) => setGuestEmail(e.target.value)}
                 />
               </FormGroup>
+
+              {/* Show password fields only if registering */}
+              {showRegisterForm && (
+                <>
+                  <FormGroup>
+                    <Label>Password *</Label>
+                    <Input
+                      type="password"
+                      placeholder="Enter password"
+                      value={registerPassword}
+                      onChange={(e) => setRegisterPassword(e.target.value)}
+                    />
+                  </FormGroup>
+                  <FormGroup>
+                    <Label>Confirm Password *</Label>
+                    <Input
+                      type="password"
+                      placeholder="Confirm password"
+                      value={registerConfirmPassword}
+                      onChange={(e) => setRegisterConfirmPassword(e.target.value)}
+                    />
+                  </FormGroup>
+                </>
+              )}
+
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (!guestName.trim() || !guestPhone.trim()) {
                     alert('Please enter name and phone number');
                     return;
                   }
-                  setGuestInfo({
-                    name: guestName,
-                    phone: guestPhone
-                  });
-                  setShowGuestForm(false);
+
+                  // If registering as member
+                  if (showRegisterForm) {
+                    if (!guestEmail.trim()) {
+                      alert('Email is required for member registration');
+                      return;
+                    }
+                    if (!registerPassword.trim()) {
+                      alert('Password is required for member registration');
+                      return;
+                    }
+                    if (registerPassword !== registerConfirmPassword) {
+                      alert('Passwords do not match');
+                      return;
+                    }
+
+                    try {
+                      const customer = await registerCustomer({
+                        name: guestName,
+                        phone: guestPhone,
+                        email: guestEmail,
+                        password: registerPassword
+                      } as any);
+                      console.log('✅ Customer registered:', customer);
+                      alert('Registration successful! You are now logged in as a member.');
+                      setShowGuestForm(false);
+                      setShowRegisterForm(false);
+                      setGuestName('');
+                      setGuestPhone('');
+                      setGuestEmail('');
+                      setRegisterPassword('');
+                      setRegisterConfirmPassword('');
+                    } catch (error: any) {
+                      console.error('Registration failed:', error);
+                      alert(error.message || 'Registration failed. Please try again.');
+                    }
+                  } else {
+                    // Guest order only
+                    setGuestInfo({
+                      name: guestName,
+                      phone: guestPhone
+                    });
+                    setShowGuestForm(false);
+                  }
                 }}
                 style={{
                   width: '100%',
@@ -1466,7 +1570,7 @@ const PaymentPage: React.FC = () => {
                   cursor: 'pointer'
                 }}
               >
-                Save Guest Info
+                {showRegisterForm ? 'Register & Continue' : 'Save Guest Info'}
               </button>
             </div>
           )}
@@ -1474,19 +1578,52 @@ const PaymentPage: React.FC = () => {
           {/* Member Form - Inline */}
           {showMemberForm && !currentCustomer && (
             <div style={{ marginTop: '16px' }}>
-              <div style={{
-                padding: '16px',
-                background: '#F9FAFB',
-                borderRadius: '8px',
-                textAlign: 'center',
-                marginBottom: '12px'
-              }}>
-                <div style={{ fontSize: '14px', color: '#6B7280', marginBottom: '12px' }}>
-                  Member login feature coming soon!
-                </div>
-                <div style={{ fontSize: '13px', color: '#9CA3AF' }}>
-                  For now, please use Guest Order
-                </div>
+              <FormGroup>
+                <Label>Phone Number *</Label>
+                <Input
+                  type="tel"
+                  placeholder="+60 12-345 6789"
+                  value={guestPhone}
+                  onChange={(e) => setGuestPhone(e.target.value)}
+                />
+              </FormGroup>
+              <button
+                onClick={async () => {
+                  if (!guestPhone.trim()) {
+                    alert('Please enter your phone number');
+                    return;
+                  }
+                  try {
+                    const customer = await loginCustomer(guestPhone);
+                    if (customer) {
+                      console.log('✅ Member logged in:', customer);
+                      setShowMemberForm(false);
+                      setGuestPhone('');
+                    } else {
+                      alert('Member not found with this phone number. Please click "Guest Or Register" to sign up.');
+                    }
+                  } catch (error) {
+                    console.error('Login error:', error);
+                    alert('Login failed. Please try again.');
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: '#635BFF',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  marginBottom: '8px'
+                }}
+              >
+                Login as Member
+              </button>
+              <div style={{ fontSize: '12px', color: '#6B7280', textAlign: 'center' }}>
+                Not a member yet? Click "Guest Or Register" button above to sign up
               </div>
             </div>
           )}
