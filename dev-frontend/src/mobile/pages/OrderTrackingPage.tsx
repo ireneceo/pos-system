@@ -243,7 +243,7 @@ const OrderTrackingPage: React.FC = () => {
     try {
       // Try to fetch from API first for real-time data
       try {
-        const response = await fetch(`/api/orders/${orderId}`);
+        const response = await fetch(`/api/mobile/order/${orderId}`);
         if (response.ok) {
           const data = await response.json();
           const apiOrder = data.data || data;
