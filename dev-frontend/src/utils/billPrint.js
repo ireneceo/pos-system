@@ -190,23 +190,35 @@ export function generateBillContent(orderData, storeInfo) {
   content += CMD.DASHED_LINE + CMD.LINE_FEED;
   content += formatLine('Subtotal:', 'RM ' + orderData.subtotal.toFixed(2)) + CMD.LINE_FEED;
 
-  if (orderData.discount > 0) {
-    content += formatLine('Discount:', '- RM ' + orderData.discount.toFixed(2)) + CMD.LINE_FEED;
-  }
-
-  if (orderData.coupon && orderData.coupon.discount > 0) {
-    content += formatLine('Coupon (' + orderData.coupon.code + '):', '- RM ' + orderData.coupon.discount.toFixed(2)) + CMD.LINE_FEED;
-  }
-
+  // Takeaway Charge (before discounts)
   if (orderData.takeawayCharge && orderData.takeawayCharge > 0) {
     content += formatLine('Takeaway Charge:', 'RM ' + orderData.takeawayCharge.toFixed(2)) + CMD.LINE_FEED;
   }
 
+  // Fixed Amount Discount
+  if (orderData.discount && orderData.discount > 0) {
+    content += formatLine('Discount:', '- RM ' + orderData.discount.toFixed(2)) + CMD.LINE_FEED;
+  }
+
+  // Percentage Discount Policy
+  if (orderData.discountPolicy && orderData.discountPolicy.amount > 0) {
+    const policyLabel = 'Discount (' + orderData.discountPolicy.name + '):';
+    content += formatLine(policyLabel, '- RM ' + orderData.discountPolicy.amount.toFixed(2)) + CMD.LINE_FEED;
+  }
+
+  // Coupon Discount
+  if (orderData.coupon && orderData.coupon.discount > 0) {
+    const couponLabel = 'Coupon (' + orderData.coupon.code + '):';
+    content += formatLine(couponLabel, '- RM ' + orderData.coupon.discount.toFixed(2)) + CMD.LINE_FEED;
+  }
+
+  // Service Charge (after discounts)
   if (orderData.serviceCharge && orderData.serviceCharge > 0) {
     const scLabel = 'Service Charge (' + (orderData.serviceChargeRate || 10) + '%):';
     content += formatLine(scLabel, 'RM ' + orderData.serviceCharge.toFixed(2)) + CMD.LINE_FEED;
   }
 
+  // Tax (after discounts)
   if (orderData.tax && orderData.tax > 0) {
     const taxLabel = 'Tax (' + (orderData.taxRate || 6) + '%):';
     content += formatLine(taxLabel, 'RM ' + orderData.tax.toFixed(2)) + CMD.LINE_FEED;

@@ -236,6 +236,7 @@ interface OrderCompleteModalProps {
     }>;
     subtotal: number;
     discount: number;
+    discountPolicy?: { name: string; amount: number };
     coupon: { code: string; discount: number } | null;
     takeawayCharge?: number;
     serviceCharge?: number;
@@ -410,6 +411,12 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
               <DetailValue style={{ color: '#10B981' }}>{formatCurrency(-Number(orderData.discount), operationSettings.currency)}</DetailValue>
             </DetailRow>
           )}
+          {orderData.discountPolicy && orderData.discountPolicy.amount && Number(orderData.discountPolicy.amount) > 0 && (
+            <DetailRow>
+              <DetailLabel>Discount ({orderData.discountPolicy.name})</DetailLabel>
+              <DetailValue style={{ color: '#10B981' }}>{formatCurrency(-Number(orderData.discountPolicy.amount), operationSettings.currency)}</DetailValue>
+            </DetailRow>
+          )}
           {orderData.coupon && orderData.coupon.discount && Number(orderData.coupon.discount) > 0 && (
             <DetailRow>
               <DetailLabel>Coupon ({orderData.coupon.code})</DetailLabel>
@@ -517,6 +524,12 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
             <PrintRow>
               <span>Discount:</span>
               <span>{formatCurrency(-Number(orderData.discount), operationSettings.currency)}</span>
+            </PrintRow>
+          )}
+          {orderData.discountPolicy && orderData.discountPolicy.amount && Number(orderData.discountPolicy.amount) > 0 && (
+            <PrintRow>
+              <span>Discount ({orderData.discountPolicy.name}):</span>
+              <span>{formatCurrency(-Number(orderData.discountPolicy.amount), operationSettings.currency)}</span>
             </PrintRow>
           )}
           {orderData.coupon && orderData.coupon.discount && Number(orderData.coupon.discount) > 0 && (
