@@ -400,6 +400,13 @@ const QRPaymentPage: React.FC = () => {
       const backendOrderNumber = savedOrder.order_number;
       const backendPickupNumber = backendOrderNumber ? backendOrderNumber.split('-')[1] : '001';
 
+      // Save order ID to localStorage for customer order history
+      const customerOrderIds = JSON.parse(localStorage.getItem('customerOrderIds') || '[]');
+      if (!customerOrderIds.includes(savedOrder.id)) {
+        customerOrderIds.push(savedOrder.id);
+        localStorage.setItem('customerOrderIds', JSON.stringify(customerOrderIds));
+      }
+
       // Set current order and clear cart
       setCurrentOrder({
         id: savedOrder.id,

@@ -92,7 +92,7 @@ const OrderTypePage: React.FC = () => {
   const { setCurrentStore, setIsLoading } = useMobileOrder();
   const [tableFromQR, setTableFromQR] = useState<string | null>(null);
 
-  const handleOrderTypeSelection = async (orderType: 'dine-in' | 'takeaway') => {
+  const handleOrderTypeSelection = async (orderType: 'dine-in' | 'takeaway' | 'delivery') => {
     console.log('Order type selected:', orderType);
     setIsLoading(true);
 
@@ -163,9 +163,15 @@ const OrderTypePage: React.FC = () => {
       sessionStorage.setItem('orderType', orderType);
       sessionStorage.setItem('restaurantId', store.id);
 
-      // Navigate to menu - slug is maintained in URL
-      console.log('Navigating to menu with slug:', restaurantSlug);
-      navigate(`/mobile/${restaurantSlug}/menu`);
+      // Navigate based on order type
+      console.log('Navigating with order type:', orderType);
+      if (orderType === 'delivery') {
+        // For delivery, go to delivery address page first
+        navigate(`/mobile/${restaurantSlug}/delivery-address`);
+      } else {
+        // For dine-in/takeaway, go directly to menu
+        navigate(`/mobile/${restaurantSlug}/menu`);
+      }
     } catch (error) {
       console.error('Error initializing order:', error);
       alert('Error initializing order. Please try again.');
@@ -221,6 +227,11 @@ const OrderTypePage: React.FC = () => {
         <OptionCard onClick={() => handleOrderTypeSelection('takeaway')}>
           <OptionIcon>🥡</OptionIcon>
           <OptionTitle>Takeaway</OptionTitle>
+        </OptionCard>
+
+        <OptionCard onClick={() => handleOrderTypeSelection('delivery')}>
+          <OptionIcon>🚚</OptionIcon>
+          <OptionTitle>Delivery</OptionTitle>
         </OptionCard>
       </OptionsContainer>
 

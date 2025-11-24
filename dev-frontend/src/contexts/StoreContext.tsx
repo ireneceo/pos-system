@@ -40,6 +40,17 @@ interface OperationSettings {
       other: number;
     };
   };
+  deliveryPricing: {
+    enabled: boolean;
+    minimumOrder: number;
+    freeAbove: number;
+    zones: Array<{
+      id: string;
+      name: string;
+      fee: number;
+      description: string;
+    }>;
+  };
 }
 
 interface StoreContextType {
@@ -89,6 +100,12 @@ const defaultOperationSettings: OperationSettings = {
       dessert: 0.50,
       other: 0.50
     }
+  },
+  deliveryPricing: {
+    enabled: false,
+    minimumOrder: 0,
+    freeAbove: 999999,
+    zones: []
   }
 };
 

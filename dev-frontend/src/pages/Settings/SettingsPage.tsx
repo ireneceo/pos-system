@@ -448,6 +448,17 @@ interface OperationSettings {
       other: number;
     };
   };
+  deliveryPricing: {
+    enabled: boolean;
+    minimumOrder: number;
+    freeAbove: number;
+    zones: Array<{
+      id: string;
+      name: string;
+      fee: number;
+      description: string;
+    }>;
+  };
   loyaltyTiers: {
     enabled: boolean;
     bronze: {
@@ -543,6 +554,12 @@ const SettingsPage: React.FC = () => {
             dessert: 0.50,
             other: 0.50
           }
+        },
+        deliveryPricing: {
+          enabled: false,
+          minimumOrder: 0,
+          freeAbove: 999999,
+          zones: []
         },
         loyaltyTiers: {
           enabled: true,
@@ -716,6 +733,11 @@ const SettingsPage: React.FC = () => {
                   ...defaultOps.takeawayPricing.categoryCharges,
                   ...((restaurant.operation_settings.takeawayPricing && restaurant.operation_settings.takeawayPricing.categoryCharges) || {})
                 }
+              },
+              deliveryPricing: {
+                ...defaultOps.deliveryPricing,
+                ...(restaurant.operation_settings.deliveryPricing || {}),
+                zones: restaurant.operation_settings.deliveryPricing?.zones || []
               },
               loyaltyTiers: {
                 ...defaultOps.loyaltyTiers,

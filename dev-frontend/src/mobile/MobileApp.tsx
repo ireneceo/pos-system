@@ -4,6 +4,7 @@ import { MobileOrderProvider } from './contexts/MobileOrderContext';
 import { CustomerProvider } from '../contexts/CustomerContext';
 import { StaffProvider } from '../contexts/StaffContext';
 import OrderTypePage from './pages/OrderTypePage';
+import DeliveryAddressPage from './pages/DeliveryAddressPage';
 import MenuPage from './pages/MenuPage';
 import ItemDetailPage from './pages/ItemDetailPage';
 import CartPage from './pages/CartPage';
@@ -20,6 +21,8 @@ const MobileApp: React.FC = () => {
         <MobileOrderProvider>
       <Routes>
         <Route path="/:slug" element={<OrderTypePage />} />
+        <Route path="/:slug/order-type" element={<OrderTypePage />} />
+        <Route path="/:slug/delivery-address" element={<DeliveryAddressPage />} />
         <Route path="/:slug/menu" element={<MenuPage />} />
         <Route path="/:slug/item/:itemId" element={<ItemDetailPage />} />
         <Route path="/:slug/cart" element={<CartPage />} />
