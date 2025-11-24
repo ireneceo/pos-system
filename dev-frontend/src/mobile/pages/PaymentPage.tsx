@@ -484,11 +484,11 @@ const PaymentPage: React.FC = () => {
   const {
     currentCustomer,
     guestInfo,
-    setShowCustomerModal,
-    setCustomerModalMode,
     updateCustomerOrderStats,
+    updateCustomer,
     setGuestInfo,
-    logoutCustomer
+    logoutCustomer,
+    loginCustomer
   } = useCustomer();
   const { getTakeawayCharge, operationSettings } = useStore();
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
@@ -516,6 +516,13 @@ const PaymentPage: React.FC = () => {
   const [deliveryNotes, setDeliveryNotes] = useState('');
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const [deliveryZones, setDeliveryZones] = useState<Array<{id: string; name: string; fee: number; description: string}>>([]);
+
+  // Guest info inline form state
+  const [guestName, setGuestName] = useState('');
+  const [guestPhone, setGuestPhone] = useState('');
+  const [guestEmail, setGuestEmail] = useState('');
+  const [showGuestForm, setShowGuestForm] = useState(false);
+  const [showMemberForm, setShowMemberForm] = useState(false);
 
   // Calculate takeaway charge (using existing function from StoreContext)
   const orderType = sessionStorage.getItem('orderType') as 'dine-in' | 'takeaway' | 'delivery' || 'dine-in';
@@ -766,22 +773,30 @@ const PaymentPage: React.FC = () => {
     }
   }, [orderType, operationSettings.deliveryPricing, selectedZone]);
 
-  // Load member's saved address for delivery
+  // Load member's saved address for delivery and sync phone from customer/guest
   React.useEffect(() => {
-    if (currentCustomer && orderType === 'delivery') {
-      console.log('📍 Loading member address:', currentCustomer);
+    if (orderType === 'delivery') {
+      // For logged-in members
+      if (currentCustomer) {
+        console.log('📍 Loading member address:', currentCustomer);
 
-      // Get default address or first address from addresses array
-      const defaultAddress = currentCustomer.addresses?.find(addr => addr.isDefault) || currentCustomer.addresses?.[0];
+        // Get default address or first address from addresses array
+        const defaultAddress = currentCustomer.addresses?.find(addr => addr.isDefault) || currentCustomer.addresses?.[0];
 
-      if (defaultAddress) {
-        setDeliveryAddress(defaultAddress.address || '');
+        if (defaultAddress) {
+          setDeliveryAddress(defaultAddress.address || '');
+        }
+
+        setDeliveryPhone(currentCustomer.phone || '');
+        // Note: delivery_notes would be stored at order level, not customer level
       }
-
-      setDeliveryPhone(currentCustomer.phone || '');
-      // Note: delivery_notes would be stored at order level, not customer level
+      // For guest orders
+      else if (guestInfo && guestInfo.phone) {
+        console.log('📍 Syncing guest phone for delivery:', guestInfo.phone);
+        setDeliveryPhone(guestInfo.phone);
+      }
     }
-  }, [currentCustomer, orderType]);
+  }, [currentCustomer, guestInfo, orderType]);
 
   // Handle Quick Order + Delivery conflict
   React.useEffect(() => {
@@ -791,7 +806,44 @@ const PaymentPage: React.FC = () => {
       setGuestInfo(null);
     }
   }, [orderType, guestInfo, setGuestInfo]);
-  
+
+  // Helper function to save delivery address to member profile
+  const saveDeliveryAddressToMember = async () => {
+    if (!currentCustomer || orderType !== 'delivery' || !deliveryAddress.trim()) {
+      return;
+    }
+
+    try {
+      console.log('💾 Saving delivery address to member profile...');
+
+      // Check if address already exists
+      const existingAddresses = currentCustomer.addresses || [];
+      const addressExists = existingAddresses.some(addr => addr.address === deliveryAddress);
+
+      if (!addressExists) {
+        // Create new address entry
+        const newAddress = {
+          id: `addr_${Date.now()}`,
+          label: 'Delivery Address',
+          address: deliveryAddress,
+          isDefault: existingAddresses.length === 0 // Set as default if it's the first address
+        };
+
+        // Update customer with new address
+        await updateCustomer(currentCustomer.id, {
+          addresses: [...existingAddresses, newAddress]
+        });
+
+        console.log('✅ Delivery address saved to member profile');
+      } else {
+        console.log('ℹ️ Address already exists in member profile');
+      }
+    } catch (error) {
+      console.error('❌ Failed to save delivery address:', error);
+      // Don't block order completion if address save fails
+    }
+  };
+
   const handlePayment = async () => {
     console.log('🔵🔵🔵 PAY BUTTON CLICKED! 🔵🔵🔵');
     console.log('Payment method selected:', paymentMethod);
@@ -842,13 +894,20 @@ const PaymentPage: React.FC = () => {
 
           // Validate delivery info for delivery orders
           if (orderType === 'delivery') {
+            // Check if customer/guest info is provided
+            if (!currentCustomer && (!guestInfo || !guestInfo.phone)) {
+              setError('Please enter your contact information (Guest Order or Member)');
+              setIsProcessing(false);
+              return;
+            }
+
             if (!deliveryAddress.trim()) {
               setError('Please enter your delivery address');
               setIsProcessing(false);
               return;
             }
             if (!deliveryPhone.trim()) {
-              setError('Please enter your phone number for delivery');
+              setError('Please enter your phone number in Customer Information');
               setIsProcessing(false);
               return;
             }
@@ -922,6 +981,9 @@ const PaymentPage: React.FC = () => {
               updateCustomerOrderStats(currentCustomer.id, total);
             }
 
+            // Save delivery address to member profile if delivery order
+            await saveDeliveryAddressToMember();
+
             // Save order ID to localStorage for customer order history
             const customerOrderIds = JSON.parse(localStorage.getItem('customerOrderIds') || '[]');
             if (!customerOrderIds.includes(savedOrder.id)) {
@@ -956,13 +1018,20 @@ const PaymentPage: React.FC = () => {
 
           // Validate delivery info for delivery orders
           if (orderType === 'delivery') {
+            // Check if customer/guest info is provided
+            if (!currentCustomer && (!guestInfo || !guestInfo.phone)) {
+              setError('Please enter your contact information (Guest Order or Member)');
+              setIsProcessing(false);
+              return;
+            }
+
             if (!deliveryAddress.trim()) {
               setError('Please enter your delivery address');
               setIsProcessing(false);
               return;
             }
             if (!deliveryPhone.trim()) {
-              setError('Please enter your phone number for delivery');
+              setError('Please enter your phone number in Customer Information');
               setIsProcessing(false);
               return;
             }
@@ -1024,13 +1093,20 @@ const PaymentPage: React.FC = () => {
 
           // Validate delivery info for delivery orders
           if (orderType === 'delivery') {
+            // Check if customer/guest info is provided
+            if (!currentCustomer && (!guestInfo || !guestInfo.phone)) {
+              setError('Please enter your contact information (Guest Order or Member)');
+              setIsProcessing(false);
+              return;
+            }
+
             if (!deliveryAddress.trim()) {
               setError('Please enter your delivery address');
               setIsProcessing(false);
               return;
             }
             if (!deliveryPhone.trim()) {
-              setError('Please enter your phone number for delivery');
+              setError('Please enter your phone number in Customer Information');
               setIsProcessing(false);
               return;
             }
@@ -1107,6 +1183,9 @@ const PaymentPage: React.FC = () => {
             if (currentCustomer) {
               updateCustomerOrderStats(currentCustomer.id, total);
             }
+
+            // Save delivery address to member profile if delivery order
+            await saveDeliveryAddressToMember();
 
             // Save order ID to localStorage for customer order history
             const customerOrderIds = JSON.parse(localStorage.getItem('customerOrderIds') || '[]');
@@ -1309,11 +1388,11 @@ const PaymentPage: React.FC = () => {
 
           <CustomerChoiceContainer>
             <CustomerChoiceButton
-              selected={!!(guestInfo && guestInfo.name !== 'Guest')}
+              selected={showGuestForm || (guestInfo && guestInfo.name !== 'Guest')}
               onClick={() => {
-                // Guest Order - 팝업 열어서 정보 입력받기
-                setCustomerModalMode('guest');
-                setShowCustomerModal(true);
+                setShowGuestForm(!showGuestForm);
+                setShowMemberForm(false);
+                if (currentCustomer) logoutCustomer();
               }}
             >
               <ChoiceTitle>Guest Order</ChoiceTitle>
@@ -1321,10 +1400,11 @@ const PaymentPage: React.FC = () => {
             </CustomerChoiceButton>
 
             <CustomerChoiceButton
-              selected={!!currentCustomer}
+              selected={showMemberForm || !!currentCustomer}
               onClick={() => {
-                setCustomerModalMode('member');
-                setShowCustomerModal(true);
+                setShowMemberForm(!showMemberForm);
+                setShowGuestForm(false);
+                setGuestInfo(null);
               }}
             >
               <ChoiceTitle>Member</ChoiceTitle>
@@ -1332,17 +1412,100 @@ const PaymentPage: React.FC = () => {
             </CustomerChoiceButton>
           </CustomerChoiceContainer>
 
-          {/* Show selected customer details below buttons */}
+          {/* Guest Form - Inline */}
+          {showGuestForm && !currentCustomer && (
+            <div style={{ marginTop: '16px' }}>
+              <FormGroup>
+                <Label>Name *</Label>
+                <Input
+                  type="text"
+                  placeholder="Enter your name"
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
+                />
+              </FormGroup>
+              <FormGroup>
+                <Label>Phone Number *</Label>
+                <Input
+                  type="tel"
+                  placeholder="+60 12-345 6789"
+                  value={guestPhone}
+                  onChange={(e) => setGuestPhone(e.target.value)}
+                />
+              </FormGroup>
+              <FormGroup>
+                <Label>Email (Optional)</Label>
+                <Input
+                  type="email"
+                  placeholder="your.email@example.com"
+                  value={guestEmail}
+                  onChange={(e) => setGuestEmail(e.target.value)}
+                />
+              </FormGroup>
+              <button
+                onClick={() => {
+                  if (!guestName.trim() || !guestPhone.trim()) {
+                    alert('Please enter name and phone number');
+                    return;
+                  }
+                  setGuestInfo({
+                    name: guestName,
+                    phone: guestPhone
+                  });
+                  setShowGuestForm(false);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: '#635BFF',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Save Guest Info
+              </button>
+            </div>
+          )}
+
+          {/* Member Form - Inline */}
+          {showMemberForm && !currentCustomer && (
+            <div style={{ marginTop: '16px' }}>
+              <div style={{
+                padding: '16px',
+                background: '#F9FAFB',
+                borderRadius: '8px',
+                textAlign: 'center',
+                marginBottom: '12px'
+              }}>
+                <div style={{ fontSize: '14px', color: '#6B7280', marginBottom: '12px' }}>
+                  Member login feature coming soon!
+                </div>
+                <div style={{ fontSize: '13px', color: '#9CA3AF' }}>
+                  For now, please use Guest Order
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Show selected customer details */}
           {currentCustomer && (
             <CustomerInfoBox>
               <CustomerInfoContent>
                 <CustomerInfoName>{currentCustomer.name}</CustomerInfoName>
                 <CustomerInfoDetails>
                   {currentCustomer.phone}
+                  {currentCustomer.email && ` • ${currentCustomer.email}`}
                 </CustomerInfoDetails>
               </CustomerInfoContent>
               <ClearButton
-                onClick={() => logoutCustomer()}
+                onClick={() => {
+                  logoutCustomer();
+                  setShowMemberForm(false);
+                }}
                 title="Clear customer info"
               >
                 ×
@@ -1350,8 +1513,8 @@ const PaymentPage: React.FC = () => {
             </CustomerInfoBox>
           )}
 
-          {/* Show guest info if entered */}
-          {guestInfo && guestInfo.name !== 'Guest' && (
+          {/* Show guest info if saved */}
+          {guestInfo && guestInfo.name !== 'Guest' && !currentCustomer && (
             <CustomerInfoBox>
               <CustomerInfoContent>
                 <CustomerInfoName>{guestInfo.name}</CustomerInfoName>
@@ -1360,7 +1523,13 @@ const PaymentPage: React.FC = () => {
                 </CustomerInfoDetails>
               </CustomerInfoContent>
               <ClearButton
-                onClick={() => setGuestInfo(null)}
+                onClick={() => {
+                  setGuestInfo(null);
+                  setGuestName('');
+                  setGuestPhone('');
+                  setGuestEmail('');
+                  setShowGuestForm(false);
+                }}
                 title="Clear guest info"
               >
                 ×
@@ -1394,16 +1563,6 @@ const PaymentPage: React.FC = () => {
                 placeholder="Enter your full delivery address..."
                 value={deliveryAddress}
                 onChange={(e) => setDeliveryAddress(e.target.value)}
-              />
-            </FormGroup>
-
-            <FormGroup>
-              <Label>Phone Number *</Label>
-              <Input
-                type="tel"
-                placeholder="+60 12-345 6789"
-                value={deliveryPhone}
-                onChange={(e) => setDeliveryPhone(e.target.value)}
               />
             </FormGroup>
 

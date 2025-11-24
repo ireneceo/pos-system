@@ -320,12 +320,18 @@ router.get('/admin/stats', async (req, res) => {
 router.get('/restaurant/:restaurantId/stats', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
-    
-    // Get restaurant info
-    const restaurant = await Restaurant.findByPk(restaurantId);
+
+    // Get restaurant info - force reload from database to avoid any caching
+    const restaurant = await Restaurant.findByPk(restaurantId, {
+      raw: false,
+      nest: false
+    });
     if (!restaurant) {
       return res.status(404).json({ success: false, error: 'Restaurant not found' });
     }
+
+    // Reload the restaurant to ensure we have the latest data
+    await restaurant.reload();
     
     // Get restaurant orders
     const orders = await Order.findAll({
@@ -423,6 +429,11 @@ router.get('/restaurant/:restaurantId/stats', authenticateToken, checkRestaurant
         payment_method: order.payment_method || 'Cash'
       };
     });
+
+    // Set cache control headers to prevent stale data
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
 
     res.json({
       success: true,

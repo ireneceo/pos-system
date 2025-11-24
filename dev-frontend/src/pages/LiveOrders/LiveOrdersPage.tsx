@@ -1702,20 +1702,38 @@ const LiveOrdersPage: React.FC = () => {
         orderNumber: orderToPrint.order_number,
         pickupNumber: orderToPrint.order_number.split('-')[1],
         date: new Date(orderToPrint.order_date || orderToPrint.createdAt),
-        items: orderItems.map((item: any) => ({
-          menuItem: {
-            name: item.menu_item_name || item.name || (item.menuItem && item.menuItem.name) || 'Unknown Item',
-            price: parseFloat(item.price || (item.menuItem && item.menuItem.price) || '0')
-          },
-          quantity: item.quantity || 1,
-          options: item.options || []
-        })),
+        items: orderItems.map((item: any) => {
+          // Parse options if it's a JSON string
+          let itemOptions = item.options || [];
+          if (typeof itemOptions === 'string') {
+            try {
+              itemOptions = JSON.parse(itemOptions);
+            } catch (e) {
+              console.warn('Failed to parse options:', itemOptions);
+              itemOptions = [];
+            }
+          }
+          // Ensure it's an array
+          if (!Array.isArray(itemOptions)) {
+            itemOptions = [];
+          }
+
+          return {
+            menuItem: {
+              name: item.menu_item_name || item.name || (item.menuItem && item.menuItem.name) || 'Unknown Item',
+              price: parseFloat(item.price || (item.menuItem && item.menuItem.price) || '0')
+            },
+            quantity: item.quantity || 1,
+            options: itemOptions
+          };
+        }),
         subtotal: parseFloat((orderToPrint as any).subtotal || '0'),
         discount: parseFloat((orderToPrint as any).discount || '0'),
         coupon: (orderToPrint as any).coupon_code ? {
           code: (orderToPrint as any).coupon_code,
           discount: parseFloat((orderToPrint as any).coupon_discount || '0')
         } : null,
+        takeawayCharge: parseFloat((orderToPrint as any).takeaway_charge || '0'),
         serviceCharge: parseFloat((orderToPrint as any).service_charge || '0'),
         serviceChargeRate: parseFloat((orderToPrint as any).service_charge_rate || '10'),
         tax: parseFloat((orderToPrint as any).tax || '0'),
@@ -1755,16 +1773,33 @@ const LiveOrdersPage: React.FC = () => {
         tableNumber: orderToPrint.table_number || null,
         pagerNumber: orderToPrint.pager_number || null,
         customerName: orderToPrint.customer_name || 'Walk-in Customer',
-        items: orderItems.map((item: any) => ({
-          menuItem: {
-            name: item.menu_item_name || item.name || (item.menuItem && item.menuItem.name) || 'Unknown Item',
-            price: parseFloat(item.price || (item.menuItem && item.menuItem.price) || '0'),
-            is_set_menu: item.is_set_menu || false,
-            set_items: item.set_items || []
-          },
-          quantity: item.quantity || 1,
-          options: item.options || []
-        })),
+        items: orderItems.map((item: any) => {
+          // Parse options if it's a JSON string
+          let itemOptions = item.options || [];
+          if (typeof itemOptions === 'string') {
+            try {
+              itemOptions = JSON.parse(itemOptions);
+            } catch (e) {
+              console.warn('Failed to parse options:', itemOptions);
+              itemOptions = [];
+            }
+          }
+          // Ensure it's an array
+          if (!Array.isArray(itemOptions)) {
+            itemOptions = [];
+          }
+
+          return {
+            menuItem: {
+              name: item.menu_item_name || item.name || (item.menuItem && item.menuItem.name) || 'Unknown Item',
+              price: parseFloat(item.price || (item.menuItem && item.menuItem.price) || '0'),
+              is_set_menu: item.is_set_menu || false,
+              set_items: item.set_items || []
+            },
+            quantity: item.quantity || 1,
+            options: itemOptions
+          };
+        }),
         notes: (orderToPrint as any).notes || '',
         takeawayCharge: parseFloat((orderToPrint as any).takeaway_charge || '0')
       };
