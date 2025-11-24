@@ -202,9 +202,12 @@ router.get('/menu/:slug', async (req, res) => {
       order: [['name', 'ASC']]
     });
 
-    // Get products for this restaurant
+    // Get products for this restaurant (exclude sold out items)
     const products = await Product.findAll({
-      where: { restaurant_id: restaurantId }
+      where: {
+        restaurant_id: restaurantId,
+        soldOut: false  // Only show available items
+      }
     });
 
     // Get option groups for this restaurant
@@ -299,7 +302,7 @@ router.get('/menu/:slug', async (req, res) => {
         description: product.description || '',
         emoji: product.emoji || getProductEmoji(categoryName),  // Use DB emoji first, fallback to generated
         image: product.image || undefined,  // Only use actual image from DB, no fallback
-        isAvailable: product.isActive !== false,
+        isAvailable: !product.soldOut,  // Available if not sold out
         preparationTime: product.preparation_time || 15,
         calories: product.calories || 0,
         isPopular: product.isPopular || false,
@@ -576,21 +579,30 @@ router.get('/orders', async (req, res) => {
     });
     
     const formattedOrders = orders.map(order => {
-      const orderItems = typeof order.order_items === 'string' ?
-        JSON.parse(order.order_items) : order.order_items || {};
+      // Parse order_items - it's stored as an array of items
+      let items = [];
+      if (order.order_items) {
+        items = typeof order.order_items === 'string' ?
+          JSON.parse(order.order_items) : order.order_items;
+
+        // If it's not an array, try to extract items property
+        if (!Array.isArray(items)) {
+          items = items.items || [];
+        }
+      }
 
       return {
         id: 'ORD' + order.id,
-        orderNumber: orderItems.orderNumber || 'ORD' + order.id,
-        pickupNumber: orderItems.pickupNumber || '000',
+        orderNumber: order.order_number || 'ORD' + order.id,
+        pickupNumber: order.order_number ? order.order_number.split('-')[1] : '000',
         status: order.status,
-        items: orderItems.items || [],
+        items: items,
         total: parseFloat(order.total_amount),
         createdAt: order.createdAt,
-        estimatedPickupTime: orderItems.estimatedPickupTime || new Date(order.createdAt.getTime() + 20 * 60000),
-        paymentStatus: orderItems.paymentStatus || 'pending',
-        orderType: orderItems.orderType || 'dine-in',
-        orderSource: orderItems.orderSource || 'mobile',
+        estimatedPickupTime: new Date(order.createdAt.getTime() + 20 * 60000),
+        paymentStatus: order.payment_status || 'pending',
+        orderType: order.order_type || 'dine-in',
+        orderSource: 'mobile',
         tableNumber: order.table_number > 0 ? `T${String(order.table_number).padStart(3, '0')}` : undefined
       };
     });
@@ -605,33 +617,42 @@ router.get('/orders', async (req, res) => {
 router.get('/order/:orderId', async (req, res) => {
   try {
     const { orderId } = req.params;
-    
+
     // Extract numeric ID from orderId (format: ORD123)
     const numericId = orderId.startsWith('ORD') ? orderId.substring(3) : orderId;
-    
+
     const order = await Order.findByPk(numericId);
-    
+
     if (!order) {
       return res.status(404).json({ success: false, error: 'Order not found' });
     }
-    
-    const orderItems = typeof order.order_items === 'string' ? 
-      JSON.parse(order.order_items) : order.order_items || {};
-    
+
+    // Parse order_items - it's stored as an array of items
+    let items = [];
+    if (order.order_items) {
+      items = typeof order.order_items === 'string' ?
+        JSON.parse(order.order_items) : order.order_items;
+
+      // If it's not an array, try to extract items property
+      if (!Array.isArray(items)) {
+        items = items.items || [];
+      }
+    }
+
     const orderData = {
       id: 'ORD' + order.id,
-      orderNumber: orderItems.orderNumber || 'ORD' + order.id,
-      pickupNumber: orderItems.pickupNumber || '000',
+      orderNumber: order.order_number || 'ORD' + order.id,
+      pickupNumber: order.order_number ? order.order_number.split('-')[1] : '000',
       status: order.status,
-      items: orderItems.items || [],
+      items: items,
       total: parseFloat(order.total_amount),
       createdAt: order.createdAt,
-      estimatedPickupTime: orderItems.estimatedPickupTime || new Date(order.createdAt.getTime() + 20 * 60000),
-      paymentStatus: orderItems.paymentStatus || 'pending',
-      orderType: orderItems.orderType || 'dine-in',
-      orderSource: orderItems.orderSource || 'mobile'
+      estimatedPickupTime: new Date(order.createdAt.getTime() + 20 * 60000),
+      paymentStatus: order.payment_status || 'pending',
+      orderType: order.order_type || 'dine-in',
+      orderSource: 'mobile'
     };
-    
+
     res.json({ success: true, data: orderData });
   } catch (error) {
     console.error('Order fetch error:', error);

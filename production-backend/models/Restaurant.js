@@ -19,11 +19,6 @@ Restaurant.init({
     unique: true,
     comment: 'URL-friendly restaurant identifier'
   },
-  brand_id: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    comment: 'Brand that this restaurant belongs to'
-  },
   manager_id: {
     type: DataTypes.INTEGER,
     allowNull: true
@@ -303,6 +298,25 @@ Restaurant.init({
             dessert: 0.50,
             other: 0.50
           }
+        },
+        loyaltyTiers: {
+          enabled: true,
+          bronze: {
+            minOrders: 0,
+            minSpent: 0
+          },
+          silver: {
+            minOrders: 5,
+            minSpent: 500
+          },
+          gold: {
+            minOrders: 15,
+            minSpent: 1500
+          },
+          vip: {
+            minOrders: 30,
+            minSpent: 3000
+          }
         }
       };
 
@@ -325,6 +339,26 @@ Restaurant.init({
             categoryCharges: {
               ...defaultSettings.takeawayPricing.categoryCharges,
               ...((parsed.takeawayPricing && parsed.takeawayPricing.categoryCharges) || {})
+            }
+          },
+          loyaltyTiers: {
+            ...defaultSettings.loyaltyTiers,
+            ...(parsed.loyaltyTiers || {}),
+            bronze: {
+              ...defaultSettings.loyaltyTiers.bronze,
+              ...((parsed.loyaltyTiers && parsed.loyaltyTiers.bronze) || {})
+            },
+            silver: {
+              ...defaultSettings.loyaltyTiers.silver,
+              ...((parsed.loyaltyTiers && parsed.loyaltyTiers.silver) || {})
+            },
+            gold: {
+              ...defaultSettings.loyaltyTiers.gold,
+              ...((parsed.loyaltyTiers && parsed.loyaltyTiers.gold) || {})
+            },
+            vip: {
+              ...defaultSettings.loyaltyTiers.vip,
+              ...((parsed.loyaltyTiers && parsed.loyaltyTiers.vip) || {})
             }
           }
         };
@@ -356,7 +390,48 @@ Restaurant.init({
   sequelize: database.sequelize,
   modelName: 'Restaurant',
   tableName: 'restaurants',
-  timestamps: true
+  timestamps: true,
+  hooks: {
+    beforeCreate: async (restaurant) => {
+      // Auto-generate slug if not provided
+      if (!restaurant.slug && restaurant.name) {
+        restaurant.slug = generateSlug(restaurant.name);
+
+        // Ensure unique slug
+        let counter = 1;
+        let baseSlug = restaurant.slug;
+        while (await Restaurant.findOne({ where: { slug: restaurant.slug } })) {
+          restaurant.slug = `${baseSlug}-${counter}`;
+          counter++;
+        }
+      }
+    },
+    beforeUpdate: async (restaurant) => {
+      // Auto-generate slug if name changed and slug is null
+      if (restaurant.changed('name') && !restaurant.slug && restaurant.name) {
+        restaurant.slug = generateSlug(restaurant.name);
+
+        // Ensure unique slug
+        let counter = 1;
+        let baseSlug = restaurant.slug;
+        while (await Restaurant.findOne({ where: { slug: restaurant.slug, id: { [database.Sequelize.Op.ne]: restaurant.id } } })) {
+          restaurant.slug = `${baseSlug}-${counter}`;
+          counter++;
+        }
+      }
+    }
+  }
 });
+
+// Helper function to generate URL-friendly slug
+function generateSlug(name) {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+    .replace(/\s+/g, '-')          // Replace spaces with hyphens
+    .replace(/-+/g, '-')           // Replace multiple hyphens with single hyphen
+    .substring(0, 100);            // Limit length
+}
 
 module.exports = Restaurant;
