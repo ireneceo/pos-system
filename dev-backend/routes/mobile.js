@@ -202,9 +202,12 @@ router.get('/menu/:slug', async (req, res) => {
       order: [['name', 'ASC']]
     });
 
-    // Get products for this restaurant
+    // Get products for this restaurant (exclude sold out items)
     const products = await Product.findAll({
-      where: { restaurant_id: restaurantId }
+      where: {
+        restaurant_id: restaurantId,
+        soldOut: false  // Only show available items
+      }
     });
 
     // Get option groups for this restaurant
@@ -299,7 +302,7 @@ router.get('/menu/:slug', async (req, res) => {
         description: product.description || '',
         emoji: product.emoji || getProductEmoji(categoryName),  // Use DB emoji first, fallback to generated
         image: product.image || undefined,  // Only use actual image from DB, no fallback
-        isAvailable: product.isActive !== false,
+        isAvailable: !product.soldOut,  // Available if not sold out
         preparationTime: product.preparation_time || 15,
         calories: product.calories || 0,
         isPopular: product.isPopular || false,
