@@ -165,13 +165,8 @@ const OrderTypePage: React.FC = () => {
 
       // Navigate based on order type
       console.log('Navigating with order type:', orderType);
-      if (orderType === 'delivery') {
-        // For delivery, go to delivery address page first
-        navigate(`/mobile/${restaurantSlug}/delivery-address`);
-      } else {
-        // For dine-in/takeaway, go directly to menu
-        navigate(`/mobile/${restaurantSlug}/menu`);
-      }
+      // All order types go to menu first
+      navigate(`/mobile/${restaurantSlug}/menu`);
     } catch (error) {
       console.error('Error initializing order:', error);
       alert('Error initializing order. Please try again.');

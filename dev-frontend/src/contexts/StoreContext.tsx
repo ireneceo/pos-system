@@ -136,8 +136,30 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
         console.log('🔑 StoreContext: Auth token exists:', !!token);
 
         // Try to get restaurant_id from URL first
-        const urlMatch = window.location.pathname.match(/\/restaurant\/(\d+)/);
-        let restaurantId = urlMatch ? parseInt(urlMatch[1]) : null;
+        // Support both /restaurant/:id and /mobile/:slug patterns
+        const restaurantMatch = window.location.pathname.match(/\/restaurant\/(\d+)/);
+        let restaurantId = restaurantMatch ? parseInt(restaurantMatch[1]) : null;
+
+        // If not found and it's a mobile URL, try to get from slug
+        if (!restaurantId && window.location.pathname.includes('/mobile/')) {
+          const slugMatch = window.location.pathname.match(/\/mobile\/([^\/]+)/);
+          if (slugMatch) {
+            const slug = slugMatch[1];
+            console.log('📱 StoreContext: Found mobile slug:', slug);
+            // Try to get restaurant ID from slug via API
+            try {
+              const slugResponse = await fetch(`/api/restaurants/slug/${slug}`);
+              if (slugResponse.ok) {
+                const slugData = await slugResponse.json();
+                restaurantId = slugData.id || slugData.data?.id;
+                console.log('✅ StoreContext: Got restaurant ID from slug:', restaurantId);
+              }
+            } catch (err) {
+              console.error('❌ StoreContext: Failed to get restaurant from slug:', err);
+            }
+          }
+        }
+
         console.log('🌐 StoreContext: Restaurant ID from URL:', restaurantId);
 
         // If not in URL, get from user info

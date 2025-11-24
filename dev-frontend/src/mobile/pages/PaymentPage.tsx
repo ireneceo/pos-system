@@ -372,6 +372,103 @@ const ClearButton = styled.button`
   }
 `;
 
+const TextArea = styled.textarea`
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  font-size: 14px;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+  }
+
+  &::placeholder {
+    color: #9CA3AF;
+  }
+`;
+
+const FormGroup = styled.div`
+  margin-bottom: 12px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+`;
+
+const Label = styled.label`
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+`;
+
+const ZoneCard = styled.button<{ selected: boolean }>`
+  width: 100%;
+  background: ${props => props.selected ? '#EFF6FF' : 'white'};
+  border: 2px solid ${props => props.selected ? '#635BFF' : '#E5E7EB'};
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+
+  &:hover {
+    border-color: #635BFF;
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+`;
+
+const ZoneName = styled.div`
+  font-size: 14px;
+  font-weight: 600;
+  color: #1F2937;
+  margin-bottom: 4px;
+`;
+
+const ZoneDetails = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+`;
+
+const ZoneDescription = styled.div`
+  font-size: 12px;
+  color: #6B7280;
+`;
+
+const ZoneFee = styled.div`
+  font-size: 14px;
+  font-weight: 700;
+  color: #635BFF;
+`;
+
+const InfoBox = styled.div`
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: #92400E;
+`;
+
 // Mock coupon codes for demo
 const VALID_COUPONS: Record<string, { type: 'percentage' | 'fixed'; value: number; minOrder?: number }> = {
   'SAVE10': { type: 'percentage', value: 10, minOrder: 30 },
@@ -413,6 +510,13 @@ const PaymentPage: React.FC = () => {
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [couponError, setCouponError] = useState('');
 
+  // Delivery address state
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [deliveryPhone, setDeliveryPhone] = useState('');
+  const [deliveryNotes, setDeliveryNotes] = useState('');
+  const [selectedZone, setSelectedZone] = useState<string | null>(null);
+  const [deliveryZones, setDeliveryZones] = useState<Array<{id: string; name: string; fee: number; description: string}>>([]);
+
   // Calculate takeaway charge (using existing function from StoreContext)
   const orderType = sessionStorage.getItem('orderType') as 'dine-in' | 'takeaway' | 'delivery' || 'dine-in';
   const calculateTakeawayCharge = () => {
@@ -437,35 +541,24 @@ const PaymentPage: React.FC = () => {
 
   // Calculate delivery fee
   const calculateDeliveryFee = () => {
-    if (orderType !== 'delivery') {
+    if (orderType !== 'delivery' || !selectedZone) {
       return 0;
     }
 
-    // Get delivery info from sessionStorage
-    const deliveryInfoStr = sessionStorage.getItem('deliveryInfo');
-    if (!deliveryInfoStr) {
-      console.warn('⚠️ No delivery info found in sessionStorage');
+    // Get selected zone's fee
+    const zone = deliveryZones.find(z => z.id === selectedZone);
+    if (!zone) return 0;
+
+    // Check if order qualifies for free delivery
+    const deliveryPricing = operationSettings.deliveryPricing;
+    const freeAbove = deliveryPricing?.freeAbove || 999999;
+
+    if (subtotal >= freeAbove) {
+      console.log('✅ Order qualifies for free delivery (subtotal >= freeAbove)');
       return 0;
     }
 
-    try {
-      const deliveryInfo = JSON.parse(deliveryInfoStr);
-      const deliveryFee = deliveryInfo.deliveryFee || 0;
-
-      // Check if order qualifies for free delivery
-      const deliveryPricing = operationSettings.deliveryPricing || {};
-      const freeAbove = deliveryPricing.freeAbove || 999999;
-
-      if (subtotal >= freeAbove) {
-        console.log('✅ Order qualifies for free delivery (subtotal >= freeAbove)');
-        return 0;
-      }
-
-      return deliveryFee;
-    } catch (error) {
-      console.error('Error parsing delivery info:', error);
-      return 0;
-    }
+    return zone.fee;
   };
 
   // Rounding settings
@@ -482,9 +575,15 @@ const PaymentPage: React.FC = () => {
   const subtotal = cartTotal;
   const takeawayCharge = calculateTakeawayCharge();
   const deliveryFee = calculateDeliveryFee();
-  const tax = subtotal * 0.06;
+
+  // Apply tax from operation settings
+  const tax = operationSettings.taxEnabled ? subtotal * (operationSettings.taxRate / 100) : 0;
+
+  // Apply service charge from operation settings (if enabled)
+  const serviceCharge = operationSettings.serviceChargeEnabled ? subtotal * (operationSettings.serviceChargeRate / 100) : 0;
+
   const discountedSubtotal = subtotal - couponDiscount;
-  const totalBeforeRounding = discountedSubtotal + tax + takeawayCharge + deliveryFee;
+  const totalBeforeRounding = discountedSubtotal + tax + serviceCharge + takeawayCharge + deliveryFee;
 
   // Apply rounding based on settings
   const total = roundingApplyTo === 'all' && cashRounding
@@ -652,6 +751,46 @@ const PaymentPage: React.FC = () => {
       setSelectedTable(preSelectedTable);
     }
   }, [currentStore?.id]);
+
+  // Load delivery zones from operationSettings
+  React.useEffect(() => {
+    if (orderType === 'delivery' && operationSettings.deliveryPricing) {
+      const zones = operationSettings.deliveryPricing.zones || [];
+      console.log('🚚 Loading delivery zones:', zones);
+      setDeliveryZones(zones);
+
+      // Set default zone if available
+      if (zones.length > 0 && !selectedZone) {
+        setSelectedZone(zones[0].id);
+      }
+    }
+  }, [orderType, operationSettings.deliveryPricing, selectedZone]);
+
+  // Load member's saved address for delivery
+  React.useEffect(() => {
+    if (currentCustomer && orderType === 'delivery') {
+      console.log('📍 Loading member address:', currentCustomer);
+
+      // Get default address or first address from addresses array
+      const defaultAddress = currentCustomer.addresses?.find(addr => addr.isDefault) || currentCustomer.addresses?.[0];
+
+      if (defaultAddress) {
+        setDeliveryAddress(defaultAddress.address || '');
+      }
+
+      setDeliveryPhone(currentCustomer.phone || '');
+      // Note: delivery_notes would be stored at order level, not customer level
+    }
+  }, [currentCustomer, orderType]);
+
+  // Handle Quick Order + Delivery conflict
+  React.useEffect(() => {
+    // If Quick Order is enabled but order type is delivery, disable Quick Order
+    if (orderType === 'delivery' && guestInfo && guestInfo.name === 'Guest' && !guestInfo.phone) {
+      console.log('⚠️ Quick Order not allowed for delivery - clearing guest info');
+      setGuestInfo(null);
+    }
+  }, [orderType, guestInfo, setGuestInfo]);
   
   const handlePayment = async () => {
     console.log('🔵🔵🔵 PAY BUTTON CLICKED! 🔵🔵🔵');
@@ -691,9 +830,6 @@ const PaymentPage: React.FC = () => {
         return;
       }
 
-      // Get order type from session
-      const orderType = sessionStorage.getItem('orderType') as 'dine-in' | 'takeaway' || 'dine-in';
-
       console.log('🔵 Step 3: Preparing order...');
       console.log('Order type:', orderType);
       console.log('Payment method:', paymentMethod);
@@ -704,15 +840,32 @@ const PaymentPage: React.FC = () => {
         if (paymentMethod === 'payAtCounter' || paymentMethod === 'counter') {
           console.log('🔵 Processing counter payment...');
 
+          // Validate delivery info for delivery orders
+          if (orderType === 'delivery') {
+            if (!deliveryAddress.trim()) {
+              setError('Please enter your delivery address');
+              setIsProcessing(false);
+              return;
+            }
+            if (!deliveryPhone.trim()) {
+              setError('Please enter your phone number for delivery');
+              setIsProcessing(false);
+              return;
+            }
+            if (!selectedZone) {
+              setError('Please select a delivery zone');
+              setIsProcessing(false);
+              return;
+            }
+          }
+
           // Create order in DATABASE (without order_number - let backend generate it)
           try {
-            // Get delivery info if delivery order
-            let deliveryInfo = null;
-            if (orderType === 'delivery') {
-              const deliveryInfoStr = sessionStorage.getItem('deliveryInfo');
-              if (deliveryInfoStr) {
-                deliveryInfo = JSON.parse(deliveryInfoStr);
-              }
+            // Get delivery zone name for delivery orders
+            let deliveryZoneName = null;
+            if (orderType === 'delivery' && selectedZone) {
+              const zone = deliveryZones.find(z => z.id === selectedZone);
+              deliveryZoneName = zone?.name || null;
             }
 
             const dbOrderData = {
@@ -724,10 +877,10 @@ const PaymentPage: React.FC = () => {
               total_amount: total,
               takeaway_charge: takeawayCharge,
               delivery_fee: deliveryFee,
-              delivery_address: deliveryInfo?.address || null,
-              delivery_phone: deliveryInfo?.phone || null,
-              delivery_notes: deliveryInfo?.notes || null,
-              delivery_zone: deliveryInfo?.zoneName || null,
+              delivery_address: orderType === 'delivery' ? deliveryAddress : null,
+              delivery_phone: orderType === 'delivery' ? deliveryPhone : null,
+              delivery_notes: orderType === 'delivery' ? deliveryNotes : null,
+              delivery_zone: deliveryZoneName,
               status: 'awaiting_payment',
               order_type: orderType === 'dine-in' ? 'dine_in' : orderType,
               payment_method: 'counter',
@@ -801,13 +954,30 @@ const PaymentPage: React.FC = () => {
                    paymentMethod === 'qr' || paymentMethod === 'qrPayment' || paymentMethod === 'qr_payment') {
           console.log('🔵 Processing QR / Bank Transfer payment - NOT saving order yet...');
 
-          // Get delivery info if delivery order
-          let deliveryInfo = null;
+          // Validate delivery info for delivery orders
           if (orderType === 'delivery') {
-            const deliveryInfoStr = sessionStorage.getItem('deliveryInfo');
-            if (deliveryInfoStr) {
-              deliveryInfo = JSON.parse(deliveryInfoStr);
+            if (!deliveryAddress.trim()) {
+              setError('Please enter your delivery address');
+              setIsProcessing(false);
+              return;
             }
+            if (!deliveryPhone.trim()) {
+              setError('Please enter your phone number for delivery');
+              setIsProcessing(false);
+              return;
+            }
+            if (!selectedZone) {
+              setError('Please select a delivery zone');
+              setIsProcessing(false);
+              return;
+            }
+          }
+
+          // Get delivery zone name for delivery orders
+          let deliveryZoneName = null;
+          if (orderType === 'delivery' && selectedZone) {
+            const zone = deliveryZones.find(z => z.id === selectedZone);
+            deliveryZoneName = zone?.name || null;
           }
 
           // Don't create order yet - just store data for the payment confirmation page
@@ -819,10 +989,10 @@ const PaymentPage: React.FC = () => {
             total_amount: total,
             takeaway_charge: takeawayCharge,
             delivery_fee: deliveryFee,
-            delivery_address: deliveryInfo?.address || null,
-            delivery_phone: deliveryInfo?.phone || null,
-            delivery_notes: deliveryInfo?.notes || null,
-            delivery_zone: deliveryInfo?.zoneName || null,
+            delivery_address: orderType === 'delivery' ? deliveryAddress : null,
+            delivery_phone: orderType === 'delivery' ? deliveryPhone : null,
+            delivery_notes: orderType === 'delivery' ? deliveryNotes : null,
+            delivery_zone: deliveryZoneName,
             status: 'awaiting_payment',
             order_type: orderType === 'dine-in' ? 'dine_in' : orderType,
             payment_method: (paymentMethod === 'qr' || paymentMethod === 'qrPayment' || paymentMethod === 'qr_payment') ? 'QR Payment' : 'Bank Transfer',
@@ -852,15 +1022,32 @@ const PaymentPage: React.FC = () => {
         } else if (paymentMethod === 'card' || paymentMethod === 'fpx') {
           console.log('🔵 Processing card / FPX payment...');
 
+          // Validate delivery info for delivery orders
+          if (orderType === 'delivery') {
+            if (!deliveryAddress.trim()) {
+              setError('Please enter your delivery address');
+              setIsProcessing(false);
+              return;
+            }
+            if (!deliveryPhone.trim()) {
+              setError('Please enter your phone number for delivery');
+              setIsProcessing(false);
+              return;
+            }
+            if (!selectedZone) {
+              setError('Please select a delivery zone');
+              setIsProcessing(false);
+              return;
+            }
+          }
+
           // Create order in DATABASE
           try {
-            // Get delivery info if delivery order
-            let deliveryInfo = null;
-            if (orderType === 'delivery') {
-              const deliveryInfoStr = sessionStorage.getItem('deliveryInfo');
-              if (deliveryInfoStr) {
-                deliveryInfo = JSON.parse(deliveryInfoStr);
-              }
+            // Get delivery zone name for delivery orders
+            let deliveryZoneName = null;
+            if (orderType === 'delivery' && selectedZone) {
+              const zone = deliveryZones.find(z => z.id === selectedZone);
+              deliveryZoneName = zone?.name || null;
             }
 
             const dbOrderData = {
@@ -872,10 +1059,10 @@ const PaymentPage: React.FC = () => {
               total_amount: total,
               takeaway_charge: takeawayCharge,
               delivery_fee: deliveryFee,
-              delivery_address: deliveryInfo?.address || null,
-              delivery_phone: deliveryInfo?.phone || null,
-              delivery_notes: deliveryInfo?.notes || null,
-              delivery_zone: deliveryInfo?.zoneName || null,
+              delivery_address: orderType === 'delivery' ? deliveryAddress : null,
+              delivery_phone: orderType === 'delivery' ? deliveryPhone : null,
+              delivery_notes: orderType === 'delivery' ? deliveryNotes : null,
+              delivery_zone: deliveryZoneName,
               status: 'pending',
               order_type: orderType === 'dine-in' ? 'dine_in' : orderType,
               payment_method: paymentMethod === 'card' ? 'Card' : 'FPX',
@@ -1075,10 +1262,18 @@ const PaymentPage: React.FC = () => {
               <span>{formatCurrency(deliveryFee, currency)}</span>
             </SummaryRow>
           )}
-          <SummaryRow>
-            <span>Tax (6%)</span>
-            <span>{formatCurrency(tax, currency)}</span>
-          </SummaryRow>
+          {serviceCharge > 0 && (
+            <SummaryRow>
+              <span>Service Charge ({operationSettings.serviceChargeRate}%)</span>
+              <span>{formatCurrency(serviceCharge, currency)}</span>
+            </SummaryRow>
+          )}
+          {tax > 0 && (
+            <SummaryRow>
+              <span>Tax ({operationSettings.taxRate}%)</span>
+              <span>{formatCurrency(tax, currency)}</span>
+            </SummaryRow>
+          )}
           <SummaryRow className="total">
             <span>Total</span>
             <span>{formatCurrency(total, currency)}</span>
@@ -1090,11 +1285,12 @@ const PaymentPage: React.FC = () => {
         <Section>
           <SectionTitle>Customer Information</SectionTitle>
 
-          {/* Quick Order 체크박스 */}
-          <QuickOrderCheckbox>
+          {/* Quick Order 체크박스 - disabled for delivery */}
+          <QuickOrderCheckbox style={{ opacity: orderType === 'delivery' ? 0.5 : 1 }}>
             <input
               type="checkbox"
               checked={!!(guestInfo && guestInfo.name === 'Guest' && !guestInfo.phone)}
+              disabled={orderType === 'delivery'}
               onChange={(e) => {
                 if (e.target.checked) {
                   // Quick Order 체크 - 아무 정보 없이 바로 게스트로 등록
@@ -1108,7 +1304,7 @@ const PaymentPage: React.FC = () => {
                 }
               }}
             />
-            <span>Quick Order (No customer info required)</span>
+            <span>Quick Order (No customer info required){orderType === 'delivery' ? ' - Not available for delivery' : ''}</span>
           </QuickOrderCheckbox>
 
           <CustomerChoiceContainer>
@@ -1172,7 +1368,81 @@ const PaymentPage: React.FC = () => {
             </CustomerInfoBox>
           )}
         </Section>
-        
+
+        {/* Delivery Address Section - only show for delivery orders */}
+        {orderType === 'delivery' && (
+          <Section>
+            <SectionTitle>Delivery Information *</SectionTitle>
+
+            {/* Disable Quick Order for delivery */}
+            {guestInfo && guestInfo.name === 'Guest' && !guestInfo.phone && (
+              <InfoBox>
+                ⚠️ Quick Order is not available for delivery. Please enter your contact information and address.
+              </InfoBox>
+            )}
+
+            {/* Show minimum order warning if applicable */}
+            {operationSettings.deliveryPricing?.minimumOrder > 0 && subtotal < operationSettings.deliveryPricing.minimumOrder && (
+              <InfoBox>
+                ℹ️ Minimum order for delivery: {formatCurrency(operationSettings.deliveryPricing.minimumOrder, currency)}
+              </InfoBox>
+            )}
+
+            <FormGroup>
+              <Label>Delivery Address *</Label>
+              <TextArea
+                placeholder="Enter your full delivery address..."
+                value={deliveryAddress}
+                onChange={(e) => setDeliveryAddress(e.target.value)}
+              />
+            </FormGroup>
+
+            <FormGroup>
+              <Label>Phone Number *</Label>
+              <Input
+                type="tel"
+                placeholder="+60 12-345 6789"
+                value={deliveryPhone}
+                onChange={(e) => setDeliveryPhone(e.target.value)}
+              />
+            </FormGroup>
+
+            <FormGroup>
+              <Label>Delivery Notes (Optional)</Label>
+              <TextArea
+                placeholder="E.g., Gate code, landmark, special instructions..."
+                value={deliveryNotes}
+                onChange={(e) => setDeliveryNotes(e.target.value)}
+                style={{ minHeight: '60px' }}
+              />
+            </FormGroup>
+
+            {deliveryZones.length > 0 && (
+              <FormGroup>
+                <Label>Select Delivery Zone *</Label>
+                {deliveryZones.map(zone => (
+                  <ZoneCard
+                    key={zone.id}
+                    selected={selectedZone === zone.id}
+                    onClick={() => setSelectedZone(zone.id)}
+                    type="button"
+                  >
+                    <ZoneName>{zone.name}</ZoneName>
+                    <ZoneDetails>
+                      <ZoneDescription>{zone.description}</ZoneDescription>
+                      <ZoneFee>
+                        {operationSettings.deliveryPricing?.freeAbove && subtotal >= operationSettings.deliveryPricing.freeAbove
+                          ? 'FREE'
+                          : formatCurrency(zone.fee, currency)}
+                      </ZoneFee>
+                    </ZoneDetails>
+                  </ZoneCard>
+                ))}
+              </FormGroup>
+            )}
+          </Section>
+        )}
+
         <Section>
           <SectionTitle>Coupon Code</SectionTitle>
           <div style={{ display: 'flex', gap: '8px' }}>

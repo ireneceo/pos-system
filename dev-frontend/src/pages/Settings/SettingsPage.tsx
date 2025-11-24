@@ -2660,6 +2660,190 @@ const SettingsPage: React.FC = () => {
               </SettingsCard>
 
               <SettingsCard style={{ gridColumn: '1 / -1' }}>
+                <CardTitle>Delivery Pricing Settings</CardTitle>
+                <Toggle>
+                  <ToggleLabel>Enable Delivery Service</ToggleLabel>
+                  <ToggleSwitch>
+                    <ToggleInput
+                      type="checkbox"
+                      checked={operationSettings.deliveryPricing?.enabled || false}
+                      onChange={(e) => {
+                        setOperationSettings(prev => ({
+                          ...prev,
+                          deliveryPricing: { ...prev.deliveryPricing, enabled: e.target.checked }
+                        }));
+                        setHasChanges(true);
+                      }}
+                    />
+                    <ToggleSlider />
+                  </ToggleSwitch>
+                </Toggle>
+
+                {operationSettings.deliveryPricing?.enabled && (
+                  <>
+                    <Divider />
+                    <FormGroup>
+                      <Label>Minimum Order Amount</Label>
+                      <FeeInput
+                        type="number"
+                        step="1.00"
+                        value={operationSettings.deliveryPricing.minimumOrder}
+                        onChange={(e) => {
+                          setOperationSettings(prev => ({
+                            ...prev,
+                            deliveryPricing: { ...prev.deliveryPricing, minimumOrder: Number(e.target.value) }
+                          }));
+                          setHasChanges(true);
+                        }}
+                      />
+                      <span style={{ color: '#6B7C93', fontSize: '14px' }}>RM</span>
+                      <HelpText>Minimum subtotal required for delivery orders (0 = no minimum)</HelpText>
+                    </FormGroup>
+
+                    <FormGroup>
+                      <Label>Free Delivery Above</Label>
+                      <FeeInput
+                        type="number"
+                        step="1.00"
+                        value={operationSettings.deliveryPricing.freeAbove}
+                        onChange={(e) => {
+                          setOperationSettings(prev => ({
+                            ...prev,
+                            deliveryPricing: { ...prev.deliveryPricing, freeAbove: Number(e.target.value) }
+                          }));
+                          setHasChanges(true);
+                        }}
+                      />
+                      <span style={{ color: '#6B7C93', fontSize: '14px' }}>RM</span>
+                      <HelpText>Waive delivery fee if order subtotal exceeds this amount (999999 = never free)</HelpText>
+                    </FormGroup>
+
+                    <Divider />
+                    <Label style={{ marginBottom: '16px' }}>Delivery Zones</Label>
+                    <HelpText style={{ marginBottom: '16px' }}>Configure delivery zones and their corresponding fees</HelpText>
+
+                    {(operationSettings.deliveryPricing.zones || []).map((zone, index) => (
+                      <div key={index} style={{
+                        background: '#FAFBFC',
+                        padding: '16px',
+                        borderRadius: '8px',
+                        marginBottom: '12px',
+                        border: '1px solid #E6EBF1'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                          <Label style={{ margin: 0 }}>Zone {index + 1}</Label>
+                          <button
+                            onClick={() => {
+                              const zones = [...(operationSettings.deliveryPricing.zones || [])];
+                              zones.splice(index, 1);
+                              setOperationSettings(prev => ({
+                                ...prev,
+                                deliveryPricing: { ...prev.deliveryPricing, zones }
+                              }));
+                              setHasChanges(true);
+                            }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#DC2626',
+                              cursor: 'pointer',
+                              fontSize: '14px',
+                              padding: '4px 8px'
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        <FormGroup>
+                          <Label>Zone Name</Label>
+                          <Input
+                            type="text"
+                            placeholder="e.g., Zone A (City Center)"
+                            value={zone.name}
+                            onChange={(e) => {
+                              const zones = [...(operationSettings.deliveryPricing.zones || [])];
+                              zones[index] = { ...zones[index], name: e.target.value };
+                              setOperationSettings(prev => ({
+                                ...prev,
+                                deliveryPricing: { ...prev.deliveryPricing, zones }
+                              }));
+                              setHasChanges(true);
+                            }}
+                          />
+                        </FormGroup>
+                        <FormGroup>
+                          <Label>Description</Label>
+                          <Input
+                            type="text"
+                            placeholder="e.g., 3km radius"
+                            value={zone.description}
+                            onChange={(e) => {
+                              const zones = [...(operationSettings.deliveryPricing.zones || [])];
+                              zones[index] = { ...zones[index], description: e.target.value };
+                              setOperationSettings(prev => ({
+                                ...prev,
+                                deliveryPricing: { ...prev.deliveryPricing, zones }
+                              }));
+                              setHasChanges(true);
+                            }}
+                          />
+                        </FormGroup>
+                        <FormGroup>
+                          <Label>Delivery Fee</Label>
+                          <FeeInput
+                            type="number"
+                            step="0.50"
+                            value={zone.fee}
+                            onChange={(e) => {
+                              const zones = [...(operationSettings.deliveryPricing.zones || [])];
+                              zones[index] = { ...zones[index], fee: Number(e.target.value) };
+                              setOperationSettings(prev => ({
+                                ...prev,
+                                deliveryPricing: { ...prev.deliveryPricing, zones }
+                              }));
+                              setHasChanges(true);
+                            }}
+                          />
+                          <span style={{ color: '#6B7C93', fontSize: '14px' }}>RM</span>
+                        </FormGroup>
+                      </div>
+                    ))}
+
+                    <button
+                      onClick={() => {
+                        const zones = [...(operationSettings.deliveryPricing.zones || [])];
+                        zones.push({
+                          id: `zone-${Date.now()}`,
+                          name: '',
+                          description: '',
+                          fee: 0
+                        });
+                        setOperationSettings(prev => ({
+                          ...prev,
+                          deliveryPricing: { ...prev.deliveryPricing, zones }
+                        }));
+                        setHasChanges(true);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        background: '#F0F4FF',
+                        border: '1px dashed #635BFF',
+                        borderRadius: '8px',
+                        color: '#635BFF',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      + Add Delivery Zone
+                    </button>
+                  </>
+                )}
+              </SettingsCard>
+
+              <SettingsCard style={{ gridColumn: '1 / -1' }}>
                 <CardTitle>Loyalty Tier Settings</CardTitle>
                 <Toggle>
                   <ToggleLabel>Enable Loyalty Tier System</ToggleLabel>

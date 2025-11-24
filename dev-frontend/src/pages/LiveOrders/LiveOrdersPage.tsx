@@ -1583,7 +1583,21 @@ const LiveOrdersPage: React.FC = () => {
     return statusFlow[currentStatus] || null;
   };
 
-  const getActionLabel = (status: DbOrder['status'], paymentStatus?: string) => {
+  const getActionLabel = (status: DbOrder['status'], paymentStatus?: string, orderType?: string) => {
+    // For delivery orders, use delivery-specific labels
+    if (orderType === 'delivery') {
+      const deliveryLabels: Record<string, string> = {
+        awaiting_payment: 'Proceed Without Payment',
+        pending: 'Start Preparing',
+        preparing: 'Mark Ready',
+        ready: 'Out for Delivery',
+        served: 'Mark Delivered',
+        completed: 'Completed',
+        cancelled: 'Cancelled'
+      };
+      return deliveryLabels[status] || '';
+    }
+
     const labels: Record<string, string> = {
       awaiting_payment: 'Proceed Without Payment',
       pending: 'Start Cooking',
@@ -2346,7 +2360,7 @@ const LiveOrdersPage: React.FC = () => {
                                 }}
                                 style={order.status === 'ready' ? { background: '#10B981', borderColor: '#10B981', color: 'white' } : undefined}
                               >
-                                {getActionLabel(order.status, order.payment_status)}
+                                {getActionLabel(order.status, order.payment_status, order.order_type)}
                               </ActionButton>
                             )}
                           </>
