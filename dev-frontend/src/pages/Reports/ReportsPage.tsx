@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { useSearchParams } from 'react-router-dom';
 import MainLayout from '../../components/Layout/MainLayout';
@@ -335,6 +335,7 @@ const ReportsPage: React.FC = () => {
   const [stats, setStats] = useState<any>(null);
   const [customers, setCustomers] = useState<any[]>([]);
   const [menuItems, setMenuItems] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
 
   // Drilldown state for Sales Details tab
   const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set());
@@ -353,8 +354,8 @@ const ReportsPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [operationSettings?.timeZone]);
 
-  // Filter orders by date range
-  const getFilteredOrders = () => {
+  // Filter orders by date range - memoized for performance
+  const filteredOrders = useMemo(() => {
     if (!orders || orders.length === 0) {
       return [];
     }
@@ -364,7 +365,7 @@ const ReportsPage: React.FC = () => {
     const endDate = new Date(dateRange.end);
     endDate.setHours(23, 59, 59, 999);
 
-    const filtered = orders.filter(order => {
+    return orders.filter(order => {
       // Check date fields: order_date or createdAt (database columns)
       const orderDateValue = order.order_date || order.createdAt;
       if (!orderDateValue) {
@@ -378,14 +379,10 @@ const ReportsPage: React.FC = () => {
 
       return isInRange && isCompleted;
     });
+  }, [orders, dateRange.start, dateRange.end]);
 
-    return filtered;
-  };
-
-  const filteredOrders = getFilteredOrders();
-
-  // Calculate sales data from real orders
-  const getSalesData = () => {
+  // Calculate sales data from real orders - memoized for performance
+  const salesData = useMemo(() => {
     if (filteredOrders.length === 0) return [];
 
     const getOrderDate = (order: any) => new Date(order.order_date || order.createdAt);
@@ -414,8 +411,6 @@ const ReportsPage: React.FC = () => {
         dates.push(date);
       }
 
-      console.log('Week mode - Today:', today, 'Dates:', dates.map(d => formatDateString(d)));
-
       // Group orders by date
       const dailyData: Record<string, number> = {};
       filteredOrders.forEach(order => {
@@ -425,7 +420,7 @@ const ReportsPage: React.FC = () => {
       });
 
       // Map dates to sales data with day names
-      const result = dates.map(date => {
+      return dates.map(date => {
         const dateKey = formatDateString(date);
         const dayName = dayNames[date.getDay()];
         return {
@@ -433,9 +428,6 @@ const ReportsPage: React.FC = () => {
           sales: Math.round(dailyData[dateKey] || 0)
         };
       });
-
-      console.log('Week mode - Result:', result);
-      return result;
     } else if (activePeriod === 'month') {
       // Group by day of month
       const dailyData: Record<string, number> = {};
@@ -456,17 +448,30 @@ const ReportsPage: React.FC = () => {
 
       return monthNames.map(month => ({ date: month, sales: Math.round(monthlyData[month] || 0) }));
     }
-  };
+  }, [filteredOrders, activePeriod]);
 
-  // Calculate category data from real orders
-  const getCategoryData = () => {
-    if (filteredOrders.length === 0) return [];
+  // Calculate category data from real orders - memoized for performance
+  // Uses menu items and categories to map order items to their actual menu categories
+  const categoryData = useMemo(() => {
+    if (filteredOrders.length === 0) return [{ name: 'No Data', value: 100, sales: 0 }];
 
-    // Create a map of product_id to category from menu items
+    // Create a map of product_id to category name from menu items and categories
     const productCategoryMap: Record<string, string> = {};
+    const categoryIdToName: Record<string, string> = {};
+
+    // Build category ID to name map
+    categories.forEach((cat: any) => {
+      if (cat.id && cat.name) {
+        categoryIdToName[cat.id.toString()] = cat.name;
+      }
+    });
+
+    // Build product ID to category name map
     menuItems.forEach((item: any) => {
-      if (item.id && item.category) {
-        productCategoryMap[item.id.toString()] = item.category;
+      if (item.id) {
+        // item.categoryId contains the category ID, look up the name
+        const categoryName = item.categoryId ? (categoryIdToName[item.categoryId.toString()] || item.categoryId) : 'Other';
+        productCategoryMap[item.id.toString()] = categoryName;
       }
     });
 
@@ -480,30 +485,43 @@ const ReportsPage: React.FC = () => {
           const itemTotal = parseFloat(item.price || 0) * parseInt(item.quantity || 1);
           totalSales += itemTotal;
 
-          // Get category from product_id mapping
-          const productId = item.product_id?.toString() || item.id?.toString();
-          const category = productId ? (productCategoryMap[productId] || 'Other') : 'Other';
+          // Get category from menuItem.id in order_items
+          const menuItemId = item.menuItem?.id?.toString() || item.product_id?.toString() || item.id?.toString();
+          const category = menuItemId ? (productCategoryMap[menuItemId] || 'Other') : 'Other';
 
           categoryTotals[category] = (categoryTotals[category] || 0) + itemTotal;
         });
       }
     });
 
-    const categories = Object.entries(categoryTotals).map(([name, sales]) => ({
+    const result = Object.entries(categoryTotals).map(([name, sales]) => ({
       name,
       value: totalSales > 0 ? Math.round((sales / totalSales) * 100) : 0,
       sales: Math.round(sales)
     })).sort((a, b) => b.sales - a.sales);
 
-    return categories.length > 0 ? categories : [{ name: 'No Data', value: 100, sales: 0 }];
-  };
+    return result.length > 0 ? result : [{ name: 'No Data', value: 100, sales: 0 }];
+  }, [filteredOrders, menuItems, categories]);
 
-  const salesData = getSalesData();
-  const categoryData = getCategoryData();
-
-  // Calculate menu performance from real orders
-  const getAllMenuData = () => {
+  // Calculate menu performance from real orders - memoized for performance
+  const allMenuData = useMemo(() => {
     if (filteredOrders.length === 0) return [];
+
+    // Build category lookup maps
+    const categoryIdToName: Record<string, string> = {};
+    categories.forEach((cat: any) => {
+      if (cat.id && cat.name) {
+        categoryIdToName[cat.id.toString()] = cat.name;
+      }
+    });
+
+    const productCategoryMap: Record<string, string> = {};
+    menuItems.forEach((item: any) => {
+      if (item.id) {
+        const categoryName = item.categoryId ? (categoryIdToName[item.categoryId.toString()] || item.categoryId) : 'Other';
+        productCategoryMap[item.id.toString()] = categoryName;
+      }
+    });
 
     const menuStats: Record<string, { category: string; price: number; orders: number; revenue: number }> = {};
 
@@ -511,9 +529,12 @@ const ReportsPage: React.FC = () => {
       if (order.order_items && Array.isArray(order.order_items)) {
         order.order_items.forEach((item: any) => {
           const menuName = item.menu_name || item.name || 'Unknown';
+          const menuItemId = item.menuItem?.id?.toString() || item.product_id?.toString();
+          const category = menuItemId ? (productCategoryMap[menuItemId] || 'Other') : (item.category || 'Other');
+
           if (!menuStats[menuName]) {
             menuStats[menuName] = {
-              category: item.category || 'Other',
+              category: category,
               price: parseFloat(item.price || 0),
               orders: 0,
               revenue: 0
@@ -534,7 +555,7 @@ const ReportsPage: React.FC = () => {
       price: stats.price,
       orders: stats.orders,
       revenue: Math.round(stats.revenue),
-      performance: 0 // Will be calculated below
+      performance: 0
     })).sort((a, b) => b.orders - a.orders);
 
     // Calculate performance percentage
@@ -543,15 +564,11 @@ const ReportsPage: React.FC = () => {
       menu.performance = Math.round((menu.orders / maxOrders) * 100);
     });
 
-    return menuArray.length > 0 ? menuArray : [];
-  };
+    return menuArray;
+  }, [filteredOrders, menuItems, categories]);
 
-  const allMenuData = getAllMenuData();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const topMenus = allMenuData.slice(0, 10);
-
-  // Calculate hourly order distribution from real orders
-  const getHourlyData = () => {
+  // Calculate hourly order distribution from real orders - memoized for performance
+  const hourlyData = useMemo(() => {
     if (filteredOrders.length === 0) return [];
 
     const getOrderDate = (order: any) => new Date(order.order_date || order.createdAt);
@@ -573,9 +590,7 @@ const ReportsPage: React.FC = () => {
         };
         return getHourNum(a.hour) - getHourNum(b.hour);
       });
-  };
-
-  const hourlyData = getHourlyData();
+  }, [filteredOrders]);
 
   // Fetch restaurant data from standardized API
   const fetchRestaurantData = async () => {
@@ -644,8 +659,13 @@ const ReportsPage: React.FC = () => {
 
       if (menuResponse.ok) {
         const menuData = await menuResponse.json();
-        if (menuData.success && menuData.data?.items) {
-          setMenuItems(menuData.data.items);
+        if (menuData.success && menuData.data) {
+          if (menuData.data.items) {
+            setMenuItems(menuData.data.items);
+          }
+          if (menuData.data.categories) {
+            setCategories(menuData.data.categories);
+          }
         }
       }
     } catch (error) {
@@ -668,8 +688,8 @@ const ReportsPage: React.FC = () => {
   }, [user]);
 
 
-  // Calculate peak times from real orders
-  const getPeakTimesData = () => {
+  // Calculate peak times from real orders - memoized for performance
+  const peakTimesData = useMemo(() => {
     if (filteredOrders.length === 0) return [];
 
     const getOrderDate = (order: any) => new Date(order.order_date || order.createdAt);
@@ -688,7 +708,7 @@ const ReportsPage: React.FC = () => {
       hourlySlots[timeSlot].revenue += getOrderAmount(order);
     });
 
-    const peakData = Object.entries(hourlySlots)
+    return Object.entries(hourlySlots)
       .map(([time, stats]) => ({
         time,
         orders: stats.orders,
@@ -697,14 +717,10 @@ const ReportsPage: React.FC = () => {
       }))
       .sort((a, b) => b.orders - a.orders)
       .slice(0, 5);
+  }, [filteredOrders]);
 
-    return peakData;
-  };
-
-  const peakTimesData = getPeakTimesData();
-
-  // Get drilldown sales data grouped by year -> month -> day
-  const getDrilldownSalesData = () => {
+  // Get drilldown sales data grouped by year -> month -> day - memoized for performance
+  const drilldownData = useMemo(() => {
     if (filteredOrders.length === 0) return {};
 
     const getOrderDate = (order: any) => new Date(order.order_date || order.createdAt);
@@ -760,9 +776,7 @@ const ReportsPage: React.FC = () => {
     });
 
     return yearData;
-  };
-
-  const drilldownData = getDrilldownSalesData();
+  }, [filteredOrders]);
 
   // Calculate date range in days
   const getDateRangeDays = () => {

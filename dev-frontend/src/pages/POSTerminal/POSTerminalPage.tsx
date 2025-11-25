@@ -1615,7 +1615,8 @@ const POSTerminalPage: React.FC = () => {
         items: orderItems,
         subtotal,
         discount: discountAmount,
-        coupon: appliedCoupon,
+        discountPolicy: appliedDiscountPolicy ? { name: appliedDiscountPolicy.name, amount: appliedDiscountPolicy.discount } : undefined,
+        coupon: appliedCoupon ? { code: appliedCoupon.code, discount: appliedCoupon.discount } : null,
         takeawayCharge,
         serviceCharge,
         serviceChargeRate: operationSettings.serviceChargeRate,
@@ -1701,6 +1702,8 @@ const POSTerminalPage: React.FC = () => {
         tax: savedOrder?.tax || orderData.tax,
         serviceCharge: savedOrder?.service_charge || savedOrder?.serviceCharge || orderData.serviceCharge,
         discount: savedOrder?.discount || orderData.discount,
+        discountPolicy: orderData.discountPolicy,
+        coupon: orderData.coupon,
         total: savedOrder?.total || orderData.total
       });
       setShowOrderCompleteModal(true);
@@ -1750,7 +1753,8 @@ const POSTerminalPage: React.FC = () => {
         items: orderItems,
         subtotal,
         discount: discountAmount,
-        coupon: appliedCoupon,
+        discountPolicy: appliedDiscountPolicy ? { name: appliedDiscountPolicy.name, amount: appliedDiscountPolicy.discount } : undefined,
+        coupon: appliedCoupon ? { code: appliedCoupon.code, discount: appliedCoupon.discount } : null,
         takeawayCharge,
         serviceCharge,
         serviceChargeRate: operationSettings.serviceChargeRate,
@@ -1854,6 +1858,8 @@ const POSTerminalPage: React.FC = () => {
         tax: savedOrder?.tax || orderData.tax,
         serviceCharge: savedOrder?.service_charge || savedOrder?.serviceCharge || orderData.serviceCharge,
         discount: savedOrder?.discount || orderData.discount,
+        discountPolicy: orderData.discountPolicy,
+        coupon: orderData.coupon,
         total: savedOrder?.total || orderData.total
       });
       setShowOrderCompleteModal(true);
