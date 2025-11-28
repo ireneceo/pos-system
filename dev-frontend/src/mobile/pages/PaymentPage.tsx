@@ -266,7 +266,7 @@ const PayButton = styled.button`
   justify-content: center;
   gap: 8px;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
-  z-index: 50;
+  z-index: 101;
 
   &:active {
     background: #5A51E6;
@@ -537,7 +537,19 @@ const PaymentPage: React.FC = () => {
 
   // Calculate takeaway charge (using existing function from StoreContext)
   const orderType = sessionStorage.getItem('orderType') as 'dine-in' | 'takeaway' | 'pickup' | 'delivery' || 'dine-in';
-  const scheduledPickupTime = sessionStorage.getItem('scheduledPickupTime');
+
+  // Get scheduled pickup time from state (not sessionStorage anymore)
+  // Convert time slot (HH:mm) to full datetime for today
+  const getScheduledPickupDateTime = () => {
+    if (orderType !== 'pickup' || isImmediatePickup || !selectedPickupTime) {
+      return null;
+    }
+    const today = new Date();
+    const [hour, min] = selectedPickupTime.split(':').map(Number);
+    today.setHours(hour, min, 0, 0);
+    return today.toISOString();
+  };
+  const scheduledPickupTime = getScheduledPickupDateTime();
   const calculateTakeawayCharge = () => {
     // Apply takeaway charge for both takeaway and pickup orders
     if ((orderType !== 'takeaway' && orderType !== 'pickup') || !operationSettings.takeawayPricing.enabled) {
@@ -864,8 +876,8 @@ const PaymentPage: React.FC = () => {
       let startMinutes = Math.max(openMinutes, nextSlot);
       startMinutes = Math.ceil(startMinutes / 30) * 30;
 
-      // Get break times from operationSettings
-      const breakTimes = operationSettings.breakTimes || [];
+      // Get break times from currentStore (loaded from API)
+      const breakTimes = currentStore?.breakTimes || [];
 
       for (let mins = startMinutes; mins < closeMinutes; mins += 30) {
         const hour = Math.floor(mins / 60);
@@ -893,7 +905,7 @@ const PaymentPage: React.FC = () => {
     const slots = generateTimeSlots();
     console.log('📦 Generated pickup time slots:', slots);
     setAvailablePickupSlots(slots);
-  }, [orderType, operationSettings]);
+  }, [orderType, operationSettings, currentStore]);
 
   // Helper function to save delivery address to member profile
   const saveDeliveryAddressToMember = async () => {
@@ -1802,6 +1814,92 @@ const PaymentPage: React.FC = () => {
                   </ZoneCard>
                 ))}
               </FormGroup>
+            )}
+          </Section>
+        )}
+
+        {/* Pre-order Pickup Time Section - only show for pickup orders */}
+        {orderType === 'pickup' && (
+          <Section>
+            <SectionTitle>Pickup Time *</SectionTitle>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsImmediatePickup(true);
+                setSelectedPickupTime(null);
+              }}
+              style={{
+                width: '100%',
+                padding: '16px',
+                marginBottom: '12px',
+                border: `1px solid ${isImmediatePickup ? '#635BFF' : '#E6EBF1'}`,
+                borderRadius: '8px',
+                background: isImmediatePickup ? '#F0F4FF' : 'white',
+                color: isImmediatePickup ? '#635BFF' : '#0A2540',
+                fontSize: '15px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                transition: 'all 0.15s'
+              }}
+            >
+              Ready as soon as possible
+            </button>
+
+            <div style={{ fontSize: '14px', fontWeight: '600', color: '#0A2540', marginBottom: '12px', textAlign: 'center' }}>
+              Or schedule a pickup time
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+              {availablePickupSlots.map(slot => {
+                const [hour, min] = slot.split(':').map(Number);
+                const startPeriod = hour >= 12 ? 'PM' : 'AM';
+                const startHour12 = hour % 12 || 12;
+
+                // Calculate end time (30 minutes later)
+                const endMinutes = (hour * 60 + min + 30);
+                const endHour = Math.floor(endMinutes / 60);
+                const endMin = endMinutes % 60;
+                const endPeriod = endHour >= 12 ? 'PM' : 'AM';
+                const endHour12 = endHour % 12 || 12;
+
+                // Format: "9:00 - 9:30 AM" or "11:30 AM - 12:00 PM"
+                const startTime = `${startHour12}:${min.toString().padStart(2, '0')}`;
+                const endTime = `${endHour12}:${endMin.toString().padStart(2, '0')}`;
+                const displayTime = startPeriod === endPeriod
+                  ? `${startTime} - ${endTime} ${endPeriod}`
+                  : `${startTime} ${startPeriod} - ${endTime} ${endPeriod}`;
+
+                return (
+                  <button
+                    key={slot}
+                    type="button"
+                    onClick={() => {
+                      setIsImmediatePickup(false);
+                      setSelectedPickupTime(slot);
+                    }}
+                    style={{
+                      padding: '12px 8px',
+                      border: `1px solid ${!isImmediatePickup && selectedPickupTime === slot ? '#635BFF' : '#E6EBF1'}`,
+                      borderRadius: '8px',
+                      background: !isImmediatePickup && selectedPickupTime === slot ? '#F0F4FF' : 'white',
+                      color: !isImmediatePickup && selectedPickupTime === slot ? '#635BFF' : '#0A2540',
+                      fontSize: '13px',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    {displayTime}
+                  </button>
+                );
+              })}
+            </div>
+
+            {availablePickupSlots.length === 0 && (
+              <div style={{ textAlign: 'center', color: '#6B7C93', padding: '20px' }}>
+                No available pickup times for today
+              </div>
             )}
           </Section>
         )}

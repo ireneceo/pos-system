@@ -51,6 +51,31 @@ const CMD = {
 // ============================================
 
 /**
+ * Format pickup time as range (e.g., "9:00 - 9:30 AM")
+ */
+function formatPickupTimeRange(dateString) {
+  const date = new Date(dateString);
+  const endDate = new Date(date.getTime() + 30 * 60 * 1000); // Add 30 minutes
+
+  const formatTimeSlot = (d) => {
+    const hours = d.getHours();
+    const minutes = d.getMinutes();
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHour = hours % 12 || 12;
+    const displayMin = minutes.toString().padStart(2, '0');
+    return { time: `${displayHour}:${displayMin}`, period };
+  };
+
+  const start = formatTimeSlot(date);
+  const end = formatTimeSlot(endDate);
+
+  if (start.period === end.period) {
+    return `${start.time} - ${end.time} ${end.period}`;
+  }
+  return `${start.time} ${start.period} - ${end.time} ${end.period}`;
+}
+
+/**
  * Pad text to fit 48 characters (80mm printer)
  * Left-aligned text with right-aligned value
  */
@@ -107,11 +132,9 @@ export function generateBillContent(orderData, storeInfo) {
     content += '** PRE-ORDER PICKUP **' + CMD.LINE_FEED;
     content += CMD.BOLD_OFF;
     content += CMD.TEXT_NORMAL;
-    if (orderData.scheduledPickupTime) {
-      content += CMD.BOLD_ON;
-      content += 'Pickup: ' + new Date(orderData.scheduledPickupTime).toLocaleTimeString('en-MY', { hour: 'numeric', minute: '2-digit', hour12: true }) + CMD.LINE_FEED;
-      content += CMD.BOLD_OFF;
-    }
+    content += CMD.BOLD_ON;
+    content += 'Pickup: ' + (orderData.scheduledPickupTime ? formatPickupTimeRange(orderData.scheduledPickupTime) : 'ASAP') + CMD.LINE_FEED;
+    content += CMD.BOLD_OFF;
     content += CMD.LINE_FEED;
     content += CMD.LINE_FEED;
   } else if (orderData.takeawayCharge && orderData.takeawayCharge > 0) {
@@ -451,12 +474,10 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
     content += '** PRE-ORDER PICKUP **' + CMD.LINE_FEED;
     content += CMD.BOLD_OFF;
     content += CMD.TEXT_NORMAL;
-    if (orderData.scheduledPickupTime) {
-      content += CMD.ALIGN_CENTER;
-      content += CMD.BOLD_ON;
-      content += 'Pickup: ' + new Date(orderData.scheduledPickupTime).toLocaleTimeString('en-MY', { hour: 'numeric', minute: '2-digit', hour12: true }) + CMD.LINE_FEED;
-      content += CMD.BOLD_OFF;
-    }
+    content += CMD.ALIGN_CENTER;
+    content += CMD.BOLD_ON;
+    content += 'Pickup: ' + (orderData.scheduledPickupTime ? formatPickupTimeRange(orderData.scheduledPickupTime) : 'ASAP') + CMD.LINE_FEED;
+    content += CMD.BOLD_OFF;
   } else if (orderData.orderType === 'takeaway' || orderData.takeawayCharge > 0) {
     content += CMD.ALIGN_CENTER;
     content += CMD.TEXT_DOUBLE;
@@ -612,9 +633,7 @@ export function generateKitchenTicketPreview(orderData, storeInfo) {
   // ORDER TYPE (PICKUP/TAKEAWAY/DELIVERY) at very bottom
   if (orderData.orderType === 'pickup') {
     lines.push('        ** PRE-ORDER PICKUP **');
-    if (orderData.scheduledPickupTime) {
-      lines.push('        Pickup: ' + new Date(orderData.scheduledPickupTime).toLocaleTimeString('en-MY', { hour: 'numeric', minute: '2-digit', hour12: true }));
-    }
+    lines.push('        Pickup: ' + (orderData.scheduledPickupTime ? formatPickupTimeRange(orderData.scheduledPickupTime) : 'ASAP'));
   } else if (orderData.orderType === 'takeaway' || orderData.takeawayCharge > 0) {
     lines.push('           ** TAKEAWAY **');
   } else if (orderData.orderType === 'delivery') {

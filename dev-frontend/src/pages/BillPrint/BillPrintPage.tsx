@@ -7,6 +7,29 @@ import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
 import { formatDateTime as formatDateTimeUtil } from '../../utils/timezone';
 
+// Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM")
+const formatPickupTimeRange = (dateString: string): string => {
+  const date = new Date(dateString);
+  const endDate = new Date(date.getTime() + 30 * 60 * 1000); // Add 30 minutes
+
+  const formatTimeSlot = (d: Date) => {
+    const hours = d.getHours();
+    const minutes = d.getMinutes();
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHour = hours % 12 || 12;
+    const displayMin = minutes.toString().padStart(2, '0');
+    return { time: `${displayHour}:${displayMin}`, period };
+  };
+
+  const start = formatTimeSlot(date);
+  const end = formatTimeSlot(endDate);
+
+  if (start.period === end.period) {
+    return `${start.time} - ${end.time} ${end.period}`;
+  }
+  return `${start.time} ${start.period} - ${end.time} ${end.period}`;
+};
+
 const PageContainer = styled.div`
   padding: 32px;
   max-width: 1200px;
@@ -372,11 +395,11 @@ const BillPrintPage: React.FC = () => {
                   </Value>
                 </BillRow>
               )}
-              {selectedOrder.scheduledPickupTime && (
+              {selectedOrder.orderType === 'pickup' && (
                 <BillRow>
-                  <Label>Scheduled Pickup:</Label>
+                  <Label>Pickup Time:</Label>
                   <Value style={{ fontWeight: '600', color: '#8B5CF6' }}>
-                    {new Date(selectedOrder.scheduledPickupTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                    {selectedOrder.scheduledPickupTime ? formatPickupTimeRange(selectedOrder.scheduledPickupTime) : 'ASAP'}
                   </Value>
                 </BillRow>
               )}

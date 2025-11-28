@@ -5,6 +5,30 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useMenu } from '../../contexts/MenuContext';
 import { formatTime } from '../../utils/timezone';
 
+// Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM")
+const formatPickupTimeRange = (dateString: string): string => {
+  const date = new Date(dateString);
+  const endDate = new Date(date.getTime() + 30 * 60 * 1000); // Add 30 minutes
+
+  const formatTimeSlot = (d: Date) => {
+    const hours = d.getHours();
+    const minutes = d.getMinutes();
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHour = hours % 12 || 12;
+    const displayMin = minutes.toString().padStart(2, '0');
+    return { time: `${displayHour}:${displayMin}`, period };
+  };
+
+  const start = formatTimeSlot(date);
+  const end = formatTimeSlot(endDate);
+
+  // If periods are the same, show period only at the end
+  if (start.period === end.period) {
+    return `${start.time} - ${end.time} ${end.period}`;
+  }
+  return `${start.time} ${start.period} - ${end.time} ${end.period}`;
+};
+
 const Container = styled.div`
   background: #FAFBFC;
   min-height: 100vh;
@@ -374,7 +398,8 @@ interface KitchenOrder {
   paymentStatus?: 'pending' | 'completed';
   customerName?: string;
   tableNumber?: string;
-  orderType: 'dine-in' | 'takeaway' | 'delivery';
+  orderType: 'dine-in' | 'takeaway' | 'delivery' | 'pickup';
+  scheduledPickupTime?: string | null;
 }
 
 const KitchenDisplayPage: React.FC = () => {
@@ -480,7 +505,8 @@ const KitchenDisplayPage: React.FC = () => {
               paymentStatus: order.payment_status as 'pending' | 'completed',
               customerName: order.customer_name || undefined,
               tableNumber: order.table_number || undefined,
-              orderType: (order.order_type || 'dine-in') as 'dine-in' | 'takeaway' | 'delivery'
+              orderType: (order.order_type || 'dine-in') as 'dine-in' | 'takeaway' | 'delivery' | 'pickup',
+              scheduledPickupTime: order.scheduled_pickup_time || null
             } as KitchenOrder;
           });
 
@@ -666,7 +692,8 @@ const KitchenDisplayPage: React.FC = () => {
         orderTime: new Date(order.createdAt || Date.now()),
         tableNumber: order.table_number,
         customerName: order.customer_name,
-        orderType: order.order_type || 'dine-in'
+        orderType: order.order_type || 'dine-in',
+        scheduledPickupTime: order.scheduled_pickup_time || null
       };
 
       console.log('✅ KITCHEN: Adding order to display:', newOrder.orderNumber);
@@ -979,6 +1006,9 @@ const KitchenDisplayPage: React.FC = () => {
                       {order.orderType === 'takeaway' && (
                         <OrderTypeBadge>TAKEAWAY</OrderTypeBadge>
                       )}
+                      {order.orderType === 'pickup' && (
+                        <OrderTypeBadge style={{ background: '#8B5CF6' }}>PICKUP {order.scheduledPickupTime ? formatPickupTimeRange(order.scheduledPickupTime) : 'ASAP'}</OrderTypeBadge>
+                      )}
                     </OrderNumber>
                     <OrderTime>
                       <TimeLabel>Waiting</TimeLabel>
@@ -1075,6 +1105,9 @@ const KitchenDisplayPage: React.FC = () => {
                       #{order.pickupNumber}
                       {order.orderType === 'takeaway' && (
                         <OrderTypeBadge>TAKEAWAY</OrderTypeBadge>
+                      )}
+                      {order.orderType === 'pickup' && (
+                        <OrderTypeBadge style={{ background: '#8B5CF6' }}>PICKUP {order.scheduledPickupTime ? formatPickupTimeRange(order.scheduledPickupTime) : 'ASAP'}</OrderTypeBadge>
                       )}
                     </OrderNumber>
                     <OrderTime>
@@ -1224,6 +1257,9 @@ const KitchenDisplayPage: React.FC = () => {
                       #{order.pickupNumber}
                       {order.orderType === 'takeaway' && (
                         <OrderTypeBadge>TAKEAWAY</OrderTypeBadge>
+                      )}
+                      {order.orderType === 'pickup' && (
+                        <OrderTypeBadge style={{ background: '#8B5CF6' }}>PICKUP {order.scheduledPickupTime ? formatPickupTimeRange(order.scheduledPickupTime) : 'ASAP'}</OrderTypeBadge>
                       )}
                     </OrderNumber>
                     <OrderTime>

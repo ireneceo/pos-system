@@ -200,7 +200,7 @@ const CheckoutButton = styled.button`
   justify-content: center;
   gap: 8px;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
-  z-index: 50;
+  z-index: 101;
 
   &:active {
     background: #5A51E6;

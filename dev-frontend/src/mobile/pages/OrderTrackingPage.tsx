@@ -5,6 +5,29 @@ import MobileLayout from '../components/common/MobileLayout';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { formatCurrency } from '../../utils/currency';
 
+// Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM")
+const formatPickupTimeRange = (dateString: string): string => {
+  const date = new Date(dateString);
+  const endDate = new Date(date.getTime() + 30 * 60 * 1000); // Add 30 minutes
+
+  const formatTimeSlot = (d: Date) => {
+    const hours = d.getHours();
+    const minutes = d.getMinutes();
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHour = hours % 12 || 12;
+    const displayMin = minutes.toString().padStart(2, '0');
+    return { time: `${displayHour}:${displayMin}`, period };
+  };
+
+  const start = formatTimeSlot(date);
+  const end = formatTimeSlot(endDate);
+
+  if (start.period === end.period) {
+    return `${start.time} - ${end.time} ${end.period}`;
+  }
+  return `${start.time} ${start.period} - ${end.time} ${end.period}`;
+};
+
 const Container = styled.div`
   display: flex;
   flex-direction: column;
@@ -454,6 +477,11 @@ const OrderTrackingPage: React.FC = () => {
             <PickupNumber>
               {getPickupNumber()}
             </PickupNumber>
+            {order?.order_type === 'pickup' && (
+              <div style={{ fontSize: '14px', color: '#8B5CF6', fontWeight: '600', marginTop: '8px' }}>
+                Pickup: {order?.scheduled_pickup_time ? formatPickupTimeRange(order.scheduled_pickup_time) : 'ASAP'}
+              </div>
+            )}
           </PickupNumberCard>
         
         <StatusContainer>

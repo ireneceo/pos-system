@@ -11,6 +11,30 @@ import { formatCurrency } from '../../utils/currency';
 import { printBillViaRawBT, generateBillContent, printKitchenTicketViaRawBT, generateKitchenTicketPreview } from '../../utils/billPrint';
 import { formatDateTime as formatDateTimeUtil, getTimeElapsed } from '../../utils/timezone';
 
+// Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM")
+const formatPickupTimeRange = (dateString: string): string => {
+  const date = new Date(dateString);
+  const endDate = new Date(date.getTime() + 30 * 60 * 1000); // Add 30 minutes
+
+  const formatTime = (d: Date) => {
+    const hours = d.getHours();
+    const minutes = d.getMinutes();
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHour = hours % 12 || 12;
+    const displayMin = minutes.toString().padStart(2, '0');
+    return { time: `${displayHour}:${displayMin}`, period };
+  };
+
+  const start = formatTime(date);
+  const end = formatTime(endDate);
+
+  // If periods are the same, show period only at the end
+  if (start.period === end.period) {
+    return `${start.time} - ${end.time} ${end.period}`;
+  }
+  return `${start.time} ${start.period} - ${end.time} ${end.period}`;
+};
+
 // Helper function to get fetch options with auth token
 const getFetchOptions = (options: RequestInit = {}): RequestInit => {
   const token = localStorage.getItem('auth_token');
@@ -2317,8 +2341,8 @@ const LiveOrdersPage: React.FC = () => {
                         {order.pager_number && (
                           <><br />Pager: {order.pager_number}</>
                         )}
-                        {order.scheduled_pickup_time && (
-                          <><br /><span style={{ color: '#8B5CF6', fontWeight: 500 }}>Pickup: {new Date(order.scheduled_pickup_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</span></>
+                        {order.order_type === 'pickup' && (
+                          <><br /><span style={{ color: '#8B5CF6', fontWeight: 500 }}>Pickup: {order.scheduled_pickup_time ? formatPickupTimeRange(order.scheduled_pickup_time) : 'ASAP'}</span></>
                         )}
                       </CustomerInfo>
                     </TableCell>
@@ -2673,11 +2697,11 @@ const LiveOrdersPage: React.FC = () => {
                         <DetailValue>{selectedOrder.table_number}</DetailValue>
                       </DetailRow>
                     )}
-                    {selectedOrder.scheduled_pickup_time && (
+                    {selectedOrder.order_type === 'pickup' && (
                       <DetailRow>
                         <DetailLabel>Scheduled Pickup:</DetailLabel>
                         <DetailValue style={{ color: '#8B5CF6', fontWeight: 600 }}>
-                          {new Date(selectedOrder.scheduled_pickup_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                          {selectedOrder.scheduled_pickup_time ? formatPickupTimeRange(selectedOrder.scheduled_pickup_time) : 'ASAP'}
                         </DetailValue>
                       </DetailRow>
                     )}
@@ -2969,9 +2993,9 @@ const LiveOrdersPage: React.FC = () => {
                   PICKUP #{selectedOrder.order_number.split('-')[1] || '000'}
                 </div>
               )}
-              {selectedOrder.scheduled_pickup_time && (
+              {selectedOrder.order_type === 'pickup' && (
                 <div style={{ fontSize: '14px', fontWeight: 'bold', textAlign: 'center', margin: '5px 0', color: '#8B5CF6' }}>
-                  Scheduled: {new Date(selectedOrder.scheduled_pickup_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                  Pickup: {selectedOrder.scheduled_pickup_time ? formatPickupTimeRange(selectedOrder.scheduled_pickup_time) : 'ASAP'}
                 </div>
               )}
             </BillSection>
