@@ -12,6 +12,13 @@ const Container = styled.div`
   align-items: center;
   justify-content: flex-start;
   padding: 60px 24px 24px;
+  box-sizing: border-box;
+
+  /* Tablet support */
+  @media (min-width: 768px) {
+    background: #E5E7EB;
+    padding: 80px 24px 24px;
+  }
 `;
 
 const Header = styled.div`
@@ -38,6 +45,15 @@ const OptionsContainer = styled.div`
   gap: 12px;
   width: 100%;
   max-width: 400px;
+
+  /* Tablet support */
+  @media (min-width: 768px) {
+    max-width: 500px;
+    background: white;
+    padding: 32px;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  }
 `;
 
 const OptionCard = styled.button`

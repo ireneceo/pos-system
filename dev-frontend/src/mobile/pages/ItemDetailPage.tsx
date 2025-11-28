@@ -297,6 +297,15 @@ const AddToCartButton = styled.button`
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
   z-index: 101;
 
+  /* Tablet support */
+  @media (min-width: 768px) {
+    max-width: 600px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 12px;
+    bottom: 80px;
+  }
+
   &:active {
     background: #5A51E6;
   }

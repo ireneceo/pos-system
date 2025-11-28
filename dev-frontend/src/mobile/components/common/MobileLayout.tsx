@@ -10,10 +10,15 @@ const LayoutContainer = styled.div`
   flex-direction: column;
   max-width: 100vw;
   overflow-x: hidden;
-  
+
   /* PWA safe area handling */
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
+
+  /* Tablet support - center content */
+  @media (min-width: 768px) {
+    background: #E5E7EB;
+  }
 `;
 
 const Header = styled.header`
@@ -30,6 +35,13 @@ const Header = styled.header`
   max-width: 100%;
   width: 100%;
   box-sizing: border-box;
+
+  /* Tablet support */
+  @media (min-width: 768px) {
+    max-width: 600px;
+    margin: 0 auto;
+    border-radius: 0 0 12px 12px;
+  }
 `;
 
 const BackButton = styled.button`
@@ -79,6 +91,16 @@ const Content = styled.main`
   max-width: 600px;
   width: 100%;
   margin: 0 auto;
+  box-sizing: border-box;
+
+  /* Tablet support */
+  @media (min-width: 768px) {
+    background: #F9FAFB;
+    padding: 24px;
+    padding-bottom: 100px;
+    border-radius: 12px;
+    margin-top: 16px;
+  }
 `;
 
 const BottomNav = styled.nav`
@@ -93,6 +115,15 @@ const BottomNav = styled.nav`
   padding: 8px 0;
   padding-bottom: calc(8px + env(safe-area-inset-bottom));
   z-index: 100;
+
+  /* Tablet support */
+  @media (min-width: 768px) {
+    max-width: 600px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 12px 12px 0 0;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  }
 `;
 
 const NavItem = styled.button<{ active?: boolean }>`
@@ -141,7 +172,7 @@ interface MobileLayoutProps {
   title?: string;
   showBack?: boolean;
   onBack?: () => void;
-  currentPage?: 'menu' | 'cart' | 'orders';
+  currentPage?: 'home' | 'menu' | 'cart' | 'orders';
   cartItemCount?: number;
 }
 
@@ -184,6 +215,17 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
       <Content>{children}</Content>
 
       <BottomNav>
+        <NavItem
+          active={currentPage === 'home'}
+          onClick={() => handleNavigation(`/mobile/${slug}`)}
+        >
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M9 22V12H15V22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <span>Home</span>
+        </NavItem>
+
         <NavItem
           active={currentPage === 'menu'}
           onClick={() => handleNavigation(`/mobile/${slug}/menu`)}

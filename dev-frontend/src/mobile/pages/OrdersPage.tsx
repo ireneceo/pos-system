@@ -126,13 +126,46 @@ const OrderTotal = styled.div`
   color: #1F2937;
 `;
 
-const OrderType = styled.div`
+const OrderType = styled.div<{ orderType?: string }>`
   font-size: 12px;
-  color: #6B7280;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   gap: 4px;
+  background: ${props => {
+    switch(props.orderType) {
+      case 'dine-in':
+      case 'dine_in': return '#E0E7FF';
+      case 'takeaway': return '#FEF3C7';
+      case 'pickup': return '#EDE9FE';
+      case 'delivery': return '#D1FAE5';
+      default: return '#F3F4F6';
+    }
+  }};
+  color: ${props => {
+    switch(props.orderType) {
+      case 'dine-in':
+      case 'dine_in': return '#3730A3';
+      case 'takeaway': return '#92400E';
+      case 'pickup': return '#6D28D9';
+      case 'delivery': return '#065F46';
+      default: return '#374151';
+    }
+  }};
 `;
+
+const getOrderTypeLabel = (orderType: string) => {
+  switch(orderType) {
+    case 'dine-in':
+    case 'dine_in': return 'Dine In';
+    case 'takeaway': return 'Takeaway';
+    case 'pickup': return 'Pre-order Pickup';
+    case 'delivery': return 'Delivery';
+    default: return orderType;
+  }
+};
 
 const OrdersPage: React.FC = () => {
   const navigate = useNavigate();
@@ -370,8 +403,8 @@ const OrdersPage: React.FC = () => {
 
                 <OrderFooter>
                   <OrderTotal>{formatCurrency(Number(totalAmount), currency)}</OrderTotal>
-                  <OrderType>
-                    {orderType === 'dine-in' || orderType === 'dine_in' ? 'Dine In' : 'Takeaway'}
+                  <OrderType orderType={orderType}>
+                    {getOrderTypeLabel(orderType)}
                   </OrderType>
                 </OrderFooter>
               </OrderCard>

@@ -11,6 +11,8 @@ import { formatCurrency } from '../../utils/currency';
 
 const Container = styled.div`
   padding-bottom: 100px;
+  max-width: 100%;
+  box-sizing: border-box;
 `;
 
 const Section = styled.div`
@@ -19,6 +21,9 @@ const Section = styled.div`
   padding: 16px;
   margin-bottom: 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 `;
 
 const SectionTitle = styled.h3`
@@ -267,6 +272,15 @@ const PayButton = styled.button`
   gap: 8px;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
   z-index: 101;
+
+  /* Tablet support */
+  @media (min-width: 768px) {
+    max-width: 600px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 12px;
+    bottom: 80px;
+  }
 
   &:active {
     background: #5A51E6;
