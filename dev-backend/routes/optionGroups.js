@@ -21,10 +21,12 @@ router.get('/', async (req, res) => {
         model: Option,
         as: 'options',
         where: { isActive: true },
-        required: false,
-        order: [['displayOrder', 'ASC']]
+        required: false
       }],
-      order: [['created_at', 'DESC']]
+      order: [
+        ['created_at', 'DESC'],
+        [{ model: Option, as: 'options' }, 'displayOrder', 'ASC']
+      ]
     });
 
     // Transform to match frontend format
@@ -57,7 +59,10 @@ router.get('/:id', async (req, res) => {
         as: 'options',
         where: { isActive: true },
         required: false
-      }]
+      }],
+      order: [
+        [{ model: Option, as: 'options' }, 'displayOrder', 'ASC']
+      ]
     });
 
     if (!optionGroup) {
@@ -107,7 +112,10 @@ router.post('/', async (req, res) => {
       include: [{
         model: Option,
         as: 'options'
-      }]
+      }],
+      order: [
+        [{ model: Option, as: 'options' }, 'displayOrder', 'ASC']
+      ]
     });
 
     res.status(201).json({
@@ -174,7 +182,10 @@ router.put('/:id', async (req, res) => {
       include: [{
         model: Option,
         as: 'options'
-      }]
+      }],
+      order: [
+        [{ model: Option, as: 'options' }, 'displayOrder', 'ASC']
+      ]
     });
 
     res.json({

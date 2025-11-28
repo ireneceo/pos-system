@@ -216,8 +216,11 @@ router.get('/menu/:slug', async (req, res) => {
       include: [{
         model: Option,
         as: 'options',
-        attributes: ['id', 'name', 'price', 'isActive']
-      }]
+        attributes: ['id', 'name', 'price', 'isActive', 'displayOrder']
+      }],
+      order: [
+        [{ model: Option, as: 'options' }, 'displayOrder', 'ASC']
+      ]
     });
 
     // Create categories array for mobile app
@@ -333,8 +336,11 @@ router.get('/menu/item/:itemId', async (req, res) => {
       include: [{
         model: Option,
         as: 'options',
-        attributes: ['id', 'name', 'price', 'isActive']
-      }]
+        attributes: ['id', 'name', 'price', 'isActive', 'displayOrder']
+      }],
+      order: [
+        [{ model: Option, as: 'options' }, 'displayOrder', 'ASC']
+      ]
     });
 
     // Parse optionGroups if it's a string

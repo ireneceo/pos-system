@@ -329,49 +329,6 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
   // Initialize printer
   content += CMD.INIT;
 
-  // === HEADER - ORDER TYPE (ONLY TAKEAWAY/DELIVERY) ===
-  if (orderData.orderType === 'takeaway' || orderData.takeawayCharge > 0) {
-    content += CMD.ALIGN_CENTER;
-    content += CMD.TEXT_DOUBLE;
-    content += CMD.BOLD_ON;
-    content += '** TAKEAWAY **' + CMD.LINE_FEED;
-    content += CMD.BOLD_OFF;
-    content += CMD.TEXT_NORMAL;
-  } else if (orderData.orderType === 'delivery') {
-    content += CMD.ALIGN_CENTER;
-    content += CMD.TEXT_DOUBLE;
-    content += CMD.BOLD_ON;
-    content += '** DELIVERY **' + CMD.LINE_FEED;
-    content += CMD.BOLD_OFF;
-    content += CMD.TEXT_NORMAL;
-  }
-  // DINE-IN: No header display
-
-  // === PAGER NUMBER (if exists) OR PICKUP NUMBER ===
-  if (orderData.pagerNumber) {
-    // PAGER EXISTS - Show only PAGER on one line with large bold number
-    content += CMD.ALIGN_CENTER;
-    content += CMD.TEXT_DOUBLE;
-    content += CMD.BOLD_ON;
-    content += 'PAGER  ' + orderData.pagerNumber + CMD.LINE_FEED;
-    content += CMD.TEXT_NORMAL;
-    content += CMD.BOLD_OFF;
-    content += CMD.LINE_FEED;
-    content += CMD.LINE_FEED;
-  } else {
-    // NO PAGER - Show PICKUP NUMBER
-    content += CMD.ALIGN_CENTER;
-    content += CMD.TEXT_DOUBLE;
-    content += CMD.BOLD_ON;
-    content += 'PICKUP #' + CMD.LINE_FEED;
-
-    const pickupNum = orderData.pickupNumber || (orderData.orderNumber ? orderData.orderNumber.split('-')[1] : '000');
-    content += pickupNum + CMD.LINE_FEED;
-    content += CMD.TEXT_NORMAL;
-    content += CMD.BOLD_OFF;
-    content += CMD.LINE_FEED;
-  }
-
   // === ORDER INFO ===
   content += CMD.ALIGN_LEFT;
   content += CMD.DASHED_LINE + CMD.LINE_FEED;
@@ -448,8 +405,47 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
     content += CMD.DASHED_LINE + CMD.LINE_FEED;
   }
 
-  // === FOOTER (NO KITCHEN COPY TEXT) ===
+  // === FOOTER - PAGER/PICKUP NUMBER AND ORDER TYPE (at bottom) ===
   content += CMD.LINE_FEED;
+
+  // PAGER NUMBER (if exists) OR PICKUP NUMBER - single line format
+  if (orderData.pagerNumber) {
+    content += CMD.ALIGN_CENTER;
+    content += CMD.TEXT_DOUBLE;
+    content += CMD.BOLD_ON;
+    content += 'PAGER  ' + orderData.pagerNumber + CMD.LINE_FEED;
+    content += CMD.TEXT_NORMAL;
+    content += CMD.BOLD_OFF;
+  } else {
+    // PICKUP NUMBER - single line format (same as PAGER)
+    content += CMD.ALIGN_CENTER;
+    content += CMD.TEXT_DOUBLE;
+    content += CMD.BOLD_ON;
+    const pickupNum = orderData.pickupNumber || (orderData.orderNumber ? orderData.orderNumber.split('-')[1] : '000');
+    content += 'PICKUP  ' + pickupNum + CMD.LINE_FEED;
+    content += CMD.TEXT_NORMAL;
+    content += CMD.BOLD_OFF;
+  }
+
+  content += CMD.LINE_FEED;
+
+  // ORDER TYPE (TAKEAWAY/DELIVERY) at very bottom
+  if (orderData.orderType === 'takeaway' || orderData.takeawayCharge > 0) {
+    content += CMD.ALIGN_CENTER;
+    content += CMD.TEXT_DOUBLE;
+    content += CMD.BOLD_ON;
+    content += '** TAKEAWAY **' + CMD.LINE_FEED;
+    content += CMD.BOLD_OFF;
+    content += CMD.TEXT_NORMAL;
+  } else if (orderData.orderType === 'delivery') {
+    content += CMD.ALIGN_CENTER;
+    content += CMD.TEXT_DOUBLE;
+    content += CMD.BOLD_ON;
+    content += '** DELIVERY **' + CMD.LINE_FEED;
+    content += CMD.BOLD_OFF;
+    content += CMD.TEXT_NORMAL;
+  }
+
   content += CMD.LINE_FEED;
   content += CMD.LINE_FEED;
 
@@ -514,29 +510,6 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo) {
 export function generateKitchenTicketPreview(orderData, storeInfo) {
   let lines = [];
 
-  // === HEADER - ORDER TYPE (ONLY TAKEAWAY/DELIVERY) ===
-  if (orderData.orderType === 'takeaway' || orderData.takeawayCharge > 0) {
-    lines.push('           ** TAKEAWAY **');
-  } else if (orderData.orderType === 'delivery') {
-    lines.push('           ** DELIVERY **');
-  }
-
-  // === PAGER NUMBER (if exists) OR PICKUP NUMBER ===
-  if (orderData.pagerNumber) {
-    // PAGER EXISTS - Show title and number on one line (large)
-    lines.push('');
-    lines.push('                PAGER: ' + orderData.pagerNumber);
-    lines.push('');
-  } else {
-    // NO PAGER - Show PICKUP NUMBER
-    lines.push('');
-    lines.push('                 PICKUP #');
-    lines.push('');
-    const pickupNum = orderData.pickupNumber || (orderData.orderNumber ? orderData.orderNumber.split('-')[1] : '000');
-    lines.push('                   ' + pickupNum);
-    lines.push('');
-  }
-
   // === ORDER INFO ===
   lines.push('------------------------------------------------');
   lines.push('Order:                          ' + orderData.orderNumber);
@@ -594,6 +567,26 @@ export function generateKitchenTicketPreview(orderData, storeInfo) {
     lines.push(orderData.notes);
     lines.push('');
     lines.push('------------------------------------------------');
+  }
+
+  // === FOOTER - PAGER/PICKUP NUMBER AND ORDER TYPE (at bottom) ===
+  lines.push('');
+
+  // PAGER NUMBER (if exists) OR PICKUP NUMBER - single line format
+  if (orderData.pagerNumber) {
+    lines.push('              PAGER  ' + orderData.pagerNumber);
+  } else {
+    const pickupNum = orderData.pickupNumber || (orderData.orderNumber ? orderData.orderNumber.split('-')[1] : '000');
+    lines.push('             PICKUP  ' + pickupNum);
+  }
+
+  lines.push('');
+
+  // ORDER TYPE (TAKEAWAY/DELIVERY) at very bottom
+  if (orderData.orderType === 'takeaway' || orderData.takeawayCharge > 0) {
+    lines.push('           ** TAKEAWAY **');
+  } else if (orderData.orderType === 'delivery') {
+    lines.push('           ** DELIVERY **');
   }
 
   return lines.join('\n');
