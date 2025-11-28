@@ -1,5 +1,18 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 
+interface BreakTime {
+  id: string;
+  start: string;
+  end: string;
+}
+
+interface OrderTypes {
+  dineIn: boolean;
+  takeaway: boolean;
+  pickup: boolean;
+  delivery: boolean;
+}
+
 interface Store {
   id: string;
   slug: string;
@@ -11,6 +24,11 @@ interface Store {
   currency?: string;
   cash_rounding?: number | null;
   rounding_apply_to?: 'cash_only' | 'all';
+  openingTime?: string;
+  closingTime?: string;
+  timeZone?: string;
+  orderTypes?: OrderTypes;
+  breakTimes?: BreakTime[];
 }
 
 interface SetMenuItem {

@@ -152,6 +152,11 @@ Order.init({
     type: DataTypes.DATE,
     allowNull: true,
     comment: 'Timestamp when order status changed to served'
+  },
+  scheduled_pickup_time: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Scheduled pickup time for pre-order pickup'
   }
 }, {
   sequelize: database.sequelize,

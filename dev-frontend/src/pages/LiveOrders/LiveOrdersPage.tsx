@@ -57,7 +57,8 @@ interface DbOrder {
   pager_number: string | null;
   total_amount: number;
   status: 'awaiting_payment' | 'pending' | 'preparing' | 'ready' | 'served' | 'completed' | 'cancelled';
-  order_type: 'dine_in' | 'takeaway' | 'delivery';
+  order_type: 'dine_in' | 'takeaway' | 'pickup' | 'delivery';
+  scheduled_pickup_time?: string | null;
   payment_method: string | null;
   payment_status: 'pending' | 'completed' | 'failed' | 'payment_verification_pending' | 'paid';
   kitchen_ready?: boolean;
@@ -2303,12 +2304,18 @@ const LiveOrdersPage: React.FC = () => {
                         {order.order_type === 'takeaway' && (
                           <OrderTypeBadge>TAKEAWAY</OrderTypeBadge>
                         )}
+                        {order.order_type === 'pickup' && (
+                          <OrderTypeBadge style={{ background: '#8B5CF6' }}>PICKUP</OrderTypeBadge>
+                        )}
                       </OrderNumber>
                       <CustomerInfo>
                         {order.customer_name || 'Guest'}<br />
                         {order.customer_phone || 'POS Terminal'}
                         {order.pager_number && (
                           <><br />Pager: {order.pager_number}</>
+                        )}
+                        {order.scheduled_pickup_time && (
+                          <><br /><span style={{ color: '#8B5CF6', fontWeight: 500 }}>Pickup: {new Date(order.scheduled_pickup_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</span></>
                         )}
                       </CustomerInfo>
                     </TableCell>
@@ -2660,6 +2667,14 @@ const LiveOrdersPage: React.FC = () => {
                         <DetailValue>{selectedOrder.table_number}</DetailValue>
                       </DetailRow>
                     )}
+                    {selectedOrder.scheduled_pickup_time && (
+                      <DetailRow>
+                        <DetailLabel>Scheduled Pickup:</DetailLabel>
+                        <DetailValue style={{ color: '#8B5CF6', fontWeight: 600 }}>
+                          {new Date(selectedOrder.scheduled_pickup_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                        </DetailValue>
+                      </DetailRow>
+                    )}
                   </OrderDetailSection>
 
                   <Divider />
@@ -2943,9 +2958,14 @@ const LiveOrdersPage: React.FC = () => {
                   <span>{selectedOrder.table_number}</span>
                 </BillRow>
               )}
-              {selectedOrder.order_type === 'takeaway' && (
+              {(selectedOrder.order_type === 'takeaway' || selectedOrder.order_type === 'pickup') && (
                 <div style={{ fontSize: '20px', fontWeight: 'bold', textAlign: 'center', margin: '10px 0' }}>
                   PICKUP #{selectedOrder.order_number.split('-')[1] || '000'}
+                </div>
+              )}
+              {selectedOrder.scheduled_pickup_time && (
+                <div style={{ fontSize: '14px', fontWeight: 'bold', textAlign: 'center', margin: '5px 0', color: '#8B5CF6' }}>
+                  Scheduled: {new Date(selectedOrder.scheduled_pickup_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                 </div>
               )}
             </BillSection>

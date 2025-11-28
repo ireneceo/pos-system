@@ -317,7 +317,16 @@ Restaurant.init({
             minOrders: 30,
             minSpent: 3000
           }
-        }
+        },
+        // Order Type Settings
+        orderTypes: {
+          dineIn: true,
+          takeaway: true,
+          pickup: false,
+          delivery: false
+        },
+        // Break Times (array of {start, end} objects)
+        breakTimes: []
       };
 
       if (!rawValue) {
@@ -360,7 +369,12 @@ Restaurant.init({
               ...defaultSettings.loyaltyTiers.vip,
               ...((parsed.loyaltyTiers && parsed.loyaltyTiers.vip) || {})
             }
-          }
+          },
+          orderTypes: {
+            ...defaultSettings.orderTypes,
+            ...(parsed.orderTypes || {})
+          },
+          breakTimes: parsed.breakTimes || defaultSettings.breakTimes
         };
       } catch (e) {
         return defaultSettings;

@@ -154,6 +154,9 @@ router.get('/store/:slug', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Restaurant not found' });
     }
 
+    // Get operation settings with defaults
+    const operationSettings = restaurant.operation_settings || {};
+
     const store = {
       id: restaurant.id.toString(),
       slug: restaurant.slug,
@@ -163,7 +166,25 @@ router.get('/store/:slug', async (req, res) => {
       isOpen: restaurant.status === 'active',
       address: restaurant.address,
       phone: restaurant.phone,
-      openingHours: restaurant.operation_settings?.hours || {
+      openingTime: operationSettings.openingTime || '09:00',
+      closingTime: operationSettings.closingTime || '22:00',
+      timeZone: operationSettings.timeZone || 'Asia/Kuala_Lumpur',
+      // Order type settings
+      orderTypes: operationSettings.orderTypes || {
+        dineIn: true,
+        takeaway: true,
+        pickup: false,
+        delivery: false
+      },
+      // Break times
+      breakTimes: operationSettings.breakTimes || [],
+      // Takeaway pricing for charge calculation
+      takeawayPricing: operationSettings.takeawayPricing || {
+        enabled: false,
+        pricingType: 'per-item',
+        perItemCharge: 0.50
+      },
+      openingHours: operationSettings.hours || {
         monday: '10:00 - 22:00',
         tuesday: '10:00 - 22:00',
         wednesday: '10:00 - 22:00',
@@ -427,7 +448,7 @@ router.post('/cart/validate', async (req, res) => {
 
 router.post('/order', async (req, res) => {
   try {
-    const { items, paymentMethod, customerInfo, orderType, tableNumber, storeId } = req.body;
+    const { items, paymentMethod, customerInfo, orderType, tableNumber, storeId, scheduledPickupTime } = req.body;
 
     // Debug logging
     console.log('📝 Mobile order received:');
@@ -476,6 +497,7 @@ router.post('/order', async (req, res) => {
             payment_method: paymentMethod || 'counter',
             payment_status: 'pending',
             order_number: orderNumber,
+            scheduled_pickup_time: scheduledPickupTime ? new Date(scheduledPickupTime) : null,
             order_items: items.map(item => ({
               name: item.name,
               quantity: item.quantity,
@@ -522,6 +544,7 @@ router.post('/order', async (req, res) => {
       status: 'pending',
       createdAt: order.createdAt,
       estimatedPickupTime: new Date(Date.now() + 20 * 60000),
+      scheduledPickupTime: scheduledPickupTime || null,
       paymentStatus: 'pending',
       orderType: orderType || 'dine-in',
       orderSource: 'mobile',
@@ -544,6 +567,7 @@ router.post('/order', async (req, res) => {
         payment_method: paymentMethod || 'counter',
         payment_status: 'pending',
         order_date: new Date().toISOString(),
+        scheduled_pickup_time: scheduledPickupTime || null,
         order_items: items.map(item => ({
           name: item.name,
           quantity: item.quantity,

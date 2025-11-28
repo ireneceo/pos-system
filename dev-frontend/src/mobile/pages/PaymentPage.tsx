@@ -531,9 +531,11 @@ const PaymentPage: React.FC = () => {
   const [registerConfirmPassword, setRegisterConfirmPassword] = useState('');
 
   // Calculate takeaway charge (using existing function from StoreContext)
-  const orderType = sessionStorage.getItem('orderType') as 'dine-in' | 'takeaway' | 'delivery' || 'dine-in';
+  const orderType = sessionStorage.getItem('orderType') as 'dine-in' | 'takeaway' | 'pickup' | 'delivery' || 'dine-in';
+  const scheduledPickupTime = sessionStorage.getItem('scheduledPickupTime');
   const calculateTakeawayCharge = () => {
-    if (orderType !== 'takeaway' || !operationSettings.takeawayPricing.enabled) {
+    // Apply takeaway charge for both takeaway and pickup orders
+    if ((orderType !== 'takeaway' && orderType !== 'pickup') || !operationSettings.takeawayPricing.enabled) {
       return 0;
     }
 
@@ -964,6 +966,7 @@ const PaymentPage: React.FC = () => {
               delivery_phone: orderType === 'delivery' ? deliveryPhone : null,
               delivery_notes: orderType === 'delivery' ? deliveryNotes : null,
               delivery_zone: deliveryZoneName,
+              scheduled_pickup_time: orderType === 'pickup' && scheduledPickupTime ? scheduledPickupTime : null,
               status: 'awaiting_payment',
               order_type: orderType === 'dine-in' ? 'dine_in' : orderType,
               payment_method: 'counter',
@@ -1086,6 +1089,7 @@ const PaymentPage: React.FC = () => {
             delivery_phone: orderType === 'delivery' ? deliveryPhone : null,
             delivery_notes: orderType === 'delivery' ? deliveryNotes : null,
             delivery_zone: deliveryZoneName,
+            scheduled_pickup_time: orderType === 'pickup' && scheduledPickupTime ? scheduledPickupTime : null,
             status: 'awaiting_payment',
             order_type: orderType === 'dine-in' ? 'dine_in' : orderType,
             payment_method: (paymentMethod === 'qr' || paymentMethod === 'qrPayment' || paymentMethod === 'qr_payment') ? 'QR Payment' : 'Bank Transfer',
@@ -1163,6 +1167,7 @@ const PaymentPage: React.FC = () => {
               delivery_phone: orderType === 'delivery' ? deliveryPhone : null,
               delivery_notes: orderType === 'delivery' ? deliveryNotes : null,
               delivery_zone: deliveryZoneName,
+              scheduled_pickup_time: orderType === 'pickup' && scheduledPickupTime ? scheduledPickupTime : null,
               status: 'pending',
               order_type: orderType === 'dine-in' ? 'dine_in' : orderType,
               payment_method: paymentMethod === 'card' ? 'Card' : 'FPX',

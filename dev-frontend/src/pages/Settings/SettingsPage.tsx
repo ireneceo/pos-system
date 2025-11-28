@@ -423,6 +423,12 @@ interface BrandSettings {
   brands: Brand[];
 }
 
+interface BreakTime {
+  id: string;
+  start: string;
+  end: string;
+}
+
 interface OperationSettings {
   openingTime: string;
   closingTime: string;
@@ -478,6 +484,13 @@ interface OperationSettings {
       minSpent: number;
     };
   };
+  orderTypes: {
+    dineIn: boolean;
+    takeaway: boolean;
+    pickup: boolean;
+    delivery: boolean;
+  };
+  breakTimes: BreakTime[];
 }
 
 // PaymentSettings interface removed - not used
@@ -579,7 +592,14 @@ const SettingsPage: React.FC = () => {
             minOrders: 30,
             minSpent: 3000
           }
-        }
+        },
+        orderTypes: {
+          dineIn: true,
+          takeaway: true,
+          pickup: false,
+          delivery: false
+        },
+        breakTimes: []
       }
     };
   };
@@ -758,7 +778,12 @@ const SettingsPage: React.FC = () => {
                   ...defaultOps.loyaltyTiers.vip,
                   ...((restaurant.operation_settings.loyaltyTiers && restaurant.operation_settings.loyaltyTiers.vip) || {})
                 }
-              }
+              },
+              orderTypes: {
+                ...defaultOps.orderTypes,
+                ...(restaurant.operation_settings.orderTypes || {})
+              },
+              breakTimes: restaurant.operation_settings.breakTimes || defaultOps.breakTimes
             } : defaultOps;
 
             // Override with currency settings from restaurant table (these take priority)
@@ -2389,6 +2414,183 @@ const SettingsPage: React.FC = () => {
                     <option value="Asia/Jakarta">Asia/Jakarta (GMT+7)</option>
                   </Select>
                 </FormGroup>
+              </SettingsCard>
+
+              <SettingsCard>
+                <CardTitle>Order Types</CardTitle>
+                <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                  Enable or disable order types for mobile ordering
+                </p>
+                <Toggle>
+                  <ToggleLabel>Dine In</ToggleLabel>
+                  <ToggleSwitch>
+                    <ToggleInput
+                      type="checkbox"
+                      checked={operationSettings.orderTypes?.dineIn ?? true}
+                      onChange={(e) => {
+                        setOperationSettings(prev => ({
+                          ...prev,
+                          orderTypes: {
+                            ...prev.orderTypes,
+                            dineIn: e.target.checked
+                          }
+                        }));
+                        setHasChanges(true);
+                      }}
+                    />
+                    <ToggleSlider />
+                  </ToggleSwitch>
+                </Toggle>
+                <Toggle>
+                  <ToggleLabel>Takeaway</ToggleLabel>
+                  <ToggleSwitch>
+                    <ToggleInput
+                      type="checkbox"
+                      checked={operationSettings.orderTypes?.takeaway ?? true}
+                      onChange={(e) => {
+                        setOperationSettings(prev => ({
+                          ...prev,
+                          orderTypes: {
+                            ...prev.orderTypes,
+                            takeaway: e.target.checked
+                          }
+                        }));
+                        setHasChanges(true);
+                      }}
+                    />
+                    <ToggleSlider />
+                  </ToggleSwitch>
+                </Toggle>
+                <Toggle>
+                  <ToggleLabel>Pre-order Pickup</ToggleLabel>
+                  <ToggleSwitch>
+                    <ToggleInput
+                      type="checkbox"
+                      checked={operationSettings.orderTypes?.pickup ?? false}
+                      onChange={(e) => {
+                        setOperationSettings(prev => ({
+                          ...prev,
+                          orderTypes: {
+                            ...prev.orderTypes,
+                            pickup: e.target.checked
+                          }
+                        }));
+                        setHasChanges(true);
+                      }}
+                    />
+                    <ToggleSlider />
+                  </ToggleSwitch>
+                </Toggle>
+                <Toggle>
+                  <ToggleLabel>Delivery</ToggleLabel>
+                  <ToggleSwitch>
+                    <ToggleInput
+                      type="checkbox"
+                      checked={operationSettings.orderTypes?.delivery ?? false}
+                      onChange={(e) => {
+                        setOperationSettings(prev => ({
+                          ...prev,
+                          orderTypes: {
+                            ...prev.orderTypes,
+                            delivery: e.target.checked
+                          }
+                        }));
+                        setHasChanges(true);
+                      }}
+                    />
+                    <ToggleSlider />
+                  </ToggleSwitch>
+                </Toggle>
+              </SettingsCard>
+
+              <SettingsCard>
+                <CardTitle>Break Times</CardTitle>
+                <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                  Set break times when orders cannot be picked up
+                </p>
+                {(operationSettings.breakTimes || []).map((breakTime, index) => (
+                  <div key={breakTime.id} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    marginBottom: '12px',
+                    padding: '12px',
+                    background: '#F8FAFC',
+                    borderRadius: '8px'
+                  }}>
+                    <Input
+                      type="time"
+                      value={breakTime.start}
+                      onChange={(e) => {
+                        const newBreakTimes = [...operationSettings.breakTimes];
+                        newBreakTimes[index] = { ...newBreakTimes[index], start: e.target.value };
+                        setOperationSettings(prev => ({ ...prev, breakTimes: newBreakTimes }));
+                        setHasChanges(true);
+                      }}
+                      style={{ flex: 1 }}
+                    />
+                    <span style={{ color: '#6B7C93' }}>to</span>
+                    <Input
+                      type="time"
+                      value={breakTime.end}
+                      onChange={(e) => {
+                        const newBreakTimes = [...operationSettings.breakTimes];
+                        newBreakTimes[index] = { ...newBreakTimes[index], end: e.target.value };
+                        setOperationSettings(prev => ({ ...prev, breakTimes: newBreakTimes }));
+                        setHasChanges(true);
+                      }}
+                      style={{ flex: 1 }}
+                    />
+                    <button
+                      onClick={() => {
+                        const newBreakTimes = operationSettings.breakTimes.filter((_, i) => i !== index);
+                        setOperationSettings(prev => ({ ...prev, breakTimes: newBreakTimes }));
+                        setHasChanges(true);
+                      }}
+                      style={{
+                        padding: '8px 12px',
+                        background: '#FEE2E2',
+                        color: '#DC2626',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '14px'
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={() => {
+                    const newBreakTime: BreakTime = {
+                      id: Date.now().toString(),
+                      start: '14:00',
+                      end: '15:00'
+                    };
+                    setOperationSettings(prev => ({
+                      ...prev,
+                      breakTimes: [...(prev.breakTimes || []), newBreakTime]
+                    }));
+                    setHasChanges(true);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '10px 16px',
+                    background: 'white',
+                    color: '#635BFF',
+                    border: '1px dashed #635BFF',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    width: '100%',
+                    justifyContent: 'center'
+                  }}
+                >
+                  + Add Break Time
+                </button>
               </SettingsCard>
 
               <SettingsCard>
