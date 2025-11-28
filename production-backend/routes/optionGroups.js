@@ -21,10 +21,12 @@ router.get('/', async (req, res) => {
         model: Option,
         as: 'options',
         where: { isActive: true },
-        required: false,
-        order: [['displayOrder', 'ASC']]
+        required: false
       }],
-      order: [['created_at', 'DESC']]
+      order: [
+        ['created_at', 'DESC'],
+        [{ model: Option, as: 'options' }, 'displayOrder', 'ASC']
+      ]
     });
 
     // Transform to match frontend format
@@ -57,7 +59,10 @@ router.get('/:id', async (req, res) => {
         as: 'options',
         where: { isActive: true },
         required: false
-      }]
+      }],
+      order: [
+        [{ model: Option, as: 'options' }, 'displayOrder', 'ASC']
+      ]
     });
 
     if (!optionGroup) {
@@ -79,12 +84,12 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Option group name is required' });
     }
 
-    // Create option group
+    // Create option group (support both camelCase and snake_case)
     const optionGroup = await OptionGroup.create({
       name,
       required: required || false,
       multiple: multiple || false,
-      restaurant_id: req.body.restaurant_id || null,
+      restaurant_id: req.body.restaurantId || req.body.restaurant_id || null,
       isActive: true
     });
 
@@ -107,7 +112,10 @@ router.post('/', async (req, res) => {
       include: [{
         model: Option,
         as: 'options'
-      }]
+      }],
+      order: [
+        [{ model: Option, as: 'options' }, 'displayOrder', 'ASC']
+      ]
     });
 
     res.status(201).json({
@@ -174,7 +182,10 @@ router.put('/:id', async (req, res) => {
       include: [{
         model: Option,
         as: 'options'
-      }]
+      }],
+      order: [
+        [{ model: Option, as: 'options' }, 'displayOrder', 'ASC']
+      ]
     });
 
     res.json({

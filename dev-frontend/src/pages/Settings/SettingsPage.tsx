@@ -520,6 +520,7 @@ const SettingsPage: React.FC = () => {
   
   // Payment settings state - start with null, will be loaded from DB
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
+  const [paymentOrder, setPaymentOrder] = useState<string[]>([]);
 
   // Load settings from localStorage or use defaults
   const loadSettings = () => {
@@ -729,6 +730,20 @@ const SettingsPage: React.FC = () => {
 
               // Use DB values directly - no merging with defaults
               setPaymentMethods(restaurant.payment_settings);
+
+              // Load payment order - use saved order or default to current keys
+              const savedOrder = restaurant.payment_settings._order;
+              const methodKeys = Object.keys(restaurant.payment_settings).filter(k => k !== '_order');
+              if (savedOrder && Array.isArray(savedOrder)) {
+                // Make sure all keys are in the order array (add any missing at the end)
+                const completeOrder = [...savedOrder.filter((k: string) => methodKeys.includes(k))];
+                methodKeys.forEach(k => {
+                  if (!completeOrder.includes(k)) completeOrder.push(k);
+                });
+                setPaymentOrder(completeOrder);
+              } else {
+                setPaymentOrder(methodKeys);
+              }
 
               console.log('✅ Loaded payment methods:', Object.keys(restaurant.payment_settings));
             } else {
@@ -1014,6 +1029,22 @@ const SettingsPage: React.FC = () => {
     setHasChanges(true);
   };
 
+  // Payment method ordering functions
+  const movePaymentMethod = (methodKey: string, direction: 'up' | 'down') => {
+    setPaymentOrder(prev => {
+      const currentIndex = prev.indexOf(methodKey);
+      if (currentIndex === -1) return prev;
+
+      const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+      if (newIndex < 0 || newIndex >= prev.length) return prev;
+
+      const newOrder = [...prev];
+      [newOrder[currentIndex], newOrder[newIndex]] = [newOrder[newIndex], newOrder[currentIndex]];
+      return newOrder;
+    });
+    setHasChanges(true);
+  };
+
   const handleSave = async () => {
     console.log('🔄 handleSave called');
     console.log('📊 user?.restaurantId:', user?.restaurantId);
@@ -1045,9 +1076,13 @@ const SettingsPage: React.FC = () => {
         const normalizedPaymentMethods: any = {};
         if (paymentMethods) {
           Object.keys(paymentMethods).forEach((key) => {
+            // Skip the _order key when copying payment methods
+            if (key === '_order') return;
             // Save all methods with their current state (enabled or disabled)
             normalizedPaymentMethods[key] = paymentMethods[key];
           });
+          // Save the payment order
+          normalizedPaymentMethods._order = paymentOrder;
         }
 
         const requestBody = {
@@ -1233,17 +1268,61 @@ const SettingsPage: React.FC = () => {
                 <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
                   Loading payment settings...
                 </div>
-              ) : Object.entries(paymentMethods).map(([key, method]: [string, any]) => (
+              ) : paymentOrder.map((key, index) => {
+                const method = paymentMethods[key];
+                if (!method || key === '_order') return null;
+                return (
                 <PaymentMethodCard key={key}>
                   <div style={{ marginBottom: method.enabled ? '16px' : '0' }}>
-                    {/* Header Row: Title on left, Checkboxes on right */}
+                    {/* Header Row: Order buttons + Title on left, Checkboxes on right */}
                     <div style={{
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       marginBottom: method.enabled ? '16px' : '0'
                     }}>
-                      <ToggleLabel>{method.label}</ToggleLabel>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        {/* Order buttons */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <button
+                            onClick={() => movePaymentMethod(key, 'up')}
+                            disabled={index === 0}
+                            style={{
+                              background: index === 0 ? '#E6EBF1' : '#635BFF',
+                              border: 'none',
+                              borderRadius: '4px',
+                              padding: '4px 8px',
+                              cursor: index === 0 ? 'not-allowed' : 'pointer',
+                              color: 'white',
+                              fontSize: '12px',
+                              lineHeight: 1,
+                              opacity: index === 0 ? 0.5 : 1
+                            }}
+                            title="Move up"
+                          >
+                            ▲
+                          </button>
+                          <button
+                            onClick={() => movePaymentMethod(key, 'down')}
+                            disabled={index === paymentOrder.length - 1}
+                            style={{
+                              background: index === paymentOrder.length - 1 ? '#E6EBF1' : '#635BFF',
+                              border: 'none',
+                              borderRadius: '4px',
+                              padding: '4px 8px',
+                              cursor: index === paymentOrder.length - 1 ? 'not-allowed' : 'pointer',
+                              color: 'white',
+                              fontSize: '12px',
+                              lineHeight: 1,
+                              opacity: index === paymentOrder.length - 1 ? 0.5 : 1
+                            }}
+                            title="Move down"
+                          >
+                            ▼
+                          </button>
+                        </div>
+                        <ToggleLabel>{method.label}</ToggleLabel>
+                      </div>
 
                       <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
                         {/* POS Terminal Checkbox */}
@@ -1788,7 +1867,8 @@ const SettingsPage: React.FC = () => {
                     </div>
                   )}
                 </PaymentMethodCard>
-              ))}
+                );
+              })}
 
               {paymentMethods && (
               <SaveButtonContainer>

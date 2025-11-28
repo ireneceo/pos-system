@@ -647,8 +647,17 @@ const PaymentPage: React.FC = () => {
     console.log('🔍 Filtering payment methods for mobile. Raw paymentMethods:', JSON.stringify(paymentMethods, null, 2));
 
     const methods: any[] = [];
-    Object.keys(paymentMethods).forEach(key => {
+
+    // Use saved order if available, otherwise use Object.keys
+    const savedOrder = paymentMethods._order;
+    const methodKeys = savedOrder && Array.isArray(savedOrder)
+      ? savedOrder.filter((k: string) => k !== '_order' && paymentMethods[k])
+      : Object.keys(paymentMethods).filter(k => k !== '_order');
+
+    methodKeys.forEach((key: string) => {
       const method = paymentMethods[key];
+      if (!method) return;
+
       console.log(`🔍 Checking ${key}:`, {
         enabled: method.enabled,
         availableIn: method.availableIn,
