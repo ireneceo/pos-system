@@ -37,3 +37,6 @@ export {
   TabContainer,
   Tab
 } from './Tabs';
+
+// Explicitly export OrderControls
+export { OrderControls } from './OrderControls';

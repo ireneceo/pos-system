@@ -166,11 +166,16 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       ];
     }
 
-    // Fixed order: Cash first, then others
-    const methodOrder = ['cash', 'card', 'ewallet', 'bankTransfer'];
+    // Use saved order if available, otherwise default order
+    const savedOrder = paymentMethods._order;
+    const defaultOrder = ['cash', 'card', 'ewallet', 'bankTransfer'];
+    const methodOrder = savedOrder && Array.isArray(savedOrder)
+      ? savedOrder.filter((k: string) => k !== '_order')
+      : defaultOrder;
+
     const methods: any[] = [];
 
-    methodOrder.forEach(key => {
+    methodOrder.forEach((key: string) => {
       const method = paymentMethods[key];
       if (method && method.enabled && method.availableIn && method.availableIn.includes('pos')) {
         methods.push({

@@ -4,6 +4,7 @@ import MainLayout from '../../components/Layout/MainLayout';
 import { useMenu } from '../../contexts/MenuContext';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { Modal as UIModal, ModalButton } from '../../components/UI/Modal';
+import { OrderControls } from '../../components/UI';
 
 const Container = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -105,41 +106,6 @@ const CategoryCard = styled.div`
   
   &:hover {
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  }
-`;
-
-const OrderControls = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-`;
-
-const OrderButton = styled.button`
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
-  border: 1px solid #E5E7EB;
-  background: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  
-  &:hover:not(:disabled) {
-    background: #F9FAFB;
-    border-color: #D1D5DB;
-  }
-  
-  &:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-  }
-  
-  svg {
-    width: 14px;
-    height: 14px;
-    color: #6B7280;
   }
 `;
 
@@ -463,24 +429,12 @@ const CategoryManagementPage: React.FC = () => {
         <CategoryGrid>
           {categoriesWithCount.map((category, index) => (
             <CategoryCard key={category.id}>
-              <OrderControls>
-                <OrderButton 
-                  onClick={() => handleMoveUp(index)}
-                  disabled={index === 0}
-                >
-                  <svg viewBox="0 0 24 24" fill="none">
-                    <path d="M7 14l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </OrderButton>
-                <OrderButton 
-                  onClick={() => handleMoveDown(index)}
-                  disabled={index === categoriesWithCount.length - 1}
-                >
-                  <svg viewBox="0 0 24 24" fill="none">
-                    <path d="M7 10l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </OrderButton>
-              </OrderControls>
+              <OrderControls
+                onMoveUp={() => handleMoveUp(index)}
+                onMoveDown={() => handleMoveDown(index)}
+                disableUp={index === 0}
+                disableDown={index === categoriesWithCount.length - 1}
+              />
               <CategoryIcon>
                 {category.emoji}
               </CategoryIcon>

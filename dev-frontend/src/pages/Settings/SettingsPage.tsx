@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { QRCodeCanvas } from 'qrcode.react';
 import MainLayout from '../../components/Layout/MainLayout';
-import { TabContainer, Tab } from '../../components/UI';
+import { TabContainer, Tab, OrderControls } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
 import { useMenu } from '../../contexts/MenuContext';
@@ -1282,45 +1282,12 @@ const SettingsPage: React.FC = () => {
                       marginBottom: method.enabled ? '16px' : '0'
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        {/* Order buttons */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <button
-                            onClick={() => movePaymentMethod(key, 'up')}
-                            disabled={index === 0}
-                            style={{
-                              background: index === 0 ? '#E6EBF1' : '#635BFF',
-                              border: 'none',
-                              borderRadius: '4px',
-                              padding: '4px 8px',
-                              cursor: index === 0 ? 'not-allowed' : 'pointer',
-                              color: 'white',
-                              fontSize: '12px',
-                              lineHeight: 1,
-                              opacity: index === 0 ? 0.5 : 1
-                            }}
-                            title="Move up"
-                          >
-                            ▲
-                          </button>
-                          <button
-                            onClick={() => movePaymentMethod(key, 'down')}
-                            disabled={index === paymentOrder.length - 1}
-                            style={{
-                              background: index === paymentOrder.length - 1 ? '#E6EBF1' : '#635BFF',
-                              border: 'none',
-                              borderRadius: '4px',
-                              padding: '4px 8px',
-                              cursor: index === paymentOrder.length - 1 ? 'not-allowed' : 'pointer',
-                              color: 'white',
-                              fontSize: '12px',
-                              lineHeight: 1,
-                              opacity: index === paymentOrder.length - 1 ? 0.5 : 1
-                            }}
-                            title="Move down"
-                          >
-                            ▼
-                          </button>
-                        </div>
+                        <OrderControls
+                          onMoveUp={() => movePaymentMethod(key, 'up')}
+                          onMoveDown={() => movePaymentMethod(key, 'down')}
+                          disableUp={index === 0}
+                          disableDown={index === paymentOrder.length - 1}
+                        />
                         <ToggleLabel>{method.label}</ToggleLabel>
                       </div>
 
