@@ -518,6 +518,11 @@ const PaymentPage: React.FC = () => {
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const [deliveryZones, setDeliveryZones] = useState<Array<{id: string; name: string; fee: number; description: string}>>([]);
 
+  // Pickup time state
+  const [selectedPickupTime, setSelectedPickupTime] = useState<string | null>(null);
+  const [isImmediatePickup, setIsImmediatePickup] = useState(true);
+  const [availablePickupSlots, setAvailablePickupSlots] = useState<string[]>([]);
+
   // Guest info inline form state
   const [guestName, setGuestName] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
@@ -832,6 +837,63 @@ const PaymentPage: React.FC = () => {
       setGuestInfo(null);
     }
   }, [orderType, guestInfo, setGuestInfo]);
+
+  // Generate pickup time slots for pre-order pickup
+  React.useEffect(() => {
+    if (orderType !== 'pickup') return;
+
+    const generateTimeSlots = () => {
+      const slots: string[] = [];
+      const now = new Date();
+
+      // Get opening/closing times from operationSettings or use defaults
+      const openingTime = operationSettings.openingTime || '09:00';
+      const closingTime = operationSettings.closingTime || '22:00';
+
+      const [openHour, openMin] = openingTime.split(':').map(Number);
+      const [closeHour, closeMin] = closingTime.split(':').map(Number);
+
+      // Start from the next 30-minute slot after now (at least 30 mins from now)
+      let currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const nextSlot = Math.ceil((currentMinutes + 30) / 30) * 30;
+
+      const openMinutes = openHour * 60 + openMin;
+      const closeMinutes = closeHour * 60 + closeMin;
+
+      // Start from either opening time or next available slot (whichever is later)
+      let startMinutes = Math.max(openMinutes, nextSlot);
+      startMinutes = Math.ceil(startMinutes / 30) * 30;
+
+      // Get break times from operationSettings
+      const breakTimes = operationSettings.breakTimes || [];
+
+      for (let mins = startMinutes; mins < closeMinutes; mins += 30) {
+        const hour = Math.floor(mins / 60);
+        const min = mins % 60;
+        const timeStr = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+
+        // Check if this slot falls within any break time
+        const isInBreak = breakTimes.some((bt: any) => {
+          if (!bt.start || !bt.end) return false;
+          const [btStartH, btStartM] = bt.start.split(':').map(Number);
+          const [btEndH, btEndM] = bt.end.split(':').map(Number);
+          const btStartMins = btStartH * 60 + btStartM;
+          const btEndMins = btEndH * 60 + btEndM;
+          return mins >= btStartMins && mins < btEndMins;
+        });
+
+        if (!isInBreak) {
+          slots.push(timeStr);
+        }
+      }
+
+      return slots;
+    };
+
+    const slots = generateTimeSlots();
+    console.log('📦 Generated pickup time slots:', slots);
+    setAvailablePickupSlots(slots);
+  }, [orderType, operationSettings]);
 
   // Helper function to save delivery address to member profile
   const saveDeliveryAddressToMember = async () => {

@@ -9,13 +9,15 @@ const { executeQuery, executeTransaction } = require('../utils/queryWrapper');
 // Get all orders
 router.get('/', async (req, res) => {
   try {
-    const { status, date, limit = 50, restaurant_id } = req.query;
+    const { status, date, limit = 50, restaurantId, restaurant_id } = req.query;
+    // Support both camelCase (new) and snake_case (legacy)
+    const finalRestaurantId = restaurantId || restaurant_id;
 
     let whereCondition = {};
 
     // Restaurant ID 필터링 (필수)
-    if (restaurant_id) {
-      whereCondition.restaurant_id = parseInt(restaurant_id);
+    if (finalRestaurantId) {
+      whereCondition.restaurant_id = parseInt(finalRestaurantId);
     }
 
     if (status) {
@@ -68,6 +70,10 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const orderData = req.body;
+    // Support both camelCase (new) and snake_case (legacy)
+    if (orderData.restaurantId && !orderData.restaurant_id) {
+      orderData.restaurant_id = orderData.restaurantId;
+    }
 
     // Check order limit if restaurant_id is provided
     if (orderData.restaurant_id) {

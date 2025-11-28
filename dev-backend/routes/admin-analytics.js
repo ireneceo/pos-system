@@ -9,7 +9,9 @@ const PlanTemplate = require('../models/PlanTemplate');
 // 시스템 전체 통계 API
 router.get('/system-stats', async (req, res) => {
   try {
-    const { period = 'month', restaurant_id, manager_id } = req.query;
+    const { period = 'month', restaurantId, restaurant_id, manager_id } = req.query;
+    // Support both camelCase (new) and snake_case (legacy)
+    const finalRestaurantId = restaurantId || restaurant_id;
 
     // 날짜 범위 계산
     const now = new Date();
@@ -125,7 +127,9 @@ router.get('/system-stats', async (req, res) => {
 // 매출 트렌드 데이터 API
 router.get('/sales-trend', async (req, res) => {
   try {
-    const { period = 'month', restaurant_id, manager_id } = req.query;
+    const { period = 'month', restaurantId, restaurant_id, manager_id } = req.query;
+    // Support both camelCase (new) and snake_case (legacy)
+    const finalRestaurantId = restaurantId || restaurant_id;
 
     const now = new Date();
     let startDate = new Date();
@@ -162,8 +166,8 @@ router.get('/sales-trend', async (req, res) => {
       }
     };
 
-    if (restaurant_id && restaurant_id !== 'all') {
-      whereConditions.restaurant_id = restaurant_id;
+    if (finalRestaurantId && finalRestaurantId !== 'all') {
+      whereConditions.restaurant_id = finalRestaurantId;
     }
 
     if (manager_id && manager_id !== 'all') {

@@ -84,12 +84,12 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Option group name is required' });
     }
 
-    // Create option group
+    // Create option group (support both camelCase and snake_case)
     const optionGroup = await OptionGroup.create({
       name,
       required: required || false,
       multiple: multiple || false,
-      restaurant_id: req.body.restaurantId || null,
+      restaurant_id: req.body.restaurantId || req.body.restaurant_id || null,
       isActive: true
     });
 

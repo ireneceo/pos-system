@@ -564,7 +564,8 @@ router.post('/generate-for-subscriptions', async (req, res) => {
 // Generate invoices automatically (for cron job or manual trigger)
 router.post('/generate-automatic', async (req, res) => {
   try {
-    const { restaurant_id } = req.body;
+    // Support both camelCase and snake_case
+    const restaurant_id = req.body.restaurantId || req.body.restaurant_id;
     
     // Get settings for the restaurant
     const settings = await InvoiceSettings.findOne({

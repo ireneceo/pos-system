@@ -144,8 +144,8 @@ router.get('/product/:id', async (req, res) => {
 // Create product
 router.post('/product', async (req, res) => {
   try {
-    // Allow restaurantId from body or authenticated user
-    const restaurantId = req.body.restaurantId || req.user.restaurant_id;
+    // Allow restaurantId from body or authenticated user (support both camelCase and snake_case)
+    const restaurantId = req.body.restaurantId || req.body.restaurant_id || req.user.restaurant_id;
 
     if (!restaurantId) {
       return res.status(400).json({
