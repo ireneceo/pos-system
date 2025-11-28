@@ -99,8 +99,22 @@ export function generateBillContent(orderData, storeInfo) {
   // Initialize printer
   content += CMD.INIT;
 
-  // === TAKEAWAY INDICATOR (if applicable) ===
-  if (orderData.takeawayCharge && orderData.takeawayCharge > 0) {
+  // === TAKEAWAY/PICKUP INDICATOR (if applicable) ===
+  if (orderData.orderType === 'pickup') {
+    content += CMD.ALIGN_CENTER;
+    content += CMD.TEXT_DOUBLE;
+    content += CMD.BOLD_ON;
+    content += '** PRE-ORDER PICKUP **' + CMD.LINE_FEED;
+    content += CMD.BOLD_OFF;
+    content += CMD.TEXT_NORMAL;
+    if (orderData.scheduledPickupTime) {
+      content += CMD.BOLD_ON;
+      content += 'Pickup: ' + new Date(orderData.scheduledPickupTime).toLocaleTimeString('en-MY', { hour: 'numeric', minute: '2-digit', hour12: true }) + CMD.LINE_FEED;
+      content += CMD.BOLD_OFF;
+    }
+    content += CMD.LINE_FEED;
+    content += CMD.LINE_FEED;
+  } else if (orderData.takeawayCharge && orderData.takeawayCharge > 0) {
     content += CMD.ALIGN_CENTER;
     content += CMD.TEXT_DOUBLE;
     content += CMD.BOLD_ON;
@@ -429,8 +443,21 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
 
   content += CMD.LINE_FEED;
 
-  // ORDER TYPE (TAKEAWAY/DELIVERY) at very bottom
-  if (orderData.orderType === 'takeaway' || orderData.takeawayCharge > 0) {
+  // ORDER TYPE (PICKUP/TAKEAWAY/DELIVERY) at very bottom
+  if (orderData.orderType === 'pickup') {
+    content += CMD.ALIGN_CENTER;
+    content += CMD.TEXT_DOUBLE;
+    content += CMD.BOLD_ON;
+    content += '** PRE-ORDER PICKUP **' + CMD.LINE_FEED;
+    content += CMD.BOLD_OFF;
+    content += CMD.TEXT_NORMAL;
+    if (orderData.scheduledPickupTime) {
+      content += CMD.ALIGN_CENTER;
+      content += CMD.BOLD_ON;
+      content += 'Pickup: ' + new Date(orderData.scheduledPickupTime).toLocaleTimeString('en-MY', { hour: 'numeric', minute: '2-digit', hour12: true }) + CMD.LINE_FEED;
+      content += CMD.BOLD_OFF;
+    }
+  } else if (orderData.orderType === 'takeaway' || orderData.takeawayCharge > 0) {
     content += CMD.ALIGN_CENTER;
     content += CMD.TEXT_DOUBLE;
     content += CMD.BOLD_ON;
@@ -582,8 +609,13 @@ export function generateKitchenTicketPreview(orderData, storeInfo) {
 
   lines.push('');
 
-  // ORDER TYPE (TAKEAWAY/DELIVERY) at very bottom
-  if (orderData.orderType === 'takeaway' || orderData.takeawayCharge > 0) {
+  // ORDER TYPE (PICKUP/TAKEAWAY/DELIVERY) at very bottom
+  if (orderData.orderType === 'pickup') {
+    lines.push('        ** PRE-ORDER PICKUP **');
+    if (orderData.scheduledPickupTime) {
+      lines.push('        Pickup: ' + new Date(orderData.scheduledPickupTime).toLocaleTimeString('en-MY', { hour: 'numeric', minute: '2-digit', hour12: true }));
+    }
+  } else if (orderData.orderType === 'takeaway' || orderData.takeawayCharge > 0) {
     lines.push('           ** TAKEAWAY **');
   } else if (orderData.orderType === 'delivery') {
     lines.push('           ** DELIVERY **');

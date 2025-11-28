@@ -145,7 +145,7 @@ router.get('/product/:id', async (req, res) => {
 router.post('/product', async (req, res) => {
   try {
     // Allow restaurantId from body or authenticated user
-    const restaurantId = req.body.restaurant_id || req.user.restaurant_id;
+    const restaurantId = req.body.restaurantId || req.user.restaurant_id;
 
     if (!restaurantId) {
       return res.status(400).json({

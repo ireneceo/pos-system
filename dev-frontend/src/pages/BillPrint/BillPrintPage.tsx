@@ -362,13 +362,21 @@ const BillPrintPage: React.FC = () => {
               </BillRow>
               <BillRow>
                 <Label>Order Type:</Label>
-                <Value>{selectedOrder.orderType === 'dine-in' ? 'DINE IN' : 'TAKEAWAY'}</Value>
+                <Value>{selectedOrder.orderType === 'dine-in' || selectedOrder.orderType === 'dine_in' ? 'DINE IN' : selectedOrder.orderType === 'pickup' ? 'PICKUP' : 'TAKEAWAY'}</Value>
               </BillRow>
-              {selectedOrder.orderType === 'takeaway' && (
+              {(selectedOrder.orderType === 'takeaway' || selectedOrder.orderType === 'pickup') && (
                 <BillRow>
                   <Label>Pickup Number:</Label>
                   <Value style={{ fontSize: '20px', fontWeight: '700' }}>
                     {selectedOrder.orderNumber.split('-')[1] || '000'}
+                  </Value>
+                </BillRow>
+              )}
+              {selectedOrder.scheduledPickupTime && (
+                <BillRow>
+                  <Label>Scheduled Pickup:</Label>
+                  <Value style={{ fontWeight: '600', color: '#8B5CF6' }}>
+                    {new Date(selectedOrder.scheduledPickupTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                   </Value>
                 </BillRow>
               )}

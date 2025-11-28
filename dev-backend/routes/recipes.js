@@ -199,14 +199,14 @@ router.delete('/brands/:brand_id/recipes/:recipe_id', authenticateToken, canEdit
 // ============================================
 
 /**
- * GET /api/restaurants/:restaurant_id/recipes
+ * GET /api/restaurants/:restaurantId/recipes
  * 레스토랑에서 사용 가능한 모든 레시피 조회
  */
-router.get('/restaurants/:restaurant_id/recipes', authenticateToken, checkRestaurantAccess, async (req, res) => {
+router.get('/restaurants/:restaurantId/recipes', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
-    const { restaurant_id } = req.params;
+    const { restaurantId } = req.params;
 
-    const restaurant = await Restaurant.findByPk(restaurant_id);
+    const restaurant = await Restaurant.findByPk(restaurantId);
     if (!restaurant) {
       return res.status(404).json({ error: '레스토랑을 찾을 수 없습니다' });
     }
@@ -240,7 +240,7 @@ router.get('/restaurants/:restaurant_id/recipes', authenticateToken, checkRestau
     // 레스토랑 자체 레시피 (독립 레스토랑만)
     if (!restaurant.brand_id) {
       const ownRecipes = await Recipe.findAll({
-        where: { restaurant_id },
+        where: { restaurant_id: restaurantId },
         include: [
           {
             model: RecipeIngredient,
@@ -266,13 +266,13 @@ router.get('/restaurants/:restaurant_id/recipes', authenticateToken, checkRestau
 });
 
 /**
- * POST /api/restaurants/:restaurant_id/recipes
+ * POST /api/restaurants/:restaurantId/recipes
  * 독립 레스토랑 레시피 생성
  */
-router.post('/restaurants/:restaurant_id/recipes', authenticateToken, checkRestaurantAccess, async (req, res) => {
+router.post('/restaurants/:restaurantId/recipes', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
-    const { restaurant_id } = req.params;
-    const restaurant = await Restaurant.findByPk(restaurant_id);
+    const { restaurantId } = req.params;
+    const restaurant = await Restaurant.findByPk(restaurantId);
 
     // 브랜드 가맹점은 레시피 생성 불가
     if (restaurant.brand_id) {
@@ -284,7 +284,7 @@ router.post('/restaurants/:restaurant_id/recipes', authenticateToken, checkResta
     // 레시피 생성
     const recipe = await Recipe.create({
       brand_id: null,
-      restaurant_id,
+      restaurant_id: restaurantId,
       name,
       description,
       category,
@@ -338,12 +338,12 @@ router.post('/restaurants/:restaurant_id/recipes', authenticateToken, checkResta
 });
 
 /**
- * POST /api/restaurants/:restaurant_id/products/create-from-recipe
+ * POST /api/restaurants/:restaurantId/products/create-from-recipe
  * 레시피를 메뉴로 등록
  */
-router.post('/restaurants/:restaurant_id/products/create-from-recipe', authenticateToken, checkRestaurantAccess, async (req, res) => {
+router.post('/restaurants/:restaurantId/products/create-from-recipe', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
-    const { restaurant_id } = req.params;
+    const { restaurantId } = req.params;
     const { recipe_id, price } = req.body;
 
     const recipe = await Recipe.findByPk(recipe_id);
@@ -353,7 +353,7 @@ router.post('/restaurants/:restaurant_id/products/create-from-recipe', authentic
 
     // 레시피의 모든 정보를 Product로 복사
     const product = await Product.create({
-      restaurant_id,
+      restaurant_id: restaurantId,
       recipe_id,
       code: recipe.code,
       name: recipe.name,

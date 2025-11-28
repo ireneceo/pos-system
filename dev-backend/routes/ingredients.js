@@ -115,15 +115,15 @@ router.delete('/brands/:brand_id/ingredients/:ingredient_id', authenticateToken,
 // ============================================
 
 /**
- * GET /api/restaurants/:restaurant_id/ingredients
+ * GET /api/restaurants/:restaurantId/ingredients
  * 레스토랑 재료 목록 조회
  */
-router.get('/restaurants/:restaurant_id/ingredients', authenticateToken, checkRestaurantAccess, async (req, res) => {
+router.get('/restaurants/:restaurantId/ingredients', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
-    const { restaurant_id } = req.params;
+    const { restaurantId } = req.params;
 
     const ingredients = await Ingredient.findAll({
-      where: { restaurant_id },
+      where: { restaurant_id: restaurantId },
       order: [['name', 'ASC']]
     });
 
@@ -135,17 +135,17 @@ router.get('/restaurants/:restaurant_id/ingredients', authenticateToken, checkRe
 });
 
 /**
- * POST /api/restaurants/:restaurant_id/ingredients
+ * POST /api/restaurants/:restaurantId/ingredients
  * 레스토랑 재료 생성
  */
-router.post('/restaurants/:restaurant_id/ingredients', authenticateToken, checkRestaurantAccess, async (req, res) => {
+router.post('/restaurants/:restaurantId/ingredients', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
-    const { restaurant_id } = req.params;
+    const { restaurantId } = req.params;
     const { code, name, category, unit, unit_cost, supplier_name, min_stock } = req.body;
 
     const ingredient = await Ingredient.create({
       brand_id: null,
-      restaurant_id,
+      restaurant_id: restaurantId,
       code,
       name,
       category,
@@ -164,15 +164,15 @@ router.post('/restaurants/:restaurant_id/ingredients', authenticateToken, checkR
 });
 
 /**
- * PUT /api/restaurants/:restaurant_id/ingredients/:ingredient_id
+ * PUT /api/restaurants/:restaurantId/ingredients/:ingredientId
  * 레스토랑 재료 수정
  */
-router.put('/restaurants/:restaurant_id/ingredients/:ingredient_id', authenticateToken, checkRestaurantAccess, async (req, res) => {
+router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
-    const { ingredient_id } = req.params;
+    const { ingredientId } = req.params;
     const { code, name, category, unit, unit_cost, supplier_name, min_stock } = req.body;
 
-    const ingredient = await Ingredient.findByPk(ingredient_id);
+    const ingredient = await Ingredient.findByPk(ingredientId);
     if (!ingredient) {
       return res.status(404).json({ error: '재료를 찾을 수 없습니다' });
     }
@@ -195,14 +195,14 @@ router.put('/restaurants/:restaurant_id/ingredients/:ingredient_id', authenticat
 });
 
 /**
- * DELETE /api/restaurants/:restaurant_id/ingredients/:ingredient_id
+ * DELETE /api/restaurants/:restaurantId/ingredients/:ingredientId
  * 레스토랑 재료 삭제
  */
-router.delete('/restaurants/:restaurant_id/ingredients/:ingredient_id', authenticateToken, checkRestaurantAccess, async (req, res) => {
+router.delete('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
-    const { ingredient_id } = req.params;
+    const { ingredientId } = req.params;
 
-    const ingredient = await Ingredient.findByPk(ingredient_id);
+    const ingredient = await Ingredient.findByPk(ingredientId);
     if (!ingredient) {
       return res.status(404).json({ error: '재료를 찾을 수 없습니다' });
     }

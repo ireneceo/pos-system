@@ -73,7 +73,9 @@ router.post('/', async (req, res) => {
   console.log('📝 Request body:', req.body);
 
   try {
-    const { username, email, password, role, full_name, first_name, last_name, phone, permissions, restaurant_id, department, company_name, manager_id, monthly_salary } = req.body;
+    const { username, email, password, role, full_name, first_name, last_name, phone, permissions, restaurantId, restaurant_id, department, company_name, manager_id, monthly_salary } = req.body;
+    // Support both camelCase (new) and snake_case (legacy) for restaurant ID
+    const finalRestaurantId = restaurantId || restaurant_id;
 
     // Validate required fields
     if (!email) {
@@ -147,7 +149,7 @@ router.post('/', async (req, res) => {
       full_name: generatedFullName,
       phone: phone || null,
       permissions: permissions || null,
-      restaurant_id: restaurant_id || null,
+      restaurant_id: finalRestaurantId || null,
       department: department || null,
       company_name: company_name || null,
       manager_id: manager_id || null

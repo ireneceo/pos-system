@@ -2307,6 +2307,9 @@ const LiveOrdersPage: React.FC = () => {
                         {order.order_type === 'pickup' && (
                           <OrderTypeBadge style={{ background: '#8B5CF6' }}>PICKUP</OrderTypeBadge>
                         )}
+                        {order.order_type === 'delivery' && (
+                          <OrderTypeBadge style={{ background: '#059669' }}>DELIVERY</OrderTypeBadge>
+                        )}
                       </OrderNumber>
                       <CustomerInfo>
                         {order.customer_name || 'Guest'}<br />
@@ -2549,6 +2552,7 @@ const LiveOrdersPage: React.FC = () => {
                           tableNumber: selectedOrder.table_number || null,
                           pagerNumber: selectedOrder.pager_number || null,
                           customerName: selectedOrder.customer_name || 'Walk-in Customer',
+                          scheduledPickupTime: selectedOrder.scheduled_pickup_time || null,
                           items: orderItems.map((item: any) => ({
                             menuItem: {
                               name: item.menu_item_name || item.name || 'Unknown Item',
@@ -2594,6 +2598,8 @@ const LiveOrdersPage: React.FC = () => {
                           pickupNumber: selectedOrder.order_number.split('-')[1],
                           pagerNumber: selectedOrder.pager_number || null,
                           date: new Date(selectedOrder.order_date || selectedOrder.createdAt),
+                          orderType: selectedOrder.order_type,
+                          scheduledPickupTime: selectedOrder.scheduled_pickup_time || null,
                           items: orderItems.map((item: any) => ({
                             menuItem: {
                               name: item.menu_item_name || item.name || (item.menuItem && item.menuItem.name) || 'Unknown Item',

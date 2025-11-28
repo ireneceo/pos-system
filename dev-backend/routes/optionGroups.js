@@ -89,7 +89,7 @@ router.post('/', async (req, res) => {
       name,
       required: required || false,
       multiple: multiple || false,
-      restaurant_id: req.body.restaurant_id || null,
+      restaurant_id: req.body.restaurantId || null,
       isActive: true
     });
 

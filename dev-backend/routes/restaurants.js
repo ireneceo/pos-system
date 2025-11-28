@@ -370,33 +370,44 @@ router.put('/:id', async (req, res) => {
 
     console.log('✅ Restaurant found, proceeding to update...');
 
-    // Map frontend fields to database fields
-    const updateData = {
-      name: req.body.name,
-      manager_id: req.body.managerId ? parseInt(req.body.managerId) : null,
-      email: req.body.email,
-      phone: req.body.phone,
-      address: req.body.location || req.body.address, // Accept both location and address
-      city: req.body.city,
-      state: req.body.state,
-      postal_code: req.body.postal_code,
-      country: req.body.country,
-      business_registration: req.body.business_registration,
-      trade_name: req.body.trade_name,
-      tax_id: req.body.tax_id,
-      website: req.body.website,
-      bank_name: req.body.bank_name,
-      bank_account: req.body.bank_account,
-      bank_account_name: req.body.bank_account_name,
-      logo_url: req.body.logo_url,
-      plan_type: req.body.planType || 'Basic Plan',
-      plan_amount: parseFloat(req.body.planAmount) || 29.00,
-      status: req.body.status === 'active' ? 'active' : 'inactive',
-      subscription_start: req.body.subscriptionStart ? new Date(req.body.subscriptionStart) : null,
-      subscription_end: req.body.subscriptionEnd ? new Date(req.body.subscriptionEnd) : null,
-      payment_settings: req.body.payment_settings,
-      operation_settings: req.body.operation_settings
-    };
+    // Map frontend fields to database fields - only include fields that are explicitly provided
+    const updateData = {};
+
+    // Basic info fields
+    if (req.body.name !== undefined) updateData.name = req.body.name;
+    if (req.body.managerId !== undefined) updateData.manager_id = req.body.managerId ? parseInt(req.body.managerId) : null;
+    if (req.body.email !== undefined) updateData.email = req.body.email;
+    if (req.body.phone !== undefined) updateData.phone = req.body.phone;
+    if (req.body.location !== undefined || req.body.address !== undefined) {
+      updateData.address = req.body.location || req.body.address;
+    }
+    if (req.body.city !== undefined) updateData.city = req.body.city;
+    if (req.body.state !== undefined) updateData.state = req.body.state;
+    if (req.body.postal_code !== undefined) updateData.postal_code = req.body.postal_code;
+    if (req.body.country !== undefined) updateData.country = req.body.country;
+    if (req.body.business_registration !== undefined) updateData.business_registration = req.body.business_registration;
+    if (req.body.trade_name !== undefined) updateData.trade_name = req.body.trade_name;
+    if (req.body.tax_id !== undefined) updateData.tax_id = req.body.tax_id;
+    if (req.body.website !== undefined) updateData.website = req.body.website;
+    if (req.body.bank_name !== undefined) updateData.bank_name = req.body.bank_name;
+    if (req.body.bank_account !== undefined) updateData.bank_account = req.body.bank_account;
+    if (req.body.bank_account_name !== undefined) updateData.bank_account_name = req.body.bank_account_name;
+    if (req.body.logo_url !== undefined) updateData.logo_url = req.body.logo_url;
+
+    // Subscription fields - only update if explicitly provided (prevents accidental overwrites)
+    if (req.body.planType !== undefined) updateData.plan_type = req.body.planType;
+    if (req.body.planAmount !== undefined) updateData.plan_amount = parseFloat(req.body.planAmount);
+    if (req.body.status !== undefined) updateData.status = req.body.status;
+    if (req.body.subscriptionStart !== undefined) {
+      updateData.subscription_start = req.body.subscriptionStart ? new Date(req.body.subscriptionStart) : null;
+    }
+    if (req.body.subscriptionEnd !== undefined) {
+      updateData.subscription_end = req.body.subscriptionEnd ? new Date(req.body.subscriptionEnd) : null;
+    }
+
+    // Settings objects
+    if (req.body.payment_settings !== undefined) updateData.payment_settings = req.body.payment_settings;
+    if (req.body.operation_settings !== undefined) updateData.operation_settings = req.body.operation_settings;
 
     // Get manager name if managerId is being updated
     if (updateData.manager_id) {
