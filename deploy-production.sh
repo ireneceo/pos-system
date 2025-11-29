@@ -182,6 +182,13 @@ systemctl reload nginx
 echo -e "${GREEN}   ✅ Nginx reloaded${NC}"
 
 # ==============================================
+# Save Last Deployed Commit
+# ==============================================
+DEPLOYED_COMMIT=$(git rev-parse HEAD)
+echo "$DEPLOYED_COMMIT" > "$PROJECT_DIR/.last-deployed-commit"
+echo -e "${GREEN}   ✅ Saved last deployed commit: ${DEPLOYED_COMMIT:0:7}${NC}"
+
+# ==============================================
 # Deployment Complete
 # ==============================================
 echo ""
@@ -191,6 +198,7 @@ echo -e "${GREEN}=========================================${NC}"
 echo ""
 echo -e "${BLUE}📊 Deployment Info:${NC}"
 echo "   - Timestamp: ${TIMESTAMP}"
+echo "   - Deployed Commit: ${DEPLOYED_COMMIT:0:7}"
 echo "   - Backup Location: ${BACKUP_DIR}"
 echo "   - Database Backup: ${DB_BACKUP_FILE} (${DB_SIZE})"
 echo ""
