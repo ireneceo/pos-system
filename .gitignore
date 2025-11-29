@@ -75,3 +75,4 @@ public/uploads/
 .cache/
 .npm/
 .eslintcache
+backups/

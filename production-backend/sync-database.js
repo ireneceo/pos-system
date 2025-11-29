@@ -26,9 +26,10 @@ async function syncDatabase() {
     console.log('✅ Model associations initialized.');
 
     // Sync all models
-    // Use { force: true } to drop and recreate tables (WARNING: This will delete all data!)
-    // Use { alter: true } to update table structure without losing data
-    await sequelize.sync({ alter: true });
+    // WARNING: { alter: true } can reset ENUM column values to their defaults!
+    // Use { alter: false } for production to preserve existing data
+    // Only use { alter: true } when you need to add new columns (run manually)
+    await sequelize.sync({ alter: false });
     
     console.log('✅ All models were synchronized successfully.');
     

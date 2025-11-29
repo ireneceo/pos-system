@@ -1,6 +1,7 @@
 #!/bin/bash
 # 운영서버 배포 스크립트 (개선 버전)
-# 사용법: ./deploy-production.sh
+# 사용법: sudo ./deploy-production.sh
+# 주의: sudo로 실행해야 nginx reload가 동작합니다
 
 set -e  # 에러 발생시 즉시 중단
 
@@ -21,6 +22,7 @@ PROD_FRONTEND="$PROJECT_DIR/production-frontend"
 DEV_FRONTEND="$PROJECT_DIR/dev-frontend"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_DIR="$PROJECT_DIR/backups/${TIMESTAMP}"
+ENV_BACKUP_FILE="/tmp/.env.backup.${TIMESTAMP}"
 
 # 백업 디렉토리 생성
 echo -e "${BLUE}📦 Creating backup directory...${NC}"
@@ -88,11 +90,11 @@ fi
 echo ""
 echo -e "${YELLOW}Step 5: Sync Backend Code (dev -> production)${NC}"
 
-# .env 백업
-cp $PROD_BACKEND/.env $PROD_BACKEND/.env.backup
+# .env 백업 (타임스탬프 기반 고유 파일명으로 rsync --delete로부터 보호)
+cp $PROD_BACKEND/.env $ENV_BACKUP_FILE
 
 # .deployignore 파일에서 제외할 파일 읽기
-EXCLUDE_ARGS="--exclude='node_modules' --exclude='.env' --exclude='*.log' --exclude='.server.pid'"
+EXCLUDE_ARGS="--exclude='node_modules' --exclude='.env' --exclude='*.log' --exclude='.server.pid' --exclude='.env.backup'"
 
 if [ -f "$PROJECT_DIR/.deployignore" ]; then
   echo -e "${BLUE}   Loading .deployignore...${NC}"
@@ -107,8 +109,9 @@ fi
 eval "rsync -av --delete $EXCLUDE_ARGS $DEV_BACKEND/ $PROD_BACKEND/"
 echo -e "${GREEN}   ✅ Backend code synced${NC}"
 
-# .env 복원
-mv $PROD_BACKEND/.env.backup $PROD_BACKEND/.env
+# .env 복원 (타임스탬프 기반 파일에서)
+mv $ENV_BACKUP_FILE $PROD_BACKEND/.env
+echo -e "${GREEN}   ✅ .env restored${NC}"
 
 # ==============================================
 # Step 6: Install Backend Dependencies
@@ -120,11 +123,11 @@ npm install --omit=dev
 echo -e "${GREEN}   ✅ Dependencies installed${NC}"
 
 # ==============================================
-# Step 7: Database Sync (Sequelize alter)
+# Step 7: Database Sync (Sequelize - alter: false)
 # ==============================================
 echo ""
 echo -e "${YELLOW}Step 7: Sync Database Schema${NC}"
-echo -e "${BLUE}   Running Sequelize sync (alter mode)...${NC}"
+echo -e "${BLUE}   Running Sequelize sync (safe mode - alter: false)...${NC}"
 node sync-database.js
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}   ✅ Database schema synced${NC}"
@@ -171,19 +174,35 @@ sleep 3
 echo -e "${GREEN}   ✅ Backend server restarted${NC}"
 
 # ==============================================
-# Step 11: Reload Nginx
+# Step 11: Reload Nginx (with sudo check)
 # ==============================================
 echo ""
 echo -e "${YELLOW}Step 11: Reload Nginx${NC}"
+
+# Clear nginx cache if exists
 if [ -d "/var/cache/nginx" ]; then
-    rm -rf /var/cache/nginx/*
+    rm -rf /var/cache/nginx/* 2>/dev/null || true
 fi
-systemctl reload nginx
-echo -e "${GREEN}   ✅ Nginx reloaded${NC}"
+
+# Try to reload nginx (requires sudo)
+if [ "$EUID" -eq 0 ]; then
+    # Running as root
+    systemctl reload nginx
+    echo -e "${GREEN}   ✅ Nginx reloaded${NC}"
+else
+    # Not running as root, try with sudo
+    if sudo -n systemctl reload nginx 2>/dev/null; then
+        echo -e "${GREEN}   ✅ Nginx reloaded${NC}"
+    else
+        echo -e "${YELLOW}   ⚠️  Nginx reload skipped (no sudo permission)${NC}"
+        echo -e "${YELLOW}   Run manually: sudo systemctl reload nginx${NC}"
+    fi
+fi
 
 # ==============================================
 # Save Last Deployed Commit
 # ==============================================
+cd $PROJECT_DIR
 DEPLOYED_COMMIT=$(git rev-parse HEAD)
 echo "$DEPLOYED_COMMIT" > "$PROJECT_DIR/.last-deployed-commit"
 echo -e "${GREEN}   ✅ Saved last deployed commit: ${DEPLOYED_COMMIT:0:7}${NC}"
@@ -213,5 +232,5 @@ echo "   4. ✓ Check if Takeaway Charge appears"
 echo "   5. ✓ Verify receipt printing"
 echo ""
 echo -e "${YELLOW}🔙 Rollback Command:${NC}"
-echo "   ./rollback-production.sh ${TIMESTAMP}"
+echo "   sudo ./rollback-production.sh ${TIMESTAMP}"
 echo ""
