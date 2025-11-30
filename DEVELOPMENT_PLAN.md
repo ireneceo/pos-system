@@ -258,22 +258,22 @@ if (restaurant.recipe_manager_type === 'brand') {
 ### 🚀 다음 작업 (`/개발시작` 실행 시 시작)
 
 **Phase 2.1: 기본 인프라 구축**
-1. [ ] Restaurant 모델에 `recipe_manager_type` 컬럼 추가
-2. [ ] DB 스키마 생성 (recipes, ingredients, recipe_ingredients 테이블)
-3. [ ] Backend Models 구현 (Recipe, Ingredient, RecipeIngredient)
-4. [ ] 권한 체크 미들웨어 구현
+1. [x] Restaurant 모델에 `recipe_manager_type` 컬럼 추가
+2. [x] DB 스키마 생성 (recipes, ingredients, recipe_ingredients 테이블)
+3. [x] Backend Models 구현 (Recipe, Ingredient, RecipeIngredient)
+4. [x] 권한 체크 미들웨어 구현
 
 **Phase 2.2: Backend APIs 구현**
-5. [ ] Recipe CRUD API
-6. [ ] Ingredient CRUD API
-7. [ ] Recipe → Product 변환 API
-8. [ ] recipe_manager_type 설정 변경 API
+5. [x] Recipe CRUD API
+6. [x] Ingredient CRUD API
+7. [x] Recipe → Product 변환 API
+8. [x] recipe_manager_type 설정 변경 API
 
 **Phase 2.3: Frontend UI 구현**
-9. [ ] Brand Settings - 레스토랑별 recipe_manager_type 설정 UI
-10. [ ] Store Settings - recipe_manager_type 표시 (읽기 전용)
-11. [ ] Recipe 목록/상세 페이지
-12. [ ] Ingredient 관리 페이지
+9. [x] Brand Settings - 레스토랑별 recipe_manager_type 설정 UI
+10. [x] Store Settings - recipe_manager_type 표시 (읽기 전용)
+11. [x] Recipe 목록/상세 페이지
+12. [x] Ingredient 관리 페이지
 
 **Phase 2.4: 테스트**
 13. [ ] 권한별 CRUD 테스트

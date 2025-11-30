@@ -607,6 +607,11 @@ const SettingsPage: React.FC = () => {
   
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(loadSettings().store);
   const [operationSettings, setOperationSettings] = useState<OperationSettings>(loadSettings().operations);
+  const [brandInfo, setBrandInfo] = useState<{
+    brand_id: number | null;
+    brand_name: string | null;
+    recipe_manager_type: 'restaurant' | 'brand' | null;
+  }>({ brand_id: null, brand_name: null, recipe_manager_type: null });
 
   // Initialize currencySettings from operationSettings (will be overridden by DB values in useEffect)
   const defaultOps = loadSettings().operations;
@@ -722,6 +727,13 @@ const SettingsPage: React.FC = () => {
               postalCode: restaurant.postal_code || '',
               gstRegNo: restaurant.tax_id || '',
               logo: restaurant.logo_url || ''
+            });
+
+            // Update brand info
+            setBrandInfo({
+              brand_id: restaurant.brand_id || null,
+              brand_name: restaurant.brand?.name || null,
+              recipe_manager_type: restaurant.recipe_manager_type || null
             });
 
             // Load payment settings - use DB values directly (no merge)
@@ -2394,8 +2406,8 @@ const SettingsPage: React.FC = () => {
                 </FormGroup>
                 <FormGroup>
                   <Label>Postal Code</Label>
-                  <Input 
-                    type="text" 
+                  <Input
+                    type="text"
                     value={storeSettings.postalCode}
                     onChange={(e) => {
                       setStoreSettings(prev => ({ ...prev, postalCode: e.target.value }));
@@ -2406,6 +2418,53 @@ const SettingsPage: React.FC = () => {
                 </FormGroup>
               </SettingsCard>
               </SettingsGrid>
+
+              {/* Brand & Recipe Settings (read-only) */}
+              {brandInfo.brand_id && (
+                <SettingsCard style={{ marginTop: '24px' }}>
+                  <CardTitle>Brand & Recipe Settings</CardTitle>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                    gap: '20px'
+                  }}>
+                    <FormGroup>
+                      <Label>Brand</Label>
+                      <div style={{
+                        padding: '10px 12px',
+                        background: '#F6F9FC',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        color: '#0A2540',
+                        border: '1px solid #E6EBF1'
+                      }}>
+                        {brandInfo.brand_name || 'Unknown Brand'}
+                      </div>
+                    </FormGroup>
+                    <FormGroup>
+                      <Label>Recipe Management</Label>
+                      <div style={{
+                        padding: '10px 12px',
+                        background: brandInfo.recipe_manager_type === 'brand' ? '#FEF3C7' : '#D1FAE5',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        fontWeight: 500,
+                        color: brandInfo.recipe_manager_type === 'brand' ? '#92400E' : '#065F46',
+                        border: `1px solid ${brandInfo.recipe_manager_type === 'brand' ? '#FCD34D' : '#6EE7B7'}`
+                      }}>
+                        {brandInfo.recipe_manager_type === 'brand'
+                          ? 'Managed by Brand (Read-only recipes)'
+                          : 'Managed by Restaurant (Own recipes)'
+                        }
+                      </div>
+                    </FormGroup>
+                  </div>
+                  <p style={{ fontSize: '13px', color: '#6B7C93', marginTop: '16px' }}>
+                    Recipe management settings are controlled by your brand administrator.
+                    Contact your brand manager to change this setting.
+                  </p>
+                </SettingsCard>
+              )}
 
               <SaveButtonContainer>
                 <SaveButton onClick={handleSave} disabled={!hasChanges}>

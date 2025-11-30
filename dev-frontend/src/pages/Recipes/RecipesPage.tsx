@@ -426,8 +426,11 @@ const RecipesPage: React.FC = () => {
         // Restaurant Admin: data.data is object with brand_recipes and own_recipes
         if (Array.isArray(data.data)) {
           setRecipes(data.data);
+          setCanCreateRecipe(true); // Brand 유저는 항상 레시피 생성 가능
         } else {
           setRecipes([...data.data.brand_recipes, ...data.data.own_recipes]);
+          // recipe_manager_type이 'brand'이면 레시피 생성 불가
+          setCanCreateRecipe(data.data.recipe_manager_type !== 'brand');
         }
       }
     } catch (error) {
@@ -626,12 +629,14 @@ const RecipesPage: React.FC = () => {
         <Header>
           <Title>Recipes</Title>
           <ActionSection>
-            <ThemedButton
-              variant="primary"
-              onClick={() => handleOpenModal(null)}
-            >
-              + New Recipe
-            </ThemedButton>
+            {canCreateRecipe && (
+              <ThemedButton
+                variant="primary"
+                onClick={() => handleOpenModal(null)}
+              >
+                + New Recipe
+              </ThemedButton>
+            )}
           </ActionSection>
         </Header>
 
@@ -696,9 +701,11 @@ const RecipesPage: React.FC = () => {
               <EmptyDescription>
                 {searchTerm || selectedCategory !== 'all'
                   ? 'Try adjusting your filters'
-                  : 'Create your first recipe to get started'}
+                  : canCreateRecipe
+                    ? 'Create your first recipe to get started'
+                    : 'Brand recipes will appear here when available'}
               </EmptyDescription>
-              {!searchTerm && selectedCategory === 'all' && (
+              {!searchTerm && selectedCategory === 'all' && canCreateRecipe && (
                 <ThemedButton
                   variant="primary"
                   onClick={() => handleOpenModal(null)}
@@ -715,7 +722,14 @@ const RecipesPage: React.FC = () => {
                     {recipe.emoji && <RecipeEmoji>{recipe.emoji}</RecipeEmoji>}
                     <RecipeInfo>
                       <RecipeName>{recipe.name}</RecipeName>
-                      <RecipeCategory>{recipe.category}</RecipeCategory>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <RecipeCategory>{recipe.category}</RecipeCategory>
+                        {recipe.from_brand && (
+                          <RecipeCategory style={{ background: '#FEF3C7', color: '#D97706' }}>
+                            Brand
+                          </RecipeCategory>
+                        )}
+                      </div>
                     </RecipeInfo>
                   </RecipeHeader>
 

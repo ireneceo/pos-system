@@ -244,6 +244,15 @@ interface BrandFormData {
   website: string;
 }
 
+interface BrandRestaurant {
+  id: number;
+  name: string;
+  status: string;
+  address?: string;
+  phone?: string;
+  recipe_manager_type: 'restaurant' | 'brand';
+}
+
 const BrandManagement: React.FC = () => {
   const [stats, setStats] = useState({
     totalBrands: 0,
@@ -268,6 +277,10 @@ const BrandManagement: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
+  const [showRestaurantsModal, setShowRestaurantsModal] = useState(false);
+  const [brandRestaurants, setBrandRestaurants] = useState<BrandRestaurant[]>([]);
+  const [loadingRestaurants, setLoadingRestaurants] = useState(false);
+  const [updatingRestaurant, setUpdatingRestaurant] = useState<number | null>(null);
 
   useEffect(() => {
     fetchBrands();
@@ -417,6 +430,66 @@ const BrandManagement: React.FC = () => {
     setShowDeleteModal(false);
   };
 
+  const handleManageRestaurants = async (brand: Brand) => {
+    setSelectedBrand(brand);
+    setShowRestaurantsModal(true);
+    setLoadingRestaurants(true);
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/brands/${brand.id}/restaurants`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setBrandRestaurants(data.data || []);
+      } else {
+        console.error('Failed to fetch brand restaurants');
+        setBrandRestaurants([]);
+      }
+    } catch (error) {
+      console.error('Error fetching brand restaurants:', error);
+      setBrandRestaurants([]);
+    } finally {
+      setLoadingRestaurants(false);
+    }
+  };
+
+  const handleRecipeManagerTypeChange = async (restaurantId: number, newType: 'restaurant' | 'brand') => {
+    if (!selectedBrand) return;
+
+    setUpdatingRestaurant(restaurantId);
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/brands/${selectedBrand.id}/restaurants/${restaurantId}/recipe-manager-type`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ recipe_manager_type: newType })
+      });
+
+      if (response.ok) {
+        setBrandRestaurants(prev =>
+          prev.map(r => r.id === restaurantId ? { ...r, recipe_manager_type: newType } : r)
+        );
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to update setting');
+      }
+    } catch (error) {
+      console.error('Error updating recipe_manager_type:', error);
+      alert('Failed to update setting');
+    } finally {
+      setUpdatingRestaurant(null);
+    }
+  };
+
   return (
     <MainLayout>
       <Container>
@@ -488,6 +561,9 @@ const BrandManagement: React.FC = () => {
                       </BrandDetails>
                     </BrandInfo>
                     <ActionButtons>
+                      <ActionButton variant="view" onClick={() => handleManageRestaurants(brand)}>
+                        Restaurants
+                      </ActionButton>
                       <ActionButton variant="edit" onClick={() => handleEditBrand(brand)}>
                         Edit
                       </ActionButton>
@@ -604,6 +680,85 @@ const BrandManagement: React.FC = () => {
             cancelText="Cancel"
             type="danger"
           />
+
+          {/* Restaurants Settings Modal */}
+          <Modal
+            isOpen={showRestaurantsModal}
+            onClose={() => setShowRestaurantsModal(false)}
+            title={`${selectedBrand?.name} - Restaurant Recipe Settings`}
+          >
+            <div style={{ minHeight: '200px' }}>
+              {loadingRestaurants ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
+                  Loading restaurants...
+                </div>
+              ) : brandRestaurants.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
+                  No restaurants in this brand.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ marginBottom: '16px', padding: '12px', background: '#F0F9FF', borderRadius: '8px', fontSize: '14px', color: '#0369A1' }}>
+                    <strong>Recipe Management Mode:</strong><br />
+                    <span style={{ fontSize: '13px' }}>
+                      • <strong>Brand</strong>: Restaurants use brand recipes only (cannot create own recipes)<br />
+                      • <strong>Restaurant</strong>: Restaurants can create and manage their own recipes
+                    </span>
+                  </div>
+                  {brandRestaurants.map(restaurant => (
+                    <div
+                      key={restaurant.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '16px',
+                        border: '1px solid #E6EBF1',
+                        borderRadius: '8px',
+                        background: 'white'
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#0A2540', marginBottom: '4px' }}>
+                          {restaurant.name}
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#6B7280' }}>
+                          {restaurant.address || 'No address'}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <select
+                          value={restaurant.recipe_manager_type || 'restaurant'}
+                          onChange={(e) => handleRecipeManagerTypeChange(restaurant.id, e.target.value as 'restaurant' | 'brand')}
+                          disabled={updatingRestaurant === restaurant.id}
+                          style={{
+                            padding: '8px 12px',
+                            borderRadius: '6px',
+                            border: '1px solid #E6EBF1',
+                            fontSize: '14px',
+                            color: '#0A2540',
+                            cursor: updatingRestaurant === restaurant.id ? 'not-allowed' : 'pointer',
+                            opacity: updatingRestaurant === restaurant.id ? 0.6 : 1
+                          }}
+                        >
+                          <option value="brand">Brand</option>
+                          <option value="restaurant">Restaurant</option>
+                        </select>
+                        {updatingRestaurant === restaurant.id && (
+                          <span style={{ fontSize: '12px', color: '#6B7280' }}>Saving...</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <ButtonGroup>
+                <Button type="button" variant="secondary" onClick={() => setShowRestaurantsModal(false)}>
+                  Close
+                </Button>
+              </ButtonGroup>
+            </div>
+          </Modal>
         </Content>
       </Container>
     </MainLayout>
