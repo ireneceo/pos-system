@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { useAuth } from '../../contexts/AuthContext';
 import { StatsGrid, StatCard, StatValue, StatLabel, StatTrend } from '../../components/UI';
+// Using page-specific filter components instead of common ones
 // 매니저는 브랜드 테마 적용 안함
 import { BaseRestaurant } from '../../interfaces/Restaurant';
 
@@ -20,6 +21,7 @@ interface Restaurant extends Omit<BaseRestaurant, 'status'> {
   lastOrder: string;
   monthlyFee: number;
   nextPayment: string;
+  brand_id?: number;
 }
 
 const Container = styled.div`
@@ -414,11 +416,174 @@ const FormTextarea = styled.textarea`
   }
 `;
 
+// Page-specific filter wrapper - ensures no overlap
+const PageFilterWrapper = styled.div`
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+
+  @media (max-width: 600px) {
+    flex-direction: column;
+  }
+`;
+
+const PageSearchInput = styled.input`
+  flex: 0 1 250px;
+  padding: 12px 16px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+
+  &::placeholder {
+    color: #9CA3AF;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+
+  @media (max-width: 600px) {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+`;
+
+const PageFilterSelect = styled.select`
+  flex: 0 0 150px;
+  padding: 12px 16px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+
+  @media (max-width: 600px) {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+`;
+
+// Filter dropdown styled components
+const DropdownContainer = styled.div`
+  position: relative;
+  flex: 0 0 180px;
+
+  @media (max-width: 600px) {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+`;
+
+const DropdownInput = styled.input`
+  padding: 12px 16px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+
+  &:hover {
+    border-color: #D1D5DB;
+  }
+`;
+
+const DropdownMenu = styled.div<{ show: boolean }>`
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  display: ${props => props.show ? 'block' : 'none'};
+`;
+
+const DropdownItem = styled.div`
+  padding: 12px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid #F1F3F5;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background: #F8FAFC;
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const ItemName = styled.div`
+  font-weight: 600;
+  color: #0A2540;
+  margin-bottom: 2px;
+`;
+
+const ItemDetails = styled.div`
+  font-size: 12px;
+  color: #6B7280;
+`;
+
+const ClearButton = styled.button`
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #9CA3AF;
+  cursor: pointer;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    color: #6B7280;
+  }
+`;
+
 const ManagerRestaurantsPage: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
+
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterBrand, setFilterBrand] = useState('all');
+  const [filterBrandSearchQuery, setFilterBrandSearchQuery] = useState('');
+  const [showFilterBrandDropdown, setShowFilterBrandDropdown] = useState(false);
+  const [filteredFilterBrands, setFilteredFilterBrands] = useState<any[]>([]);
+
   const [newRestaurant, setNewRestaurant] = useState({
     name: '',
     managerId: '',
@@ -440,6 +605,39 @@ const ManagerRestaurantsPage: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [brands, setBrands] = useState<Array<{ id: number; name: string; code: string; currency: string }>>([]);
 
+  // Filter Brand Search Functions
+  const handleFilterBrandSearch = (query: string) => {
+    setFilterBrandSearchQuery(query);
+    setShowFilterBrandDropdown(true);
+
+    if (query.length < 1) {
+      setFilteredFilterBrands(brands.slice(0, 10));
+      return;
+    }
+
+    const filtered = brands.filter(brand => {
+      const term = query.toLowerCase();
+      const name = (brand.name || '').toLowerCase();
+      const code = (brand.code || '').toLowerCase();
+      return name.includes(term) || code.includes(term);
+    }).slice(0, 10);
+
+    setFilteredFilterBrands(filtered);
+  };
+
+  const handleFilterBrandSelect = (brand: any) => {
+    setFilterBrand(brand.id.toString());
+    setFilterBrandSearchQuery(brand.name);
+    setShowFilterBrandDropdown(false);
+  };
+
+  const handleFilterBrandClear = () => {
+    setFilterBrand('all');
+    setFilterBrandSearchQuery('');
+    setShowFilterBrandDropdown(false);
+    navigate('/pos/manager/restaurants', { replace: true });
+  };
+
   // Fetch brands for dropdown
   useEffect(() => {
     const fetchBrands = async () => {
@@ -457,7 +655,16 @@ const ManagerRestaurantsPage: React.FC = () => {
       }
     };
     fetchBrands();
-  }, []);
+
+    // URL 파라미터에서 브랜드 ID를 읽어서 필터 설정
+    const brandId = searchParams.get('brandId');
+    const brandName = searchParams.get('brandName');
+
+    if (brandId && brandName) {
+      setFilterBrand(brandId);
+      setFilterBrandSearchQuery(decodeURIComponent(brandName));
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     console.log('🚀 useEffect TRIGGERED - RestaurantsPage');
@@ -505,7 +712,7 @@ const ManagerRestaurantsPage: React.FC = () => {
             email: restaurant.email || 'No email provided',
             brandId: restaurant.manager_id?.toString() || '1',
             brandName: restaurant.manager_name || 'Manager Brand',
-            cuisine: 'Various', // Default value
+            cuisine: restaurant.cuisine || 'Various',
             status: restaurant.status,
             plan: restaurant.plan_type?.toLowerCase().replace(' plan', '') as 'basic' | 'professional' | 'enterprise' || 'basic',
             todaySales: 0, // This would need to be calculated from orders API
@@ -517,7 +724,8 @@ const ManagerRestaurantsPage: React.FC = () => {
             monthlyFee: parseFloat(restaurant.plan_amount) || 29,
             nextPayment: restaurant.subscription_end ?
               new Date(restaurant.subscription_end).toISOString().split('T')[0] :
-              new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0]
+              new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
+            brand_id: restaurant.brand_id || null
           }));
 
           console.log('✅ Transformed restaurants:', transformedRestaurants);
@@ -540,6 +748,18 @@ const ManagerRestaurantsPage: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  // Filter restaurants based on search and filters
+  const filteredRestaurants = restaurants.filter(restaurant => {
+    const matchesSearch = restaurant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          restaurant.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          restaurant.cuisine.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = filterStatus === 'all' || restaurant.status === filterStatus;
+    const matchesBrand = filterBrand === 'all' ||
+                         (restaurant.brand_id && restaurant.brand_id.toString() === filterBrand);
+
+    return matchesSearch && matchesStatus && matchesBrand;
+  });
 
   const totalRestaurants = restaurants.length;
   const activeRestaurants = restaurants.filter(r => r.status === 'active').length;
@@ -584,7 +804,8 @@ const ManagerRestaurantsPage: React.FC = () => {
       paymentModel: 'manager',
       subscriptionStart: currentDate,
       subscriptionEnd: endDate.toISOString().split('T')[0],
-      autoRenew: true
+      autoRenew: true,
+      brandId: ''
     });
     setShowAddModal(true);
   };
@@ -749,50 +970,89 @@ const ManagerRestaurantsPage: React.FC = () => {
       paymentModel: 'manager',
       subscriptionStart: '',
       subscriptionEnd: '',
-      autoRenew: true
+      autoRenew: true,
+      brandId: restaurant.brand_id?.toString() || ''
     });
     setShowEditModal(true);
   };
 
-  const handleUpdateRestaurant = (e: React.FormEvent) => {
+  const handleUpdateRestaurant = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editingRestaurant) {
-      const updatedRestaurants = restaurants.map(rest =>
-        rest.id === editingRestaurant.id
-          ? {
-              ...rest,
-              name: newRestaurant.name,
-              email: newRestaurant.email,
-              phone: newRestaurant.phone,
-              address: newRestaurant.address,
-              location: newRestaurant.address,
-              cuisine: newRestaurant.cuisine,
-              status: newRestaurant.status,
-              plan: newRestaurant.planType.toLowerCase().replace(' plan', '') as 'basic' | 'professional' | 'enterprise',
-              monthlyFee: parseFloat(newRestaurant.planAmount)
-            }
-          : rest
-      );
-      setRestaurants(updatedRestaurants);
-      setShowEditModal(false);
-      setEditingRestaurant(null);
-      setNewRestaurant({
-        name: '',
-        managerId: '',
-        email: '',
-        phone: '',
-        address: '',
-        cuisine: '',
-        planType: 'Basic Plan',
-        planAmount: '29.00',
-        status: 'trial',
-        billingCycle: 'monthly',
-        paymentModel: 'manager',
-        subscriptionStart: '',
-        subscriptionEnd: '',
-        autoRenew: true,
-        brandId: ''
-      });
+      try {
+        const token = localStorage.getItem('auth_token');
+        const updateData = {
+          name: newRestaurant.name,
+          email: newRestaurant.email,
+          phone: newRestaurant.phone,
+          address: newRestaurant.address,
+          cuisine: newRestaurant.cuisine,
+          status: newRestaurant.status,
+          plan_type: newRestaurant.planType,
+          plan_amount: parseFloat(newRestaurant.planAmount),
+          brand_id: newRestaurant.brandId ? parseInt(newRestaurant.brandId) : null
+        };
+
+        console.log('🔄 Updating restaurant:', editingRestaurant.id, updateData);
+
+        const response = await fetch(`/api/restaurants/${editingRestaurant.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(updateData)
+        });
+
+        if (response.ok) {
+          // Update local state
+          const updatedRestaurants = restaurants.map(rest =>
+            rest.id === editingRestaurant.id
+              ? {
+                  ...rest,
+                  name: newRestaurant.name,
+                  email: newRestaurant.email,
+                  phone: newRestaurant.phone,
+                  address: newRestaurant.address,
+                  location: newRestaurant.address,
+                  cuisine: newRestaurant.cuisine,
+                  status: newRestaurant.status as 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled',
+                  plan: newRestaurant.planType.toLowerCase().replace(' plan', '') as 'basic' | 'professional' | 'enterprise',
+                  monthlyFee: parseFloat(newRestaurant.planAmount),
+                  brand_id: newRestaurant.brandId ? parseInt(newRestaurant.brandId) : undefined
+                }
+              : rest
+          );
+          setRestaurants(updatedRestaurants);
+          setShowEditModal(false);
+          setEditingRestaurant(null);
+          setNewRestaurant({
+            name: '',
+            managerId: '',
+            email: '',
+            phone: '',
+            address: '',
+            cuisine: '',
+            planType: 'Basic Plan',
+            planAmount: '29.00',
+            status: 'trial',
+            billingCycle: 'monthly',
+            paymentModel: 'manager',
+            subscriptionStart: '',
+            subscriptionEnd: '',
+            autoRenew: true,
+            brandId: ''
+          });
+          console.log('✅ Restaurant updated successfully');
+        } else {
+          const errorText = await response.text();
+          console.error('Failed to update restaurant:', errorText);
+          alert('Failed to update restaurant. Please try again.');
+        }
+      } catch (error) {
+        console.error('Error updating restaurant:', error);
+        alert('Error updating restaurant. Please try again.');
+      }
     }
   };
 
@@ -850,13 +1110,73 @@ const ManagerRestaurantsPage: React.FC = () => {
             </StatCard>
           </StatsGrid>
 
+          <PageFilterWrapper>
+            <PageSearchInput
+              placeholder="Search restaurants..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <DropdownContainer>
+              <DropdownInput
+                type="text"
+                placeholder="Search brands..."
+                value={filterBrandSearchQuery}
+                onChange={(e) => handleFilterBrandSearch(e.target.value)}
+                onFocus={() => {
+                  setShowFilterBrandDropdown(true);
+                  if (filterBrandSearchQuery.length === 0) {
+                    setFilteredFilterBrands(brands.slice(0, 10));
+                  }
+                }}
+                onBlur={() => setTimeout(() => setShowFilterBrandDropdown(false), 200)}
+              />
+              {filterBrand !== 'all' && filterBrandSearchQuery && (
+                <ClearButton onClick={handleFilterBrandClear}>
+                  ×
+                </ClearButton>
+              )}
+              <DropdownMenu show={showFilterBrandDropdown}>
+                <DropdownItem onClick={() => {
+                  setFilterBrand('all');
+                  setFilterBrandSearchQuery('');
+                  setShowFilterBrandDropdown(false);
+                  navigate('/pos/manager/restaurants', { replace: true });
+                }}>
+                  <ItemName>All Brands</ItemName>
+                  <ItemDetails>Show all restaurants</ItemDetails>
+                </DropdownItem>
+                {filteredFilterBrands.map(brand => (
+                  <DropdownItem
+                    key={brand.id}
+                    onClick={() => handleFilterBrandSelect(brand)}
+                  >
+                    <ItemName>{brand.name}</ItemName>
+                    <ItemDetails>{brand.code} • {brand.currency}</ItemDetails>
+                  </DropdownItem>
+                ))}
+              </DropdownMenu>
+            </DropdownContainer>
+            <PageFilterSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="trial">Trial</option>
+              <option value="expired">Expired</option>
+              <option value="suspended">Suspended</option>
+              <option value="cancelled">Cancelled</option>
+            </PageFilterSelect>
+          </PageFilterWrapper>
+
           <RestaurantGrid>
-            {restaurants.map(restaurant => (
+            {filteredRestaurants.map(restaurant => (
               <RestaurantCard key={restaurant.id} onClick={() => handleRestaurantClick(restaurant.id)}>
                 <RestaurantHeader>
                   <RestaurantInfo>
                     <RestaurantName>{restaurant.name}</RestaurantName>
-                    <RestaurantMeta style={{ fontWeight: '500', color: '#374151' }}>{restaurant.branchName}</RestaurantMeta>
+                    {restaurant.brand_id && (
+                      <RestaurantMeta style={{ fontWeight: '600', color: '#635BFF' }}>
+                        {brands.find(b => b.id === restaurant.brand_id)?.name || 'Brand'}
+                      </RestaurantMeta>
+                    )}
                     <RestaurantMeta>{restaurant.location} • {restaurant.cuisine}</RestaurantMeta>
                     <RestaurantMeta>{restaurant.address}</RestaurantMeta>
                   </RestaurantInfo>

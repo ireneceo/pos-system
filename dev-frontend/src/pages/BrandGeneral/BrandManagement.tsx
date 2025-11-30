@@ -445,7 +445,7 @@ const BrandManagement: React.FC = () => {
   };
 
   const handleNavigateToRestaurants = (brand: Brand) => {
-    navigate(`/pos/admin/restaurants?brandId=${brand.id}&brandName=${encodeURIComponent(brand.name)}`);
+    navigate(`/pos/manager/restaurants?brandId=${brand.id}&brandName=${encodeURIComponent(brand.name)}`);
   };
 
   return (
@@ -524,9 +524,6 @@ const BrandManagement: React.FC = () => {
                       </BrandDetails>
                     </BrandInfo>
                     <ActionButtons>
-                      <ActionButton variant="view" onClick={() => handleNavigateToRestaurants(brand)}>
-                        Restaurants
-                      </ActionButton>
                       <ActionButton variant="edit" onClick={() => handleEditBrand(brand)}>
                         Edit
                       </ActionButton>

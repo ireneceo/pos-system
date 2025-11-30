@@ -357,16 +357,72 @@ const ActionButton = styled.button`
   }
 `;
 
+// Page-specific filter wrapper - ensures no overlap
+const PageFilterWrapper = styled.div`
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+
+  @media (max-width: 600px) {
+    flex-direction: column;
+  }
+`;
+
+const PageSearchInput = styled.input`
+  flex: 0 1 220px;
+  padding: 12px 16px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+
+  &::placeholder {
+    color: #9CA3AF;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+
+  @media (max-width: 600px) {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+`;
+
+const PageFilterSelect = styled.select`
+  flex: 0 0 140px;
+  padding: 12px 16px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+
+  @media (max-width: 600px) {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+`;
+
 // Advanced Dropdown Styled Components
 const DropdownContainer = styled.div`
   position: relative;
-  min-width: 200px;
-  flex: 1;
-  max-width: 300px;
+  flex: 0 0 180px;
 
-  @media (max-width: 768px) {
-    min-width: 150px;
-    max-width: 100%;
+  @media (max-width: 600px) {
+    flex: 1 1 100%;
+    width: 100%;
   }
 `;
 
@@ -1371,6 +1427,46 @@ const RestaurantsPage: React.FC = () => {
                 >
                   <ManagerName>{manager.full_name || manager.username}</ManagerName>
                   <ManagerDetails>{manager.username} • {manager.email}</ManagerDetails>
+                </DropdownItem>
+              ))}
+            </DropdownMenu>
+          </DropdownContainer>
+          <DropdownContainer>
+            <DropdownInput
+              type="text"
+              placeholder="Search brands..."
+              value={filterBrandSearchQuery}
+              onChange={(e) => handleFilterBrandSearch(e.target.value)}
+              onFocus={() => {
+                setShowFilterBrandDropdown(true);
+                if (filterBrandSearchQuery.length === 0) {
+                  setFilteredFilterBrands(brands.slice(0, 10));
+                }
+              }}
+              onBlur={() => setTimeout(() => setShowFilterBrandDropdown(false), 200)}
+            />
+            {filterBrand !== 'all' && filterBrandSearchQuery && (
+              <ClearButton onClick={handleFilterBrandClear}>
+                ×
+              </ClearButton>
+            )}
+            <DropdownMenu show={showFilterBrandDropdown}>
+              <DropdownItem onClick={() => {
+                setFilterBrand('all');
+                setFilterBrandSearchQuery('');
+                setShowFilterBrandDropdown(false);
+                navigate('/pos/admin/restaurants', { replace: true });
+              }}>
+                <ManagerName>All Brands</ManagerName>
+                <ManagerDetails>Show all restaurants</ManagerDetails>
+              </DropdownItem>
+              {filteredFilterBrands.map(brand => (
+                <DropdownItem
+                  key={brand.id}
+                  onClick={() => handleFilterBrandSelect(brand)}
+                >
+                  <ManagerName>{brand.name}</ManagerName>
+                  <ManagerDetails>{brand.code} • {brand.currency}</ManagerDetails>
                 </DropdownItem>
               ))}
             </DropdownMenu>

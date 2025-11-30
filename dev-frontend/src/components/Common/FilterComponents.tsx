@@ -7,22 +7,38 @@ const CommonFilterBar = styled.div`
   gap: 16px;
   margin-bottom: 24px;
   flex-wrap: wrap;
+  align-items: flex-start;
   /* Transparent background - sits directly on page background */
   background: transparent;
   border: none;
   padding: 0;
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     gap: 12px;
+  }
+
+  @media (max-width: 768px) {
+    gap: 10px;
     margin-bottom: 20px;
+  }
+
+  @media (max-width: 600px) {
+    flex-direction: column;
+    gap: 12px;
+
+    > * {
+      width: 100% !important;
+      min-width: 100% !important;
+      max-width: 100% !important;
+    }
   }
 `;
 
 // Common Search Input
 const CommonSearchInput = styled.input`
-  flex: none;
-  width: 350px;
-  min-width: 350px;
+  flex: 1;
+  min-width: 180px;
+  max-width: 300px;
   padding: 12px 16px;
   border: 1px solid #E6EBF1;
   border-radius: 8px;
@@ -39,14 +55,20 @@ const CommonSearchInput = styled.input`
     box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
   }
 
-  @media (max-width: 768px) {
-    width: 300px;
-    min-width: 300px;
+  @media (max-width: 1024px) {
+    min-width: 150px;
+    max-width: 250px;
   }
 
-  @media (max-width: 480px) {
+  @media (max-width: 768px) {
+    min-width: 120px;
+    max-width: 200px;
+  }
+
+  @media (max-width: 600px) {
     width: 100%;
     min-width: 100%;
+    max-width: 100%;
   }
 `;
 
@@ -58,7 +80,9 @@ const CommonFilterSelect = styled.select`
   font-size: 14px;
   background: white;
   cursor: pointer;
-  min-width: 150px;
+  min-width: 140px;
+  max-width: 180px;
+  flex-shrink: 0;
 
   &:focus {
     outline: none;
@@ -72,8 +96,24 @@ const CommonFilterSelect = styled.select`
     cursor: not-allowed;
   }
 
-  @media (max-width: 480px) {
+  @media (max-width: 1024px) {
     min-width: 120px;
+    max-width: 150px;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  @media (max-width: 768px) {
+    min-width: 110px;
+    max-width: 140px;
+  }
+
+  @media (max-width: 600px) {
+    width: 100%;
+    min-width: 100%;
+    max-width: 100%;
+    padding: 12px 16px;
+    font-size: 14px;
   }
 `;
 
