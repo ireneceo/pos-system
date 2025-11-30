@@ -267,10 +267,42 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// Helper function to validate brand_id permission
+// Brand General/Manager can only set brand_id to their own brand
+const validateBrandPermission = async (brandId, userId, userRole) => {
+  if (!brandId) return { valid: true };
+
+  // System Admin can set any brand
+  if (userRole === 'System Admin') return { valid: true };
+
+  // Brand General/Manager must own the brand
+  if (userRole === 'Brand General' || userRole === 'Brand Manager') {
+    const brand = await Brand.findByPk(brandId);
+    if (!brand) {
+      return { valid: false, error: 'Brand not found' };
+    }
+    if (brand.owner_id !== userId) {
+      return { valid: false, error: 'You can only assign restaurants to your own brand' };
+    }
+    return { valid: true };
+  }
+
+  return { valid: false, error: 'Unauthorized to set brand' };
+};
+
 // Create new restaurant
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     console.log('📥 Received restaurant creation request:', req.body);
+
+    // Validate brand_id permission if provided
+    if (req.body.brand_id) {
+      const brandCheck = await validateBrandPermission(req.body.brand_id, req.user.id, req.user.role);
+      if (!brandCheck.valid) {
+        console.log(`❌ Brand permission denied: ${brandCheck.error}`);
+        return res.status(403).json({ error: brandCheck.error });
+      }
+    }
 
     // Get plan template if specified
     let planSnapshot = null;
@@ -362,9 +394,33 @@ router.post('/', async (req, res) => {
 });
 
 // Update restaurant
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateToken, async (req, res) => {
   try {
     console.log('🔄 PUT /api/restaurants/:id - Restaurant ID:', req.params.id);
+
+    // Validate brand_id permission if being changed
+    if (req.body.brand_id !== undefined && req.body.brand_id) {
+      const brandCheck = await validateBrandPermission(req.body.brand_id, req.user.id, req.user.role);
+      if (!brandCheck.valid) {
+        console.log(`❌ Brand permission denied: ${brandCheck.error}`);
+        return res.status(403).json({ error: brandCheck.error });
+      }
+
+      // Also verify user is a manager of this restaurant (for Brand General/Manager)
+      if (req.user.role === 'Brand General' || req.user.role === 'Brand Manager') {
+        const RestaurantManager = require('../models/RestaurantManager');
+        const isManager = await RestaurantManager.findOne({
+          where: {
+            restaurant_id: req.params.id,
+            manager_id: req.user.id
+          }
+        });
+        if (!isManager) {
+          console.log(`❌ User ${req.user.id} is not a manager of restaurant ${req.params.id}`);
+          return res.status(403).json({ error: 'You can only set brand for restaurants you manage' });
+        }
+      }
+    }
     console.log('📥 Received restaurant update request body:', JSON.stringify(req.body).substring(0, 500));
 
     const restaurant = await Restaurant.findByPk(req.params.id);
