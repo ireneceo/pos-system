@@ -164,6 +164,9 @@ app.use('/api/orders', ordersRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/categories', categoriesRouter);
+// Recipes and ingredients routes need to be available at both /api/brands and /api/restaurants
+app.use('/api', recipesRouter);
+app.use('/api', ingredientsRouter);
 app.use('/api/restaurants', restaurantsRouter);
 app.use('/api/plans', plansRouter);
 app.use('/api/admin-analytics', adminAnalyticsRouter);
@@ -174,8 +177,6 @@ app.use('/api/customers', customersRouter);
 app.use('/api/operation-tickets', operationTicketsRouter);
 app.use('/api/activity-logs', activityLogsRouter);
 app.use('/api/option-groups', optionGroupsRouter);
-app.use('/api', recipesRouter);
-app.use('/api', ingredientsRouter);
 app.use('/api/brands', brandsRouter);
 
 // GitHub Webhook for Auto-Deployment

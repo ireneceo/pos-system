@@ -10,8 +10,9 @@ const PlanTemplate = require('../models/PlanTemplate');
 const Category = require('../models/Category');
 const Product = require('../models/Product');
 const AddonModule = require('../models/AddonModule');
+const { Recipe, Ingredient, RecipeIngredient } = require('../models');
 const { Op } = require('sequelize');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const jwt = require('jsonwebtoken');
 
 // Optional authentication middleware
@@ -836,6 +837,174 @@ router.get('/:id/allowed-routes', async (req, res) => {
   } catch (error) {
     console.error('Error fetching allowed routes:', error);
     res.status(500).json({ error: 'Failed to fetch allowed routes' });
+  }
+});
+
+// ============================================
+// Restaurant Ingredients Routes
+// ============================================
+
+router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const ingredients = await Ingredient.findAll({
+      where: { restaurant_id: restaurantId },
+      order: [['name', 'ASC']]
+    });
+    res.json({ success: true, data: ingredients });
+  } catch (error) {
+    console.error('Get restaurant ingredients error:', error);
+    res.status(500).json({ error: '재료 목록 조회 실패' });
+  }
+});
+
+router.post('/:restaurantId/ingredients', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const { code, name, category, unit, unit_cost, supplier_name, min_stock } = req.body;
+    const ingredient = await Ingredient.create({
+      brand_id: null,
+      restaurant_id: restaurantId,
+      code, name, category, unit, unit_cost, supplier_name,
+      min_stock: min_stock || 0,
+      current_stock: 0
+    });
+    res.json({ success: true, data: ingredient });
+  } catch (error) {
+    console.error('Create restaurant ingredient error:', error);
+    res.status(500).json({ error: '재료 생성 실패' });
+  }
+});
+
+router.put('/:restaurantId/ingredients/:ingredientId', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { ingredientId } = req.params;
+    const { code, name, category, unit, unit_cost, supplier_name, min_stock } = req.body;
+    const ingredient = await Ingredient.findByPk(ingredientId);
+    if (!ingredient) return res.status(404).json({ error: '재료를 찾을 수 없습니다' });
+    await ingredient.update({ code, name, category, unit, unit_cost, supplier_name, min_stock });
+    res.json({ success: true, data: ingredient });
+  } catch (error) {
+    console.error('Update restaurant ingredient error:', error);
+    res.status(500).json({ error: '재료 수정 실패' });
+  }
+});
+
+router.delete('/:restaurantId/ingredients/:ingredientId', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { ingredientId } = req.params;
+    const ingredient = await Ingredient.findByPk(ingredientId);
+    if (!ingredient) return res.status(404).json({ error: '재료를 찾을 수 없습니다' });
+    await ingredient.destroy();
+    res.json({ success: true, message: '재료가 삭제되었습니다' });
+  } catch (error) {
+    console.error('Delete restaurant ingredient error:', error);
+    res.status(500).json({ error: '재료 삭제 실패' });
+  }
+});
+
+// ============================================
+// Restaurant Recipes Routes
+// ============================================
+
+router.get('/:restaurantId/recipes', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const restaurant = await Restaurant.findByPk(restaurantId);
+    if (!restaurant) return res.status(404).json({ error: '레스토랑을 찾을 수 없습니다' });
+
+    const result = { brand_recipes: [], own_recipes: [] };
+
+    if (restaurant.brand_id) {
+      const brandRecipes = await Recipe.findAll({
+        where: { brand_id: restaurant.brand_id },
+        include: [{ model: RecipeIngredient, as: 'recipeIngredients', include: [{ model: Ingredient, as: 'ingredient' }] }],
+        order: [['created_at', 'DESC']]
+      });
+      result.brand_recipes = brandRecipes.map(r => ({ ...r.toJSON(), from_brand: true, editable: false }));
+    }
+
+    if (!restaurant.brand_id) {
+      const ownRecipes = await Recipe.findAll({
+        where: { restaurant_id: restaurantId },
+        include: [{ model: RecipeIngredient, as: 'recipeIngredients', include: [{ model: Ingredient, as: 'ingredient' }] }],
+        order: [['created_at', 'DESC']]
+      });
+      result.own_recipes = ownRecipes.map(r => ({ ...r.toJSON(), from_brand: false, editable: true }));
+    }
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Get restaurant recipes error:', error);
+    res.status(500).json({ error: '레시피 목록 조회 실패' });
+  }
+});
+
+router.post('/:restaurantId/recipes', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const restaurant = await Restaurant.findByPk(restaurantId);
+    if (restaurant.brand_id) return res.status(403).json({ error: '브랜드 가맹점은 레시피를 생성할 수 없습니다' });
+
+    const { name, description, category, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
+
+    const recipe = await Recipe.create({
+      brand_id: null, restaurant_id: restaurantId,
+      name, description, category, emoji, image, option_groups,
+      prep_time, cook_time, instructions,
+      suggested_price: suggested_price || 0,
+      total_ingredient_cost: 0
+    });
+
+    let totalCost = 0;
+    if (ingredients && ingredients.length > 0) {
+      for (const item of ingredients) {
+        const ingredient = await Ingredient.findByPk(item.ingredient_id);
+        if (ingredient) {
+          const cost = parseFloat(item.quantity) * parseFloat(ingredient.unit_cost);
+          await RecipeIngredient.create({
+            recipe_id: recipe.id, ingredient_id: item.ingredient_id,
+            quantity: item.quantity, unit: item.unit, cost, notes: item.notes || null
+          });
+          totalCost += cost;
+        }
+      }
+    }
+
+    await recipe.update({ total_ingredient_cost: totalCost });
+
+    const createdRecipe = await Recipe.findByPk(recipe.id, {
+      include: [{ model: RecipeIngredient, as: 'recipeIngredients', include: [{ model: Ingredient, as: 'ingredient' }] }]
+    });
+
+    res.json({ success: true, data: createdRecipe });
+  } catch (error) {
+    console.error('Create restaurant recipe error:', error);
+    res.status(500).json({ error: '레시피 생성 실패' });
+  }
+});
+
+router.post('/:restaurantId/products/create-from-recipe', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const { recipe_id, price } = req.body;
+
+    const recipe = await Recipe.findByPk(recipe_id);
+    if (!recipe) return res.status(404).json({ error: '레시피를 찾을 수 없습니다' });
+
+    const product = await Product.create({
+      restaurant_id: restaurantId, recipe_id,
+      code: recipe.code, name: recipe.name, price,
+      category: recipe.category, description: recipe.description,
+      optionGroups: recipe.option_groups, image: recipe.image, emoji: recipe.emoji,
+      soldOut: false, is_set_menu: recipe.is_set_menu,
+      set_items: recipe.set_items, set_display_order: recipe.set_display_order
+    });
+
+    res.json({ success: true, data: product, message: '레시피가 메뉴로 등록되었습니다' });
+  } catch (error) {
+    console.error('Create product from recipe error:', error);
+    res.status(500).json({ error: '메뉴 등록 실패' });
   }
 });
 
