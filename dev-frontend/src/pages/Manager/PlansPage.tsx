@@ -21,9 +21,22 @@ const Container = styled.div`
 
 const Header = styled.div`
   background: white;
-  padding: 32px;
+  padding: 16px 32px;
   border-bottom: 1px solid #E6EBF1;
   margin-bottom: 0;
+  height: 56px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  @media (max-width: 768px) {
+    padding: 16px;
+    height: auto;
+    min-height: 56px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
 `;
 
 const HeaderContent = styled.div`

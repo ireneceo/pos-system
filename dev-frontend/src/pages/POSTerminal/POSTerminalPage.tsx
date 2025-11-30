@@ -30,18 +30,23 @@ const POSContainer = styled.div`
   flex-direction: column;
 `;
 
-const Header = styled.header`
+const Header = styled.div`
   background: white;
-  padding: 12px 32px;
+  padding: 16px 32px;
+  border-bottom: 1px solid #E6EBF1;
+  margin-bottom: 0;
+  height: 56px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #E6EBF1;
-  height: 48px;
 
   @media (max-width: 768px) {
+    padding: 16px;
     height: auto;
-    padding: 12px 20px;
+    min-height: 56px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
   }
 `;
 

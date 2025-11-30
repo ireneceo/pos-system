@@ -17,22 +17,36 @@ const ReportsContainer = styled.div`
   min-height: 100vh;
 `;
 
-const Header = styled.header`
+const Header = styled.div`
   background: white;
-  padding: 32px;
+  padding: 16px 32px;
   border-bottom: 1px solid #E6EBF1;
   margin-bottom: 0;
+  height: 56px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 
   @media (max-width: 768px) {
-    padding: 20px;
+    padding: 16px;
+    height: auto;
+    min-height: 56px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
   }
 `;
 
 const HeaderTitle = styled.h1`
-  font-size: 32px;
+  font-size: 24px;
   font-weight: 700;
   color: #0A2540;
   margin: 0;
+  line-height: 1;
+
+  @media (max-width: 768px) {
+    font-size: 20px;
+  }
 `;
 
 const DateRangeInput = styled.input`
@@ -395,7 +409,7 @@ const BrandReportsPage: React.FC = () => {
   // Tab state
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     const tabFromUrl = searchParams.get('tab') as TabType;
-    return tabFromUrl || 'sales';
+    return tabFromUrl || 'ranking';
   });
 
   // Date range state
@@ -617,8 +631,8 @@ const BrandReportsPage: React.FC = () => {
       if (!orderDateValue) return false;
       const orderDate = new Date(orderDateValue);
       const isInRange = orderDate >= startDate && orderDate <= endDate;
-      const isCompleted = order.status === 'completed';
-      return isInRange && isCompleted;
+      const isValidOrder = order.payment_status === 'completed' || order.status === 'completed' || order.status === 'pending' || order.status === 'preparing' || order.status === 'ready';
+      return isInRange && isValidOrder;
     });
   }, [orders, dateRange.start, dateRange.end]);
 
@@ -1116,12 +1130,12 @@ const BrandReportsPage: React.FC = () => {
 
         <Content>
           <TabContainer>
+            <Tab active={activeTab === 'ranking'} onClick={() => setActiveTab('ranking')}>Sales Ranking</Tab>
             <Tab active={activeTab === 'sales'} onClick={() => setActiveTab('sales')}>Sales Report</Tab>
             <Tab active={activeTab === 'details'} onClick={() => setActiveTab('details')}>Sales Details</Tab>
             <Tab active={activeTab === 'menu'} onClick={() => setActiveTab('menu')}>Menu Analysis</Tab>
             <Tab active={activeTab === 'customers'} onClick={() => setActiveTab('customers')}>Customer Insights</Tab>
             <Tab active={activeTab === 'operations'} onClick={() => setActiveTab('operations')}>Operations</Tab>
-            <Tab active={activeTab === 'ranking'} onClick={() => setActiveTab('ranking')}>Sales Ranking</Tab>
           </TabContainer>
 
           {/* Sales Tab */}
@@ -1459,7 +1473,23 @@ const BrandReportsPage: React.FC = () => {
 
           {/* Sales Ranking Tab */}
           <div style={{ display: activeTab === 'ranking' ? 'block' : 'none' }}>
-            <FilterComponent />
+            {/* Date filter only - no brand/restaurant filters needed for ranking */}
+            <FilterControls>
+              <FilterRow>
+                <DateButton active={activePeriod === 'today'} onClick={() => handlePeriodChange('today')}>Today</DateButton>
+                <DateButton active={activePeriod === 'week'} onClick={() => handlePeriodChange('week')}>This Week</DateButton>
+                <DateButton active={activePeriod === 'month'} onClick={() => handlePeriodChange('month')}>This Month</DateButton>
+                <DateButton active={activePeriod === 'year'} onClick={() => handlePeriodChange('year')}>This Year</DateButton>
+                <DateButton active={activePeriod === 'all'} onClick={() => handlePeriodChange('all')}>All Time</DateButton>
+                {isCustomDateRange && (
+                  <CustomDateRange>
+                    <DateRangeInput type="date" value={dateRange.start} onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))} />
+                    <span>~</span>
+                    <DateRangeInput type="date" value={dateRange.end} onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))} />
+                  </CustomDateRange>
+                )}
+              </FilterRow>
+            </FilterControls>
 
             {/* Brand Rankings */}
             <RankingCard>
@@ -1487,7 +1517,7 @@ const BrandReportsPage: React.FC = () => {
                         <TableCell style={{ fontWeight: 600 }}>{brand.name}</TableCell>
                         <TableCell style={{ textAlign: 'right' }}>{brand.restaurantCount}</TableCell>
                         <TableCell style={{ textAlign: 'right' }}>{brand.orders.toLocaleString()}</TableCell>
-                        <TableCell style={{ textAlign: 'right', fontWeight: 600, color: '#059669' }}>{formatCurrency(brand.revenue, 'RM')}</TableCell>
+                        <TableCell style={{ textAlign: 'right', fontWeight: 600, color: '#635BFF' }}>{formatCurrency(brand.revenue, 'RM')}</TableCell>
                         <TableCell>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <ProgressBar percentage={percentage} />
@@ -1534,7 +1564,7 @@ const BrandReportsPage: React.FC = () => {
                           </span>
                         </TableCell>
                         <TableCell style={{ textAlign: 'right' }}>{restaurant.orders.toLocaleString()}</TableCell>
-                        <TableCell style={{ textAlign: 'right', fontWeight: 600, color: '#059669' }}>{formatCurrency(restaurant.revenue, 'RM')}</TableCell>
+                        <TableCell style={{ textAlign: 'right', fontWeight: 600, color: '#635BFF' }}>{formatCurrency(restaurant.revenue, 'RM')}</TableCell>
                         <TableCell>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <ProgressBar percentage={percentage} />

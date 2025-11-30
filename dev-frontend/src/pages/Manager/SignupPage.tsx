@@ -32,16 +32,35 @@ const SignupBox = styled.div`
 `;
 
 const Header = styled.div`
-  background: linear-gradient(135deg, #635BFF 0%, #5A51E6 100%);
-  padding: 40px;
-  text-align: center;
-  color: white;
+  background: white;
+  padding: 16px 32px;
+  border-bottom: 1px solid #E6EBF1;
+  margin-bottom: 0;
+  height: 56px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  @media (max-width: 768px) {
+    padding: 16px;
+    height: auto;
+    min-height: 56px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
 `;
 
 const Title = styled.h1`
-  font-size: 28px;
-  font-weight: 800;
-  margin: 0 0 8px 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #0A2540;
+  margin: 0;
+  line-height: 1;
+
+  @media (max-width: 768px) {
+    font-size: 20px;
+  }
 `;
 
 const Subtitle = styled.p`

@@ -23,10 +23,15 @@ const WelcomeCard = styled.div`
 `;
 
 const Title = styled.h1`
-  font-size: 32px;
+  font-size: 24px;
   font-weight: 700;
   color: #0A2540;
-  margin-bottom: 16px;
+  margin: 0;
+  line-height: 1;
+
+  @media (max-width: 768px) {
+    font-size: 20px;
+  }
 `;
 
 const Subtitle = styled.p`

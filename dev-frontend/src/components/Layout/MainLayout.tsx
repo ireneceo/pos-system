@@ -900,6 +900,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>▲</NavIcon>
                   Performance Analysis
                 </NavItem>
+                <NavItem to="/pos/brand/general/reports" active={isActive('/pos/brand/general/reports')} onClick={closeSidebar}>
+                  <NavIcon>◉</NavIcon>
+                  Reports
+                </NavItem>
                 <NavItem to="/pos/manager/restaurants" active={isActive('/pos/manager/restaurants')} onClick={closeSidebar}>
                   <NavIcon>◐</NavIcon>
                   Restaurants
@@ -919,34 +923,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <NavItem to="/pos/manager/staff" active={isActive('/pos/manager/staff')} onClick={closeSidebar}>
                   <NavIcon>◆</NavIcon>
                   Staff
-                </NavItem>
-                <NavItem to="/pos/manager/sales" active={isActive('/pos/manager/sales')} onClick={closeSidebar}>
-                  <NavIcon>$</NavIcon>
-                  Sales
-                </NavItem>
-                <NavItem to="/pos/manager/reports" active={isActive('/pos/manager/reports')} onClick={closeSidebar}>
-                  <NavIcon>≡</NavIcon>
-                  Reports
-                </NavItem>
-                <NavItem to="/pos/manager/customers" active={isActive('/pos/manager/customers')} onClick={closeSidebar}>
-                  <NavIcon>○</NavIcon>
-                  Customers
-                </NavItem>
-                <NavItem to="/pos/manager/promotions" active={isActive('/pos/manager/promotions')} onClick={closeSidebar}>
-                  <NavIcon>%</NavIcon>
-                  Promotions
-                </NavItem>
-                <NavItem to="/pos/manager/plans" active={isActive('/pos/manager/plans')} onClick={closeSidebar}>
-                  <NavIcon>⊡</NavIcon>
-                  Plans
-                </NavItem>
-                <NavItem to="/pos/manager/support" active={isActive('/pos/manager/support')} onClick={closeSidebar}>
-                  <NavIcon>◎</NavIcon>
-                  Support Tickets
-                </NavItem>
-                <NavItem to="/pos/manager/operation-inquiry" active={isActive('/pos/manager/operation-inquiry')} onClick={closeSidebar}>
-                  <NavIcon>▲</NavIcon>
-                  Operation Inquiry
                 </NavItem>
               </>
             )}
