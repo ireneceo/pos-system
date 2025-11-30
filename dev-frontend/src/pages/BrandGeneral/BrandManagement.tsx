@@ -2,184 +2,56 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
-import { Modal, FormLabel, FormInput, StatsGrid, StatCard, StatValue, StatLabel, StatTrend } from '../../components/UI';
-import { ThemedButton } from '../../components/Theme/ThemedButton';
+import {
+  Container,
+  Header,
+  Title,
+  ActionSection,
+  Button,
+  Content,
+  StatsGrid,
+  StatCard,
+  StatValue,
+  StatLabel,
+  StatDescription,
+  Modal,
+  FormLabel,
+  FormInput,
+  Table,
+  TableHeader,
+  TableRow,
+  ActionButtons,
+  IconButton
+} from '../../components/UI';
 import ConfirmModal from '../../components/ConfirmModal';
+
+// Page-specific styled components
+const Subtitle = styled.p`
+  font-size: 14px;
+  color: #6B7280;
+  margin: 4px 0 0;
+`;
+
+const StatusBadge = styled.span<{ status: string }>`
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: ${props => props.status === 'active' ? '#ECFDF5' : '#FEE2E2'};
+  color: ${props => props.status === 'active' ? '#059669' : '#DC2626'};
+`;
 
 const RestaurantLink = styled.span`
   color: #635BFF;
   cursor: pointer;
   text-decoration: underline;
+  font-weight: 600;
 
   &:hover {
     color: #5A51E6;
   }
-`;
-
-const Container = styled.div`
-  min-height: 100vh;
-
-  @media (max-width: 768px) {
-    padding: 0;
-  }
-`;
-
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
-  margin-bottom: 0;
-  height: 56px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-  @media (max-width: 768px) {
-    padding: 16px;
-    height: auto;
-    min-height: 56px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-`;
-
-const Content = styled.div`
-  padding: 32px;
-  background: #FAFBFC;
-  min-height: calc(100vh - 120px);
-
-  @media (max-width: 768px) {
-    padding: 20px;
-  }
-`;
-
-const Title = styled.h1`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-  line-height: 1;
-
-  @media (max-width: 768px) {
-    font-size: 20px;
-  }
-`;
-
-const Subtitle = styled.p`
-  font-size: 16px;
-  color: #6B7280;
-  margin: 8px 0 0;
-`;
-
-
-const ContentCard = styled.div`
-  background: white;
-  border-radius: 16px;
-  padding: 24px;
-  border: 1px solid #E6EBF1;
-  margin-bottom: 24px;
-`;
-
-const SectionHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-`;
-
-const SectionTitle = styled.h2`
-  font-size: 20px;
-  font-weight: 600;
-  color: #0A2540;
-  margin: 0;
-`;
-
-const ActionSection = styled.div`
-  display: flex;
-  gap: 12px;
-`;
-
-const BrandList = styled.div`
-  display: grid;
-  gap: 16px;
-`;
-
-const BrandCard = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px;
-  border: 1px solid #E6EBF1;
-  border-radius: 12px;
-  background: white;
-  transition: all 0.2s;
-
-  &:hover {
-    border-color: #635BFF;
-    transform: translateY(-1px);
-  }
-`;
-
-const BrandInfo = styled.div`
-  flex: 1;
-`;
-
-const BrandName = styled.h3`
-  font-size: 18px;
-  font-weight: 600;
-  color: #0A2540;
-  margin: 0 0 8px 0;
-`;
-
-const BrandDetails = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 16px;
-  font-size: 14px;
-  color: #6B7280;
-`;
-
-const ActionButtons = styled.div`
-  display: flex;
-  gap: 8px;
-`;
-
-const ActionButton = styled.button<{ variant: 'edit' | 'delete' | 'view' }>`
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid;
-
-  ${props => {
-    switch (props.variant) {
-      case 'edit':
-        return `
-          background: #EBF8FF;
-          border-color: #2563EB;
-          color: #2563EB;
-          &:hover { background: #DBEAFE; }
-        `;
-      case 'delete':
-        return `
-          background: #FEF2F2;
-          border-color: #DC2626;
-          color: #DC2626;
-          &:hover { background: #FECACA; }
-        `;
-      case 'view':
-      default:
-        return `
-          background: #F3F4F6;
-          border-color: #9CA3AF;
-          color: #374151;
-          &:hover { background: #E5E7EB; }
-        `;
-    }
-  }}
 `;
 
 const ErrorMessage = styled.div`
@@ -203,26 +75,53 @@ const ButtonGroup = styled.div`
   justify-content: flex-end;
 `;
 
-const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
-  padding: 10px 20px;
+const FormSelect = styled.select`
+  width: 100%;
+  padding: 10px 12px;
   border-radius: 8px;
+  border: 1px solid #E6EBF1;
   font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid;
+  color: #0A2540;
+  background: white;
 
-  ${props => props.variant === 'secondary' ? `
-    background: white;
-    border-color: #E6EBF1;
-    color: #0A2540;
-    &:hover { background: #F8FAFC; }
-  ` : `
-    background: #635BFF;
+  &:focus {
+    outline: none;
     border-color: #635BFF;
-    color: white;
-    &:hover { background: #5A51E6; }
-  `}
+  }
+`;
+
+const BrandInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+`;
+
+const BrandName = styled.div`
+  font-weight: 600;
+  color: #0A2540;
+`;
+
+const BrandCode = styled.div`
+  font-size: 12px;
+  color: #6B7280;
+`;
+
+const EmptyState = styled.div`
+  text-align: center;
+  padding: 60px 20px;
+  color: #6B7280;
+
+  h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #0A2540;
+    margin-bottom: 8px;
+  }
+
+  p {
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
 `;
 
 interface Brand {
@@ -278,9 +177,9 @@ const BrandManagement: React.FC = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalBrands: 0,
+    activeBrands: 0,
     totalStores: 0,
     activeManagers: 0,
-    monthlyRevenue: 0,
   });
 
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -320,12 +219,13 @@ const BrandManagement: React.FC = () => {
         setBrands(data);
 
         const totalStores = data.reduce((sum: number, brand: Brand) => sum + (brand.restaurants?.length || 0), 0);
+        const activeBrands = data.filter((b: Brand) => b.status === 'active').length;
 
         setStats({
           totalBrands: data.length,
+          activeBrands,
           totalStores,
-          activeManagers: data.length, // Each brand has one owner
-          monthlyRevenue: 0, // We don't have revenue data yet
+          activeManagers: data.length,
         });
       } else {
         console.error('Failed to fetch brands');
@@ -384,7 +284,6 @@ const BrandManagement: React.FC = () => {
       const token = localStorage.getItem('auth_token');
 
       if (isEditing && selectedBrand) {
-        // Update existing brand
         const response = await fetch(`/api/brands/${selectedBrand.id}`, {
           method: 'PUT',
           headers: {
@@ -402,7 +301,6 @@ const BrandManagement: React.FC = () => {
           setError(errorData.error || 'Failed to update brand');
         }
       } else {
-        // Create new brand
         const response = await fetch('/api/brands', {
           method: 'POST',
           headers: {
@@ -461,88 +359,98 @@ const BrandManagement: React.FC = () => {
         <Header>
           <div>
             <Title>Brand Management</Title>
-            <Subtitle>Integrated management and growth strategy development for entire brand portfolio</Subtitle>
+            <Subtitle>Manage your brand portfolio and growth strategies</Subtitle>
           </div>
           <ActionSection>
-            <ThemedButton variant="outline">Export Brands</ThemedButton>
-            <ThemedButton variant="primary" onClick={handleAddBrand}>Add Brand</ThemedButton>
+            <Button variant="secondary">Export</Button>
+            <Button variant="primary" onClick={handleAddBrand}>+ Add Brand</Button>
           </ActionSection>
         </Header>
 
         <Content>
           <StatsGrid>
-            <StatCard>
+            <StatCard color="#635BFF">
               <StatValue>{stats.totalBrands}</StatValue>
-              <StatLabel>Active Brands</StatLabel>
-              <StatTrend trend="up">+2 new brands</StatTrend>
+              <StatLabel>Total Brands</StatLabel>
+              <StatDescription>{stats.activeBrands} active</StatDescription>
             </StatCard>
-            <StatCard>
+            <StatCard color="#10B981">
+              <StatValue>{stats.activeBrands}</StatValue>
+              <StatLabel>Active Brands</StatLabel>
+              <StatDescription>Currently operating</StatDescription>
+            </StatCard>
+            <StatCard color="#F59E0B">
               <StatValue>{stats.totalStores}</StatValue>
               <StatLabel>Total Stores</StatLabel>
-              <StatTrend trend="up">+8 stores opened</StatTrend>
+              <StatDescription>Across all brands</StatDescription>
             </StatCard>
-            <StatCard>
+            <StatCard color="#8B5CF6">
               <StatValue>{stats.activeManagers}</StatValue>
-              <StatLabel>Active Managers</StatLabel>
-              <StatTrend trend="up">Full staffed</StatTrend>
-            </StatCard>
-            <StatCard>
-              <StatValue>RM {(stats.monthlyRevenue / 1000000000).toFixed(1)}B</StatValue>
-              <StatLabel>Total Monthly Revenue</StatLabel>
-              <StatTrend trend="up">+15% vs last month</StatTrend>
+              <StatLabel>Brand Managers</StatLabel>
+              <StatDescription>Assigned managers</StatDescription>
             </StatCard>
           </StatsGrid>
 
-          <ContentCard>
-            <SectionHeader>
-              <SectionTitle>Brand Portfolio</SectionTitle>
-              <ThemedButton variant="primary" onClick={handleAddBrand}>
-                + Add New Brand
-              </ThemedButton>
-            </SectionHeader>
-
-            {loading ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
-                Loading brands...
-              </div>
-            ) : brands.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
-                No brands found. Create your first brand to get started.
-              </div>
-            ) : (
-              <BrandList>
-                {brands.map((brand) => (
-                  <BrandCard key={brand.id}>
-                    <BrandInfo>
-                      <BrandName>{brand.name}</BrandName>
-                      <BrandDetails>
-                        <div><strong>Code:</strong> {brand.code}</div>
-                        <div><strong>Owner:</strong> {brand.owner?.full_name || 'N/A'}</div>
-                        <div>
-                          <strong>Restaurants:</strong>{' '}
-                          <RestaurantLink onClick={() => handleNavigateToRestaurants(brand)}>
-                            {brand.restaurants?.length || 0}
-                          </RestaurantLink>
-                        </div>
-                        <div><strong>Status:</strong> {brand.status}</div>
-                        {brand.description && <div><strong>Description:</strong> {brand.description}</div>}
-                        {brand.email && <div><strong>Email:</strong> {brand.email}</div>}
-                        {brand.phone && <div><strong>Phone:</strong> {brand.phone}</div>}
-                      </BrandDetails>
-                    </BrandInfo>
-                    <ActionButtons>
-                      <ActionButton variant="edit" onClick={() => handleEditBrand(brand)}>
-                        Edit
-                      </ActionButton>
-                      <ActionButton variant="delete" onClick={() => handleDeleteBrand(brand)}>
-                        Delete
-                      </ActionButton>
-                    </ActionButtons>
-                  </BrandCard>
-                ))}
-              </BrandList>
-            )}
-          </ContentCard>
+          {loading ? (
+            <EmptyState>
+              <p>Loading brands...</p>
+            </EmptyState>
+          ) : brands.length === 0 ? (
+            <EmptyState>
+              <h3>No Brands Found</h3>
+              <p>Create your first brand to get started.</p>
+              <Button variant="primary" onClick={handleAddBrand}>+ Add Brand</Button>
+            </EmptyState>
+          ) : (
+            <Table>
+              <TableHeader columns="2fr 1fr 1fr 1fr 1fr 120px">
+                <span>Brand</span>
+                <span>Owner</span>
+                <span>Restaurants</span>
+                <span>Status</span>
+                <span>Contact</span>
+                <span>Actions</span>
+              </TableHeader>
+              {brands.map((brand) => (
+                <TableRow key={brand.id} columns="2fr 1fr 1fr 1fr 1fr 120px">
+                  <BrandInfo>
+                    <BrandName>{brand.name}</BrandName>
+                    <BrandCode>{brand.code}</BrandCode>
+                  </BrandInfo>
+                  <div>{brand.owner?.full_name || 'N/A'}</div>
+                  <div>
+                    <RestaurantLink onClick={() => handleNavigateToRestaurants(brand)}>
+                      {brand.restaurants?.length || 0} stores
+                    </RestaurantLink>
+                  </div>
+                  <div>
+                    <StatusBadge status={brand.status}>
+                      {brand.status === 'active' ? 'Active' : 'Inactive'}
+                    </StatusBadge>
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#6B7280' }}>
+                    {brand.email || brand.phone || '-'}
+                  </div>
+                  <ActionButtons>
+                    <IconButton
+                      variant="edit"
+                      onClick={() => handleEditBrand(brand)}
+                      title="Edit"
+                    >
+                      ✎
+                    </IconButton>
+                    <IconButton
+                      variant="delete"
+                      onClick={() => handleDeleteBrand(brand)}
+                      title="Delete"
+                    >
+                      ✕
+                    </IconButton>
+                  </ActionButtons>
+                </TableRow>
+              ))}
+            </Table>
+          )}
 
           {/* Add/Edit Modal */}
           <Modal
@@ -625,24 +533,15 @@ const BrandManagement: React.FC = () => {
 
               <FormGroup>
                 <FormLabel>Currency *</FormLabel>
-                <select
+                <FormSelect
                   value={formData.currency}
                   onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid #E6EBF1',
-                    fontSize: '14px',
-                    color: '#0A2540',
-                    background: 'white'
-                  }}
                   required
                 >
                   {CURRENCY_OPTIONS.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
-                </select>
+                </FormSelect>
               </FormGroup>
 
               {error && <ErrorMessage>{error}</ErrorMessage>}
@@ -651,7 +550,7 @@ const BrandManagement: React.FC = () => {
                 <Button type="button" variant="secondary" onClick={() => setShowModal(false)}>
                   Cancel
                 </Button>
-                <Button type="submit">
+                <Button type="submit" variant="primary">
                   {isEditing ? 'Update Brand' : 'Create Brand'}
                 </Button>
               </ButtonGroup>

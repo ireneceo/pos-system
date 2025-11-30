@@ -464,12 +464,81 @@ router.post('/generate-for-subscriptions', async (req, res) => {
 
     for (const restaurant of restaurants) {
       try {
-        // Calculate billing period - issued on 1st day of each month for that month
+        // Anniversary Billing: Calculate billing period based on subscription start date
         const now = new Date();
-        const issueDate = new Date(now.getFullYear(), now.getMonth(), 1); // 1st of current month
-        const billingStart = new Date(now.getFullYear(), now.getMonth(), 1); // 1st of current month
-        const billingEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0); // Last day of current month
-        const dueDate = new Date(now.getFullYear(), now.getMonth() + 1, 0); // Due at end of current month
+        const subscriptionStart = new Date(restaurant.subscription_start);
+        const billingCycle = restaurant.billing_cycle || 'monthly';
+        const anchorDay = subscriptionStart.getDate(); // e.g., 15 if started on 15th
+
+        // Calculate the next billing period based on subscription anniversary
+        let billingStart, billingEnd, dueDate, issueDate;
+
+        if (billingCycle === 'annual') {
+          // Annual billing: Full year from subscription anniversary
+          const currentYear = now.getFullYear();
+          const subscriptionMonth = subscriptionStart.getMonth();
+
+          // Find the next annual billing date
+          const anniversaryThisYear = new Date(currentYear, subscriptionMonth, anchorDay);
+
+          if (now >= anniversaryThisYear) {
+            // Anniversary this year has passed, bill for next year
+            billingStart = new Date(currentYear, subscriptionMonth, anchorDay);
+            billingEnd = new Date(currentYear + 1, subscriptionMonth, anchorDay - 1);
+          } else {
+            // Anniversary hasn't come yet
+            billingStart = new Date(currentYear - 1, subscriptionMonth, anchorDay);
+            billingEnd = new Date(currentYear, subscriptionMonth, anchorDay - 1);
+          }
+
+          // Due date is the start of service period (prepaid model)
+          dueDate = new Date(billingStart);
+          // Issue invoice 7 days before due date
+          issueDate = new Date(billingStart);
+          issueDate.setDate(issueDate.getDate() - 7);
+
+        } else {
+          // Monthly billing: Based on subscription start day
+          const currentMonth = now.getMonth();
+          const currentYear = now.getFullYear();
+
+          // Calculate the anchor day for current month (handle month end edge cases)
+          const daysInCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+          const adjustedAnchorDay = Math.min(anchorDay, daysInCurrentMonth);
+
+          // Find the upcoming billing period
+          const anchorThisMonth = new Date(currentYear, currentMonth, adjustedAnchorDay);
+
+          if (now >= anchorThisMonth) {
+            // Anchor day this month has passed, bill for next period
+            billingStart = new Date(currentYear, currentMonth, adjustedAnchorDay);
+
+            // Calculate end date (day before next anchor)
+            const nextMonth = currentMonth + 1;
+            const daysInNextMonth = new Date(currentYear, nextMonth + 1, 0).getDate();
+            const nextAnchorDay = Math.min(anchorDay, daysInNextMonth);
+            billingEnd = new Date(currentYear, nextMonth, nextAnchorDay - 1);
+          } else {
+            // Anchor day hasn't come yet - bill for current period
+            const prevMonth = currentMonth - 1;
+            const daysInPrevMonth = new Date(currentYear, currentMonth, 0).getDate();
+            const prevAnchorDay = Math.min(anchorDay, daysInPrevMonth);
+
+            billingStart = new Date(currentYear, prevMonth, prevAnchorDay);
+            billingEnd = new Date(currentYear, currentMonth, adjustedAnchorDay - 1);
+          }
+
+          // Due date is the start of service period (prepaid model)
+          dueDate = new Date(billingStart);
+          // Issue invoice 7 days before due date
+          issueDate = new Date(billingStart);
+          issueDate.setDate(issueDate.getDate() - 7);
+        }
+
+        // Ensure issue date is not in the past (issue today if so)
+        if (issueDate < now) {
+          issueDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        }
 
         // Check if invoice already exists for this period
         const existingInvoice = await Invoice.findOne({
@@ -504,7 +573,7 @@ router.post('/generate-for-subscriptions', async (req, res) => {
 
         // Get plan price from plan_prices table based on restaurant's currency
         let planAmount = parseFloat(restaurant.plan_amount || 29);
-        const billingCycle = restaurant.billing_cycle || 'monthly';
+        // billingCycle already defined above for anniversary billing calculation
 
         // Find plan_id from plan_templates by matching plan_type
         const planTemplate = await PlanTemplate.findOne({
@@ -532,6 +601,14 @@ router.post('/generate-for-subscriptions', async (req, res) => {
         const taxAmount = planAmount * taxRate;
         const totalAmount = planAmount + taxAmount;
 
+        // Format dates for notes
+        const formatDate = (date) => {
+          const d = new Date(date);
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        };
+        const cycleText = billingCycle === 'annual' ? 'Annual' : 'Monthly';
+        const periodText = `${formatDate(billingStart)} ~ ${formatDate(billingEnd)}`;
+
         // Create invoice with currency
         const invoice = await Invoice.create({
           restaurant_id: restaurant.id,
@@ -543,17 +620,16 @@ router.post('/generate-for-subscriptions', async (req, res) => {
           total_amount: totalAmount,
           currency: currency,
           status: 'pending_payment', // Auto-send subscription invoices
-          notes: `Monthly subscription invoice for ${restaurant.plan_type}`,
+          notes: `${cycleText} subscription invoice for ${restaurant.plan_type}. Service period: ${periodText}. Prepaid - Due on service start date.`,
           issued_by: 0, // System generated
           issued_at: issueDate
         });
 
         // Create invoice item
-        const cycleText = billingCycle === 'annual' ? 'Annual' : 'Monthly';
         await InvoiceItem.create({
           invoice_id: invoice.id,
           item_type: 'subscription',
-          description: `${restaurant.plan_type} - ${cycleText} Subscription`,
+          description: `${restaurant.plan_type} - ${cycleText} Subscription (${periodText})`,
           calculation_method: 'fixed',
           fixed_amount: planAmount,
           calculated_amount: planAmount,

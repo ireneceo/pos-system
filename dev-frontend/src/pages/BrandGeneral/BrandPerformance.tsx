@@ -1,112 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
-import { StatsGrid, StatCard, StatValue, StatLabel, StatTrend } from '../../components/UI';
-import { ThemedButton } from '../../components/Theme/ThemedButton';
+import {
+  Container,
+  Header,
+  Title,
+  ActionSection,
+  Button,
+  Content,
+  StatsGrid,
+  StatCard,
+  StatValue,
+  StatLabel,
+  StatDescription
+} from '../../components/UI';
+import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 
-const Container = styled.div`
-  min-height: 100vh;
-
-  @media (max-width: 768px) {
-    padding: 0;
-  }
-`;
-
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
-  margin-bottom: 0;
-  height: 56px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-  @media (max-width: 768px) {
-    padding: 16px;
-    height: auto;
-    min-height: 56px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-`;
-
-const Content = styled.div`
-  padding: 32px;
-  background: #FAFBFC;
-  min-height: calc(100vh - 120px);
-
-  @media (max-width: 768px) {
-    padding: 20px;
-  }
-`;
-
-const Title = styled.h1`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-  line-height: 1;
-
-  @media (max-width: 768px) {
-    font-size: 20px;
-  }
-`;
-
+// Page-specific styled components
 const Subtitle = styled.p`
-  font-size: 16px;
+  font-size: 14px;
   color: #6B7280;
-  margin: 8px 0 0;
+  margin: 4px 0 0;
 `;
-
-const FilterSection = styled.div`
-  background: white;
-  border-radius: 16px;
-  padding: 24px;
-  border: 1px solid #E6EBF1;
-  margin-bottom: 24px;
-`;
-
-const FilterGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  align-items: end;
-`;
-
-const FilterGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-`;
-
-const Label = styled.label`
-  font-size: 14px;
-  font-weight: 500;
-  color: #374151;
-`;
-
-const Select = styled.select`
-  padding: 8px 12px;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  font-size: 14px;
-  background: white;
-  transition: border-color 0.2s;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
-
-const ActionSection = styled.div`
-  display: flex;
-  gap: 12px;
-`;
-
 
 const PerformanceGrid = styled.div`
   display: grid;
@@ -115,13 +30,13 @@ const PerformanceGrid = styled.div`
   margin-bottom: 32px;
 `;
 
-const BrandCard = styled.div`
+const BrandCard = styled.div<{ color?: string }>`
   background: white;
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 24px;
   border: 1px solid #E6EBF1;
-  border-left: 4px solid #635BFF;
-  transition: transform 0.2s;
+  border-left: 4px solid ${props => props.color || '#635BFF'};
+  transition: all 0.2s;
 
   &:hover {
     transform: translateY(-2px);
@@ -129,18 +44,33 @@ const BrandCard = styled.div`
   }
 `;
 
+const BrandHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+`;
+
 const BrandName = styled.h3`
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
   color: #0A2540;
-  margin: 0 0 16px 0;
+  margin: 0;
+`;
+
+const BrandCategory = styled.span`
+  font-size: 12px;
+  color: #6B7280;
+  background: #F3F4F6;
+  padding: 4px 8px;
+  border-radius: 4px;
 `;
 
 const MetricRow = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 0;
+  padding: 10px 0;
   border-bottom: 1px solid #F3F4F6;
 
   &:last-child {
@@ -149,61 +79,40 @@ const MetricRow = styled.div`
 `;
 
 const MetricLabel = styled.span`
-  font-size: 14px;
+  font-size: 13px;
   color: #6B7280;
-  font-weight: 500;
 `;
 
 const MetricValue = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   color: #0A2540;
 `;
 
-const GrowthIndicator = styled.span<{ positive?: boolean }>`
-  font-size: 12px;
+const GrowthBadge = styled.span<{ positive?: boolean }>`
+  font-size: 11px;
   color: ${props => props.positive ? '#059669' : '#DC2626'};
   font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 12px;
-  background: ${props => props.positive ? '#DCFCE7' : '#FEE2E2'};
-`;
-
-const ChartSection = styled.div`
-  background: white;
-  border-radius: 16px;
-  padding: 24px;
-  border: 1px solid #E6EBF1;
-  margin-bottom: 24px;
-`;
-
-const ChartTitle = styled.h2`
-  font-size: 20px;
-  font-weight: 600;
-  color: #0A2540;
-  margin: 0 0 24px 0;
-`;
-
-const ChartPlaceholder = styled.div`
-  height: 300px;
-  border: 2px dashed #E6EBF1;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #6B7280;
-  font-style: italic;
-  font-size: 16px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: ${props => props.positive ? '#ECFDF5' : '#FEE2E2'};
 `;
 
 const RankingSection = styled.div`
   background: white;
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 24px;
   border: 1px solid #E6EBF1;
+`;
+
+const SectionTitle = styled.h2`
+  font-size: 18px;
+  font-weight: 600;
+  color: #0A2540;
+  margin: 0 0 20px 0;
 `;
 
 const RankingItem = styled.div`
@@ -217,207 +126,195 @@ const RankingItem = styled.div`
   }
 `;
 
-const RankNumber = styled.div`
-  width: 48px;
-  height: 48px;
+const RankNumber = styled.div<{ rank: number }>`
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: #635BFF;
-  color: white;
+  background: ${props => {
+    if (props.rank === 1) return '#FFD700';
+    if (props.rank === 2) return '#C0C0C0';
+    if (props.rank === 3) return '#CD7F32';
+    return '#E5E7EB';
+  }};
+  color: ${props => props.rank <= 3 ? 'white' : '#6B7280'};
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 18px;
+  font-size: 14px;
   margin-right: 16px;
+  flex-shrink: 0;
 `;
 
 const RankInfo = styled.div`
   flex: 1;
+  min-width: 0;
 `;
 
 const RankBrand = styled.div`
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: #0A2540;
   margin-bottom: 4px;
 `;
 
-const RankDetail = styled.div`
-  font-size: 14px;
+const RankStats = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 13px;
   color: #6B7280;
 `;
 
-const RankMetrics = styled.div`
+const RankStat = styled.span`
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-top: 8px;
+  gap: 4px;
 `;
 
-const RankMetric = styled.span`
-  font-size: 12px;
-  color: #374151;
-  background: #F9FAFB;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-weight: 500;
+const EmptyState = styled.div`
+  text-align: center;
+  padding: 60px 20px;
+  color: #6B7280;
+
+  h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #0A2540;
+    margin-bottom: 8px;
+  }
+
+  p {
+    font-size: 14px;
+  }
 `;
+
+interface Brand {
+  id: number;
+  name: string;
+  code: string;
+  status: string;
+  restaurants?: Array<{
+    id: number;
+    name: string;
+    status: string;
+  }>;
+}
 
 interface BrandPerformanceData {
-  id: string;
+  id: number;
   name: string;
+  code: string;
+  stores: number;
   sales: number;
   growth: number;
-  stores: number;
   avgOrder: number;
   satisfaction: number;
   category: string;
 }
 
-interface StatsSummary {
-  totalSales: number;
-  totalStores: number;
-  avgGrowth: number;
-  avgSatisfaction: number;
-  bestPerformer: string;
-  worstPerformer: string;
-}
+const BRAND_COLORS = ['#635BFF', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4'];
 
 const BrandPerformance: React.FC = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [selectedMetric, setSelectedMetric] = useState('sales');
+  const [searchTerm, setSearchTerm] = useState('');
   const [brands, setBrands] = useState<BrandPerformanceData[]>([]);
-  const [stats, setStats] = useState<StatsSummary>({
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
     totalSales: 0,
     totalStores: 0,
     avgGrowth: 0,
     avgSatisfaction: 0,
-    bestPerformer: '',
-    worstPerformer: ''
+    topBrand: ''
   });
 
   useEffect(() => {
-    const fetchPerformanceData = async () => {
-      try {
-        const mockBrands: BrandPerformanceData[] = [
-          {
-            id: '1',
-            name: 'K-DINE Korean Restaurant',
-            sales: 450000000,
-            growth: 15.2,
-            stores: 25,
-            avgOrder: 18500,
-            satisfaction: 4.8,
-            category: 'Korean Food'
-          },
-          {
-            id: '2',
-            name: 'Premium Burger',
-            sales: 380000000,
-            growth: 12.8,
-            stores: 20,
-            avgOrder: 22000,
-            satisfaction: 4.7,
-            category: 'Burger'
-          },
-          {
-            id: '3',
-            name: 'Tasty Chicken',
-            sales: 320000000,
-            growth: 8.5,
-            stores: 18,
-            avgOrder: 16200,
-            satisfaction: 4.6,
-            category: 'Chicken'
-          },
-          {
-            id: '4',
-            name: 'Cafe Break',
-            sales: 275000000,
-            growth: 5.1,
-            stores: 15,
-            avgOrder: 12800,
-            satisfaction: 4.5,
-            category: 'Cafe'
-          },
-          {
-            id: '5',
-            name: 'Healthy Salad',
-            sales: 180000000,
-            growth: -2.3,
-            stores: 12,
-            avgOrder: 14500,
-            satisfaction: 4.4,
-            category: 'Salad'
-          },
-          {
-            id: '6',
-            name: 'Asian Noodles',
-            sales: 150000000,
-            growth: 3.7,
-            stores: 10,
-            avgOrder: 13200,
-            satisfaction: 4.3,
-            category: 'Asian Cuisine'
-          }
-        ];
+    fetchBrandsData();
+  }, []);
 
-        setBrands(mockBrands);
+  const fetchBrandsData = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/brands', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data: Brand[] = await response.json();
+
+        // Transform brand data with performance metrics
+        // In production, these would come from actual analytics API
+        const performanceData: BrandPerformanceData[] = data.map((brand, index) => {
+          const storeCount = brand.restaurants?.length || 0;
+          // Generate realistic mock performance data based on store count
+          const baseSales = storeCount * 50000; // RM 50k per store base
+          const variance = Math.random() * 0.4 + 0.8; // 80-120% variance
+
+          return {
+            id: brand.id,
+            name: brand.name,
+            code: brand.code,
+            stores: storeCount,
+            sales: Math.round(baseSales * variance),
+            growth: parseFloat((Math.random() * 30 - 5).toFixed(1)), // -5% to +25%
+            avgOrder: Math.round(Math.random() * 30 + 25), // RM 25-55
+            satisfaction: parseFloat((Math.random() * 1 + 4).toFixed(1)), // 4.0-5.0
+            category: 'Restaurant'
+          };
+        });
+
+        setBrands(performanceData);
 
         // Calculate summary stats
-        const totalSales = mockBrands.reduce((sum, brand) => sum + brand.sales, 0);
-        const totalStores = mockBrands.reduce((sum, brand) => sum + brand.stores, 0);
-        const avgGrowth = mockBrands.reduce((sum, brand) => sum + brand.growth, 0) / mockBrands.length;
-        const avgSatisfaction = mockBrands.reduce((sum, brand) => sum + brand.satisfaction, 0) / mockBrands.length;
+        if (performanceData.length > 0) {
+          const totalSales = performanceData.reduce((sum, b) => sum + b.sales, 0);
+          const totalStores = performanceData.reduce((sum, b) => sum + b.stores, 0);
+          const avgGrowth = performanceData.reduce((sum, b) => sum + b.growth, 0) / performanceData.length;
+          const avgSatisfaction = performanceData.reduce((sum, b) => sum + b.satisfaction, 0) / performanceData.length;
+          const sortedBySales = [...performanceData].sort((a, b) => b.sales - a.sales);
 
-        const sortedByGrowth = [...mockBrands].sort((a, b) => b.growth - a.growth);
-        const bestPerformer = sortedByGrowth[0].name;
-        const worstPerformer = sortedByGrowth[sortedByGrowth.length - 1].name;
-
-        setStats({
-          totalSales,
-          totalStores,
-          avgGrowth,
-          avgSatisfaction,
-          bestPerformer,
-          worstPerformer
-        });
-      } catch (error) {
-        console.error('Error fetching performance data:', error);
+          setStats({
+            totalSales,
+            totalStores,
+            avgGrowth,
+            avgSatisfaction,
+            topBrand: sortedBySales[0]?.name || 'N/A'
+          });
+        }
       }
-    };
+    } catch (error) {
+      console.error('Error fetching brands:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchPerformanceData();
-  }, [selectedPeriod, selectedMetric]);
+  const filteredBrands = brands.filter(brand =>
+    brand.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    brand.code.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  const sortedBrands = [...brands].sort((a, b) => {
+  const sortedBrands = [...filteredBrands].sort((a, b) => {
     switch (selectedMetric) {
-      case 'sales':
-        return b.sales - a.sales;
-      case 'growth':
-        return b.growth - a.growth;
-      case 'satisfaction':
-        return b.satisfaction - a.satisfaction;
-      case 'efficiency':
-        return (b.sales / b.stores) - (a.sales / a.stores);
-      default:
-        return b.sales - a.sales;
+      case 'sales': return b.sales - a.sales;
+      case 'growth': return b.growth - a.growth;
+      case 'satisfaction': return b.satisfaction - a.satisfaction;
+      case 'stores': return b.stores - a.stores;
+      default: return b.sales - a.sales;
     }
   });
 
-  const getMetricValue = (brand: BrandPerformanceData) => {
-    switch (selectedMetric) {
-      case 'sales':
-        return `RM ${(brand.sales / 1000000).toFixed(0)}M`;
-      case 'growth':
-        return `${brand.growth > 0 ? '+' : ''}${brand.growth.toFixed(1)}%`;
-      case 'satisfaction':
-        return `${brand.satisfaction}/5.0`;
-      case 'efficiency':
-        return `RM ${((brand.sales / brand.stores) / 1000000).toFixed(1)}M`;
-      default:
-        return `RM ${(brand.sales / 1000000).toFixed(0)}M`;
+  const formatCurrency = (amount: number) => {
+    if (amount >= 1000000) {
+      return `RM ${(amount / 1000000).toFixed(1)}M`;
+    } else if (amount >= 1000) {
+      return `RM ${(amount / 1000).toFixed(0)}K`;
     }
+    return `RM ${amount.toLocaleString()}`;
   };
 
   return (
@@ -425,134 +322,134 @@ const BrandPerformance: React.FC = () => {
       <Container>
         <Header>
           <div>
-            <Title>Brand Performance Analysis</Title>
-            <Subtitle>Portfolio optimization through brand-specific performance metrics and growth rate analysis</Subtitle>
+            <Title>Brand Performance</Title>
+            <Subtitle>Analyze brand performance metrics and growth trends</Subtitle>
           </div>
           <ActionSection>
-            <ThemedButton variant="outline">Export Report</ThemedButton>
-            <ThemedButton variant="primary">Refresh Analysis</ThemedButton>
+            <Button variant="secondary" onClick={() => fetchBrandsData()}>Refresh</Button>
+            <Button variant="primary">Export Report</Button>
           </ActionSection>
         </Header>
 
         <Content>
-          <FilterSection>
-            <FilterGrid>
-              <FilterGroup>
-                <Label>Analysis Period</Label>
-                <Select value={selectedPeriod} onChange={(e) => setSelectedPeriod(e.target.value)}>
-                  <option value="week">This Week</option>
-                  <option value="month">This Month</option>
-                  <option value="quarter">Quarter</option>
-                  <option value="year">This Year</option>
-                </Select>
-              </FilterGroup>
-              <FilterGroup>
-                <Label>Performance Metric</Label>
-                <Select value={selectedMetric} onChange={(e) => setSelectedMetric(e.target.value)}>
-                  <option value="sales">By Revenue</option>
-                  <option value="growth">By Growth Rate</option>
-                  <option value="satisfaction">By Customer Satisfaction</option>
-                  <option value="efficiency">By Revenue per Store</option>
-                </Select>
-              </FilterGroup>
-              <FilterGroup>
-                <Label>&nbsp;</Label>
-                <ThemedButton variant="primary">View Analysis</ThemedButton>
-              </FilterGroup>
-            </FilterGrid>
-          </FilterSection>
-
           <StatsGrid>
-            <StatCard>
-              <StatValue>RM {(stats.totalSales / 1000000000).toFixed(1)}B</StatValue>
-              <StatLabel>Total Brand Revenue</StatLabel>
-              <StatTrend trend={stats.avgGrowth > 0 ? "up" : "down"}>
-                {stats.avgGrowth > 0 ? "+" : ""}{stats.avgGrowth.toFixed(1)}% growth
-              </StatTrend>
+            <StatCard color="#635BFF">
+              <StatValue>{formatCurrency(stats.totalSales)}</StatValue>
+              <StatLabel>Total Revenue</StatLabel>
+              <StatDescription>All brands combined</StatDescription>
             </StatCard>
-            <StatCard>
+            <StatCard color="#10B981">
               <StatValue>{stats.totalStores}</StatValue>
               <StatLabel>Total Stores</StatLabel>
-              <StatTrend trend="up">
-                All brand locations
-              </StatTrend>
+              <StatDescription>Across {brands.length} brands</StatDescription>
             </StatCard>
-            <StatCard>
+            <StatCard color="#F59E0B">
+              <StatValue>{stats.avgGrowth > 0 ? '+' : ''}{stats.avgGrowth.toFixed(1)}%</StatValue>
+              <StatLabel>Avg Growth</StatLabel>
+              <StatDescription>This period vs last</StatDescription>
+            </StatCard>
+            <StatCard color="#8B5CF6">
               <StatValue>{stats.avgSatisfaction.toFixed(1)}</StatValue>
-              <StatLabel>Average Customer Satisfaction</StatLabel>
-              <StatTrend trend={stats.avgSatisfaction > 4.5 ? "up" : "down"}>
-                Out of 5.0
-              </StatTrend>
-            </StatCard>
-            <StatCard>
-              <StatValue>{stats.bestPerformer ? stats.bestPerformer.split(' ')[0] : 'N/A'}</StatValue>
-              <StatLabel>Top Performing Brand</StatLabel>
-              <StatTrend trend="up">
-                Leading in growth
-              </StatTrend>
+              <StatLabel>Avg Rating</StatLabel>
+              <StatDescription>Customer satisfaction</StatDescription>
             </StatCard>
           </StatsGrid>
 
-          <PerformanceGrid>
-            {sortedBrands.map((brand) => (
-              <BrandCard key={brand.id}>
-                <BrandName>{brand.name}</BrandName>
-                <MetricRow>
-                  <MetricLabel>Monthly Revenue</MetricLabel>
-                  <MetricValue>
-                    RM {(brand.sales / 1000000).toFixed(0)}M
-                    <GrowthIndicator positive={brand.growth > 0}>
-                      {brand.growth > 0 ? '+' : ''}{brand.growth.toFixed(1)}%
-                    </GrowthIndicator>
-                  </MetricValue>
-                </MetricRow>
-                <MetricRow>
-                  <MetricLabel>Store Count</MetricLabel>
-                  <MetricValue>{brand.stores} stores</MetricValue>
-                </MetricRow>
-                <MetricRow>
-                  <MetricLabel>Average Order Value</MetricLabel>
-                  <MetricValue>RM {brand.avgOrder.toLocaleString()}</MetricValue>
-                </MetricRow>
-                <MetricRow>
-                  <MetricLabel>Customer Satisfaction</MetricLabel>
-                  <MetricValue>{brand.satisfaction}/5.0</MetricValue>
-                </MetricRow>
-                <MetricRow>
-                  <MetricLabel>Revenue per Store</MetricLabel>
-                  <MetricValue>RM {((brand.sales / brand.stores) / 1000000).toFixed(1)}M</MetricValue>
-                </MetricRow>
-              </BrandCard>
-            ))}
-          </PerformanceGrid>
+          <FilterBar>
+            <SearchInput
+              type="text"
+              placeholder="Search brands..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <FilterSelect
+              value={selectedPeriod}
+              onChange={(e) => setSelectedPeriod(e.target.value)}
+            >
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+              <option value="quarter">This Quarter</option>
+              <option value="year">This Year</option>
+            </FilterSelect>
+            <FilterSelect
+              value={selectedMetric}
+              onChange={(e) => setSelectedMetric(e.target.value)}
+            >
+              <option value="sales">Sort by Revenue</option>
+              <option value="growth">Sort by Growth</option>
+              <option value="satisfaction">Sort by Rating</option>
+              <option value="stores">Sort by Stores</option>
+            </FilterSelect>
+          </FilterBar>
 
-          <ChartSection>
-            <ChartTitle>Brand Performance Trend Analysis</ChartTitle>
-            <ChartPlaceholder>
-              Brand revenue and growth rate comparison chart (Coming Soon)<br/>
-              Multi-dimensional data visualization using Chart.js or Recharts
-            </ChartPlaceholder>
-          </ChartSection>
+          {loading ? (
+            <EmptyState>
+              <p>Loading brand performance data...</p>
+            </EmptyState>
+          ) : sortedBrands.length === 0 ? (
+            <EmptyState>
+              <h3>No Brands Found</h3>
+              <p>No brands match your search criteria.</p>
+            </EmptyState>
+          ) : (
+            <>
+              <PerformanceGrid>
+                {sortedBrands.map((brand, index) => (
+                  <BrandCard key={brand.id} color={BRAND_COLORS[index % BRAND_COLORS.length]}>
+                    <BrandHeader>
+                      <BrandName>{brand.name}</BrandName>
+                      <BrandCategory>{brand.code}</BrandCategory>
+                    </BrandHeader>
+                    <MetricRow>
+                      <MetricLabel>Revenue</MetricLabel>
+                      <MetricValue>
+                        {formatCurrency(brand.sales)}
+                        <GrowthBadge positive={brand.growth > 0}>
+                          {brand.growth > 0 ? '+' : ''}{brand.growth}%
+                        </GrowthBadge>
+                      </MetricValue>
+                    </MetricRow>
+                    <MetricRow>
+                      <MetricLabel>Stores</MetricLabel>
+                      <MetricValue>{brand.stores} locations</MetricValue>
+                    </MetricRow>
+                    <MetricRow>
+                      <MetricLabel>Avg Order</MetricLabel>
+                      <MetricValue>RM {brand.avgOrder}</MetricValue>
+                    </MetricRow>
+                    <MetricRow>
+                      <MetricLabel>Rating</MetricLabel>
+                      <MetricValue>⭐ {brand.satisfaction}/5.0</MetricValue>
+                    </MetricRow>
+                    <MetricRow>
+                      <MetricLabel>Revenue/Store</MetricLabel>
+                      <MetricValue>
+                        {brand.stores > 0 ? formatCurrency(Math.round(brand.sales / brand.stores)) : 'N/A'}
+                      </MetricValue>
+                    </MetricRow>
+                  </BrandCard>
+                ))}
+              </PerformanceGrid>
 
-          <RankingSection>
-            <ChartTitle>Brand Performance Ranking</ChartTitle>
-            {sortedBrands.slice(0, 5).map((brand, index) => (
-              <RankingItem key={brand.id}>
-                <RankNumber>{index + 1}</RankNumber>
-                <RankInfo>
-                  <RankBrand>{brand.name}</RankBrand>
-                  <RankDetail>
-                    {getMetricValue(brand)} • {brand.stores} stores • {brand.category}
-                  </RankDetail>
-                  <RankMetrics>
-                    <RankMetric>Revenue: RM {(brand.sales / 1000000).toFixed(0)}M</RankMetric>
-                    <RankMetric>Growth: {brand.growth > 0 ? '+' : ''}{brand.growth.toFixed(1)}%</RankMetric>
-                    <RankMetric>Satisfaction: {brand.satisfaction}/5.0</RankMetric>
-                  </RankMetrics>
-                </RankInfo>
-              </RankingItem>
-            ))}
-          </RankingSection>
+              <RankingSection>
+                <SectionTitle>Performance Ranking</SectionTitle>
+                {sortedBrands.slice(0, 5).map((brand, index) => (
+                  <RankingItem key={brand.id}>
+                    <RankNumber rank={index + 1}>{index + 1}</RankNumber>
+                    <RankInfo>
+                      <RankBrand>{brand.name}</RankBrand>
+                      <RankStats>
+                        <RankStat>💰 {formatCurrency(brand.sales)}</RankStat>
+                        <RankStat>📈 {brand.growth > 0 ? '+' : ''}{brand.growth}%</RankStat>
+                        <RankStat>🏪 {brand.stores} stores</RankStat>
+                        <RankStat>⭐ {brand.satisfaction}</RankStat>
+                      </RankStats>
+                    </RankInfo>
+                  </RankingItem>
+                ))}
+              </RankingSection>
+            </>
+          )}
         </Content>
       </Container>
     </MainLayout>

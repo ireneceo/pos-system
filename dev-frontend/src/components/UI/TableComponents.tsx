@@ -158,10 +158,8 @@ export const ActionButton = styled.button`
 `;
 
 // 아이콘 버튼
-export const IconButton = styled.button`
+export const IconButton = styled.button<{ variant?: 'default' | 'edit' | 'delete' | 'view' }>`
   padding: 6px;
-  background: #F6F9FC;
-  border: 1px solid #E6EBF1;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s;
@@ -170,11 +168,52 @@ export const IconButton = styled.button`
   justify-content: center;
   min-width: 32px;
   min-height: 32px;
+  font-size: 14px;
 
-  &:hover {
-    background: #E6EBF1;
-    transform: translateY(-1px);
-  }
+  ${props => {
+    switch (props.variant) {
+      case 'edit':
+        return `
+          background: #EBF5FF;
+          border: 1px solid #3B82F6;
+          color: #3B82F6;
+          &:hover {
+            background: #DBEAFE;
+            transform: translateY(-1px);
+          }
+        `;
+      case 'delete':
+        return `
+          background: #FEF2F2;
+          border: 1px solid #EF4444;
+          color: #EF4444;
+          &:hover {
+            background: #FEE2E2;
+            transform: translateY(-1px);
+          }
+        `;
+      case 'view':
+        return `
+          background: #F0FDF4;
+          border: 1px solid #22C55E;
+          color: #22C55E;
+          &:hover {
+            background: #DCFCE7;
+            transform: translateY(-1px);
+          }
+        `;
+      default:
+        return `
+          background: #F6F9FC;
+          border: 1px solid #E6EBF1;
+          color: #6B7280;
+          &:hover {
+            background: #E6EBF1;
+            transform: translateY(-1px);
+          }
+        `;
+    }
+  }}
 
   &:active {
     transform: translateY(0);
