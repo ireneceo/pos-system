@@ -242,7 +242,19 @@ interface BrandFormData {
   phone: string;
   address: string;
   website: string;
+  currency: string;
 }
+
+const CURRENCY_OPTIONS = [
+  { value: 'RM', label: 'RM - Malaysian Ringgit' },
+  { value: 'USD', label: 'USD - US Dollar' },
+  { value: 'SGD', label: 'SGD - Singapore Dollar' },
+  { value: 'JPY', label: 'JPY - Japanese Yen' },
+  { value: 'THB', label: 'THB - Thai Baht' },
+  { value: 'KRW', label: 'KRW - Korean Won' },
+  { value: 'EUR', label: 'EUR - Euro' },
+  { value: 'GBP', label: 'GBP - British Pound' },
+];
 
 interface BrandRestaurant {
   id: number;
@@ -273,7 +285,8 @@ const BrandManagement: React.FC = () => {
     email: '',
     phone: '',
     address: '',
-    website: ''
+    website: '',
+    currency: 'RM'
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
@@ -329,7 +342,8 @@ const BrandManagement: React.FC = () => {
       email: '',
       phone: '',
       address: '',
-      website: ''
+      website: '',
+      currency: 'RM'
     });
     setShowModal(true);
   };
@@ -345,7 +359,8 @@ const BrandManagement: React.FC = () => {
       email: brand.email || '',
       phone: brand.phone || '',
       address: brand.address || '',
-      website: brand.website || ''
+      website: brand.website || '',
+      currency: (brand as any).currency || 'RM'
     });
     setShowModal(true);
   };
@@ -654,6 +669,28 @@ const BrandManagement: React.FC = () => {
                   onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
                   placeholder="https://www.brand.com"
                 />
+              </FormGroup>
+
+              <FormGroup>
+                <FormLabel>Currency *</FormLabel>
+                <select
+                  value={formData.currency}
+                  onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #E6EBF1',
+                    fontSize: '14px',
+                    color: '#0A2540',
+                    background: 'white'
+                  }}
+                  required
+                >
+                  {CURRENCY_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
               </FormGroup>
 
               {error && <ErrorMessage>{error}</ErrorMessage>}

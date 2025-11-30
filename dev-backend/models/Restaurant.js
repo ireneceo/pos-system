@@ -399,6 +399,16 @@ Restaurant.init({
     type: DataTypes.ENUM('cash_only', 'all'),
     defaultValue: 'cash_only',
     comment: 'Apply rounding to cash only or all payments'
+  },
+  brand_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Brand ID if restaurant belongs to a franchise brand'
+  },
+  recipe_manager_type: {
+    type: DataTypes.ENUM('restaurant', 'brand'),
+    defaultValue: 'restaurant',
+    comment: 'Who manages recipes: restaurant (independent) or brand (franchise-managed)'
   }
 }, {
   sequelize: database.sequelize,

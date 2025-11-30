@@ -88,7 +88,7 @@ router.post('/', authenticateToken, requireRole('Brand General', 'System Admin')
     console.log(`🆕 POST /api/brands - User: ${req.user.email}`);
     console.log('📝 Brand data:', req.body);
 
-    const { name, code, description, logo_url, email, phone, address, website, status } = req.body;
+    const { name, code, description, logo_url, email, phone, address, website, status, currency } = req.body;
 
     // Set owner_id to current user if Brand General
     const owner_id = req.user.role === 'Brand General' ? req.user.id : req.body.owner_id;
@@ -103,6 +103,7 @@ router.post('/', authenticateToken, requireRole('Brand General', 'System Admin')
       phone,
       address,
       website,
+      currency: currency || 'RM',
       status: status || 'active'
     });
 
@@ -148,7 +149,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'Access denied to this brand' });
     }
 
-    const { name, code, description, logo_url, email, phone, address, website, status } = req.body;
+    const { name, code, description, logo_url, email, phone, address, website, status, currency } = req.body;
 
     await brand.update({
       name: name || brand.name,
@@ -159,6 +160,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
       phone,
       address,
       website,
+      currency: currency || brand.currency,
       status: status || brand.status
     });
 

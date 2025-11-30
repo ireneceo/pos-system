@@ -433,10 +433,31 @@ const ManagerRestaurantsPage: React.FC = () => {
     paymentModel: 'manager' as 'manager' | 'restaurant',
     subscriptionStart: '',
     subscriptionEnd: '',
-    autoRenew: true
+    autoRenew: true,
+    brandId: ''
   });
   const [editingRestaurant, setEditingRestaurant] = useState<Restaurant | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [brands, setBrands] = useState<Array<{ id: number; name: string; code: string; currency: string }>>([]);
+
+  // Fetch brands for dropdown
+  useEffect(() => {
+    const fetchBrands = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch('/api/brands', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setBrands(data);
+        }
+      } catch (error) {
+        console.error('Error fetching brands:', error);
+      }
+    };
+    fetchBrands();
+  }, []);
 
   useEffect(() => {
     console.log('🚀 useEffect TRIGGERED - RestaurantsPage');
@@ -592,7 +613,8 @@ const ManagerRestaurantsPage: React.FC = () => {
         subscription_start: new Date(newRestaurant.subscriptionStart),
         subscription_end: new Date(newRestaurant.subscriptionEnd),
         auto_renew: newRestaurant.autoRenew,
-        created_by: managerId
+        created_by: managerId,
+        brand_id: newRestaurant.brandId ? parseInt(newRestaurant.brandId) : null
       };
       
       console.log('🏗️ Creating new restaurant:', restaurantData);
@@ -661,7 +683,8 @@ const ManagerRestaurantsPage: React.FC = () => {
           paymentModel: 'manager',
           subscriptionStart: '',
           subscriptionEnd: '',
-          autoRenew: true
+          autoRenew: true,
+          brandId: ''
         });
       } else {
         const errorText = await response.text();
@@ -767,7 +790,8 @@ const ManagerRestaurantsPage: React.FC = () => {
         paymentModel: 'manager',
         subscriptionStart: '',
         subscriptionEnd: '',
-        autoRenew: true
+        autoRenew: true,
+        brandId: ''
       });
     }
   };
@@ -948,11 +972,26 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
+                  <FormLabel>Brand (Franchise)</FormLabel>
+                  <FormSelect
+                    value={newRestaurant.brandId}
+                    onChange={(e) => setNewRestaurant({...newRestaurant, brandId: e.target.value})}
+                  >
+                    <option value="">-- Independent (No Brand) --</option>
+                    {brands.map(brand => (
+                      <option key={brand.id} value={brand.id}>
+                        {brand.name} ({brand.code}) - {brand.currency}
+                      </option>
+                    ))}
+                  </FormSelect>
+                </FormGroup>
+
+                <FormGroup>
                   <FormLabel>Plan Type *</FormLabel>
                   <FormSelect
                     value={newRestaurant.planType}
                     onChange={(e) => {
-                      const planAmounts = {
+                      const planAmounts: Record<string, string> = {
                         'Basic Plan': '29.00',
                         'Professional Plan': '99.00',
                         'Enterprise Plan': '199.00'
@@ -1148,11 +1187,26 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
+                  <FormLabel>Brand (Franchise)</FormLabel>
+                  <FormSelect
+                    value={newRestaurant.brandId}
+                    onChange={(e) => setNewRestaurant({...newRestaurant, brandId: e.target.value})}
+                  >
+                    <option value="">-- Independent (No Brand) --</option>
+                    {brands.map(brand => (
+                      <option key={brand.id} value={brand.id}>
+                        {brand.name} ({brand.code}) - {brand.currency}
+                      </option>
+                    ))}
+                  </FormSelect>
+                </FormGroup>
+
+                <FormGroup>
                   <FormLabel>Plan Type *</FormLabel>
                   <FormSelect
                     value={newRestaurant.planType}
                     onChange={(e) => {
-                      const planAmounts = {
+                      const planAmounts: Record<string, string> = {
                         'Basic Plan': '29.00',
                         'Professional Plan': '99.00',
                         'Enterprise Plan': '199.00'

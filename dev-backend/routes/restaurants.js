@@ -319,6 +319,8 @@ router.post('/', async (req, res) => {
       subscription_start: req.body.subscriptionStart ? new Date(req.body.subscriptionStart) : new Date(),
       subscription_end: req.body.subscriptionEnd ? new Date(req.body.subscriptionEnd) : null,
       subscription_snapshot: planSnapshot,
+      brand_id: req.body.brand_id || null,
+      recipe_manager_type: req.body.brand_id ? 'brand' : 'restaurant',
       ...planLimits
     };
 
@@ -904,108 +906,7 @@ router.delete('/:restaurantId/ingredients/:ingredientId', authenticateToken, che
 });
 
 // ============================================
-// Restaurant Recipes Routes
+// Restaurant Recipes Routes - MOVED TO /routes/recipes.js
 // ============================================
-
-router.get('/:restaurantId/recipes', authenticateToken, checkRestaurantAccess, async (req, res) => {
-  try {
-    const { restaurantId } = req.params;
-    const restaurant = await Restaurant.findByPk(restaurantId);
-    if (!restaurant) return res.status(404).json({ error: '레스토랑을 찾을 수 없습니다' });
-
-    const result = { brand_recipes: [], own_recipes: [] };
-
-    if (restaurant.brand_id) {
-      const brandRecipes = await Recipe.findAll({
-        where: { brand_id: restaurant.brand_id },
-        include: [{ model: RecipeIngredient, as: 'recipeIngredients', include: [{ model: Ingredient, as: 'ingredient' }] }],
-        order: [['created_at', 'DESC']]
-      });
-      result.brand_recipes = brandRecipes.map(r => ({ ...r.toJSON(), from_brand: true, editable: false }));
-    }
-
-    if (!restaurant.brand_id) {
-      const ownRecipes = await Recipe.findAll({
-        where: { restaurant_id: restaurantId },
-        include: [{ model: RecipeIngredient, as: 'recipeIngredients', include: [{ model: Ingredient, as: 'ingredient' }] }],
-        order: [['created_at', 'DESC']]
-      });
-      result.own_recipes = ownRecipes.map(r => ({ ...r.toJSON(), from_brand: false, editable: true }));
-    }
-
-    res.json({ success: true, data: result });
-  } catch (error) {
-    console.error('Get restaurant recipes error:', error);
-    res.status(500).json({ error: '레시피 목록 조회 실패' });
-  }
-});
-
-router.post('/:restaurantId/recipes', authenticateToken, checkRestaurantAccess, async (req, res) => {
-  try {
-    const { restaurantId } = req.params;
-    const restaurant = await Restaurant.findByPk(restaurantId);
-    if (restaurant.brand_id) return res.status(403).json({ error: '브랜드 가맹점은 레시피를 생성할 수 없습니다' });
-
-    const { name, description, category, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
-
-    const recipe = await Recipe.create({
-      brand_id: null, restaurant_id: restaurantId,
-      name, description, category, emoji, image, option_groups,
-      prep_time, cook_time, instructions,
-      suggested_price: suggested_price || 0,
-      total_ingredient_cost: 0
-    });
-
-    let totalCost = 0;
-    if (ingredients && ingredients.length > 0) {
-      for (const item of ingredients) {
-        const ingredient = await Ingredient.findByPk(item.ingredient_id);
-        if (ingredient) {
-          const cost = parseFloat(item.quantity) * parseFloat(ingredient.unit_cost);
-          await RecipeIngredient.create({
-            recipe_id: recipe.id, ingredient_id: item.ingredient_id,
-            quantity: item.quantity, unit: item.unit, cost, notes: item.notes || null
-          });
-          totalCost += cost;
-        }
-      }
-    }
-
-    await recipe.update({ total_ingredient_cost: totalCost });
-
-    const createdRecipe = await Recipe.findByPk(recipe.id, {
-      include: [{ model: RecipeIngredient, as: 'recipeIngredients', include: [{ model: Ingredient, as: 'ingredient' }] }]
-    });
-
-    res.json({ success: true, data: createdRecipe });
-  } catch (error) {
-    console.error('Create restaurant recipe error:', error);
-    res.status(500).json({ error: '레시피 생성 실패' });
-  }
-});
-
-router.post('/:restaurantId/products/create-from-recipe', authenticateToken, checkRestaurantAccess, async (req, res) => {
-  try {
-    const { restaurantId } = req.params;
-    const { recipe_id, price } = req.body;
-
-    const recipe = await Recipe.findByPk(recipe_id);
-    if (!recipe) return res.status(404).json({ error: '레시피를 찾을 수 없습니다' });
-
-    const product = await Product.create({
-      restaurant_id: restaurantId, recipe_id,
-      code: recipe.code, name: recipe.name, price,
-      category: recipe.category, description: recipe.description,
-      optionGroups: recipe.option_groups, image: recipe.image, emoji: recipe.emoji,
-      soldOut: false, is_set_menu: recipe.is_set_menu,
-      set_items: recipe.set_items, set_display_order: recipe.set_display_order
-    });
-
-    res.json({ success: true, data: product, message: '레시피가 메뉴로 등록되었습니다' });
-  } catch (error) {
-    console.error('Create product from recipe error:', error);
-    res.status(500).json({ error: '메뉴 등록 실패' });
-  }
-});
 
 module.exports = router;

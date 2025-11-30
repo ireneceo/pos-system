@@ -80,6 +80,8 @@ import BrandManagerDashboard from './pages/Brand/BrandManagerDashboard';
 
 // Recipe Management
 import RecipeManagementPage from './pages/RecipeManagement/RecipeManagementPage';
+import RecipesPage from './pages/Recipes/RecipesPage';
+import IngredientsPage from './pages/Ingredients/IngredientsPage';
 
 // New Manager Role Specific Pages
 import FoodcourtManagement from './pages/FoodcourtGeneral/FoodcourtManagement';
@@ -367,6 +369,18 @@ function App() {
                       <Route path="/pos/recipes" element={
                         <ProtectedRoute requiredRole={['Brand General', 'System Admin']}>
                           <RecipeManagementPage />
+                        </ProtectedRoute>
+                      } />
+
+                      {/* Recipe & Ingredient Management Pages */}
+                      <Route path="/pos/recipe-management/recipes" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager', 'System Admin']}>
+                          <RecipesPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/recipe-management/ingredients" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager', 'System Admin']}>
+                          <IngredientsPage />
                         </ProtectedRoute>
                       } />
 
