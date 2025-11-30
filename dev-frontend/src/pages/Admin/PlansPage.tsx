@@ -16,6 +16,7 @@ import {
   Button
 } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { formatCurrency } from '../../utils/currency';
 
 interface Plan {
   id: string;
@@ -934,7 +935,6 @@ const PlansPage: React.FC = () => {
   const totalSubscriptions = plans.reduce((sum, p) => sum + p.subscriptionCount, 0);
   const monthlyRevenue = plans.reduce((sum, p) => sum + (p.monthlyPrice * p.subscriptionCount), 0);
 
-  const formatCurrency = (amount: number) => `RM ${amount.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const formatLimit = (limit: number) => limit === -1 ? 'Unlimited' : limit.toLocaleString();
   
   // Button handlers

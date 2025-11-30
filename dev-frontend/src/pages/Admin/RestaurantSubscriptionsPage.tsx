@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { RestaurantSubscription } from '../../interfaces/RestaurantSubscription';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { formatCurrency } from '../../utils/currency';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -654,7 +655,6 @@ const RestaurantSubscriptionsPage: React.FC = () => {
     .filter(s => s.status === 'active')
     .reduce((sum, s) => sum + (s.billingCycle === 'monthly' ? s.monthlyFee : s.annualFee / 12), 0);
 
-  const formatCurrency = (amount: number) => `RM ${amount.toFixed(0)}`;
   const formatLimit = (limit: number) => limit === -1 ? 'Unlimited' : limit.toLocaleString();
   
   // Modal handlers

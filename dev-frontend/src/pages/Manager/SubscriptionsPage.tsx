@@ -4,6 +4,7 @@ import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import { RestaurantSubscription } from '../../interfaces/RestaurantSubscription';
 import { API_BASE_URL } from '../../config/api';
+import { formatCurrency } from '../../utils/currency';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -551,8 +552,6 @@ const ManagerSubscriptionsPage: React.FC = () => {
     .reduce((sum, s) => sum + (s.billingCycle === 'monthly' ? s.monthlyFee : s.annualFee / 12), 0);
   const selfPayingRestaurants = subscriptions.filter(s => s.paymentModel === 'self').length;
   const trialSubscriptions = subscriptions.filter(s => s.status === 'trial').length;
-
-  const formatCurrency = (amount: number) => `RM ${amount.toFixed(0)}`;
 
   const handleExportData = () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars

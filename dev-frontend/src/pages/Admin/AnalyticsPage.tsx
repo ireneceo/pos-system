@@ -367,7 +367,8 @@ type PeriodType = 'today' | 'week' | 'month' | 'year';
 const COLORS = ['#635BFF', '#00D924', '#FF6B6B', '#FFB800', '#0EA5E9', '#8B5CF6'];
 
 const AnalyticsPage: React.FC = () => {
-  const { currency } = useStore();
+  const { operationSettings } = useStore();
+  const currency = operationSettings.currency;
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabType>('system');
   const [activePeriod, setActivePeriod] = useState<PeriodType>('month');

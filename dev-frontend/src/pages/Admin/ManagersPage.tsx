@@ -44,6 +44,14 @@ interface Manager {
   createdAt: string;
   lastActive: string;
   address: string;
+  role?: string;
+  planType?: string;
+  planAmount?: number;
+  billingCycle?: 'monthly' | 'annual';
+  paymentModel?: string;
+  autoRenew?: boolean;
+  subscriptionStart?: string;
+  subscriptionEnd?: string;
 }
 
 // Common components now imported from ../../components/UI

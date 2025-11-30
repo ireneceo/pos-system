@@ -264,9 +264,9 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({ entityType,
   }
 
   const tabs = [
-    { id: 'email', label: 'Email' },
-    { id: 'sms', label: 'SMS' },
-    { id: 'whatsapp', label: 'WhatsApp' }
+    { key: 'email', label: 'Email', active: activeTab === 'email', onClick: () => setActiveTab('email') },
+    { key: 'sms', label: 'SMS', active: activeTab === 'sms', onClick: () => setActiveTab('sms') },
+    { key: 'whatsapp', label: 'WhatsApp', active: activeTab === 'whatsapp', onClick: () => setActiveTab('whatsapp') }
   ];
 
   return (
@@ -275,7 +275,7 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({ entityType,
         <Alert type={message.type}>{message.text}</Alert>
       )}
 
-      <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
+      <Tabs tabs={tabs} />
 
       {activeTab === 'email' && (
         <>

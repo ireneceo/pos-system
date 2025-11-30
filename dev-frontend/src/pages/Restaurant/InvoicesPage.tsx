@@ -4,6 +4,7 @@ import MainLayout from '../../components/Layout/MainLayout';
 import { FilterBar, FilterSelect } from '../../components/Common/FilterComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import Modal, { ModalButton, FormGroup, FormLabel, FormInput } from '../../components/UI/Modal';
+import { formatCurrency } from '../../utils/currency';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -753,8 +754,6 @@ const RestaurantInvoicesPage: React.FC = () => {
     setSelectedInvoice(invoice);
     setShowPaymentModal(true);
   };
-
-  const formatCurrency = (amount: number) => `RM ${amount.toFixed(0)}`;
 
   const pendingCount = invoices.filter(i => i.status === 'pending_payment' || i.status === 'payment_submitted').length;
   const paidCount = invoices.filter(i => i.status === 'paid').length;

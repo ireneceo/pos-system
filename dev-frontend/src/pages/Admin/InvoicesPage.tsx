@@ -1170,7 +1170,6 @@ const InvoicesPage: React.FC = () => {
   const overdueInvoices = invoices.filter(i => i.status === 'overdue').length;
   const totalRevenue = invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + i.total, 0);
 
-  const formatCurrency = (amount: number) => `RM ${amount.toFixed(2)}`;
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-MY');
   };

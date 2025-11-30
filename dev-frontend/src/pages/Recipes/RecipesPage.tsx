@@ -34,6 +34,8 @@ interface Recipe {
   suggested_price: number | null;
   is_active: boolean;
   recipeIngredients?: RecipeIngredient[];
+  from_brand?: boolean;
+  editable?: boolean;
 }
 
 interface Ingredient {
@@ -335,6 +337,7 @@ const RecipesPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [canCreateRecipe, setCanCreateRecipe] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -723,11 +726,11 @@ const RecipesPage: React.FC = () => {
                   <RecipeCosts>
                     <CostItem>
                       <CostLabel>Cost</CostLabel>
-                      <CostValue>RM {Number(recipe.total_ingredient_cost || 0).toFixed(2)}</CostValue>
+                      <CostValue>{formatCurrency(recipe.total_ingredient_cost || 0, selectedCurrency || 'USD')}</CostValue>
                     </CostItem>
                     <CostItem>
                       <CostLabel>Suggested</CostLabel>
-                      <CostValue>RM {Number(recipe.suggested_price || 0).toFixed(2)}</CostValue>
+                      <CostValue>{formatCurrency(recipe.suggested_price || 0, selectedCurrency || 'USD')}</CostValue>
                     </CostItem>
                   </RecipeCosts>
 
@@ -738,18 +741,29 @@ const RecipesPage: React.FC = () => {
                   </RecipeIngredients>
 
                   <RecipeActions>
-                    <ActionButton
-                      variant="secondary"
-                      onClick={() => handleOpenModal(recipe)}
-                    >
-                      Edit
-                    </ActionButton>
-                    <ActionButton
-                      variant="danger"
-                      onClick={() => handleDelete(recipe.id)}
-                    >
-                      Delete
-                    </ActionButton>
+                    {recipe.editable !== false ? (
+                      <>
+                        <ActionButton
+                          variant="secondary"
+                          onClick={() => handleOpenModal(recipe)}
+                        >
+                          Edit
+                        </ActionButton>
+                        <ActionButton
+                          variant="danger"
+                          onClick={() => handleDelete(recipe.id)}
+                        >
+                          Delete
+                        </ActionButton>
+                      </>
+                    ) : (
+                      <ActionButton
+                        variant="secondary"
+                        onClick={() => handleOpenModal(recipe)}
+                      >
+                        View
+                      </ActionButton>
+                    )}
                   </RecipeActions>
                 </RecipeCard>
               ))}
@@ -802,7 +816,7 @@ const RecipesPage: React.FC = () => {
                 />
               </UIFormGroup>
               <UIFormGroup>
-                <FormLabel>Suggested Price (RM)</FormLabel>
+                <FormLabel>Suggested Price ({getCurrencySymbol(selectedCurrency || 'USD')})</FormLabel>
                 <FormInput
                   type="number"
                   step="0.01"
@@ -838,7 +852,7 @@ const RecipesPage: React.FC = () => {
                         <option value={0}>Select ingredient...</option>
                         {ingredients.map(ing => (
                           <option key={ing.id} value={ing.id}>
-                            {ing.name} (RM {Number(ing.unit_cost).toFixed(2)}/{ing.unit})
+                            {ing.name} ({formatCurrency(ing.unit_cost, selectedCurrency || 'USD')}/{ing.unit})
                           </option>
                         ))}
                       </FormSelect>
@@ -887,7 +901,7 @@ const RecipesPage: React.FC = () => {
               {recipeIngredients.length > 0 && (
                 <CostSummary>
                   <CostSummaryLabel>Total Ingredient Cost</CostSummaryLabel>
-                  <CostSummaryValue>RM {calculateTotalCost().toFixed(2)}</CostSummaryValue>
+                  <CostSummaryValue>{formatCurrency(calculateTotalCost(), selectedCurrency || 'USD')}</CostSummaryValue>
                 </CostSummary>
               )}
             </div>

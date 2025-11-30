@@ -201,6 +201,7 @@ router.delete('/brands/:brand_id/recipes/:recipe_id', authenticateToken, canEdit
 /**
  * GET /api/restaurants/:restaurantId/recipes
  * 레스토랑에서 사용 가능한 모든 레시피 조회
+ * recipe_manager_type에 따라 편집 권한 결정
  */
 router.get('/restaurants/:restaurantId/recipes', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
@@ -213,7 +214,8 @@ router.get('/restaurants/:restaurantId/recipes', authenticateToken, checkRestaur
 
     const result = {
       brand_recipes: [],
-      own_recipes: []
+      own_recipes: [],
+      recipe_manager_type: restaurant.recipe_manager_type || 'restaurant'
     };
 
     // 브랜드 레시피 (brand_id가 있는 경우)
@@ -233,30 +235,31 @@ router.get('/restaurants/:restaurantId/recipes', authenticateToken, checkRestaur
       result.brand_recipes = brandRecipes.map(r => ({
         ...r.toJSON(),
         from_brand: true,
-        editable: false
+        editable: false  // 브랜드 레시피는 항상 수정 불가
       }));
     }
 
-    // 레스토랑 자체 레시피 (독립 레스토랑만)
-    if (!restaurant.brand_id) {
-      const ownRecipes = await Recipe.findAll({
-        where: { restaurant_id: restaurantId },
-        include: [
-          {
-            model: RecipeIngredient,
-            as: 'recipeIngredients',
-            include: [{ model: Ingredient, as: 'ingredient' }]
-          }
-        ],
-        order: [['created_at', 'DESC']]
-      });
+    // 레스토랑 자체 레시피
+    // 독립 레스토랑이거나, 브랜드 소속이지만 recipe_manager_type이 'restaurant'인 경우
+    const canManageOwnRecipes = !restaurant.brand_id || restaurant.recipe_manager_type === 'restaurant';
 
-      result.own_recipes = ownRecipes.map(r => ({
-        ...r.toJSON(),
-        from_brand: false,
-        editable: true
-      }));
-    }
+    const ownRecipes = await Recipe.findAll({
+      where: { restaurant_id: restaurantId },
+      include: [
+        {
+          model: RecipeIngredient,
+          as: 'recipeIngredients',
+          include: [{ model: Ingredient, as: 'ingredient' }]
+        }
+      ],
+      order: [['created_at', 'DESC']]
+    });
+
+    result.own_recipes = ownRecipes.map(r => ({
+      ...r.toJSON(),
+      from_brand: false,
+      editable: canManageOwnRecipes  // recipe_manager_type에 따라 결정
+    }));
 
     res.json({ success: true, data: result });
   } catch (error) {
@@ -267,16 +270,16 @@ router.get('/restaurants/:restaurantId/recipes', authenticateToken, checkRestaur
 
 /**
  * POST /api/restaurants/:restaurantId/recipes
- * 독립 레스토랑 레시피 생성
+ * 레스토랑 레시피 생성 (독립 또는 recipe_manager_type='restaurant'인 경우)
  */
 router.post('/restaurants/:restaurantId/recipes', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
     const restaurant = await Restaurant.findByPk(restaurantId);
 
-    // 브랜드 가맹점은 레시피 생성 불가
-    if (restaurant.brand_id) {
-      return res.status(403).json({ error: '브랜드 가맹점은 레시피를 생성할 수 없습니다' });
+    // 브랜드 가맹점이고 recipe_manager_type이 'brand'인 경우 레시피 생성 불가
+    if (restaurant.brand_id && restaurant.recipe_manager_type === 'brand') {
+      return res.status(403).json({ error: '브랜드 관리 모드에서는 레시피를 생성할 수 없습니다. 브랜드 관리자에게 문의하세요.' });
     }
 
     const { name, description, category, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
@@ -334,6 +337,121 @@ router.post('/restaurants/:restaurantId/recipes', authenticateToken, checkRestau
   } catch (error) {
     console.error('Create restaurant recipe error:', error);
     res.status(500).json({ error: '레시피 생성 실패' });
+  }
+});
+
+/**
+ * PUT /api/restaurants/:restaurantId/recipes/:recipeId
+ * 독립 레스토랑 레시피 수정
+ */
+router.put('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId, recipeId } = req.params;
+    const restaurant = await Restaurant.findByPk(restaurantId);
+
+    // 브랜드 가맹점은 레시피 수정 불가 (recipe_manager_type 체크)
+    if (restaurant.brand_id && restaurant.recipe_manager_type === 'brand') {
+      return res.status(403).json({ error: '브랜드 관리 레시피는 수정할 수 없습니다' });
+    }
+
+    const recipe = await Recipe.findByPk(recipeId);
+    if (!recipe) {
+      return res.status(404).json({ error: '레시피를 찾을 수 없습니다' });
+    }
+
+    // 자신의 레시피인지 확인
+    if (recipe.restaurant_id !== parseInt(restaurantId)) {
+      return res.status(403).json({ error: '이 레시피를 수정할 권한이 없습니다' });
+    }
+
+    const { name, description, category, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
+
+    // 기본 정보 업데이트
+    await recipe.update({
+      name,
+      description,
+      category,
+      emoji,
+      image,
+      option_groups,
+      prep_time,
+      cook_time,
+      instructions,
+      suggested_price
+    });
+
+    // 재료 업데이트 (기존 삭제 후 재생성)
+    if (ingredients) {
+      await RecipeIngredient.destroy({ where: { recipe_id: recipeId } });
+
+      let totalCost = 0;
+      for (const item of ingredients) {
+        const ingredient = await Ingredient.findByPk(item.ingredient_id);
+        if (ingredient) {
+          const cost = parseFloat(item.quantity) * parseFloat(ingredient.unit_cost);
+          await RecipeIngredient.create({
+            recipe_id: recipe.id,
+            ingredient_id: item.ingredient_id,
+            quantity: item.quantity,
+            unit: item.unit,
+            cost,
+            notes: item.notes || null
+          });
+          totalCost += cost;
+        }
+      }
+
+      await recipe.update({ total_ingredient_cost: totalCost });
+    }
+
+    // 재료 포함해서 다시 조회
+    const updatedRecipe = await Recipe.findByPk(recipeId, {
+      include: [
+        {
+          model: RecipeIngredient,
+          as: 'recipeIngredients',
+          include: [{ model: Ingredient, as: 'ingredient' }]
+        }
+      ]
+    });
+
+    res.json({ success: true, data: updatedRecipe });
+  } catch (error) {
+    console.error('Update restaurant recipe error:', error);
+    res.status(500).json({ error: '레시피 수정 실패' });
+  }
+});
+
+/**
+ * DELETE /api/restaurants/:restaurantId/recipes/:recipeId
+ * 독립 레스토랑 레시피 삭제
+ */
+router.delete('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId, recipeId } = req.params;
+    const restaurant = await Restaurant.findByPk(restaurantId);
+
+    // 브랜드 가맹점은 레시피 삭제 불가 (recipe_manager_type 체크)
+    if (restaurant.brand_id && restaurant.recipe_manager_type === 'brand') {
+      return res.status(403).json({ error: '브랜드 관리 레시피는 삭제할 수 없습니다' });
+    }
+
+    const recipe = await Recipe.findByPk(recipeId);
+    if (!recipe) {
+      return res.status(404).json({ error: '레시피를 찾을 수 없습니다' });
+    }
+
+    // 자신의 레시피인지 확인
+    if (recipe.restaurant_id !== parseInt(restaurantId)) {
+      return res.status(403).json({ error: '이 레시피를 삭제할 권한이 없습니다' });
+    }
+
+    await recipe.destroy();
+
+    res.json({ success: true, message: '레시피가 삭제되었습니다' });
+  } catch (error) {
+    console.error('Delete restaurant recipe error:', error);
+    res.status(500).json({ error: '레시피 삭제 실패' });
   }
 });
 
