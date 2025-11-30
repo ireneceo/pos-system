@@ -148,6 +148,7 @@ const healthRouter = require('./routes/health');
 const recipesRouter = require('./routes/recipes');
 const ingredientsRouter = require('./routes/ingredients');
 const brandsRouter = require('./routes/brands');
+const currenciesRouter = require('./routes/currencies');
 
 // 헬스 체크 라우터 (가장 먼저, DB 체크 없이)
 app.use('/api/health', healthRouter);
@@ -178,6 +179,7 @@ app.use('/api/operation-tickets', operationTicketsRouter);
 app.use('/api/activity-logs', activityLogsRouter);
 app.use('/api/option-groups', optionGroupsRouter);
 app.use('/api/brands', brandsRouter);
+app.use('/api/currencies', currenciesRouter);
 
 // GitHub Webhook for Auto-Deployment
 const { exec } = require('child_process');

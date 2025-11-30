@@ -3,30 +3,102 @@
  * Centralized currency display logic for the entire application
  */
 
+export interface CurrencyConfig {
+  symbol: string;
+  name: string;
+  decimals: number;
+}
+
+export interface CurrencyData {
+  code: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+}
+
+// Complete currency configurations (matches backend CURRENCY_CONFIG)
+export const CURRENCY_CONFIG: Record<string, CurrencyConfig> = {
+  USD: { symbol: '$', name: 'US Dollar', decimals: 2 },
+  MYR: { symbol: 'RM', name: 'Malaysian Ringgit', decimals: 2 },
+  KRW: { symbol: '₩', name: 'Korean Won', decimals: 0 },
+  SGD: { symbol: 'S$', name: 'Singapore Dollar', decimals: 2 },
+  THB: { symbol: '฿', name: 'Thai Baht', decimals: 2 },
+  JPY: { symbol: '¥', name: 'Japanese Yen', decimals: 0 },
+  EUR: { symbol: '€', name: 'Euro', decimals: 2 },
+  GBP: { symbol: '£', name: 'British Pound', decimals: 2 },
+  AUD: { symbol: 'A$', name: 'Australian Dollar', decimals: 2 },
+  CNY: { symbol: '¥', name: 'Chinese Yuan', decimals: 2 },
+  INR: { symbol: '₹', name: 'Indian Rupee', decimals: 2 },
+  PHP: { symbol: '₱', name: 'Philippine Peso', decimals: 2 },
+  VND: { symbol: '₫', name: 'Vietnamese Dong', decimals: 0 },
+  IDR: { symbol: 'Rp', name: 'Indonesian Rupiah', decimals: 0 },
+  TWD: { symbol: 'NT$', name: 'Taiwan Dollar', decimals: 0 },
+  HKD: { symbol: 'HK$', name: 'Hong Kong Dollar', decimals: 2 }
+};
+
+/**
+ * Get currency decimals
+ * @param currencyCode - Currency code
+ * @returns Number of decimal places
+ */
+export function getCurrencyDecimals(currencyCode: string): number {
+  return CURRENCY_CONFIG[currencyCode]?.decimals ?? 2;
+}
+
+/**
+ * Get currency name
+ * @param currencyCode - Currency code
+ * @returns Currency name
+ */
+export function getCurrencyName(currencyCode: string): string {
+  return CURRENCY_CONFIG[currencyCode]?.name || currencyCode;
+}
+
+/**
+ * Get all available currencies as array
+ * @returns Array of currency data
+ */
+export function getAllCurrencies(): CurrencyData[] {
+  return Object.entries(CURRENCY_CONFIG).map(([code, config]) => ({
+    code,
+    ...config
+  }));
+}
+
 /**
  * Format a number as currency with the specified currency code
  * @param amount - The amount to format
- * @param currencyCode - Currency code (RM, USD, SGD, JPY, THB)
- * @param showDecimals - Whether to show decimal places (default: true, false for JPY)
+ * @param currencyCode - Currency code (USD, KRW, MYR, etc.)
+ * @param showDecimals - Whether to show decimal places (default: based on currency config)
  * @returns Formatted currency string
  */
 export function formatCurrency(
-  amount: number,
-  currencyCode: string = 'RM',
+  amount: number | string,
+  currencyCode: string = 'USD',
   showDecimals?: boolean
 ): string {
+  const config = CURRENCY_CONFIG[currencyCode];
+  const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+
+  if (isNaN(numAmount)) {
+    const symbol = config?.symbol || currencyCode;
+    return `${symbol} 0`;
+  }
+
   // Determine if we should show decimals
-  const useDecimals = showDecimals !== undefined
-    ? showDecimals
-    : currencyCode !== 'JPY'; // JPY doesn't use decimal places
+  const decimals = showDecimals !== undefined
+    ? (showDecimals ? 2 : 0)
+    : (config?.decimals ?? 2);
 
   // Format the number
-  const formattedAmount = useDecimals
-    ? amount.toFixed(2)
-    : Math.round(amount).toString();
+  const formattedAmount = numAmount.toLocaleString('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
+  });
 
-  // Return with currency code
-  return `${currencyCode} ${formattedAmount}`;
+  // Use symbol if available
+  const symbol = config?.symbol || currencyCode;
+  return `${symbol} ${formattedAmount}`;
 }
 
 /**
@@ -67,12 +139,20 @@ export function formatCurrencyWithRounding(
  * @returns Currency symbol
  */
 export function getCurrencySymbol(currencyCode: string): string {
-  const symbols: Record<string, string> = {
-    'RM': 'RM',
-    'USD': '$',
-    'SGD': 'S$',
-    'JPY': '¥',
-    'THB': '฿'
-  };
-  return symbols[currencyCode] || currencyCode;
+  return CURRENCY_CONFIG[currencyCode]?.symbol || currencyCode;
+}
+
+/**
+ * Parse amount for currency (respecting decimals)
+ * @param amount - Amount to parse
+ * @param currencyCode - Currency code
+ * @returns Parsed number
+ */
+export function parseAmount(amount: string | number, currencyCode: string = 'USD'): number {
+  const decimals = getCurrencyDecimals(currencyCode);
+  const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+
+  if (isNaN(numAmount)) return 0;
+
+  return Number(numAmount.toFixed(decimals));
 }

@@ -19,6 +19,10 @@ const AddonModule = require('./AddonModule');
 const Recipe = require('./Recipe');
 const Ingredient = require('./Ingredient');
 const RecipeIngredient = require('./RecipeIngredient');
+const SystemSettings = require('./SystemSettings');
+const PlanPrice = require('./PlanPrice');
+const IngredientCost = require('./IngredientCost');
+const RecipeCost = require('./RecipeCost');
 
 // Define associations
 // Brand - Restaurant associations
@@ -132,6 +136,18 @@ RecipeIngredient.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as: 'ingre
 Product.belongsTo(Recipe, { foreignKey: 'recipe_id', as: 'recipe' });
 Recipe.hasMany(Product, { foreignKey: 'recipe_id', as: 'products' });
 
+// PlanPrice - PlanTemplate association
+PlanPrice.belongsTo(PlanTemplate, { foreignKey: 'plan_id', as: 'plan' });
+PlanTemplate.hasMany(PlanPrice, { foreignKey: 'plan_id', as: 'prices' });
+
+// IngredientCost - Ingredient association
+IngredientCost.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as: 'ingredient' });
+Ingredient.hasMany(IngredientCost, { foreignKey: 'ingredient_id', as: 'costs' });
+
+// RecipeCost - Recipe association
+RecipeCost.belongsTo(Recipe, { foreignKey: 'recipe_id', as: 'recipe' });
+Recipe.hasMany(RecipeCost, { foreignKey: 'recipe_id', as: 'costs' });
+
 module.exports = {
   User,
   Restaurant,
@@ -153,5 +169,9 @@ module.exports = {
   AddonModule,
   Recipe,
   Ingredient,
-  RecipeIngredient
+  RecipeIngredient,
+  SystemSettings,
+  PlanPrice,
+  IngredientCost,
+  RecipeCost
 };

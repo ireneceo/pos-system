@@ -16,7 +16,9 @@ import {
 } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useAuth } from '../../contexts/AuthContext';
-import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormRow as UIFormRow } from '../../components/UI/Modal';
+import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormRow as UIFormRow } from '../../components/UI/Modal';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 
 interface Ingredient {
   id: number;
@@ -181,6 +183,8 @@ const EmptyDescription = styled.p`
 
 const IngredientsPage: React.FC = () => {
   const { user } = useAuth();
+  const { defaultCurrency, supportedCurrencies } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('');
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -196,6 +200,13 @@ const IngredientsPage: React.FC = () => {
     supplier_name: '',
     min_stock: '0'
   });
+
+  // Set default currency when loaded
+  useEffect(() => {
+    if (defaultCurrency && !selectedCurrency) {
+      setSelectedCurrency(defaultCurrency);
+    }
+  }, [defaultCurrency, selectedCurrency]);
 
   useEffect(() => {
     fetchIngredients();
@@ -387,7 +398,7 @@ const IngredientsPage: React.FC = () => {
           </StatCard>
           <StatCard>
             <StatLabel>Average Cost</StatLabel>
-            <StatValue>RM {avgCost.toFixed(2)}</StatValue>
+            <StatValue>{formatCurrency(avgCost, selectedCurrency || 'USD')}</StatValue>
             <StatDescription>per unit</StatDescription>
           </StatCard>
           <StatCard>
@@ -411,6 +422,17 @@ const IngredientsPage: React.FC = () => {
             {categories.map(cat => (
               <option key={cat} value={cat}>
                 {cat === 'all' ? 'All Categories' : cat}
+              </option>
+            ))}
+          </FilterSelect>
+          <FilterSelect
+            value={selectedCurrency}
+            onChange={(e) => setSelectedCurrency(e.target.value)}
+            style={{ minWidth: '140px' }}
+          >
+            {supportedCurrencies.map(code => (
+              <option key={code} value={code}>
+                {getCurrencySymbol(code)} {code}
               </option>
             ))}
           </FilterSelect>
@@ -452,7 +474,7 @@ const IngredientsPage: React.FC = () => {
                   <IngredientInfo>
                     <InfoRow>
                       <InfoLabel>Unit Cost</InfoLabel>
-                      <InfoValue>RM {Number(ingredient.unit_cost).toFixed(2)}</InfoValue>
+                      <InfoValue>{formatCurrency(ingredient.unit_cost, selectedCurrency || 'USD')}</InfoValue>
                     </InfoRow>
                     <InfoRow>
                       <InfoLabel>Unit</InfoLabel>
@@ -556,7 +578,7 @@ const IngredientsPage: React.FC = () => {
               />
             </UIFormGroup>
             <UIFormGroup>
-              <FormLabel>Unit Cost (RM) *</FormLabel>
+              <FormLabel>Unit Cost ({getCurrencySymbol(selectedCurrency || 'USD')}) *</FormLabel>
               <FormInput
                 type="number"
                 step="0.01"

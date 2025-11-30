@@ -17,6 +17,8 @@ import {
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea, FormRow as UIFormRow } from '../../components/UI/Modal';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 
 interface Recipe {
   id: number;
@@ -324,6 +326,8 @@ const ButtonGroup = styled.div`
 
 const RecipesPage: React.FC = () => {
   const { user } = useAuth();
+  const { defaultCurrency, supportedCurrencies } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('');
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -348,6 +352,13 @@ const RecipesPage: React.FC = () => {
     unit: string;
     notes: string;
   }>>([]);
+
+  // Set default currency when loaded
+  useEffect(() => {
+    if (defaultCurrency && !selectedCurrency) {
+      setSelectedCurrency(defaultCurrency);
+    }
+  }, [defaultCurrency, selectedCurrency]);
 
   // Fetch recipes and ingredients
   useEffect(() => {
@@ -630,12 +641,12 @@ const RecipesPage: React.FC = () => {
           </StatCard>
           <StatCard>
             <StatLabel>Average Cost</StatLabel>
-            <StatValue>RM {avgCost.toFixed(2)}</StatValue>
+            <StatValue>{formatCurrency(avgCost, selectedCurrency || 'USD')}</StatValue>
             <StatDescription>per recipe</StatDescription>
           </StatCard>
           <StatCard>
             <StatLabel>Total Value</StatLabel>
-            <StatValue>RM {totalCost.toFixed(2)}</StatValue>
+            <StatValue>{formatCurrency(totalCost, selectedCurrency || 'USD')}</StatValue>
             <StatDescription>all recipes</StatDescription>
           </StatCard>
         </StatsGrid>
@@ -655,6 +666,17 @@ const RecipesPage: React.FC = () => {
             {categories.map(cat => (
               <option key={cat} value={cat}>
                 {cat === 'all' ? 'All Categories' : cat}
+              </option>
+            ))}
+          </FilterSelect>
+          <FilterSelect
+            value={selectedCurrency}
+            onChange={(e) => setSelectedCurrency(e.target.value)}
+            style={{ minWidth: '140px' }}
+          >
+            {supportedCurrencies.map(code => (
+              <option key={code} value={code}>
+                {getCurrencySymbol(code)} {code}
               </option>
             ))}
           </FilterSelect>
