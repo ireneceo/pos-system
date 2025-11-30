@@ -1,6 +1,13 @@
 # 개발 중인 파일들 (배포 제외)
 # 이 파일에 경로를 추가하면 운영 배포 시 제외됩니다
 
+# 환경 설정 파일 (절대 덮어쓰면 안됨!)
+.env.production
+.env.staging
+.env.development
+.env.codespace
+.env.example
+
 # 예시:
 # routes/new-feature.js
 # models/TestModel.js
