@@ -112,6 +112,8 @@ router.get('/', optionalAuth, async (req, res) => {
           isPrimary: m.RestaurantManager?.is_primary || false
         })),
         brandId: restaurantData.brand_id ? restaurantData.brand_id.toString() : null,
+        brand_id: restaurantData.brand_id || null,
+        recipe_manager_type: restaurantData.recipe_manager_type || 'restaurant',
         brand: restaurantData.brand ? {
           id: restaurantData.brand.id.toString(),
           name: restaurantData.brand.name,
@@ -119,7 +121,7 @@ router.get('/', optionalAuth, async (req, res) => {
           logoUrl: restaurantData.brand.logo_url
         } : null,
         location: restaurantData.address || '',
-        cuisine: 'Various', // Default value as it's not in Restaurant model
+        cuisine: restaurantData.cuisine || 'Various',
         status: restaurantData.status === 'active' ? 'active' : 'inactive',
         todaySales: 0, // Would need to calculate from orders
         todayOrders: 0, // Would need to calculate from orders
@@ -411,6 +413,17 @@ router.put('/:id', async (req, res) => {
     // Settings objects
     if (req.body.payment_settings !== undefined) updateData.payment_settings = req.body.payment_settings;
     if (req.body.operation_settings !== undefined) updateData.operation_settings = req.body.operation_settings;
+
+    // Brand association
+    if (req.body.brand_id !== undefined) {
+      updateData.brand_id = req.body.brand_id ? parseInt(req.body.brand_id) : null;
+      // Update recipe_manager_type based on brand association
+      updateData.recipe_manager_type = req.body.brand_id ? 'brand' : 'restaurant';
+      console.log(`🏢 Updating brand_id to: ${updateData.brand_id}, recipe_manager_type: ${updateData.recipe_manager_type}`);
+    }
+
+    // Cuisine field
+    if (req.body.cuisine !== undefined) updateData.cuisine = req.body.cuisine;
 
     // Get manager name if managerId is being updated
     if (updateData.manager_id) {

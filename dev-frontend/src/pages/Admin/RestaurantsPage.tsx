@@ -15,7 +15,7 @@ import {
   ActionSection,
   Content
 } from '../../components/UI';
-import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+// Using page-specific filter components instead of common ones
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
 // API imports removed - using direct fetch like StaffManagementPage and ManagersPage
@@ -52,6 +52,7 @@ interface Restaurant {
   subscriptionStart?: string;
   subscriptionEnd?: string;
   brand_id?: number;
+  recipe_manager_type?: 'restaurant' | 'brand';
 }
 
 // Common components now imported from ../../components/UI
@@ -649,7 +650,8 @@ const RestaurantsPage: React.FC = () => {
     autoRenew: true,
     subscriptionStart: new Date().toISOString().split('T')[0],
     subscriptionEnd: '',
-    brandId: ''
+    brandId: '',
+    recipeManagerType: 'restaurant' as 'restaurant' | 'brand'
   });
   const [availableManagers, setAvailableManagers] = useState<any[]>([]);
   const [availablePlans, setAvailablePlans] = useState<any[]>([]);
@@ -847,7 +849,8 @@ const RestaurantsPage: React.FC = () => {
             rating: restaurant.rating || 4.5, // Use actual data from backend
             createdAt: restaurant.createdAt ? new Date(restaurant.createdAt).toISOString().split('T')[0] : '2024-01-01',
             lastOrder: restaurant.lastOrder || 'Never', // Use actual data from backend
-            brand_id: restaurant.brand_id || null // Include brand_id from backend
+            brand_id: restaurant.brand_id || null, // Include brand_id from backend
+            recipe_manager_type: restaurant.recipe_manager_type || 'restaurant' // Include recipe_manager_type from backend
           };
         });
       
@@ -939,7 +942,8 @@ const RestaurantsPage: React.FC = () => {
       autoRenew: true,
       subscriptionStart: new Date().toISOString().split('T')[0],
       subscriptionEnd: endDate.toISOString().split('T')[0],
-      brandId: ''
+      brandId: '',
+      recipeManagerType: 'restaurant'
     });
     setManagerSearchQuery('');
     setFilteredManagers([]);
@@ -1035,7 +1039,8 @@ const RestaurantsPage: React.FC = () => {
       autoRenew: restaurant.autoRenew !== undefined ? restaurant.autoRenew : true,
       subscriptionStart: restaurant.subscriptionStart || new Date().toISOString().split('T')[0],
       subscriptionEnd: restaurant.subscriptionEnd || new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0],
-      brandId: (restaurant as any).brand_id?.toString() || ''
+      brandId: (restaurant as any).brand_id?.toString() || '',
+      recipeManagerType: restaurant.recipe_manager_type || 'restaurant'
     };
 
     setEditingRestaurant(editData);
@@ -1106,7 +1111,8 @@ const RestaurantsPage: React.FC = () => {
         autoRenew: newRestaurant.autoRenew,
         subscriptionStart: newRestaurant.subscriptionStart,
         subscriptionEnd: newRestaurant.subscriptionEnd,
-        brand_id: newRestaurant.brandId ? parseInt(newRestaurant.brandId) : null
+        brand_id: newRestaurant.brandId ? parseInt(newRestaurant.brandId) : null,
+        recipe_manager_type: newRestaurant.brandId ? newRestaurant.recipeManagerType : 'restaurant'
       };
 
       console.log('📤 Sending restaurant data:', restaurantData);
@@ -1205,7 +1211,8 @@ const RestaurantsPage: React.FC = () => {
         autoRenew: editingRestaurant.autoRenew || true,
         subscriptionStart: editingRestaurant.subscriptionStart,
         subscriptionEnd: editingRestaurant.subscriptionEnd,
-        brand_id: (editingRestaurant as any).brandId ? parseInt((editingRestaurant as any).brandId) : null
+        brand_id: (editingRestaurant as any).brandId ? parseInt((editingRestaurant as any).brandId) : null,
+        recipe_manager_type: (editingRestaurant as any).brandId ? ((editingRestaurant as any).recipeManagerType || 'brand') : 'restaurant'
       };
 
       console.log('📤 Sending restaurant update data:', updateData);
@@ -1386,8 +1393,8 @@ const RestaurantsPage: React.FC = () => {
           </StatCard>
         </StatsGrid>
 
-        <FilterBar>
-          <SearchInput
+        <PageFilterWrapper>
+          <PageSearchInput
             placeholder="Search restaurants..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -1471,7 +1478,7 @@ const RestaurantsPage: React.FC = () => {
               ))}
             </DropdownMenu>
           </DropdownContainer>
-          <FilterSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ maxWidth: '180px' }}>
+          <PageFilterSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
             <option value="all">All Status</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
@@ -1479,8 +1486,8 @@ const RestaurantsPage: React.FC = () => {
             <option value="expired">Expired</option>
             <option value="suspended">Suspended</option>
             <option value="cancelled">Cancelled</option>
-          </FilterSelect>
-        </FilterBar>
+          </PageFilterSelect>
+        </PageFilterWrapper>
 
         <RestaurantGrid>
           {filteredRestaurants.length === 0 ? (
@@ -1673,7 +1680,7 @@ const RestaurantsPage: React.FC = () => {
                     <FormLabel>Brand (Franchise)</FormLabel>
                     <FormSelect
                       value={newRestaurant.brandId}
-                      onChange={(e) => setNewRestaurant({...newRestaurant, brandId: e.target.value})}
+                      onChange={(e) => setNewRestaurant({...newRestaurant, brandId: e.target.value, recipeManagerType: e.target.value ? 'brand' : 'restaurant'})}
                     >
                       <option value="">-- Independent (No Brand) --</option>
                       {brands.map(brand => (
@@ -1683,6 +1690,24 @@ const RestaurantsPage: React.FC = () => {
                       ))}
                     </FormSelect>
                   </FormGroup>
+
+                  {newRestaurant.brandId && (
+                    <FormGroup>
+                      <FormLabel>Recipe Management</FormLabel>
+                      <FormSelect
+                        value={newRestaurant.recipeManagerType}
+                        onChange={(e) => setNewRestaurant({...newRestaurant, recipeManagerType: e.target.value as 'restaurant' | 'brand'})}
+                      >
+                        <option value="brand">Brand Managed (use brand recipes)</option>
+                        <option value="restaurant">Restaurant Managed (independent recipes)</option>
+                      </FormSelect>
+                      <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                        {newRestaurant.recipeManagerType === 'brand'
+                          ? 'Recipes will be managed by the brand. Restaurant cannot create own recipes.'
+                          : 'Restaurant can create and manage its own recipes independently.'}
+                      </div>
+                    </FormGroup>
+                  )}
 
                   <FormGroup>
                     <FormLabel>Plan Type *</FormLabel>
@@ -1920,7 +1945,7 @@ const RestaurantsPage: React.FC = () => {
                     <FormLabel>Brand (Franchise)</FormLabel>
                     <FormSelect
                       value={(editingRestaurant as any).brandId || ''}
-                      onChange={(e) => setEditingRestaurant({...editingRestaurant, brandId: e.target.value} as any)}
+                      onChange={(e) => setEditingRestaurant({...editingRestaurant, brandId: e.target.value, recipeManagerType: e.target.value ? 'brand' : 'restaurant'} as any)}
                     >
                       <option value="">-- Independent (No Brand) --</option>
                       {brands.map(brand => (
@@ -1930,6 +1955,24 @@ const RestaurantsPage: React.FC = () => {
                       ))}
                     </FormSelect>
                   </FormGroup>
+
+                  {(editingRestaurant as any).brandId && (
+                    <FormGroup>
+                      <FormLabel>Recipe Management</FormLabel>
+                      <FormSelect
+                        value={(editingRestaurant as any).recipeManagerType || 'restaurant'}
+                        onChange={(e) => setEditingRestaurant({...editingRestaurant, recipeManagerType: e.target.value} as any)}
+                      >
+                        <option value="brand">Brand Managed (use brand recipes)</option>
+                        <option value="restaurant">Restaurant Managed (independent recipes)</option>
+                      </FormSelect>
+                      <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                        {(editingRestaurant as any).recipeManagerType === 'brand'
+                          ? 'Recipes will be managed by the brand. Restaurant cannot create own recipes.'
+                          : 'Restaurant can create and manage its own recipes independently.'}
+                      </div>
+                    </FormGroup>
+                  )}
 
                   <FormGroup>
                     <FormLabel>Plan Type *</FormLabel>
