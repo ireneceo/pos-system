@@ -585,6 +585,7 @@ const PlansPage: React.FC = () => {
     plan_target: 'restaurant' as 'restaurant' | 'brand' | 'foodcourt',
     base_price_monthly: '',
     base_price_annual: '',
+    currency_prices: {} as {[currency: string]: {monthly: string; annual: string}},
     order_limit: '',
     menu_item_limit: '',
     staff_limit: '',
@@ -604,6 +605,7 @@ const PlansPage: React.FC = () => {
     plan_target: 'restaurant' as 'restaurant' | 'brand' | 'foodcourt',
     base_price_monthly: '',
     base_price_annual: '',
+    currency_prices: {} as {[currency: string]: {monthly: string; annual: string}},
     order_limit: '',
     menu_item_limit: '',
     staff_limit: '',
@@ -658,14 +660,12 @@ const PlansPage: React.FC = () => {
       });
       if (response.ok) {
         setSupportedCurrencies(currencies);
-        alert('Supported currencies updated successfully!');
       } else {
         const error = await response.json();
-        alert(error.error || 'Failed to update currencies');
+        console.error('Failed to update currencies:', error.error);
       }
     } catch (error) {
       console.error('Error updating supported currencies:', error);
-      alert('Failed to update currencies');
     }
   };
 
@@ -723,15 +723,13 @@ const PlansPage: React.FC = () => {
       });
 
       if (response.ok) {
-        alert('Plan prices updated successfully!');
         setShowPlanPricesModal(false);
       } else {
         const error = await response.json();
-        alert(error.error || 'Failed to update prices');
+        console.error('Failed to update prices:', error.error);
       }
     } catch (error) {
       console.error('Error saving plan prices:', error);
-      alert('Failed to save prices');
     }
   };
 
@@ -876,6 +874,28 @@ const PlansPage: React.FC = () => {
         throw new Error(errorData.error || 'Failed to create plan');
       }
 
+      const createdPlan = await response.json();
+
+      // Save currency prices for the new plan
+      if (createFormData.currency_prices && Object.keys(createFormData.currency_prices).length > 0) {
+        const token = localStorage.getItem('auth_token');
+        const prices = Object.entries(createFormData.currency_prices).map(([currency, values]) => ({
+          currency,
+          monthly_price: parseFloat(values.monthly) || 0,
+          annual_price: parseFloat(values.annual) || 0,
+          is_active: true
+        }));
+
+        await fetch(`/api/currencies/plans/${createdPlan.id}/prices`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ prices })
+        });
+      }
+
       // Reset form
       setCreateFormData({
         name: '',
@@ -885,6 +905,7 @@ const PlansPage: React.FC = () => {
         plan_target: 'restaurant' as 'restaurant' | 'brand' | 'foodcourt',
         base_price_monthly: '',
         base_price_annual: '',
+        currency_prices: {},
         order_limit: '',
         menu_item_limit: '',
         staff_limit: '',
@@ -941,6 +962,26 @@ const PlansPage: React.FC = () => {
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to update plan');
+      }
+
+      // Save currency prices
+      if (editFormData.currency_prices && Object.keys(editFormData.currency_prices).length > 0) {
+        const token = localStorage.getItem('auth_token');
+        const prices = Object.entries(editFormData.currency_prices).map(([currency, values]) => ({
+          currency,
+          monthly_price: parseFloat(values.monthly) || 0,
+          annual_price: parseFloat(values.annual) || 0,
+          is_active: true
+        }));
+
+        await fetch(`/api/currencies/plans/${planId}/prices`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ prices })
+        });
       }
 
       // Close modal and refresh plans
@@ -1104,11 +1145,31 @@ const PlansPage: React.FC = () => {
     }
   };
   
-  const handleEditPlan = (plan: Plan) => {
+  const handleEditPlan = async (plan: Plan) => {
     setSelectedPlan(plan);
+
+    // Load existing currency prices for this plan
+    let currencyPricesData: {[currency: string]: {monthly: string; annual: string}} = {};
+    try {
+      const token = localStorage.getItem('auth_token');
+      const numericId = plan.id.replace('plan-', '');
+      const response = await fetch(`/api/currencies/plans/${numericId}/prices`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        for (const price of (data.data || [])) {
+          currencyPricesData[price.currency] = {
+            monthly: price.monthly_price?.toString() || '0',
+            annual: price.annual_price?.toString() || '0'
+          };
+        }
+      }
+    } catch (error) {
+      console.error('Error loading plan prices:', error);
+    }
+
     // Initialize edit form data with selected plan
-    console.log('Edit Plan - Available Modules:', availableModules.length);
-    console.log('Edit Plan - Plan included modules:', plan.includedModules);
     setEditFormData({
       id: plan.id,
       name: plan.name,
@@ -1118,6 +1179,7 @@ const PlansPage: React.FC = () => {
       plan_target: plan.planTarget,
       base_price_monthly: plan.monthlyPrice.toString(),
       base_price_annual: plan.annualPrice.toString(),
+      currency_prices: currencyPricesData,
       order_limit: plan.orderLimit.toString(),
       menu_item_limit: '50', // default value
       staff_limit: plan.restaurantLimit.toString(),
@@ -1448,26 +1510,64 @@ const PlansPage: React.FC = () => {
                     onChange={(e) => setCreateFormData(prev => ({...prev, description: e.target.value}))}
                   />
                 </FormGroup>
-                <PricingRow>
-                  <FormGroup>
-                    <FormLabel>Monthly Price (RM)</FormLabel>
-                    <FormInput
-                      type="number"
-                      placeholder="0"
-                      value={createFormData.base_price_monthly}
-                      onChange={(e) => setCreateFormData(prev => ({...prev, base_price_monthly: e.target.value}))}
-                    />
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>Annual Price (RM)</FormLabel>
-                    <FormInput
-                      type="number"
-                      placeholder="0"
-                      value={createFormData.base_price_annual}
-                      onChange={(e) => setCreateFormData(prev => ({...prev, base_price_annual: e.target.value}))}
-                    />
-                  </FormGroup>
-                </PricingRow>
+                {/* Multi-Currency Pricing */}
+                <FormGroup>
+                  <FormLabel>Pricing by Currency</FormLabel>
+                  <div style={{ display: 'grid', gap: '12px', marginTop: '8px' }}>
+                    {supportedCurrencies.map(code => {
+                      const config = currencyConfig[code];
+                      return (
+                        <div key={code} style={{
+                          padding: '12px',
+                          border: '1px solid #E6EBF1',
+                          borderRadius: '8px',
+                          background: '#FAFBFC'
+                        }}>
+                          <div style={{ fontWeight: 600, marginBottom: '8px', color: '#0A2540' }}>
+                            {config?.symbol || code} {code} - {config?.name || code}
+                          </div>
+                          <PricingRow>
+                            <FormGroup style={{ marginBottom: 0 }}>
+                              <FormLabel style={{ fontSize: '12px' }}>Monthly</FormLabel>
+                              <FormInput
+                                type="number"
+                                placeholder="0"
+                                value={createFormData.currency_prices?.[code]?.monthly || ''}
+                                onChange={(e) => setCreateFormData(prev => ({
+                                  ...prev,
+                                  currency_prices: {
+                                    ...prev.currency_prices,
+                                    [code]: { ...prev.currency_prices?.[code], monthly: e.target.value }
+                                  }
+                                }))}
+                              />
+                            </FormGroup>
+                            <FormGroup style={{ marginBottom: 0 }}>
+                              <FormLabel style={{ fontSize: '12px' }}>Annual</FormLabel>
+                              <FormInput
+                                type="number"
+                                placeholder="0"
+                                value={createFormData.currency_prices?.[code]?.annual || ''}
+                                onChange={(e) => setCreateFormData(prev => ({
+                                  ...prev,
+                                  currency_prices: {
+                                    ...prev.currency_prices,
+                                    [code]: { ...prev.currency_prices?.[code], annual: e.target.value }
+                                  }
+                                }))}
+                              />
+                            </FormGroup>
+                          </PricingRow>
+                        </div>
+                      );
+                    })}
+                    {supportedCurrencies.length === 0 && (
+                      <p style={{ color: '#6B7280', fontSize: '14px' }}>
+                        No currencies configured. Add currencies in "Manage Currencies" first.
+                      </p>
+                    )}
+                  </div>
+                </FormGroup>
                 {createFormData.category === 'basic' && (
                   <>
                     <LimitsRow>
@@ -1676,26 +1776,64 @@ const PlansPage: React.FC = () => {
                     <option value="custom">Custom Subscription</option>
                   </FormSelect>
                 </FormGroup>
-                <PricingRow>
-                  <FormGroup>
-                    <FormLabel>Monthly Price (RM)</FormLabel>
-                    <FormInput
-                      type="number"
-                      placeholder="0"
-                      value={editFormData.base_price_monthly}
-                      onChange={(e) => setEditFormData(prev => ({...prev, base_price_monthly: e.target.value}))}
-                    />
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>Annual Price (RM)</FormLabel>
-                    <FormInput
-                      type="number"
-                      placeholder="0"
-                      value={editFormData.base_price_annual}
-                      onChange={(e) => setEditFormData(prev => ({...prev, base_price_annual: e.target.value}))}
-                    />
-                  </FormGroup>
-                </PricingRow>
+                {/* Multi-Currency Pricing */}
+                <FormGroup>
+                  <FormLabel>Pricing by Currency</FormLabel>
+                  <div style={{ display: 'grid', gap: '12px', marginTop: '8px' }}>
+                    {supportedCurrencies.map(code => {
+                      const config = currencyConfig[code];
+                      return (
+                        <div key={code} style={{
+                          padding: '12px',
+                          border: '1px solid #E6EBF1',
+                          borderRadius: '8px',
+                          background: '#FAFBFC'
+                        }}>
+                          <div style={{ fontWeight: 600, marginBottom: '8px', color: '#0A2540' }}>
+                            {config?.symbol || code} {code} - {config?.name || code}
+                          </div>
+                          <PricingRow>
+                            <FormGroup style={{ marginBottom: 0 }}>
+                              <FormLabel style={{ fontSize: '12px' }}>Monthly</FormLabel>
+                              <FormInput
+                                type="number"
+                                placeholder="0"
+                                value={editFormData.currency_prices?.[code]?.monthly || ''}
+                                onChange={(e) => setEditFormData(prev => ({
+                                  ...prev,
+                                  currency_prices: {
+                                    ...prev.currency_prices,
+                                    [code]: { ...prev.currency_prices?.[code], monthly: e.target.value }
+                                  }
+                                }))}
+                              />
+                            </FormGroup>
+                            <FormGroup style={{ marginBottom: 0 }}>
+                              <FormLabel style={{ fontSize: '12px' }}>Annual</FormLabel>
+                              <FormInput
+                                type="number"
+                                placeholder="0"
+                                value={editFormData.currency_prices?.[code]?.annual || ''}
+                                onChange={(e) => setEditFormData(prev => ({
+                                  ...prev,
+                                  currency_prices: {
+                                    ...prev.currency_prices,
+                                    [code]: { ...prev.currency_prices?.[code], annual: e.target.value }
+                                  }
+                                }))}
+                              />
+                            </FormGroup>
+                          </PricingRow>
+                        </div>
+                      );
+                    })}
+                    {supportedCurrencies.length === 0 && (
+                      <p style={{ color: '#6B7280', fontSize: '14px' }}>
+                        No currencies configured.
+                      </p>
+                    )}
+                  </div>
+                </FormGroup>
                 {editFormData.category === 'basic' && (
                   <>
                     <LimitsRow>

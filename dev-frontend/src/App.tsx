@@ -45,6 +45,7 @@ import InvoicesPage from './pages/Admin/InvoicesPage';
 import RestaurantInvoicesPage from './pages/Restaurant/InvoicesPage';
 import ManagerInvoicesPage from './pages/Manager/InvoicesPage';
 import PlansPage from './pages/Admin/PlansPage';
+import AddonModulesPage from './pages/Admin/AddonModulesPage';
 import AnalyticsPage from './pages/Admin/AnalyticsPage';
 import SystemInquiryPage from './pages/Admin/SystemInquiryPage';
 import ManagerSupportTicketsPage from './pages/Manager/SupportTicketsPage';
@@ -272,6 +273,11 @@ function App() {
                       <Route path="/pos/admin/plans" element={
                         <ProtectedRoute requiredRole={['System Admin']}>
                           <PlansPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/admin/addon-modules" element={
+                        <ProtectedRoute requiredRole={['System Admin']}>
+                          <AddonModulesPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/admin/report" element={

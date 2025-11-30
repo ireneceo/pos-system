@@ -7,6 +7,8 @@ const InvoiceSettings = require('../models/InvoiceSettings');
 const Restaurant = require('../models/Restaurant');
 const User = require('../models/User');
 const CompanySettings = require('../models/CompanySettings');
+const PlanPrice = require('../models/PlanPrice');
+const PlanTemplate = require('../models/PlanTemplate');
 const { Op } = require('sequelize');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 
