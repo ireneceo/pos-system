@@ -188,7 +188,9 @@ node ../migrations/001-add-phone-field.js
 ### 운영 배포 전
 - [ ] 운영 DB 백업
   ```bash
-  mysqldump -u prod_admin -pkhfjkjkdkjei purple_production_db > backup_$(date +%Y%m%d_%H%M%S).sql
+  # .env 파일에서 DB 정보 로드
+  source <(grep -E "^DB_" /var/www/production-backend/.env | sed 's/^/export /')
+  mysqldump -u $DB_USER -p$DB_PASSWORD $DB_NAME > backup_$(date +%Y%m%d_%H%M%S).sql
   ```
 - [ ] 피크 시간대 피하기 (새벽 또는 한가한 시간)
 - [ ] 배포 시간 공지 (필요시)
@@ -204,7 +206,9 @@ cd /var/www
 - [ ] 운영 사이트 접속 테스트
 - [ ] 테이블 구조 확인
   ```bash
-  mysql -u prod_admin -pkhfjkjkdkjei purple_production_db -e "DESCRIBE users;"
+  # .env 파일에서 DB 정보 로드
+  source <(grep -E "^DB_" /var/www/production-backend/.env | sed 's/^/export /')
+  mysql -u $DB_USER -p$DB_PASSWORD $DB_NAME -e "DESCRIBE users;"
   ```
 
 ---
@@ -223,12 +227,15 @@ pm2 restart production-backend
 
 #### 2. 데이터베이스 롤백 (백업에서 복원)
 ```bash
+# .env 파일에서 DB 정보 로드
+source <(grep -E "^DB_" /var/www/production-backend/.env | sed 's/^/export /')
+
 # 전체 복원
-mysql -u prod_admin -pkhfjkjkdkjei purple_production_db < backup_20250110_120000.sql
+mysql -u $DB_USER -p$DB_PASSWORD $DB_NAME < backup_20250110_120000.sql
 
 # 특정 테이블만 복원
-mysql -u prod_admin -pkhfjkjkdkjei purple_production_db -e "DROP TABLE users;"
-mysqldump -u prod_admin -pkhfjkjkdkjei --no-create-db backup_file.sql | grep -A 10000 "Table structure for table \`users\`" | mysql -u prod_admin -pkhfjkjkdkjei purple_production_db
+mysql -u $DB_USER -p$DB_PASSWORD $DB_NAME -e "DROP TABLE users;"
+# 참고: 테이블 복원은 /var/www/scripts/restore-database.sh 스크립트 사용 권장
 ```
 
 ---

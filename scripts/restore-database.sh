@@ -2,9 +2,17 @@
 # 데이터베이스 복원 스크립트
 
 BACKUP_DIR="/var/backups/orderhere"
-DB_NAME="purple_dev_db"
-DB_USER="dev_admin"
-DB_PASS="djiflmdjdhue"
+
+# .env 파일에서 DB 정보 로드
+if [ -f "/var/www/dev-backend/.env" ]; then
+    source <(grep -E "^DB_" /var/www/dev-backend/.env | sed 's/^/export /')
+    DB_NAME=$DB_NAME
+    DB_USER=$DB_USER
+    DB_PASS=$DB_PASSWORD
+else
+    echo "Error: .env 파일을 찾을 수 없습니다."
+    exit 1
+fi
 
 # 사용법 출력
 if [ $# -eq 0 ]; then

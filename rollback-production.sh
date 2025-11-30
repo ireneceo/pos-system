@@ -96,9 +96,16 @@ if [ -f "$DB_BACKUP_FILE" ]; then
     read -p "데이터베이스를 복원하시겠습니까? (yes/no): " DB_CONFIRM
 
     if [ "$DB_CONFIRM" = "yes" ]; then
-        DB_USER="prod_admin"
-        DB_PASS="khfjkjkdkjei"
-        DB_NAME="purple_production_db"
+        # .env 파일에서 DB 정보 로드
+        if [ -f "$PROD_BACKEND/.env" ]; then
+            source <(grep -E "^DB_" "$PROD_BACKEND/.env" | sed 's/^/export /')
+            DB_USER=$DB_USER
+            DB_PASS=$DB_PASSWORD
+            DB_NAME=$DB_NAME
+        else
+            echo -e "${RED}   ❌ .env 파일을 찾을 수 없습니다.${NC}"
+            exit 1
+        fi
 
         echo -e "${BLUE}   Restoring database...${NC}"
         gunzip < $DB_BACKUP_FILE | mysql -u $DB_USER -p$DB_PASS $DB_NAME

@@ -2,11 +2,19 @@
 # 데이터베이스 자동 백업 스크립트 (최소 용량, 효율적)
 # 실행: 매일 새벽 3시
 
+# .env 파일에서 DB 정보 로드
+if [ -f "/var/www/dev-backend/.env" ]; then
+    source <(grep -E "^DB_" /var/www/dev-backend/.env | sed 's/^/export /')
+    DB_NAME=$DB_NAME
+    DB_USER=$DB_USER
+    DB_PASS=$DB_PASSWORD
+else
+    echo "Error: .env 파일을 찾을 수 없습니다."
+    exit 1
+fi
+
 # 설정
 BACKUP_DIR="/var/backups/orderhere"
-DB_NAME="purple_dev_db"
-DB_USER="dev_admin"
-DB_PASS="djiflmdjdhue"
 TIMESTAMP=$(date +%Y-%m-%d_%H%M%S)
 DATE=$(date +%Y-%m-%d)
 

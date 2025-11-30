@@ -41,9 +41,18 @@ git pull origin main || echo "Git pull failed or no changes"
 # ==============================================
 echo ""
 echo -e "${YELLOW}Step 2: Backup Database${NC}"
-DB_USER="prod_admin"
-DB_PASS="khfjkjkdkjei"
-DB_NAME="purple_production_db"
+
+# .env 파일에서 운영 DB 정보 로드
+if [ -f "$PROD_BACKEND/.env" ]; then
+    source <(grep -E "^DB_" "$PROD_BACKEND/.env" | sed 's/^/export /')
+    DB_USER=$DB_USER
+    DB_PASS=$DB_PASSWORD
+    DB_NAME=$DB_NAME
+else
+    echo -e "${RED}   ❌ .env 파일을 찾을 수 없습니다: $PROD_BACKEND/.env${NC}"
+    exit 1
+fi
+
 DB_BACKUP_FILE="${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz"
 
 echo -e "${BLUE}   Backing up ${DB_NAME}...${NC}"
@@ -123,10 +132,65 @@ npm install --omit=dev
 echo -e "${GREEN}   ✅ Dependencies installed${NC}"
 
 # ==============================================
-# Step 7: Database Sync (Sequelize - alter: false)
+# Step 7: Compare Dev/Prod DB Schema
 # ==============================================
 echo ""
-echo -e "${YELLOW}Step 7: Sync Database Schema${NC}"
+echo -e "${YELLOW}Step 7: Compare Database Schema (Dev vs Prod)${NC}"
+
+# .env 파일에서 개발 DB 정보 로드
+if [ -f "$DEV_BACKEND/.env" ]; then
+    DEV_DB_USER=$(grep "^DB_USER=" "$DEV_BACKEND/.env" | cut -d'=' -f2)
+    DEV_DB_PASS=$(grep "^DB_PASSWORD=" "$DEV_BACKEND/.env" | cut -d'=' -f2)
+    DEV_DB_NAME=$(grep "^DB_NAME=" "$DEV_BACKEND/.env" | cut -d'=' -f2)
+else
+    echo -e "${RED}   ❌ 개발 .env 파일을 찾을 수 없습니다: $DEV_BACKEND/.env${NC}"
+    exit 1
+fi
+
+echo -e "${BLUE}   Checking for missing tables and columns...${NC}"
+
+# 테이블 비교
+DEV_TABLES=$(mysql -u $DEV_DB_USER -p$DEV_DB_PASS $DEV_DB_NAME -N -e "SHOW TABLES;" 2>/dev/null | sort)
+PROD_TABLES=$(mysql -u $DB_USER -p$DB_PASS $DB_NAME -N -e "SHOW TABLES;" 2>/dev/null | sort)
+
+MISSING_TABLES=$(comm -23 <(echo "$DEV_TABLES") <(echo "$PROD_TABLES"))
+
+if [ -n "$MISSING_TABLES" ]; then
+    echo -e "${RED}   ❌ 운영DB에 누락된 테이블 발견:${NC}"
+    echo "$MISSING_TABLES" | while read table; do
+        echo -e "${RED}      - $table${NC}"
+    done
+    echo -e "${RED}   배포를 중단합니다. 먼저 테이블을 생성하세요.${NC}"
+    exit 1
+fi
+
+# 주요 테이블 컬럼 비교
+SCHEMA_MISMATCH=0
+for table in products categories restaurants users orders options option_groups recipes ingredients; do
+    DEV_COLS=$(mysql -u $DEV_DB_USER -p$DEV_DB_PASS $DEV_DB_NAME -N -e "SELECT GROUP_CONCAT(COLUMN_NAME ORDER BY ORDINAL_POSITION) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='$DEV_DB_NAME' AND TABLE_NAME='$table';" 2>/dev/null)
+    PROD_COLS=$(mysql -u $DB_USER -p$DB_PASS $DB_NAME -N -e "SELECT GROUP_CONCAT(COLUMN_NAME ORDER BY ORDINAL_POSITION) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='$DB_NAME' AND TABLE_NAME='$table';" 2>/dev/null)
+
+    if [ -n "$DEV_COLS" ] && [ -n "$PROD_COLS" ]; then
+        MISSING=$(comm -23 <(echo "$DEV_COLS" | tr ',' '\n' | sort) <(echo "$PROD_COLS" | tr ',' '\n' | sort) | tr '\n' ', ' | sed 's/,$//')
+        if [ -n "$MISSING" ]; then
+            echo -e "${RED}   ❌ $table 테이블에 누락된 컬럼: $MISSING${NC}"
+            SCHEMA_MISMATCH=1
+        fi
+    fi
+done
+
+if [ $SCHEMA_MISMATCH -eq 1 ]; then
+    echo -e "${RED}   배포를 중단합니다. 먼저 컬럼을 추가하세요.${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}   ✅ DB 스키마 일치 확인 완료${NC}"
+
+# ==============================================
+# Step 8: Database Sync (Sequelize - alter: false)
+# ==============================================
+echo ""
+echo -e "${YELLOW}Step 8: Sync Database Schema${NC}"
 echo -e "${BLUE}   Running Sequelize sync (safe mode - alter: false)...${NC}"
 node sync-database.js
 if [ $? -eq 0 ]; then
@@ -137,10 +201,10 @@ else
 fi
 
 # ==============================================
-# Step 8: Build Frontend
+# Step 9: Build Frontend
 # ==============================================
 echo ""
-echo -e "${YELLOW}Step 8: Build Frontend${NC}"
+echo -e "${YELLOW}Step 9: Build Frontend${NC}"
 cd $DEV_FRONTEND
 
 # 캐시 클리어
@@ -156,28 +220,28 @@ fi
 echo -e "${GREEN}   ✅ Frontend built successfully${NC}"
 
 # ==============================================
-# Step 9: Deploy Frontend Build
+# Step 10: Deploy Frontend Build
 # ==============================================
 echo ""
-echo -e "${YELLOW}Step 9: Deploy Frontend Build${NC}"
+echo -e "${YELLOW}Step 10: Deploy Frontend Build${NC}"
 rm -rf $PROD_FRONTEND/build
 cp -r $DEV_FRONTEND/build $PROD_FRONTEND/
 echo -e "${GREEN}   ✅ Frontend build deployed${NC}"
 
 # ==============================================
-# Step 10: Restart Backend Server
+# Step 11: Restart Backend Server
 # ==============================================
 echo ""
-echo -e "${YELLOW}Step 10: Restart Backend Server${NC}"
+echo -e "${YELLOW}Step 11: Restart Backend Server${NC}"
 pm2 restart production-backend
 sleep 3
 echo -e "${GREEN}   ✅ Backend server restarted${NC}"
 
 # ==============================================
-# Step 11: Reload Nginx (with sudo check)
+# Step 12: Reload Nginx (with sudo check)
 # ==============================================
 echo ""
-echo -e "${YELLOW}Step 11: Reload Nginx${NC}"
+echo -e "${YELLOW}Step 12: Reload Nginx${NC}"
 
 # Clear nginx cache if exists
 if [ -d "/var/cache/nginx" ]; then

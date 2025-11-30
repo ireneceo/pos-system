@@ -4,15 +4,21 @@
 
 ENV=${1:-development}
 
-# 환경별 DB 설정
+# 환경별 .env 파일에서 DB 정보 로드
 if [ "$ENV" = "production" ]; then
-    DB_NAME="orderhere_prod"
-    DB_USER="orderhere_prod"
-    DB_PASS="STRONG_PASSWORD"  # 실제 비밀번호로 변경 필요
+    ENV_FILE="/var/www/production-backend/.env"
 else
-    DB_NAME="orderhere_db"  # 개발용 (아직 분리 전)
-    DB_USER="root"
-    DB_PASS="rootpassword"
+    ENV_FILE="/var/www/dev-backend/.env"
+fi
+
+if [ -f "$ENV_FILE" ]; then
+    source <(grep -E "^DB_" "$ENV_FILE" | sed 's/^/export /')
+    DB_NAME=$DB_NAME
+    DB_USER=$DB_USER
+    DB_PASS=$DB_PASSWORD
+else
+    echo "Error: .env 파일을 찾을 수 없습니다: $ENV_FILE"
+    exit 1
 fi
 
 MIGRATION_DIR="/var/www/database/migrations"
