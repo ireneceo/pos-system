@@ -328,3 +328,69 @@ export const AlertMessage = styled.div<{
     flex-shrink: 0;
   }
 `;
+
+// 저장 버튼 섹션 컨테이너 (하단 border 포함)
+export const SaveButtonContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #E6EBF1;
+`;
+
+// 저장 버튼 그룹 (Reset + Save 버튼)
+export const SaveButtonGroup = styled.div`
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    width: 100%;
+  }
+`;
+
+// 표준 저장 버튼
+export const SaveButton = styled.button<{ variant?: 'primary' | 'secondary' }>`
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: ${props => props.variant === 'secondary' ? '1px solid #E5E7EB' : 'none'};
+  background: ${props => props.variant === 'secondary' ? 'white' : '#635BFF'};
+  color: ${props => props.variant === 'secondary' ? '#6B7280' : 'white'};
+
+  &:hover:not(:disabled) {
+    background: ${props => props.variant === 'secondary' ? '#F9FAFB' : '#5A51E6'};
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+`;
+
+// 상태 메시지 (저장 성공/실패)
+export const StatusMessage = styled.div<{ type: 'success' | 'error' }>`
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  margin-top: 12px;
+  width: 100%;
+  box-sizing: border-box;
+
+  ${props => props.type === 'success' ? `
+    background: #ECFDF5;
+    color: #059669;
+    border: 1px solid #A7F3D0;
+  ` : `
+    background: #FEE2E2;
+    color: #DC2626;
+    border: 1px solid #FECACA;
+  `}
+`;

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
-import { ThemedButton } from '../../components/Theme/ThemedButton';
 import {
   StatsGrid,
   StatCard,
@@ -571,9 +570,8 @@ const PlansPage: React.FC = () => {
   // Currency management states
   const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
   const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>([]);
-  const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [showPlanPricesModal, setShowPlanPricesModal] = useState(false);
-  const [planPrices, setPlanPrices] = useState<PlanPrice[]>([]);
+  const [, setPlanPrices] = useState<PlanPrice[]>([]);
   const [editingPlanPrices, setEditingPlanPrices] = useState<{[currency: string]: {monthly: string; annual: string}}>({});
 
   // Form data for create plan
@@ -644,28 +642,6 @@ const PlansPage: React.FC = () => {
     } catch (error) {
       console.error('Error fetching supported currencies:', error);
       setSupportedCurrencies(['USD', 'MYR', 'KRW']);
-    }
-  };
-
-  const updateSupportedCurrencies = async (currencies: string[]) => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/currencies/supported', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ currencies })
-      });
-      if (response.ok) {
-        setSupportedCurrencies(currencies);
-      } else {
-        const error = await response.json();
-        console.error('Failed to update currencies:', error.error);
-      }
-    } catch (error) {
-      console.error('Error updating supported currencies:', error);
     }
   };
 
@@ -1195,14 +1171,6 @@ const PlansPage: React.FC = () => {
     setSelectedPlan(plan);
     setShowDetailsModal(true);
   };
-  
-  const handleToggleStatus = (planId: string) => {
-    setPlans(prev => prev.map(plan =>
-      plan.id === planId
-        ? { ...plan, isActive: !plan.isActive }
-        : plan
-    ));
-  };
 
   // Filtered plans
   const filteredPlans = plans.filter(plan => {
@@ -1230,44 +1198,6 @@ const PlansPage: React.FC = () => {
           </ActionSection>
         </Header>
         <Content>
-
-        {/* Currency Management Section */}
-        <div style={{
-          background: 'white',
-          borderRadius: '12px',
-          padding: '24px',
-          marginBottom: '24px',
-          border: '1px solid #E6EBF1'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#0A2540' }}>Supported Currencies</h3>
-              <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#6B7280' }}>
-                Manage currencies available for subscription plans
-              </p>
-            </div>
-            <Button variant="secondary" onClick={() => setShowCurrencyModal(true)}>
-              Manage Currencies
-            </Button>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {supportedCurrencies.map(code => (
-              <span key={code} style={{
-                padding: '6px 12px',
-                background: '#F0F4FF',
-                borderRadius: '6px',
-                fontSize: '13px',
-                fontWeight: 500,
-                color: '#635BFF'
-              }}>
-                {currencyConfig[code]?.symbol || code} {code} - {currencyConfig[code]?.name || code}
-              </span>
-            ))}
-            {supportedCurrencies.length === 0 && (
-              <span style={{ color: '#6B7280', fontSize: '14px' }}>No currencies configured</span>
-            )}
-          </div>
-        </div>
 
         <StatsGrid>
           <StatCard color="#059669">
@@ -2090,66 +2020,6 @@ const PlansPage: React.FC = () => {
                   </FeaturesList>
                 </DetailSection>
               </ModalBody>
-            </ModalContent>
-          </Modal>
-        )}
-
-        {/* Currency Management Modal */}
-        {showCurrencyModal && (
-          <Modal onClick={() => setShowCurrencyModal(false)}>
-            <ModalContent onClick={(e) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Manage Supported Currencies</ModalTitle>
-                <CloseButton onClick={() => setShowCurrencyModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
-                <p style={{ marginBottom: '16px', color: '#6B7280', fontSize: '14px' }}>
-                  Select which currencies will be available for subscription plan pricing.
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-                  {Object.entries(currencyConfig).map(([code, config]) => (
-                    <label key={code} style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      padding: '12px',
-                      border: '1px solid #E6EBF1',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      background: supportedCurrencies.includes(code) ? '#F0F4FF' : 'white',
-                      transition: 'all 0.2s'
-                    }}>
-                      <input
-                        type="checkbox"
-                        checked={supportedCurrencies.includes(code)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSupportedCurrencies([...supportedCurrencies, code]);
-                          } else {
-                            setSupportedCurrencies(supportedCurrencies.filter(c => c !== code));
-                          }
-                        }}
-                        style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
-                      />
-                      <div>
-                        <div style={{ fontWeight: 600, color: '#0A2540' }}>
-                          {config.symbol} {code}
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#6B7280' }}>
-                          {config.name}
-                        </div>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </ModalBody>
-              <ModalActions>
-                <Button variant="secondary" onClick={() => setShowCurrencyModal(false)}>Cancel</Button>
-                <Button variant="primary" onClick={() => {
-                  updateSupportedCurrencies(supportedCurrencies);
-                  setShowCurrencyModal(false);
-                }}>Save Changes</Button>
-              </ModalActions>
             </ModalContent>
           </Modal>
         )}

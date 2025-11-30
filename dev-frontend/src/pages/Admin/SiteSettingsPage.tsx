@@ -2,6 +2,16 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { Container, Header, Title, Content } from '../../components/UI/PageComponents';
+import { Modal, ModalButton } from '../../components/UI/Modal';
+import { SaveButtonContainer, SaveButtonGroup, SaveButton, StatusMessage } from '../../components/UI';
+
+interface CurrencyConfig {
+  [code: string]: {
+    symbol: string;
+    name: string;
+    decimals: number;
+  };
+}
 
 const Form = styled.form`
   /* No additional styling - uses Content background */
@@ -135,63 +145,6 @@ const LogoPreview = styled.img`
   object-fit: contain;
 `;
 
-const ButtonGroup = styled.div`
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  margin-top: 32px;
-`;
-
-const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-
-  ${props => props.variant === 'primary' ? `
-    background: #635BFF;
-    color: white;
-
-    &:hover {
-      background: #5A51E6;
-    }
-  ` : `
-    background: #F8F9FA;
-    color: #6B7280;
-    border: 1px solid #E6EBF1;
-
-    &:hover {
-      background: #EBEEF2;
-    }
-  `}
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-`;
-
-const SuccessMessage = styled.div`
-  background: #D4EDDA;
-  color: #155724;
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin-bottom: 24px;
-  font-size: 14px;
-`;
-
-const ErrorMessage = styled.div`
-  background: #F8D7DA;
-  color: #721C24;
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin-bottom: 24px;
-  font-size: 14px;
-`;
-
 interface SiteSettings {
   site_name: string;
   favicon_url: string;
@@ -212,24 +165,138 @@ const SiteSettingsPage: React.FC = () => {
     seo_keywords: '',
     og_image_url: ''
   });
+  const [initialSettings, setInitialSettings] = useState<SiteSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [hasChanges, setHasChanges] = useState(false);
+  const [savedSuccessfully, setSavedSuccessfully] = useState(false);
   const [isDraggingFavicon, setIsDraggingFavicon] = useState(false);
   const [isDraggingLogo, setIsDraggingLogo] = useState(false);
   const [isDraggingOG, setIsDraggingOG] = useState(false);
 
+  // Currency settings
+  const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
+  const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>([]);
+  const [defaultCurrency, setDefaultCurrency] = useState<string>('MYR');
+  const [showCurrencyModal, setShowCurrencyModal] = useState(false);
+  const [tempSelectedCurrencies, setTempSelectedCurrencies] = useState<string[]>([]);
+
   useEffect(() => {
     fetchSettings();
+    fetchCurrencySettings();
   }, []);
+
+  // Detect changes
+  useEffect(() => {
+    if (initialSettings) {
+      const hasChanged = JSON.stringify(settings) !== JSON.stringify(initialSettings);
+      setHasChanges(hasChanged);
+
+      if (hasChanged && savedSuccessfully) {
+        setSavedSuccessfully(false);
+      }
+    }
+  }, [settings, initialSettings, savedSuccessfully]);
+
+  const fetchCurrencySettings = async () => {
+    try {
+      // Fetch all currency config
+      const configRes = await fetch('/api/currencies/config');
+      if (configRes.ok) {
+        const configData = await configRes.json();
+        if (configData.success && configData.currencies) {
+          setCurrencyConfig(configData.currencies);
+          if (configData.defaultCurrency) {
+            setDefaultCurrency(configData.defaultCurrency);
+          }
+        }
+      }
+
+      // Fetch supported currencies
+      const supportedRes = await fetch('/api/currencies/supported');
+      if (supportedRes.ok) {
+        const supportedData = await supportedRes.json();
+        if (supportedData.success && supportedData.data) {
+          setSupportedCurrencies(supportedData.data.map((c: any) => c.code));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching currency settings:', error);
+    }
+  };
+
+  const updateDefaultCurrency = async (currency: string) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/currencies/default', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ defaultCurrency: currency })
+      });
+
+      if (response.ok) {
+        setDefaultCurrency(currency);
+        setSuccessMessage('Default currency updated successfully');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      }
+    } catch (error) {
+      console.error('Error updating default currency:', error);
+      setErrorMessage('Failed to update default currency');
+    }
+  };
+
+  const updateSupportedCurrencies = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/currencies/supported', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ currencies: tempSelectedCurrencies })
+      });
+
+      if (response.ok) {
+        setSupportedCurrencies(tempSelectedCurrencies);
+        setShowCurrencyModal(false);
+        setSuccessMessage('Supported currencies updated successfully');
+        setTimeout(() => setSuccessMessage(''), 3000);
+
+        // If default currency is not in supported list, update it
+        if (!tempSelectedCurrencies.includes(defaultCurrency) && tempSelectedCurrencies.length > 0) {
+          await updateDefaultCurrency(tempSelectedCurrencies[0]);
+        }
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to update currencies:', errorData);
+        setErrorMessage(errorData.error || 'Failed to update supported currencies');
+      }
+    } catch (error) {
+      console.error('Error updating supported currencies:', error);
+      setErrorMessage('Failed to update supported currencies');
+    }
+  };
+
+  const toggleCurrency = (code: string) => {
+    setTempSelectedCurrencies(prev =>
+      prev.includes(code)
+        ? prev.filter(c => c !== code)
+        : [...prev, code]
+    );
+  };
 
   const fetchSettings = async () => {
     try {
       const response = await fetch('/api/site-settings');
       if (response.ok) {
         const data = await response.json();
-        setSettings({
+        const loadedSettings = {
           site_name: data.site_name || '',
           favicon_url: data.favicon_url || '',
           brand_logo: data.brand_logo || '',
@@ -237,7 +304,11 @@ const SiteSettingsPage: React.FC = () => {
           seo_description: data.seo_description || '',
           seo_keywords: data.seo_keywords || '',
           og_image_url: data.og_image_url || ''
-        });
+        };
+        setSettings(loadedSettings);
+        setInitialSettings(loadedSettings);
+        setHasChanges(false);
+        setSavedSuccessfully(false);
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -327,6 +398,9 @@ const SiteSettingsPage: React.FC = () => {
 
       if (response.ok) {
         setSuccessMessage('Site settings saved successfully! SEO tags will be updated on next page load.');
+        setInitialSettings(settings);
+        setHasChanges(false);
+        setSavedSuccessfully(true);
 
         // Trigger brand logo update event if logo changed
         if (settings.brand_logo) {
@@ -384,9 +458,6 @@ const SiteSettingsPage: React.FC = () => {
           <Title>Site Settings</Title>
         </Header>
         <Content>
-          {successMessage && <SuccessMessage>{successMessage}</SuccessMessage>}
-          {errorMessage && <ErrorMessage>{errorMessage}</ErrorMessage>}
-
           <Form onSubmit={handleSubmit}>
             {/* Basic Settings */}
             <Section>
@@ -551,17 +622,165 @@ const SiteSettingsPage: React.FC = () => {
               </FormGroup>
             </Section>
 
-            <ButtonGroup>
-              <Button type="button" variant="secondary" onClick={fetchSettings}>
-                Reset
-              </Button>
-              <Button type="submit" variant="primary" disabled={saving}>
-                {saving ? 'Saving...' : 'Save Settings'}
-              </Button>
-            </ButtonGroup>
+            {/* Currency Settings Section */}
+            <Section>
+              <SectionTitle>Currency Settings</SectionTitle>
+
+              <FormRow>
+                <FormGroup>
+                  <Label>Default Currency</Label>
+                  <select
+                    value={defaultCurrency}
+                    onChange={(e) => updateDefaultCurrency(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      border: '1px solid #E6EBF1',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      backgroundColor: 'white'
+                    }}
+                  >
+                    {supportedCurrencies.map(code => (
+                      <option key={code} value={code}>
+                        {currencyConfig[code]?.symbol} {code} - {currencyConfig[code]?.name}
+                      </option>
+                    ))}
+                  </select>
+                  <HelpText>Used as default for new subscriptions and invoices</HelpText>
+                </FormGroup>
+
+                <FormGroup>
+                  <Label>Supported Currencies</Label>
+                  <div
+                    onClick={() => {
+                      setTempSelectedCurrencies(supportedCurrencies);
+                      setShowCurrencyModal(true);
+                    }}
+                    style={{
+                      padding: '12px 16px',
+                      border: '1px solid #E6EBF1',
+                      borderRadius: '8px',
+                      background: 'white',
+                      cursor: 'pointer',
+                      minHeight: '46px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '8px'
+                    }}
+                  >
+                    {supportedCurrencies.length > 0 ? (
+                      supportedCurrencies.map(code => (
+                        <span key={code} style={{
+                          background: '#F3F4F6',
+                          padding: '4px 10px',
+                          borderRadius: '4px',
+                          fontSize: '13px',
+                          fontWeight: 500
+                        }}>
+                          {currencyConfig[code]?.symbol} {code}
+                        </span>
+                      ))
+                    ) : (
+                      <span style={{ color: '#9CA3AF' }}>Click to select currencies</span>
+                    )}
+                  </div>
+                  <HelpText>Currencies available for pricing plans and invoices</HelpText>
+                </FormGroup>
+              </FormRow>
+            </Section>
+
+            <SaveButtonContainer>
+              <SaveButtonGroup>
+                <SaveButton type="button" variant="secondary" onClick={fetchSettings} disabled={!hasChanges}>
+                  Reset Changes
+                </SaveButton>
+                <SaveButton type="submit" disabled={!hasChanges || saving}>
+                  {hasChanges ? (saving ? 'Saving...' : 'Save Changes') : 'Saved'}
+                </SaveButton>
+              </SaveButtonGroup>
+
+              {(savedSuccessfully && !hasChanges) && (
+                <StatusMessage type="success">
+                  {successMessage || 'Your settings have been successfully updated.'}
+                </StatusMessage>
+              )}
+
+              {errorMessage && (
+                <StatusMessage type="error">
+                  {errorMessage}
+                </StatusMessage>
+              )}
+            </SaveButtonContainer>
           </Form>
         </Content>
       </Container>
+
+      {/* Currency Selection Modal */}
+      <Modal
+        isOpen={showCurrencyModal}
+        onClose={() => setShowCurrencyModal(false)}
+        title="Select Supported Currencies"
+        size="medium"
+        footer={
+          <>
+            <ModalButton variant="secondary" onClick={() => setShowCurrencyModal(false)}>
+              Cancel
+            </ModalButton>
+            <ModalButton
+              variant="primary"
+              onClick={updateSupportedCurrencies}
+              disabled={tempSelectedCurrencies.length === 0}
+            >
+              Save ({tempSelectedCurrencies.length} selected)
+            </ModalButton>
+          </>
+        }
+      >
+        <p style={{ color: '#6B7280', marginBottom: '16px' }}>
+          Select the currencies you want to support for subscription plans and invoices.
+        </p>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: '8px',
+          maxHeight: '400px',
+          overflowY: 'auto'
+        }}>
+          {Object.entries(currencyConfig).map(([code, config]) => (
+            <label
+              key={code}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '12px',
+                border: `1px solid ${tempSelectedCurrencies.includes(code) ? '#635BFF' : '#E6EBF1'}`,
+                borderRadius: '8px',
+                cursor: 'pointer',
+                background: tempSelectedCurrencies.includes(code) ? '#F0F0FF' : 'white',
+                transition: 'all 0.2s'
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={tempSelectedCurrencies.includes(code)}
+                onChange={() => toggleCurrency(code)}
+                style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
+              />
+              <div>
+                <div style={{ fontWeight: 500 }}>
+                  {config.symbol} {code}
+                </div>
+                <div style={{ fontSize: '12px', color: '#6B7280' }}>
+                  {config.name}
+                </div>
+              </div>
+            </label>
+          ))}
+        </div>
+      </Modal>
     </MainLayout>
   );
 };
