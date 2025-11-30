@@ -1,6 +1,7 @@
 # Recipe Management System - 레시피 관리 시스템 설계
 
 **작성일:** 2025-11-20
+**수정일:** 2025-11-30
 **프로젝트:** Purple POS System
 **Phase:** Phase 2 - Recipe Management
 
@@ -20,20 +21,32 @@
 ## 개요
 
 ### 목적
-- Brand General이 표준 레시피를 생성하여 모든 가맹점에 배포
-- Restaurant Admin이 독립 레스토랑의 레시피를 자유롭게 관리
+- Brand Manager가 표준 레시피를 생성하여 모든 가맹점에 배포
+- Restaurant Admin(Store Manager)이 독립 레스토랑의 레시피를 자유롭게 관리
 - 레시피를 메뉴(Product)로 쉽게 전환
 - 재료 원가 기반 자동 원가 계산
 
-### 핵심 원칙
+### 핵심 원칙: 설정 기반 권한
+
+**기존 방식 (복잡함):**
 ```javascript
+// ❌ 자동 판단 - 복잡하고 유연성 없음
 if (restaurant.brand_id !== null) {
-  // 브랜드 가맹점
-  레시피 관리: Brand General/Manager
-  Restaurant Admin: 읽기만 (수정 불가)
+  레시피 관리: Brand Manager
 } else {
-  // 독립 레스토랑
   레시피 관리: Restaurant Admin
+}
+```
+
+**새로운 방식 (단순함):**
+```javascript
+// ✅ 명시적 설정 - 단순하고 유연함
+if (restaurant.recipe_manager_type === 'brand') {
+  레시피 관리: Brand Manager
+  Store Manager: 읽기만
+} else {
+  레시피 관리: Store Manager (Restaurant Admin)
+  Brand Manager: 조회만 가능
 }
 ```
 
@@ -43,90 +56,165 @@ if (restaurant.brand_id !== null) {
 
 ## 권한 구조
 
-### 케이스 1: 독립 레스토랑
+### 핵심 설정: `recipe_manager_type`
+
+```sql
+-- restaurants 테이블에 추가
+recipe_manager_type ENUM('restaurant', 'brand') DEFAULT 'restaurant'
+```
+
+| 설정값 | 레시피 관리 주체 | Store Manager 권한 |
+|--------|-----------------|-------------------|
+| `restaurant` | Store Manager | CRUD 가능 |
+| `brand` | Brand Manager | 읽기만 가능 |
+
+---
+
+### 설정 권한
+
+| 레스토랑 상태 | 설정 가능 여부 | 설정 주체 |
+|--------------|---------------|----------|
+| 독립 레스토랑 (brand_id = NULL) | 변경 불가 | 항상 `restaurant` (고정) |
+| 브랜드 소속 (brand_id 있음) | 변경 가능 | Brand Manager만 |
+
+**UI 표시:**
+
+```
+Store Settings (모든 레스토랑)
+┌─────────────────────────────────────┐
+│ Recipe Management                   │
+│                                     │
+│ 독립: [Restaurant] (비활성화)        │
+│       "브랜드 연결 시 변경 가능"      │
+│                                     │
+│ 브랜드 소속 (Store Manager 뷰):      │
+│       [Brand] (읽기 전용)            │
+│       "브랜드 매니저가 관리"          │
+└─────────────────────────────────────┘
+
+Brand Settings (Brand Manager)
+┌─────────────────────────────────────┐
+│ 레스토랑별 레시피 관리 설정          │
+│                                     │
+│ Store A: [Brand ▼]                  │
+│ Store B: [Restaurant ▼]             │
+│ Store C: [Brand ▼]                  │
+└─────────────────────────────────────┘
+```
+
+---
+
+### 브랜드 연결/해제 시 동작
+
+**독립 → 브랜드 연결:**
+```
+recipe_manager_type = 'restaurant' (유지)
+→ 기존 레시피 보존
+→ Brand Manager가 필요시 'brand'로 변경
+```
+
+**브랜드 연결 해제:**
+```
+recipe_manager_type = 'restaurant' (자동 변경)
+→ Store Manager가 기존 레시피 계속 관리
+```
+
+---
+
+### 케이스별 권한 정리
+
+#### 케이스 1: 독립 레스토랑
 ```
 restaurants {
   id: 1
   brand_id: NULL
-  foodcourt_id: NULL
+  recipe_manager_type: 'restaurant' (고정)
 }
 ```
 
 **레시피 관리:**
-- ✅ Restaurant Admin: 생성/수정/삭제 **모두 가능**
-- ❌ Brand General: 해당 없음
+- ✅ Store Manager: 생성/수정/삭제 **모두 가능**
+- ❌ Brand Manager: 해당 없음
 - ❌ Foodcourt General: 레시피 관여 안 함
 
 ---
 
-### 케이스 2: 브랜드 가맹점
+#### 케이스 2: 브랜드 소속 - Brand 관리
 ```
 restaurants {
   id: 2
   brand_id: 1
-  foodcourt_id: NULL
+  recipe_manager_type: 'brand'
 }
 ```
 
 **레시피 관리:**
-- ✅ Brand General/Manager: 생성/수정/삭제 **모두 가능**
-- 🔍 Restaurant Admin: **읽기만 가능** (수정 불가)
+- ✅ Brand Manager: 생성/수정/삭제 **모두 가능**
+- 🔍 Store Manager: **읽기만 가능** (수정 불가)
   - ✅ 브랜드 레시피 조회
   - ✅ 메뉴로 등록 (가격만 설정)
   - ❌ 레시피 재료/구성 수정 불가
 
-**이유:** 브랜드 표준화 유지
-
 ---
 
-### 케이스 3: 푸드코트 입점 (독립)
+#### 케이스 3: 브랜드 소속 - Restaurant 관리
 ```
 restaurants {
   id: 3
-  brand_id: NULL
-  foodcourt_id: 1
+  brand_id: 1
+  recipe_manager_type: 'restaurant'
 }
 ```
 
 **레시피 관리:**
-- ✅ Restaurant Admin: 생성/수정/삭제 **모두 가능**
+- ✅ Store Manager: 생성/수정/삭제 **모두 가능**
+- 🔍 Brand Manager: **조회만 가능**
+
+**사용 사례:** 브랜드가 레시피 자율권을 부여한 가맹점
+
+---
+
+#### 케이스 4: 푸드코트 입점
+```
+restaurants {
+  id: 4
+  brand_id: NULL (또는 있음)
+  foodcourt_id: 1
+  recipe_manager_type: 'restaurant' 또는 'brand'
+}
+```
+
+**레시피 관리:**
+- `recipe_manager_type` 설정에 따름
 - ❌ Foodcourt General: 레시피 관여 안 함
   - ✅ 임대료 청구
   - ✅ 공지사항 발송
   - ✅ 매출 통계 조회 (읽기만)
 
-**이유:** 푸드코트는 임대 관리자, 각 입점 업체는 독립 운영
-
----
-
-### 케이스 4: 브랜드 + 푸드코트
-```
-restaurants {
-  id: 4
-  brand_id: 1
-  foodcourt_id: 1
-}
-```
-
-**레시피 관리:**
-- ✅ Brand General/Manager: 생성/수정/삭제
-- 🔍 Restaurant Admin: 읽기만
-- ❌ Foodcourt General: 레시피 관여 안 함
-
 ---
 
 ## 권한 매트릭스
 
-| Restaurant 타입 | 레시피 관리자 | Restaurant Admin 권한 | Foodcourt 역할 |
-|----------------|--------------|---------------------|----------------|
-| 독립 레스토랑 | Restaurant Admin | 생성/수정/삭제 가능 | - |
-| 브랜드 가맹점 | Brand General/Manager | 읽기만 (가격만 설정) | - |
-| 푸드코트 입점 (독립) | Restaurant Admin | 생성/수정/삭제 가능 | 임대 관리 |
-| 브랜드 + 푸드코트 | Brand General/Manager | 읽기만 (가격만 설정) | 임대 관리 |
+| Restaurant 상태 | recipe_manager_type | 레시피 관리자 | Store Manager 권한 |
+|----------------|---------------------|--------------|-------------------|
+| 독립 레스토랑 | `restaurant` (고정) | Store Manager | CRUD 가능 |
+| 브랜드 소속 | `brand` | Brand Manager | 읽기만 |
+| 브랜드 소속 | `restaurant` | Store Manager | CRUD 가능 |
 
 ---
 
 ## 데이터베이스 설계
+
+### 0. `restaurants` 테이블 수정
+
+```sql
+-- 레시피 관리 주체 설정 추가
+ALTER TABLE restaurants
+ADD COLUMN recipe_manager_type ENUM('restaurant', 'brand') DEFAULT 'restaurant'
+COMMENT '레시피 관리 주체: restaurant=Store Manager, brand=Brand Manager';
+```
+
+---
 
 ### 1. `recipes` 테이블
 
@@ -446,91 +534,96 @@ Response: {
 
 ---
 
-### 권한 체크 미들웨어
+### 권한 체크 미들웨어 (새 설계)
 
 ```javascript
-// 레시피 수정 권한 체크
-async function canEditRecipe(req, res, next) {
-  const { recipe_id } = req.params;
+// 레시피 CRUD 권한 체크 - recipe_manager_type 기반
+async function canManageRecipe(req, res, next) {
   const user = req.user;
-
-  const recipe = await Recipe.findByPk(recipe_id);
-  if (!recipe) {
-    return res.status(404).json({ error: '레시피를 찾을 수 없습니다' });
-  }
+  const { restaurant_id } = req.params;
 
   // System Admin은 모든 것 가능
   if (user.role === 'System Admin') return next();
 
-  // 브랜드 레시피인 경우
-  if (recipe.brand_id) {
-    // Brand General/Manager만 수정 가능
-    if ((user.role === 'Brand General' || user.role === 'Brand Manager')
-        && user.brand_id === recipe.brand_id) {
-      return next();
-    }
-    return res.status(403).json({
-      error: '브랜드 레시피는 브랜드 관리자만 수정할 수 있습니다'
-    });
+  const restaurant = await Restaurant.findByPk(restaurant_id);
+  if (!restaurant) {
+    return res.status(404).json({ error: '레스토랑을 찾을 수 없습니다' });
   }
 
-  // 레스토랑 레시피인 경우
-  if (recipe.restaurant_id) {
-    // Restaurant Admin만 수정 가능
-    if (user.role === 'Restaurant Admin'
-        && user.restaurant_id === recipe.restaurant_id) {
+  // recipe_manager_type에 따라 권한 결정
+  if (restaurant.recipe_manager_type === 'brand') {
+    // Brand Manager만 레시피 관리 가능
+    if (user.role === 'Brand Manager' && user.brand_id === restaurant.brand_id) {
       return next();
     }
     return res.status(403).json({
-      error: '해당 레스토랑 관리자만 수정할 수 있습니다'
+      error: '이 레스토랑의 레시피는 브랜드 매니저가 관리합니다'
     });
+  } else {
+    // restaurant: Store Manager가 레시피 관리
+    if (user.role === 'Restaurant Admin' && user.restaurant_id === restaurant.id) {
+      return next();
+    }
+    return res.status(403).json({
+      error: '이 레스토랑의 레시피는 스토어 매니저가 관리합니다'
+    });
+  }
+}
+
+// 레시피 조회 권한 체크
+async function canViewRecipe(req, res, next) {
+  const user = req.user;
+  const { restaurant_id } = req.params;
+
+  // System Admin은 모든 것 조회 가능
+  if (user.role === 'System Admin') return next();
+
+  const restaurant = await Restaurant.findByPk(restaurant_id);
+  if (!restaurant) {
+    return res.status(404).json({ error: '레스토랑을 찾을 수 없습니다' });
+  }
+
+  // Store Manager: 자기 레스토랑 레시피 조회 가능
+  if (user.role === 'Restaurant Admin' && user.restaurant_id === restaurant.id) {
+    return next();
+  }
+
+  // Brand Manager: 자기 브랜드 소속 레스토랑 레시피 조회 가능
+  if (user.role === 'Brand Manager' && restaurant.brand_id === user.brand_id) {
+    return next();
   }
 
   return res.status(403).json({ error: '권한 없음' });
 }
 
-// 레시피 조회 권한 체크
-async function canViewRecipe(req, res, next) {
-  const { recipe_id } = req.params;
+// recipe_manager_type 설정 변경 권한 (Brand Manager만)
+async function canChangeRecipeManagerType(req, res, next) {
   const user = req.user;
+  const { restaurant_id } = req.params;
 
-  const recipe = await Recipe.findByPk(recipe_id);
-  if (!recipe) {
-    return res.status(404).json({ error: '레시피를 찾을 수 없습니다' });
-  }
-
-  // System Admin은 모든 것 조회 가능
+  // System Admin은 모든 것 가능
   if (user.role === 'System Admin') return next();
 
-  // 브랜드 레시피
-  if (recipe.brand_id) {
-    // Brand General/Manager
-    if ((user.role === 'Brand General' || user.role === 'Brand Manager')
-        && user.brand_id === recipe.brand_id) {
-      return next();
-    }
-
-    // 해당 브랜드의 가맹점 Restaurant Admin
-    if (user.role === 'Restaurant Admin') {
-      const restaurant = await Restaurant.findByPk(user.restaurant_id);
-      if (restaurant.brand_id === recipe.brand_id) {
-        return next();
-      }
-    }
-
-    return res.status(403).json({ error: '권한 없음' });
+  const restaurant = await Restaurant.findByPk(restaurant_id);
+  if (!restaurant) {
+    return res.status(404).json({ error: '레스토랑을 찾을 수 없습니다' });
   }
 
-  // 레스토랑 레시피
-  if (recipe.restaurant_id) {
-    if (user.role === 'Restaurant Admin'
-        && user.restaurant_id === recipe.restaurant_id) {
-      return next();
-    }
-    return res.status(403).json({ error: '권한 없음' });
+  // 독립 레스토랑은 설정 변경 불가
+  if (!restaurant.brand_id) {
+    return res.status(403).json({
+      error: '독립 레스토랑은 레시피 관리 설정을 변경할 수 없습니다'
+    });
   }
 
-  return res.status(403).json({ error: '권한 없음' });
+  // Brand Manager만 변경 가능
+  if (user.role === 'Brand Manager' && user.brand_id === restaurant.brand_id) {
+    return next();
+  }
+
+  return res.status(403).json({
+    error: '브랜드 매니저만 레시피 관리 설정을 변경할 수 있습니다'
+  });
 }
 ```
 
@@ -834,6 +927,7 @@ Recipe: 시그니처 버거
 | 날짜 | 버전 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
 | 2025-11-20 | 1.0 | 초안 작성 | Claude |
+| 2025-11-30 | 2.0 | 권한 구조 단순화: `recipe_manager_type` 설정 기반으로 변경 | Claude |
 
 ---
 

@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2025-11-20
+> **최종 업데이트:** 2025-11-30
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -213,21 +213,72 @@ WHERE module_code = 'foodcourt_management';
 
 ## 🚧 진행 중인 작업
 
-### Phase 2: Recipe Management - 설계 완료 (2025-11-20)
+### Phase 2: Recipe Management (2025-11-20 ~ 진행 중)
 
 **상세 설계 문서:** `/var/www/docs/RECIPE_MANAGEMENT_SYSTEM.md`
 
 #### 설계 완료 항목:
-- ✅ 권한 구조 정의 (Brand vs Restaurant 기반)
+- ✅ 권한 구조 정의 (설정 기반 방식으로 변경)
 - ✅ 데이터베이스 스키마 설계 (recipes, ingredients, recipe_ingredients)
 - ✅ API 설계 완료
 - ✅ UI/UX 설계 완료
 - ✅ 사용 시나리오 문서화
 
-#### 다음 작업:
-- [ ] DB 스키마 생성
-- [ ] Backend Models 구현
-- [ ] Backend APIs 구현
+#### 2025-11-30 설계 변경 - 권한 구조 단순화
+
+**기존 방식 (복잡함):**
+```javascript
+// 브랜드 연결 여부로 자동 결정
+if (restaurant.brand_id !== null) {
+  레시피 관리: Brand Manager
+} else {
+  레시피 관리: Store Manager
+}
+```
+
+**새로운 방식 (단순함):**
+```javascript
+// 명시적 설정으로 결정
+if (restaurant.recipe_manager_type === 'brand') {
+  레시피 관리: Brand Manager
+} else {
+  레시피 관리: Store Manager
+}
+```
+
+**핵심 변경사항:**
+- `restaurants` 테이블에 `recipe_manager_type` ENUM('restaurant', 'brand') 추가
+- 독립 레스토랑: 항상 'restaurant' (고정)
+- 브랜드 소속: Brand Manager가 설정 변경 가능
+- 브랜드 연결 시: 기존값 유지 (레시피 보존)
+- 브랜드 해제 시: 자동으로 'restaurant'
+
+---
+
+### 🚀 다음 작업 (`/개발시작` 실행 시 시작)
+
+**Phase 2.1: 기본 인프라 구축**
+1. [ ] Restaurant 모델에 `recipe_manager_type` 컬럼 추가
+2. [ ] DB 스키마 생성 (recipes, ingredients, recipe_ingredients 테이블)
+3. [ ] Backend Models 구현 (Recipe, Ingredient, RecipeIngredient)
+4. [ ] 권한 체크 미들웨어 구현
+
+**Phase 2.2: Backend APIs 구현**
+5. [ ] Recipe CRUD API
+6. [ ] Ingredient CRUD API
+7. [ ] Recipe → Product 변환 API
+8. [ ] recipe_manager_type 설정 변경 API
+
+**Phase 2.3: Frontend UI 구현**
+9. [ ] Brand Settings - 레스토랑별 recipe_manager_type 설정 UI
+10. [ ] Store Settings - recipe_manager_type 표시 (읽기 전용)
+11. [ ] Recipe 목록/상세 페이지
+12. [ ] Ingredient 관리 페이지
+
+**Phase 2.4: 테스트**
+13. [ ] 권한별 CRUD 테스트
+14. [ ] 브랜드 연결/해제 시 설정 변경 테스트
+15. [ ] Recipe → Product 변환 테스트
 
 ---
 
