@@ -51,6 +51,7 @@ interface Restaurant {
   autoRenew?: boolean;
   subscriptionStart?: string;
   subscriptionEnd?: string;
+  brand_id?: number;
 }
 
 // Common components now imported from ../../components/UI
@@ -591,10 +592,18 @@ const RestaurantsPage: React.FC = () => {
     paymentModel: 'manager' as 'manager' | 'restaurant',
     autoRenew: true,
     subscriptionStart: new Date().toISOString().split('T')[0],
-    subscriptionEnd: ''
+    subscriptionEnd: '',
+    brandId: ''
   });
   const [availableManagers, setAvailableManagers] = useState<any[]>([]);
   const [availablePlans, setAvailablePlans] = useState<any[]>([]);
+  const [brands, setBrands] = useState<Array<{ id: number; name: string; code: string; currency: string }>>([]);
+
+  // Filter Brand states
+  const [filterBrand, setFilterBrand] = useState('all');
+  const [filterBrandSearchQuery, setFilterBrandSearchQuery] = useState('');
+  const [showFilterBrandDropdown, setShowFilterBrandDropdown] = useState(false);
+  const [filteredFilterBrands, setFilteredFilterBrands] = useState<any[]>([]);
 
   // Filter Manager Search Functions
   const handleFilterManagerSearch = (query: string) => {
@@ -632,12 +641,48 @@ const RestaurantsPage: React.FC = () => {
     setShowFilterManagerDropdown(false);
   };
 
+  // Filter Brand Search Functions
+  const handleFilterBrandSearch = (query: string) => {
+    setFilterBrandSearchQuery(query);
+    setShowFilterBrandDropdown(true);
+
+    if (query.length < 1) {
+      setFilteredFilterBrands(brands.slice(0, 10));
+      return;
+    }
+
+    const filtered = brands.filter(brand => {
+      const searchTerm = query.toLowerCase();
+      const name = (brand.name || '').toLowerCase();
+      const code = (brand.code || '').toLowerCase();
+
+      return name.includes(searchTerm) || code.includes(searchTerm);
+    }).slice(0, 10);
+
+    setFilteredFilterBrands(filtered);
+  };
+
+  const handleFilterBrandSelect = (brand: any) => {
+    setFilterBrand(brand.id.toString());
+    setFilterBrandSearchQuery(brand.name);
+    setShowFilterBrandDropdown(false);
+  };
+
+  const handleFilterBrandClear = () => {
+    setFilterBrand('all');
+    setFilterBrandSearchQuery('');
+    setShowFilterBrandDropdown(false);
+    // Clear URL params
+    navigate('/pos/admin/restaurants', { replace: true });
+  };
+
   useEffect(() => {
     console.log('🎯 RestaurantsPage useEffect triggered');
     console.log('🎯 searchParams:', searchParams.toString());
 
     fetchRestaurants();
     fetchPlans();
+    fetchBrands();
 
     // URL 파라미터에서 매니저 ID를 읽어서 필터 설정
     const managerId = searchParams.get('managerId');
@@ -646,10 +691,35 @@ const RestaurantsPage: React.FC = () => {
     if (managerId && managerName) {
       console.log('🔍 Setting manager filter from URL:', { managerId, managerName });
       setFilterManager(managerId);
-      setFilterManagerSearchQuery(decodeURIComponent(managerName)); // Set manager name to show in search input
+      setFilterManagerSearchQuery(decodeURIComponent(managerName));
+    }
+
+    // URL 파라미터에서 브랜드 ID를 읽어서 필터 설정
+    const brandId = searchParams.get('brandId');
+    const brandName = searchParams.get('brandName');
+
+    if (brandId && brandName) {
+      console.log('🔍 Setting brand filter from URL:', { brandId, brandName });
+      setFilterBrand(brandId);
+      setFilterBrandSearchQuery(decodeURIComponent(brandName));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // searchParams 의존성 제거 - 첫 로드시에만 실행
+
+  const fetchBrands = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/brands', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setBrands(data);
+      }
+    } catch (error) {
+      console.error('Error fetching brands:', error);
+    }
+  };
 
   const fetchPlans = async () => {
     try {
@@ -720,7 +790,8 @@ const RestaurantsPage: React.FC = () => {
             staffCount: restaurant.staffCount || 0, // Use actual data from backend
             rating: restaurant.rating || 4.5, // Use actual data from backend
             createdAt: restaurant.createdAt ? new Date(restaurant.createdAt).toISOString().split('T')[0] : '2024-01-01',
-            lastOrder: restaurant.lastOrder || 'Never' // Use actual data from backend
+            lastOrder: restaurant.lastOrder || 'Never', // Use actual data from backend
+            brand_id: restaurant.brand_id || null // Include brand_id from backend
           };
         });
       
@@ -811,7 +882,8 @@ const RestaurantsPage: React.FC = () => {
       paymentModel: 'restaurant',
       autoRenew: true,
       subscriptionStart: new Date().toISOString().split('T')[0],
-      subscriptionEnd: endDate.toISOString().split('T')[0]
+      subscriptionEnd: endDate.toISOString().split('T')[0],
+      brandId: ''
     });
     setManagerSearchQuery('');
     setFilteredManagers([]);
@@ -906,7 +978,8 @@ const RestaurantsPage: React.FC = () => {
       paymentModel: (restaurant.paymentModel as 'manager' | 'restaurant') || 'restaurant',
       autoRenew: restaurant.autoRenew !== undefined ? restaurant.autoRenew : true,
       subscriptionStart: restaurant.subscriptionStart || new Date().toISOString().split('T')[0],
-      subscriptionEnd: restaurant.subscriptionEnd || new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0]
+      subscriptionEnd: restaurant.subscriptionEnd || new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0],
+      brandId: (restaurant as any).brand_id?.toString() || ''
     };
 
     setEditingRestaurant(editData);
@@ -976,7 +1049,8 @@ const RestaurantsPage: React.FC = () => {
         paymentModel: newRestaurant.paymentModel,
         autoRenew: newRestaurant.autoRenew,
         subscriptionStart: newRestaurant.subscriptionStart,
-        subscriptionEnd: newRestaurant.subscriptionEnd
+        subscriptionEnd: newRestaurant.subscriptionEnd,
+        brand_id: newRestaurant.brandId ? parseInt(newRestaurant.brandId) : null
       };
 
       console.log('📤 Sending restaurant data:', restaurantData);
@@ -1074,7 +1148,8 @@ const RestaurantsPage: React.FC = () => {
         paymentModel: editingRestaurant.paymentModel || 'manager',
         autoRenew: editingRestaurant.autoRenew || true,
         subscriptionStart: editingRestaurant.subscriptionStart,
-        subscriptionEnd: editingRestaurant.subscriptionEnd
+        subscriptionEnd: editingRestaurant.subscriptionEnd,
+        brand_id: (editingRestaurant as any).brandId ? parseInt((editingRestaurant as any).brandId) : null
       };
 
       console.log('📤 Sending restaurant update data:', updateData);
@@ -1162,6 +1237,10 @@ const RestaurantsPage: React.FC = () => {
                                restaurant.managers.some((m: any) => m.id.toString() === filterManager);
     const matchesManager = filterManager === 'all' || managerIdMatch || managersArrayMatch;
 
+    // Brand filtering
+    const matchesBrand = filterBrand === 'all' ||
+                         (restaurant.brand_id && restaurant.brand_id.toString() === filterBrand);
+
     // Debug logging for each restaurant when filtering by manager
     if (filterManager !== 'all') {
       console.log('🔍 Restaurant filter check:', {
@@ -1175,7 +1254,7 @@ const RestaurantsPage: React.FC = () => {
       });
     }
 
-    return matchesSearch && matchesStatus && matchesManager;
+    return matchesSearch && matchesStatus && matchesManager && matchesBrand;
   });
 
   console.log('🔍 Filter debug:', {
@@ -1495,6 +1574,21 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
+                    <FormLabel>Brand (Franchise)</FormLabel>
+                    <FormSelect
+                      value={newRestaurant.brandId}
+                      onChange={(e) => setNewRestaurant({...newRestaurant, brandId: e.target.value})}
+                    >
+                      <option value="">-- Independent (No Brand) --</option>
+                      {brands.map(brand => (
+                        <option key={brand.id} value={brand.id}>
+                          {brand.name} ({brand.code}) - {brand.currency}
+                        </option>
+                      ))}
+                    </FormSelect>
+                  </FormGroup>
+
+                  <FormGroup>
                     <FormLabel>Plan Type *</FormLabel>
                     <FormSelect
                       value={newRestaurant.planType}
@@ -1724,6 +1818,21 @@ const RestaurantsPage: React.FC = () => {
                       value={editingRestaurant.cuisine}
                       onChange={(e) => setEditingRestaurant({...editingRestaurant, cuisine: e.target.value})}
                     />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>Brand (Franchise)</FormLabel>
+                    <FormSelect
+                      value={(editingRestaurant as any).brandId || ''}
+                      onChange={(e) => setEditingRestaurant({...editingRestaurant, brandId: e.target.value} as any)}
+                    >
+                      <option value="">-- Independent (No Brand) --</option>
+                      {brands.map(brand => (
+                        <option key={brand.id} value={brand.id}>
+                          {brand.name} ({brand.code}) - {brand.currency}
+                        </option>
+                      ))}
+                    </FormSelect>
                   </FormGroup>
 
                   <FormGroup>
