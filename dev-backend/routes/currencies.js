@@ -31,14 +31,71 @@ const CURRENCY_CONFIG = {
 
 /**
  * GET /api/currencies/config
- * Get all available currency configurations
+ * Get all available currency configurations and default currency
  */
 router.get('/config', async (req, res) => {
   try {
-    res.json({ success: true, data: CURRENCY_CONFIG });
+    // Get default currency from system settings
+    const defaultSetting = await SystemSettings.findOne({
+      where: { setting_key: 'default_currency' }
+    });
+    const defaultCurrency = defaultSetting?.setting_value || 'MYR';
+
+    res.json({
+      success: true,
+      currencies: CURRENCY_CONFIG,
+      defaultCurrency: defaultCurrency
+    });
   } catch (error) {
     console.error('Get currency config error:', error);
     res.status(500).json({ error: 'Failed to get currency config' });
+  }
+});
+
+/**
+ * GET /api/currencies/default
+ * Get default currency
+ */
+router.get('/default', async (req, res) => {
+  try {
+    const setting = await SystemSettings.findOne({
+      where: { setting_key: 'default_currency' }
+    });
+    const defaultCurrency = setting?.setting_value || 'MYR';
+
+    res.json({ success: true, defaultCurrency });
+  } catch (error) {
+    console.error('Get default currency error:', error);
+    res.status(500).json({ error: 'Failed to get default currency' });
+  }
+});
+
+/**
+ * PUT /api/currencies/default
+ * Update default currency (System Admin only)
+ */
+router.put('/default', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'System Admin') {
+      return res.status(403).json({ error: 'System Admin only' });
+    }
+
+    const { defaultCurrency } = req.body;
+
+    if (!defaultCurrency || !CURRENCY_CONFIG[defaultCurrency]) {
+      return res.status(400).json({ error: 'Invalid currency code' });
+    }
+
+    await SystemSettings.upsert({
+      setting_key: 'default_currency',
+      setting_value: defaultCurrency,
+      description: 'Default currency for new subscriptions and invoices'
+    });
+
+    res.json({ success: true, defaultCurrency });
+  } catch (error) {
+    console.error('Update default currency error:', error);
+    res.status(500).json({ error: 'Failed to update default currency' });
   }
 });
 

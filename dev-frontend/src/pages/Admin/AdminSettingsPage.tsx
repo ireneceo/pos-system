@@ -19,6 +19,14 @@ interface CompanySettings {
   companyLogo?: string; // Company logo for invoices/documents
 }
 
+interface CurrencyConfig {
+  [code: string]: {
+    symbol: string;
+    name: string;
+    decimals: number;
+  };
+}
+
 const Container = styled.div`
   min-height: 100vh;
   
@@ -203,6 +211,14 @@ const AdminSettingsPage: React.FC = () => {
   const [hasChanges, setHasChanges] = useState(false);
   const [savedSuccessfully, setSavedSuccessfully] = useState(false);
   const [initialSettings, setInitialSettings] = useState<CompanySettings | null>(null);
+
+  // Currency settings
+  const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
+  const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>([]);
+  const [defaultCurrency, setDefaultCurrency] = useState<string>('MYR');
+  const [showCurrencyModal, setShowCurrencyModal] = useState(false);
+  const [tempSelectedCurrencies, setTempSelectedCurrencies] = useState<string[]>([]);
+
   const [settings, setSettings] = useState<CompanySettings>({
     companyName: '',
     address: '',
@@ -221,7 +237,70 @@ const AdminSettingsPage: React.FC = () => {
 
   useEffect(() => {
     loadSettings();
+    loadCurrencySettings();
   }, []);
+
+  const loadCurrencySettings = async () => {
+    try {
+      // Load all available currencies
+      const configResponse = await fetch('/api/currencies/config');
+      if (configResponse.ok) {
+        const data = await configResponse.json();
+        setCurrencyConfig(data.currencies || {});
+        setDefaultCurrency(data.defaultCurrency || 'MYR');
+      }
+
+      // Load supported currencies
+      const token = localStorage.getItem('auth_token');
+      const supportedResponse = await fetch('/api/currencies/supported', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (supportedResponse.ok) {
+        const data = await supportedResponse.json();
+        setSupportedCurrencies(data.currencies || []);
+      }
+    } catch (error) {
+      console.error('Error loading currency settings:', error);
+    }
+  };
+
+  const updateSupportedCurrencies = async (currencies: string[]) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/currencies/supported', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ currencies })
+      });
+      if (response.ok) {
+        setSupportedCurrencies(currencies);
+      }
+    } catch (error) {
+      console.error('Error updating supported currencies:', error);
+    }
+  };
+
+  const updateDefaultCurrency = async (currency: string) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/currencies/default', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ defaultCurrency: currency })
+      });
+      if (response.ok) {
+        setDefaultCurrency(currency);
+      }
+    } catch (error) {
+      console.error('Error updating default currency:', error);
+    }
+  };
 
   const loadSettings = async () => {
     try {
@@ -537,6 +616,153 @@ const AdminSettingsPage: React.FC = () => {
                 />
               </FormGroup>
             </FormRow>
+
+            {/* Currency Settings Section */}
+            <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #F3F4F6' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 600, color: '#0A2540', marginBottom: '20px' }}>
+                Currency Settings
+              </h3>
+
+              <FormRow>
+                <FormGroup>
+                  <FormLabel>Default Currency</FormLabel>
+                  <select
+                    value={defaultCurrency}
+                    onChange={(e) => updateDefaultCurrency(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      border: '1px solid #E6EBF1',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      backgroundColor: 'white'
+                    }}
+                  >
+                    {supportedCurrencies.map(code => (
+                      <option key={code} value={code}>
+                        {currencyConfig[code]?.symbol} {code} - {currencyConfig[code]?.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '6px' }}>
+                    Used as default for new subscriptions and invoices
+                  </div>
+                </FormGroup>
+
+                <FormGroup>
+                  <FormLabel>Supported Currencies</FormLabel>
+                  <div
+                    onClick={() => {
+                      setTempSelectedCurrencies(supportedCurrencies);
+                      setShowCurrencyModal(true);
+                    }}
+                    style={{
+                      padding: '12px 16px',
+                      border: '1px solid #E6EBF1',
+                      borderRadius: '8px',
+                      background: 'white',
+                      cursor: 'pointer',
+                      minHeight: '46px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '8px'
+                    }}
+                  >
+                    {supportedCurrencies.length > 0 ? (
+                      supportedCurrencies.map(code => (
+                        <span key={code} style={{
+                          background: '#F3F4F6',
+                          padding: '4px 10px',
+                          borderRadius: '4px',
+                          fontSize: '13px',
+                          fontWeight: 500
+                        }}>
+                          {currencyConfig[code]?.symbol} {code}
+                        </span>
+                      ))
+                    ) : (
+                      <span style={{ color: '#9CA3AF' }}>Click to select currencies</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '6px' }}>
+                    Currencies available for pricing plans and invoices
+                  </div>
+                </FormGroup>
+              </FormRow>
+            </div>
+
+            {/* Currency Selection Modal */}
+            {showCurrencyModal && (
+              <div style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0,0,0,0.5)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 1000
+              }}>
+                <div style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  padding: '24px',
+                  width: '500px',
+                  maxHeight: '80vh',
+                  overflow: 'auto'
+                }}>
+                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                    Select Supported Currencies
+                  </h3>
+                  <div style={{ display: 'grid', gap: '8px', marginBottom: '20px' }}>
+                    {Object.entries(currencyConfig).map(([code, config]) => (
+                      <label key={code} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '12px',
+                        border: '1px solid #E6EBF1',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        background: tempSelectedCurrencies.includes(code) ? '#F0F4FF' : 'white'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={tempSelectedCurrencies.includes(code)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setTempSelectedCurrencies([...tempSelectedCurrencies, code]);
+                            } else {
+                              setTempSelectedCurrencies(tempSelectedCurrencies.filter(c => c !== code));
+                            }
+                          }}
+                        />
+                        <span style={{ fontWeight: 600, width: '40px' }}>{config.symbol}</span>
+                        <span style={{ fontWeight: 500 }}>{code}</span>
+                        <span style={{ color: '#6B7280' }}>- {config.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                    <Button variant="secondary" onClick={() => setShowCurrencyModal(false)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="primary"
+                      onClick={() => {
+                        updateSupportedCurrencies(tempSelectedCurrencies);
+                        setShowCurrencyModal(false);
+                      }}
+                    >
+                      Save Currencies
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #F3F4F6' }}>
               <ButtonContainer>

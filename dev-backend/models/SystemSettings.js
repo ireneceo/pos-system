@@ -19,7 +19,20 @@ SystemSettings.init({
     allowNull: true,
     get() {
       const rawValue = this.getDataValue('setting_value');
-      return rawValue ? (typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue) : null;
+      if (!rawValue) return null;
+      // If already parsed by driver (object/array) or plain string, return as-is
+      // Only parse if it looks like JSON string (starts with { or [)
+      if (typeof rawValue === 'string') {
+        if (rawValue.startsWith('{') || rawValue.startsWith('[') || rawValue.startsWith('"')) {
+          try {
+            return JSON.parse(rawValue);
+          } catch (e) {
+            return rawValue;
+          }
+        }
+        return rawValue;
+      }
+      return rawValue;
     }
   },
   description: {

@@ -40,6 +40,7 @@ interface Invoice {
   dueDate: string;
   paidDate?: string;
   status: 'draft' | 'pending_payment' | 'payment_submitted' | 'paid' | 'overdue' | 'cancelled' | '';
+  currency?: string;
   amount: number;
   tax: number;
   total: number;
@@ -57,6 +58,14 @@ interface Invoice {
   customDescription?: string;
   serviceDescription?: string;
   categoryDisplayName?: string;
+}
+
+interface CurrencyConfig {
+  [code: string]: {
+    symbol: string;
+    name: string;
+    decimals: number;
+  };
 }
 
 interface InvoiceItem {
@@ -485,6 +494,7 @@ const InvoicesPage: React.FC = () => {
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState<{type: 'manager' | 'restaurant', data: Manager | Restaurant} | null>(null);
   const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
+  const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
   const [newInvoice, setNewInvoice] = useState({
     managerId: '',
     managerName: '',
@@ -663,7 +673,22 @@ const InvoicesPage: React.FC = () => {
     fetchRestaurants();
     fetchSubscriptions();
     fetchCompanySettings();
+    fetchCurrencyConfig();
   }, []);
+
+  const fetchCurrencyConfig = async () => {
+    try {
+      const response = await fetch('/api/currencies/config');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.currencies) {
+          setCurrencyConfig(data.currencies);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching currency config:', error);
+    }
+  };
 
   const fetchManagers = async () => {
     try {
@@ -1068,25 +1093,25 @@ const InvoicesPage: React.FC = () => {
                     <tr>
                         <td class="item-description">${item.description}</td>
                         <td class="text-right">${item.quantity}</td>
-                        <td class="text-right">${formatCurrency(item.unitPrice)}</td>
-                        <td class="text-right">${formatCurrency(item.total)}</td>
+                        <td class="text-right">${formatCurrency(item.unitPrice, invoice.currency || 'USD')}</td>
+                        <td class="text-right">${formatCurrency(item.total, invoice.currency || 'USD')}</td>
                     </tr>
                 `).join('')}
             </tbody>
         </table>
-        
+
         <div class="totals-section">
             <div class="total-row subtotal">
                 <span>Subtotal:</span>
-                <span>${formatCurrency(invoice.amount)}</span>
+                <span>${formatCurrency(invoice.amount, invoice.currency || 'USD')}</span>
             </div>
             <div class="total-row tax">
                 <span>Tax (6%):</span>
-                <span>${formatCurrency(invoice.tax)}</span>
+                <span>${formatCurrency(invoice.tax, invoice.currency || 'USD')}</span>
             </div>
             <div class="total-row final">
                 <span>Total Amount:</span>
-                <span>${formatCurrency(invoice.total)}</span>
+                <span>${formatCurrency(invoice.total, invoice.currency || 'USD')}</span>
             </div>
         </div>
         
@@ -1760,12 +1785,12 @@ const InvoicesPage: React.FC = () => {
 
                 <MobileValue>
                   <MobileLabel>Amount</MobileLabel>
-                  <Amount>{formatCurrency(invoice.amount)}</Amount>
+                  <Amount>{formatCurrency(invoice.amount, invoice.currency || 'USD')}</Amount>
                 </MobileValue>
 
                 <MobileValue>
                   <MobileLabel>Total</MobileLabel>
-                  <Amount highlight>{formatCurrency(invoice.total)}</Amount>
+                  <Amount highlight>{formatCurrency(invoice.total, invoice.currency || 'USD')}</Amount>
                 </MobileValue>
               </MobileGrid>
 
@@ -2170,22 +2195,22 @@ const InvoicesPage: React.FC = () => {
                   <FormLabel>Items</FormLabel>
                   {selectedInvoice.items.map((item, index) => (
                     <div key={index} style={{ padding: '8px', background: '#F8FAFC', borderRadius: '4px', marginBottom: '8px' }}>
-                      {item.description} - {formatCurrency(item.total, operationSettings.currency)}
+                      {item.description} - {formatCurrency(item.total, selectedInvoice.currency || 'USD')}
                     </div>
                   ))}
                 </FormGroup>
                 <InvoiceSummary>
                   <SummaryRow>
                     <span>Subtotal:</span>
-                    <span>{formatCurrency(selectedInvoice.amount, operationSettings.currency)}</span>
+                    <span>{formatCurrency(selectedInvoice.amount, selectedInvoice.currency || 'USD')}</span>
                   </SummaryRow>
                   <SummaryRow>
                     <span>Tax (6%):</span>
-                    <span>{formatCurrency(selectedInvoice.tax, operationSettings.currency)}</span>
+                    <span>{formatCurrency(selectedInvoice.tax, selectedInvoice.currency || 'USD')}</span>
                   </SummaryRow>
                   <SummaryRow highlight>
                     <span>Total:</span>
-                    <span><strong>{formatCurrency(selectedInvoice.total, operationSettings.currency)}</strong></span>
+                    <span><strong>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'USD')}</strong></span>
                   </SummaryRow>
                 </InvoiceSummary>
               </ModalBody>
@@ -2223,7 +2248,7 @@ const InvoicesPage: React.FC = () => {
                     </SummaryRow>
                     <SummaryRow highlight>
                       <span><strong>Payment Amount:</strong></span>
-                      <span><strong>{formatCurrency(selectedInvoice.total)}</strong></span>
+                      <span><strong>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'USD')}</strong></span>
                     </SummaryRow>
                   </InvoiceSummary>
                 </FormGroup>
@@ -2486,15 +2511,15 @@ const InvoicesPage: React.FC = () => {
                 <InvoiceSummary>
                   <SummaryRow>
                     <span>Subtotal:</span>
-                    <span>{formatCurrency(parseFloat(editInvoice.amount || '0'), operationSettings.currency)}</span>
+                    <span>{formatCurrency(parseFloat(editInvoice.amount || '0'), editInvoice.currency || 'USD')}</span>
                   </SummaryRow>
                   <SummaryRow>
                     <span>Tax (6%):</span>
-                    <span>{formatCurrency(parseFloat(editInvoice.tax || '0'), operationSettings.currency)}</span>
+                    <span>{formatCurrency(parseFloat(editInvoice.tax || '0'), editInvoice.currency || 'USD')}</span>
                   </SummaryRow>
                   <SummaryRow highlight>
                     <span>Total:</span>
-                    <span><strong>{formatCurrency(parseFloat(editInvoice.total || '0'), operationSettings.currency)}</strong></span>
+                    <span><strong>{formatCurrency(parseFloat(editInvoice.total || '0'), editInvoice.currency || 'USD')}</strong></span>
                   </SummaryRow>
                 </InvoiceSummary>
               </ModalBody>
@@ -2554,7 +2579,7 @@ const InvoicesPage: React.FC = () => {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#6B7280' }}>Amount:</span>
-                      <span style={{ fontWeight: '600', color: '#059669' }}>{formatCurrency(selectedInvoice.total)}</span>
+                      <span style={{ fontWeight: '600', color: '#059669' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'USD')}</span>
                     </div>
                   </div>
                 </div>
@@ -2682,7 +2707,7 @@ const InvoicesPage: React.FC = () => {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#6B7280' }}>Amount:</span>
-                      <span style={{ fontWeight: '600', color: '#DC2626' }}>{formatCurrency(selectedInvoice.total)}</span>
+                      <span style={{ fontWeight: '600', color: '#DC2626' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'USD')}</span>
                     </div>
                   </div>
                 </div>

@@ -138,6 +138,7 @@ router.get('/', async (req, res) => {
         dueDate: invoice.due_date,
         paidDate: invoice.paid_at,
         status: invoice.status || 'pending_payment',
+        currency: invoice.currency || 'MYR',
         amount: parseFloat(invoice.total_amount) - parseFloat(invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0),
         tax: parseFloat(invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0),
         total: parseFloat(invoice.total_amount),
@@ -497,13 +498,41 @@ router.post('/generate-for-subscriptions', async (req, res) => {
 
         const invoiceNumber = `INV-${year}${month}${String(count + 1).padStart(4, '0')}`;
 
-        // Calculate amounts based on plan
-        const planAmount = parseFloat(restaurant.plan_amount || 29);
+        // Determine restaurant's currency (convert RM to MYR)
+        let currency = restaurant.currency || 'MYR';
+        if (currency === 'RM') currency = 'MYR';
+
+        // Get plan price from plan_prices table based on restaurant's currency
+        let planAmount = parseFloat(restaurant.plan_amount || 29);
+        const billingCycle = restaurant.billing_cycle || 'monthly';
+
+        // Find plan_id from plan_templates by matching plan_type
+        const planTemplate = await PlanTemplate.findOne({
+          where: { display_name: restaurant.plan_type }
+        });
+
+        if (planTemplate) {
+          // Get price for this currency
+          const planPrice = await PlanPrice.findOne({
+            where: {
+              plan_id: planTemplate.id,
+              currency: currency,
+              is_active: true
+            }
+          });
+
+          if (planPrice) {
+            planAmount = billingCycle === 'annual'
+              ? parseFloat(planPrice.annual_price) / 12  // Monthly portion of annual price
+              : parseFloat(planPrice.monthly_price);
+          }
+        }
+
         const taxRate = 0.06; // 6% tax
         const taxAmount = planAmount * taxRate;
         const totalAmount = planAmount + taxAmount;
 
-        // Create invoice
+        // Create invoice with currency
         const invoice = await Invoice.create({
           restaurant_id: restaurant.id,
           invoice_number: invoiceNumber,
@@ -512,6 +541,7 @@ router.post('/generate-for-subscriptions', async (req, res) => {
           billing_period_end: billingEnd,
           due_date: dueDate,
           total_amount: totalAmount,
+          currency: currency,
           status: 'pending_payment', // Auto-send subscription invoices
           notes: `Monthly subscription invoice for ${restaurant.plan_type}`,
           issued_by: 0, // System generated
@@ -519,10 +549,11 @@ router.post('/generate-for-subscriptions', async (req, res) => {
         });
 
         // Create invoice item
+        const cycleText = billingCycle === 'annual' ? 'Annual' : 'Monthly';
         await InvoiceItem.create({
           invoice_id: invoice.id,
           item_type: 'subscription',
-          description: `${restaurant.plan_type} - Monthly Subscription`,
+          description: `${restaurant.plan_type} - ${cycleText} Subscription`,
           calculation_method: 'fixed',
           fixed_amount: planAmount,
           calculated_amount: planAmount,
@@ -535,7 +566,8 @@ router.post('/generate-for-subscriptions', async (req, res) => {
           restaurant_id: restaurant.id,
           restaurant_name: restaurant.name,
           invoice_number: invoiceNumber,
-          amount: totalAmount
+          amount: totalAmount,
+          currency: currency
         });
 
         console.log(`Created invoice ${invoiceNumber} for ${restaurant.name} - ${totalAmount}`);
