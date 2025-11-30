@@ -955,8 +955,8 @@ const ManagerRestaurantsPage: React.FC = () => {
   };
 
   const handleRestaurantClick = (restaurantId: string) => {
-    // Navigate to restaurant reports
-    navigate(`/manager/reports?restaurant=${restaurantId}`);
+    // Navigate to Brand General Reports page with restaurant filter
+    navigate(`/pos/brand/general/reports?restaurant=${restaurantId}`);
   };
 
   const handleEditRestaurant = (e: React.MouseEvent, restaurant: Restaurant) => {

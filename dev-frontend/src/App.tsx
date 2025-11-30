@@ -88,6 +88,7 @@ import FoodcourtManagement from './pages/FoodcourtGeneral/FoodcourtManagement';
 import FoodcourtStats from './pages/FoodcourtGeneral/FoodcourtStats';
 import BrandManagement from './pages/BrandGeneral/BrandManagement';
 import BrandPerformance from './pages/BrandGeneral/BrandPerformance';
+import BrandReportsPage from './pages/BrandGeneral/BrandReportsPage';
 import RentManagement from './pages/Foodcourt/RentManagement';
 import TenantSupport from './pages/Foodcourt/TenantSupport';
 import FranchiseSupport from './pages/Brand/FranchiseSupport';
@@ -362,6 +363,11 @@ function App() {
                       <Route path="/pos/brand/general/performance" element={
                         <ProtectedRoute requiredRole={['Brand General']}>
                           <BrandPerformance />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/brand/general/reports" element={
+                        <ProtectedRoute requiredRole={['Brand General']}>
+                          <BrandReportsPage />
                         </ProtectedRoute>
                       } />
 
