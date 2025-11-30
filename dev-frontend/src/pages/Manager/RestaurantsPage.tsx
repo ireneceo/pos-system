@@ -726,16 +726,16 @@ const ManagerRestaurantsPage: React.FC = () => {
             brandName: restaurant.manager_name || 'Manager Brand',
             cuisine: restaurant.cuisine || 'Various',
             status: restaurant.status,
-            plan: restaurant.plan_type?.toLowerCase().replace(' plan', '') as 'basic' | 'professional' | 'enterprise' || 'basic',
+            plan: (restaurant.planType || restaurant.plan_type)?.toLowerCase().replace(' plan', '') as 'basic' | 'professional' | 'enterprise' || 'basic',
             todaySales: 0, // This would need to be calculated from orders API
             todayOrders: 0, // This would need to be calculated from orders API
             staffCount: 0, // This would need to be calculated from users API
             rating: 4.5, // Default rating
             createdAt: new Date(restaurant.createdAt).toISOString().split('T')[0],
             lastOrder: 'No orders yet', // This would need to be calculated from orders API
-            monthlyFee: parseFloat(restaurant.plan_amount) || 29,
-            nextPayment: restaurant.subscription_end ?
-              new Date(restaurant.subscription_end).toISOString().split('T')[0] :
+            monthlyFee: parseFloat(restaurant.planAmount || restaurant.plan_amount) || 29,
+            nextPayment: (restaurant.subscriptionEnd || restaurant.subscription_end) ?
+              new Date(restaurant.subscriptionEnd || restaurant.subscription_end).toISOString().split('T')[0] :
               new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
             brand_id: restaurant.brand_id || null,
             recipe_manager_type: restaurant.recipe_manager_type || 'restaurant'
@@ -886,21 +886,21 @@ const ManagerRestaurantsPage: React.FC = () => {
             brandName: restaurant.manager_name || 'Manager Brand',
             cuisine: 'Various',
             status: restaurant.status,
-            plan: restaurant.plan_type?.toLowerCase().replace(' plan', '') as 'basic' | 'professional' | 'enterprise' || 'basic',
+            plan: (restaurant.planType || restaurant.plan_type)?.toLowerCase().replace(' plan', '') as 'basic' | 'professional' | 'enterprise' || 'basic',
             todaySales: Math.floor(Math.random() * 5000) + 1000,
             todayOrders: Math.floor(Math.random() * 100) + 20,
             staffCount: Math.floor(Math.random() * 10) + 3,
             rating: Math.round((Math.random() * 2 + 3) * 10) / 10,
             createdAt: new Date(restaurant.createdAt).toISOString().split('T')[0],
             lastOrder: `${Math.floor(Math.random() * 60)} mins ago`,
-            monthlyFee: parseFloat(restaurant.plan_amount) || 29,
-            nextPayment: restaurant.subscription_end ? 
-              new Date(restaurant.subscription_end).toISOString().split('T')[0] : 
+            monthlyFee: parseFloat(restaurant.planAmount || restaurant.plan_amount) || 29,
+            nextPayment: (restaurant.subscriptionEnd || restaurant.subscription_end) ?
+              new Date(restaurant.subscriptionEnd || restaurant.subscription_end).toISOString().split('T')[0] :
               new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0]
           }));
           setRestaurants(transformedRestaurants);
         }
-        
+
         setShowAddModal(false);
         alert(`Restaurant "${newRestaurant.name}" added successfully with ${newRestaurant.planType}!`);
 

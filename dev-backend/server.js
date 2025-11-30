@@ -1,3 +1,20 @@
+// ============================================
+// PM2 필수 체크 - PM2 없이 실행 시 즉시 종료
+// 이 파일은 반드시 PM2를 통해서만 실행되어야 합니다.
+// 직접 실행 방지로 포트 충돌 문제를 영구적으로 해결합니다.
+// ============================================
+if (process.env.pm_id === undefined) {
+  console.error('❌ ERROR: This server must be run through PM2!');
+  console.error('❌ Direct execution is not allowed to prevent port conflicts.');
+  console.error('');
+  console.error('📌 Correct usage:');
+  console.error('   pm2 start ecosystem.config.js --only dev-backend');
+  console.error('   pm2 restart dev-backend');
+  console.error('');
+  console.error('🚫 Exiting immediately...');
+  process.exit(1);
+}
+
 // 환경 설정 자동 로드 (가장 먼저 실행)
 const loadEnvironmentConfig = require('./config/env-loader');
 loadEnvironmentConfig();
@@ -153,6 +170,7 @@ const notificationSettingsRouter = require('./routes/notification-settings');
 const brandsRouter = require('./routes/brands');
 const recipesRouter = require('./routes/recipes');
 const ingredientsRouter = require('./routes/ingredients');
+const currenciesRouter = require('./routes/currencies');
 
 // Health check endpoint - PM2 모니터링 및 로드밸런서용 (가장 먼저)
 app.get('/api/health', (req, res) => {
@@ -198,6 +216,7 @@ app.use('/api/notification-settings', notificationSettingsRouter);
 app.use('/api/brands', brandsRouter);
 app.use('/api', recipesRouter);
 app.use('/api', ingredientsRouter);
+app.use('/api/currencies', currenciesRouter);
 
 // GitHub Webhook for Auto-Deployment
 const { exec } = require('child_process');

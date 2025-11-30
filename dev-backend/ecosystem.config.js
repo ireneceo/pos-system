@@ -2,8 +2,8 @@ module.exports = {
   apps: [
     {
       name: 'dev-backend',
-      script: './dev-backend/server.js',
-      cwd: '/var/www',
+      script: './server.js',
+      cwd: '/var/www/dev-backend',
       instances: 1,
       autorestart: true,
       watch: false,
@@ -19,8 +19,8 @@ module.exports = {
     },
     {
       name: 'production-backend',
-      script: './production-backend/server.js',
-      cwd: '/var/www',
+      script: './server.js',
+      cwd: '/var/www/production-backend',
       instances: 2,
       exec_mode: 'cluster',
       autorestart: true,

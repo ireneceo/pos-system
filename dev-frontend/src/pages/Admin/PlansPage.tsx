@@ -536,6 +536,23 @@ const DetailValue = styled.span`
 `;
 
 
+// Currency types
+interface CurrencyConfig {
+  [key: string]: {
+    symbol: string;
+    name: string;
+    decimals: number;
+  };
+}
+
+interface PlanPrice {
+  plan_id: number;
+  currency: string;
+  monthly_price: number;
+  annual_price: number;
+  is_active: boolean;
+}
+
 const PlansPage: React.FC = () => {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
@@ -550,6 +567,14 @@ const PlansPage: React.FC = () => {
 
   // Addon modules
   const [availableModules, setAvailableModules] = useState<AddonModule[]>([]);
+
+  // Currency management states
+  const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
+  const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>([]);
+  const [showCurrencyModal, setShowCurrencyModal] = useState(false);
+  const [showPlanPricesModal, setShowPlanPricesModal] = useState(false);
+  const [planPrices, setPlanPrices] = useState<PlanPrice[]>([]);
+  const [editingPlanPrices, setEditingPlanPrices] = useState<{[currency: string]: {monthly: string; annual: string}}>({});
 
   // Form data for create plan
   const [createFormData, setCreateFormData] = useState({
@@ -591,7 +616,124 @@ const PlansPage: React.FC = () => {
   useEffect(() => {
     fetchSubscriptionStats();
     fetchAvailableModules();
+    fetchCurrencyConfig();
+    fetchSupportedCurrencies();
   }, []);
+
+  const fetchCurrencyConfig = async () => {
+    try {
+      const response = await fetch('/api/currencies/config');
+      if (response.ok) {
+        const data = await response.json();
+        setCurrencyConfig(data.data || {});
+      }
+    } catch (error) {
+      console.error('Error fetching currency config:', error);
+    }
+  };
+
+  const fetchSupportedCurrencies = async () => {
+    try {
+      const response = await fetch('/api/currencies/supported');
+      if (response.ok) {
+        const data = await response.json();
+        setSupportedCurrencies((data.data || []).map((c: any) => c.code));
+      }
+    } catch (error) {
+      console.error('Error fetching supported currencies:', error);
+      setSupportedCurrencies(['USD', 'MYR', 'KRW']);
+    }
+  };
+
+  const updateSupportedCurrencies = async (currencies: string[]) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/currencies/supported', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ currencies })
+      });
+      if (response.ok) {
+        setSupportedCurrencies(currencies);
+        alert('Supported currencies updated successfully!');
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to update currencies');
+      }
+    } catch (error) {
+      console.error('Error updating supported currencies:', error);
+      alert('Failed to update currencies');
+    }
+  };
+
+  const fetchPlanPrices = async (planId: string) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const numericId = planId.replace('plan-', '');
+      const response = await fetch(`/api/currencies/plans/${numericId}/prices`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setPlanPrices(data.data || []);
+
+        // Initialize editing state
+        const editState: {[currency: string]: {monthly: string; annual: string}} = {};
+        for (const price of (data.data || [])) {
+          editState[price.currency] = {
+            monthly: price.monthly_price?.toString() || '0',
+            annual: price.annual_price?.toString() || '0'
+          };
+        }
+        // Add empty entries for supported currencies not in prices
+        for (const currency of supportedCurrencies) {
+          if (!editState[currency]) {
+            editState[currency] = { monthly: '0', annual: '0' };
+          }
+        }
+        setEditingPlanPrices(editState);
+      }
+    } catch (error) {
+      console.error('Error fetching plan prices:', error);
+    }
+  };
+
+  const savePlanPrices = async () => {
+    if (!selectedPlan) return;
+    try {
+      const token = localStorage.getItem('auth_token');
+      const numericId = selectedPlan.id.replace('plan-', '');
+      const prices = Object.entries(editingPlanPrices).map(([currency, values]) => ({
+        currency,
+        monthly_price: parseFloat(values.monthly) || 0,
+        annual_price: parseFloat(values.annual) || 0,
+        is_active: true
+      }));
+
+      const response = await fetch(`/api/currencies/plans/${numericId}/prices`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ prices })
+      });
+
+      if (response.ok) {
+        alert('Plan prices updated successfully!');
+        setShowPlanPricesModal(false);
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to update prices');
+      }
+    } catch (error) {
+      console.error('Error saving plan prices:', error);
+      alert('Failed to save prices');
+    }
+  };
 
   useEffect(() => {
     if (Object.keys(subscriptionStats).length >= 0) {
@@ -1027,6 +1169,44 @@ const PlansPage: React.FC = () => {
         </Header>
         <Content>
 
+        {/* Currency Management Section */}
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: '24px',
+          marginBottom: '24px',
+          border: '1px solid #E6EBF1'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#0A2540' }}>Supported Currencies</h3>
+              <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#6B7280' }}>
+                Manage currencies available for subscription plans
+              </p>
+            </div>
+            <Button variant="secondary" onClick={() => setShowCurrencyModal(true)}>
+              Manage Currencies
+            </Button>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {supportedCurrencies.map(code => (
+              <span key={code} style={{
+                padding: '6px 12px',
+                background: '#F0F4FF',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontWeight: 500,
+                color: '#635BFF'
+              }}>
+                {currencyConfig[code]?.symbol || code} {code} - {currencyConfig[code]?.name || code}
+              </span>
+            ))}
+            {supportedCurrencies.length === 0 && (
+              <span style={{ color: '#6B7280', fontSize: '14px' }}>No currencies configured</span>
+            )}
+          </div>
+        </div>
+
         <StatsGrid>
           <StatCard color="#059669">
             <StatValue>{plans.length}</StatValue>
@@ -1189,25 +1369,20 @@ const PlansPage: React.FC = () => {
                 </PlanButton>
                 <PlanButton
                   variant="secondary"
+                  onClick={() => {
+                    setSelectedPlan(plan);
+                    fetchPlanPrices(plan.id);
+                    setShowPlanPricesModal(true);
+                  }}
+                >
+                  Prices
+                </PlanButton>
+                <PlanButton
+                  variant="secondary"
                   onClick={() => handleViewDetails(plan)}
                 >
                   View
                 </PlanButton>
-                {!plan.isActive ? (
-                  <PlanButton 
-                    variant="primary"
-                    onClick={() => handleToggleStatus(plan.id)}
-                  >
-                    Activate
-                  </PlanButton>
-                ) : (
-                  <PlanButton 
-                    variant="danger"
-                    onClick={() => handleToggleStatus(plan.id)}
-                  >
-                    Deactivate
-                  </PlanButton>
-                )}
               </ActionButtons>
             </PlanCard>
           ))}
@@ -1777,6 +1952,167 @@ const PlansPage: React.FC = () => {
                   </FeaturesList>
                 </DetailSection>
               </ModalBody>
+            </ModalContent>
+          </Modal>
+        )}
+
+        {/* Currency Management Modal */}
+        {showCurrencyModal && (
+          <Modal onClick={() => setShowCurrencyModal(false)}>
+            <ModalContent onClick={(e) => e.stopPropagation()}>
+              <ModalHeader>
+                <ModalTitle>Manage Supported Currencies</ModalTitle>
+                <CloseButton onClick={() => setShowCurrencyModal(false)}>×</CloseButton>
+              </ModalHeader>
+              <ModalBody>
+                <p style={{ marginBottom: '16px', color: '#6B7280', fontSize: '14px' }}>
+                  Select which currencies will be available for subscription plan pricing.
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                  {Object.entries(currencyConfig).map(([code, config]) => (
+                    <label key={code} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '12px',
+                      border: '1px solid #E6EBF1',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      background: supportedCurrencies.includes(code) ? '#F0F4FF' : 'white',
+                      transition: 'all 0.2s'
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={supportedCurrencies.includes(code)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSupportedCurrencies([...supportedCurrencies, code]);
+                          } else {
+                            setSupportedCurrencies(supportedCurrencies.filter(c => c !== code));
+                          }
+                        }}
+                        style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
+                      />
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#0A2540' }}>
+                          {config.symbol} {code}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#6B7280' }}>
+                          {config.name}
+                        </div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </ModalBody>
+              <ModalActions>
+                <Button variant="secondary" onClick={() => setShowCurrencyModal(false)}>Cancel</Button>
+                <Button variant="primary" onClick={() => {
+                  updateSupportedCurrencies(supportedCurrencies);
+                  setShowCurrencyModal(false);
+                }}>Save Changes</Button>
+              </ModalActions>
+            </ModalContent>
+          </Modal>
+        )}
+
+        {/* Plan Prices Modal */}
+        {showPlanPricesModal && selectedPlan && (
+          <Modal onClick={() => setShowPlanPricesModal(false)}>
+            <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
+              <ModalHeader>
+                <ModalTitle>Set Prices for {selectedPlan.displayName}</ModalTitle>
+                <CloseButton onClick={() => setShowPlanPricesModal(false)}>×</CloseButton>
+              </ModalHeader>
+              <ModalBody>
+                <p style={{ marginBottom: '20px', color: '#6B7280', fontSize: '14px' }}>
+                  Configure pricing for each supported currency.
+                </p>
+                <div style={{ display: 'grid', gap: '16px' }}>
+                  {supportedCurrencies.map(code => {
+                    const config = currencyConfig[code];
+                    return (
+                      <div key={code} style={{
+                        padding: '16px',
+                        border: '1px solid #E6EBF1',
+                        borderRadius: '8px',
+                        background: '#FAFBFC'
+                      }}>
+                        <div style={{
+                          fontWeight: 600,
+                          marginBottom: '12px',
+                          color: '#0A2540',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          <span style={{
+                            padding: '4px 8px',
+                            background: '#635BFF',
+                            color: 'white',
+                            borderRadius: '4px',
+                            fontSize: '12px'
+                          }}>{config?.symbol || code}</span>
+                          {config?.name || code} ({code})
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                          <div>
+                            <label style={{ fontSize: '13px', color: '#6B7280', display: 'block', marginBottom: '4px' }}>
+                              Monthly Price
+                            </label>
+                            <input
+                              type="number"
+                              value={editingPlanPrices[code]?.monthly || ''}
+                              onChange={(e) => setEditingPlanPrices({
+                                ...editingPlanPrices,
+                                [code]: { ...editingPlanPrices[code], monthly: e.target.value }
+                              })}
+                              style={{
+                                width: '100%',
+                                padding: '10px 12px',
+                                border: '1px solid #E6EBF1',
+                                borderRadius: '6px',
+                                fontSize: '14px'
+                              }}
+                              placeholder="0.00"
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '13px', color: '#6B7280', display: 'block', marginBottom: '4px' }}>
+                              Annual Price
+                            </label>
+                            <input
+                              type="number"
+                              value={editingPlanPrices[code]?.annual || ''}
+                              onChange={(e) => setEditingPlanPrices({
+                                ...editingPlanPrices,
+                                [code]: { ...editingPlanPrices[code], annual: e.target.value }
+                              })}
+                              style={{
+                                width: '100%',
+                                padding: '10px 12px',
+                                border: '1px solid #E6EBF1',
+                                borderRadius: '6px',
+                                fontSize: '14px'
+                              }}
+                              placeholder="0.00"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {supportedCurrencies.length === 0 && (
+                    <p style={{ textAlign: 'center', color: '#6B7280', padding: '20px' }}>
+                      No currencies configured. Please add currencies first.
+                    </p>
+                  )}
+                </div>
+              </ModalBody>
+              <ModalActions>
+                <Button variant="secondary" onClick={() => setShowPlanPricesModal(false)}>Cancel</Button>
+                <Button variant="primary" onClick={savePlanPrices}>Save Prices</Button>
+              </ModalActions>
             </ModalContent>
           </Modal>
         )}
