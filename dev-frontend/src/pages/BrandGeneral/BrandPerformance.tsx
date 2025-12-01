@@ -15,14 +15,7 @@ import {
   StatDescription
 } from '../../components/UI';
 
-// Page-specific styled components
-const Subtitle = styled.p`
-  font-size: 14px;
-  color: #6B7280;
-  margin: 4px 0 0;
-`;
-
-// Filter styles (from ReportsPage)
+// Filter styles
 const FilterControls = styled.div`
   background: white;
   padding: 20px 24px;
@@ -120,7 +113,7 @@ const PerformanceGrid = styled.div`
   margin-bottom: 32px;
 `;
 
-const BrandCard = styled.div<{ color?: string }>`
+const RestaurantCard = styled.div<{ color?: string }>`
   background: white;
   border-radius: 12px;
   padding: 24px;
@@ -134,21 +127,21 @@ const BrandCard = styled.div<{ color?: string }>`
   }
 `;
 
-const BrandHeader = styled.div`
+const RestaurantHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 16px;
 `;
 
-const BrandName = styled.h3`
+const RestaurantName = styled.h3`
   font-size: 18px;
   font-weight: 600;
   color: #0A2540;
   margin: 0;
 `;
 
-const BrandCategory = styled.span`
+const BrandBadge = styled.span`
   font-size: 12px;
   color: #6B7280;
   background: #F3F4F6;
@@ -241,7 +234,7 @@ const RankInfo = styled.div`
   min-width: 0;
 `;
 
-const RankBrand = styled.div`
+const RankRestaurant = styled.div`
   font-size: 15px;
   font-weight: 600;
   color: #0A2540;
@@ -292,11 +285,20 @@ interface Brand {
   }>;
 }
 
+interface Restaurant {
+  id: number;
+  name: string;
+  brandId: number;
+  brandName: string;
+  brandCode: string;
+  currency: string;
+}
+
 interface Order {
   id: number;
   restaurant_id: number;
-  final_price: string;
   total_amount: string;
+  subtotal?: string;
   status: string;
   order_date: string;
   createdAt: string;
@@ -306,13 +308,13 @@ interface Order {
   completed_at?: string;
 }
 
-interface BrandPerformanceData {
+interface RestaurantPerformanceData {
   id: number;
   name: string;
-  code: string;
+  brandId: number;
+  brandName: string;
+  brandCode: string;
   currency: string;
-  stores: number;
-  storeIds: number[];
   totalOrders: number;
   completedOrders: number;
   sales: number;
@@ -322,12 +324,11 @@ interface BrandPerformanceData {
   maxOrder: number;
   uniqueCustomers: number;
   avgServiceTime: number;
-  category: string;
 }
 
 type PeriodType = 'today' | 'week' | 'month' | 'year' | 'all';
 
-const BRAND_COLORS = ['#635BFF', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4'];
+const CARD_COLORS = ['#635BFF', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4'];
 
 // Helper function to format date string
 const formatDateString = (date: Date): string => {
@@ -353,36 +354,75 @@ const BrandPerformance: React.FC = () => {
   const [selectedMetric, setSelectedMetric] = useState('sales');
 
   const [brands, setBrands] = useState<Brand[]>([]);
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch brands data
+  // Fetch brands and restaurants data
   useEffect(() => {
-    fetchBrandsData();
+    fetchData();
   }, []);
 
-  // Fetch orders when date range or brands change
+  // Fetch orders when date range or restaurants change
   useEffect(() => {
-    if (brands.length > 0) {
+    if (restaurants.length > 0) {
       fetchOrdersData();
     }
-  }, [brands, dateRange.start, dateRange.end]);
+  }, [restaurants, dateRange.start, dateRange.end]);
 
-  const fetchBrandsData = async () => {
+  const fetchData = async () => {
     try {
+      setLoading(true);
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/brands', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+
+      // Fetch brands and restaurants in parallel
+      const [brandsResponse, restaurantsResponse] = await Promise.all([
+        fetch('/api/brands', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch('/api/restaurants', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ]);
+
+      // Process brands
+      let brandsData: Brand[] = [];
+      if (brandsResponse.ok) {
+        brandsData = await brandsResponse.json();
+        setBrands(brandsData);
+      }
+
+      // Create brand lookup map
+      const brandMap = new Map<number, Brand>();
+      brandsData.forEach(brand => {
+        brandMap.set(brand.id, brand);
       });
 
-      if (response.ok) {
-        const data: Brand[] = await response.json();
-        setBrands(data);
+      // Process restaurants - get ALL restaurants user has access to
+      if (restaurantsResponse.ok) {
+        const restaurantsData = await restaurantsResponse.json();
+        const allRestaurants: Restaurant[] = restaurantsData.map((r: any) => {
+          const brand = r.brand_id ? brandMap.get(r.brand_id) : null;
+          return {
+            id: r.id,
+            name: r.name,
+            brandId: r.brand_id || 0,
+            brandName: brand?.name || 'No Brand',
+            brandCode: brand?.code || '-',
+            currency: brand?.currency || r.currency || 'RM'
+          };
+        });
+        setRestaurants(allRestaurants);
+
+        if (allRestaurants.length === 0) {
+          setLoading(false);
+        }
+      } else {
+        setLoading(false);
       }
     } catch (error) {
-      console.error('Error fetching brands:', error);
+      console.error('Error fetching data:', error);
+      setLoading(false);
     }
   };
 
@@ -391,22 +431,17 @@ const BrandPerformance: React.FC = () => {
       setLoading(true);
       const token = localStorage.getItem('auth_token');
 
-      // Get all restaurant IDs from brands
-      const allRestaurantIds = brands.flatMap(brand =>
-        brand.restaurants?.map(r => r.id) || []
-      );
-
-      if (allRestaurantIds.length === 0) {
+      if (restaurants.length === 0) {
         setOrders([]);
         setLoading(false);
         return;
       }
 
       // Fetch orders for all restaurants in the date range
-      const ordersPromises = allRestaurantIds.map(async (restaurantId) => {
+      const ordersPromises = restaurants.map(async (restaurant) => {
         try {
           const response = await fetch(
-            `/api/orders?restaurant_id=${restaurantId}&start_date=${dateRange.start}&end_date=${dateRange.end}`,
+            `/api/orders?restaurant_id=${restaurant.id}&start_date=${dateRange.start}&end_date=${dateRange.end}`,
             {
               headers: {
                 'Authorization': `Bearer ${token}`
@@ -415,16 +450,30 @@ const BrandPerformance: React.FC = () => {
           );
           if (response.ok) {
             const data = await response.json();
-            return data.orders || data || [];
+            console.log(`[Performance] Restaurant ${restaurant.id} (${restaurant.name}) orders response:`, data);
+            // Handle different API response formats
+            let ordersArray: Order[] = [];
+            if (Array.isArray(data)) {
+              ordersArray = data;
+            } else if (data.data && Array.isArray(data.data)) {
+              ordersArray = data.data;
+            } else if (data.orders && Array.isArray(data.orders)) {
+              ordersArray = data.orders;
+            }
+            console.log(`[Performance] Restaurant ${restaurant.id} parsed orders:`, ordersArray.length, 'orders');
+            return ordersArray;
           }
           return [];
-        } catch {
+        } catch (err) {
+          console.error(`[Performance] Error fetching orders for restaurant ${restaurant.id}:`, err);
           return [];
         }
       });
 
       const allOrdersArrays = await Promise.all(ordersPromises);
       const allOrders = allOrdersArrays.flat();
+      console.log('[Performance] Total orders fetched:', allOrders.length);
+      console.log('[Performance] Sample orders:', allOrders.slice(0, 3));
       setOrders(allOrders);
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -485,9 +534,9 @@ const BrandPerformance: React.FC = () => {
     };
   }, [dateRange.start, dateRange.end]);
 
-  // Calculate performance data from real orders
-  const performanceData: BrandPerformanceData[] = useMemo(() => {
-    if (brands.length === 0) return [];
+  // Calculate performance data per restaurant
+  const performanceData: RestaurantPerformanceData[] = useMemo(() => {
+    if (restaurants.length === 0) return [];
 
     const startDate = new Date(dateRange.start);
     startDate.setHours(0, 0, 0, 0);
@@ -499,24 +548,30 @@ const BrandPerformance: React.FC = () => {
     const prevEndDate = new Date(getPreviousPeriodRange.end);
     prevEndDate.setHours(23, 59, 59, 999);
 
-    return brands.map(brand => {
-      const storeIds = brand.restaurants?.map(r => r.id) || [];
-      const storeCount = storeIds.length;
+    return restaurants.map(restaurant => {
+      // Filter orders for this restaurant (compare as numbers to handle type mismatch)
+      const restaurantOrders = orders.filter(order => Number(order.restaurant_id) === Number(restaurant.id));
 
-      // Filter orders for this brand's restaurants
-      const brandOrders = orders.filter(order => {
-        const orderRestaurantId = order.restaurant_id;
-        return storeIds.includes(orderRestaurantId);
+      console.log(`[Performance] Restaurant ${restaurant.id} (${restaurant.name}):`, {
+        totalOrdersInState: orders.length,
+        restaurantOrders: restaurantOrders.length,
+        sampleOrder: restaurantOrders[0]
       });
 
       // Current period orders
-      const currentPeriodOrders = brandOrders.filter(order => {
+      const currentPeriodOrders = restaurantOrders.filter(order => {
         const orderDate = new Date(order.order_date || order.createdAt);
         return orderDate >= startDate && orderDate <= endDate;
       });
 
+      console.log(`[Performance] Restaurant ${restaurant.id} date filter:`, {
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        currentPeriodOrders: currentPeriodOrders.length
+      });
+
       // Previous period orders (for growth calculation)
-      const previousPeriodOrders = brandOrders.filter(order => {
+      const previousPeriodOrders = restaurantOrders.filter(order => {
         const orderDate = new Date(order.order_date || order.createdAt);
         return orderDate >= prevStartDate && orderDate <= prevEndDate;
       });
@@ -525,12 +580,17 @@ const BrandPerformance: React.FC = () => {
       const completedOrders = currentPeriodOrders.filter(o => o.status === 'completed');
       const prevCompletedOrders = previousPeriodOrders.filter(o => o.status === 'completed');
 
+      console.log(`[Performance] Restaurant ${restaurant.id} completed:`, {
+        completedOrders: completedOrders.length,
+        statuses: currentPeriodOrders.map(o => o.status).filter((v, i, a) => a.indexOf(v) === i)
+      });
+
       const totalSales = completedOrders.reduce((sum, order) => {
-        return sum + parseFloat(order.final_price || order.total_amount || '0');
+        return sum + parseFloat(order.total_amount || '0');
       }, 0);
 
       const previousSales = prevCompletedOrders.reduce((sum, order) => {
-        return sum + parseFloat(order.final_price || order.total_amount || '0');
+        return sum + parseFloat(order.total_amount || '0');
       }, 0);
 
       const growth = previousSales > 0
@@ -543,7 +603,7 @@ const BrandPerformance: React.FC = () => {
 
       // Max order value
       const maxOrder = completedOrders.reduce((max, order) => {
-        const price = parseFloat(order.final_price || order.total_amount || '0');
+        const price = parseFloat(order.total_amount || '0');
         return price > max ? price : max;
       }, 0);
 
@@ -562,12 +622,12 @@ const BrandPerformance: React.FC = () => {
         : 0;
 
       return {
-        id: brand.id,
-        name: brand.name,
-        code: brand.code,
-        currency: brand.currency || 'RM',
-        stores: storeCount,
-        storeIds,
+        id: restaurant.id,
+        name: restaurant.name,
+        brandId: restaurant.brandId,
+        brandName: restaurant.brandName,
+        brandCode: restaurant.brandCode,
+        currency: restaurant.currency,
         totalOrders: currentPeriodOrders.length,
         completedOrders: completedOrders.length,
         sales: Math.round(totalSales * 100) / 100,
@@ -576,47 +636,46 @@ const BrandPerformance: React.FC = () => {
         avgOrder: Math.round(avgOrder * 100) / 100,
         maxOrder: Math.round(maxOrder * 100) / 100,
         uniqueCustomers,
-        avgServiceTime: Math.round(avgServiceTime),
-        category: 'Restaurant'
+        avgServiceTime: Math.round(avgServiceTime)
       };
     });
-  }, [brands, orders, dateRange.start, dateRange.end, getPreviousPeriodRange]);
+  }, [restaurants, orders, dateRange.start, dateRange.end, getPreviousPeriodRange]);
 
   // Filter by selected brand
-  const filteredBrands = useMemo(() => {
+  const filteredRestaurants = useMemo(() => {
     if (selectedBrandId === 'all') return performanceData;
-    return performanceData.filter(b => b.id.toString() === selectedBrandId);
+    return performanceData.filter(r => r.brandId.toString() === selectedBrandId);
   }, [performanceData, selectedBrandId]);
 
-  // Sort brands by selected metric
-  const sortedBrands = useMemo(() => {
-    return [...filteredBrands].sort((a, b) => {
+  // Sort restaurants by selected metric
+  const sortedRestaurants = useMemo(() => {
+    return [...filteredRestaurants].sort((a, b) => {
       switch (selectedMetric) {
         case 'sales': return b.sales - a.sales;
         case 'growth': return b.growth - a.growth;
         case 'orders': return b.completedOrders - a.completedOrders;
-        case 'stores': return b.stores - a.stores;
+        case 'customers': return b.uniqueCustomers - a.uniqueCustomers;
         default: return b.sales - a.sales;
       }
     });
-  }, [filteredBrands, selectedMetric]);
+  }, [filteredRestaurants, selectedMetric]);
 
   // Calculate summary stats
   const stats = useMemo(() => {
-    const totalSales = filteredBrands.reduce((sum, b) => sum + b.sales, 0);
-    const totalStores = filteredBrands.reduce((sum, b) => sum + b.stores, 0);
-    const totalOrders = filteredBrands.reduce((sum, b) => sum + b.completedOrders, 0);
-    const previousTotalSales = filteredBrands.reduce((sum, b) => sum + b.previousSales, 0);
-    const totalCustomers = filteredBrands.reduce((sum, b) => sum + b.uniqueCustomers, 0);
-    const maxOrderValue = Math.max(...filteredBrands.map(b => b.maxOrder), 0);
+    const totalSales = filteredRestaurants.reduce((sum, r) => sum + r.sales, 0);
+    const totalRestaurants = filteredRestaurants.length;
+    const totalOrders = filteredRestaurants.reduce((sum, r) => sum + r.completedOrders, 0);
+    const previousTotalSales = filteredRestaurants.reduce((sum, r) => sum + r.previousSales, 0);
+    const totalCustomers = filteredRestaurants.reduce((sum, r) => sum + r.uniqueCustomers, 0);
+    const maxOrderValue = Math.max(...filteredRestaurants.map(r => r.maxOrder), 0);
 
     // Calculate overall average order
     const overallAvgOrder = totalOrders > 0 ? totalSales / totalOrders : 0;
 
     // Calculate overall average service time
-    const brandsWithServiceTime = filteredBrands.filter(b => b.avgServiceTime > 0);
-    const overallAvgServiceTime = brandsWithServiceTime.length > 0
-      ? brandsWithServiceTime.reduce((sum, b) => sum + b.avgServiceTime, 0) / brandsWithServiceTime.length
+    const restaurantsWithServiceTime = filteredRestaurants.filter(r => r.avgServiceTime > 0);
+    const overallAvgServiceTime = restaurantsWithServiceTime.length > 0
+      ? restaurantsWithServiceTime.reduce((sum, r) => sum + r.avgServiceTime, 0) / restaurantsWithServiceTime.length
       : 0;
 
     const overallGrowth = previousTotalSales > 0
@@ -625,7 +684,7 @@ const BrandPerformance: React.FC = () => {
 
     return {
       totalSales,
-      totalStores,
+      totalRestaurants,
       totalOrders,
       totalCustomers,
       maxOrderValue,
@@ -633,7 +692,7 @@ const BrandPerformance: React.FC = () => {
       overallAvgServiceTime: Math.round(overallAvgServiceTime),
       overallGrowth: Math.round(overallGrowth * 10) / 10
     };
-  }, [filteredBrands]);
+  }, [filteredRestaurants]);
 
   const formatCurrency = (amount: number, currency: string = 'RM') => {
     if (amount >= 1000000) {
@@ -661,8 +720,7 @@ const BrandPerformance: React.FC = () => {
       <Container>
         <Header>
           <div>
-            <Title>Brand Performance</Title>
-            <Subtitle>Analyze brand performance metrics and growth trends</Subtitle>
+            <Title>Performance</Title>
           </div>
           <ActionSection>
             <Button variant="secondary" onClick={() => fetchOrdersData()}>Refresh</Button>
@@ -733,7 +791,7 @@ const BrandPerformance: React.FC = () => {
                 <option value="sales">Revenue</option>
                 <option value="growth">Growth</option>
                 <option value="orders">Orders</option>
-                <option value="stores">Stores</option>
+                <option value="customers">Customers</option>
               </FilterSelect>
             </FilterRow>
           </FilterControls>
@@ -780,17 +838,17 @@ const BrandPerformance: React.FC = () => {
               <StatDescription>vs previous period</StatDescription>
             </StatCard>
             <StatCard color="#14B8A6">
-              <StatValue>{stats.totalStores}</StatValue>
-              <StatLabel>Total Stores</StatLabel>
-              <StatDescription>Across {filteredBrands.length} brands</StatDescription>
+              <StatValue>{stats.totalRestaurants}</StatValue>
+              <StatLabel>Restaurants</StatLabel>
+              <StatDescription>{selectedBrandId === 'all' ? 'All brands' : 'Selected brand'}</StatDescription>
             </StatCard>
           </StatsGrid>
 
           {loading ? (
             <EmptyState>
-              <p>Loading brand performance data...</p>
+              <p>Loading performance data...</p>
             </EmptyState>
-          ) : sortedBrands.length === 0 ? (
+          ) : sortedRestaurants.length === 0 ? (
             <EmptyState>
               <h3>No Data Available</h3>
               <p>No performance data found for the selected period.</p>
@@ -798,70 +856,65 @@ const BrandPerformance: React.FC = () => {
           ) : (
             <>
               <PerformanceGrid>
-                {sortedBrands.map((brand, index) => (
-                  <BrandCard key={brand.id} color={BRAND_COLORS[index % BRAND_COLORS.length]}>
-                    <BrandHeader>
-                      <BrandName>{brand.name}</BrandName>
-                      <BrandCategory>{brand.code}</BrandCategory>
-                    </BrandHeader>
+                {sortedRestaurants.map((restaurant, index) => (
+                  <RestaurantCard key={restaurant.id} color={CARD_COLORS[index % CARD_COLORS.length]}>
+                    <RestaurantHeader>
+                      <RestaurantName>{restaurant.name}</RestaurantName>
+                      <BrandBadge>{restaurant.brandCode}</BrandBadge>
+                    </RestaurantHeader>
                     <MetricRow>
                       <MetricLabel>Revenue</MetricLabel>
                       <MetricValue>
-                        {formatCurrency(brand.sales, brand.currency)}
-                        {brand.growth !== 0 && (
-                          <GrowthBadge positive={brand.growth > 0}>
-                            {brand.growth > 0 ? '+' : ''}{brand.growth}%
+                        {formatCurrency(restaurant.sales, restaurant.currency)}
+                        {restaurant.growth !== 0 && (
+                          <GrowthBadge positive={restaurant.growth > 0}>
+                            {restaurant.growth > 0 ? '+' : ''}{restaurant.growth}%
                           </GrowthBadge>
                         )}
                       </MetricValue>
                     </MetricRow>
                     <MetricRow>
                       <MetricLabel>Orders</MetricLabel>
-                      <MetricValue>{brand.completedOrders.toLocaleString()} completed</MetricValue>
+                      <MetricValue>{restaurant.completedOrders.toLocaleString()} completed</MetricValue>
                     </MetricRow>
                     <MetricRow>
                       <MetricLabel>Customers</MetricLabel>
-                      <MetricValue>{brand.uniqueCustomers.toLocaleString()} unique</MetricValue>
+                      <MetricValue>{restaurant.uniqueCustomers.toLocaleString()} unique</MetricValue>
                     </MetricRow>
                     <MetricRow>
                       <MetricLabel>Avg Order</MetricLabel>
                       <MetricValue>
-                        {brand.avgOrder > 0 ? formatCurrency(brand.avgOrder, brand.currency) : 'N/A'}
+                        {restaurant.avgOrder > 0 ? formatCurrency(restaurant.avgOrder, restaurant.currency) : 'N/A'}
                       </MetricValue>
                     </MetricRow>
                     <MetricRow>
                       <MetricLabel>Max Order</MetricLabel>
                       <MetricValue>
-                        {brand.maxOrder > 0 ? formatCurrency(brand.maxOrder, brand.currency) : 'N/A'}
+                        {restaurant.maxOrder > 0 ? formatCurrency(restaurant.maxOrder, restaurant.currency) : 'N/A'}
                       </MetricValue>
                     </MetricRow>
                     <MetricRow>
                       <MetricLabel>Avg Service Time</MetricLabel>
                       <MetricValue>
-                        {brand.avgServiceTime > 0 ? `${brand.avgServiceTime} min` : 'N/A'}
+                        {restaurant.avgServiceTime > 0 ? `${restaurant.avgServiceTime} min` : 'N/A'}
                       </MetricValue>
                     </MetricRow>
-                    <MetricRow>
-                      <MetricLabel>Stores</MetricLabel>
-                      <MetricValue>{brand.stores} locations</MetricValue>
-                    </MetricRow>
-                  </BrandCard>
+                  </RestaurantCard>
                 ))}
               </PerformanceGrid>
 
               <RankingSection>
-                <SectionTitle>Performance Ranking ({getPeriodLabel()})</SectionTitle>
-                {sortedBrands.slice(0, 5).map((brand, index) => (
-                  <RankingItem key={brand.id}>
+                <SectionTitle>Restaurant Ranking ({getPeriodLabel()})</SectionTitle>
+                {sortedRestaurants.slice(0, 10).map((restaurant, index) => (
+                  <RankingItem key={restaurant.id}>
                     <RankNumber rank={index + 1}>{index + 1}</RankNumber>
                     <RankInfo>
-                      <RankBrand>{brand.name}</RankBrand>
+                      <RankRestaurant>{restaurant.name}</RankRestaurant>
                       <RankStats>
-                        <RankStat>Revenue: {formatCurrency(brand.sales, brand.currency)}</RankStat>
-                        <RankStat>Orders: {brand.completedOrders}</RankStat>
-                        <RankStat>Customers: {brand.uniqueCustomers}</RankStat>
-                        <RankStat>Avg: {formatCurrency(brand.avgOrder, brand.currency)}</RankStat>
-                        <RankStat>Growth: {brand.growth > 0 ? '+' : ''}{brand.growth}%</RankStat>
+                        <RankStat>Revenue: {formatCurrency(restaurant.sales, restaurant.currency)}</RankStat>
+                        <RankStat>Orders: {restaurant.completedOrders}</RankStat>
+                        <RankStat>Customers: {restaurant.uniqueCustomers}</RankStat>
+                        <RankStat>Growth: {restaurant.growth > 0 ? '+' : ''}{restaurant.growth}%</RankStat>
                       </RankStats>
                     </RankInfo>
                   </RankingItem>
