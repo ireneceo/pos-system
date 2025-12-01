@@ -1005,7 +1005,7 @@ const KitchenDisplayPage: React.FC = () => {
                 <OrderCard key={order.id}>
                   <OrderHeader>
                     <OrderNumber>
-                      #{order.pickupNumber}
+                      {order.tableNumber ? `T${order.tableNumber.replace(/^T/i, '')}` : `#${order.pickupNumber}`}
                       {order.orderType === 'takeaway' && (
                         <OrderTypeBadge>TAKEAWAY</OrderTypeBadge>
                       )}
@@ -1020,9 +1020,14 @@ const KitchenDisplayPage: React.FC = () => {
                   </OrderHeader>
 
                   <OrderMeta>
-                    {order.orderType === 'dine-in' && (
+                    {order.orderType === 'dine-in' && order.tableNumber && (
                       <MetaItem>
-                        📍 {order.tableNumber || 'Free Seating'}
+                        📍 Table Order
+                      </MetaItem>
+                    )}
+                    {order.orderType === 'dine-in' && !order.tableNumber && (
+                      <MetaItem>
+                        📍 Free Seating
                       </MetaItem>
                     )}
                     {order.orderType === 'takeaway' && order.customerName && (
@@ -1105,7 +1110,7 @@ const KitchenDisplayPage: React.FC = () => {
                 <OrderCard key={order.id}>
                   <OrderHeader>
                     <OrderNumber>
-                      #{order.pickupNumber}
+                      {order.tableNumber ? `T${order.tableNumber.replace(/^T/i, '')}` : `#${order.pickupNumber}`}
                       {order.orderType === 'takeaway' && (
                         <OrderTypeBadge>TAKEAWAY</OrderTypeBadge>
                       )}
@@ -1120,9 +1125,14 @@ const KitchenDisplayPage: React.FC = () => {
                   </OrderHeader>
 
                   <OrderMeta>
-                    {order.orderType === 'dine-in' && (
+                    {order.orderType === 'dine-in' && order.tableNumber && (
                       <MetaItem>
-                        📍 {order.tableNumber || 'Free Seating'}
+                        📍 Table Order
+                      </MetaItem>
+                    )}
+                    {order.orderType === 'dine-in' && !order.tableNumber && (
+                      <MetaItem>
+                        📍 Free Seating
                       </MetaItem>
                     )}
                     {order.orderType === 'takeaway' && order.customerName && (
@@ -1257,7 +1267,7 @@ const KitchenDisplayPage: React.FC = () => {
                 <OrderCard key={order.id}>
                   <OrderHeader>
                     <OrderNumber>
-                      #{order.pickupNumber}
+                      {order.tableNumber ? `T${order.tableNumber.replace(/^T/i, '')}` : `#${order.pickupNumber}`}
                       {order.orderType === 'takeaway' && (
                         <OrderTypeBadge>TAKEAWAY</OrderTypeBadge>
                       )}
@@ -1272,9 +1282,14 @@ const KitchenDisplayPage: React.FC = () => {
                   </OrderHeader>
 
                   <OrderMeta>
-                    {order.orderType === 'dine-in' && (
+                    {order.orderType === 'dine-in' && order.tableNumber && (
                       <MetaItem>
-                        📍 {order.tableNumber || 'Free Seating'}
+                        📍 Table Order - Ready to Serve
+                      </MetaItem>
+                    )}
+                    {order.orderType === 'dine-in' && !order.tableNumber && (
+                      <MetaItem>
+                        📍 Free Seating
                       </MetaItem>
                     )}
                     {order.orderType === 'takeaway' && order.customerName && (

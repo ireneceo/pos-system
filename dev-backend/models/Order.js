@@ -43,8 +43,13 @@ Order.init({
     defaultValue: 'awaiting_payment'
   },
   order_type: {
-    type: DataTypes.ENUM('dine_in', 'takeaway', 'delivery'),
+    type: DataTypes.ENUM('dine_in', 'takeaway', 'delivery', 'pickup'),
     defaultValue: 'dine_in'
+  },
+  source: {
+    type: DataTypes.ENUM('pos', 'mobile', 'kiosk'),
+    defaultValue: 'pos',
+    comment: 'Order source: pos (POS Terminal), mobile (Mobile Order), kiosk (Self-service Kiosk)'
   },
   payment_method: {
     type: DataTypes.STRING(50),

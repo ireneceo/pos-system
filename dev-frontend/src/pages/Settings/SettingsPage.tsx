@@ -10,6 +10,7 @@ import { useBrandTheme } from '../../contexts/BrandThemeContext';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
 import { useTabParam } from '../../hooks/useTabParam';
+import { printTableQR } from '../../utils/billPrint';
 
 // 스타일 컴포넌트
 const SettingsContainer = styled.div`
@@ -854,6 +855,18 @@ const SettingsPage: React.FC = () => {
               cashRounding: restaurant.cash_rounding !== null && restaurant.cash_rounding !== undefined ? parseFloat(restaurant.cash_rounding) : null,
               roundingApplyTo: roundingApplyToFromDB
             });
+
+            // Load table settings from DB
+            if (restaurant.table_settings) {
+              console.log('✅ Loading table settings from DB:', restaurant.table_settings);
+              setTableSettings({
+                enableTableNumbers: restaurant.table_settings.enableTableNumbers ?? true,
+                tableNumberRequired: restaurant.table_settings.tableNumberRequired ?? false,
+                tablePrefix: restaurant.table_settings.tablePrefix || 'T',
+                totalTables: restaurant.table_settings.totalTables || 20,
+                qrCodeBaseUrl: restaurant.table_settings.qrCodeBaseUrl || window.location.origin
+              });
+            }
           }
         } catch (error) {
           console.error('Failed to load store data:', error);
@@ -905,35 +918,39 @@ const SettingsPage: React.FC = () => {
     if (savedTableSettings) {
       const parsedSettings = JSON.parse(savedTableSettings);
       setTableSettings(parsedSettings);
-      
-      const savedTables = localStorage.getItem('tables');
-      if (savedTables) {
-        setTables(JSON.parse(savedTables));
-      } else {
-        // Generate tables with saved settings
-        const newTables: Table[] = [];
-        for (let i = 1; i <= parsedSettings.totalTables; i++) {
-          const tableNumber = `${parsedSettings.tablePrefix}${String(i).padStart(3, '0')}`;
-          const qrData = `${parsedSettings.qrCodeBaseUrl}/mobile?table=${tableNumber}`;
-          newTables.push({
-            id: `table-${i}`,
-            number: i,
-            qrCode: qrData,
-            isActive: true
-          });
-        }
-        setTables(newTables);
-      }
     }
   }, []);
+
+  // Generate/update tables when restaurantSlug is available
+  useEffect(() => {
+    if (!restaurantSlug) return;
+
+    // Generate tables with correct slug-based URLs
+    const newTables: Table[] = [];
+    for (let i = 1; i <= tableSettings.totalTables; i++) {
+      const tableNumber = `${tableSettings.tablePrefix}${String(i).padStart(3, '0')}`;
+      const qrData = `${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}?table=${tableNumber}`;
+      newTables.push({
+        id: `table-${i}`,
+        number: i,
+        qrCode: qrData,
+        isActive: true
+      });
+    }
+    setTables(newTables);
+  }, [restaurantSlug, tableSettings.totalTables, tableSettings.tablePrefix, tableSettings.qrCodeBaseUrl]);
 
   // generateTables function removed - not used
   
   const handleGenerateQRCodes = () => {
+    if (!restaurantSlug) {
+      console.error('Restaurant slug not available for QR code generation');
+      return;
+    }
     const newTables: Table[] = [];
     for (let i = 1; i <= tableSettings.totalTables; i++) {
       const tableNumber = `${tableSettings.tablePrefix}${String(i).padStart(3, '0')}`;
-      const qrData = `${tableSettings.qrCodeBaseUrl}/mobile?table=${tableNumber}`;
+      const qrData = `${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}?table=${tableNumber}`;
       newTables.push({
         id: `table-${i}`,
         number: i,
@@ -957,53 +974,12 @@ const SettingsPage: React.FC = () => {
   };
   
   const handlePrintQR = (table: Table) => {
-    const printWindow = window.open('', '', 'height=600,width=800');
-    if (printWindow) {
-      const tableNumber = `${tableSettings.tablePrefix}${String(table.number).padStart(3, '0')}`;
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Table ${tableNumber} QR Code</title>
-            <style>
-              body {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                height: 100vh;
-                margin: 0;
-                font-family: Arial, sans-serif;
-              }
-              h1 { margin-bottom: 20px; }
-              .qr-container { margin: 20px 0; }
-              @media print {
-                body { height: auto; }
-              }
-            </style>
-          </head>
-          <body>
-            <h1>Table ${tableNumber}</h1>
-            <div class="qr-container">
-              <canvas id="qr-print"></canvas>
-            </div>
-            <p>Scan to order from this table</p>
-          </body>
-        </html>
-      `);
-      
-      printWindow.document.close();
-      
-      // Draw QR code in print window
-      const canvas = document.getElementById(`qr-${table.id}`) as HTMLCanvasElement;
-      const printCanvas = printWindow.document.getElementById('qr-print') as HTMLCanvasElement;
-      if (canvas && printCanvas) {
-        const ctx = printCanvas.getContext('2d');
-        printCanvas.width = canvas.width;
-        printCanvas.height = canvas.height;
-        ctx?.drawImage(canvas, 0, 0);
-      }
-      
-      printWindow.print();
+    const tableNumber = `${tableSettings.tablePrefix}${String(table.number).padStart(3, '0')}`;
+    const canvas = document.getElementById(`qr-${table.id}`) as HTMLCanvasElement;
+    const storeName = storeSettings.name || 'Restaurant';
+
+    if (canvas) {
+      printTableQR(tableNumber, canvas, storeName);
     }
   };
 
@@ -1122,6 +1098,7 @@ const SettingsPage: React.FC = () => {
           logo_url: storeSettings.logo,
           payment_settings: normalizedPaymentMethods,
           operation_settings: operationSettings,
+          table_settings: tableSettings,  // Save table settings to DB
           currency: currencySettings.currency,
           cash_rounding: currencySettings.cashRounding,
           rounding_apply_to: currencySettings.roundingApplyTo

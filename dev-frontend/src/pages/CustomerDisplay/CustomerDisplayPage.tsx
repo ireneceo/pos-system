@@ -26,6 +26,7 @@ interface DisplayOrder {
   id: string;
   orderNumber: string;
   pickupNumber: string;
+  tableNumber: string | null;  // Table number for dine-in QR orders
   status: 'preparing' | 'ready' | 'completed';
   customerName: string;
   items: Array<{
@@ -278,6 +279,7 @@ const CustomerDisplayPage: React.FC = () => {
           id: String(order.id),
           orderNumber: order.order_number,
           pickupNumber: order.order_number.split('-')[1] || String(order.id).padStart(3, '0'),
+          tableNumber: order.table_number,  // Include table number
           status: order.status as 'preparing' | 'ready' | 'completed',
           customerName: order.customer_name || 'Guest',
           items: Array.isArray(order.order_items) ? order.order_items.map((item: any) => ({
@@ -367,11 +369,13 @@ const CustomerDisplayPage: React.FC = () => {
             >
               <PickupNumberSection>
                 <PickupNumber status={order.status}>
-                  {order.pickupNumber}
+                  {order.tableNumber ? `T${order.tableNumber.replace(/^T/i, '')}` : order.pickupNumber}
                 </PickupNumber>
                 <StatusBadge status={order.status}>
-                  {order.status === 'ready' ? 'Ready for Pickup' : 
-                   order.status === 'preparing' ? 'Preparing' : 'Completed'}
+                  {order.tableNumber
+                    ? (order.status === 'ready' ? 'Ready - Table Service' : 'Preparing')
+                    : (order.status === 'ready' ? 'Ready for Pickup' :
+                       order.status === 'preparing' ? 'Preparing' : 'Completed')}
                 </StatusBadge>
               </PickupNumberSection>
 

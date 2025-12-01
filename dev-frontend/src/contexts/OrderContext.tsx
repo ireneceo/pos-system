@@ -130,6 +130,7 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
         takeaway_charge: (order as any).takeawayCharge || 0,
         status: order.status,
         order_type: order.orderType === 'dine-in' ? 'dine_in' : order.orderType,
+        source: 'pos',  // POS Terminal order source
         payment_method: order.paymentMethod || null,
         payment_status: order.paymentStatus || 'pending',
         order_date: new Date(),

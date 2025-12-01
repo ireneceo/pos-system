@@ -330,7 +330,8 @@ const ManagersPage: React.FC = () => {
     department: '',
     phone: '',
     address: '',
-    role: 'Foodcourt General' as 'Foodcourt General' | 'Brand General',
+    role: 'Foodcourt General' as 'Foodcourt General' | 'Foodcourt Manager' | 'Brand General' | 'Brand Manager',
+    parentManagerId: '' as string, // For Brand Manager - links to Brand General
     // Subscription fields
     planType: '',
     planAmount: '149.00',
@@ -341,6 +342,8 @@ const ManagersPage: React.FC = () => {
     subscriptionEnd: ''
   });
   const [availablePlans, setAvailablePlans] = useState<any[]>([]);
+  const [brandGenerals, setBrandGenerals] = useState<any[]>([]);
+  const [foodcourtGenerals, setFoodcourtGenerals] = useState<any[]>([]);
 
   const navigate = useNavigate();
 
@@ -467,7 +470,31 @@ const ManagersPage: React.FC = () => {
   useEffect(() => {
     fetchManagers();
     fetchPlans();
+    fetchGeneralManagers();
   }, []);
+
+  // Fetch Brand Generals and Foodcourt Generals for parent manager selection
+  const fetchGeneralManagers = async () => {
+    try {
+      const response = await fetch('/api/users?role=Manager');
+      if (response.ok) {
+        const data = await response.json();
+        const users = data.data || data;
+
+        // Filter Brand Generals
+        const brandGens = users.filter((u: any) => u.role === 'Brand General');
+        setBrandGenerals(brandGens);
+
+        // Filter Foodcourt Generals
+        const foodcourtGens = users.filter((u: any) => u.role === 'Foodcourt General');
+        setFoodcourtGenerals(foodcourtGens);
+
+        console.log('📊 Loaded Brand Generals:', brandGens.length, 'Foodcourt Generals:', foodcourtGens.length);
+      }
+    } catch (error) {
+      console.error('Error fetching general managers:', error);
+    }
+  };
 
   const fetchPlans = async () => {
     try {
@@ -550,6 +577,7 @@ const ManagersPage: React.FC = () => {
         phone: '',
         address: '',
         role: 'Foodcourt General',
+        parentManagerId: '',
         planType: firstPlan ? firstPlan.display_name : '',
         planAmount: firstPlan ? firstPlan.base_price_monthly : '149.00',
         billingCycle: 'monthly',
@@ -634,6 +662,7 @@ const ManagersPage: React.FC = () => {
       phone: '',
       address: '',
       role: 'Foodcourt General',
+      parentManagerId: '',
       planType: firstPlan ? firstPlan.display_name : '',
       planAmount: firstPlan ? firstPlan.base_price_monthly : '149.00',
       billingCycle: 'monthly',
@@ -897,11 +926,23 @@ const ManagersPage: React.FC = () => {
       return;
     }
 
+    // Validate that Brand Manager has a parent Brand General selected
+    if (newManager.role === 'Brand Manager' && !newManager.parentManagerId) {
+      alert('Please select a Brand General for this Brand Manager');
+      return;
+    }
+
+    // Validate that Foodcourt Manager has a parent Foodcourt General selected
+    if (newManager.role === 'Foodcourt Manager' && !newManager.parentManagerId) {
+      alert('Please select a Foodcourt General for this Foodcourt Manager');
+      return;
+    }
+
     console.log('✅ Validation passed, proceeding with manager creation...');
 
     try {
       // Use managerId as username and include all profile data
-      const managerUserData = {
+      const managerUserData: any = {
         username: newManager.managerId,
         email: newManager.email,
         password: 'manager123', // Default password
@@ -913,6 +954,11 @@ const ManagersPage: React.FC = () => {
         phone: newManager.phone,
         address: newManager.address
       };
+
+      // Add manager_id (parent manager) for Brand Manager and Foodcourt Manager
+      if ((newManager.role === 'Brand Manager' || newManager.role === 'Foodcourt Manager') && newManager.parentManagerId) {
+        managerUserData.manager_id = parseInt(newManager.parentManagerId);
+      }
 
       console.log('🔄 Creating manager user:', managerUserData);
       console.log('📍 API URL:', '/api/users');
@@ -1119,7 +1165,7 @@ const ManagersPage: React.FC = () => {
                     onClick={() => handleEditManager(manager)}
                     title="Edit Manager"
                   >
-                    <IconSymbol>✎</IconSymbol>
+                    <IconSymbol>Edit</IconSymbol>
                   </IconButton>
                   <IconButton
                     onClick={() => handleToggleStatus(manager)}
@@ -1190,29 +1236,66 @@ const ManagersPage: React.FC = () => {
                   <FilterSelect
                     value={newManager.role}
                     onChange={(e) => {
-                      const newRole = e.target.value as 'Foodcourt General' | 'Brand General';
+                      const newRole = e.target.value as 'Foodcourt General' | 'Foodcourt Manager' | 'Brand General' | 'Brand Manager';
                       handleInputChange('role', newRole);
 
                       // Update plan and payment model based on role
                       const filteredPlans = getFilteredPlans(newRole);
                       const firstPlan = filteredPlans.length > 0 ? filteredPlans[0] : null;
-                      const paymentModel = newRole === 'Brand General' ? 'brand_manager' : 'foodcourt_manager';
+                      const paymentModel = (newRole === 'Brand General' || newRole === 'Brand Manager') ? 'brand_manager' : 'foodcourt_manager';
 
-                      if (firstPlan) {
-                        setNewManager(prev => ({
-                          ...prev,
-                          role: newRole,
-                          planType: firstPlan.display_name,
-                          planAmount: firstPlan.base_price_monthly,
-                          paymentModel: paymentModel
-                        }));
-                      }
+                      setNewManager(prev => ({
+                        ...prev,
+                        role: newRole,
+                        parentManagerId: '', // Reset parent when role changes
+                        planType: firstPlan ? firstPlan.display_name : prev.planType,
+                        planAmount: firstPlan ? firstPlan.base_price_monthly : prev.planAmount,
+                        paymentModel: paymentModel
+                      }));
                     }}
                   >
                     <option value="Foodcourt General">Foodcourt General</option>
+                    <option value="Foodcourt Manager">Foodcourt Manager</option>
                     <option value="Brand General">Brand General</option>
+                    <option value="Brand Manager">Brand Manager</option>
                   </FilterSelect>
                 </FormGroup>
+
+                {/* Show Brand General selection when Brand Manager is selected */}
+                {newManager.role === 'Brand Manager' && (
+                  <FormGroup>
+                    <FormLabel>Brand General * (Parent Manager)</FormLabel>
+                    <FilterSelect
+                      value={newManager.parentManagerId}
+                      onChange={(e) => handleInputChange('parentManagerId', e.target.value)}
+                    >
+                      <option value="">Select Brand General</option>
+                      {brandGenerals.map((bg: any) => (
+                        <option key={bg.id} value={bg.id}>
+                          {bg.full_name || bg.username} ({bg.company_name || 'No Company'})
+                        </option>
+                      ))}
+                    </FilterSelect>
+                  </FormGroup>
+                )}
+
+                {/* Show Foodcourt General selection when Foodcourt Manager is selected */}
+                {newManager.role === 'Foodcourt Manager' && (
+                  <FormGroup>
+                    <FormLabel>Foodcourt General * (Parent Manager)</FormLabel>
+                    <FilterSelect
+                      value={newManager.parentManagerId}
+                      onChange={(e) => handleInputChange('parentManagerId', e.target.value)}
+                    >
+                      <option value="">Select Foodcourt General</option>
+                      {foodcourtGenerals.map((fg: any) => (
+                        <option key={fg.id} value={fg.id}>
+                          {fg.full_name || fg.username} ({fg.company_name || 'No Company'})
+                        </option>
+                      ))}
+                    </FilterSelect>
+                  </FormGroup>
+                )}
 
                 <FormGroup>
                   <FormLabel>Position *</FormLabel>

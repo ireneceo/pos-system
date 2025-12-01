@@ -2340,7 +2340,10 @@ const LiveOrdersPage: React.FC = () => {
                       </OrderNumber>
                       <CustomerInfo>
                         {order.customer_name || 'Guest'}<br />
-                        {order.customer_phone || 'POS Terminal'}
+                        {order.customer_phone || ((order as any).source === 'mobile' ? 'Mobile Order' : 'POS Terminal')}
+                        {order.table_number && (
+                          <><br /><span style={{ color: '#635BFF', fontWeight: 500 }}>Table: {order.table_number}</span></>
+                        )}
                         {order.pager_number && (
                           <><br />Pager: {order.pager_number}</>
                         )}
@@ -2693,6 +2696,10 @@ const LiveOrdersPage: React.FC = () => {
                     <DetailRow>
                       <DetailLabel>Order Type:</DetailLabel>
                       <DetailValue>{selectedOrder.order_type?.replace('_', ' ').toUpperCase()}</DetailValue>
+                    </DetailRow>
+                    <DetailRow>
+                      <DetailLabel>Source:</DetailLabel>
+                      <DetailValue>{(selectedOrder as any).source === 'mobile' ? 'Mobile Order' : (selectedOrder as any).source === 'kiosk' ? 'Kiosk' : 'POS Terminal'}</DetailValue>
                     </DetailRow>
                     {selectedOrder.table_number && (
                       <DetailRow>

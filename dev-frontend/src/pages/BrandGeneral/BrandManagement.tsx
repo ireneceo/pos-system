@@ -434,7 +434,7 @@ const BrandManagement: React.FC = () => {
                       onClick={() => handleEditBrand(brand)}
                       title="Edit"
                     >
-                      ✎
+                      Edit
                     </IconButton>
                     <IconButton
                       variant="delete"

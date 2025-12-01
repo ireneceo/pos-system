@@ -1066,6 +1066,7 @@ const PaymentPage: React.FC = () => {
               scheduled_pickup_time: orderType === 'pickup' && scheduledPickupTime ? scheduledPickupTime : null,
               status: 'awaiting_payment',
               order_type: orderType === 'dine-in' ? 'dine_in' : orderType,
+              source: 'mobile',  // Mobile order source
               payment_method: 'counter',
               payment_status: 'pending',
               kitchen_ready: false,
@@ -1189,6 +1190,7 @@ const PaymentPage: React.FC = () => {
             scheduled_pickup_time: orderType === 'pickup' && scheduledPickupTime ? scheduledPickupTime : null,
             status: 'awaiting_payment',
             order_type: orderType === 'dine-in' ? 'dine_in' : orderType,
+            source: 'mobile',  // Mobile order source
             payment_method: (paymentMethod === 'qr' || paymentMethod === 'qrPayment' || paymentMethod === 'qr_payment') ? 'QR Payment' : 'Bank Transfer',
             payment_status: 'pending',
             kitchen_ready: false,
@@ -1267,6 +1269,7 @@ const PaymentPage: React.FC = () => {
               scheduled_pickup_time: orderType === 'pickup' && scheduledPickupTime ? scheduledPickupTime : null,
               status: 'pending',
               order_type: orderType === 'dine-in' ? 'dine_in' : orderType,
+              source: 'mobile',  // Mobile order source
               payment_method: paymentMethod === 'card' ? 'Card' : 'FPX',
               payment_status: 'completed',
               kitchen_ready: false,

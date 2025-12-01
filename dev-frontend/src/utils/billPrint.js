@@ -643,4 +643,122 @@ export function generateKitchenTicketPreview(orderData, storeInfo) {
   return lines.join('\n');
 }
 
+/**
+ * Print Table QR Code to thermal printer
+ * @param {string} tableNumber - Table number (e.g., "T001")
+ * @param {HTMLCanvasElement} qrCanvas - QR code canvas element
+ * @param {string} storeName - Restaurant name
+ */
+export function printTableQR(tableNumber, qrCanvas, storeName = 'Restaurant') {
+  // Check if RawBT is available (mobile/tablet)
+  const isMobileOrTablet = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(navigator.userAgent.toLowerCase()) ||
+    ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+
+  if (isMobileOrTablet && qrCanvas) {
+    // Use RawBT for thermal printer
+    try {
+      // Get QR code as base64 image
+      const qrImageData = qrCanvas.toDataURL('image/png');
+      const base64Image = qrImageData.split(',')[1];
+
+      // Build ESC/POS content
+      let content = '';
+      content += CMD.INIT;
+      content += CMD.ALIGN_CENTER;
+
+      // Store name
+      content += CMD.TEXT_DOUBLE;
+      content += storeName + CMD.LINE_FEED;
+      content += CMD.TEXT_NORMAL;
+      content += CMD.LINE_FEED;
+
+      // Table number header
+      content += CMD.BOLD_ON;
+      content += CMD.TEXT_DOUBLE;
+      content += 'TABLE ' + tableNumber + CMD.LINE_FEED;
+      content += CMD.TEXT_NORMAL;
+      content += CMD.BOLD_OFF;
+      content += CMD.LINE_FEED;
+
+      // Note: ESC/POS QR image printing requires specific printer support
+      // For now, we'll print text-based info and use browser print for QR
+      content += 'Scan QR code to order' + CMD.LINE_FEED;
+      content += CMD.LINE_FEED;
+      content += CMD.DASHED_LINE + CMD.LINE_FEED;
+      content += CMD.LINE_FEED;
+
+      // Instructions
+      content += '1. Scan QR code with phone' + CMD.LINE_FEED;
+      content += '2. Browse menu & add items' + CMD.LINE_FEED;
+      content += '3. Place your order' + CMD.LINE_FEED;
+      content += CMD.LINE_FEED;
+
+      content += CMD.DASHED_LINE + CMD.LINE_FEED;
+      content += CMD.LINE_FEED;
+      content += CMD.LINE_FEED;
+      content += CMD.LINE_FEED;
+      content += CMD.CUT_PARTIAL;
+
+      // Convert to base64 and send via RawBT
+      const base64Content = btoa(unescape(encodeURIComponent(content)));
+      const rawbtUrl = `rawbt:base64,${base64Content}`;
+
+      console.log('🖨️ Sending Table QR to RawBT thermal printer');
+      window.location.href = rawbtUrl;
+
+      return true;
+    } catch (error) {
+      console.error('Failed to print via RawBT:', error);
+      return false;
+    }
+  } else {
+    // Desktop - use browser print with QR image
+    const printWindow = window.open('', '', 'height=600,width=400');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Table ${tableNumber} QR Code</title>
+            <style>
+              body {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                margin: 0;
+                font-family: Arial, sans-serif;
+                text-align: center;
+              }
+              .store-name { font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+              .table-number { font-size: 32px; font-weight: bold; margin: 15px 0; }
+              .qr-container { margin: 20px 0; }
+              .instruction { font-size: 14px; color: #666; margin-top: 15px; }
+              @media print {
+                body { height: auto; padding: 20px; }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="store-name">${storeName}</div>
+            <div class="table-number">TABLE ${tableNumber}</div>
+            <div class="qr-container">
+              <img src="${qrCanvas.toDataURL('image/png')}" width="200" height="200" />
+            </div>
+            <div class="instruction">Scan to order from this table</div>
+          </body>
+        </html>
+      `);
+
+      printWindow.document.close();
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
+
+      return true;
+    }
+    return false;
+  }
+}
+
 // All functions are already exported individually above

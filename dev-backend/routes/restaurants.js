@@ -469,6 +469,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     // Settings objects
     if (req.body.payment_settings !== undefined) updateData.payment_settings = req.body.payment_settings;
     if (req.body.operation_settings !== undefined) updateData.operation_settings = req.body.operation_settings;
+    if (req.body.table_settings !== undefined) updateData.table_settings = req.body.table_settings;
 
     // Brand association
     if (req.body.brand_id !== undefined) {
