@@ -15,6 +15,7 @@ import {
   ActionSection,
   Content
 } from '../../components/UI';
+import { ModalWarning } from '../../components/UI/Modal';
 // Using page-specific filter components instead of common ones
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
@@ -263,13 +264,13 @@ const ModalActions = styled.div`
 
 const FormGrid = styled.div`
   display: grid;
-  gap: 20px;
+  gap: 16px;
 `;
 
 const FormGroup = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 `;
 
 const FormLabel = styled.label`
@@ -418,6 +419,12 @@ const PageFilterSelect = styled.select`
 
 // Advanced Dropdown Styled Components
 const DropdownContainer = styled.div`
+  position: relative;
+  width: 100%;
+`;
+
+// Filter용 Dropdown Container (고정 너비)
+const FilterDropdownContainer = styled.div`
   position: relative;
   flex: 0 0 180px;
 
@@ -618,6 +625,9 @@ const RestaurantsPage: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  // Inline warning messages instead of browser alerts
+  const [addModalWarning, setAddModalWarning] = useState('');
+  const [editModalWarning, setEditModalWarning] = useState('');
   const [editingRestaurant, setEditingRestaurant] = useState<Restaurant | null>(null);
   const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -1083,10 +1093,11 @@ const RestaurantsPage: React.FC = () => {
     try {
       console.log('Adding restaurant:', newRestaurant);
       console.log('Selected managers:', selectedManagers);
+      setAddModalWarning(''); // Clear previous warning
 
       // Validate required fields
       if (!newRestaurant.name || selectedManagers.length === 0 || !newRestaurant.email || !newRestaurant.phone || !newRestaurant.address) {
-        alert('Please fill in all required fields. At least one manager must be selected.');
+        setAddModalWarning('Please fill in all required fields. At least one manager must be selected.');
         return;
       }
 
@@ -1117,11 +1128,13 @@ const RestaurantsPage: React.FC = () => {
 
       console.log('📤 Sending restaurant data:', restaurantData);
 
-      // Use direct fetch following API integration guide
+      // Use direct fetch with Authorization header
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/restaurants', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(restaurantData)
       });
@@ -1132,17 +1145,18 @@ const RestaurantsPage: React.FC = () => {
         const result = await response.json();
         console.log('✅ Restaurant created successfully:', result);
 
+        setAddModalWarning('');
         setShowAddModal(false);
         // Refresh restaurant list
         await fetchRestaurants();
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error('❌ Failed to create restaurant:', errorData);
-        alert(`Error creating restaurant: ${errorData.error || 'Please try again.'}`);
+        setAddModalWarning(`Error creating restaurant: ${errorData.error || 'Please try again.'}`);
       }
     } catch (error) {
       console.error('❌ Error adding restaurant:', error);
-      alert('Error adding restaurant. Please check your connection and try again.');
+      setAddModalWarning('Error adding restaurant. Please check your connection and try again.');
     }
   };
 
@@ -1152,10 +1166,12 @@ const RestaurantsPage: React.FC = () => {
 
       console.log(`🔄 Toggling restaurant ${restaurant.id} status from ${restaurant.status} to ${newStatus}`);
 
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/restaurants/${restaurant.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           status: newStatus
@@ -1169,11 +1185,10 @@ const RestaurantsPage: React.FC = () => {
         console.log(`✅ Restaurant status updated to ${newStatus}`);
       } else {
         const errorData = await response.json();
-        alert(`Failed to update status: ${errorData.message || 'Unknown error'}`);
+        console.error(`Failed to update status: ${errorData.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error toggling restaurant status:', error);
-      alert('Error updating status. Please try again.');
     }
   };
 
@@ -1183,10 +1198,11 @@ const RestaurantsPage: React.FC = () => {
     try {
       console.log('🔄 Updating restaurant:', editingRestaurant);
       console.log('🔍 Selected edit managers:', selectedEditManagers);
+      setEditModalWarning(''); // Clear previous warning
 
       // Validate required fields
       if (!editingRestaurant.name || selectedEditManagers.length === 0) {
-        alert('Please fill in all required fields. At least one manager must be selected.');
+        setEditModalWarning('Please fill in all required fields. At least one manager must be selected.');
         return;
       }
 
@@ -1217,11 +1233,13 @@ const RestaurantsPage: React.FC = () => {
 
       console.log('📤 Sending restaurant update data:', updateData);
 
-      // Use direct fetch following API integration guide
+      // Use direct fetch with Authorization header
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/restaurants/${editingRestaurant.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(updateData)
       });
@@ -1232,6 +1250,7 @@ const RestaurantsPage: React.FC = () => {
         const result = await response.json();
         console.log('✅ Restaurant updated successfully:', result);
 
+        setEditModalWarning('');
         setShowEditModal(false);
         setEditingRestaurant(null);
         // Refresh restaurant list
@@ -1239,11 +1258,11 @@ const RestaurantsPage: React.FC = () => {
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error('❌ Failed to update restaurant:', errorData);
-        alert(`Error updating restaurant: ${errorData.error || 'Please try again.'}`);
+        setEditModalWarning(`Error updating restaurant: ${errorData.error || 'Please try again.'}`);
       }
     } catch (error) {
       console.error('❌ Error updating restaurant:', error);
-      alert('Error updating restaurant. Please check your connection and try again.');
+      setEditModalWarning('Error updating restaurant. Please check your connection and try again.');
     }
   };
 
@@ -1254,9 +1273,14 @@ const RestaurantsPage: React.FC = () => {
 
     try {
       console.log('Deleting restaurant:', restaurant.id);
+      setEditModalWarning(''); // Clear previous warning
 
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/restaurants/${restaurant.id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       console.log('📡 Restaurant delete API response status:', response.status);
@@ -1264,6 +1288,7 @@ const RestaurantsPage: React.FC = () => {
       if (response.ok) {
         console.log('✅ Restaurant deleted successfully');
 
+        setEditModalWarning('');
         setShowEditModal(false);
         setEditingRestaurant(null);
         setSuccessMessage('Restaurant deleted successfully!');
@@ -1274,11 +1299,11 @@ const RestaurantsPage: React.FC = () => {
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error('❌ Failed to delete restaurant:', errorData);
-        alert(`Error deleting restaurant: ${errorData.error || 'Please try again.'}`);
+        setEditModalWarning(`Error deleting restaurant: ${errorData.error || 'Please try again.'}`);
       }
     } catch (error) {
       console.error('❌ Error deleting restaurant:', error);
-      alert('Error deleting restaurant. Please check your connection and try again.');
+      setEditModalWarning('Error deleting restaurant. Please check your connection and try again.');
     }
   };
 
@@ -1399,7 +1424,7 @@ const RestaurantsPage: React.FC = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <DropdownContainer>
+          <FilterDropdownContainer>
             <DropdownInput
               type="text"
               placeholder="Search managers..."
@@ -1437,8 +1462,8 @@ const RestaurantsPage: React.FC = () => {
                 </DropdownItem>
               ))}
             </DropdownMenu>
-          </DropdownContainer>
-          <DropdownContainer>
+          </FilterDropdownContainer>
+          <FilterDropdownContainer>
             <DropdownInput
               type="text"
               placeholder="Search brands..."
@@ -1477,7 +1502,7 @@ const RestaurantsPage: React.FC = () => {
                 </DropdownItem>
               ))}
             </DropdownMenu>
-          </DropdownContainer>
+          </FilterDropdownContainer>
           <PageFilterSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
             <option value="all">All Status</option>
             <option value="active">Active</option>
@@ -1831,9 +1856,12 @@ const RestaurantsPage: React.FC = () => {
                     </div>
                   </div>
                 </FormGrid>
+                {addModalWarning && (
+                  <ModalWarning>{addModalWarning}</ModalWarning>
+                )}
               </ModalBody>
               <ModalActions>
-                <ThemedButton variant="cancel" onClick={() => setShowAddModal(false)}>Cancel</ThemedButton>
+                <ThemedButton variant="cancel" onClick={() => { setAddModalWarning(''); setShowAddModal(false); }}>Cancel</ThemedButton>
                 <ThemedButton variant="primary" onClick={handleSubmitAdd}>Add Restaurant</ThemedButton>
               </ModalActions>
             </Modal>
@@ -2097,9 +2125,12 @@ const RestaurantsPage: React.FC = () => {
                     </div>
                   </div>
                 </FormGrid>
+                {editModalWarning && (
+                  <ModalWarning>{editModalWarning}</ModalWarning>
+                )}
               </ModalBody>
               <ModalActions>
-                <ThemedButton variant="cancel" onClick={() => setShowEditModal(false)}>Cancel</ThemedButton>
+                <ThemedButton variant="cancel" onClick={() => { setEditModalWarning(''); setShowEditModal(false); }}>Cancel</ThemedButton>
                 <ThemedButton variant="danger-outline" onClick={() => handleDeleteRestaurant(editingRestaurant)}>Delete</ThemedButton>
                 <ThemedButton variant="primary" onClick={handleSubmitEdit}>Update Restaurant</ThemedButton>
               </ModalActions>

@@ -161,6 +161,19 @@ export const FormTextArea = styled.textarea`
   }
 `;
 
+// 모달 경고 메시지 (버튼 하단에 표시)
+export const ModalWarning = styled.div<{ show?: boolean }>`
+  display: ${props => props.show === false ? 'none' : 'block'};
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: #FEF2F2;
+  border: 1px solid #FCA5A5;
+  border-radius: 8px;
+  color: #DC2626;
+  font-size: 14px;
+  line-height: 1.5;
+`;
+
 // 모달 버튼
 export const ModalButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
   padding: 12px 20px;
