@@ -159,7 +159,7 @@ export const ActionButton = styled.button`
 
 // 아이콘 버튼
 export const IconButton = styled.button<{ variant?: 'default' | 'edit' | 'delete' | 'view' }>`
-  padding: 6px;
+  padding: 6px 10px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s;
@@ -168,7 +168,9 @@ export const IconButton = styled.button<{ variant?: 'default' | 'edit' | 'delete
   justify-content: center;
   min-width: 32px;
   min-height: 32px;
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 
   ${props => {
     switch (props.variant) {

@@ -132,8 +132,9 @@ const StatusBadge = styled.span<{ status: string }>`
 `;
 
 const IconSymbol = styled.span`
-  font-size: 14px;
-  font-family: 'Lucida Console', 'Courier New', monospace;
+  font-size: 13px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 500;
   color: #6B7C93;
   display: inline-block;
   line-height: 1;
@@ -1346,70 +1347,74 @@ const ManagersPage: React.FC = () => {
                   />
                 </FormGroup>
 
-                {/* Subscription Settings */}
-                <FormGroup style={{gridColumn: '1 / -1', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E6EBF1'}}>
-                  <h3 style={{fontSize: '14px', fontWeight: '600', color: '#0A2540', marginBottom: '12px'}}>Subscription Settings</h3>
-                </FormGroup>
+                {/* Subscription Settings - Only show for General roles */}
+                {(newManager.role === 'Foodcourt General' || newManager.role === 'Brand General') && (
+                  <>
+                    <FormGroup style={{gridColumn: '1 / -1', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E6EBF1'}}>
+                      <h3 style={{fontSize: '14px', fontWeight: '600', color: '#0A2540', marginBottom: '12px'}}>Subscription Settings</h3>
+                    </FormGroup>
 
-                <FormGroup>
-                  <FormLabel>Subscription Plan *</FormLabel>
-                  <FilterSelect
-                    value={newManager.planType}
-                    onChange={(e) => {
-                      const selectedPlan = getFilteredPlans(newManager.role).find(p => p.display_name === e.target.value);
-                      handleInputChange('planType', e.target.value);
-                      if (selectedPlan) {
-                        handleInputChange('planAmount', selectedPlan.base_price_monthly);
-                      }
-                    }}
-                  >
-                    <option value="">Select Plan</option>
-                    {getFilteredPlans(newManager.role).map(plan => (
-                      <option key={plan.id} value={plan.display_name}>
-                        {plan.display_name} (RM {plan.base_price_monthly}/month)
-                      </option>
-                    ))}
-                  </FilterSelect>
-                </FormGroup>
+                    <FormGroup>
+                      <FormLabel>Subscription Plan *</FormLabel>
+                      <FilterSelect
+                        value={newManager.planType}
+                        onChange={(e) => {
+                          const selectedPlan = getFilteredPlans(newManager.role).find(p => p.display_name === e.target.value);
+                          handleInputChange('planType', e.target.value);
+                          if (selectedPlan) {
+                            handleInputChange('planAmount', selectedPlan.base_price_monthly);
+                          }
+                        }}
+                      >
+                        <option value="">Select Plan</option>
+                        {getFilteredPlans(newManager.role).map(plan => (
+                          <option key={plan.id} value={plan.display_name}>
+                            {plan.display_name} (RM {plan.base_price_monthly}/month)
+                          </option>
+                        ))}
+                      </FilterSelect>
+                    </FormGroup>
 
-                <FormGroup>
-                  <FormLabel>Billing Cycle *</FormLabel>
-                  <FilterSelect
-                    value={newManager.billingCycle}
-                    onChange={(e) => handleInputChange('billingCycle', e.target.value)}
-                  >
-                    <option value="monthly">Monthly</option>
-                    <option value="annual">Annual</option>
-                  </FilterSelect>
-                </FormGroup>
+                    <FormGroup>
+                      <FormLabel>Billing Cycle *</FormLabel>
+                      <FilterSelect
+                        value={newManager.billingCycle}
+                        onChange={(e) => handleInputChange('billingCycle', e.target.value)}
+                      >
+                        <option value="monthly">Monthly</option>
+                        <option value="annual">Annual</option>
+                      </FilterSelect>
+                    </FormGroup>
 
-                <FormGroup>
-                  <FormLabel>Subscription Start Date *</FormLabel>
-                  <FormInput
-                    type="date"
-                    value={newManager.subscriptionStart}
-                    onChange={(e) => handleInputChange('subscriptionStart', e.target.value)}
-                  />
-                </FormGroup>
+                    <FormGroup>
+                      <FormLabel>Subscription Start Date *</FormLabel>
+                      <FormInput
+                        type="date"
+                        value={newManager.subscriptionStart}
+                        onChange={(e) => handleInputChange('subscriptionStart', e.target.value)}
+                      />
+                    </FormGroup>
 
-                <FormGroup>
-                  <FormLabel>Subscription End Date</FormLabel>
-                  <FormInput
-                    type="date"
-                    value={newManager.subscriptionEnd}
-                    onChange={(e) => handleInputChange('subscriptionEnd', e.target.value)}
-                  />
-                </FormGroup>
+                    <FormGroup>
+                      <FormLabel>Subscription End Date</FormLabel>
+                      <FormInput
+                        type="date"
+                        value={newManager.subscriptionEnd}
+                        onChange={(e) => handleInputChange('subscriptionEnd', e.target.value)}
+                      />
+                    </FormGroup>
 
-                <FormGroup style={{gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '8px'}}>
-                  <input
-                    type="checkbox"
-                    checked={newManager.autoRenew}
-                    onChange={(e) => handleInputChange('autoRenew', e.target.checked ? 'true' : 'false')}
-                    style={{width: '16px', height: '16px', accentColor: '#635BFF'}}
-                  />
-                  <FormLabel style={{marginBottom: 0}}>Auto-renew subscription</FormLabel>
-                </FormGroup>
+                    <FormGroup style={{gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                      <input
+                        type="checkbox"
+                        checked={newManager.autoRenew}
+                        onChange={(e) => handleInputChange('autoRenew', e.target.checked ? 'true' : 'false')}
+                        style={{width: '16px', height: '16px', accentColor: '#635BFF'}}
+                      />
+                      <FormLabel style={{marginBottom: 0}}>Auto-renew subscription</FormLabel>
+                    </FormGroup>
+                  </>
+                )}
               </FormGrid>
             </ModalBody>
             <ModalActions>
@@ -1580,71 +1585,111 @@ const ManagersPage: React.FC = () => {
                   />
                 </FormGroup>
 
-                {/* Subscription Settings */}
-                <FormGroup style={{gridColumn: '1 / -1', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E6EBF1'}}>
-                  <h3 style={{fontSize: '14px', fontWeight: '600', color: '#0A2540', marginBottom: '12px'}}>Subscription Settings</h3>
-                </FormGroup>
+                {/* Show Brand General selection for Brand Manager */}
+                {editingManager.role === 'Brand Manager' && (
+                  <FormGroup>
+                    <FormLabel>Brand General * (Parent Manager)</FormLabel>
+                    <FilterSelect
+                      value={(editingManager as any).manager_id || ''}
+                      onChange={(e) => setEditingManager({...editingManager, manager_id: e.target.value} as any)}
+                    >
+                      <option value="">Select Brand General</option>
+                      {brandGenerals.map((bg: any) => (
+                        <option key={bg.id} value={bg.id}>
+                          {bg.full_name || bg.username} ({bg.company_name || 'No Company'})
+                        </option>
+                      ))}
+                    </FilterSelect>
+                  </FormGroup>
+                )}
 
-                <FormGroup>
-                  <FormLabel>Subscription Plan *</FormLabel>
-                  <FilterSelect
-                    value={editingManager.planType || ''}
-                    onChange={(e) => {
-                      const selectedPlan = getFilteredPlans(editingManager.role).find(p => p.display_name === e.target.value);
-                      setEditingManager({
-                        ...editingManager,
-                        planType: e.target.value,
-                        planAmount: selectedPlan ? selectedPlan.base_price_monthly : editingManager.planAmount
-                      });
-                    }}
-                  >
-                    <option value="">Select Plan</option>
-                    {getFilteredPlans(editingManager.role).map(plan => (
-                      <option key={plan.id} value={plan.display_name}>
-                        {plan.display_name} (RM {plan.base_price_monthly}/month)
-                      </option>
-                    ))}
-                  </FilterSelect>
-                </FormGroup>
+                {/* Show Foodcourt General selection for Foodcourt Manager */}
+                {editingManager.role === 'Foodcourt Manager' && (
+                  <FormGroup>
+                    <FormLabel>Foodcourt General * (Parent Manager)</FormLabel>
+                    <FilterSelect
+                      value={(editingManager as any).manager_id || ''}
+                      onChange={(e) => setEditingManager({...editingManager, manager_id: e.target.value} as any)}
+                    >
+                      <option value="">Select Foodcourt General</option>
+                      {foodcourtGenerals.map((fg: any) => (
+                        <option key={fg.id} value={fg.id}>
+                          {fg.full_name || fg.username} ({fg.company_name || 'No Company'})
+                        </option>
+                      ))}
+                    </FilterSelect>
+                  </FormGroup>
+                )}
 
-                <FormGroup>
-                  <FormLabel>Billing Cycle *</FormLabel>
-                  <FilterSelect
-                    value={editingManager.billingCycle || 'monthly'}
-                    onChange={(e) => setEditingManager({...editingManager, billingCycle: e.target.value as 'monthly' | 'annual'})}
-                  >
-                    <option value="monthly">Monthly</option>
-                    <option value="annual">Annual</option>
-                  </FilterSelect>
-                </FormGroup>
+                {/* Subscription Settings - Only show for General roles */}
+                {(editingManager.role === 'Foodcourt General' || editingManager.role === 'Brand General') && (
+                  <>
+                    <FormGroup style={{gridColumn: '1 / -1', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E6EBF1'}}>
+                      <h3 style={{fontSize: '14px', fontWeight: '600', color: '#0A2540', marginBottom: '12px'}}>Subscription Settings</h3>
+                    </FormGroup>
 
-                <FormGroup>
-                  <FormLabel>Subscription Start Date *</FormLabel>
-                  <FormInput
-                    type="date"
-                    value={editingManager.subscriptionStart || new Date().toISOString().split('T')[0]}
-                    onChange={(e) => setEditingManager({...editingManager, subscriptionStart: e.target.value})}
-                  />
-                </FormGroup>
+                    <FormGroup>
+                      <FormLabel>Subscription Plan *</FormLabel>
+                      <FilterSelect
+                        value={editingManager.planType || ''}
+                        onChange={(e) => {
+                          const selectedPlan = getFilteredPlans(editingManager.role).find(p => p.display_name === e.target.value);
+                          setEditingManager({
+                            ...editingManager,
+                            planType: e.target.value,
+                            planAmount: selectedPlan ? selectedPlan.base_price_monthly : editingManager.planAmount
+                          });
+                        }}
+                      >
+                        <option value="">Select Plan</option>
+                        {getFilteredPlans(editingManager.role).map(plan => (
+                          <option key={plan.id} value={plan.display_name}>
+                            {plan.display_name} (RM {plan.base_price_monthly}/month)
+                          </option>
+                        ))}
+                      </FilterSelect>
+                    </FormGroup>
 
-                <FormGroup>
-                  <FormLabel>Subscription End Date</FormLabel>
-                  <FormInput
-                    type="date"
-                    value={editingManager.subscriptionEnd || ''}
-                    onChange={(e) => setEditingManager({...editingManager, subscriptionEnd: e.target.value})}
-                  />
-                </FormGroup>
+                    <FormGroup>
+                      <FormLabel>Billing Cycle *</FormLabel>
+                      <FilterSelect
+                        value={editingManager.billingCycle || 'monthly'}
+                        onChange={(e) => setEditingManager({...editingManager, billingCycle: e.target.value as 'monthly' | 'annual'})}
+                      >
+                        <option value="monthly">Monthly</option>
+                        <option value="annual">Annual</option>
+                      </FilterSelect>
+                    </FormGroup>
 
-                <FormGroup style={{gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '8px'}}>
-                  <input
-                    type="checkbox"
-                    checked={editingManager.autoRenew !== undefined ? editingManager.autoRenew : true}
-                    onChange={(e) => setEditingManager({...editingManager, autoRenew: e.target.checked})}
-                    style={{width: '16px', height: '16px', accentColor: '#635BFF'}}
-                  />
-                  <FormLabel style={{marginBottom: 0}}>Auto-renew subscription</FormLabel>
-                </FormGroup>
+                    <FormGroup>
+                      <FormLabel>Subscription Start Date *</FormLabel>
+                      <FormInput
+                        type="date"
+                        value={editingManager.subscriptionStart || new Date().toISOString().split('T')[0]}
+                        onChange={(e) => setEditingManager({...editingManager, subscriptionStart: e.target.value})}
+                      />
+                    </FormGroup>
+
+                    <FormGroup>
+                      <FormLabel>Subscription End Date</FormLabel>
+                      <FormInput
+                        type="date"
+                        value={editingManager.subscriptionEnd || ''}
+                        onChange={(e) => setEditingManager({...editingManager, subscriptionEnd: e.target.value})}
+                      />
+                    </FormGroup>
+
+                    <FormGroup style={{gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                      <input
+                        type="checkbox"
+                        checked={editingManager.autoRenew !== undefined ? editingManager.autoRenew : true}
+                        onChange={(e) => setEditingManager({...editingManager, autoRenew: e.target.checked})}
+                        style={{width: '16px', height: '16px', accentColor: '#635BFF'}}
+                      />
+                      <FormLabel style={{marginBottom: 0}}>Auto-renew subscription</FormLabel>
+                    </FormGroup>
+                  </>
+                )}
               </FormGrid>
             </ModalBody>
             <ModalActions>

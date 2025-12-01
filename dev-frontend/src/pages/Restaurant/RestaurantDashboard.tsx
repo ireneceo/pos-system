@@ -291,28 +291,29 @@ const PaymentMethod = styled.div<{ isPending?: boolean }>`
 `;
 
 const Badge = styled.span<{ variant: string }>`
+  display: inline-flex;
+  align-items: center;
   padding: 4px 12px;
   border-radius: 6px;
   font-size: 12px;
-  font-weight: 600;
-  text-transform: capitalize;
+  font-weight: 500;
 
   ${props => {
     switch(props.variant) {
       case 'awaiting_payment':
-        return 'background: #FEF3C7; color: #92400E;'; // Yellow for awaiting payment
+        return 'background: #FEF3C7; color: #F59E0B;'; // Yellow/Orange for awaiting payment (Outstanding)
       case 'pending':
-        return 'background: #FED7AA; color: #EA580C;'; // Orange for pending (kitchen)
+        return 'background: #FEF3C7; color: #92400E;'; // Yellow for pending (kitchen)
       case 'preparing':
         return 'background: #DBEAFE; color: #1E40AF;'; // Blue for preparing
       case 'ready':
         return 'background: #D1FAE5; color: #065F46;'; // Green for ready
       case 'served':
-        return 'background: #E0E7FF; color: #4338CA;'; // Indigo for served
+        return 'background: #D1FAE5; color: #065F46;'; // Green for served
       case 'completed':
         return 'background: #E5E7EB; color: #374151;'; // Gray for completed
       case 'cancelled':
-        return 'background: #FEE2E2; color: #DC2626;'; // Red for cancelled
+        return 'background: #FEE2E2; color: #991B1B;'; // Red for cancelled
       default:
         return 'background: #F3F4F6; color: #6B7280;';
     }
@@ -906,7 +907,7 @@ const RestaurantDashboard: React.FC = () => {
                         <Badge variant={order.status}>
                           {(() => {
                             switch(order.status) {
-                              case 'awaiting_payment': return 'Awaiting Payment';
+                              case 'awaiting_payment': return 'Outstanding';
                               case 'pending': return 'Pending';
                               case 'preparing': return 'Preparing';
                               case 'ready': return 'Ready';

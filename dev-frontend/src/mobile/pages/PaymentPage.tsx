@@ -549,6 +549,9 @@ const PaymentPage: React.FC = () => {
   const [registerPassword, setRegisterPassword] = useState('');
   const [registerConfirmPassword, setRegisterConfirmPassword] = useState('');
 
+  // Member login state
+  const [memberPassword, setMemberPassword] = useState('');
+
   // Calculate takeaway charge (using existing function from StoreContext)
   const orderType = sessionStorage.getItem('orderType') as 'dine-in' | 'takeaway' | 'pickup' | 'delivery' || 'dine-in';
 
@@ -1692,20 +1695,34 @@ const PaymentPage: React.FC = () => {
                   onChange={(e) => setGuestPhone(e.target.value)}
                 />
               </FormGroup>
+              <FormGroup>
+                <Label>Password *</Label>
+                <Input
+                  type="password"
+                  placeholder="Enter your password"
+                  value={memberPassword}
+                  onChange={(e) => setMemberPassword(e.target.value)}
+                />
+              </FormGroup>
               <button
                 onClick={async () => {
                   if (!guestPhone.trim()) {
                     alert('Please enter your phone number');
                     return;
                   }
+                  if (!memberPassword.trim()) {
+                    alert('Please enter your password');
+                    return;
+                  }
                   try {
-                    const customer = await loginCustomer(guestPhone);
+                    const customer = await loginCustomer(guestPhone, memberPassword);
                     if (customer) {
                       console.log('✅ Member logged in:', customer);
                       setShowMemberForm(false);
                       setGuestPhone('');
+                      setMemberPassword('');
                     } else {
-                      alert('Member not found with this phone number. Please click "Guest Or Register" to sign up.');
+                      alert('Login failed. Please check your phone number and password.');
                     }
                   } catch (error) {
                     console.error('Login error:', error);

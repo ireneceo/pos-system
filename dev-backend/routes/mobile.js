@@ -680,7 +680,9 @@ router.get('/order/:orderId', async (req, res) => {
       estimatedPickupTime: new Date(order.createdAt.getTime() + 20 * 60000),
       paymentStatus: order.payment_status || 'pending',
       orderType: order.order_type || 'dine-in',
-      orderSource: 'mobile'
+      orderSource: 'mobile',
+      table_number: order.table_number || null,
+      tableNumber: order.table_number ? order.table_number : null
     };
 
     res.json({ success: true, data: orderData });

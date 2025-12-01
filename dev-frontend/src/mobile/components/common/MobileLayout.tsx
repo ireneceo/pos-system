@@ -190,8 +190,16 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
   // Get slug from currentStore or sessionStorage
   const slug = currentStore?.slug || sessionStorage.getItem('restaurantSlug') || 'default';
 
+  // Get table number from sessionStorage to maintain it across navigation
+  const tableNumber = sessionStorage.getItem('tableNumber');
+
   const handleNavigation = (path: string) => {
-    navigate(path);
+    // For home page, include table parameter if exists
+    if (path === `/mobile/${slug}` && tableNumber) {
+      navigate(`${path}?table=${tableNumber}`);
+    } else {
+      navigate(path);
+    }
   };
   
   return (

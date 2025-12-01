@@ -395,8 +395,20 @@ const OrderTrackingPage: React.FC = () => {
   }
   
   // Safe getter functions to prevent render crashes
+  const getTableNumber = () => {
+    try {
+      return order.table_number || order.tableNumber || null;
+    } catch (error) {
+      return null;
+    }
+  };
+
   const getPickupNumber = () => {
     try {
+      // If table number exists, show table number instead of pickup number
+      const tableNumber = getTableNumber();
+      if (tableNumber) return null; // Will be handled separately
+
       if (order.pickup_number) return order.pickup_number;
       if (order.pickupNumber) return order.pickupNumber;
 
@@ -420,6 +432,22 @@ const OrderTrackingPage: React.FC = () => {
       console.error('Error getting pickup number:', error);
       return '000';
     }
+  };
+
+  // Get display number (table or pickup)
+  const getDisplayNumber = () => {
+    const tableNumber = getTableNumber();
+    if (tableNumber) {
+      // Format table number (remove leading T if present, then add T prefix)
+      const cleanNumber = String(tableNumber).replace(/^T/i, '');
+      return `T${cleanNumber}`;
+    }
+    return getPickupNumber();
+  };
+
+  const getDisplayLabel = () => {
+    const tableNumber = getTableNumber();
+    return tableNumber ? 'Your Table Number' : 'Your Pickup Number';
   };
 
   const getOrderNumber = () => {
@@ -473,9 +501,9 @@ const OrderTrackingPage: React.FC = () => {
       <MobileLayout title="Order Status" currentPage="orders">
         <Container>
           <PickupNumberCard>
-            <PickupLabel>Your Pickup Number</PickupLabel>
+            <PickupLabel>{getDisplayLabel()}</PickupLabel>
             <PickupNumber>
-              {getPickupNumber()}
+              {getDisplayNumber()}
             </PickupNumber>
             {order?.order_type === 'pickup' && (
               <div style={{ fontSize: '14px', color: '#8B5CF6', fontWeight: '600', marginTop: '8px' }}>

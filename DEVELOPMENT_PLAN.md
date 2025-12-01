@@ -284,6 +284,102 @@ if (restaurant.recipe_manager_type === 'brand') {
 
 ## 📅 예정된 작업
 
+### Phase 3: 브랜드 통합 고객 포인트/등급 시스템 (예정 - 레시피 다음)
+
+**목적:** Brand General이 소속 레스토랑들의 고객 포인트/등급을 통합 또는 분리 관리할 수 있도록 지원
+
+#### 현재 구조
+```
+customers (고객 기본정보)
+    ↓
+restaurant_customers (레스토랑별 포인트/등급)
+└── 각 지점마다 별도 관리 (통합 불가)
+```
+
+#### 목표 구조
+```
+customers (고객 기본정보 - 전체 공유)
+    ↓
+├── brand_customers (브랜드 통합 포인트/등급) ← 새로 추가
+│   └── 브랜드 내 모든 지점 포인트 통합
+│
+└── restaurant_customers (레스토랑별 포인트/등급)
+    └── 기존 방식 유지 (지점별 분리)
+```
+
+#### 3.1 데이터베이스 설계
+```sql
+-- brands 테이블 (새로 생성)
+CREATE TABLE brands (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(255) NOT NULL,
+  manager_id INT COMMENT 'Brand General user_id',
+  loyalty_mode ENUM('brand_unified', 'restaurant_separate') DEFAULT 'restaurant_separate',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- brand_customers 테이블 (새로 생성)
+CREATE TABLE brand_customers (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  brand_id INT NOT NULL,
+  customer_id INT NOT NULL,
+  points INT DEFAULT 0,
+  loyalty_tier ENUM('Bronze', 'Silver', 'Gold', 'VIP') DEFAULT 'Bronze',
+  total_orders INT DEFAULT 0,
+  total_spent DECIMAL(15, 2) DEFAULT 0,
+  first_order_at TIMESTAMP,
+  last_order_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY (brand_id, customer_id),
+  FOREIGN KEY (brand_id) REFERENCES brands(id),
+  FOREIGN KEY (customer_id) REFERENCES customers(id)
+);
+
+-- restaurants 테이블에 brand_id 추가
+ALTER TABLE restaurants ADD COLUMN brand_id INT REFERENCES brands(id);
+```
+
+#### 3.2 Backend 구현
+1. [ ] Brand 모델 생성 (`models/Brand.js`)
+2. [ ] BrandCustomer 모델 생성 (`models/BrandCustomer.js`)
+3. [ ] Restaurant 모델에 brand_id 관계 추가
+4. [ ] Brand CRUD API (`routes/brands.js`)
+5. [ ] 포인트 적립/사용 로직 분기 처리
+   - `loyalty_mode === 'brand_unified'` → `brand_customers` 테이블 사용
+   - `loyalty_mode === 'restaurant_separate'` → `restaurant_customers` 테이블 사용
+6. [ ] 고객 로그인 시 포인트 조회 로직 수정
+
+#### 3.3 Frontend 구현
+1. [ ] Brand General 설정 페이지에 "포인트 관리 방식" 옵션 추가
+   - ○ 브랜드 통합 (모든 지점 포인트 공유)
+   - ● 지점별 분리 (기본값)
+2. [ ] 모바일 오더 PaymentPage에서 포인트 표시 로직 분기
+3. [ ] POS Customer 조회 시 포인트 표시 로직 분기
+4. [ ] Brand General 대시보드에 통합 고객 현황 표시
+
+#### 3.4 마이그레이션
+- 기존 `restaurant_customers` 데이터 보존 (하위 호환성)
+- 브랜드 통합 모드 선택 시에만 `brand_customers` 사용
+- 모드 전환 시 포인트 마이그레이션 옵션 제공
+
+#### 사용 시나리오
+```
+Brand General 설정:
+┌─────────────────────────────────┐
+│ 고객 포인트 관리 방식           │
+│                                 │
+│ ○ 브랜드 통합 (모든 지점 공유)  │
+│ ● 지점별 분리 (기본값)          │
+└─────────────────────────────────┘
+
+- 프랜차이즈 브랜드: 통합 선택 → 어느 지점에서든 포인트 적립/사용
+- 독립 매장: 분리 (기본값) → 현재와 동일
+```
+
+---
+
 ### Phase 4: General 사용자 페이지 구현 (예정)
 
 #### 4.1 General 대시보드

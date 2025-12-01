@@ -212,8 +212,15 @@ const OrderTypePage: React.FC = () => {
   useEffect(() => {
     const table = searchParams.get('table');
     if (table) {
+      // Table from URL parameter (QR code scan)
       setTableFromQR(table);
       sessionStorage.setItem('tableNumber', table);
+    } else {
+      // Check if table number exists in sessionStorage (returning from menu/cart)
+      const existingTable = sessionStorage.getItem('tableNumber');
+      if (existingTable) {
+        setTableFromQR(existingTable);
+      }
     }
 
     if (slug) {
