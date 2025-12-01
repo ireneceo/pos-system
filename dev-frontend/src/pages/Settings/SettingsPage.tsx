@@ -691,6 +691,7 @@ const SettingsPage: React.FC = () => {
   });
   
   // Table management state
+  const [restaurantSlug, setRestaurantSlug] = useState<string>('');
   const [tableSettings, setTableSettings] = useState({
     enableTableNumbers: true,
     tableNumberRequired: false,
@@ -741,6 +742,11 @@ const SettingsPage: React.FC = () => {
               brand_name: restaurant.brand?.name || null,
               recipe_manager_type: restaurant.recipe_manager_type || null
             });
+
+            // Store restaurant slug for QR code generation
+            if (restaurant.slug) {
+              setRestaurantSlug(restaurant.slug);
+            }
 
             // Load payment settings - use DB values directly (no merge)
             if (restaurant.payment_settings) {

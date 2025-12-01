@@ -108,7 +108,7 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
       <MainLayout>
         <Container>
           <Header>
-            <Title>Recipe Management</Title>
+            <Title>Recipes</Title>
           </Header>
           <Content>
             <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
@@ -125,7 +125,7 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
       <MainLayout>
         <Container>
           <Header>
-            <Title>Recipe Management</Title>
+            <Title>Recipes</Title>
           </Header>
           <Content>
             <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
@@ -141,7 +141,7 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
     <MainLayout>
       <Container>
         <Header>
-          <Title>Recipe Management</Title>
+          <Title>Recipes</Title>
           {user?.role === 'Brand General' && brands.length > 0 && (
             <HeaderActions>
               <BrandSelect

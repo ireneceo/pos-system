@@ -357,10 +357,7 @@ const BrandManagement: React.FC = () => {
     <MainLayout>
       <Container>
         <Header>
-          <div>
-            <Title>Brand Management</Title>
-            <Subtitle>Manage your brand portfolio and growth strategies</Subtitle>
-          </div>
+          <Title>Brands</Title>
           <ActionSection>
             <Button variant="secondary">Export</Button>
             <Button variant="primary" onClick={handleAddBrand}>+ Add Brand</Button>

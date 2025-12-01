@@ -660,8 +660,6 @@ const RestaurantsPage: React.FC = () => {
     autoRenew: true,
     subscriptionStart: new Date().toISOString().split('T')[0],
     subscriptionEnd: '',
-    brandId: '',
-    recipeManagerType: 'restaurant' as 'restaurant' | 'brand'
   });
   const [availableManagers, setAvailableManagers] = useState<any[]>([]);
   const [availablePlans, setAvailablePlans] = useState<any[]>([]);
@@ -951,9 +949,7 @@ const RestaurantsPage: React.FC = () => {
       paymentModel: 'restaurant',
       autoRenew: true,
       subscriptionStart: new Date().toISOString().split('T')[0],
-      subscriptionEnd: endDate.toISOString().split('T')[0],
-      brandId: '',
-      recipeManagerType: 'restaurant'
+      subscriptionEnd: endDate.toISOString().split('T')[0]
     });
     setManagerSearchQuery('');
     setFilteredManagers([]);
@@ -1049,8 +1045,6 @@ const RestaurantsPage: React.FC = () => {
       autoRenew: restaurant.autoRenew !== undefined ? restaurant.autoRenew : true,
       subscriptionStart: restaurant.subscriptionStart || new Date().toISOString().split('T')[0],
       subscriptionEnd: restaurant.subscriptionEnd || new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0],
-      brandId: (restaurant as any).brand_id?.toString() || '',
-      recipeManagerType: restaurant.recipe_manager_type || 'restaurant'
     };
 
     setEditingRestaurant(editData);
@@ -1121,9 +1115,7 @@ const RestaurantsPage: React.FC = () => {
         paymentModel: newRestaurant.paymentModel,
         autoRenew: newRestaurant.autoRenew,
         subscriptionStart: newRestaurant.subscriptionStart,
-        subscriptionEnd: newRestaurant.subscriptionEnd,
-        brand_id: newRestaurant.brandId ? parseInt(newRestaurant.brandId) : null,
-        recipe_manager_type: newRestaurant.brandId ? newRestaurant.recipeManagerType : 'restaurant'
+        subscriptionEnd: newRestaurant.subscriptionEnd
       };
 
       console.log('📤 Sending restaurant data:', restaurantData);
@@ -1226,9 +1218,7 @@ const RestaurantsPage: React.FC = () => {
         paymentModel: editingRestaurant.paymentModel || 'manager',
         autoRenew: editingRestaurant.autoRenew || true,
         subscriptionStart: editingRestaurant.subscriptionStart,
-        subscriptionEnd: editingRestaurant.subscriptionEnd,
-        brand_id: (editingRestaurant as any).brandId ? parseInt((editingRestaurant as any).brandId) : null,
-        recipe_manager_type: (editingRestaurant as any).brandId ? ((editingRestaurant as any).recipeManagerType || 'brand') : 'restaurant'
+        subscriptionEnd: editingRestaurant.subscriptionEnd
       };
 
       console.log('📤 Sending restaurant update data:', updateData);
@@ -1702,39 +1692,6 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <FormLabel>Brand (Franchise)</FormLabel>
-                    <FormSelect
-                      value={newRestaurant.brandId}
-                      onChange={(e) => setNewRestaurant({...newRestaurant, brandId: e.target.value, recipeManagerType: e.target.value ? 'brand' : 'restaurant'})}
-                    >
-                      <option value="">-- Independent (No Brand) --</option>
-                      {brands.map(brand => (
-                        <option key={brand.id} value={brand.id}>
-                          {brand.name} ({brand.code}) - {brand.currency}
-                        </option>
-                      ))}
-                    </FormSelect>
-                  </FormGroup>
-
-                  {newRestaurant.brandId && (
-                    <FormGroup>
-                      <FormLabel>Recipe Management</FormLabel>
-                      <FormSelect
-                        value={newRestaurant.recipeManagerType}
-                        onChange={(e) => setNewRestaurant({...newRestaurant, recipeManagerType: e.target.value as 'restaurant' | 'brand'})}
-                      >
-                        <option value="brand">Brand Managed (use brand recipes)</option>
-                        <option value="restaurant">Restaurant Managed (independent recipes)</option>
-                      </FormSelect>
-                      <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
-                        {newRestaurant.recipeManagerType === 'brand'
-                          ? 'Recipes will be managed by the brand. Restaurant cannot create own recipes.'
-                          : 'Restaurant can create and manage its own recipes independently.'}
-                      </div>
-                    </FormGroup>
-                  )}
-
-                  <FormGroup>
                     <FormLabel>Plan Type *</FormLabel>
                     <FormSelect
                       value={newRestaurant.planType}
@@ -1968,39 +1925,6 @@ const RestaurantsPage: React.FC = () => {
                       onChange={(e) => setEditingRestaurant({...editingRestaurant, cuisine: e.target.value})}
                     />
                   </FormGroup>
-
-                  <FormGroup>
-                    <FormLabel>Brand (Franchise)</FormLabel>
-                    <FormSelect
-                      value={(editingRestaurant as any).brandId || ''}
-                      onChange={(e) => setEditingRestaurant({...editingRestaurant, brandId: e.target.value, recipeManagerType: e.target.value ? 'brand' : 'restaurant'} as any)}
-                    >
-                      <option value="">-- Independent (No Brand) --</option>
-                      {brands.map(brand => (
-                        <option key={brand.id} value={brand.id}>
-                          {brand.name} ({brand.code}) - {brand.currency}
-                        </option>
-                      ))}
-                    </FormSelect>
-                  </FormGroup>
-
-                  {(editingRestaurant as any).brandId && (
-                    <FormGroup>
-                      <FormLabel>Recipe Management</FormLabel>
-                      <FormSelect
-                        value={(editingRestaurant as any).recipeManagerType || 'restaurant'}
-                        onChange={(e) => setEditingRestaurant({...editingRestaurant, recipeManagerType: e.target.value} as any)}
-                      >
-                        <option value="brand">Brand Managed (use brand recipes)</option>
-                        <option value="restaurant">Restaurant Managed (independent recipes)</option>
-                      </FormSelect>
-                      <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
-                        {(editingRestaurant as any).recipeManagerType === 'brand'
-                          ? 'Recipes will be managed by the brand. Restaurant cannot create own recipes.'
-                          : 'Restaurant can create and manage its own recipes independently.'}
-                      </div>
-                    </FormGroup>
-                  )}
 
                   <FormGroup>
                     <FormLabel>Plan Type *</FormLabel>

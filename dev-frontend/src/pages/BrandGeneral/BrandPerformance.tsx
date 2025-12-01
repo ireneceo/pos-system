@@ -17,11 +17,9 @@ import {
 
 // Filter styles
 const FilterControls = styled.div`
-  background: white;
-  padding: 20px 24px;
+  background: #FAFBFC;
+  padding: 24px 0;
   margin-bottom: 24px;
-  border-radius: 12px;
-  border: 1px solid #E6EBF1;
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
@@ -29,7 +27,7 @@ const FilterControls = styled.div`
 
   @media (max-width: 768px) {
     gap: 12px;
-    padding: 16px;
+    padding: 16px 0;
   }
 `;
 
@@ -113,12 +111,11 @@ const PerformanceGrid = styled.div`
   margin-bottom: 32px;
 `;
 
-const RestaurantCard = styled.div<{ color?: string }>`
+const RestaurantCard = styled.div`
   background: white;
   border-radius: 12px;
   padding: 24px;
   border: 1px solid #E6EBF1;
-  border-left: 4px solid ${props => props.color || '#635BFF'};
   transition: all 0.2s;
 
   &:hover {
@@ -856,8 +853,8 @@ const BrandPerformance: React.FC = () => {
           ) : (
             <>
               <PerformanceGrid>
-                {sortedRestaurants.map((restaurant, index) => (
-                  <RestaurantCard key={restaurant.id} color={CARD_COLORS[index % CARD_COLORS.length]}>
+                {sortedRestaurants.map((restaurant) => (
+                  <RestaurantCard key={restaurant.id}>
                     <RestaurantHeader>
                       <RestaurantName>{restaurant.name}</RestaurantName>
                       <BrandBadge>{restaurant.brandCode}</BrandBadge>

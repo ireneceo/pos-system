@@ -894,7 +894,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 </NavItem>
                 <NavItem to="/pos/brand/general/management" active={isActive('/pos/brand/general/management')} onClick={closeSidebar}>
                   <NavIcon>▬</NavIcon>
-                  Brand Management
+                  Brands
+                </NavItem>
+                <NavItem to="/pos/manager/restaurants" active={isActive('/pos/manager/restaurants')} onClick={closeSidebar}>
+                  <NavIcon>◐</NavIcon>
+                  Restaurants
+                </NavItem>
+                <NavItem to="/pos/recipes" active={isActive('/pos/recipes')} onClick={closeSidebar}>
+                  <NavIcon>◈</NavIcon>
+                  Recipes
                 </NavItem>
                 <NavItem to="/pos/brand/general/performance" active={isActive('/pos/brand/general/performance')} onClick={closeSidebar}>
                   <NavIcon>▲</NavIcon>
@@ -903,14 +911,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <NavItem to="/pos/brand/general/reports" active={isActive('/pos/brand/general/reports')} onClick={closeSidebar}>
                   <NavIcon>◉</NavIcon>
                   Reports
-                </NavItem>
-                <NavItem to="/pos/manager/restaurants" active={isActive('/pos/manager/restaurants')} onClick={closeSidebar}>
-                  <NavIcon>◐</NavIcon>
-                  Restaurants
-                </NavItem>
-                <NavItem to="/pos/recipes" active={isActive('/pos/recipes')} onClick={closeSidebar}>
-                  <NavIcon>◈</NavIcon>
-                  Recipe Management
                 </NavItem>
                 <NavItem to="/pos/manager/invoices" active={isActive('/pos/manager/invoices')} onClick={closeSidebar}>
                   <NavIcon>▦</NavIcon>

@@ -616,6 +616,9 @@ const ManagerRestaurantsPage: React.FC = () => {
   const [editingRestaurant, setEditingRestaurant] = useState<Restaurant | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [brands, setBrands] = useState<Array<{ id: number; name: string; code: string; currency: string }>>([]);
+  // Delete confirmation modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [restaurantToDelete, setRestaurantToDelete] = useState<Restaurant | null>(null);
 
   // Filter Brand Search Functions
   const handleFilterBrandSearch = (query: string) => {
@@ -964,13 +967,13 @@ const ManagerRestaurantsPage: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleRestaurantClick = (restaurantId: string) => {
-    // Navigate based on user role
+  const handleRestaurantClick = (restaurantId: string, restaurantName: string) => {
+    // Navigate based on user role - go to sales report with restaurant filter
     if (user?.role === 'Brand General') {
-      navigate(`/pos/brand/general/reports?restaurant=${restaurantId}`);
+      navigate(`/pos/brand/general/reports?tab=sales&restaurantId=${restaurantId}&restaurantName=${encodeURIComponent(restaurantName)}`);
     } else {
       // Manager roles go to manager reports
-      navigate(`/pos/manager/reports?restaurant=${restaurantId}`);
+      navigate(`/pos/manager/reports?tab=sales&restaurantId=${restaurantId}&restaurantName=${encodeURIComponent(restaurantName)}`);
     }
   };
 
@@ -1080,17 +1083,44 @@ const ManagerRestaurantsPage: React.FC = () => {
     }
   };
 
-  const handleDeleteRestaurant = (e: React.MouseEvent, restaurantId: string) => {
+  const handleDeleteRestaurant = (e: React.MouseEvent, restaurant: Restaurant) => {
     e.stopPropagation();
-    if (window.confirm('Are you sure you want to delete this restaurant?')) {
-      setRestaurants(restaurants.filter(r => r.id !== restaurantId));
+    setRestaurantToDelete(restaurant);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteRestaurant = async () => {
+    if (!restaurantToDelete) return;
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/restaurants/${restaurantToDelete.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        setRestaurants(restaurants.filter(r => r.id !== restaurantToDelete.id));
+        setShowDeleteModal(false);
+        setRestaurantToDelete(null);
+      } else {
+        console.error('Failed to delete restaurant');
+      }
+    } catch (error) {
+      console.error('Error deleting restaurant:', error);
     }
   };
 
   const handleViewReports = (e: React.MouseEvent, restaurant: Restaurant) => {
     e.stopPropagation();
-    // Navigate to manager reports with restaurant filter
-    navigate(`/manager/reports?restaurant=${restaurant.id}`);
+    // Navigate to reports with restaurant filter - same as card click
+    if (user?.role === 'Brand General') {
+      navigate(`/pos/brand/general/reports?tab=sales&restaurantId=${restaurant.id}&restaurantName=${encodeURIComponent(restaurant.name)}`);
+    } else {
+      navigate(`/pos/manager/reports?tab=sales&restaurantId=${restaurant.id}&restaurantName=${encodeURIComponent(restaurant.name)}`);
+    }
   };
 
 
@@ -1192,7 +1222,7 @@ const ManagerRestaurantsPage: React.FC = () => {
 
           <RestaurantGrid>
             {filteredRestaurants.map(restaurant => (
-              <RestaurantCard key={restaurant.id} onClick={() => handleRestaurantClick(restaurant.id)}>
+              <RestaurantCard key={restaurant.id} onClick={() => handleRestaurantClick(restaurant.id, restaurant.name)}>
                 <RestaurantHeader>
                   <RestaurantInfo>
                     <RestaurantName>{restaurant.name}</RestaurantName>
@@ -1202,7 +1232,6 @@ const ManagerRestaurantsPage: React.FC = () => {
                       </RestaurantMeta>
                     )}
                     <RestaurantMeta>{restaurant.location} • {restaurant.cuisine}</RestaurantMeta>
-                    <RestaurantMeta>{restaurant.address}</RestaurantMeta>
                   </RestaurantInfo>
                   <div>
                     <StatusBadge status={restaurant.status}>
@@ -1239,7 +1268,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                 <ActionButtons>
                   <ActionButton onClick={(e) => handleEditRestaurant(e, restaurant)}>Edit</ActionButton>
                   <ActionButton onClick={(e) => handleViewReports(e, restaurant)}>View Reports</ActionButton>
-                  <ActionButton onClick={(e) => handleDeleteRestaurant(e, restaurant.id)} style={{ color: '#DC2626', borderColor: '#FEE2E2' }}>Delete</ActionButton>
+                  <ActionButton onClick={(e) => handleDeleteRestaurant(e, restaurant)} style={{ color: '#DC2626', borderColor: '#FEE2E2' }}>Delete</ActionButton>
                 </ActionButtons>
               </RestaurantCard>
             ))}
@@ -1708,6 +1737,51 @@ const ManagerRestaurantsPage: React.FC = () => {
             <ModalActions>
               <ThemedButton variant="cancel" onClick={() => setShowEditModal(false)}>Cancel</ThemedButton>
               <ThemedButton variant="primary" onClick={handleUpdateRestaurant}>Update Restaurant</ThemedButton>
+            </ModalActions>
+          </Modal>
+        </ModalOverlay>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && restaurantToDelete && (
+        <ModalOverlay show={showDeleteModal} onClick={() => setShowDeleteModal(false)}>
+          <Modal onClick={(e) => e.stopPropagation()} style={{ maxWidth: '450px' }}>
+            <ModalHeader>
+              <ModalTitle>Delete Restaurant</ModalTitle>
+              <CloseButton onClick={() => setShowDeleteModal(false)}>×</CloseButton>
+            </ModalHeader>
+            <ModalBody>
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '50%',
+                  background: '#FEE2E2',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 20px'
+                }}>
+                  <span style={{ fontSize: '32px', color: '#DC2626' }}>!</span>
+                </div>
+                <h3 style={{ margin: '0 0 12px', fontSize: '18px', fontWeight: '600', color: '#0A2540' }}>
+                  Are you sure you want to delete this restaurant?
+                </h3>
+                <p style={{ margin: 0, fontSize: '14px', color: '#6B7280', lineHeight: '1.5' }}>
+                  <strong style={{ color: '#DC2626' }}>{restaurantToDelete.name}</strong> will be permanently deleted.
+                  <br />This action cannot be undone.
+                </p>
+              </div>
+            </ModalBody>
+            <ModalActions>
+              <ThemedButton variant="cancel" onClick={() => setShowDeleteModal(false)}>Cancel</ThemedButton>
+              <ThemedButton
+                variant="primary"
+                onClick={confirmDeleteRestaurant}
+                style={{ background: '#DC2626' }}
+              >
+                Delete Restaurant
+              </ThemedButton>
             </ModalActions>
           </Modal>
         </ModalOverlay>
