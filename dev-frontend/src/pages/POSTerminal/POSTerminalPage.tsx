@@ -137,13 +137,14 @@ const SearchInput = styled.input`
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.15s;
-  
+  box-sizing: border-box;
+
   &:focus {
     outline: none;
     border-color: #635BFF;
     box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
   }
-  
+
   &::placeholder {
     color: #8898AA;
   }

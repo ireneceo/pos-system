@@ -9,13 +9,14 @@ const Input = styled.input`
   border: 1px solid #E5E7EB;
   border-radius: 8px;
   transition: all 0.15s;
-  
+  box-sizing: border-box;
+
   &:focus {
     outline: none;
     border-color: #625CF6;
     box-shadow: 0 0 0 3px rgba(98, 92, 246, 0.1);
   }
-  
+
   &::placeholder {
     color: #9CA3AF;
   }
@@ -30,13 +31,14 @@ const TextArea = styled.textarea`
   transition: all 0.15s;
   resize: vertical;
   min-height: 100px;
-  
+  box-sizing: border-box;
+
   &:focus {
     outline: none;
     border-color: #625CF6;
     box-shadow: 0 0 0 3px rgba(98, 92, 246, 0.1);
   }
-  
+
   &::placeholder {
     color: #9CA3AF;
   }

@@ -11,13 +11,14 @@ const Input = styled.input`
   transition: all 0.15s;
   text-align: center;
   font-weight: 500;
-  
+  box-sizing: border-box;
+
   &:focus {
     outline: none;
     border-color: #635BFF;
     box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
   }
-  
+
   &::placeholder {
     color: #9CA3AF;
   }

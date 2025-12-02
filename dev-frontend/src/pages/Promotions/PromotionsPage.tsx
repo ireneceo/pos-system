@@ -291,7 +291,8 @@ const Input = styled.input`
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
-  
+  box-sizing: border-box;
+
   &:focus {
     outline: none;
     border-color: #635BFF;
@@ -307,7 +308,8 @@ const Select = styled.select`
   font-size: 14px;
   background: white;
   transition: all 0.2s;
-  
+  box-sizing: border-box;
+
   &:focus {
     outline: none;
     border-color: #635BFF;
@@ -324,7 +326,8 @@ const TextArea = styled.textarea`
   transition: all 0.2s;
   resize: vertical;
   min-height: 80px;
-  
+  box-sizing: border-box;
+
   &:focus {
     outline: none;
     border-color: #635BFF;

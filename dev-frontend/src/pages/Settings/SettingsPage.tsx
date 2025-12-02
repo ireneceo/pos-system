@@ -108,7 +108,6 @@ const SettingsGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px;
-  max-width: 900px;
 
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
@@ -120,6 +119,7 @@ const SettingsCard = styled.div`
   padding: 24px;
   border-radius: 8px;
   border: 1px solid #E6EBF1;
+  box-sizing: border-box;
 `;
 
 const CardTitle = styled.h3`
@@ -156,6 +156,7 @@ const Input = styled.input`
   color: #0A2540;
   background: white;
   transition: all 0.15s;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -184,6 +185,7 @@ const Select = styled.select`
   background: white;
   transition: all 0.15s;
   cursor: pointer;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;

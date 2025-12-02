@@ -426,6 +426,7 @@ const FormTextArea = styled.textarea`
   min-height: 100px;
   transition: all 0.15s;
   font-family: inherit;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
