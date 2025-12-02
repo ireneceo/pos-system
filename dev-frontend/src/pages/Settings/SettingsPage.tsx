@@ -108,6 +108,7 @@ const SettingsGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px;
+  max-width: 900px;
 
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
@@ -165,7 +166,7 @@ const Input = styled.input`
   &:hover {
     border-color: #C7D2FE;
   }
-  
+
   &:disabled {
     background: #F6F9FC;
     color: #8898AA;
@@ -371,7 +372,7 @@ const ActionButton = styled.button`
 `;
 
 // 타입 정의
-type TabType = 'store' | 'operations' | 'payment' | 'system' | 'backup' | 'company' | 'brands' | 'billing' | 'managers';
+type TabType = 'store' | 'operations' | 'payment' | 'company' | 'brands' | 'billing' | 'managers';
 
 interface Table {
   id: string;
@@ -1230,9 +1231,6 @@ const SettingsPage: React.FC = () => {
                 <Tab active={activeTab === 'billing'} onClick={() => handleTabChange('billing')}>
                   Billing & Subscriptions
                 </Tab>
-                <Tab active={activeTab === 'system'} onClick={() => handleTabChange('system')}>
-                  System
-                </Tab>
               </>
             ) : (
               <>
@@ -1247,12 +1245,6 @@ const SettingsPage: React.FC = () => {
                 </Tab>
                 <Tab active={activeTab === 'managers'} onClick={() => handleTabChange('managers')}>
                   Managers
-                </Tab>
-                <Tab active={activeTab === 'system'} onClick={() => handleTabChange('system')}>
-                  System
-                </Tab>
-                <Tab active={activeTab === 'backup'} onClick={() => handleTabChange('backup')}>
-                  Backup & Restore
                 </Tab>
               </>
             )}
@@ -3691,185 +3683,6 @@ const SettingsPage: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'system' && (
-            <SettingsCard>
-              <CardTitle>System Configuration</CardTitle>
-              <p style={{ color: '#6B7C93', marginBottom: '20px' }}>
-                System settings will be implemented in the next phase.
-              </p>
-
-              <SaveButtonContainer>
-                <SaveButton onClick={handleSave} disabled={!hasChanges}>
-                  {hasChanges ? 'Save Changes' : 'Saved'}
-                </SaveButton>
-                {saveStatus && (
-                  <StatusMessage type={saveStatus.type}>
-                    {saveStatus.message}
-                  </StatusMessage>
-                )}
-              </SaveButtonContainer>
-            </SettingsCard>
-          )}
-
-          {activeTab === 'backup' && (
-            <>
-              <SettingsGrid>
-                <SettingsCard>
-                  <CardTitle>Automatic Backup</CardTitle>
-                  <Toggle>
-                    <ToggleLabel>Enable Auto Backup</ToggleLabel>
-                    <ToggleSwitch>
-                      <ToggleInput 
-                        type="checkbox" 
-                        defaultChecked
-                      />
-                      <ToggleSlider />
-                    </ToggleSwitch>
-                  </Toggle>
-                  <FormGroup>
-                    <Label>Backup Schedule</Label>
-                    <Select defaultValue="daily">
-                      <option value="daily">Daily at 2:00 AM</option>
-                      <option value="weekly">Weekly on Sunday</option>
-                      <option value="monthly">Monthly on 1st</option>
-                    </Select>
-                  </FormGroup>
-                  <FormGroup>
-                    <Label>Retention Period</Label>
-                    <Select defaultValue="30">
-                      <option value="7">7 days</option>
-                      <option value="30">30 days</option>
-                      <option value="90">90 days</option>
-                      <option value="365">1 year</option>
-                    </Select>
-                    <HelpText>Older backups will be automatically deleted</HelpText>
-                  </FormGroup>
-                  <FormGroup>
-                    <Label>Last Backup</Label>
-                    <p style={{ color: '#0A2540', fontSize: '14px' }}>
-                      August 5, 2025 at 2:00 AM
-                    </p>
-                    <HelpText>Backup completed successfully</HelpText>
-                  </FormGroup>
-                </SettingsCard>
-
-                <SettingsCard>
-                  <CardTitle>Manual Backup</CardTitle>
-                  <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
-                    Create a backup of your entire system data including orders, customers, and settings.
-                  </p>
-                  <button
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      background: '#635BFF',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      fontWeight: 500,
-                      cursor: 'pointer',
-                      marginBottom: '20px'
-                    }}
-                    onClick={() => alert('Backup started. You will receive an email when complete.')}
-                  >
-                    Create Backup Now
-                  </button>
-                  
-                  <Divider />
-                  
-                  <CardTitle style={{ marginTop: '20px' }}>Restore from Backup</CardTitle>
-                  <p style={{ color: '#DC2626', marginBottom: '16px', fontSize: '13px' }}>
-                    ⚠️ Warning: Restoring will replace all current data
-                  </p>
-                  <FormGroup>
-                    <Label>Select Backup</Label>
-                    <Select>
-                      <option>August 5, 2025 - 2:00 AM (Auto)</option>
-                      <option>August 4, 2025 - 2:00 AM (Auto)</option>
-                      <option>August 3, 2025 - 3:45 PM (Manual)</option>
-                      <option>August 3, 2025 - 2:00 AM (Auto)</option>
-                    </Select>
-                  </FormGroup>
-                  <button
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      background: 'white',
-                      color: '#DC2626',
-                      border: '1px solid #DC2626',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      fontWeight: 500,
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => {
-                      if (window.confirm('Are you sure you want to restore? This will replace all current data.')) {
-                        alert('Restore process started. The system will be unavailable for a few minutes.');
-                      }
-                    }}
-                  >
-                    Restore Selected Backup
-                  </button>
-                </SettingsCard>
-              </SettingsGrid>
-
-              <SettingsCard style={{ marginTop: '24px' }}>
-                <CardTitle>Export Data</CardTitle>
-                <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
-                  Export specific data for external use or reporting.
-                </p>
-                <SettingsGrid>
-                  <FormGroup>
-                    <Label>Data Type</Label>
-                    <Select>
-                      <option>All Data</option>
-                      <option>Orders Only</option>
-                      <option>Customers Only</option>
-                      <option>Menu Items</option>
-                      <option>Sales Reports</option>
-                    </Select>
-                  </FormGroup>
-                  <FormGroup>
-                    <Label>Date Range</Label>
-                    <Select>
-                      <option>Last 7 days</option>
-                      <option>Last 30 days</option>
-                      <option>Last 3 months</option>
-                      <option>Last year</option>
-                      <option>All time</option>
-                    </Select>
-                  </FormGroup>
-                </SettingsGrid>
-                <button
-                  style={{
-                    padding: '8px 16px',
-                    background: '#635BFF',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    marginTop: '16px'
-                  }}
-                >
-                  Export as CSV
-                </button>
-              </SettingsCard>
-
-              <SaveButtonContainer>
-                <SaveButton onClick={handleSave} disabled={!hasChanges}>
-                  {hasChanges ? 'Save Changes' : 'Saved'}
-                </SaveButton>
-                {saveStatus && (
-                  <StatusMessage type={saveStatus.type}>
-                    {saveStatus.message}
-                  </StatusMessage>
-                )}
-              </SaveButtonContainer>
-            </>
-          )}
         </Content>
       </SettingsContainer>
     </MainLayout>
