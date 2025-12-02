@@ -268,15 +268,14 @@ const OrderTypePage: React.FC = () => {
           </OptionCard>
         )}
 
-        {/* Pre-order Pickup과 Delivery는 테이블 QR 접속 시 숨김 (매장에 있으니까) */}
-        {!tableFromQR && orderTypes.pickup && (
+        {orderTypes.pickup && (
           <OptionCard onClick={() => handleOrderTypeSelection('pickup')}>
             <OptionIcon>📦</OptionIcon>
             <OptionTitle>Pre-order Pickup</OptionTitle>
           </OptionCard>
         )}
 
-        {!tableFromQR && orderTypes.delivery && (
+        {orderTypes.delivery && (
           <OptionCard onClick={() => handleOrderTypeSelection('delivery')}>
             <OptionIcon>🚚</OptionIcon>
             <OptionTitle>Delivery</OptionTitle>
