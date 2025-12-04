@@ -277,16 +277,26 @@ const IngredientRow = styled.div`
   }
 `;
 
+const RemoveButtonWrapper = styled.div`
+  display: flex;
+  align-items: flex-end;
+  padding-top: 22px;
+`;
+
 const RemoveButton = styled.button`
   background: #FEE2E2;
   color: #DC2626;
-  border: none;
-  border-radius: 6px;
-  padding: 10px;
+  border: 1px solid #FCA5A5;
+  border-radius: 8px;
+  padding: 10px 12px;
   cursor: pointer;
   transition: all 0.2s;
   font-size: 16px;
   line-height: 1;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
   &:hover {
     background: #FCA5A5;
@@ -449,7 +459,6 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange, categor
   }>>([]);
 
   const isRestaurantAdmin = user?.role === 'Restaurant Admin';
-  // 브랜드가 관리하는 경우 레스토랑은 읽기만 가능
   const isReadOnly = isRestaurantAdmin && recipeManagerType === 'brand';
 
   // Fetch recipes, ingredients and categories
@@ -601,7 +610,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange, categor
   };
 
   const handleDelete = async (recipeId: number) => {
-    if (!window.confirm('정말 이 레시피를 삭제하시겠습니까?')) {
+    if (!window.confirm('Are you sure you want to delete this recipe?')) {
       return;
     }
 
@@ -707,7 +716,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange, categor
     e.preventDefault();
 
     if (!formData.name) {
-      alert('레시피 이름은 필수입니다');
+      alert('Recipe name is required');
       return;
     }
 
@@ -738,7 +747,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange, categor
         },
         body: JSON.stringify({
           ...formData,
-          category: tags.length > 0 ? tags.join(', ') : null,
+          category: tags.length > 0 ? tags.join(', ') : '',
           recipe_category_id: formData.recipe_category_id ? parseInt(formData.recipe_category_id) : null,
           suggested_price: parseFloat(formData.suggested_price) || 0,
           ingredients: recipeIngredients.map(ri => ({
@@ -756,7 +765,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange, categor
         handleCloseModal();
         fetchRecipes();
       } else {
-        alert(data.error || '레시피 저장 실패');
+        alert(data.error || 'Failed to save recipe');
       }
     } catch (error) {
       console.error('Failed to save recipe:', error);
@@ -833,7 +842,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange, categor
       {/* Read Only Notice for brand-managed restaurants */}
       {isReadOnly && (
         <ReadOnlyNotice>
-          <span>레시피 관리가 브랜드에서 이루어지고 있습니다. 레시피 편집은 브랜드 관리자에게 문의하세요.</span>
+          <span>Recipe management is handled by the brand. Please contact your brand administrator for recipe edits.</span>
         </ReadOnlyNotice>
       )}
 
@@ -1137,9 +1146,11 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange, categor
                         placeholder="Optional"
                       />
                     </UIFormGroup>
-                    <RemoveButton type="button" onClick={() => removeIngredient(index)}>
-                      ×
-                    </RemoveButton>
+                    <RemoveButtonWrapper>
+                      <RemoveButton type="button" onClick={() => removeIngredient(index)}>
+                        ×
+                      </RemoveButton>
+                    </RemoveButtonWrapper>
                   </IngredientRow>
                 ))}
               </IngredientsList>

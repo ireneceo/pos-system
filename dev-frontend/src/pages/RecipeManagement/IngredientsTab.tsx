@@ -244,7 +244,6 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
   });
 
   const isRestaurantAdmin = user?.role === 'Restaurant Admin';
-  // 브랜드가 관리하는 경우 레스토랑은 읽기만 가능
   const isReadOnly = isRestaurantAdmin && recipeManagerType === 'brand';
 
   useEffect(() => {
@@ -356,7 +355,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
   };
 
   const handleDelete = async (ingredientId: number) => {
-    if (!window.confirm('정말 이 재료를 삭제하시겠습니까?')) {
+    if (!window.confirm('Are you sure you want to delete this ingredient?')) {
       return;
     }
 
@@ -428,7 +427,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
     e.preventDefault();
 
     if (!formData.name || !formData.ingredient_category_id || !formData.unit || !formData.unit_cost) {
-      alert('모든 필수 항목을 입력해주세요');
+      alert('Please fill in all required fields');
       return;
     }
 
@@ -501,7 +500,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
       {/* Read Only Notice for brand-managed restaurants */}
       {isReadOnly && (
         <ReadOnlyNotice>
-          <span>레시피 관리가 브랜드에서 이루어지고 있습니다. 재료 편집은 브랜드 관리자에게 문의하세요.</span>
+          <span>Recipe management is handled by the brand. Please contact your brand administrator for ingredient edits.</span>
         </ReadOnlyNotice>
       )}
 

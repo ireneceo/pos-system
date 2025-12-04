@@ -490,7 +490,7 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, onCo
     <Container>
       {isReadOnly && (
         <ReadOnlyNotice>
-          <span>레시피 관리가 브랜드에서 이루어지고 있습니다. 카테고리 편집은 브랜드 관리자에게 문의하세요.</span>
+          <span>Recipe management is handled by the brand. Please contact your brand administrator for category edits.</span>
         </ReadOnlyNotice>
       )}
 

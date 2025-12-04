@@ -35,7 +35,7 @@ router.get('/brands/:brand_id/recipes', authenticateToken, isBrandManager, async
     res.json({ success: true, data: recipes });
   } catch (error) {
     console.error('Get brand recipes error:', error);
-    res.status(500).json({ error: '레시피 목록 조회 실패' });
+    res.status(500).json({ error: 'Failed to fetch recipes' });
   }
 });
 
@@ -107,7 +107,7 @@ router.post('/brands/:brand_id/recipes', authenticateToken, isBrandManager, asyn
     res.json({ success: true, data: createdRecipe });
   } catch (error) {
     console.error('Create brand recipe error:', error);
-    res.status(500).json({ error: '레시피 생성 실패' });
+    res.status(500).json({ error: 'Failed to create recipe' });
   }
 });
 
@@ -122,7 +122,7 @@ router.put('/brands/:brand_id/recipes/:recipe_id', authenticateToken, canEditRec
 
     const recipe = await Recipe.findByPk(recipe_id);
     if (!recipe) {
-      return res.status(404).json({ error: '레시피를 찾을 수 없습니다' });
+      return res.status(404).json({ error: 'Recipe not found' });
     }
 
     // 기본 정보 업데이트
@@ -182,7 +182,7 @@ router.put('/brands/:brand_id/recipes/:recipe_id', authenticateToken, canEditRec
     res.json({ success: true, data: updatedRecipe });
   } catch (error) {
     console.error('Update brand recipe error:', error);
-    res.status(500).json({ error: '레시피 수정 실패' });
+    res.status(500).json({ error: 'Failed to update recipe' });
   }
 });
 
@@ -196,15 +196,15 @@ router.delete('/brands/:brand_id/recipes/:recipe_id', authenticateToken, canEdit
 
     const recipe = await Recipe.findByPk(recipe_id);
     if (!recipe) {
-      return res.status(404).json({ error: '레시피를 찾을 수 없습니다' });
+      return res.status(404).json({ error: 'Recipe not found' });
     }
 
     await recipe.destroy();
 
-    res.json({ success: true, message: '레시피가 삭제되었습니다' });
+    res.json({ success: true, message: 'Recipe deleted successfully' });
   } catch (error) {
     console.error('Delete brand recipe error:', error);
-    res.status(500).json({ error: '레시피 삭제 실패' });
+    res.status(500).json({ error: 'Failed to delete recipe' });
   }
 });
 
@@ -223,7 +223,7 @@ router.get('/restaurants/:restaurantId/recipes', authenticateToken, checkRestaur
 
     const restaurant = await Restaurant.findByPk(restaurantId);
     if (!restaurant) {
-      return res.status(404).json({ error: '레스토랑을 찾을 수 없습니다' });
+      return res.status(404).json({ error: 'Restaurant not found' });
     }
 
     const result = {
@@ -278,7 +278,7 @@ router.get('/restaurants/:restaurantId/recipes', authenticateToken, checkRestaur
     res.json({ success: true, data: result });
   } catch (error) {
     console.error('Get restaurant recipes error:', error);
-    res.status(500).json({ error: '레시피 목록 조회 실패' });
+    res.status(500).json({ error: 'Failed to fetch recipes' });
   }
 });
 
@@ -293,7 +293,7 @@ router.post('/restaurants/:restaurantId/recipes', authenticateToken, checkRestau
 
     // 브랜드 가맹점이고 recipe_manager_type이 'brand'인 경우 레시피 생성 불가
     if (restaurant.brand_id && restaurant.recipe_manager_type === 'brand') {
-      return res.status(403).json({ error: '브랜드 관리 모드에서는 레시피를 생성할 수 없습니다. 브랜드 관리자에게 문의하세요.' });
+      return res.status(403).json({ error: 'Cannot create recipes in brand management mode. Please contact your brand administrator.' });
     }
 
     const { name, description, category, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
@@ -350,7 +350,7 @@ router.post('/restaurants/:restaurantId/recipes', authenticateToken, checkRestau
     res.json({ success: true, data: createdRecipe });
   } catch (error) {
     console.error('Create restaurant recipe error:', error);
-    res.status(500).json({ error: '레시피 생성 실패' });
+    res.status(500).json({ error: 'Failed to create recipe' });
   }
 });
 
@@ -365,17 +365,17 @@ router.put('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken, ch
 
     // 브랜드 가맹점은 레시피 수정 불가 (recipe_manager_type 체크)
     if (restaurant.brand_id && restaurant.recipe_manager_type === 'brand') {
-      return res.status(403).json({ error: '브랜드 관리 레시피는 수정할 수 없습니다' });
+      return res.status(403).json({ error: 'Cannot edit brand-managed recipes' });
     }
 
     const recipe = await Recipe.findByPk(recipeId);
     if (!recipe) {
-      return res.status(404).json({ error: '레시피를 찾을 수 없습니다' });
+      return res.status(404).json({ error: 'Recipe not found' });
     }
 
     // 자신의 레시피인지 확인
     if (recipe.restaurant_id !== parseInt(restaurantId)) {
-      return res.status(403).json({ error: '이 레시피를 수정할 권한이 없습니다' });
+      return res.status(403).json({ error: 'You do not have permission to edit this recipe' });
     }
 
     const { name, description, category, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
@@ -432,7 +432,7 @@ router.put('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken, ch
     res.json({ success: true, data: updatedRecipe });
   } catch (error) {
     console.error('Update restaurant recipe error:', error);
-    res.status(500).json({ error: '레시피 수정 실패' });
+    res.status(500).json({ error: 'Failed to update recipe' });
   }
 });
 
@@ -447,25 +447,25 @@ router.delete('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken,
 
     // 브랜드 가맹점은 레시피 삭제 불가 (recipe_manager_type 체크)
     if (restaurant.brand_id && restaurant.recipe_manager_type === 'brand') {
-      return res.status(403).json({ error: '브랜드 관리 레시피는 삭제할 수 없습니다' });
+      return res.status(403).json({ error: 'Cannot delete brand-managed recipes' });
     }
 
     const recipe = await Recipe.findByPk(recipeId);
     if (!recipe) {
-      return res.status(404).json({ error: '레시피를 찾을 수 없습니다' });
+      return res.status(404).json({ error: 'Recipe not found' });
     }
 
     // 자신의 레시피인지 확인
     if (recipe.restaurant_id !== parseInt(restaurantId)) {
-      return res.status(403).json({ error: '이 레시피를 삭제할 권한이 없습니다' });
+      return res.status(403).json({ error: 'You do not have permission to delete this recipe' });
     }
 
     await recipe.destroy();
 
-    res.json({ success: true, message: '레시피가 삭제되었습니다' });
+    res.json({ success: true, message: 'Recipe deleted successfully' });
   } catch (error) {
     console.error('Delete restaurant recipe error:', error);
-    res.status(500).json({ error: '레시피 삭제 실패' });
+    res.status(500).json({ error: 'Failed to delete recipe' });
   }
 });
 
@@ -486,7 +486,7 @@ router.post('/restaurants/:restaurantId/products/create-from-recipe', authentica
       }]
     });
     if (!recipe) {
-      return res.status(404).json({ error: '레시피를 찾을 수 없습니다' });
+      return res.status(404).json({ error: 'Recipe not found' });
     }
 
     // 레시피 카테고리가 있으면 메뉴 카테고리로 매핑
@@ -540,12 +540,12 @@ router.post('/restaurants/:restaurantId/products/create-from-recipe', authentica
     res.json({
       success: true,
       data: product,
-      message: '레시피가 메뉴로 등록되었습니다',
+      message: 'Recipe has been added to the menu',
       category_created: recipe.recipeCategory && !categoryName ? false : !!recipe.recipeCategory
     });
   } catch (error) {
     console.error('Create product from recipe error:', error);
-    res.status(500).json({ error: '메뉴 등록 실패' });
+    res.status(500).json({ error: 'Failed to create product' });
   }
 });
 
