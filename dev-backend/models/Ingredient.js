@@ -18,6 +18,12 @@ Ingredient.init({
     type: DataTypes.INTEGER,
     allowNull: true
   },
+  // 재료 카테고리
+  ingredient_category_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: '재료 카테고리 FK'
+  },
   // 재료 정보
   code: {
     type: DataTypes.STRING(50),

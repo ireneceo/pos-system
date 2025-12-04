@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Ingredient } = require('../models');
+const { Ingredient, IngredientCategory } = require('../models');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
 
@@ -18,7 +18,12 @@ router.get('/brands/:brand_id/ingredients', authenticateToken, isBrandManager, a
 
     const ingredients = await Ingredient.findAll({
       where: { brand_id },
-      order: [['name', 'ASC']]
+      order: [['name', 'ASC']],
+      include: [{
+        model: IngredientCategory,
+        as: 'ingredientCategory',
+        attributes: ['id', 'name', 'emoji']
+      }]
     });
 
     res.json({ success: true, data: ingredients });
@@ -35,11 +40,12 @@ router.get('/brands/:brand_id/ingredients', authenticateToken, isBrandManager, a
 router.post('/brands/:brand_id/ingredients', authenticateToken, isBrandManager, async (req, res) => {
   try {
     const { brand_id } = req.params;
-    const { code, name, category, unit, unit_cost, supplier_name, min_stock } = req.body;
+    const { code, name, category, ingredient_category_id, unit, unit_cost, supplier_name, min_stock } = req.body;
 
     const ingredient = await Ingredient.create({
       brand_id,
       restaurant_id: null,
+      ingredient_category_id: ingredient_category_id || null,
       code,
       name,
       category,
@@ -64,7 +70,7 @@ router.post('/brands/:brand_id/ingredients', authenticateToken, isBrandManager, 
 router.put('/brands/:brand_id/ingredients/:ingredient_id', authenticateToken, isBrandManager, async (req, res) => {
   try {
     const { ingredient_id } = req.params;
-    const { code, name, category, unit, unit_cost, supplier_name, min_stock } = req.body;
+    const { code, name, category, ingredient_category_id, unit, unit_cost, supplier_name, min_stock } = req.body;
 
     const ingredient = await Ingredient.findByPk(ingredient_id);
     if (!ingredient) {
@@ -75,6 +81,7 @@ router.put('/brands/:brand_id/ingredients/:ingredient_id', authenticateToken, is
       code,
       name,
       category,
+      ingredient_category_id: ingredient_category_id !== undefined ? ingredient_category_id : ingredient.ingredient_category_id,
       unit,
       unit_cost,
       supplier_name,
@@ -124,7 +131,12 @@ router.get('/restaurants/:restaurantId/ingredients', authenticateToken, checkRes
 
     const ingredients = await Ingredient.findAll({
       where: { restaurant_id: restaurantId },
-      order: [['name', 'ASC']]
+      order: [['name', 'ASC']],
+      include: [{
+        model: IngredientCategory,
+        as: 'ingredientCategory',
+        attributes: ['id', 'name', 'emoji']
+      }]
     });
 
     res.json({ success: true, data: ingredients });
@@ -141,11 +153,12 @@ router.get('/restaurants/:restaurantId/ingredients', authenticateToken, checkRes
 router.post('/restaurants/:restaurantId/ingredients', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
-    const { code, name, category, unit, unit_cost, supplier_name, min_stock } = req.body;
+    const { code, name, category, ingredient_category_id, unit, unit_cost, supplier_name, min_stock } = req.body;
 
     const ingredient = await Ingredient.create({
       brand_id: null,
       restaurant_id: restaurantId,
+      ingredient_category_id: ingredient_category_id || null,
       code,
       name,
       category,
@@ -170,7 +183,7 @@ router.post('/restaurants/:restaurantId/ingredients', authenticateToken, checkRe
 router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { ingredientId } = req.params;
-    const { code, name, category, unit, unit_cost, supplier_name, min_stock } = req.body;
+    const { code, name, category, ingredient_category_id, unit, unit_cost, supplier_name, min_stock } = req.body;
 
     const ingredient = await Ingredient.findByPk(ingredientId);
     if (!ingredient) {
@@ -181,6 +194,7 @@ router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateT
       code,
       name,
       category,
+      ingredient_category_id: ingredient_category_id !== undefined ? ingredient_category_id : ingredient.ingredient_category_id,
       unit,
       unit_cost,
       supplier_name,

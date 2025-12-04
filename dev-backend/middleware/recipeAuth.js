@@ -1,4 +1,4 @@
-const { Recipe, Restaurant } = require('../models');
+const { Recipe, Restaurant, Brand } = require('../models');
 
 /**
  * 레시피 수정 권한 체크
@@ -104,16 +104,33 @@ async function canViewRecipe(req, res, next) {
 
 /**
  * Brand 관리자 권한 체크
+ * URL의 brand_id 파라미터를 사용하여 브랜드 소유권을 확인
  */
-function isBrandManager(req, res, next) {
+async function isBrandManager(req, res, next) {
   const user = req.user;
 
   if (user.role === 'System Admin') {
     return next();
   }
 
-  if ((user.role === 'Brand General' || user.role === 'Brand Manager') && user.brand_id) {
-    return next();
+  if (user.role === 'Brand General' || user.role === 'Brand Manager') {
+    const { brand_id } = req.params;
+
+    if (!brand_id) {
+      return res.status(400).json({ error: 'brand_id가 필요합니다' });
+    }
+
+    // 브랜드의 owner_id가 현재 사용자인지 확인
+    const brand = await Brand.findByPk(brand_id);
+    if (!brand) {
+      return res.status(404).json({ error: '브랜드를 찾을 수 없습니다' });
+    }
+
+    if (brand.owner_id === user.id) {
+      return next();
+    }
+
+    return res.status(403).json({ error: '해당 브랜드에 대한 권한이 없습니다' });
   }
 
   return res.status(403).json({ error: '브랜드 관리자만 접근할 수 있습니다' });

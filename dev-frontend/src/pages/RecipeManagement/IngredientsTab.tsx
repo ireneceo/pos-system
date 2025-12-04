@@ -3,17 +3,30 @@ import styled from 'styled-components';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useAuth } from '../../contexts/AuthContext';
-import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormRow as UIFormRow } from '../../components/UI/Modal';
+import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormRow as UIFormRow } from '../../components/UI/Modal';
 
 interface IngredientsTabProps {
   brandId: number | null;
   onCountChange: (count: number) => void;
 }
 
+interface IngredientCategory {
+  id: number;
+  brand_id: number | null;
+  restaurant_id: number | null;
+  name: string;
+  description: string | null;
+  emoji: string | null;
+  display_order: number;
+  is_active: boolean;
+}
+
 interface Ingredient {
   id: number;
   brand_id: number | null;
   restaurant_id: number | null;
+  ingredient_category_id: number | null;
+  ingredientCategory?: IngredientCategory;
   code: string | null;
   name: string;
   category: string;
@@ -182,6 +195,7 @@ const HeaderSection = styled.div`
 const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange }) => {
   const { user } = useAuth();
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [ingredientCategories, setIngredientCategories] = useState<IngredientCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -191,7 +205,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange 
   const [formData, setFormData] = useState({
     code: '',
     name: '',
-    category: '',
+    ingredient_category_id: '',
     unit: '',
     unit_cost: '',
     supplier_name: '',
@@ -201,12 +215,49 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange 
   useEffect(() => {
     if (brandId || user?.restaurant_id) {
       fetchIngredients();
+      fetchIngredientCategories();
     }
     // Restaurant Admin은 항상 재료 수정 불가
     if (user?.role === 'Restaurant Admin') {
       setIsRestaurantAdmin(true);
     }
   }, [brandId, user]);
+
+  const fetchIngredientCategories = async () => {
+    try {
+      let url = '';
+      if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
+        if (brandId) {
+          url = `/api/brands/${brandId}/ingredient-categories`;
+        }
+      } else if (user?.role === 'Restaurant Admin') {
+        if (user.restaurant_id) {
+          url = `/api/restaurants/${user.restaurant_id}/ingredient-categories`;
+        }
+      }
+
+      if (!url) return;
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.success) {
+        // Brand categories are in data.data array, restaurant may have own_categories and brand_categories
+        if (Array.isArray(data.data)) {
+          setIngredientCategories(data.data.filter((c: IngredientCategory) => c.is_active));
+        } else {
+          // Combine own and brand categories for restaurant
+          const allCategories = [
+            ...(data.data.own_categories || []),
+            ...(data.data.brand_categories || [])
+          ].filter((c: IngredientCategory) => c.is_active);
+          setIngredientCategories(allCategories);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch ingredient categories:', error);
+    }
+  };
 
   const fetchIngredients = async () => {
     try {
@@ -273,7 +324,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange 
       setFormData({
         code: ingredient.code || '',
         name: ingredient.name,
-        category: ingredient.category,
+        ingredient_category_id: ingredient.ingredient_category_id?.toString() || '',
         unit: ingredient.unit,
         unit_cost: ingredient.unit_cost.toString(),
         supplier_name: ingredient.supplier_name || '',
@@ -284,7 +335,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange 
       setFormData({
         code: '',
         name: '',
-        category: '',
+        ingredient_category_id: '',
         unit: '',
         unit_cost: '',
         supplier_name: '',
@@ -300,7 +351,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange 
     setFormData({
       code: '',
       name: '',
-      category: '',
+      ingredient_category_id: '',
       unit: '',
       unit_cost: '',
       supplier_name: '',
@@ -311,7 +362,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.category || !formData.unit || !formData.unit_cost) {
+    if (!formData.name || !formData.ingredient_category_id || !formData.unit || !formData.unit_cost) {
       alert('모든 필수 항목을 입력해주세요');
       return;
     }
@@ -339,6 +390,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
+          ingredient_category_id: formData.ingredient_category_id ? parseInt(formData.ingredient_category_id) : null,
           unit_cost: parseFloat(formData.unit_cost),
           min_stock: parseInt(formData.min_stock) || 0
         })
@@ -361,11 +413,16 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange 
 
   const filteredIngredients = ingredients.filter(ingredient => {
     const matchesSearch = ingredient.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || ingredient.category === selectedCategory;
+    const matchesCategory = selectedCategory === 'all' ||
+      ingredient.ingredient_category_id?.toString() === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
-  const categories = ['all', ...Array.from(new Set(ingredients.map(i => i.category)))];
+  // Get categories for filter dropdown
+  const filterCategories = [
+    { id: 'all', name: 'All Categories' },
+    ...ingredientCategories.map(c => ({ id: c.id.toString(), name: c.name }))
+  ];
 
   // Update count when ingredients change
   useEffect(() => {
@@ -386,9 +443,9 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange 
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
           >
-            {categories.map(cat => (
-              <option key={cat} value={cat}>
-                {cat === 'all' ? 'All Categories' : cat}
+            {filterCategories.map(cat => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
               </option>
             ))}
           </FilterSelect>
@@ -433,7 +490,9 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange 
               <IngredientHeader>
                 <div>
                   <IngredientName>{ingredient.name}</IngredientName>
-                  <IngredientCategory>{ingredient.category}</IngredientCategory>
+                  <IngredientCategory>
+                    {ingredient.ingredientCategory?.emoji} {ingredient.ingredientCategory?.name || 'Uncategorized'}
+                  </IngredientCategory>
                 </div>
               </IngredientHeader>
 
@@ -513,13 +572,18 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange 
           <UIFormRow>
             <UIFormGroup>
               <FormLabel>Category *</FormLabel>
-              <FormInput
-                type="text"
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                placeholder="e.g., Grains"
+              <FormSelect
+                value={formData.ingredient_category_id}
+                onChange={(e) => setFormData({ ...formData, ingredient_category_id: e.target.value })}
                 required
-              />
+              >
+                <option value="">Select category...</option>
+                {ingredientCategories.map(cat => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.emoji} {cat.name}
+                  </option>
+                ))}
+              </FormSelect>
             </UIFormGroup>
             <UIFormGroup>
               <FormLabel>Supplier</FormLabel>
@@ -535,13 +599,21 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange 
           <UIFormRow>
             <UIFormGroup>
               <FormLabel>Unit *</FormLabel>
-              <FormInput
-                type="text"
+              <FormSelect
                 value={formData.unit}
                 onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                placeholder="kg, g, L, ml"
                 required
-              />
+              >
+                <option value="">Select unit...</option>
+                <option value="kg">kg</option>
+                <option value="g">g</option>
+                <option value="L">L</option>
+                <option value="ml">ml</option>
+                <option value="piece">piece</option>
+                <option value="pack">pack</option>
+                <option value="can">can</option>
+                <option value="bottle">bottle</option>
+              </FormSelect>
             </UIFormGroup>
             <UIFormGroup>
               <FormLabel>Unit Cost (RM) *</FormLabel>

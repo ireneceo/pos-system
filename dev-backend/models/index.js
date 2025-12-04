@@ -20,6 +20,7 @@ const Recipe = require('./Recipe');
 const Ingredient = require('./Ingredient');
 const RecipeIngredient = require('./RecipeIngredient');
 const RecipeCategory = require('./RecipeCategory');
+const IngredientCategory = require('./IngredientCategory');
 const SystemSettings = require('./SystemSettings');
 const PlanPrice = require('./PlanPrice');
 const IngredientCost = require('./IngredientCost');
@@ -159,6 +160,16 @@ Restaurant.hasMany(RecipeCategory, { foreignKey: 'restaurant_id', as: 'recipeCat
 Recipe.belongsTo(RecipeCategory, { foreignKey: 'recipe_category_id', as: 'recipeCategory' });
 RecipeCategory.hasMany(Recipe, { foreignKey: 'recipe_category_id', as: 'recipes' });
 
+// IngredientCategory associations
+IngredientCategory.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
+Brand.hasMany(IngredientCategory, { foreignKey: 'brand_id', as: 'ingredientCategories' });
+IngredientCategory.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Restaurant.hasMany(IngredientCategory, { foreignKey: 'restaurant_id', as: 'ingredientCategories' });
+
+// Ingredient - IngredientCategory association
+Ingredient.belongsTo(IngredientCategory, { foreignKey: 'ingredient_category_id', as: 'ingredientCategory' });
+IngredientCategory.hasMany(Ingredient, { foreignKey: 'ingredient_category_id', as: 'ingredients' });
+
 module.exports = {
   User,
   Restaurant,
@@ -185,5 +196,6 @@ module.exports = {
   PlanPrice,
   IngredientCost,
   RecipeCost,
-  RecipeCategory
+  RecipeCategory,
+  IngredientCategory
 };
