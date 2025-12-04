@@ -270,7 +270,10 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange 
 
       if (!url) return;
 
-      const response = await fetch(url);
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await response.json();
 
       if (data.success) {

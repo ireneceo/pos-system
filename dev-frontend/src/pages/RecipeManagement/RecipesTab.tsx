@@ -386,6 +386,19 @@ const HeaderSection = styled.div`
   }
 `;
 
+const ReadOnlyNotice = styled.div`
+  background: #FEF3C7;
+  border: 1px solid #F59E0B;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #92400E;
+`;
+
 const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
   const { user } = useAuth();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -396,7 +409,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [isBrandAffiliate, setIsBrandAffiliate] = useState(false);
+  const [recipeManagerType, setRecipeManagerType] = useState<'brand' | 'restaurant'>('restaurant');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -417,6 +430,10 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
     notes: string;
   }>>([]);
 
+  const isRestaurantAdmin = user?.role === 'Restaurant Admin';
+  // 브랜드가 관리하는 경우 레스토랑은 읽기만 가능
+  const isReadOnly = isRestaurantAdmin && recipeManagerType === 'brand';
+
   // Fetch recipes, ingredients and categories
   useEffect(() => {
     if (brandId || user?.restaurant_id) {
@@ -424,11 +441,26 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
       fetchIngredients();
       fetchRecipeCategories();
     }
-    // Restaurant Admin은 항상 레시피 수정 불가
-    if (user?.role === 'Restaurant Admin') {
-      setIsBrandAffiliate(true);
+    if (isRestaurantAdmin && user?.restaurant_id) {
+      fetchRestaurantInfo();
     }
   }, [brandId, user]);
+
+  const fetchRestaurantInfo = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/restaurants/${user?.restaurant_id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success || data.id) {
+        const restaurantData = data.success ? data.data : data;
+        setRecipeManagerType(restaurantData.recipe_manager_type || 'restaurant');
+      }
+    } catch (error) {
+      console.error('Failed to fetch restaurant info:', error);
+    }
+  };
 
   const fetchRecipeCategories = async () => {
     try {
@@ -760,6 +792,14 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
 
   return (
     <>
+      {/* Read Only Notice for brand-managed restaurants */}
+      {isReadOnly && (
+        <ReadOnlyNotice>
+          <span>⚠️</span>
+          <span>레시피 관리가 브랜드에서 이루어지고 있습니다. 레시피 편집은 브랜드 관리자에게 문의하세요.</span>
+        </ReadOnlyNotice>
+      )}
+
       <HeaderSection>
         <FilterBar style={{ marginBottom: 0, flex: 1 }}>
           <SearchInput
@@ -780,7 +820,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
           </FilterSelect>
         </FilterBar>
 
-        {!isBrandAffiliate && (
+        {!isReadOnly && (
           <ThemedButton
             variant="primary"
             onClick={() => handleOpenModal(null)}
@@ -801,9 +841,11 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
           <EmptyDescription>
             {searchTerm || selectedCategory !== 'all'
               ? 'Try adjusting your filters'
-              : 'Create your first recipe to get started'}
+              : isReadOnly
+                ? 'Brand manages recipes for this restaurant'
+                : 'Create your first recipe to get started'}
           </EmptyDescription>
-          {!searchTerm && selectedCategory === 'all' && !isBrandAffiliate && (
+          {!searchTerm && selectedCategory === 'all' && !isReadOnly && (
             <ThemedButton
               variant="primary"
               onClick={() => handleOpenModal(null)}
@@ -867,7 +909,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
                 </IngredientsCount>
               </RecipeIngredients>
 
-              {!isBrandAffiliate && (
+              {!isReadOnly && (
                 <RecipeActions>
                   <ActionButton
                     variant="secondary"

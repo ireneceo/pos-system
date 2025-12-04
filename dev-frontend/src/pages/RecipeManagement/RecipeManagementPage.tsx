@@ -6,7 +6,8 @@ import { Container, Header, Title, Content, TabContainer, Tab } from '../../comp
 import { useAuth } from '../../contexts/AuthContext';
 import RecipesTab from './RecipesTab';
 import IngredientsTab from './IngredientsTab';
-import CategoriesTab from './CategoriesTab';
+import RecipeCategoriesTab from './RecipeCategoriesTab';
+import IngredientCategoriesTab from './IngredientCategoriesTab';
 
 const TabBadge = styled.span`
   display: inline-flex;
@@ -56,6 +57,8 @@ interface Brand {
   logo_url?: string;
 }
 
+type TabType = 'recipes' | 'ingredients' | 'recipe-categories' | 'ingredient-categories';
+
 interface RecipeManagementPageProps {}
 
 const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
@@ -63,12 +66,13 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [recipesCount, setRecipesCount] = useState(0);
   const [ingredientsCount, setIngredientsCount] = useState(0);
-  const [categoriesCount, setCategoriesCount] = useState(0);
+  const [recipeCategoriesCount, setRecipeCategoriesCount] = useState(0);
+  const [ingredientCategoriesCount, setIngredientCategoriesCount] = useState(0);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const activeTab = (searchParams.get('tab') as 'recipes' | 'ingredients' | 'categories') || 'recipes';
+  const activeTab = (searchParams.get('tab') as TabType) || 'recipes';
 
   useEffect(() => {
     if (user && user.role === 'Brand General') {
@@ -101,7 +105,7 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
     }
   };
 
-  const handleTabChange = (tab: 'recipes' | 'ingredients' | 'categories') => {
+  const handleTabChange = (tab: TabType) => {
     setSearchParams({ tab });
   };
 
@@ -170,9 +174,13 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
               Ingredients
               <TabBadge>{ingredientsCount}</TabBadge>
             </Tab>
-            <Tab active={activeTab === 'categories'} onClick={() => handleTabChange('categories')}>
-              Categories
-              <TabBadge>{categoriesCount}</TabBadge>
+            <Tab active={activeTab === 'recipe-categories'} onClick={() => handleTabChange('recipe-categories')}>
+              Recipe Categories
+              <TabBadge>{recipeCategoriesCount}</TabBadge>
+            </Tab>
+            <Tab active={activeTab === 'ingredient-categories'} onClick={() => handleTabChange('ingredient-categories')}>
+              Ingredient Categories
+              <TabBadge>{ingredientCategoriesCount}</TabBadge>
             </Tab>
           </TabContainer>
 
@@ -184,8 +192,11 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
               <div style={{ display: activeTab === 'ingredients' ? 'block' : 'none' }}>
                 <IngredientsTab brandId={selectedBrand} onCountChange={setIngredientsCount} />
               </div>
-              <div style={{ display: activeTab === 'categories' ? 'block' : 'none' }}>
-                <CategoriesTab brandId={selectedBrand} onCountChange={setCategoriesCount} />
+              <div style={{ display: activeTab === 'recipe-categories' ? 'block' : 'none' }}>
+                <RecipeCategoriesTab brandId={selectedBrand} onCountChange={setRecipeCategoriesCount} />
+              </div>
+              <div style={{ display: activeTab === 'ingredient-categories' ? 'block' : 'none' }}>
+                <IngredientCategoriesTab brandId={selectedBrand} onCountChange={setIngredientCategoriesCount} />
               </div>
             </>
           )}

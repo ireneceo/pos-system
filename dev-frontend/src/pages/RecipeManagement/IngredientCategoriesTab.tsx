@@ -6,7 +6,7 @@ import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, For
 import { OrderControls } from '../../components/UI';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 
-interface RecipeCategoriesTabProps {
+interface IngredientCategoriesTabProps {
   brandId: number | null;
   onCountChange: (count: number) => void;
 }
@@ -20,7 +20,7 @@ interface Category {
   emoji: string | null;
   display_order: number;
   is_active: boolean;
-  recipe_count?: number;
+  ingredient_count?: number;
   editable?: boolean;
 }
 
@@ -243,7 +243,7 @@ const ReadOnlyNotice = styled.div`
   color: #92400E;
 `;
 
-const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, onCountChange }) => {
+const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brandId, onCountChange }) => {
   const { user } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [brandCategories, setBrandCategories] = useState<Category[]>([]);
@@ -256,7 +256,7 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, onCo
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    emoji: '🍽️'
+    emoji: '🥕'
   });
 
   const isRestaurantAdmin = user?.role === 'Restaurant Admin';
@@ -264,13 +264,13 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, onCo
   const isReadOnly = isRestaurantAdmin && recipeManagerType === 'brand';
 
   const emojiOptions = [
+    '🥕', '🥬', '🧅', '🧄', '🌶️', '🥩', '🍖', '🥚', '🧀', '🥛',
     '🍔', '🍕', '🍗', '🥗', '🍜', '🍝', '🍤', '🥘', '🍛', '🍲',
     '☕', '🥤', '🧃', '🍵', '🧋', '🍺', '🍷', '🥃', '🍹', '🍸',
     '🍰', '🧁', '🍪', '🍩', '🍨', '🍧', '🍦', '🍮', '🍭', '🍫',
-    '🥐', '🥖', '🍞', '🥨', '🥯', '🧇', '🥞', '🍳', '🥚', '🧈',
+    '🥐', '🥖', '🍞', '🥨', '🥯', '🧇', '🥞', '🍳', '🧈', '🫘',
     '🍱', '🍙', '🍘', '🍣', '🍥', '🍡', '🍢', '🍠', '🥟', '🥠',
     '🌮', '🌯', '🥙', '🫔', '🥪', '🌭', '🍟', '🫓', '🥓', '🧆',
-    '🥕', '🥬', '🧅', '🧄', '🌶️', '🥩', '🍖', '🥚', '🧀', '🥛',
     '🍽️', '🥄', '🍴', '🥢', '🧊', '🧂', '🫒', '🌿', '🍃', '🌱'
   ];
 
@@ -303,7 +303,7 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, onCo
       const token = localStorage.getItem('auth_token');
 
       if (isBrandUser && brandId) {
-        const response = await fetch(`/api/brands/${brandId}/recipe-categories`, {
+        const response = await fetch(`/api/brands/${brandId}/ingredient-categories`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await response.json();
@@ -313,7 +313,7 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, onCo
           onCountChange(data.data.length);
         }
       } else if (isRestaurantAdmin && user?.restaurant_id) {
-        const response = await fetch(`/api/restaurants/${user.restaurant_id}/recipe-categories`, {
+        const response = await fetch(`/api/restaurants/${user.restaurant_id}/ingredient-categories`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await response.json();
@@ -337,14 +337,14 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, onCo
       setFormData({
         name: category.name,
         description: category.description || '',
-        emoji: category.emoji || '🍽️'
+        emoji: category.emoji || '🥕'
       });
     } else {
       setEditingCategory(null);
       setFormData({
         name: '',
         description: '',
-        emoji: '🍽️'
+        emoji: '🥕'
       });
     }
     setShowModal(true);
@@ -353,7 +353,7 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, onCo
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingCategory(null);
-    setFormData({ name: '', description: '', emoji: '🍽️' });
+    setFormData({ name: '', description: '', emoji: '🥕' });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -367,12 +367,12 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, onCo
 
       if (isBrandUser && brandId) {
         url = editingCategory
-          ? `/api/brands/${brandId}/recipe-categories/${editingCategory.id}`
-          : `/api/brands/${brandId}/recipe-categories`;
+          ? `/api/brands/${brandId}/ingredient-categories/${editingCategory.id}`
+          : `/api/brands/${brandId}/ingredient-categories`;
       } else if (isRestaurantAdmin && user?.restaurant_id) {
         url = editingCategory
-          ? `/api/restaurants/${user.restaurant_id}/recipe-categories/${editingCategory.id}`
-          : `/api/restaurants/${user.restaurant_id}/recipe-categories`;
+          ? `/api/restaurants/${user.restaurant_id}/ingredient-categories/${editingCategory.id}`
+          : `/api/restaurants/${user.restaurant_id}/ingredient-categories`;
       }
 
       if (!url) return;
@@ -417,9 +417,9 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, onCo
       let url = '';
 
       if (isBrandUser && brandId) {
-        url = `/api/brands/${brandId}/recipe-categories/${categoryToDelete.id}`;
+        url = `/api/brands/${brandId}/ingredient-categories/${categoryToDelete.id}`;
       } else if (isRestaurantAdmin && user?.restaurant_id) {
-        url = `/api/restaurants/${user.restaurant_id}/recipe-categories/${categoryToDelete.id}`;
+        url = `/api/restaurants/${user.restaurant_id}/ingredient-categories/${categoryToDelete.id}`;
       }
 
       if (!url) return;
@@ -462,9 +462,9 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, onCo
       let url = '';
 
       if (isBrandUser && brandId) {
-        url = `/api/brands/${brandId}/recipe-categories/reorder`;
+        url = `/api/brands/${brandId}/ingredient-categories/reorder`;
       } else if (isRestaurantAdmin && user?.restaurant_id) {
-        url = `/api/restaurants/${user.restaurant_id}/recipe-categories/reorder`;
+        url = `/api/restaurants/${user.restaurant_id}/ingredient-categories/reorder`;
       }
 
       if (!url) return;
@@ -495,14 +495,14 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, onCo
             disableDown={index === categoryList.length - 1}
           />
         )}
-        <CategoryIcon>{category.emoji || '🍽️'}</CategoryIcon>
+        <CategoryIcon>{category.emoji || '🥕'}</CategoryIcon>
         <CategoryInfo>
           <CategoryName>
             {category.name}
             {readOnly && <ReadOnlyBadge>Brand</ReadOnlyBadge>}
           </CategoryName>
           <CategoryMeta>
-            <span>{category.recipe_count || 0} recipes</span>
+            <span>{category.ingredient_count || 0} ingredients</span>
             {!readOnly && <StatusBadge active={category.is_active}>{category.is_active ? 'Active' : 'Inactive'}</StatusBadge>}
           </CategoryMeta>
           {category.description && <CategoryDescription>{category.description}</CategoryDescription>}
@@ -544,7 +544,7 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, onCo
       )}
 
       <HeaderRow>
-        <SectionTitle>Recipe Categories</SectionTitle>
+        <SectionTitle>Ingredient Categories</SectionTitle>
         {!isReadOnly && (
           <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
             + New Category
@@ -565,10 +565,10 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, onCo
 
       {categories.length === 0 ? (
         <EmptyState>
-          <EmptyIcon>📂</EmptyIcon>
-          <EmptyTitle>No recipe categories yet</EmptyTitle>
+          <EmptyIcon>🥕</EmptyIcon>
+          <EmptyTitle>No ingredient categories yet</EmptyTitle>
           <EmptyDescription>
-            {isReadOnly ? 'Brand manages recipe categories for this restaurant' : 'Create categories to organize your recipes'}
+            {isReadOnly ? 'Brand manages ingredient categories for this restaurant' : 'Create categories to organize your ingredients'}
           </EmptyDescription>
           {!isReadOnly && (
             <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
@@ -585,7 +585,7 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, onCo
       <Modal
         isOpen={showModal}
         onClose={handleCloseModal}
-        title={`${editingCategory ? 'Edit' : 'New'} Recipe Category`}
+        title={`${editingCategory ? 'Edit' : 'New'} Ingredient Category`}
         size="medium"
         footer={
           <>
@@ -603,7 +603,7 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, onCo
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="e.g., Main Dishes"
+              placeholder="e.g., Vegetables"
               autoFocus
               required
             />
@@ -654,4 +654,4 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, onCo
   );
 };
 
-export default RecipeCategoriesTab;
+export default IngredientCategoriesTab;
