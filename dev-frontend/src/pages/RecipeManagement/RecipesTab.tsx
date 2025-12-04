@@ -8,6 +8,7 @@ import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
 
 interface RecipesTabProps {
   brandId: number | null;
+  restaurantId?: number | null;
   onCountChange: (count: number) => void;
   categoryRefreshKey?: number;
 }
@@ -427,8 +428,10 @@ const ReadOnlyNotice = styled.div`
   color: #92400E;
 `;
 
-const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange, categoryRefreshKey }) => {
+const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRestaurantId, onCountChange, categoryRefreshKey }) => {
   const { user } = useAuth();
+  // URL 파라미터의 restaurantId가 우선, 없으면 user.restaurant_id 또는 user.restaurantId 사용
+  const effectiveRestaurantId = propsRestaurantId || user?.restaurant_id || user?.restaurantId;
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [recipeCategories, setRecipeCategories] = useState<RecipeCategory[]>([]);
@@ -463,19 +466,19 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange, categor
 
   // Fetch recipes, ingredients and categories
   useEffect(() => {
-    if (brandId || user?.restaurant_id) {
+    if (brandId || effectiveRestaurantId) {
       fetchRecipes();
       fetchIngredients();
       fetchRecipeCategories();
     }
-    if (isRestaurantAdmin && user?.restaurant_id) {
+    if (isRestaurantAdmin && effectiveRestaurantId) {
       fetchRestaurantInfo();
     }
-  }, [brandId, user]);
+  }, [brandId, effectiveRestaurantId, user]);
 
   // 카테고리가 변경되면 카테고리 목록을 새로 가져옴
   useEffect(() => {
-    if (categoryRefreshKey && (brandId || user?.restaurant_id)) {
+    if (categoryRefreshKey && (brandId || effectiveRestaurantId)) {
       fetchRecipeCategories();
     }
   }, [categoryRefreshKey]);
@@ -483,7 +486,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange, categor
   const fetchRestaurantInfo = async () => {
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/restaurants/${user?.restaurant_id}`, {
+      const response = await fetch(`/api/restaurants/${effectiveRestaurantId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -504,8 +507,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange, categor
           url = `/api/brands/${brandId}/recipe-categories`;
         }
       } else if (user?.role === 'Restaurant Admin') {
-        if (user.restaurant_id) {
-          url = `/api/restaurants/${user.restaurant_id}/recipe-categories`;
+        if (effectiveRestaurantId) {
+          url = `/api/restaurants/${effectiveRestaurantId}/recipe-categories`;
         }
       }
 
@@ -544,8 +547,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange, categor
           url = `/api/brands/${brandId}/ingredients`;
         }
       } else if (user?.role === 'Restaurant Admin') {
-        if (user.restaurant_id) {
-          url = `/api/restaurants/${user.restaurant_id}/ingredients`;
+        if (effectiveRestaurantId) {
+          url = `/api/restaurants/${effectiveRestaurantId}/ingredients`;
         }
       }
 
@@ -577,8 +580,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange, categor
       }
       // Restaurant Admin
       else if (user?.role === 'Restaurant Admin') {
-        if (user.restaurant_id) {
-          url = `/api/restaurants/${user.restaurant_id}/recipes`;
+        if (effectiveRestaurantId) {
+          url = `/api/restaurants/${effectiveRestaurantId}/recipes`;
         }
       }
 
@@ -620,7 +623,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange, categor
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
         url = `/api/brands/${brandId}/recipes/${recipeId}`;
       } else if (user?.role === 'Restaurant Admin') {
-        url = `/api/restaurants/${user?.restaurant_id}/recipes/${recipeId}`;
+        url = `/api/restaurants/${effectiveRestaurantId}/recipes/${recipeId}`;
       }
 
       const response = await fetch(url, {
@@ -732,9 +735,9 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange, categor
         }
       } else if (user?.role === 'Restaurant Admin') {
         if (selectedRecipe) {
-          url = `/api/restaurants/${user.restaurant_id}/recipes/${selectedRecipe.id}`;
+          url = `/api/restaurants/${effectiveRestaurantId}/recipes/${selectedRecipe.id}`;
         } else {
-          url = `/api/restaurants/${user.restaurant_id}/recipes`;
+          url = `/api/restaurants/${effectiveRestaurantId}/recipes`;
         }
       }
 

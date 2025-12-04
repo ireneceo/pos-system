@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useParams } from 'react-router-dom';
 import MainLayout from '../../components/Layout/MainLayout';
 import { Container, Header, Title, Content, TabContainer, Tab } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
@@ -63,6 +63,7 @@ interface RecipeManagementPageProps {}
 
 const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
   const { user } = useAuth();
+  const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const [recipesCount, setRecipesCount] = useState(0);
   const [ingredientsCount, setIngredientsCount] = useState(0);
@@ -189,16 +190,16 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
           {(selectedBrand || user?.role !== 'Brand General') && (
             <>
               <div style={{ display: activeTab === 'recipes' ? 'block' : 'none' }}>
-                <RecipesTab brandId={selectedBrand} onCountChange={setRecipesCount} categoryRefreshKey={recipeCategoryRefreshKey} />
+                <RecipesTab brandId={selectedBrand} restaurantId={urlRestaurantId ? Number(urlRestaurantId) : null} onCountChange={setRecipesCount} categoryRefreshKey={recipeCategoryRefreshKey} />
               </div>
               <div style={{ display: activeTab === 'ingredients' ? 'block' : 'none' }}>
-                <IngredientsTab brandId={selectedBrand} onCountChange={setIngredientsCount} categoryRefreshKey={ingredientCategoryRefreshKey} />
+                <IngredientsTab brandId={selectedBrand} restaurantId={urlRestaurantId ? Number(urlRestaurantId) : null} onCountChange={setIngredientsCount} categoryRefreshKey={ingredientCategoryRefreshKey} />
               </div>
               <div style={{ display: activeTab === 'recipe-categories' ? 'block' : 'none' }}>
-                <RecipeCategoriesTab brandId={selectedBrand} onCountChange={setRecipeCategoriesCount} onCategoryChange={() => setRecipeCategoryRefreshKey(k => k + 1)} />
+                <RecipeCategoriesTab brandId={selectedBrand} restaurantId={urlRestaurantId ? Number(urlRestaurantId) : null} onCountChange={setRecipeCategoriesCount} onCategoryChange={() => setRecipeCategoryRefreshKey(k => k + 1)} />
               </div>
               <div style={{ display: activeTab === 'ingredient-categories' ? 'block' : 'none' }}>
-                <IngredientCategoriesTab brandId={selectedBrand} onCountChange={setIngredientCategoriesCount} onCategoryChange={() => setIngredientCategoryRefreshKey(k => k + 1)} />
+                <IngredientCategoriesTab brandId={selectedBrand} restaurantId={urlRestaurantId ? Number(urlRestaurantId) : null} onCountChange={setIngredientCategoriesCount} onCategoryChange={() => setIngredientCategoryRefreshKey(k => k + 1)} />
               </div>
             </>
           )}
