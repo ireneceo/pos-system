@@ -9,6 +9,7 @@ import ConfirmDialog from '../../components/common/ConfirmDialog';
 interface IngredientCategoriesTabProps {
   brandId: number | null;
   onCountChange: (count: number) => void;
+  onCategoryChange?: () => void;
 }
 
 interface Category {
@@ -17,7 +18,6 @@ interface Category {
   restaurant_id: number | null;
   name: string;
   description: string | null;
-  emoji: string | null;
   display_order: number;
   is_active: boolean;
   ingredient_count?: number;
@@ -51,18 +51,6 @@ const CategoryCard = styled.div<{ isActive?: boolean; readOnly?: boolean }>`
   &:hover {
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
   }
-`;
-
-const CategoryIcon = styled.div`
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
-  background: #F3F4F6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  flex-shrink: 0;
 `;
 
 const CategoryInfo = styled.div`
@@ -131,12 +119,6 @@ const EmptyState = styled.div`
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 `;
 
-const EmptyIcon = styled.div`
-  font-size: 48px;
-  margin-bottom: 12px;
-  opacity: 0.5;
-`;
-
 const EmptyTitle = styled.h4`
   font-size: 16px;
   font-weight: 600;
@@ -183,35 +165,6 @@ const StatusBadge = styled.span<{ active: boolean }>`
   color: ${props => props.active ? '#059669' : '#DC2626'};
 `;
 
-const EmojiPicker = styled.div`
-  display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  gap: 4px;
-  max-height: 200px;
-  overflow-y: auto;
-  padding: 8px;
-  background: #F9FAFB;
-  border-radius: 8px;
-`;
-
-const EmojiOption = styled.button<{ selected?: boolean }>`
-  width: 100%;
-  aspect-ratio: 1;
-  border-radius: 4px;
-  background: ${props => props.selected ? '#635BFF' : 'white'};
-  border: 1px solid ${props => props.selected ? '#635BFF' : '#E5E7EB'};
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &:hover {
-    background: ${props => props.selected ? '#635BFF' : '#F3F4F6'};
-  }
-`;
-
 const BrandCategoriesSection = styled.div`
   margin-bottom: 24px;
   padding: 16px;
@@ -243,7 +196,7 @@ const ReadOnlyNotice = styled.div`
   color: #92400E;
 `;
 
-const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brandId, onCountChange }) => {
+const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brandId, onCountChange, onCategoryChange }) => {
   const { user } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [brandCategories, setBrandCategories] = useState<Category[]>([]);
@@ -255,24 +208,12 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
   const [recipeManagerType, setRecipeManagerType] = useState<'brand' | 'restaurant'>('restaurant');
   const [formData, setFormData] = useState({
     name: '',
-    description: '',
-    emoji: '🥕'
+    description: ''
   });
 
   const isRestaurantAdmin = user?.role === 'Restaurant Admin';
   const isBrandUser = user?.role === 'Brand General' || user?.role === 'Brand Manager';
   const isReadOnly = isRestaurantAdmin && recipeManagerType === 'brand';
-
-  const emojiOptions = [
-    '🥕', '🥬', '🧅', '🧄', '🌶️', '🥩', '🍖', '🥚', '🧀', '🥛',
-    '🍔', '🍕', '🍗', '🥗', '🍜', '🍝', '🍤', '🥘', '🍛', '🍲',
-    '☕', '🥤', '🧃', '🍵', '🧋', '🍺', '🍷', '🥃', '🍹', '🍸',
-    '🍰', '🧁', '🍪', '🍩', '🍨', '🍧', '🍦', '🍮', '🍭', '🍫',
-    '🥐', '🥖', '🍞', '🥨', '🥯', '🧇', '🥞', '🍳', '🧈', '🫘',
-    '🍱', '🍙', '🍘', '🍣', '🍥', '🍡', '🍢', '🍠', '🥟', '🥠',
-    '🌮', '🌯', '🥙', '🫔', '🥪', '🌭', '🍟', '🫓', '🥓', '🧆',
-    '🍽️', '🥄', '🍴', '🥢', '🧊', '🧂', '🫒', '🌿', '🍃', '🌱'
-  ];
 
   useEffect(() => {
     if (isRestaurantAdmin && user?.restaurant_id) {
@@ -336,15 +277,13 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
       setEditingCategory(category);
       setFormData({
         name: category.name,
-        description: category.description || '',
-        emoji: category.emoji || '🥕'
+        description: category.description || ''
       });
     } else {
       setEditingCategory(null);
       setFormData({
         name: '',
-        description: '',
-        emoji: '🥕'
+        description: ''
       });
     }
     setShowModal(true);
@@ -353,7 +292,7 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingCategory(null);
-    setFormData({ name: '', description: '', emoji: '🥕' });
+    setFormData({ name: '', description: '' });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -385,8 +324,7 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
         },
         body: JSON.stringify({
           name: formData.name.trim(),
-          description: formData.description.trim() || null,
-          emoji: formData.emoji
+          description: formData.description.trim() || null
         })
       });
 
@@ -395,6 +333,7 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
       if (data.success) {
         handleCloseModal();
         fetchCategories();
+        onCategoryChange?.();
       } else {
         alert(data.error || 'Failed to save');
       }
@@ -435,6 +374,7 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
         setDeleteModalOpen(false);
         setCategoryToDelete(null);
         fetchCategories();
+        onCategoryChange?.();
       } else {
         alert(data.error || 'Failed to delete');
       }
@@ -495,7 +435,6 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
             disableDown={index === categoryList.length - 1}
           />
         )}
-        <CategoryIcon>{category.emoji || '🥕'}</CategoryIcon>
         <CategoryInfo>
           <CategoryName>
             {category.name}
@@ -538,7 +477,6 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
     <Container>
       {isReadOnly && (
         <ReadOnlyNotice>
-          <span>⚠️</span>
           <span>레시피 관리가 브랜드에서 이루어지고 있습니다. 카테고리 편집은 브랜드 관리자에게 문의하세요.</span>
         </ReadOnlyNotice>
       )}

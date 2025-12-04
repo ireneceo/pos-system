@@ -8,6 +8,7 @@ import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, For
 interface IngredientsTabProps {
   brandId: number | null;
   onCountChange: (count: number) => void;
+  categoryRefreshKey?: number;
 }
 
 interface IngredientCategory {
@@ -205,7 +206,7 @@ const ReadOnlyNotice = styled.div`
   color: #92400E;
 `;
 
-const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange }) => {
+const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange, categoryRefreshKey }) => {
   const { user } = useAuth();
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [ingredientCategories, setIngredientCategories] = useState<IngredientCategory[]>([]);
@@ -238,6 +239,13 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange 
       fetchRestaurantInfo();
     }
   }, [brandId, user]);
+
+  // 카테고리가 변경되면 카테고리 목록을 새로 가져옴
+  useEffect(() => {
+    if (categoryRefreshKey && (brandId || user?.restaurant_id)) {
+      fetchIngredientCategories();
+    }
+  }, [categoryRefreshKey]);
 
   const fetchRestaurantInfo = async () => {
     try {
@@ -469,7 +477,6 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange 
       {/* Read Only Notice for brand-managed restaurants */}
       {isReadOnly && (
         <ReadOnlyNotice>
-          <span>⚠️</span>
           <span>레시피 관리가 브랜드에서 이루어지고 있습니다. 재료 편집은 브랜드 관리자에게 문의하세요.</span>
         </ReadOnlyNotice>
       )}

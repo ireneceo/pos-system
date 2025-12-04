@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(npm run build:*)",
-      "Bash(sudo /var/www/deploy-production.sh:*)"
+      "Bash(sudo /var/www/deploy-production.sh:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

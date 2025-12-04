@@ -9,6 +9,7 @@ import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
 interface RecipesTabProps {
   brandId: number | null;
   onCountChange: (count: number) => void;
+  categoryRefreshKey?: number;
 }
 
 interface Recipe {
@@ -795,7 +796,6 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
       {/* Read Only Notice for brand-managed restaurants */}
       {isReadOnly && (
         <ReadOnlyNotice>
-          <span>⚠️</span>
           <span>레시피 관리가 브랜드에서 이루어지고 있습니다. 레시피 편집은 브랜드 관리자에게 문의하세요.</span>
         </ReadOnlyNotice>
       )}
