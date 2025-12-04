@@ -6,6 +6,7 @@ import { Container, Header, Title, Content, TabContainer, Tab } from '../../comp
 import { useAuth } from '../../contexts/AuthContext';
 import RecipesTab from './RecipesTab';
 import IngredientsTab from './IngredientsTab';
+import RecipeCategoriesTab from './RecipeCategoriesTab';
 
 const TabBadge = styled.span`
   display: inline-flex;
@@ -62,11 +63,12 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [recipesCount, setRecipesCount] = useState(0);
   const [ingredientsCount, setIngredientsCount] = useState(0);
+  const [categoriesCount, setCategoriesCount] = useState(0);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const activeTab = (searchParams.get('tab') as 'recipes' | 'ingredients') || 'recipes';
+  const activeTab = (searchParams.get('tab') as 'recipes' | 'ingredients' | 'categories') || 'recipes';
 
   useEffect(() => {
     if (user && user.role === 'Brand General') {
@@ -99,7 +101,7 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
     }
   };
 
-  const handleTabChange = (tab: 'recipes' | 'ingredients') => {
+  const handleTabChange = (tab: 'recipes' | 'ingredients' | 'categories') => {
     setSearchParams({ tab });
   };
 
@@ -168,6 +170,10 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
               Ingredients
               <TabBadge>{ingredientsCount}</TabBadge>
             </Tab>
+            <Tab active={activeTab === 'categories'} onClick={() => handleTabChange('categories')}>
+              Categories
+              <TabBadge>{categoriesCount}</TabBadge>
+            </Tab>
           </TabContainer>
 
           {(selectedBrand || user?.role !== 'Brand General') && (
@@ -177,6 +183,9 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
               </div>
               <div style={{ display: activeTab === 'ingredients' ? 'block' : 'none' }}>
                 <IngredientsTab brandId={selectedBrand} onCountChange={setIngredientsCount} />
+              </div>
+              <div style={{ display: activeTab === 'categories' ? 'block' : 'none' }}>
+                <RecipeCategoriesTab brandId={selectedBrand} onCountChange={setCategoriesCount} />
               </div>
             </>
           )}

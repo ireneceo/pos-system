@@ -147,6 +147,7 @@ const optionGroupsRouter = require('./routes/optionGroups');
 const healthRouter = require('./routes/health');
 const recipesRouter = require('./routes/recipes');
 const ingredientsRouter = require('./routes/ingredients');
+const recipeCategoriesRouter = require('./routes/recipe-categories');
 const brandsRouter = require('./routes/brands');
 const currenciesRouter = require('./routes/currencies');
 
@@ -165,9 +166,10 @@ app.use('/api/orders', ordersRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/categories', categoriesRouter);
-// Recipes and ingredients routes need to be available at both /api/brands and /api/restaurants
+// Recipes, ingredients and recipe categories routes need to be available at both /api/brands and /api/restaurants
 app.use('/api', recipesRouter);
 app.use('/api', ingredientsRouter);
+app.use('/api', recipeCategoriesRouter);
 app.use('/api/restaurants', restaurantsRouter);
 app.use('/api/plans', plansRouter);
 app.use('/api/admin-analytics', adminAnalyticsRouter);

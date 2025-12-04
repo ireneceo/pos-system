@@ -19,12 +19,25 @@ interface Recipe {
   name: string;
   description: string | null;
   category: string;
+  recipe_category_id: number | null;
+  recipeCategory?: RecipeCategory;
   emoji: string | null;
   image: string | null;
   total_ingredient_cost: number;
   suggested_price: number | null;
   is_active: boolean;
   recipeIngredients?: RecipeIngredient[];
+}
+
+interface RecipeCategory {
+  id: number;
+  brand_id: number | null;
+  restaurant_id: number | null;
+  name: string;
+  description: string | null;
+  emoji: string | null;
+  display_order: number;
+  is_active: boolean;
 }
 
 interface Ingredient {
@@ -377,6 +390,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
   const { user } = useAuth();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [recipeCategories, setRecipeCategories] = useState<RecipeCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -387,6 +401,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
     name: '',
     description: '',
     category: '',
+    recipe_category_id: '',
     image: '',
     prep_time: '',
     cook_time: '',
@@ -402,17 +417,54 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
     notes: string;
   }>>([]);
 
-  // Fetch recipes and ingredients
+  // Fetch recipes, ingredients and categories
   useEffect(() => {
     if (brandId || user?.restaurant_id) {
       fetchRecipes();
       fetchIngredients();
+      fetchRecipeCategories();
     }
     // Restaurant Admin은 항상 레시피 수정 불가
     if (user?.role === 'Restaurant Admin') {
       setIsBrandAffiliate(true);
     }
   }, [brandId, user]);
+
+  const fetchRecipeCategories = async () => {
+    try {
+      let url = '';
+      if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
+        if (brandId) {
+          url = `/api/brands/${brandId}/recipe-categories`;
+        }
+      } else if (user?.role === 'Restaurant Admin') {
+        if (user.restaurant_id) {
+          url = `/api/restaurants/${user.restaurant_id}/recipe-categories`;
+        }
+      }
+
+      if (!url) return;
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.success) {
+        // Brand categories are in data.data array, restaurant may have own_categories and brand_categories
+        if (Array.isArray(data.data)) {
+          setRecipeCategories(data.data.filter((c: RecipeCategory) => c.is_active));
+        } else {
+          // Combine own and brand categories for restaurant
+          const allCategories = [
+            ...(data.data.own_categories || []),
+            ...(data.data.brand_categories || [])
+          ].filter((c: RecipeCategory) => c.is_active);
+          setRecipeCategories(allCategories);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch recipe categories:', error);
+    }
+  };
 
   const fetchIngredients = async () => {
     try {
