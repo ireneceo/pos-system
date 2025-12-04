@@ -170,6 +170,7 @@ const notificationSettingsRouter = require('./routes/notification-settings');
 const brandsRouter = require('./routes/brands');
 const recipesRouter = require('./routes/recipes');
 const ingredientsRouter = require('./routes/ingredients');
+const recipeCategoriesRouter = require('./routes/recipe-categories');
 const currenciesRouter = require('./routes/currencies');
 
 // Health check endpoint - PM2 모니터링 및 로드밸런서용 (가장 먼저)
@@ -216,6 +217,7 @@ app.use('/api/notification-settings', notificationSettingsRouter);
 app.use('/api/brands', brandsRouter);
 app.use('/api', recipesRouter);
 app.use('/api', ingredientsRouter);
+app.use('/api', recipeCategoriesRouter);
 app.use('/api/currencies', currenciesRouter);
 
 // GitHub Webhook for Auto-Deployment

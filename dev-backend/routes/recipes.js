@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Recipe, Ingredient, RecipeIngredient, Restaurant, Product } = require('../models');
+const { Recipe, Ingredient, RecipeIngredient, Restaurant, Product, RecipeCategory, Category } = require('../models');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { canEditRecipe, canViewRecipe, isBrandManager } = require('../middleware/recipeAuth');
 
@@ -23,6 +23,10 @@ router.get('/brands/:brand_id/recipes', authenticateToken, isBrandManager, async
           model: RecipeIngredient,
           as: 'recipeIngredients',
           include: [{ model: Ingredient, as: 'ingredient' }]
+        },
+        {
+          model: RecipeCategory,
+          as: 'recipeCategory'
         }
       ],
       order: [['created_at', 'DESC']]
@@ -42,7 +46,7 @@ router.get('/brands/:brand_id/recipes', authenticateToken, isBrandManager, async
 router.post('/brands/:brand_id/recipes', authenticateToken, isBrandManager, async (req, res) => {
   try {
     const { brand_id } = req.params;
-    const { name, description, category, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
+    const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
 
     // 레시피 생성
     const recipe = await Recipe.create({
@@ -51,6 +55,7 @@ router.post('/brands/:brand_id/recipes', authenticateToken, isBrandManager, asyn
       name,
       description,
       category,
+      recipe_category_id: recipe_category_id || null,
       emoji,
       image,
       option_groups,
@@ -91,6 +96,10 @@ router.post('/brands/:brand_id/recipes', authenticateToken, isBrandManager, asyn
           model: RecipeIngredient,
           as: 'recipeIngredients',
           include: [{ model: Ingredient, as: 'ingredient' }]
+        },
+        {
+          model: RecipeCategory,
+          as: 'recipeCategory'
         }
       ]
     });
@@ -109,7 +118,7 @@ router.post('/brands/:brand_id/recipes', authenticateToken, isBrandManager, asyn
 router.put('/brands/:brand_id/recipes/:recipe_id', authenticateToken, canEditRecipe, async (req, res) => {
   try {
     const { recipe_id } = req.params;
-    const { name, description, category, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
+    const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
 
     const recipe = await Recipe.findByPk(recipe_id);
     if (!recipe) {
@@ -121,6 +130,7 @@ router.put('/brands/:brand_id/recipes/:recipe_id', authenticateToken, canEditRec
       name,
       description,
       category,
+      recipe_category_id: recipe_category_id !== undefined ? recipe_category_id : recipe.recipe_category_id,
       emoji,
       image,
       option_groups,
@@ -161,6 +171,10 @@ router.put('/brands/:brand_id/recipes/:recipe_id', authenticateToken, canEditRec
           model: RecipeIngredient,
           as: 'recipeIngredients',
           include: [{ model: Ingredient, as: 'ingredient' }]
+        },
+        {
+          model: RecipeCategory,
+          as: 'recipeCategory'
         }
       ]
     });
@@ -464,9 +478,45 @@ router.post('/restaurants/:restaurantId/products/create-from-recipe', authentica
     const { restaurantId } = req.params;
     const { recipe_id, price } = req.body;
 
-    const recipe = await Recipe.findByPk(recipe_id);
+    // 레시피와 카테고리 정보를 함께 조회
+    const recipe = await Recipe.findByPk(recipe_id, {
+      include: [{
+        model: RecipeCategory,
+        as: 'recipeCategory'
+      }]
+    });
     if (!recipe) {
       return res.status(404).json({ error: '레시피를 찾을 수 없습니다' });
+    }
+
+    // 레시피 카테고리가 있으면 메뉴 카테고리로 매핑
+    let categoryName = recipe.category; // 기본값: 기존 category 문자열
+
+    if (recipe.recipeCategory) {
+      const recipeCategoryName = recipe.recipeCategory.name;
+
+      // 해당 레스토랑에 동일한 이름의 카테고리가 있는지 확인
+      let menuCategory = await Category.findOne({
+        where: {
+          restaurant_id: restaurantId,
+          name: recipeCategoryName
+        }
+      });
+
+      // 없으면 새로 생성
+      if (!menuCategory) {
+        menuCategory = await Category.create({
+          restaurant_id: restaurantId,
+          name: recipeCategoryName,
+          description: recipe.recipeCategory.description,
+          emoji: recipe.recipeCategory.emoji,
+          displayOrder: recipe.recipeCategory.display_order,
+          isActive: true
+        });
+        console.log(`📦 새 메뉴 카테고리 생성: ${recipeCategoryName} (restaurant: ${restaurantId})`);
+      }
+
+      categoryName = menuCategory.name;
     }
 
     // 레시피의 모든 정보를 Product로 복사
@@ -476,7 +526,7 @@ router.post('/restaurants/:restaurantId/products/create-from-recipe', authentica
       code: recipe.code,
       name: recipe.name,
       price,
-      category: recipe.category,
+      category: categoryName,
       description: recipe.description,
       optionGroups: recipe.option_groups,
       image: recipe.image,
@@ -490,7 +540,8 @@ router.post('/restaurants/:restaurantId/products/create-from-recipe', authentica
     res.json({
       success: true,
       data: product,
-      message: '레시피가 메뉴로 등록되었습니다'
+      message: '레시피가 메뉴로 등록되었습니다',
+      category_created: recipe.recipeCategory && !categoryName ? false : !!recipe.recipeCategory
     });
   } catch (error) {
     console.error('Create product from recipe error:', error);

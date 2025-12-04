@@ -582,6 +582,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
         name: recipe.name,
         description: recipe.description || '',
         category: recipe.category,
+        recipe_category_id: recipe.recipe_category_id?.toString() || '',
         image: recipe.image || '',
         prep_time: '',
         cook_time: '',
@@ -602,6 +603,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
         name: '',
         description: '',
         category: '',
+        recipe_category_id: '',
         image: '',
         prep_time: '',
         cook_time: '',
@@ -621,6 +623,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
       name: '',
       description: '',
       category: '',
+      recipe_category_id: '',
       image: '',
       prep_time: '',
       cook_time: '',
@@ -635,8 +638,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name || tags.length === 0) {
-      alert('레시피 이름과 태그는 필수입니다');
+    if (!formData.name) {
+      alert('레시피 이름은 필수입니다');
       return;
     }
 
@@ -663,7 +666,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          category: tags.join(', '),
+          category: tags.length > 0 ? tags.join(', ') : null,
+          recipe_category_id: formData.recipe_category_id ? parseInt(formData.recipe_category_id) : null,
           suggested_price: parseFloat(formData.suggested_price) || 0,
           ingredients: recipeIngredients.map(ri => ({
             ingredient_id: ri.ingredient_id,
@@ -737,12 +741,17 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
   // Filter recipes
   const filteredRecipes = recipes.filter(recipe => {
     const matchesSearch = recipe.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || recipe.category === selectedCategory;
+    const matchesCategory = selectedCategory === 'all' ||
+      recipe.recipe_category_id?.toString() === selectedCategory ||
+      recipe.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
-  // Get unique categories
-  const categories = ['all', ...Array.from(new Set(recipes.map(r => r.category)))];
+  // Get unique categories from recipeCategories list
+  const filterCategories = [
+    { id: 'all', name: 'All Categories' },
+    ...recipeCategories.map(c => ({ id: c.id.toString(), name: c.name }))
+  ];
 
   // Update count when recipes change
   useEffect(() => {
@@ -763,9 +772,9 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
           >
-            {categories.map(cat => (
-              <option key={cat} value={cat}>
-                {cat === 'all' ? 'All Categories' : cat}
+            {filterCategories.map(cat => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
               </option>
             ))}
           </FilterSelect>
@@ -831,7 +840,9 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
                 {recipe.emoji && <RecipeEmoji>{recipe.emoji}</RecipeEmoji>}
                 <RecipeInfo>
                   <RecipeName>{recipe.name}</RecipeName>
-                  <RecipeCategory>{recipe.category}</RecipeCategory>
+                  <RecipeCategory>
+                    {recipe.recipeCategory?.emoji} {recipe.recipeCategory?.name || recipe.category || 'Uncategorized'}
+                  </RecipeCategory>
                 </RecipeInfo>
               </RecipeHeader>
 
@@ -898,6 +909,21 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
             </UIFormGroup>
 
             <UIFormGroup>
+              <FormLabel>Category</FormLabel>
+              <FormSelect
+                value={formData.recipe_category_id}
+                onChange={(e) => setFormData({ ...formData, recipe_category_id: e.target.value })}
+              >
+                <option value="">Select category...</option>
+                {recipeCategories.map(cat => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.emoji} {cat.name}
+                  </option>
+                ))}
+              </FormSelect>
+            </UIFormGroup>
+
+            <UIFormGroup>
               <FormLabel>Recipe Image</FormLabel>
               <ImageUploadDropzone
                 value={formData.image}
@@ -907,7 +933,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
             </UIFormGroup>
 
             <UIFormGroup>
-              <FormLabel>Tags * (Press Enter to add)</FormLabel>
+              <FormLabel>Tags (Press Enter to add)</FormLabel>
               <TagInput
                 type="text"
                 value={tagInput}
