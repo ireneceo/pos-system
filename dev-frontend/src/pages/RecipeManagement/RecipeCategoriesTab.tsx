@@ -9,6 +9,7 @@ import ConfirmDialog from '../../components/common/ConfirmDialog';
 interface RecipeCategoriesTabProps {
   brandId: number | null;
   onCountChange: (count: number) => void;
+  onCategoryChange?: () => void;
 }
 
 interface Category {
@@ -85,18 +86,27 @@ const CategoryActions = styled.div`
 const IconButton = styled.button`
   width: 36px;
   height: 36px;
-  border-radius: 8px;
-  border: 1px solid #E5E7EB;
-  background: white;
+  border-radius: 6px;
+  border: 1px solid #E6EBF1;
+  background: #F6F9FC;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
 
   &:hover {
-    background: #F9FAFB;
-    border-color: #D1D5DB;
+    border-color: #635BFF;
+    background: #F4F3FF;
+    transform: translateY(-1px);
+
+    svg {
+      color: #635BFF;
+    }
+  }
+
+  &:active {
+    transform: translateY(0);
   }
 
   &:disabled {
@@ -108,6 +118,7 @@ const IconButton = styled.button`
     width: 18px;
     height: 18px;
     color: #6B7280;
+    transition: color 0.15s;
   }
 `;
 
@@ -198,7 +209,7 @@ const ReadOnlyNotice = styled.div`
   color: #92400E;
 `;
 
-const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, onCountChange }) => {
+const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, onCountChange, onCategoryChange }) => {
   const { user } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [brandCategories, setBrandCategories] = useState<Category[]>([]);
@@ -335,6 +346,7 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, onCo
       if (data.success) {
         handleCloseModal();
         fetchCategories();
+        onCategoryChange?.();
       } else {
         alert(data.error || 'Failed to save');
       }
@@ -375,6 +387,7 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, onCo
         setDeleteModalOpen(false);
         setCategoryToDelete(null);
         fetchCategories();
+        onCategoryChange?.();
       } else {
         alert(data.error || 'Failed to delete');
       }

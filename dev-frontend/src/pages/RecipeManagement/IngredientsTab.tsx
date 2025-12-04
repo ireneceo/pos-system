@@ -124,12 +124,11 @@ const IngredientActions = styled.div`
 const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
   flex: 1;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
-  border: none;
+  transition: all 0.15s;
 
   ${props => {
     switch (props.variant) {
@@ -137,22 +136,40 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger
         return `
           background: #635BFF;
           color: white;
-          &:hover { background: #4F46E5; }
+          border: 1px solid #635BFF;
+          &:hover {
+            background: #4F46E5;
+            transform: translateY(-1px);
+          }
         `;
       case 'danger':
         return `
-          background: #FEE2E2;
-          color: #DC2626;
-          &:hover { background: #FCA5A5; }
+          background: #FEF2F2;
+          border: 1px solid #EF4444;
+          color: #EF4444;
+          &:hover {
+            background: #FEE2E2;
+            transform: translateY(-1px);
+          }
         `;
       default:
         return `
-          background: #F3F4F6;
-          color: #374151;
-          &:hover { background: #E5E7EB; }
+          background: #F6F9FC;
+          border: 1px solid #E6EBF1;
+          color: #6B7280;
+          &:hover {
+            border-color: #635BFF;
+            color: #635BFF;
+            background: #F4F3FF;
+            transform: translateY(-1px);
+          }
         `;
     }
   }}
+
+  &:active {
+    transform: translateY(0);
+  }
 `;
 
 const ButtonGroup = styled.div`
@@ -322,7 +339,10 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
         return;
       }
 
-      const response = await fetch(url);
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await response.json();
 
       if (data.success) {
@@ -348,16 +368,18 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
         url = `/api/restaurants/${user?.restaurant_id}/ingredients/${ingredientId}`;
       }
 
-      const response = await fetch(url, { method: 'DELETE' });
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await response.json();
 
       if (data.success) {
-        alert('재료가 삭제되었습니다');
         fetchIngredients();
       }
     } catch (error) {
       console.error('Failed to delete ingredient:', error);
-      alert('재료 삭제 실패');
     }
   };
 
@@ -428,9 +450,13 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
         }
       }
 
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           ...formData,
           ingredient_category_id: formData.ingredient_category_id ? parseInt(formData.ingredient_category_id) : null,
@@ -442,7 +468,6 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
       const data = await response.json();
 
       if (data.success) {
-        alert(selectedIngredient ? '재료가 수정되었습니다' : '재료가 생성되었습니다');
         handleCloseModal();
         fetchIngredients();
       } else {
@@ -450,7 +475,6 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
       }
     } catch (error) {
       console.error('Failed to save ingredient:', error);
-      alert('재료 저장 실패');
     }
   };
 

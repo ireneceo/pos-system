@@ -184,12 +184,11 @@ const RecipeActions = styled.div`
 const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
   flex: 1;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
-  border: none;
+  transition: all 0.15s;
 
   ${props => {
     switch (props.variant) {
@@ -197,22 +196,40 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger
         return `
           background: #635BFF;
           color: white;
-          &:hover { background: #4F46E5; }
+          border: 1px solid #635BFF;
+          &:hover {
+            background: #4F46E5;
+            transform: translateY(-1px);
+          }
         `;
       case 'danger':
         return `
-          background: #FEE2E2;
-          color: #DC2626;
-          &:hover { background: #FCA5A5; }
+          background: #FEF2F2;
+          border: 1px solid #EF4444;
+          color: #EF4444;
+          &:hover {
+            background: #FEE2E2;
+            transform: translateY(-1px);
+          }
         `;
       default:
         return `
-          background: #F3F4F6;
-          color: #374151;
-          &:hover { background: #E5E7EB; }
+          background: #F6F9FC;
+          border: 1px solid #E6EBF1;
+          color: #6B7280;
+          &:hover {
+            border-color: #635BFF;
+            color: #635BFF;
+            background: #F4F3FF;
+            transform: translateY(-1px);
+          }
         `;
     }
   }}
+
+  &:active {
+    transform: translateY(0);
+  }
 `;
 
 const EmptyState = styled.div`
@@ -400,7 +417,7 @@ const ReadOnlyNotice = styled.div`
   color: #92400E;
 `;
 
-const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
+const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange, categoryRefreshKey }) => {
   const { user } = useAuth();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
@@ -447,6 +464,13 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
     }
   }, [brandId, user]);
 
+  // 카테고리가 변경되면 카테고리 목록을 새로 가져옴
+  useEffect(() => {
+    if (categoryRefreshKey && (brandId || user?.restaurant_id)) {
+      fetchRecipeCategories();
+    }
+  }, [categoryRefreshKey]);
+
   const fetchRestaurantInfo = async () => {
     try {
       const token = localStorage.getItem('auth_token');
@@ -478,7 +502,10 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
 
       if (!url) return;
 
-      const response = await fetch(url);
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await response.json();
 
       if (data.success) {
@@ -501,6 +528,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
 
   const fetchIngredients = async () => {
     try {
+      const token = localStorage.getItem('auth_token');
       let url = '';
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
         if (brandId) {
@@ -514,7 +542,9 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
 
       if (!url) return;
 
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await response.json();
 
       if (data.success) {
@@ -548,7 +578,10 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
         return;
       }
 
-      const response = await fetch(url);
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await response.json();
 
       if (data.success) {
@@ -573,6 +606,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
     }
 
     try {
+      const token = localStorage.getItem('auth_token');
       let url = '';
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
         url = `/api/brands/${brandId}/recipes/${recipeId}`;
@@ -580,16 +614,17 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
         url = `/api/restaurants/${user?.restaurant_id}/recipes/${recipeId}`;
       }
 
-      const response = await fetch(url, { method: 'DELETE' });
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await response.json();
 
       if (data.success) {
-        alert('레시피가 삭제되었습니다');
         fetchRecipes();
       }
     } catch (error) {
       console.error('Failed to delete recipe:', error);
-      alert('레시피 삭제 실패');
     }
   };
 
@@ -694,9 +729,13 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
         }
       }
 
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           ...formData,
           category: tags.length > 0 ? tags.join(', ') : null,
@@ -714,7 +753,6 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
       const data = await response.json();
 
       if (data.success) {
-        alert(selectedRecipe ? '레시피가 수정되었습니다' : '레시피가 생성되었습니다');
         handleCloseModal();
         fetchRecipes();
       } else {
@@ -722,7 +760,6 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, onCountChange }) => {
       }
     } catch (error) {
       console.error('Failed to save recipe:', error);
-      alert('레시피 저장 실패');
     }
   };
 

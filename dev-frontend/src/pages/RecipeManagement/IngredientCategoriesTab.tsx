@@ -85,18 +85,27 @@ const CategoryActions = styled.div`
 const IconButton = styled.button`
   width: 36px;
   height: 36px;
-  border-radius: 8px;
-  border: 1px solid #E5E7EB;
-  background: white;
+  border-radius: 6px;
+  border: 1px solid #E6EBF1;
+  background: #F6F9FC;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
 
   &:hover {
-    background: #F9FAFB;
-    border-color: #D1D5DB;
+    border-color: #635BFF;
+    background: #F4F3FF;
+    transform: translateY(-1px);
+
+    svg {
+      color: #635BFF;
+    }
+  }
+
+  &:active {
+    transform: translateY(0);
   }
 
   &:disabled {
@@ -108,6 +117,7 @@ const IconButton = styled.button`
     width: 18px;
     height: 18px;
     color: #6B7280;
+    transition: color 0.15s;
   }
 `;
 
@@ -503,7 +513,6 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
 
       {categories.length === 0 ? (
         <EmptyState>
-          <EmptyIcon>🥕</EmptyIcon>
           <EmptyTitle>No ingredient categories yet</EmptyTitle>
           <EmptyDescription>
             {isReadOnly ? 'Brand manages ingredient categories for this restaurant' : 'Create categories to organize your ingredients'}
@@ -554,22 +563,6 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Brief description of this category..."
             />
-          </UIFormGroup>
-
-          <UIFormGroup>
-            <FormLabel>Icon</FormLabel>
-            <EmojiPicker>
-              {emojiOptions.map(emoji => (
-                <EmojiOption
-                  key={emoji}
-                  selected={formData.emoji === emoji}
-                  onClick={() => setFormData({ ...formData, emoji })}
-                  type="button"
-                >
-                  {emoji}
-                </EmojiOption>
-              ))}
-            </EmojiPicker>
           </UIFormGroup>
         </form>
       </Modal>
