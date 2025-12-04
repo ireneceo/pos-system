@@ -6,7 +6,7 @@ import { Container, Header, Title, Content, TabContainer, Tab } from '../../comp
 import { useAuth } from '../../contexts/AuthContext';
 import RecipesTab from './RecipesTab';
 import IngredientsTab from './IngredientsTab';
-import RecipeCategoriesTab from './RecipeCategoriesTab';
+import CategoriesTab from './CategoriesTab';
 
 const TabBadge = styled.span`
   display: inline-flex;
@@ -185,7 +185,7 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
                 <IngredientsTab brandId={selectedBrand} onCountChange={setIngredientsCount} />
               </div>
               <div style={{ display: activeTab === 'categories' ? 'block' : 'none' }}>
-                <RecipeCategoriesTab brandId={selectedBrand} onCountChange={setCategoriesCount} />
+                <CategoriesTab brandId={selectedBrand} onCountChange={setCategoriesCount} />
               </div>
             </>
           )}
