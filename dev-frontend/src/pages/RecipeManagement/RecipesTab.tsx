@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI/Modal';
 import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
+import ConfirmModal from '../../components/ConfirmModal';
 
 interface RecipesTabProps {
   brandId: number | null;
@@ -460,21 +461,101 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
     unit: string;
     notes: string;
   }>>([]);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; recipeId: number | null; recipeName: string }>({
+    isOpen: false,
+    recipeId: null,
+    recipeName: ''
+  });
 
   const isRestaurantAdmin = user?.role === 'Restaurant Admin';
   const isReadOnly = isRestaurantAdmin && recipeManagerType === 'brand';
 
-  // Fetch recipes, ingredients and categories
+  // Helper to get auth token
+  const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
+
+  // Parallel fetch all data for performance
   useEffect(() => {
-    if (brandId || effectiveRestaurantId) {
-      fetchRecipes();
-      fetchIngredients();
-      fetchRecipeCategories();
-    }
-    if (isRestaurantAdmin && effectiveRestaurantId) {
-      fetchRestaurantInfo();
-    }
-  }, [brandId, effectiveRestaurantId, user]);
+    const fetchAllData = async () => {
+      if (!brandId && !effectiveRestaurantId) return;
+
+      setLoading(true);
+      const token = getToken();
+      const isBrandRole = user?.role === 'Brand General' || user?.role === 'Brand Manager';
+
+      try {
+        const promises: Promise<any>[] = [];
+
+        // Build URLs based on role
+        let recipesUrl = '', ingredientsUrl = '', categoriesUrl = '', restaurantUrl = '';
+
+        if (isBrandRole && brandId) {
+          recipesUrl = `/api/brands/${brandId}/recipes`;
+          ingredientsUrl = `/api/brands/${brandId}/ingredients`;
+          categoriesUrl = `/api/brands/${brandId}/recipe-categories`;
+        } else if (isRestaurantAdmin && effectiveRestaurantId) {
+          recipesUrl = `/api/restaurants/${effectiveRestaurantId}/recipes`;
+          ingredientsUrl = `/api/restaurants/${effectiveRestaurantId}/ingredients`;
+          categoriesUrl = `/api/restaurants/${effectiveRestaurantId}/recipe-categories`;
+          restaurantUrl = `/api/restaurants/${effectiveRestaurantId}`;
+        }
+
+        // Fetch all in parallel
+        if (recipesUrl) {
+          promises.push(
+            fetch(recipesUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
+            fetch(ingredientsUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
+            fetch(categoriesUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
+          );
+          if (restaurantUrl) {
+            promises.push(fetch(restaurantUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()));
+          }
+        }
+
+        const results = await Promise.all(promises);
+
+        // Process recipes
+        if (results[0]?.success) {
+          if (Array.isArray(results[0].data)) {
+            setRecipes(results[0].data);
+          } else {
+            setRecipes([...(results[0].data.brand_recipes || []), ...(results[0].data.own_recipes || [])]);
+          }
+        }
+
+        // Process ingredients
+        if (results[1]?.success) {
+          setIngredients(results[1].data);
+        }
+
+        // Process categories
+        if (results[2]?.success) {
+          if (Array.isArray(results[2].data)) {
+            setRecipeCategories(results[2].data.filter((c: RecipeCategory) => c.is_active));
+          } else {
+            const allCategories = [
+              ...(results[2].data.own_categories || []),
+              ...(results[2].data.brand_categories || [])
+            ].filter((c: RecipeCategory) => c.is_active);
+            setRecipeCategories(allCategories);
+          }
+        }
+
+        // Process restaurant info (for recipe_manager_type)
+        if (results[3]) {
+          const restaurantData = results[3].success ? results[3].data : results[3];
+          if (restaurantData?.recipe_manager_type) {
+            setRecipeManagerType(restaurantData.recipe_manager_type);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAllData();
+  }, [brandId, effectiveRestaurantId, user?.role, getToken, isRestaurantAdmin]);
 
   // 카테고리가 변경되면 카테고리 목록을 새로 가져옴
   useEffect(() => {
@@ -612,18 +693,24 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
     }
   };
 
-  const handleDelete = async (recipeId: number) => {
-    if (!window.confirm('Are you sure you want to delete this recipe?')) {
-      return;
-    }
+  const handleDeleteClick = (recipe: Recipe) => {
+    setDeleteConfirm({
+      isOpen: true,
+      recipeId: recipe.id,
+      recipeName: recipe.name
+    });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirm.recipeId) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getToken();
       let url = '';
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
-        url = `/api/brands/${brandId}/recipes/${recipeId}`;
+        url = `/api/brands/${brandId}/recipes/${deleteConfirm.recipeId}`;
       } else if (user?.role === 'Restaurant Admin') {
-        url = `/api/restaurants/${effectiveRestaurantId}/recipes/${recipeId}`;
+        url = `/api/restaurants/${effectiveRestaurantId}/recipes/${deleteConfirm.recipeId}`;
       }
 
       const response = await fetch(url, {
@@ -633,11 +720,20 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
       const data = await response.json();
 
       if (data.success) {
-        fetchRecipes();
+        // Update local state immediately for instant feedback
+        setRecipes(prev => prev.filter(r => r.id !== deleteConfirm.recipeId));
+      } else {
+        console.error('Delete failed:', data.error);
       }
     } catch (error) {
       console.error('Failed to delete recipe:', error);
+    } finally {
+      setDeleteConfirm({ isOpen: false, recipeId: null, recipeName: '' });
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirm({ isOpen: false, recipeId: null, recipeName: '' });
   };
 
   const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -968,7 +1064,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                   </ActionButton>
                   <ActionButton
                     variant="danger"
-                    onClick={() => handleDelete(recipe.id)}
+                    onClick={() => handleDeleteClick(recipe)}
                   >
                     Delete
                   </ActionButton>
@@ -1181,6 +1277,18 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             </ButtonGroup>
           </form>
       </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteConfirm.isOpen}
+        title="Delete Recipe"
+        message={`Are you sure you want to delete "${deleteConfirm.recipeName}"? This action cannot be undone.`}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
     </>
   );
 };

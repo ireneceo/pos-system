@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormTextArea } from '../../components/UI/Modal';
 import { OrderControls } from '../../components/UI';
-import ConfirmDialog from '../../components/common/ConfirmDialog';
+import ConfirmModal from '../../components/ConfirmModal';
 
 interface IngredientCategoriesTabProps {
   brandId: number | null;
@@ -225,33 +225,61 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
   const isBrandUser = user?.role === 'Brand General' || user?.role === 'Brand Manager';
   const isReadOnly = isRestaurantAdmin && recipeManagerType === 'brand';
 
-  useEffect(() => {
-    if (isRestaurantAdmin && user?.restaurant_id) {
-      fetchRestaurantInfo();
-    }
-    fetchCategories();
-  }, [brandId, user]);
+  // Helper to get auth token
+  const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
 
-  const fetchRestaurantInfo = async () => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/restaurants/${user?.restaurant_id}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
-      if (data.success || data.id) {
-        const restaurantData = data.success ? data.data : data;
-        setRecipeManagerType(restaurantData.recipe_manager_type || 'restaurant');
+  // Parallel fetch all data
+  useEffect(() => {
+    const fetchAllData = async () => {
+      setLoading(true);
+      const token = getToken();
+
+      try {
+        if (isBrandUser && brandId) {
+          const response = await fetch(`/api/brands/${brandId}/ingredient-categories`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await response.json();
+
+          if (data.success) {
+            setCategories(data.data);
+            onCountChange(data.data.length);
+          }
+        } else if (isRestaurantAdmin && user?.restaurant_id) {
+          // Fetch categories and restaurant info in parallel
+          const [categoriesRes, restaurantRes] = await Promise.all([
+            fetch(`/api/restaurants/${user.restaurant_id}/ingredient-categories`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            }).then(r => r.json()),
+            fetch(`/api/restaurants/${user.restaurant_id}`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            }).then(r => r.json())
+          ]);
+
+          if (categoriesRes.success) {
+            setCategories(categoriesRes.data.own_categories || []);
+            setBrandCategories(categoriesRes.data.brand_categories || []);
+            onCountChange((categoriesRes.data.own_categories?.length || 0) + (categoriesRes.data.brand_categories?.length || 0));
+          }
+
+          if (restaurantRes.success || restaurantRes.id) {
+            const restaurantData = restaurantRes.success ? restaurantRes.data : restaurantRes;
+            setRecipeManagerType(restaurantData.recipe_manager_type || 'restaurant');
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Failed to fetch restaurant info:', error);
-    }
-  };
+    };
+
+    fetchAllData();
+  }, [brandId, user?.restaurant_id, isBrandUser, isRestaurantAdmin, getToken, onCountChange]);
 
   const fetchCategories = async () => {
     try {
-      setLoading(true);
-      const token = localStorage.getItem('auth_token');
+      const token = getToken();
 
       if (isBrandUser && brandId) {
         const response = await fetch(`/api/brands/${brandId}/ingredient-categories`, {
@@ -277,8 +305,6 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
       }
     } catch (error) {
       console.error('Failed to fetch categories:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -567,19 +593,19 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
         </form>
       </Modal>
 
-      <ConfirmDialog
+      <ConfirmModal
         isOpen={deleteModalOpen}
-        onClose={() => { setDeleteModalOpen(false); setCategoryToDelete(null); }}
+        onCancel={() => { setDeleteModalOpen(false); setCategoryToDelete(null); }}
         onConfirm={handleDeleteConfirm}
         title="Delete Category"
         message={
           categoryToDelete
-            ? `Are you sure you want to delete "${categoryToDelete.name}"?`
+            ? `Are you sure you want to delete "${categoryToDelete.name}"? This action cannot be undone.`
             : ''
         }
         confirmText="Delete"
         cancelText="Cancel"
-        variant="danger"
+        type="danger"
       />
     </Container>
   );

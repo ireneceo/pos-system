@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormRow as UIFormRow } from '../../components/UI/Modal';
+import ConfirmModal from '../../components/ConfirmModal';
 
 interface IngredientsTabProps {
   brandId: number | null;
@@ -242,19 +243,89 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
     supplier_name: '',
     min_stock: '0'
   });
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; ingredientId: number | null; ingredientName: string }>({
+    isOpen: false,
+    ingredientId: null,
+    ingredientName: ''
+  });
 
   const isRestaurantAdmin = user?.role === 'Restaurant Admin';
   const isReadOnly = isRestaurantAdmin && recipeManagerType === 'brand';
 
+  // Helper to get auth token
+  const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
+
+  // Parallel fetch all data for performance
   useEffect(() => {
-    if (brandId || user?.restaurant_id) {
-      fetchIngredients();
-      fetchIngredientCategories();
-    }
-    if (isRestaurantAdmin && user?.restaurant_id) {
-      fetchRestaurantInfo();
-    }
-  }, [brandId, user]);
+    const fetchAllData = async () => {
+      if (!brandId && !user?.restaurant_id) return;
+
+      setLoading(true);
+      const token = getToken();
+      const isBrandRole = user?.role === 'Brand General' || user?.role === 'Brand Manager';
+
+      try {
+        const promises: Promise<any>[] = [];
+
+        // Build URLs based on role
+        let ingredientsUrl = '', categoriesUrl = '', restaurantUrl = '';
+
+        if (isBrandRole && brandId) {
+          ingredientsUrl = `/api/brands/${brandId}/ingredients`;
+          categoriesUrl = `/api/brands/${brandId}/ingredient-categories`;
+        } else if (isRestaurantAdmin && user?.restaurant_id) {
+          ingredientsUrl = `/api/restaurants/${user.restaurant_id}/ingredients`;
+          categoriesUrl = `/api/restaurants/${user.restaurant_id}/ingredient-categories`;
+          restaurantUrl = `/api/restaurants/${user.restaurant_id}`;
+        }
+
+        // Fetch all in parallel
+        if (ingredientsUrl) {
+          promises.push(
+            fetch(ingredientsUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
+            fetch(categoriesUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
+          );
+          if (restaurantUrl) {
+            promises.push(fetch(restaurantUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()));
+          }
+        }
+
+        const results = await Promise.all(promises);
+
+        // Process ingredients
+        if (results[0]?.success) {
+          setIngredients(results[0].data);
+        }
+
+        // Process categories
+        if (results[1]?.success) {
+          if (Array.isArray(results[1].data)) {
+            setIngredientCategories(results[1].data.filter((c: IngredientCategory) => c.is_active));
+          } else {
+            const allCategories = [
+              ...(results[1].data.own_categories || []),
+              ...(results[1].data.brand_categories || [])
+            ].filter((c: IngredientCategory) => c.is_active);
+            setIngredientCategories(allCategories);
+          }
+        }
+
+        // Process restaurant info (for recipe_manager_type)
+        if (results[2]) {
+          const restaurantData = results[2].success ? results[2].data : results[2];
+          if (restaurantData?.recipe_manager_type) {
+            setRecipeManagerType(restaurantData.recipe_manager_type);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAllData();
+  }, [brandId, user?.restaurant_id, user?.role, getToken, isRestaurantAdmin]);
 
   // 카테고리가 변경되면 카테고리 목록을 새로 가져옴
   useEffect(() => {
@@ -262,22 +333,6 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
       fetchIngredientCategories();
     }
   }, [categoryRefreshKey]);
-
-  const fetchRestaurantInfo = async () => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/restaurants/${user?.restaurant_id}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
-      if (data.success || data.id) {
-        const restaurantData = data.success ? data.data : data;
-        setRecipeManagerType(restaurantData.recipe_manager_type || 'restaurant');
-      }
-    } catch (error) {
-      console.error('Failed to fetch restaurant info:', error);
-    }
-  };
 
   const fetchIngredientCategories = async () => {
     try {
@@ -294,18 +349,16 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
 
       if (!url) return;
 
-      const token = localStorage.getItem('auth_token');
+      const token = getToken();
       const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
 
       if (data.success) {
-        // Brand categories are in data.data array, restaurant may have own_categories and brand_categories
         if (Array.isArray(data.data)) {
           setIngredientCategories(data.data.filter((c: IngredientCategory) => c.is_active));
         } else {
-          // Combine own and brand categories for restaurant
           const allCategories = [
             ...(data.data.own_categories || []),
             ...(data.data.brand_categories || [])
@@ -318,56 +371,26 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
     }
   };
 
-  const fetchIngredients = async () => {
-    try {
-      setLoading(true);
-      let url = '';
-
-      if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
-        if (brandId) {
-          url = `/api/brands/${brandId}/ingredients`;
-        }
-      } else if (user?.role === 'Restaurant Admin') {
-        if (user.restaurant_id) {
-          url = `/api/restaurants/${user.restaurant_id}/ingredients`;
-        }
-      }
-
-      if (!url) {
-        setLoading(false);
-        return;
-      }
-
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
-
-      if (data.success) {
-        setIngredients(data.data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch ingredients:', error);
-    } finally {
-      setLoading(false);
-    }
+  const handleDeleteClick = (ingredient: Ingredient) => {
+    setDeleteConfirm({
+      isOpen: true,
+      ingredientId: ingredient.id,
+      ingredientName: ingredient.name
+    });
   };
 
-  const handleDelete = async (ingredientId: number) => {
-    if (!window.confirm('Are you sure you want to delete this ingredient?')) {
-      return;
-    }
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirm.ingredientId) return;
 
     try {
       let url = '';
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
-        url = `/api/brands/${brandId}/ingredients/${ingredientId}`;
+        url = `/api/brands/${brandId}/ingredients/${deleteConfirm.ingredientId}`;
       } else if (user?.role === 'Restaurant Admin') {
-        url = `/api/restaurants/${user?.restaurant_id}/ingredients/${ingredientId}`;
+        url = `/api/restaurants/${user?.restaurant_id}/ingredients/${deleteConfirm.ingredientId}`;
       }
 
-      const token = localStorage.getItem('auth_token');
+      const token = getToken();
       const response = await fetch(url, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -375,11 +398,19 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
       const data = await response.json();
 
       if (data.success) {
-        fetchIngredients();
+        setIngredients(prev => prev.filter(i => i.id !== deleteConfirm.ingredientId));
+      } else {
+        console.error('Delete failed:', data.error);
       }
     } catch (error) {
       console.error('Failed to delete ingredient:', error);
+    } finally {
+      setDeleteConfirm({ isOpen: false, ingredientId: null, ingredientName: '' });
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirm({ isOpen: false, ingredientId: null, ingredientName: '' });
   };
 
   const handleOpenModal = (ingredient: Ingredient | null) => {
@@ -604,7 +635,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
                   </ActionButton>
                   <ActionButton
                     variant="danger"
-                    onClick={() => handleDelete(ingredient.id)}
+                    onClick={() => handleDeleteClick(ingredient)}
                   >
                     Delete
                   </ActionButton>
@@ -723,6 +754,18 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
           </ButtonGroup>
         </form>
       </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteConfirm.isOpen}
+        title="Delete Ingredient"
+        message={`Are you sure you want to delete "${deleteConfirm.ingredientName}"? This action cannot be undone.`}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
     </>
   );
 };
