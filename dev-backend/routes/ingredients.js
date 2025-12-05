@@ -9,12 +9,13 @@ const { isBrandManager } = require('../middleware/recipeAuth');
 // ============================================
 
 /**
- * GET /api/brands/:brand_id/ingredients
+ * GET /api/brands/:brandId/ingredients
  * 브랜드 재료 목록 조회
  */
-router.get('/brands/:brand_id/ingredients', authenticateToken, isBrandManager, async (req, res) => {
+router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, async (req, res) => {
   try {
-    const { brand_id } = req.params;
+    const { brandId } = req.params;
+    const brand_id = brandId; // DB 쿼리용
 
     const ingredients = await Ingredient.findAll({
       where: { brand_id },
@@ -34,12 +35,13 @@ router.get('/brands/:brand_id/ingredients', authenticateToken, isBrandManager, a
 });
 
 /**
- * POST /api/brands/:brand_id/ingredients
+ * POST /api/brands/:brandId/ingredients
  * 브랜드 재료 생성
  */
-router.post('/brands/:brand_id/ingredients', authenticateToken, isBrandManager, async (req, res) => {
+router.post('/brands/:brandId/ingredients', authenticateToken, isBrandManager, async (req, res) => {
   try {
-    const { brand_id } = req.params;
+    const { brandId } = req.params;
+    const brand_id = brandId; // DB 쿼리용
     const { code, name, category, ingredient_category_id, unit, unit_cost, supplier_name, min_stock } = req.body;
 
     const ingredient = await Ingredient.create({
@@ -64,12 +66,13 @@ router.post('/brands/:brand_id/ingredients', authenticateToken, isBrandManager, 
 });
 
 /**
- * PUT /api/brands/:brand_id/ingredients/:ingredient_id
+ * PUT /api/brands/:brandId/ingredients/:ingredientId
  * 브랜드 재료 수정
  */
-router.put('/brands/:brand_id/ingredients/:ingredient_id', authenticateToken, isBrandManager, async (req, res) => {
+router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBrandManager, async (req, res) => {
   try {
-    const { ingredient_id } = req.params;
+    const { ingredientId } = req.params;
+    const ingredient_id = ingredientId; // DB 쿼리용
     const { code, name, category, ingredient_category_id, unit, unit_cost, supplier_name, min_stock } = req.body;
 
     const ingredient = await Ingredient.findByPk(ingredient_id);
@@ -96,12 +99,13 @@ router.put('/brands/:brand_id/ingredients/:ingredient_id', authenticateToken, is
 });
 
 /**
- * DELETE /api/brands/:brand_id/ingredients/:ingredient_id
+ * DELETE /api/brands/:brandId/ingredients/:ingredientId
  * 브랜드 재료 삭제
  */
-router.delete('/brands/:brand_id/ingredients/:ingredient_id', authenticateToken, isBrandManager, async (req, res) => {
+router.delete('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBrandManager, async (req, res) => {
   try {
-    const { ingredient_id } = req.params;
+    const { ingredientId } = req.params;
+    const ingredient_id = ingredientId; // DB 쿼리용
 
     const ingredient = await Ingredient.findByPk(ingredient_id);
     if (!ingredient) {

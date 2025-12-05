@@ -2,19 +2,20 @@ const express = require('express');
 const router = express.Router();
 const { Recipe, Ingredient, RecipeIngredient, Restaurant, Product, RecipeCategory, Category } = require('../models');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
-const { canEditRecipe, canViewRecipe, isBrandManager } = require('../middleware/recipeAuth');
+const { canEditRecipe, isBrandManager } = require('../middleware/recipeAuth');
 
 // ============================================
 // Brand Recipes (Brand General/Manager)
 // ============================================
 
 /**
- * GET /api/brands/:brand_id/recipes
+ * GET /api/brands/:brandId/recipes
  * 브랜드 레시피 목록 조회
  */
-router.get('/brands/:brand_id/recipes', authenticateToken, isBrandManager, async (req, res) => {
+router.get('/brands/:brandId/recipes', authenticateToken, isBrandManager, async (req, res) => {
   try {
-    const { brand_id } = req.params;
+    const { brandId } = req.params;
+    const brand_id = brandId; // DB 쿼리용
 
     const recipes = await Recipe.findAll({
       where: { brand_id },
@@ -40,12 +41,13 @@ router.get('/brands/:brand_id/recipes', authenticateToken, isBrandManager, async
 });
 
 /**
- * POST /api/brands/:brand_id/recipes
+ * POST /api/brands/:brandId/recipes
  * 브랜드 레시피 생성
  */
-router.post('/brands/:brand_id/recipes', authenticateToken, isBrandManager, async (req, res) => {
+router.post('/brands/:brandId/recipes', authenticateToken, isBrandManager, async (req, res) => {
   try {
-    const { brand_id } = req.params;
+    const { brandId } = req.params;
+    const brand_id = brandId; // DB 쿼리용
     const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
 
     // 레시피 생성
@@ -112,12 +114,13 @@ router.post('/brands/:brand_id/recipes', authenticateToken, isBrandManager, asyn
 });
 
 /**
- * PUT /api/brands/:brand_id/recipes/:recipe_id
+ * PUT /api/brands/:brandId/recipes/:recipeId
  * 브랜드 레시피 수정
  */
-router.put('/brands/:brand_id/recipes/:recipe_id', authenticateToken, canEditRecipe, async (req, res) => {
+router.put('/brands/:brandId/recipes/:recipeId', authenticateToken, canEditRecipe, async (req, res) => {
   try {
-    const { recipe_id } = req.params;
+    const { recipeId } = req.params;
+    const recipe_id = recipeId; // DB 쿼리용
     const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
 
     const recipe = await Recipe.findByPk(recipe_id);
@@ -187,12 +190,13 @@ router.put('/brands/:brand_id/recipes/:recipe_id', authenticateToken, canEditRec
 });
 
 /**
- * DELETE /api/brands/:brand_id/recipes/:recipe_id
+ * DELETE /api/brands/:brandId/recipes/:recipeId
  * 브랜드 레시피 삭제
  */
-router.delete('/brands/:brand_id/recipes/:recipe_id', authenticateToken, canEditRecipe, async (req, res) => {
+router.delete('/brands/:brandId/recipes/:recipeId', authenticateToken, canEditRecipe, async (req, res) => {
   try {
-    const { recipe_id } = req.params;
+    const { recipeId } = req.params;
+    const recipe_id = recipeId; // DB 쿼리용
 
     const recipe = await Recipe.findByPk(recipe_id);
     if (!recipe) {

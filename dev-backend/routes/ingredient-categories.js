@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { IngredientCategory, Ingredient, Brand, Restaurant } = require('../models');
+const { IngredientCategory, Ingredient, Restaurant } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
 
@@ -9,12 +9,13 @@ const { isBrandManager } = require('../middleware/recipeAuth');
 // ============================================
 
 /**
- * GET /api/brands/:brand_id/ingredient-categories
+ * GET /api/brands/:brandId/ingredient-categories
  * 브랜드 재료 카테고리 목록 조회
  */
-router.get('/brands/:brand_id/ingredient-categories', authenticateToken, isBrandManager, async (req, res) => {
+router.get('/brands/:brandId/ingredient-categories', authenticateToken, isBrandManager, async (req, res) => {
   try {
-    const { brand_id } = req.params;
+    const { brandId } = req.params;
+    const brand_id = brandId; // DB 쿼리용
 
     const categories = await IngredientCategory.findAll({
       where: { brand_id },
@@ -40,12 +41,13 @@ router.get('/brands/:brand_id/ingredient-categories', authenticateToken, isBrand
 });
 
 /**
- * POST /api/brands/:brand_id/ingredient-categories
+ * POST /api/brands/:brandId/ingredient-categories
  * 브랜드 재료 카테고리 생성
  */
-router.post('/brands/:brand_id/ingredient-categories', authenticateToken, isBrandManager, async (req, res) => {
+router.post('/brands/:brandId/ingredient-categories', authenticateToken, isBrandManager, async (req, res) => {
   try {
-    const { brand_id } = req.params;
+    const { brandId } = req.params;
+    const brand_id = brandId; // DB 쿼리용
     const { name, description, emoji, display_order } = req.body;
 
     if (!name || !name.trim()) {
@@ -84,12 +86,14 @@ router.post('/brands/:brand_id/ingredient-categories', authenticateToken, isBran
 });
 
 /**
- * PUT /api/brands/:brand_id/ingredient-categories/:category_id
+ * PUT /api/brands/:brandId/ingredient-categories/:categoryId
  * 브랜드 재료 카테고리 수정
  */
-router.put('/brands/:brand_id/ingredient-categories/:category_id', authenticateToken, isBrandManager, async (req, res) => {
+router.put('/brands/:brandId/ingredient-categories/:categoryId', authenticateToken, isBrandManager, async (req, res) => {
   try {
-    const { brand_id, category_id } = req.params;
+    const { brandId, categoryId } = req.params;
+    const brand_id = brandId; // DB 쿼리용
+    const category_id = categoryId;
     const { name, description, emoji, display_order, is_active } = req.body;
 
     const category = await IngredientCategory.findOne({
@@ -126,12 +130,14 @@ router.put('/brands/:brand_id/ingredient-categories/:category_id', authenticateT
 });
 
 /**
- * DELETE /api/brands/:brand_id/ingredient-categories/:category_id
+ * DELETE /api/brands/:brandId/ingredient-categories/:categoryId
  * 브랜드 재료 카테고리 삭제
  */
-router.delete('/brands/:brand_id/ingredient-categories/:category_id', authenticateToken, isBrandManager, async (req, res) => {
+router.delete('/brands/:brandId/ingredient-categories/:categoryId', authenticateToken, isBrandManager, async (req, res) => {
   try {
-    const { brand_id, category_id } = req.params;
+    const { brandId, categoryId } = req.params;
+    const brand_id = brandId; // DB 쿼리용
+    const category_id = categoryId;
 
     const category = await IngredientCategory.findOne({
       where: { id: category_id, brand_id }
@@ -162,12 +168,13 @@ router.delete('/brands/:brand_id/ingredient-categories/:category_id', authentica
 });
 
 /**
- * PUT /api/brands/:brand_id/ingredient-categories/reorder
+ * PUT /api/brands/:brandId/ingredient-categories/reorder
  * 브랜드 재료 카테고리 순서 변경
  */
-router.put('/brands/:brand_id/ingredient-categories/reorder', authenticateToken, isBrandManager, async (req, res) => {
+router.put('/brands/:brandId/ingredient-categories/reorder', authenticateToken, isBrandManager, async (req, res) => {
   try {
-    const { brand_id } = req.params;
+    const { brandId } = req.params;
+    const brand_id = brandId; // DB 쿼리용
     const { orders } = req.body; // [{ id: 1, display_order: 0 }, { id: 2, display_order: 1 }, ...]
 
     if (!orders || !Array.isArray(orders)) {
@@ -193,12 +200,13 @@ router.put('/brands/:brand_id/ingredient-categories/reorder', authenticateToken,
 // ============================================
 
 /**
- * GET /api/restaurants/:restaurant_id/ingredient-categories
+ * GET /api/restaurants/:restaurantId/ingredient-categories
  * 레스토랑 재료 카테고리 목록 조회
  */
-router.get('/restaurants/:restaurant_id/ingredient-categories', authenticateToken, async (req, res) => {
+router.get('/restaurants/:restaurantId/ingredient-categories', authenticateToken, async (req, res) => {
   try {
-    const { restaurant_id } = req.params;
+    const { restaurantId } = req.params;
+    const restaurant_id = restaurantId; // DB 쿼리용
 
     const restaurant = await Restaurant.findByPk(restaurant_id);
     if (!restaurant) {
@@ -254,12 +262,13 @@ router.get('/restaurants/:restaurant_id/ingredient-categories', authenticateToke
 });
 
 /**
- * POST /api/restaurants/:restaurant_id/ingredient-categories
+ * POST /api/restaurants/:restaurantId/ingredient-categories
  * 레스토랑 재료 카테고리 생성 (독립 레스토랑만)
  */
-router.post('/restaurants/:restaurant_id/ingredient-categories', authenticateToken, async (req, res) => {
+router.post('/restaurants/:restaurantId/ingredient-categories', authenticateToken, async (req, res) => {
   try {
-    const { restaurant_id } = req.params;
+    const { restaurantId } = req.params;
+    const restaurant_id = restaurantId; // DB 쿼리용
     const { name, description, emoji, display_order } = req.body;
 
     const restaurant = await Restaurant.findByPk(restaurant_id);
@@ -308,12 +317,14 @@ router.post('/restaurants/:restaurant_id/ingredient-categories', authenticateTok
 });
 
 /**
- * PUT /api/restaurants/:restaurant_id/ingredient-categories/:category_id
+ * PUT /api/restaurants/:restaurantId/ingredient-categories/:categoryId
  * 레스토랑 재료 카테고리 수정
  */
-router.put('/restaurants/:restaurant_id/ingredient-categories/:category_id', authenticateToken, async (req, res) => {
+router.put('/restaurants/:restaurantId/ingredient-categories/:categoryId', authenticateToken, async (req, res) => {
   try {
-    const { restaurant_id, category_id } = req.params;
+    const { restaurantId, categoryId } = req.params;
+    const restaurant_id = restaurantId; // DB 쿼리용
+    const category_id = categoryId;
     const { name, description, emoji, display_order, is_active } = req.body;
 
     const category = await IngredientCategory.findOne({
@@ -350,12 +361,14 @@ router.put('/restaurants/:restaurant_id/ingredient-categories/:category_id', aut
 });
 
 /**
- * DELETE /api/restaurants/:restaurant_id/ingredient-categories/:category_id
+ * DELETE /api/restaurants/:restaurantId/ingredient-categories/:categoryId
  * 레스토랑 재료 카테고리 삭제
  */
-router.delete('/restaurants/:restaurant_id/ingredient-categories/:category_id', authenticateToken, async (req, res) => {
+router.delete('/restaurants/:restaurantId/ingredient-categories/:categoryId', authenticateToken, async (req, res) => {
   try {
-    const { restaurant_id, category_id } = req.params;
+    const { restaurantId, categoryId } = req.params;
+    const restaurant_id = restaurantId; // DB 쿼리용
+    const category_id = categoryId;
 
     const category = await IngredientCategory.findOne({
       where: { id: category_id, restaurant_id }
