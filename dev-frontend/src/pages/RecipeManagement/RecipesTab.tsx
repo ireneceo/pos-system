@@ -18,6 +18,7 @@ interface Recipe {
   id: number;
   brand_id: number | null;
   restaurant_id: number | null;
+  owner_type: 'brand' | 'restaurant';
   code: string | null;
   name: string;
   description: string | null;
@@ -416,19 +417,6 @@ const HeaderSection = styled.div`
   }
 `;
 
-const ReadOnlyNotice = styled.div`
-  background: #FEF3C7;
-  border: 1px solid #F59E0B;
-  border-radius: 8px;
-  padding: 12px 16px;
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: #92400E;
-`;
-
 const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRestaurantId, onCountChange, categoryRefreshKey }) => {
   const { user } = useAuth();
   // URL 파라미터의 restaurantId가 우선, 없으면 user.restaurant_id 또는 user.restaurantId 사용
@@ -441,7 +429,6 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [recipeManagerType, setRecipeManagerType] = useState<'brand' | 'restaurant'>('restaurant');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -468,7 +455,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
   });
 
   const isRestaurantAdmin = user?.role === 'Restaurant Admin';
-  const isReadOnly = isRestaurantAdmin && recipeManagerType === 'brand';
+  // Restaurant Admin은 자신의 레시피만 수정/삭제 가능 (브랜드 레시피는 읽기전용)
+  const isItemReadOnly = (item: Recipe) => isRestaurantAdmin && item.owner_type === 'brand';
 
   // Helper to get auth token
   const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
@@ -540,13 +528,6 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
           }
         }
 
-        // Process restaurant info (for recipe_manager_type)
-        if (results[3]) {
-          const restaurantData = results[3].success ? results[3].data : results[3];
-          if (restaurantData?.recipe_manager_type) {
-            setRecipeManagerType(restaurantData.recipe_manager_type);
-          }
-        }
       } catch (error) {
         console.error('Failed to fetch data:', error);
       } finally {
@@ -563,22 +544,6 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
       fetchRecipeCategories();
     }
   }, [categoryRefreshKey]);
-
-  const fetchRestaurantInfo = async () => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/restaurants/${effectiveRestaurantId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
-      if (data.success || data.id) {
-        const restaurantData = data.success ? data.data : data;
-        setRecipeManagerType(restaurantData.recipe_manager_type || 'restaurant');
-      }
-    } catch (error) {
-      console.error('Failed to fetch restaurant info:', error);
-    }
-  };
 
   const fetchRecipeCategories = async () => {
     try {
@@ -938,13 +903,6 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
 
   return (
     <>
-      {/* Read Only Notice for brand-managed restaurants */}
-      {isReadOnly && (
-        <ReadOnlyNotice>
-          <span>Recipe management is handled by the brand. Please contact your brand administrator for recipe edits.</span>
-        </ReadOnlyNotice>
-      )}
-
       <HeaderSection>
         <FilterBar style={{ marginBottom: 0, flex: 1 }}>
           <SearchInput
@@ -965,15 +923,13 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
           </FilterSelect>
         </FilterBar>
 
-        {!isReadOnly && (
-          <ThemedButton
-            variant="primary"
-            onClick={() => handleOpenModal(null)}
-            style={{ whiteSpace: 'nowrap' }}
-          >
-            + New Recipe
-          </ThemedButton>
-        )}
+        <ThemedButton
+          variant="primary"
+          onClick={() => handleOpenModal(null)}
+          style={{ whiteSpace: 'nowrap' }}
+        >
+          + New Recipe
+        </ThemedButton>
       </HeaderSection>
 
       {loading ? (
@@ -986,11 +942,9 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
           <EmptyDescription>
             {searchTerm || selectedCategory !== 'all'
               ? 'Try adjusting your filters'
-              : isReadOnly
-                ? 'Brand manages recipes for this restaurant'
-                : 'Create your first recipe to get started'}
+              : 'Create your first recipe to get started'}
           </EmptyDescription>
-          {!searchTerm && selectedCategory === 'all' && !isReadOnly && (
+          {!searchTerm && selectedCategory === 'all' && (
             <ThemedButton
               variant="primary"
               onClick={() => handleOpenModal(null)}
@@ -1054,7 +1008,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                 </IngredientsCount>
               </RecipeIngredients>
 
-              {!isReadOnly && (
+              {!isItemReadOnly(recipe) && (
                 <RecipeActions>
                   <ActionButton
                     variant="secondary"

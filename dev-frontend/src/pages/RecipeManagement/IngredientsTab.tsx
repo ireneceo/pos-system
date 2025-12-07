@@ -8,6 +8,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 
 interface IngredientsTabProps {
   brandId: number | null;
+  restaurantId?: number | null;
   onCountChange: (count: number) => void;
   categoryRefreshKey?: number;
 }
@@ -27,6 +28,7 @@ interface Ingredient {
   id: number;
   brand_id: number | null;
   restaurant_id: number | null;
+  owner_type: 'brand' | 'restaurant';
   ingredient_category_id: number | null;
   ingredientCategory?: IngredientCategory;
   code: string | null;
@@ -211,20 +213,7 @@ const HeaderSection = styled.div`
   }
 `;
 
-const ReadOnlyNotice = styled.div`
-  background: #FEF3C7;
-  border: 1px solid #F59E0B;
-  border-radius: 8px;
-  padding: 12px 16px;
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: #92400E;
-`;
-
-const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange, categoryRefreshKey }) => {
+const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId, onCountChange, categoryRefreshKey }) => {
   const { user } = useAuth();
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [ingredientCategories, setIngredientCategories] = useState<IngredientCategory[]>([]);
@@ -233,7 +222,6 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [recipeManagerType, setRecipeManagerType] = useState<'brand' | 'restaurant'>('restaurant');
   const [formData, setFormData] = useState({
     code: '',
     name: '',
@@ -250,7 +238,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
   });
 
   const isRestaurantAdmin = user?.role === 'Restaurant Admin';
-  const isReadOnly = isRestaurantAdmin && recipeManagerType === 'brand';
+  // Restaurant Admin은 자신의 재료만 수정/삭제 가능 (브랜드 재료는 읽기전용)
+  const isItemReadOnly = (item: Ingredient) => isRestaurantAdmin && item.owner_type === 'brand';
 
   // Helper to get auth token
   const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
@@ -268,7 +257,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
         const promises: Promise<any>[] = [];
 
         // Build URLs based on role
-        let ingredientsUrl = '', categoriesUrl = '', restaurantUrl = '';
+        let ingredientsUrl = '', categoriesUrl = '';
 
         if (isBrandRole && brandId) {
           ingredientsUrl = `/api/brands/${brandId}/ingredients`;
@@ -276,7 +265,6 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
         } else if (isRestaurantAdmin && user?.restaurant_id) {
           ingredientsUrl = `/api/restaurants/${user.restaurant_id}/ingredients`;
           categoriesUrl = `/api/restaurants/${user.restaurant_id}/ingredient-categories`;
-          restaurantUrl = `/api/restaurants/${user.restaurant_id}`;
         }
 
         // Fetch all in parallel
@@ -285,9 +273,6 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
             fetch(ingredientsUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
             fetch(categoriesUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
           );
-          if (restaurantUrl) {
-            promises.push(fetch(restaurantUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()));
-          }
         }
 
         const results = await Promise.all(promises);
@@ -310,13 +295,6 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
           }
         }
 
-        // Process restaurant info (for recipe_manager_type)
-        if (results[2]) {
-          const restaurantData = results[2].success ? results[2].data : results[2];
-          if (restaurantData?.recipe_manager_type) {
-            setRecipeManagerType(restaurantData.recipe_manager_type);
-          }
-        }
       } catch (error) {
         console.error('Failed to fetch data:', error);
       } finally {
@@ -368,6 +346,35 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
       }
     } catch (error) {
       console.error('Failed to fetch ingredient categories:', error);
+    }
+  };
+
+  const fetchIngredients = async () => {
+    try {
+      let url = '';
+      if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
+        if (brandId) {
+          url = `/api/brands/${brandId}/ingredients`;
+        }
+      } else if (user?.role === 'Restaurant Admin') {
+        if (user.restaurant_id) {
+          url = `/api/restaurants/${user.restaurant_id}/ingredients`;
+        }
+      }
+
+      if (!url) return;
+
+      const token = getToken();
+      const response = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setIngredients(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch ingredients:', error);
     }
   };
 
@@ -528,13 +535,6 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
 
   return (
     <>
-      {/* Read Only Notice for brand-managed restaurants */}
-      {isReadOnly && (
-        <ReadOnlyNotice>
-          <span>Recipe management is handled by the brand. Please contact your brand administrator for ingredient edits.</span>
-        </ReadOnlyNotice>
-      )}
-
       <HeaderSection>
         <FilterBar style={{ marginBottom: 0, flex: 1 }}>
           <SearchInput
@@ -555,15 +555,13 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
           </FilterSelect>
         </FilterBar>
 
-        {!isReadOnly && (
-          <ThemedButton
-            variant="primary"
-            onClick={() => handleOpenModal(null)}
-            style={{ whiteSpace: 'nowrap' }}
-          >
-            + New Ingredient
-          </ThemedButton>
-        )}
+        <ThemedButton
+          variant="primary"
+          onClick={() => handleOpenModal(null)}
+          style={{ whiteSpace: 'nowrap' }}
+        >
+          + New Ingredient
+        </ThemedButton>
       </HeaderSection>
 
       {loading ? (
@@ -576,11 +574,9 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
           <EmptyDescription>
             {searchTerm || selectedCategory !== 'all'
               ? 'Try adjusting your filters'
-              : isReadOnly
-                ? 'Brand manages ingredients for this restaurant'
-                : 'Create your first ingredient to get started'}
+              : 'Create your first ingredient to get started'}
           </EmptyDescription>
-          {!searchTerm && selectedCategory === 'all' && !isReadOnly && (
+          {!searchTerm && selectedCategory === 'all' && (
             <ThemedButton
               variant="primary"
               onClick={() => handleOpenModal(null)}
@@ -625,7 +621,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, onCountChange,
                 )}
               </IngredientInfo>
 
-              {!isReadOnly && (
+              {!isItemReadOnly(ingredient) && (
                 <IngredientActions>
                   <ActionButton
                     variant="secondary"

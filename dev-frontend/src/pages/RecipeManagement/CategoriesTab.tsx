@@ -8,6 +8,7 @@ import ConfirmDialog from '../../components/common/ConfirmDialog';
 
 interface CategoriesTabProps {
   brandId: number | null;
+  restaurantId?: number | null;
   onCountChange: (count: number) => void;
 }
 
@@ -15,6 +16,7 @@ interface Category {
   id: number;
   brand_id: number | null;
   restaurant_id: number | null;
+  owner_type: 'brand' | 'restaurant';
   name: string;
   description: string | null;
   emoji: string | null;
@@ -239,20 +241,7 @@ const BrandCategoriesHeader = styled.div`
   font-weight: 500;
 `;
 
-const ReadOnlyNotice = styled.div`
-  background: #FEF3C7;
-  border: 1px solid #F59E0B;
-  border-radius: 8px;
-  padding: 12px 16px;
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: #92400E;
-`;
-
-const CategoriesTab: React.FC<CategoriesTabProps> = ({ brandId, onCountChange }) => {
+const CategoriesTab: React.FC<CategoriesTabProps> = ({ brandId, restaurantId, onCountChange }) => {
   const { user } = useAuth();
   const [recipeCategories, setRecipeCategories] = useState<Category[]>([]);
   const [ingredientCategories, setIngredientCategories] = useState<Category[]>([]);
@@ -264,7 +253,6 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ brandId, onCountChange })
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<{ category: Category; type: 'recipe' | 'ingredient' } | null>(null);
-  const [recipeManagerType, setRecipeManagerType] = useState<'brand' | 'restaurant'>('restaurant');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -273,8 +261,8 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ brandId, onCountChange })
 
   const isRestaurantAdmin = user?.role === 'Restaurant Admin';
   const isBrandUser = user?.role === 'Brand General' || user?.role === 'Brand Manager';
-  // 브랜드가 관리하는 경우 레스토랑은 읽기만 가능
-  const isReadOnly = isRestaurantAdmin && recipeManagerType === 'brand';
+  // Restaurant Admin은 자신의 카테고리만 수정/삭제 가능 (브랜드 카테고리는 읽기전용)
+  const isItemReadOnly = (item: Category) => isRestaurantAdmin && item.owner_type === 'brand';
 
   const emojiOptions = [
     '🍔', '🍕', '🍗', '🥗', '🍜', '🍝', '🍤', '🥘', '🍛', '🍲',
@@ -288,27 +276,8 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ brandId, onCountChange })
   ];
 
   useEffect(() => {
-    if (isRestaurantAdmin && user?.restaurant_id) {
-      fetchRestaurantInfo();
-    }
     fetchCategories();
   }, [brandId, user]);
-
-  const fetchRestaurantInfo = async () => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/restaurants/${user?.restaurant_id}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
-      if (data.success || data.id) {
-        const restaurantData = data.success ? data.data : data;
-        setRecipeManagerType(restaurantData.recipe_manager_type || 'restaurant');
-      }
-    } catch (error) {
-      console.error('Failed to fetch restaurant info:', error);
-    }
-  };
 
   const fetchCategories = async () => {
     try {
@@ -587,22 +556,12 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ brandId, onCountChange })
 
   return (
     <Container>
-      {/* Read Only Notice for brand-managed restaurants */}
-      {isReadOnly && (
-        <ReadOnlyNotice>
-          <span>⚠️</span>
-          <span>레시피 관리가 브랜드에서 이루어지고 있습니다. 카테고리 편집은 브랜드 관리자에게 문의하세요.</span>
-        </ReadOnlyNotice>
-      )}
-
       {/* Recipe Categories Section */}
       <HeaderRow>
         <SectionTitle>Recipe Categories</SectionTitle>
-        {!isReadOnly && (
-          <ThemedButton variant="primary" onClick={() => handleOpenModal('recipe')}>
-            + New Category
-          </ThemedButton>
-        )}
+        <ThemedButton variant="primary" onClick={() => handleOpenModal('recipe')}>
+          + New Category
+        </ThemedButton>
       </HeaderRow>
 
       {/* Brand Recipe Categories (Restaurant only) */}
@@ -622,17 +581,15 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ brandId, onCountChange })
           <EmptyIcon>📂</EmptyIcon>
           <EmptyTitle>No recipe categories yet</EmptyTitle>
           <EmptyDescription>
-            {isReadOnly ? 'Brand manages recipe categories for this restaurant' : 'Create categories to organize your recipes'}
+            Create categories to organize your recipes
           </EmptyDescription>
-          {!isReadOnly && (
-            <ThemedButton variant="primary" onClick={() => handleOpenModal('recipe')}>
-              Create Category
-            </ThemedButton>
-          )}
+          <ThemedButton variant="primary" onClick={() => handleOpenModal('recipe')}>
+            Create Category
+          </ThemedButton>
         </EmptyState>
       ) : (
         <CategoryGrid>
-          {recipeCategories.map((cat, idx) => renderCategoryCard(cat, 'recipe', idx, recipeCategories, isReadOnly))}
+          {recipeCategories.map((cat, idx) => renderCategoryCard(cat, 'recipe', idx, recipeCategories, isItemReadOnly(cat)))}
         </CategoryGrid>
       )}
 
@@ -641,11 +598,9 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ brandId, onCountChange })
       {/* Ingredient Categories Section */}
       <HeaderRow>
         <SectionTitle>Ingredient Categories</SectionTitle>
-        {!isReadOnly && (
-          <ThemedButton variant="primary" onClick={() => handleOpenModal('ingredient')}>
-            + New Category
-          </ThemedButton>
-        )}
+        <ThemedButton variant="primary" onClick={() => handleOpenModal('ingredient')}>
+          + New Category
+        </ThemedButton>
       </HeaderRow>
 
       {/* Brand Ingredient Categories (Restaurant only) */}
@@ -665,17 +620,15 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ brandId, onCountChange })
           <EmptyIcon>🥕</EmptyIcon>
           <EmptyTitle>No ingredient categories yet</EmptyTitle>
           <EmptyDescription>
-            {isReadOnly ? 'Brand manages ingredient categories for this restaurant' : 'Create categories to organize your ingredients'}
+            Create categories to organize your ingredients
           </EmptyDescription>
-          {!isReadOnly && (
-            <ThemedButton variant="primary" onClick={() => handleOpenModal('ingredient')}>
-              Create Category
-            </ThemedButton>
-          )}
+          <ThemedButton variant="primary" onClick={() => handleOpenModal('ingredient')}>
+            Create Category
+          </ThemedButton>
         </EmptyState>
       ) : (
         <CategoryGrid>
-          {ingredientCategories.map((cat, idx) => renderCategoryCard(cat, 'ingredient', idx, ingredientCategories, isReadOnly))}
+          {ingredientCategories.map((cat, idx) => renderCategoryCard(cat, 'ingredient', idx, ingredientCategories, isItemReadOnly(cat)))}
         </CategoryGrid>
       )}
 

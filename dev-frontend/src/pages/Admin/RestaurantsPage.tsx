@@ -53,7 +53,6 @@ interface Restaurant {
   subscriptionStart?: string;
   subscriptionEnd?: string;
   brand_id?: number;
-  recipe_manager_type?: 'restaurant' | 'brand';
 }
 
 // Common components now imported from ../../components/UI
@@ -857,8 +856,7 @@ const RestaurantsPage: React.FC = () => {
             rating: restaurant.rating || 4.5, // Use actual data from backend
             createdAt: restaurant.createdAt ? new Date(restaurant.createdAt).toISOString().split('T')[0] : '2024-01-01',
             lastOrder: restaurant.lastOrder || 'Never', // Use actual data from backend
-            brand_id: restaurant.brand_id || null, // Include brand_id from backend
-            recipe_manager_type: restaurant.recipe_manager_type || 'restaurant' // Include recipe_manager_type from backend
+            brand_id: restaurant.brand_id || null // Include brand_id from backend
           };
         });
       

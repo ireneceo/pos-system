@@ -620,8 +620,7 @@ const SettingsPage: React.FC = () => {
   const [brandInfo, setBrandInfo] = useState<{
     brand_id: number | null;
     brand_name: string | null;
-    recipe_manager_type: 'restaurant' | 'brand' | null;
-  }>({ brand_id: null, brand_name: null, recipe_manager_type: null });
+  }>({ brand_id: null, brand_name: null });
 
   // Initialize currencySettings from operationSettings (will be overridden by DB values in useEffect)
   const defaultOps = loadSettings().operations;
@@ -743,8 +742,7 @@ const SettingsPage: React.FC = () => {
             // Update brand info
             setBrandInfo({
               brand_id: restaurant.brand_id || null,
-              brand_name: restaurant.brand?.name || null,
-              recipe_manager_type: restaurant.recipe_manager_type || null
+              brand_name: restaurant.brand?.name || null
             });
 
             // Store restaurant slug for QR code generation
@@ -2424,28 +2422,7 @@ const SettingsPage: React.FC = () => {
                         {brandInfo.brand_name || 'Unknown Brand'}
                       </div>
                     </FormGroup>
-                    <FormGroup>
-                      <Label>Recipe Management</Label>
-                      <div style={{
-                        padding: '10px 12px',
-                        background: brandInfo.recipe_manager_type === 'brand' ? '#FEF3C7' : '#D1FAE5',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        fontWeight: 500,
-                        color: brandInfo.recipe_manager_type === 'brand' ? '#92400E' : '#065F46',
-                        border: `1px solid ${brandInfo.recipe_manager_type === 'brand' ? '#FCD34D' : '#6EE7B7'}`
-                      }}>
-                        {brandInfo.recipe_manager_type === 'brand'
-                          ? 'Managed by Brand (Read-only recipes)'
-                          : 'Managed by Restaurant (Own recipes)'
-                        }
-                      </div>
-                    </FormGroup>
                   </div>
-                  <p style={{ fontSize: '13px', color: '#6B7C93', marginTop: '16px' }}>
-                    Recipe management settings are controlled by your brand administrator.
-                    Contact your brand manager to change this setting.
-                  </p>
                 </SettingsCard>
               )}
 

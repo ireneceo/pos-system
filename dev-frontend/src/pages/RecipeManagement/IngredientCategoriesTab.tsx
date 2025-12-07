@@ -8,6 +8,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 
 interface IngredientCategoriesTabProps {
   brandId: number | null;
+  restaurantId?: number | null;
   onCountChange: (count: number) => void;
   onCategoryChange?: () => void;
 }
@@ -16,6 +17,7 @@ interface Category {
   id: number;
   brand_id: number | null;
   restaurant_id: number | null;
+  owner_type: 'brand' | 'restaurant';
   name: string;
   description: string | null;
   display_order: number;
@@ -193,20 +195,7 @@ const BrandCategoriesHeader = styled.div`
   font-weight: 500;
 `;
 
-const ReadOnlyNotice = styled.div`
-  background: #FEF3C7;
-  border: 1px solid #F59E0B;
-  border-radius: 8px;
-  padding: 12px 16px;
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: #92400E;
-`;
-
-const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brandId, onCountChange, onCategoryChange }) => {
+const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brandId, restaurantId, onCountChange, onCategoryChange }) => {
   const { user } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [brandCategories, setBrandCategories] = useState<Category[]>([]);
@@ -215,7 +204,6 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
-  const [recipeManagerType, setRecipeManagerType] = useState<'brand' | 'restaurant'>('restaurant');
   const [formData, setFormData] = useState({
     name: '',
     description: ''
@@ -223,7 +211,8 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
 
   const isRestaurantAdmin = user?.role === 'Restaurant Admin';
   const isBrandUser = user?.role === 'Brand General' || user?.role === 'Brand Manager';
-  const isReadOnly = isRestaurantAdmin && recipeManagerType === 'brand';
+  // Restaurant Admin은 자신의 카테고리만 수정/삭제 가능 (브랜드 카테고리는 읽기전용)
+  const isItemReadOnly = (item: Category) => isRestaurantAdmin && item.owner_type === 'brand';
 
   // Helper to get auth token
   const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
@@ -246,25 +235,15 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
             onCountChange(data.data.length);
           }
         } else if (isRestaurantAdmin && user?.restaurant_id) {
-          // Fetch categories and restaurant info in parallel
-          const [categoriesRes, restaurantRes] = await Promise.all([
-            fetch(`/api/restaurants/${user.restaurant_id}/ingredient-categories`, {
-              headers: { 'Authorization': `Bearer ${token}` }
-            }).then(r => r.json()),
-            fetch(`/api/restaurants/${user.restaurant_id}`, {
-              headers: { 'Authorization': `Bearer ${token}` }
-            }).then(r => r.json())
-          ]);
+          const response = await fetch(`/api/restaurants/${user.restaurant_id}/ingredient-categories`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const categoriesRes = await response.json();
 
           if (categoriesRes.success) {
             setCategories(categoriesRes.data.own_categories || []);
             setBrandCategories(categoriesRes.data.brand_categories || []);
             onCountChange((categoriesRes.data.own_categories?.length || 0) + (categoriesRes.data.brand_categories?.length || 0));
-          }
-
-          if (restaurantRes.success || restaurantRes.id) {
-            const restaurantData = restaurantRes.success ? restaurantRes.data : restaurantRes;
-            setRecipeManagerType(restaurantData.recipe_manager_type || 'restaurant');
           }
         }
       } catch (error) {
@@ -511,19 +490,11 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
 
   return (
     <Container>
-      {isReadOnly && (
-        <ReadOnlyNotice>
-          <span>Recipe management is handled by the brand. Please contact your brand administrator for category edits.</span>
-        </ReadOnlyNotice>
-      )}
-
       <HeaderRow>
         <SectionTitle>Ingredient Categories</SectionTitle>
-        {!isReadOnly && (
-          <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
-            + New Category
-          </ThemedButton>
-        )}
+        <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
+          + New Category
+        </ThemedButton>
       </HeaderRow>
 
       {isRestaurantAdmin && brandCategories.length > 0 && (
@@ -541,17 +512,15 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
         <EmptyState>
           <EmptyTitle>No ingredient categories yet</EmptyTitle>
           <EmptyDescription>
-            {isReadOnly ? 'Brand manages ingredient categories for this restaurant' : 'Create categories to organize your ingredients'}
+            Create categories to organize your ingredients
           </EmptyDescription>
-          {!isReadOnly && (
-            <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
-              Create Category
-            </ThemedButton>
-          )}
+          <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
+            Create Category
+          </ThemedButton>
         </EmptyState>
       ) : (
         <CategoryGrid>
-          {categories.map((cat, idx) => renderCategoryCard(cat, idx, categories, isReadOnly))}
+          {categories.map((cat, idx) => renderCategoryCard(cat, idx, categories, isItemReadOnly(cat)))}
         </CategoryGrid>
       )}
 
