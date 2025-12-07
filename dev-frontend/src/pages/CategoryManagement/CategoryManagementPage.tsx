@@ -214,17 +214,17 @@ const EmojiOption = styled.button<{ selected?: boolean }>`
   width: 100%;
   aspect-ratio: 1;
   border-radius: 4px;
-  background: ${props => props.selected ? '#635BFF' : 'white'};
-  border: 1px solid ${props => props.selected ? '#635BFF' : '#E5E7EB'};
+  background: ${props => props.selected ? '#E5E7EB' : 'white'};
+  border: 1px solid ${props => props.selected ? '#9CA3AF' : '#E5E7EB'};
   cursor: pointer;
   transition: all 0.2s;
   font-size: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  
+
   &:hover {
-    background: ${props => props.selected ? '#635BFF' : '#F3F4F6'};
+    background: ${props => props.selected ? '#E5E7EB' : '#F3F4F6'};
   }
 `;
 

@@ -19,6 +19,7 @@ interface Category {
   restaurant_id: number | null;
   owner_type: 'brand' | 'restaurant';
   name: string;
+  emoji: string | null;
   description: string | null;
   display_order: number;
   is_active: boolean;
@@ -179,6 +180,46 @@ const StatusBadge = styled.span<{ active: boolean }>`
   color: ${props => props.active ? '#059669' : '#DC2626'};
 `;
 
+const CategoryIcon = styled.div`
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background: #F3F4F6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+`;
+
+const EmojiPicker = styled.div`
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 8px;
+  background: #F9FAFB;
+  border-radius: 8px;
+`;
+
+const EmojiOption = styled.button<{ selected?: boolean }>`
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 4px;
+  background: ${props => props.selected ? '#E5E7EB' : 'white'};
+  border: 1px solid ${props => props.selected ? '#9CA3AF' : '#E5E7EB'};
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: ${props => props.selected ? '#E5E7EB' : '#F3F4F6'};
+  }
+`;
 
 const BrandCategoriesSection = styled.div`
   margin-bottom: 24px;
@@ -198,8 +239,10 @@ const BrandCategoriesHeader = styled.div`
   font-weight: 500;
 `;
 
-const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, restaurantId, onCountChange, onCategoryChange }) => {
+const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, restaurantId: propsRestaurantId, onCountChange, onCategoryChange }) => {
   const { user } = useAuth();
+  // URL 파라미터의 restaurantId가 우선, 없으면 user.restaurant_id 사용
+  const effectiveRestaurantId = propsRestaurantId || user?.restaurant_id || (user as any)?.restaurantId;
   const [categories, setCategories] = useState<Category[]>([]);
   const [brandCategories, setBrandCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -209,8 +252,18 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, rest
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   const [formData, setFormData] = useState({
     name: '',
+    emoji: '',
     description: ''
   });
+
+  const emojiOptions = [
+    '🍔', '🍕', '🍗', '🥗', '🍜', '🍝', '🍤', '🥘', '🍛', '🍲',
+    '☕', '🥤', '🧃', '🍵', '🧋', '🍺', '🍷', '🥃', '🍹', '🍸',
+    '🍰', '🧁', '🍪', '🍩', '🍨', '🍧', '🍦', '🍮', '🍭', '🍫',
+    '🥐', '🥖', '🍞', '🥨', '🥯', '🧇', '🥞', '🍳', '🥚', '🧈',
+    '🍱', '🍙', '🍘', '🍣', '🍥', '🍡', '🍢', '🍠', '🥟', '🥠',
+    '🌮', '🌯', '🥙', '🫔', '🥪', '🌭', '🍟', '🫓', '🥓', '🧆'
+  ];
 
   const isRestaurantAdmin = user?.role === 'Restaurant Admin';
   const isBrandUser = user?.role === 'Brand General' || user?.role === 'Brand Manager';
@@ -237,8 +290,8 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, rest
             setCategories(data.data);
             onCountChange(data.data.length);
           }
-        } else if (isRestaurantAdmin && user?.restaurant_id) {
-          const response = await fetch(`/api/restaurants/${user.restaurant_id}/recipe-categories`, {
+        } else if (isRestaurantAdmin && effectiveRestaurantId) {
+          const response = await fetch(`/api/restaurants/${effectiveRestaurantId}/recipe-categories`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           const categoriesRes = await response.json();
@@ -257,7 +310,7 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, rest
     };
 
     fetchAllData();
-  }, [brandId, user?.restaurant_id, isBrandUser, isRestaurantAdmin, getToken, onCountChange]);
+  }, [brandId, effectiveRestaurantId, isBrandUser, isRestaurantAdmin, getToken, onCountChange]);
 
   const fetchCategories = async () => {
     try {
@@ -273,8 +326,8 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, rest
           setCategories(data.data);
           onCountChange(data.data.length);
         }
-      } else if (isRestaurantAdmin && user?.restaurant_id) {
-        const response = await fetch(`/api/restaurants/${user.restaurant_id}/recipe-categories`, {
+      } else if (isRestaurantAdmin && effectiveRestaurantId) {
+        const response = await fetch(`/api/restaurants/${effectiveRestaurantId}/recipe-categories`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await response.json();
@@ -295,12 +348,14 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, rest
       setEditingCategory(category);
       setFormData({
         name: category.name,
+        emoji: category.emoji || '',
         description: category.description || ''
       });
     } else {
       setEditingCategory(null);
       setFormData({
         name: '',
+        emoji: '',
         description: ''
       });
     }
@@ -310,7 +365,7 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, rest
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingCategory(null);
-    setFormData({ name: '', description: '' });
+    setFormData({ name: '', emoji: '', description: '' });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -326,10 +381,10 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, rest
         url = editingCategory
           ? `/api/brands/${brandId}/recipe-categories/${editingCategory.id}`
           : `/api/brands/${brandId}/recipe-categories`;
-      } else if (isRestaurantAdmin && user?.restaurant_id) {
+      } else if (isRestaurantAdmin && effectiveRestaurantId) {
         url = editingCategory
-          ? `/api/restaurants/${user.restaurant_id}/recipe-categories/${editingCategory.id}`
-          : `/api/restaurants/${user.restaurant_id}/recipe-categories`;
+          ? `/api/restaurants/${effectiveRestaurantId}/recipe-categories/${editingCategory.id}`
+          : `/api/restaurants/${effectiveRestaurantId}/recipe-categories`;
       }
 
       if (!url) return;
@@ -342,6 +397,7 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, rest
         },
         body: JSON.stringify({
           name: formData.name.trim(),
+          emoji: formData.emoji || null,
           description: formData.description.trim() || null
         })
       });
@@ -375,8 +431,8 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, rest
 
       if (isBrandUser && brandId) {
         url = `/api/brands/${brandId}/recipe-categories/${categoryToDelete.id}`;
-      } else if (isRestaurantAdmin && user?.restaurant_id) {
-        url = `/api/restaurants/${user.restaurant_id}/recipe-categories/${categoryToDelete.id}`;
+      } else if (isRestaurantAdmin && effectiveRestaurantId) {
+        url = `/api/restaurants/${effectiveRestaurantId}/recipe-categories/${categoryToDelete.id}`;
       }
 
       if (!url) return;
@@ -421,8 +477,8 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, rest
 
       if (isBrandUser && brandId) {
         url = `/api/brands/${brandId}/recipe-categories/reorder`;
-      } else if (isRestaurantAdmin && user?.restaurant_id) {
-        url = `/api/restaurants/${user.restaurant_id}/recipe-categories/reorder`;
+      } else if (isRestaurantAdmin && effectiveRestaurantId) {
+        url = `/api/restaurants/${effectiveRestaurantId}/recipe-categories/reorder`;
       }
 
       if (!url) return;
@@ -452,6 +508,9 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, rest
             disableUp={index === 0}
             disableDown={index === categoryList.length - 1}
           />
+        )}
+        {category.emoji && (
+          <CategoryIcon>{category.emoji}</CategoryIcon>
         )}
         <CategoryInfo>
           <CategoryName>
@@ -552,6 +611,22 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, rest
               autoFocus
               required
             />
+          </UIFormGroup>
+
+          <UIFormGroup>
+            <FormLabel>Icon</FormLabel>
+            <EmojiPicker>
+              {emojiOptions.map(emoji => (
+                <EmojiOption
+                  key={emoji}
+                  selected={formData.emoji === emoji}
+                  onClick={() => setFormData({ ...formData, emoji })}
+                  type="button"
+                >
+                  {emoji}
+                </EmojiOption>
+              ))}
+            </EmojiPicker>
           </UIFormGroup>
 
           <UIFormGroup>

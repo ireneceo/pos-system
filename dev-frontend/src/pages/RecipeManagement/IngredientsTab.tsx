@@ -224,8 +224,10 @@ const HeaderSection = styled.div`
   }
 `;
 
-const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId, onCountChange, categoryRefreshKey }) => {
+const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: propsRestaurantId, onCountChange, categoryRefreshKey }) => {
   const { user } = useAuth();
+  // URL 파라미터의 restaurantId가 우선, 없으면 user.restaurant_id 사용
+  const effectiveRestaurantId = propsRestaurantId || user?.restaurant_id || (user as any)?.restaurantId;
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [ingredientCategories, setIngredientCategories] = useState<IngredientCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -258,7 +260,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId, 
   // Parallel fetch all data for performance
   useEffect(() => {
     const fetchAllData = async () => {
-      if (!brandId && !user?.restaurant_id) return;
+      if (!brandId && !effectiveRestaurantId) return;
 
       setLoading(true);
       const token = getToken();
@@ -273,9 +275,9 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId, 
         if (isBrandRole && brandId) {
           ingredientsUrl = `/api/brands/${brandId}/ingredients`;
           categoriesUrl = `/api/brands/${brandId}/ingredient-categories`;
-        } else if (isRestaurantAdmin && user?.restaurant_id) {
-          ingredientsUrl = `/api/restaurants/${user.restaurant_id}/ingredients`;
-          categoriesUrl = `/api/restaurants/${user.restaurant_id}/ingredient-categories`;
+        } else if (isRestaurantAdmin && effectiveRestaurantId) {
+          ingredientsUrl = `/api/restaurants/${effectiveRestaurantId}/ingredients`;
+          categoriesUrl = `/api/restaurants/${effectiveRestaurantId}/ingredient-categories`;
         }
 
         // Fetch all in parallel
@@ -285,9 +287,9 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId, 
             fetch(categoriesUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
           );
           // 레스토랑 관리자일 경우 브랜드 재료도 함께 조회
-          if (isRestaurantAdmin && user?.restaurant_id) {
+          if (isRestaurantAdmin && effectiveRestaurantId) {
             promises.push(
-              fetch(`/api/restaurants/${user.restaurant_id}/brand-ingredients`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
+              fetch(`/api/restaurants/${effectiveRestaurantId}/brand-ingredients`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
             );
           }
         }
@@ -327,11 +329,11 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId, 
     };
 
     fetchAllData();
-  }, [brandId, user?.restaurant_id, user?.role, getToken, isRestaurantAdmin]);
+  }, [brandId, effectiveRestaurantId, user?.role, getToken, isRestaurantAdmin]);
 
   // 카테고리가 변경되면 카테고리 목록을 새로 가져옴
   useEffect(() => {
-    if (categoryRefreshKey && (brandId || user?.restaurant_id)) {
+    if (categoryRefreshKey && (brandId || effectiveRestaurantId)) {
       fetchIngredientCategories();
     }
   }, [categoryRefreshKey]);
@@ -344,8 +346,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId, 
           url = `/api/brands/${brandId}/ingredient-categories`;
         }
       } else if (user?.role === 'Restaurant Admin') {
-        if (user.restaurant_id) {
-          url = `/api/restaurants/${user.restaurant_id}/ingredient-categories`;
+        if (effectiveRestaurantId) {
+          url = `/api/restaurants/${effectiveRestaurantId}/ingredient-categories`;
         }
       }
 
@@ -390,12 +392,12 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId, 
         }
       }
       // Restaurant Admin - 자체 재료 + 브랜드 재료 함께 조회
-      else if (user?.role === 'Restaurant Admin' && user.restaurant_id) {
+      else if (user?.role === 'Restaurant Admin' && effectiveRestaurantId) {
         const [ownRes, brandRes] = await Promise.all([
-          fetch(`/api/restaurants/${user.restaurant_id}/ingredients`, {
+          fetch(`/api/restaurants/${effectiveRestaurantId}/ingredients`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }).then(r => r.json()),
-          fetch(`/api/restaurants/${user.restaurant_id}/brand-ingredients`, {
+          fetch(`/api/restaurants/${effectiveRestaurantId}/brand-ingredients`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }).then(r => r.json())
         ]);
@@ -430,7 +432,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId, 
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
         url = `/api/brands/${brandId}/ingredients/${deleteConfirm.ingredientId}`;
       } else if (user?.role === 'Restaurant Admin') {
-        url = `/api/restaurants/${user?.restaurant_id}/ingredients/${deleteConfirm.ingredientId}`;
+        url = `/api/restaurants/${effectiveRestaurantId}/ingredients/${deleteConfirm.ingredientId}`;
       }
 
       const token = getToken();
@@ -517,9 +519,9 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId, 
         }
       } else if (user?.role === 'Restaurant Admin') {
         if (selectedIngredient) {
-          url = `/api/restaurants/${user.restaurant_id}/ingredients/${selectedIngredient.id}`;
+          url = `/api/restaurants/${effectiveRestaurantId}/ingredients/${selectedIngredient.id}`;
         } else {
-          url = `/api/restaurants/${user.restaurant_id}/ingredients`;
+          url = `/api/restaurants/${effectiveRestaurantId}/ingredients`;
         }
       }
 

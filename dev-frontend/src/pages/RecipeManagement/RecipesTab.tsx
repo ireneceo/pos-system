@@ -515,10 +515,11 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             fetch(ingredientsUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
             fetch(categoriesUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
           );
-          // 레스토랑 관리자일 경우 브랜드 레시피도 함께 조회
+          // 레스토랑 관리자일 경우 브랜드 데이터도 함께 조회
           if (isRestaurantAdmin && effectiveRestaurantId) {
             promises.push(
-              fetch(`/api/restaurants/${effectiveRestaurantId}/brand-recipes`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
+              fetch(`/api/restaurants/${effectiveRestaurantId}/brand-recipes`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
+              fetch(`/api/restaurants/${effectiveRestaurantId}/brand-ingredients`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
             );
           }
         }
@@ -539,7 +540,14 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
 
         // Process ingredients
         if (results[1]?.success) {
-          setIngredients(results[1].data);
+          let allIngredients = Array.isArray(results[1].data) ? results[1].data : [];
+
+          // 레스토랑 관리자일 경우 브랜드 재료 추가
+          if (isRestaurantAdmin && results[4]?.success && Array.isArray(results[4].data)) {
+            allIngredients = [...results[4].data, ...allIngredients]; // 브랜드 재료를 먼저 표시
+          }
+
+          setIngredients(allIngredients);
         }
 
         // Process categories
@@ -614,26 +622,38 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
   const fetchIngredients = async () => {
     try {
       const token = localStorage.getItem('auth_token');
-      let url = '';
+
+      // Brand General/Manager
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
         if (brandId) {
-          url = `/api/brands/${brandId}/ingredients`;
-        }
-      } else if (user?.role === 'Restaurant Admin') {
-        if (effectiveRestaurantId) {
-          url = `/api/restaurants/${effectiveRestaurantId}/ingredients`;
+          const response = await fetch(`/api/brands/${brandId}/ingredients`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await response.json();
+          if (data.success) {
+            setIngredients(data.data);
+          }
         }
       }
+      // Restaurant Admin - 자체 재료 + 브랜드 재료 함께 조회
+      else if (user?.role === 'Restaurant Admin' && effectiveRestaurantId) {
+        const [ownRes, brandRes] = await Promise.all([
+          fetch(`/api/restaurants/${effectiveRestaurantId}/ingredients`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }).then(r => r.json()),
+          fetch(`/api/restaurants/${effectiveRestaurantId}/brand-ingredients`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }).then(r => r.json())
+        ]);
 
-      if (!url) return;
-
-      const response = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
-
-      if (data.success) {
-        setIngredients(data.data);
+        let allIngredients: Ingredient[] = [];
+        if (brandRes.success && Array.isArray(brandRes.data)) {
+          allIngredients = [...brandRes.data];
+        }
+        if (ownRes.success && Array.isArray(ownRes.data)) {
+          allIngredients = [...allIngredients, ...ownRes.data];
+        }
+        setIngredients(allIngredients);
       }
     } catch (error) {
       console.error('Failed to fetch ingredients:', error);
