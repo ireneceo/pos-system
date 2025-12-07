@@ -5,77 +5,81 @@ const { Recipe, Restaurant, Brand } = require('../models');
  */
 async function canEditRecipe(req, res, next) {
   try {
-    const { recipe_id } = req.params;
+    const recipe_id = req.params.recipeId || req.params.recipe_id;
     const user = req.user;
 
     const recipe = await Recipe.findByPk(recipe_id);
     if (!recipe) {
-      return res.status(404).json({ error: '레시피를 찾을 수 없습니다' });
+      return res.status(404).json({ error: 'Recipe not found' });
     }
 
-    // System Admin은 모든 것 가능
+    // System Admin can do everything
     if (user.role === 'System Admin') {
       return next();
     }
 
-    // 브랜드 레시피인 경우
+    // Brand recipe
     if (recipe.brand_id) {
-      // Brand General/Manager만 수정 가능
-      if ((user.role === 'Brand General' || user.role === 'Brand Manager')
-          && user.brand_id === recipe.brand_id) {
-        return next();
+      // Brand General/Manager can edit if they own the brand
+      if (user.role === 'Brand General' || user.role === 'Brand Manager') {
+        const brand = await Brand.findByPk(recipe.brand_id);
+        if (brand && brand.owner_id === user.id) {
+          return next();
+        }
       }
       return res.status(403).json({
-        error: '브랜드 레시피는 브랜드 관리자만 수정할 수 있습니다'
+        error: 'Only brand owner can edit brand recipes'
       });
     }
 
-    // 레스토랑 레시피인 경우
+    // Restaurant recipe
     if (recipe.restaurant_id) {
-      // Restaurant Admin만 수정 가능
+      // Restaurant Admin can edit their own recipes
       if (user.role === 'Restaurant Admin'
           && user.restaurant_id === recipe.restaurant_id) {
         return next();
       }
       return res.status(403).json({
-        error: '해당 레스토랑 관리자만 수정할 수 있습니다'
+        error: 'Only restaurant admin can edit this recipe'
       });
     }
 
-    return res.status(403).json({ error: '권한 없음' });
+    return res.status(403).json({ error: 'Permission denied' });
   } catch (error) {
     console.error('canEditRecipe error:', error);
-    return res.status(500).json({ error: '권한 확인 중 오류가 발생했습니다' });
+    return res.status(500).json({ error: 'Error checking permissions' });
   }
 }
 
 /**
- * 레시피 조회 권한 체크
+ * Recipe view permission check
  */
 async function canViewRecipe(req, res, next) {
   try {
-    const { recipe_id } = req.params;
+    const recipe_id = req.params.recipeId || req.params.recipe_id;
     const user = req.user;
 
     const recipe = await Recipe.findByPk(recipe_id);
     if (!recipe) {
-      return res.status(404).json({ error: '레시피를 찾을 수 없습니다' });
+      return res.status(404).json({ error: 'Recipe not found' });
     }
 
-    // System Admin은 모든 것 조회 가능
+    // System Admin can view everything
     if (user.role === 'System Admin') {
       return next();
     }
 
-    // 브랜드 레시피
+    // Brand recipe
     if (recipe.brand_id) {
-      // Brand General/Manager
-      if ((user.role === 'Brand General' || user.role === 'Brand Manager')
-          && user.brand_id === recipe.brand_id) {
-        return next();
+      // Brand General/Manager who owns the brand
+      if (user.role === 'Brand General' || user.role === 'Brand Manager') {
+        const brand = await Brand.findByPk(recipe.brand_id);
+        if (brand && brand.owner_id === user.id) {
+          return next();
+        }
       }
 
-      // 해당 브랜드의 가맹점 Restaurant Admin
+      // Restaurant Admin of a restaurant belonging to the brand
       if (user.role === 'Restaurant Admin') {
         const restaurant = await Restaurant.findByPk(user.restaurant_id);
         if (restaurant && restaurant.brand_id === recipe.brand_id) {
@@ -83,28 +87,28 @@ async function canViewRecipe(req, res, next) {
         }
       }
 
-      return res.status(403).json({ error: '권한 없음' });
+      return res.status(403).json({ error: 'Permission denied' });
     }
 
-    // 레스토랑 레시피
+    // Restaurant recipe
     if (recipe.restaurant_id) {
       if (user.role === 'Restaurant Admin'
           && user.restaurant_id === recipe.restaurant_id) {
         return next();
       }
-      return res.status(403).json({ error: '권한 없음' });
+      return res.status(403).json({ error: 'Permission denied' });
     }
 
-    return res.status(403).json({ error: '권한 없음' });
+    return res.status(403).json({ error: 'Permission denied' });
   } catch (error) {
     console.error('canViewRecipe error:', error);
-    return res.status(500).json({ error: '권한 확인 중 오류가 발생했습니다' });
+    return res.status(500).json({ error: 'Error checking permissions' });
   }
 }
 
 /**
- * Brand 관리자 권한 체크
- * URL의 brand_id 파라미터를 사용하여 브랜드 소유권을 확인
+ * Brand manager permission check
+ * Uses brand_id from URL params to verify brand ownership
  */
 async function isBrandManager(req, res, next) {
   const user = req.user;
@@ -114,31 +118,29 @@ async function isBrandManager(req, res, next) {
   }
 
   if (user.role === 'Brand General' || user.role === 'Brand Manager') {
-    // URL 파라미터에서 brandId 또는 brand_id 확인
     const brand_id = req.params.brandId || req.params.brand_id;
 
     if (!brand_id) {
-      return res.status(400).json({ error: 'brand_id가 필요합니다' });
+      return res.status(400).json({ error: 'brand_id is required' });
     }
 
-    // 브랜드의 owner_id가 현재 사용자인지 확인
     const brand = await Brand.findByPk(brand_id);
     if (!brand) {
-      return res.status(404).json({ error: '브랜드를 찾을 수 없습니다' });
+      return res.status(404).json({ error: 'Brand not found' });
     }
 
     if (brand.owner_id === user.id) {
       return next();
     }
 
-    return res.status(403).json({ error: '해당 브랜드에 대한 권한이 없습니다' });
+    return res.status(403).json({ error: 'No permission for this brand' });
   }
 
-  return res.status(403).json({ error: '브랜드 관리자만 접근할 수 있습니다' });
+  return res.status(403).json({ error: 'Brand manager access only' });
 }
 
 /**
- * Restaurant 관리자 권한 체크
+ * Restaurant manager permission check
  */
 function isRestaurantManager(req, res, next) {
   const user = req.user;
@@ -151,7 +153,7 @@ function isRestaurantManager(req, res, next) {
     return next();
   }
 
-  return res.status(403).json({ error: '레스토랑 관리자만 접근할 수 있습니다' });
+  return res.status(403).json({ error: 'Restaurant admin access only' });
 }
 
 module.exports = {

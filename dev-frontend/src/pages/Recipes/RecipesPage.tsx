@@ -478,6 +478,12 @@ const RecipesPage: React.FC = () => {
         // Brand General/Manager: data.data is array
         // Restaurant Admin: data.data is object with brand_recipes and own_recipes
         if (Array.isArray(data.data)) {
+          console.log('=== RECIPES API RESPONSE ===');
+          console.log('First recipe:', data.data[0]);
+          console.log('prep_time:', data.data[0]?.prep_time);
+          console.log('cook_time:', data.data[0]?.cook_time);
+          console.log('instructions:', data.data[0]?.instructions);
+          console.log('recipeIngredients:', data.data[0]?.recipeIngredients);
           setRecipes(data.data);
           setCanCreateRecipe(true); // Brand 유저는 항상 레시피 생성 가능
         } else {
