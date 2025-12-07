@@ -305,27 +305,22 @@ router.get('/restaurants/:restaurantId/brand-recipes', authenticateToken, checkR
 
 /**
  * POST /api/restaurants/:restaurantId/recipes
- * 레스토랑 레시피 생성 (독립 또는 recipe_manager_type='restaurant'인 경우)
+ * 레스토랑 레시피 생성 (모든 레스토랑 가능)
  */
 router.post('/restaurants/:restaurantId/recipes', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
-    const restaurant = await Restaurant.findByPk(restaurantId);
+    const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
 
-    // 브랜드 가맹점이고 recipe_manager_type이 'brand'인 경우 레시피 생성 불가
-    if (restaurant.brand_id && restaurant.recipe_manager_type === 'brand') {
-      return res.status(403).json({ error: 'Cannot create recipes in brand management mode. Please contact your brand administrator.' });
-    }
-
-    const { name, description, category, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
-
-    // 레시피 생성
+    // 레시피 생성 (owner_type = 'restaurant')
     const recipe = await Recipe.create({
+      owner_type: 'restaurant',
       brand_id: null,
       restaurant_id: restaurantId,
       name,
       description,
       category,
+      recipe_category_id: recipe_category_id || null,
       emoji,
       image,
       option_groups,
@@ -377,26 +372,20 @@ router.post('/restaurants/:restaurantId/recipes', authenticateToken, checkRestau
 
 /**
  * PUT /api/restaurants/:restaurantId/recipes/:recipeId
- * 독립 레스토랑 레시피 수정
+ * 레스토랑 레시피 수정 (자신의 레시피만)
  */
 router.put('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId, recipeId } = req.params;
-    const restaurant = await Restaurant.findByPk(restaurantId);
-
-    // 브랜드 가맹점은 레시피 수정 불가 (recipe_manager_type 체크)
-    if (restaurant.brand_id && restaurant.recipe_manager_type === 'brand') {
-      return res.status(403).json({ error: 'Cannot edit brand-managed recipes' });
-    }
 
     const recipe = await Recipe.findByPk(recipeId);
     if (!recipe) {
       return res.status(404).json({ error: 'Recipe not found' });
     }
 
-    // 자신의 레시피인지 확인
-    if (recipe.restaurant_id !== parseInt(restaurantId)) {
-      return res.status(403).json({ error: 'You do not have permission to edit this recipe' });
+    // 자신의 레시피인지 확인 (owner_type이 'restaurant'이고 restaurant_id가 일치해야 함)
+    if (recipe.owner_type !== 'restaurant' || recipe.restaurant_id !== parseInt(restaurantId)) {
+      return res.status(403).json({ error: 'You can only edit your own restaurant recipes' });
     }
 
     const { name, description, category, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
@@ -459,26 +448,20 @@ router.put('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken, ch
 
 /**
  * DELETE /api/restaurants/:restaurantId/recipes/:recipeId
- * 독립 레스토랑 레시피 삭제
+ * 레스토랑 레시피 삭제 (자신의 레시피만)
  */
 router.delete('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId, recipeId } = req.params;
-    const restaurant = await Restaurant.findByPk(restaurantId);
-
-    // 브랜드 가맹점은 레시피 삭제 불가 (recipe_manager_type 체크)
-    if (restaurant.brand_id && restaurant.recipe_manager_type === 'brand') {
-      return res.status(403).json({ error: 'Cannot delete brand-managed recipes' });
-    }
 
     const recipe = await Recipe.findByPk(recipeId);
     if (!recipe) {
       return res.status(404).json({ error: 'Recipe not found' });
     }
 
-    // 자신의 레시피인지 확인
-    if (recipe.restaurant_id !== parseInt(restaurantId)) {
-      return res.status(403).json({ error: 'You do not have permission to delete this recipe' });
+    // 자신의 레시피인지 확인 (owner_type이 'restaurant'이고 restaurant_id가 일치해야 함)
+    if (recipe.owner_type !== 'restaurant' || recipe.restaurant_id !== parseInt(restaurantId)) {
+      return res.status(403).json({ error: 'You can only delete your own restaurant recipes' });
     }
 
     await recipe.destroy();
