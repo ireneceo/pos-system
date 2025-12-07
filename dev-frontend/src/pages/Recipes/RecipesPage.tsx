@@ -36,6 +36,9 @@ interface Recipe {
   recipeIngredients?: RecipeIngredient[];
   from_brand?: boolean;
   editable?: boolean;
+  prep_time?: number | null;
+  cook_time?: number | null;
+  instructions?: string | null;
 }
 
 interface Ingredient {
@@ -170,6 +173,55 @@ const RecipeIngredients = styled.div`
 const IngredientsCount = styled.div`
   font-size: 12px;
   color: #6B7280;
+  margin-bottom: 8px;
+`;
+
+const IngredientTags = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+`;
+
+const IngredientTag = styled.span`
+  display: inline-block;
+  padding: 2px 8px;
+  background: #F3F4F6;
+  color: #4B5563;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+`;
+
+const RecipeMetaInfo = styled.div`
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 10px;
+  background: #FAFAFA;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #6B7280;
+`;
+
+const MetaItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+`;
+
+const InstructionsPreview = styled.div`
+  font-size: 12px;
+  color: #6B7280;
+  margin-top: 8px;
+  padding: 8px;
+  background: #FFFBEB;
+  border-radius: 6px;
+  border-left: 3px solid #F59E0B;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 `;
 
 const RecipeActions = styled.div`
@@ -355,6 +407,7 @@ const RecipesPage: React.FC = () => {
     unit: string;
     notes: string;
   }>>([]);
+  const [viewMode, setViewMode] = useState(false);
 
   // Set default currency when loaded
   useEffect(() => {
@@ -466,9 +519,10 @@ const RecipesPage: React.FC = () => {
     }
   };
 
-  const handleOpenModal = (recipe: Recipe | null) => {
+  const handleOpenModal = (recipe: Recipe | null, isViewMode: boolean = false) => {
+    setViewMode(isViewMode);
     if (recipe) {
-      // Edit mode
+      // Edit or View mode
       setSelectedRecipe(recipe);
       setFormData({
         name: recipe.name,
@@ -476,9 +530,9 @@ const RecipesPage: React.FC = () => {
         category: recipe.category,
         emoji: recipe.emoji || '',
         image: recipe.image || '',
-        prep_time: '',
-        cook_time: '',
-        instructions: '',
+        prep_time: recipe.prep_time?.toString() || '',
+        cook_time: recipe.cook_time?.toString() || '',
+        instructions: recipe.instructions || '',
         suggested_price: recipe.suggested_price?.toString() || ''
       });
       setRecipeIngredients(recipe.recipeIngredients?.map(ri => ({
@@ -509,6 +563,7 @@ const RecipesPage: React.FC = () => {
   const handleCloseModal = () => {
     setShowModal(false);
     setSelectedRecipe(null);
+    setViewMode(false);
     setFormData({
       name: '',
       description: '',
@@ -521,6 +576,46 @@ const RecipesPage: React.FC = () => {
       suggested_price: ''
     });
     setRecipeIngredients([]);
+  };
+
+  // Register recipe as menu item
+  const handleRegisterAsMenu = async (recipe: Recipe) => {
+    if (!user?.restaurant_id) {
+      alert('Restaurant ID is required to register menu');
+      return;
+    }
+
+    const confirmMsg = `"${recipe.name}" 레시피를 메뉴로 등록하시겠습니까?\n\n가격: ${formatCurrency(recipe.suggested_price || 0, selectedCurrency || 'USD')}`;
+    if (!window.confirm(confirmMsg)) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/menu/product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: recipe.name,
+          description: recipe.description || '',
+          price: recipe.suggested_price || 0,
+          category: recipe.category,
+          emoji: recipe.emoji || '🍽️',
+          restaurant_id: user.restaurant_id,
+          recipe_id: recipe.id
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert(`"${recipe.name}" 메뉴가 등록되었습니다!`);
+      } else {
+        alert(data.error || '메뉴 등록 실패');
+      }
+    } catch (error) {
+      console.error('Failed to register menu:', error);
+      alert('메뉴 등록 실패');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -553,7 +648,14 @@ const RecipesPage: React.FC = () => {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...formData,
+          name: formData.name,
+          description: formData.description,
+          category: formData.category,
+          emoji: formData.emoji,
+          image: formData.image,
+          prep_time: formData.prep_time ? parseInt(formData.prep_time) : null,
+          cook_time: formData.cook_time ? parseInt(formData.cook_time) : null,
+          instructions: formData.instructions || null,
           suggested_price: parseFloat(formData.suggested_price) || 0,
           ingredients: recipeIngredients.map(ri => ({
             ingredient_id: ri.ingredient_id,
@@ -748,18 +850,69 @@ const RecipesPage: React.FC = () => {
                     </CostItem>
                   </RecipeCosts>
 
+                  {/* Cook Time & Prep Time */}
+                  {(recipe.prep_time || recipe.cook_time) && (
+                    <RecipeMetaInfo>
+                      {recipe.prep_time && (
+                        <MetaItem>
+                          <span>Prep:</span>
+                          <strong>{recipe.prep_time} min</strong>
+                        </MetaItem>
+                      )}
+                      {recipe.cook_time && (
+                        <MetaItem>
+                          <span>Cook:</span>
+                          <strong>{recipe.cook_time} min</strong>
+                        </MetaItem>
+                      )}
+                      {recipe.prep_time && recipe.cook_time && (
+                        <MetaItem>
+                          <span>Total:</span>
+                          <strong>{recipe.prep_time + recipe.cook_time} min</strong>
+                        </MetaItem>
+                      )}
+                    </RecipeMetaInfo>
+                  )}
+
+                  {/* Instructions Preview */}
+                  {recipe.instructions && (
+                    <InstructionsPreview>
+                      {recipe.instructions}
+                    </InstructionsPreview>
+                  )}
+
                   <RecipeIngredients>
                     <IngredientsCount>
                       {recipe.recipeIngredients?.length || 0} ingredients
                     </IngredientsCount>
+                    {recipe.recipeIngredients && recipe.recipeIngredients.length > 0 && (
+                      <IngredientTags>
+                        {recipe.recipeIngredients.slice(0, 5).map((ri, idx) => (
+                          <IngredientTag key={idx}>
+                            {ri.ingredient?.name || `Ingredient #${ri.ingredient_id}`}
+                          </IngredientTag>
+                        ))}
+                        {recipe.recipeIngredients.length > 5 && (
+                          <IngredientTag style={{ background: '#E0E7FF', color: '#4F46E5' }}>
+                            +{recipe.recipeIngredients.length - 5} more
+                          </IngredientTag>
+                        )}
+                      </IngredientTags>
+                    )}
                   </RecipeIngredients>
 
                   <RecipeActions>
-                    {recipe.editable !== false ? (
+                    <ActionButton
+                      variant="secondary"
+                      onClick={() => handleOpenModal(recipe, true)}
+                    >
+                      View
+                    </ActionButton>
+                    {recipe.editable !== false && (
                       <>
                         <ActionButton
-                          variant="secondary"
-                          onClick={() => handleOpenModal(recipe)}
+                          variant="primary"
+                          onClick={() => handleOpenModal(recipe, false)}
                         >
                           Edit
                         </ActionButton>
@@ -770,12 +923,14 @@ const RecipesPage: React.FC = () => {
                           Delete
                         </ActionButton>
                       </>
-                    ) : (
+                    )}
+                    {user?.restaurant_id && (
                       <ActionButton
-                        variant="secondary"
-                        onClick={() => handleOpenModal(recipe)}
+                        variant="primary"
+                        onClick={() => handleRegisterAsMenu(recipe)}
+                        style={{ background: '#10B981' }}
                       >
-                        View
+                        + Menu
                       </ActionButton>
                     )}
                   </RecipeActions>
@@ -786,34 +941,36 @@ const RecipesPage: React.FC = () => {
         </Content>
       </Container>
 
-      {/* Modal for create/edit */}
+      {/* Modal for create/edit/view */}
       <Modal
         isOpen={showModal}
         onClose={handleCloseModal}
-        title={selectedRecipe ? 'Edit Recipe' : 'New Recipe'}
+        title={viewMode ? 'Recipe Details' : (selectedRecipe ? 'Edit Recipe' : 'New Recipe')}
         size="large"
       >
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {/* Basic Information */}
             <UIFormRow>
               <UIFormGroup>
-                <FormLabel>Recipe Name *</FormLabel>
+                <FormLabel>Recipe Name {!viewMode && '*'}</FormLabel>
                 <FormInput
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="e.g., Nasi Lemak Special"
-                  required
+                  required={!viewMode}
+                  disabled={viewMode}
                 />
               </UIFormGroup>
               <UIFormGroup>
-                <FormLabel>Category *</FormLabel>
+                <FormLabel>Category {!viewMode && '*'}</FormLabel>
                 <FormInput
                   type="text"
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   placeholder="e.g., Main Dish"
-                  required
+                  required={!viewMode}
+                  disabled={viewMode}
                 />
               </UIFormGroup>
             </UIFormRow>
@@ -827,6 +984,7 @@ const RecipesPage: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, emoji: e.target.value })}
                   placeholder="🍛"
                   maxLength={4}
+                  disabled={viewMode}
                 />
               </UIFormGroup>
               <UIFormGroup>
@@ -837,6 +995,30 @@ const RecipesPage: React.FC = () => {
                   value={formData.suggested_price}
                   onChange={(e) => setFormData({ ...formData, suggested_price: e.target.value })}
                   placeholder="0.00"
+                  disabled={viewMode}
+                />
+              </UIFormGroup>
+            </UIFormRow>
+
+            <UIFormRow>
+              <UIFormGroup>
+                <FormLabel>Prep Time (minutes)</FormLabel>
+                <FormInput
+                  type="number"
+                  value={formData.prep_time}
+                  onChange={(e) => setFormData({ ...formData, prep_time: e.target.value })}
+                  placeholder="e.g., 15"
+                  disabled={viewMode}
+                />
+              </UIFormGroup>
+              <UIFormGroup>
+                <FormLabel>Cook Time (minutes)</FormLabel>
+                <FormInput
+                  type="number"
+                  value={formData.cook_time}
+                  onChange={(e) => setFormData({ ...formData, cook_time: e.target.value })}
+                  placeholder="e.g., 30"
+                  disabled={viewMode}
                 />
               </UIFormGroup>
             </UIFormRow>
@@ -847,6 +1029,18 @@ const RecipesPage: React.FC = () => {
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Brief description of the recipe..."
+                disabled={viewMode}
+              />
+            </UIFormGroup>
+
+            <UIFormGroup>
+              <FormLabel>Cooking Instructions</FormLabel>
+              <FormTextArea
+                value={formData.instructions}
+                onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
+                placeholder="Step-by-step cooking instructions..."
+                disabled={viewMode}
+                style={{ minHeight: '100px' }}
               />
             </UIFormGroup>
 
@@ -861,7 +1055,8 @@ const RecipesPage: React.FC = () => {
                       <FormSelect
                         value={ri.ingredient_id}
                         onChange={(e) => updateIngredient(index, 'ingredient_id', parseInt(e.target.value))}
-                        required
+                        required={!viewMode}
+                        disabled={viewMode}
                       >
                         <option value={0}>Select ingredient...</option>
                         {ingredients.map(ing => (
@@ -879,7 +1074,8 @@ const RecipesPage: React.FC = () => {
                         value={ri.quantity}
                         onChange={(e) => updateIngredient(index, 'quantity', e.target.value)}
                         placeholder="0"
-                        required
+                        required={!viewMode}
+                        disabled={viewMode}
                       />
                     </UIFormGroup>
                     <UIFormGroup>
@@ -889,7 +1085,8 @@ const RecipesPage: React.FC = () => {
                         value={ri.unit}
                         onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
                         placeholder="kg/g/ml"
-                        required
+                        required={!viewMode}
+                        disabled={viewMode}
                       />
                     </UIFormGroup>
                     <UIFormGroup>
@@ -899,18 +1096,23 @@ const RecipesPage: React.FC = () => {
                         value={ri.notes}
                         onChange={(e) => updateIngredient(index, 'notes', e.target.value)}
                         placeholder="Optional"
+                        disabled={viewMode}
                       />
                     </UIFormGroup>
-                    <RemoveButton type="button" onClick={() => removeIngredient(index)}>
-                      ×
-                    </RemoveButton>
+                    {!viewMode && (
+                      <RemoveButton type="button" onClick={() => removeIngredient(index)}>
+                        ×
+                      </RemoveButton>
+                    )}
                   </IngredientRow>
                 ))}
               </IngredientsList>
 
-              <AddButton type="button" onClick={addIngredient}>
-                + Add Ingredient
-              </AddButton>
+              {!viewMode && (
+                <AddButton type="button" onClick={addIngredient}>
+                  + Add Ingredient
+                </AddButton>
+              )}
 
               {recipeIngredients.length > 0 && (
                 <CostSummary>
@@ -923,11 +1125,26 @@ const RecipesPage: React.FC = () => {
             {/* Action Buttons */}
             <ButtonGroup>
               <ModalButton type="button" variant="secondary" onClick={handleCloseModal}>
-                Cancel
+                {viewMode ? 'Close' : 'Cancel'}
               </ModalButton>
-              <ModalButton type="submit" variant="primary">
-                {selectedRecipe ? 'Update Recipe' : 'Create Recipe'}
-              </ModalButton>
+              {!viewMode && (
+                <ModalButton type="submit" variant="primary">
+                  {selectedRecipe ? 'Update Recipe' : 'Create Recipe'}
+                </ModalButton>
+              )}
+              {viewMode && user?.restaurant_id && selectedRecipe && (
+                <ModalButton
+                  type="button"
+                  variant="primary"
+                  onClick={() => {
+                    handleCloseModal();
+                    handleRegisterAsMenu(selectedRecipe);
+                  }}
+                  style={{ background: '#10B981' }}
+                >
+                  + Register as Menu
+                </ModalButton>
+              )}
             </ButtonGroup>
           </form>
       </Modal>
