@@ -408,6 +408,7 @@ const RecipesPage: React.FC = () => {
     notes: string;
   }>>([]);
   const [viewMode, setViewMode] = useState(false);
+  const [userBrandId, setUserBrandId] = useState<number | null>(null);
 
   // Set default currency when loaded
   useEffect(() => {
@@ -416,18 +417,47 @@ const RecipesPage: React.FC = () => {
     }
   }, [defaultCurrency, selectedCurrency]);
 
-  // Fetch recipes and ingredients
+  // Fetch user's brand_id for Brand General/Manager
   useEffect(() => {
-    fetchRecipes();
-    fetchIngredients();
+    const fetchUserBrand = async () => {
+      if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
+        try {
+          const response = await fetch('/api/brands');
+          const data = await response.json();
+          if (data.success && data.data.length > 0) {
+            // Find brand where owner_id matches user.id
+            const userBrand = data.data.find((b: any) => b.owner_id === user.id);
+            if (userBrand) {
+              setUserBrandId(userBrand.id);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to fetch user brand:', error);
+        }
+      }
+    };
+    fetchUserBrand();
   }, [user]);
+
+  // Fetch recipes and ingredients when userBrandId is set
+  useEffect(() => {
+    if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
+      if (userBrandId) {
+        fetchRecipes();
+        fetchIngredients();
+      }
+    } else if (user?.role === 'Restaurant Admin') {
+      fetchRecipes();
+      fetchIngredients();
+    }
+  }, [user, userBrandId]);
 
   const fetchIngredients = async () => {
     try {
       let url = '';
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
-        if (user.brand_id) {
-          url = `/api/brands/${user.brand_id}/ingredients`;
+        if (userBrandId) {
+          url = `/api/brands/${userBrandId}/ingredients`;
         }
       } else if (user?.role === 'Restaurant Admin') {
         if (user.restaurant_id) {
@@ -455,8 +485,8 @@ const RecipesPage: React.FC = () => {
 
       // Brand General/Manager
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
-        if (user.brand_id) {
-          url = `/api/brands/${user.brand_id}/recipes`;
+        if (userBrandId) {
+          url = `/api/brands/${userBrandId}/recipes`;
         }
       }
       // Restaurant Admin
@@ -507,7 +537,7 @@ const RecipesPage: React.FC = () => {
     try {
       let url = '';
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
-        url = `/api/brands/${user?.brand_id}/recipes/${recipeId}`;
+        url = `/api/brands/${userBrandId}/recipes/${recipeId}`;
       } else if (user?.role === 'Restaurant Admin') {
         url = `/api/restaurants/${user?.restaurant_id}/recipes/${recipeId}`;
       }
@@ -638,9 +668,9 @@ const RecipesPage: React.FC = () => {
 
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
         if (selectedRecipe) {
-          url = `/api/brands/${user.brand_id}/recipes/${selectedRecipe.id}`;
+          url = `/api/brands/${userBrandId}/recipes/${selectedRecipe.id}`;
         } else {
-          url = `/api/brands/${user.brand_id}/recipes`;
+          url = `/api/brands/${userBrandId}/recipes`;
         }
       } else if (user?.role === 'Restaurant Admin') {
         if (selectedRecipe) {
