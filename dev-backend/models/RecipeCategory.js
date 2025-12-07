@@ -7,6 +7,13 @@ const RecipeCategory = sequelize.define('RecipeCategory', {
     primaryKey: true,
     autoIncrement: true
   },
+  // 소유권 타입 (brand 또는 restaurant)
+  owner_type: {
+    type: DataTypes.ENUM('brand', 'restaurant'),
+    allowNull: false,
+    defaultValue: 'restaurant',
+    comment: '소유권 타입: brand(브랜드 공통) 또는 restaurant(지점 전용)'
+  },
   // 브랜드 또는 레스토랑 소유
   brand_id: {
     type: DataTypes.INTEGER,

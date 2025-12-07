@@ -50,8 +50,9 @@ router.post('/brands/:brandId/recipes', authenticateToken, isBrandManager, async
     const brand_id = brandId; // DB 쿼리용
     const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
 
-    // 레시피 생성
+    // 레시피 생성 (owner_type = 'brand')
     const recipe = await Recipe.create({
+      owner_type: 'brand',
       brand_id,
       restaurant_id: null,
       name,
@@ -218,8 +219,8 @@ router.delete('/brands/:brandId/recipes/:recipeId', authenticateToken, canEditRe
 
 /**
  * GET /api/restaurants/:restaurantId/recipes
- * 레스토랑에서 사용 가능한 모든 레시피 조회
- * recipe_manager_type에 따라 편집 권한 결정
+ * 레스토랑 자체 레시피만 조회 (owner_type = 'restaurant')
+ * 브랜드 레시피는 별도 API로 조회
  */
 router.get('/restaurants/:restaurantId/recipes', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
@@ -230,59 +231,75 @@ router.get('/restaurants/:restaurantId/recipes', authenticateToken, checkRestaur
       return res.status(404).json({ error: 'Restaurant not found' });
     }
 
-    const result = {
-      brand_recipes: [],
-      own_recipes: [],
-      recipe_manager_type: restaurant.recipe_manager_type || 'restaurant'
-    };
-
-    // 브랜드 레시피 (brand_id가 있는 경우)
-    if (restaurant.brand_id) {
-      const brandRecipes = await Recipe.findAll({
-        where: { brand_id: restaurant.brand_id },
-        include: [
-          {
-            model: RecipeIngredient,
-            as: 'recipeIngredients',
-            include: [{ model: Ingredient, as: 'ingredient' }]
-          }
-        ],
-        order: [['created_at', 'DESC']]
-      });
-
-      result.brand_recipes = brandRecipes.map(r => ({
-        ...r.toJSON(),
-        from_brand: true,
-        editable: false  // 브랜드 레시피는 항상 수정 불가
-      }));
-    }
-
-    // 레스토랑 자체 레시피
-    // 독립 레스토랑이거나, 브랜드 소속이지만 recipe_manager_type이 'restaurant'인 경우
-    const canManageOwnRecipes = !restaurant.brand_id || restaurant.recipe_manager_type === 'restaurant';
-
-    const ownRecipes = await Recipe.findAll({
-      where: { restaurant_id: restaurantId },
+    // 레스토랑 자체 레시피만 조회 (owner_type = 'restaurant')
+    const recipes = await Recipe.findAll({
+      where: {
+        restaurant_id: restaurantId,
+        owner_type: 'restaurant'
+      },
       include: [
         {
           model: RecipeIngredient,
           as: 'recipeIngredients',
           include: [{ model: Ingredient, as: 'ingredient' }]
+        },
+        {
+          model: RecipeCategory,
+          as: 'recipeCategory'
         }
       ],
       order: [['created_at', 'DESC']]
     });
 
-    result.own_recipes = ownRecipes.map(r => ({
-      ...r.toJSON(),
-      from_brand: false,
-      editable: canManageOwnRecipes  // recipe_manager_type에 따라 결정
-    }));
-
-    res.json({ success: true, data: result });
+    res.json({ success: true, data: recipes });
   } catch (error) {
     console.error('Get restaurant recipes error:', error);
     res.status(500).json({ error: 'Failed to fetch recipes' });
+  }
+});
+
+/**
+ * GET /api/restaurants/:restaurantId/brand-recipes
+ * 레스토랑이 속한 브랜드의 레시피 조회 (읽기 전용)
+ */
+router.get('/restaurants/:restaurantId/brand-recipes', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+
+    const restaurant = await Restaurant.findByPk(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ error: 'Restaurant not found' });
+    }
+
+    // 브랜드에 속하지 않은 레스토랑
+    if (!restaurant.brand_id) {
+      return res.json({ success: true, data: [] });
+    }
+
+    // 브랜드 레시피 조회 (owner_type = 'brand')
+    const brandRecipes = await Recipe.findAll({
+      where: {
+        brand_id: restaurant.brand_id,
+        owner_type: 'brand'
+      },
+      include: [
+        {
+          model: RecipeIngredient,
+          as: 'recipeIngredients',
+          include: [{ model: Ingredient, as: 'ingredient' }]
+        },
+        {
+          model: RecipeCategory,
+          as: 'recipeCategory'
+        }
+      ],
+      order: [['created_at', 'DESC']]
+    });
+
+    res.json({ success: true, data: brandRecipes });
+  } catch (error) {
+    console.error('Get brand recipes for restaurant error:', error);
+    res.status(500).json({ error: 'Failed to fetch brand recipes' });
   }
 });
 

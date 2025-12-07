@@ -9,7 +9,13 @@ Recipe.init({
     primaryKey: true,
     autoIncrement: true
   },
-  // 소유권
+  // 소유권 타입 (brand 또는 restaurant)
+  owner_type: {
+    type: DataTypes.ENUM('brand', 'restaurant'),
+    allowNull: false,
+    defaultValue: 'restaurant',
+    comment: '소유권 타입: brand(브랜드 공통) 또는 restaurant(지점 전용)'
+  },
   brand_id: {
     type: DataTypes.INTEGER,
     allowNull: true,

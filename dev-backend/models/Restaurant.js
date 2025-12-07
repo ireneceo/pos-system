@@ -435,11 +435,6 @@ Restaurant.init({
     type: DataTypes.INTEGER,
     allowNull: true,
     comment: 'Brand ID if restaurant belongs to a franchise brand'
-  },
-  recipe_manager_type: {
-    type: DataTypes.ENUM('restaurant', 'brand'),
-    defaultValue: 'restaurant',
-    comment: 'Who manages recipes: restaurant (independent) or brand (franchise-managed)'
   }
 }, {
   sequelize: database.sequelize,
