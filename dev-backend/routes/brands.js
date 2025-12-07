@@ -194,7 +194,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Get restaurants for a brand with recipe_manager_type
+// Get restaurants for a brand
 router.get('/:id/restaurants', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -212,7 +212,7 @@ router.get('/:id/restaurants', authenticateToken, async (req, res) => {
 
     const restaurants = await Restaurant.findAll({
       where: { brand_id: id },
-      attributes: ['id', 'name', 'status', 'address', 'phone', 'recipe_manager_type'],
+      attributes: ['id', 'name', 'status', 'address', 'phone'],
       order: [['name', 'ASC']]
     });
 
@@ -220,53 +220,6 @@ router.get('/:id/restaurants', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error fetching brand restaurants:', error);
     res.status(500).json({ error: 'Failed to fetch brand restaurants' });
-  }
-});
-
-// Update restaurant's recipe_manager_type
-router.patch('/:id/restaurants/:restaurantId/recipe-manager-type', authenticateToken, async (req, res) => {
-  try {
-    const { id, restaurantId } = req.params;
-    const { recipe_manager_type } = req.body;
-    console.log(`🔧 PATCH /api/brands/${id}/restaurants/${restaurantId}/recipe-manager-type - User: ${req.user.email}`);
-
-    // Validate recipe_manager_type value
-    if (!['restaurant', 'brand'].includes(recipe_manager_type)) {
-      return res.status(400).json({ error: 'Invalid recipe_manager_type. Must be "restaurant" or "brand"' });
-    }
-
-    const brand = await Brand.findByPk(id);
-    if (!brand) {
-      return res.status(404).json({ error: 'Brand not found' });
-    }
-
-    // Check access permissions
-    if (req.user.role !== 'System Admin' && brand.owner_id !== req.user.id) {
-      return res.status(403).json({ error: 'Access denied to this brand' });
-    }
-
-    const restaurant = await Restaurant.findOne({
-      where: { id: restaurantId, brand_id: id }
-    });
-
-    if (!restaurant) {
-      return res.status(404).json({ error: 'Restaurant not found or not part of this brand' });
-    }
-
-    await restaurant.update({ recipe_manager_type });
-    console.log(`✅ Updated restaurant ${restaurantId} recipe_manager_type to: ${recipe_manager_type}`);
-
-    res.json({
-      success: true,
-      data: {
-        id: restaurant.id,
-        name: restaurant.name,
-        recipe_manager_type: recipe_manager_type
-      }
-    });
-  } catch (error) {
-    console.error('Error updating recipe_manager_type:', error);
-    res.status(500).json({ error: 'Failed to update recipe_manager_type' });
   }
 });
 

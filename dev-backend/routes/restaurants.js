@@ -113,7 +113,6 @@ router.get('/', optionalAuth, async (req, res) => {
         })),
         brandId: restaurantData.brand_id ? restaurantData.brand_id.toString() : null,
         brand_id: restaurantData.brand_id || null,
-        recipe_manager_type: restaurantData.recipe_manager_type || 'restaurant',
         brand: restaurantData.brand ? {
           id: restaurantData.brand.id.toString(),
           name: restaurantData.brand.name,
@@ -354,7 +353,6 @@ router.post('/', authenticateToken, async (req, res) => {
       subscription_end: req.body.subscriptionEnd ? new Date(req.body.subscriptionEnd) : null,
       subscription_snapshot: planSnapshot,
       brand_id: req.body.brand_id || null,
-      recipe_manager_type: req.body.brand_id ? 'brand' : 'restaurant',
       ...planLimits
     };
 
@@ -474,9 +472,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     // Brand association
     if (req.body.brand_id !== undefined) {
       updateData.brand_id = req.body.brand_id ? parseInt(req.body.brand_id) : null;
-      // Update recipe_manager_type based on brand association
-      updateData.recipe_manager_type = req.body.brand_id ? 'brand' : 'restaurant';
-      console.log(`🏢 Updating brand_id to: ${updateData.brand_id}, recipe_manager_type: ${updateData.recipe_manager_type}`);
+      console.log(`🏢 Updating brand_id to: ${updateData.brand_id}`);
     }
 
     // Cuisine field

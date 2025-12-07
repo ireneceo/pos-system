@@ -70,6 +70,7 @@ router.post('/brands/:brandId/ingredient-categories', authenticateToken, isBrand
     }
 
     const category = await IngredientCategory.create({
+      owner_type: 'brand',
       brand_id,
       restaurant_id: null,
       name: name.trim(),
@@ -276,11 +277,6 @@ router.post('/restaurants/:restaurantId/ingredient-categories', authenticateToke
       return res.status(404).json({ error: '레스토랑을 찾을 수 없습니다' });
     }
 
-    // 브랜드 소속이고 recipe_manager_type이 brand인 경우 생성 불가
-    if (restaurant.brand_id && restaurant.recipe_manager_type === 'brand') {
-      return res.status(403).json({ error: '브랜드 관리 모드에서는 카테고리를 생성할 수 없습니다' });
-    }
-
     if (!name || !name.trim()) {
       return res.status(400).json({ error: '카테고리 이름은 필수입니다' });
     }
@@ -301,6 +297,7 @@ router.post('/restaurants/:restaurantId/ingredient-categories', authenticateToke
     }
 
     const category = await IngredientCategory.create({
+      owner_type: 'restaurant',
       brand_id: null,
       restaurant_id,
       name: name.trim(),

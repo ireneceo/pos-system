@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Ingredient, IngredientCategory } = require('../models');
+const { Ingredient, IngredientCategory, Restaurant } = require('../models');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
 
@@ -45,6 +45,7 @@ router.post('/brands/:brandId/ingredients', authenticateToken, isBrandManager, a
     const { code, name, category, ingredient_category_id, unit, unit_cost, supplier_name, min_stock } = req.body;
 
     const ingredient = await Ingredient.create({
+      owner_type: 'brand',
       brand_id,
       restaurant_id: null,
       ingredient_category_id: ingredient_category_id || null,
@@ -127,14 +128,17 @@ router.delete('/brands/:brandId/ingredients/:ingredientId', authenticateToken, i
 
 /**
  * GET /api/restaurants/:restaurantId/ingredients
- * 레스토랑 재료 목록 조회
+ * 레스토랑 자체 재료 목록 조회 (owner_type = 'restaurant')
  */
 router.get('/restaurants/:restaurantId/ingredients', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
 
     const ingredients = await Ingredient.findAll({
-      where: { restaurant_id: restaurantId },
+      where: {
+        restaurant_id: restaurantId,
+        owner_type: 'restaurant'
+      },
       order: [['name', 'ASC']],
       include: [{
         model: IngredientCategory,
@@ -151,6 +155,45 @@ router.get('/restaurants/:restaurantId/ingredients', authenticateToken, checkRes
 });
 
 /**
+ * GET /api/restaurants/:restaurantId/brand-ingredients
+ * 레스토랑이 속한 브랜드의 재료 조회 (읽기 전용)
+ */
+router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+
+    const restaurant = await Restaurant.findByPk(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ error: 'Restaurant not found' });
+    }
+
+    // 브랜드에 속하지 않은 레스토랑
+    if (!restaurant.brand_id) {
+      return res.json({ success: true, data: [] });
+    }
+
+    // 브랜드 재료 조회 (owner_type = 'brand')
+    const brandIngredients = await Ingredient.findAll({
+      where: {
+        brand_id: restaurant.brand_id,
+        owner_type: 'brand'
+      },
+      order: [['name', 'ASC']],
+      include: [{
+        model: IngredientCategory,
+        as: 'ingredientCategory',
+        attributes: ['id', 'name', 'emoji']
+      }]
+    });
+
+    res.json({ success: true, data: brandIngredients });
+  } catch (error) {
+    console.error('Get brand ingredients for restaurant error:', error);
+    res.status(500).json({ error: 'Failed to fetch brand ingredients' });
+  }
+});
+
+/**
  * POST /api/restaurants/:restaurantId/ingredients
  * 레스토랑 재료 생성
  */
@@ -160,6 +203,7 @@ router.post('/restaurants/:restaurantId/ingredients', authenticateToken, checkRe
     const { code, name, category, ingredient_category_id, unit, unit_cost, supplier_name, min_stock } = req.body;
 
     const ingredient = await Ingredient.create({
+      owner_type: 'restaurant',
       brand_id: null,
       restaurant_id: restaurantId,
       ingredient_category_id: ingredient_category_id || null,
