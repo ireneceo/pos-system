@@ -79,7 +79,7 @@ const IngredientName = styled.h3`
   margin-bottom: 4px;
 `;
 
-const IngredientCategory = styled.div`
+const IngredientCategoryBadge = styled.div`
   display: inline-block;
   padding: 4px 8px;
   background: #F0F4FF;
@@ -89,6 +89,17 @@ const IngredientCategory = styled.div`
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+`;
+
+const BrandBadge = styled.span`
+  display: inline-block;
+  padding: 4px 8px;
+  background: #FEF3C7;
+  color: #92400E;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 8px;
 `;
 
 const IngredientInfo = styled.div`
@@ -273,13 +284,26 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId, 
             fetch(ingredientsUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
             fetch(categoriesUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
           );
+          // 레스토랑 관리자일 경우 브랜드 재료도 함께 조회
+          if (isRestaurantAdmin && user?.restaurant_id) {
+            promises.push(
+              fetch(`/api/restaurants/${user.restaurant_id}/brand-ingredients`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
+            );
+          }
         }
 
         const results = await Promise.all(promises);
 
         // Process ingredients
         if (results[0]?.success) {
-          setIngredients(results[0].data);
+          let allIngredients = Array.isArray(results[0].data) ? results[0].data : [];
+
+          // 레스토랑 관리자일 경우 브랜드 재료 추가
+          if (isRestaurantAdmin && results[2]?.success && Array.isArray(results[2].data)) {
+            allIngredients = [...results[2].data, ...allIngredients]; // 브랜드 재료를 먼저 표시
+          }
+
+          setIngredients(allIngredients);
         }
 
         // Process categories
@@ -351,27 +375,39 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId, 
 
   const fetchIngredients = async () => {
     try {
-      let url = '';
+      const token = getToken();
+
+      // Brand General/Manager
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
         if (brandId) {
-          url = `/api/brands/${brandId}/ingredients`;
-        }
-      } else if (user?.role === 'Restaurant Admin') {
-        if (user.restaurant_id) {
-          url = `/api/restaurants/${user.restaurant_id}/ingredients`;
+          const response = await fetch(`/api/brands/${brandId}/ingredients`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await response.json();
+          if (data.success) {
+            setIngredients(data.data);
+          }
         }
       }
+      // Restaurant Admin - 자체 재료 + 브랜드 재료 함께 조회
+      else if (user?.role === 'Restaurant Admin' && user.restaurant_id) {
+        const [ownRes, brandRes] = await Promise.all([
+          fetch(`/api/restaurants/${user.restaurant_id}/ingredients`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }).then(r => r.json()),
+          fetch(`/api/restaurants/${user.restaurant_id}/brand-ingredients`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }).then(r => r.json())
+        ]);
 
-      if (!url) return;
-
-      const token = getToken();
-      const response = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
-
-      if (data.success) {
-        setIngredients(data.data);
+        let allIngredients: Ingredient[] = [];
+        if (brandRes.success && Array.isArray(brandRes.data)) {
+          allIngredients = [...brandRes.data];
+        }
+        if (ownRes.success && Array.isArray(ownRes.data)) {
+          allIngredients = [...allIngredients, ...ownRes.data];
+        }
+        setIngredients(allIngredients);
       }
     } catch (error) {
       console.error('Failed to fetch ingredients:', error);
@@ -591,10 +627,15 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId, 
             <IngredientCard key={ingredient.id} isActive={ingredient.is_active}>
               <IngredientHeader>
                 <div>
-                  <IngredientName>{ingredient.name}</IngredientName>
-                  <IngredientCategory>
+                  <IngredientName>
+                    {ingredient.name}
+                    {isRestaurantAdmin && ingredient.owner_type === 'brand' && (
+                      <BrandBadge>Brand</BrandBadge>
+                    )}
+                  </IngredientName>
+                  <IngredientCategoryBadge>
                     {ingredient.ingredientCategory?.emoji} {ingredient.ingredientCategory?.name || 'Uncategorized'}
-                  </IngredientCategory>
+                  </IngredientCategoryBadge>
                 </div>
               </IngredientHeader>
 

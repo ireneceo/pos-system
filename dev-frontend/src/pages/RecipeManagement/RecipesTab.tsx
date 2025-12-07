@@ -119,7 +119,7 @@ const RecipeName = styled.h3`
   text-overflow: ellipsis;
 `;
 
-const RecipeCategory = styled.div`
+const RecipeCategoryBadge = styled.div`
   display: inline-block;
   padding: 4px 8px;
   background: #F0F4FF;
@@ -129,6 +129,17 @@ const RecipeCategory = styled.div`
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+`;
+
+const BrandBadge = styled.span`
+  display: inline-block;
+  padding: 4px 8px;
+  background: #FEF3C7;
+  color: #92400E;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 8px;
 `;
 
 const RecipeDescription = styled.p`
@@ -354,6 +365,16 @@ const ButtonGroup = styled.div`
   margin-top: 8px;
 `;
 
+const ErrorMessage = styled.div`
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  color: #DC2626;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 16px;
+`;
+
 const TagsContainer = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -453,6 +474,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
     recipeId: null,
     recipeName: ''
   });
+  const [formError, setFormError] = useState<string | null>(null);
 
   const isRestaurantAdmin = user?.role === 'Restaurant Admin';
   // Restaurant Admin은 자신의 레시피만 수정/삭제 가능 (브랜드 레시피는 읽기전용)
@@ -484,7 +506,6 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
           recipesUrl = `/api/restaurants/${effectiveRestaurantId}/recipes`;
           ingredientsUrl = `/api/restaurants/${effectiveRestaurantId}/ingredients`;
           categoriesUrl = `/api/restaurants/${effectiveRestaurantId}/recipe-categories`;
-          restaurantUrl = `/api/restaurants/${effectiveRestaurantId}`;
         }
 
         // Fetch all in parallel
@@ -494,8 +515,11 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             fetch(ingredientsUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
             fetch(categoriesUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
           );
-          if (restaurantUrl) {
-            promises.push(fetch(restaurantUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()));
+          // 레스토랑 관리자일 경우 브랜드 레시피도 함께 조회
+          if (isRestaurantAdmin && effectiveRestaurantId) {
+            promises.push(
+              fetch(`/api/restaurants/${effectiveRestaurantId}/brand-recipes`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
+            );
           }
         }
 
@@ -503,11 +527,14 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
 
         // Process recipes
         if (results[0]?.success) {
-          if (Array.isArray(results[0].data)) {
-            setRecipes(results[0].data);
-          } else {
-            setRecipes([...(results[0].data.brand_recipes || []), ...(results[0].data.own_recipes || [])]);
+          let allRecipes = Array.isArray(results[0].data) ? results[0].data : [];
+
+          // 레스토랑 관리자일 경우 브랜드 레시피 추가
+          if (isRestaurantAdmin && results[3]?.success && Array.isArray(results[3].data)) {
+            allRecipes = [...results[3].data, ...allRecipes]; // 브랜드 레시피를 먼저 표시
           }
+
+          setRecipes(allRecipes);
         }
 
         // Process ingredients
@@ -616,40 +643,39 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
   const fetchRecipes = async () => {
     try {
       setLoading(true);
-      let url = '';
+      const token = localStorage.getItem('auth_token');
 
       // Brand General/Manager
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
         if (brandId) {
-          url = `/api/brands/${brandId}/recipes`;
+          const response = await fetch(`/api/brands/${brandId}/recipes`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await response.json();
+          if (data.success) {
+            setRecipes(data.data);
+          }
         }
       }
-      // Restaurant Admin
-      else if (user?.role === 'Restaurant Admin') {
-        if (effectiveRestaurantId) {
-          url = `/api/restaurants/${effectiveRestaurantId}/recipes`;
+      // Restaurant Admin - 자체 레시피 + 브랜드 레시피 함께 조회
+      else if (user?.role === 'Restaurant Admin' && effectiveRestaurantId) {
+        const [ownRes, brandRes] = await Promise.all([
+          fetch(`/api/restaurants/${effectiveRestaurantId}/recipes`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }).then(r => r.json()),
+          fetch(`/api/restaurants/${effectiveRestaurantId}/brand-recipes`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }).then(r => r.json())
+        ]);
+
+        let allRecipes: Recipe[] = [];
+        if (brandRes.success && Array.isArray(brandRes.data)) {
+          allRecipes = [...brandRes.data];
         }
-      }
-
-      if (!url) {
-        setLoading(false);
-        return;
-      }
-
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
-
-      if (data.success) {
-        // Brand General/Manager: data.data is array
-        // Restaurant Admin: data.data is object with brand_recipes and own_recipes
-        if (Array.isArray(data.data)) {
-          setRecipes(data.data);
-        } else {
-          setRecipes([...data.data.brand_recipes, ...data.data.own_recipes]);
+        if (ownRes.success && Array.isArray(ownRes.data)) {
+          allRecipes = [...allRecipes, ...ownRes.data];
         }
+        setRecipes(allRecipes);
       }
     } catch (error) {
       console.error('Failed to fetch recipes:', error);
@@ -716,6 +742,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
   };
 
   const handleOpenModal = (recipe: Recipe | null) => {
+    setFormError(null);
     if (recipe) {
       // Edit mode
       setSelectedRecipe(recipe);
@@ -760,6 +787,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
   const handleCloseModal = () => {
     setShowModal(false);
     setSelectedRecipe(null);
+    setFormError(null);
     setFormData({
       name: '',
       description: '',
@@ -778,9 +806,10 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
 
     if (!formData.name) {
-      alert('Recipe name is required');
+      setFormError('레시피 이름은 필수입니다');
       return;
     }
 
@@ -829,7 +858,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         handleCloseModal();
         fetchRecipes();
       } else {
-        alert(data.error || 'Failed to save recipe');
+        setFormError(data.error || '레시피 저장에 실패했습니다');
       }
     } catch (error) {
       console.error('Failed to save recipe:', error);
@@ -980,10 +1009,15 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               <RecipeHeader>
                 {recipe.emoji && <RecipeEmoji>{recipe.emoji}</RecipeEmoji>}
                 <RecipeInfo>
-                  <RecipeName>{recipe.name}</RecipeName>
-                  <RecipeCategory>
+                  <RecipeName>
+                    {recipe.name}
+                    {isRestaurantAdmin && recipe.owner_type === 'brand' && (
+                      <BrandBadge>Brand</BrandBadge>
+                    )}
+                  </RecipeName>
+                  <RecipeCategoryBadge>
                     {recipe.recipeCategory?.emoji} {recipe.recipeCategory?.name || recipe.category || 'Uncategorized'}
-                  </RecipeCategory>
+                  </RecipeCategoryBadge>
                 </RecipeInfo>
               </RecipeHeader>
 
@@ -1219,6 +1253,11 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                 </CostSummary>
               )}
             </div>
+
+            {/* Error Message */}
+            {formError && (
+              <ErrorMessage>{formError}</ErrorMessage>
+            )}
 
             {/* Action Buttons */}
             <ButtonGroup>

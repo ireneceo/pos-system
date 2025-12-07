@@ -114,7 +114,8 @@ async function isBrandManager(req, res, next) {
   }
 
   if (user.role === 'Brand General' || user.role === 'Brand Manager') {
-    const { brand_id } = req.params;
+    // URL 파라미터에서 brandId 또는 brand_id 확인
+    const brand_id = req.params.brandId || req.params.brand_id;
 
     if (!brand_id) {
       return res.status(400).json({ error: 'brand_id가 필요합니다' });

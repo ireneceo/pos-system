@@ -50,22 +50,27 @@ router.post('/brands/:brandId/recipes', authenticateToken, isBrandManager, async
     const brand_id = brandId; // DB 쿼리용
     const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
 
+    // 필수 필드 검증
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: '레시피 이름은 필수입니다' });
+    }
+
     // 레시피 생성 (owner_type = 'brand')
     const recipe = await Recipe.create({
       owner_type: 'brand',
       brand_id,
       restaurant_id: null,
-      name,
-      description,
-      category,
+      name: name.trim(),
+      description: description || null,
+      category: category || null,
       recipe_category_id: recipe_category_id || null,
-      emoji,
-      image,
-      option_groups,
-      prep_time,
-      cook_time,
-      instructions,
-      suggested_price: suggested_price || 0,
+      emoji: emoji || null,
+      image: image || null,
+      option_groups: option_groups || null,
+      prep_time: prep_time ? parseInt(prep_time) : null,
+      cook_time: cook_time ? parseInt(cook_time) : null,
+      instructions: instructions || null,
+      suggested_price: suggested_price ? parseFloat(suggested_price) : 0,
       total_ingredient_cost: 0
     });
 
@@ -312,22 +317,27 @@ router.post('/restaurants/:restaurantId/recipes', authenticateToken, checkRestau
     const { restaurantId } = req.params;
     const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
 
+    // 필수 필드 검증
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: '레시피 이름은 필수입니다' });
+    }
+
     // 레시피 생성 (owner_type = 'restaurant')
     const recipe = await Recipe.create({
       owner_type: 'restaurant',
       brand_id: null,
       restaurant_id: restaurantId,
-      name,
-      description,
-      category,
+      name: name.trim(),
+      description: description || null,
+      category: category || null,
       recipe_category_id: recipe_category_id || null,
-      emoji,
-      image,
-      option_groups,
-      prep_time,
-      cook_time,
-      instructions,
-      suggested_price: suggested_price || 0,
+      emoji: emoji || null,
+      image: image || null,
+      option_groups: option_groups || null,
+      prep_time: prep_time ? parseInt(prep_time) : null,
+      cook_time: cook_time ? parseInt(cook_time) : null,
+      instructions: instructions || null,
+      suggested_price: suggested_price ? parseFloat(suggested_price) : 0,
       total_ingredient_cost: 0
     });
 
