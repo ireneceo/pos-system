@@ -383,30 +383,41 @@ const ItemDetailPage: React.FC = () => {
     }
   };
   
-  // Get available option groups for this item
+  // Get available option groups for this item - 메뉴에서 설정한 순서대로 정렬
   // Support both formats: array of IDs or array of objects
   const availableOptionGroups = item?.optionGroups
     ? (Array.isArray(item.optionGroups) && item.optionGroups.length > 0 && typeof item.optionGroups[0] === 'object'
         ? item.optionGroups  // Already full objects from API
-        : optionGroups.filter((group: any) => item.optionGroups.includes(group.id)))  // IDs to filter
+        : item.optionGroups
+            .map((groupId: string) => optionGroups.find((group: any) => group.id === groupId))
+            .filter((group: any): group is NonNullable<typeof group> => group !== undefined))  // IDs to filter with order preserved
     : [];
 
-  const handleOptionToggle = (optionId: string, groupId: string, multiple: boolean) => {
+  const handleOptionToggle = (optionId: string, groupId: string, multiple: boolean, required: boolean) => {
     if (multiple) {
+      // 다중 선택 - 토글
       setSelectedOptions(prev =>
         prev.includes(optionId)
           ? prev.filter(id => id !== optionId)
           : [...prev, optionId]
       );
     } else {
-      // For single selection, remove other options from the same group
+      // 단일 선택
       const group = availableOptionGroups.find((g: any) => g.id === groupId);
       if (group) {
         const groupOptionIds = group.options.map((o: any) => o.id);
-        setSelectedOptions(prev => [
-          ...prev.filter((id: string) => !groupOptionIds.includes(id)),
-          optionId
-        ]);
+        const isCurrentlySelected = selectedOptions.includes(optionId);
+
+        if (isCurrentlySelected && !required) {
+          // 이미 선택된 옵션을 다시 클릭 & 필수가 아님 -> 선택 해제
+          setSelectedOptions(prev => prev.filter((id: string) => !groupOptionIds.includes(id)));
+        } else {
+          // 다른 옵션 클릭 또는 필수 옵션 -> 해당 그룹에서 이 옵션만 선택
+          setSelectedOptions(prev => [
+            ...prev.filter((id: string) => !groupOptionIds.includes(id)),
+            optionId
+          ]);
+        }
       }
     }
   };
@@ -539,7 +550,7 @@ const ItemDetailPage: React.FC = () => {
                 <RadioButton
                   key={option.id}
                   selected={selectedOptions.includes(option.id)}
-                  onClick={() => handleOptionToggle(option.id, group.id, group.multiple)}
+                  onClick={() => handleOptionToggle(option.id, group.id, group.multiple, group.required)}
                 >
                   <div>{option.name}</div>
                   {option.price > 0 && (
@@ -558,7 +569,7 @@ const ItemDetailPage: React.FC = () => {
                     <CheckboxInput
                       type="checkbox"
                       checked={selectedOptions.includes(option.id)}
-                      onChange={() => handleOptionToggle(option.id, group.id, group.multiple)}
+                      onChange={() => handleOptionToggle(option.id, group.id, group.multiple, group.required)}
                     />
                     <CheckboxText>{option.name}</CheckboxText>
                   </div>

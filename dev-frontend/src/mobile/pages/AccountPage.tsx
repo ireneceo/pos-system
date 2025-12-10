@@ -376,7 +376,7 @@ const AccountPage: React.FC = () => {
     const loadCustomerStats = async () => {
       if (currentCustomer && currentStore) {
         try {
-          const response = await fetch(`/api/customers/${currentCustomer.id}/stats?restaurant_id=${currentStore.id}`);
+          const response = await fetch(`/api/customers/stats/${currentCustomer.id}?restaurant_id=${currentStore.id}`);
           if (response.ok) {
             const result = await response.json();
             if (result.success && result.data) {

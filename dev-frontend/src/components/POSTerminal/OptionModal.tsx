@@ -58,27 +58,38 @@ const OptionModal: React.FC<OptionModalProps> = ({ isOpen, onClose, menuItem, on
   const [quantity, setQuantity] = useState(1);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
 
-  // Get option groups for this menu item
-  const availableOptionGroups = menuItem.optionGroups 
-    ? allOptionGroups.filter(group => menuItem.optionGroups!.includes(group.id))
+  // Get option groups for this menu item - 메뉴에서 설정한 순서대로 정렬
+  const availableOptionGroups = menuItem.optionGroups
+    ? menuItem.optionGroups
+        .map(groupId => allOptionGroups.find(group => group.id === groupId))
+        .filter((group): group is NonNullable<typeof group> => group !== undefined)
     : [];
 
-  const handleOptionToggle = (optionId: string, groupId: string, multiple: boolean) => {
+  const handleOptionToggle = (optionId: string, groupId: string, multiple: boolean, required: boolean) => {
     if (multiple) {
+      // 다중 선택 - 토글
       setSelectedOptions(prev =>
         prev.includes(optionId)
           ? prev.filter(id => id !== optionId)
           : [...prev, optionId]
       );
     } else {
-      // For single selection, remove other options from the same group
+      // 단일 선택
       const group = availableOptionGroups.find(g => g.id === groupId);
       if (group) {
         const groupOptionIds = group.options.map(o => o.id);
-        setSelectedOptions(prev => [
-          ...prev.filter(id => !groupOptionIds.includes(id)),
-          optionId
-        ]);
+        const isCurrentlySelected = selectedOptions.includes(optionId);
+
+        if (isCurrentlySelected && !required) {
+          // 이미 선택된 옵션을 다시 클릭 & 필수가 아님 -> 선택 해제
+          setSelectedOptions(prev => prev.filter(id => !groupOptionIds.includes(id)));
+        } else {
+          // 다른 옵션 클릭 또는 필수 옵션 -> 해당 그룹에서 이 옵션만 선택
+          setSelectedOptions(prev => [
+            ...prev.filter(id => !groupOptionIds.includes(id)),
+            optionId
+          ]);
+        }
       }
     }
   };
@@ -185,7 +196,7 @@ const OptionModal: React.FC<OptionModalProps> = ({ isOpen, onClose, menuItem, on
                 <RadioButton
                   key={option.id}
                   selected={selectedOptions.includes(option.id)}
-                  onClick={() => handleOptionToggle(option.id, group.id, group.multiple)}
+                  onClick={() => handleOptionToggle(option.id, group.id, group.multiple, group.required)}
                   style={group.id === 'spice' && selectedOptions.includes(option.id) ? {
                     borderColor: '#F97316',
                     backgroundColor: 'rgba(249, 115, 22, 0.1)',
@@ -209,7 +220,7 @@ const OptionModal: React.FC<OptionModalProps> = ({ isOpen, onClose, menuItem, on
                     <CheckboxInput
                       type="checkbox"
                       checked={selectedOptions.includes(option.id)}
-                      onChange={() => handleOptionToggle(option.id, group.id, group.multiple)}
+                      onChange={() => handleOptionToggle(option.id, group.id, group.multiple, group.required)}
                     />
                     <CheckboxText>{option.name}</CheckboxText>
                   </div>

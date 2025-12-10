@@ -34,6 +34,11 @@ const MobileApp: React.FC = () => {
         <Route path="/:slug/payment/bank-transfer" element={<BankTransferPage />} />
         <Route path="/:slug/order/:orderId" element={<OrderTrackingPage />} />
         <Route path="/:slug/orders" element={<OrdersPage />} />
+        <Route path="/:slug/account" element={<AccountPage />} />
+        <Route path="/:slug/login" element={<LoginPage />} />
+        <Route path="/:slug/register" element={<RegisterPage />} />
+        <Route path="/:slug/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/:slug/reset-password" element={<ResetPasswordPage />} />
       </Routes>
         </MobileOrderProvider>
       </StaffProvider>

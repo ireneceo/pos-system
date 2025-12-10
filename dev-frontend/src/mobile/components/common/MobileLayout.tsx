@@ -8,8 +8,16 @@ const LayoutContainer = styled.div`
   background: #F9FAFB;
   display: flex;
   flex-direction: column;
+  width: 100%;
   max-width: 100vw;
   overflow-x: hidden;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 
   /* PWA safe area handling */
   padding-top: env(safe-area-inset-top);

@@ -288,6 +288,60 @@ router.get('/phone/:phone', async (req, res) => {
 });
 
 /**
+ * GET /api/customers/stats/:customerId
+ * 고객 통계 조회
+ */
+router.get('/stats/:customerId', async (req, res) => {
+  try {
+    const { customerId } = req.params;
+    const { restaurant_id } = req.query;
+
+    if (!restaurant_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Restaurant ID is required'
+      });
+    }
+
+    const relation = await RestaurantCustomer.findOne({
+      where: {
+        customer_id: customerId,
+        restaurant_id: restaurant_id
+      }
+    });
+
+    if (!relation) {
+      // 관계가 없으면 기본값 반환
+      return res.json({
+        success: true,
+        data: {
+          total_orders: 0,
+          total_spent: '0',
+          points: 0,
+          loyalty_tier: 'Bronze'
+        }
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        total_orders: relation.total_orders,
+        total_spent: relation.total_spent,
+        points: relation.points,
+        loyalty_tier: relation.loyalty_tier
+      }
+    });
+  } catch (error) {
+    console.error('Get customer stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get customer stats'
+    });
+  }
+});
+
+/**
  * GET /api/customers/:restaurantId
  * 레스토랑의 고객 목록 조회
  */
@@ -815,60 +869,6 @@ router.post('/reset-password', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to reset password'
-    });
-  }
-});
-
-/**
- * GET /api/customers/:customerId/stats
- * 고객 통계 조회
- */
-router.get('/:customerId/stats', async (req, res) => {
-  try {
-    const { customerId } = req.params;
-    const { restaurant_id } = req.query;
-
-    if (!restaurant_id) {
-      return res.status(400).json({
-        success: false,
-        message: 'Restaurant ID is required'
-      });
-    }
-
-    const relation = await RestaurantCustomer.findOne({
-      where: {
-        customer_id: customerId,
-        restaurant_id: restaurant_id
-      }
-    });
-
-    if (!relation) {
-      // 관계가 없으면 기본값 반환
-      return res.json({
-        success: true,
-        data: {
-          total_orders: 0,
-          total_spent: '0',
-          points: 0,
-          loyalty_tier: 'Bronze'
-        }
-      });
-    }
-
-    res.json({
-      success: true,
-      data: {
-        total_orders: relation.total_orders,
-        total_spent: relation.total_spent,
-        points: relation.points,
-        loyalty_tier: relation.loyalty_tier
-      }
-    });
-  } catch (error) {
-    console.error('Get customer stats error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to get customer stats'
     });
   }
 });
