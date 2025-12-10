@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2025-11-30
+> **최종 업데이트:** 2025-12-10
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -211,74 +211,66 @@ WHERE module_code = 'foodcourt_management';
 
 ---
 
-## 🚧 진행 중인 작업
+## ✅ 완료된 작업 (최근)
 
-### Phase 2: Recipe Management (2025-11-20 ~ 진행 중)
+### Phase 2: Recipe Management (2025-11-20 ~ 2025-12-10) - 완료
 
 **상세 설계 문서:** `/var/www/docs/RECIPE_MANAGEMENT_SYSTEM.md`
 
-#### 설계 완료 항목:
-- ✅ 권한 구조 정의 (설정 기반 방식으로 변경)
-- ✅ 데이터베이스 스키마 설계 (recipes, ingredients, recipe_ingredients)
-- ✅ API 설계 완료
-- ✅ UI/UX 설계 완료
-- ✅ 사용 시나리오 문서화
+#### 최종 구현된 권한 구조 (owner_type 기반)
 
-#### 2025-11-30 설계 변경 - 권한 구조 단순화
-
-**기존 방식 (복잡함):**
 ```javascript
-// 브랜드 연결 여부로 자동 결정
-if (restaurant.brand_id !== null) {
-  레시피 관리: Brand Manager
+// 레시피/재료의 소유권은 owner_type으로 구분
+if (recipe.owner_type === 'brand') {
+  // Brand General/Manager: CRUD 가능
+  // Restaurant Admin: 조회만 가능 (수정 불가)
 } else {
-  레시피 관리: Store Manager
+  // Restaurant Admin: CRUD 가능
+  // Brand General/Manager: 접근 불가 (표시 안됨)
 }
 ```
 
-**새로운 방식 (단순함):**
-```javascript
-// 명시적 설정으로 결정
-if (restaurant.recipe_manager_type === 'brand') {
-  레시피 관리: Brand Manager
-} else {
-  레시피 관리: Store Manager
-}
-```
+**핵심 구현사항:**
+- `recipe_manager_type` 방식 → `owner_type` 방식으로 단순화
+- 브랜드 레시피: Brand General/Manager만 수정, Restaurant Admin은 조회만
+- 레스토랑 레시피: Restaurant Admin만 수정, Brand에는 표시 안됨
 
-**핵심 변경사항:**
-- `restaurants` 테이블에 `recipe_manager_type` ENUM('restaurant', 'brand') 추가
-- 독립 레스토랑: 항상 'restaurant' (고정)
-- 브랜드 소속: Brand Manager가 설정 변경 가능
-- 브랜드 연결 시: 기존값 유지 (레시피 보존)
-- 브랜드 해제 시: 자동으로 'restaurant'
+#### 구현 완료 항목:
+
+**Phase 2.1: 기본 인프라 구축**
+1. [x] DB 스키마 생성 (recipes, ingredients, recipe_ingredients, recipe_categories, ingredient_categories)
+2. [x] Backend Models 구현 (Recipe, Ingredient, RecipeIngredient)
+3. [x] owner_type ENUM('brand', 'restaurant') 기반 소유권 구분
+4. [x] 권한 체크 미들웨어 구현 (isBrandManager, checkRestaurantAccess)
+
+**Phase 2.2: Backend APIs 구현**
+5. [x] Brand Recipe CRUD API (`/api/brands/:brandId/recipes`)
+6. [x] Restaurant Recipe CRUD API (`/api/restaurants/:restaurantId/recipes`)
+7. [x] Brand-recipes 조회 API (`/api/restaurants/:restaurantId/brand-recipes`)
+8. [x] Ingredient CRUD API
+9. [x] Recipe/Ingredient Category API
+10. [x] Recipe → Product 변환 API
+
+**Phase 2.3: Frontend UI 구현**
+11. [x] RecipeManagementPage (Brand General용 - 4개 탭)
+12. [x] RecipesTab - 레시피 CRUD
+13. [x] IngredientsTab - 재료 CRUD
+14. [x] RecipeCategoriesTab, IngredientCategoriesTab - 카테고리 관리
+15. [x] RecipesPage (Restaurant Admin용)
+16. [x] IngredientsPage (Restaurant Admin용)
+
+**Phase 2.4: UI 기능 추가 (2025-12-10)**
+17. [x] 리스트 카드에 요리시간(prep_time, cook_time) 표시
+18. [x] 리스트 카드에 조리방법(instructions) 미리보기 표시
+19. [x] 리스트 카드에 재료명 태그(IngredientTags) 표시
+20. [x] 카드 클릭 시 Recipe Details 팝업 (View 모드)
+21. [x] View 모드에서 Edit 전환 기능
 
 ---
 
-### 🚀 다음 작업 (`/개발시작` 실행 시 시작)
+## 🚧 진행 중인 작업
 
-**Phase 2.1: 기본 인프라 구축**
-1. [x] Restaurant 모델에 `recipe_manager_type` 컬럼 추가
-2. [x] DB 스키마 생성 (recipes, ingredients, recipe_ingredients 테이블)
-3. [x] Backend Models 구현 (Recipe, Ingredient, RecipeIngredient)
-4. [x] 권한 체크 미들웨어 구현
-
-**Phase 2.2: Backend APIs 구현**
-5. [x] Recipe CRUD API
-6. [x] Ingredient CRUD API
-7. [x] Recipe → Product 변환 API
-8. [x] recipe_manager_type 설정 변경 API
-
-**Phase 2.3: Frontend UI 구현**
-9. [x] Brand Settings - 레스토랑별 recipe_manager_type 설정 UI
-10. [x] Store Settings - recipe_manager_type 표시 (읽기 전용)
-11. [x] Recipe 목록/상세 페이지
-12. [x] Ingredient 관리 페이지
-
-**Phase 2.4: 테스트**
-13. [ ] 권한별 CRUD 테스트
-14. [ ] 브랜드 연결/해제 시 설정 변경 테스트
-15. [ ] Recipe → Product 변환 테스트
+현재 진행 중인 작업 없음
 
 ---
 

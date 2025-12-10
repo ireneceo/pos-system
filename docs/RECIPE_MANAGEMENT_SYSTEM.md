@@ -1,19 +1,20 @@
-# Recipe Management System - 레시피 관리 시스템 설계
+# Recipe Management System - 레시피 관리 시스템
 
 **작성일:** 2025-11-20
-**수정일:** 2025-11-30
+**수정일:** 2025-12-10
 **프로젝트:** Purple POS System
 **Phase:** Phase 2 - Recipe Management
+**상태:** 구현 완료
 
 ---
 
-## 📋 목차
+## 목차
 
 1. [개요](#개요)
 2. [권한 구조](#권한-구조)
 3. [데이터베이스 설계](#데이터베이스-설계)
 4. [API 설계](#api-설계)
-5. [UI/UX 설계](#uiux-설계)
+5. [Frontend 구조](#frontend-구조)
 6. [사용 시나리오](#사용-시나리오)
 
 ---
@@ -21,230 +22,86 @@
 ## 개요
 
 ### 목적
-- Brand Manager가 표준 레시피를 생성하여 모든 가맹점에 배포
-- Restaurant Admin(Store Manager)이 독립 레스토랑의 레시피를 자유롭게 관리
+- Brand General/Manager가 브랜드 레시피를 생성하여 모든 가맹점에 배포
+- Restaurant Admin이 독립 레스토랑 또는 자체 레시피를 자유롭게 관리
 - 레시피를 메뉴(Product)로 쉽게 전환
 - 재료 원가 기반 자동 원가 계산
 
-### 핵심 원칙: 설정 기반 권한
+### 핵심 원칙: owner_type 기반 소유권
 
-**기존 방식 (복잡함):**
 ```javascript
-// ❌ 자동 판단 - 복잡하고 유연성 없음
-if (restaurant.brand_id !== null) {
-  레시피 관리: Brand Manager
+// 레시피/재료의 소유권은 owner_type으로 구분
+if (recipe.owner_type === 'brand') {
+  // Brand General/Manager가 생성한 레시피
+  // Restaurant Admin: 조회만 가능 (수정 불가)
 } else {
-  레시피 관리: Restaurant Admin
+  // Restaurant Admin이 생성한 레시피
+  // Brand General/Manager: 접근 불가 (표시 안됨)
 }
 ```
-
-**새로운 방식 (단순함):**
-```javascript
-// ✅ 명시적 설정 - 단순하고 유연함
-if (restaurant.recipe_manager_type === 'brand') {
-  레시피 관리: Brand Manager
-  Store Manager: 읽기만
-} else {
-  레시피 관리: Store Manager (Restaurant Admin)
-  Brand Manager: 조회만 가능
-}
-```
-
-**Foodcourt는 레시피와 무관** - 임대/공지만 관리
 
 ---
 
 ## 권한 구조
 
-### 핵심 설정: `recipe_manager_type`
+### 브랜드 레시피 (owner_type = 'brand')
 
-```sql
--- restaurants 테이블에 추가
-recipe_manager_type ENUM('restaurant', 'brand') DEFAULT 'restaurant'
-```
+| 역할 | 권한 |
+|------|------|
+| Brand General/Manager | 생성, 수정, 삭제 가능 |
+| Restaurant Admin | **조회만 가능** (수정 불가) |
 
-| 설정값 | 레시피 관리 주체 | Store Manager 권한 |
-|--------|-----------------|-------------------|
-| `restaurant` | Store Manager | CRUD 가능 |
-| `brand` | Brand Manager | 읽기만 가능 |
+### 레스토랑 레시피 (owner_type = 'restaurant')
 
----
+| 역할 | 권한 |
+|------|------|
+| Restaurant Admin | 생성, 수정, 삭제 가능 |
+| Brand General/Manager | **접근 불가** (표시 안됨) |
 
-### 설정 권한
+### 권한 매트릭스
 
-| 레스토랑 상태 | 설정 가능 여부 | 설정 주체 |
-|--------------|---------------|----------|
-| 독립 레스토랑 (brand_id = NULL) | 변경 불가 | 항상 `restaurant` (고정) |
-| 브랜드 소속 (brand_id 있음) | 변경 가능 | Brand Manager만 |
-
-**UI 표시:**
-
-```
-Store Settings (모든 레스토랑)
-┌─────────────────────────────────────┐
-│ Recipe Management                   │
-│                                     │
-│ 독립: [Restaurant] (비활성화)        │
-│       "브랜드 연결 시 변경 가능"      │
-│                                     │
-│ 브랜드 소속 (Store Manager 뷰):      │
-│       [Brand] (읽기 전용)            │
-│       "브랜드 매니저가 관리"          │
-└─────────────────────────────────────┘
-
-Brand Settings (Brand Manager)
-┌─────────────────────────────────────┐
-│ 레스토랑별 레시피 관리 설정          │
-│                                     │
-│ Store A: [Brand ▼]                  │
-│ Store B: [Restaurant ▼]             │
-│ Store C: [Brand ▼]                  │
-└─────────────────────────────────────┘
-```
-
----
-
-### 브랜드 연결/해제 시 동작
-
-**독립 → 브랜드 연결:**
-```
-recipe_manager_type = 'restaurant' (유지)
-→ 기존 레시피 보존
-→ Brand Manager가 필요시 'brand'로 변경
-```
-
-**브랜드 연결 해제:**
-```
-recipe_manager_type = 'restaurant' (자동 변경)
-→ Store Manager가 기존 레시피 계속 관리
-```
-
----
-
-### 케이스별 권한 정리
-
-#### 케이스 1: 독립 레스토랑
-```
-restaurants {
-  id: 1
-  brand_id: NULL
-  recipe_manager_type: 'restaurant' (고정)
-}
-```
-
-**레시피 관리:**
-- ✅ Store Manager: 생성/수정/삭제 **모두 가능**
-- ❌ Brand Manager: 해당 없음
-- ❌ Foodcourt General: 레시피 관여 안 함
-
----
-
-#### 케이스 2: 브랜드 소속 - Brand 관리
-```
-restaurants {
-  id: 2
-  brand_id: 1
-  recipe_manager_type: 'brand'
-}
-```
-
-**레시피 관리:**
-- ✅ Brand Manager: 생성/수정/삭제 **모두 가능**
-- 🔍 Store Manager: **읽기만 가능** (수정 불가)
-  - ✅ 브랜드 레시피 조회
-  - ✅ 메뉴로 등록 (가격만 설정)
-  - ❌ 레시피 재료/구성 수정 불가
-
----
-
-#### 케이스 3: 브랜드 소속 - Restaurant 관리
-```
-restaurants {
-  id: 3
-  brand_id: 1
-  recipe_manager_type: 'restaurant'
-}
-```
-
-**레시피 관리:**
-- ✅ Store Manager: 생성/수정/삭제 **모두 가능**
-- 🔍 Brand Manager: **조회만 가능**
-
-**사용 사례:** 브랜드가 레시피 자율권을 부여한 가맹점
-
----
-
-#### 케이스 4: 푸드코트 입점
-```
-restaurants {
-  id: 4
-  brand_id: NULL (또는 있음)
-  foodcourt_id: 1
-  recipe_manager_type: 'restaurant' 또는 'brand'
-}
-```
-
-**레시피 관리:**
-- `recipe_manager_type` 설정에 따름
-- ❌ Foodcourt General: 레시피 관여 안 함
-  - ✅ 임대료 청구
-  - ✅ 공지사항 발송
-  - ✅ 매출 통계 조회 (읽기만)
-
----
-
-## 권한 매트릭스
-
-| Restaurant 상태 | recipe_manager_type | 레시피 관리자 | Store Manager 권한 |
-|----------------|---------------------|--------------|-------------------|
-| 독립 레스토랑 | `restaurant` (고정) | Store Manager | CRUD 가능 |
-| 브랜드 소속 | `brand` | Brand Manager | 읽기만 |
-| 브랜드 소속 | `restaurant` | Store Manager | CRUD 가능 |
+| 사용자 | 브랜드 레시피 | 레스토랑 레시피 |
+|--------|-------------|---------------|
+| Brand General | CRUD | 접근 불가 |
+| Brand Manager | CRUD | 접근 불가 |
+| Restaurant Admin (브랜드 소속) | 조회만 | CRUD |
+| Restaurant Admin (독립) | 해당 없음 | CRUD |
 
 ---
 
 ## 데이터베이스 설계
 
-### 0. `restaurants` 테이블 수정
-
-```sql
--- 레시피 관리 주체 설정 추가
-ALTER TABLE restaurants
-ADD COLUMN recipe_manager_type ENUM('restaurant', 'brand') DEFAULT 'restaurant'
-COMMENT '레시피 관리 주체: restaurant=Store Manager, brand=Brand Manager';
-```
-
----
-
-### 1. `recipes` 테이블
+### recipes 테이블
 
 ```sql
 CREATE TABLE recipes (
   id INT PRIMARY KEY AUTO_INCREMENT,
 
-  -- 소유권 (브랜드 OR 레스토랑, 둘 중 하나만)
-  brand_id INT NULL COMMENT 'Brand General이 생성한 레시피',
-  restaurant_id INT NULL COMMENT 'Restaurant Admin이 생성한 레시피',
+  -- 소유권 타입
+  owner_type ENUM('brand', 'restaurant') NOT NULL DEFAULT 'restaurant',
+  brand_id INT NULL COMMENT 'Brand 레시피일 때',
+  restaurant_id INT NULL COMMENT 'Restaurant 레시피일 때',
 
-  -- 레시피 정보 (Products와 동일한 구조)
-  code VARCHAR(20) COMMENT '레시피 코드',
+  -- 기본 정보
+  code VARCHAR(20),
   name VARCHAR(100) NOT NULL,
   description TEXT,
-  category VARCHAR(50) NOT NULL,
+  category VARCHAR(50) COMMENT '레거시 카테고리명',
+  recipe_category_id INT COMMENT '레시피 카테고리 FK',
 
   -- 이미지/이모지
   image TEXT,
   emoji VARCHAR(10),
 
-  -- 옵션 (Products와 동일한 optionGroups 구조)
-  option_groups JSON COMMENT '동일한 옵션 시스템',
+  -- 옵션 (Products와 동일)
+  option_groups JSON,
 
   -- 세트 메뉴
   is_set_menu BOOLEAN DEFAULT FALSE,
-  set_items JSON COMMENT '세트 구성 아이템',
+  set_items JSON,
 
   -- 원가 정보
-  total_ingredient_cost DECIMAL(10, 2) COMMENT '재료 원가 합계 (자동 계산)',
+  total_ingredient_cost DECIMAL(10, 2) DEFAULT 0.00 COMMENT '재료 원가 합계',
   suggested_price DECIMAL(10, 2) COMMENT '권장 판매가',
 
   -- 조리 정보
@@ -254,70 +111,51 @@ CREATE TABLE recipes (
 
   -- 상태
   is_active BOOLEAN DEFAULT TRUE,
-  version INT DEFAULT 1 COMMENT '레시피 버전',
+  version INT DEFAULT 1,
 
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
   FOREIGN KEY (brand_id) REFERENCES brands(id) ON DELETE CASCADE,
   FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE,
-
-  -- 브랜드 레시피 OR 레스토랑 레시피 (하나만)
-  CONSTRAINT check_recipe_owner
-    CHECK ((brand_id IS NOT NULL AND restaurant_id IS NULL) OR
-           (brand_id IS NULL AND restaurant_id IS NOT NULL))
+  FOREIGN KEY (recipe_category_id) REFERENCES recipe_categories(id) ON DELETE SET NULL
 );
-
-CREATE INDEX idx_brand_recipes ON recipes(brand_id);
-CREATE INDEX idx_restaurant_recipes ON recipes(restaurant_id);
-CREATE INDEX idx_recipe_category ON recipes(category);
 ```
 
-### 2. `ingredients` 테이블 (재료 마스터)
+### ingredients 테이블
 
 ```sql
 CREATE TABLE ingredients (
   id INT PRIMARY KEY AUTO_INCREMENT,
 
-  -- 소유권 (브랜드 OR 레스토랑)
+  -- 소유권 타입
+  owner_type ENUM('brand', 'restaurant') NOT NULL DEFAULT 'restaurant',
   brand_id INT NULL,
   restaurant_id INT NULL,
+  ingredient_category_id INT COMMENT '재료 카테고리 FK',
 
   -- 재료 정보
-  code VARCHAR(50) UNIQUE COMMENT '재료 코드',
+  code VARCHAR(50),
   name VARCHAR(100) NOT NULL,
   category ENUM('produce', 'meat', 'seafood', 'dairy', 'dry_goods', 'spices', 'beverages', 'other') DEFAULT 'other',
-
-  -- 재고 단위
   unit ENUM('kg', 'g', 'L', 'ml', 'piece', 'pack', 'can', 'bottle') NOT NULL,
 
   -- 가격
-  unit_cost DECIMAL(10, 4) NOT NULL COMMENT '단위당 원가',
-  supplier_name VARCHAR(100) COMMENT '공급업체명',
+  unit_cost DECIMAL(10, 4) NOT NULL DEFAULT 0,
+  supplier_name VARCHAR(100),
 
-  -- 재고 관련 (Phase 3: Advanced Inventory에서 사용)
-  min_stock DECIMAL(10, 2) DEFAULT 0 COMMENT '최소 재고량',
-  current_stock DECIMAL(10, 2) DEFAULT 0 COMMENT '현재 재고량',
+  -- 재고
+  min_stock DECIMAL(10, 2) DEFAULT 0,
+  current_stock DECIMAL(10, 2) DEFAULT 0,
 
   is_active BOOLEAN DEFAULT TRUE,
 
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-  FOREIGN KEY (brand_id) REFERENCES brands(id) ON DELETE CASCADE,
-  FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE,
-
-  CONSTRAINT check_ingredient_owner
-    CHECK ((brand_id IS NOT NULL AND restaurant_id IS NULL) OR
-           (brand_id IS NULL AND restaurant_id IS NOT NULL))
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
-
-CREATE INDEX idx_brand_ingredients ON ingredients(brand_id);
-CREATE INDEX idx_restaurant_ingredients ON ingredients(restaurant_id);
-CREATE INDEX idx_ingredient_category ON ingredients(category);
 ```
 
-### 3. `recipe_ingredients` (레시피-재료 매핑)
+### recipe_ingredients 테이블
 
 ```sql
 CREATE TABLE recipe_ingredients (
@@ -325,15 +163,10 @@ CREATE TABLE recipe_ingredients (
   recipe_id INT NOT NULL,
   ingredient_id INT NOT NULL,
 
-  -- 사용량
   quantity DECIMAL(10, 4) NOT NULL,
   unit ENUM('kg', 'g', 'L', 'ml', 'piece', 'pack', 'can', 'bottle') NOT NULL,
-
-  -- 원가 (자동 계산: quantity * ingredient.unit_cost)
-  cost DECIMAL(10, 4) COMMENT '해당 재료의 원가',
-
-  -- 메모
-  notes TEXT COMMENT '준비 방법이나 팁',
+  cost DECIMAL(10, 4) COMMENT '자동 계산: quantity * unit_cost',
+  notes TEXT,
 
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -343,582 +176,205 @@ CREATE TABLE recipe_ingredients (
 
   UNIQUE KEY unique_recipe_ingredient (recipe_id, ingredient_id)
 );
-
-CREATE INDEX idx_recipe ON recipe_ingredients(recipe_id);
-CREATE INDEX idx_ingredient ON recipe_ingredients(ingredient_id);
 ```
 
-### 4. `products` 테이블 수정 (메뉴-레시피 연결)
+### recipe_categories / ingredient_categories 테이블
 
 ```sql
-ALTER TABLE products
-ADD COLUMN recipe_id INT NULL COMMENT '연결된 레시피',
-ADD FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE SET NULL;
+CREATE TABLE recipe_categories (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  brand_id INT NULL,
+  restaurant_id INT NULL,
+  name VARCHAR(100) NOT NULL,
+  description TEXT,
+  emoji VARCHAR(10),
+  display_order INT DEFAULT 0,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 
-CREATE INDEX idx_product_recipe ON products(recipe_id);
+CREATE TABLE ingredient_categories (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  brand_id INT NULL,
+  restaurant_id INT NULL,
+  name VARCHAR(100) NOT NULL,
+  description TEXT,
+  emoji VARCHAR(10),
+  display_order INT DEFAULT 0,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 ```
-
-**레시피 → 메뉴 등록 시:**
-- recipe의 모든 정보를 products에 복사
-- recipe_id를 products.recipe_id에 저장 (연결 유지)
-- Restaurant Admin이 price만 설정
 
 ---
 
 ## API 설계
 
-### Brand General APIs
+### Brand API (Brand General/Manager)
 
-#### 브랜드 레시피 CRUD
+#### 레시피
+| Method | 엔드포인트 | 설명 |
+|--------|-----------|------|
+| GET | `/api/brands/:brandId/recipes` | 브랜드 레시피 목록 |
+| POST | `/api/brands/:brandId/recipes` | 레시피 생성 |
+| PUT | `/api/brands/:brandId/recipes/:recipeId` | 레시피 수정 |
+| DELETE | `/api/brands/:brandId/recipes/:recipeId` | 레시피 삭제 |
 
-```javascript
-// 브랜드 레시피 목록
-GET /api/brands/:brand_id/recipes
-Response: {
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "brand_id": 1,
-      "name": "시그니처 버거",
-      "category": "버거",
-      "total_ingredient_cost": 3500,
-      "suggested_price": 8900,
-      "is_active": true,
-      "usage_count": 15  // 몇 개 가맹점에서 사용 중
-    }
-  ]
-}
+#### 재료
+| Method | 엔드포인트 | 설명 |
+|--------|-----------|------|
+| GET | `/api/brands/:brandId/ingredients` | 브랜드 재료 목록 |
+| POST | `/api/brands/:brandId/ingredients` | 재료 생성 |
+| PUT | `/api/brands/:brandId/ingredients/:ingredientId` | 재료 수정 |
+| DELETE | `/api/brands/:brandId/ingredients/:ingredientId` | 재료 삭제 |
 
-// 레시피 생성
-POST /api/brands/:brand_id/recipes
-Request: {
-  "brand_id": 1,
-  "name": "시그니처 버거",
-  "description": "브랜드 대표 버거",
-  "category": "버거",
-  "emoji": "🍔",
-  "option_groups": [...],  // Products와 동일한 구조
-  "ingredients": [
-    {
-      "ingredient_id": 5,
-      "quantity": 150,
-      "unit": "g",
-      "notes": "패티"
-    },
-    {
-      "ingredient_id": 10,
-      "quantity": 2,
-      "unit": "piece",
-      "notes": "번"
-    }
-  ],
-  "prep_time": 5,
-  "cook_time": 10,
-  "instructions": "1. 패티 굽기\n2. 번에 올리기\n3. 완성"
-}
+#### 카테고리
+| Method | 엔드포인트 | 설명 |
+|--------|-----------|------|
+| GET/POST/PUT/DELETE | `/api/brands/:brandId/recipe-categories` | 레시피 카테고리 관리 |
+| GET/POST/PUT/DELETE | `/api/brands/:brandId/ingredient-categories` | 재료 카테고리 관리 |
+| PUT | `/api/brands/:brandId/recipe-categories/reorder` | 카테고리 순서 변경 |
 
-// 레시피 수정
-PUT /api/brands/:brand_id/recipes/:id
-Request: { ...동일... }
+### Restaurant API (Restaurant Admin)
 
-// 레시피 삭제
-DELETE /api/brands/:brand_id/recipes/:id
-```
+#### 레시피
+| Method | 엔드포인트 | 설명 |
+|--------|-----------|------|
+| GET | `/api/restaurants/:restaurantId/recipes` | 자체 레시피 목록 |
+| GET | `/api/restaurants/:restaurantId/brand-recipes` | 브랜드 레시피 조회 (읽기전용) |
+| POST | `/api/restaurants/:restaurantId/recipes` | 레시피 생성 |
+| PUT | `/api/restaurants/:restaurantId/recipes/:recipeId` | 레시피 수정 |
+| DELETE | `/api/restaurants/:restaurantId/recipes/:recipeId` | 레시피 삭제 |
 
-#### 브랜드 재료 CRUD
+#### 재료
+| Method | 엔드포인트 | 설명 |
+|--------|-----------|------|
+| GET | `/api/restaurants/:restaurantId/ingredients` | 자체 재료 목록 |
+| GET | `/api/restaurants/:restaurantId/brand-ingredients` | 브랜드 재료 조회 |
+| POST | `/api/restaurants/:restaurantId/ingredients` | 재료 생성 |
+| PUT | `/api/restaurants/:restaurantId/ingredients/:ingredientId` | 재료 수정 |
+| DELETE | `/api/restaurants/:restaurantId/ingredients/:ingredientId` | 재료 삭제 |
 
-```javascript
-// 재료 목록
-GET /api/brands/:brand_id/ingredients
-
-// 재료 생성
-POST /api/brands/:brand_id/ingredients
-Request: {
-  "brand_id": 1,
-  "name": "앵거스 패티",
-  "code": "ING_PATTY_001",
-  "category": "meat",
-  "unit": "kg",
-  "unit_cost": 15000,
-  "supplier_name": "한우식품"
-}
-
-// 재료 수정
-PUT /api/brands/:brand_id/ingredients/:id
-
-// 재료 삭제
-DELETE /api/brands/:brand_id/ingredients/:id
-```
+#### 메뉴 등록
+| Method | 엔드포인트 | 설명 |
+|--------|-----------|------|
+| POST | `/api/restaurants/:restaurantId/products/create-from-recipe` | 레시피를 메뉴로 등록 |
 
 ---
 
-### Restaurant Admin APIs
+## Frontend 구조
 
-#### 레시피 조회
+### 페이지 구성
 
-```javascript
-// 레스토랑에서 사용 가능한 모든 레시피
-GET /api/restaurants/:restaurant_id/recipes
+| 경로 | 컴포넌트 | 대상 사용자 | 기능 |
+|------|---------|------------|------|
+| `/recipe-management` | RecipeManagementPage | Brand General | 4개 탭 (레시피, 재료, 카테고리) |
+| `/recipes` | RecipesPage | Restaurant Admin | 레시피 관리 + 메뉴 등록 |
+| `/ingredients` | IngredientsPage | Restaurant Admin | 재료 관리 |
 
-Response: {
-  "success": true,
-  "data": {
-    "brand_recipes": [  // brand_id가 있는 경우만
-      {
-        "id": 1,
-        "name": "시그니처 버거",
-        "from_brand": true,
-        "editable": false,  // 수정 불가
-        "total_ingredient_cost": 3500
-      }
-    ],
-    "own_recipes": [  // 독립 레스토랑만
-      {
-        "id": 10,
-        "name": "특제 파스타",
-        "from_brand": false,
-        "editable": true,  // 수정 가능
-        "total_ingredient_cost": 4200
-      }
-    ]
-  }
-}
-```
+### RecipesTab (Brand General용) 기능
 
-#### 독립 레스토랑: 레시피 CRUD (brand_id = NULL)
+#### 리스트 카드 표시 정보
+- 레시피명, 카테고리 (Badge)
+- 이미지/이모지
+- 원가, 권장가
+- **준비시간, 조리시간** (RecipeMetaInfo)
+- **조리방법 미리보기** (InstructionsPreview)
+- **재료명 태그** (IngredientTags - 최대 5개 + more)
+- View/Edit/Delete 버튼
 
-```javascript
-// 레시피 생성
-POST /api/restaurants/:restaurant_id/recipes
-Request: {
-  "restaurant_id": 20,
-  "brand_id": null,
-  "name": "특제 파스타",
-  ...
-}
+#### 카드 클릭 동작
+- 카드 클릭 시 **Recipe Details 팝업** (View 모드)
+- View 모드에서 **Edit 버튼**으로 수정 모드 전환 가능
+- 브랜드 레시피는 Restaurant Admin에게 **읽기 전용**
 
-// 레시피 수정
-PUT /api/restaurants/:restaurant_id/recipes/:id
+### RecipesPage (Restaurant Admin용) 기능
 
-// 레시피 삭제
-DELETE /api/restaurants/:restaurant_id/recipes/:id
-```
+#### 리스트 표시
+- 브랜드 레시피: "Brand" 뱃지, 수정 불가
+- 자체 레시피: 전체 CRUD 가능
+- **+ Menu 버튼**: 레시피를 메뉴로 등록
 
-#### 레시피 → 메뉴 등록
-
-```javascript
-// 레시피를 메뉴(Product)로 등록
-POST /api/restaurants/:restaurant_id/products/create-from-recipe
-Request: {
-  "recipe_id": 1,
-  "price": 8900  // Restaurant Admin이 가격만 설정
-}
-
-Response: {
-  "success": true,
-  "data": {
-    "product_id": 123,
-    "message": "레시피가 메뉴로 등록되었습니다"
-  }
-}
-
-// 내부 동작:
-// 1. recipes 테이블에서 recipe_id 조회
-// 2. recipe의 모든 정보를 products에 복사
-//    - name, description, category, emoji, image
-//    - option_groups, is_set_menu, set_items
-// 3. price만 Request의 값으로 설정
-// 4. recipe_id를 products.recipe_id에 저장
-```
-
----
-
-### 권한 체크 미들웨어 (새 설계)
-
-```javascript
-// 레시피 CRUD 권한 체크 - recipe_manager_type 기반
-async function canManageRecipe(req, res, next) {
-  const user = req.user;
-  const { restaurant_id } = req.params;
-
-  // System Admin은 모든 것 가능
-  if (user.role === 'System Admin') return next();
-
-  const restaurant = await Restaurant.findByPk(restaurant_id);
-  if (!restaurant) {
-    return res.status(404).json({ error: '레스토랑을 찾을 수 없습니다' });
-  }
-
-  // recipe_manager_type에 따라 권한 결정
-  if (restaurant.recipe_manager_type === 'brand') {
-    // Brand Manager만 레시피 관리 가능
-    if (user.role === 'Brand Manager' && user.brand_id === restaurant.brand_id) {
-      return next();
-    }
-    return res.status(403).json({
-      error: '이 레스토랑의 레시피는 브랜드 매니저가 관리합니다'
-    });
-  } else {
-    // restaurant: Store Manager가 레시피 관리
-    if (user.role === 'Restaurant Admin' && user.restaurant_id === restaurant.id) {
-      return next();
-    }
-    return res.status(403).json({
-      error: '이 레스토랑의 레시피는 스토어 매니저가 관리합니다'
-    });
-  }
-}
-
-// 레시피 조회 권한 체크
-async function canViewRecipe(req, res, next) {
-  const user = req.user;
-  const { restaurant_id } = req.params;
-
-  // System Admin은 모든 것 조회 가능
-  if (user.role === 'System Admin') return next();
-
-  const restaurant = await Restaurant.findByPk(restaurant_id);
-  if (!restaurant) {
-    return res.status(404).json({ error: '레스토랑을 찾을 수 없습니다' });
-  }
-
-  // Store Manager: 자기 레스토랑 레시피 조회 가능
-  if (user.role === 'Restaurant Admin' && user.restaurant_id === restaurant.id) {
-    return next();
-  }
-
-  // Brand Manager: 자기 브랜드 소속 레스토랑 레시피 조회 가능
-  if (user.role === 'Brand Manager' && restaurant.brand_id === user.brand_id) {
-    return next();
-  }
-
-  return res.status(403).json({ error: '권한 없음' });
-}
-
-// recipe_manager_type 설정 변경 권한 (Brand Manager만)
-async function canChangeRecipeManagerType(req, res, next) {
-  const user = req.user;
-  const { restaurant_id } = req.params;
-
-  // System Admin은 모든 것 가능
-  if (user.role === 'System Admin') return next();
-
-  const restaurant = await Restaurant.findByPk(restaurant_id);
-  if (!restaurant) {
-    return res.status(404).json({ error: '레스토랑을 찾을 수 없습니다' });
-  }
-
-  // 독립 레스토랑은 설정 변경 불가
-  if (!restaurant.brand_id) {
-    return res.status(403).json({
-      error: '독립 레스토랑은 레시피 관리 설정을 변경할 수 없습니다'
-    });
-  }
-
-  // Brand Manager만 변경 가능
-  if (user.role === 'Brand Manager' && user.brand_id === restaurant.brand_id) {
-    return next();
-  }
-
-  return res.status(403).json({
-    error: '브랜드 매니저만 레시피 관리 설정을 변경할 수 있습니다'
-  });
-}
-```
-
----
-
-## UI/UX 설계
-
-### Brand General 페이지
-
-#### `/brand-general/recipes` - 레시피 목록
-
-```
-┌─────────────────────────────────────────────────────┐
-│  🍳 브랜드 레시피 관리                              │
-├─────────────────────────────────────────────────────┤
-│  [+ 새 레시피 추가]  [재료 관리]                     │
-├─────────────────────────────────────────────────────┤
-│  검색: [_________]  카테고리: [전체▾]               │
-├─────────────────────────────────────────────────────┤
-│                                                      │
-│  🍔 시그니처 버거                                     │
-│  버거 | 원가: RM 3.50 | 권장가: RM 8.90              │
-│  📊 15개 가맹점에서 사용 중                          │
-│  [보기] [수정] [삭제]                                │
-│                                                      │
-│  🍕 페퍼로니 피자                                     │
-│  피자 | 원가: RM 5.20 | 권장가: RM 15.00             │
-│  📊 8개 가맹점에서 사용 중                           │
-│  [보기] [수정] [삭제]                                │
-│                                                      │
-└─────────────────────────────────────────────────────┘
-```
-
-#### `/brand-general/recipes/create` - 레시피 생성
-
-```
-┌─────────────────────────────────────────────────────┐
-│  🍳 새 레시피 추가                                   │
-├─────────────────────────────────────────────────────┤
-│                                                      │
-│  기본 정보                                           │
-│  레시피명: [___________________________]             │
-│  카테고리: [버거▾]  이모지: [🍔]                     │
-│  설명: [_________________________________]           │
-│                                                      │
-│  재료 구성                                           │
-│  ┌────────────────────────────────────────┐         │
-│  │ 재료명      수량    단위   단가   금액  │         │
-│  │ 앵거스 패티  150g   g     15.00  2.25  │ [삭제] │
-│  │ 버거 번      2개    piece  0.50  1.00  │ [삭제] │
-│  │ 치즈         1장    piece  0.25  0.25  │ [삭제] │
-│  └────────────────────────────────────────┘         │
-│  [+ 재료 추가]                                       │
-│  총 원가: RM 3.50                                    │
-│                                                      │
-│  옵션 그룹 (Products와 동일)                         │
-│  [+ 옵션 그룹 추가]                                  │
-│                                                      │
-│  조리 정보                                           │
-│  준비 시간: [5] 분  조리 시간: [10] 분               │
-│  조리 방법:                                          │
-│  [_________________________________________]         │
-│                                                      │
-│  권장 판매가                                         │
-│  원가: RM 3.50                                       │
-│  권장가: [8.90] (마진율: 154%)                       │
-│                                                      │
-│  [취소] [저장]                                       │
-└─────────────────────────────────────────────────────┘
-```
-
----
-
-### Restaurant Admin 페이지
-
-#### 브랜드 가맹점: `/restaurant/:id/recipes`
-
-```
-┌─────────────────────────────────────────────────────┐
-│  🍳 레시피 관리                                      │
-├─────────────────────────────────────────────────────┤
-│  [브랜드 레시피] [내 레시피]  ← 탭                   │
-├─────────────────────────────────────────────────────┤
-│                                                      │
-│  📌 브랜드 레시피 (본사 관리)                         │
-│  ⚠️  브랜드 레시피는 수정할 수 없습니다              │
-│                                                      │
-│  🍔 시그니처 버거                                     │
-│  버거 | 원가: RM 3.50 | 권장가: RM 8.90              │
-│  🏢 본사 레시피                                       │
-│  [보기] [메뉴로 등록]  ← 메뉴로 등록만 가능          │
-│                                                      │
-│  🍕 페퍼로니 피자                                     │
-│  피자 | 원가: RM 5.20 | 권장가: RM 15.00             │
-│  🏢 본사 레시피                                       │
-│  [보기] [메뉴로 등록]                                │
-│                                                      │
-└─────────────────────────────────────────────────────┘
-```
-
-#### 독립 레스토랑: `/restaurant/:id/recipes`
-
-```
-┌─────────────────────────────────────────────────────┐
-│  🍳 레시피 관리                                      │
-├─────────────────────────────────────────────────────┤
-│  [+ 새 레시피 추가]  [재료 관리]                     │
-├─────────────────────────────────────────────────────┤
-│                                                      │
-│  🍝 특제 파스타                                       │
-│  파스타 | 원가: RM 4.20 | 판매가: RM 12.00           │
-│  [보기] [수정] [삭제] [메뉴로 등록]                  │
-│                                                      │
-│  🥗 시저 샐러드                                       │
-│  샐러드 | 원가: RM 2.80 | 판매가: RM 8.00            │
-│  [보기] [수정] [삭제] [메뉴로 등록]                  │
-│                                                      │
-└─────────────────────────────────────────────────────┘
-```
-
-#### 메뉴로 등록 모달
-
-```
-┌─────────────────────────────────────────────────────┐
-│  🍔 메뉴로 등록                                       │
-├─────────────────────────────────────────────────────┤
-│                                                      │
-│  레시피: 시그니저 버거                                │
-│  원가: RM 3.50                                       │
-│                                                      │
-│  판매가 설정                                         │
-│  가격: [8.90]                                        │
-│  마진율: 154%                                        │
-│                                                      │
-│  ✅ 레시피의 모든 정보가 메뉴에 복사됩니다            │
-│  ✅ 옵션 그룹도 함께 복사됩니다                       │
-│                                                      │
-│  [취소] [등록]                                       │
-└─────────────────────────────────────────────────────┘
-```
+#### View 모드
+- 모든 필드 disabled
+- Close 버튼만 표시
+- 자체 레시피인 경우 Edit 버튼 표시
 
 ---
 
 ## 사용 시나리오
 
-### 시나리오 1: 브랜드 레시피 → 가맹점 메뉴
+### 시나리오 1: Brand General이 브랜드 레시피 생성
 
-#### Step 1: Brand General이 레시피 생성
-```javascript
-POST /api/brands/1/recipes
-{
-  "name": "시그니처 버거",
-  "category": "버거",
-  "emoji": "🍔",
-  "ingredients": [
-    { "ingredient_id": 5, "quantity": 150, "unit": "g" },
-    { "ingredient_id": 10, "quantity": 2, "unit": "piece" }
-  ]
-}
-→ 모든 가맹점에서 즉시 조회 가능
-```
+1. `/recipe-management` 페이지 접속
+2. Recipes 탭에서 "+ New Recipe" 클릭
+3. 레시피 정보 입력 (이름, 카테고리, 재료, 조리방법 등)
+4. "Create Recipe" 클릭
+5. 모든 브랜드 소속 레스토랑에서 조회 가능
 
-#### Step 2: Restaurant Admin이 조회
-```javascript
-GET /api/restaurants/10/recipes
-→ brand_recipes에 "시그니처 버거" 포함
-```
+### 시나리오 2: Restaurant Admin이 브랜드 레시피를 메뉴로 등록
 
-#### Step 3: Restaurant Admin이 메뉴로 등록
-```javascript
-POST /api/restaurants/10/products/create-from-recipe
-{
-  "recipe_id": 1,
-  "price": 8900
-}
-→ products 테이블에 새 레코드 생성
-→ recipe_id=1 연결 유지
-```
+1. `/recipes` 페이지 접속
+2. 브랜드 레시피 카드 클릭 → Recipe Details 팝업
+3. "+ Register as Menu" 버튼 클릭
+4. 가격 설정 후 등록
+5. 메뉴 관리에서 확인
 
-#### Step 4: Brand General이 레시피 수정
-```javascript
-PUT /api/brands/1/recipes/1
-{
-  "name": "시그니처 버거 V2",
-  "ingredients": [...]
-}
+### 시나리오 3: 독립 레스토랑이 자체 레시피 관리
 
-// 옵션 A: 실시간 동기화
-// → 모든 가맹점의 products 자동 업데이트
-
-// 옵션 B: 버전 관리 (추천)
-// → Restaurant Admin에게 알림
-// → "레시피가 업데이트되었습니다. 적용하시겠습니까?"
-// → [적용] 버튼 클릭 시 products 업데이트
-```
-
----
-
-### 시나리오 2: 독립 레스토랑 레시피
-
-#### Step 1: Restaurant Admin이 레시피 생성
-```javascript
-POST /api/restaurants/20/recipes
-{
-  "restaurant_id": 20,
-  "name": "특제 파스타",
-  "ingredients": [...]
-}
-```
-
-#### Step 2: 메뉴로 등록
-```javascript
-POST /api/restaurants/20/products/create-from-recipe
-{
-  "recipe_id": 10,
-  "price": 12000
-}
-```
-
-#### Step 3: 레시피 수정 (자유롭게)
-```javascript
-PUT /api/restaurants/20/recipes/10
-{
-  "name": "특제 파스타 V2",
-  "ingredients": [...]
-}
-→ ✅ 수정 가능 (독립 레스토랑)
-```
+1. `/recipes` 페이지 접속
+2. "+ New Recipe" 클릭
+3. 레시피 정보 입력
+4. 필요시 메뉴로 등록
+5. 언제든 수정/삭제 가능
 
 ---
 
 ## 원가 계산 로직
 
-### 자동 계산 흐름
-
 ```javascript
 // recipe_ingredients 저장 시
 1. ingredient.unit_cost 조회
-2. cost = quantity * unit_cost (단위 변환 고려)
+2. cost = quantity * unit_cost
 3. recipe_ingredients.cost 저장
 
 // recipe 저장 시
-4. recipe의 모든 recipe_ingredients.cost 합산
-5. recipes.total_ingredient_cost = SUM(cost)
+4. SUM(recipe_ingredients.cost)
+5. recipes.total_ingredient_cost 업데이트
 ```
 
 ### 예시
 
-```javascript
-Recipe: 시그니처 버거
-├─ 앵거스 패티: 150g × RM 0.10/g = RM 15.00
-├─ 번: 2개 × RM 0.50/개 = RM 1.00
-└─ 치즈: 1장 × RM 0.25/장 = RM 0.25
+```
+Recipe: 토마토 수프
+├─ 토마토: 0.5kg × RM 5.00/kg = RM 2.50
+├─ 양파: 0.2kg × RM 3.00/kg = RM 0.60
+└─ 소금: 0.01kg × RM 10.00/kg = RM 0.10
 ────────────────────────────────────────
-총 원가: RM 16.25
+총 원가: RM 3.20
+권장가 (300% 마진): RM 9.60
 ```
 
 ---
 
-## 구현 우선순위
+## 파일 위치
 
-### Phase 2.1: 기본 레시피 시스템 (1주)
-- [ ] DB 스키마 생성
-- [ ] Backend Models (Recipe, Ingredient, RecipeIngredient)
-- [ ] Backend APIs (CRUD)
-- [ ] 권한 체크 미들웨어
+### Backend
+- 모델: `/var/www/dev-backend/models/Recipe.js`, `Ingredient.js`, `RecipeIngredient.js`
+- 라우트: `/var/www/dev-backend/routes/recipes.js`, `ingredients.js`
+- 카테고리: `/var/www/dev-backend/routes/recipe-categories.js`, `ingredient-categories.js`
 
-### Phase 2.2: Brand General UI (3일)
-- [ ] 레시피 목록 페이지
-- [ ] 레시피 생성/수정 페이지
-- [ ] 재료 관리 페이지
-
-### Phase 2.3: Restaurant Admin UI (3일)
-- [ ] 레시피 조회 페이지
-- [ ] 메뉴로 등록 기능
-- [ ] 독립 레스토랑 레시피 CRUD
-
-### Phase 2.4: Integration (2일)
-- [ ] 원가 자동 계산
-- [ ] 레시피 버전 관리
-- [ ] 동기화 알림 시스템
-
----
-
-## 향후 확장
-
-### Phase 3: Advanced Inventory 연동
-- 주문 생성 → recipe_ingredients 조회 → 재고 자동 차감
-- 재고 부족 시 메뉴 자동 soldOut
-
-### Phase 4: Purchase Order 연동
-- 재료 재고 부족 시 자동 발주 제안
-
-### Phase 5: AI Prediction 연동
-- 레시피 기반 재료 소비 예측
+### Frontend
+- Brand General: `/var/www/dev-frontend/src/pages/RecipeManagement/`
+  - `RecipeManagementPage.tsx` - 메인 페이지 (탭 네비게이션)
+  - `RecipesTab.tsx` - 레시피 관리
+  - `IngredientsTab.tsx` - 재료 관리
+  - `RecipeCategoriesTab.tsx` - 레시피 카테고리
+  - `IngredientCategoriesTab.tsx` - 재료 카테고리
+- Restaurant Admin: `/var/www/dev-frontend/src/pages/Recipes/RecipesPage.tsx`
+- Restaurant Admin: `/var/www/dev-frontend/src/pages/Ingredients/IngredientsPage.tsx`
 
 ---
 
@@ -927,7 +383,8 @@ Recipe: 시그니처 버거
 | 날짜 | 버전 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
 | 2025-11-20 | 1.0 | 초안 작성 | Claude |
-| 2025-11-30 | 2.0 | 권한 구조 단순화: `recipe_manager_type` 설정 기반으로 변경 | Claude |
+| 2025-11-30 | 2.0 | 권한 구조 설계 (recipe_manager_type 방식) | Claude |
+| 2025-12-10 | 3.0 | 구현 완료 반영 - owner_type 기반 권한, UI 기능 추가 | Claude |
 
 ---
 

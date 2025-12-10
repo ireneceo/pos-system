@@ -241,6 +241,155 @@ const InstructionsPreview = styled.div`
   overflow: hidden;
 `;
 
+// View Mode Styles
+const ViewContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+`;
+
+const ViewHeader = styled.div`
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+`;
+
+const ViewImage = styled.div`
+  width: 200px;
+  height: 200px;
+  border-radius: 12px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #F3F4F6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+const ViewEmoji = styled.div`
+  font-size: 80px;
+  line-height: 1;
+`;
+
+const ViewTitleSection = styled.div`
+  flex: 1;
+`;
+
+const ViewTitle = styled.h2`
+  font-size: 28px;
+  font-weight: 700;
+  color: #0A2540;
+  margin: 0 0 8px 0;
+`;
+
+const ViewCategoryBadge = styled.span`
+  display: inline-block;
+  padding: 6px 12px;
+  background: #F0F4FF;
+  color: #635BFF;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+`;
+
+const ViewDescription = styled.p`
+  font-size: 15px;
+  color: #6B7280;
+  margin: 16px 0 0 0;
+  line-height: 1.6;
+`;
+
+const ViewSection = styled.div`
+  padding: 20px;
+  background: #F8FAFC;
+  border-radius: 12px;
+`;
+
+const ViewSectionTitle = styled.h3`
+  font-size: 14px;
+  font-weight: 600;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 12px 0;
+`;
+
+const ViewGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+`;
+
+const ViewGridItem = styled.div`
+  text-align: center;
+  padding: 16px;
+  background: white;
+  border-radius: 8px;
+`;
+
+const ViewGridLabel = styled.div`
+  font-size: 12px;
+  color: #6B7280;
+  margin-bottom: 4px;
+`;
+
+const ViewGridValue = styled.div`
+  font-size: 20px;
+  font-weight: 700;
+  color: #0A2540;
+`;
+
+const ViewInstructions = styled.div`
+  font-size: 15px;
+  color: #374151;
+  line-height: 1.8;
+  white-space: pre-wrap;
+`;
+
+const ViewIngredientTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+
+  th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #E6EBF1;
+  }
+
+  th {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6B7280;
+    text-transform: uppercase;
+  }
+
+  td {
+    font-size: 14px;
+    color: #374151;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+`;
+
+const ViewTotalRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  padding: 16px;
+  background: #635BFF;
+  color: white;
+  border-radius: 8px;
+  margin-top: 12px;
+  font-weight: 600;
+`;
+
 const RecipeActions = styled.div`
   display: flex;
   gap: 8px;
@@ -1423,11 +1572,24 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             {/* Action Buttons */}
             <ButtonGroup>
               <ModalButton type="button" variant="secondary" onClick={handleCloseModal}>
-                Cancel
+                {viewMode ? 'Close' : 'Cancel'}
               </ModalButton>
-              <ModalButton type="submit" variant="primary">
-                {selectedRecipe ? 'Update Recipe' : 'Create Recipe'}
-              </ModalButton>
+              {!viewMode && (
+                <ModalButton type="submit" variant="primary">
+                  {selectedRecipe ? 'Update Recipe' : 'Create Recipe'}
+                </ModalButton>
+              )}
+              {viewMode && selectedRecipe && !isItemReadOnly(selectedRecipe) && (
+                <ModalButton
+                  type="button"
+                  variant="primary"
+                  onClick={() => {
+                    setViewMode(false);
+                  }}
+                >
+                  Edit
+                </ModalButton>
+              )}
             </ButtonGroup>
           </form>
       </Modal>

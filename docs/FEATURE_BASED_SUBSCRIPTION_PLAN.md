@@ -1,6 +1,7 @@
 # Feature-Based Subscription System - 개발 계획서
 
 **작성일:** 2025-01-19
+**수정일:** 2025-12-10
 **프로젝트:** OrderHere POS System
 **목표:** 모듈형 구독 시스템 + 레시피-재고-발주 통합 관리
 
@@ -65,14 +66,14 @@
 
 ## 개발 범위
 
-### Part 1: 구독 시스템 확장 (모듈 선택)
-- [ ] Add-on 모듈 정의 시스템
-- [ ] Plan별 포함 모듈 설정
-- [ ] Restaurant별 활성 모듈 관리
-- [ ] 권한 기반 UI 라우팅
+### Part 1: 구독 시스템 확장 (모듈 선택) - 완료
+- [x] Add-on 모듈 정의 시스템
+- [x] Plan별 포함 모듈 설정
+- [x] Restaurant별 활성 모듈 관리
+- [x] 권한 기반 UI 라우팅
 
 ### Part 2: Supply Chain Management (신규 기능)
-- [ ] Recipe Management (레시피 관리)
+- [x] Recipe Management (레시피 관리) - 완료
 - [ ] Advanced Inventory (재고 관리)
 - [ ] Purchase Order System (발주 관리)
 - [ ] AI Stock Prediction (재고 예측)
@@ -81,37 +82,37 @@
 
 ## Phase별 상세 계획
 
-### 🔧 Phase 1: 모듈 선택 시스템 (3-5일)
+### ✅ Phase 1: 모듈 선택 시스템 (완료)
 
 **목표:** Feature-based 구독 기반 구축
 
 #### 작업 목록
 
 **1.1 DB 스키마 설계**
-- [ ] `addon_modules` 테이블 생성
-- [ ] `plan_templates`에 `included_modules` 필드 추가
-- [ ] 기본 모듈 데이터 삽입
+- [x] `addon_modules` 테이블 생성
+- [x] `plan_templates`에 `included_modules` 필드 추가
+- [x] 기본 모듈 데이터 삽입
 
 **1.2 Backend Models**
-- [ ] `models/AddonModule.js` 생성
-- [ ] `routes/addon-modules.js` 생성
-- [ ] `routes/restaurants.js`에 allowed-routes API 추가
+- [x] `models/AddonModule.js` 생성
+- [x] `routes/addon-modules.js` 생성
+- [x] `routes/restaurants.js`에 allowed-routes API 추가
 
 **1.3 Frontend - PlansPage 수정**
-- [ ] Available Modules fetch
-- [ ] Create Plan Modal에 모듈 체크박스 추가
-- [ ] Edit Plan Modal에 모듈 체크박스 추가
-- [ ] included_modules 저장 로직
+- [x] Available Modules fetch
+- [x] Create Plan Modal에 모듈 체크박스 추가
+- [x] Edit Plan Modal에 모듈 체크박스 추가
+- [x] included_modules 저장 로직
 
 **1.4 Frontend - 권한 제어**
-- [ ] AuthContext에 allowedRoutes 추가
-- [ ] Sidebar 메뉴 동적 표시
-- [ ] ProtectedRoute 컴포넌트 (optional)
+- [x] AuthContext에 allowedRoutes 추가
+- [x] Sidebar 메뉴 동적 표시
+- [x] ProtectedRoute 컴포넌트 (optional)
 
 **1.5 테스트**
-- [ ] 플랜 생성 시 모듈 선택 테스트
-- [ ] Restaurant 로그인 시 메뉴 표시/숨김 확인
-- [ ] 모듈 변경 시 즉시 반영 확인
+- [x] 플랜 생성 시 모듈 선택 테스트
+- [x] Restaurant 로그인 시 메뉴 표시/숨김 확인
+- [x] 모듈 변경 시 즉시 반영 확인
 
 **산출물:**
 - ✅ 시스템 관리자가 플랜별 모듈 선택 가능
@@ -120,77 +121,72 @@
 
 ---
 
-### 📖 Phase 2: Recipe Management (2주)
+### ✅ Phase 2: Recipe Management (완료 - 2025-12-10)
 
 **목표:** 브랜드 매니저가 레시피 생성 및 공유
 
 **📄 상세 설계 문서:** `/var/www/docs/RECIPE_MANAGEMENT_SYSTEM.md`
 
-#### 권한 구조
+#### 최종 구현된 권한 구조 (owner_type 기반)
 ```javascript
-if (restaurant.brand_id !== null) {
-  // 브랜드 가맹점
-  레시피 관리: Brand General/Manager
-  Restaurant Admin: 읽기만 (메뉴 등록 시 가격만 설정)
-} else {
-  // 독립 레스토랑
-  레시피 관리: Restaurant Admin (생성/수정/삭제 모두 가능)
-}
+// 브랜드 레시피 (owner_type = 'brand')
+Brand General/Manager: CRUD 가능
+Restaurant Admin: 조회만 (수정 불가)
 
-// Foodcourt는 레시피와 무관 (임대 관리만)
+// 레스토랑 레시피 (owner_type = 'restaurant')
+Restaurant Admin: CRUD 가능
+Brand General/Manager: 접근 불가 (표시 안됨)
 ```
 
 #### 작업 목록
 
-**2.1 DB 스키마 (1일)**
+**2.1 DB 스키마**
 ```sql
-- recipes (레시피 마스터, Products와 동일한 구조)
-  - brand_id OR restaurant_id (둘 중 하나만)
-  - option_groups, is_set_menu (Products와 동일)
+- recipes (레시피 마스터)
+  - owner_type ENUM('brand', 'restaurant')
+  - brand_id OR restaurant_id
+  - recipe_category_id (카테고리 FK)
+  - prep_time, cook_time, instructions (조리 정보)
   - total_ingredient_cost (자동 계산)
 
 - ingredients (재료 마스터)
-  - brand_id OR restaurant_id
-  - unit_cost (단위당 원가)
+  - owner_type, brand_id OR restaurant_id
+  - ingredient_category_id (카테고리 FK)
 
 - recipe_ingredients (레시피-재료 매핑)
-  - quantity, unit, cost (자동 계산)
-
-- products 테이블 수정
-  - recipe_id 추가 (연결)
+- recipe_categories, ingredient_categories (카테고리 테이블)
 ```
 
-**2.2 Backend (3-4일)**
-- [ ] Models: Recipe, Ingredient, RecipeIngredient
-- [ ] Routes: `/api/brands/:id/recipes`, `/api/restaurants/:id/recipes`
-- [ ] APIs: CRUD for recipes, ingredients
-- [ ] 권한 체크 미들웨어 (canEditRecipe, canViewRecipe)
-- [ ] 원가 자동 계산 로직
+**2.2 Backend**
+- [x] Models: Recipe, Ingredient, RecipeIngredient
+- [x] Routes: `/api/brands/:id/recipes`, `/api/restaurants/:id/recipes`
+- [x] APIs: CRUD for recipes, ingredients, categories
+- [x] 권한 체크 미들웨어 (isBrandManager, checkRestaurantAccess)
+- [x] 원가 자동 계산 로직
 
-**2.3 Frontend - Brand General (3일)**
-- [ ] `/brand-general/recipes` - 브랜드 레시피 목록
-- [ ] `/brand-general/recipes/create` - 레시피 생성
-- [ ] `/brand-general/recipes/:id/edit` - 레시피 수정
-- [ ] `/brand-general/ingredients` - 재료 마스터
+**2.3 Frontend - Brand General**
+- [x] `/recipe-management` - 4개 탭 (Recipes, Ingredients, Categories)
+- [x] RecipesTab - 레시피 CRUD
+- [x] IngredientsTab - 재료 CRUD
+- [x] RecipeCategoriesTab, IngredientCategoriesTab
 
-**2.4 Frontend - Restaurant Admin (3일)**
-- [ ] `/restaurant/:id/recipes` - 레시피 조회
-  - 브랜드 가맹점: 브랜드 레시피 조회만
-  - 독립 레스토랑: 레시피 CRUD
-- [ ] **[메뉴로 등록]** 버튼 → 레시피를 Products로 복사
-- [ ] 독립 레스토랑 레시피 생성/수정 페이지
-- [ ] 재료 관리 페이지
+**2.4 Frontend - Restaurant Admin**
+- [x] `/recipes` - 레시피 관리 (브랜드 + 자체)
+- [x] `/ingredients` - 재료 관리
+- [x] 브랜드 레시피는 View만, 자체 레시피는 CRUD
+- [x] **[+ Menu]** 버튼 → 레시피를 Products로 등록
 
-**2.5 Integration (2일)**
-- [ ] 레시피 → 메뉴 등록 API (create-from-recipe)
-- [ ] 원가 자동 계산 및 권장가 제안
-- [ ] 브랜드 레시피 업데이트 시 알림 시스템
+**2.5 UI 기능 (2025-12-10 추가)**
+- [x] 리스트 카드에 요리시간, 조리방법, 재료명 표시
+- [x] 카드 클릭 시 Recipe Details 팝업 (View 모드)
+- [x] View 모드에서 Edit 전환 기능
 
 **산출물:**
 - ✅ 레시피 생성/수정/삭제 (권한별)
-- ✅ 재료 관리
-- ✅ 레시피 → 메뉴 등록 (가격만 설정)
+- ✅ 재료 관리 + 카테고리 관리
+- ✅ 레시피 → 메뉴 등록
 - ✅ 원가 자동 계산
+- ✅ 상세 뷰 팝업
 
 ---
 
