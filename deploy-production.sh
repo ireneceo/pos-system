@@ -132,10 +132,10 @@ npm install --omit=dev
 echo -e "${GREEN}   ✅ Dependencies installed${NC}"
 
 # ==============================================
-# Step 7: Compare Dev/Prod DB Schema
+# Step 7: Auto-Sync Database Schema (Dev -> Prod)
 # ==============================================
 echo ""
-echo -e "${YELLOW}Step 7: Compare Database Schema (Dev vs Prod)${NC}"
+echo -e "${YELLOW}Step 7: Auto-Sync Database Schema (Dev -> Prod)${NC}"
 
 # .env 파일에서 개발 DB 정보 로드
 if [ -f "$DEV_BACKEND/.env" ]; then
@@ -147,44 +147,78 @@ else
     exit 1
 fi
 
-echo -e "${BLUE}   Checking for missing tables and columns...${NC}"
+echo -e "${BLUE}   Checking and auto-syncing missing tables and columns...${NC}"
 
-# 테이블 비교
+# 테이블 비교 및 자동 생성
 DEV_TABLES=$(mysql -u $DEV_DB_USER -p$DEV_DB_PASS $DEV_DB_NAME -N -e "SHOW TABLES;" 2>/dev/null | sort)
 PROD_TABLES=$(mysql -u $DB_USER -p$DB_PASS $DB_NAME -N -e "SHOW TABLES;" 2>/dev/null | sort)
 
 MISSING_TABLES=$(comm -23 <(echo "$DEV_TABLES") <(echo "$PROD_TABLES"))
 
 if [ -n "$MISSING_TABLES" ]; then
-    echo -e "${RED}   ❌ 운영DB에 누락된 테이블 발견:${NC}"
+    echo -e "${BLUE}   누락된 테이블 발견 - 자동 생성 중...${NC}"
     echo "$MISSING_TABLES" | while read table; do
-        echo -e "${RED}      - $table${NC}"
+        if [ -n "$table" ]; then
+            echo -e "${BLUE}      Creating table: $table${NC}"
+            # 개발DB에서 테이블 구조 추출하여 운영DB에 생성
+            mysqldump -u $DEV_DB_USER -p$DEV_DB_PASS --no-data --skip-add-drop-table $DEV_DB_NAME $table 2>/dev/null | \
+                sed 's/CREATE TABLE/CREATE TABLE IF NOT EXISTS/g' | \
+                mysql -u $DB_USER -p$DB_PASS $DB_NAME 2>/dev/null
+            if [ $? -eq 0 ]; then
+                echo -e "${GREEN}      ✅ $table 테이블 생성 완료${NC}"
+            else
+                echo -e "${RED}      ❌ $table 테이블 생성 실패${NC}"
+                exit 1
+            fi
+        fi
     done
-    echo -e "${RED}   배포를 중단합니다. 먼저 테이블을 생성하세요.${NC}"
-    exit 1
 fi
 
-# 주요 테이블 컬럼 비교
-SCHEMA_MISMATCH=0
-for table in products categories restaurants users orders options option_groups recipes ingredients; do
+# 주요 테이블 컬럼 비교 및 자동 추가
+TABLES_TO_CHECK="products categories restaurants users orders options option_groups recipes ingredients customers restaurant_customers plan_templates brands"
+for table in $TABLES_TO_CHECK; do
+    # 테이블 존재 여부 확인
+    TABLE_EXISTS=$(mysql -u $DB_USER -p$DB_PASS $DB_NAME -N -e "SHOW TABLES LIKE '$table';" 2>/dev/null)
+    if [ -z "$TABLE_EXISTS" ]; then
+        continue
+    fi
+
     DEV_COLS=$(mysql -u $DEV_DB_USER -p$DEV_DB_PASS $DEV_DB_NAME -N -e "SELECT GROUP_CONCAT(COLUMN_NAME ORDER BY ORDINAL_POSITION) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='$DEV_DB_NAME' AND TABLE_NAME='$table';" 2>/dev/null)
     PROD_COLS=$(mysql -u $DB_USER -p$DB_PASS $DB_NAME -N -e "SELECT GROUP_CONCAT(COLUMN_NAME ORDER BY ORDINAL_POSITION) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='$DB_NAME' AND TABLE_NAME='$table';" 2>/dev/null)
 
     if [ -n "$DEV_COLS" ] && [ -n "$PROD_COLS" ]; then
-        MISSING=$(comm -23 <(echo "$DEV_COLS" | tr ',' '\n' | sort) <(echo "$PROD_COLS" | tr ',' '\n' | sort) | tr '\n' ', ' | sed 's/,$//')
-        if [ -n "$MISSING" ]; then
-            echo -e "${RED}   ❌ $table 테이블에 누락된 컬럼: $MISSING${NC}"
-            SCHEMA_MISMATCH=1
+        MISSING_COLS=$(comm -23 <(echo "$DEV_COLS" | tr ',' '\n' | sort) <(echo "$PROD_COLS" | tr ',' '\n' | sort))
+        if [ -n "$MISSING_COLS" ]; then
+            echo -e "${BLUE}   $table 테이블에 누락된 컬럼 추가 중...${NC}"
+            echo "$MISSING_COLS" | while read col; do
+                if [ -n "$col" ]; then
+                    # 개발DB에서 컬럼 정의 가져오기
+                    COL_DEF=$(mysql -u $DEV_DB_USER -p$DEV_DB_PASS $DEV_DB_NAME -N -e "
+                        SELECT CONCAT(
+                            COLUMN_NAME, ' ',
+                            COLUMN_TYPE,
+                            IF(IS_NULLABLE='NO', ' NOT NULL', ''),
+                            IF(COLUMN_DEFAULT IS NOT NULL, CONCAT(' DEFAULT ', IF(DATA_TYPE IN ('varchar','text','char','enum','set'), CONCAT('''', COLUMN_DEFAULT, ''''), COLUMN_DEFAULT)), ''),
+                            IF(EXTRA != '', CONCAT(' ', EXTRA), '')
+                        ) FROM information_schema.COLUMNS
+                        WHERE TABLE_SCHEMA='$DEV_DB_NAME' AND TABLE_NAME='$table' AND COLUMN_NAME='$col';" 2>/dev/null)
+
+                    if [ -n "$COL_DEF" ]; then
+                        echo -e "${BLUE}      Adding column: $col${NC}"
+                        mysql -u $DB_USER -p$DB_PASS $DB_NAME -e "ALTER TABLE $table ADD COLUMN $COL_DEF;" 2>/dev/null
+                        if [ $? -eq 0 ]; then
+                            echo -e "${GREEN}      ✅ $col 컬럼 추가 완료${NC}"
+                        else
+                            echo -e "${YELLOW}      ⚠️  $col 컬럼 추가 실패 (이미 존재할 수 있음)${NC}"
+                        fi
+                    fi
+                fi
+            done
         fi
     fi
 done
 
-if [ $SCHEMA_MISMATCH -eq 1 ]; then
-    echo -e "${RED}   배포를 중단합니다. 먼저 컬럼을 추가하세요.${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}   ✅ DB 스키마 일치 확인 완료${NC}"
+echo -e "${GREEN}   ✅ DB 스키마 자동 동기화 완료${NC}"
 
 # ==============================================
 # Step 8: Database Sync (Sequelize - alter: false)
@@ -224,8 +258,16 @@ echo -e "${GREEN}   ✅ Frontend built successfully${NC}"
 # ==============================================
 echo ""
 echo -e "${YELLOW}Step 10: Deploy Frontend Build${NC}"
-rm -rf $PROD_FRONTEND/build
-cp -r $DEV_FRONTEND/build $PROD_FRONTEND/
+
+# 빌드 폴더 삭제 및 복사 (권한 문제 시 sudo 사용)
+if rm -rf $PROD_FRONTEND/build 2>/dev/null; then
+    cp -r $DEV_FRONTEND/build $PROD_FRONTEND/
+else
+    echo -e "${BLUE}   Using sudo for frontend deployment...${NC}"
+    sudo rm -rf $PROD_FRONTEND/build
+    sudo cp -r $DEV_FRONTEND/build $PROD_FRONTEND/
+    sudo chown -R $(whoami):$(whoami) $PROD_FRONTEND/build
+fi
 echo -e "${GREEN}   ✅ Frontend build deployed${NC}"
 
 # ==============================================

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Ingredient } = require('../models');
+const { Ingredient, IngredientCategory, Restaurant } = require('../models');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
 
@@ -9,16 +9,22 @@ const { isBrandManager } = require('../middleware/recipeAuth');
 // ============================================
 
 /**
- * GET /api/brands/:brand_id/ingredients
+ * GET /api/brands/:brandId/ingredients
  * 브랜드 재료 목록 조회
  */
-router.get('/brands/:brand_id/ingredients', authenticateToken, isBrandManager, async (req, res) => {
+router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, async (req, res) => {
   try {
-    const { brand_id } = req.params;
+    const { brandId } = req.params;
+    const brand_id = brandId; // DB 쿼리용
 
     const ingredients = await Ingredient.findAll({
       where: { brand_id },
-      order: [['name', 'ASC']]
+      order: [['name', 'ASC']],
+      include: [{
+        model: IngredientCategory,
+        as: 'ingredientCategory',
+        attributes: ['id', 'name', 'emoji']
+      }]
     });
 
     res.json({ success: true, data: ingredients });
@@ -29,17 +35,20 @@ router.get('/brands/:brand_id/ingredients', authenticateToken, isBrandManager, a
 });
 
 /**
- * POST /api/brands/:brand_id/ingredients
+ * POST /api/brands/:brandId/ingredients
  * 브랜드 재료 생성
  */
-router.post('/brands/:brand_id/ingredients', authenticateToken, isBrandManager, async (req, res) => {
+router.post('/brands/:brandId/ingredients', authenticateToken, isBrandManager, async (req, res) => {
   try {
-    const { brand_id } = req.params;
-    const { code, name, category, unit, unit_cost, supplier_name, min_stock } = req.body;
+    const { brandId } = req.params;
+    const brand_id = brandId; // DB 쿼리용
+    const { code, name, category, ingredient_category_id, unit, unit_cost, supplier_name, min_stock } = req.body;
 
     const ingredient = await Ingredient.create({
+      owner_type: 'brand',
       brand_id,
       restaurant_id: null,
+      ingredient_category_id: ingredient_category_id || null,
       code,
       name,
       category,
@@ -58,13 +67,14 @@ router.post('/brands/:brand_id/ingredients', authenticateToken, isBrandManager, 
 });
 
 /**
- * PUT /api/brands/:brand_id/ingredients/:ingredient_id
+ * PUT /api/brands/:brandId/ingredients/:ingredientId
  * 브랜드 재료 수정
  */
-router.put('/brands/:brand_id/ingredients/:ingredient_id', authenticateToken, isBrandManager, async (req, res) => {
+router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBrandManager, async (req, res) => {
   try {
-    const { ingredient_id } = req.params;
-    const { code, name, category, unit, unit_cost, supplier_name, min_stock } = req.body;
+    const { ingredientId } = req.params;
+    const ingredient_id = ingredientId; // DB 쿼리용
+    const { code, name, category, ingredient_category_id, unit, unit_cost, supplier_name, min_stock } = req.body;
 
     const ingredient = await Ingredient.findByPk(ingredient_id);
     if (!ingredient) {
@@ -75,6 +85,7 @@ router.put('/brands/:brand_id/ingredients/:ingredient_id', authenticateToken, is
       code,
       name,
       category,
+      ingredient_category_id: ingredient_category_id !== undefined ? ingredient_category_id : ingredient.ingredient_category_id,
       unit,
       unit_cost,
       supplier_name,
@@ -89,12 +100,13 @@ router.put('/brands/:brand_id/ingredients/:ingredient_id', authenticateToken, is
 });
 
 /**
- * DELETE /api/brands/:brand_id/ingredients/:ingredient_id
+ * DELETE /api/brands/:brandId/ingredients/:ingredientId
  * 브랜드 재료 삭제
  */
-router.delete('/brands/:brand_id/ingredients/:ingredient_id', authenticateToken, isBrandManager, async (req, res) => {
+router.delete('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBrandManager, async (req, res) => {
   try {
-    const { ingredient_id } = req.params;
+    const { ingredientId } = req.params;
+    const ingredient_id = ingredientId; // DB 쿼리용
 
     const ingredient = await Ingredient.findByPk(ingredient_id);
     if (!ingredient) {
@@ -116,15 +128,23 @@ router.delete('/brands/:brand_id/ingredients/:ingredient_id', authenticateToken,
 
 /**
  * GET /api/restaurants/:restaurantId/ingredients
- * 레스토랑 재료 목록 조회
+ * 레스토랑 자체 재료 목록 조회 (owner_type = 'restaurant')
  */
 router.get('/restaurants/:restaurantId/ingredients', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
 
     const ingredients = await Ingredient.findAll({
-      where: { restaurant_id: restaurantId },
-      order: [['name', 'ASC']]
+      where: {
+        restaurant_id: restaurantId,
+        owner_type: 'restaurant'
+      },
+      order: [['name', 'ASC']],
+      include: [{
+        model: IngredientCategory,
+        as: 'ingredientCategory',
+        attributes: ['id', 'name', 'emoji']
+      }]
     });
 
     res.json({ success: true, data: ingredients });
@@ -135,17 +155,58 @@ router.get('/restaurants/:restaurantId/ingredients', authenticateToken, checkRes
 });
 
 /**
+ * GET /api/restaurants/:restaurantId/brand-ingredients
+ * 레스토랑이 속한 브랜드의 재료 조회 (읽기 전용)
+ */
+router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+
+    const restaurant = await Restaurant.findByPk(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ error: 'Restaurant not found' });
+    }
+
+    // 브랜드에 속하지 않은 레스토랑
+    if (!restaurant.brand_id) {
+      return res.json({ success: true, data: [] });
+    }
+
+    // 브랜드 재료 조회 (owner_type = 'brand')
+    const brandIngredients = await Ingredient.findAll({
+      where: {
+        brand_id: restaurant.brand_id,
+        owner_type: 'brand'
+      },
+      order: [['name', 'ASC']],
+      include: [{
+        model: IngredientCategory,
+        as: 'ingredientCategory',
+        attributes: ['id', 'name', 'emoji']
+      }]
+    });
+
+    res.json({ success: true, data: brandIngredients });
+  } catch (error) {
+    console.error('Get brand ingredients for restaurant error:', error);
+    res.status(500).json({ error: 'Failed to fetch brand ingredients' });
+  }
+});
+
+/**
  * POST /api/restaurants/:restaurantId/ingredients
  * 레스토랑 재료 생성
  */
 router.post('/restaurants/:restaurantId/ingredients', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
-    const { code, name, category, unit, unit_cost, supplier_name, min_stock } = req.body;
+    const { code, name, category, ingredient_category_id, unit, unit_cost, supplier_name, min_stock } = req.body;
 
     const ingredient = await Ingredient.create({
+      owner_type: 'restaurant',
       brand_id: null,
       restaurant_id: restaurantId,
+      ingredient_category_id: ingredient_category_id || null,
       code,
       name,
       category,
@@ -170,7 +231,7 @@ router.post('/restaurants/:restaurantId/ingredients', authenticateToken, checkRe
 router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { ingredientId } = req.params;
-    const { code, name, category, unit, unit_cost, supplier_name, min_stock } = req.body;
+    const { code, name, category, ingredient_category_id, unit, unit_cost, supplier_name, min_stock } = req.body;
 
     const ingredient = await Ingredient.findByPk(ingredientId);
     if (!ingredient) {
@@ -181,6 +242,7 @@ router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateT
       code,
       name,
       category,
+      ingredient_category_id: ingredient_category_id !== undefined ? ingredient_category_id : ingredient.ingredient_category_id,
       unit,
       unit_cost,
       supplier_name,

@@ -54,6 +54,12 @@ Brand.init({
   website: {
     type: DataTypes.STRING(255),
     allowNull: true
+  },
+  currency: {
+    type: DataTypes.STRING(10),
+    defaultValue: 'RM',
+    allowNull: false,
+    comment: 'Default currency for brand restaurants (RM, USD, SGD, JPY, THB, KRW)'
   }
 }, {
   sequelize: database.sequelize,

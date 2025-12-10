@@ -9,7 +9,13 @@ Recipe.init({
     primaryKey: true,
     autoIncrement: true
   },
-  // 소유권
+  // 소유권 타입 (brand 또는 restaurant)
+  owner_type: {
+    type: DataTypes.ENUM('brand', 'restaurant'),
+    allowNull: false,
+    defaultValue: 'restaurant',
+    comment: '소유권 타입: brand(브랜드 공통) 또는 restaurant(지점 전용)'
+  },
   brand_id: {
     type: DataTypes.INTEGER,
     allowNull: true,
@@ -35,7 +41,13 @@ Recipe.init({
   },
   category: {
     type: DataTypes.STRING(50),
-    allowNull: false
+    allowNull: true,
+    comment: '레거시 카테고리명 (recipe_category_id 사용 권장)'
+  },
+  recipe_category_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: '레시피 카테고리 FK'
   },
   // 이미지/이모지
   image: {

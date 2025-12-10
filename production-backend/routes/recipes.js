@@ -1,20 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const { Recipe, Ingredient, RecipeIngredient, Restaurant, Product } = require('../models');
+const { Recipe, Ingredient, RecipeIngredient, Restaurant, Product, RecipeCategory, Category } = require('../models');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
-const { canEditRecipe, canViewRecipe, isBrandManager } = require('../middleware/recipeAuth');
+const { canEditRecipe, isBrandManager } = require('../middleware/recipeAuth');
 
 // ============================================
 // Brand Recipes (Brand General/Manager)
 // ============================================
 
 /**
- * GET /api/brands/:brand_id/recipes
+ * GET /api/brands/:brandId/recipes
  * 브랜드 레시피 목록 조회
  */
-router.get('/brands/:brand_id/recipes', authenticateToken, isBrandManager, async (req, res) => {
+router.get('/brands/:brandId/recipes', authenticateToken, isBrandManager, async (req, res) => {
   try {
-    const { brand_id } = req.params;
+    const { brandId } = req.params;
+    const brand_id = brandId; // DB 쿼리용
 
     const recipes = await Recipe.findAll({
       where: { brand_id },
@@ -23,6 +24,10 @@ router.get('/brands/:brand_id/recipes', authenticateToken, isBrandManager, async
           model: RecipeIngredient,
           as: 'recipeIngredients',
           include: [{ model: Ingredient, as: 'ingredient' }]
+        },
+        {
+          model: RecipeCategory,
+          as: 'recipeCategory'
         }
       ],
       order: [['created_at', 'DESC']]
@@ -31,33 +36,41 @@ router.get('/brands/:brand_id/recipes', authenticateToken, isBrandManager, async
     res.json({ success: true, data: recipes });
   } catch (error) {
     console.error('Get brand recipes error:', error);
-    res.status(500).json({ error: '레시피 목록 조회 실패' });
+    res.status(500).json({ error: 'Failed to fetch recipes' });
   }
 });
 
 /**
- * POST /api/brands/:brand_id/recipes
+ * POST /api/brands/:brandId/recipes
  * 브랜드 레시피 생성
  */
-router.post('/brands/:brand_id/recipes', authenticateToken, isBrandManager, async (req, res) => {
+router.post('/brands/:brandId/recipes', authenticateToken, isBrandManager, async (req, res) => {
   try {
-    const { brand_id } = req.params;
-    const { name, description, category, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
+    const { brandId } = req.params;
+    const brand_id = brandId; // DB 쿼리용
+    const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
 
-    // 레시피 생성
+    // 필수 필드 검증
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: '레시피 이름은 필수입니다' });
+    }
+
+    // 레시피 생성 (owner_type = 'brand')
     const recipe = await Recipe.create({
+      owner_type: 'brand',
       brand_id,
       restaurant_id: null,
-      name,
-      description,
-      category,
-      emoji,
-      image,
-      option_groups,
-      prep_time,
-      cook_time,
-      instructions,
-      suggested_price: suggested_price || 0,
+      name: name.trim(),
+      description: description || null,
+      category: category || null,
+      recipe_category_id: recipe_category_id || null,
+      emoji: emoji || null,
+      image: image || null,
+      option_groups: option_groups || null,
+      prep_time: prep_time ? parseInt(prep_time) : null,
+      cook_time: cook_time ? parseInt(cook_time) : null,
+      instructions: instructions || null,
+      suggested_price: suggested_price ? parseFloat(suggested_price) : 0,
       total_ingredient_cost: 0
     });
 
@@ -91,6 +104,10 @@ router.post('/brands/:brand_id/recipes', authenticateToken, isBrandManager, asyn
           model: RecipeIngredient,
           as: 'recipeIngredients',
           include: [{ model: Ingredient, as: 'ingredient' }]
+        },
+        {
+          model: RecipeCategory,
+          as: 'recipeCategory'
         }
       ]
     });
@@ -98,22 +115,23 @@ router.post('/brands/:brand_id/recipes', authenticateToken, isBrandManager, asyn
     res.json({ success: true, data: createdRecipe });
   } catch (error) {
     console.error('Create brand recipe error:', error);
-    res.status(500).json({ error: '레시피 생성 실패' });
+    res.status(500).json({ error: 'Failed to create recipe' });
   }
 });
 
 /**
- * PUT /api/brands/:brand_id/recipes/:recipe_id
+ * PUT /api/brands/:brandId/recipes/:recipeId
  * 브랜드 레시피 수정
  */
-router.put('/brands/:brand_id/recipes/:recipe_id', authenticateToken, canEditRecipe, async (req, res) => {
+router.put('/brands/:brandId/recipes/:recipeId', authenticateToken, canEditRecipe, async (req, res) => {
   try {
-    const { recipe_id } = req.params;
-    const { name, description, category, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
+    const { recipeId } = req.params;
+    const recipe_id = recipeId; // DB 쿼리용
+    const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
 
     const recipe = await Recipe.findByPk(recipe_id);
     if (!recipe) {
-      return res.status(404).json({ error: '레시피를 찾을 수 없습니다' });
+      return res.status(404).json({ error: 'Recipe not found' });
     }
 
     // 기본 정보 업데이트
@@ -121,6 +139,7 @@ router.put('/brands/:brand_id/recipes/:recipe_id', authenticateToken, canEditRec
       name,
       description,
       category,
+      recipe_category_id: recipe_category_id !== undefined ? recipe_category_id : recipe.recipe_category_id,
       emoji,
       image,
       option_groups,
@@ -161,6 +180,10 @@ router.put('/brands/:brand_id/recipes/:recipe_id', authenticateToken, canEditRec
           model: RecipeIngredient,
           as: 'recipeIngredients',
           include: [{ model: Ingredient, as: 'ingredient' }]
+        },
+        {
+          model: RecipeCategory,
+          as: 'recipeCategory'
         }
       ]
     });
@@ -168,29 +191,30 @@ router.put('/brands/:brand_id/recipes/:recipe_id', authenticateToken, canEditRec
     res.json({ success: true, data: updatedRecipe });
   } catch (error) {
     console.error('Update brand recipe error:', error);
-    res.status(500).json({ error: '레시피 수정 실패' });
+    res.status(500).json({ error: 'Failed to update recipe' });
   }
 });
 
 /**
- * DELETE /api/brands/:brand_id/recipes/:recipe_id
+ * DELETE /api/brands/:brandId/recipes/:recipeId
  * 브랜드 레시피 삭제
  */
-router.delete('/brands/:brand_id/recipes/:recipe_id', authenticateToken, canEditRecipe, async (req, res) => {
+router.delete('/brands/:brandId/recipes/:recipeId', authenticateToken, canEditRecipe, async (req, res) => {
   try {
-    const { recipe_id } = req.params;
+    const { recipeId } = req.params;
+    const recipe_id = recipeId; // DB 쿼리용
 
     const recipe = await Recipe.findByPk(recipe_id);
     if (!recipe) {
-      return res.status(404).json({ error: '레시피를 찾을 수 없습니다' });
+      return res.status(404).json({ error: 'Recipe not found' });
     }
 
     await recipe.destroy();
 
-    res.json({ success: true, message: '레시피가 삭제되었습니다' });
+    res.json({ success: true, message: 'Recipe deleted successfully' });
   } catch (error) {
     console.error('Delete brand recipe error:', error);
-    res.status(500).json({ error: '레시피 삭제 실패' });
+    res.status(500).json({ error: 'Failed to delete recipe' });
   }
 });
 
@@ -200,7 +224,8 @@ router.delete('/brands/:brand_id/recipes/:recipe_id', authenticateToken, canEdit
 
 /**
  * GET /api/restaurants/:restaurantId/recipes
- * 레스토랑에서 사용 가능한 모든 레시피 조회
+ * 레스토랑 자체 레시피만 조회 (owner_type = 'restaurant')
+ * 브랜드 레시피는 별도 API로 조회
  */
 router.get('/restaurants/:restaurantId/recipes', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
@@ -208,93 +233,111 @@ router.get('/restaurants/:restaurantId/recipes', authenticateToken, checkRestaur
 
     const restaurant = await Restaurant.findByPk(restaurantId);
     if (!restaurant) {
-      return res.status(404).json({ error: '레스토랑을 찾을 수 없습니다' });
+      return res.status(404).json({ error: 'Restaurant not found' });
     }
 
-    const result = {
-      brand_recipes: [],
-      own_recipes: []
-    };
+    // 레스토랑 자체 레시피만 조회 (owner_type = 'restaurant')
+    const recipes = await Recipe.findAll({
+      where: {
+        restaurant_id: restaurantId,
+        owner_type: 'restaurant'
+      },
+      include: [
+        {
+          model: RecipeIngredient,
+          as: 'recipeIngredients',
+          include: [{ model: Ingredient, as: 'ingredient' }]
+        },
+        {
+          model: RecipeCategory,
+          as: 'recipeCategory'
+        }
+      ],
+      order: [['created_at', 'DESC']]
+    });
 
-    // 브랜드 레시피 (brand_id가 있는 경우)
-    if (restaurant.brand_id) {
-      const brandRecipes = await Recipe.findAll({
-        where: { brand_id: restaurant.brand_id },
-        include: [
-          {
-            model: RecipeIngredient,
-            as: 'recipeIngredients',
-            include: [{ model: Ingredient, as: 'ingredient' }]
-          }
-        ],
-        order: [['created_at', 'DESC']]
-      });
-
-      result.brand_recipes = brandRecipes.map(r => ({
-        ...r.toJSON(),
-        from_brand: true,
-        editable: false
-      }));
-    }
-
-    // 레스토랑 자체 레시피 (독립 레스토랑만)
-    if (!restaurant.brand_id) {
-      const ownRecipes = await Recipe.findAll({
-        where: { restaurant_id: restaurantId },
-        include: [
-          {
-            model: RecipeIngredient,
-            as: 'recipeIngredients',
-            include: [{ model: Ingredient, as: 'ingredient' }]
-          }
-        ],
-        order: [['created_at', 'DESC']]
-      });
-
-      result.own_recipes = ownRecipes.map(r => ({
-        ...r.toJSON(),
-        from_brand: false,
-        editable: true
-      }));
-    }
-
-    res.json({ success: true, data: result });
+    res.json({ success: true, data: recipes });
   } catch (error) {
     console.error('Get restaurant recipes error:', error);
-    res.status(500).json({ error: '레시피 목록 조회 실패' });
+    res.status(500).json({ error: 'Failed to fetch recipes' });
+  }
+});
+
+/**
+ * GET /api/restaurants/:restaurantId/brand-recipes
+ * 레스토랑이 속한 브랜드의 레시피 조회 (읽기 전용)
+ */
+router.get('/restaurants/:restaurantId/brand-recipes', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+
+    const restaurant = await Restaurant.findByPk(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ error: 'Restaurant not found' });
+    }
+
+    // 브랜드에 속하지 않은 레스토랑
+    if (!restaurant.brand_id) {
+      return res.json({ success: true, data: [] });
+    }
+
+    // 브랜드 레시피 조회 (owner_type = 'brand')
+    const brandRecipes = await Recipe.findAll({
+      where: {
+        brand_id: restaurant.brand_id,
+        owner_type: 'brand'
+      },
+      include: [
+        {
+          model: RecipeIngredient,
+          as: 'recipeIngredients',
+          include: [{ model: Ingredient, as: 'ingredient' }]
+        },
+        {
+          model: RecipeCategory,
+          as: 'recipeCategory'
+        }
+      ],
+      order: [['created_at', 'DESC']]
+    });
+
+    res.json({ success: true, data: brandRecipes });
+  } catch (error) {
+    console.error('Get brand recipes for restaurant error:', error);
+    res.status(500).json({ error: 'Failed to fetch brand recipes' });
   }
 });
 
 /**
  * POST /api/restaurants/:restaurantId/recipes
- * 독립 레스토랑 레시피 생성
+ * 레스토랑 레시피 생성 (모든 레스토랑 가능)
  */
 router.post('/restaurants/:restaurantId/recipes', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
-    const restaurant = await Restaurant.findByPk(restaurantId);
+    const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
 
-    // 브랜드 가맹점은 레시피 생성 불가
-    if (restaurant.brand_id) {
-      return res.status(403).json({ error: '브랜드 가맹점은 레시피를 생성할 수 없습니다' });
+    // 필수 필드 검증
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: '레시피 이름은 필수입니다' });
     }
 
-    const { name, description, category, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
-
-    // 레시피 생성
+    // 레시피 생성 (owner_type = 'restaurant')
     const recipe = await Recipe.create({
+      owner_type: 'restaurant',
       brand_id: null,
       restaurant_id: restaurantId,
-      name,
-      description,
-      category,
-      emoji,
-      image,
-      option_groups,
-      prep_time,
-      cook_time,
-      instructions,
-      suggested_price: suggested_price || 0,
+      name: name.trim(),
+      description: description || null,
+      category: category || null,
+      recipe_category_id: recipe_category_id || null,
+      emoji: emoji || null,
+      image: image || null,
+      option_groups: option_groups || null,
+      prep_time: prep_time ? parseInt(prep_time) : null,
+      cook_time: cook_time ? parseInt(cook_time) : null,
+      instructions: instructions || null,
+      suggested_price: suggested_price ? parseFloat(suggested_price) : 0,
       total_ingredient_cost: 0
     });
 
@@ -333,7 +376,110 @@ router.post('/restaurants/:restaurantId/recipes', authenticateToken, checkRestau
     res.json({ success: true, data: createdRecipe });
   } catch (error) {
     console.error('Create restaurant recipe error:', error);
-    res.status(500).json({ error: '레시피 생성 실패' });
+    res.status(500).json({ error: 'Failed to create recipe' });
+  }
+});
+
+/**
+ * PUT /api/restaurants/:restaurantId/recipes/:recipeId
+ * 레스토랑 레시피 수정 (자신의 레시피만)
+ */
+router.put('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId, recipeId } = req.params;
+
+    const recipe = await Recipe.findByPk(recipeId);
+    if (!recipe) {
+      return res.status(404).json({ error: 'Recipe not found' });
+    }
+
+    // 자신의 레시피인지 확인 (owner_type이 'restaurant'이고 restaurant_id가 일치해야 함)
+    if (recipe.owner_type !== 'restaurant' || recipe.restaurant_id !== parseInt(restaurantId)) {
+      return res.status(403).json({ error: 'You can only edit your own restaurant recipes' });
+    }
+
+    const { name, description, category, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
+
+    // 기본 정보 업데이트
+    await recipe.update({
+      name,
+      description,
+      category,
+      emoji,
+      image,
+      option_groups,
+      prep_time,
+      cook_time,
+      instructions,
+      suggested_price
+    });
+
+    // 재료 업데이트 (기존 삭제 후 재생성)
+    if (ingredients) {
+      await RecipeIngredient.destroy({ where: { recipe_id: recipeId } });
+
+      let totalCost = 0;
+      for (const item of ingredients) {
+        const ingredient = await Ingredient.findByPk(item.ingredient_id);
+        if (ingredient) {
+          const cost = parseFloat(item.quantity) * parseFloat(ingredient.unit_cost);
+          await RecipeIngredient.create({
+            recipe_id: recipe.id,
+            ingredient_id: item.ingredient_id,
+            quantity: item.quantity,
+            unit: item.unit,
+            cost,
+            notes: item.notes || null
+          });
+          totalCost += cost;
+        }
+      }
+
+      await recipe.update({ total_ingredient_cost: totalCost });
+    }
+
+    // 재료 포함해서 다시 조회
+    const updatedRecipe = await Recipe.findByPk(recipeId, {
+      include: [
+        {
+          model: RecipeIngredient,
+          as: 'recipeIngredients',
+          include: [{ model: Ingredient, as: 'ingredient' }]
+        }
+      ]
+    });
+
+    res.json({ success: true, data: updatedRecipe });
+  } catch (error) {
+    console.error('Update restaurant recipe error:', error);
+    res.status(500).json({ error: 'Failed to update recipe' });
+  }
+});
+
+/**
+ * DELETE /api/restaurants/:restaurantId/recipes/:recipeId
+ * 레스토랑 레시피 삭제 (자신의 레시피만)
+ */
+router.delete('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId, recipeId } = req.params;
+
+    const recipe = await Recipe.findByPk(recipeId);
+    if (!recipe) {
+      return res.status(404).json({ error: 'Recipe not found' });
+    }
+
+    // 자신의 레시피인지 확인 (owner_type이 'restaurant'이고 restaurant_id가 일치해야 함)
+    if (recipe.owner_type !== 'restaurant' || recipe.restaurant_id !== parseInt(restaurantId)) {
+      return res.status(403).json({ error: 'You can only delete your own restaurant recipes' });
+    }
+
+    await recipe.destroy();
+
+    res.json({ success: true, message: 'Recipe deleted successfully' });
+  } catch (error) {
+    console.error('Delete restaurant recipe error:', error);
+    res.status(500).json({ error: 'Failed to delete recipe' });
   }
 });
 
@@ -346,9 +492,45 @@ router.post('/restaurants/:restaurantId/products/create-from-recipe', authentica
     const { restaurantId } = req.params;
     const { recipe_id, price } = req.body;
 
-    const recipe = await Recipe.findByPk(recipe_id);
+    // 레시피와 카테고리 정보를 함께 조회
+    const recipe = await Recipe.findByPk(recipe_id, {
+      include: [{
+        model: RecipeCategory,
+        as: 'recipeCategory'
+      }]
+    });
     if (!recipe) {
-      return res.status(404).json({ error: '레시피를 찾을 수 없습니다' });
+      return res.status(404).json({ error: 'Recipe not found' });
+    }
+
+    // 레시피 카테고리가 있으면 메뉴 카테고리로 매핑
+    let categoryName = recipe.category; // 기본값: 기존 category 문자열
+
+    if (recipe.recipeCategory) {
+      const recipeCategoryName = recipe.recipeCategory.name;
+
+      // 해당 레스토랑에 동일한 이름의 카테고리가 있는지 확인
+      let menuCategory = await Category.findOne({
+        where: {
+          restaurant_id: restaurantId,
+          name: recipeCategoryName
+        }
+      });
+
+      // 없으면 새로 생성
+      if (!menuCategory) {
+        menuCategory = await Category.create({
+          restaurant_id: restaurantId,
+          name: recipeCategoryName,
+          description: recipe.recipeCategory.description,
+          emoji: recipe.recipeCategory.emoji,
+          displayOrder: recipe.recipeCategory.display_order,
+          isActive: true
+        });
+        console.log(`📦 새 메뉴 카테고리 생성: ${recipeCategoryName} (restaurant: ${restaurantId})`);
+      }
+
+      categoryName = menuCategory.name;
     }
 
     // 레시피의 모든 정보를 Product로 복사
@@ -358,7 +540,7 @@ router.post('/restaurants/:restaurantId/products/create-from-recipe', authentica
       code: recipe.code,
       name: recipe.name,
       price,
-      category: recipe.category,
+      category: categoryName,
       description: recipe.description,
       optionGroups: recipe.option_groups,
       image: recipe.image,
@@ -372,11 +554,12 @@ router.post('/restaurants/:restaurantId/products/create-from-recipe', authentica
     res.json({
       success: true,
       data: product,
-      message: '레시피가 메뉴로 등록되었습니다'
+      message: 'Recipe has been added to the menu',
+      category_created: recipe.recipeCategory && !categoryName ? false : !!recipe.recipeCategory
     });
   } catch (error) {
     console.error('Create product from recipe error:', error);
-    res.status(500).json({ error: '메뉴 등록 실패' });
+    res.status(500).json({ error: 'Failed to create product' });
   }
 });
 

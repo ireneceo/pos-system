@@ -38,6 +38,11 @@ Invoice.init({
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false
   },
+  currency: {
+    type: DataTypes.STRING(10),
+    defaultValue: 'MYR',
+    comment: 'Invoice currency code'
+  },
   paid_amount: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 0

@@ -10,8 +10,9 @@ const PlanTemplate = require('../models/PlanTemplate');
 const Category = require('../models/Category');
 const Product = require('../models/Product');
 const AddonModule = require('../models/AddonModule');
+const { Recipe, Ingredient, RecipeIngredient } = require('../models');
 const { Op } = require('sequelize');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const jwt = require('jsonwebtoken');
 
 // Optional authentication middleware
@@ -111,6 +112,7 @@ router.get('/', optionalAuth, async (req, res) => {
           isPrimary: m.RestaurantManager?.is_primary || false
         })),
         brandId: restaurantData.brand_id ? restaurantData.brand_id.toString() : null,
+        brand_id: restaurantData.brand_id || null,
         brand: restaurantData.brand ? {
           id: restaurantData.brand.id.toString(),
           name: restaurantData.brand.name,
@@ -118,7 +120,7 @@ router.get('/', optionalAuth, async (req, res) => {
           logoUrl: restaurantData.brand.logo_url
         } : null,
         location: restaurantData.address || '',
-        cuisine: 'Various', // Default value as it's not in Restaurant model
+        cuisine: restaurantData.cuisine || 'Various',
         status: restaurantData.status === 'active' ? 'active' : 'inactive',
         todaySales: 0, // Would need to calculate from orders
         todayOrders: 0, // Would need to calculate from orders
@@ -264,10 +266,42 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// Helper function to validate brand_id permission
+// Brand General/Manager can only set brand_id to their own brand
+const validateBrandPermission = async (brandId, userId, userRole) => {
+  if (!brandId) return { valid: true };
+
+  // System Admin can set any brand
+  if (userRole === 'System Admin') return { valid: true };
+
+  // Brand General/Manager must own the brand
+  if (userRole === 'Brand General' || userRole === 'Brand Manager') {
+    const brand = await Brand.findByPk(brandId);
+    if (!brand) {
+      return { valid: false, error: 'Brand not found' };
+    }
+    if (brand.owner_id !== userId) {
+      return { valid: false, error: 'You can only assign restaurants to your own brand' };
+    }
+    return { valid: true };
+  }
+
+  return { valid: false, error: 'Unauthorized to set brand' };
+};
+
 // Create new restaurant
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     console.log('📥 Received restaurant creation request:', req.body);
+
+    // Validate brand_id permission if provided
+    if (req.body.brand_id) {
+      const brandCheck = await validateBrandPermission(req.body.brand_id, req.user.id, req.user.role);
+      if (!brandCheck.valid) {
+        console.log(`❌ Brand permission denied: ${brandCheck.error}`);
+        return res.status(403).json({ error: brandCheck.error });
+      }
+    }
 
     // Get plan template if specified
     let planSnapshot = null;
@@ -318,6 +352,7 @@ router.post('/', async (req, res) => {
       subscription_start: req.body.subscriptionStart ? new Date(req.body.subscriptionStart) : new Date(),
       subscription_end: req.body.subscriptionEnd ? new Date(req.body.subscriptionEnd) : null,
       subscription_snapshot: planSnapshot,
+      brand_id: req.body.brand_id || null,
       ...planLimits
     };
 
@@ -357,9 +392,33 @@ router.post('/', async (req, res) => {
 });
 
 // Update restaurant
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateToken, async (req, res) => {
   try {
     console.log('🔄 PUT /api/restaurants/:id - Restaurant ID:', req.params.id);
+
+    // Validate brand_id permission if being changed
+    if (req.body.brand_id !== undefined && req.body.brand_id) {
+      const brandCheck = await validateBrandPermission(req.body.brand_id, req.user.id, req.user.role);
+      if (!brandCheck.valid) {
+        console.log(`❌ Brand permission denied: ${brandCheck.error}`);
+        return res.status(403).json({ error: brandCheck.error });
+      }
+
+      // Also verify user is a manager of this restaurant (for Brand General/Manager)
+      if (req.user.role === 'Brand General' || req.user.role === 'Brand Manager') {
+        const RestaurantManager = require('../models/RestaurantManager');
+        const isManager = await RestaurantManager.findOne({
+          where: {
+            restaurant_id: req.params.id,
+            manager_id: req.user.id
+          }
+        });
+        if (!isManager) {
+          console.log(`❌ User ${req.user.id} is not a manager of restaurant ${req.params.id}`);
+          return res.status(403).json({ error: 'You can only set brand for restaurants you manage' });
+        }
+      }
+    }
     console.log('📥 Received restaurant update request body:', JSON.stringify(req.body).substring(0, 500));
 
     const restaurant = await Restaurant.findByPk(req.params.id);
@@ -408,6 +467,16 @@ router.put('/:id', async (req, res) => {
     // Settings objects
     if (req.body.payment_settings !== undefined) updateData.payment_settings = req.body.payment_settings;
     if (req.body.operation_settings !== undefined) updateData.operation_settings = req.body.operation_settings;
+    if (req.body.table_settings !== undefined) updateData.table_settings = req.body.table_settings;
+
+    // Brand association
+    if (req.body.brand_id !== undefined) {
+      updateData.brand_id = req.body.brand_id ? parseInt(req.body.brand_id) : null;
+      console.log(`🏢 Updating brand_id to: ${updateData.brand_id}`);
+    }
+
+    // Cuisine field
+    if (req.body.cuisine !== undefined) updateData.cuisine = req.body.cuisine;
 
     // Get manager name if managerId is being updated
     if (updateData.manager_id) {
@@ -838,5 +907,72 @@ router.get('/:id/allowed-routes', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch allowed routes' });
   }
 });
+
+// ============================================
+// Restaurant Ingredients Routes
+// ============================================
+
+router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const ingredients = await Ingredient.findAll({
+      where: { restaurant_id: restaurantId },
+      order: [['name', 'ASC']]
+    });
+    res.json({ success: true, data: ingredients });
+  } catch (error) {
+    console.error('Get restaurant ingredients error:', error);
+    res.status(500).json({ error: '재료 목록 조회 실패' });
+  }
+});
+
+router.post('/:restaurantId/ingredients', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const { code, name, category, unit, unit_cost, supplier_name, min_stock } = req.body;
+    const ingredient = await Ingredient.create({
+      brand_id: null,
+      restaurant_id: restaurantId,
+      code, name, category, unit, unit_cost, supplier_name,
+      min_stock: min_stock || 0,
+      current_stock: 0
+    });
+    res.json({ success: true, data: ingredient });
+  } catch (error) {
+    console.error('Create restaurant ingredient error:', error);
+    res.status(500).json({ error: '재료 생성 실패' });
+  }
+});
+
+router.put('/:restaurantId/ingredients/:ingredientId', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { ingredientId } = req.params;
+    const { code, name, category, unit, unit_cost, supplier_name, min_stock } = req.body;
+    const ingredient = await Ingredient.findByPk(ingredientId);
+    if (!ingredient) return res.status(404).json({ error: '재료를 찾을 수 없습니다' });
+    await ingredient.update({ code, name, category, unit, unit_cost, supplier_name, min_stock });
+    res.json({ success: true, data: ingredient });
+  } catch (error) {
+    console.error('Update restaurant ingredient error:', error);
+    res.status(500).json({ error: '재료 수정 실패' });
+  }
+});
+
+router.delete('/:restaurantId/ingredients/:ingredientId', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { ingredientId } = req.params;
+    const ingredient = await Ingredient.findByPk(ingredientId);
+    if (!ingredient) return res.status(404).json({ error: '재료를 찾을 수 없습니다' });
+    await ingredient.destroy();
+    res.json({ success: true, message: '재료가 삭제되었습니다' });
+  } catch (error) {
+    console.error('Delete restaurant ingredient error:', error);
+    res.status(500).json({ error: '재료 삭제 실패' });
+  }
+});
+
+// ============================================
+// Restaurant Recipes Routes - MOVED TO /routes/recipes.js
+// ============================================
 
 module.exports = router;

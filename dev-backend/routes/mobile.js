@@ -272,25 +272,26 @@ router.get('/menu/:slug', async (req, res) => {
         }
       }
 
-      // Find option groups for this product
-      const productOptionGroups = optionGroups
-        .filter(og => {
-          // Check if product has this option group assigned
-          return productOptionGroupIds.includes(og.id) || productOptionGroupIds.includes(og.id.toString());
+      // Find option groups for this product - 메뉴에서 설정한 순서대로 정렬
+      const productOptionGroups = productOptionGroupIds
+        .map(groupId => {
+          const og = optionGroups.find(g => g.id === groupId || g.id.toString() === groupId.toString());
+          if (!og) return null;
+          return {
+            id: og.id.toString(),
+            name: og.name,
+            required: og.required,
+            multiple: og.multiple,
+            options: (og.options || [])
+              .filter(opt => opt.isActive)
+              .map(opt => ({
+                id: opt.id.toString(),
+                name: opt.name,
+                price: parseFloat(opt.price || 0)
+              }))
+          };
         })
-        .map(og => ({
-          id: og.id.toString(),
-          name: og.name,
-          required: og.required,
-          multiple: og.multiple,
-          options: (og.options || [])
-            .filter(opt => opt.isActive)
-            .map(opt => ({
-              id: opt.id.toString(),
-              name: opt.name,
-              price: parseFloat(opt.price || 0)
-            }))
-        }));
+        .filter(og => og !== null);
 
       // Find matching category by ID or name
       let categoryId = null;
@@ -377,25 +378,26 @@ router.get('/menu/item/:itemId', async (req, res) => {
       }
     }
 
-    // Find option groups assigned to this product
-    const productOptionGroups = optionGroups
-      .filter(og => {
-        // Check if product has this option group assigned
-        return productOptionGroupIds.includes(og.id) || productOptionGroupIds.includes(og.id.toString());
+    // Find option groups assigned to this product - 메뉴에서 설정한 순서대로 정렬
+    const productOptionGroups = productOptionGroupIds
+      .map(groupId => {
+        const og = optionGroups.find(g => g.id === groupId || g.id.toString() === groupId.toString());
+        if (!og) return null;
+        return {
+          id: og.id.toString(),
+          name: og.name,
+          required: og.required,
+          multiple: og.multiple,
+          options: (og.options || [])
+            .filter(opt => opt.isActive)
+            .map(opt => ({
+              id: opt.id.toString(),
+              name: opt.name,
+              price: parseFloat(opt.price || 0)
+            }))
+        };
       })
-      .map(og => ({
-        id: og.id.toString(),
-        name: og.name,
-        required: og.required,
-        multiple: og.multiple,
-        options: (og.options || [])
-          .filter(opt => opt.isActive)
-          .map(opt => ({
-            id: opt.id.toString(),
-            name: opt.name,
-            price: parseFloat(opt.price || 0)
-          }))
-      }));
+      .filter(og => og !== null);
 
     const item = {
       id: product.id.toString(),

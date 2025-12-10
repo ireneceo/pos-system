@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const { Customer, RestaurantCustomer, Restaurant, Order } = require('../models');
 const { Op } = require('sequelize');
+const emailService = require('../utils/emailService');
 
 // ========================================
 // 고객 인증 (전화번호 기반)
@@ -286,6 +288,60 @@ router.get('/phone/:phone', async (req, res) => {
 });
 
 /**
+ * GET /api/customers/stats/:customerId
+ * 고객 통계 조회
+ */
+router.get('/stats/:customerId', async (req, res) => {
+  try {
+    const { customerId } = req.params;
+    const { restaurant_id } = req.query;
+
+    if (!restaurant_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Restaurant ID is required'
+      });
+    }
+
+    const relation = await RestaurantCustomer.findOne({
+      where: {
+        customer_id: customerId,
+        restaurant_id: restaurant_id
+      }
+    });
+
+    if (!relation) {
+      // 관계가 없으면 기본값 반환
+      return res.json({
+        success: true,
+        data: {
+          total_orders: 0,
+          total_spent: '0',
+          points: 0,
+          loyalty_tier: 'Bronze'
+        }
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        total_orders: relation.total_orders,
+        total_spent: relation.total_spent,
+        points: relation.points,
+        loyalty_tier: relation.loyalty_tier
+      }
+    });
+  } catch (error) {
+    console.error('Get customer stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get customer stats'
+    });
+  }
+});
+
+/**
  * GET /api/customers/:restaurantId
  * 레스토랑의 고객 목록 조회
  */
@@ -527,6 +583,292 @@ router.delete('/:customerId', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to delete customer'
+    });
+  }
+});
+
+// ========================================
+// 비밀번호 변경
+// ========================================
+
+/**
+ * PUT /api/customers/:customerId/password
+ * 비밀번호 변경 (로그인 상태에서)
+ */
+router.put('/:customerId/password', async (req, res) => {
+  try {
+    const { customerId } = req.params;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password and new password are required'
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 6 characters'
+      });
+    }
+
+    const customer = await Customer.findByPk(customerId);
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Customer not found'
+      });
+    }
+
+    if (customer.type !== 'member' || !customer.password_hash) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password change is only available for members'
+      });
+    }
+
+    // 현재 비밀번호 확인
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, customer.password_hash);
+    if (!isCurrentPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Current password is incorrect'
+      });
+    }
+
+    // 새 비밀번호 해시 및 저장
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+    await customer.update({ password_hash: newPasswordHash });
+
+    res.json({
+      success: true,
+      message: 'Password changed successfully'
+    });
+  } catch (error) {
+    console.error('Password change error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to change password'
+    });
+  }
+});
+
+// ========================================
+// 비밀번호 재설정 (이메일 기반)
+// ========================================
+
+// 재설정 토큰 저장소 (실제 운영에서는 Redis나 DB 사용 권장)
+const resetTokens = new Map();
+
+/**
+ * POST /api/customers/forgot-password
+ * 비밀번호 재설정 이메일 발송
+ */
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+
+    // 이메일로 고객 찾기
+    const customer = await Customer.findOne({ where: { email } });
+
+    // 보안: 이메일 존재 여부와 관계없이 동일한 응답
+    if (!customer || customer.type !== 'member') {
+      // 이메일이 없어도 성공 응답 (이메일 열거 공격 방지)
+      return res.json({
+        success: true,
+        message: 'If an account exists with this email, a reset link has been sent.'
+      });
+    }
+
+    // 재설정 토큰 생성
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const tokenExpiry = Date.now() + 3600000; // 1시간 후 만료
+
+    // 토큰 저장
+    resetTokens.set(resetToken, {
+      customerId: customer.id,
+      email: customer.email,
+      expiry: tokenExpiry
+    });
+
+    // 1시간 후 토큰 자동 삭제
+    setTimeout(() => {
+      resetTokens.delete(resetToken);
+    }, 3600000);
+
+    // 재설정 링크 생성
+    const resetLink = `${process.env.FRONTEND_URL || 'https://dev.purplehere.com'}/mobile/reset-password?token=${resetToken}`;
+
+    // 이메일 발송 시도
+    try {
+      // 레스토랑 정보 조회 (이메일 설정용)
+      const restaurantCustomer = await RestaurantCustomer.findOne({
+        where: { customer_id: customer.id },
+        include: [{ model: Restaurant, as: 'restaurant' }]
+      });
+
+      if (restaurantCustomer?.restaurant) {
+        await emailService.sendEmail('restaurant', restaurantCustomer.restaurant.id, {
+          to: customer.email,
+          subject: 'Password Reset Request',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #1F2937;">Password Reset Request</h2>
+              <p style="color: #4B5563;">Hi ${customer.name || 'there'},</p>
+              <p style="color: #4B5563;">We received a request to reset your password. Click the button below to create a new password:</p>
+              <div style="text-align: center; margin: 32px 0;">
+                <a href="${resetLink}" style="background: #635BFF; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">Reset Password</a>
+              </div>
+              <p style="color: #6B7280; font-size: 14px;">This link will expire in 1 hour.</p>
+              <p style="color: #6B7280; font-size: 14px;">If you didn't request this, you can safely ignore this email.</p>
+              <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 32px 0;">
+              <p style="color: #9CA3AF; font-size: 12px;">This email was sent by Purple Here POS</p>
+            </div>
+          `
+        });
+        console.log(`✅ Password reset email sent to ${customer.email}`);
+      } else {
+        console.log(`⚠️ No restaurant found for customer ${customer.id}, email not sent`);
+      }
+    } catch (emailError) {
+      console.error('Failed to send password reset email:', emailError);
+      // 이메일 발송 실패해도 성공 응답 (보안)
+    }
+
+    res.json({
+      success: true,
+      message: 'If an account exists with this email, a reset link has been sent.'
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to process request'
+    });
+  }
+});
+
+/**
+ * GET /api/customers/verify-reset-token
+ * 재설정 토큰 검증
+ */
+router.get('/verify-reset-token', async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      return res.status(400).json({
+        valid: false,
+        message: 'Token is required'
+      });
+    }
+
+    const tokenData = resetTokens.get(token);
+
+    if (!tokenData) {
+      return res.json({
+        valid: false,
+        message: 'Invalid or expired token'
+      });
+    }
+
+    if (Date.now() > tokenData.expiry) {
+      resetTokens.delete(token);
+      return res.json({
+        valid: false,
+        message: 'Token has expired'
+      });
+    }
+
+    res.json({
+      valid: true,
+      message: 'Token is valid'
+    });
+  } catch (error) {
+    console.error('Verify reset token error:', error);
+    res.status(500).json({
+      valid: false,
+      message: 'Failed to verify token'
+    });
+  }
+});
+
+/**
+ * POST /api/customers/reset-password
+ * 비밀번호 재설정 (토큰 기반)
+ */
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token and password are required'
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters'
+      });
+    }
+
+    const tokenData = resetTokens.get(token);
+
+    if (!tokenData) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired token'
+      });
+    }
+
+    if (Date.now() > tokenData.expiry) {
+      resetTokens.delete(token);
+      return res.status(400).json({
+        success: false,
+        message: 'Token has expired'
+      });
+    }
+
+    // 고객 찾기
+    const customer = await Customer.findByPk(tokenData.customerId);
+    if (!customer) {
+      resetTokens.delete(token);
+      return res.status(404).json({
+        success: false,
+        message: 'Customer not found'
+      });
+    }
+
+    // 새 비밀번호 해시 및 저장
+    const newPasswordHash = await bcrypt.hash(password, 10);
+    await customer.update({ password_hash: newPasswordHash });
+
+    // 토큰 삭제 (사용 완료)
+    resetTokens.delete(token);
+
+    console.log(`✅ Password reset successful for customer ${customer.id}`);
+
+    res.json({
+      success: true,
+      message: 'Password reset successfully'
+    });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reset password'
     });
   }
 });

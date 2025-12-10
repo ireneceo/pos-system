@@ -19,6 +19,12 @@ const AddonModule = require('./AddonModule');
 const Recipe = require('./Recipe');
 const Ingredient = require('./Ingredient');
 const RecipeIngredient = require('./RecipeIngredient');
+const RecipeCategory = require('./RecipeCategory');
+const IngredientCategory = require('./IngredientCategory');
+const SystemSettings = require('./SystemSettings');
+const PlanPrice = require('./PlanPrice');
+const IngredientCost = require('./IngredientCost');
+const RecipeCost = require('./RecipeCost');
 
 // Define associations
 // Brand - Restaurant associations
@@ -132,6 +138,38 @@ RecipeIngredient.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as: 'ingre
 Product.belongsTo(Recipe, { foreignKey: 'recipe_id', as: 'recipe' });
 Recipe.hasMany(Product, { foreignKey: 'recipe_id', as: 'products' });
 
+// PlanPrice - PlanTemplate association
+PlanPrice.belongsTo(PlanTemplate, { foreignKey: 'plan_id', as: 'plan' });
+PlanTemplate.hasMany(PlanPrice, { foreignKey: 'plan_id', as: 'prices' });
+
+// IngredientCost - Ingredient association
+IngredientCost.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as: 'ingredient' });
+Ingredient.hasMany(IngredientCost, { foreignKey: 'ingredient_id', as: 'costs' });
+
+// RecipeCost - Recipe association
+RecipeCost.belongsTo(Recipe, { foreignKey: 'recipe_id', as: 'recipe' });
+Recipe.hasMany(RecipeCost, { foreignKey: 'recipe_id', as: 'costs' });
+
+// RecipeCategory associations
+RecipeCategory.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
+Brand.hasMany(RecipeCategory, { foreignKey: 'brand_id', as: 'recipeCategories' });
+RecipeCategory.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Restaurant.hasMany(RecipeCategory, { foreignKey: 'restaurant_id', as: 'recipeCategories' });
+
+// Recipe - RecipeCategory association
+Recipe.belongsTo(RecipeCategory, { foreignKey: 'recipe_category_id', as: 'recipeCategory' });
+RecipeCategory.hasMany(Recipe, { foreignKey: 'recipe_category_id', as: 'recipes' });
+
+// IngredientCategory associations
+IngredientCategory.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
+Brand.hasMany(IngredientCategory, { foreignKey: 'brand_id', as: 'ingredientCategories' });
+IngredientCategory.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Restaurant.hasMany(IngredientCategory, { foreignKey: 'restaurant_id', as: 'ingredientCategories' });
+
+// Ingredient - IngredientCategory association
+Ingredient.belongsTo(IngredientCategory, { foreignKey: 'ingredient_category_id', as: 'ingredientCategory' });
+IngredientCategory.hasMany(Ingredient, { foreignKey: 'ingredient_category_id', as: 'ingredients' });
+
 module.exports = {
   User,
   Restaurant,
@@ -153,5 +191,11 @@ module.exports = {
   AddonModule,
   Recipe,
   Ingredient,
-  RecipeIngredient
+  RecipeIngredient,
+  SystemSettings,
+  PlanPrice,
+  IngredientCost,
+  RecipeCost,
+  RecipeCategory,
+  IngredientCategory
 };

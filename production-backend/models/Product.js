@@ -62,6 +62,11 @@ Product.init({
   set_display_order: {
     type: DataTypes.INTEGER,
     defaultValue: 0
+  },
+  recipe_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: '연결된 레시피 ID'
   }
 }, {
   sequelize: database.sequelize,

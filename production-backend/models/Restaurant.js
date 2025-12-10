@@ -384,6 +384,37 @@ Restaurant.init({
       this.setDataValue('operation_settings', value ? JSON.stringify(value) : null);
     }
   },
+  table_settings: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'JSON settings for table numbers and QR codes',
+    get() {
+      const rawValue = this.getDataValue('table_settings');
+      if (!rawValue) {
+        return {
+          enableTableNumbers: true,
+          tableNumberRequired: false,
+          tablePrefix: 'T',
+          totalTables: 20,
+          qrCodeBaseUrl: ''
+        };
+      }
+      try {
+        return JSON.parse(rawValue);
+      } catch (e) {
+        return {
+          enableTableNumbers: true,
+          tableNumberRequired: false,
+          tablePrefix: 'T',
+          totalTables: 20,
+          qrCodeBaseUrl: ''
+        };
+      }
+    },
+    set(value) {
+      this.setDataValue('table_settings', value ? JSON.stringify(value) : null);
+    }
+  },
   currency: {
     type: DataTypes.STRING(10),
     defaultValue: 'RM',
@@ -399,6 +430,11 @@ Restaurant.init({
     type: DataTypes.ENUM('cash_only', 'all'),
     defaultValue: 'cash_only',
     comment: 'Apply rounding to cash only or all payments'
+  },
+  brand_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Brand ID if restaurant belongs to a franchise brand'
   }
 }, {
   sequelize: database.sequelize,

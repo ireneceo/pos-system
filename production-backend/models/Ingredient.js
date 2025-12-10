@@ -9,6 +9,13 @@ Ingredient.init({
     primaryKey: true,
     autoIncrement: true
   },
+  // 소유권 타입 (brand 또는 restaurant)
+  owner_type: {
+    type: DataTypes.ENUM('brand', 'restaurant'),
+    allowNull: false,
+    defaultValue: 'restaurant',
+    comment: '소유권 타입: brand(브랜드 공통) 또는 restaurant(지점 전용)'
+  },
   // 소유권
   brand_id: {
     type: DataTypes.INTEGER,
@@ -17,6 +24,12 @@ Ingredient.init({
   restaurant_id: {
     type: DataTypes.INTEGER,
     allowNull: true
+  },
+  // 재료 카테고리
+  ingredient_category_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: '재료 카테고리 FK'
   },
   // 재료 정보
   code: {
