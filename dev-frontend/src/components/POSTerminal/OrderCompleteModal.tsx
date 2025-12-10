@@ -322,32 +322,34 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
       >
         <div style={{ textAlign: 'center' }}>
           <OrderNumber>Order {orderData.orderNumber}</OrderNumber>
-          <div style={{
-            background: '#635BFF',
-            color: 'white',
-            borderRadius: '12px',
-            padding: '16px 24px',
-            margin: '0 auto 24px',
-            display: 'inline-block'
-          }}>
-            <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>Pickup Number</div>
-            <div style={{ fontSize: '36px', fontWeight: '700', lineHeight: 1 }}>
-              {orderData.pickupNumber || orderData.orderNumber.split('-')[1] || '000'}
-            </div>
-          </div>
-          {orderData.pagerNumber && (
+          {orderData.pagerNumber ? (
+            /* Pager Number가 있으면 Pager만 표시 */
             <div style={{
               background: '#10B981',
               color: 'white',
               borderRadius: '12px',
               padding: '16px 24px',
               margin: '0 auto 24px',
-              display: 'inline-block',
-              marginLeft: '16px'
+              display: 'inline-block'
             }}>
               <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>Pager Number</div>
               <div style={{ fontSize: '36px', fontWeight: '700', lineHeight: 1 }}>
                 {orderData.pagerNumber}
+              </div>
+            </div>
+          ) : (
+            /* Pager Number가 없으면 Pickup Number 표시 */
+            <div style={{
+              background: '#635BFF',
+              color: 'white',
+              borderRadius: '12px',
+              padding: '16px 24px',
+              margin: '0 auto 24px',
+              display: 'inline-block'
+            }}>
+              <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>Pickup Number</div>
+              <div style={{ fontSize: '36px', fontWeight: '700', lineHeight: 1 }}>
+                {orderData.pickupNumber || orderData.orderNumber.split('-')[1] || '000'}
               </div>
             </div>
           )}
