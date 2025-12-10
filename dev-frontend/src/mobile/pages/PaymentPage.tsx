@@ -817,30 +817,17 @@ const PaymentPage: React.FC = () => {
     console.log('operationSettings.deliveryPricing:', operationSettings.deliveryPricing);
 
     if (orderType === 'delivery') {
-      if (operationSettings.deliveryPricing && operationSettings.deliveryPricing.zones) {
+      if (operationSettings.deliveryPricing && operationSettings.deliveryPricing.zones && operationSettings.deliveryPricing.zones.length > 0) {
         const zones = operationSettings.deliveryPricing.zones;
         console.log('🚚 Loading delivery zones:', zones);
         setDeliveryZones(zones);
-
-        // Set default zone if available
-        if (zones.length > 0 && !selectedZone) {
-          console.log('Setting default zone:', zones[0].id);
-          setSelectedZone(zones[0].id);
-        }
+        // Don't set default zone - let customer choose
       } else {
-        console.warn('⚠️ No delivery zones configured in operationSettings');
-        // Set default zones if not configured
-        const defaultZones = [
-          { id: 'zone-a', name: 'Zone A (City Center)', fee: 3.00, description: 'Within 3km' },
-          { id: 'zone-b', name: 'Zone B (Near City)', fee: 5.00, description: '3-5km' },
-          { id: 'zone-c', name: 'Zone C (Suburbs)', fee: 8.00, description: '5-10km' }
-        ];
-        console.log('Using default zones:', defaultZones);
-        setDeliveryZones(defaultZones);
-        setSelectedZone(defaultZones[0].id);
+        console.log('ℹ️ No delivery zones configured - delivery zone selection not required');
+        setDeliveryZones([]);
       }
     }
-  }, [orderType, operationSettings.deliveryPricing, selectedZone]);
+  }, [orderType, operationSettings.deliveryPricing]);
 
   // Load member's saved address for delivery and sync phone from customer/guest
   React.useEffect(() => {
@@ -970,6 +957,19 @@ const PaymentPage: React.FC = () => {
     }
   };
 
+  // Helper function to convert option IDs to option names
+  const getOptionNames = (item: typeof cartItems[0]): string[] => {
+    if (!item.selectedOptions || item.selectedOptions.length === 0) return [];
+    if (!item.menuItem.optionGroups) return item.selectedOptions; // fallback to IDs if no optionGroups
+
+    return item.selectedOptions.map(optionId => {
+      const option = item.menuItem.optionGroups
+        ?.flatMap(g => g.options)
+        .find(o => o.id === optionId);
+      return option?.name || optionId; // fallback to ID if name not found
+    }).filter(Boolean);
+  };
+
   const handlePayment = async () => {
     console.log('🔵🔵🔵 PAY BUTTON CLICKED! 🔵🔵🔵');
     console.log('Payment method selected:', paymentMethod);
@@ -1037,7 +1037,8 @@ const PaymentPage: React.FC = () => {
               setIsProcessing(false);
               return;
             }
-            if (!selectedZone) {
+            // Only validate zone if zones are configured
+            if (deliveryZones.length > 0 && !selectedZone) {
               setError('Please select a delivery zone');
               setIsProcessing(false);
               return;
@@ -1048,7 +1049,7 @@ const PaymentPage: React.FC = () => {
           try {
             // Get delivery zone name for delivery orders
             let deliveryZoneName = null;
-            if (orderType === 'delivery' && selectedZone) {
+            if (orderType === 'delivery' && selectedZone && deliveryZones.length > 0) {
               const zone = deliveryZones.find(z => z.id === selectedZone);
               deliveryZoneName = zone?.name || null;
             }
@@ -1078,7 +1079,7 @@ const PaymentPage: React.FC = () => {
                 name: item.menuItem.code ? `${item.menuItem.code} ${item.menuItem.name}` : item.menuItem.name,
                 quantity: item.quantity,
                 price: item.menuItem.price,
-                options: item.selectedOptions || [],
+                options: getOptionNames(item),
                 special_instructions: item.specialInstructions || null,
                 is_set_menu: (item.menuItem as any).is_set_menu || false,
                 set_items: (item.menuItem as any).set_items || []
@@ -1146,33 +1147,55 @@ const PaymentPage: React.FC = () => {
 
           // Validate delivery info for delivery orders
           if (orderType === 'delivery') {
+            console.log('🚚 Delivery validation check:', {
+              currentCustomer: !!currentCustomer,
+              guestInfo,
+              deliveryAddress,
+              deliveryPhone,
+              selectedZone
+            });
+
             // Check if customer/guest info is provided
             if (!currentCustomer && (!guestInfo || !guestInfo.phone)) {
-              setError('Please enter your contact information (Guest Order or Member)');
+              console.log('❌ Validation failed: No customer/guest info');
+              const errorMsg = 'Please enter your contact information (Guest Order or Member)';
+              setError(errorMsg);
+              alert(errorMsg);
               setIsProcessing(false);
               return;
             }
 
             if (!deliveryAddress.trim()) {
-              setError('Please enter your delivery address');
+              console.log('❌ Validation failed: No delivery address');
+              const errorMsg = 'Please enter your delivery address';
+              setError(errorMsg);
+              alert(errorMsg);
               setIsProcessing(false);
               return;
             }
             if (!deliveryPhone.trim()) {
-              setError('Please enter your phone number in Customer Information');
+              console.log('❌ Validation failed: No delivery phone');
+              const errorMsg = 'Please enter your phone number in Customer Information';
+              setError(errorMsg);
+              alert(errorMsg);
               setIsProcessing(false);
               return;
             }
-            if (!selectedZone) {
-              setError('Please select a delivery zone');
+            // Only validate zone if zones are configured
+            if (deliveryZones.length > 0 && !selectedZone) {
+              console.log('❌ Validation failed: No delivery zone selected');
+              const errorMsg = 'Please select a delivery zone';
+              setError(errorMsg);
+              alert(errorMsg);
               setIsProcessing(false);
               return;
             }
+            console.log('✅ Delivery validation passed');
           }
 
           // Get delivery zone name for delivery orders
           let deliveryZoneName = null;
-          if (orderType === 'delivery' && selectedZone) {
+          if (orderType === 'delivery' && selectedZone && deliveryZones.length > 0) {
             const zone = deliveryZones.find(z => z.id === selectedZone);
             deliveryZoneName = zone?.name || null;
           }
@@ -1202,7 +1225,7 @@ const PaymentPage: React.FC = () => {
               name: item.menuItem.name,
               quantity: item.quantity,
               price: item.menuItem.price,
-              options: item.selectedOptions || []
+              options: getOptionNames(item)
             })),
             customer_id: currentCustomer?.id || null
           };
@@ -1240,7 +1263,8 @@ const PaymentPage: React.FC = () => {
               setIsProcessing(false);
               return;
             }
-            if (!selectedZone) {
+            // Only validate zone if zones are configured
+            if (deliveryZones.length > 0 && !selectedZone) {
               setError('Please select a delivery zone');
               setIsProcessing(false);
               return;
@@ -1251,7 +1275,7 @@ const PaymentPage: React.FC = () => {
           try {
             // Get delivery zone name for delivery orders
             let deliveryZoneName = null;
-            if (orderType === 'delivery' && selectedZone) {
+            if (orderType === 'delivery' && selectedZone && deliveryZones.length > 0) {
               const zone = deliveryZones.find(z => z.id === selectedZone);
               deliveryZoneName = zone?.name || null;
             }
