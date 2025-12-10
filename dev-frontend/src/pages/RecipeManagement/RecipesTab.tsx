@@ -1349,19 +1349,135 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         isOpen={showModal}
         onClose={handleCloseModal}
         title={viewMode ? 'Recipe Details' : (selectedRecipe ? 'Edit Recipe' : 'New Recipe')}
-        size="medium"
+        size={viewMode ? 'large' : 'medium'}
       >
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {viewMode && selectedRecipe ? (
+          /* View Mode - Clean readable layout */
+          <ViewContainer>
+            {/* Header with image and title */}
+            <ViewHeader>
+              <ViewImage>
+                {formData.image ? (
+                  <img src={formData.image} alt={formData.name} />
+                ) : (
+                  <ViewEmoji>{selectedRecipe.emoji || '🍽️'}</ViewEmoji>
+                )}
+              </ViewImage>
+              <ViewTitleSection>
+                <ViewTitle>{formData.name}</ViewTitle>
+                <ViewCategoryBadge>
+                  {selectedRecipe.recipeCategory?.emoji} {selectedRecipe.recipeCategory?.name || formData.category || 'Uncategorized'}
+                </ViewCategoryBadge>
+                {formData.description && (
+                  <ViewDescription>{formData.description}</ViewDescription>
+                )}
+              </ViewTitleSection>
+            </ViewHeader>
+
+            {/* Cost & Time Info */}
+            <ViewSection>
+              <ViewSectionTitle>Cost & Time</ViewSectionTitle>
+              <ViewGrid>
+                <ViewGridItem>
+                  <ViewGridLabel>Ingredient Cost</ViewGridLabel>
+                  <ViewGridValue>RM {Number(selectedRecipe.total_ingredient_cost || 0).toFixed(2)}</ViewGridValue>
+                </ViewGridItem>
+                <ViewGridItem>
+                  <ViewGridLabel>Suggested Price</ViewGridLabel>
+                  <ViewGridValue>RM {Number(formData.suggested_price || 0).toFixed(2)}</ViewGridValue>
+                </ViewGridItem>
+                {formData.prep_time && (
+                  <ViewGridItem>
+                    <ViewGridLabel>Prep Time</ViewGridLabel>
+                    <ViewGridValue>{formData.prep_time} min</ViewGridValue>
+                  </ViewGridItem>
+                )}
+                {formData.cook_time && (
+                  <ViewGridItem>
+                    <ViewGridLabel>Cook Time</ViewGridLabel>
+                    <ViewGridValue>{formData.cook_time} min</ViewGridValue>
+                  </ViewGridItem>
+                )}
+                {formData.prep_time && formData.cook_time && (
+                  <ViewGridItem>
+                    <ViewGridLabel>Total Time</ViewGridLabel>
+                    <ViewGridValue>{parseInt(formData.prep_time) + parseInt(formData.cook_time)} min</ViewGridValue>
+                  </ViewGridItem>
+                )}
+              </ViewGrid>
+            </ViewSection>
+
+            {/* Ingredients */}
+            {recipeIngredients.length > 0 && (
+              <ViewSection>
+                <ViewSectionTitle>Ingredients ({recipeIngredients.length})</ViewSectionTitle>
+                <ViewIngredientTable>
+                  <thead>
+                    <tr>
+                      <th>Ingredient</th>
+                      <th>Quantity</th>
+                      <th>Unit Cost</th>
+                      <th>Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recipeIngredients.map((ri, idx) => {
+                      const ingredient = ingredients.find(ing => ing.id === ri.ingredient_id);
+                      const subtotal = parseFloat(ri.quantity) * (ingredient?.unit_cost || 0);
+                      return (
+                        <tr key={idx}>
+                          <td><strong>{ingredient?.name || `Ingredient #${ri.ingredient_id}`}</strong></td>
+                          <td>{ri.quantity} {ri.unit}</td>
+                          <td>RM {Number(ingredient?.unit_cost || 0).toFixed(2)}/{ingredient?.unit}</td>
+                          <td>RM {subtotal.toFixed(2)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </ViewIngredientTable>
+                <ViewTotalRow>
+                  <span>Total Ingredient Cost</span>
+                  <span>RM {calculateTotalCost().toFixed(2)}</span>
+                </ViewTotalRow>
+              </ViewSection>
+            )}
+
+            {/* Cooking Instructions */}
+            {formData.instructions && (
+              <ViewSection>
+                <ViewSectionTitle>Cooking Instructions</ViewSectionTitle>
+                <ViewInstructions>{formData.instructions}</ViewInstructions>
+              </ViewSection>
+            )}
+
+            {/* Action Buttons */}
+            <ButtonGroup>
+              <ModalButton type="button" variant="secondary" onClick={handleCloseModal}>
+                Close
+              </ModalButton>
+              {!isItemReadOnly(selectedRecipe) && (
+                <ModalButton
+                  type="button"
+                  variant="primary"
+                  onClick={() => setViewMode(false)}
+                >
+                  Edit
+                </ModalButton>
+              )}
+            </ButtonGroup>
+          </ViewContainer>
+        ) : (
+          /* Edit/Create Mode - Form layout */
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {/* Basic Information */}
             <UIFormGroup>
-              <FormLabel>Recipe Name {!viewMode && '*'}</FormLabel>
+              <FormLabel>Recipe Name *</FormLabel>
               <FormInput
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="e.g., Nasi Lemak Special"
-                required={!viewMode}
-                disabled={viewMode}
+                required
               />
             </UIFormGroup>
 
@@ -1370,7 +1486,6 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               <FormSelect
                 value={formData.recipe_category_id}
                 onChange={(e) => setFormData({ ...formData, recipe_category_id: e.target.value })}
-                disabled={viewMode}
               >
                 <option value="">Select category...</option>
                 {recipeCategories.map(cat => (
@@ -1381,47 +1496,32 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               </FormSelect>
             </UIFormGroup>
 
-            {!viewMode && (
-              <UIFormGroup>
-                <FormLabel>Recipe Image</FormLabel>
-                <ImageUploadDropzone
-                  value={formData.image}
-                  onChange={(value) => setFormData({ ...formData, image: value })}
-                  label="Drop recipe image here or click to upload"
-                />
-              </UIFormGroup>
-            )}
-
-            {viewMode && formData.image && (
-              <UIFormGroup>
-                <FormLabel>Recipe Image</FormLabel>
-                <div style={{ borderRadius: '8px', overflow: 'hidden', maxWidth: '300px' }}>
-                  <img src={formData.image} alt="Recipe" style={{ width: '100%', height: 'auto' }} />
-                </div>
-              </UIFormGroup>
-            )}
+            <UIFormGroup>
+              <FormLabel>Recipe Image</FormLabel>
+              <ImageUploadDropzone
+                value={formData.image}
+                onChange={(value) => setFormData({ ...formData, image: value })}
+                label="Drop recipe image here or click to upload"
+              />
+            </UIFormGroup>
 
             <UIFormGroup>
-              <FormLabel>Tags {!viewMode && '(Press Enter to add)'}</FormLabel>
-              {!viewMode && (
-                <TagInput
-                  type="text"
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={handleAddTag}
-                  placeholder="e.g., Main Dish, Spicy, Popular"
-                />
-              )}
+              <FormLabel>Tags (Press Enter to add)</FormLabel>
+              <TagInput
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={handleAddTag}
+                placeholder="e.g., Main Dish, Spicy, Popular"
+              />
               {tags.length > 0 && (
                 <TagsContainer>
                   {tags.map(tag => (
                     <Tag key={tag}>
                       {tag}
-                      {!viewMode && (
-                        <RemoveTagButton type="button" onClick={() => handleRemoveTag(tag)}>
-                          ×
-                        </RemoveTagButton>
-                      )}
+                      <RemoveTagButton type="button" onClick={() => handleRemoveTag(tag)}>
+                        ×
+                      </RemoveTagButton>
                     </Tag>
                   ))}
                 </TagsContainer>
@@ -1436,7 +1536,6 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                 value={formData.suggested_price}
                 onChange={(e) => setFormData({ ...formData, suggested_price: e.target.value })}
                 placeholder="0.00"
-                disabled={viewMode}
               />
             </UIFormGroup>
 
@@ -1446,7 +1545,6 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Brief description of the recipe..."
-                disabled={viewMode}
               />
             </UIFormGroup>
 
@@ -1458,7 +1556,6 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                   value={formData.prep_time}
                   onChange={(e) => setFormData({ ...formData, prep_time: e.target.value })}
                   placeholder="e.g., 15"
-                  disabled={viewMode}
                 />
               </UIFormGroup>
 
@@ -1469,7 +1566,6 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                   value={formData.cook_time}
                   onChange={(e) => setFormData({ ...formData, cook_time: e.target.value })}
                   placeholder="e.g., 30"
-                  disabled={viewMode}
                 />
               </UIFormGroup>
             </div>
@@ -1481,7 +1577,6 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                 onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
                 placeholder="Step-by-step cooking instructions..."
                 rows={6}
-                disabled={viewMode}
               />
             </UIFormGroup>
 
@@ -1496,8 +1591,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                       <FormSelect
                         value={ri.ingredient_id}
                         onChange={(e) => updateIngredient(index, 'ingredient_id', parseInt(e.target.value))}
-                        required={!viewMode}
-                        disabled={viewMode}
+                        required
                       >
                         <option value={0}>Select ingredient...</option>
                         {ingredients.map(ing => (
@@ -1515,8 +1609,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                         value={ri.quantity}
                         onChange={(e) => updateIngredient(index, 'quantity', e.target.value)}
                         placeholder="0"
-                        required={!viewMode}
-                        disabled={viewMode}
+                        required
                       />
                     </UIFormGroup>
                     <UIFormGroup>
@@ -1536,25 +1629,20 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                         value={ri.notes}
                         onChange={(e) => updateIngredient(index, 'notes', e.target.value)}
                         placeholder="Optional"
-                        disabled={viewMode}
                       />
                     </UIFormGroup>
-                    {!viewMode && (
-                      <RemoveButtonWrapper>
-                        <RemoveButton type="button" onClick={() => removeIngredient(index)}>
-                          ×
-                        </RemoveButton>
-                      </RemoveButtonWrapper>
-                    )}
+                    <RemoveButtonWrapper>
+                      <RemoveButton type="button" onClick={() => removeIngredient(index)}>
+                        ×
+                      </RemoveButton>
+                    </RemoveButtonWrapper>
                   </IngredientRow>
                 ))}
               </IngredientsList>
 
-              {!viewMode && (
-                <AddButton type="button" onClick={addIngredient}>
-                  + Add Ingredient
-                </AddButton>
-              )}
+              <AddButton type="button" onClick={addIngredient}>
+                + Add Ingredient
+              </AddButton>
 
               {recipeIngredients.length > 0 && (
                 <CostSummary>
@@ -1565,33 +1653,21 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             </div>
 
             {/* Error Message */}
-            {!viewMode && formError && (
+            {formError && (
               <ErrorMessage>{formError}</ErrorMessage>
             )}
 
             {/* Action Buttons */}
             <ButtonGroup>
               <ModalButton type="button" variant="secondary" onClick={handleCloseModal}>
-                {viewMode ? 'Close' : 'Cancel'}
+                Cancel
               </ModalButton>
-              {!viewMode && (
-                <ModalButton type="submit" variant="primary">
-                  {selectedRecipe ? 'Update Recipe' : 'Create Recipe'}
-                </ModalButton>
-              )}
-              {viewMode && selectedRecipe && !isItemReadOnly(selectedRecipe) && (
-                <ModalButton
-                  type="button"
-                  variant="primary"
-                  onClick={() => {
-                    setViewMode(false);
-                  }}
-                >
-                  Edit
-                </ModalButton>
-              )}
+              <ModalButton type="submit" variant="primary">
+                {selectedRecipe ? 'Update Recipe' : 'Create Recipe'}
+              </ModalButton>
             </ButtonGroup>
           </form>
+        )}
       </Modal>
 
       {/* Delete Confirmation Modal */}
