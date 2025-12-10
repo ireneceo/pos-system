@@ -1305,7 +1305,7 @@ const PaymentPage: React.FC = () => {
                 name: item.menuItem.code ? `${item.menuItem.code} ${item.menuItem.name}` : item.menuItem.name,
                 quantity: item.quantity,
                 price: item.menuItem.price,
-                options: item.selectedOptions || [],
+                options: getOptionNames(item),
                 special_instructions: item.specialInstructions || null,
                 is_set_menu: (item.menuItem as any).is_set_menu || false,
                 set_items: (item.menuItem as any).set_items || []

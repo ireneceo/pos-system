@@ -27,6 +27,7 @@ interface DisplayOrder {
   orderNumber: string;
   pickupNumber: string;
   tableNumber: string | null;  // Table number for dine-in QR orders
+  orderType: 'dine_in' | 'takeaway' | 'delivery' | 'pickup';  // Order type
   status: 'preparing' | 'ready' | 'completed';
   customerName: string;
   items: Array<{
@@ -188,15 +189,16 @@ const EstimatedTime = styled.div<{ status: string }>`
   text-align: center;
   margin-top: ${theme.spacing.md};
   padding: ${theme.spacing.sm};
-  background: ${props => 
-    props.status === 'preparing' ? 
-    `${theme.colors.status.warning}20` : 
+  background: ${props =>
+    props.status === 'preparing' ?
+    `${theme.colors.status.warning}20` :
     `${theme.colors.status.success}20`
   };
   border-radius: ${theme.borderRadius.md};
   font-size: ${theme.typography.fontSize.sm};
   color: ${theme.colors.text.primary};
 `;
+
 
 const NoOrdersMessage = styled.div`
   text-align: center;
@@ -212,19 +214,30 @@ const CustomerDisplayPage: React.FC = () => {
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
   const [, setSocket] = useState<Socket | null>(null);
 
-  // Fetch orders from database
+  // Fetch orders from database - only preparing and ready status for display
   const fetchOrders = useCallback(async () => {
     if (!user?.restaurantId) return;
 
     try {
-      const response = await fetch(`/api/orders/restaurant/${user.restaurantId}`, {
-        credentials: 'include'
-      });
-      const result = await response.json();
+      // Fetch preparing and ready orders separately to avoid limit issues
+      const [preparingRes, readyRes] = await Promise.all([
+        fetch(`/api/orders/restaurant/${user.restaurantId}?status=preparing&limit=100`, {
+          credentials: 'include'
+        }),
+        fetch(`/api/orders/restaurant/${user.restaurantId}?status=ready&limit=100`, {
+          credentials: 'include'
+        })
+      ]);
 
-      if (result.success && result.data) {
-        setDbOrders(result.data);
-      }
+      const preparingResult = await preparingRes.json();
+      const readyResult = await readyRes.json();
+
+      const allOrders = [
+        ...(preparingResult.success ? preparingResult.data : []),
+        ...(readyResult.success ? readyResult.data : [])
+      ];
+
+      setDbOrders(allOrders);
     } catch (error) {
       console.error('Failed to fetch orders:', error);
     }
@@ -274,12 +287,17 @@ const CustomerDisplayPage: React.FC = () => {
   useEffect(() => {
     const convertToDisplayOrders = (dbOrders: DbOrder[]): DisplayOrder[] => {
       return dbOrders
-        .filter(order => order.status === 'preparing' || order.status === 'ready')
+        // Filter: only preparing/ready orders, exclude delivery orders (delivery orders don't need pickup display)
+        .filter(order =>
+          (order.status === 'preparing' || order.status === 'ready') &&
+          order.order_type !== 'delivery'
+        )
         .map(order => ({
           id: String(order.id),
           orderNumber: order.order_number,
           pickupNumber: order.order_number.split('-')[1] || String(order.id).padStart(3, '0'),
           tableNumber: order.table_number,  // Include table number
+          orderType: order.order_type as 'dine_in' | 'takeaway' | 'delivery' | 'pickup',  // Include order type
           status: order.status as 'preparing' | 'ready' | 'completed',
           customerName: order.customer_name || 'Guest',
           items: Array.isArray(order.order_items) ? order.order_items.map((item: any) => ({
@@ -344,6 +362,15 @@ const CustomerDisplayPage: React.FC = () => {
     return `About ${remaining} min wait`;
   };
 
+  const getOrderTypeLabel = (orderType: string) => {
+    switch (orderType) {
+      case 'dine_in': return 'Dine In';
+      case 'takeaway': return 'Takeaway';
+      case 'pickup': return 'Pre-order';
+      default: return '';
+    }
+  };
+
   const readyOrders = orders.filter(order => order.status === 'ready');
   const preparingOrders = orders.filter(order => order.status === 'preparing');
   const sortedOrders = [...readyOrders, ...preparingOrders];
@@ -383,7 +410,12 @@ const CustomerDisplayPage: React.FC = () => {
                 {order.customerName && (
                   <CustomerName>{order.customerName}</CustomerName>
                 )}
-                <OrderTime>Order Time: {formatTime(order.createdAt)}</OrderTime>
+                <OrderTime>
+                  {formatTime(order.createdAt)}
+                  {order.orderType && getOrderTypeLabel(order.orderType) && (
+                    <> / {getOrderTypeLabel(order.orderType)}</>
+                  )}
+                </OrderTime>
               </CustomerInfo>
 
               <EstimatedTime status={order.status}>

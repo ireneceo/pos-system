@@ -94,6 +94,10 @@ interface MobileOrderContextType {
   currentStore: Store | null;
   setCurrentStore: (store: Store | null) => void;
 
+  // Order Type
+  orderType: string | null;
+  setOrderType: (type: string | null) => void;
+
   // Cart
   cartItems: CartItem[];
   cartTotal: number;
@@ -134,6 +138,21 @@ interface MobileOrderProviderProps {
 export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ children }) => {
   // Store state
   const [currentStore, setCurrentStore] = useState<Store | null>(null);
+
+  // Order type state - synced with sessionStorage
+  const [orderType, setOrderTypeState] = useState<string | null>(() => {
+    return sessionStorage.getItem('orderType');
+  });
+
+  // Wrapper to sync orderType with sessionStorage
+  const setOrderType = useCallback((type: string | null) => {
+    setOrderTypeState(type);
+    if (type) {
+      sessionStorage.setItem('orderType', type);
+    } else {
+      sessionStorage.removeItem('orderType');
+    }
+  }, []);
 
   // Cart state - localStorage 제거, 메모리 기반 상태 관리
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -229,6 +248,10 @@ export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ childr
     // Store
     currentStore,
     setCurrentStore,
+
+    // Order Type
+    orderType,
+    setOrderType,
 
     // Cart
     cartItems,

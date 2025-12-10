@@ -167,6 +167,24 @@ const CartBadge = styled.div`
   text-align: center;
 `;
 
+const OrderTypeLabel = styled.div<{ orderType: string }>`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: ${props => {
+    switch (props.orderType) {
+      case 'dine-in': return '#059669';
+      case 'takeaway': return '#D97706';
+      case 'delivery': return '#2563EB';
+      case 'pickup': return '#7C3AED';
+      default: return '#6B7280';
+    }
+  }};
+  white-space: nowrap;
+`;
+
 interface MobileLayoutProps {
   children: ReactNode;
   title?: string;
@@ -185,7 +203,29 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
   cartItemCount = 0
 }) => {
   const navigate = useNavigate();
-  const { currentStore } = useMobileOrder();
+  const { currentStore, orderType } = useMobileOrder();
+
+  // Get order type label
+  const getOrderTypeLabel = (type: string | null) => {
+    switch (type) {
+      case 'dine-in': return 'Dine-In';
+      case 'takeaway': return 'Takeaway';
+      case 'delivery': return 'Delivery';
+      case 'pickup': return 'Pre-Order Pickup';
+      default: return null;
+    }
+  };
+
+  // Get order type icon
+  const getOrderTypeIcon = (type: string | null) => {
+    switch (type) {
+      case 'dine-in': return '🍽️';
+      case 'takeaway': return '🛍️';
+      case 'delivery': return '🚚';
+      case 'pickup': return '⏰';
+      default: return '';
+    }
+  };
 
   // Get slug from currentStore or sessionStorage
   const slug = currentStore?.slug || sessionStorage.getItem('restaurantSlug') || 'default';
@@ -216,10 +256,18 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
             <HeaderAction />
           )}
           <Title>{title}</Title>
-          <HeaderAction />
+          {/* Order Type - show in header right side */}
+          {orderType && currentPage !== 'home' && getOrderTypeLabel(orderType) ? (
+            <OrderTypeLabel orderType={orderType}>
+              <span>{getOrderTypeIcon(orderType)}</span>
+              <span>{getOrderTypeLabel(orderType)}</span>
+            </OrderTypeLabel>
+          ) : (
+            <HeaderAction />
+          )}
         </Header>
       )}
-      
+
       <Content>{children}</Content>
 
       <BottomNav>

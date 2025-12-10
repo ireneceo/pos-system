@@ -124,7 +124,7 @@ const OrderTypePage: React.FC = () => {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
-  const { setCurrentStore, setIsLoading } = useMobileOrder();
+  const { setCurrentStore, setIsLoading, clearCart, orderType: currentOrderType, setOrderType } = useMobileOrder();
   const [tableFromQR, setTableFromQR] = useState<string | null>(null);
   const [storeData, setStoreData] = useState<StoreData | null>(null);
 
@@ -167,8 +167,9 @@ const OrderTypePage: React.FC = () => {
     loadStoreData();
   }, [slug]);
 
-  const handleOrderTypeSelection = async (orderType: 'dine-in' | 'takeaway' | 'pickup' | 'delivery') => {
-    console.log('Order type selected:', orderType);
+  const handleOrderTypeSelection = async (newOrderType: 'dine-in' | 'takeaway' | 'pickup' | 'delivery') => {
+    console.log('Order type selected:', newOrderType);
+    console.log('Previous order type:', currentOrderType);
     setIsLoading(true);
 
     try {
@@ -193,8 +194,14 @@ const OrderTypePage: React.FC = () => {
 
       setCurrentStore(store);
 
-      // Store order type and restaurant ID in session
-      sessionStorage.setItem('orderType', orderType);
+      // If order type changed, clear the cart
+      if (currentOrderType && currentOrderType !== newOrderType) {
+        console.log('Order type changed - clearing cart');
+        clearCart();
+      }
+
+      // Update order type in context (syncs with sessionStorage)
+      setOrderType(newOrderType);
       sessionStorage.setItem('restaurantId', store.id);
 
       // Clear any previous pickup time (will be set in PaymentPage)
