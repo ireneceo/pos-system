@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2025-12-10
+> **최종 업데이트:** 2025-12-11
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -265,6 +265,44 @@ if (recipe.owner_type === 'brand') {
 19. [x] 리스트 카드에 재료명 태그(IngredientTags) 표시
 20. [x] 카드 클릭 시 Recipe Details 팝업 (View 모드)
 21. [x] View 모드에서 Edit 전환 기능
+
+### 버그 수정 및 개선 (2025-12-11)
+
+#### Reports 페이지 필터 버그 수정
+**파일:** `/var/www/dev-frontend/src/pages/Reports/ReportsPage.tsx`
+
+**문제:**
+- Month 필터 선택 시 그래프가 지난 달 1일~30일 데이터를 잘못 표시
+- 30일 범위가 두 달에 걸쳐있을 때 일자(day number)만으로 그룹화되어 데이터 혼합
+
+**해결:**
+- 그래프 데이터를 `MM/DD` 형식(예: `11/10`, `12/09`)으로 표시
+- 두 달에 걸친 30일 데이터가 올바르게 구분되어 표시
+
+**변경 코드:**
+```typescript
+// Before: day number만 사용 (11월9일, 10월9일 모두 "9"로 표시)
+const day = getOrderDate(order).getDate().toString();
+
+// After: MM/DD 형식으로 구분
+const dateKey = `${(orderDate.getMonth() + 1).toString().padStart(2, '0')}/${orderDate.getDate().toString().padStart(2, '0')}`;
+```
+
+#### 환경변수 관리 개선
+**파일:** `/var/www/dev-backend/.env`, `/var/www/dev-frontend/package.json`
+
+**변경사항:**
+- SUDO_PASSWORD를 .env 파일에서 중앙 관리
+- 빌드 스크립트에서 .env 파일 읽어서 사용
+- 하드코딩된 비밀번호 제거
+
+#### Claude 명령어 추가
+**파일:** `/var/www/.claude/commands/개발완료.md`
+
+**기능:**
+- 개발 세션 종료 시 사용하는 명령어
+- 문서 자동 업데이트 (DEVELOPMENT_PLAN.md 등)
+- Git 커밋 및 푸시 자동화
 
 ---
 

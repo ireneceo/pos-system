@@ -443,14 +443,19 @@ const ReportsPage: React.FC = () => {
         };
       });
     } else if (activePeriod === 'month') {
-      // Group by day of month
+      // Group by full date (MM/DD) for correct 30-day range display
       const dailyData: Record<string, number> = {};
       filteredOrders.forEach(order => {
-        const day = getOrderDate(order).getDate().toString();
-        dailyData[day] = (dailyData[day] || 0) + getOrderAmount(order);
+        const orderDate = getOrderDate(order);
+        // Use MM/DD format to distinguish dates across months
+        const dateKey = `${(orderDate.getMonth() + 1).toString().padStart(2, '0')}/${orderDate.getDate().toString().padStart(2, '0')}`;
+        dailyData[dateKey] = (dailyData[dateKey] || 0) + getOrderAmount(order);
       });
 
-      return Object.entries(dailyData).map(([date, sales]) => ({ date, sales: Math.round(sales) })).sort((a, b) => parseInt(a.date) - parseInt(b.date));
+      // Sort by actual date order
+      return Object.entries(dailyData)
+        .map(([date, sales]) => ({ date, sales: Math.round(sales) }))
+        .sort((a, b) => a.date.localeCompare(b.date));
     } else {
       // Group by month
       const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
