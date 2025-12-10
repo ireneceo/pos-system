@@ -12,6 +12,11 @@ import QRPaymentPage from './pages/QRPaymentPage';
 import BankTransferPage from './pages/BankTransferPage';
 import OrderTrackingPage from './pages/OrderTrackingPage';
 import OrdersPage from './pages/OrdersPage';
+import AccountPage from './pages/AccountPage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 const MobileApp: React.FC = () => {
   return (
