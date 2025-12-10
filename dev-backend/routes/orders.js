@@ -33,12 +33,19 @@ router.get('/', async (req, res) => {
     }
 
     // 쿼리 래퍼 사용 (자동 재시도)
+    // limit=0 means no limit (fetch all orders)
+    const queryOptions = {
+      where: whereCondition,
+      order: [['createdAt', 'DESC']]
+    };
+
+    const parsedLimit = parseInt(limit);
+    if (parsedLimit > 0) {
+      queryOptions.limit = parsedLimit;
+    }
+
     const orders = await executeQuery(async () => {
-      return await Order.findAll({
-        where: whereCondition,
-        order: [['createdAt', 'DESC']],
-        limit: parseInt(limit)
-      });
+      return await Order.findAll(queryOptions);
     }, { maxRetries: 3 });
 
     res.json({ success: true, data: orders });

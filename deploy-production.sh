@@ -175,7 +175,7 @@ if [ -n "$MISSING_TABLES" ]; then
 fi
 
 # 주요 테이블 컬럼 비교 및 자동 추가
-TABLES_TO_CHECK="products categories restaurants users orders options option_groups recipes ingredients customers restaurant_customers plan_templates brands"
+TABLES_TO_CHECK="products categories restaurants users orders options option_groups recipes ingredients customers restaurant_customers plan_templates brands invoices"
 for table in $TABLES_TO_CHECK; do
     # 테이블 존재 여부 확인
     TABLE_EXISTS=$(mysql -u $DB_USER -p$DB_PASS $DB_NAME -N -e "SHOW TABLES LIKE '$table';" 2>/dev/null)

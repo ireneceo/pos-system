@@ -382,137 +382,94 @@ const CheckboxLabel = styled.label`
   }
 `;
 
-// 옵션 그룹 선택 UI (순서 관리 + 세부정보)
-const OptionGroupSelector = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 400px;
-  overflow-y: auto;
-`;
-
-const OptionGroupCard = styled.div<{ selected: boolean; order?: number }>`
-  border: 2px solid ${props => props.selected ? '#635BFF' : '#E5E7EB'};
-  border-radius: 12px;
-  padding: 12px 16px;
+// 옵션 그룹 선택 UI - Select + Chip 방식
+const OptionGroupSelect = styled.select`
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #0A2540;
+  background: white;
   cursor: pointer;
-  transition: all 0.2s;
-  background: ${props => props.selected ? '#F8F7FF' : 'white'};
-  position: relative;
+  transition: all 0.15s;
 
-  &:hover {
-    border-color: ${props => props.selected ? '#635BFF' : '#D1D5DB'};
-    background: ${props => props.selected ? '#F8F7FF' : '#F9FAFB'};
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
   }
-
-  ${props => props.selected && props.order && `
-    &::before {
-      content: '${props.order}';
-      position: absolute;
-      top: -10px;
-      left: -10px;
-      width: 24px;
-      height: 24px;
-      background: #635BFF;
-      color: white;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      font-weight: 600;
-    }
-  `}
 `;
 
-const OptionGroupHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-`;
-
-const OptionGroupName = styled.div`
-  font-weight: 600;
-  font-size: 15px;
-  color: #1F2937;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
-
-const OptionGroupBadges = styled.div`
-  display: flex;
-  gap: 6px;
-`;
-
-const OptionBadge = styled.span<{ type: 'required' | 'optional' | 'single' | 'multi' }>`
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: 500;
-  ${props => {
-    switch (props.type) {
-      case 'required':
-        return 'background: #FEE2E2; color: #DC2626;';
-      case 'optional':
-        return 'background: #DCFCE7; color: #16A34A;';
-      case 'single':
-        return 'background: #DBEAFE; color: #2563EB;';
-      case 'multi':
-        return 'background: #F3E8FF; color: #7C3AED;';
-    }
-  }}
-`;
-
-const OptionItemsList = styled.div`
+const SelectedChipsContainer = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
+  gap: 8px;
+  margin-top: 12px;
+  min-height: 36px;
 `;
 
-const OptionItem = styled.div`
-  font-size: 13px;
-  color: #6B7280;
-  background: #F3F4F6;
-  padding: 4px 10px;
-  border-radius: 6px;
-
-  span.price {
-    color: #059669;
-    margin-left: 4px;
-    font-weight: 500;
-  }
-`;
-
-const SelectedOrderInfo = styled.div`
-  font-size: 12px;
-  color: #635BFF;
-  margin-top: 8px;
-  padding: 8px 12px;
-  background: #F8F7FF;
-  border-radius: 8px;
-  display: flex;
+const OptionGroupChip = styled.div`
+  display: inline-flex;
   align-items: center;
   gap: 8px;
+  padding: 6px 12px;
+  background: #F0F4FF;
+  border: 1px solid #C7D2FE;
+  border-radius: 20px;
+  font-size: 13px;
+  color: #4338CA;
 `;
 
-const ReorderButton = styled.button`
-  background: none;
+const ChipOrderBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: #635BFF;
+  color: white;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 600;
+`;
+
+const ChipName = styled.span`
+  font-weight: 500;
+`;
+
+const ChipBadge = styled.span<{ type: 'required' | 'optional' }>`
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+  ${props => props.type === 'required'
+    ? 'background: #FEE2E2; color: #DC2626;'
+    : 'background: #DCFCE7; color: #16A34A;'}
+`;
+
+const ChipRemoveButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: transparent;
   border: none;
   cursor: pointer;
-  padding: 4px;
   color: #6B7280;
+  border-radius: 50%;
+  padding: 0;
+  transition: all 0.15s;
 
   &:hover {
-    color: #635BFF;
+    background: #E0E7FF;
+    color: #4338CA;
   }
+`;
 
-  &:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-  }
+const OptionGroupSectionTitle = styled.div`
+  margin-top: 24px;
 `;
 
 
@@ -947,19 +904,6 @@ const MenuManagementPage: React.FC = () => {
     }
   };
 
-  // 옵션 그룹 순서 변경
-  const handleMoveOptionGroup = (groupId: string, direction: 'up' | 'down') => {
-    const currentIndex = selectedOptionGroups.indexOf(groupId);
-    if (currentIndex === -1) return;
-
-    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-    if (newIndex < 0 || newIndex >= selectedOptionGroups.length) return;
-
-    const newOrder = [...selectedOptionGroups];
-    [newOrder[currentIndex], newOrder[newIndex]] = [newOrder[newIndex], newOrder[currentIndex]];
-    setSelectedOptionGroups(newOrder);
-  };
-
   return (
     <MainLayout>
       <Container>
@@ -1214,74 +1158,51 @@ const MenuManagementPage: React.FC = () => {
             showRemoveButton={true}
           />
 
-          <UIFormGroup>
-            <FormLabel>Option Groups {selectedOptionGroups.length > 0 && `(${selectedOptionGroups.length} selected)`}</FormLabel>
+          <OptionGroupSectionTitle>
+            <UIFormGroup>
+              <FormLabel>Option Groups {selectedOptionGroups.length > 0 && `(${selectedOptionGroups.length} selected)`}</FormLabel>
 
-            {/* 선택된 옵션 그룹 순서 표시 */}
-            {selectedOptionGroups.length > 0 && (
-              <SelectedOrderInfo>
-                Display order: {selectedOptionGroups.map((id, idx) => {
-                  const group = optionGroups.find(g => g.id === id);
-                  return group ? (idx > 0 ? ' → ' : '') + group.name : '';
+              <OptionGroupSelect
+                value=""
+                onChange={(e) => {
+                  if (e.target.value && !selectedOptionGroups.includes(e.target.value)) {
+                    setSelectedOptionGroups([...selectedOptionGroups, e.target.value]);
+                  }
+                }}
+              >
+                <option value="">Select option group to add...</option>
+                {optionGroups
+                  .filter(group => !selectedOptionGroups.includes(group.id))
+                  .map(group => (
+                    <option key={group.id} value={group.id}>
+                      {group.name} ({group.required ? 'Required' : 'Optional'}, {group.multiple ? 'Multi' : 'Single'})
+                    </option>
+                  ))}
+              </OptionGroupSelect>
+
+              <SelectedChipsContainer>
+                {selectedOptionGroups.map((groupId, index) => {
+                  const group = optionGroups.find(g => g.id === groupId);
+                  if (!group) return null;
+                  return (
+                    <OptionGroupChip key={groupId}>
+                      <ChipOrderBadge>{index + 1}</ChipOrderBadge>
+                      <ChipName>{group.name}</ChipName>
+                      <ChipBadge type={group.required ? 'required' : 'optional'}>
+                        {group.required ? 'Required' : 'Optional'}
+                      </ChipBadge>
+                      <ChipRemoveButton
+                        onClick={() => setSelectedOptionGroups(selectedOptionGroups.filter(id => id !== groupId))}
+                        title="Remove"
+                      >
+                        ×
+                      </ChipRemoveButton>
+                    </OptionGroupChip>
+                  );
                 })}
-              </SelectedOrderInfo>
-            )}
-
-            <OptionGroupSelector>
-              {optionGroups.map(group => {
-                const isSelected = selectedOptionGroups.includes(group.id);
-                const orderIndex = selectedOptionGroups.indexOf(group.id);
-                return (
-                  <OptionGroupCard
-                    key={group.id}
-                    selected={isSelected}
-                    order={isSelected ? orderIndex + 1 : undefined}
-                    onClick={() => handleOptionGroupToggle(group.id)}
-                  >
-                    <OptionGroupHeader>
-                      <OptionGroupName>
-                        {group.name}
-                      </OptionGroupName>
-                      <OptionGroupBadges>
-                        <OptionBadge type={group.required ? 'required' : 'optional'}>
-                          {group.required ? 'Required' : 'Optional'}
-                        </OptionBadge>
-                        <OptionBadge type={group.multiple ? 'multi' : 'single'}>
-                          {group.multiple ? 'Multi' : 'Single'}
-                        </OptionBadge>
-                        {isSelected && (
-                          <>
-                            <ReorderButton
-                              onClick={(e) => { e.stopPropagation(); handleMoveOptionGroup(group.id, 'up'); }}
-                              disabled={orderIndex === 0}
-                              title="Move Up"
-                            >
-                              ▲
-                            </ReorderButton>
-                            <ReorderButton
-                              onClick={(e) => { e.stopPropagation(); handleMoveOptionGroup(group.id, 'down'); }}
-                              disabled={orderIndex === selectedOptionGroups.length - 1}
-                              title="Move Down"
-                            >
-                              ▼
-                            </ReorderButton>
-                          </>
-                        )}
-                      </OptionGroupBadges>
-                    </OptionGroupHeader>
-                    <OptionItemsList>
-                      {group.options?.map(option => (
-                        <OptionItem key={option.id}>
-                          {option.name}
-                          {option.price > 0 && <span className="price">+RM{option.price.toFixed(2)}</span>}
-                        </OptionItem>
-                      ))}
-                    </OptionItemsList>
-                  </OptionGroupCard>
-                );
-              })}
-            </OptionGroupSelector>
-          </UIFormGroup>
+              </SelectedChipsContainer>
+            </UIFormGroup>
+          </OptionGroupSectionTitle>
         </UIModal>
 
         {/* Edit Item Modal */}
@@ -1384,74 +1305,51 @@ const MenuManagementPage: React.FC = () => {
             showRemoveButton={true}
           />
 
-          <UIFormGroup>
-            <FormLabel>Option Groups {selectedOptionGroups.length > 0 && `(${selectedOptionGroups.length} selected)`}</FormLabel>
+          <OptionGroupSectionTitle>
+            <UIFormGroup>
+              <FormLabel>Option Groups {selectedOptionGroups.length > 0 && `(${selectedOptionGroups.length} selected)`}</FormLabel>
 
-            {/* 선택된 옵션 그룹 순서 표시 */}
-            {selectedOptionGroups.length > 0 && (
-              <SelectedOrderInfo>
-                Display order: {selectedOptionGroups.map((id, idx) => {
-                  const group = optionGroups.find(g => g.id === id);
-                  return group ? (idx > 0 ? ' → ' : '') + group.name : '';
+              <OptionGroupSelect
+                value=""
+                onChange={(e) => {
+                  if (e.target.value && !selectedOptionGroups.includes(e.target.value)) {
+                    setSelectedOptionGroups([...selectedOptionGroups, e.target.value]);
+                  }
+                }}
+              >
+                <option value="">Select option group to add...</option>
+                {optionGroups
+                  .filter(group => !selectedOptionGroups.includes(group.id))
+                  .map(group => (
+                    <option key={group.id} value={group.id}>
+                      {group.name} ({group.required ? 'Required' : 'Optional'}, {group.multiple ? 'Multi' : 'Single'})
+                    </option>
+                  ))}
+              </OptionGroupSelect>
+
+              <SelectedChipsContainer>
+                {selectedOptionGroups.map((groupId, index) => {
+                  const group = optionGroups.find(g => g.id === groupId);
+                  if (!group) return null;
+                  return (
+                    <OptionGroupChip key={groupId}>
+                      <ChipOrderBadge>{index + 1}</ChipOrderBadge>
+                      <ChipName>{group.name}</ChipName>
+                      <ChipBadge type={group.required ? 'required' : 'optional'}>
+                        {group.required ? 'Required' : 'Optional'}
+                      </ChipBadge>
+                      <ChipRemoveButton
+                        onClick={() => setSelectedOptionGroups(selectedOptionGroups.filter(id => id !== groupId))}
+                        title="Remove"
+                      >
+                        ×
+                      </ChipRemoveButton>
+                    </OptionGroupChip>
+                  );
                 })}
-              </SelectedOrderInfo>
-            )}
-
-            <OptionGroupSelector>
-              {optionGroups.map(group => {
-                const isSelected = selectedOptionGroups.includes(group.id);
-                const orderIndex = selectedOptionGroups.indexOf(group.id);
-                return (
-                  <OptionGroupCard
-                    key={group.id}
-                    selected={isSelected}
-                    order={isSelected ? orderIndex + 1 : undefined}
-                    onClick={() => handleOptionGroupToggle(group.id)}
-                  >
-                    <OptionGroupHeader>
-                      <OptionGroupName>
-                        {group.name}
-                      </OptionGroupName>
-                      <OptionGroupBadges>
-                        <OptionBadge type={group.required ? 'required' : 'optional'}>
-                          {group.required ? 'Required' : 'Optional'}
-                        </OptionBadge>
-                        <OptionBadge type={group.multiple ? 'multi' : 'single'}>
-                          {group.multiple ? 'Multi' : 'Single'}
-                        </OptionBadge>
-                        {isSelected && (
-                          <>
-                            <ReorderButton
-                              onClick={(e) => { e.stopPropagation(); handleMoveOptionGroup(group.id, 'up'); }}
-                              disabled={orderIndex === 0}
-                              title="Move Up"
-                            >
-                              ▲
-                            </ReorderButton>
-                            <ReorderButton
-                              onClick={(e) => { e.stopPropagation(); handleMoveOptionGroup(group.id, 'down'); }}
-                              disabled={orderIndex === selectedOptionGroups.length - 1}
-                              title="Move Down"
-                            >
-                              ▼
-                            </ReorderButton>
-                          </>
-                        )}
-                      </OptionGroupBadges>
-                    </OptionGroupHeader>
-                    <OptionItemsList>
-                      {group.options?.map(option => (
-                        <OptionItem key={option.id}>
-                          {option.name}
-                          {option.price > 0 && <span className="price">+RM{option.price.toFixed(2)}</span>}
-                        </OptionItem>
-                      ))}
-                    </OptionItemsList>
-                  </OptionGroupCard>
-                );
-              })}
-            </OptionGroupSelector>
-          </UIFormGroup>
+              </SelectedChipsContainer>
+            </UIFormGroup>
+          </OptionGroupSectionTitle>
         </UIModal>
 
         {/* Set Menu Modal */}

@@ -630,8 +630,8 @@ const ReportsPage: React.FC = () => {
         }
       });
 
-      // Fetch orders for detailed analysis (no limit for accurate statistics)
-      const ordersResponse = await fetch(`/api/orders?restaurant_id=${user.restaurantId}`, {
+      // Fetch ALL orders for accurate statistics (no limit)
+      const ordersResponse = await fetch(`/api/orders?restaurant_id=${user.restaurantId}&limit=0`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
