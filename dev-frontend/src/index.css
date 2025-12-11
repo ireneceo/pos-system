@@ -10,19 +10,20 @@ html, body {
   overflow-x: hidden;
 }
 
-/* Mobile specific - prevent horizontal scroll */
+/* Mobile specific - prevent horizontal scroll only */
 @media (max-width: 768px) {
   html, body {
-    position: fixed;
-    overflow: hidden;
     width: 100%;
-    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   #root {
     width: 100%;
-    height: 100%;
-    overflow: hidden;
+    min-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 }
 

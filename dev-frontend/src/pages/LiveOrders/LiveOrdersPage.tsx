@@ -356,7 +356,7 @@ const OrdersCard = styled.div`
   background: white;
   border-radius: 12px;
   border: 1px solid #E6EBF1;
-  overflow: hidden;
+  overflow: visible;
 
   @media (max-width: 768px) {
     background: transparent;
