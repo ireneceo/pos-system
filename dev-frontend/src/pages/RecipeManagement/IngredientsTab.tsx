@@ -57,6 +57,9 @@ const IngredientCard = styled.div<{ isActive?: boolean }>`
   transition: all 0.2s;
   opacity: ${props => props.isActive ? 1 : 0.6};
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 
   &:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -132,7 +135,8 @@ const InfoValue = styled.span`
 const IngredientActions = styled.div`
   display: flex;
   gap: 8px;
-  margin-top: 16px;
+  margin-top: auto;
+  padding-top: 16px;
 `;
 
 const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`

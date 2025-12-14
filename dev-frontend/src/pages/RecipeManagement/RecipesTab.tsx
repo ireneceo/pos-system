@@ -86,6 +86,9 @@ const RecipeCard = styled.div<{ isActive?: boolean }>`
   transition: all 0.2s;
   opacity: ${props => props.isActive ? 1 : 0.6};
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 
   &:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -393,7 +396,8 @@ const ViewTotalRow = styled.div`
 const RecipeActions = styled.div`
   display: flex;
   gap: 8px;
-  margin-top: 16px;
+  margin-top: auto;
+  padding-top: 16px;
 `;
 
 const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
@@ -1235,7 +1239,6 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               )}
 
               <RecipeHeader>
-                {recipe.emoji && <RecipeEmoji>{recipe.emoji}</RecipeEmoji>}
                 <RecipeInfo>
                   <RecipeName>
                     {recipe.name}

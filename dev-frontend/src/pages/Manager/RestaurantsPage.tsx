@@ -124,7 +124,10 @@ const RestaurantCard = styled.div`
   border: 1px solid #E6EBF1;
   transition: all 0.2s;
   cursor: pointer;
-  
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
   &:hover {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
     transform: translateY(-2px);
@@ -254,7 +257,8 @@ const Star = styled.span<{ filled: boolean }>`
 const ActionButtons = styled.div`
   display: flex;
   gap: 8px;
-  margin-top: 16px;
+  margin-top: auto;
+  padding-top: 16px;
 `;
 
 const ActionButton = styled.button`
