@@ -177,6 +177,9 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
   ],
   'Brand General': [
     '/pos/brand/general/*',
+    '/pos/brand-products',
+    '/pos/recipes',
+    '/pos/ingredients',
     '/pos/manager/*',
     '/pos/restaurant/*',
     '/pos/pos-terminal',
@@ -219,6 +222,9 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
   ],
   'Brand Manager': [
     '/pos/brand/*',
+    '/pos/brand-products',
+    '/pos/recipes',
+    '/pos/ingredients',
     '/pos/manager/*',
     '/pos/restaurant/*',
     '/pos/pos-terminal',

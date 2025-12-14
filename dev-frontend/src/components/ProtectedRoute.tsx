@@ -164,13 +164,13 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // requiredRole이 명시되지 않은 경우는 체크 스킵
   if (requiredRole && requiredRole.length > 0) {
     // Brand-level routes that don't require restaurant context
-    const brandLevelRoutes = ['/pos/recipes', '/pos/ingredients'];
+    const brandLevelRoutes = ['/pos/recipes', '/pos/ingredients', '/pos/brand-products'];
     const isBrandLevelRoute = brandLevelRoutes.some(route => location.pathname.startsWith(route));
 
-    // Brand General이나 System Admin이 brand-level route에 접근하는 경우는 체크 스킵
+    // Brand General, Brand Manager, System Admin이 brand-level route에 접근하는 경우는 체크 스킵
     const shouldSkipRouteCheck = isBrandLevelRoute &&
                                   user &&
-                                  (user.role === 'Brand General' || user.role === 'System Admin');
+                                  (user.role === 'Brand General' || user.role === 'Brand Manager' || user.role === 'System Admin');
 
     // requiredRole이 지정된 경우만 엄격하게 체크 (단, brand-level route는 제외)
     if (!shouldSkipRouteCheck && !canAccessRoute(location.pathname)) {

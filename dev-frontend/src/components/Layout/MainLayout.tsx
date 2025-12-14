@@ -781,13 +781,20 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
         <SidebarNav ref={sidebarNavRef}>
           <NavSection>
-            {/* System Admin Menu */}
+            {/* System Admin Menu - Dashboard */}
             {user?.role === 'System Admin' && (
               <>
                 <NavItem to="/pos/admin/dashboard" active={isActive('/pos/admin/dashboard')} onClick={closeSidebar}>
                   <NavIcon>■</NavIcon>
                   Dashboard
                 </NavItem>
+              </>
+            )}
+
+            {/* System Admin - Management Section */}
+            {user?.role === 'System Admin' && (
+              <>
+                <NavTitle>Management</NavTitle>
                 <NavItem to="/pos/admin/managers" active={isActive('/pos/admin/managers')} onClick={closeSidebar}>
                   <NavIcon>◯</NavIcon>
                   Managers
@@ -796,13 +803,20 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>◐</NavIcon>
                   Restaurants
                 </NavItem>
-                <NavItem to="/pos/admin/subscriptions" active={isActive('/pos/admin/subscriptions')} onClick={closeSidebar}>
-                  <NavIcon>◈</NavIcon>
-                  Subscriptions
-                </NavItem>
                 <NavItem to="/pos/admin/staff" active={isActive('/pos/admin/staff')} onClick={closeSidebar}>
                   <NavIcon>◆</NavIcon>
                   Staff
+                </NavItem>
+              </>
+            )}
+
+            {/* System Admin - Billing Section */}
+            {user?.role === 'System Admin' && (
+              <>
+                <NavTitle>Billing</NavTitle>
+                <NavItem to="/pos/admin/subscriptions" active={isActive('/pos/admin/subscriptions')} onClick={closeSidebar}>
+                  <NavIcon>◈</NavIcon>
+                  Subscriptions
                 </NavItem>
                 <NavItem to="/pos/admin/invoices" active={isActive('/pos/admin/invoices')} onClick={closeSidebar}>
                   <NavIcon>▦</NavIcon>
@@ -812,10 +826,24 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>≡</NavIcon>
                   Subscription Plans
                 </NavItem>
+              </>
+            )}
+
+            {/* System Admin - Analytics Section */}
+            {user?.role === 'System Admin' && (
+              <>
+                <NavTitle>Analytics</NavTitle>
                 <NavItem to="/pos/admin/report" active={isActive('/pos/admin/report')} onClick={closeSidebar}>
                   <NavIcon>▲</NavIcon>
                   Report⟤
                 </NavItem>
+              </>
+            )}
+
+            {/* System Admin - Support Section */}
+            {user?.role === 'System Admin' && (
+              <>
+                <NavTitle>Support</NavTitle>
                 <NavItem to="/pos/admin/support" active={isActive('/pos/admin/support')} onClick={closeSidebar}>
                   <NavIcon>◎</NavIcon>
                   System Inquiry⟤
@@ -1236,10 +1264,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             </NavSection>
           )}
           
-          {/* Restaurant Admin Management */}
+          {/* Restaurant Admin - Products Management */}
           {user?.role === 'Restaurant Admin' && (
             <NavSection>
-              <NavTitle>Management</NavTitle>
+              <NavTitle>Products</NavTitle>
               {isRouteAllowed(`/restaurant/${restaurantId}/menu`) && (
                 <NavItem to={`/restaurant/${restaurantId}/menu`} active={isActive(`/restaurant/${restaurantId}/menu`)} onClick={closeSidebar}>
                   <NavIcon>≡</NavIcon>
@@ -1264,16 +1292,23 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   Recipe
                 </NavItem>
               )}
-              {isRouteAllowed(`/restaurant/${restaurantId}/customers`) && (
-                <NavItem to={`/restaurant/${restaurantId}/customers`} active={isActive(`/restaurant/${restaurantId}/customers`)} onClick={closeSidebar}>
-                  <NavIcon>◯</NavIcon>
-                  Customers⟤
-                </NavItem>
-              )}
+            </NavSection>
+          )}
+
+          {/* Restaurant Admin - Team & Marketing */}
+          {user?.role === 'Restaurant Admin' && (
+            <NavSection>
+              <NavTitle>Team</NavTitle>
               {isRouteAllowed(`/restaurant/${restaurantId}/staff`) && (
                 <NavItem to={`/restaurant/${restaurantId}/staff`} active={isActive(`/restaurant/${restaurantId}/staff`)} onClick={closeSidebar}>
                   <NavIcon>◆</NavIcon>
                   Staff⟤
+                </NavItem>
+              )}
+              {isRouteAllowed(`/restaurant/${restaurantId}/customers`) && (
+                <NavItem to={`/restaurant/${restaurantId}/customers`} active={isActive(`/restaurant/${restaurantId}/customers`)} onClick={closeSidebar}>
+                  <NavIcon>◯</NavIcon>
+                  Customers⟤
                 </NavItem>
               )}
               {isRouteAllowed(`/restaurant/${restaurantId}/promotions`) && (
@@ -1282,10 +1317,36 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   Promotions⟤
                 </NavItem>
               )}
+            </NavSection>
+          )}
+
+          {/* Restaurant Admin - Analytics */}
+          {user?.role === 'Restaurant Admin' && (
+            <NavSection>
+              <NavTitle>Analytics</NavTitle>
               {isRouteAllowed(`/restaurant/${restaurantId}/reports`) && (
                 <NavItem to={`/restaurant/${restaurantId}/reports`} active={isActive(`/restaurant/${restaurantId}/reports`)} onClick={closeSidebar}>
                   <NavIcon>☰</NavIcon>
                   Reports
+                </NavItem>
+              )}
+              {isRouteAllowed(`/restaurant/${restaurantId}/history`) && (
+                <NavItem to={`/restaurant/${restaurantId}/history`} active={isActive(`/restaurant/${restaurantId}/history`)} onClick={closeSidebar}>
+                  <NavIcon>≡</NavIcon>
+                  Activity History⟤
+                </NavItem>
+              )}
+            </NavSection>
+          )}
+
+          {/* Restaurant Admin - Billing & Support */}
+          {user?.role === 'Restaurant Admin' && (
+            <NavSection>
+              <NavTitle>Billing & Support</NavTitle>
+              {isRouteAllowed(`/restaurant/${restaurantId}/invoices`) && (
+                <NavItem to={`/restaurant/${restaurantId}/invoices`} active={isActive(`/restaurant/${restaurantId}/invoices`)} onClick={closeSidebar}>
+                  <NavIcon>$</NavIcon>
+                  Invoices⟤
                 </NavItem>
               )}
               {isRouteAllowed(`/restaurant/${restaurantId}/support`) && (
@@ -1298,18 +1359,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <NavItem to={`/restaurant/${restaurantId}/operation-inquiry`} active={isActive(`/restaurant/${restaurantId}/operation-inquiry`)} onClick={closeSidebar}>
                   <NavIcon>▲</NavIcon>
                   Operation Inquiry⟤
-                </NavItem>
-              )}
-              {isRouteAllowed(`/restaurant/${restaurantId}/invoices`) && (
-                <NavItem to={`/restaurant/${restaurantId}/invoices`} active={isActive(`/restaurant/${restaurantId}/invoices`)} onClick={closeSidebar}>
-                  <NavIcon>$</NavIcon>
-                  Invoices⟤
-                </NavItem>
-              )}
-              {isRouteAllowed(`/restaurant/${restaurantId}/history`) && (
-                <NavItem to={`/restaurant/${restaurantId}/history`} active={isActive(`/restaurant/${restaurantId}/history`)} onClick={closeSidebar}>
-                  <NavIcon>≡</NavIcon>
-                  Activity History⟤
                 </NavItem>
               )}
             </NavSection>
