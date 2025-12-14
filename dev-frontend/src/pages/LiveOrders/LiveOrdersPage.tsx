@@ -2748,7 +2748,7 @@ const LiveOrdersPage: React.FC = () => {
                         {(selectedOrder as any).delivery_fee > 0 && (
                           <DetailRow>
                             <DetailLabel>Delivery Fee:</DetailLabel>
-                            <DetailValue>{formatCurrency(parseFloat((selectedOrder as any).delivery_fee || '0'), currency)}</DetailValue>
+                            <DetailValue>{formatCurrency(parseFloat((selectedOrder as any).delivery_fee || '0'), operationSettings.currency)}</DetailValue>
                           </DetailRow>
                         )}
                       </OrderDetailSection>
