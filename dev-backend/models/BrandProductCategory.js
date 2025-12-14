@@ -7,14 +7,6 @@ const BrandProductCategory = sequelize.define('BrandProductCategory', {
     primaryKey: true,
     autoIncrement: true
   },
-  brand_id: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    references: {
-      model: 'brands',
-      key: 'id'
-    }
-  },
   name: {
     type: DataTypes.STRING(100),
     allowNull: false

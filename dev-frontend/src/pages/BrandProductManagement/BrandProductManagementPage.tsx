@@ -6,6 +6,7 @@ import { Container, Header, Title, Content, TabContainer, Tab } from '../../comp
 import { useAuth } from '../../contexts/AuthContext';
 import BrandProductsTab from './BrandProductsTab';
 import BrandProductCategoriesTab from './BrandProductCategoriesTab';
+import BrandProductOptionsTab from './BrandProductOptionsTab';
 
 const TabBadge = styled.span`
   display: inline-flex;
@@ -22,32 +23,6 @@ const TabBadge = styled.span`
   font-weight: 600;
 `;
 
-const HeaderActions = styled.div`
-  display: flex;
-  gap: 12px;
-  align-items: center;
-`;
-
-const BrandSelect = styled.select`
-  padding: 10px 16px;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  font-size: 14px;
-  color: #0A2540;
-  background: white;
-  cursor: pointer;
-  min-width: 200px;
-
-  &:hover {
-    border-color: #CBD5E1;
-  }
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-  }
-`;
-
 interface Brand {
   id: number;
   name: string;
@@ -55,17 +30,18 @@ interface Brand {
   logo_url?: string;
 }
 
-type TabType = 'products' | 'categories';
+type TabType = 'products' | 'categories' | 'options';
 
 const BrandProductManagementPage: React.FC = () => {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [productsCount, setProductsCount] = useState(0);
   const [categoriesCount, setCategoriesCount] = useState(0);
+  const [optionsCount, setOptionsCount] = useState(0);
   const [brands, setBrands] = useState<Brand[]>([]);
-  const [selectedBrand, setSelectedBrand] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [categoryRefreshKey, setCategoryRefreshKey] = useState(0);
+  const [optionRefreshKey, setOptionRefreshKey] = useState(0);
 
   const activeTab = (searchParams.get('tab') as TabType) || 'products';
 
@@ -89,9 +65,6 @@ const BrandProductManagementPage: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setBrands(data);
-        if (data.length > 0) {
-          setSelectedBrand(data[0].id);
-        }
       }
     } catch (error) {
       console.error('Error fetching brands:', error);
@@ -121,42 +94,11 @@ const BrandProductManagementPage: React.FC = () => {
     );
   }
 
-  if ((user?.role === 'Brand General' || user?.role === 'Brand Manager') && brands.length === 0) {
-    return (
-      <MainLayout>
-        <Container>
-          <Header>
-            <Title>Product Management</Title>
-          </Header>
-          <Content>
-            <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
-              No brands found. Please create a brand first.
-            </div>
-          </Content>
-        </Container>
-      </MainLayout>
-    );
-  }
-
   return (
     <MainLayout>
       <Container>
         <Header>
           <Title>Product Management</Title>
-          {(user?.role === 'Brand General' || user?.role === 'Brand Manager') && brands.length > 0 && (
-            <HeaderActions>
-              <BrandSelect
-                value={selectedBrand || ''}
-                onChange={(e) => setSelectedBrand(Number(e.target.value))}
-              >
-                {brands.map(brand => (
-                  <option key={brand.id} value={brand.id}>
-                    {brand.name}
-                  </option>
-                ))}
-              </BrandSelect>
-            </HeaderActions>
-          )}
         </Header>
 
         <Content>
@@ -169,26 +111,31 @@ const BrandProductManagementPage: React.FC = () => {
               Categories
               <TabBadge>{categoriesCount}</TabBadge>
             </Tab>
+            <Tab active={activeTab === 'options'} onClick={() => handleTabChange('options')}>
+              Options
+              <TabBadge>{optionsCount}</TabBadge>
+            </Tab>
           </TabContainer>
 
-          {selectedBrand && (
-            <>
-              <div style={{ display: activeTab === 'products' ? 'block' : 'none' }}>
-                <BrandProductsTab
-                  brandId={selectedBrand}
-                  onCountChange={setProductsCount}
-                  categoryRefreshKey={categoryRefreshKey}
-                />
-              </div>
-              <div style={{ display: activeTab === 'categories' ? 'block' : 'none' }}>
-                <BrandProductCategoriesTab
-                  brandId={selectedBrand}
-                  onCountChange={setCategoriesCount}
-                  onCategoryChange={() => setCategoryRefreshKey(k => k + 1)}
-                />
-              </div>
-            </>
-          )}
+          <div style={{ display: activeTab === 'products' ? 'block' : 'none' }}>
+            <BrandProductsTab
+              brands={brands}
+              onCountChange={setProductsCount}
+              categoryRefreshKey={categoryRefreshKey}
+              optionRefreshKey={optionRefreshKey}
+            />
+          </div>
+          <div style={{ display: activeTab === 'categories' ? 'block' : 'none' }}>
+            <BrandProductCategoriesTab
+              onCountChange={setCategoriesCount}
+              onCategoryChange={() => setCategoryRefreshKey(k => k + 1)}
+            />
+          </div>
+          <div style={{ display: activeTab === 'options' ? 'block' : 'none' }}>
+            <BrandProductOptionsTab
+              onCountChange={setOptionsCount}
+            />
+          </div>
         </Content>
       </Container>
     </MainLayout>

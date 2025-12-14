@@ -29,6 +29,8 @@ const BrandProduct = require('./BrandProduct');
 const BrandProductCategory = require('./BrandProductCategory');
 const BrandProductOptionGroup = require('./BrandProductOptionGroup');
 const BrandProductOption = require('./BrandProductOption');
+const BrandProductBrand = require('./BrandProductBrand');
+const BrandProductOptionGroupProduct = require('./BrandProductOptionGroupProduct');
 
 // Define associations
 // Brand - Restaurant associations
@@ -174,20 +176,45 @@ Restaurant.hasMany(IngredientCategory, { foreignKey: 'restaurant_id', as: 'ingre
 Ingredient.belongsTo(IngredientCategory, { foreignKey: 'ingredient_category_id', as: 'ingredientCategory' });
 IngredientCategory.hasMany(Ingredient, { foreignKey: 'ingredient_category_id', as: 'ingredients' });
 
-// BrandProduct associations
-BrandProduct.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
-Brand.hasMany(BrandProduct, { foreignKey: 'brand_id', as: 'brandProducts' });
-
+// BrandProduct - Category associations
 BrandProduct.belongsTo(BrandProductCategory, { foreignKey: 'category_id', as: 'category' });
 BrandProductCategory.hasMany(BrandProduct, { foreignKey: 'category_id', as: 'products' });
 
-// BrandProductCategory associations
-BrandProductCategory.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
-Brand.hasMany(BrandProductCategory, { foreignKey: 'brand_id', as: 'brandProductCategories' });
+// BrandProduct - Brand (N:M through BrandProductBrand)
+BrandProduct.belongsToMany(Brand, {
+  through: BrandProductBrand,
+  foreignKey: 'product_id',
+  otherKey: 'brand_id',
+  as: 'brands'
+});
+Brand.belongsToMany(BrandProduct, {
+  through: BrandProductBrand,
+  foreignKey: 'brand_id',
+  otherKey: 'product_id',
+  as: 'brandProducts'
+});
 
-// BrandProductOptionGroup associations
-BrandProductOptionGroup.belongsTo(BrandProduct, { foreignKey: 'product_id', as: 'product' });
-BrandProduct.hasMany(BrandProductOptionGroup, { foreignKey: 'product_id', as: 'optionGroups' });
+// BrandProductBrand associations for direct access
+BrandProductBrand.belongsTo(BrandProduct, { foreignKey: 'product_id', as: 'product' });
+BrandProductBrand.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
+
+// BrandProduct - OptionGroup (N:M through BrandProductOptionGroupProduct)
+BrandProduct.belongsToMany(BrandProductOptionGroup, {
+  through: BrandProductOptionGroupProduct,
+  foreignKey: 'product_id',
+  otherKey: 'option_group_id',
+  as: 'optionGroups'
+});
+BrandProductOptionGroup.belongsToMany(BrandProduct, {
+  through: BrandProductOptionGroupProduct,
+  foreignKey: 'option_group_id',
+  otherKey: 'product_id',
+  as: 'products'
+});
+
+// BrandProductOptionGroupProduct associations for direct access
+BrandProductOptionGroupProduct.belongsTo(BrandProduct, { foreignKey: 'product_id', as: 'product' });
+BrandProductOptionGroupProduct.belongsTo(BrandProductOptionGroup, { foreignKey: 'option_group_id', as: 'optionGroup' });
 
 // BrandProductOption associations
 BrandProductOption.belongsTo(BrandProductOptionGroup, { foreignKey: 'option_group_id', as: 'optionGroup' });
@@ -224,5 +251,7 @@ module.exports = {
   BrandProduct,
   BrandProductCategory,
   BrandProductOptionGroup,
-  BrandProductOption
+  BrandProductOption,
+  BrandProductBrand,
+  BrandProductOptionGroupProduct
 };

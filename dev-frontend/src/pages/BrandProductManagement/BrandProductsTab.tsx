@@ -785,67 +785,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
               </CheckboxLabel>
             </UIFormGroup>
 
-            {/* Option Groups */}
-            <div style={{ marginTop: '24px', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <FormLabel style={{ margin: 0 }}>Option Groups</FormLabel>
-                <AddButton type="button" onClick={handleAddOptionGroup}>
-                  + Add Option Group
-                </AddButton>
-              </div>
-
-              {formData.optionGroups.map((group, groupIndex) => (
-                <OptionGroupContainer key={groupIndex}>
-                  <OptionGroupHeader>
-                    <SmallInput
-                      type="text"
-                      placeholder="Group name (e.g., Size, Grade)"
-                      value={group.name}
-                      onChange={(e) => handleOptionGroupChange(groupIndex, 'name', e.target.value)}
-                      style={{ flex: 1, marginRight: '12px' }}
-                    />
-                    <CheckboxLabel style={{ marginRight: '12px' }}>
-                      <input
-                        type="checkbox"
-                        checked={group.is_required}
-                        onChange={(e) => handleOptionGroupChange(groupIndex, 'is_required', e.target.checked)}
-                      />
-                      Required
-                    </CheckboxLabel>
-                    <RemoveButton type="button" onClick={() => handleRemoveOptionGroup(groupIndex)}>
-                      Remove
-                    </RemoveButton>
-                  </OptionGroupHeader>
-
-                  {group.options.map((option, optionIndex) => (
-                    <OptionRow key={optionIndex}>
-                      <SmallInput
-                        type="text"
-                        placeholder="Option name"
-                        value={option.name}
-                        onChange={(e) => handleOptionChange(groupIndex, optionIndex, 'name', e.target.value)}
-                        style={{ flex: 1 }}
-                      />
-                      <SmallInput
-                        type="number"
-                        step="0.01"
-                        placeholder="+ Price"
-                        value={option.price_adjustment}
-                        onChange={(e) => handleOptionChange(groupIndex, optionIndex, 'price_adjustment', parseFloat(e.target.value) || 0)}
-                        style={{ width: '100px' }}
-                      />
-                      <RemoveButton type="button" onClick={() => handleRemoveOption(groupIndex, optionIndex)}>
-                        ×
-                      </RemoveButton>
-                    </OptionRow>
-                  ))}
-
-                  <AddButton type="button" onClick={() => handleAddOption(groupIndex)}>
-                    + Add Option
-                  </AddButton>
-                </OptionGroupContainer>
-              ))}
-            </div>
+111            </div>
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
               <ModalButton type="button" onClick={handleCloseModal}>

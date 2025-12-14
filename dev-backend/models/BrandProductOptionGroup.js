@@ -7,14 +7,6 @@ const BrandProductOptionGroup = sequelize.define('BrandProductOptionGroup', {
     primaryKey: true,
     autoIncrement: true
   },
-  product_id: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    references: {
-      model: 'brand_products',
-      key: 'id'
-    }
-  },
   name: {
     type: DataTypes.STRING(100),
     allowNull: false,
