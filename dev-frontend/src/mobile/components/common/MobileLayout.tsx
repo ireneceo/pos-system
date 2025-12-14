@@ -5,6 +5,7 @@ import { useMobileOrder } from '../../contexts/MobileOrderContext';
 
 const LayoutContainer = styled.div`
   min-height: 100vh;
+  min-height: 100dvh; /* Dynamic viewport height for mobile */
   background: #F9FAFB;
   display: flex;
   flex-direction: column;
@@ -18,6 +19,7 @@ const LayoutContainer = styled.div`
   bottom: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: none; /* Prevent horizontal overscroll bounce */
 
   /* PWA safe area handling */
   padding-top: env(safe-area-inset-top);
@@ -100,6 +102,8 @@ const Content = styled.main`
   width: 100%;
   margin: 0 auto;
   box-sizing: border-box;
+  overflow-x: hidden; /* Prevent horizontal scroll in content */
+  word-wrap: break-word; /* Prevent long words from causing overflow */
 
   /* Tablet support */
   @media (min-width: 768px) {

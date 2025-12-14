@@ -2332,10 +2332,10 @@ const LiveOrdersPage: React.FC = () => {
                           <OrderTypeBadge>TAKEAWAY</OrderTypeBadge>
                         )}
                         {order.order_type === 'pickup' && (
-                          <OrderTypeBadge style={{ background: '#8B5CF6' }}>PICKUP</OrderTypeBadge>
+                          <OrderTypeBadge style={{ background: '#EDE9FE', color: '#7C3AED' }}>PICKUP</OrderTypeBadge>
                         )}
                         {order.order_type === 'delivery' && (
-                          <OrderTypeBadge style={{ background: '#059669' }}>DELIVERY</OrderTypeBadge>
+                          <OrderTypeBadge style={{ background: '#D1FAE5', color: '#059669' }}>DELIVERY</OrderTypeBadge>
                         )}
                       </OrderNumber>
                       <CustomerInfo>
@@ -2656,7 +2656,9 @@ const LiveOrdersPage: React.FC = () => {
                           total: parseFloat((selectedOrder as any).final_price || selectedOrder.total_amount || '0'),
                           paymentMethod: selectedOrder.payment_method || 'cash',
                           amountReceived: parseFloat((selectedOrder as any).amount_received || '0'),
-                          change: parseFloat((selectedOrder as any).change || '0')
+                          change: parseFloat((selectedOrder as any).change || '0'),
+                          deliveryInfo: (selectedOrder as any).delivery_info || null,
+                          deliveryFee: parseFloat((selectedOrder as any).delivery_fee || '0')
                         };
 
                         // Generate bill content and remove ESC/POS control characters for display

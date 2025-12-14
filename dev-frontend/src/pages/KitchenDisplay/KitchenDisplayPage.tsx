@@ -1013,10 +1013,10 @@ const KitchenDisplayPage: React.FC = () => {
                         <OrderTypeBadge>TAKEAWAY</OrderTypeBadge>
                       )}
                       {order.orderType === 'pickup' && (
-                        <OrderTypeBadge style={{ background: '#8B5CF6', color: 'white' }}>PICKUP {order.scheduledPickupTime ? formatPickupTimeRange(order.scheduledPickupTime) : 'ASAP'}</OrderTypeBadge>
+                        <OrderTypeBadge style={{ background: '#EDE9FE', color: '#7C3AED' }}>PICKUP {order.scheduledPickupTime ? formatPickupTimeRange(order.scheduledPickupTime) : 'ASAP'}</OrderTypeBadge>
                       )}
                       {order.orderType === 'delivery' && (
-                        <OrderTypeBadge style={{ background: '#10B981', color: 'white' }}>DELIVERY</OrderTypeBadge>
+                        <OrderTypeBadge style={{ background: '#D1FAE5', color: '#059669' }}>DELIVERY</OrderTypeBadge>
                       )}
                     </OrderNumber>
                     <OrderTime>
@@ -1131,10 +1131,10 @@ const KitchenDisplayPage: React.FC = () => {
                         <OrderTypeBadge>TAKEAWAY</OrderTypeBadge>
                       )}
                       {order.orderType === 'pickup' && (
-                        <OrderTypeBadge style={{ background: '#8B5CF6', color: 'white' }}>PICKUP {order.scheduledPickupTime ? formatPickupTimeRange(order.scheduledPickupTime) : 'ASAP'}</OrderTypeBadge>
+                        <OrderTypeBadge style={{ background: '#EDE9FE', color: '#7C3AED' }}>PICKUP {order.scheduledPickupTime ? formatPickupTimeRange(order.scheduledPickupTime) : 'ASAP'}</OrderTypeBadge>
                       )}
                       {order.orderType === 'delivery' && (
-                        <OrderTypeBadge style={{ background: '#10B981', color: 'white' }}>DELIVERY</OrderTypeBadge>
+                        <OrderTypeBadge style={{ background: '#D1FAE5', color: '#059669' }}>DELIVERY</OrderTypeBadge>
                       )}
                     </OrderNumber>
                     <OrderTime>
@@ -1301,10 +1301,10 @@ const KitchenDisplayPage: React.FC = () => {
                         <OrderTypeBadge>TAKEAWAY</OrderTypeBadge>
                       )}
                       {order.orderType === 'pickup' && (
-                        <OrderTypeBadge style={{ background: '#8B5CF6', color: 'white' }}>PICKUP {order.scheduledPickupTime ? formatPickupTimeRange(order.scheduledPickupTime) : 'ASAP'}</OrderTypeBadge>
+                        <OrderTypeBadge style={{ background: '#EDE9FE', color: '#7C3AED' }}>PICKUP {order.scheduledPickupTime ? formatPickupTimeRange(order.scheduledPickupTime) : 'ASAP'}</OrderTypeBadge>
                       )}
                       {order.orderType === 'delivery' && (
-                        <OrderTypeBadge style={{ background: '#10B981', color: 'white' }}>DELIVERY</OrderTypeBadge>
+                        <OrderTypeBadge style={{ background: '#D1FAE5', color: '#059669' }}>DELIVERY</OrderTypeBadge>
                       )}
                     </OrderNumber>
                     <OrderTime>

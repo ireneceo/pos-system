@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { API_BASE_URL } from '../../config/api';
+import MobileAlertModal from '../components/common/MobileAlertModal';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -124,9 +125,13 @@ const OrderTypePage: React.FC = () => {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
-  const { setCurrentStore, setIsLoading, clearCart, orderType: currentOrderType, setOrderType } = useMobileOrder();
+  const { setCurrentStore, setIsLoading, clearCart, orderType: currentOrderType, setOrderType, cartItems } = useMobileOrder();
   const [tableFromQR, setTableFromQR] = useState<string | null>(null);
   const [storeData, setStoreData] = useState<StoreData | null>(null);
+
+  // Modal state for cart reset warning
+  const [showCartResetModal, setShowCartResetModal] = useState(false);
+  const [pendingOrderType, setPendingOrderType] = useState<'dine-in' | 'takeaway' | 'pickup' | 'delivery' | null>(null);
 
   // Load store data on mount
   useEffect(() => {
@@ -167,9 +172,35 @@ const OrderTypePage: React.FC = () => {
     loadStoreData();
   }, [slug]);
 
+  // Helper function to get display name for order type
+  const getOrderTypeDisplayName = (type: string): string => {
+    const displayNames: Record<string, string> = {
+      'dine-in': 'Dine In',
+      'takeaway': 'Takeaway',
+      'pickup': 'Pre-order Pickup',
+      'delivery': 'Delivery'
+    };
+    return displayNames[type] || type;
+  };
+
   const handleOrderTypeSelection = async (newOrderType: 'dine-in' | 'takeaway' | 'pickup' | 'delivery') => {
     console.log('Order type selected:', newOrderType);
     console.log('Previous order type:', currentOrderType);
+    console.log('Cart items count:', cartItems.length);
+
+    // Check if cart has items and order type is different
+    if (cartItems.length > 0 && currentOrderType && currentOrderType !== newOrderType) {
+      // Show warning modal
+      setPendingOrderType(newOrderType);
+      setShowCartResetModal(true);
+      return;
+    }
+
+    // Proceed with selection
+    await proceedWithOrderType(newOrderType);
+  };
+
+  const proceedWithOrderType = async (newOrderType: 'dine-in' | 'takeaway' | 'pickup' | 'delivery') => {
     setIsLoading(true);
 
     try {
@@ -213,6 +244,24 @@ const OrderTypePage: React.FC = () => {
       alert('Error initializing order. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleConfirmCartReset = async () => {
+    setShowCartResetModal(false);
+    if (pendingOrderType) {
+      await proceedWithOrderType(pendingOrderType);
+    }
+    setPendingOrderType(null);
+  };
+
+  const handleCancelCartReset = () => {
+    setShowCartResetModal(false);
+    setPendingOrderType(null);
+    // Navigate back to menu with current order type
+    if (currentOrderType) {
+      const restaurantSlug = slug || sessionStorage.getItem('restaurantSlug');
+      navigate(`/mobile/${restaurantSlug}/menu`);
     }
   };
 
@@ -293,6 +342,19 @@ const OrderTypePage: React.FC = () => {
       <Footer>
         Powered by Purple Here POS
       </Footer>
+
+      {/* Cart Reset Warning Modal */}
+      <MobileAlertModal
+        isOpen={showCartResetModal}
+        onClose={handleCancelCartReset}
+        type="warning"
+        title="Change Order Type?"
+        message={`You are currently ordering as ${getOrderTypeDisplayName(currentOrderType || '')}. Changing to ${getOrderTypeDisplayName(pendingOrderType || '')} will reset your cart.`}
+        confirmText="Continue"
+        cancelText="Back to Menu"
+        onConfirm={handleConfirmCartReset}
+        showCancel={true}
+      />
     </Container>
   );
 };
