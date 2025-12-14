@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2025-12-11
+> **최종 업데이트:** 2025-12-14
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -312,147 +312,373 @@ const dateKey = `${(orderDate.getMonth() + 1).toString().padStart(2, '0')}/${ord
 
 ---
 
-## 📅 예정된 작업
+## 📅 예정된 작업 (Supply Chain Management 로드맵)
 
-### Phase 3: 브랜드 통합 고객 포인트/등급 시스템 (예정 - 레시피 다음)
-
-**목적:** Brand General이 소속 레스토랑들의 고객 포인트/등급을 통합 또는 분리 관리할 수 있도록 지원
-
-#### 현재 구조
+### 전체 흐름도
 ```
-customers (고객 기본정보)
-    ↓
-restaurant_customers (레스토랑별 포인트/등급)
-└── 각 지점마다 별도 관리 (통합 불가)
-```
-
-#### 목표 구조
-```
-customers (고객 기본정보 - 전체 공유)
-    ↓
-├── brand_customers (브랜드 통합 포인트/등급) ← 새로 추가
-│   └── 브랜드 내 모든 지점 포인트 통합
-│
-└── restaurant_customers (레스토랑별 포인트/등급)
-    └── 기존 방식 유지 (지점별 분리)
-```
-
-#### 3.1 데이터베이스 설계
-```sql
--- brands 테이블 (새로 생성)
-CREATE TABLE brands (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(255) NOT NULL,
-  manager_id INT COMMENT 'Brand General user_id',
-  loyalty_mode ENUM('brand_unified', 'restaurant_separate') DEFAULT 'restaurant_separate',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
--- brand_customers 테이블 (새로 생성)
-CREATE TABLE brand_customers (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  brand_id INT NOT NULL,
-  customer_id INT NOT NULL,
-  points INT DEFAULT 0,
-  loyalty_tier ENUM('Bronze', 'Silver', 'Gold', 'VIP') DEFAULT 'Bronze',
-  total_orders INT DEFAULT 0,
-  total_spent DECIMAL(15, 2) DEFAULT 0,
-  first_order_at TIMESTAMP,
-  last_order_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY (brand_id, customer_id),
-  FOREIGN KEY (brand_id) REFERENCES brands(id),
-  FOREIGN KEY (customer_id) REFERENCES customers(id)
-);
-
--- restaurants 테이블에 brand_id 추가
-ALTER TABLE restaurants ADD COLUMN brand_id INT REFERENCES brands(id);
+[Brand General/Manager]
+        │
+        ▼
+ Brand Products 등록 (제품 관리)
+ ├── 제품 카테고리
+ └── 제품 옵션 (옵션 그룹 + 옵션)
+        │
+        ▼ (brand_id 연결된 레스토랑에 자동 노출)
+        │
+[Restaurant Admin]
+        │
+        ├─→ 레시피 생성 시 재료로 선택
+        │   ├── 브랜드 재료 (View & Select만)
+        │   └── 자체 재료 (CRUD 가능)
+        │
+        ├─→ 주문 발생 → 재고 차감
+        │
+        └─→ 발주 관리
+              ├── 브랜드로 발주 (Brand Products)
+              └── 외부 공급업체 발주 (자체 재료)
 ```
 
-#### 3.2 Backend 구현
-1. [ ] Brand 모델 생성 (`models/Brand.js`)
-2. [ ] BrandCustomer 모델 생성 (`models/BrandCustomer.js`)
-3. [ ] Restaurant 모델에 brand_id 관계 추가
-4. [ ] Brand CRUD API (`routes/brands.js`)
-5. [ ] 포인트 적립/사용 로직 분기 처리
-   - `loyalty_mode === 'brand_unified'` → `brand_customers` 테이블 사용
-   - `loyalty_mode === 'restaurant_separate'` → `restaurant_customers` 테이블 사용
-6. [ ] 고객 로그인 시 포인트 조회 로직 수정
-
-#### 3.3 Frontend 구현
-1. [ ] Brand General 설정 페이지에 "포인트 관리 방식" 옵션 추가
-   - ○ 브랜드 통합 (모든 지점 포인트 공유)
-   - ● 지점별 분리 (기본값)
-2. [ ] 모바일 오더 PaymentPage에서 포인트 표시 로직 분기
-3. [ ] POS Customer 조회 시 포인트 표시 로직 분기
-4. [ ] Brand General 대시보드에 통합 고객 현황 표시
-
-#### 3.4 마이그레이션
-- 기존 `restaurant_customers` 데이터 보존 (하위 호환성)
-- 브랜드 통합 모드 선택 시에만 `brand_customers` 사용
-- 모드 전환 시 포인트 마이그레이션 옵션 제공
-
-#### 사용 시나리오
-```
-Brand General 설정:
-┌─────────────────────────────────┐
-│ 고객 포인트 관리 방식           │
-│                                 │
-│ ○ 브랜드 통합 (모든 지점 공유)  │
-│ ● 지점별 분리 (기본값)          │
-└─────────────────────────────────┘
-
-- 프랜차이즈 브랜드: 통합 선택 → 어느 지점에서든 포인트 적립/사용
-- 독립 매장: 분리 (기본값) → 현재와 동일
-```
+### 핵심 개념
+- **Brand Product = Ingredient**: 브랜드 제품은 연결된 레스토랑에서 레시피 재료로 사용
+- **제품 수정은 제품에서만**: Brand General/Manager가 제품을 수정하면 재료 정보도 자동 반영
+- **이중 발주 경로**: 브랜드 제품 → 브랜드 발주 / 자체 재료 → 외부 공급업체 발주
 
 ---
 
-### Phase 4: General 사용자 페이지 구현 (예정)
+### Phase 3: 브랜드 제품 관리 시스템 (다음 개발)
 
-#### 4.1 General 대시보드
-- Foodcourt/Brand General 로그인 시 전용 대시보드
-- 자신의 Manager 목록 표시
-- 구독 정보 표시 (General의 구독 공유)
+**목적:** Brand General/Manager가 레스토랑에 판매할 제품(원재료)을 등록/관리
 
-#### 4.2 General의 Manager 관리 페이지
-- Manager 추가/수정/삭제 기능
-- **구독 설정 없음** (General의 구독 범위 내에서 사용)
-- Manager Role: Foodcourt Manager 또는 Brand Manager만 선택 가능
+#### 3.1 데이터베이스 설계
+```sql
+-- 브랜드 제품 카테고리
+CREATE TABLE brand_product_categories (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  brand_id INT NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  description TEXT,
+  sort_order INT DEFAULT 0,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (brand_id) REFERENCES brands(id)
+);
 
-#### 4.3 권한 관리 시스템
-- General: 자신의 Manager들 관리, 구독 범위 내 기능 사용
-- Manager: 실무 작업만, 자신의 레스토랑/매장만 관리
+-- 브랜드 제품
+CREATE TABLE brand_products (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  brand_id INT NOT NULL,
+  category_id INT,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  sku VARCHAR(100),                    -- 제품 코드
+  unit VARCHAR(50),                    -- 기본 단위 (kg, L, 개 등)
+  unit_price DECIMAL(10, 2) NOT NULL,  -- 단가
+  min_order_quantity INT DEFAULT 1,    -- 최소 주문 수량
+  image_url VARCHAR(500),
+  is_active BOOLEAN DEFAULT TRUE,
+  sort_order INT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (brand_id) REFERENCES brands(id),
+  FOREIGN KEY (category_id) REFERENCES brand_product_categories(id)
+);
 
-### Phase 5: 구독 관리 시스템 (예정)
+-- 브랜드 제품 옵션 그룹 (포장 단위, 등급 등)
+CREATE TABLE brand_product_option_groups (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  product_id INT NOT NULL,
+  name VARCHAR(100) NOT NULL,          -- "포장 단위", "등급"
+  is_required BOOLEAN DEFAULT FALSE,
+  min_selections INT DEFAULT 0,
+  max_selections INT DEFAULT 1,
+  sort_order INT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (product_id) REFERENCES brand_products(id) ON DELETE CASCADE
+);
 
-#### 5.1 구독 활성화/비활성화
-- 구독 상태에 따른 기능 제어
-- 모듈별 접근 권한 체크
+-- 브랜드 제품 옵션
+CREATE TABLE brand_product_options (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  option_group_id INT NOT NULL,
+  name VARCHAR(100) NOT NULL,          -- "1kg", "5kg", "프리미엄"
+  price_adjustment DECIMAL(10, 2) DEFAULT 0,  -- 추가 금액
+  sort_order INT DEFAULT 0,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (option_group_id) REFERENCES brand_product_option_groups(id) ON DELETE CASCADE
+);
+```
 
-#### 5.2 UI Routes 제어
-- `useAllowedRoutes` Hook 활용
-- 플랜의 `ui_routes` 기반 라우팅 제어
-- 접근 불가 페이지 리다이렉트
+#### 3.2 Backend 구현
+1. [ ] Models: BrandProduct, BrandProductCategory, BrandProductOptionGroup, BrandProductOption
+2. [ ] Routes: `/api/brands/:brandId/products` (CRUD)
+3. [ ] Routes: `/api/brands/:brandId/product-categories` (CRUD)
+4. [ ] Routes: `/api/brands/:brandId/products/:productId/option-groups` (CRUD)
+5. [ ] 권한 체크: Brand General/Manager만 수정 가능
 
-#### 5.3 결제 연동
-- 구독 결제 시스템 구현
-- 자동 갱신 처리
-- 결제 실패 시 처리
+#### 3.3 Frontend 구현
+1. [ ] Brand General 메뉴에 "제품 관리" 추가
+2. [ ] BrandProductsPage - 제품 목록/CRUD
+3. [ ] BrandProductCategoriesPage - 카테고리 관리
+4. [ ] 제품 상세 모달 - 옵션 그룹/옵션 관리
 
-### Phase 6: 리포트 및 분석 (예정)
+**산출물:**
+- Brand General/Manager가 제품 등록/수정/삭제
+- 제품 카테고리로 분류
+- 제품별 옵션(포장 단위, 등급 등) 설정
 
-#### 6.1 구독 통계
-- 플랜별 구독자 수
-- 월별 매출 리포트
-- 구독 전환율 분석
+---
 
-#### 6.2 모듈 사용 분석
-- 모듈별 활성화율
-- 인기 모듈 분석
-- 업셀 기회 식별
+### Phase 4: 제품-재료 연동 시스템
+
+**목적:** 브랜드 제품이 연결된 레스토랑의 레시피 재료로 자동 노출
+
+#### 4.1 연동 로직
+```
+Brand Product (브랜드 제품)
+       │
+       ▼ brand_id로 연결된 레스토랑에서
+       │
+Ingredient로 자동 표시 (owner_type = 'brand')
+       │
+       └── Restaurant Admin: View & Select만 가능
+```
+
+#### 4.2 Backend 구현
+1. [ ] 기존 ingredients 테이블에 `brand_product_id` FK 추가
+2. [ ] Brand Product 생성 시 자동으로 Ingredient 레코드 생성 (트리거 또는 서비스 로직)
+3. [ ] Brand Product 수정 시 연결된 Ingredient 자동 업데이트
+4. [ ] Restaurant의 재료 조회 API에서 브랜드 제품 포함
+
+#### 4.3 Frontend 구현
+1. [ ] RecipesPage 재료 선택에서 브랜드 재료 구분 표시
+2. [ ] 브랜드 재료는 View만 가능 (수정 버튼 숨김)
+3. [ ] 재료 출처 표시 (브랜드명 또는 "자체 재료")
+
+**산출물:**
+- 브랜드 제품 → 재료 자동 연동
+- Restaurant Admin이 레시피에서 브랜드 재료 선택 가능
+- 제품 정보 변경 시 재료 정보 자동 반영
+
+---
+
+### Phase 5: 재고 관리 시스템
+
+**목적:** 실시간 재고 추적 및 자동 차감
+
+#### 5.1 데이터베이스 설계
+```sql
+-- 레스토랑별 재고
+CREATE TABLE inventory (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  restaurant_id INT NOT NULL,
+  ingredient_id INT NOT NULL,
+  current_quantity DECIMAL(10, 2) DEFAULT 0,
+  unit VARCHAR(50),
+  min_quantity DECIMAL(10, 2) DEFAULT 0,  -- 최소 재고량 (알림 기준)
+  max_quantity DECIMAL(10, 2),             -- 최대 재고량
+  last_stock_take_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY (restaurant_id, ingredient_id),
+  FOREIGN KEY (restaurant_id) REFERENCES restaurants(id),
+  FOREIGN KEY (ingredient_id) REFERENCES ingredients(id)
+);
+
+-- 재고 거래 내역
+CREATE TABLE inventory_transactions (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  inventory_id INT NOT NULL,
+  transaction_type ENUM('in', 'out', 'adjustment', 'stock_take') NOT NULL,
+  quantity DECIMAL(10, 2) NOT NULL,
+  reference_type VARCHAR(50),    -- 'order', 'purchase_order', 'manual'
+  reference_id INT,              -- order_id, purchase_order_id 등
+  notes TEXT,
+  created_by INT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (inventory_id) REFERENCES inventory(id)
+);
+
+-- 재고 알림
+CREATE TABLE stock_alerts (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  restaurant_id INT NOT NULL,
+  ingredient_id INT NOT NULL,
+  alert_type ENUM('low_stock', 'out_of_stock', 'expiring') NOT NULL,
+  message TEXT,
+  is_read BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (restaurant_id) REFERENCES restaurants(id),
+  FOREIGN KEY (ingredient_id) REFERENCES ingredients(id)
+);
+```
+
+#### 5.2 Backend 구현
+1. [ ] Models: Inventory, InventoryTransaction, StockAlert
+2. [ ] APIs: 재고 조회, 조정, 재고 실사
+3. [ ] 주문 완료 시 Recipe → Ingredient → Inventory 자동 차감
+4. [ ] 최소 재고 도달 시 알림 생성
+
+#### 5.3 Frontend 구현
+1. [ ] `/pos/inventory` - 재고 현황 페이지
+2. [ ] `/pos/inventory/transactions` - 거래 내역
+3. [ ] `/pos/inventory/stock-take` - 재고 실사
+4. [ ] `/pos/inventory/alerts` - 재고 알림
+
+**산출물:**
+- 실시간 재고 추적
+- 주문 시 자동 재고 차감
+- 재고 부족 알림
+
+---
+
+### Phase 6: 발주 관리 시스템
+
+**목적:** 브랜드 제품 및 외부 공급업체 발주 관리
+
+#### 6.1 데이터베이스 설계
+```sql
+-- 공급업체 (브랜드 + 외부)
+CREATE TABLE suppliers (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  restaurant_id INT NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  supplier_type ENUM('brand', 'external') NOT NULL,
+  brand_id INT,                  -- supplier_type = 'brand'인 경우
+  contact_name VARCHAR(100),
+  contact_phone VARCHAR(50),
+  contact_email VARCHAR(100),
+  address TEXT,
+  notes TEXT,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (restaurant_id) REFERENCES restaurants(id),
+  FOREIGN KEY (brand_id) REFERENCES brands(id)
+);
+
+-- 공급업체-재료 매핑
+CREATE TABLE supplier_ingredients (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  supplier_id INT NOT NULL,
+  ingredient_id INT NOT NULL,
+  unit_price DECIMAL(10, 2),
+  min_order_quantity INT DEFAULT 1,
+  lead_days INT DEFAULT 1,       -- 배송 소요일
+  is_preferred BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY (supplier_id, ingredient_id),
+  FOREIGN KEY (supplier_id) REFERENCES suppliers(id),
+  FOREIGN KEY (ingredient_id) REFERENCES ingredients(id)
+);
+
+-- 발주서
+CREATE TABLE purchase_orders (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  restaurant_id INT NOT NULL,
+  supplier_id INT NOT NULL,
+  order_number VARCHAR(50) UNIQUE,
+  status ENUM('draft', 'pending', 'approved', 'ordered', 'partial_received', 'received', 'cancelled') DEFAULT 'draft',
+  order_date DATE,
+  expected_date DATE,
+  received_date DATE,
+  total_amount DECIMAL(15, 2) DEFAULT 0,
+  notes TEXT,
+  created_by INT,
+  approved_by INT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (restaurant_id) REFERENCES restaurants(id),
+  FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+);
+
+-- 발주 상세
+CREATE TABLE purchase_order_items (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  purchase_order_id INT NOT NULL,
+  ingredient_id INT NOT NULL,
+  brand_product_id INT,          -- 브랜드 제품인 경우
+  quantity DECIMAL(10, 2) NOT NULL,
+  unit VARCHAR(50),
+  unit_price DECIMAL(10, 2) NOT NULL,
+  total_price DECIMAL(15, 2) NOT NULL,
+  received_quantity DECIMAL(10, 2) DEFAULT 0,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id) ON DELETE CASCADE,
+  FOREIGN KEY (ingredient_id) REFERENCES ingredients(id),
+  FOREIGN KEY (brand_product_id) REFERENCES brand_products(id)
+);
+```
+
+#### 6.2 Backend 구현
+1. [ ] Models: Supplier, SupplierIngredient, PurchaseOrder, PurchaseOrderItem
+2. [ ] APIs: 공급업체 CRUD, 발주서 CRUD, 입고 처리
+3. [ ] 브랜드 연결 시 자동 공급업체 생성
+4. [ ] 입고 처리 → 재고 증가 연동
+
+#### 6.3 Frontend 구현
+1. [ ] `/pos/suppliers` - 공급업체 관리
+2. [ ] `/pos/purchase-orders` - 발주서 목록
+3. [ ] `/pos/purchase-orders/create` - 발주서 생성
+4. [ ] `/pos/purchase-orders/:id` - 발주 상세/입고 처리
+
+**산출물:**
+- 공급업체 관리 (브랜드 자동 + 외부 수동)
+- 발주서 생성/승인/입고 프로세스
+- 입고 시 재고 자동 증가
+
+---
+
+### Phase 7: AI 재고 예측 (향후)
+
+**목적:** 주문 통계 기반 재고 예측 및 자동 발주 제안
+
+#### 구현 예정
+- 과거 주문 데이터 분석
+- 요일/시간/계절별 패턴 분석
+- 재고 예측 알고리즘
+- 자동 발주량 계산
+- 낭비 분석
+
+---
+
+### 개발 우선순위 요약
+
+| 순서 | Phase | 내용 | 의존성 |
+|------|-------|------|--------|
+| 1 | Phase 3 | 브랜드 제품 관리 | - |
+| 2 | Phase 4 | 제품-재료 연동 | Phase 3 |
+| 3 | Phase 5 | 재고 관리 | Phase 4 |
+| 4 | Phase 6 | 발주 관리 | Phase 5 |
+| 5 | Phase 7 | AI 재고 예측 | Phase 6 |
+
+---
+
+## 📅 기타 예정된 작업
+
+### 브랜드 통합 고객 포인트/등급 시스템 (보류)
+
+**목적:** Brand General이 소속 레스토랑들의 고객 포인트/등급을 통합 또는 분리 관리
+
+*(상세 내용은 별도 문서로 분리 예정)*
+
+### General 사용자 페이지 구현 (보류)
+
+- Foodcourt/Brand General 전용 대시보드
+- Manager 관리 페이지
+- 권한 관리 시스템
+
+### 구독 관리 시스템 (보류)
+
+- 구독 활성화/비활성화
+- UI Routes 제어
+- 결제 연동
 
 ---
 
@@ -668,4 +894,4 @@ const token = localStorage.getItem('auth_token'); // ✅ 정상 작동
 **프로젝트:** Purple POS System
 **개발 환경:** Development Server
 **데이터베이스:** purple_dev_db (MySQL)
-**마지막 업데이트:** 2025-11-20
+**마지막 업데이트:** 2025-12-14

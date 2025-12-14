@@ -25,6 +25,10 @@ const SystemSettings = require('./SystemSettings');
 const PlanPrice = require('./PlanPrice');
 const IngredientCost = require('./IngredientCost');
 const RecipeCost = require('./RecipeCost');
+const BrandProduct = require('./BrandProduct');
+const BrandProductCategory = require('./BrandProductCategory');
+const BrandProductOptionGroup = require('./BrandProductOptionGroup');
+const BrandProductOption = require('./BrandProductOption');
 
 // Define associations
 // Brand - Restaurant associations
@@ -170,6 +174,25 @@ Restaurant.hasMany(IngredientCategory, { foreignKey: 'restaurant_id', as: 'ingre
 Ingredient.belongsTo(IngredientCategory, { foreignKey: 'ingredient_category_id', as: 'ingredientCategory' });
 IngredientCategory.hasMany(Ingredient, { foreignKey: 'ingredient_category_id', as: 'ingredients' });
 
+// BrandProduct associations
+BrandProduct.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
+Brand.hasMany(BrandProduct, { foreignKey: 'brand_id', as: 'brandProducts' });
+
+BrandProduct.belongsTo(BrandProductCategory, { foreignKey: 'category_id', as: 'category' });
+BrandProductCategory.hasMany(BrandProduct, { foreignKey: 'category_id', as: 'products' });
+
+// BrandProductCategory associations
+BrandProductCategory.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
+Brand.hasMany(BrandProductCategory, { foreignKey: 'brand_id', as: 'brandProductCategories' });
+
+// BrandProductOptionGroup associations
+BrandProductOptionGroup.belongsTo(BrandProduct, { foreignKey: 'product_id', as: 'product' });
+BrandProduct.hasMany(BrandProductOptionGroup, { foreignKey: 'product_id', as: 'optionGroups' });
+
+// BrandProductOption associations
+BrandProductOption.belongsTo(BrandProductOptionGroup, { foreignKey: 'option_group_id', as: 'optionGroup' });
+BrandProductOptionGroup.hasMany(BrandProductOption, { foreignKey: 'option_group_id', as: 'options' });
+
 module.exports = {
   User,
   Restaurant,
@@ -197,5 +220,9 @@ module.exports = {
   IngredientCost,
   RecipeCost,
   RecipeCategory,
-  IngredientCategory
+  IngredientCategory,
+  BrandProduct,
+  BrandProductCategory,
+  BrandProductOptionGroup,
+  BrandProductOption
 };
