@@ -181,9 +181,9 @@ app.use('/api/customers', customersRouter);
 app.use('/api/operation-tickets', operationTicketsRouter);
 app.use('/api/activity-logs', activityLogsRouter);
 app.use('/api/option-groups', optionGroupsRouter);
+app.use('/api', brandProductsRouter);  // Brand products routes (must be before /api/brands to handle /api/brands/:id/product-categories)
 app.use('/api/brands', brandsRouter);
 app.use('/api/currencies', currenciesRouter);
-app.use('/api', brandProductsRouter);
 
 // GitHub Webhook for Auto-Deployment
 const { exec } = require('child_process');

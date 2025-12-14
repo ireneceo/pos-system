@@ -167,6 +167,69 @@ router.delete('/brands/:brandId/product-categories/:categoryId', authenticateTok
   }
 });
 
+/**
+ * PUT /api/brands/:brandId/product-categories/:categoryId/reorder
+ * 브랜드 제품 카테고리 순서 변경
+ */
+router.put('/brands/:brandId/product-categories/:categoryId/reorder', authenticateToken, isBrandManager, async (req, res) => {
+  try {
+    const { brandId, categoryId } = req.params;
+    const { direction } = req.body;
+
+    if (!direction || !['up', 'down'].includes(direction)) {
+      return res.status(400).json({ error: 'Invalid direction. Use "up" or "down".' });
+    }
+
+    // 현재 카테고리 조회
+    const category = await BrandProductCategory.findOne({
+      where: { id: categoryId, brand_id: brandId }
+    });
+
+    if (!category) {
+      return res.status(404).json({ error: '카테고리를 찾을 수 없습니다' });
+    }
+
+    // 모든 카테고리 조회 (순서대로)
+    const allCategories = await BrandProductCategory.findAll({
+      where: { brand_id: brandId },
+      order: [['sort_order', 'ASC'], ['id', 'ASC']]
+    });
+
+    // 현재 인덱스 찾기
+    const currentIndex = allCategories.findIndex(c => c.id === parseInt(categoryId));
+
+    if (currentIndex === -1) {
+      return res.status(404).json({ error: '카테고리를 찾을 수 없습니다' });
+    }
+
+    // 방향에 따라 스왑할 인덱스 결정
+    let swapIndex;
+    if (direction === 'up') {
+      if (currentIndex === 0) {
+        return res.status(400).json({ error: '이미 맨 위입니다' });
+      }
+      swapIndex = currentIndex - 1;
+    } else {
+      if (currentIndex === allCategories.length - 1) {
+        return res.status(400).json({ error: '이미 맨 아래입니다' });
+      }
+      swapIndex = currentIndex + 1;
+    }
+
+    // sort_order 스왑
+    const currentSortOrder = allCategories[currentIndex].sort_order;
+    const swapSortOrder = allCategories[swapIndex].sort_order;
+
+    await allCategories[currentIndex].update({ sort_order: swapSortOrder });
+    await allCategories[swapIndex].update({ sort_order: currentSortOrder });
+
+    res.json({ success: true, message: '순서가 변경되었습니다' });
+  } catch (error) {
+    console.error('Reorder brand product category error:', error);
+    res.status(500).json({ error: 'Failed to reorder product category' });
+  }
+});
+
 // ============================================
 // Brand Products
 // ============================================

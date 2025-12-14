@@ -674,10 +674,12 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
 
       {/* Add/Edit Modal */}
       {showModal && (
-        <Modal onClose={handleCloseModal} width="700px">
-          <h2 style={{ marginTop: 0, marginBottom: '24px' }}>
-            {editingProduct ? 'Edit Product' : 'Add Product'}
-          </h2>
+        <Modal
+          isOpen={showModal}
+          onClose={handleCloseModal}
+          title={editingProduct ? 'Edit Product' : 'Add Product'}
+          maxWidth="700px"
+        >
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <UIFormGroup>
@@ -765,9 +767,10 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
             <UIFormGroup>
               <FormLabel>Product Image</FormLabel>
               <ImageUploadDropzone
-                currentImage={formData.image_url}
-                onImageChange={(url) => setFormData({ ...formData, image_url: url || '' })}
-                uploadPath="brand-products"
+                value={formData.image_url}
+                onChange={(url) => setFormData({ ...formData, image_url: url || '' })}
+                label=""
+                helpText="Upload a product image (max 2MB)"
               />
             </UIFormGroup>
 

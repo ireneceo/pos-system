@@ -348,6 +348,30 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
     }
   };
 
+  const handleReorder = async (categoryId: number, direction: 'up' | 'down') => {
+    try {
+      const token = getToken();
+      const response = await fetch(`/api/brands/${brandId}/product-categories/${categoryId}/reorder`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ direction })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        fetchCategories();
+      } else {
+        alert(data.error || 'Failed to reorder');
+      }
+    } catch (error) {
+      console.error('Failed to reorder category:', error);
+    }
+  };
+
   if (loading) {
     return (
       <Container>
@@ -377,26 +401,12 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
         <CategoryGrid>
           {categories.map((category, index) => (
             <CategoryCard key={category.id} isActive={category.is_active}>
-              <OrderControls>
-                <IconButton
-                  onClick={() => {/* TODO: reorder */}}
-                  disabled={index === 0}
-                  title="Move up"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M18 15l-6-6-6 6"/>
-                  </svg>
-                </IconButton>
-                <IconButton
-                  onClick={() => {/* TODO: reorder */}}
-                  disabled={index === categories.length - 1}
-                  title="Move down"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M6 9l6 6 6-6"/>
-                  </svg>
-                </IconButton>
-              </OrderControls>
+              <OrderControls
+                onMoveUp={() => handleReorder(category.id, 'up')}
+                onMoveDown={() => handleReorder(category.id, 'down')}
+                disableUp={index === 0}
+                disableDown={index === categories.length - 1}
+              />
 
               <CategoryIcon>
                 {category.emoji || '📦'}
@@ -437,10 +447,11 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
 
       {/* Add/Edit Modal */}
       {showModal && (
-        <Modal onClose={handleCloseModal}>
-          <h2 style={{ marginTop: 0, marginBottom: '24px' }}>
-            {editingCategory ? 'Edit Category' : 'Add Category'}
-          </h2>
+        <Modal
+          isOpen={showModal}
+          onClose={handleCloseModal}
+          title={editingCategory ? 'Edit Category' : 'Add Category'}
+        >
           <form onSubmit={handleSubmit}>
             <UIFormGroup>
               <FormLabel>Name *</FormLabel>
@@ -483,7 +494,7 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
               <ModalButton type="button" onClick={handleCloseModal}>
                 Cancel
               </ModalButton>
-              <ModalButton type="submit" $primary>
+              <ModalButton type="submit" variant="primary">
                 {editingCategory ? 'Update' : 'Create'}
               </ModalButton>
             </div>
@@ -494,7 +505,7 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
       {/* Delete Confirm Modal */}
       <ConfirmModal
         isOpen={deleteModalOpen}
-        onClose={() => {
+        onCancel={() => {
           setDeleteModalOpen(false);
           setCategoryToDelete(null);
         }}
