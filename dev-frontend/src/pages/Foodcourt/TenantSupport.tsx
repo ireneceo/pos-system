@@ -367,70 +367,8 @@ const TenantSupport: React.FC = () => {
   useEffect(() => {
     const fetchSupportRequests = async () => {
       try {
-        const mockRequests: SupportRequest[] = [
-          {
-            id: '1',
-            title: 'POS System Error',
-            storeName: 'K-DINE Gangnam Branch',
-            owner: 'Kim Chul-su',
-            priority: 'high',
-            category: 'Technical Support',
-            requestDate: '2024-01-15',
-            status: 'In Progress',
-            description: 'The POS system is intermittently freezing. There is disruption in order processing, requiring urgent support.',
-            phone: '02-1234-5678'
-          },
-          {
-            id: '2',
-            title: 'Power Capacity Expansion Request',
-            storeName: 'Delicious Chicken',
-            owner: 'Lee Young-hee',
-            priority: 'medium',
-            category: 'Facility Support',
-            requestDate: '2024-01-14',
-            status: 'Under Review',
-            description: 'Due to the introduction of new equipment, power capacity is insufficient. Requesting power expansion.',
-            phone: '02-2345-6789'
-          },
-          {
-            id: '3',
-            title: 'Refrigerator Repair Request',
-            storeName: 'Healthy Salad',
-            owner: 'Park Min-su',
-            priority: 'high',
-            category: 'Facility Support',
-            requestDate: '2024-01-13',
-            status: 'Pending',
-            description: 'The main refrigerator is broken, causing problems with food storage. Urgent repair is needed.',
-            phone: '02-3456-7890'
-          },
-          {
-            id: '4',
-            title: 'Operating Hours Extension Approved Request',
-            storeName: 'Premium Burger',
-            owner: 'Jung Ha-na',
-            priority: 'low',
-            category: 'Operations Support',
-            requestDate: '2024-01-12',
-            status: 'Approved',
-            description: 'We would like to extend weekend operating hours by 1 hour. Many customers have requested this, so please review.',
-            phone: '02-4567-8901'
-          },
-          {
-            id: '5',
-            title: 'Drain Blockage Resolution Request',
-            storeName: 'Asia Noodle',
-            owner: 'Yoon Seo-jun',
-            priority: 'medium',
-            category: 'Facility Support',
-            requestDate: '2024-01-11',
-            status: 'In Progress',
-            description: 'The kitchen drain is blocked and water is backing up. Urgent action is required.',
-            phone: '02-5678-9012'
-          }
-        ];
-
-        setRequests(mockRequests);
+        // TODO: Implement API call to fetch support requests
+        setRequests([]);
       } catch (error) {
         console.error('Error fetching support requests:', error);
       }

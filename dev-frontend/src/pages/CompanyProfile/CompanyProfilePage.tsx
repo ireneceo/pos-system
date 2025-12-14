@@ -327,42 +327,36 @@ const CompanyProfilePage: React.FC = () => {
   }, [profile, originalProfile]);
 
   const loadProfile = () => {
-    // In a real app, this would fetch from API
+    // TODO: Implement API call to fetch company profile
     const isManager = ['Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager'].includes(user?.role || '');
     const level = user?.role === 'System Admin' ? 'admin' : isManager ? 'manager' : 'restaurant';
 
-    const sampleData: CompanyProfile = {
-      id: 'prof-001',
+    const emptyData: CompanyProfile = {
+      id: '',
       level: level,
-      companyName: user?.role === 'System Admin' ? 'Purple Here Technologies Sdn Bhd' :
-                   isManager ? 'Sunway Food Court Management' :
-                   'ABC Restaurant',
-      registrationNo: '202401234567',
-      tradeName: user?.role === 'Restaurant Admin' ? 'ABC Kitchen & Grill' : '',
-      address: '123 Jalan Sultan Ismail',
-      city: 'Kuala Lumpur',
-      state: 'Wilayah Persekutuan',
-      postcode: '50250',
+      companyName: '',
+      registrationNo: '',
+      tradeName: '',
+      address: '',
+      city: '',
+      state: '',
+      postcode: '',
       country: 'Malaysia',
-      phone: '+60 3-1234 5678',
-      email: user?.role === 'System Admin' ? 'admin@orderhere.com' :
-              isManager ? 'manager@sunwayfood.com' :
-              'info@abcrestaurant.com',
-      website: 'www.orderhere.com',
-      taxNo: 'W10-1234-56789012',
-      bankName: 'Maybank',
-      bankAccount: '514123456789',
-      bankAccountName: user?.role === 'System Admin' ? 'Purple Here Technologies Sdn Bhd' :
-                        isManager ? 'Sunway Food Court Management' :
-                        'ABC Trading Sdn Bhd',
+      phone: '',
+      email: '',
+      website: '',
+      taxNo: '',
+      bankName: '',
+      bankAccount: '',
+      bankAccountName: '',
       operationMode: 'manager',
       logoUrl: '',
-      updatedAt: '2025-01-20 14:30:00',
-      updatedBy: 'System Admin'
+      updatedAt: '',
+      updatedBy: ''
     };
-    
-    setProfile(sampleData);
-    setOriginalProfile(sampleData);
+
+    setProfile(emptyData);
+    setOriginalProfile(emptyData);
   };
 
   const handleInputChange = (field: keyof CompanyProfile, value: string) => {

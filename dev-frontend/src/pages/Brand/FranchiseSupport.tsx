@@ -330,79 +330,14 @@ const FranchiseSupport: React.FC = () => {
   useEffect(() => {
     const fetchFranchiseData = async () => {
       try {
-        const mockFranchises: FranchiseData[] = [
-          {
-            id: '1',
-            name: 'K-DINE Gangnam Branch',
-            owner: 'Kim Chul-su',
-            openDate: '2023-03-15',
-            status: 'excellent',
-            monthlyRevenue: 18500000,
-            satisfaction: 4.8,
-            location: 'Seoul Gangnam-gu',
-            phone: '02-1234-5678'
-          },
-          {
-            id: '2',
-            name: 'K-DINE Hongdae Branch',
-            owner: 'Lee Young-hee',
-            openDate: '2023-05-20',
-            status: 'good',
-            monthlyRevenue: 15200000,
-            satisfaction: 4.6,
-            location: 'Seoul Mapo-gu',
-            phone: '02-2345-6789'
-          },
-          {
-            id: '3',
-            name: 'K-DINE Myeongdong Branch',
-            owner: 'Park Min-su',
-            openDate: '2023-08-10',
-            status: 'needs_improvement',
-            monthlyRevenue: 12800000,
-            satisfaction: 4.2,
-            location: 'Seoul Jung-gu',
-            phone: '02-3456-7890'
-          },
-          {
-            id: '4',
-            name: 'K-DINE Jamsil Branch',
-            owner: 'Jung Ha-na',
-            openDate: '2023-11-01',
-            status: 'good',
-            monthlyRevenue: 14700000,
-            satisfaction: 4.5,
-            location: 'Seoul Songpa-gu',
-            phone: '02-4567-8901'
-          },
-          {
-            id: '5',
-            name: 'K-DINE Busan Branch',
-            owner: 'Yoon Seo-jun',
-            openDate: '2024-01-15',
-            status: 'good',
-            monthlyRevenue: 13900000,
-            satisfaction: 4.4,
-            location: 'Busan Haeundae-gu',
-            phone: '051-1234-5678'
-          }
-        ];
-
-        setFranchises(mockFranchises);
-
-        // Calculate stats
-        const totalFranchises = mockFranchises.length;
-        const excellentStores = mockFranchises.filter(f => f.status === 'excellent').length;
-        const needsSupport = mockFranchises.filter(f => f.status === 'needs_improvement').length;
-        const avgSatisfaction = mockFranchises.reduce((sum, f) => sum + f.satisfaction, 0) / mockFranchises.length;
-        const newFranchises = mockFranchises.filter(f => new Date(f.openDate) > new Date('2023-12-01')).length;
-
+        // TODO: Implement API call to fetch franchise data
+        setFranchises([]);
         setStats({
-          totalFranchises,
-          excellentStores,
-          needsSupport,
-          avgSatisfaction,
-          newFranchises
+          totalFranchises: 0,
+          excellentStores: 0,
+          needsSupport: 0,
+          avgSatisfaction: 0,
+          newFranchises: 0
         });
       } catch (error) {
         console.error('Error fetching franchise data:', error);

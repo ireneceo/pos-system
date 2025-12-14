@@ -273,95 +273,22 @@ const FoodcourtManagerDashboard: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log('🔄 Starting foodcourt manager data fetch...');
-
-        // Mock data for assigned foodcourt
-        const assignedFoodcourt = 'Lion City Food Court';
-
-        // Generate mock tenant stores data
-        const mockTenants: TenantStore[] = [
-          {
-            id: '1',
-            name: 'K-DINE Korean Restaurant',
-            category: 'Korean',
-            storeSize: '200㎡',
-            monthlyRent: 8500,
-            leaseStart: '2023-01-01',
-            leaseEnd: '2025-12-31',
-            status: 'active',
-            contactPerson: 'Kim Chul-soo',
-            phone: '010-1234-5678'
-          },
-          {
-            id: '2',
-            name: 'Italian Pasta',
-            category: 'Western',
-            storeSize: '150㎡',
-            monthlyRent: 6800,
-            leaseStart: '2023-03-15',
-            leaseEnd: '2025-03-14',
-            status: 'active',
-            contactPerson: 'Lee Young-hee',
-            phone: '010-2345-6789'
-          },
-          {
-            id: '3',
-            name: 'Burger King',
-            category: 'Fast Food',
-            storeSize: '180㎡',
-            monthlyRent: 7200,
-            leaseStart: '2022-06-01',
-            leaseEnd: '2024-05-31',
-            status: 'expired',
-            contactPerson: 'Park Min-soo',
-            phone: '010-3456-7890'
-          },
-          {
-            id: '4',
-            name: 'Caffe Bene',
-            category: 'Cafe',
-            storeSize: '120㎡',
-            monthlyRent: 5500,
-            leaseStart: '2024-01-01',
-            leaseEnd: '2026-12-31',
-            status: 'pending',
-            contactPerson: 'Jung Ha-na',
-            phone: '010-4567-8901'
-          }
-        ];
-
-        setTenants(mockTenants);
-
-        // Calculate metrics from tenant data
-        const activeTenants = mockTenants.filter(t => t.status === 'active');
-        const totalRent = activeTenants.reduce((sum, tenant) => sum + tenant.monthlyRent, 0);
-        const totalSpaces = 25; // Mock total available spaces
-
-        const newMetrics = {
-          assignedFoodcourt,
-          totalStores: activeTenants.length,
-          monthlyRentRevenue: totalRent,
-          cumulativeRevenue: totalRent * 12, // Annual estimate
-          averageRevenuePerStore: activeTenants.length > 0 ? totalRent / activeTenants.length : 0,
-          occupancyRate: (activeTenants.length / totalSpaces) * 100,
-          growthRate: Math.random() * 15 + 5, // Mock: 5-20%
-          activeLeases: activeTenants.length,
-          pendingApplications: mockTenants.filter(t => t.status === 'pending').length,
-          maintenanceRequests: Math.floor(Math.random() * 8) + 2,
-          totalTransactions: Math.floor(Math.random() * 100) + 50
-        };
-
-        setMetrics(newMetrics);
-
-        // Generate revenue data
-        const periods = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-        const revenueArray = periods.map(period => ({
-          period,
-          revenue: Math.floor(Math.random() * 30000) + 20000,
-          storeCount: Math.floor(Math.random() * 5) + 15
-        }));
-        setRevenueData(revenueArray);
-
+        // TODO: Implement API call to fetch foodcourt manager data
+        setTenants([]);
+        setMetrics({
+          assignedFoodcourt: '',
+          totalStores: 0,
+          monthlyRentRevenue: 0,
+          cumulativeRevenue: 0,
+          averageRevenuePerStore: 0,
+          occupancyRate: 0,
+          growthRate: 0,
+          activeLeases: 0,
+          pendingApplications: 0,
+          maintenanceRequests: 0,
+          totalTransactions: 0
+        });
+        setRevenueData([]);
       } catch (error) {
         console.error('Error fetching foodcourt manager data:', error);
       }

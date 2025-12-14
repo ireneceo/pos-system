@@ -268,86 +268,14 @@ const RentManagement: React.FC = () => {
   useEffect(() => {
     const fetchRentData = async () => {
       try {
-        const mockRentData: RentData[] = [
-          {
-            id: '1',
-            storeName: 'K-DINE Gangnam Branch',
-            owner: 'Kim Cheolsu',
-            rentAmount: 2500000,
-            dueDate: '2024-01-15',
-            status: 'paid',
-            paymentDate: '2024-01-10',
-            area: '45㎡',
-            phone: '02-1234-5678',
-            contractEndDate: '2024-12-31'
-          },
-          {
-            id: '2',
-            storeName: 'Tasty Chicken',
-            owner: 'Lee Younghee',
-            rentAmount: 1800000,
-            dueDate: '2024-01-15',
-            status: 'pending',
-            paymentDate: null,
-            area: '32㎡',
-            phone: '02-2345-6789',
-            contractEndDate: '2025-06-30'
-          },
-          {
-            id: '3',
-            storeName: 'Healthy Salad',
-            owner: 'Park Minsu',
-            rentAmount: 1500000,
-            dueDate: '2024-01-15',
-            status: 'overdue',
-            paymentDate: null,
-            area: '28㎡',
-            phone: '02-3456-7890',
-            contractEndDate: '2024-09-30'
-          },
-          {
-            id: '4',
-            storeName: 'Premium Burger',
-            owner: 'Jung Hana',
-            rentAmount: 2200000,
-            dueDate: '2024-01-15',
-            status: 'paid',
-            paymentDate: '2024-01-12',
-            area: '38㎡',
-            phone: '02-4567-8901',
-            contractEndDate: '2025-03-31'
-          },
-          {
-            id: '5',
-            storeName: 'Asian Noodles',
-            owner: 'Yoon Seojun',
-            rentAmount: 1600000,
-            dueDate: '2024-01-15',
-            status: 'pending',
-            paymentDate: null,
-            area: '30㎡',
-            phone: '02-5678-9012',
-            contractEndDate: '2025-01-31'
-          }
-        ];
-
-        setRentData(mockRentData);
-
-        // Calculate stats
-        const totalStores = mockRentData.length;
-        const paidStores = mockRentData.filter(r => r.status === 'paid').length;
-        const pendingStores = mockRentData.filter(r => r.status === 'pending').length;
-        const overdueStores = mockRentData.filter(r => r.status === 'overdue').length;
-        const totalRevenue = mockRentData
-          .filter(r => r.status === 'paid')
-          .reduce((sum, r) => sum + r.rentAmount, 0);
-
+        // TODO: Implement API call to fetch rent data
+        setRentData([]);
         setStats({
-          totalStores,
-          paidStores,
-          pendingStores,
-          overdueStores,
-          totalRevenue
+          totalStores: 0,
+          paidStores: 0,
+          pendingStores: 0,
+          overdueStores: 0,
+          totalRevenue: 0
         });
       } catch (error) {
         console.error('Error fetching rent data:', error);

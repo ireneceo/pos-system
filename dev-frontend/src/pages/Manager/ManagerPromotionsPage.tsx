@@ -648,118 +648,12 @@ const ManagerPromotionsPage: React.FC = () => {
     description: ''
   });
 
-  const [restaurants] = useState<Restaurant[]>([
-    { id: 'rest-001', name: 'Nasi Lemak Corner', location: 'KLCC' },
-    { id: 'rest-002', name: 'Char Kuey Teow King', location: 'Pavilion KL' },
-    { id: 'rest-003', name: 'Roti Canai House', location: 'Mid Valley' },
-  ]);
+  const [restaurants] = useState<Restaurant[]>([]);
 
-  // Sample data
+  // Fetch promotions data
   useEffect(() => {
-    const samplePromotions: Promotion[] = [
-      {
-        id: 'promo-001',
-        name: 'Summer Special 2025',
-        type: 'percentage',
-        discountValue: 15,
-        discountText: '15% off',
-        restaurants: ['rest-001', 'rest-002'],
-        restaurantNames: ['Nasi Lemak Corner - KLCC', 'Char Kuey Teow King - Pavilion KL'],
-        startDate: '2025-06-01',
-        endDate: '2025-08-31',
-        usageCount: 147,
-        usageLimit: 500,
-        minOrderAmount: 50,
-        maxDiscount: 20,
-        status: 'active',
-        createdDate: '2025-05-15',
-        description: 'Summer promotion for all premium items',
-        conditions: ['Valid for orders above RM 50', 'Maximum discount RM 20', 'Cannot combine with other offers'],
-        generatedRevenue: 8950
-      },
-      {
-        id: 'promo-002',
-        name: 'New Customer Welcome',
-        type: 'fixed_amount',
-        discountValue: 10,
-        discountText: 'RM 10 off',
-        restaurants: ['rest-001', 'rest-002', 'rest-003'],
-        restaurantNames: ['Nasi Lemak Corner - KLCC', 'Char Kuey Teow King - Pavilion KL', 'Roti Canai House - Mid Valley'],
-        startDate: '2025-01-01',
-        endDate: '2025-12-31',
-        usageCount: 284,
-        usageLimit: null,
-        minOrderAmount: 30,
-        maxDiscount: null,
-        status: 'active',
-        createdDate: '2024-12-15',
-        description: 'Welcome discount for first-time customers',
-        conditions: ['Valid for first-time customers only', 'Minimum order RM 30'],
-        generatedRevenue: 15200
-      },
-      {
-        id: 'promo-003',
-        name: 'Buy One Get One Free',
-        type: 'bogo',
-        discountValue: 50,
-        discountText: 'BOGO 50% off',
-        restaurants: ['rest-003'],
-        restaurantNames: ['Roti Canai House - Mid Valley'],
-        startDate: '2025-08-01',
-        endDate: '2025-08-31',
-        usageCount: 0,
-        usageLimit: 200,
-        minOrderAmount: null,
-        maxDiscount: null,
-        status: 'scheduled',
-        createdDate: '2025-07-20',
-        description: 'Buy one roti canai, get second one 50% off',
-        conditions: ['Valid for roti canai items only', 'Lower priced item gets discount'],
-        generatedRevenue: 0
-      },
-      {
-        id: 'promo-004',
-        name: 'Free Delivery Weekend',
-        type: 'free_shipping',
-        discountValue: 100,
-        discountText: 'Free delivery',
-        restaurants: ['rest-001', 'rest-002'],
-        restaurantNames: ['Nasi Lemak Corner - KLCC', 'Char Kuey Teow King - Pavilion KL'],
-        startDate: '2025-08-24',
-        endDate: '2025-08-25',
-        usageCount: 89,
-        usageLimit: null,
-        minOrderAmount: 25,
-        maxDiscount: null,
-        status: 'active',
-        createdDate: '2025-08-20',
-        description: 'Free delivery for weekend orders',
-        conditions: ['Valid on weekends only', 'Minimum order RM 25'],
-        generatedRevenue: 2150
-      },
-      {
-        id: 'promo-005',
-        name: 'Happy Hour Discount',
-        type: 'happy_hour',
-        discountValue: 20,
-        discountText: '20% off (2PM-5PM)',
-        restaurants: ['rest-002'],
-        restaurantNames: ['Char Kuey Teow King - Pavilion KL'],
-        startDate: '2025-07-01',
-        endDate: '2025-07-31',
-        usageCount: 156,
-        usageLimit: null,
-        minOrderAmount: null,
-        maxDiscount: 15,
-        status: 'expired',
-        createdDate: '2025-06-25',
-        description: 'Afternoon discount during slow hours',
-        conditions: ['Valid 2PM-5PM only', 'Maximum discount RM 15'],
-        generatedRevenue: 3280
-      }
-    ];
-    
-    setPromotions(samplePromotions);
+    // TODO: Implement API call to fetch promotions and restaurants
+    setPromotions([]);
   }, []);
 
   // Filter and sort promotions

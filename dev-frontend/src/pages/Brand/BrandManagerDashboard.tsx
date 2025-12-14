@@ -274,100 +274,23 @@ const BrandManagerDashboard: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log('🔄 Starting brand manager data fetch...');
-
-        // Mock data for assigned brand and regions
-        const assignedBrand = 'K-DINE Brand';
-        const assignedRegions = ['Seoul', 'Busan'];
-
-        // Generate mock franchise stores data
-        const mockFranchises: FranchiseStore[] = [
-          {
-            id: '1',
-            name: 'K-DINE Gangnam',
-            location: 'Seoul Gangnam-gu',
-            storeSize: '250㎡',
-            monthlyRevenue: 85000,
-            openDate: '2022-03-15',
-            franchiseeType: 'corporate',
-            status: 'active',
-            manager: 'Kim Chul-soo',
-            phone: '02-1234-5678',
-            performanceScore: 92
-          },
-          {
-            id: '2',
-            name: 'K-DINE Hongdae',
-            location: 'Seoul Mapo-gu',
-            storeSize: '200㎡',
-            monthlyRevenue: 72000,
-            openDate: '2022-08-20',
-            franchiseeType: 'individual',
-            status: 'active',
-            manager: 'Lee Young-hee',
-            phone: '02-2345-6789',
-            performanceScore: 87
-          },
-          {
-            id: '3',
-            name: 'K-DINE Haeundae',
-            location: 'Busan Haeundae-gu',
-            storeSize: '180㎡',
-            monthlyRevenue: 58000,
-            openDate: '2023-01-10',
-            franchiseeType: 'individual',
-            status: 'underperforming',
-            manager: 'Park Min-soo',
-            phone: '051-3456-7890',
-            performanceScore: 68
-          },
-          {
-            id: '4',
-            name: 'K-DINE Seomyeon',
-            location: 'Busan Busanjin-gu',
-            storeSize: '220㎡',
-            monthlyRevenue: 78000,
-            openDate: '2023-05-01',
-            franchiseeType: 'corporate',
-            status: 'expanding',
-            manager: 'Jung Ha-na',
-            phone: '051-4567-8901',
-            performanceScore: 81
-          }
-        ];
-
-        setFranchises(mockFranchises);
-
-        // Calculate metrics from franchise data
-        const totalRevenue = mockFranchises.reduce((sum, franchise) => sum + franchise.monthlyRevenue, 0);
-        const avgPerformance = mockFranchises.reduce((sum, f) => sum + f.performanceScore, 0) / mockFranchises.length;
-
-        const newMetrics = {
-          assignedBrand,
-          assignedRegions,
-          totalStores: mockFranchises.length,
-          monthlyRevenue: totalRevenue,
-          cumulativeRevenue: totalRevenue * 12, // Annual estimate
-          averageRevenuePerStore: mockFranchises.length > 0 ? totalRevenue / mockFranchises.length : 0,
-          customerSatisfaction: (avgPerformance / 100) * 5, // Convert to 5-point scale
-          marketShare: Math.random() * 8 + 12, // Mock: 12-20%
-          growthRate: Math.random() * 20 + 10, // Mock: 10-30%
-          activePromotions: Math.floor(Math.random() * 8) + 3,
-          newFranchises: Math.floor(Math.random() * 3) + 1,
-          totalTransactions: Math.floor(Math.random() * 200) + 150
-        };
-
-        setMetrics(newMetrics);
-
-        // Generate revenue data
-        const periods = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-        const revenueArray = periods.map(period => ({
-          period,
-          revenue: Math.floor(Math.random() * 50000) + 200000,
-          storeCount: Math.floor(Math.random() * 2) + mockFranchises.length
-        }));
-        setRevenueData(revenueArray);
-
+        // TODO: Implement API call to fetch brand manager data
+        setFranchises([]);
+        setMetrics({
+          assignedBrand: '',
+          assignedRegions: [],
+          totalStores: 0,
+          monthlyRevenue: 0,
+          cumulativeRevenue: 0,
+          averageRevenuePerStore: 0,
+          customerSatisfaction: 0,
+          marketShare: 0,
+          growthRate: 0,
+          activePromotions: 0,
+          newFranchises: 0,
+          totalTransactions: 0
+        });
+        setRevenueData([]);
       } catch (error) {
         console.error('Error fetching brand manager data:', error);
       }

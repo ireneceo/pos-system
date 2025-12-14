@@ -347,65 +347,15 @@ const BrandReports: React.FC = () => {
   useEffect(() => {
     const fetchReportData = async () => {
       try {
-        const mockStoreReports: StoreReport[] = [
-          {
-            id: '1',
-            storeName: 'K-DINE Gangnam Branch',
-            revenue: 18500000,
-            growth: 15.2,
-            orders: 1245,
-            avgOrder: 14860,
-            satisfaction: 4.8,
-            performance: 95
-          },
-          {
-            id: '2',
-            storeName: 'K-DINE Hongdae Branch',
-            revenue: 15200000,
-            growth: 8.7,
-            orders: 1089,
-            avgOrder: 13960,
-            satisfaction: 4.6,
-            performance: 87
-          },
-          {
-            id: '3',
-            storeName: 'K-DINE Myeongdong Branch',
-            revenue: 12800000,
-            growth: -2.1,
-            orders: 892,
-            avgOrder: 14350,
-            satisfaction: 4.2,
-            performance: 72
-          },
-          {
-            id: '4',
-            storeName: 'K-DINE Jamsil Branch',
-            revenue: 14700000,
-            growth: 5.3,
-            orders: 978,
-            avgOrder: 15030,
-            satisfaction: 4.5,
-            performance: 81
-          }
-        ];
-
-        setStoreReports(mockStoreReports);
-
-        // Calculate brand summary
-        const totalRevenue = mockStoreReports.reduce((sum, store) => sum + store.revenue, 0);
-        const totalOrders = mockStoreReports.reduce((sum, store) => sum + store.orders, 0);
-        const avgSatisfaction = mockStoreReports.reduce((sum, store) => sum + store.satisfaction, 0) / mockStoreReports.length;
-        const avgPerformance = Math.round(mockStoreReports.reduce((sum, store) => sum + store.performance, 0) / mockStoreReports.length);
-        const monthlyGrowth = mockStoreReports.reduce((sum, store) => sum + store.growth, 0) / mockStoreReports.length;
-
+        // TODO: Implement API call to fetch store reports
+        setStoreReports([]);
         setBrandSummary({
-          totalRevenue,
-          totalOrders,
-          avgSatisfaction,
-          avgPerformance,
-          totalStores: mockStoreReports.length,
-          monthlyGrowth
+          totalRevenue: 0,
+          totalOrders: 0,
+          avgSatisfaction: 0,
+          avgPerformance: 0,
+          totalStores: 0,
+          monthlyGrowth: 0
         });
       } catch (error) {
         console.error('Error fetching report data:', error);

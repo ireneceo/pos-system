@@ -235,69 +235,15 @@ const FoodcourtManagement: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Generate mock foodcourts data
-        const mockFoodcourts: Foodcourt[] = [
-          {
-            id: '1',
-            name: 'Seoul Station Foodcourt',
-            location: 'Jung-gu, Seoul',
-            manager: 'Kim Cheolsu',
-            tenantCount: 25,
-            occupancyRate: 92,
-            monthlyRevenue: 85000000,
-            status: 'active',
-            openDate: '2020-03-15'
-          },
-          {
-            id: '2',
-            name: 'Gangnam Station Foodcourt',
-            location: 'Gangnam-gu, Seoul',
-            manager: 'Lee Younghee',
-            tenantCount: 30,
-            occupancyRate: 87,
-            monthlyRevenue: 95000000,
-            status: 'active',
-            openDate: '2019-11-20'
-          },
-          {
-            id: '3',
-            name: 'Busan Station Foodcourt',
-            location: 'Dong-gu, Busan',
-            manager: 'Park Minsu',
-            tenantCount: 20,
-            occupancyRate: 75,
-            monthlyRevenue: 62000000,
-            status: 'maintenance',
-            openDate: '2021-07-10'
-          },
-          {
-            id: '4',
-            name: 'Daegu Dongseongro Foodcourt',
-            location: 'Jung-gu, Daegu',
-            manager: 'Jung Hana',
-            tenantCount: 18,
-            occupancyRate: 89,
-            monthlyRevenue: 58000000,
-            status: 'active',
-            openDate: '2022-01-05'
-          }
-        ];
-
-        setFoodcourts(mockFoodcourts);
-
-        // Calculate stats
-        const totalTenants = mockFoodcourts.reduce((sum, fc) => sum + fc.tenantCount, 0);
-        const avgOccupancy = mockFoodcourts.reduce((sum, fc) => sum + fc.occupancyRate, 0) / mockFoodcourts.length;
-        const totalRevenue = mockFoodcourts.reduce((sum, fc) => sum + fc.monthlyRevenue, 0);
-        const activeManagers = new Set(mockFoodcourts.map(fc => fc.manager)).size;
-
+        // TODO: Implement API call to fetch foodcourt data
+        setFoodcourts([]);
         setStats({
-          totalFoodcourts: mockFoodcourts.length,
-          totalTenants,
-          activeManagers,
-          monthlyRevenue: totalRevenue,
-          avgOccupancyRate: avgOccupancy,
-          totalRevenue
+          totalFoodcourts: 0,
+          totalTenants: 0,
+          activeManagers: 0,
+          monthlyRevenue: 0,
+          avgOccupancyRate: 0,
+          totalRevenue: 0
         });
       } catch (error) {
         console.error('Error fetching foodcourt data:', error);

@@ -215,61 +215,9 @@ const FoodcourtStats: React.FC = () => {
   const [performers, setPerformers] = useState<PerformerData[]>([]);
 
   useEffect(() => {
-    // Mock data
-    const mockStats: StatsData[] = [
-      { label: 'Total Revenue', value: 'RM 245M', change: '12.5%', positive: true },
-      { label: 'Average Occupancy', value: '92.3%', change: '2.1%', positive: true },
-      { label: 'Average Order Value', value: 'RM 52', change: '1.8%', positive: false },
-      { label: 'Customer Satisfaction', value: '4.6/5.0', change: '0.2', positive: true },
-      { label: 'New Tenants', value: '8', change: '+3', positive: true },
-      { label: 'Contract Expires', value: '2', change: '+1', positive: true },
-    ];
-
-    const mockPerformers: PerformerData[] = [
-      {
-        id: '1',
-        name: 'Seoul Station Foodcourt',
-        sales: 45200000,
-        occupancy: 98,
-        satisfaction: 4.8,
-        performance: 'excellent'
-      },
-      {
-        id: '2',
-        name: 'Gangnam Station Foodcourt',
-        sales: 38700000,
-        occupancy: 95,
-        satisfaction: 4.7,
-        performance: 'excellent'
-      },
-      {
-        id: '3',
-        name: 'Busan Station Foodcourt',
-        sales: 35100000,
-        occupancy: 93,
-        satisfaction: 4.6,
-        performance: 'good'
-      },
-      {
-        id: '4',
-        name: 'Daegu Dongseongro Foodcourt',
-        sales: 32800000,
-        occupancy: 89,
-        satisfaction: 4.5,
-        performance: 'good'
-      },
-      {
-        id: '5',
-        name: 'Incheon Airport Foodcourt',
-        sales: 28900000,
-        occupancy: 87,
-        satisfaction: 4.4,
-        performance: 'average'
-      },
-    ];
-
-    setStats(mockStats);
-    setPerformers(mockPerformers);
+    // TODO: Implement API call to fetch foodcourt statistics
+    setStats([]);
+    setPerformers([]);
   }, [selectedPeriod, selectedLocation]);
 
   const getPerformanceText = (level: string) => {

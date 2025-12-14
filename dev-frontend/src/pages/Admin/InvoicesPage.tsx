@@ -747,62 +747,12 @@ const InvoicesPage: React.FC = () => {
         const data = await response.json();
         setSubscriptions(data);
       } else {
-        console.warn('Subscription API not available, using sample data');
-        // Use sample data for development
-        setSubscriptions([
-          {
-            id: 'sub-001',
-            restaurant_id: 'rest-001',
-            plan_type: 'enterprise',
-            status: 'Active',
-            billing_cycle: 'annual',
-            menu_limit: -1,
-            monthly_price: 199,
-            annual_price: 1990,
-            start_date: '2025-01-01',
-            end_date: '2025-12-31'
-          },
-          {
-            id: 'sub-002',
-            restaurant_id: 'rest-002',
-            plan_type: 'professional',
-            status: 'Active',
-            billing_cycle: 'monthly',
-            menu_limit: 200,
-            monthly_price: 99,
-            annual_price: 990,
-            start_date: '2025-01-15'
-          }
-        ]);
+        console.warn('Subscription API not available');
+        setSubscriptions([]);
       }
     } catch (error) {
       console.error('Error fetching subscriptions:', error);
-      // Use sample data as fallback
-      setSubscriptions([
-        {
-          id: 'sub-001',
-          restaurant_id: 'rest-001',
-          plan_type: 'enterprise',
-          status: 'Active',
-          billing_cycle: 'annual',
-          menu_limit: -1,
-          monthly_price: 199,
-          annual_price: 1990,
-          start_date: '2025-01-01',
-          end_date: '2025-12-31'
-        },
-        {
-          id: 'sub-002',
-          restaurant_id: 'rest-002',
-          plan_type: 'professional',
-          status: 'Active',
-          billing_cycle: 'monthly',
-          menu_limit: 200,
-          monthly_price: 99,
-          annual_price: 990,
-          start_date: '2025-01-15'
-        }
-      ]);
+      setSubscriptions([]);
     }
   };
 
