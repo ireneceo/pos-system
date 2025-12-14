@@ -387,6 +387,7 @@ interface KitchenOrder {
     name: string;
     quantity: number;
     options?: string[];
+    special_instructions?: string;
     status?: 'pending' | 'completed';
     is_set_menu?: boolean;
     set_items?: Array<{
@@ -481,6 +482,7 @@ const KitchenDisplayPage: React.FC = () => {
                   name: item.name || item.menuItem?.name || 'Set Menu',
                   quantity: item.quantity,
                   options: item.options || [],
+                  special_instructions: item.special_instructions || item.specialInstructions || '',
                   status: item.status || 'pending',
                   is_set_menu: true,
                   set_items: setItems
@@ -492,6 +494,7 @@ const KitchenDisplayPage: React.FC = () => {
                   name: item.name || item.menuItem?.name || 'Item',
                   quantity: item.quantity,
                   options: item.options || [],
+                  special_instructions: item.special_instructions || item.specialInstructions || '',
                   status: item.status || 'pending',
                   is_set_menu: false
                 });
@@ -1010,7 +1013,10 @@ const KitchenDisplayPage: React.FC = () => {
                         <OrderTypeBadge>TAKEAWAY</OrderTypeBadge>
                       )}
                       {order.orderType === 'pickup' && (
-                        <OrderTypeBadge style={{ background: '#8B5CF6' }}>PICKUP {order.scheduledPickupTime ? formatPickupTimeRange(order.scheduledPickupTime) : 'ASAP'}</OrderTypeBadge>
+                        <OrderTypeBadge style={{ background: '#8B5CF6', color: 'white' }}>PICKUP {order.scheduledPickupTime ? formatPickupTimeRange(order.scheduledPickupTime) : 'ASAP'}</OrderTypeBadge>
+                      )}
+                      {order.orderType === 'delivery' && (
+                        <OrderTypeBadge style={{ background: '#10B981', color: 'white' }}>DELIVERY</OrderTypeBadge>
                       )}
                     </OrderNumber>
                     <OrderTime>
@@ -1038,6 +1044,11 @@ const KitchenDisplayPage: React.FC = () => {
                     {order.orderType === 'takeaway' && (
                       <MetaItem>
                         🥡 TAKEAWAY
+                      </MetaItem>
+                    )}
+                    {order.orderType === 'delivery' && (
+                      <MetaItem>
+                        🚚 DELIVERY
                       </MetaItem>
                     )}
                   </OrderMeta>
@@ -1076,6 +1087,11 @@ const KitchenDisplayPage: React.FC = () => {
                               </>
                             );
                           })()}
+                          {item.special_instructions && (
+                            <ItemOptions style={{ color: '#DC2626', fontStyle: 'italic' }}>
+                              📝 {item.special_instructions}
+                            </ItemOptions>
+                          )}
                         </ItemInfo>
                         <ItemQuantity>×{item.quantity}</ItemQuantity>
                       </OrderItem>
@@ -1115,7 +1131,10 @@ const KitchenDisplayPage: React.FC = () => {
                         <OrderTypeBadge>TAKEAWAY</OrderTypeBadge>
                       )}
                       {order.orderType === 'pickup' && (
-                        <OrderTypeBadge style={{ background: '#8B5CF6' }}>PICKUP {order.scheduledPickupTime ? formatPickupTimeRange(order.scheduledPickupTime) : 'ASAP'}</OrderTypeBadge>
+                        <OrderTypeBadge style={{ background: '#8B5CF6', color: 'white' }}>PICKUP {order.scheduledPickupTime ? formatPickupTimeRange(order.scheduledPickupTime) : 'ASAP'}</OrderTypeBadge>
+                      )}
+                      {order.orderType === 'delivery' && (
+                        <OrderTypeBadge style={{ background: '#10B981', color: 'white' }}>DELIVERY</OrderTypeBadge>
                       )}
                     </OrderNumber>
                     <OrderTime>
@@ -1138,6 +1157,11 @@ const KitchenDisplayPage: React.FC = () => {
                     {order.orderType === 'takeaway' && order.customerName && (
                       <MetaItem>
                         👤 {order.customerName}
+                      </MetaItem>
+                    )}
+                    {order.orderType === 'delivery' && (
+                      <MetaItem>
+                        🚚 DELIVERY
                       </MetaItem>
                     )}
                     <MetaItem>
@@ -1182,6 +1206,11 @@ const KitchenDisplayPage: React.FC = () => {
                                 </>
                               );
                             })()}
+                            {item.special_instructions && (
+                              <ItemOptions style={{ color: '#DC2626', fontStyle: 'italic' }}>
+                                📝 {item.special_instructions}
+                              </ItemOptions>
+                            )}
                           </ItemInfo>
                           <ItemQuantity>×{item.quantity}</ItemQuantity>
                           {!item.is_set_menu && (
@@ -1272,7 +1301,10 @@ const KitchenDisplayPage: React.FC = () => {
                         <OrderTypeBadge>TAKEAWAY</OrderTypeBadge>
                       )}
                       {order.orderType === 'pickup' && (
-                        <OrderTypeBadge style={{ background: '#8B5CF6' }}>PICKUP {order.scheduledPickupTime ? formatPickupTimeRange(order.scheduledPickupTime) : 'ASAP'}</OrderTypeBadge>
+                        <OrderTypeBadge style={{ background: '#8B5CF6', color: 'white' }}>PICKUP {order.scheduledPickupTime ? formatPickupTimeRange(order.scheduledPickupTime) : 'ASAP'}</OrderTypeBadge>
+                      )}
+                      {order.orderType === 'delivery' && (
+                        <OrderTypeBadge style={{ background: '#10B981', color: 'white' }}>DELIVERY</OrderTypeBadge>
                       )}
                     </OrderNumber>
                     <OrderTime>
@@ -1302,6 +1334,11 @@ const KitchenDisplayPage: React.FC = () => {
                         🥡 TAKEAWAY
                       </MetaItem>
                     )}
+                    {order.orderType === 'delivery' && (
+                      <MetaItem>
+                        🚚 DELIVERY - Ready for Driver
+                      </MetaItem>
+                    )}
                   </OrderMeta>
 
                   <OrderItems>
@@ -1309,8 +1346,13 @@ const KitchenDisplayPage: React.FC = () => {
                       <OrderItem key={index}>
                         <ItemInfo>
                           <ItemName>{formatItemName(item.name)}</ItemName>
-                          {item.options && (
+                          {item.options && item.options.length > 0 && (
                             <ItemOptions>⭐ {item.options.join(', ')}</ItemOptions>
+                          )}
+                          {item.special_instructions && (
+                            <ItemOptions style={{ color: '#DC2626', fontStyle: 'italic' }}>
+                              📝 {item.special_instructions}
+                            </ItemOptions>
                           )}
                         </ItemInfo>
                         <ItemQuantity>×{item.quantity}</ItemQuantity>

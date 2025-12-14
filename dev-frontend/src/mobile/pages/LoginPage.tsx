@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useParams } from 'react-router-dom';
 import MobileAlertModal from '../components/common/MobileAlertModal';
-import { useCustomer } from '../../contexts/CustomerContext';
+import { useCustomer, Customer } from '../../contexts/CustomerContext';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 
 const Container = styled.div`
@@ -173,7 +173,7 @@ const RegisterLink = styled.button`
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
-  const { loginCustomer } = useCustomer();
+  const { setCurrentCustomer } = useCustomer();
   const { currentStore, setCurrentStore } = useMobileOrder();
 
   const [phone, setPhone] = useState('');
@@ -243,8 +243,23 @@ const LoginPage: React.FC = () => {
       const result = await response.json();
 
       if (response.ok && result.success) {
-        // Login successful
-        loginCustomer(result.data);
+        // Login successful - set customer data directly
+        const customerData: Customer = {
+          id: result.data.id.toString(),
+          type: result.data.type as 'guest' | 'member',
+          name: result.data.name,
+          phone: result.data.phone,
+          email: result.data.email || '',
+          points: result.data.points || 0,
+          totalOrders: result.data.totalOrders || 0,
+          totalSpent: result.data.totalSpent || 0,
+          favoriteItems: [],
+          addresses: [],
+          joinDate: new Date().toISOString().split('T')[0],
+          loyaltyTier: result.data.loyaltyTier || 'Bronze',
+          isActive: true
+        };
+        setCurrentCustomer(customerData);
         showAlert('success', 'Welcome!', `Welcome back, ${result.data.name}!`);
         setTimeout(() => {
           navigate(`/mobile/${slug}/account`);

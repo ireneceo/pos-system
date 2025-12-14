@@ -957,17 +957,10 @@ const PaymentPage: React.FC = () => {
     }
   };
 
-  // Helper function to convert option IDs to option names
+  // Helper function to get option names - now options are already stored as names
   const getOptionNames = (item: typeof cartItems[0]): string[] => {
-    if (!item.selectedOptions || item.selectedOptions.length === 0) return [];
-    if (!item.menuItem.optionGroups) return item.selectedOptions; // fallback to IDs if no optionGroups
-
-    return item.selectedOptions.map(optionId => {
-      const option = item.menuItem.optionGroups
-        ?.flatMap(g => g.options)
-        .find(o => o.id === optionId);
-      return option?.name || optionId; // fallback to ID if name not found
-    }).filter(Boolean);
+    // selectedOptions now contains option names directly
+    return item.selectedOptions || [];
   };
 
   const handlePayment = async () => {
@@ -1063,10 +1056,14 @@ const PaymentPage: React.FC = () => {
               total_amount: total,
               takeaway_charge: takeawayCharge,
               delivery_fee: deliveryFee,
-              delivery_address: orderType === 'delivery' ? deliveryAddress : null,
-              delivery_phone: orderType === 'delivery' ? deliveryPhone : null,
-              delivery_notes: orderType === 'delivery' ? deliveryNotes : null,
-              delivery_zone: deliveryZoneName,
+              // Store delivery info as JSON object
+              delivery_info: orderType === 'delivery' ? {
+                address: deliveryAddress,
+                phone: deliveryPhone,
+                notes: deliveryNotes,
+                zoneName: deliveryZoneName,
+                zoneId: selectedZone
+              } : null,
               scheduled_pickup_time: orderType === 'pickup' && scheduledPickupTime ? scheduledPickupTime : null,
               status: 'awaiting_payment',
               order_type: orderType === 'dine-in' ? 'dine_in' : orderType,
@@ -1209,10 +1206,14 @@ const PaymentPage: React.FC = () => {
             total_amount: total,
             takeaway_charge: takeawayCharge,
             delivery_fee: deliveryFee,
-            delivery_address: orderType === 'delivery' ? deliveryAddress : null,
-            delivery_phone: orderType === 'delivery' ? deliveryPhone : null,
-            delivery_notes: orderType === 'delivery' ? deliveryNotes : null,
-            delivery_zone: deliveryZoneName,
+            // Store delivery info as JSON object
+            delivery_info: orderType === 'delivery' ? {
+              address: deliveryAddress,
+              phone: deliveryPhone,
+              notes: deliveryNotes,
+              zoneName: deliveryZoneName,
+              zoneId: selectedZone
+            } : null,
             scheduled_pickup_time: orderType === 'pickup' && scheduledPickupTime ? scheduledPickupTime : null,
             status: 'awaiting_payment',
             order_type: orderType === 'dine-in' ? 'dine_in' : orderType,
@@ -1225,7 +1226,8 @@ const PaymentPage: React.FC = () => {
               name: item.menuItem.name,
               quantity: item.quantity,
               price: item.menuItem.price,
-              options: getOptionNames(item)
+              options: getOptionNames(item),
+              special_instructions: item.specialInstructions || null
             })),
             customer_id: currentCustomer?.id || null
           };
@@ -1289,10 +1291,14 @@ const PaymentPage: React.FC = () => {
               total_amount: total,
               takeaway_charge: takeawayCharge,
               delivery_fee: deliveryFee,
-              delivery_address: orderType === 'delivery' ? deliveryAddress : null,
-              delivery_phone: orderType === 'delivery' ? deliveryPhone : null,
-              delivery_notes: orderType === 'delivery' ? deliveryNotes : null,
-              delivery_zone: deliveryZoneName,
+              // Store delivery info as JSON object
+              delivery_info: orderType === 'delivery' ? {
+                address: deliveryAddress,
+                phone: deliveryPhone,
+                notes: deliveryNotes,
+                zoneName: deliveryZoneName,
+                zoneId: selectedZone
+              } : null,
               scheduled_pickup_time: orderType === 'pickup' && scheduledPickupTime ? scheduledPickupTime : null,
               status: 'pending',
               order_type: orderType === 'dine-in' ? 'dine_in' : orderType,

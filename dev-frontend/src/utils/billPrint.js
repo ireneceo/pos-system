@@ -492,6 +492,29 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
     content += '** DELIVERY **' + CMD.LINE_FEED;
     content += CMD.BOLD_OFF;
     content += CMD.TEXT_NORMAL;
+
+    // Delivery info section
+    if (orderData.deliveryInfo) {
+      content += CMD.LINE_FEED;
+      content += CMD.ALIGN_LEFT;
+      content += CMD.DASHED_LINE + CMD.LINE_FEED;
+      content += CMD.BOLD_ON;
+      content += 'DELIVERY ADDRESS:' + CMD.LINE_FEED;
+      content += CMD.BOLD_OFF;
+      if (orderData.deliveryInfo.address) {
+        content += orderData.deliveryInfo.address + CMD.LINE_FEED;
+      }
+      if (orderData.deliveryInfo.phone) {
+        content += 'Phone: ' + orderData.deliveryInfo.phone + CMD.LINE_FEED;
+      }
+      if (orderData.deliveryInfo.zoneName) {
+        content += 'Zone: ' + orderData.deliveryInfo.zoneName + CMD.LINE_FEED;
+      }
+      if (orderData.deliveryInfo.notes) {
+        content += 'Notes: ' + orderData.deliveryInfo.notes + CMD.LINE_FEED;
+      }
+      content += CMD.DASHED_LINE + CMD.LINE_FEED;
+    }
   }
 
   content += CMD.LINE_FEED;

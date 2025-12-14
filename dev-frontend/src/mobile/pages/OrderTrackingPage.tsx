@@ -561,13 +561,21 @@ const OrderTrackingPage: React.FC = () => {
                 try {
                   const itemName = item?.menuItem?.name || item?.name || 'Item';
                   const itemQuantity = item?.quantity || 1;
-                  const itemOptions = item?.options || [];
+                  const itemOptions = item?.options || item?.selectedOptions || [];
+                  const specialInstructions = item?.special_instructions || item?.specialInstructions;
 
                   return (
-                    <Item key={item?.id || `item-${index}`}>
-                      {itemQuantity}x {itemName}
-                      {itemOptions.length > 0 && ` (${itemOptions.join(', ')})`}
-                    </Item>
+                    <div key={item?.id || `item-${index}`} style={{ marginBottom: '8px' }}>
+                      <Item>
+                        {itemQuantity}x {itemName}
+                        {itemOptions.length > 0 && ` (${itemOptions.join(', ')})`}
+                      </Item>
+                      {specialInstructions && (
+                        <div style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '2px', paddingLeft: '16px' }}>
+                          Note: {specialInstructions}
+                        </div>
+                      )}
+                    </div>
                   );
                 } catch (err) {
                   console.error('Error rendering item:', err);
@@ -575,6 +583,23 @@ const OrderTrackingPage: React.FC = () => {
                 }
               })}
             </ItemsList>
+          )}
+
+          {/* Delivery Info Section */}
+          {order?.delivery_info && (
+            <div style={{ marginTop: '16px', padding: '12px', background: '#F3F4F6', borderRadius: '8px' }}>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>Delivery Information</div>
+              <div style={{ fontSize: '13px', color: '#6B7280' }}>
+                <div style={{ marginBottom: '4px' }}>{order.delivery_info.address}</div>
+                <div style={{ marginBottom: '4px' }}>Phone: {order.delivery_info.phone}</div>
+                {order.delivery_info.zoneName && (
+                  <div style={{ marginBottom: '4px' }}>Zone: {order.delivery_info.zoneName}</div>
+                )}
+                {order.delivery_info.notes && (
+                  <div style={{ fontStyle: 'italic' }}>Notes: {order.delivery_info.notes}</div>
+                )}
+              </div>
+            </div>
           )}
         </OrderDetails>
 

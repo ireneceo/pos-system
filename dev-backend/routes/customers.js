@@ -710,35 +710,40 @@ router.post('/forgot-password', async (req, res) => {
 
     // 이메일 발송 시도
     try {
-      // 레스토랑 정보 조회 (이메일 설정용)
+      // 레스토랑 정보 조회 (이메일 설정용) - 고객이 속한 레스토랑 또는 기본 레스토랑 (ID=1) 사용
+      let restaurantId = null;
+
       const restaurantCustomer = await RestaurantCustomer.findOne({
         where: { customer_id: customer.id },
         include: [{ model: Restaurant, as: 'restaurant' }]
       });
 
       if (restaurantCustomer?.restaurant) {
-        await emailService.sendEmail('restaurant', restaurantCustomer.restaurant.id, {
-          to: customer.email,
-          subject: 'Password Reset Request',
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #1F2937;">Password Reset Request</h2>
-              <p style="color: #4B5563;">Hi ${customer.name || 'there'},</p>
-              <p style="color: #4B5563;">We received a request to reset your password. Click the button below to create a new password:</p>
-              <div style="text-align: center; margin: 32px 0;">
-                <a href="${resetLink}" style="background: #635BFF; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">Reset Password</a>
-              </div>
-              <p style="color: #6B7280; font-size: 14px;">This link will expire in 1 hour.</p>
-              <p style="color: #6B7280; font-size: 14px;">If you didn't request this, you can safely ignore this email.</p>
-              <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 32px 0;">
-              <p style="color: #9CA3AF; font-size: 12px;">This email was sent by Purple Here POS</p>
-            </div>
-          `
-        });
-        console.log(`✅ Password reset email sent to ${customer.email}`);
+        restaurantId = restaurantCustomer.restaurant.id;
       } else {
-        console.log(`⚠️ No restaurant found for customer ${customer.id}, email not sent`);
+        // 기본 레스토랑 사용
+        restaurantId = 1;
       }
+
+      await emailService.sendEmail('restaurant', restaurantId, {
+        to: customer.email,
+        subject: 'Password Reset Request - Purple Here',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #1F2937;">Password Reset Request</h2>
+            <p style="color: #4B5563;">Hi ${customer.name || 'there'},</p>
+            <p style="color: #4B5563;">We received a request to reset your password. Click the button below to create a new password:</p>
+            <div style="text-align: center; margin: 32px 0;">
+              <a href="${resetLink}" style="background: #635BFF; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">Reset Password</a>
+            </div>
+            <p style="color: #6B7280; font-size: 14px;">This link will expire in 1 hour.</p>
+            <p style="color: #6B7280; font-size: 14px;">If you didn't request this, you can safely ignore this email.</p>
+            <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 32px 0;">
+            <p style="color: #9CA3AF; font-size: 12px;">This email was sent by Purple Here POS</p>
+          </div>
+        `
+      });
+      console.log(`✅ Password reset email sent to ${customer.email}`);
     } catch (emailError) {
       console.error('Failed to send password reset email:', emailError);
       // 이메일 발송 실패해도 성공 응답 (보안)

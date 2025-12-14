@@ -2717,6 +2717,42 @@ const LiveOrdersPage: React.FC = () => {
                     )}
                   </OrderDetailSection>
 
+                  {/* Delivery Information */}
+                  {selectedOrder.order_type === 'delivery' && (selectedOrder as any).delivery_info && (
+                    <>
+                      <Divider />
+                      <OrderDetailSection>
+                        <SectionTitle>Delivery Information</SectionTitle>
+                        <DetailRow>
+                          <DetailLabel>Address:</DetailLabel>
+                          <DetailValue>{(selectedOrder as any).delivery_info.address}</DetailValue>
+                        </DetailRow>
+                        <DetailRow>
+                          <DetailLabel>Phone:</DetailLabel>
+                          <DetailValue>{(selectedOrder as any).delivery_info.phone}</DetailValue>
+                        </DetailRow>
+                        {(selectedOrder as any).delivery_info.zoneName && (
+                          <DetailRow>
+                            <DetailLabel>Zone:</DetailLabel>
+                            <DetailValue>{(selectedOrder as any).delivery_info.zoneName}</DetailValue>
+                          </DetailRow>
+                        )}
+                        {(selectedOrder as any).delivery_info.notes && (
+                          <DetailRow>
+                            <DetailLabel>Notes:</DetailLabel>
+                            <DetailValue style={{ fontStyle: 'italic' }}>{(selectedOrder as any).delivery_info.notes}</DetailValue>
+                          </DetailRow>
+                        )}
+                        {(selectedOrder as any).delivery_fee > 0 && (
+                          <DetailRow>
+                            <DetailLabel>Delivery Fee:</DetailLabel>
+                            <DetailValue>{formatCurrency(parseFloat((selectedOrder as any).delivery_fee || '0'), currency)}</DetailValue>
+                          </DetailRow>
+                        )}
+                      </OrderDetailSection>
+                    </>
+                  )}
+
                   <Divider />
 
                   {/* Order Information */}

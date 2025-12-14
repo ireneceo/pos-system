@@ -69,11 +69,18 @@ interface Option {
   price: number;
 }
 
+interface SelectedOptionData {
+  id: string;
+  name: string;
+  price: number;
+}
+
 interface CartItem {
   id: string;
   menuItem: MenuItem;
   quantity: number;
-  selectedOptions: string[];
+  selectedOptions: string[];  // Option names for display
+  selectedOptionsData: SelectedOptionData[];  // Full option data
   specialInstructions?: string;
   totalPrice: number;
 }
@@ -174,7 +181,7 @@ export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ childr
   const addToCart = useCallback((
     item: MenuItem,
     quantity: number,
-    options: string[],
+    options: string[],  // Option IDs
     instructions?: string
   ) => {
     // For set menus, add set_items as special instructions prefix
@@ -190,8 +197,11 @@ export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ childr
 
     const cartItemId = `${item.id}-${options.join('-')}-${Date.now()}`;
 
-    // Calculate total price including options
+    // Get full option data and calculate total price
     let totalPrice = item.price;
+    const selectedOptionsData: SelectedOptionData[] = [];
+    const selectedOptionNames: string[] = [];
+
     if (item.optionGroups) {
       options.forEach(optionId => {
         const option = item.optionGroups
@@ -199,6 +209,12 @@ export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ childr
           .find(o => o.id === optionId);
         if (option) {
           totalPrice += option.price;
+          selectedOptionsData.push({
+            id: option.id,
+            name: option.name,
+            price: option.price
+          });
+          selectedOptionNames.push(option.name);
         }
       });
     }
@@ -208,7 +224,8 @@ export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ childr
       id: cartItemId,
       menuItem: item,
       quantity,
-      selectedOptions: options,
+      selectedOptions: selectedOptionNames,  // Store names for display
+      selectedOptionsData,  // Store full data for order processing
       specialInstructions: finalInstructions,
       totalPrice
     };

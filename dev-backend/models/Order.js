@@ -162,6 +162,24 @@ Order.init({
     type: DataTypes.DATE,
     allowNull: true,
     comment: 'Scheduled pickup time for pre-order pickup'
+  },
+  delivery_info: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Delivery information (address, phone, notes, zone)',
+    get() {
+      const value = this.getDataValue('delivery_info');
+      return value ? JSON.parse(value) : null;
+    },
+    set(value) {
+      this.setDataValue('delivery_info', value ? JSON.stringify(value) : null);
+    }
+  },
+  delivery_fee: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0,
+    comment: 'Delivery fee amount'
   }
 }, {
   sequelize: database.sequelize,
