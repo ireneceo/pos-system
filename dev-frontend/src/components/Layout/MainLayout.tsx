@@ -892,6 +892,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>■</NavIcon>
                   Dashboard
                 </NavItem>
+              </>
+            )}
+
+            {/* Brand General - Management Section */}
+            {user?.role === 'Brand General' && (
+              <>
+                <NavTitle>Management</NavTitle>
                 <NavItem to="/pos/brand/general/management" active={isActive('/pos/brand/general/management')} onClick={closeSidebar}>
                   <NavIcon>▬</NavIcon>
                   Brands
@@ -900,14 +907,21 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>◐</NavIcon>
                   Restaurants
                 </NavItem>
-                <NavItem to="/pos/recipes" active={isActive('/pos/recipes')} onClick={closeSidebar}>
-                  <NavIcon>◈</NavIcon>
-                  Recipes
-                </NavItem>
                 <NavItem to="/pos/brand-products" active={isActive('/pos/brand-products')} onClick={closeSidebar}>
                   <NavIcon>◇</NavIcon>
                   Products
                 </NavItem>
+                <NavItem to="/pos/recipes" active={isActive('/pos/recipes')} onClick={closeSidebar}>
+                  <NavIcon>◈</NavIcon>
+                  Recipes
+                </NavItem>
+              </>
+            )}
+
+            {/* Brand General - Analytics Section */}
+            {user?.role === 'Brand General' && (
+              <>
+                <NavTitle>Analytics</NavTitle>
                 <NavItem to="/pos/brand/general/performance" active={isActive('/pos/brand/general/performance')} onClick={closeSidebar}>
                   <NavIcon>▲</NavIcon>
                   Performance
@@ -916,6 +930,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>◉</NavIcon>
                   Reports
                 </NavItem>
+              </>
+            )}
+
+            {/* Brand General - Administration Section */}
+            {user?.role === 'Brand General' && (
+              <>
+                <NavTitle>Administration</NavTitle>
                 <NavItem to="/pos/manager/invoices" active={isActive('/pos/manager/invoices')} onClick={closeSidebar}>
                   <NavIcon>▦</NavIcon>
                   Invoices
@@ -1000,37 +1021,28 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>■</NavIcon>
                   Dashboard
                 </NavItem>
-                <NavItem to="/pos/brand/franchise-support" active={isActive('/pos/brand/franchise-support')} onClick={closeSidebar}>
-                  <NavIcon>◎</NavIcon>
-                  Franchise Support
-                </NavItem>
-                <NavItem to="/pos/brand/reports" active={isActive('/pos/brand/reports')} onClick={closeSidebar}>
-                  <NavIcon>▲</NavIcon>
-                  Brand Reports
-                </NavItem>
+              </>
+            )}
+
+            {/* Brand Manager - Management Section */}
+            {user?.role === 'Brand Manager' && (
+              <>
+                <NavTitle>Management</NavTitle>
                 <NavItem to="/pos/manager/restaurants" active={isActive('/pos/manager/restaurants')} onClick={closeSidebar}>
                   <NavIcon>◐</NavIcon>
                   Restaurants
                 </NavItem>
-                <NavItem to="/pos/manager/invoices" active={isActive('/pos/manager/invoices')} onClick={closeSidebar}>
-                  <NavIcon>▦</NavIcon>
-                  Invoices
+                <NavItem to="/pos/brand-products" active={isActive('/pos/brand-products')} onClick={closeSidebar}>
+                  <NavIcon>◇</NavIcon>
+                  Products
                 </NavItem>
-                <NavItem to="/pos/manager/subscriptions" active={isActive('/pos/manager/subscriptions')} onClick={closeSidebar}>
+                <NavItem to="/pos/recipes" active={isActive('/pos/recipes')} onClick={closeSidebar}>
                   <NavIcon>◈</NavIcon>
-                  Subscriptions
+                  Recipes
                 </NavItem>
                 <NavItem to="/pos/manager/staff" active={isActive('/pos/manager/staff')} onClick={closeSidebar}>
                   <NavIcon>◆</NavIcon>
                   Staff
-                </NavItem>
-                <NavItem to="/pos/manager/sales" active={isActive('/pos/manager/sales')} onClick={closeSidebar}>
-                  <NavIcon>$</NavIcon>
-                  Sales
-                </NavItem>
-                <NavItem to="/pos/manager/reports" active={isActive('/pos/manager/reports')} onClick={closeSidebar}>
-                  <NavIcon>≡</NavIcon>
-                  Reports
                 </NavItem>
                 <NavItem to="/pos/manager/customers" active={isActive('/pos/manager/customers')} onClick={closeSidebar}>
                   <NavIcon>○</NavIcon>
@@ -1040,9 +1052,54 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>%</NavIcon>
                   Promotions
                 </NavItem>
+              </>
+            )}
+
+            {/* Brand Manager - Analytics Section */}
+            {user?.role === 'Brand Manager' && (
+              <>
+                <NavTitle>Analytics</NavTitle>
+                <NavItem to="/pos/brand/reports" active={isActive('/pos/brand/reports')} onClick={closeSidebar}>
+                  <NavIcon>▲</NavIcon>
+                  Brand Reports
+                </NavItem>
+                <NavItem to="/pos/manager/sales" active={isActive('/pos/manager/sales')} onClick={closeSidebar}>
+                  <NavIcon>$</NavIcon>
+                  Sales
+                </NavItem>
+                <NavItem to="/pos/manager/reports" active={isActive('/pos/manager/reports')} onClick={closeSidebar}>
+                  <NavIcon>≡</NavIcon>
+                  Reports
+                </NavItem>
+              </>
+            )}
+
+            {/* Brand Manager - Administration Section */}
+            {user?.role === 'Brand Manager' && (
+              <>
+                <NavTitle>Administration</NavTitle>
+                <NavItem to="/pos/manager/invoices" active={isActive('/pos/manager/invoices')} onClick={closeSidebar}>
+                  <NavIcon>▦</NavIcon>
+                  Invoices
+                </NavItem>
+                <NavItem to="/pos/manager/subscriptions" active={isActive('/pos/manager/subscriptions')} onClick={closeSidebar}>
+                  <NavIcon>◈</NavIcon>
+                  Subscriptions
+                </NavItem>
                 <NavItem to="/pos/manager/plans" active={isActive('/pos/manager/plans')} onClick={closeSidebar}>
                   <NavIcon>⊡</NavIcon>
                   Plans
+                </NavItem>
+              </>
+            )}
+
+            {/* Brand Manager - Support Section */}
+            {user?.role === 'Brand Manager' && (
+              <>
+                <NavTitle>Support</NavTitle>
+                <NavItem to="/pos/brand/franchise-support" active={isActive('/pos/brand/franchise-support')} onClick={closeSidebar}>
+                  <NavIcon>◎</NavIcon>
+                  Franchise Support
                 </NavItem>
                 <NavItem to="/pos/manager/support" active={isActive('/pos/manager/support')} onClick={closeSidebar}>
                   <NavIcon>◎</NavIcon>

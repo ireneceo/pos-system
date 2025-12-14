@@ -173,6 +173,7 @@ const ingredientsRouter = require('./routes/ingredients');
 const recipeCategoriesRouter = require('./routes/recipe-categories');
 const ingredientCategoriesRouter = require('./routes/ingredient-categories');
 const currenciesRouter = require('./routes/currencies');
+const brandProductsRouter = require('./routes/brand-products');
 
 // Health check endpoint - PM2 모니터링 및 로드밸런서용 (가장 먼저)
 app.get('/api/health', (req, res) => {
@@ -215,6 +216,7 @@ app.use('/api/staff', staffRouter);
 app.use('/api/store', storeRouter);
 app.use('/api/site-settings', siteSettingsRouter);
 app.use('/api/notification-settings', notificationSettingsRouter);
+app.use('/api', brandProductsRouter);  // Brand products routes (must be before /api/brands to handle /api/brands/:id/product-categories)
 app.use('/api/brands', brandsRouter);
 app.use('/api', recipesRouter);
 app.use('/api', ingredientsRouter);
