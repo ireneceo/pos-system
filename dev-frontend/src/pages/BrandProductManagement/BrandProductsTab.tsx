@@ -6,40 +6,35 @@ import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, For
 import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
 import ConfirmModal from '../../components/ConfirmModal';
 
+interface Brand {
+  id: number;
+  name: string;
+  code: string;
+}
+
 interface BrandProductsTabProps {
-  brandId: number;
+  brands: Brand[];
   onCountChange: (count: number) => void;
   categoryRefreshKey?: number;
+  optionRefreshKey?: number;
 }
 
 interface Category {
   id: number;
-  brand_id: number;
   name: string;
   emoji: string | null;
 }
 
 interface OptionGroup {
-  id?: number;
+  id: number;
   name: string;
   is_required: boolean;
   min_selections: number;
   max_selections: number;
-  sort_order: number;
-  options: Option[];
-}
-
-interface Option {
-  id?: number;
-  name: string;
-  price_adjustment: number;
-  sort_order: number;
-  is_active: boolean;
 }
 
 interface Product {
   id: number;
-  brand_id: number;
   category_id: number | null;
   category?: Category;
   name: string;
@@ -51,6 +46,7 @@ interface Product {
   image_url: string | null;
   is_active: boolean;
   sort_order: number;
+  brands?: Brand[];
   optionGroups?: OptionGroup[];
 }
 
@@ -210,90 +206,30 @@ const EmptyDescription = styled.p`
   margin: 0 0 20px 0;
 `;
 
-const OptionGroupsSection = styled.div`
+const BadgeContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
   margin-top: 8px;
 `;
 
-const OptionGroupBadge = styled.span`
+const Badge = styled.span<{ color?: string }>`
   display: inline-block;
   padding: 2px 8px;
-  background: #E5E7EB;
+  background: ${props => props.color || '#E5E7EB'};
   color: #374151;
   border-radius: 4px;
   font-size: 11px;
-  margin-right: 4px;
-  margin-bottom: 4px;
 `;
 
-// Modal Styles
-const OptionGroupContainer = styled.div`
-  background: #F9FAFB;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 12px;
+const BrandBadge = styled(Badge)`
+  background: #DBEAFE;
+  color: #1E40AF;
 `;
 
-const OptionGroupHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-`;
-
-const OptionGroupTitle = styled.div`
-  font-weight: 600;
+const OptionBadge = styled(Badge)`
+  background: #E5E7EB;
   color: #374151;
-`;
-
-const OptionRow = styled.div`
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 8px;
-  padding: 8px;
-  background: white;
-  border-radius: 6px;
-`;
-
-const SmallInput = styled.input`
-  padding: 6px 10px;
-  border: 1px solid #E5E7EB;
-  border-radius: 6px;
-  font-size: 13px;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-  }
-`;
-
-const RemoveButton = styled.button`
-  padding: 4px 8px;
-  background: #FEE2E2;
-  color: #DC2626;
-  border: none;
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-
-  &:hover {
-    background: #FECACA;
-  }
-`;
-
-const AddButton = styled.button`
-  padding: 6px 12px;
-  background: #E0E7FF;
-  color: #4F46E5;
-  border: none;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-
-  &:hover {
-    background: #C7D2FE;
-  }
 `;
 
 const CheckboxLabel = styled.label`
@@ -305,16 +241,51 @@ const CheckboxLabel = styled.label`
   cursor: pointer;
 `;
 
+const CheckboxGroup = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px;
+  background: #F9FAFB;
+  border-radius: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+`;
+
+const CheckboxItem = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+
+  &:hover {
+    border-color: #635BFF;
+  }
+
+  input:checked + span {
+    color: #635BFF;
+    font-weight: 500;
+  }
+`;
+
 const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
-  brandId,
+  brands,
   onCountChange,
-  categoryRefreshKey
+  categoryRefreshKey,
+  optionRefreshKey
 }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [optionGroups, setOptionGroups] = useState<OptionGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [brandFilter, setBrandFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -330,17 +301,16 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     category_id: '',
     image_url: '',
     is_active: true,
-    optionGroups: [] as OptionGroup[]
+    brand_ids: [] as number[],
+    option_group_ids: [] as number[]
   });
 
   const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
 
   const fetchProducts = useCallback(async () => {
-    if (!brandId) return;
-
     try {
       const token = getToken();
-      const response = await fetch(`/api/brands/${brandId}/products`, {
+      const response = await fetch('/api/brand-products', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -352,14 +322,12 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     } catch (error) {
       console.error('Failed to fetch products:', error);
     }
-  }, [brandId, getToken, onCountChange]);
+  }, [getToken, onCountChange]);
 
   const fetchCategories = useCallback(async () => {
-    if (!brandId) return;
-
     try {
       const token = getToken();
-      const response = await fetch(`/api/brands/${brandId}/product-categories`, {
+      const response = await fetch('/api/brand-product-categories', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -370,22 +338,44 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     } catch (error) {
       console.error('Failed to fetch categories:', error);
     }
-  }, [brandId, getToken]);
+  }, [getToken]);
+
+  const fetchOptionGroups = useCallback(async () => {
+    try {
+      const token = getToken();
+      const response = await fetch('/api/brand-product-option-groups', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setOptionGroups(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch option groups:', error);
+    }
+  }, [getToken]);
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchProducts(), fetchCategories()]);
+      await Promise.all([fetchProducts(), fetchCategories(), fetchOptionGroups()]);
       setLoading(false);
     };
     loadData();
-  }, [brandId, fetchProducts, fetchCategories]);
+  }, [fetchProducts, fetchCategories, fetchOptionGroups]);
 
   useEffect(() => {
     if (categoryRefreshKey !== undefined) {
       fetchCategories();
     }
   }, [categoryRefreshKey, fetchCategories]);
+
+  useEffect(() => {
+    if (optionRefreshKey !== undefined) {
+      fetchOptionGroups();
+    }
+  }, [optionRefreshKey, fetchOptionGroups]);
 
   const handleOpenModal = (product?: Product) => {
     if (product) {
@@ -400,7 +390,8 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         category_id: product.category_id?.toString() || '',
         image_url: product.image_url || '',
         is_active: product.is_active,
-        optionGroups: product.optionGroups || []
+        brand_ids: product.brands?.map(b => b.id) || [],
+        option_group_ids: product.optionGroups?.map(og => og.id) || []
       });
     } else {
       setEditingProduct(null);
@@ -414,7 +405,8 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         category_id: categories.length > 0 ? categories[0].id.toString() : '',
         image_url: '',
         is_active: true,
-        optionGroups: []
+        brand_ids: [],
+        option_group_ids: []
       });
     }
     setShowModal(true);
@@ -433,8 +425,8 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
       const token = getToken();
       const method = editingProduct ? 'PUT' : 'POST';
       const url = editingProduct
-        ? `/api/brands/${brandId}/products/${editingProduct.id}`
-        : `/api/brands/${brandId}/products`;
+        ? `/api/brand-products/${editingProduct.id}`
+        : '/api/brand-products';
 
       const response = await fetch(url, {
         method,
@@ -452,7 +444,8 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
           category_id: formData.category_id ? parseInt(formData.category_id) : null,
           image_url: formData.image_url || null,
           is_active: formData.is_active,
-          optionGroups: formData.optionGroups
+          brand_ids: formData.brand_ids,
+          option_group_ids: formData.option_group_ids
         })
       });
 
@@ -481,7 +474,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
 
     try {
       const token = getToken();
-      const response = await fetch(`/api/brands/${brandId}/products/${productToDelete.id}`, {
+      const response = await fetch(`/api/brand-products/${productToDelete.id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -501,57 +494,22 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     }
   };
 
-  // Option Group handlers
-  const handleAddOptionGroup = () => {
-    setFormData({
-      ...formData,
-      optionGroups: [
-        ...formData.optionGroups,
-        {
-          name: '',
-          is_required: false,
-          min_selections: 0,
-          max_selections: 1,
-          sort_order: formData.optionGroups.length,
-          options: []
-        }
-      ]
-    });
+  const handleBrandToggle = (brandId: number) => {
+    setFormData(prev => ({
+      ...prev,
+      brand_ids: prev.brand_ids.includes(brandId)
+        ? prev.brand_ids.filter(id => id !== brandId)
+        : [...prev.brand_ids, brandId]
+    }));
   };
 
-  const handleRemoveOptionGroup = (index: number) => {
-    const newGroups = [...formData.optionGroups];
-    newGroups.splice(index, 1);
-    setFormData({ ...formData, optionGroups: newGroups });
-  };
-
-  const handleOptionGroupChange = (index: number, field: string, value: any) => {
-    const newGroups = [...formData.optionGroups];
-    (newGroups[index] as any)[field] = value;
-    setFormData({ ...formData, optionGroups: newGroups });
-  };
-
-  const handleAddOption = (groupIndex: number) => {
-    const newGroups = [...formData.optionGroups];
-    newGroups[groupIndex].options.push({
-      name: '',
-      price_adjustment: 0,
-      sort_order: newGroups[groupIndex].options.length,
-      is_active: true
-    });
-    setFormData({ ...formData, optionGroups: newGroups });
-  };
-
-  const handleRemoveOption = (groupIndex: number, optionIndex: number) => {
-    const newGroups = [...formData.optionGroups];
-    newGroups[groupIndex].options.splice(optionIndex, 1);
-    setFormData({ ...formData, optionGroups: newGroups });
-  };
-
-  const handleOptionChange = (groupIndex: number, optionIndex: number, field: string, value: any) => {
-    const newGroups = [...formData.optionGroups];
-    (newGroups[groupIndex].options[optionIndex] as any)[field] = value;
-    setFormData({ ...formData, optionGroups: newGroups });
+  const handleOptionGroupToggle = (ogId: number) => {
+    setFormData(prev => ({
+      ...prev,
+      option_group_ids: prev.option_group_ids.includes(ogId)
+        ? prev.option_group_ids.filter(id => id !== ogId)
+        : [...prev.option_group_ids, ogId]
+    }));
   };
 
   // Filter products
@@ -559,7 +517,8 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = categoryFilter === 'all' || product.category_id?.toString() === categoryFilter;
-    return matchesSearch && matchesCategory;
+    const matchesBrand = brandFilter === 'all' || product.brands?.some(b => b.id.toString() === brandFilter);
+    return matchesSearch && matchesCategory && matchesBrand;
   });
 
   if (loading) {
@@ -590,6 +549,17 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
             </option>
           ))}
         </FilterSelect>
+        <FilterSelect
+          value={brandFilter}
+          onChange={(e) => setBrandFilter(e.target.value)}
+        >
+          <option value="all">All Brands</option>
+          {brands.map(brand => (
+            <option key={brand.id} value={brand.id.toString()}>
+              {brand.name}
+            </option>
+          ))}
+        </FilterSelect>
         <ThemedButton onClick={() => handleOpenModal()}>
           + Add Product
         </ThemedButton>
@@ -598,14 +568,14 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
       {filteredProducts.length === 0 ? (
         <EmptyState>
           <EmptyTitle>
-            {searchTerm || categoryFilter !== 'all' ? 'No products found' : 'No products yet'}
+            {searchTerm || categoryFilter !== 'all' || brandFilter !== 'all' ? 'No products found' : 'No products yet'}
           </EmptyTitle>
           <EmptyDescription>
-            {searchTerm || categoryFilter !== 'all'
+            {searchTerm || categoryFilter !== 'all' || brandFilter !== 'all'
               ? 'Try adjusting your search or filter criteria.'
               : 'Start by adding your first product.'}
           </EmptyDescription>
-          {!searchTerm && categoryFilter === 'all' && (
+          {!searchTerm && categoryFilter === 'all' && brandFilter === 'all' && (
             <ThemedButton onClick={() => handleOpenModal()}>+ Add Product</ThemedButton>
           )}
         </EmptyState>
@@ -649,14 +619,20 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                 </DetailRow>
               </ProductDetails>
 
-              {product.optionGroups && product.optionGroups.length > 0 && (
-                <OptionGroupsSection>
-                  {product.optionGroups.map(og => (
-                    <OptionGroupBadge key={og.id || og.name}>
-                      {og.name} ({og.options?.length || 0})
-                    </OptionGroupBadge>
+              {product.brands && product.brands.length > 0 && (
+                <BadgeContainer>
+                  {product.brands.map(brand => (
+                    <BrandBadge key={brand.id}>{brand.name}</BrandBadge>
                   ))}
-                </OptionGroupsSection>
+                </BadgeContainer>
+              )}
+
+              {product.optionGroups && product.optionGroups.length > 0 && (
+                <BadgeContainer>
+                  {product.optionGroups.map(og => (
+                    <OptionBadge key={og.id}>{og.name}</OptionBadge>
+                  ))}
+                </BadgeContainer>
               )}
 
               <ProductActions onClick={(e) => e.stopPropagation()}>
@@ -775,6 +751,44 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
             </UIFormGroup>
 
             <UIFormGroup>
+              <FormLabel>Linked Brands</FormLabel>
+              <CheckboxGroup>
+                {brands.map(brand => (
+                  <CheckboxItem key={brand.id}>
+                    <input
+                      type="checkbox"
+                      checked={formData.brand_ids.includes(brand.id)}
+                      onChange={() => handleBrandToggle(brand.id)}
+                    />
+                    <span>{brand.name}</span>
+                  </CheckboxItem>
+                ))}
+              </CheckboxGroup>
+            </UIFormGroup>
+
+            <UIFormGroup>
+              <FormLabel>Option Groups</FormLabel>
+              {optionGroups.length > 0 ? (
+                <CheckboxGroup>
+                  {optionGroups.map(og => (
+                    <CheckboxItem key={og.id}>
+                      <input
+                        type="checkbox"
+                        checked={formData.option_group_ids.includes(og.id)}
+                        onChange={() => handleOptionGroupToggle(og.id)}
+                      />
+                      <span>{og.name} {og.is_required ? '(Required)' : ''}</span>
+                    </CheckboxItem>
+                  ))}
+                </CheckboxGroup>
+              ) : (
+                <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '8px', color: '#6B7280', fontSize: '13px' }}>
+                  No option groups available. Create option groups in the Options tab first.
+                </div>
+              )}
+            </UIFormGroup>
+
+            <UIFormGroup>
               <CheckboxLabel>
                 <input
                   type="checkbox"
@@ -784,8 +798,6 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                 Active
               </CheckboxLabel>
             </UIFormGroup>
-
-111            </div>
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
               <ModalButton type="button" onClick={handleCloseModal}>
