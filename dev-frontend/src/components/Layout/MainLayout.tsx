@@ -904,6 +904,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>◈</NavIcon>
                   Recipes
                 </NavItem>
+                <NavItem to="/pos/brand-products" active={isActive('/pos/brand-products')} onClick={closeSidebar}>
+                  <NavIcon>◇</NavIcon>
+                  Products
+                </NavItem>
                 <NavItem to="/pos/brand/general/performance" active={isActive('/pos/brand/general/performance')} onClick={closeSidebar}>
                   <NavIcon>▲</NavIcon>
                   Performance

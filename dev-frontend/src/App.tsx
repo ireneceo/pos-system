@@ -84,6 +84,9 @@ import RecipeManagementPage from './pages/RecipeManagement/RecipeManagementPage'
 import RecipesPage from './pages/Recipes/RecipesPage';
 import IngredientsPage from './pages/Ingredients/IngredientsPage';
 
+// Brand Product Management
+import BrandProductManagementPage from './pages/BrandProductManagement/BrandProductManagementPage';
+
 // New Manager Role Specific Pages
 import FoodcourtManagement from './pages/FoodcourtGeneral/FoodcourtManagement';
 import FoodcourtStats from './pages/FoodcourtGeneral/FoodcourtStats';
@@ -381,6 +384,13 @@ function App() {
                       <Route path="/pos/recipes" element={
                         <ProtectedRoute requiredRole={['Brand General', 'System Admin']}>
                           <RecipeManagementPage />
+                        </ProtectedRoute>
+                      } />
+
+                      {/* Brand Product Management for Brand General */}
+                      <Route path="/pos/brand-products" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager', 'System Admin']}>
+                          <BrandProductManagementPage />
                         </ProtectedRoute>
                       } />
 
