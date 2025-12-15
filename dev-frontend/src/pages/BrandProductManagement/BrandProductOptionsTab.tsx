@@ -349,18 +349,19 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
 
   const handleAddOption = () => {
     if (!newOption.name.trim()) return;
-    setFormData({
-      ...formData,
-      options: [...formData.options, { name: newOption.name, price_adjustment: newOption.price_adjustment }]
-    });
+    const priceAdj = isNaN(newOption.price_adjustment) ? 0 : newOption.price_adjustment;
+    setFormData(prev => ({
+      ...prev,
+      options: [...prev.options, { name: newOption.name.trim(), price_adjustment: priceAdj }]
+    }));
     setNewOption({ name: '', price_adjustment: 0 });
   };
 
   const handleRemoveOption = (index: number) => {
-    setFormData({
-      ...formData,
-      options: formData.options.filter((_, i) => i !== index)
-    });
+    setFormData(prev => ({
+      ...prev,
+      options: prev.options.filter((_, i) => i !== index)
+    }));
   };
 
   const handleSave = async () => {
@@ -492,7 +493,7 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
                     {option.name}
                     {option.price_adjustment !== 0 && (
                       <OptionPrice>
-                        {option.price_adjustment > 0 ? '+' : ''}RM {option.price_adjustment.toFixed(2)}
+                        {Number(option.price_adjustment) > 0 ? '+' : ''}RM {(Number(option.price_adjustment) || 0).toFixed(2)}
                       </OptionPrice>
                     )}
                   </OptionChip>
@@ -550,7 +551,7 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
               step="0.50"
               style={{ flex: 1 }}
             />
-            <Button variant="secondary" onClick={handleAddOption} disabled={!newOption.name.trim()}>
+            <Button type="button" variant="secondary" onClick={handleAddOption} disabled={!newOption.name.trim()}>
               Add
             </Button>
           </div>
@@ -561,7 +562,7 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
                 <strong>{option.name}</strong>
                 {option.price_adjustment !== 0 && (
                   <span style={{ marginLeft: '8px', color: '#6B7280' }}>
-                    ({option.price_adjustment > 0 ? '+' : ''}RM {option.price_adjustment.toFixed(2)})
+                    ({Number(option.price_adjustment) > 0 ? '+' : ''}RM {(Number(option.price_adjustment) || 0).toFixed(2)})
                   </span>
                 )}
               </div>
@@ -571,8 +572,8 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
         </FormGroup>
 
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
-          <Button variant="secondary" onClick={handleCloseModal}>Cancel</Button>
-          <Button onClick={handleSave} disabled={!formData.name.trim() || formData.options.length === 0}>
+          <Button type="button" variant="secondary" onClick={handleCloseModal}>Cancel</Button>
+          <Button type="button" onClick={handleSave} disabled={!formData.name.trim() || formData.options.length === 0}>
             {editingGroup ? 'Update' : 'Create'}
           </Button>
         </div>
@@ -586,8 +587,8 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
       >
         <p>Are you sure you want to delete this option group? This action cannot be undone.</p>
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
-          <Button variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>Cancel</Button>
-          <Button variant="danger" onClick={handleConfirmDelete}>Delete</Button>
+          <Button type="button" variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>Cancel</Button>
+          <Button type="button" variant="danger" onClick={handleConfirmDelete}>Delete</Button>
         </div>
       </Modal>
     </>

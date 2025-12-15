@@ -304,6 +304,18 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     brand_ids: [] as number[],
     option_group_ids: [] as number[]
   });
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const unitOptions = [
+    { value: 'kg', label: 'kg (킬로그램)' },
+    { value: 'g', label: 'g (그램)' },
+    { value: 'L', label: 'L (리터)' },
+    { value: 'ml', label: 'ml (밀리리터)' },
+    { value: 'piece', label: 'piece (개)' },
+    { value: 'pack', label: 'pack (팩)' },
+    { value: 'can', label: 'can (캔)' },
+    { value: 'bottle', label: 'bottle (병)' }
+  ];
 
   const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
 
@@ -415,11 +427,21 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingProduct(null);
+    setFormError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) return;
+    setFormError(null);
+
+    if (!formData.name.trim()) {
+      setFormError('Product name is required');
+      return;
+    }
+    if (!formData.unit) {
+      setFormError('Unit is required');
+      return;
+    }
 
     try {
       const token = getToken();
@@ -438,7 +460,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
           name: formData.name.trim(),
           description: formData.description.trim() || null,
           sku: formData.sku.trim() || null,
-          unit: formData.unit.trim() || null,
+          unit: formData.unit || null,
           unit_price: parseFloat(formData.unit_price) || 0,
           min_order_quantity: parseInt(formData.min_order_quantity) || 1,
           category_id: formData.category_id ? parseInt(formData.category_id) : null,
@@ -455,11 +477,11 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         handleCloseModal();
         fetchProducts();
       } else {
-        alert(data.error || 'Failed to save product');
+        setFormError(data.error || 'Failed to save product');
       }
     } catch (error) {
       console.error('Failed to save product:', error);
-      alert('Failed to save product');
+      setFormError('Failed to save product. Please try again.');
     }
   };
 
@@ -605,7 +627,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
               <ProductDetails>
                 <DetailRow>
                   <DetailLabel>Unit Price</DetailLabel>
-                  <PriceValue>RM {product.unit_price.toFixed(2)}</PriceValue>
+                  <PriceValue>RM {(Number(product.unit_price) || 0).toFixed(2)}</PriceValue>
                 </DetailRow>
                 {product.unit && (
                   <DetailRow>
@@ -720,13 +742,17 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
               </UIFormGroup>
 
               <UIFormGroup>
-                <FormLabel>Unit</FormLabel>
-                <FormInput
-                  type="text"
+                <FormLabel>Unit *</FormLabel>
+                <FormSelect
                   value={formData.unit}
                   onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                  placeholder="kg, L, pcs, etc."
-                />
+                  required
+                >
+                  <option value="">Select unit</option>
+                  {unitOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </FormSelect>
               </UIFormGroup>
 
               <UIFormGroup>
@@ -807,6 +833,20 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                 {editingProduct ? 'Update' : 'Create'}
               </ModalButton>
             </div>
+
+            {formError && (
+              <div style={{
+                marginTop: '16px',
+                padding: '12px 16px',
+                background: '#FEF2F2',
+                border: '1px solid #FCA5A5',
+                borderRadius: '8px',
+                color: '#DC2626',
+                fontSize: '14px'
+              }}>
+                {formError}
+              </div>
+            )}
           </form>
         </Modal>
       )}

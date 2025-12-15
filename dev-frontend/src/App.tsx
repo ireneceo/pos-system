@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { OrderProvider } from './contexts/OrderContext';
@@ -10,93 +10,108 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { PaymentStatusProvider } from './contexts/PaymentStatusContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ScrollToTop from './components/ScrollToTop';
-
-// Landing Pages
+// Landing Pages (keep static - first load)
 import HomePage from './pages/Landing/HomePage';
 import AboutPage from './pages/Landing/AboutPage';
 import ServicePage from './pages/Landing/ServicePage';
-
-// Pages
+// Login Page (keep static - frequently used)
 import LoginPage from './pages/Login/LoginPage';
-import LiveOrdersPage from './pages/LiveOrders/LiveOrdersPage';
-import POSTerminalPage from './pages/POSTerminal/POSTerminalPage';
-import KitchenDisplayPage from './pages/KitchenDisplay/KitchenDisplayPage';
-import CustomerDisplayPage from './pages/CustomerDisplay/CustomerDisplayPage';
-import PromotionsPage from './pages/Promotions/PromotionsPage';
-import ReportsPage from './pages/Reports/ReportsPage';
-import SettingsPage from './pages/Settings/SettingsPage';
-import MenuManagementPage from './pages/MenuManagement/MenuManagementPage';
-import CategoryManagementPage from './pages/CategoryManagement/CategoryManagementPage';
-import OptionManagementPage from './pages/OptionManagement/OptionManagementPage';
-import CustomersPage from './pages/Customers/CustomersPage';
-import StaffPage from './pages/Staff/StaffPage';
-import ProfilePage from './pages/Profile/ProfilePage';
-import SalesPage from './pages/Sales/SalesPage';
+// Mobile App (keep static - separate entry point)
 import MobileApp from './mobile/MobileApp';
-import CompanyInformationPage from './pages/CompanyInformation/CompanyInformationPage';
-import ActivityHistoryPage from './pages/ActivityHistory/ActivityHistoryPage';
 
-// Role-specific pages
-import AdminDashboard from './pages/Admin/AdminDashboard';
-import ManagersPage from './pages/Admin/ManagersPage';
-import RestaurantsPage from './pages/Admin/RestaurantsPage';
-import SubscriptionsPage from './pages/Admin/SubscriptionsPage';
-import InvoicesPage from './pages/Admin/InvoicesPage';
-import RestaurantInvoicesPage from './pages/Restaurant/InvoicesPage';
-import ManagerInvoicesPage from './pages/Manager/InvoicesPage';
-import PlansPage from './pages/Admin/PlansPage';
-import AddonModulesPage from './pages/Admin/AddonModulesPage';
-import AnalyticsPage from './pages/Admin/AnalyticsPage';
-import SystemInquiryPage from './pages/Admin/SystemInquiryPage';
-import ManagerSupportTicketsPage from './pages/Manager/SupportTicketsPage';
-import RestaurantSupportTicketsPage from './pages/Restaurant/SupportTicketsPage';
-import OperationInquiryPage from './pages/Manager/OperationInquiryPage';
-import RestaurantOperationInquiryPage from './pages/Restaurant/OperationInquiryPage';
-import SystemConfigPage from './pages/Admin/SystemConfigPage';
-import SecurityPage from './pages/Admin/SecurityPage';
-import BackupRestorePage from './pages/Admin/BackupRestorePage';
-import SystemLogsPage from './pages/Admin/SystemLogsPage';
-import RestaurantSubscriptionsPage from './pages/Admin/RestaurantSubscriptionsPage';
-import ManagerDashboard from './pages/Manager/ManagerDashboard';
-import ManagerSubscriptionsPage from './pages/Manager/SubscriptionsPage';
-import ManagerRestaurantsPage from './pages/Manager/RestaurantsPage';
-import ManagerStaffManagementPage from './pages/Manager/StaffManagementPage';
-import AdminStaffManagementPage from './pages/Admin/StaffManagementPage';
-import ManagerSalesPage from './pages/Manager/SalesPage';
-import ManagerReportsPage from './pages/Manager/ManagerReportsPage';
-import ManagerCustomersPage from './pages/Manager/ManagerCustomersPage';
-import ManagerPromotionsPage from './pages/Manager/ManagerPromotionsPage';
-import ManagerPlansPage from './pages/Manager/PlansPage';
-import AdminSettingsPage from './pages/Admin/AdminSettingsPage';
-import SiteSettingsPage from './pages/Admin/SiteSettingsPage';
-import RestaurantDashboard from './pages/Restaurant/RestaurantDashboard';
-import BasicDashboard from './pages/Basic/BasicDashboard';
-import NotificationSettingsPage from './pages/NotificationSettings/NotificationSettingsPage';
+// Loading Component
+const PageLoader = () => (
+  <div style={{
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100vh',
+    fontSize: '16px',
+    color: '#6B7280'
+  }}>
+    Loading...
+  </div>
+);
 
-// New Manager Role Dashboards
-import FoodcourtGeneralDashboard from './pages/FoodcourtGeneral/FoodcourtGeneralDashboard';
-import BrandGeneralDashboard from './pages/BrandGeneral/BrandGeneralDashboard';
-import FoodcourtManagerDashboard from './pages/Foodcourt/FoodcourtManagerDashboard';
-import BrandManagerDashboard from './pages/Brand/BrandManagerDashboard';
+// Lazy load all other pages
+const LiveOrdersPage = React.lazy(() => import('./pages/LiveOrders/LiveOrdersPage'));
+const POSTerminalPage = React.lazy(() => import('./pages/POSTerminal/POSTerminalPage'));
+const KitchenDisplayPage = React.lazy(() => import('./pages/KitchenDisplay/KitchenDisplayPage'));
+const CustomerDisplayPage = React.lazy(() => import('./pages/CustomerDisplay/CustomerDisplayPage'));
+const PromotionsPage = React.lazy(() => import('./pages/Promotions/PromotionsPage'));
+const ReportsPage = React.lazy(() => import('./pages/Reports/ReportsPage'));
+const SettingsPage = React.lazy(() => import('./pages/Settings/SettingsPage'));
+const MenuManagementPage = React.lazy(() => import('./pages/MenuManagement/MenuManagementPage'));
+const CategoryManagementPage = React.lazy(() => import('./pages/CategoryManagement/CategoryManagementPage'));
+const OptionManagementPage = React.lazy(() => import('./pages/OptionManagement/OptionManagementPage'));
+const CustomersPage = React.lazy(() => import('./pages/Customers/CustomersPage'));
+const StaffPage = React.lazy(() => import('./pages/Staff/StaffPage'));
+const ProfilePage = React.lazy(() => import('./pages/Profile/ProfilePage'));
+const SalesPage = React.lazy(() => import('./pages/Sales/SalesPage'));
+const CompanyInformationPage = React.lazy(() => import('./pages/CompanyInformation/CompanyInformationPage'));
+const ActivityHistoryPage = React.lazy(() => import('./pages/ActivityHistory/ActivityHistoryPage'));
+
+// Admin pages
+const AdminDashboard = React.lazy(() => import('./pages/Admin/AdminDashboard'));
+const ManagersPage = React.lazy(() => import('./pages/Admin/ManagersPage'));
+const RestaurantsPage = React.lazy(() => import('./pages/Admin/RestaurantsPage'));
+const SubscriptionsPage = React.lazy(() => import('./pages/Admin/SubscriptionsPage'));
+const InvoicesPage = React.lazy(() => import('./pages/Admin/InvoicesPage'));
+const RestaurantInvoicesPage = React.lazy(() => import('./pages/Restaurant/InvoicesPage'));
+const ManagerInvoicesPage = React.lazy(() => import('./pages/Manager/InvoicesPage'));
+const PlansPage = React.lazy(() => import('./pages/Admin/PlansPage'));
+const AddonModulesPage = React.lazy(() => import('./pages/Admin/AddonModulesPage'));
+const AnalyticsPage = React.lazy(() => import('./pages/Admin/AnalyticsPage'));
+const SystemInquiryPage = React.lazy(() => import('./pages/Admin/SystemInquiryPage'));
+const ManagerSupportTicketsPage = React.lazy(() => import('./pages/Manager/SupportTicketsPage'));
+const RestaurantSupportTicketsPage = React.lazy(() => import('./pages/Restaurant/SupportTicketsPage'));
+const OperationInquiryPage = React.lazy(() => import('./pages/Manager/OperationInquiryPage'));
+const RestaurantOperationInquiryPage = React.lazy(() => import('./pages/Restaurant/OperationInquiryPage'));
+const SystemConfigPage = React.lazy(() => import('./pages/Admin/SystemConfigPage'));
+const SecurityPage = React.lazy(() => import('./pages/Admin/SecurityPage'));
+const BackupRestorePage = React.lazy(() => import('./pages/Admin/BackupRestorePage'));
+const SystemLogsPage = React.lazy(() => import('./pages/Admin/SystemLogsPage'));
+const RestaurantSubscriptionsPage = React.lazy(() => import('./pages/Admin/RestaurantSubscriptionsPage'));
+const ManagerDashboard = React.lazy(() => import('./pages/Manager/ManagerDashboard'));
+const ManagerSubscriptionsPage = React.lazy(() => import('./pages/Manager/SubscriptionsPage'));
+const ManagerRestaurantsPage = React.lazy(() => import('./pages/Manager/RestaurantsPage'));
+const ManagerStaffManagementPage = React.lazy(() => import('./pages/Manager/StaffManagementPage'));
+const AdminStaffManagementPage = React.lazy(() => import('./pages/Admin/StaffManagementPage'));
+const ManagerSalesPage = React.lazy(() => import('./pages/Manager/SalesPage'));
+const ManagerReportsPage = React.lazy(() => import('./pages/Manager/ManagerReportsPage'));
+const ManagerCustomersPage = React.lazy(() => import('./pages/Manager/ManagerCustomersPage'));
+const ManagerPromotionsPage = React.lazy(() => import('./pages/Manager/ManagerPromotionsPage'));
+const ManagerPlansPage = React.lazy(() => import('./pages/Manager/PlansPage'));
+const AdminSettingsPage = React.lazy(() => import('./pages/Admin/AdminSettingsPage'));
+const SiteSettingsPage = React.lazy(() => import('./pages/Admin/SiteSettingsPage'));
+const RestaurantDashboard = React.lazy(() => import('./pages/Restaurant/RestaurantDashboard'));
+const BasicDashboard = React.lazy(() => import('./pages/Basic/BasicDashboard'));
+const NotificationSettingsPage = React.lazy(() => import('./pages/NotificationSettings/NotificationSettingsPage'));
+
+// Manager Role Dashboards
+const FoodcourtGeneralDashboard = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtGeneralDashboard'));
+const BrandGeneralDashboard = React.lazy(() => import('./pages/BrandGeneral/BrandGeneralDashboard'));
+const FoodcourtManagerDashboard = React.lazy(() => import('./pages/Foodcourt/FoodcourtManagerDashboard'));
+const BrandManagerDashboard = React.lazy(() => import('./pages/Brand/BrandManagerDashboard'));
 
 // Recipe Management
-import RecipeManagementPage from './pages/RecipeManagement/RecipeManagementPage';
-import RecipesPage from './pages/Recipes/RecipesPage';
-import IngredientsPage from './pages/Ingredients/IngredientsPage';
+const RecipeManagementPage = React.lazy(() => import('./pages/RecipeManagement/RecipeManagementPage'));
+const RecipesPage = React.lazy(() => import('./pages/Recipes/RecipesPage'));
+const IngredientsPage = React.lazy(() => import('./pages/Ingredients/IngredientsPage'));
 
 // Brand Product Management
-import BrandProductManagementPage from './pages/BrandProductManagement/BrandProductManagementPage';
+const BrandProductManagementPage = React.lazy(() => import('./pages/BrandProductManagement/BrandProductManagementPage'));
 
-// New Manager Role Specific Pages
-import FoodcourtManagement from './pages/FoodcourtGeneral/FoodcourtManagement';
-import FoodcourtStats from './pages/FoodcourtGeneral/FoodcourtStats';
-import BrandManagement from './pages/BrandGeneral/BrandManagement';
-import BrandPerformance from './pages/BrandGeneral/BrandPerformance';
-import BrandReportsPage from './pages/BrandGeneral/BrandReportsPage';
-import RentManagement from './pages/Foodcourt/RentManagement';
-import TenantSupport from './pages/Foodcourt/TenantSupport';
-import FranchiseSupport from './pages/Brand/FranchiseSupport';
-import BrandReports from './pages/Brand/BrandReports';
+// Manager Role Specific Pages
+const FoodcourtManagement = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtManagement'));
+const FoodcourtStats = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtStats'));
+const BrandManagement = React.lazy(() => import('./pages/BrandGeneral/BrandManagement'));
+const BrandPerformance = React.lazy(() => import('./pages/BrandGeneral/BrandPerformance'));
+const BrandReportsPage = React.lazy(() => import('./pages/BrandGeneral/BrandReportsPage'));
+const RentManagement = React.lazy(() => import('./pages/Foodcourt/RentManagement'));
+const TenantSupport = React.lazy(() => import('./pages/Foodcourt/TenantSupport'));
+const FranchiseSupport = React.lazy(() => import('./pages/Brand/FranchiseSupport'));
+const BrandReports = React.lazy(() => import('./pages/Brand/BrandReports'));
 
 // POS Root redirect component (for authenticated users)
 const PosRootRedirect: React.FC = () => {
@@ -230,6 +245,7 @@ function App() {
                   <MenuProvider>
                     <PaymentStatusProvider>
                       <ScrollToTop />
+                      <Suspense fallback={<PageLoader />}>
                       <Routes>
                       {/* Landing Pages (Public) */}
                       <Route path="/" element={<HomePage />} />
@@ -241,7 +257,7 @@ function App() {
 
                       {/* Mobile Routes (QR Order - Outside POS) */}
                       <Route path="/mobile/*" element={<MobileApp />} />
-                      
+
                       {/* System Admin Routes */}
                       <Route path="/pos/admin/dashboard" element={
                         <ProtectedRoute requiredRole={['System Admin']}>
@@ -634,6 +650,7 @@ function App() {
                         </ProtectedRoute>
                       } />
                     </Routes>
+                    </Suspense>
                     </PaymentStatusProvider>
                   </MenuProvider>
                 </StaffProvider>

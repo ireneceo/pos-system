@@ -108,7 +108,8 @@ async function canViewRecipe(req, res, next) {
 
 /**
  * Brand manager permission check
- * Uses brand_id from URL params to verify brand ownership
+ * If brand_id is in URL params, verifies brand ownership
+ * If no brand_id in URL, just checks if user is Brand General/Manager
  */
 async function isBrandManager(req, res, next) {
   const user = req.user;
@@ -120,8 +121,9 @@ async function isBrandManager(req, res, next) {
   if (user.role === 'Brand General' || user.role === 'Brand Manager') {
     const brand_id = req.params.brandId || req.params.brand_id;
 
+    // If no brand_id in URL, just allow Brand General/Manager access
     if (!brand_id) {
-      return res.status(400).json({ error: 'brand_id is required' });
+      return next();
     }
 
     const brand = await Brand.findByPk(brand_id);
