@@ -31,10 +31,13 @@ interface Ingredient {
   owner_type: 'brand' | 'restaurant';
   ingredient_category_id: number | null;
   ingredientCategory?: IngredientCategory;
+  brand_product_id: number | null;
   code: string | null;
   name: string;
+  image_url: string | null;
   category: string;
   unit: string;
+  base_quantity: number;
   unit_cost: number;
   supplier_name: string | null;
   is_active: boolean;
@@ -202,6 +205,60 @@ const EmptyState = styled.div`
   padding: 60px 20px;
 `;
 
+const IngredientImageContainer = styled.div`
+  width: 100%;
+  height: 120px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 12px;
+  background: #F6F9FC;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const IngredientImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+`;
+
+const NoImagePlaceholder = styled.div`
+  color: #9CA3AF;
+  font-size: 12px;
+`;
+
+const ImagePreview = styled.div`
+  width: 100%;
+  height: 150px;
+  border: 2px dashed #E6EBF1;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #F9FAFB;
+
+  &:hover {
+    border-color: #635BFF;
+    background: #F4F3FF;
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+const ImagePlaceholder = styled.div`
+  text-align: center;
+  color: #9CA3AF;
+  font-size: 13px;
+`;
+
 const EmptyTitle = styled.h3`
   font-size: 20px;
   font-weight: 600;
@@ -242,8 +299,10 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
   const [formData, setFormData] = useState({
     code: '',
     name: '',
+    image_url: '',
     ingredient_category_id: '',
     unit: '',
+    base_quantity: '1',
     unit_cost: '',
     supplier_name: '',
     min_stock: '0'
@@ -468,8 +527,10 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
       setFormData({
         code: ingredient.code || '',
         name: ingredient.name,
+        image_url: ingredient.image_url || '',
         ingredient_category_id: ingredient.ingredient_category_id?.toString() || '',
         unit: ingredient.unit,
+        base_quantity: ingredient.base_quantity?.toString() || '1',
         unit_cost: ingredient.unit_cost.toString(),
         supplier_name: ingredient.supplier_name || '',
         min_stock: ingredient.min_stock?.toString() || '0'
@@ -479,8 +540,10 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
       setFormData({
         code: '',
         name: '',
+        image_url: '',
         ingredient_category_id: '',
         unit: '',
+        base_quantity: '1',
         unit_cost: '',
         supplier_name: '',
         min_stock: '0'
@@ -495,12 +558,25 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
     setFormData({
       code: '',
       name: '',
+      image_url: '',
       ingredient_category_id: '',
       unit: '',
+      base_quantity: '1',
       unit_cost: '',
       supplier_name: '',
       min_stock: '0'
     });
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, image_url: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -539,6 +615,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
         body: JSON.stringify({
           ...formData,
           ingredient_category_id: formData.ingredient_category_id ? parseInt(formData.ingredient_category_id) : null,
+          base_quantity: parseFloat(formData.base_quantity) || 1,
           unit_cost: parseFloat(formData.unit_cost),
           min_stock: parseInt(formData.min_stock) || 0
         })
@@ -631,6 +708,11 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
         <IngredientsGrid>
           {filteredIngredients.map(ingredient => (
             <IngredientCard key={ingredient.id} isActive={ingredient.is_active}>
+              {ingredient.image_url && (
+                <IngredientImageContainer>
+                  <IngredientImage src={ingredient.image_url} alt={ingredient.name} />
+                </IngredientImageContainer>
+              )}
               <IngredientHeader>
                 <div>
                   <IngredientName>
@@ -651,8 +733,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                   <InfoValue>RM {Number(ingredient.unit_cost).toFixed(2)}</InfoValue>
                 </InfoRow>
                 <InfoRow>
-                  <InfoLabel>Unit</InfoLabel>
-                  <InfoValue>{ingredient.unit}</InfoValue>
+                  <InfoLabel>Base Qty / Unit</InfoLabel>
+                  <InfoValue>{Number(ingredient.base_quantity || 1)} {ingredient.unit}</InfoValue>
                 </InfoRow>
                 {ingredient.supplier_name && (
                   <InfoRow>
@@ -696,6 +778,26 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
         size="medium"
       >
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <UIFormGroup>
+            <FormLabel>Image</FormLabel>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              style={{ display: 'none' }}
+              id="ingredient-image-upload"
+            />
+            <ImagePreview
+              onClick={() => document.getElementById('ingredient-image-upload')?.click()}
+            >
+              {formData.image_url ? (
+                <img src={formData.image_url} alt="Ingredient" />
+              ) : (
+                <ImagePlaceholder>Click to upload image</ImagePlaceholder>
+              )}
+            </ImagePreview>
+          </UIFormGroup>
+
           <UIFormRow>
             <UIFormGroup>
               <FormLabel>Ingredient Name *</FormLabel>
@@ -747,6 +849,18 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
 
           <UIFormRow>
             <UIFormGroup>
+              <FormLabel>Base Quantity *</FormLabel>
+              <FormInput
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={formData.base_quantity}
+                onChange={(e) => setFormData({ ...formData, base_quantity: e.target.value })}
+                placeholder="1"
+                required
+              />
+            </UIFormGroup>
+            <UIFormGroup>
               <FormLabel>Unit *</FormLabel>
               <FormSelect
                 value={formData.unit}
@@ -764,6 +878,9 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                 <option value="bottle">bottle</option>
               </FormSelect>
             </UIFormGroup>
+          </UIFormRow>
+
+          <UIFormRow>
             <UIFormGroup>
               <FormLabel>Unit Cost (RM) *</FormLabel>
               <FormInput
@@ -775,17 +892,16 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                 required
               />
             </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>Minimum Stock</FormLabel>
+              <FormInput
+                type="number"
+                value={formData.min_stock}
+                onChange={(e) => setFormData({ ...formData, min_stock: e.target.value })}
+                placeholder="0"
+              />
+            </UIFormGroup>
           </UIFormRow>
-
-          <UIFormGroup>
-            <FormLabel>Minimum Stock</FormLabel>
-            <FormInput
-              type="number"
-              value={formData.min_stock}
-              onChange={(e) => setFormData({ ...formData, min_stock: e.target.value })}
-              placeholder="0"
-            />
-          </UIFormGroup>
 
           <ButtonGroup>
             <ModalButton type="button" variant="secondary" onClick={handleCloseModal}>

@@ -558,10 +558,12 @@ router.post('/brand-products', authenticateToken, isBrandManager, async (req, re
       description: description || null,
       sku: sku || null,
       unit: unit || null,
+      base_quantity: base_quantity || 1,
       unit_price: unit_price || 0,
       min_order_quantity: min_order_quantity || 1,
       image_url: image_url || null,
       is_active: is_active !== false,
+      sync_to_ingredients: sync_to_ingredients !== false,
       sort_order: sort_order || 0
     });
 
@@ -617,28 +619,30 @@ router.put('/brand-products/:productId', authenticateToken, isBrandManager, asyn
   try {
     const { productId } = req.params;
     const {
-      name, description, sku, unit, unit_price,
+      name, description, sku, unit, base_quantity, unit_price,
       min_order_quantity, image_url, category_id,
-      is_active, sort_order, brand_ids, option_group_ids
+      is_active, sync_to_ingredients, sort_order, brand_ids, option_group_ids
     } = req.body;
 
     const product = await BrandProduct.findByPk(productId);
 
     if (!product) {
-      return res.status(404).json({ error: '제품을 찾을 수 없습니다' });
+      return res.status(404).json({ error: 'Product not found' });
     }
 
-    // 제품 기본 정보 업데이트
+    // Update product
     await product.update({
       name: name !== undefined ? name.trim() : product.name,
       description: description !== undefined ? description : product.description,
       sku: sku !== undefined ? sku : product.sku,
       unit: unit !== undefined ? unit : product.unit,
+      base_quantity: base_quantity !== undefined ? base_quantity : product.base_quantity,
       unit_price: unit_price !== undefined ? unit_price : product.unit_price,
       min_order_quantity: min_order_quantity !== undefined ? min_order_quantity : product.min_order_quantity,
       image_url: image_url !== undefined ? image_url : product.image_url,
       category_id: category_id !== undefined ? category_id : product.category_id,
       is_active: is_active !== undefined ? is_active : product.is_active,
+      sync_to_ingredients: sync_to_ingredients !== undefined ? sync_to_ingredients : product.sync_to_ingredients,
       sort_order: sort_order !== undefined ? sort_order : product.sort_order
     });
 

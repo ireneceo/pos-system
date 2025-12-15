@@ -1,7 +1,7 @@
 # Feature-Based Subscription System - 개발 계획서
 
 **작성일:** 2025-01-19
-**수정일:** 2025-12-10
+**수정일:** 2025-12-15
 **프로젝트:** OrderHere POS System
 **목표:** 모듈형 구독 시스템 + 레시피-재고-발주 통합 관리
 
@@ -74,6 +74,8 @@
 
 ### Part 2: Supply Chain Management (신규 기능)
 - [x] Recipe Management (레시피 관리) - 완료
+- [x] Brand Product Management (브랜드 제품 관리) - 2025-12-15 완료
+- [x] Product-Ingredient Sync (제품-재료 연동) - 2025-12-15 완료
 - [ ] Advanced Inventory (재고 관리)
 - [ ] Purchase Order System (발주 관리)
 - [ ] AI Stock Prediction (재고 예측)
@@ -187,6 +189,44 @@ Brand General/Manager: 접근 불가 (표시 안됨)
 - ✅ 레시피 → 메뉴 등록
 - ✅ 원가 자동 계산
 - ✅ 상세 뷰 팝업
+
+---
+
+### ✅ Phase 2.5: Brand Product Management (완료 - 2025-12-15)
+
+**목표:** 브랜드 제품 관리 및 재료 자동 연동
+
+#### 작업 목록
+
+**2.5.1 DB 스키마**
+- [x] `brand_product_categories` 테이블 생성
+- [x] `brand_products` 테이블 생성 (base_quantity, sync_to_ingredients 포함)
+- [x] `brand_product_option_groups` 테이블 생성
+- [x] `brand_product_options` 테이블 생성
+- [x] `brand_product_brands` N:M 연결 테이블
+- [x] `brand_product_option_group_products` N:M 연결 테이블
+- [x] `ingredients` 테이블에 `brand_product_id`, `image_url`, `base_quantity` 추가
+
+**2.5.2 Backend**
+- [x] Models: BrandProduct, BrandProductCategory, BrandProductOptionGroup, BrandProductOption
+- [x] Routes: `/api/brand-products` (통합 관리 CRUD)
+- [x] Routes: `/api/brand-product-categories` (CRUD)
+- [x] Routes: `/api/brand-product-option-groups` (CRUD)
+- [x] `syncProductToIngredients()` 자동 연동 함수
+- [x] `isBrandManager` 미들웨어 개선
+
+**2.5.3 Frontend**
+- [x] `/pos/brand-general/products` - Brand Product Management
+- [x] BrandProductCategoriesTab - 카테고리 관리
+- [x] BrandProductsTab - 제품 CRUD (이미지, 옵션, 브랜드 연결)
+- [x] BrandProductOptionsTab - 옵션 그룹 관리
+- [x] IngredientsTab - 이미지, base_quantity UI 추가
+
+**산출물:**
+- ✅ 브랜드 제품 등록/수정/삭제
+- ✅ 제품 → 재료 자동 연동
+- ✅ sync_to_ingredients 플래그로 비재료 제품 지원
+- ✅ 재료에 이미지, 기준수량 표시
 
 ---
 
@@ -546,6 +586,7 @@ Week 12      │ 통합 테스트 & 버그 수정
 | 날짜 | 버전 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
 | 2025-01-19 | 1.0 | 초안 작성 | Claude |
+| 2025-12-15 | 1.1 | Phase 2.5 (Brand Product Management) 완료 추가 | Claude |
 
 ---
 

@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2025-12-14
+> **최종 업데이트:** 2025-12-15
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -312,6 +312,68 @@ const dateKey = `${(orderDate.getMonth() + 1).toString().padStart(2, '0')}/${ord
 
 ---
 
+## ✅ 완료된 작업 (2025-12-15)
+
+### Phase 3: 브랜드 제품 관리 시스템 - 완료
+
+**구현 완료 항목:**
+
+#### 3.1 데이터베이스
+- [x] `brand_product_categories` 테이블 생성
+- [x] `brand_products` 테이블 생성 (base_quantity, sync_to_ingredients 추가)
+- [x] `brand_product_option_groups` 테이블 생성
+- [x] `brand_product_options` 테이블 생성
+- [x] `brand_product_brands` 연결 테이블 (N:M 관계)
+- [x] `brand_product_option_group_products` 연결 테이블 (N:M 관계)
+
+#### 3.2 Backend 구현
+- [x] Models: BrandProduct, BrandProductCategory, BrandProductOptionGroup, BrandProductOption
+- [x] Routes: `/api/brand-products` (통합 관리 - CRUD)
+- [x] Routes: `/api/brand-product-categories` (CRUD)
+- [x] Routes: `/api/brand-product-option-groups` (CRUD)
+- [x] Routes: `/api/brands/:brandId/products` (브랜드별 제품 조회)
+- [x] `isBrandManager` 미들웨어 개선 (brand_id 없는 요청도 허용)
+
+#### 3.3 Frontend 구현
+- [x] Brand General 메뉴에 "Product Management" 추가 (`/pos/brand-general/products`)
+- [x] BrandProductManagementPage - 3개 탭 구조
+- [x] BrandProductCategoriesTab - 카테고리 관리
+- [x] BrandProductsTab - 제품 목록/CRUD (이미지, 가격, 옵션 그룹, 브랜드 연결)
+- [x] BrandProductOptionsTab - 옵션 그룹/옵션 관리
+
+### Phase 4: 제품-재료 연동 시스템 - 완료
+
+#### 4.1 연동 로직 구현
+- [x] `ingredients` 테이블에 `brand_product_id` FK 추가
+- [x] `ingredients` 테이블에 `image_url` 필드 추가 (MEDIUMTEXT)
+- [x] `ingredients` 테이블에 `base_quantity` 필드 추가
+- [x] Brand Product 생성/수정 시 자동으로 Ingredient 레코드 생성/업데이트
+- [x] `sync_to_ingredients` 플래그로 연동 여부 선택 가능 (패키지 등 비재료 제품 지원)
+- [x] Brand Product 삭제 시 연결된 Ingredient 자동 삭제
+
+#### 4.2 Frontend 구현
+- [x] IngredientsTab에 이미지 표시 (카드에 이미지 표시)
+- [x] IngredientsTab에 이미지 업로드 기능 추가
+- [x] IngredientsTab에 base_quantity 필드 추가 (Base Qty / Unit 표시)
+- [x] 브랜드 재료는 "Brand" 배지로 구분 표시
+
+### 주요 변경 파일
+
+**Backend:**
+- `/var/www/dev-backend/models/BrandProduct.js` - base_quantity, sync_to_ingredients 추가
+- `/var/www/dev-backend/models/Ingredient.js` - brand_product_id, image_url, base_quantity 추가
+- `/var/www/dev-backend/models/index.js` - BrandProduct-Ingredient 연관관계 추가
+- `/var/www/dev-backend/routes/brand-products.js` - syncProductToIngredients 함수 구현
+- `/var/www/dev-backend/routes/ingredients.js` - image_url, base_quantity 필드 지원
+- `/var/www/dev-backend/middleware/recipeAuth.js` - isBrandManager 개선
+- `/var/www/dev-backend/scripts/sync-brand-products.js` - 기존 제품 동기화 스크립트
+
+**Frontend:**
+- `/var/www/dev-frontend/src/pages/BrandProductManagement/BrandProductsTab.tsx` - base_quantity, sync_to_ingredients UI
+- `/var/www/dev-frontend/src/pages/RecipeManagement/IngredientsTab.tsx` - 이미지, base_quantity UI
+
+---
+
 ## 📅 예정된 작업 (Supply Chain Management 로드맵)
 
 ### 전체 흐름도
@@ -345,11 +407,23 @@ const dateKey = `${(orderDate.getMonth() + 1).toString().padStart(2, '0')}/${ord
 
 ---
 
-### Phase 3: 브랜드 제품 관리 시스템 (다음 개발)
+### Phase 3: 브랜드 제품 관리 시스템 ✅ 완료
 
-**목적:** Brand General/Manager가 레스토랑에 판매할 제품(원재료)을 등록/관리
+**상태:** 2025-12-15 완료 (상세 내용은 위 "완료된 작업" 섹션 참조)
 
-#### 3.1 데이터베이스 설계
+---
+
+### Phase 4: 제품-재료 연동 시스템 ✅ 완료
+
+**상태:** 2025-12-15 완료 (상세 내용은 위 "완료된 작업" 섹션 참조)
+
+---
+
+### ~~Phase 3: 브랜드 제품 관리 시스템~~ (완료됨)
+
+~~**목적:** Brand General/Manager가 레스토랑에 판매할 제품(원재료)을 등록/관리~~
+
+#### ~~3.1 데이터베이스 설계~~
 ```sql
 -- 브랜드 제품 카테고리
 CREATE TABLE brand_product_categories (
@@ -650,13 +724,13 @@ CREATE TABLE purchase_order_items (
 
 ### 개발 우선순위 요약
 
-| 순서 | Phase | 내용 | 의존성 |
+| 순서 | Phase | 내용 | 상태 |
 |------|-------|------|--------|
-| 1 | Phase 3 | 브랜드 제품 관리 | - |
-| 2 | Phase 4 | 제품-재료 연동 | Phase 3 |
-| 3 | Phase 5 | 재고 관리 | Phase 4 |
-| 4 | Phase 6 | 발주 관리 | Phase 5 |
-| 5 | Phase 7 | AI 재고 예측 | Phase 6 |
+| 1 | Phase 3 | 브랜드 제품 관리 | ✅ 완료 (2025-12-15) |
+| 2 | Phase 4 | 제품-재료 연동 | ✅ 완료 (2025-12-15) |
+| 3 | Phase 5 | 재고 관리 | 📋 다음 개발 |
+| 4 | Phase 6 | 발주 관리 | 대기 중 |
+| 5 | Phase 7 | AI 재고 예측 | 대기 중 |
 
 ---
 
@@ -894,4 +968,4 @@ const token = localStorage.getItem('auth_token'); // ✅ 정상 작동
 **프로젝트:** Purple POS System
 **개발 환경:** Development Server
 **데이터베이스:** purple_dev_db (MySQL)
-**마지막 업데이트:** 2025-12-14
+**마지막 업데이트:** 2025-12-15
