@@ -561,7 +561,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
           ))}
         </FilterSelect>
         <ThemedButton onClick={() => handleOpenModal()}>
-          + Add Product
+          Add Product
         </ThemedButton>
       </FilterBar>
 
@@ -576,7 +576,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
               : 'Start by adding your first product.'}
           </EmptyDescription>
           {!searchTerm && categoryFilter === 'all' && brandFilter === 'all' && (
-            <ThemedButton onClick={() => handleOpenModal()}>+ Add Product</ThemedButton>
+            <ThemedButton onClick={() => handleOpenModal()}>Add Product</ThemedButton>
           )}
         </EmptyState>
       ) : (

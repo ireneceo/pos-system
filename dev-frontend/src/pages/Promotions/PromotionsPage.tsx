@@ -571,10 +571,10 @@ const PromotionsPage: React.FC = () => {
           <HeaderTitle>Promotions Management</HeaderTitle>
           <HeaderActions>
             {activeTab === 'coupons' && (
-              <Button primary onClick={handleCreateCoupon}>+ Create Coupon</Button>
+              <Button primary onClick={handleCreateCoupon}>Create Coupon</Button>
             )}
             {activeTab === 'discounts' && (
-              <Button primary onClick={handleCreateDiscount}>+ Add Discount Policy</Button>
+              <Button primary onClick={handleCreateDiscount}>Add Discount Policy</Button>
             )}
           </HeaderActions>
         </Header>

@@ -553,7 +553,7 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
       <HeaderRow>
         <SectionTitle>Ingredient Categories</SectionTitle>
         <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
-          + New Category
+          Add Category
         </ThemedButton>
       </HeaderRow>
 
@@ -575,7 +575,7 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
             Create categories to organize your ingredients
           </EmptyDescription>
           <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
-            Create Category
+            Add Category
           </ThemedButton>
         </EmptyState>
       ) : (

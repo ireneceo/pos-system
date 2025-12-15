@@ -6,7 +6,6 @@ import { OrderControls } from '../../components/UI';
 import ConfirmModal from '../../components/ConfirmModal';
 
 interface BrandProductCategoriesTabProps {
-  brandId: number;
   onCountChange: (count: number) => void;
   onCategoryChange?: () => void;
 }
@@ -23,7 +22,7 @@ interface Category {
 }
 
 const Container = styled.div`
-  padding: 24px 0;
+  margin-top: 24px;
 `;
 
 const CategoryGrid = styled.div`
@@ -201,7 +200,6 @@ const EmojiOption = styled.button<{ selected?: boolean }>`
 `;
 
 const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
-  brandId,
   onCountChange,
   onCategoryChange
 }) => {
@@ -228,11 +226,9 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
   const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
 
   const fetchCategories = useCallback(async () => {
-    if (!brandId) return;
-
     try {
       const token = getToken();
-      const response = await fetch(`/api/brands/${brandId}/product-categories`, {
+      const response = await fetch('/api/brand-product-categories', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -246,12 +242,12 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [brandId, getToken, onCountChange]);
+  }, [getToken, onCountChange]);
 
   useEffect(() => {
     setLoading(true);
     fetchCategories();
-  }, [brandId, fetchCategories]);
+  }, [fetchCategories]);
 
   const handleOpenModal = (category?: Category) => {
     if (category) {
@@ -286,8 +282,8 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
       const token = getToken();
       const method = editingCategory ? 'PUT' : 'POST';
       const url = editingCategory
-        ? `/api/brands/${brandId}/product-categories/${editingCategory.id}`
-        : `/api/brands/${brandId}/product-categories`;
+        ? `/api/brand-product-categories/${editingCategory.id}`
+        : '/api/brand-product-categories';
 
       const response = await fetch(url, {
         method,
@@ -327,7 +323,7 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
 
     try {
       const token = getToken();
-      const response = await fetch(`/api/brands/${brandId}/product-categories/${categoryToDelete.id}`, {
+      const response = await fetch(`/api/brand-product-categories/${categoryToDelete.id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -351,7 +347,7 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
   const handleReorder = async (categoryId: number, direction: 'up' | 'down') => {
     try {
       const token = getToken();
-      const response = await fetch(`/api/brands/${brandId}/product-categories/${categoryId}/reorder`, {
+      const response = await fetch(`/api/brand-product-categories/${categoryId}/reorder`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -387,7 +383,7 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
       <HeaderRow>
         <SectionTitle>Product Categories</SectionTitle>
         <ThemedButton onClick={() => handleOpenModal()}>
-          + Add Category
+          Add Category
         </ThemedButton>
       </HeaderRow>
 
@@ -395,7 +391,7 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
         <EmptyState>
           <EmptyTitle>No categories yet</EmptyTitle>
           <EmptyDescription>Create your first product category to organize your products.</EmptyDescription>
-          <ThemedButton onClick={() => handleOpenModal()}>+ Add Category</ThemedButton>
+          <ThemedButton onClick={() => handleOpenModal()}>Add Category</ThemedButton>
         </EmptyState>
       ) : (
         <CategoryGrid>

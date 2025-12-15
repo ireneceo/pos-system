@@ -910,8 +910,8 @@ const MenuManagementPage: React.FC = () => {
         <Header>
           <HeaderTitle>Menu</HeaderTitle>
           <HeaderActions>
-            <UIButton variant="secondary" onClick={handleAddSetMenu}>+ Create Set Menu</UIButton>
-            <UIButton variant="primary" onClick={handleAddItem}>+ Add New Item</UIButton>
+            <UIButton variant="secondary" onClick={handleAddSetMenu}>Create Set Menu</UIButton>
+            <UIButton variant="primary" onClick={handleAddItem}>Add New Item</UIButton>
           </HeaderActions>
         </Header>
 

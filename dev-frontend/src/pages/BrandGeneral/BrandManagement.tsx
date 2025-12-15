@@ -360,7 +360,7 @@ const BrandManagement: React.FC = () => {
           <Title>Brands</Title>
           <ActionSection>
             <Button variant="secondary">Export</Button>
-            <Button variant="primary" onClick={handleAddBrand}>+ Add Brand</Button>
+            <Button variant="primary" onClick={handleAddBrand}>Add Brand</Button>
           </ActionSection>
         </Header>
 
@@ -396,7 +396,7 @@ const BrandManagement: React.FC = () => {
             <EmptyState>
               <h3>No Brands Found</h3>
               <p>Create your first brand to get started.</p>
-              <Button variant="primary" onClick={handleAddBrand}>+ Add Brand</Button>
+              <Button variant="primary" onClick={handleAddBrand}>Add Brand</Button>
             </EmptyState>
           ) : (
             <Table>

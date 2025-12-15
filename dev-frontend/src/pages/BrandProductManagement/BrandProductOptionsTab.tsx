@@ -6,8 +6,8 @@ const ToolBar = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-top: 24px;
   margin-bottom: 20px;
-  padding: 16px 0;
 `;
 
 const SearchInput = styled.input`
@@ -442,7 +442,7 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
           onChange={(e) => setSearchTerm(e.target.value)}
         />
         <Button onClick={() => handleOpenModal()}>
-          + Add Option Group
+          Add Option Group
         </Button>
       </ToolBar>
 
@@ -453,7 +453,7 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
             Create option groups to add customizable options to your products
           </EmptyDescription>
           <Button onClick={() => handleOpenModal()}>
-            Create Option Group
+            Add Option Group
           </Button>
         </EmptyState>
       ) : (

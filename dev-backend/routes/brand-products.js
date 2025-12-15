@@ -157,6 +157,47 @@ router.delete('/brand-product-categories/:categoryId', authenticateToken, isBran
   }
 });
 
+/**
+ * PUT /api/brand-product-categories/:categoryId/reorder
+ * 제품 카테고리 순서 변경
+ */
+router.put('/brand-product-categories/:categoryId/reorder', authenticateToken, isBrandManager, async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const { direction } = req.body;
+
+    if (!direction || !['up', 'down'].includes(direction)) {
+      return res.status(400).json({ error: 'direction은 up 또는 down이어야 합니다' });
+    }
+
+    const category = await BrandProductCategory.findByPk(categoryId);
+    if (!category) {
+      return res.status(404).json({ error: '카테고리를 찾을 수 없습니다' });
+    }
+
+    const allCategories = await BrandProductCategory.findAll({
+      order: [['sort_order', 'ASC'], ['id', 'ASC']]
+    });
+
+    const currentIndex = allCategories.findIndex(c => c.id === parseInt(categoryId));
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+
+    if (targetIndex < 0 || targetIndex >= allCategories.length) {
+      return res.status(400).json({ error: '더 이상 이동할 수 없습니다' });
+    }
+
+    const targetCategory = allCategories[targetIndex];
+    const tempOrder = category.sort_order;
+    await category.update({ sort_order: targetCategory.sort_order });
+    await targetCategory.update({ sort_order: tempOrder });
+
+    res.json({ success: true, message: '순서가 변경되었습니다' });
+  } catch (error) {
+    console.error('Reorder brand product category error:', error);
+    res.status(500).json({ error: 'Failed to reorder category' });
+  }
+});
+
 // ============================================
 // Option Groups (통합 관리 - 브랜드/제품 무관)
 // ============================================
