@@ -42,7 +42,7 @@ router.post('/brands/:brandId/ingredients', authenticateToken, isBrandManager, a
   try {
     const { brandId } = req.params;
     const brand_id = brandId; // DB 쿼리용
-    const { code, name, category, ingredient_category_id, unit, unit_cost, supplier_name, min_stock } = req.body;
+    const { code, name, image_url, category, ingredient_category_id, unit, unit_cost, supplier_name, min_stock } = req.body;
 
     const ingredient = await Ingredient.create({
       owner_type: 'brand',
@@ -51,6 +51,7 @@ router.post('/brands/:brandId/ingredients', authenticateToken, isBrandManager, a
       ingredient_category_id: ingredient_category_id || null,
       code,
       name,
+      image_url: image_url || null,
       category,
       unit,
       unit_cost,

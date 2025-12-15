@@ -176,6 +176,10 @@ Restaurant.hasMany(IngredientCategory, { foreignKey: 'restaurant_id', as: 'ingre
 Ingredient.belongsTo(IngredientCategory, { foreignKey: 'ingredient_category_id', as: 'ingredientCategory' });
 IngredientCategory.hasMany(Ingredient, { foreignKey: 'ingredient_category_id', as: 'ingredients' });
 
+// Ingredient - BrandProduct association
+Ingredient.belongsTo(BrandProduct, { foreignKey: 'brand_product_id', as: 'brandProduct' });
+BrandProduct.hasMany(Ingredient, { foreignKey: 'brand_product_id', as: 'ingredients' });
+
 // BrandProduct - Category associations
 BrandProduct.belongsTo(BrandProductCategory, { foreignKey: 'category_id', as: 'category' });
 BrandProductCategory.hasMany(BrandProduct, { foreignKey: 'category_id', as: 'products' });

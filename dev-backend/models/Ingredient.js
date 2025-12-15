@@ -9,14 +9,14 @@ Ingredient.init({
     primaryKey: true,
     autoIncrement: true
   },
-  // 소유권 타입 (brand 또는 restaurant)
+  // Owner type (brand or restaurant)
   owner_type: {
     type: DataTypes.ENUM('brand', 'restaurant'),
     allowNull: false,
     defaultValue: 'restaurant',
-    comment: '소유권 타입: brand(브랜드 공통) 또는 restaurant(지점 전용)'
+    comment: 'Owner type: brand (shared) or restaurant (location-specific)'
   },
-  // 소유권
+  // Owner
   brand_id: {
     type: DataTypes.INTEGER,
     allowNull: true
@@ -25,13 +25,19 @@ Ingredient.init({
     type: DataTypes.INTEGER,
     allowNull: true
   },
-  // 재료 카테고리
+  // Ingredient category
   ingredient_category_id: {
     type: DataTypes.INTEGER,
     allowNull: true,
-    comment: '재료 카테고리 FK'
+    comment: 'Ingredient category FK'
   },
-  // 재료 정보
+  // Brand product link
+  brand_product_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Brand product FK - links to brand_products table'
+  },
+  // Ingredient info
   code: {
     type: DataTypes.STRING(50),
     allowNull: true
@@ -40,37 +46,46 @@ Ingredient.init({
     type: DataTypes.STRING(100),
     allowNull: false
   },
+  image_url: {
+    type: DataTypes.TEXT('medium'),
+    allowNull: true
+  },
   category: {
     type: DataTypes.ENUM('produce', 'meat', 'seafood', 'dairy', 'dry_goods', 'spices', 'beverages', 'other'),
     defaultValue: 'other'
   },
-  // 재고 단위
+  // Stock unit
   unit: {
     type: DataTypes.ENUM('kg', 'g', 'L', 'ml', 'piece', 'pack', 'can', 'bottle'),
     allowNull: false
   },
-  // 가격
+  base_quantity: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 1,
+    comment: 'Base quantity per unit'
+  },
+  // Price
   unit_cost: {
     type: DataTypes.DECIMAL(10, 4),
     allowNull: false,
     defaultValue: 0.0000,
-    comment: '단위당 원가'
+    comment: 'Cost per unit'
   },
   supplier_name: {
     type: DataTypes.STRING(100),
     allowNull: true,
-    comment: '공급업체명'
+    comment: 'Supplier name'
   },
-  // 재고 관련
+  // Stock management
   min_stock: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 0,
-    comment: '최소 재고량'
+    comment: 'Minimum stock level'
   },
   current_stock: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 0,
-    comment: '현재 재고량'
+    comment: 'Current stock level'
   },
   is_active: {
     type: DataTypes.BOOLEAN,

@@ -7,18 +7,88 @@ const {
   BrandProductOption,
   BrandProductBrand,
   BrandProductOptionGroupProduct,
-  Brand
+  Brand,
+  Ingredient
 } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
 
+/**
+ * Sync brand product to ingredients table
+ * Creates or updates ingredient records for each brand linked to the product
+ */
+async function syncProductToIngredients(productId) {
+  try {
+    const product = await BrandProduct.findByPk(productId, {
+      include: [{ model: Brand, as: 'brands', through: { attributes: [] } }]
+    });
+
+    if (!product) return;
+
+    // If sync_to_ingredients is false, remove any existing linked ingredients
+    if (!product.sync_to_ingredients) {
+      await Ingredient.destroy({ where: { brand_product_id: productId } });
+      return;
+    }
+
+    if (!product.brands || product.brands.length === 0) {
+      return;
+    }
+
+    // For each linked brand, create or update ingredient
+    for (const brand of product.brands) {
+      let ingredient = await Ingredient.findOne({
+        where: {
+          brand_product_id: productId,
+          brand_id: brand.id
+        }
+      });
+
+      const ingredientData = {
+        owner_type: 'brand',
+        brand_id: brand.id,
+        restaurant_id: null,
+        brand_product_id: productId,
+        code: product.sku || null,
+        name: product.name,
+        image_url: product.image_url || null,
+        category: 'other',
+        unit: product.unit || 'piece',
+        base_quantity: product.base_quantity || 1,
+        unit_cost: product.unit_price || 0,
+        supplier_name: null,
+        min_stock: 0,
+        current_stock: 0,
+        is_active: product.is_active
+      };
+
+      if (ingredient) {
+        await ingredient.update(ingredientData);
+      } else {
+        await Ingredient.create(ingredientData);
+      }
+    }
+
+    // Remove ingredients for brands that are no longer linked
+    const linkedBrandIds = product.brands.map(b => b.id);
+    await Ingredient.destroy({
+      where: {
+        brand_product_id: productId,
+        brand_id: { [require('sequelize').Op.notIn]: linkedBrandIds }
+      }
+    });
+  } catch (error) {
+    console.error('Sync product to ingredients error:', error);
+  }
+}
+
 // ============================================
-// Product Categories (통합 관리 - 브랜드 무관)
+// Product Categories (unified management - brand independent)
 // ============================================
 
 /**
  * GET /api/brand-product-categories
- * 제품 카테고리 전체 목록 조회
+ * Get all product categories
  */
 router.get('/brand-product-categories', authenticateToken, isBrandManager, async (req, res) => {
   try {
@@ -47,25 +117,25 @@ router.get('/brand-product-categories', authenticateToken, isBrandManager, async
 
 /**
  * POST /api/brand-product-categories
- * 제품 카테고리 생성
+ * Create product category
  */
 router.post('/brand-product-categories', authenticateToken, isBrandManager, async (req, res) => {
   try {
     const { name, description, emoji, sort_order, is_active } = req.body;
 
     if (!name || !name.trim()) {
-      return res.status(400).json({ error: '카테고리 이름은 필수입니다' });
+      return res.status(400).json({ error: 'Category name is required' });
     }
 
-    // 중복 체크
+    // Duplicate check
     const existing = await BrandProductCategory.findOne({
       where: { name: name.trim() }
     });
     if (existing) {
-      return res.status(400).json({ error: '동일한 이름의 카테고리가 이미 존재합니다' });
+      return res.status(400).json({ error: 'A category with this name already exists' });
     }
 
-    // sort_order 자동 설정
+    // Auto-set sort_order
     let finalSortOrder = sort_order;
     if (finalSortOrder === undefined || finalSortOrder === null) {
       const maxOrder = await BrandProductCategory.max('sort_order');
@@ -89,7 +159,7 @@ router.post('/brand-product-categories', authenticateToken, isBrandManager, asyn
 
 /**
  * PUT /api/brand-product-categories/:categoryId
- * 제품 카테고리 수정
+ * Update product category
  */
 router.put('/brand-product-categories/:categoryId', authenticateToken, isBrandManager, async (req, res) => {
   try {
@@ -99,16 +169,16 @@ router.put('/brand-product-categories/:categoryId', authenticateToken, isBrandMa
     const category = await BrandProductCategory.findByPk(categoryId);
 
     if (!category) {
-      return res.status(404).json({ error: '카테고리를 찾을 수 없습니다' });
+      return res.status(404).json({ error: 'Category not found' });
     }
 
-    // 이름 중복 체크 (자기 자신 제외)
+    // Check name duplicate (excluding self)
     if (name && name.trim() !== category.name) {
       const existing = await BrandProductCategory.findOne({
         where: { name: name.trim() }
       });
       if (existing && existing.id !== parseInt(categoryId)) {
-        return res.status(400).json({ error: '동일한 이름의 카테고리가 이미 존재합니다' });
+        return res.status(400).json({ error: 'A category with this name already exists' });
       }
     }
 
@@ -129,7 +199,7 @@ router.put('/brand-product-categories/:categoryId', authenticateToken, isBrandMa
 
 /**
  * DELETE /api/brand-product-categories/:categoryId
- * 제품 카테고리 삭제
+ * Delete product category
  */
 router.delete('/brand-product-categories/:categoryId', authenticateToken, isBrandManager, async (req, res) => {
   try {
@@ -140,17 +210,17 @@ router.delete('/brand-product-categories/:categoryId', authenticateToken, isBran
     });
 
     if (!category) {
-      return res.status(404).json({ error: '카테고리를 찾을 수 없습니다' });
+      return res.status(404).json({ error: 'Category not found' });
     }
 
     if (category.products && category.products.length > 0) {
       return res.status(400).json({
-        error: '이 카테고리에 제품이 있습니다. 먼저 제품을 삭제하거나 다른 카테고리로 이동해주세요.'
+        error: 'This category has products. Please delete or move products first.'
       });
     }
 
     await category.destroy();
-    res.json({ success: true, message: '카테고리가 삭제되었습니다' });
+    res.json({ success: true, message: 'Category deleted successfully' });
   } catch (error) {
     console.error('Delete brand product category error:', error);
     res.status(500).json({ error: 'Failed to delete product category' });
@@ -159,7 +229,7 @@ router.delete('/brand-product-categories/:categoryId', authenticateToken, isBran
 
 /**
  * PUT /api/brand-product-categories/:categoryId/reorder
- * 제품 카테고리 순서 변경
+ * Reorder product category
  */
 router.put('/brand-product-categories/:categoryId/reorder', authenticateToken, isBrandManager, async (req, res) => {
   try {
@@ -167,12 +237,12 @@ router.put('/brand-product-categories/:categoryId/reorder', authenticateToken, i
     const { direction } = req.body;
 
     if (!direction || !['up', 'down'].includes(direction)) {
-      return res.status(400).json({ error: 'direction은 up 또는 down이어야 합니다' });
+      return res.status(400).json({ error: 'direction must be up or down' });
     }
 
     const category = await BrandProductCategory.findByPk(categoryId);
     if (!category) {
-      return res.status(404).json({ error: '카테고리를 찾을 수 없습니다' });
+      return res.status(404).json({ error: 'Category not found' });
     }
 
     const allCategories = await BrandProductCategory.findAll({
@@ -183,7 +253,7 @@ router.put('/brand-product-categories/:categoryId/reorder', authenticateToken, i
     const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
 
     if (targetIndex < 0 || targetIndex >= allCategories.length) {
-      return res.status(400).json({ error: '더 이상 이동할 수 없습니다' });
+      return res.status(400).json({ error: 'Cannot move further' });
     }
 
     const targetCategory = allCategories[targetIndex];
@@ -191,7 +261,7 @@ router.put('/brand-product-categories/:categoryId/reorder', authenticateToken, i
     await category.update({ sort_order: targetCategory.sort_order });
     await targetCategory.update({ sort_order: tempOrder });
 
-    res.json({ success: true, message: '순서가 변경되었습니다' });
+    res.json({ success: true, message: 'Order changed successfully' });
   } catch (error) {
     console.error('Reorder brand product category error:', error);
     res.status(500).json({ error: 'Failed to reorder category' });
@@ -199,12 +269,12 @@ router.put('/brand-product-categories/:categoryId/reorder', authenticateToken, i
 });
 
 // ============================================
-// Option Groups (통합 관리 - 브랜드/제품 무관)
+// Option Groups (unified management - brand/product independent)
 // ============================================
 
 /**
  * GET /api/brand-product-option-groups
- * 옵션 그룹 전체 목록 조회
+ * Get all option groups
  */
 router.get('/brand-product-option-groups', authenticateToken, isBrandManager, async (req, res) => {
   try {
@@ -228,17 +298,17 @@ router.get('/brand-product-option-groups', authenticateToken, isBrandManager, as
 
 /**
  * POST /api/brand-product-option-groups
- * 옵션 그룹 생성
+ * Create option group
  */
 router.post('/brand-product-option-groups', authenticateToken, isBrandManager, async (req, res) => {
   try {
     const { name, is_required, min_selections, max_selections, sort_order, options } = req.body;
 
     if (!name || !name.trim()) {
-      return res.status(400).json({ error: '옵션 그룹명은 필수입니다' });
+      return res.status(400).json({ error: 'Option group name is required' });
     }
 
-    // sort_order 자동 설정
+    // Auto-set sort_order
     let finalSortOrder = sort_order;
     if (finalSortOrder === undefined || finalSortOrder === null) {
       const maxOrder = await BrandProductOptionGroup.max('sort_order');
@@ -253,7 +323,7 @@ router.post('/brand-product-option-groups', authenticateToken, isBrandManager, a
       sort_order: finalSortOrder
     });
 
-    // 옵션 생성
+    // Create options
     if (options && options.length > 0) {
       for (let j = 0; j < options.length; j++) {
         const opt = options[j];
@@ -472,16 +542,16 @@ router.get('/brand-products/:productId', authenticateToken, isBrandManager, asyn
 router.post('/brand-products', authenticateToken, isBrandManager, async (req, res) => {
   try {
     const {
-      name, description, sku, unit, unit_price,
+      name, description, sku, unit, base_quantity, unit_price,
       min_order_quantity, image_url, category_id,
-      is_active, sort_order, brand_ids, option_group_ids
+      is_active, sync_to_ingredients, sort_order, brand_ids, option_group_ids
     } = req.body;
 
     if (!name || !name.trim()) {
-      return res.status(400).json({ error: '제품명은 필수입니다' });
+      return res.status(400).json({ error: 'Product name is required' });
     }
 
-    // 제품 생성
+    // Create product
     const product = await BrandProduct.create({
       category_id: category_id || null,
       name: name.trim(),
@@ -515,7 +585,10 @@ router.post('/brand-products', authenticateToken, isBrandManager, async (req, re
       }
     }
 
-    // 생성된 제품 다시 조회
+    // Sync to ingredients table
+    await syncProductToIngredients(product.id);
+
+    // Fetch created product with associations
     const createdProduct = await BrandProduct.findByPk(product.id, {
       include: [
         { model: BrandProductCategory, as: 'category' },
@@ -582,7 +655,7 @@ router.put('/brand-products/:productId', authenticateToken, isBrandManager, asyn
       }
     }
 
-    // 옵션 그룹 연결 업데이트
+    // Update option group links
     if (option_group_ids !== undefined) {
       await BrandProductOptionGroupProduct.destroy({ where: { product_id: productId } });
       if (option_group_ids && option_group_ids.length > 0) {
@@ -595,7 +668,10 @@ router.put('/brand-products/:productId', authenticateToken, isBrandManager, asyn
       }
     }
 
-    // 업데이트된 제품 다시 조회
+    // Sync to ingredients table
+    await syncProductToIngredients(productId);
+
+    // Fetch updated product with associations
     const updatedProduct = await BrandProduct.findByPk(productId, {
       include: [
         { model: BrandProductCategory, as: 'category' },
@@ -630,13 +706,16 @@ router.delete('/brand-products/:productId', authenticateToken, isBrandManager, a
       return res.status(404).json({ error: '제품을 찾을 수 없습니다' });
     }
 
-    // 연결 테이블 먼저 삭제
+    // Delete linked ingredients first
+    await Ingredient.destroy({ where: { brand_product_id: productId } });
+
+    // Delete link tables
     await BrandProductBrand.destroy({ where: { product_id: productId } });
     await BrandProductOptionGroupProduct.destroy({ where: { product_id: productId } });
 
     await product.destroy();
 
-    res.json({ success: true, message: '제품이 삭제되었습니다' });
+    res.json({ success: true, message: 'Product deleted successfully' });
   } catch (error) {
     console.error('Delete brand product error:', error);
     res.status(500).json({ error: 'Failed to delete product' });

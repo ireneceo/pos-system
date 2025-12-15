@@ -41,10 +41,12 @@ interface Product {
   description: string | null;
   sku: string | null;
   unit: string | null;
+  base_quantity: number;
   unit_price: number;
   min_order_quantity: number;
   image_url: string | null;
   is_active: boolean;
+  sync_to_ingredients: boolean;
   sort_order: number;
   brands?: Brand[];
   optionGroups?: OptionGroup[];
@@ -296,25 +298,28 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     description: '',
     sku: '',
     unit: '',
+    base_quantity: '1',
     unit_price: '',
     min_order_quantity: '1',
     category_id: '',
     image_url: '',
     is_active: true,
+    sync_to_ingredients: true,
     brand_ids: [] as number[],
     option_group_ids: [] as number[]
   });
   const [formError, setFormError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const unitOptions = [
-    { value: 'kg', label: 'kg (킬로그램)' },
-    { value: 'g', label: 'g (그램)' },
-    { value: 'L', label: 'L (리터)' },
-    { value: 'ml', label: 'ml (밀리리터)' },
-    { value: 'piece', label: 'piece (개)' },
-    { value: 'pack', label: 'pack (팩)' },
-    { value: 'can', label: 'can (캔)' },
-    { value: 'bottle', label: 'bottle (병)' }
+    { value: 'kg', label: 'kg' },
+    { value: 'g', label: 'g' },
+    { value: 'L', label: 'L' },
+    { value: 'ml', label: 'ml' },
+    { value: 'piece', label: 'piece' },
+    { value: 'pack', label: 'pack' },
+    { value: 'can', label: 'can' },
+    { value: 'bottle', label: 'bottle' }
   ];
 
   const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
@@ -397,11 +402,13 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         description: product.description || '',
         sku: product.sku || '',
         unit: product.unit || '',
+        base_quantity: (product.base_quantity || 1).toString(),
         unit_price: product.unit_price.toString(),
         min_order_quantity: product.min_order_quantity.toString(),
         category_id: product.category_id?.toString() || '',
         image_url: product.image_url || '',
         is_active: product.is_active,
+        sync_to_ingredients: product.sync_to_ingredients !== false,
         brand_ids: product.brands?.map(b => b.id) || [],
         option_group_ids: product.optionGroups?.map(og => og.id) || []
       });
@@ -412,11 +419,13 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         description: '',
         sku: '',
         unit: '',
+        base_quantity: '1',
         unit_price: '',
         min_order_quantity: '1',
         category_id: categories.length > 0 ? categories[0].id.toString() : '',
         image_url: '',
         is_active: true,
+        sync_to_ingredients: true,
         brand_ids: [],
         option_group_ids: []
       });
@@ -432,6 +441,8 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     setFormError(null);
 
     if (!formData.name.trim()) {
@@ -442,6 +453,8 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
       setFormError('Unit is required');
       return;
     }
+
+    setIsSubmitting(true);
 
     try {
       const token = getToken();
@@ -461,11 +474,13 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
           description: formData.description.trim() || null,
           sku: formData.sku.trim() || null,
           unit: formData.unit || null,
+          base_quantity: parseFloat(formData.base_quantity) || 1,
           unit_price: parseFloat(formData.unit_price) || 0,
           min_order_quantity: parseInt(formData.min_order_quantity) || 1,
           category_id: formData.category_id ? parseInt(formData.category_id) : null,
           image_url: formData.image_url || null,
           is_active: formData.is_active,
+          sync_to_ingredients: formData.sync_to_ingredients,
           brand_ids: formData.brand_ids,
           option_group_ids: formData.option_group_ids
         })
@@ -482,6 +497,8 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     } catch (error) {
       console.error('Failed to save product:', error);
       setFormError('Failed to save product. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -727,7 +744,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
               />
             </UIFormGroup>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px' }}>
               <UIFormGroup>
                 <FormLabel>Unit Price (RM) *</FormLabel>
                 <FormInput
@@ -737,6 +754,19 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                   value={formData.unit_price}
                   onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
                   placeholder="0.00"
+                  required
+                />
+              </UIFormGroup>
+
+              <UIFormGroup>
+                <FormLabel>Base Qty *</FormLabel>
+                <FormInput
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={formData.base_quantity}
+                  onChange={(e) => setFormData({ ...formData, base_quantity: e.target.value })}
+                  placeholder="1"
                   required
                 />
               </UIFormGroup>
@@ -814,23 +844,35 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
               )}
             </UIFormGroup>
 
-            <UIFormGroup>
-              <CheckboxLabel>
-                <input
-                  type="checkbox"
-                  checked={formData.is_active}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                />
-                Active
-              </CheckboxLabel>
-            </UIFormGroup>
+            <div style={{ display: 'flex', gap: '24px' }}>
+              <UIFormGroup style={{ marginBottom: 0 }}>
+                <CheckboxLabel>
+                  <input
+                    type="checkbox"
+                    checked={formData.is_active}
+                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                  />
+                  Active
+                </CheckboxLabel>
+              </UIFormGroup>
+              <UIFormGroup style={{ marginBottom: 0 }}>
+                <CheckboxLabel>
+                  <input
+                    type="checkbox"
+                    checked={formData.sync_to_ingredients}
+                    onChange={(e) => setFormData({ ...formData, sync_to_ingredients: e.target.checked })}
+                  />
+                  Sync to Recipe Ingredients
+                </CheckboxLabel>
+              </UIFormGroup>
+            </div>
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
-              <ModalButton type="button" onClick={handleCloseModal}>
+              <ModalButton type="button" onClick={handleCloseModal} disabled={isSubmitting}>
                 Cancel
               </ModalButton>
-              <ModalButton type="submit" variant="primary">
-                {editingProduct ? 'Update' : 'Create'}
+              <ModalButton type="submit" variant="primary" disabled={isSubmitting}>
+                {isSubmitting ? 'Saving...' : (editingProduct ? 'Update' : 'Create')}
               </ModalButton>
             </div>
 

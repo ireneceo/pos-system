@@ -31,7 +31,12 @@ const BrandProduct = sequelize.define('BrandProduct', {
   unit: {
     type: DataTypes.STRING(50),
     allowNull: true,
-    comment: '기본 단위 (kg, L, 개 등)'
+    comment: 'Base unit (kg, L, piece, etc.)'
+  },
+  base_quantity: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 1,
+    comment: 'Base quantity per unit'
   },
   unit_price: {
     type: DataTypes.DECIMAL(10, 2),
@@ -51,6 +56,11 @@ const BrandProduct = sequelize.define('BrandProduct', {
   is_active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  sync_to_ingredients: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+    comment: 'Whether to sync to ingredients table for recipes'
   },
   sort_order: {
     type: DataTypes.INTEGER,
