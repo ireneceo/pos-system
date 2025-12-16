@@ -25,6 +25,12 @@ Supplier.init({
     type: DataTypes.INTEGER,
     allowNull: true
   },
+  // Category
+  supplier_category_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Supplier category ID'
+  },
   // Supplier info
   code: {
     type: DataTypes.STRING(50),

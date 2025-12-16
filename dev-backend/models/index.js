@@ -32,6 +32,7 @@ const BrandProductOption = require('./BrandProductOption');
 const BrandProductBrand = require('./BrandProductBrand');
 const BrandProductOptionGroupProduct = require('./BrandProductOptionGroupProduct');
 const Supplier = require('./Supplier');
+const SupplierCategory = require('./SupplierCategory');
 
 // Define associations
 // Brand - Restaurant associations
@@ -235,6 +236,16 @@ Restaurant.hasMany(Supplier, { foreignKey: 'restaurant_id', as: 'suppliers' });
 Ingredient.belongsTo(Supplier, { foreignKey: 'supplier_id', as: 'supplier' });
 Supplier.hasMany(Ingredient, { foreignKey: 'supplier_id', as: 'ingredients' });
 
+// SupplierCategory associations
+SupplierCategory.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
+Brand.hasMany(SupplierCategory, { foreignKey: 'brand_id', as: 'supplierCategories' });
+SupplierCategory.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Restaurant.hasMany(SupplierCategory, { foreignKey: 'restaurant_id', as: 'supplierCategories' });
+
+// Supplier - SupplierCategory association
+Supplier.belongsTo(SupplierCategory, { foreignKey: 'supplier_category_id', as: 'supplierCategory' });
+SupplierCategory.hasMany(Supplier, { foreignKey: 'supplier_category_id', as: 'suppliers' });
+
 module.exports = {
   User,
   Restaurant,
@@ -269,5 +280,6 @@ module.exports = {
   BrandProductOption,
   BrandProductBrand,
   BrandProductOptionGroupProduct,
-  Supplier
+  Supplier,
+  SupplierCategory
 };

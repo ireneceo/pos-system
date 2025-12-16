@@ -1300,6 +1300,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   Recipe
                 </NavItem>
               )}
+              {isRouteAllowed(`/restaurant/${restaurantId}/suppliers`) && (
+                <NavItem to={`/restaurant/${restaurantId}/suppliers`} active={isActive(`/restaurant/${restaurantId}/suppliers`)} onClick={closeSidebar}>
+                  <NavIcon>◇</NavIcon>
+                  Suppliers
+                </NavItem>
+              )}
             </NavSection>
           )}
 

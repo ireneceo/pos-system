@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Supplier, Restaurant } = require('../models');
+const { Supplier, Restaurant, SupplierCategory } = require('../models');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
 
@@ -18,7 +18,14 @@ router.get('/brands/:brandId/suppliers', authenticateToken, isBrandManager, asyn
 
     const suppliers = await Supplier.findAll({
       where: { brand_id: brandId, owner_type: 'brand' },
-      order: [['name', 'ASC']]
+      order: [['name', 'ASC']],
+      include: [
+        {
+          model: SupplierCategory,
+          as: 'supplierCategory',
+          attributes: ['id', 'name', 'color']
+        }
+      ]
     });
 
     res.json({ success: true, data: suppliers });
@@ -35,7 +42,7 @@ router.get('/brands/:brandId/suppliers', authenticateToken, isBrandManager, asyn
 router.post('/brands/:brandId/suppliers', authenticateToken, isBrandManager, async (req, res) => {
   try {
     const { brandId } = req.params;
-    const { code, name, contact_name, phone, email, address, business_number, bank_info, payment_terms, notes } = req.body;
+    const { code, name, contact_name, phone, email, address, business_number, bank_info, payment_terms, notes, supplier_category_id } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: '공급업체 이름은 필수입니다' });
@@ -45,6 +52,7 @@ router.post('/brands/:brandId/suppliers', authenticateToken, isBrandManager, asy
       owner_type: 'brand',
       brand_id: brandId,
       restaurant_id: null,
+      supplier_category_id: supplier_category_id || null,
       code,
       name,
       contact_name,
@@ -71,7 +79,7 @@ router.post('/brands/:brandId/suppliers', authenticateToken, isBrandManager, asy
 router.put('/brands/:brandId/suppliers/:supplierId', authenticateToken, isBrandManager, async (req, res) => {
   try {
     const { supplierId } = req.params;
-    const { code, name, contact_name, phone, email, address, business_number, bank_info, payment_terms, notes, is_active } = req.body;
+    const { code, name, contact_name, phone, email, address, business_number, bank_info, payment_terms, notes, is_active, supplier_category_id } = req.body;
 
     const supplier = await Supplier.findByPk(supplierId);
     if (!supplier) {
@@ -89,7 +97,8 @@ router.put('/brands/:brandId/suppliers/:supplierId', authenticateToken, isBrandM
       bank_info,
       payment_terms,
       notes,
-      is_active: is_active !== undefined ? is_active : supplier.is_active
+      is_active: is_active !== undefined ? is_active : supplier.is_active,
+      supplier_category_id: supplier_category_id !== undefined ? supplier_category_id : supplier.supplier_category_id
     });
 
     res.json({ success: true, data: supplier });
@@ -138,7 +147,14 @@ router.get('/restaurants/:restaurantId/suppliers', authenticateToken, checkResta
         restaurant_id: restaurantId,
         owner_type: 'restaurant'
       },
-      order: [['name', 'ASC']]
+      order: [['name', 'ASC']],
+      include: [
+        {
+          model: SupplierCategory,
+          as: 'supplierCategory',
+          attributes: ['id', 'name', 'color']
+        }
+      ]
     });
 
     res.json({ success: true, data: suppliers });
@@ -172,7 +188,14 @@ router.get('/restaurants/:restaurantId/brand-suppliers', authenticateToken, chec
         brand_id: restaurant.brand_id,
         owner_type: 'brand'
       },
-      order: [['name', 'ASC']]
+      order: [['name', 'ASC']],
+      include: [
+        {
+          model: SupplierCategory,
+          as: 'supplierCategory',
+          attributes: ['id', 'name', 'color']
+        }
+      ]
     });
 
     res.json({ success: true, data: brandSuppliers });
@@ -195,13 +218,22 @@ router.get('/restaurants/:restaurantId/all-suppliers', authenticateToken, checkR
       return res.status(404).json({ error: '레스토랑을 찾을 수 없습니다' });
     }
 
+    const supplierInclude = [
+      {
+        model: SupplierCategory,
+        as: 'supplierCategory',
+        attributes: ['id', 'name', 'color']
+      }
+    ];
+
     // 자체 공급업체
     const ownSuppliers = await Supplier.findAll({
       where: {
         restaurant_id: restaurantId,
         owner_type: 'restaurant'
       },
-      order: [['name', 'ASC']]
+      order: [['name', 'ASC']],
+      include: supplierInclude
     });
 
     // 브랜드 공급업체 (있는 경우)
@@ -212,7 +244,8 @@ router.get('/restaurants/:restaurantId/all-suppliers', authenticateToken, checkR
           brand_id: restaurant.brand_id,
           owner_type: 'brand'
         },
-        order: [['name', 'ASC']]
+        order: [['name', 'ASC']],
+        include: supplierInclude
       });
     }
 
@@ -236,7 +269,7 @@ router.get('/restaurants/:restaurantId/all-suppliers', authenticateToken, checkR
 router.post('/restaurants/:restaurantId/suppliers', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
-    const { code, name, contact_name, phone, email, address, business_number, bank_info, payment_terms, notes } = req.body;
+    const { code, name, contact_name, phone, email, address, business_number, bank_info, payment_terms, notes, supplier_category_id } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: '공급업체 이름은 필수입니다' });
@@ -246,6 +279,7 @@ router.post('/restaurants/:restaurantId/suppliers', authenticateToken, checkRest
       owner_type: 'restaurant',
       brand_id: null,
       restaurant_id: restaurantId,
+      supplier_category_id: supplier_category_id || null,
       code,
       name,
       contact_name,
