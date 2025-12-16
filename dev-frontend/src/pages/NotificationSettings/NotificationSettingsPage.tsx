@@ -82,6 +82,11 @@ const Label = styled.label`
   letter-spacing: 0.3px;
 `;
 
+const RequiredMark = styled.span`
+  color: #EF4444;
+  margin-left: 2px;
+`;
+
 const Input = styled.input`
   width: 100%;
   padding: 12px 16px;
@@ -214,6 +219,64 @@ const DisabledMessage = styled.div`
   text-align: center;
 `;
 
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+`;
+
+const ModalContent = styled.div`
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+`;
+
+const ModalTitle = styled.h3`
+  font-size: 18px;
+  font-weight: 600;
+  color: #0A2540;
+  margin: 0 0 16px 0;
+`;
+
+const ModalText = styled.p`
+  font-size: 14px;
+  color: #6B7C93;
+  margin: 0 0 16px 0;
+`;
+
+const ModalButtonContainer = styled.div`
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 20px;
+`;
+
+const CancelButton = styled.button`
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  background: #F3F4F6;
+  color: #374151;
+  border: none;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #E5E7EB;
+  }
+`;
+
 interface Settings {
   email_enabled: boolean;
   smtp_host: string;
@@ -249,6 +312,11 @@ const NotificationSettingsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [showTestEmailModal, setShowTestEmailModal] = useState(false);
+  const [testEmailAddress, setTestEmailAddress] = useState('');
+  const [sendingTestEmail, setSendingTestEmail] = useState(false);
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [resultMessage, setResultMessage] = useState({ success: false, text: '' });
 
   // 역할에 따라 entityType과 entityId 결정
   const getEntityInfo = (): { entityType: 'restaurant' | 'manager' | 'admin'; entityId: number } => {
@@ -347,10 +415,15 @@ const NotificationSettingsPage: React.FC = () => {
     }
   };
 
-  const handleTestEmail = async () => {
-    const testEmail = prompt('Enter email address to send test email:');
-    if (!testEmail) return;
+  const handleTestEmail = () => {
+    setTestEmailAddress('');
+    setShowTestEmailModal(true);
+  };
 
+  const sendTestEmail = async () => {
+    if (!testEmailAddress) return;
+
+    setSendingTestEmail(true);
     try {
       const response = await fetch(`/api/notification-settings/${entityType}/${entityId}/test-email`, {
         method: 'POST',
@@ -358,16 +431,24 @@ const NotificationSettingsPage: React.FC = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({ testEmail })
+        body: JSON.stringify({ testEmail: testEmailAddress })
       });
 
+      const data = await response.json();
+
+      setShowTestEmailModal(false);
       if (response.ok) {
-        alert('Test email sent successfully');
+        setResultMessage({ success: true, text: 'Test email sent successfully!' });
       } else {
-        alert('Failed to send test email');
+        setResultMessage({ success: false, text: data.error || 'Failed to send test email' });
       }
+      setShowResultModal(true);
     } catch (error) {
-      alert('An error occurred while sending test email');
+      setShowTestEmailModal(false);
+      setResultMessage({ success: false, text: 'An error occurred while sending test email' });
+      setShowResultModal(true);
+    } finally {
+      setSendingTestEmail(false);
     }
   };
 
@@ -419,7 +500,7 @@ const NotificationSettingsPage: React.FC = () => {
 
               <FormGrid>
                 <FormGroup>
-                  <Label>SMTP Server</Label>
+                  <Label>SMTP Server<RequiredMark>*</RequiredMark></Label>
                   <Input
                     type="text"
                     placeholder="smtp.gmail.com"
@@ -431,7 +512,7 @@ const NotificationSettingsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <Label>SMTP Port</Label>
+                  <Label>SMTP Port<RequiredMark>*</RequiredMark></Label>
                   <Input
                     type="number"
                     placeholder="587"
@@ -443,7 +524,7 @@ const NotificationSettingsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <Label>SMTP Username</Label>
+                  <Label>SMTP Username<RequiredMark>*</RequiredMark></Label>
                   <Input
                     type="email"
                     placeholder="your-email@gmail.com"
@@ -455,7 +536,7 @@ const NotificationSettingsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <Label>SMTP Password</Label>
+                  <Label>SMTP Password<RequiredMark>*</RequiredMark></Label>
                   <Input
                     type="password"
                     placeholder="••••••••"
@@ -467,7 +548,7 @@ const NotificationSettingsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <Label>From Email</Label>
+                  <Label>From Email<RequiredMark>*</RequiredMark></Label>
                   <Input
                     type="email"
                     placeholder="noreply@yourstore.com"
@@ -479,7 +560,7 @@ const NotificationSettingsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <Label>From Name</Label>
+                  <Label>From Name<RequiredMark>*</RequiredMark></Label>
                   <Input
                     type="text"
                     placeholder="Your Store Name"
@@ -539,6 +620,49 @@ const NotificationSettingsPage: React.FC = () => {
           )}
         </Content>
       </SettingsContainer>
+
+      {/* Test Email Modal */}
+      {showTestEmailModal && (
+        <ModalOverlay onClick={() => setShowTestEmailModal(false)}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalTitle>Send Test Email</ModalTitle>
+            <ModalText>Enter the email address where you want to receive the test email.</ModalText>
+            <FormGroup>
+              <Label>Email Address</Label>
+              <Input
+                type="email"
+                placeholder="test@example.com"
+                value={testEmailAddress}
+                onChange={(e) => setTestEmailAddress(e.target.value)}
+                autoFocus
+              />
+            </FormGroup>
+            <ModalButtonContainer>
+              <CancelButton onClick={() => setShowTestEmailModal(false)}>
+                Cancel
+              </CancelButton>
+              <SaveButton onClick={sendTestEmail} disabled={sendingTestEmail || !testEmailAddress}>
+                {sendingTestEmail ? 'Sending...' : 'Send'}
+              </SaveButton>
+            </ModalButtonContainer>
+          </ModalContent>
+        </ModalOverlay>
+      )}
+
+      {/* Result Modal */}
+      {showResultModal && (
+        <ModalOverlay onClick={() => setShowResultModal(false)}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalTitle>{resultMessage.success ? 'Success' : 'Error'}</ModalTitle>
+            <ModalText>{resultMessage.text}</ModalText>
+            <ModalButtonContainer>
+              <SaveButton onClick={() => setShowResultModal(false)}>
+                OK
+              </SaveButton>
+            </ModalButtonContainer>
+          </ModalContent>
+        </ModalOverlay>
+      )}
     </MainLayout>
   );
 };
