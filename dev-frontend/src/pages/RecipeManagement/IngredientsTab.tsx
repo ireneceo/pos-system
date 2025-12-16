@@ -5,6 +5,7 @@ import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/Fi
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormRow as UIFormRow } from '../../components/UI/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
+import SearchableSelect from '../../components/Common/SearchableSelect';
 
 interface IngredientsTabProps {
   brandId: number | null;
@@ -24,6 +25,18 @@ interface IngredientCategory {
   is_active: boolean;
 }
 
+interface Supplier {
+  id: number;
+  brand_id: number | null;
+  restaurant_id: number | null;
+  owner_type: 'brand' | 'restaurant';
+  code: string | null;
+  name: string;
+  contact_name: string | null;
+  phone: string | null;
+  is_active: boolean;
+}
+
 interface Ingredient {
   id: number;
   brand_id: number | null;
@@ -40,6 +53,8 @@ interface Ingredient {
   base_quantity: number;
   unit_cost: number;
   supplier_name: string | null;
+  supplier_id: number | null;
+  supplier?: Supplier;
   is_active: boolean;
   min_stock?: number;
   current_stock?: number;

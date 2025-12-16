@@ -74,7 +74,12 @@ Ingredient.init({
   supplier_name: {
     type: DataTypes.STRING(100),
     allowNull: true,
-    comment: 'Supplier name'
+    comment: 'Supplier name (deprecated - use supplier_id)'
+  },
+  supplier_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Supplier FK'
   },
   // Stock management
   min_stock: {
