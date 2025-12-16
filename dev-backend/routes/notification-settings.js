@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../models');
+const { sequelize } = require('../config/database');
+const { QueryTypes } = require('sequelize');
 const { authenticateToken } = require('../middleware/auth');
 
 // GET - 알림 설정 조회
@@ -150,10 +151,17 @@ router.post('/:entityType/:entityId', authenticateToken, async (req, res) => {
       };
     }
 
-    await db.sequelize.query(query, {
-      replacements,
-      type: db.sequelize.QueryTypes.UPDATE
-    });
+    if (existing.length > 0) {
+      await db.sequelize.query(query, {
+        replacements,
+        type: db.sequelize.QueryTypes.UPDATE
+      });
+    } else {
+      await db.sequelize.query(query, {
+        replacements,
+        type: db.sequelize.QueryTypes.INSERT
+      });
+    }
 
     res.json({ success: true, message: '알림 설정이 저장되었습니다.' });
   } catch (error) {

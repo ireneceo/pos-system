@@ -2,7 +2,8 @@ const nodemailer = require('nodemailer');
 const db = require('../models');
 
 /**
- * Get email settings for a specific entity
+ * Get email settings for a specific entity (restaurant)
+ * Each restaurant must configure their own SMTP settings
  */
 async function getEmailSettings(entityType, entityId) {
   try {
@@ -15,15 +16,11 @@ async function getEmailSettings(entityType, entityId) {
       }
     );
 
-    if (!settings) {
-      throw new Error('Email notifications are not enabled for this entity');
+    if (settings && settings.smtp_host && settings.smtp_user && settings.smtp_password) {
+      return settings;
     }
 
-    if (!settings.smtp_host || !settings.smtp_user || !settings.smtp_password) {
-      throw new Error('SMTP settings are incomplete');
-    }
-
-    return settings;
+    throw new Error('Email notifications are not configured for this restaurant. Please configure SMTP settings in Restaurant Settings > Notifications.');
   } catch (error) {
     throw error;
   }

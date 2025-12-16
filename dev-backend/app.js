@@ -151,6 +151,7 @@ const recipeCategoriesRouter = require('./routes/recipe-categories');
 const brandsRouter = require('./routes/brands');
 const currenciesRouter = require('./routes/currencies');
 const brandProductsRouter = require('./routes/brand-products');
+const notificationSettingsRouter = require('./routes/notification-settings');
 console.log('✅ brandProductsRouter loaded, routes:', brandProductsRouter.stack ? brandProductsRouter.stack.length : 'no stack');
 
 // 헬스 체크 라우터 (가장 먼저, DB 체크 없이)
@@ -185,6 +186,7 @@ app.use('/api/option-groups', optionGroupsRouter);
 app.use('/api', brandProductsRouter);  // Brand products routes (must be before /api/brands to handle /api/brands/:id/product-categories)
 app.use('/api/brands', brandsRouter);
 app.use('/api/currencies', currenciesRouter);
+app.use('/api/notification-settings', notificationSettingsRouter);
 
 // GitHub Webhook for Auto-Deployment
 const { exec } = require('child_process');

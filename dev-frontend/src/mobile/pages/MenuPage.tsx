@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import styled from 'styled-components';
 import { useParams, useNavigate } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
@@ -65,6 +65,44 @@ const CategoryTab = styled.button<{ active: boolean }>`
   }
 `;
 
+const MenuContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+`;
+
+const CategorySection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const CategoryHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid #E5E7EB;
+  margin-bottom: 4px;
+`;
+
+const CategoryEmoji = styled.span`
+  font-size: 20px;
+`;
+
+const CategoryTitle = styled.h3`
+  font-size: 16px;
+  font-weight: 600;
+  color: #1F2937;
+  margin: 0;
+`;
+
+const CategoryCount = styled.span`
+  font-size: 13px;
+  color: #9CA3AF;
+  margin-left: auto;
+`;
+
 const MenuGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -93,13 +131,54 @@ const ItemImage = styled.div<{ hasImage?: boolean }>`
   justify-content: center;
   font-size: 48px;
   overflow: hidden;
-  
+
   img {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
 `;
+
+// Lazy loading image component
+const LazyImage: React.FC<{ src: string; alt: string; fallback: string }> = ({ src, alt, fallback }) => {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && imgRef.current) {
+            imgRef.current.src = src;
+            observer.disconnect();
+          }
+        });
+      },
+      { rootMargin: '100px' }
+    );
+
+    if (imgRef.current) {
+      observer.observe(imgRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [src]);
+
+  if (hasError) {
+    return <span>{fallback}</span>;
+  }
+
+  return (
+    <img
+      ref={imgRef}
+      alt={alt}
+      style={{ opacity: isLoaded ? 1 : 0, transition: 'opacity 0.3s' }}
+      onLoad={() => setIsLoaded(true)}
+      onError={() => setHasError(true)}
+    />
+  );
+};
 
 const ItemInfo = styled.div`
   padding: 12px;
@@ -249,13 +328,66 @@ const MenuPage: React.FC = () => {
     ? menuItems
     : getItemsByCategory(selectedCategory);
 
-  const handleItemClick = (item: any) => {
-    navigate(`/mobile/${slug}/item/${item.id}`);
-  };
+  // Group items by category for "All" view
+  const groupedItemsByCategory = useMemo(() => {
+    if (selectedCategory !== 'all') return null;
 
-  const handleCartClick = () => {
+    const grouped: { category: typeof categories[0]; items: typeof menuItems }[] = [];
+    const sortedCategories = [...categories].sort((a, b) => a.order - b.order);
+
+    sortedCategories.forEach(category => {
+      const categoryItems = menuItems.filter(item => item.category_id === category.id);
+      if (categoryItems.length > 0) {
+        grouped.push({ category, items: categoryItems });
+      }
+    });
+
+    // Also include items without category (if any)
+    const uncategorizedItems = menuItems.filter(item => !item.category_id);
+    if (uncategorizedItems.length > 0) {
+      grouped.push({
+        category: { id: 'uncategorized', name: 'Other', emoji: '📦', order: 999 } as any,
+        items: uncategorizedItems
+      });
+    }
+
+    return grouped;
+  }, [selectedCategory, categories, menuItems]);
+
+  const handleItemClick = useCallback((item: any) => {
+    navigate(`/mobile/${slug}/item/${item.id}`);
+  }, [navigate, slug]);
+
+  const handleCartClick = useCallback(() => {
     navigate(`/mobile/${slug}/cart`);
-  };
+  }, [navigate, slug]);
+
+  // Render a single menu item card
+  const renderMenuItemCard = useCallback((item: any) => (
+    <MenuItemCard
+      key={item.id}
+      onClick={() => handleItemClick(item)}
+      style={{ position: 'relative' }}
+    >
+      {item.is_set_menu && <SetBadge>SET</SetBadge>}
+      <ItemImage hasImage={!!item.image}>
+        {item.image ? (
+          <LazyImage src={item.image} alt={item.name} fallback={item.emoji || '🍽️'} />
+        ) : (
+          <span>{item.emoji || '🍽️'}</span>
+        )}
+      </ItemImage>
+      <ItemInfo>
+        <ItemName>{item.code ? `${item.code} ` : ''}{item.name}</ItemName>
+        <ItemPrice>{formatCurrency(item.price, currency)}</ItemPrice>
+        {item.is_set_menu && item.set_items && item.set_items.length > 0 && (
+          <SetItemsPreview>
+            {item.set_items.map((si: any) => `${si.name} x${si.quantity}`).join(', ')}
+          </SetItemsPreview>
+        )}
+      </ItemInfo>
+    </MenuItemCard>
+  ), [handleItemClick, currency]);
   
   if (isLoading) {
     return (
@@ -302,36 +434,28 @@ const MenuPage: React.FC = () => {
       </CategoryTabs>
       
       {filteredItems.length > 0 ? (
-        <MenuGrid>
-          {filteredItems.map(item => (
-            <MenuItemCard
-              key={item.id}
-              onClick={() => handleItemClick(item)}
-              style={{ position: 'relative' }}
-            >
-              {item.is_set_menu && <SetBadge>SET</SetBadge>}
-              <ItemImage hasImage={!!item.image}>
-                {item.image ? (
-                  <img src={item.image} alt={item.name} onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                    e.currentTarget.parentElement!.innerHTML = item.emoji || '🍽️';
-                  }} />
-                ) : (
-                  <span>{item.emoji || '🍽️'}</span>
-                )}
-              </ItemImage>
-              <ItemInfo>
-                <ItemName>{item.code ? `${item.code} ` : ''}{item.name}</ItemName>
-                <ItemPrice>{formatCurrency(item.price, currency)}</ItemPrice>
-                {item.is_set_menu && item.set_items && item.set_items.length > 0 && (
-                  <SetItemsPreview>
-                    {item.set_items.map(si => `${si.name} x${si.quantity}`).join(', ')}
-                  </SetItemsPreview>
-                )}
-              </ItemInfo>
-            </MenuItemCard>
-          ))}
-        </MenuGrid>
+        selectedCategory === 'all' && groupedItemsByCategory ? (
+          // Show items grouped by category with headers
+          <MenuContainer>
+            {groupedItemsByCategory.map(({ category, items }) => (
+              <CategorySection key={category.id}>
+                <CategoryHeader>
+                  <CategoryEmoji>{category.emoji}</CategoryEmoji>
+                  <CategoryTitle>{category.name}</CategoryTitle>
+                  <CategoryCount>{items.length} items</CategoryCount>
+                </CategoryHeader>
+                <MenuGrid>
+                  {items.map(renderMenuItemCard)}
+                </MenuGrid>
+              </CategorySection>
+            ))}
+          </MenuContainer>
+        ) : (
+          // Show flat grid for specific category
+          <MenuGrid>
+            {filteredItems.map(renderMenuItemCard)}
+          </MenuGrid>
+        )
       ) : (
         <EmptyState>
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { useParams } from 'react-router-dom';
 import MainLayout from '../../components/Layout/MainLayout';
 import { TabContainer, Tab } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
@@ -229,6 +230,7 @@ interface Settings {
 
 const NotificationSettingsPage: React.FC = () => {
   const { user } = useAuth();
+  const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
   const [activeTab, setActiveTab] = useState('email');
   const [settings, setSettings] = useState<Settings>({
     email_enabled: false,
@@ -250,6 +252,14 @@ const NotificationSettingsPage: React.FC = () => {
 
   // 역할에 따라 entityType과 entityId 결정
   const getEntityInfo = (): { entityType: 'restaurant' | 'manager' | 'admin'; entityId: number } => {
+    // URL에서 restaurantId가 있으면 우선 사용
+    if (urlRestaurantId) {
+      return {
+        entityType: 'restaurant' as const,
+        entityId: Number(urlRestaurantId)
+      };
+    }
+
     if (!user) {
       return {
         entityType: 'restaurant' as const,
@@ -285,7 +295,7 @@ const NotificationSettingsPage: React.FC = () => {
       loadSettings();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entityType, entityId, user]);
+  }, [entityType, entityId, user, urlRestaurantId]);
 
   if (!user) {
     return null;
