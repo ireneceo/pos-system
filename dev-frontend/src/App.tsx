@@ -98,6 +98,7 @@ const BrandManagerDashboard = React.lazy(() => import('./pages/Brand/BrandManage
 const RecipeManagementPage = React.lazy(() => import('./pages/RecipeManagement/RecipeManagementPage'));
 const RecipesPage = React.lazy(() => import('./pages/Recipes/RecipesPage'));
 const IngredientsPage = React.lazy(() => import('./pages/Ingredients/IngredientsPage'));
+const SuppliersPage = React.lazy(() => import('./pages/Suppliers/SuppliersPage'));
 
 // Brand Product Management
 const BrandProductManagementPage = React.lazy(() => import('./pages/BrandProductManagement/BrandProductManagementPage'));
@@ -422,6 +423,13 @@ function App() {
                         </ProtectedRoute>
                       } />
 
+                      {/* Suppliers Management */}
+                      <Route path="/pos/suppliers" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager', 'System Admin']}>
+                          <SuppliersPage />
+                        </ProtectedRoute>
+                      } />
+
                       {/* Foodcourt Manager Routes */}
                       <Route path="/pos/foodcourt/dashboard" element={
                         <ProtectedRoute requiredRole={['Foodcourt Manager']}>
@@ -570,6 +578,11 @@ function App() {
                       <Route path="/restaurant/:restaurantId/recipe-management" element={
                         <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
                           <RecipeManagementPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/restaurant/:restaurantId/suppliers" element={
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
+                          <SuppliersPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/customers" element={

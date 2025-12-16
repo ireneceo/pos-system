@@ -6,7 +6,6 @@ import { Container, Header, Title, Content, TabContainer, Tab } from '../../comp
 import { useAuth } from '../../contexts/AuthContext';
 import RecipesTab from './RecipesTab';
 import IngredientsTab from './IngredientsTab';
-import SuppliersTab from './SuppliersTab';
 import RecipeCategoriesTab from './RecipeCategoriesTab';
 import IngredientCategoriesTab from './IngredientCategoriesTab';
 
@@ -58,7 +57,7 @@ interface Brand {
   logo_url?: string;
 }
 
-type TabType = 'recipes' | 'ingredients' | 'suppliers' | 'recipe-categories' | 'ingredient-categories';
+type TabType = 'recipes' | 'ingredients' | 'recipe-categories' | 'ingredient-categories';
 
 interface RecipeManagementPageProps {}
 
@@ -68,7 +67,6 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [recipesCount, setRecipesCount] = useState(0);
   const [ingredientsCount, setIngredientsCount] = useState(0);
-  const [suppliersCount, setSuppliersCount] = useState(0);
   const [recipeCategoriesCount, setRecipeCategoriesCount] = useState(0);
   const [ingredientCategoriesCount, setIngredientCategoriesCount] = useState(0);
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -189,10 +187,6 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
               Ingredients
               <TabBadge>{ingredientsCount}</TabBadge>
             </Tab>
-            <Tab active={activeTab === 'suppliers'} onClick={() => handleTabChange('suppliers')}>
-              Suppliers
-              <TabBadge>{suppliersCount}</TabBadge>
-            </Tab>
             <Tab active={activeTab === 'recipe-categories'} onClick={() => handleTabChange('recipe-categories')}>
               Recipe Categories
               <TabBadge>{recipeCategoriesCount}</TabBadge>
@@ -210,9 +204,6 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
               </div>
               <div style={{ display: activeTab === 'ingredients' ? 'block' : 'none' }}>
                 <IngredientsTab brandId={selectedBrand} restaurantId={urlRestaurantId ? Number(urlRestaurantId) : null} onCountChange={setIngredientsCount} categoryRefreshKey={ingredientCategoryRefreshKey} />
-              </div>
-              <div style={{ display: activeTab === 'suppliers' ? 'block' : 'none' }}>
-                <SuppliersTab brandId={selectedBrand} restaurantId={urlRestaurantId ? Number(urlRestaurantId) : null} onCountChange={setSuppliersCount} />
               </div>
               <div style={{ display: activeTab === 'recipe-categories' ? 'block' : 'none' }}>
                 <RecipeCategoriesTab brandId={selectedBrand} restaurantId={urlRestaurantId ? Number(urlRestaurantId) : null} onCountChange={setRecipeCategoriesCount} onCategoryChange={() => setRecipeCategoryRefreshKey(k => k + 1)} />
