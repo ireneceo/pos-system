@@ -293,18 +293,13 @@ async function startServer() {
       console.log(`✅ Health check: http://localhost:${PORT}/api/health`);
     });
 
-    // Handle port conflicts gracefully - PM2 환경에서는 재시작하도록
+    // Handle port conflicts gracefully
     server.on('error', (error) => {
       if (error.code === 'EADDRINUSE') {
         console.error(`⚠️  Port ${PORT} is already in use.`);
-        if (isPM2) {
-          console.log('🔄 PM2 will handle restart automatically');
-          // PM2가 자동으로 재시작하므로 즉시 종료하지 않음
-          setTimeout(() => process.exit(1), 5000);
-        } else {
-          console.error('❌ Exiting to avoid conflicts.');
-          process.exit(1);
-        }
+        console.error('❌ Another process is using this port. Please check with: lsof -i :' + PORT);
+        // Don't auto-restart to avoid infinite loop - manual intervention needed
+        process.exit(1);
       } else {
         console.error('❌ Server error:', error);
         process.exit(1);

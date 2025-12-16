@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2025-12-15
+> **최종 업데이트:** 2025-12-16
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -309,6 +309,50 @@ const dateKey = `${(orderDate.getMonth() + 1).toString().padStart(2, '0')}/${ord
 ## 🚧 진행 중인 작업
 
 현재 진행 중인 작업 없음
+
+---
+
+## ✅ 완료된 작업 (2025-12-16)
+
+### PM2 Port 충돌 문제 영구 해결
+
+**문제:** dev-backend가 "Port 3001 is already in use" 에러로 무한 재시작 루프 발생
+
+**근본 원인:**
+- `server.js`와 `app.js` 양쪽에서 `startServer()` 호출
+- server.js가 모듈을 로드할 때 app.js도 실행되어 같은 포트에 두 번 바인딩 시도
+
+**해결:**
+1. `app.js`에 `require.main === module` 체크 추가 (직접 실행 시에만 서버 시작)
+2. `ecosystem.config.js`에 PM2 안정성 설정 추가:
+   - `exec_mode: 'fork'` (명시적)
+   - `max_restarts: 10`, `min_uptime: 5000`, `restart_delay: 4000`
+   - `kill_timeout: 5000`
+3. `/var/www/dev-backend/restart-dev.sh` 스크립트 생성 (포트 정리 후 재시작)
+
+**수정 파일:**
+- `/var/www/dev-backend/app.js`
+- `/var/www/dev-backend/ecosystem.config.js`
+- `/var/www/dev-backend/server.js`
+- `/var/www/dev-backend/restart-dev.sh` (신규)
+- `/var/www/dev-backend/README.md` (트러블슈팅 섹션 추가)
+
+### Notification Settings 페이지 토큰 키 수정
+
+**문제:** 로그인 상태인데 "No authentication token found" 에러 발생
+
+**근본 원인:**
+- NotificationSettingsPage에서 `localStorage.getItem('token')` 사용
+- 프로젝트 전체에서는 `localStorage.getItem('auth_token')` 키 사용
+
+**해결:**
+- NotificationSettingsPage.tsx의 3곳에서 `'token'` → `'auth_token'`으로 변경
+  - 377번줄: loadSettings Authorization 헤더
+  - 397번줄: handleSave 토큰 가져오기
+  - 442번줄: sendTestEmail Authorization 헤더
+
+**수정 파일:**
+- `/var/www/dev-frontend/src/pages/NotificationSettings/NotificationSettingsPage.tsx`
 
 ---
 
@@ -955,6 +999,62 @@ const token = localStorage.getItem('auth_token'); // ✅ 정상 작동
 - API 헬퍼 함수로 인증 헤더 통일
 - 타입스크립트 유틸리티 함수 사용
 
+### 문제 2: PM2 Port 충돌 무한 재시작 (2025-12-16 해결)
+
+**증상:**
+- dev-backend PM2 프로세스가 "Port 3001 is already in use" 에러로 무한 재시작
+- PM2 로그에 반복적인 재시작 기록
+
+**근본 원인:**
+- `server.js`와 `app.js` 양쪽에서 `startServer()` 호출
+- server.js가 app.js를 require할 때 app.js도 서버를 시작하려고 시도
+- 결과적으로 같은 포트에 두 번 바인딩 시도
+
+**해결 방법:**
+```javascript
+// app.js 수정
+if (require.main === module) {
+  startServer();
+}
+module.exports = { app, startServer };
+```
+
+**PM2 설정 추가 (ecosystem.config.js):**
+```javascript
+{
+  max_restarts: 10,      // 최대 재시작 횟수 제한
+  min_uptime: 5000,      // 최소 실행 시간
+  restart_delay: 4000,   // 재시작 간 딜레이
+  kill_timeout: 5000     // 종료 타임아웃
+}
+```
+
+**수정 파일:**
+- `/var/www/dev-backend/app.js`
+- `/var/www/dev-backend/ecosystem.config.js`
+- `/var/www/dev-backend/server.js`
+- `/var/www/dev-backend/restart-dev.sh` (포트 정리 스크립트)
+
+### 문제 3: NotificationSettingsPage 토큰 키 불일치 (2025-12-16 해결)
+
+**증상:**
+- 로그인 상태인데 "No authentication token found" 에러 표시
+- Save Settings 버튼 클릭 시 저장 실패
+
+**근본 원인:**
+- NotificationSettingsPage에서 `localStorage.getItem('token')` 사용
+- 프로젝트 전체는 `localStorage.getItem('auth_token')` 사용
+- 키 불일치로 토큰이 null 반환
+
+**해결 방법:**
+```typescript
+// 수정: NotificationSettingsPage.tsx
+const token = localStorage.getItem('auth_token'); // 'token' → 'auth_token'
+```
+
+**수정 파일:**
+- `/var/www/dev-frontend/src/pages/NotificationSettings/NotificationSettingsPage.tsx` (3곳 수정)
+
 ---
 
 ## 🐛 알려진 이슈
@@ -968,4 +1068,4 @@ const token = localStorage.getItem('auth_token'); // ✅ 정상 작동
 **프로젝트:** Purple POS System
 **개발 환경:** Development Server
 **데이터베이스:** purple_dev_db (MySQL)
-**마지막 업데이트:** 2025-12-15
+**마지막 업데이트:** 2025-12-16

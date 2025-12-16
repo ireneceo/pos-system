@@ -374,7 +374,7 @@ const NotificationSettingsPage: React.FC = () => {
     try {
       const response = await fetch(`/api/notification-settings/${entityType}/${entityId}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         }
       });
 
@@ -394,21 +394,31 @@ const NotificationSettingsPage: React.FC = () => {
     setMessage(null);
 
     try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        setMessage({ type: 'error', text: 'No authentication token found. Please log in again.' });
+        setSaving(false);
+        return;
+      }
+
       const response = await fetch(`/api/notification-settings/${entityType}/${entityId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(settings)
       });
 
+      const data = await response.json();
+
       if (response.ok) {
         setMessage({ type: 'success', text: 'Settings saved successfully' });
       } else {
-        setMessage({ type: 'error', text: 'Failed to save settings' });
+        setMessage({ type: 'error', text: data.error || 'Failed to save settings' });
       }
     } catch (error) {
+      console.error('Save error:', error);
       setMessage({ type: 'error', text: 'An error occurred while saving settings' });
     } finally {
       setSaving(false);
@@ -429,7 +439,7 @@ const NotificationSettingsPage: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         },
         body: JSON.stringify({ testEmail: testEmailAddress })
       });
