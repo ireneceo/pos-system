@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Ingredient, IngredientCategory, Restaurant } = require('../models');
+const { Ingredient, IngredientCategory, Restaurant, Supplier } = require('../models');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
 
@@ -20,11 +20,18 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
     const ingredients = await Ingredient.findAll({
       where: { brand_id },
       order: [['name', 'ASC']],
-      include: [{
-        model: IngredientCategory,
-        as: 'ingredientCategory',
-        attributes: ['id', 'name', 'emoji']
-      }]
+      include: [
+        {
+          model: IngredientCategory,
+          as: 'ingredientCategory',
+          attributes: ['id', 'name', 'emoji']
+        },
+        {
+          model: Supplier,
+          as: 'supplier',
+          attributes: ['id', 'name', 'owner_type']
+        }
+      ]
     });
 
     res.json({ success: true, data: ingredients });
@@ -42,7 +49,7 @@ router.post('/brands/:brandId/ingredients', authenticateToken, isBrandManager, a
   try {
     const { brandId } = req.params;
     const brand_id = brandId;
-    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, min_stock } = req.body;
+    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock } = req.body;
 
     const ingredient = await Ingredient.create({
       owner_type: 'brand',
@@ -57,6 +64,7 @@ router.post('/brands/:brandId/ingredients', authenticateToken, isBrandManager, a
       base_quantity: base_quantity || 1,
       unit_cost,
       supplier_name,
+      supplier_id: supplier_id || null,
       min_stock: min_stock || 0,
       current_stock: 0
     });
@@ -76,7 +84,7 @@ router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBr
   try {
     const { ingredientId } = req.params;
     const ingredient_id = ingredientId;
-    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, min_stock } = req.body;
+    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock } = req.body;
 
     const ingredient = await Ingredient.findByPk(ingredient_id);
     if (!ingredient) {
@@ -93,6 +101,7 @@ router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBr
       base_quantity: base_quantity !== undefined ? base_quantity : ingredient.base_quantity,
       unit_cost,
       supplier_name,
+      supplier_id: supplier_id !== undefined ? supplier_id : ingredient.supplier_id,
       min_stock
     });
 
@@ -144,11 +153,18 @@ router.get('/restaurants/:restaurantId/ingredients', authenticateToken, checkRes
         owner_type: 'restaurant'
       },
       order: [['name', 'ASC']],
-      include: [{
-        model: IngredientCategory,
-        as: 'ingredientCategory',
-        attributes: ['id', 'name', 'emoji']
-      }]
+      include: [
+        {
+          model: IngredientCategory,
+          as: 'ingredientCategory',
+          attributes: ['id', 'name', 'emoji']
+        },
+        {
+          model: Supplier,
+          as: 'supplier',
+          attributes: ['id', 'name', 'owner_type']
+        }
+      ]
     });
 
     res.json({ success: true, data: ingredients });
@@ -183,11 +199,18 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
         owner_type: 'brand'
       },
       order: [['name', 'ASC']],
-      include: [{
-        model: IngredientCategory,
-        as: 'ingredientCategory',
-        attributes: ['id', 'name', 'emoji']
-      }]
+      include: [
+        {
+          model: IngredientCategory,
+          as: 'ingredientCategory',
+          attributes: ['id', 'name', 'emoji']
+        },
+        {
+          model: Supplier,
+          as: 'supplier',
+          attributes: ['id', 'name', 'owner_type']
+        }
+      ]
     });
 
     res.json({ success: true, data: brandIngredients });
@@ -204,7 +227,7 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
 router.post('/restaurants/:restaurantId/ingredients', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
-    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, min_stock } = req.body;
+    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock } = req.body;
 
     const ingredient = await Ingredient.create({
       owner_type: 'restaurant',
@@ -219,6 +242,7 @@ router.post('/restaurants/:restaurantId/ingredients', authenticateToken, checkRe
       base_quantity: base_quantity || 1,
       unit_cost,
       supplier_name,
+      supplier_id: supplier_id || null,
       min_stock: min_stock || 0,
       current_stock: 0
     });
@@ -237,7 +261,7 @@ router.post('/restaurants/:restaurantId/ingredients', authenticateToken, checkRe
 router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { ingredientId } = req.params;
-    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, min_stock } = req.body;
+    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock } = req.body;
 
     const ingredient = await Ingredient.findByPk(ingredientId);
     if (!ingredient) {
@@ -254,6 +278,7 @@ router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateT
       base_quantity: base_quantity !== undefined ? base_quantity : ingredient.base_quantity,
       unit_cost,
       supplier_name,
+      supplier_id: supplier_id !== undefined ? supplier_id : ingredient.supplier_id,
       min_stock
     });
 

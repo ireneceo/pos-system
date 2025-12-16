@@ -319,9 +319,10 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
     unit: '',
     base_quantity: '1',
     unit_cost: '',
-    supplier_name: '',
+    supplier_id: '' as string | number,
     min_stock: '0'
   });
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; ingredientId: number | null; ingredientName: string }>({
     isOpen: false,
     ingredientId: null,
@@ -348,21 +349,24 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
         const promises: Promise<any>[] = [];
 
         // Build URLs based on role
-        let ingredientsUrl = '', categoriesUrl = '';
+        let ingredientsUrl = '', categoriesUrl = '', suppliersUrl = '';
 
         if (isBrandRole && brandId) {
           ingredientsUrl = `/api/brands/${brandId}/ingredients`;
           categoriesUrl = `/api/brands/${brandId}/ingredient-categories`;
+          suppliersUrl = `/api/brands/${brandId}/suppliers`;
         } else if (isRestaurantAdmin && effectiveRestaurantId) {
           ingredientsUrl = `/api/restaurants/${effectiveRestaurantId}/ingredients`;
           categoriesUrl = `/api/restaurants/${effectiveRestaurantId}/ingredient-categories`;
+          suppliersUrl = `/api/restaurants/${effectiveRestaurantId}/all-suppliers`;
         }
 
         // Fetch all in parallel
         if (ingredientsUrl) {
           promises.push(
             fetch(ingredientsUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
-            fetch(categoriesUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
+            fetch(categoriesUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
+            fetch(suppliersUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
           );
           // 레스토랑 관리자일 경우 브랜드 재료도 함께 조회
           if (isRestaurantAdmin && effectiveRestaurantId) {
@@ -379,8 +383,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
           let allIngredients = Array.isArray(results[0].data) ? results[0].data : [];
 
           // 레스토랑 관리자일 경우 브랜드 재료 추가
-          if (isRestaurantAdmin && results[2]?.success && Array.isArray(results[2].data)) {
-            allIngredients = [...results[2].data, ...allIngredients]; // 브랜드 재료를 먼저 표시
+          if (isRestaurantAdmin && results[3]?.success && Array.isArray(results[3].data)) {
+            allIngredients = [...results[3].data, ...allIngredients]; // 브랜드 재료를 먼저 표시
           }
 
           setIngredients(allIngredients);
@@ -396,6 +400,19 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
               ...(results[1].data.brand_categories || [])
             ].filter((c: IngredientCategory) => c.is_active);
             setIngredientCategories(allCategories);
+          }
+        }
+
+        // Process suppliers
+        if (results[2]?.success) {
+          if (Array.isArray(results[2].data)) {
+            setSuppliers(results[2].data.filter((s: Supplier) => s.is_active));
+          } else {
+            const allSuppliers = [
+              ...(results[2].data.brand_suppliers || []),
+              ...(results[2].data.own_suppliers || [])
+            ].filter((s: Supplier) => s.is_active);
+            setSuppliers(allSuppliers);
           }
         }
 
@@ -547,7 +564,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
         unit: ingredient.unit,
         base_quantity: ingredient.base_quantity?.toString() || '1',
         unit_cost: ingredient.unit_cost.toString(),
-        supplier_name: ingredient.supplier_name || '',
+        supplier_id: ingredient.supplier_id || '',
         min_stock: ingredient.min_stock?.toString() || '0'
       });
     } else {
@@ -560,7 +577,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
         unit: '',
         base_quantity: '1',
         unit_cost: '',
-        supplier_name: '',
+        supplier_id: '',
         min_stock: '0'
       });
     }
@@ -578,7 +595,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
       unit: '',
       base_quantity: '1',
       unit_cost: '',
-      supplier_name: '',
+      supplier_id: '',
       min_stock: '0'
     });
   };
@@ -629,7 +646,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
         },
         body: JSON.stringify({
           ...formData,
-          ingredient_category_id: formData.ingredient_category_id ? parseInt(formData.ingredient_category_id) : null,
+          ingredient_category_id: formData.ingredient_category_id ? parseInt(formData.ingredient_category_id as string) : null,
+          supplier_id: formData.supplier_id ? Number(formData.supplier_id) : null,
           base_quantity: parseFloat(formData.base_quantity) || 1,
           unit_cost: parseFloat(formData.unit_cost),
           min_stock: parseInt(formData.min_stock) || 0
@@ -751,10 +769,10 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                   <InfoLabel>Base Qty / Unit</InfoLabel>
                   <InfoValue>{Number(ingredient.base_quantity || 1)} {ingredient.unit}</InfoValue>
                 </InfoRow>
-                {ingredient.supplier_name && (
+                {(ingredient.supplier?.name || ingredient.supplier_name) && (
                   <InfoRow>
                     <InfoLabel>Supplier</InfoLabel>
-                    <InfoValue>{ingredient.supplier_name}</InfoValue>
+                    <InfoValue>{ingredient.supplier?.name || ingredient.supplier_name}</InfoValue>
                   </InfoRow>
                 )}
                 {ingredient.code && (
@@ -853,11 +871,16 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
             </UIFormGroup>
             <UIFormGroup>
               <FormLabel>Supplier</FormLabel>
-              <FormInput
-                type="text"
-                value={formData.supplier_name}
-                onChange={(e) => setFormData({ ...formData, supplier_name: e.target.value })}
-                placeholder="Supplier name"
+              <SearchableSelect
+                options={suppliers.map(s => ({
+                  value: s.id,
+                  label: s.name,
+                  subLabel: s.owner_type === 'brand' ? 'Brand' : undefined
+                }))}
+                value={formData.supplier_id || null}
+                onChange={(val) => setFormData({ ...formData, supplier_id: val || '' })}
+                placeholder="Select supplier..."
+                noOptionsMessage="No suppliers found"
               />
             </UIFormGroup>
           </UIFormRow>
