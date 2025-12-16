@@ -70,12 +70,13 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
   const [recipeCategoriesCount, setRecipeCategoriesCount] = useState(0);
   const [ingredientCategoriesCount, setIngredientCategoriesCount] = useState(0);
   const [brands, setBrands] = useState<Brand[]>([]);
-  const [selectedBrand, setSelectedBrand] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [recipeCategoryRefreshKey, setRecipeCategoryRefreshKey] = useState(0);
   const [ingredientCategoryRefreshKey, setIngredientCategoryRefreshKey] = useState(0);
 
   const activeTab = (searchParams.get('tab') as TabType) || 'recipes';
+  const brandIdFromUrl = searchParams.get('brandId');
+  const selectedBrand = brandIdFromUrl ? Number(brandIdFromUrl) : (brands.length > 0 ? brands[0].id : null);
 
   useEffect(() => {
     if (user && user.role === 'Brand General') {
@@ -97,8 +98,9 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
       if (response.ok) {
         const data = await response.json();
         setBrands(data);
-        if (data.length > 0) {
-          setSelectedBrand(data[0].id);
+        // URL에 brandId가 없으면 첫 번째 브랜드를 URL에 설정
+        if (data.length > 0 && !brandIdFromUrl) {
+          setSearchParams({ tab: activeTab, brandId: String(data[0].id) });
         }
       }
     } catch (error) {
@@ -109,7 +111,15 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
   };
 
   const handleTabChange = (tab: TabType) => {
-    setSearchParams({ tab });
+    const params: Record<string, string> = { tab };
+    if (selectedBrand) {
+      params.brandId = String(selectedBrand);
+    }
+    setSearchParams(params);
+  };
+
+  const handleBrandChange = (brandId: number) => {
+    setSearchParams({ tab: activeTab, brandId: String(brandId) });
   };
 
   if (loading) {
@@ -155,7 +165,7 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
             <HeaderActions>
               <BrandSelect
                 value={selectedBrand || ''}
-                onChange={(e) => setSelectedBrand(Number(e.target.value))}
+                onChange={(e) => handleBrandChange(Number(e.target.value))}
               >
                 {brands.map(brand => (
                   <option key={brand.id} value={brand.id}>

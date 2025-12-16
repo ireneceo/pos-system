@@ -50,6 +50,7 @@ const IngredientsGrid = styled.div`
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 20px;
   margin-top: 24px;
+  align-items: start;
 `;
 
 const IngredientCard = styled.div<{ isActive?: boolean }>`
@@ -62,7 +63,6 @@ const IngredientCard = styled.div<{ isActive?: boolean }>`
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  height: 100%;
 
   &:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
