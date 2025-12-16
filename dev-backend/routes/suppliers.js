@@ -306,7 +306,7 @@ router.post('/restaurants/:restaurantId/suppliers', authenticateToken, checkRest
 router.put('/restaurants/:restaurantId/suppliers/:supplierId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { supplierId } = req.params;
-    const { code, name, contact_name, phone, email, address, business_number, bank_info, payment_terms, notes, is_active } = req.body;
+    const { code, name, contact_name, phone, email, address, business_number, bank_info, payment_terms, notes, is_active, supplier_category_id } = req.body;
 
     const supplier = await Supplier.findByPk(supplierId);
     if (!supplier) {
@@ -329,7 +329,8 @@ router.put('/restaurants/:restaurantId/suppliers/:supplierId', authenticateToken
       bank_info,
       payment_terms,
       notes,
-      is_active: is_active !== undefined ? is_active : supplier.is_active
+      is_active: is_active !== undefined ? is_active : supplier.is_active,
+      supplier_category_id: supplier_category_id !== undefined ? supplier_category_id : supplier.supplier_category_id
     });
 
     res.json({ success: true, data: supplier });
@@ -363,6 +364,265 @@ router.delete('/restaurants/:restaurantId/suppliers/:supplierId', authenticateTo
   } catch (error) {
     console.error('Delete restaurant supplier error:', error);
     res.status(500).json({ error: '공급업체 삭제 실패' });
+  }
+});
+
+// ============================================
+// Brand Supplier Categories
+// ============================================
+
+/**
+ * GET /api/brands/:brandId/supplier-categories
+ * 브랜드 공급업체 카테고리 목록 조회
+ */
+router.get('/brands/:brandId/supplier-categories', authenticateToken, isBrandManager, async (req, res) => {
+  try {
+    const { brandId } = req.params;
+
+    const categories = await SupplierCategory.findAll({
+      where: { brand_id: brandId, owner_type: 'brand' },
+      order: [['display_order', 'ASC'], ['name', 'ASC']]
+    });
+
+    res.json({ success: true, data: categories });
+  } catch (error) {
+    console.error('Get brand supplier categories error:', error);
+    res.status(500).json({ error: '카테고리 목록 조회 실패' });
+  }
+});
+
+/**
+ * POST /api/brands/:brandId/supplier-categories
+ * 브랜드 공급업체 카테고리 생성
+ */
+router.post('/brands/:brandId/supplier-categories', authenticateToken, isBrandManager, async (req, res) => {
+  try {
+    const { brandId } = req.params;
+    const { name, description, color, display_order } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ error: '카테고리 이름은 필수입니다' });
+    }
+
+    const category = await SupplierCategory.create({
+      owner_type: 'brand',
+      brand_id: brandId,
+      restaurant_id: null,
+      name,
+      description,
+      color,
+      display_order: display_order || 0
+    });
+
+    res.json({ success: true, data: category });
+  } catch (error) {
+    console.error('Create brand supplier category error:', error);
+    res.status(500).json({ error: '카테고리 생성 실패' });
+  }
+});
+
+/**
+ * PUT /api/brands/:brandId/supplier-categories/:categoryId
+ * 브랜드 공급업체 카테고리 수정
+ */
+router.put('/brands/:brandId/supplier-categories/:categoryId', authenticateToken, isBrandManager, async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const { name, description, color, display_order, is_active } = req.body;
+
+    const category = await SupplierCategory.findByPk(categoryId);
+    if (!category) {
+      return res.status(404).json({ error: '카테고리를 찾을 수 없습니다' });
+    }
+
+    await category.update({
+      name,
+      description,
+      color,
+      display_order: display_order !== undefined ? display_order : category.display_order,
+      is_active: is_active !== undefined ? is_active : category.is_active
+    });
+
+    res.json({ success: true, data: category });
+  } catch (error) {
+    console.error('Update brand supplier category error:', error);
+    res.status(500).json({ error: '카테고리 수정 실패' });
+  }
+});
+
+/**
+ * DELETE /api/brands/:brandId/supplier-categories/:categoryId
+ * 브랜드 공급업체 카테고리 삭제
+ */
+router.delete('/brands/:brandId/supplier-categories/:categoryId', authenticateToken, isBrandManager, async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+
+    const category = await SupplierCategory.findByPk(categoryId);
+    if (!category) {
+      return res.status(404).json({ error: '카테고리를 찾을 수 없습니다' });
+    }
+
+    // 해당 카테고리를 사용하는 공급업체의 카테고리를 null로 변경
+    await Supplier.update(
+      { supplier_category_id: null },
+      { where: { supplier_category_id: categoryId } }
+    );
+
+    await category.destroy();
+
+    res.json({ success: true, message: '카테고리가 삭제되었습니다' });
+  } catch (error) {
+    console.error('Delete brand supplier category error:', error);
+    res.status(500).json({ error: '카테고리 삭제 실패' });
+  }
+});
+
+// ============================================
+// Restaurant Supplier Categories
+// ============================================
+
+/**
+ * GET /api/restaurants/:restaurantId/supplier-categories
+ * 레스토랑 공급업체 카테고리 목록 조회
+ */
+router.get('/restaurants/:restaurantId/supplier-categories', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+
+    const categories = await SupplierCategory.findAll({
+      where: { restaurant_id: restaurantId, owner_type: 'restaurant' },
+      order: [['display_order', 'ASC'], ['name', 'ASC']]
+    });
+
+    res.json({ success: true, data: categories });
+  } catch (error) {
+    console.error('Get restaurant supplier categories error:', error);
+    res.status(500).json({ error: '카테고리 목록 조회 실패' });
+  }
+});
+
+/**
+ * GET /api/restaurants/:restaurantId/brand-supplier-categories
+ * 레스토랑이 속한 브랜드의 공급업체 카테고리 조회 (읽기 전용)
+ */
+router.get('/restaurants/:restaurantId/brand-supplier-categories', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+
+    const restaurant = await Restaurant.findByPk(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ error: '레스토랑을 찾을 수 없습니다' });
+    }
+
+    if (!restaurant.brand_id) {
+      return res.json({ success: true, data: [] });
+    }
+
+    const categories = await SupplierCategory.findAll({
+      where: { brand_id: restaurant.brand_id, owner_type: 'brand' },
+      order: [['display_order', 'ASC'], ['name', 'ASC']]
+    });
+
+    res.json({ success: true, data: categories });
+  } catch (error) {
+    console.error('Get brand supplier categories for restaurant error:', error);
+    res.status(500).json({ error: '브랜드 카테고리 조회 실패' });
+  }
+});
+
+/**
+ * POST /api/restaurants/:restaurantId/supplier-categories
+ * 레스토랑 공급업체 카테고리 생성
+ */
+router.post('/restaurants/:restaurantId/supplier-categories', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const { name, description, color, display_order } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ error: '카테고리 이름은 필수입니다' });
+    }
+
+    const category = await SupplierCategory.create({
+      owner_type: 'restaurant',
+      brand_id: null,
+      restaurant_id: restaurantId,
+      name,
+      description,
+      color,
+      display_order: display_order || 0
+    });
+
+    res.json({ success: true, data: category });
+  } catch (error) {
+    console.error('Create restaurant supplier category error:', error);
+    res.status(500).json({ error: '카테고리 생성 실패' });
+  }
+});
+
+/**
+ * PUT /api/restaurants/:restaurantId/supplier-categories/:categoryId
+ * 레스토랑 공급업체 카테고리 수정
+ */
+router.put('/restaurants/:restaurantId/supplier-categories/:categoryId', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const { name, description, color, display_order, is_active } = req.body;
+
+    const category = await SupplierCategory.findByPk(categoryId);
+    if (!category) {
+      return res.status(404).json({ error: '카테고리를 찾을 수 없습니다' });
+    }
+
+    if (category.owner_type === 'brand') {
+      return res.status(403).json({ error: '브랜드 카테고리는 수정할 수 없습니다' });
+    }
+
+    await category.update({
+      name,
+      description,
+      color,
+      display_order: display_order !== undefined ? display_order : category.display_order,
+      is_active: is_active !== undefined ? is_active : category.is_active
+    });
+
+    res.json({ success: true, data: category });
+  } catch (error) {
+    console.error('Update restaurant supplier category error:', error);
+    res.status(500).json({ error: '카테고리 수정 실패' });
+  }
+});
+
+/**
+ * DELETE /api/restaurants/:restaurantId/supplier-categories/:categoryId
+ * 레스토랑 공급업체 카테고리 삭제
+ */
+router.delete('/restaurants/:restaurantId/supplier-categories/:categoryId', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+
+    const category = await SupplierCategory.findByPk(categoryId);
+    if (!category) {
+      return res.status(404).json({ error: '카테고리를 찾을 수 없습니다' });
+    }
+
+    if (category.owner_type === 'brand') {
+      return res.status(403).json({ error: '브랜드 카테고리는 삭제할 수 없습니다' });
+    }
+
+    // 해당 카테고리를 사용하는 공급업체의 카테고리를 null로 변경
+    await Supplier.update(
+      { supplier_category_id: null },
+      { where: { supplier_category_id: categoryId } }
+    );
+
+    await category.destroy();
+
+    res.json({ success: true, message: '카테고리가 삭제되었습니다' });
+  } catch (error) {
+    console.error('Delete restaurant supplier category error:', error);
+    res.status(500).json({ error: '카테고리 삭제 실패' });
   }
 });
 
