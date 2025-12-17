@@ -5,6 +5,7 @@ import MobileLayout from '../components/common/MobileLayout';
 import MobileAlertModal from '../components/common/MobileAlertModal';
 import { useCustomer } from '../../contexts/CustomerContext';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
+import PhoneInput from '../components/common/PhoneInput';
 
 const ContentWrapper = styled.div`
   padding: 20px 0;
@@ -33,8 +34,12 @@ const Form = styled.form`
   flex-direction: column;
 `;
 
-const InputGroup = styled.div`
+const InputGroup = styled.div<{ hasError?: boolean }>`
   margin-bottom: 16px;
+
+  input, select {
+    border-color: ${props => props.hasError ? '#DC2626' : '#E5E7EB'};
+  }
 `;
 
 const InputLabel = styled.label`
@@ -69,6 +74,34 @@ const Input = styled.input`
 const RequiredStar = styled.span`
   color: #DC2626;
   margin-left: 2px;
+`;
+
+const FieldError = styled.div`
+  color: #DC2626;
+  font-size: 12px;
+  margin-top: 4px;
+`;
+
+const ErrorBox = styled.div`
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+  color: #DC2626;
+  font-size: 14px;
+
+  a {
+    color: #635BFF;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+`;
+
+const PasswordHint = styled.div`
+  font-size: 12px;
+  color: #6B7280;
+  margin-top: 4px;
 `;
 
 const SubmitButton = styled.button`
@@ -145,6 +178,14 @@ const TermsText = styled.p`
   }
 `;
 
+interface FieldErrors {
+  name?: string;
+  phone?: string;
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
+}
+
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
@@ -157,6 +198,8 @@ const RegisterPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [generalError, setGeneralError] = useState('');
 
   const [alertModal, setAlertModal] = useState<{
     isOpen: boolean;
@@ -182,7 +225,8 @@ const RegisterPage: React.FC = () => {
                 description: result.data.description || '',
                 logo: result.data.logo || '',
                 isOpen: result.data.is_open || true,
-                openingHours: result.data.opening_hours || {}
+                openingHours: result.data.opening_hours || {},
+                country: result.data.country
               });
             }
           }
@@ -194,43 +238,52 @@ const RegisterPage: React.FC = () => {
     loadRestaurant();
   }, [slug, currentStore, setCurrentStore]);
 
-  const showAlert = (type: 'error' | 'success' | 'warning' | 'info', title: string, message: string, onConfirm?: () => void) => {
-    setAlertModal({ isOpen: true, type, title, message, onConfirm });
+  const clearFieldError = (field: keyof FieldErrors) => {
+    setFieldErrors(prev => ({ ...prev, [field]: undefined }));
+    setGeneralError('');
+  };
+
+  const validateForm = (): boolean => {
+    const errors: FieldErrors = {};
+
+    if (!name.trim()) {
+      errors.name = 'Name is required';
+    }
+
+    if (!phone.trim()) {
+      errors.phone = 'Phone number is required';
+    }
+
+    if (!email.trim()) {
+      errors.email = 'Email is required';
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        errors.email = 'Please enter a valid email address';
+      }
+    }
+
+    if (!password) {
+      errors.password = 'Password is required';
+    } else if (password.length < 6) {
+      errors.password = 'Password must be at least 6 characters';
+    }
+
+    if (!confirmPassword) {
+      errors.confirmPassword = 'Please confirm your password';
+    } else if (password !== confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setGeneralError('');
 
-    // Validation
-    if (!name.trim()) {
-      showAlert('error', 'Error', 'Please enter your name');
-      return;
-    }
-    if (!phone.trim()) {
-      showAlert('error', 'Error', 'Please enter your phone number');
-      return;
-    }
-    if (!email.trim()) {
-      showAlert('error', 'Error', 'Please enter your email address');
-      return;
-    }
-    if (!password) {
-      showAlert('error', 'Error', 'Please enter a password');
-      return;
-    }
-    if (password.length < 6) {
-      showAlert('error', 'Error', 'Password must be at least 6 characters');
-      return;
-    }
-    if (password !== confirmPassword) {
-      showAlert('error', 'Error', 'Passwords do not match');
-      return;
-    }
-
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      showAlert('error', 'Error', 'Please enter a valid email address');
+    if (!validateForm()) {
       return;
     }
 
@@ -245,7 +298,7 @@ const RegisterPage: React.FC = () => {
           phone: phone.trim(),
           email: email.trim(),
           password,
-          restaurant_id: currentStore?.id
+          restaurantId: currentStore?.id
         })
       });
 
@@ -254,21 +307,23 @@ const RegisterPage: React.FC = () => {
       if (response.ok && result.success) {
         // Registration successful - auto login
         loginCustomer(result.data);
-        showAlert('success', 'Welcome!', 'Your account has been created successfully!', () => {
-          navigate(`/mobile/${slug}/account`);
+        setAlertModal({
+          isOpen: true,
+          type: 'success',
+          title: 'Welcome!',
+          message: 'Your account has been created successfully!',
+          onConfirm: () => navigate(`/mobile/${slug}/account`)
         });
       } else {
-        // Handle specific errors
-        if (result.message?.includes('phone')) {
-          showAlert('error', 'Phone Already Registered', 'This phone number is already registered. Please login instead.');
-        } else if (result.message?.includes('email')) {
-          showAlert('error', 'Email Already Registered', 'This email address is already registered. Please login instead.');
+        // Handle field-specific errors from backend
+        if (result.field) {
+          setFieldErrors({ [result.field]: result.message });
         } else {
-          showAlert('error', 'Registration Failed', result.message || 'Failed to create account. Please try again.');
+          setGeneralError(result.message || 'Failed to create account. Please try again.');
         }
       }
     } catch (error) {
-      showAlert('error', 'Error', 'Failed to create account. Please try again.');
+      setGeneralError('Failed to create account. Please check your connection and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -291,64 +346,99 @@ const RegisterPage: React.FC = () => {
         </Header>
 
         <Form onSubmit={handleSubmit}>
-          <InputGroup>
+          {generalError && (
+            <ErrorBox>
+              {generalError}
+              {generalError.includes('already registered') && (
+                <>
+                  {' '}
+                  <a onClick={() => navigate(`/mobile/${slug}/login`)}>
+                    Login here
+                  </a>
+                </>
+              )}
+            </ErrorBox>
+          )}
+
+          <InputGroup hasError={!!fieldErrors.name}>
             <InputLabel>
               Name<RequiredStar>*</RequiredStar>
             </InputLabel>
             <Input
               type="text"
               value={name}
-              onChange={e => setName(e.target.value)}
+              onChange={e => {
+                setName(e.target.value);
+                clearFieldError('name');
+              }}
               placeholder="Enter your name"
             />
+            {fieldErrors.name && <FieldError>{fieldErrors.name}</FieldError>}
           </InputGroup>
 
-          <InputGroup>
+          <InputGroup hasError={!!fieldErrors.phone}>
             <InputLabel>
               Phone Number<RequiredStar>*</RequiredStar>
             </InputLabel>
-            <Input
-              type="tel"
+            <PhoneInput
               value={phone}
-              onChange={e => setPhone(e.target.value)}
-              placeholder="Enter your phone number"
+              onChange={(value) => {
+                setPhone(value);
+                clearFieldError('phone');
+              }}
+              defaultCountryCode={currentStore?.country}
+              placeholder="Phone number"
             />
+            {fieldErrors.phone && <FieldError>{fieldErrors.phone}</FieldError>}
           </InputGroup>
 
-          <InputGroup>
+          <InputGroup hasError={!!fieldErrors.email}>
             <InputLabel>
               Email<RequiredStar>*</RequiredStar>
             </InputLabel>
             <Input
               type="email"
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={e => {
+                setEmail(e.target.value);
+                clearFieldError('email');
+              }}
               placeholder="Enter your email"
             />
+            {fieldErrors.email && <FieldError>{fieldErrors.email}</FieldError>}
           </InputGroup>
 
-          <InputGroup>
+          <InputGroup hasError={!!fieldErrors.password}>
             <InputLabel>
               Password<RequiredStar>*</RequiredStar>
             </InputLabel>
             <Input
               type="password"
               value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="Create a password (min 6 characters)"
+              onChange={e => {
+                setPassword(e.target.value);
+                clearFieldError('password');
+              }}
+              placeholder="Create a password"
             />
+            <PasswordHint>Minimum 6 characters</PasswordHint>
+            {fieldErrors.password && <FieldError>{fieldErrors.password}</FieldError>}
           </InputGroup>
 
-          <InputGroup>
+          <InputGroup hasError={!!fieldErrors.confirmPassword}>
             <InputLabel>
               Confirm Password<RequiredStar>*</RequiredStar>
             </InputLabel>
             <Input
               type="password"
               value={confirmPassword}
-              onChange={e => setConfirmPassword(e.target.value)}
+              onChange={e => {
+                setConfirmPassword(e.target.value);
+                clearFieldError('confirmPassword');
+              }}
               placeholder="Confirm your password"
             />
+            {fieldErrors.confirmPassword && <FieldError>{fieldErrors.confirmPassword}</FieldError>}
           </InputGroup>
 
           <TermsText>

@@ -27,6 +27,7 @@ interface Store {
   openingTime?: string;
   closingTime?: string;
   timeZone?: string;
+  country?: string;
   orderTypes?: OrderTypes;
   breakTimes?: BreakTime[];
 }

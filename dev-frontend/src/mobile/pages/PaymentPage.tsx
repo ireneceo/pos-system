@@ -8,6 +8,7 @@ import { useStore } from '../../contexts/StoreContext';
 import CustomerModal from '../../components/Customer/CustomerModal';
 import api from '../services/api';
 import { formatCurrency } from '../../utils/currency';
+import PhoneInput from '../components/common/PhoneInput';
 
 const Container = styled.div`
   padding-bottom: 100px;
@@ -1611,11 +1612,11 @@ const PaymentPage: React.FC = () => {
               </FormGroup>
               <FormGroup>
                 <Label>Phone Number *</Label>
-                <Input
-                  type="tel"
-                  placeholder="+60 12-345 6789"
+                <PhoneInput
                   value={guestPhone}
-                  onChange={(e) => setGuestPhone(e.target.value)}
+                  onChange={setGuestPhone}
+                  defaultCountryCode={currentStore?.country}
+                  placeholder="Phone number"
                 />
               </FormGroup>
               <FormGroup>
@@ -1724,10 +1725,10 @@ const PaymentPage: React.FC = () => {
           {showMemberForm && !currentCustomer && (
             <div style={{ marginTop: '16px' }}>
               <FormGroup>
-                <Label>Phone Number *</Label>
+                <Label>Email or Phone Number *</Label>
                 <Input
-                  type="tel"
-                  placeholder="+60 12-345 6789"
+                  type="text"
+                  placeholder="Email or phone number"
                   value={guestPhone}
                   onChange={(e) => setGuestPhone(e.target.value)}
                 />
