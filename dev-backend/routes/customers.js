@@ -668,13 +668,19 @@ const resetTokens = new Map();
  */
 router.post('/forgot-password', async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, slug } = req.body;
 
     if (!email) {
       return res.status(400).json({
         success: false,
         message: 'Email is required'
       });
+    }
+
+    // slug로 레스토랑 찾기 (이메일 발송용)
+    let restaurant = null;
+    if (slug) {
+      restaurant = await Restaurant.findOne({ where: { slug } });
     }
 
     // 이메일로 고객 찾기
@@ -693,11 +699,12 @@ router.post('/forgot-password', async (req, res) => {
     const resetToken = crypto.randomBytes(32).toString('hex');
     const tokenExpiry = Date.now() + 3600000; // 1시간 후 만료
 
-    // 토큰 저장
+    // 토큰 저장 (slug도 함께 저장하여 reset 페이지에서 사용)
     resetTokens.set(resetToken, {
       customerId: customer.id,
       email: customer.email,
-      expiry: tokenExpiry
+      expiry: tokenExpiry,
+      slug: slug || null
     });
 
     // 1시간 후 토큰 자동 삭제
@@ -710,20 +717,25 @@ router.post('/forgot-password', async (req, res) => {
 
     // 이메일 발송 시도
     try {
-      // 레스토랑 정보 조회 (이메일 설정용) - 고객이 속한 레스토랑 또는 기본 레스토랑 (ID=1) 사용
-      let restaurantId = null;
+      // slug로 찾은 레스토랑 사용 (현재 접속 중인 레스토랑의 이메일 설정)
+      let restaurantId = restaurant?.id || null;
 
-      const restaurantCustomer = await RestaurantCustomer.findOne({
-        where: { customer_id: customer.id },
-        include: [{ model: Restaurant, as: 'restaurant' }]
-      });
+      // slug가 없거나 레스토랑을 못 찾은 경우, 고객이 속한 레스토랑 사용
+      if (!restaurantId) {
+        const restaurantCustomer = await RestaurantCustomer.findOne({
+          where: { customer_id: customer.id },
+          include: [{ model: Restaurant, as: 'restaurant' }]
+        });
 
-      if (restaurantCustomer?.restaurant) {
-        restaurantId = restaurantCustomer.restaurant.id;
-      } else {
-        // 기본 레스토랑 사용
-        restaurantId = 1;
+        if (restaurantCustomer?.restaurant) {
+          restaurantId = restaurantCustomer.restaurant.id;
+        } else {
+          // 기본 레스토랑 사용
+          restaurantId = 1;
+        }
       }
+
+      console.log(`📧 Sending password reset email via restaurant ID: ${restaurantId} (slug: ${slug || 'none'})`);
 
       await emailService.sendEmail('restaurant', restaurantId, {
         to: customer.email,

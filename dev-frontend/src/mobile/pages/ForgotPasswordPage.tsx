@@ -252,7 +252,7 @@ const ForgotPasswordPage: React.FC = () => {
       const response = await fetch('/api/customers/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() })
+        body: JSON.stringify({ email: email.trim(), slug })
       });
 
       const result = await response.json();
