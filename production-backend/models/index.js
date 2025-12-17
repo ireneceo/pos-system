@@ -25,6 +25,14 @@ const SystemSettings = require('./SystemSettings');
 const PlanPrice = require('./PlanPrice');
 const IngredientCost = require('./IngredientCost');
 const RecipeCost = require('./RecipeCost');
+const BrandProduct = require('./BrandProduct');
+const BrandProductCategory = require('./BrandProductCategory');
+const BrandProductOptionGroup = require('./BrandProductOptionGroup');
+const BrandProductOption = require('./BrandProductOption');
+const BrandProductBrand = require('./BrandProductBrand');
+const BrandProductOptionGroupProduct = require('./BrandProductOptionGroupProduct');
+const Supplier = require('./Supplier');
+const SupplierCategory = require('./SupplierCategory');
 
 // Define associations
 // Brand - Restaurant associations
@@ -170,6 +178,74 @@ Restaurant.hasMany(IngredientCategory, { foreignKey: 'restaurant_id', as: 'ingre
 Ingredient.belongsTo(IngredientCategory, { foreignKey: 'ingredient_category_id', as: 'ingredientCategory' });
 IngredientCategory.hasMany(Ingredient, { foreignKey: 'ingredient_category_id', as: 'ingredients' });
 
+// Ingredient - BrandProduct association
+Ingredient.belongsTo(BrandProduct, { foreignKey: 'brand_product_id', as: 'brandProduct' });
+BrandProduct.hasMany(Ingredient, { foreignKey: 'brand_product_id', as: 'ingredients' });
+
+// BrandProduct - Category associations
+BrandProduct.belongsTo(BrandProductCategory, { foreignKey: 'category_id', as: 'category' });
+BrandProductCategory.hasMany(BrandProduct, { foreignKey: 'category_id', as: 'products' });
+
+// BrandProduct - Brand (N:M through BrandProductBrand)
+BrandProduct.belongsToMany(Brand, {
+  through: BrandProductBrand,
+  foreignKey: 'product_id',
+  otherKey: 'brand_id',
+  as: 'brands'
+});
+Brand.belongsToMany(BrandProduct, {
+  through: BrandProductBrand,
+  foreignKey: 'brand_id',
+  otherKey: 'product_id',
+  as: 'brandProducts'
+});
+
+// BrandProductBrand associations for direct access
+BrandProductBrand.belongsTo(BrandProduct, { foreignKey: 'product_id', as: 'product' });
+BrandProductBrand.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
+
+// BrandProduct - OptionGroup (N:M through BrandProductOptionGroupProduct)
+BrandProduct.belongsToMany(BrandProductOptionGroup, {
+  through: BrandProductOptionGroupProduct,
+  foreignKey: 'product_id',
+  otherKey: 'option_group_id',
+  as: 'optionGroups'
+});
+BrandProductOptionGroup.belongsToMany(BrandProduct, {
+  through: BrandProductOptionGroupProduct,
+  foreignKey: 'option_group_id',
+  otherKey: 'product_id',
+  as: 'products'
+});
+
+// BrandProductOptionGroupProduct associations for direct access
+BrandProductOptionGroupProduct.belongsTo(BrandProduct, { foreignKey: 'product_id', as: 'product' });
+BrandProductOptionGroupProduct.belongsTo(BrandProductOptionGroup, { foreignKey: 'option_group_id', as: 'optionGroup' });
+
+// BrandProductOption associations
+BrandProductOption.belongsTo(BrandProductOptionGroup, { foreignKey: 'option_group_id', as: 'optionGroup' });
+BrandProductOptionGroup.hasMany(BrandProductOption, { foreignKey: 'option_group_id', as: 'options' });
+
+// Supplier associations
+Supplier.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
+Brand.hasMany(Supplier, { foreignKey: 'brand_id', as: 'suppliers' });
+Supplier.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Restaurant.hasMany(Supplier, { foreignKey: 'restaurant_id', as: 'suppliers' });
+
+// Ingredient - Supplier association
+Ingredient.belongsTo(Supplier, { foreignKey: 'supplier_id', as: 'supplier' });
+Supplier.hasMany(Ingredient, { foreignKey: 'supplier_id', as: 'ingredients' });
+
+// SupplierCategory associations
+SupplierCategory.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
+Brand.hasMany(SupplierCategory, { foreignKey: 'brand_id', as: 'supplierCategories' });
+SupplierCategory.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Restaurant.hasMany(SupplierCategory, { foreignKey: 'restaurant_id', as: 'supplierCategories' });
+
+// Supplier - SupplierCategory association
+Supplier.belongsTo(SupplierCategory, { foreignKey: 'supplier_category_id', as: 'supplierCategory' });
+SupplierCategory.hasMany(Supplier, { foreignKey: 'supplier_category_id', as: 'suppliers' });
+
 module.exports = {
   User,
   Restaurant,
@@ -197,5 +273,13 @@ module.exports = {
   IngredientCost,
   RecipeCost,
   RecipeCategory,
-  IngredientCategory
+  IngredientCategory,
+  BrandProduct,
+  BrandProductCategory,
+  BrandProductOptionGroup,
+  BrandProductOption,
+  BrandProductBrand,
+  BrandProductOptionGroupProduct,
+  Supplier,
+  SupplierCategory
 };

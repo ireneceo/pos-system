@@ -15,6 +15,23 @@ if (process.env.pm_id === undefined) {
   process.exit(1);
 }
 
+// ============================================
+// ROOT 실행 방지 - root로 실행 시 즉시 종료
+// 개발서버는 irene 유저로만 실행되어야 합니다.
+// root로 실행하면 PM2(irene)와 포트 충돌이 발생합니다.
+// ============================================
+if (process.getuid && process.getuid() === 0) {
+  console.error('❌ ERROR: Do NOT run this server as root!');
+  console.error('❌ Running as root causes port conflicts with PM2 (irene user).');
+  console.error('');
+  console.error('📌 Correct usage:');
+  console.error('   pm2 start ecosystem.config.js --only dev-backend');
+  console.error('   (PM2 runs as irene user)');
+  console.error('');
+  console.error('🚫 Exiting immediately...');
+  process.exit(1);
+}
+
 // 환경 설정 자동 로드 (가장 먼저 실행)
 const loadEnvironmentConfig = require('./config/env-loader');
 loadEnvironmentConfig();
@@ -173,6 +190,8 @@ const ingredientsRouter = require('./routes/ingredients');
 const recipeCategoriesRouter = require('./routes/recipe-categories');
 const ingredientCategoriesRouter = require('./routes/ingredient-categories');
 const currenciesRouter = require('./routes/currencies');
+const brandProductsRouter = require('./routes/brand-products');
+const suppliersRouter = require('./routes/suppliers');
 
 // Health check endpoint - PM2 모니터링 및 로드밸런서용 (가장 먼저)
 app.get('/api/health', (req, res) => {
@@ -215,11 +234,13 @@ app.use('/api/staff', staffRouter);
 app.use('/api/store', storeRouter);
 app.use('/api/site-settings', siteSettingsRouter);
 app.use('/api/notification-settings', notificationSettingsRouter);
+app.use('/api', brandProductsRouter);  // Brand products routes (must be before /api/brands to handle /api/brands/:id/product-categories)
 app.use('/api/brands', brandsRouter);
 app.use('/api', recipesRouter);
 app.use('/api', ingredientsRouter);
 app.use('/api', recipeCategoriesRouter);
 app.use('/api', ingredientCategoriesRouter);
+app.use('/api', suppliersRouter);
 app.use('/api/currencies', currenciesRouter);
 
 // GitHub Webhook for Auto-Deployment
@@ -289,18 +310,13 @@ async function startServer() {
       console.log(`✅ Health check: http://localhost:${PORT}/api/health`);
     });
 
-    // Handle port conflicts gracefully - PM2 환경에서는 재시작하도록
+    // Handle port conflicts gracefully
     server.on('error', (error) => {
       if (error.code === 'EADDRINUSE') {
         console.error(`⚠️  Port ${PORT} is already in use.`);
-        if (isPM2) {
-          console.log('🔄 PM2 will handle restart automatically');
-          // PM2가 자동으로 재시작하므로 즉시 종료하지 않음
-          setTimeout(() => process.exit(1), 5000);
-        } else {
-          console.error('❌ Exiting to avoid conflicts.');
-          process.exit(1);
-        }
+        console.error('❌ Another process is using this port. Please check with: lsof -i :' + PORT);
+        // Don't auto-restart to avoid infinite loop - manual intervention needed
+        process.exit(1);
       } else {
         console.error('❌ Server error:', error);
         process.exit(1);

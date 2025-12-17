@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Ingredient, IngredientCategory, Restaurant } = require('../models');
+const { Ingredient, IngredientCategory, Restaurant, Supplier } = require('../models');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
 
@@ -20,11 +20,18 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
     const ingredients = await Ingredient.findAll({
       where: { brand_id },
       order: [['name', 'ASC']],
-      include: [{
-        model: IngredientCategory,
-        as: 'ingredientCategory',
-        attributes: ['id', 'name', 'emoji']
-      }]
+      include: [
+        {
+          model: IngredientCategory,
+          as: 'ingredientCategory',
+          attributes: ['id', 'name', 'emoji']
+        },
+        {
+          model: Supplier,
+          as: 'supplier',
+          attributes: ['id', 'name', 'owner_type']
+        }
+      ]
     });
 
     res.json({ success: true, data: ingredients });
@@ -41,8 +48,8 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
 router.post('/brands/:brandId/ingredients', authenticateToken, isBrandManager, async (req, res) => {
   try {
     const { brandId } = req.params;
-    const brand_id = brandId; // DB 쿼리용
-    const { code, name, category, ingredient_category_id, unit, unit_cost, supplier_name, min_stock } = req.body;
+    const brand_id = brandId;
+    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock } = req.body;
 
     const ingredient = await Ingredient.create({
       owner_type: 'brand',
@@ -51,10 +58,13 @@ router.post('/brands/:brandId/ingredients', authenticateToken, isBrandManager, a
       ingredient_category_id: ingredient_category_id || null,
       code,
       name,
+      image_url: image_url || null,
       category,
       unit,
+      base_quantity: base_quantity || 1,
       unit_cost,
       supplier_name,
+      supplier_id: supplier_id || null,
       min_stock: min_stock || 0,
       current_stock: 0
     });
@@ -62,7 +72,7 @@ router.post('/brands/:brandId/ingredients', authenticateToken, isBrandManager, a
     res.json({ success: true, data: ingredient });
   } catch (error) {
     console.error('Create brand ingredient error:', error);
-    res.status(500).json({ error: '재료 생성 실패' });
+    res.status(500).json({ error: 'Failed to create ingredient' });
   }
 });
 
@@ -73,29 +83,32 @@ router.post('/brands/:brandId/ingredients', authenticateToken, isBrandManager, a
 router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBrandManager, async (req, res) => {
   try {
     const { ingredientId } = req.params;
-    const ingredient_id = ingredientId; // DB 쿼리용
-    const { code, name, category, ingredient_category_id, unit, unit_cost, supplier_name, min_stock } = req.body;
+    const ingredient_id = ingredientId;
+    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock } = req.body;
 
     const ingredient = await Ingredient.findByPk(ingredient_id);
     if (!ingredient) {
-      return res.status(404).json({ error: '재료를 찾을 수 없습니다' });
+      return res.status(404).json({ error: 'Ingredient not found' });
     }
 
     await ingredient.update({
       code,
       name,
+      image_url: image_url !== undefined ? image_url : ingredient.image_url,
       category,
       ingredient_category_id: ingredient_category_id !== undefined ? ingredient_category_id : ingredient.ingredient_category_id,
       unit,
+      base_quantity: base_quantity !== undefined ? base_quantity : ingredient.base_quantity,
       unit_cost,
       supplier_name,
+      supplier_id: supplier_id !== undefined ? supplier_id : ingredient.supplier_id,
       min_stock
     });
 
     res.json({ success: true, data: ingredient });
   } catch (error) {
     console.error('Update brand ingredient error:', error);
-    res.status(500).json({ error: '재료 수정 실패' });
+    res.status(500).json({ error: 'Failed to update ingredient' });
   }
 });
 
@@ -140,11 +153,18 @@ router.get('/restaurants/:restaurantId/ingredients', authenticateToken, checkRes
         owner_type: 'restaurant'
       },
       order: [['name', 'ASC']],
-      include: [{
-        model: IngredientCategory,
-        as: 'ingredientCategory',
-        attributes: ['id', 'name', 'emoji']
-      }]
+      include: [
+        {
+          model: IngredientCategory,
+          as: 'ingredientCategory',
+          attributes: ['id', 'name', 'emoji']
+        },
+        {
+          model: Supplier,
+          as: 'supplier',
+          attributes: ['id', 'name', 'owner_type']
+        }
+      ]
     });
 
     res.json({ success: true, data: ingredients });
@@ -179,11 +199,18 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
         owner_type: 'brand'
       },
       order: [['name', 'ASC']],
-      include: [{
-        model: IngredientCategory,
-        as: 'ingredientCategory',
-        attributes: ['id', 'name', 'emoji']
-      }]
+      include: [
+        {
+          model: IngredientCategory,
+          as: 'ingredientCategory',
+          attributes: ['id', 'name', 'emoji']
+        },
+        {
+          model: Supplier,
+          as: 'supplier',
+          attributes: ['id', 'name', 'owner_type']
+        }
+      ]
     });
 
     res.json({ success: true, data: brandIngredients });
@@ -200,7 +227,7 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
 router.post('/restaurants/:restaurantId/ingredients', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
-    const { code, name, category, ingredient_category_id, unit, unit_cost, supplier_name, min_stock } = req.body;
+    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock } = req.body;
 
     const ingredient = await Ingredient.create({
       owner_type: 'restaurant',
@@ -209,10 +236,13 @@ router.post('/restaurants/:restaurantId/ingredients', authenticateToken, checkRe
       ingredient_category_id: ingredient_category_id || null,
       code,
       name,
+      image_url: image_url || null,
       category,
       unit,
+      base_quantity: base_quantity || 1,
       unit_cost,
       supplier_name,
+      supplier_id: supplier_id || null,
       min_stock: min_stock || 0,
       current_stock: 0
     });
@@ -220,7 +250,7 @@ router.post('/restaurants/:restaurantId/ingredients', authenticateToken, checkRe
     res.json({ success: true, data: ingredient });
   } catch (error) {
     console.error('Create restaurant ingredient error:', error);
-    res.status(500).json({ error: '재료 생성 실패' });
+    res.status(500).json({ error: 'Failed to create ingredient' });
   }
 });
 
@@ -231,28 +261,31 @@ router.post('/restaurants/:restaurantId/ingredients', authenticateToken, checkRe
 router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { ingredientId } = req.params;
-    const { code, name, category, ingredient_category_id, unit, unit_cost, supplier_name, min_stock } = req.body;
+    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock } = req.body;
 
     const ingredient = await Ingredient.findByPk(ingredientId);
     if (!ingredient) {
-      return res.status(404).json({ error: '재료를 찾을 수 없습니다' });
+      return res.status(404).json({ error: 'Ingredient not found' });
     }
 
     await ingredient.update({
       code,
       name,
+      image_url: image_url !== undefined ? image_url : ingredient.image_url,
       category,
       ingredient_category_id: ingredient_category_id !== undefined ? ingredient_category_id : ingredient.ingredient_category_id,
       unit,
+      base_quantity: base_quantity !== undefined ? base_quantity : ingredient.base_quantity,
       unit_cost,
       supplier_name,
+      supplier_id: supplier_id !== undefined ? supplier_id : ingredient.supplier_id,
       min_stock
     });
 
     res.json({ success: true, data: ingredient });
   } catch (error) {
     console.error('Update restaurant ingredient error:', error);
-    res.status(500).json({ error: '재료 수정 실패' });
+    res.status(500).json({ error: 'Failed to update ingredient' });
   }
 });
 

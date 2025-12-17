@@ -1,29 +1,30 @@
 const nodemailer = require('nodemailer');
-const db = require('../models');
+const { sequelize } = require('../config/database');
+const { QueryTypes } = require('sequelize');
 
 /**
- * Get email settings for a specific entity
+ * Get email settings for a specific entity (restaurant)
+ * Each restaurant must configure their own SMTP settings
  */
 async function getEmailSettings(entityType, entityId) {
   try {
-    const [settings] = await db.sequelize.query(
+    const settings = await sequelize.query(
       `SELECT * FROM notification_settings
        WHERE entity_type = :entityType AND entity_id = :entityId AND email_enabled = 1`,
       {
         replacements: { entityType, entityId },
-        type: db.sequelize.QueryTypes.SELECT
+        type: QueryTypes.SELECT
       }
     );
 
-    if (!settings) {
-      throw new Error('Email notifications are not enabled for this entity');
+    // settings는 배열이므로 첫 번째 항목 사용
+    const setting = settings[0];
+
+    if (setting && setting.smtp_host && setting.smtp_user && setting.smtp_password) {
+      return setting;
     }
 
-    if (!settings.smtp_host || !settings.smtp_user || !settings.smtp_password) {
-      throw new Error('SMTP settings are incomplete');
-    }
-
-    return settings;
+    throw new Error('Email notifications are not configured for this restaurant. Please configure SMTP settings in Restaurant Settings > Notifications.');
   } catch (error) {
     throw error;
   }

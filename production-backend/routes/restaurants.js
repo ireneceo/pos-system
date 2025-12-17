@@ -221,12 +221,19 @@ router.get('/slug/:slug', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const restaurant = await Restaurant.findByPk(req.params.id, {
-      include: [{
-        model: User,
-        as: 'managers',
-        attributes: ['id', 'full_name', 'username', 'email', 'role', 'company_name', 'phone'],
-        through: { attributes: ['is_primary'] }
-      }]
+      include: [
+        {
+          model: User,
+          as: 'managers',
+          attributes: ['id', 'full_name', 'username', 'email', 'role', 'company_name', 'phone'],
+          through: { attributes: ['is_primary'] }
+        },
+        {
+          model: Brand,
+          as: 'brand',
+          attributes: ['id', 'name', 'logo_url']
+        }
+      ]
     });
 
     if (!restaurant) {

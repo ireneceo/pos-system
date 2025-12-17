@@ -82,7 +82,9 @@ router.get('/', async (req, res) => {
         // 세트 메뉴 관련 필드
         is_set_menu: prod.is_set_menu || false,
         set_items: prod.set_items || null,
-        set_display_order: prod.set_display_order || 0
+        set_display_order: prod.set_display_order || 0,
+        // 레시피 연결
+        recipe_id: prod.recipe_id || null
       };
     });
 

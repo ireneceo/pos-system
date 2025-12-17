@@ -103,8 +103,25 @@ sudo ufw allow 443/tcp           # HTTPS 허용
 
 ## 트러블슈팅
 
+### ⚠️ 포트 충돌 / 무한 재시작 문제 (중요!)
+**증상:** PM2에서 dev-backend가 계속 재시작되며 "Port 3001 is already in use" 에러 발생
+
+**해결 방법:**
+```bash
+# 방법 1: 재시작 스크립트 사용 (권장)
+/var/www/dev-backend/restart-dev.sh
+
+# 방법 2: 수동 해결
+pm2 delete dev-backend
+echo "7u7LnxNr" | sudo -S kill -9 $(sudo lsof -t -i:3001) 2>/dev/null
+pm2 start ecosystem.config.js --only dev-backend
+```
+
+**근본 원인:** app.js와 server.js 둘 다 startServer() 호출 시 포트 충돌 발생
+- 수정됨: app.js에서 `require.main === module` 체크 추가
+
 ### 애플리케이션이 시작되지 않는 경우
-1. PM2 로그 확인: `pm2 logs pos-dev-backend`
+1. PM2 로그 확인: `pm2 logs dev-backend`
 2. 포트 3001이 사용 중인지 확인: `sudo lsof -i :3001`
 3. Node.js 버전 확인: `node --version`
 

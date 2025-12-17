@@ -48,7 +48,7 @@ router.post('/brands/:brandId/recipes', authenticateToken, isBrandManager, async
   try {
     const { brandId } = req.params;
     const brand_id = brandId; // DB 쿼리용
-    const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
+    const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, instructions_summary, instructions_detail, suggested_price } = req.body;
 
     // 필수 필드 검증
     if (!name || !name.trim()) {
@@ -70,6 +70,8 @@ router.post('/brands/:brandId/recipes', authenticateToken, isBrandManager, async
       prep_time: prep_time ? parseInt(prep_time) : null,
       cook_time: cook_time ? parseInt(cook_time) : null,
       instructions: instructions || null,
+      instructions_summary: instructions_summary || null,
+      instructions_detail: instructions_detail || null,
       suggested_price: suggested_price ? parseFloat(suggested_price) : 0,
       total_ingredient_cost: 0
     });
@@ -127,7 +129,7 @@ router.put('/brands/:brandId/recipes/:recipeId', authenticateToken, canEditRecip
   try {
     const { recipeId } = req.params;
     const recipe_id = recipeId; // DB 쿼리용
-    const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
+    const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, instructions_summary, instructions_detail, suggested_price } = req.body;
 
     const recipe = await Recipe.findByPk(recipe_id);
     if (!recipe) {
@@ -146,6 +148,8 @@ router.put('/brands/:brandId/recipes/:recipeId', authenticateToken, canEditRecip
       prep_time,
       cook_time,
       instructions,
+      instructions_summary,
+      instructions_detail,
       suggested_price
     });
 
@@ -315,7 +319,7 @@ router.get('/restaurants/:restaurantId/brand-recipes', authenticateToken, checkR
 router.post('/restaurants/:restaurantId/recipes', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
-    const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
+    const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, instructions_summary, instructions_detail, suggested_price } = req.body;
 
     // 필수 필드 검증
     if (!name || !name.trim()) {
@@ -337,6 +341,8 @@ router.post('/restaurants/:restaurantId/recipes', authenticateToken, checkRestau
       prep_time: prep_time ? parseInt(prep_time) : null,
       cook_time: cook_time ? parseInt(cook_time) : null,
       instructions: instructions || null,
+      instructions_summary: instructions_summary || null,
+      instructions_detail: instructions_detail || null,
       suggested_price: suggested_price ? parseFloat(suggested_price) : 0,
       total_ingredient_cost: 0
     });
@@ -398,7 +404,7 @@ router.put('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken, ch
       return res.status(403).json({ error: 'You can only edit your own restaurant recipes' });
     }
 
-    const { name, description, category, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, suggested_price } = req.body;
+    const { name, description, category, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, instructions_summary, instructions_detail, suggested_price } = req.body;
 
     // 기본 정보 업데이트
     await recipe.update({
@@ -411,6 +417,8 @@ router.put('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken, ch
       prep_time,
       cook_time,
       instructions,
+      instructions_summary,
+      instructions_detail,
       suggested_price
     });
 

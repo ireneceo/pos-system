@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../models');
+const { sequelize } = require('../config/database');
+const { QueryTypes } = require('sequelize');
 const { authenticateToken } = require('../middleware/auth');
 
 // GET - 알림 설정 조회
@@ -8,12 +9,12 @@ router.get('/:entityType/:entityId', authenticateToken, async (req, res) => {
   try {
     const { entityType, entityId } = req.params;
 
-    const settings = await db.sequelize.query(
+    const settings = await sequelize.query(
       `SELECT * FROM notification_settings
        WHERE entity_type = :entityType AND entity_id = :entityId`,
       {
         replacements: { entityType, entityId },
-        type: db.sequelize.QueryTypes.SELECT
+        type: QueryTypes.SELECT
       }
     );
 
@@ -68,12 +69,12 @@ router.post('/:entityType/:entityId', authenticateToken, async (req, res) => {
     } = req.body;
 
     // 기존 설정 확인
-    const existing = await db.sequelize.query(
+    const existing = await sequelize.query(
       `SELECT id FROM notification_settings
        WHERE entity_type = :entityType AND entity_id = :entityId`,
       {
         replacements: { entityType, entityId },
-        type: db.sequelize.QueryTypes.SELECT
+        type: QueryTypes.SELECT
       }
     );
 
@@ -102,13 +103,13 @@ router.post('/:entityType/:entityId', authenticateToken, async (req, res) => {
         entityType,
         entityId,
         email_enabled: email_enabled || false,
-        smtp_host,
+        smtp_host: smtp_host || '',
         smtp_port: smtp_port || 587,
         smtp_secure: smtp_secure || false,
-        smtp_user,
-        from_email,
-        from_name,
-        reply_to_email,
+        smtp_user: smtp_user || '',
+        from_email: from_email || '',
+        from_name: from_name || '',
+        reply_to_email: reply_to_email || '',
         sms_enabled: sms_enabled || false,
         whatsapp_enabled: whatsapp_enabled || false
       };
@@ -137,23 +138,30 @@ router.post('/:entityType/:entityId', authenticateToken, async (req, res) => {
         entityType,
         entityId,
         email_enabled: email_enabled || false,
-        smtp_host,
+        smtp_host: smtp_host || '',
         smtp_port: smtp_port || 587,
         smtp_secure: smtp_secure || false,
-        smtp_user,
-        smtp_password,
-        from_email,
-        from_name,
-        reply_to_email,
+        smtp_user: smtp_user || '',
+        smtp_password: smtp_password || '',
+        from_email: from_email || '',
+        from_name: from_name || '',
+        reply_to_email: reply_to_email || '',
         sms_enabled: sms_enabled || false,
         whatsapp_enabled: whatsapp_enabled || false
       };
     }
 
-    await db.sequelize.query(query, {
-      replacements,
-      type: db.sequelize.QueryTypes.UPDATE
-    });
+    if (existing.length > 0) {
+      await sequelize.query(query, {
+        replacements,
+        type: QueryTypes.UPDATE
+      });
+    } else {
+      await sequelize.query(query, {
+        replacements,
+        type: QueryTypes.INSERT
+      });
+    }
 
     res.json({ success: true, message: '알림 설정이 저장되었습니다.' });
   } catch (error) {

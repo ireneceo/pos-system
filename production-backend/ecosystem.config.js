@@ -5,9 +5,14 @@ module.exports = {
       script: './server.js',
       cwd: '/var/www/dev-backend',
       instances: 1,
+      exec_mode: 'fork',
       autorestart: true,
+      max_restarts: 10,
+      min_uptime: 5000,
+      restart_delay: 4000,
       watch: false,
       max_memory_restart: '1G',
+      kill_timeout: 5000,
       env: {
         NODE_ENV: 'development',
         PORT: 3001
