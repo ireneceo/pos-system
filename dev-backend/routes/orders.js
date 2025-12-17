@@ -366,7 +366,7 @@ router.patch('/:id/items', async (req, res) => {
   }
 });
 
-// Delete order
+// Delete order (soft delete - preserves order number)
 router.delete('/:id', async (req, res) => {
   try {
     const order = await Order.findByPk(req.params.id);
@@ -377,7 +377,11 @@ router.delete('/:id', async (req, res) => {
     const restaurantId = order.restaurant_id;
     const orderId = order.id;
 
-    await order.destroy();
+    // Soft delete - mark as deleted but preserve order number
+    await order.update({
+      is_deleted: true,
+      deleted_at: new Date()
+    });
 
     // Emit socket event for real-time update
     const io = req.app.get('io');
@@ -385,7 +389,7 @@ router.delete('/:id', async (req, res) => {
       io.of('/orders').to(`restaurant_${restaurantId}`).emit('order-deleted', { id: orderId });
     }
 
-    res.json({ success: true, message: 'Order deleted successfully' });
+    res.json({ success: true, message: 'Order removed successfully' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -405,7 +409,14 @@ router.get('/restaurant/:restaurantId', async (req, res) => {
     const limitNum = parseInt(limit);
     const offset = (pageNum - 1) * limitNum;
 
-    let whereCondition = { restaurant_id: req.params.restaurantId };
+    let whereCondition = {
+      restaurant_id: req.params.restaurantId,
+      // Exclude soft-deleted orders
+      [Op.or]: [
+        { is_deleted: false },
+        { is_deleted: null }
+      ]
+    };
 
     // Filter by status if provided
     if (status) {

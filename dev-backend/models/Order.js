@@ -180,6 +180,17 @@ Order.init({
     allowNull: true,
     defaultValue: 0,
     comment: 'Delivery fee amount'
+  },
+  is_deleted: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    comment: 'Soft delete flag - order number is preserved'
+  },
+  deleted_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Timestamp when order was soft deleted'
   }
 }, {
   sequelize: database.sequelize,

@@ -1471,6 +1471,7 @@ const LiveOrdersPage: React.FC = () => {
 
     let filtered;
     if (activeTab === 'all') {
+      // All Orders 탭에서는 모든 주문 표시 (cancelled 포함)
       filtered = dateFiltered;
     } else if (activeTab === 'outstanding') {
       filtered = dateFiltered.filter(order => isOutstanding(order));
@@ -1543,7 +1544,10 @@ const LiveOrdersPage: React.FC = () => {
   const getStatusCount = (status: string) => {
     const dateFiltered = getFilteredOrders();
 
-    if (status === 'all') return dateFiltered.length;
+    if (status === 'all') {
+      // All 탭 카운트 - 모든 주문 포함 (cancelled 포함)
+      return dateFiltered.length;
+    }
     if (status === 'outstanding') {
       return dateFiltered.filter(order => isOutstanding(order)).length;
     }
@@ -2521,9 +2525,13 @@ const LiveOrdersPage: React.FC = () => {
                         <IconButton
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeleteOrder(order.id);
+                            if (order.status === 'cancelled') {
+                              handleDeleteOrder(order.id);
+                            } else {
+                              handleCancelOrder(order.id);
+                            }
                           }}
-                          title="Delete Order"
+                          title={order.status === 'cancelled' ? "Remove Order" : "Cancel Order"}
                         >
                           <IconSymbol>✕</IconSymbol>
                         </IconButton>
@@ -2930,8 +2938,12 @@ const LiveOrdersPage: React.FC = () => {
                     </ActionButton>
                   ) : (
                     <>
-                      <ActionButton variant="secondary" onClick={handleCloseModal}>
-                        Close
+                      <ActionButton
+                        variant="secondary"
+                        onClick={() => handleDeleteOrder(selectedOrder.id)}
+                        style={{ background: '#6B7280', borderColor: '#6B7280', color: 'white' }}
+                      >
+                        Remove
                       </ActionButton>
                   {selectedOrder.status !== 'cancelled' && selectedOrder.status !== 'completed' && (
                     <ActionButton
