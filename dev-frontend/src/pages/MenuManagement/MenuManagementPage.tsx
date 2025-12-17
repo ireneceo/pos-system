@@ -263,18 +263,17 @@ const RecipeLink = styled.span`
   font-size: 12px;
   color: #635BFF;
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  background: #F0F4FF;
-  border-radius: 4px;
-  margin-top: 4px;
+  display: inline-block;
+  margin-top: 8px;
   transition: all 0.15s;
 
   &:hover {
-    background: #E6EBFF;
     text-decoration: underline;
+  }
+
+  &::before {
+    content: '→ ';
+    opacity: 0.6;
   }
 `;
 
@@ -287,6 +286,8 @@ const MenuCategory = styled.div`
   font-size: 11px;
   font-weight: 500;
   margin-bottom: 12px;
+  align-self: flex-start;
+  width: fit-content;
 `;
 
 const MenuActions = styled.div`
