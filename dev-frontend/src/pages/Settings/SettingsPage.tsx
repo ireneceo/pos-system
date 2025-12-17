@@ -2443,29 +2443,22 @@ const SettingsPage: React.FC = () => {
               </SettingsCard>
               </SettingsGrid>
 
-              {/* Brand & Recipe Settings (read-only) */}
+              {/* Brand (read-only) */}
               {brandInfo.brand_id && (
                 <SettingsCard style={{ marginTop: '24px' }}>
-                  <CardTitle>Brand & Recipe Settings</CardTitle>
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                    gap: '20px'
-                  }}>
-                    <FormGroup>
-                      <Label>Brand</Label>
-                      <div style={{
-                        padding: '10px 12px',
-                        background: '#F6F9FC',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        color: '#0A2540',
-                        border: '1px solid #E6EBF1'
-                      }}>
-                        {brandInfo.brand_name || 'Unknown Brand'}
-                      </div>
-                    </FormGroup>
-                  </div>
+                  <CardTitle>Brand</CardTitle>
+                  <FormGroup>
+                    <div style={{
+                      padding: '10px 12px',
+                      background: '#F6F9FC',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      color: '#0A2540',
+                      border: '1px solid #E6EBF1'
+                    }}>
+                      {brandInfo.brand_name || '-'}
+                    </div>
+                  </FormGroup>
                 </SettingsCard>
               )}
 
