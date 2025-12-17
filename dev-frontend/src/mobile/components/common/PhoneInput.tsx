@@ -18,12 +18,21 @@ const COUNTRY_CODES = [
   { code: '+91', country: 'IN', name: 'India', flag: '🇮🇳' },
 ];
 
-// 국가 코드로 기본 국가코드 찾기
+// 국가 코드로 기본 국가코드 찾기 (ISO 코드 또는 국가명 모두 지원)
 export const getDefaultCountryCode = (countryCode?: string): string => {
-  if (!countryCode) return '+82'; // 기본값 한국
+  if (!countryCode) return '+60'; // 기본값 말레이시아
 
-  const country = COUNTRY_CODES.find(c => c.country === countryCode.toUpperCase());
-  return country?.code || '+82';
+  const upperCode = countryCode.toUpperCase();
+
+  // ISO 코드로 찾기 (예: "MY", "KR")
+  let country = COUNTRY_CODES.find(c => c.country === upperCode);
+
+  // 국가명으로 찾기 (예: "Malaysia", "South Korea")
+  if (!country) {
+    country = COUNTRY_CODES.find(c => c.name.toUpperCase() === upperCode);
+  }
+
+  return country?.code || '+60';
 };
 
 // E.164 형식으로 변환 (예: +821012345678)

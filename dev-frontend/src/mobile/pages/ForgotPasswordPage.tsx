@@ -216,13 +216,14 @@ const ForgotPasswordPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const { currentStore, setCurrentStore } = useMobileOrder();
 
-  const [activeTab, setActiveTab] = useState<'password' | 'email'>('password');
+  const [activeTab, setActiveTab] = useState<'email' | 'phone'>('email');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isEmailSent, setIsEmailSent] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [foundEmail, setFoundEmail] = useState('');
+  const [foundEmail, setFoundEmail] = useState(''); // 전화번호로 찾은 마스킹된 이메일
+  const [sentToEmail, setSentToEmail] = useState(''); // 실제 발송된 이메일 (마스킹)
 
   const [alertModal, setAlertModal] = useState<{
     isOpen: boolean;
@@ -298,7 +299,8 @@ const ForgotPasswordPage: React.FC = () => {
     }
   };
 
-  const handleFindEmail = async (e: React.FormEvent) => {
+  // 전화번호로 이메일 찾기 (Step 1)
+  const handleFindEmailByPhone = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     setFoundEmail('');
@@ -325,7 +327,34 @@ const ForgotPasswordPage: React.FC = () => {
         setFoundEmail(result.maskedEmail);
       }
     } catch (error) {
-      setErrorMessage('Failed to find email. Please try again.');
+      setErrorMessage('Failed to find account. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 전화번호로 찾은 이메일로 비밀번호 재설정 링크 발송 (Step 2)
+  const handleSendResetToFoundEmail = async () => {
+    setIsLoading(true);
+    setErrorMessage('');
+
+    try {
+      const response = await fetch('/api/customers/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phone.trim(), slug })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setSentToEmail(foundEmail);
+        setIsEmailSent(true);
+      } else {
+        setErrorMessage(result.message || 'Failed to send reset email.');
+      }
+    } catch (error) {
+      setErrorMessage('Failed to send reset email. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -341,6 +370,9 @@ const ForgotPasswordPage: React.FC = () => {
   };
 
   if (isEmailSent) {
+    // 발송된 이메일 표시 (이메일로 찾기: email, 전화번호로 찾기: sentToEmail)
+    const displayEmail = activeTab === 'email' ? email : sentToEmail;
+
     return (
       <MobileLayout title="Password Reset" onBack={handleBack}>
         <SuccessContainer>
@@ -353,7 +385,7 @@ const ForgotPasswordPage: React.FC = () => {
 
           <SuccessTitle>Check Your Email</SuccessTitle>
           <SuccessMessage>
-            We've sent a password reset link to {email}.
+            We've sent a password reset link to <strong>{displayEmail}</strong>.
             Please check your inbox and spam folder.
           </SuccessMessage>
 
@@ -374,172 +406,152 @@ const ForgotPasswordPage: React.FC = () => {
   }
 
   return (
-    <MobileLayout title={activeTab === 'password' ? 'Forgot Password' : 'Find Email'} onBack={handleBack}>
+    <MobileLayout title="Forgot Password" onBack={handleBack}>
       <ContentWrapper>
         <IconCircle>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            {activeTab === 'password' ? (
-              <>
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                <path d="M7 11V7a5 5 0 0110 0v4"/>
-              </>
-            ) : (
-              <>
-                <circle cx="11" cy="11" r="8"/>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-              </>
-            )}
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0110 0v4"/>
           </svg>
         </IconCircle>
 
+        <Title>Forgot Password?</Title>
+        <Subtitle>
+          Enter your email or phone number and we'll send you a link to reset your password.
+        </Subtitle>
+
         <TabContainer>
-          <Tab
-            active={activeTab === 'password'}
-            onClick={() => {
-              setActiveTab('password');
-              setErrorMessage('');
-              setFoundEmail('');
-            }}
-          >
-            Reset Password
-          </Tab>
           <Tab
             active={activeTab === 'email'}
             onClick={() => {
               setActiveTab('email');
               setErrorMessage('');
+              setFoundEmail('');
             }}
           >
-            Find Email
+            By Email
+          </Tab>
+          <Tab
+            active={activeTab === 'phone'}
+            onClick={() => {
+              setActiveTab('phone');
+              setErrorMessage('');
+            }}
+          >
+            By Phone
           </Tab>
         </TabContainer>
 
-        {activeTab === 'password' ? (
-          <>
-            <Title>Forgot Password?</Title>
-            <Subtitle>
-              Enter your email address and we'll send you a link to reset your password.
-            </Subtitle>
-
-            <Form onSubmit={handleForgotPassword}>
-              <InputGroup>
-                <InputLabel>Email Address</InputLabel>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={e => {
-                    setEmail(e.target.value);
-                    setErrorMessage('');
-                  }}
-                  placeholder="Enter your email"
-                />
-              </InputGroup>
-
-              {errorMessage && (
-                <ErrorMessage>
-                  {errorMessage}
-                  {errorMessage.includes('No account') && (
-                    <>
-                      {' '}
-                      <span
-                        onClick={() => navigate(`/mobile/${slug}/register`)}
-                        style={{ color: '#635BFF', cursor: 'pointer', textDecoration: 'underline' }}
-                      >
-                        Sign up here
-                      </span>
-                    </>
-                  )}
-                </ErrorMessage>
-              )}
-
-              <SubmitButton type="submit" disabled={isLoading}>
-                {isLoading ? 'Sending...' : 'Send Reset Link'}
-              </SubmitButton>
-
-              <SignUpLink>
-                Don't know your email?{' '}
-                <span onClick={() => {
-                  setActiveTab('email');
+        {activeTab === 'email' ? (
+          <Form onSubmit={handleForgotPassword}>
+            <InputGroup>
+              <InputLabel>Email Address</InputLabel>
+              <Input
+                type="email"
+                value={email}
+                onChange={e => {
+                  setEmail(e.target.value);
                   setErrorMessage('');
-                }}>Find it here</span>
-              </SignUpLink>
-            </Form>
-          </>
+                }}
+                placeholder="Enter your email"
+              />
+            </InputGroup>
+
+            {errorMessage && (
+              <ErrorMessage>
+                {errorMessage}
+                {errorMessage.includes('No account') && (
+                  <>
+                    {' '}
+                    <span
+                      onClick={() => navigate(`/mobile/${slug}/register`)}
+                      style={{ color: '#635BFF', cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      Sign up here
+                    </span>
+                  </>
+                )}
+              </ErrorMessage>
+            )}
+
+            <SubmitButton type="submit" disabled={isLoading}>
+              {isLoading ? 'Sending...' : 'Send Reset Link'}
+            </SubmitButton>
+
+            <SignUpLink>
+              Don't know your email?{' '}
+              <span onClick={() => {
+                setActiveTab('phone');
+                setErrorMessage('');
+              }}>Use phone number</span>
+            </SignUpLink>
+          </Form>
         ) : (
-          <>
-            <Title>Find Your Email</Title>
-            <Subtitle>
-              Enter your phone number to find the email address associated with your account.
-            </Subtitle>
+          <Form onSubmit={handleFindEmailByPhone}>
+            <InputGroup>
+              <InputLabel>Phone Number</InputLabel>
+              <PhoneInput
+                value={phone}
+                onChange={setPhone}
+                defaultCountryCode={currentStore?.country}
+                placeholder="Phone number"
+              />
+            </InputGroup>
 
-            <Form onSubmit={handleFindEmail}>
-              <InputGroup>
-                <InputLabel>Phone Number</InputLabel>
-                <PhoneInput
-                  value={phone}
-                  onChange={setPhone}
-                  defaultCountryCode={currentStore?.country}
-                  placeholder="Phone number"
-                />
-              </InputGroup>
+            {errorMessage && (
+              <ErrorMessage>
+                {errorMessage}
+                {errorMessage.includes('No account') && (
+                  <>
+                    {' '}
+                    <span
+                      onClick={() => navigate(`/mobile/${slug}/register`)}
+                      style={{ color: '#635BFF', cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      Sign up here
+                    </span>
+                  </>
+                )}
+              </ErrorMessage>
+            )}
 
-              {errorMessage && (
-                <ErrorMessage>
-                  {errorMessage}
-                  {errorMessage.includes('No account') && (
-                    <>
-                      {' '}
-                      <span
-                        onClick={() => navigate(`/mobile/${slug}/register`)}
-                        style={{ color: '#635BFF', cursor: 'pointer', textDecoration: 'underline' }}
-                      >
-                        Sign up here
-                      </span>
-                    </>
-                  )}
-                </ErrorMessage>
-              )}
+            {foundEmail && (
+              <InfoMessage>
+                We found your account! Reset link will be sent to: <strong>{foundEmail}</strong>
+              </InfoMessage>
+            )}
 
-              {foundEmail && (
-                <InfoMessage>
-                  Your email is: <strong>{foundEmail}</strong>
-                </InfoMessage>
-              )}
-
-              {!foundEmail ? (
-                <SubmitButton type="submit" disabled={isLoading}>
-                  {isLoading ? 'Searching...' : 'Find Email'}
+            {!foundEmail ? (
+              <SubmitButton type="submit" disabled={isLoading}>
+                {isLoading ? 'Searching...' : 'Find My Account'}
+              </SubmitButton>
+            ) : (
+              <>
+                <SubmitButton
+                  type="button"
+                  onClick={handleSendResetToFoundEmail}
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Sending...' : 'Send Reset Link'}
                 </SubmitButton>
-              ) : (
-                <>
-                  <SubmitButton
-                    type="button"
-                    onClick={() => {
-                      setActiveTab('password');
-                      setErrorMessage('');
-                    }}
-                  >
-                    Reset Password Now
-                  </SubmitButton>
-                  <SecondaryButton
-                    type="button"
-                    onClick={() => navigate(`/mobile/${slug}/login`)}
-                  >
-                    Go to Login
-                  </SecondaryButton>
-                </>
-              )}
+                <SecondaryButton
+                  type="button"
+                  onClick={() => navigate(`/mobile/${slug}/login`)}
+                >
+                  Back to Login
+                </SecondaryButton>
+              </>
+            )}
 
-              <SignUpLink>
-                Remember your email?{' '}
-                <span onClick={() => {
-                  setActiveTab('password');
-                  setErrorMessage('');
-                  setFoundEmail('');
-                }}>Reset password</span>
-              </SignUpLink>
-            </Form>
-          </>
+            <SignUpLink>
+              Remember your email?{' '}
+              <span onClick={() => {
+                setActiveTab('email');
+                setErrorMessage('');
+                setFoundEmail('');
+              }}>Use email instead</span>
+            </SignUpLink>
+          </Form>
         )}
       </ContentWrapper>
 

@@ -392,9 +392,27 @@ interface StoreSettings {
   city: string;
   state: string;
   postalCode: string;
+  country: string;
   gstRegNo: string;
   logo: string;
 }
+
+// 국가 목록 (ISO 코드 기준)
+const COUNTRIES = [
+  { code: 'MY', name: 'Malaysia', timezone: 'Asia/Kuala_Lumpur' },
+  { code: 'SG', name: 'Singapore', timezone: 'Asia/Singapore' },
+  { code: 'KR', name: 'South Korea', timezone: 'Asia/Seoul' },
+  { code: 'JP', name: 'Japan', timezone: 'Asia/Tokyo' },
+  { code: 'CN', name: 'China', timezone: 'Asia/Shanghai' },
+  { code: 'TH', name: 'Thailand', timezone: 'Asia/Bangkok' },
+  { code: 'VN', name: 'Vietnam', timezone: 'Asia/Ho_Chi_Minh' },
+  { code: 'PH', name: 'Philippines', timezone: 'Asia/Manila' },
+  { code: 'ID', name: 'Indonesia', timezone: 'Asia/Jakarta' },
+  { code: 'IN', name: 'India', timezone: 'Asia/Kolkata' },
+  { code: 'AU', name: 'Australia', timezone: 'Australia/Sydney' },
+  { code: 'US', name: 'United States', timezone: 'America/New_York' },
+  { code: 'GB', name: 'United Kingdom', timezone: 'Europe/London' },
+];
 
 interface CompanySettings {
   name: string;
@@ -548,6 +566,7 @@ const SettingsPage: React.FC = () => {
         city: 'Kuala Lumpur',
         state: 'Wilayah Persekutuan',
         postalCode: '50000',
+        country: 'MY',
         gstRegNo: '000123456789',
         logo: ''
       },
@@ -735,6 +754,7 @@ const SettingsPage: React.FC = () => {
               city: restaurant.city || '',
               state: restaurant.state || '',
               postalCode: restaurant.postal_code || '',
+              country: restaurant.country || 'MY',
               gstRegNo: restaurant.tax_id || '',
               logo: restaurant.logo_url || ''
             });
@@ -1095,6 +1115,7 @@ const SettingsPage: React.FC = () => {
           city: storeSettings.city,
           state: storeSettings.state,
           postal_code: storeSettings.postalCode,
+          country: storeSettings.country,
           tax_id: storeSettings.gstRegNo,
           logo_url: storeSettings.logo,
           payment_settings: normalizedPaymentMethods,
@@ -2396,6 +2417,28 @@ const SettingsPage: React.FC = () => {
                     }}
                     placeholder="50000"
                   />
+                </FormGroup>
+                <FormGroup>
+                  <Label>Country</Label>
+                  <Select
+                    value={storeSettings.country}
+                    onChange={(e) => {
+                      const newCountry = e.target.value;
+                      setStoreSettings(prev => ({ ...prev, country: newCountry }));
+                      // 국가 변경 시 타임존도 자동 업데이트
+                      const countryInfo = COUNTRIES.find(c => c.code === newCountry);
+                      if (countryInfo) {
+                        setOperationSettings(prev => ({ ...prev, timeZone: countryInfo.timezone }));
+                      }
+                      setHasChanges(true);
+                    }}
+                  >
+                    {COUNTRIES.map(country => (
+                      <option key={country.code} value={country.code}>
+                        {country.name}
+                      </option>
+                    ))}
+                  </Select>
                 </FormGroup>
               </SettingsCard>
               </SettingsGrid>

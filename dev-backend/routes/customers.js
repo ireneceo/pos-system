@@ -829,15 +829,17 @@ const resetTokens = new Map();
 /**
  * POST /api/customers/forgot-password
  * 비밀번호 재설정 이메일 발송
+ * - email: 이메일로 직접 찾기
+ * - phone: 전화번호로 찾아서 연결된 이메일로 발송
  */
 router.post('/forgot-password', async (req, res) => {
   try {
-    const { email, slug } = req.body;
+    const { email, phone, slug } = req.body;
 
-    if (!email) {
+    if (!email && !phone) {
       return res.status(400).json({
         success: false,
-        message: 'Email is required'
+        message: 'Email or phone number is required'
       });
     }
 
@@ -847,8 +849,23 @@ router.post('/forgot-password', async (req, res) => {
       restaurant = await Restaurant.findOne({ where: { slug } });
     }
 
-    // 이메일로 고객 찾기
-    const customer = await Customer.findOne({ where: { email } });
+    // 고객 찾기 (이메일 또는 전화번호)
+    let customer;
+    if (email) {
+      customer = await Customer.findOne({ where: { email } });
+    } else if (phone) {
+      // 전화번호로 찾기 - 다양한 형식 지원
+      const normalizedPhone = phone.replace(/\D/g, '');
+      customer = await Customer.findOne({
+        where: {
+          [Op.or]: [
+            { phone: phone },
+            { phone: `+${normalizedPhone}` },
+            { phone: normalizedPhone }
+          ]
+        }
+      });
+    }
 
     // 모바일 오더 UX를 위해 이메일 존재 여부를 알려줌
     if (!customer || customer.type !== 'member') {
