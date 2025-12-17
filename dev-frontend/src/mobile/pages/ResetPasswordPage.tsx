@@ -195,6 +195,7 @@ const ResetPasswordPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isValidToken, setIsValidToken] = useState<boolean | null>(null);
+  const [tokenSlug, setTokenSlug] = useState<string | null>(null); // 토큰에서 받은 slug
 
   const [alertModal, setAlertModal] = useState<{
     isOpen: boolean;
@@ -231,7 +232,7 @@ const ResetPasswordPage: React.FC = () => {
     loadRestaurant();
   }, [slug, currentStore, setCurrentStore]);
 
-  // Verify token on mount
+  // Verify token on mount and get slug from token data
   useEffect(() => {
     const verifyToken = async () => {
       if (!token) {
@@ -243,6 +244,10 @@ const ResetPasswordPage: React.FC = () => {
         const response = await fetch(`/api/customers/verify-reset-token?token=${token}`);
         const result = await response.json();
         setIsValidToken(response.ok && result.valid);
+        // 토큰에서 slug 가져오기 (URL slug보다 우선)
+        if (result.slug) {
+          setTokenSlug(result.slug);
+        }
       } catch (error) {
         setIsValidToken(false);
       }
@@ -331,13 +336,16 @@ const ResetPasswordPage: React.FC = () => {
             Please request a new one.
           </ErrorMessage>
 
-          <SubmitButton onClick={() => navigate(`/mobile/${slug}/forgot-password`)}>
+          <SubmitButton onClick={() => navigate(`/mobile/${tokenSlug || slug}/forgot-password`)}>
             Request New Link
           </SubmitButton>
         </ErrorContainer>
       </Container>
     );
   }
+
+  // 실제 사용할 slug (토큰에서 받은 slug 우선)
+  const activeSlug = tokenSlug || slug;
 
   // Success state
   if (isSuccess) {
@@ -357,7 +365,7 @@ const ResetPasswordPage: React.FC = () => {
             You can now login with your new password.
           </SuccessMessage>
 
-          <SubmitButton onClick={() => navigate(`/mobile/${slug}/login`)}>
+          <SubmitButton onClick={() => navigate(`/mobile/${activeSlug}/login`)}>
             Login Now
           </SubmitButton>
         </SuccessContainer>

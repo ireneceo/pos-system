@@ -5,6 +5,7 @@ import MobileLayout from '../components/common/MobileLayout';
 import MobileAlertModal from '../components/common/MobileAlertModal';
 import { useCustomer, Customer } from '../../contexts/CustomerContext';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
+import PhoneInput from '../components/common/PhoneInput';
 
 const ContentWrapper = styled.div`
   padding: 20px 0;
@@ -139,13 +140,37 @@ const RegisterLink = styled.button`
   }
 `;
 
+const TabContainer = styled.div`
+  display: flex;
+  background: #F3F4F6;
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 24px;
+`;
+
+const Tab = styled.button<{ active: boolean }>`
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: ${props => props.active ? 'white' : 'transparent'};
+  color: ${props => props.active ? '#1F2937' : '#6B7280'};
+  box-shadow: ${props => props.active ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};
+`;
+
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   const { setCurrentCustomer } = useCustomer();
   const { currentStore, setCurrentStore } = useMobileOrder();
 
-  const [identifier, setIdentifier] = useState(''); // 이메일 또는 전화번호
+  const [loginType, setLoginType] = useState<'email' | 'phone'>('email');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -172,7 +197,8 @@ const LoginPage: React.FC = () => {
                 description: result.data.description || '',
                 logo: result.data.logo || '',
                 isOpen: result.data.is_open || true,
-                openingHours: result.data.opening_hours || {}
+                openingHours: result.data.opening_hours || {},
+                country: result.data.country
               });
             }
           }
@@ -191,8 +217,12 @@ const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const identifier = loginType === 'email' ? email : phone;
+
     if (!identifier) {
-      showAlert('error', 'Error', 'Please enter your email or phone number');
+      showAlert('error', 'Error', loginType === 'email'
+        ? 'Please enter your email'
+        : 'Please enter your phone number');
       return;
     }
     if (!password) {
@@ -260,16 +290,45 @@ const LoginPage: React.FC = () => {
         </Header>
 
         <Form onSubmit={handleSubmit}>
-          <InputGroup>
-            <InputLabel>Email or Phone Number</InputLabel>
-            <Input
-              type="text"
-              value={identifier}
-              onChange={e => setIdentifier(e.target.value)}
-              placeholder="Enter email or phone number"
-              autoComplete="username"
-            />
-          </InputGroup>
+          <TabContainer>
+            <Tab
+              type="button"
+              active={loginType === 'email'}
+              onClick={() => setLoginType('email')}
+            >
+              Email
+            </Tab>
+            <Tab
+              type="button"
+              active={loginType === 'phone'}
+              onClick={() => setLoginType('phone')}
+            >
+              Phone
+            </Tab>
+          </TabContainer>
+
+          {loginType === 'email' ? (
+            <InputGroup>
+              <InputLabel>Email Address</InputLabel>
+              <Input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                autoComplete="email"
+              />
+            </InputGroup>
+          ) : (
+            <InputGroup>
+              <InputLabel>Phone Number</InputLabel>
+              <PhoneInput
+                value={phone}
+                onChange={setPhone}
+                defaultCountryCode={currentStore?.country}
+                placeholder="Phone number"
+              />
+            </InputGroup>
+          )}
 
           <InputGroup>
             <InputLabel>Password</InputLabel>

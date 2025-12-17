@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useNavigate, useParams } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
+import { useCustomer } from '../../contexts/CustomerContext';
 import { formatCurrency } from '../../utils/currency';
 
 const OrdersContainer = styled.div`
@@ -172,6 +173,7 @@ const OrdersPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const [orders, setOrders] = useState<any[]>([]);
   const { currentStore, setCurrentStore, currency } = useMobileOrder();
+  const { currentCustomer } = useCustomer();
 
   // Load restaurant data from slug on mount
   useEffect(() => {
@@ -215,7 +217,7 @@ const OrdersPage: React.FC = () => {
       };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStore]);
+  }, [currentStore, currentCustomer]);
 
   const loadOrders = async () => {
     if (!currentStore) {

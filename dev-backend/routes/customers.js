@@ -339,6 +339,53 @@ router.post('/register', async (req, res) => {
 // ========================================
 
 /**
+ * GET /api/customers/verify-reset-token
+ * 재설정 토큰 검증
+ * NOTE: 이 라우트는 /:restaurantId 보다 먼저 정의되어야 함
+ */
+router.get('/verify-reset-token', async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      return res.status(400).json({
+        valid: false,
+        message: 'Token is required'
+      });
+    }
+
+    const tokenData = resetTokens.get(token);
+
+    if (!tokenData) {
+      return res.json({
+        valid: false,
+        message: 'Invalid or expired token'
+      });
+    }
+
+    if (Date.now() > tokenData.expiry) {
+      resetTokens.delete(token);
+      return res.json({
+        valid: false,
+        message: 'Token has expired'
+      });
+    }
+
+    res.json({
+      valid: true,
+      message: 'Token is valid',
+      slug: tokenData.slug || null
+    });
+  } catch (error) {
+    console.error('Verify reset token error:', error);
+    res.status(500).json({
+      valid: false,
+      message: 'Failed to verify token'
+    });
+  }
+});
+
+/**
  * GET /api/customers/phone/:phone
  * 전화번호로 고객 조회 (모든 레스토랑 관계 포함)
  */
@@ -893,8 +940,24 @@ router.post('/forgot-password', async (req, res) => {
       resetTokens.delete(resetToken);
     }, 3600000);
 
-    // 재설정 링크 생성
-    const resetLink = `${process.env.FRONTEND_URL || 'https://dev.purplehere.com'}/mobile/reset-password?token=${resetToken}`;
+    // slug 결정 (요청에서 받은 slug 또는 고객이 속한 레스토랑의 slug)
+    let resetSlug = slug;
+    if (!resetSlug) {
+      // 고객이 속한 레스토랑의 slug 찾기
+      const restaurantCustomer = await RestaurantCustomer.findOne({
+        where: { customer_id: customer.id },
+        include: [{ model: Restaurant, as: 'restaurant' }]
+      });
+      if (restaurantCustomer?.restaurant?.slug) {
+        resetSlug = restaurantCustomer.restaurant.slug;
+      }
+    }
+
+    // 재설정 링크 생성 (slug 포함)
+    const baseUrl = process.env.FRONTEND_URL || 'https://dev.purplehere.com';
+    const resetLink = resetSlug
+      ? `${baseUrl}/mobile/${resetSlug}/reset-password?token=${resetToken}`
+      : `${baseUrl}/mobile/reset-password?token=${resetToken}`;
 
     // 이메일 발송 시도
     try {
@@ -952,51 +1015,6 @@ router.post('/forgot-password', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to process request'
-    });
-  }
-});
-
-/**
- * GET /api/customers/verify-reset-token
- * 재설정 토큰 검증
- */
-router.get('/verify-reset-token', async (req, res) => {
-  try {
-    const { token } = req.query;
-
-    if (!token) {
-      return res.status(400).json({
-        valid: false,
-        message: 'Token is required'
-      });
-    }
-
-    const tokenData = resetTokens.get(token);
-
-    if (!tokenData) {
-      return res.json({
-        valid: false,
-        message: 'Invalid or expired token'
-      });
-    }
-
-    if (Date.now() > tokenData.expiry) {
-      resetTokens.delete(token);
-      return res.json({
-        valid: false,
-        message: 'Token has expired'
-      });
-    }
-
-    res.json({
-      valid: true,
-      message: 'Token is valid'
-    });
-  } catch (error) {
-    console.error('Verify reset token error:', error);
-    res.status(500).json({
-      valid: false,
-      message: 'Failed to verify token'
     });
   }
 });
@@ -1068,6 +1086,75 @@ router.post('/reset-password', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to reset password'
+    });
+  }
+});
+
+// ========================================
+// 고객 주문 내역 조회 (모바일 오더용)
+// ========================================
+
+/**
+ * GET /api/customers/:customerId/orders
+ * 특정 고객의 주문 내역 조회
+ *
+ * Query params:
+ * - restaurant_id: 레스토랑 ID (선택, 없으면 전체)
+ * - limit: 최대 조회 개수 (기본 50)
+ */
+router.get('/:customerId/orders', async (req, res) => {
+  try {
+    const { customerId } = req.params;
+    const { restaurant_id, limit = 50 } = req.query;
+
+    // 고객 존재 확인
+    const customer = await Customer.findByPk(customerId);
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Customer not found'
+      });
+    }
+
+    // 주문 조회 조건
+    const whereClause = { customer_id: customerId };
+    if (restaurant_id) {
+      whereClause.restaurant_id = restaurant_id;
+    }
+
+    // 주문 조회
+    const orders = await Order.findAll({
+      where: whereClause,
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(limit)
+    });
+
+    // 응답 형식 맞추기
+    const formattedOrders = orders.map(order => ({
+      id: order.id,
+      order_number: order.order_number,
+      pickup_number: order.order_number ? order.order_number.split('-').pop() : null,
+      status: order.status,
+      payment_status: order.payment_status,
+      order_type: order.order_type,
+      total_amount: parseFloat(order.total_amount),
+      customer_name: order.customer_name,
+      customer_phone: order.customer_phone,
+      table_number: order.table_number,
+      order_items: order.order_items,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt
+    }));
+
+    res.json({
+      success: true,
+      data: formattedOrders
+    });
+  } catch (error) {
+    console.error('Get customer orders error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get customer orders'
     });
   }
 });
