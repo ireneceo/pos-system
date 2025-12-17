@@ -134,7 +134,8 @@ router.put('/settings', authenticateToken, async (req, res) => {
     const allowedFields = [
       'name', 'email', 'phone', 'address', 'city', 'state',
       'postal_code', 'country', 'website', 'logo_url',
-      'payment_settings', 'operation_settings',
+      'business_registration', 'tax_id',
+      'payment_settings', 'operation_settings', 'table_settings',
       'currency', 'cash_rounding', 'rounding_apply_to'
     ];
 
@@ -145,7 +146,7 @@ router.put('/settings', authenticateToken, async (req, res) => {
           ? `[JSON ${typeof req.body[field]}]`
           : req.body[field]);
 
-        if (field === 'payment_settings' || field === 'operation_settings') {
+        if (field === 'payment_settings' || field === 'operation_settings' || field === 'table_settings') {
           // Model setter will handle JSON.stringify, just pass the object
           restaurant[field] = req.body[field];
         } else {
