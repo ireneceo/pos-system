@@ -1195,17 +1195,18 @@ const MenuManagementPage: React.FC = () => {
 
           <UIFormGroup>
             <FormLabel>Linked Recipe</FormLabel>
-            <FormSelect
-              value={formData.recipe_id || ''}
-              onChange={(e) => setFormData({ ...formData, recipe_id: e.target.value ? parseInt(e.target.value) : null })}
-            >
-              <option value="">No recipe linked</option>
-              {recipes.map(recipe => (
-                <option key={recipe.id} value={recipe.id}>
-                  {recipe.name} (Cost: RM {Number(recipe.total_ingredient_cost || 0).toFixed(2)})
-                </option>
-              ))}
-            </FormSelect>
+            <SearchableSelect
+              options={recipes.map(recipe => ({
+                value: recipe.id,
+                label: recipe.name,
+                subLabel: `Cost: RM ${Number(recipe.total_ingredient_cost || 0).toFixed(2)}`
+              }))}
+              value={formData.recipe_id || null}
+              onChange={(value) => setFormData({ ...formData, recipe_id: value as number | null })}
+              placeholder="Search or select recipe..."
+              allowClear={true}
+              noOptionsMessage="No recipes found"
+            />
           </UIFormGroup>
 
           <OptionGroupSectionTitle>
@@ -1357,17 +1358,18 @@ const MenuManagementPage: React.FC = () => {
 
           <UIFormGroup>
             <FormLabel>Linked Recipe</FormLabel>
-            <FormSelect
-              value={formData.recipe_id || ''}
-              onChange={(e) => setFormData({ ...formData, recipe_id: e.target.value ? parseInt(e.target.value) : null })}
-            >
-              <option value="">No recipe linked</option>
-              {recipes.map(recipe => (
-                <option key={recipe.id} value={recipe.id}>
-                  {recipe.name} (Cost: RM {Number(recipe.total_ingredient_cost || 0).toFixed(2)})
-                </option>
-              ))}
-            </FormSelect>
+            <SearchableSelect
+              options={recipes.map(recipe => ({
+                value: recipe.id,
+                label: recipe.name,
+                subLabel: `Cost: RM ${Number(recipe.total_ingredient_cost || 0).toFixed(2)}`
+              }))}
+              value={formData.recipe_id || null}
+              onChange={(value) => setFormData({ ...formData, recipe_id: value as number | null })}
+              placeholder="Search or select recipe..."
+              allowClear={true}
+              noOptionsMessage="No recipes found"
+            />
           </UIFormGroup>
 
           <OptionGroupSectionTitle>

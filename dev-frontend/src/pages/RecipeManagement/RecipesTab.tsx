@@ -244,6 +244,7 @@ const InstructionsPreview = styled.div`
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  white-space: pre-wrap;
 `;
 
 // View Mode Styles
@@ -311,31 +312,36 @@ const ViewDescription = styled.p`
 `;
 
 const ViewSection = styled.div`
-  padding: 20px;
-  background: #F8FAFC;
-  border-radius: 12px;
+  padding: 0;
+  margin-bottom: 8px;
 `;
 
 const ViewSectionTitle = styled.h3`
   font-size: 14px;
   font-weight: 600;
-  color: #6B7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: #0A2540;
   margin: 0 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #E5E7EB;
 `;
 
 const ViewGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 16px;
+  gap: 0;
+  background: #F8FAFC;
+  border-radius: 12px;
+  padding: 16px;
 `;
 
 const ViewGridItem = styled.div`
-  text-align: center;
-  padding: 16px;
-  background: white;
-  border-radius: 8px;
+  text-align: left;
+  padding: 12px 0;
+  border-bottom: 1px solid #F3F4F6;
+
+  &:last-child {
+    border-bottom: none;
+  }
 `;
 
 const ViewGridLabel = styled.div`
@@ -345,8 +351,8 @@ const ViewGridLabel = styled.div`
 `;
 
 const ViewGridValue = styled.div`
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 600;
   color: #0A2540;
 `;
 
@@ -379,6 +385,11 @@ const ViewIngredientTable = styled.table`
     color: #374151;
   }
 
+  /* Subtotal column right-align */
+  th:last-child, td:last-child {
+    text-align: right;
+  }
+
   tr:last-child td {
     border-bottom: none;
   }
@@ -387,12 +398,19 @@ const ViewIngredientTable = styled.table`
 const ViewTotalRow = styled.div`
   display: flex;
   justify-content: space-between;
-  padding: 16px;
-  background: #635BFF;
-  color: white;
-  border-radius: 8px;
+  padding: 12px 0;
   margin-top: 12px;
+  border-top: 1px solid #E5E7EB;
   font-weight: 600;
+
+  span:first-child {
+    color: #6B7280;
+  }
+
+  span:last-child {
+    color: #635BFF;
+    font-size: 16px;
+  }
 `;
 
 const RecipeActions = styled.div`
@@ -487,21 +505,35 @@ const IngredientsList = styled.div`
   gap: 12px;
 `;
 
+const IngredientHeaderRow = styled.div`
+  display: grid;
+  grid-template-columns: 3fr 1fr 0.7fr 2fr 40px;
+  gap: 8px;
+  padding: 8px 0;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #E5E7EB;
+
+  span {
+    font-size: 13px;
+    font-weight: 600;
+    color: #6B7280;
+  }
+
+  @media (max-width: 768px) {
+    display: none;
+  }
+`;
+
 const IngredientRow = styled.div`
   display: grid;
   grid-template-columns: 3fr 1fr 0.7fr 2fr 40px;
   gap: 8px;
-  align-items: end;
+  align-items: center;
+  margin-bottom: 8px;
 
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
   }
-`;
-
-const RemoveButtonWrapper = styled.div`
-  display: flex;
-  align-items: flex-end;
-  padding-top: 22px;
 `;
 
 const RemoveButton = styled.button`
@@ -509,15 +541,16 @@ const RemoveButton = styled.button`
   color: #DC2626;
   border: 1px solid #FCA5A5;
   border-radius: 8px;
-  padding: 10px 12px;
+  width: 38px;
+  height: 38px;
   cursor: pointer;
   transition: all 0.2s;
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1;
-  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
 
   &:hover {
     background: #FCA5A5;
@@ -538,6 +571,7 @@ const AddButton = styled.button`
   align-items: center;
   gap: 6px;
   align-self: flex-start;
+  margin-bottom: 16px;
 
   &:hover {
     background: #E0E7FF;
@@ -545,12 +579,11 @@ const AddButton = styled.button`
 `;
 
 const CostSummary = styled.div`
-  background: #F8FAFC;
-  border-radius: 8px;
-  padding: 16px;
+  padding: 16px 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border-top: 1px solid #E5E7EB;
 `;
 
 const CostSummaryLabel = styled.div`
@@ -560,9 +593,9 @@ const CostSummaryLabel = styled.div`
 `;
 
 const CostSummaryValue = styled.div`
-  font-size: 20px;
-  font-weight: 700;
-  color: #635BFF;
+  font-size: 18px;
+  font-weight: 600;
+  color: #0A2540;
 `;
 
 const ButtonGroup = styled.div`
@@ -743,7 +776,7 @@ const RecipeSectionTitle = styled.h3`
   color: #0A2540;
   margin: 0 0 12px 0;
   padding-bottom: 8px;
-  border-bottom: 2px solid #635BFF;
+  border-bottom: 1px solid #E5E7EB;
 `;
 
 const RecipeIngredientList = styled.ul`
@@ -778,12 +811,9 @@ const RecipeIngredientQty = styled.span`
 const RecipeSummaryText = styled.p`
   font-size: 15px;
   color: #4B5563;
-  line-height: 1.6;
+  line-height: 1.8;
   margin: 0;
-  padding: 12px 16px;
-  background: #F0F4FF;
-  border-radius: 8px;
-  font-style: italic;
+  white-space: pre-wrap;
 `;
 
 const RecipeDetailText = styled.div`
@@ -1456,9 +1486,9 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               )}
 
               {/* Recipe Summary Preview */}
-              {(recipe.instructions_summary || recipe.instructions) && (
+              {recipe.instructions_summary && (
                 <InstructionsPreview>
-                  {recipe.instructions_summary || recipe.instructions}
+                  {recipe.instructions_summary}
                 </InstructionsPreview>
               )}
 
@@ -1607,7 +1637,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             {(formData.instructions_summary || formData.instructions) && (
               <ViewSection>
                 <ViewSectionTitle>Recipe Summary</ViewSectionTitle>
-                <ViewInstructions style={{ fontStyle: 'italic', background: '#F0F4FF', padding: '12px 16px', borderRadius: '8px' }}>
+                <ViewInstructions>
                   {formData.instructions_summary || formData.instructions}
                 </ViewInstructions>
               </ViewSection>
@@ -1767,59 +1797,54 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             {/* Ingredients Section */}
             <div>
               <SectionTitle>Ingredients</SectionTitle>
+              {recipeIngredients.length > 0 && (
+                <IngredientHeaderRow>
+                  <span>Ingredient</span>
+                  <span>Quantity</span>
+                  <span>Unit</span>
+                  <span>Notes</span>
+                  <span></span>
+                </IngredientHeaderRow>
+              )}
               <IngredientsList>
                 {recipeIngredients.map((ri, index) => (
                   <IngredientRow key={index}>
-                    <UIFormGroup>
-                      <FormLabel>Ingredient</FormLabel>
-                      <FormSelect
-                        value={ri.ingredient_id}
-                        onChange={(e) => updateIngredient(index, 'ingredient_id', parseInt(e.target.value))}
-                        required
-                      >
-                        <option value={0}>Select ingredient...</option>
-                        {ingredients.map(ing => (
-                          <option key={ing.id} value={ing.id}>
-                            {ing.name} (RM {Number(ing.unit_cost).toFixed(2)}/{ing.unit})
-                          </option>
-                        ))}
-                      </FormSelect>
-                    </UIFormGroup>
-                    <UIFormGroup>
-                      <FormLabel>Quantity</FormLabel>
-                      <FormInput
-                        type="number"
-                        step="0.01"
-                        value={ri.quantity}
-                        onChange={(e) => updateIngredient(index, 'quantity', e.target.value)}
-                        placeholder="0"
-                        required
-                      />
-                    </UIFormGroup>
-                    <UIFormGroup>
-                      <FormLabel>Unit</FormLabel>
-                      <FormInput
-                        type="text"
-                        value={ri.unit}
-                        readOnly
-                        disabled
-                        style={{ background: '#F3F4F6', cursor: 'not-allowed' }}
-                      />
-                    </UIFormGroup>
-                    <UIFormGroup>
-                      <FormLabel>Notes</FormLabel>
-                      <FormInput
-                        type="text"
-                        value={ri.notes}
-                        onChange={(e) => updateIngredient(index, 'notes', e.target.value)}
-                        placeholder="Optional"
-                      />
-                    </UIFormGroup>
-                    <RemoveButtonWrapper>
-                      <RemoveButton type="button" onClick={() => removeIngredient(index)}>
-                        ×
-                      </RemoveButton>
-                    </RemoveButtonWrapper>
+                    <FormSelect
+                      value={ri.ingredient_id}
+                      onChange={(e) => updateIngredient(index, 'ingredient_id', parseInt(e.target.value))}
+                      required
+                    >
+                      <option value={0}>Select ingredient...</option>
+                      {ingredients.map(ing => (
+                        <option key={ing.id} value={ing.id}>
+                          {ing.name} (RM {Number(ing.unit_cost).toFixed(2)}/{ing.unit})
+                        </option>
+                      ))}
+                    </FormSelect>
+                    <FormInput
+                      type="number"
+                      step="0.01"
+                      value={ri.quantity}
+                      onChange={(e) => updateIngredient(index, 'quantity', e.target.value)}
+                      placeholder="0"
+                      required
+                    />
+                    <FormInput
+                      type="text"
+                      value={ri.unit}
+                      readOnly
+                      disabled
+                      style={{ background: '#F3F4F6', cursor: 'not-allowed' }}
+                    />
+                    <FormInput
+                      type="text"
+                      value={ri.notes}
+                      onChange={(e) => updateIngredient(index, 'notes', e.target.value)}
+                      placeholder="Optional"
+                    />
+                    <RemoveButton type="button" onClick={() => removeIngredient(index)}>
+                      ×
+                    </RemoveButton>
                   </IngredientRow>
                 ))}
               </IngredientsList>
