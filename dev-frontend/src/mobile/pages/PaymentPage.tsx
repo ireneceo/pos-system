@@ -1066,7 +1066,7 @@ const PaymentPage: React.FC = () => {
                 zoneId: selectedZone
               } : null,
               scheduled_pickup_time: orderType === 'pickup' && scheduledPickupTime ? scheduledPickupTime : null,
-              status: 'awaiting_payment',
+              status: 'outstanding',
               order_type: orderType === 'dine-in' ? 'dine_in' : orderType,
               source: 'mobile',  // Mobile order source
               payment_method: 'counter',
@@ -1124,7 +1124,7 @@ const PaymentPage: React.FC = () => {
               pickupNumber: backendPickupNumber,
               items: cartItems,
               total: total,
-              status: 'awaiting_payment',
+              status: 'outstanding',
               createdAt: new Date(),
               estimatedPickupTime: new Date(Date.now() + 30 * 60000), // 30 minutes from now
               paymentStatus: 'pending'
@@ -1216,7 +1216,7 @@ const PaymentPage: React.FC = () => {
               zoneId: selectedZone
             } : null,
             scheduled_pickup_time: orderType === 'pickup' && scheduledPickupTime ? scheduledPickupTime : null,
-            status: 'awaiting_payment',
+            status: 'outstanding',
             order_type: orderType === 'dine-in' ? 'dine_in' : orderType,
             source: 'mobile',  // Mobile order source
             payment_method: (paymentMethod === 'qr' || paymentMethod === 'qrPayment' || paymentMethod === 'qr_payment') ? 'QR Payment' : 'Bank Transfer',

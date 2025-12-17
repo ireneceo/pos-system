@@ -315,7 +315,7 @@ const OrderTrackingPage: React.FC = () => {
     // Check if payment verification is pending (support both camelCase and snake_case)
     const paymentStatus = order.payment_status || order.paymentStatus;
     const isPaymentVerificationPending = paymentStatus === 'payment_verification_pending';
-    const isAwaitingPayment = order?.status === 'awaiting_payment';
+    const isOutstanding = order?.status === 'outstanding';
 
     const steps = isPaymentVerificationPending
       ? [
@@ -325,9 +325,9 @@ const OrderTrackingPage: React.FC = () => {
           { id: 'ready', title: 'Ready for Pickup', icon: '4', time: 'Waiting' },
           { id: 'completed', title: 'Completed', icon: '✓', time: '' }
         ]
-      : isAwaitingPayment
+      : isOutstanding
       ? [
-          { id: 'awaiting_payment', title: 'Awaiting Payment', icon: '1', time: 'Staff is waiting at counter...' },
+          { id: 'outstanding', title: 'Awaiting Payment', icon: '1', time: 'Staff is waiting at counter...' },
           { id: 'pending', title: 'Order Placed', icon: '2', time: 'Pending' },
           { id: 'preparing', title: 'Preparing', icon: '3', time: 'Waiting' },
           { id: 'ready', title: 'Ready for Pickup', icon: '4', time: 'Waiting' },
@@ -344,8 +344,8 @@ const OrderTrackingPage: React.FC = () => {
     let currentStepId = order?.status;
     if (isPaymentVerificationPending) {
       currentStepId = 'payment_verification_pending';
-    } else if (isAwaitingPayment) {
-      currentStepId = 'awaiting_payment';
+    } else if (isOutstanding) {
+      currentStepId = 'outstanding';
     }
 
     const currentStepIndex = steps.findIndex(s => s.id === currentStepId);
@@ -644,7 +644,7 @@ const OrderTrackingPage: React.FC = () => {
           </div>
         )}
 
-        {order?.status === 'awaiting_payment' && order?.payment_method === 'counter' && (
+        {order?.status === 'outstanding' && order?.payment_method === 'counter' && (
           <div style={{
             background: '#EBF8FF',
             border: '1px solid #635BFF',

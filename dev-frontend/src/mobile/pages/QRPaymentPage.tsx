@@ -413,7 +413,7 @@ const QRPaymentPage: React.FC = () => {
         pickupNumber: backendPickupNumber,
         items: pendingOrderData.order_items,
         total: pendingOrderData.total_amount,
-        status: 'awaiting_payment',
+        status: 'outstanding',
         createdAt: new Date(),
         estimatedPickupTime: new Date(Date.now() + 30 * 60000),
         paymentStatus: 'pending' as any // payment_verification_pending is backend only

@@ -91,7 +91,7 @@ interface Order {
   pickupNumber: string;
   items: CartItem[];
   total: number;
-  status: 'awaiting_payment' | 'pending' | 'preparing' | 'ready' | 'completed';
+  status: 'outstanding' | 'pending' | 'preparing' | 'ready' | 'completed';
   createdAt: Date;
   estimatedPickupTime: Date;
   paymentStatus: 'pending' | 'completed' | 'failed';

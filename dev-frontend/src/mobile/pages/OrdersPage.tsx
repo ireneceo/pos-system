@@ -226,7 +226,26 @@ const OrdersPage: React.FC = () => {
     }
 
     try {
-      console.log('🔄 Loading customer orders from localStorage...');
+      // 로그인한 회원인 경우 - 고객 ID 기반으로 주문 조회
+      if (currentCustomer && currentCustomer.id) {
+        console.log('🔄 Loading orders for logged-in customer:', currentCustomer.id);
+
+        const response = await fetch(`/api/customers/${currentCustomer.id}/orders?restaurant_id=${currentStore.id}`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            console.log(`✅ Loaded ${result.data.length} orders for customer from API`);
+            setOrders(result.data);
+            return;
+          }
+        }
+        console.log('ℹ️ No orders found for this customer');
+        setOrders([]);
+        return;
+      }
+
+      // 비회원인 경우 - localStorage 기반 (현재 세션에서 주문한 것만)
+      console.log('🔄 Loading guest orders from localStorage...');
 
       // Get customer's order IDs from localStorage
       const customerOrderIds = JSON.parse(localStorage.getItem('customerOrderIds') || '[]');
