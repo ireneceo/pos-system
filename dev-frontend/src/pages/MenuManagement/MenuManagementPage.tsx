@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 // Updated with new UI components
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
@@ -185,10 +186,12 @@ const MenuCard = styled.div<{ soldOut?: boolean }>`
   overflow: hidden;
   transition: all 0.15s;
   position: relative;
-  
+  display: flex;
+  flex-direction: column;
+
   ${props => props.soldOut && `
     opacity: 0.7;
-    
+
     &::after {
       content: 'SOLD OUT';
       position: absolute;
@@ -202,7 +205,7 @@ const MenuCard = styled.div<{ soldOut?: boolean }>`
       font-weight: 600;
     }
   `}
-  
+
   &:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     transform: translateY(-2px);
@@ -224,6 +227,9 @@ const MenuImage = styled.div`
 
 const MenuContent = styled.div`
   padding: 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 `;
 
 const MenuHeader = styled.div`
@@ -253,6 +259,25 @@ const MenuDescription = styled.p`
   line-height: 1.4;
 `;
 
+const RecipeLink = styled.span`
+  font-size: 12px;
+  color: #635BFF;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: #F0F4FF;
+  border-radius: 4px;
+  margin-top: 4px;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #E6EBFF;
+    text-decoration: underline;
+  }
+`;
+
 const MenuCategory = styled.div`
   display: inline-block;
   padding: 4px 8px;
@@ -269,6 +294,7 @@ const MenuActions = styled.div`
   gap: 8px;
   padding-top: 12px;
   border-top: 1px solid #F6F9FC;
+  margin-top: auto;
 `;
 
 const ActionButton = styled.button<{ danger?: boolean }>`
@@ -634,6 +660,7 @@ interface Recipe {
 
 const MenuManagementPage: React.FC = () => {
   const { categories, menuItems, optionGroups, updateMenuItem, addMenuItem, removeMenuItem, toggleItemSoldOut } = useMenu();
+  const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -668,20 +695,53 @@ const MenuManagementPage: React.FC = () => {
     recipe_id: null
   });
 
-  // Fetch recipes on mount
+  // Fetch recipes on mount (both restaurant and brand recipes)
   React.useEffect(() => {
     const fetchRecipes = async () => {
       try {
         const token = localStorage.getItem('auth_token');
-        const response = await fetch('/api/recipes', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (response.ok) {
-          const data = await response.json();
+
+        // Get restaurantId from URL path (e.g., /restaurant/5/menu)
+        const pathParts = window.location.pathname.split('/');
+        const restaurantIndex = pathParts.indexOf('restaurant');
+        let restaurantId = null;
+
+        if (restaurantIndex >= 0) {
+          restaurantId = pathParts[restaurantIndex + 1];
+        }
+
+        if (!restaurantId) {
+          console.error('No restaurantId found in URL');
+          return;
+        }
+
+        // Fetch both restaurant recipes and brand recipes
+        const [restaurantResponse, brandResponse] = await Promise.all([
+          fetch(`/api/restaurants/${restaurantId}/recipes`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch(`/api/restaurants/${restaurantId}/brand-recipes`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+        ]);
+
+        let allRecipes: Recipe[] = [];
+
+        if (restaurantResponse.ok) {
+          const data = await restaurantResponse.json();
           if (data.success) {
-            setRecipes(data.data || []);
+            allRecipes = [...allRecipes, ...(data.data || [])];
           }
         }
+
+        if (brandResponse.ok) {
+          const brandData = await brandResponse.json();
+          if (brandData.success) {
+            allRecipes = [...allRecipes, ...(brandData.data || [])];
+          }
+        }
+
+        setRecipes(allRecipes);
       } catch (error) {
         console.error('Failed to fetch recipes:', error);
       }
@@ -782,7 +842,8 @@ const MenuManagementPage: React.FC = () => {
       optionGroups: item.optionGroups || [],
       is_set_menu: item.is_set_menu || false,
       set_items: item.set_items || [],
-      set_display_order: item.set_display_order || 0
+      set_display_order: item.set_display_order || 0,
+      recipe_id: item.recipe_id || null
     });
     setSelectedOptionGroups(item.optionGroups || []);
     setSetMenuItems(item.set_items || []);
@@ -1067,6 +1128,25 @@ const MenuManagementPage: React.FC = () => {
                       ).filter(Boolean).join(', ')}
                     </MenuDescription>
                   )}
+                  {item.recipe_id && (() => {
+                    const linkedRecipe = recipes.find(r => r.id === item.recipe_id);
+                    if (linkedRecipe) {
+                      return (
+                        <RecipeLink
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const pathParts = window.location.pathname.split('/');
+                            const restaurantIndex = pathParts.indexOf('restaurant');
+                            const restaurantId = restaurantIndex >= 0 ? pathParts[restaurantIndex + 1] : '';
+                            navigate(`/restaurant/${restaurantId}/recipe-management?search=${encodeURIComponent(linkedRecipe.name)}`);
+                          }}
+                        >
+                          Recipe: {linkedRecipe.name}
+                        </RecipeLink>
+                      );
+                    }
+                    return null;
+                  })()}
                   <MenuActions>
                     <ActionButton onClick={() => handleEditItem(item)}>
                       Edit
@@ -1193,7 +1273,7 @@ const MenuManagementPage: React.FC = () => {
             showRemoveButton={true}
           />
 
-          <UIFormGroup>
+          <UIFormGroup style={{ marginTop: '24px' }}>
             <FormLabel>Linked Recipe</FormLabel>
             <SearchableSelect
               options={recipes.map(recipe => ({
@@ -1356,7 +1436,7 @@ const MenuManagementPage: React.FC = () => {
             showRemoveButton={true}
           />
 
-          <UIFormGroup>
+          <UIFormGroup style={{ marginTop: '24px' }}>
             <FormLabel>Linked Recipe</FormLabel>
             <SearchableSelect
               options={recipes.map(recipe => ({

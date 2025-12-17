@@ -207,7 +207,8 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             preparationTime: item.preparationTime || 15,
             is_set_menu: item.is_set_menu || false,
             set_items: item.set_items || undefined,
-            set_display_order: item.set_display_order || 0
+            set_display_order: item.set_display_order || 0,
+            recipe_id: item.recipe_id || null
           };
         });
 
@@ -327,7 +328,8 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         optionGroups: updatedItem.optionGroups,
         is_set_menu: updatedItem.is_set_menu,
         set_items: updatedItem.set_items,
-        set_display_order: updatedItem.set_display_order
+        set_display_order: updatedItem.set_display_order,
+        recipe_id: updatedItem.recipe_id || null
       };
       console.log('🔵 Updating menu item with data:', requestBody);
 
@@ -380,6 +382,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         is_set_menu: newItem.is_set_menu,
         set_items: newItem.set_items,
         set_display_order: newItem.set_display_order,
+        recipe_id: newItem.recipe_id || null,
         ...(restaurantId && { restaurant_id: restaurantId })
       };
       console.log('🟢 Creating menu item with data:', requestBody);

@@ -327,21 +327,19 @@ const ViewSectionTitle = styled.h3`
 
 const ViewGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 0;
-  background: #F8FAFC;
-  border-radius: 12px;
-  padding: 16px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
 `;
 
 const ViewGridItem = styled.div`
-  text-align: left;
-  padding: 12px 0;
-  border-bottom: 1px solid #F3F4F6;
-
-  &:last-child {
-    border-bottom: none;
-  }
+  text-align: center;
+  padding: 16px;
+  background: #F8FAFC;
+  border-radius: 12px;
 `;
 
 const ViewGridLabel = styled.div`
@@ -831,7 +829,13 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [recipeCategories, setRecipeCategories] = useState<RecipeCategory[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+
+  // Get initial search term from URL parameter
+  const getInitialSearchTerm = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('search') || '';
+  };
+  const [searchTerm, setSearchTerm] = useState(getInitialSearchTerm);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [showModal, setShowModal] = useState(false);
