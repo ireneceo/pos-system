@@ -15,6 +15,23 @@ if (process.env.pm_id === undefined) {
   process.exit(1);
 }
 
+// ============================================
+// ROOT 실행 방지 - root로 실행 시 즉시 종료
+// 개발서버는 irene 유저로만 실행되어야 합니다.
+// root로 실행하면 PM2(irene)와 포트 충돌이 발생합니다.
+// ============================================
+if (process.getuid && process.getuid() === 0) {
+  console.error('❌ ERROR: Do NOT run this server as root!');
+  console.error('❌ Running as root causes port conflicts with PM2 (irene user).');
+  console.error('');
+  console.error('📌 Correct usage:');
+  console.error('   pm2 start ecosystem.config.js --only dev-backend');
+  console.error('   (PM2 runs as irene user)');
+  console.error('');
+  console.error('🚫 Exiting immediately...');
+  process.exit(1);
+}
+
 // 환경 설정 자동 로드 (가장 먼저 실행)
 const loadEnvironmentConfig = require('./config/env-loader');
 loadEnvironmentConfig();

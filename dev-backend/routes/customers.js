@@ -7,7 +7,7 @@ const { Op } = require('sequelize');
 const emailService = require('../utils/emailService');
 
 // ========================================
-// 고객 인증 (전화번호 기반)
+// 고객 인증 (이메일 또는 전화번호)
 // ========================================
 
 /**
@@ -15,23 +15,45 @@ const emailService = require('../utils/emailService');
  * 고객 인증 (로그인)
  *
  * Body:
- * - phone: 전화번호 (필수)
+ * - identifier: 이메일 또는 전화번호 (필수)
+ * - phone: 전화번호 (하위 호환용, identifier 없을 때 사용)
  * - password: 비밀번호 (회원인 경우)
  * - restaurantId: 레스토랑 ID (선택) - 레스토랑별 포인트/등급 조회용
  */
 router.post('/auth', async (req, res) => {
   try {
-    const { phone, password, restaurantId } = req.body;
+    const { identifier, phone, password, restaurantId } = req.body;
 
-    if (!phone) {
+    // identifier가 없으면 phone 사용 (하위 호환)
+    const loginIdentifier = identifier || phone;
+
+    if (!loginIdentifier) {
       return res.status(400).json({
         success: false,
-        message: 'Phone number is required'
+        message: 'Email or phone number is required'
       });
     }
 
-    // 1. 고객 찾기
-    let customer = await Customer.findOne({ where: { phone } });
+    // 1. 고객 찾기 (이메일 또는 전화번호로)
+    const isEmail = loginIdentifier.includes('@');
+    let customer;
+
+    if (isEmail) {
+      customer = await Customer.findOne({ where: { email: loginIdentifier } });
+    } else {
+      // 전화번호로 찾기 - 다양한 형식 지원
+      // +821012345678, 821012345678, 01012345678 등
+      const normalizedPhone = loginIdentifier.replace(/\D/g, ''); // 숫자만 추출
+      customer = await Customer.findOne({
+        where: {
+          [Op.or]: [
+            { phone: loginIdentifier },
+            { phone: `+${normalizedPhone}` },
+            { phone: normalizedPhone }
+          ]
+        }
+      });
+    }
 
     if (!customer) {
       // 고객이 존재하지 않음 - 로그인 실패
@@ -133,42 +155,113 @@ router.post('/register', async (req, res) => {
   try {
     const { phone, password, name, email, restaurantId } = req.body;
 
-    // 🔍 DEBUG: 받은 데이터 로깅
-    console.log('📝 Registration Request:');
-    console.log('   Phone:', phone);
-    console.log('   Name:', name);
-    console.log('   Email:', email);
-    console.log('   Password:', password ? `[${password.length} chars]` : 'MISSING');
-    console.log('   Restaurant ID:', restaurantId);
-
-    if (!phone || !password || !name) {
-      console.log('❌ Validation failed: Missing required fields');
+    // 필수 필드 검증
+    if (!name || !name.trim()) {
       return res.status(400).json({
         success: false,
-        message: 'Phone, password, and name are required'
+        field: 'name',
+        message: 'Name is required'
+      });
+    }
+
+    if (!phone || !phone.trim()) {
+      return res.status(400).json({
+        success: false,
+        field: 'phone',
+        message: 'Phone number is required'
+      });
+    }
+
+    if (!email || !email.trim()) {
+      return res.status(400).json({
+        success: false,
+        field: 'email',
+        message: 'Email is required'
+      });
+    }
+
+    // 이메일 형식 검증
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        field: 'email',
+        message: 'Please enter a valid email address'
+      });
+    }
+
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        field: 'password',
+        message: 'Password is required'
+      });
+    }
+
+    // 비밀번호 기준 검증 (6자 이상)
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        field: 'password',
+        message: 'Password must be at least 6 characters'
+      });
+    }
+
+    // 전화번호 중복 체크
+    const normalizedPhone = phone.replace(/\D/g, '');
+    const existingByPhone = await Customer.findOne({
+      where: {
+        [Op.or]: [
+          { phone: phone },
+          { phone: `+${normalizedPhone}` },
+          { phone: normalizedPhone }
+        ],
+        type: 'member'
+      }
+    });
+
+    if (existingByPhone) {
+      return res.status(400).json({
+        success: false,
+        field: 'phone',
+        message: 'This phone number is already registered. Please login instead.'
+      });
+    }
+
+    // 이메일 중복 체크
+    const existingByEmail = await Customer.findOne({
+      where: { email: email.trim().toLowerCase(), type: 'member' }
+    });
+
+    if (existingByEmail) {
+      return res.status(400).json({
+        success: false,
+        field: 'email',
+        message: 'This email is already registered. Please login instead.'
       });
     }
 
     // 비밀번호 해시
     const password_hash = await bcrypt.hash(password, 10);
-    console.log('✅ Password hashed successfully');
 
-    // 기존 고객 확인
-    let customer = await Customer.findOne({ where: { phone } });
+    // 기존 게스트 고객 확인 (전화번호로)
+    let customer = await Customer.findOne({
+      where: {
+        [Op.or]: [
+          { phone: phone },
+          { phone: `+${normalizedPhone}` },
+          { phone: normalizedPhone }
+        ],
+        type: 'guest'
+      }
+    });
 
     if (customer) {
-      // 이미 회원인 경우
-      if (customer.type === 'member') {
-        return res.status(400).json({
-          success: false,
-          message: 'Customer already registered as member'
-        });
-      }
-
       // 게스트 → 회원 전환
       await customer.update({
-        name,
-        email,
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        phone, // E.164 형식으로 저장
         password_hash,
         type: 'member'
       });
@@ -176,8 +269,8 @@ router.post('/register', async (req, res) => {
       // 신규 회원 생성
       customer = await Customer.create({
         phone,
-        name,
-        email,
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
         password_hash,
         type: 'member'
       });
@@ -651,6 +744,77 @@ router.put('/:customerId/password', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to change password'
+    });
+  }
+});
+
+// ========================================
+// 이메일 찾기 (전화번호 기반)
+// ========================================
+
+/**
+ * POST /api/customers/find-email
+ * 전화번호로 이메일 찾기 (마스킹된 이메일 반환)
+ *
+ * Body:
+ * - phone: 전화번호 (필수)
+ */
+router.post('/find-email', async (req, res) => {
+  try {
+    const { phone } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number is required'
+      });
+    }
+
+    // 전화번호로 고객 찾기 - 다양한 형식 지원
+    const normalizedPhone = phone.replace(/\D/g, '');
+    const customer = await Customer.findOne({
+      where: {
+        [Op.or]: [
+          { phone: phone },
+          { phone: `+${normalizedPhone}` },
+          { phone: normalizedPhone }
+        ],
+        type: 'member'
+      }
+    });
+
+    if (!customer || !customer.email) {
+      return res.json({
+        success: true,
+        found: false,
+        message: 'No account found with this phone number.'
+      });
+    }
+
+    // 이메일 마스킹 (예: h***j@naver.com)
+    const email = customer.email;
+    const [localPart, domain] = email.split('@');
+    let maskedLocal;
+
+    if (localPart.length <= 2) {
+      maskedLocal = localPart[0] + '*';
+    } else {
+      maskedLocal = localPart[0] + '*'.repeat(Math.min(localPart.length - 2, 4)) + localPart[localPart.length - 1];
+    }
+
+    const maskedEmail = `${maskedLocal}@${domain}`;
+
+    res.json({
+      success: true,
+      found: true,
+      maskedEmail,
+      message: `Your email is ${maskedEmail}`
+    });
+  } catch (error) {
+    console.error('Find email error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to find email'
     });
   }
 });

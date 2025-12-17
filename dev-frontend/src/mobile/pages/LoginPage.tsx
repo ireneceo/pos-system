@@ -145,7 +145,7 @@ const LoginPage: React.FC = () => {
   const { setCurrentCustomer } = useCustomer();
   const { currentStore, setCurrentStore } = useMobileOrder();
 
-  const [phone, setPhone] = useState('');
+  const [identifier, setIdentifier] = useState(''); // 이메일 또는 전화번호
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -191,8 +191,8 @@ const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!phone) {
-      showAlert('error', 'Error', 'Please enter your phone number');
+    if (!identifier) {
+      showAlert('error', 'Error', 'Please enter your email or phone number');
       return;
     }
     if (!password) {
@@ -206,7 +206,7 @@ const LoginPage: React.FC = () => {
       const response = await fetch('/api/customers/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, password })
+        body: JSON.stringify({ identifier, password })
       });
 
       const result = await response.json();
@@ -234,7 +234,7 @@ const LoginPage: React.FC = () => {
           navigate(`/mobile/${slug}/account`);
         }, 1500);
       } else {
-        showAlert('error', 'Login Failed', result.message || 'Invalid phone number or password');
+        showAlert('error', 'Login Failed', result.message || 'Invalid email/phone or password');
       }
     } catch (error) {
       showAlert('error', 'Error', 'Failed to login. Please try again.');
@@ -261,12 +261,13 @@ const LoginPage: React.FC = () => {
 
         <Form onSubmit={handleSubmit}>
           <InputGroup>
-            <InputLabel>Phone Number</InputLabel>
+            <InputLabel>Email or Phone Number</InputLabel>
             <Input
-              type="tel"
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              placeholder="Enter your phone number"
+              type="text"
+              value={identifier}
+              onChange={e => setIdentifier(e.target.value)}
+              placeholder="Enter email or phone number"
+              autoComplete="username"
             />
           </InputGroup>
 
@@ -277,6 +278,7 @@ const LoginPage: React.FC = () => {
               value={password}
               onChange={e => setPassword(e.target.value)}
               placeholder="Enter your password"
+              autoComplete="current-password"
             />
           </InputGroup>
 
