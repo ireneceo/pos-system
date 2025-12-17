@@ -1,7 +1,8 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useEffect } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { useMobileOrder } from '../../contexts/MobileOrderContext';
+import { setupMobileInputHandlers } from '../../utils/mobileInputFix';
 
 const LayoutContainer = styled.div`
   min-height: 100vh;
@@ -216,6 +217,12 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
 }) => {
   const navigate = useNavigate();
   const { currentStore, orderType } = useMobileOrder();
+
+  // iOS Safari input zoom 문제 해결 - 전역 핸들러 설정
+  useEffect(() => {
+    const cleanup = setupMobileInputHandlers();
+    return cleanup;
+  }, []);
 
   // Get order type label
   const getOrderTypeLabel = (type: string | null) => {

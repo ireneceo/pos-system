@@ -1,46 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useParams } from 'react-router-dom';
+import MobileLayout from '../components/common/MobileLayout';
 import MobileAlertModal from '../components/common/MobileAlertModal';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 
-const Container = styled.div`
-  min-height: 100vh;
-  background: #FAFBFC;
-  display: flex;
-  flex-direction: column;
-  padding: 24px;
-  box-sizing: border-box;
-`;
-
-const BackButton = styled.button`
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  background: none;
-  border: none;
-  padding: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  z-index: 10;
-
-  &:active {
-    background: #F3F4F6;
-  }
-
-  svg {
-    width: 24px;
-    height: 24px;
-    color: #374151;
-  }
-`;
-
-const Header = styled.div`
-  text-align: center;
-  margin: 60px 0 32px;
+const ContentWrapper = styled.div`
+  padding: 20px 0;
 `;
 
 const IconCircle = styled.div`
@@ -61,27 +27,28 @@ const IconCircle = styled.div`
 `;
 
 const Title = styled.h1`
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 700;
   color: #1F2937;
   margin: 0 0 8px 0;
+  text-align: center;
 `;
 
 const Subtitle = styled.p`
-  font-size: 15px;
+  font-size: 14px;
   color: #6B7280;
-  margin: 0;
+  margin: 0 0 24px 0;
   line-height: 1.5;
+  text-align: center;
 `;
 
 const Form = styled.form`
-  flex: 1;
   display: flex;
   flex-direction: column;
 `;
 
 const InputGroup = styled.div`
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 `;
 
 const InputLabel = styled.label`
@@ -94,9 +61,9 @@ const InputLabel = styled.label`
 
 const Input = styled.input`
   width: 100%;
-  padding: 16px;
+  padding: 14px;
   border: 1px solid #E5E7EB;
-  border-radius: 12px;
+  border-radius: 10px;
   font-size: 16px;
   box-sizing: border-box;
   transition: border-color 0.2s;
@@ -113,12 +80,21 @@ const Input = styled.input`
   }
 `;
 
+const ErrorMessage = styled.div`
+  color: #DC2626;
+  font-size: 13px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #FEF2F2;
+  border-radius: 8px;
+`;
+
 const SubmitButton = styled.button`
   width: 100%;
-  padding: 16px;
+  padding: 14px;
   background: #635BFF;
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   color: white;
   font-size: 16px;
   font-weight: 600;
@@ -135,16 +111,17 @@ const SubmitButton = styled.button`
   }
 `;
 
-const BackToLogin = styled.button`
-  width: 100%;
-  padding: 16px;
-  background: transparent;
-  border: none;
-  color: #635BFF;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
+const SignUpLink = styled.div`
+  text-align: center;
   margin-top: 16px;
+  font-size: 14px;
+  color: #6B7280;
+
+  span {
+    color: #635BFF;
+    cursor: pointer;
+    text-decoration: underline;
+  }
 `;
 
 const SuccessContainer = styled.div`
@@ -170,16 +147,16 @@ const SuccessIcon = styled.div`
 `;
 
 const SuccessTitle = styled.h2`
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
   color: #1F2937;
   margin: 0 0 12px 0;
 `;
 
 const SuccessMessage = styled.p`
-  font-size: 15px;
+  font-size: 14px;
   color: #6B7280;
-  margin: 0 0 32px 0;
+  margin: 0 0 24px 0;
   line-height: 1.6;
 `;
 
@@ -191,6 +168,7 @@ const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isEmailSent, setIsEmailSent] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const [alertModal, setAlertModal] = useState<{
     isOpen: boolean;
@@ -227,22 +205,19 @@ const ForgotPasswordPage: React.FC = () => {
     loadRestaurant();
   }, [slug, currentStore, setCurrentStore]);
 
-  const showAlert = (type: 'error' | 'success' | 'warning' | 'info', title: string, message: string) => {
-    setAlertModal({ isOpen: true, type, title, message });
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage('');
 
     if (!email.trim()) {
-      showAlert('error', 'Error', 'Please enter your email address');
+      setErrorMessage('Please enter your email address');
       return;
     }
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      showAlert('error', 'Error', 'Please enter a valid email address');
+      setErrorMessage('Please enter a valid email address');
       return;
     }
 
@@ -257,30 +232,31 @@ const ForgotPasswordPage: React.FC = () => {
 
       const result = await response.json();
 
-      if (response.ok && result.success) {
-        setIsEmailSent(true);
+      if (result.emailExists === false) {
+        setErrorMessage('No account found with this email address.');
       } else {
-        // Don't reveal if email exists or not for security
-        // Always show success to prevent email enumeration
         setIsEmailSent(true);
       }
     } catch (error) {
-      // Even on error, show success to prevent email enumeration
-      setIsEmailSent(true);
+      setErrorMessage('Failed to send reset email. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  // 이전 페이지로 돌아가기 (브라우저 히스토리 사용)
+  const handleBack = () => {
+    // 이전 페이지가 같은 도메인이면 뒤로가기, 아니면 메뉴로
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate(`/mobile/${slug}/menu`);
+    }
+  };
+
   if (isEmailSent) {
     return (
-      <Container>
-        <BackButton onClick={() => navigate(`/mobile/${slug}/login`)}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18l-6-6 6-6"/>
-          </svg>
-        </BackButton>
-
+      <MobileLayout title="Password Reset" onBack={handleBack}>
         <SuccessContainer>
           <SuccessIcon>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -291,27 +267,29 @@ const ForgotPasswordPage: React.FC = () => {
 
           <SuccessTitle>Check Your Email</SuccessTitle>
           <SuccessMessage>
-            If an account exists with {email}, we've sent a password reset link.
+            We've sent a password reset link to {email}.
             Please check your inbox and spam folder.
           </SuccessMessage>
 
-          <SubmitButton onClick={() => navigate(`/mobile/${slug}/login`)}>
-            Back to Login
+          <SubmitButton onClick={handleBack}>
+            Continue
           </SubmitButton>
         </SuccessContainer>
-      </Container>
+
+        <MobileAlertModal
+          isOpen={alertModal.isOpen}
+          onClose={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
+          type={alertModal.type}
+          title={alertModal.title}
+          message={alertModal.message}
+        />
+      </MobileLayout>
     );
   }
 
   return (
-    <Container>
-      <BackButton onClick={() => navigate(`/mobile/${slug}/login`)}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-      </BackButton>
-
-      <Header>
+    <MobileLayout title="Forgot Password" onBack={handleBack}>
+      <ContentWrapper>
         <IconCircle>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
@@ -323,27 +301,48 @@ const ForgotPasswordPage: React.FC = () => {
         <Subtitle>
           Enter your email address and we'll send you a link to reset your password.
         </Subtitle>
-      </Header>
 
-      <Form onSubmit={handleSubmit}>
-        <InputGroup>
-          <InputLabel>Email Address</InputLabel>
-          <Input
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="Enter your email"
-          />
-        </InputGroup>
+        <Form onSubmit={handleSubmit}>
+          <InputGroup>
+            <InputLabel>Email Address</InputLabel>
+            <Input
+              type="email"
+              value={email}
+              onChange={e => {
+                setEmail(e.target.value);
+                setErrorMessage('');
+              }}
+              placeholder="Enter your email"
+            />
+          </InputGroup>
 
-        <SubmitButton type="submit" disabled={isLoading}>
-          {isLoading ? 'Sending...' : 'Send Reset Link'}
-        </SubmitButton>
+          {errorMessage && (
+            <ErrorMessage>
+              {errorMessage}
+              {errorMessage.includes('No account') && (
+                <>
+                  {' '}
+                  <span
+                    onClick={() => navigate(`/mobile/${slug}/register`)}
+                    style={{ color: '#635BFF', cursor: 'pointer', textDecoration: 'underline' }}
+                  >
+                    Sign up here
+                  </span>
+                </>
+              )}
+            </ErrorMessage>
+          )}
 
-        <BackToLogin type="button" onClick={() => navigate(`/mobile/${slug}/login`)}>
-          Back to Login
-        </BackToLogin>
-      </Form>
+          <SubmitButton type="submit" disabled={isLoading}>
+            {isLoading ? 'Sending...' : 'Send Reset Link'}
+          </SubmitButton>
+
+          <SignUpLink>
+            Remember your password?{' '}
+            <span onClick={() => navigate(`/mobile/${slug}/login`)}>Login</span>
+          </SignUpLink>
+        </Form>
+      </ContentWrapper>
 
       <MobileAlertModal
         isOpen={alertModal.isOpen}
@@ -352,7 +351,7 @@ const ForgotPasswordPage: React.FC = () => {
         title={alertModal.title}
         message={alertModal.message}
       />
-    </Container>
+    </MobileLayout>
   );
 };
 

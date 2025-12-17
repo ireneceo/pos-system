@@ -686,12 +686,12 @@ router.post('/forgot-password', async (req, res) => {
     // 이메일로 고객 찾기
     const customer = await Customer.findOne({ where: { email } });
 
-    // 보안: 이메일 존재 여부와 관계없이 동일한 응답
+    // 모바일 오더 UX를 위해 이메일 존재 여부를 알려줌
     if (!customer || customer.type !== 'member') {
-      // 이메일이 없어도 성공 응답 (이메일 열거 공격 방지)
       return res.json({
         success: true,
-        message: 'If an account exists with this email, a reset link has been sent.'
+        emailExists: false,
+        message: 'No account found with this email address.'
       });
     }
 
@@ -763,7 +763,8 @@ router.post('/forgot-password', async (req, res) => {
 
     res.json({
       success: true,
-      message: 'If an account exists with this email, a reset link has been sent.'
+      emailExists: true,
+      message: 'Password reset link has been sent to your email.'
     });
   } catch (error) {
     console.error('Forgot password error:', error);

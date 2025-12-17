@@ -1,64 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useParams } from 'react-router-dom';
+import MobileLayout from '../components/common/MobileLayout';
 import MobileAlertModal from '../components/common/MobileAlertModal';
 import { useCustomer } from '../../contexts/CustomerContext';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 
-const Container = styled.div`
-  min-height: 100vh;
-  background: #FAFBFC;
-  display: flex;
-  flex-direction: column;
-  padding: 24px;
-  box-sizing: border-box;
-`;
-
-const BackButton = styled.button`
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  background: none;
-  border: none;
-  padding: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  z-index: 10;
-
-  &:active {
-    background: #F3F4F6;
-  }
-
-  svg {
-    width: 24px;
-    height: 24px;
-    color: #374151;
-  }
+const ContentWrapper = styled.div`
+  padding: 20px 0;
 `;
 
 const Header = styled.div`
   text-align: center;
-  margin: 60px 0 32px;
+  margin-bottom: 24px;
 `;
 
 const Title = styled.h1`
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 700;
   color: #1F2937;
   margin: 0 0 8px 0;
 `;
 
 const Subtitle = styled.p`
-  font-size: 15px;
+  font-size: 14px;
   color: #6B7280;
   margin: 0;
 `;
 
 const Form = styled.form`
-  flex: 1;
   display: flex;
   flex-direction: column;
 `;
@@ -77,9 +47,9 @@ const InputLabel = styled.label`
 
 const Input = styled.input`
   width: 100%;
-  padding: 16px;
+  padding: 14px;
   border: 1px solid #E5E7EB;
-  border-radius: 12px;
+  border-radius: 10px;
   font-size: 16px;
   box-sizing: border-box;
   transition: border-color 0.2s;
@@ -103,16 +73,16 @@ const RequiredStar = styled.span`
 
 const SubmitButton = styled.button`
   width: 100%;
-  padding: 16px;
+  padding: 14px;
   background: #635BFF;
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   color: white;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
-  margin-top: auto;
+  margin-top: 8px;
 
   &:active {
     background: #5A51E6;
@@ -127,7 +97,7 @@ const SubmitButton = styled.button`
 const Divider = styled.div`
   display: flex;
   align-items: center;
-  margin: 24px 0;
+  margin: 20px 0;
 
   &::before,
   &::after {
@@ -146,10 +116,10 @@ const Divider = styled.div`
 
 const LoginLink = styled.button`
   width: 100%;
-  padding: 16px;
+  padding: 14px;
   background: white;
   border: 2px solid #E5E7EB;
-  border-radius: 12px;
+  border-radius: 10px;
   color: #374151;
   font-size: 16px;
   font-weight: 600;
@@ -304,96 +274,100 @@ const RegisterPage: React.FC = () => {
     }
   };
 
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate(`/mobile/${slug}/menu`);
+    }
+  };
+
   return (
-    <Container>
-      <BackButton onClick={() => navigate(`/mobile/${slug}/account`)}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-      </BackButton>
+    <MobileLayout title="Create Account" onBack={handleBack}>
+      <ContentWrapper>
+        <Header>
+          <Title>Create Account</Title>
+          <Subtitle>Join us for a better experience</Subtitle>
+        </Header>
 
-      <Header>
-        <Title>Create Account</Title>
-        <Subtitle>Join us for a better experience</Subtitle>
-      </Header>
+        <Form onSubmit={handleSubmit}>
+          <InputGroup>
+            <InputLabel>
+              Name<RequiredStar>*</RequiredStar>
+            </InputLabel>
+            <Input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Enter your name"
+            />
+          </InputGroup>
 
-      <Form onSubmit={handleSubmit}>
-        <InputGroup>
-          <InputLabel>
-            Name<RequiredStar>*</RequiredStar>
-          </InputLabel>
-          <Input
-            type="text"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder="Enter your name"
-          />
-        </InputGroup>
+          <InputGroup>
+            <InputLabel>
+              Phone Number<RequiredStar>*</RequiredStar>
+            </InputLabel>
+            <Input
+              type="tel"
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              placeholder="Enter your phone number"
+            />
+          </InputGroup>
 
-        <InputGroup>
-          <InputLabel>
-            Phone Number<RequiredStar>*</RequiredStar>
-          </InputLabel>
-          <Input
-            type="tel"
-            value={phone}
-            onChange={e => setPhone(e.target.value)}
-            placeholder="Enter your phone number"
-          />
-        </InputGroup>
+          <InputGroup>
+            <InputLabel>
+              Email<RequiredStar>*</RequiredStar>
+            </InputLabel>
+            <Input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="Enter your email"
+            />
+          </InputGroup>
 
-        <InputGroup>
-          <InputLabel>
-            Email<RequiredStar>*</RequiredStar>
-          </InputLabel>
-          <Input
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="Enter your email"
-          />
-        </InputGroup>
+          <InputGroup>
+            <InputLabel>
+              Password<RequiredStar>*</RequiredStar>
+            </InputLabel>
+            <Input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="Create a password (min 6 characters)"
+            />
+          </InputGroup>
 
-        <InputGroup>
-          <InputLabel>
-            Password<RequiredStar>*</RequiredStar>
-          </InputLabel>
-          <Input
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            placeholder="Create a password (min 6 characters)"
-          />
-        </InputGroup>
+          <InputGroup>
+            <InputLabel>
+              Confirm Password<RequiredStar>*</RequiredStar>
+            </InputLabel>
+            <Input
+              type="password"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              placeholder="Confirm your password"
+            />
+          </InputGroup>
 
-        <InputGroup>
-          <InputLabel>
-            Confirm Password<RequiredStar>*</RequiredStar>
-          </InputLabel>
-          <Input
-            type="password"
-            value={confirmPassword}
-            onChange={e => setConfirmPassword(e.target.value)}
-            placeholder="Confirm your password"
-          />
-        </InputGroup>
+          <TermsText>
+            By creating an account, you agree to our Terms of Service and Privacy Policy
+          </TermsText>
 
-        <TermsText>
-          By creating an account, you agree to our Terms of Service and Privacy Policy
-        </TermsText>
+          <SubmitButton type="submit" disabled={isLoading}>
+            {isLoading ? 'Creating Account...' : 'Create Account'}
+          </SubmitButton>
 
-        <SubmitButton type="submit" disabled={isLoading} style={{ marginTop: 24 }}>
-          {isLoading ? 'Creating Account...' : 'Create Account'}
-        </SubmitButton>
+          <Divider>
+            <span>Already have an account?</span>
+          </Divider>
 
-        <Divider>
-          <span>Already have an account?</span>
-        </Divider>
-
-        <LoginLink type="button" onClick={() => navigate(`/mobile/${slug}/login`)}>
-          Login
-        </LoginLink>
-      </Form>
+          <LoginLink type="button" onClick={() => navigate(`/mobile/${slug}/login`)}>
+            Login
+          </LoginLink>
+        </Form>
+      </ContentWrapper>
 
       <MobileAlertModal
         isOpen={alertModal.isOpen}
@@ -405,7 +379,7 @@ const RegisterPage: React.FC = () => {
         title={alertModal.title}
         message={alertModal.message}
       />
-    </Container>
+    </MobileLayout>
   );
 };
 

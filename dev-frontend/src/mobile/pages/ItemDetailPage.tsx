@@ -269,10 +269,7 @@ const InstructionsInput = styled.textarea`
   resize: none;
   font-family: inherit;
   box-sizing: border-box;
-  height: 80px;
   min-height: 80px;
-  max-height: 80px;
-  overflow-y: auto;
   -webkit-appearance: none;
 
   &:focus {
