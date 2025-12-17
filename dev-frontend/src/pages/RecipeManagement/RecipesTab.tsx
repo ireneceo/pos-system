@@ -32,6 +32,8 @@ interface Recipe {
   prep_time: number | null;
   cook_time: number | null;
   instructions: string | null;
+  instructions_summary: string | null;
+  instructions_detail: string | null;
   is_active: boolean;
   recipeIngredients?: RecipeIngredient[];
 }
@@ -643,6 +645,154 @@ const HeaderSection = styled.div`
   }
 `;
 
+// Recipe Modal Styles (Cooking-focused popup)
+const RecipeModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+`;
+
+const RecipeModalContent = styled.div`
+  background: white;
+  border-radius: 16px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+`;
+
+const RecipeModalHeader = styled.div`
+  padding: 24px;
+  border-bottom: 1px solid #E6EBF1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+`;
+
+const RecipeModalTitle = styled.h2`
+  font-size: 24px;
+  font-weight: 700;
+  color: #0A2540;
+  margin: 0;
+`;
+
+const RecipeModalClose = styled.button`
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #6B7280;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+
+  &:hover {
+    color: #0A2540;
+  }
+`;
+
+const RecipeModalBody = styled.div`
+  padding: 24px;
+`;
+
+const RecipeTimeRow = styled.div`
+  display: flex;
+  gap: 24px;
+  margin-bottom: 24px;
+  padding: 16px;
+  background: #F8FAFC;
+  border-radius: 12px;
+`;
+
+const RecipeTimeItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const RecipeTimeIcon = styled.span`
+  font-size: 20px;
+`;
+
+const RecipeTimeLabel = styled.span`
+  font-size: 14px;
+  color: #6B7280;
+`;
+
+const RecipeTimeValue = styled.span`
+  font-size: 16px;
+  font-weight: 600;
+  color: #0A2540;
+`;
+
+const RecipeSection = styled.div`
+  margin-bottom: 24px;
+`;
+
+const RecipeSectionTitle = styled.h3`
+  font-size: 16px;
+  font-weight: 600;
+  color: #0A2540;
+  margin: 0 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #635BFF;
+`;
+
+const RecipeIngredientList = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: 0;
+`;
+
+const RecipeIngredientItem = styled.li`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #F3F4F6;
+
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const RecipeIngredientName = styled.span`
+  font-size: 15px;
+  color: #0A2540;
+`;
+
+const RecipeIngredientQty = styled.span`
+  font-size: 15px;
+  font-weight: 600;
+  color: #635BFF;
+`;
+
+const RecipeSummaryText = styled.p`
+  font-size: 15px;
+  color: #4B5563;
+  line-height: 1.6;
+  margin: 0;
+  padding: 12px 16px;
+  background: #F0F4FF;
+  border-radius: 8px;
+  font-style: italic;
+`;
+
+const RecipeDetailText = styled.div`
+  font-size: 15px;
+  color: #374151;
+  line-height: 1.8;
+  white-space: pre-wrap;
+`;
+
 const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRestaurantId, onCountChange, categoryRefreshKey }) => {
   const { user } = useAuth();
   // URL 파라미터의 restaurantId가 우선, 없으면 user.restaurant_id 또는 user.restaurantId 사용
@@ -664,6 +814,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
     prep_time: '',
     cook_time: '',
     instructions: '',
+    instructions_summary: '',
+    instructions_detail: '',
     suggested_price: ''
   });
   const [tags, setTags] = useState<string[]>([]);
@@ -681,6 +833,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
   });
   const [formError, setFormError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState(false);
+  const [showRecipeModal, setShowRecipeModal] = useState(false);
+  const [recipeModalData, setRecipeModalData] = useState<Recipe | null>(null);
 
   const isRestaurantAdmin = user?.role === 'Restaurant Admin';
   // Restaurant Admin은 자신의 레시피만 수정/삭제 가능 (브랜드 레시피는 읽기전용)
@@ -982,6 +1136,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         prep_time: recipe.prep_time?.toString() || '',
         cook_time: recipe.cook_time?.toString() || '',
         instructions: recipe.instructions || '',
+        instructions_summary: recipe.instructions_summary || '',
+        instructions_detail: recipe.instructions_detail || '',
         suggested_price: recipe.suggested_price?.toString() || ''
       });
       setTags(recipe.category ? recipe.category.split(',').map(t => t.trim()) : []);
@@ -1003,6 +1159,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         prep_time: '',
         cook_time: '',
         instructions: '',
+        instructions_summary: '',
+        instructions_detail: '',
         suggested_price: ''
       });
       setTags([]);
@@ -1025,11 +1183,23 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
       prep_time: '',
       cook_time: '',
       instructions: '',
+      instructions_summary: '',
+      instructions_detail: '',
       suggested_price: ''
     });
     setRecipeIngredients([]);
     setTags([]);
     setTagInput('');
+  };
+
+  const handleOpenRecipeModal = (recipe: Recipe) => {
+    setRecipeModalData(recipe);
+    setShowRecipeModal(true);
+  };
+
+  const handleCloseRecipeModal = () => {
+    setShowRecipeModal(false);
+    setRecipeModalData(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1282,19 +1452,13 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                       <strong>{recipe.cook_time} min</strong>
                     </MetaItem>
                   )}
-                  {recipe.prep_time && recipe.cook_time && (
-                    <MetaItem>
-                      <span>Total:</span>
-                      <strong>{recipe.prep_time + recipe.cook_time} min</strong>
-                    </MetaItem>
-                  )}
                 </RecipeMetaInfo>
               )}
 
-              {/* Instructions Preview */}
-              {recipe.instructions && (
+              {/* Recipe Summary Preview */}
+              {(recipe.instructions_summary || recipe.instructions) && (
                 <InstructionsPreview>
-                  {recipe.instructions}
+                  {recipe.instructions_summary || recipe.instructions}
                 </InstructionsPreview>
               )}
 
@@ -1321,9 +1485,9 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               <RecipeActions onClick={(e) => e.stopPropagation()}>
                 <ActionButton
                   variant="secondary"
-                  onClick={() => handleOpenModal(recipe, true)}
+                  onClick={() => handleOpenRecipeModal(recipe)}
                 >
-                  View
+                  Recipe
                 </ActionButton>
                 {!isItemReadOnly(recipe) && (
                   <>
@@ -1401,12 +1565,6 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                     <ViewGridValue>{formData.cook_time} min</ViewGridValue>
                   </ViewGridItem>
                 )}
-                {formData.prep_time && formData.cook_time && (
-                  <ViewGridItem>
-                    <ViewGridLabel>Total Time</ViewGridLabel>
-                    <ViewGridValue>{parseInt(formData.prep_time) + parseInt(formData.cook_time)} min</ViewGridValue>
-                  </ViewGridItem>
-                )}
               </ViewGrid>
             </ViewSection>
 
@@ -1445,11 +1603,21 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               </ViewSection>
             )}
 
-            {/* Cooking Instructions */}
-            {formData.instructions && (
+            {/* Recipe Summary */}
+            {(formData.instructions_summary || formData.instructions) && (
               <ViewSection>
-                <ViewSectionTitle>Cooking Instructions</ViewSectionTitle>
-                <ViewInstructions>{formData.instructions}</ViewInstructions>
+                <ViewSectionTitle>Recipe Summary</ViewSectionTitle>
+                <ViewInstructions style={{ fontStyle: 'italic', background: '#F0F4FF', padding: '12px 16px', borderRadius: '8px' }}>
+                  {formData.instructions_summary || formData.instructions}
+                </ViewInstructions>
+              </ViewSection>
+            )}
+
+            {/* Detailed Instructions */}
+            {formData.instructions_detail && (
+              <ViewSection>
+                <ViewSectionTitle>Detailed Instructions</ViewSectionTitle>
+                <ViewInstructions>{formData.instructions_detail}</ViewInstructions>
               </ViewSection>
             )}
 
@@ -1574,12 +1742,25 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             </div>
 
             <UIFormGroup>
-              <FormLabel>Cooking Instructions</FormLabel>
+              <FormLabel>Recipe Summary</FormLabel>
               <FormTextArea
-                value={formData.instructions}
-                onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
-                placeholder="Step-by-step cooking instructions..."
-                rows={6}
+                value={formData.instructions_summary}
+                onChange={(e) => setFormData({ ...formData, instructions_summary: e.target.value })}
+                placeholder="Brief summary for list display (e.g., Pan-fried chicken with garlic sauce)"
+                rows={2}
+              />
+            </UIFormGroup>
+
+            <UIFormGroup>
+              <FormLabel>Detailed Instructions</FormLabel>
+              <FormTextArea
+                value={formData.instructions_detail}
+                onChange={(e) => setFormData({ ...formData, instructions_detail: e.target.value })}
+                placeholder="Step-by-step cooking instructions...
+1. Prepare ingredients...
+2. Heat the pan...
+3. ..."
+                rows={8}
               />
             </UIFormGroup>
 
@@ -1684,6 +1865,77 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         cancelText="Cancel"
         type="danger"
       />
+
+      {/* Recipe Modal (Cooking-focused popup) */}
+      {showRecipeModal && recipeModalData && (
+        <RecipeModalOverlay onClick={handleCloseRecipeModal}>
+          <RecipeModalContent onClick={(e) => e.stopPropagation()}>
+            <RecipeModalHeader>
+              <RecipeModalTitle>{recipeModalData.name}</RecipeModalTitle>
+              <RecipeModalClose onClick={handleCloseRecipeModal}>&times;</RecipeModalClose>
+            </RecipeModalHeader>
+            <RecipeModalBody>
+              {/* Time Information */}
+              {(recipeModalData.prep_time || recipeModalData.cook_time) && (
+                <RecipeTimeRow>
+                  {recipeModalData.prep_time && (
+                    <RecipeTimeItem>
+                      <RecipeTimeIcon>⏱</RecipeTimeIcon>
+                      <RecipeTimeLabel>Prep:</RecipeTimeLabel>
+                      <RecipeTimeValue>{recipeModalData.prep_time} min</RecipeTimeValue>
+                    </RecipeTimeItem>
+                  )}
+                  {recipeModalData.cook_time && (
+                    <RecipeTimeItem>
+                      <RecipeTimeIcon>🔥</RecipeTimeIcon>
+                      <RecipeTimeLabel>Cook:</RecipeTimeLabel>
+                      <RecipeTimeValue>{recipeModalData.cook_time} min</RecipeTimeValue>
+                    </RecipeTimeItem>
+                  )}
+                </RecipeTimeRow>
+              )}
+
+              {/* Ingredients with Quantities */}
+              {recipeModalData.recipeIngredients && recipeModalData.recipeIngredients.length > 0 && (
+                <RecipeSection>
+                  <RecipeSectionTitle>Ingredients</RecipeSectionTitle>
+                  <RecipeIngredientList>
+                    {recipeModalData.recipeIngredients.map((ri, idx) => {
+                      const ingredient = ingredients.find(ing => ing.id === ri.ingredient_id);
+                      return (
+                        <RecipeIngredientItem key={idx}>
+                          <RecipeIngredientName>{ingredient?.name || `Ingredient #${ri.ingredient_id}`}</RecipeIngredientName>
+                          <RecipeIngredientQty>{ri.quantity} {ri.unit}</RecipeIngredientQty>
+                        </RecipeIngredientItem>
+                      );
+                    })}
+                  </RecipeIngredientList>
+                </RecipeSection>
+              )}
+
+              {/* Recipe Summary */}
+              {(recipeModalData.instructions_summary || recipeModalData.instructions) && (
+                <RecipeSection>
+                  <RecipeSectionTitle>Summary</RecipeSectionTitle>
+                  <RecipeSummaryText>
+                    {recipeModalData.instructions_summary || recipeModalData.instructions}
+                  </RecipeSummaryText>
+                </RecipeSection>
+              )}
+
+              {/* Detailed Instructions */}
+              {recipeModalData.instructions_detail && (
+                <RecipeSection>
+                  <RecipeSectionTitle>Detailed Instructions</RecipeSectionTitle>
+                  <RecipeDetailText>
+                    {recipeModalData.instructions_detail}
+                  </RecipeDetailText>
+                </RecipeSection>
+              )}
+            </RecipeModalBody>
+          </RecipeModalContent>
+        </RecipeModalOverlay>
+      )}
     </>
   );
 };

@@ -18,6 +18,7 @@ import {
   TabContainer,
   Tab
 } from '../../components/UI';
+import SearchableSelect from '../../components/Common/SearchableSelect';
 
 // Styled Components
 const Container = styled.div`
@@ -625,6 +626,12 @@ const MenuItemOptionPrice = styled.div`
 `;
 
 
+interface Recipe {
+  id: number;
+  name: string;
+  total_ingredient_cost: number;
+}
+
 const MenuManagementPage: React.FC = () => {
   const { categories, menuItems, optionGroups, updateMenuItem, addMenuItem, removeMenuItem, toggleItemSoldOut } = useMenu();
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -636,6 +643,9 @@ const MenuManagementPage: React.FC = () => {
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [priceEditItem, setPriceEditItem] = useState<MenuItemType | null>(null);
+
+  // Recipe list for linking
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
 
   // Set menu states
   const [showSetMenuModal, setShowSetMenuModal] = useState(false);
@@ -654,8 +664,30 @@ const MenuManagementPage: React.FC = () => {
     optionGroups: [],
     is_set_menu: false,
     set_items: [],
-    set_display_order: 0
+    set_display_order: 0,
+    recipe_id: null
   });
+
+  // Fetch recipes on mount
+  React.useEffect(() => {
+    const fetchRecipes = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch('/api/recipes', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setRecipes(data.data || []);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch recipes:', error);
+      }
+    };
+    fetchRecipes();
+  }, []);
 
   const [selectedOptionGroups, setSelectedOptionGroups] = useState<string[]>([]);
 
@@ -714,7 +746,8 @@ const MenuManagementPage: React.FC = () => {
       optionGroups: [],
       is_set_menu: false,
       set_items: [],
-      set_display_order: 0
+      set_display_order: 0,
+      recipe_id: null
     });
     setSelectedOptionGroups([]);
     setSetMenuItems([]);
@@ -732,7 +765,8 @@ const MenuManagementPage: React.FC = () => {
       optionGroups: [],
       is_set_menu: true,
       set_items: [],
-      set_display_order: 0
+      set_display_order: 0,
+      recipe_id: null
     });
     setSelectedOptionGroups([]);
     setSetMenuItems([]);
@@ -839,7 +873,8 @@ const MenuManagementPage: React.FC = () => {
       soldOut: false,
       is_set_menu: false,
       set_items: [],
-      set_display_order: 0
+      set_display_order: 0,
+      recipe_id: formData.recipe_id || null
     };
 
     addMenuItem(newItem);
@@ -1158,6 +1193,21 @@ const MenuManagementPage: React.FC = () => {
             showRemoveButton={true}
           />
 
+          <UIFormGroup>
+            <FormLabel>Linked Recipe</FormLabel>
+            <FormSelect
+              value={formData.recipe_id || ''}
+              onChange={(e) => setFormData({ ...formData, recipe_id: e.target.value ? parseInt(e.target.value) : null })}
+            >
+              <option value="">No recipe linked</option>
+              {recipes.map(recipe => (
+                <option key={recipe.id} value={recipe.id}>
+                  {recipe.name} (Cost: RM {Number(recipe.total_ingredient_cost || 0).toFixed(2)})
+                </option>
+              ))}
+            </FormSelect>
+          </UIFormGroup>
+
           <OptionGroupSectionTitle>
             <UIFormGroup>
               <FormLabel>Option Groups {selectedOptionGroups.length > 0 && `(${selectedOptionGroups.length} selected)`}</FormLabel>
@@ -1304,6 +1354,21 @@ const MenuManagementPage: React.FC = () => {
             maxSize={2}
             showRemoveButton={true}
           />
+
+          <UIFormGroup>
+            <FormLabel>Linked Recipe</FormLabel>
+            <FormSelect
+              value={formData.recipe_id || ''}
+              onChange={(e) => setFormData({ ...formData, recipe_id: e.target.value ? parseInt(e.target.value) : null })}
+            >
+              <option value="">No recipe linked</option>
+              {recipes.map(recipe => (
+                <option key={recipe.id} value={recipe.id}>
+                  {recipe.name} (Cost: RM {Number(recipe.total_ingredient_cost || 0).toFixed(2)})
+                </option>
+              ))}
+            </FormSelect>
+          </UIFormGroup>
 
           <OptionGroupSectionTitle>
             <UIFormGroup>

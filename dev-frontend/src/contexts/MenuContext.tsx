@@ -23,6 +23,7 @@ export interface MenuItem {
   is_set_menu?: boolean;
   set_items?: SetMenuItem[];
   set_display_order?: number;
+  recipe_id?: number | null;
 }
 
 export interface MenuOption {

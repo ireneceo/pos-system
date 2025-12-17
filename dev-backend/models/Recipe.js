@@ -112,7 +112,17 @@ Recipe.init({
   instructions: {
     type: DataTypes.TEXT,
     allowNull: true,
-    comment: '조리 방법'
+    comment: '조리 방법 (레거시, instructions_summary/detail 사용 권장)'
+  },
+  instructions_summary: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
+    comment: '레시피 요약 (리스트 표시용)'
+  },
+  instructions_detail: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: '상세 레시피 (Step-by-step)'
   },
   // 상태
   is_active: {
