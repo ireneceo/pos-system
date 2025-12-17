@@ -552,6 +552,13 @@ const PaymentPage: React.FC = () => {
   // Member login state
   const [memberPassword, setMemberPassword] = useState('');
 
+  // Forgot password inline state
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
+  const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
+  const [forgotPasswordError, setForgotPasswordError] = useState('');
+
   // Calculate takeaway charge (using existing function from StoreContext)
   const orderType = sessionStorage.getItem('orderType') as 'dine-in' | 'takeaway' | 'pickup' | 'delivery' || 'dine-in';
 
@@ -1769,14 +1776,157 @@ const PaymentPage: React.FC = () => {
                   fontSize: '14px',
                   fontWeight: '600',
                   cursor: 'pointer',
-                  marginBottom: '8px'
+                  marginBottom: '12px'
                 }}
               >
                 Login as Member
               </button>
-              <div style={{ fontSize: '12px', color: '#6B7280', textAlign: 'center' }}>
-                Not a member yet? Click "Guest Or Register" button above to sign up
+              <div style={{ fontSize: '13px', color: '#6B7280', textAlign: 'center', marginBottom: '8px' }}>
+                <span
+                  onClick={() => {
+                    setShowForgotPassword(true);
+                    setForgotPasswordSent(false);
+                    setForgotPasswordError('');
+                    setForgotEmail('');
+                  }}
+                  style={{ color: '#635BFF', cursor: 'pointer', textDecoration: 'underline' }}
+                >
+                  Forgot password?
+                </span>
               </div>
+              <div style={{ fontSize: '13px', color: '#6B7280', textAlign: 'center' }}>
+                Not a member yet?{' '}
+                <span
+                  onClick={() => {
+                    setShowMemberForm(false);
+                    setShowGuestForm(true);
+                    setShowRegisterForm(true);
+                  }}
+                  style={{ color: '#635BFF', cursor: 'pointer', textDecoration: 'underline' }}
+                >
+                  Sign up here
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Forgot Password Inline Form */}
+          {showForgotPassword && !currentCustomer && (
+            <div style={{
+              marginTop: '16px',
+              padding: '16px',
+              background: '#F9FAFB',
+              borderRadius: '8px',
+              border: '1px solid #E5E7EB'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <span style={{ fontWeight: '600', color: '#1F2937' }}>Reset Password</span>
+                <span
+                  onClick={() => setShowForgotPassword(false)}
+                  style={{ cursor: 'pointer', color: '#6B7280', fontSize: '18px' }}
+                >
+                  ×
+                </span>
+              </div>
+
+              {!forgotPasswordSent ? (
+                <>
+                  <p style={{ fontSize: '13px', color: '#6B7280', marginBottom: '12px' }}>
+                    Enter your email address and we'll send you a link to reset your password.
+                  </p>
+                  <FormGroup>
+                    <Label>Email Address *</Label>
+                    <Input
+                      type="email"
+                      placeholder="Enter your email"
+                      value={forgotEmail}
+                      onChange={(e) => {
+                        setForgotEmail(e.target.value);
+                        setForgotPasswordError('');
+                      }}
+                    />
+                  </FormGroup>
+                  {forgotPasswordError && (
+                    <div style={{ color: '#DC2626', fontSize: '13px', marginBottom: '12px' }}>
+                      {forgotPasswordError}
+                    </div>
+                  )}
+                  <button
+                    onClick={async () => {
+                      if (!forgotEmail.trim()) {
+                        setForgotPasswordError('Please enter your email address');
+                        return;
+                      }
+                      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                      if (!emailRegex.test(forgotEmail)) {
+                        setForgotPasswordError('Please enter a valid email address');
+                        return;
+                      }
+                      setForgotPasswordLoading(true);
+                      try {
+                        const response = await fetch('/api/customers/forgot-password', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ email: forgotEmail.trim(), slug })
+                        });
+                        const result = await response.json();
+                        if (result.emailExists === false) {
+                          setForgotPasswordError('No account found with this email. Would you like to sign up?');
+                        } else {
+                          setForgotPasswordSent(true);
+                        }
+                      } catch (error) {
+                        setForgotPasswordError('Failed to send reset email. Please try again.');
+                      } finally {
+                        setForgotPasswordLoading(false);
+                      }
+                    }}
+                    disabled={forgotPasswordLoading}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      background: '#635BFF',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: forgotPasswordLoading ? 'not-allowed' : 'pointer',
+                      opacity: forgotPasswordLoading ? 0.7 : 1
+                    }}
+                  >
+                    {forgotPasswordLoading ? 'Sending...' : 'Send Reset Link'}
+                  </button>
+                </>
+              ) : (
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '32px', marginBottom: '12px' }}>✓</div>
+                  <p style={{ fontSize: '14px', color: '#059669', fontWeight: '500', marginBottom: '8px' }}>
+                    Reset link sent!
+                  </p>
+                  <p style={{ fontSize: '13px', color: '#6B7280', marginBottom: '16px' }}>
+                    Check your email ({forgotEmail}) for the password reset link.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setShowForgotPassword(false);
+                      setForgotPasswordSent(false);
+                    }}
+                    style={{
+                      padding: '10px 20px',
+                      background: 'transparent',
+                      color: '#635BFF',
+                      border: '1px solid #635BFF',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Back to Login
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

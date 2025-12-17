@@ -265,10 +265,15 @@ const InstructionsInput = styled.textarea`
   border: 1px solid #E5E7EB;
   border-radius: 6px;
   padding: 12px;
-  font-size: 14px;
+  font-size: 16px; /* iOS zoom 방지 */
   resize: none;
   font-family: inherit;
   box-sizing: border-box;
+  height: 80px;
+  min-height: 80px;
+  max-height: 80px;
+  overflow-y: auto;
+  -webkit-appearance: none;
 
   &:focus {
     outline: none;
