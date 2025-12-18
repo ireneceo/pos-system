@@ -1,10 +1,35 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled from 'styled-components';
 import { useParams, useNavigate } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
-import { useMenu } from '../../contexts/MenuContext';
 import { formatCurrency } from '../../utils/currency';
+
+interface MenuCategory {
+  id: string;
+  name: string;
+  emoji: string;
+}
+
+interface MenuItem {
+  id: string;
+  code?: string;
+  name: string;
+  price: number;
+  categoryId: string;
+  emoji?: string;
+  image?: string;
+  is_set_menu?: boolean;
+  set_items?: Array<{ name: string; quantity: number }>;
+}
+
+interface PaginationInfo {
+  page: number;
+  limit: number;
+  totalItems: number;
+  totalPages: number;
+  hasMore: boolean;
+}
 
 const StoreHeader = styled.div`
   background: white;
@@ -65,44 +90,6 @@ const CategoryTab = styled.button<{ active: boolean }>`
   }
 `;
 
-const MenuContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-`;
-
-const CategorySection = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-`;
-
-const CategoryHeader = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 0;
-  border-bottom: 1px solid #E5E7EB;
-  margin-bottom: 4px;
-`;
-
-const CategoryEmoji = styled.span`
-  font-size: 20px;
-`;
-
-const CategoryTitle = styled.h3`
-  font-size: 16px;
-  font-weight: 600;
-  color: #1F2937;
-  margin: 0;
-`;
-
-const CategoryCount = styled.span`
-  font-size: 13px;
-  color: #9CA3AF;
-  margin-left: auto;
-`;
-
 const MenuGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -116,7 +103,8 @@ const MenuItemCard = styled.div`
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   cursor: pointer;
   transition: transform 0.2s;
-  
+  position: relative;
+
   &:active {
     transform: scale(0.98);
   }
@@ -227,18 +215,27 @@ const LoadingContainer = styled.div`
   color: #9CA3AF;
 `;
 
+const LoadingMore = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  color: #9CA3AF;
+  font-size: 14px;
+`;
+
 const EmptyState = styled.div`
   text-align: center;
   padding: 40px 0;
   color: #9CA3AF;
-  
+
   svg {
     width: 64px;
     height: 64px;
     margin-bottom: 16px;
     opacity: 0.5;
   }
-  
+
   p {
     font-size: 16px;
     margin: 0;
@@ -263,11 +260,18 @@ const FloatingCartButton = styled.button`
   cursor: pointer;
   z-index: 90;
   transition: transform 0.2s;
-  
+
   &:active {
     transform: scale(0.95);
   }
 `;
+
+const LoadTrigger = styled.div`
+  height: 20px;
+  width: 100%;
+`;
+
+const ITEMS_PER_PAGE = 20;
 
 const MenuPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -282,79 +286,143 @@ const MenuPage: React.FC = () => {
     setError
   } = useMobileOrder();
 
-  const { categories, menuItems, getItemsByCategory } = useMenu();
-
+  const [categories, setCategories] = useState<MenuCategory[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  useEffect(() => {
-    loadMenu();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug]);
+  const loadTriggerRef = useRef<HTMLDivElement>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
-  const loadMenu = async () => {
+  // Load initial menu data
+  const loadMenu = useCallback(async (categoryId?: string, page: number = 1, append: boolean = false) => {
     if (!slug) return;
 
-    setIsLoading(true);
+    if (page === 1) {
+      setIsLoading(true);
+    } else {
+      setIsLoadingMore(true);
+    }
+
     try {
-      // Load restaurant info by slug
-      const response = await fetch(`/api/restaurants/slug/${slug}`);
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && result.data) {
-          setCurrentStore({
-            id: result.data.id.toString(),
-            name: result.data.name,
-            slug: result.data.slug,
-            description: result.data.description || '',
-            logo: result.data.logo_url || '',
-            isOpen: result.data.status === 'active',
-            openingHours: result.data.opening_hours || {}
-          });
+      // Load restaurant info by slug (only on first page)
+      if (page === 1) {
+        const storeResponse = await fetch(`/api/restaurants/slug/${slug}`);
+        if (storeResponse.ok) {
+          const result = await storeResponse.json();
+          if (result.success && result.data) {
+            setCurrentStore({
+              id: result.data.id.toString(),
+              name: result.data.name,
+              slug: result.data.slug,
+              description: result.data.description || '',
+              logo: result.data.logo_url || '',
+              isOpen: result.data.status === 'active',
+              openingHours: result.data.opening_hours || {}
+            });
+          }
         }
       }
 
-      // Menu data is now loaded from MenuContext
-      console.log('MenuPage - Using unified menu data:', { categoriesCount: categories.length, itemsCount: menuItems.length });
-      setSelectedCategory('all');
+      // Load menu items with pagination
+      let url = `/api/mobile/menu/${slug}?page=${page}&limit=${ITEMS_PER_PAGE}`;
+      if (categoryId && categoryId !== 'all') {
+        url += `&categoryId=${categoryId}`;
+      }
+
+      const menuResponse = await fetch(url);
+      if (menuResponse.ok) {
+        const result = await menuResponse.json();
+        if (result.success && result.data) {
+          // Set categories (only on first page)
+          if (page === 1) {
+            setCategories(result.data.categories || []);
+          }
+
+          // Transform items
+          const items: MenuItem[] = (result.data.items || []).map((item: any) => ({
+            id: item.id.toString(),
+            code: item.code,
+            name: item.name,
+            price: parseFloat(item.price),
+            categoryId: item.categoryId?.toString() || '',
+            emoji: item.emoji || '🍽️',
+            image: item.image,
+            is_set_menu: item.is_set_menu || false,
+            set_items: item.set_items
+          }));
+
+          // Append or replace items
+          if (append) {
+            setMenuItems(prev => [...prev, ...items]);
+          } else {
+            setMenuItems(items);
+          }
+
+          // Set pagination info
+          if (result.pagination) {
+            setPagination(result.pagination);
+          }
+        }
+      }
     } catch (error) {
       setError('Failed to load menu');
       console.error('Error loading menu:', error);
     } finally {
       setIsLoading(false);
+      setIsLoadingMore(false);
     }
-  };
+  }, [slug, setCurrentStore, setError, setIsLoading]);
 
-  const filteredItems = selectedCategory === 'all'
-    ? menuItems
-    : getItemsByCategory(selectedCategory);
+  // Initial load
+  useEffect(() => {
+    loadMenu();
+  }, [slug]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Group items by category for "All" view
-  const groupedItemsByCategory = useMemo(() => {
-    if (selectedCategory !== 'all') return null;
+  // Handle category change
+  const handleCategoryChange = useCallback((categoryId: string) => {
+    setSelectedCategory(categoryId);
+    setMenuItems([]);
+    setPagination(null);
+    loadMenu(categoryId === 'all' ? undefined : categoryId, 1, false);
+  }, [loadMenu]);
 
-    const grouped: { category: typeof categories[0]; items: typeof menuItems }[] = [];
-    const sortedCategories = [...categories].sort((a, b) => a.order - b.order);
+  // Load more items (infinite scroll)
+  const loadMoreItems = useCallback(() => {
+    if (!pagination?.hasMore || isLoadingMore) return;
 
-    sortedCategories.forEach(category => {
-      const categoryItems = menuItems.filter(item => item.category_id === category.id);
-      if (categoryItems.length > 0) {
-        grouped.push({ category, items: categoryItems });
+    const nextPage = pagination.page + 1;
+    loadMenu(selectedCategory === 'all' ? undefined : selectedCategory, nextPage, true);
+  }, [pagination, isLoadingMore, selectedCategory, loadMenu]);
+
+  // Set up Intersection Observer for infinite scroll
+  useEffect(() => {
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && pagination?.hasMore && !isLoadingMore) {
+          loadMoreItems();
+        }
+      },
+      { rootMargin: '100px' }
+    );
+
+    if (loadTriggerRef.current) {
+      observerRef.current.observe(loadTriggerRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
       }
-    });
+    };
+  }, [pagination?.hasMore, isLoadingMore, loadMoreItems]);
 
-    // Also include items without category (if any)
-    const uncategorizedItems = menuItems.filter(item => !item.category_id);
-    if (uncategorizedItems.length > 0) {
-      grouped.push({
-        category: { id: 'uncategorized', name: 'Other', emoji: '📦', order: 999 } as any,
-        items: uncategorizedItems
-      });
-    }
-
-    return grouped;
-  }, [selectedCategory, categories, menuItems]);
-
-  const handleItemClick = useCallback((item: any) => {
+  const handleItemClick = useCallback((item: MenuItem) => {
     navigate(`/mobile/${slug}/item/${item.id}`);
   }, [navigate, slug]);
 
@@ -363,11 +431,10 @@ const MenuPage: React.FC = () => {
   }, [navigate, slug]);
 
   // Render a single menu item card
-  const renderMenuItemCard = useCallback((item: any) => (
+  const renderMenuItemCard = useCallback((item: MenuItem) => (
     <MenuItemCard
       key={item.id}
       onClick={() => handleItemClick(item)}
-      style={{ position: 'relative' }}
     >
       {item.is_set_menu && <SetBadge>SET</SetBadge>}
       <ItemImage hasImage={!!item.image}>
@@ -382,13 +449,13 @@ const MenuPage: React.FC = () => {
         <ItemPrice>{formatCurrency(item.price, currency)}</ItemPrice>
         {item.is_set_menu && item.set_items && item.set_items.length > 0 && (
           <SetItemsPreview>
-            {item.set_items.map((si: any) => `${si.name} x${si.quantity}`).join(', ')}
+            {item.set_items.map((si) => `${si.name} x${si.quantity}`).join(', ')}
           </SetItemsPreview>
         )}
       </ItemInfo>
     </MenuItemCard>
   ), [handleItemClick, currency]);
-  
+
   if (isLoading) {
     return (
       <MobileLayout title="Menu" currentPage="menu">
@@ -396,10 +463,10 @@ const MenuPage: React.FC = () => {
       </MobileLayout>
     );
   }
-  
+
   return (
-    <MobileLayout 
-      title="Menu" 
+    <MobileLayout
+      title="Menu"
       currentPage="menu"
       cartItemCount={cartItems.length}
     >
@@ -411,51 +478,38 @@ const MenuPage: React.FC = () => {
           </StoreStatus>
         </StoreHeader>
       )}
-      
+
       <CategoryTabs>
         <CategoryTab
           active={selectedCategory === 'all'}
-          onClick={() => setSelectedCategory('all')}
+          onClick={() => handleCategoryChange('all')}
         >
           All Items
         </CategoryTab>
-        {categories
-          .slice()
-          .sort((a, b) => a.order - b.order)
-          .map(category => (
+        {categories.map(category => (
           <CategoryTab
             key={category.id}
             active={selectedCategory === category.id}
-            onClick={() => setSelectedCategory(category.id)}
+            onClick={() => handleCategoryChange(category.id)}
           >
             {category.emoji} {category.name}
           </CategoryTab>
         ))}
       </CategoryTabs>
-      
-      {filteredItems.length > 0 ? (
-        selectedCategory === 'all' && groupedItemsByCategory ? (
-          // Show items grouped by category with headers
-          <MenuContainer>
-            {groupedItemsByCategory.map(({ category, items }) => (
-              <CategorySection key={category.id}>
-                <CategoryHeader>
-                  <CategoryEmoji>{category.emoji}</CategoryEmoji>
-                  <CategoryTitle>{category.name}</CategoryTitle>
-                  <CategoryCount>{items.length} items</CategoryCount>
-                </CategoryHeader>
-                <MenuGrid>
-                  {items.map(renderMenuItemCard)}
-                </MenuGrid>
-              </CategorySection>
-            ))}
-          </MenuContainer>
-        ) : (
-          // Show flat grid for specific category
+
+      {menuItems.length > 0 ? (
+        <>
           <MenuGrid>
-            {filteredItems.map(renderMenuItemCard)}
+            {menuItems.map(renderMenuItemCard)}
           </MenuGrid>
-        )
+
+          {/* Infinite scroll trigger */}
+          <LoadTrigger ref={loadTriggerRef} />
+
+          {isLoadingMore && (
+            <LoadingMore>Loading more...</LoadingMore>
+          )}
+        </>
       ) : (
         <EmptyState>
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -465,7 +519,7 @@ const MenuPage: React.FC = () => {
           <p>No items available in this category</p>
         </EmptyState>
       )}
-      
+
       {cartItems.length > 0 && (
         <FloatingCartButton onClick={handleCartClick}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
