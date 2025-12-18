@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2025-12-16
+> **최종 업데이트:** 2025-12-18
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -766,6 +766,140 @@ CREATE TABLE purchase_order_items (
 
 ---
 
+### Phase 8: Restaurant Owner 역할
+
+**목적:** 여러 독립 레스토랑을 소유한 오너가 통합 관리할 수 있는 역할
+
+#### 8.1 역할 정의
+
+**Restaurant Owner의 핵심 특징:**
+- 브랜드/푸드코트와 무관하게 본인 소유 레스토랑 통합 조회
+- 실제 운영(POS, 주문처리)은 Restaurant Admin/Staff가 담당
+
+#### 8.2 권한 구조
+
+**독립 레스토랑 (brand_id = NULL) 소유 시:**
+| 기능 | Restaurant Owner | Restaurant Admin |
+|------|:----------------:|:----------------:|
+| 레스토랑 생성/삭제 | O | X |
+| 레스토랑 설정 변경 | O | O |
+| 메뉴/카테고리/옵션 관리 | O | O |
+| 직원(Staff) 관리 | O | O |
+| 매출/리포트 조회 | O (통합) | O (해당 매장) |
+| POS 터미널 사용 | X | O |
+| 주문 접수/처리 | X | O |
+
+**브랜드 소속 레스토랑 (brand_id = 있음) 소유 시:**
+| 기능 | Restaurant Owner |
+|------|:----------------:|
+| 매출/리포트 조회 | O (읽기 전용) |
+| 그 외 모든 관리 | X (Brand General 권한) |
+| POS 터미널 사용 | X |
+
+#### 8.3 데이터베이스 설계
+```sql
+-- Restaurant 테이블에 owner_id 추가
+ALTER TABLE restaurants ADD COLUMN owner_id INT NULL;
+ALTER TABLE restaurants ADD FOREIGN KEY (owner_id) REFERENCES users(id);
+
+-- User role ENUM에 'Restaurant Owner' 추가
+ALTER TABLE users MODIFY COLUMN role ENUM(
+  'System Admin',
+  'Foodcourt General',
+  'Brand General',
+  'Foodcourt Manager',
+  'Brand Manager',
+  'Restaurant Owner',  -- 신규
+  'Restaurant Admin',
+  'Staff'
+);
+```
+
+#### 8.4 구현 항목
+1. [ ] User role에 'Restaurant Owner' 추가
+2. [ ] Restaurant 테이블에 owner_id 필드 추가
+3. [ ] Restaurant Owner 전용 대시보드 (통합 매출/리포트)
+4. [ ] 레스토랑 전환 기능 (드롭다운)
+5. [ ] 독립 레스토랑 생성 기능
+6. [ ] 브랜드 소속 레스토랑 연결 (Brand General이 owner_id 설정)
+
+#### 8.5 시나리오
+
+**독립 레스토랑 운영:**
+```
+김사장 (Restaurant Owner)
+├── 김사장 치킨집 (독립) → 직접 생성, 전체 관리
+├── 김사장 카페 (독립) → 직접 생성, 전체 관리
+└── 통합 대시보드에서 두 매장 합산 매출 조회
+```
+
+**브랜드 레스토랑 소유:**
+```
+이사장 (Restaurant Owner)
+├── BBQ 강남점 (Brand: BBQ) → Brand General이 owner_id 연결
+│   └── 매출 조회만 가능, 관리는 BBQ본사
+└── 통합 대시보드에서 조회
+```
+
+**독립 → 브랜드 전환:**
+```
+독립 치킨집 → BBQ 프랜차이즈 가입
+- owner_id: 유지
+- brand_id: BBQ 추가
+- 관리 권한: Brand General로 이전
+```
+
+---
+
+### Phase 9: 구독 서비스 구조 개편
+
+**목적:** 역할별 명확한 과금 체계 수립
+
+#### 9.1 과금 원칙
+
+**핵심:** 각 역할이 자기 기능 사용료를 직접 지불
+
+#### 9.2 과금 구조
+
+| 역할 | 과금 유형 |
+|------|----------|
+| Brand General | 기본 무료 + 추가 기능 유료 |
+| Foodcourt General | 기본 무료 + 추가 기능 유료 |
+| Restaurant Owner | 유료 (역할 사용료) |
+| Brand Manager | 유료 (역할 사용료) |
+| Foodcourt Manager | 유료 (역할 사용료) |
+| Restaurant Admin | 유료 (역할 사용료) |
+| Staff | 유료 (역할 사용료) |
+
+#### 9.3 무료 제공 범위 (General 역할)
+
+**Brand General 무료 기능:**
+- 브랜드 생성/관리
+- 소속 레스토랑 조회
+- 기본 대시보드
+- Brand Manager 생성
+
+**Foodcourt General 무료 기능:**
+- 푸드코트 생성/관리
+- 소속 레스토랑 조회
+- 기본 대시보드
+- Foodcourt Manager 생성
+
+**유료 추가 기능 (예시):**
+- 고급 분석/리포트
+- 대량 데이터 내보내기
+- API 접근
+- 우선 지원
+
+#### 9.4 구현 항목
+1. [ ] 역할별 기본/유료 기능 정의
+2. [ ] 구독 플랜 테이블 재설계 (역할 기반)
+3. [ ] 무료 기능 제한 로직
+4. [ ] 유료 기능 활성화 체크
+5. [ ] 과금 대시보드 (System Admin용)
+
+---
+
 ### 개발 우선순위 요약
 
 | 순서 | Phase | 내용 | 상태 |
@@ -775,6 +909,8 @@ CREATE TABLE purchase_order_items (
 | 3 | Phase 5 | 재고 관리 | 📋 다음 개발 |
 | 4 | Phase 6 | 발주 관리 | 대기 중 |
 | 5 | Phase 7 | AI 재고 예측 | 대기 중 |
+| 6 | Phase 8 | Restaurant Owner 역할 | 대기 중 |
+| 7 | Phase 9 | 구독 서비스 구조 개편 | 대기 중 |
 
 ---
 
