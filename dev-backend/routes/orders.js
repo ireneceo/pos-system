@@ -253,6 +253,9 @@ router.post('/', async (req, res) => {
 
     res.status(201).json({ success: true, data: order });
   } catch (error) {
+    console.error('❌ Order creation failed:', error.message);
+    console.error('   Stack:', error.stack);
+    console.error('   Request body:', JSON.stringify(req.body, null, 2).substring(0, 500));
     res.status(400).json({ success: false, error: error.message });
   }
 });
