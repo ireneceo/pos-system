@@ -306,7 +306,8 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: prop
         email: supplier.email || '',
         address: supplier.address || '',
         business_number: supplier.business_number || '',
-        bank_info: supplier.bank_info || '',
+        bank_name: supplier.bank_name || '',
+        bank_account: supplier.bank_account || '',
         payment_terms: supplier.payment_terms || '',
         notes: supplier.notes || ''
       });
@@ -320,7 +321,8 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: prop
         email: '',
         address: '',
         business_number: '',
-        bank_info: '',
+        bank_name: '',
+        bank_account: '',
         payment_terms: '',
         notes: ''
       });
@@ -339,7 +341,8 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: prop
       email: '',
       address: '',
       business_number: '',
-      bank_info: '',
+      bank_name: '',
+      bank_account: '',
       payment_terms: '',
       notes: ''
     });
@@ -667,13 +670,25 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: prop
                 placeholder="e.g., Net 30, COD"
               />
             </UIFormGroup>
+          </UIFormRow>
+
+          <UIFormRow>
             <UIFormGroup>
-              <FormLabel>Bank Info</FormLabel>
+              <FormLabel>Bank Name</FormLabel>
               <FormInput
                 type="text"
-                value={formData.bank_info}
-                onChange={(e) => setFormData({ ...formData, bank_info: e.target.value })}
-                placeholder="Bank account details"
+                value={formData.bank_name}
+                onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
+                placeholder="Bank name"
+              />
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>Bank Account</FormLabel>
+              <FormInput
+                type="text"
+                value={formData.bank_account}
+                onChange={(e) => setFormData({ ...formData, bank_account: e.target.value })}
+                placeholder="Account number"
               />
             </UIFormGroup>
           </UIFormRow>

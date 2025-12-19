@@ -33,6 +33,10 @@ const BrandProductBrand = require('./BrandProductBrand');
 const BrandProductOptionGroupProduct = require('./BrandProductOptionGroupProduct');
 const Supplier = require('./Supplier');
 const SupplierCategory = require('./SupplierCategory');
+const InventoryTransaction = require('./InventoryTransaction');
+const StockTake = require('./StockTake');
+const StockTakeItem = require('./StockTakeItem');
+const StockAlert = require('./StockAlert');
 
 // Define associations
 // Brand - Restaurant associations
@@ -246,6 +250,26 @@ Restaurant.hasMany(SupplierCategory, { foreignKey: 'restaurant_id', as: 'supplie
 Supplier.belongsTo(SupplierCategory, { foreignKey: 'supplier_category_id', as: 'supplierCategory' });
 SupplierCategory.hasMany(Supplier, { foreignKey: 'supplier_category_id', as: 'suppliers' });
 
+// InventoryTransaction associations
+InventoryTransaction.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Restaurant.hasMany(InventoryTransaction, { foreignKey: 'restaurant_id', as: 'inventoryTransactions' });
+InventoryTransaction.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as: 'ingredient' });
+Ingredient.hasMany(InventoryTransaction, { foreignKey: 'ingredient_id', as: 'inventoryTransactions' });
+
+// StockTake associations
+StockTake.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Restaurant.hasMany(StockTake, { foreignKey: 'restaurant_id', as: 'stockTakes' });
+StockTake.hasMany(StockTakeItem, { foreignKey: 'stock_take_id', as: 'items' });
+StockTakeItem.belongsTo(StockTake, { foreignKey: 'stock_take_id', as: 'stockTake' });
+StockTakeItem.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as: 'ingredient' });
+Ingredient.hasMany(StockTakeItem, { foreignKey: 'ingredient_id', as: 'stockTakeItems' });
+
+// StockAlert associations
+StockAlert.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Restaurant.hasMany(StockAlert, { foreignKey: 'restaurant_id', as: 'stockAlerts' });
+StockAlert.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as: 'ingredient' });
+Ingredient.hasMany(StockAlert, { foreignKey: 'ingredient_id', as: 'stockAlerts' });
+
 module.exports = {
   User,
   Restaurant,
@@ -281,5 +305,9 @@ module.exports = {
   BrandProductBrand,
   BrandProductOptionGroupProduct,
   Supplier,
-  SupplierCategory
+  SupplierCategory,
+  InventoryTransaction,
+  StockTake,
+  StockTakeItem,
+  StockAlert
 };

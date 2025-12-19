@@ -230,78 +230,89 @@ Brand General/Manager: 접근 불가 (표시 안됨)
 
 ---
 
-### 📦 Phase 3: Advanced Inventory (2-3주)
+### 📦 Phase 3: Advanced Inventory (진행 중)
 
-**목표:** 실시간 재고 추적 및 자동 차감
+**목표:** 이론재고/실사재고 기반 재고 관리 및 Loss 분석
+
+**📄 상세 설계 문서:** `/var/www/docs/INVENTORY_MANAGEMENT_SYSTEM.md`
+
+#### 핵심 개념
+- **이론 재고**: 초기재고 + 입고 - 판매차감 (시스템 자동 계산)
+- **실사 재고**: 정기적 재고 실사로 측정 (수동 입력)
+- **Loss(로스)**: 이론재고 - 실사재고 (차이 분석)
 
 #### 작업 목록
 
 **3.1 DB 스키마**
-```sql
-- inventory (레스토랑별 재고)
-- inventory_transactions (입출고 내역)
-- stock_alerts (재고 알림)
-```
+- [ ] `inventory_transactions` 테이블 (입출고 내역)
+- [ ] `stock_takes` 테이블 (재고 실사)
+- [ ] `stock_take_items` 테이블 (실사 상세)
+- [ ] `stock_alerts` 테이블 (재고 알림)
+- [ ] `ingredients` 테이블 필드 추가 (last_actual_stock, avg_daily_usage 등)
 
 **3.2 Backend**
-- [ ] Models: Inventory, InventoryTransaction, StockAlert
-- [ ] APIs: 재고 조회, 조정, 실사
-- [ ] 자동 재고 차감 (Order 생성 시)
+- [ ] Models: InventoryTransaction, StockTake, StockTakeItem, StockAlert
+- [ ] APIs: 재고 현황, 입출고, 실사, 알림
+- [ ] 자동 재고 차감 로직 (Order 생성 시)
+- [ ] 발주 제안 계산 로직
 
 **3.3 Frontend**
-- [ ] `/pos/inventory` - 재고 현황
-- [ ] `/pos/inventory/transactions` - 거래 내역
-- [ ] `/pos/inventory/stock-take` - 재고 실사
-- [ ] `/pos/inventory/alerts` - 알림
+- [ ] `/restaurant/:id/inventory` - 재고 현황 대시보드
+- [ ] `/restaurant/:id/inventory/list` - 재고 목록 (입고/출고/폐기)
+- [ ] `/restaurant/:id/inventory/stock-take` - 재고 실사
+- [ ] `/restaurant/:id/inventory/history` - 거래 내역
 
 **3.4 Integration**
 - [ ] Order → Recipe → Inventory 자동 차감
-- [ ] 최소 재고 도달 시 알림
+- [ ] 최소 재고 도달 시 알림 생성
+- [ ] 발주 필요 수량 자동 계산
 
 **산출물:**
-- ✅ 실시간 재고 추적
-- ✅ 주문 시 자동 재고 차감
-- ✅ 재고 알림 시스템
+- 초기 재고 설정 및 수동 입출고
+- 주문 시 레시피 기반 자동 재고 차감
+- 정기 재고 실사 및 Loss 분석
+- Low Stock 알림 및 발주 제안
 
 ---
 
-### 🛒 Phase 4: Purchase Order System (2-3주)
+### 🛒 Phase 4: Purchase Order System
 
 **목표:** 체계적 발주 관리
+
+#### 현재 상태
+- [x] `suppliers` 테이블 존재 (Phase 2.5에서 구현)
+- [x] Supplier CRUD 완료
 
 #### 작업 목록
 
 **4.1 DB 스키마**
 ```sql
-- suppliers (공급업체)
-- supplier_ingredients (공급업체-재료 매핑)
 - purchase_orders (발주서)
 - purchase_order_items (발주 상세)
 ```
 
 **4.2 Backend**
-- [ ] Models: Supplier, PurchaseOrder, PurchaseOrderItem
-- [ ] APIs: 공급업체 관리, 발주서 CRUD
-- [ ] 입고 처리 로직
+- [ ] Models: PurchaseOrder, PurchaseOrderItem
+- [ ] APIs: 발주서 CRUD, 입고 처리
+- [ ] 입고 → 재고 증가 연동
 
 **4.3 Frontend**
-- [ ] `/pos/suppliers` - 공급업체 관리
-- [ ] `/pos/purchase-orders` - 발주서 목록
-- [ ] `/pos/purchase-orders/create` - 발주서 생성
-- [ ] `/pos/purchase-orders/:id/receive` - 입고 처리
+- [ ] `/restaurant/:id/purchase-orders` - 발주서 목록
+- [ ] `/restaurant/:id/purchase-orders/create` - 발주서 생성
+- [ ] `/restaurant/:id/purchase-orders/:id/receive` - 입고 처리
 
 **4.4 Integration**
-- [ ] 재고 알림 → 발주 제안
-- [ ] 입고 처리 → 재고 증가
+- [ ] 재고 알림 → 발주 제안 연동
+- [ ] 입고 처리 → inventory_transactions 기록
 
 **산출물:**
-- ✅ 발주서 생성/승인/입고
-- ✅ 공급업체 관리
-- ✅ 자동 발주 제안
+- 발주서 생성/승인/입고
+- 발주 제안 기반 빠른 발주
+- 입고 시 자동 재고 반영
 
 ---
 
-### 🤖 Phase 5: AI Stock Prediction (2주)
+### 🤖 Phase 5: AI Stock Prediction
 
 **목표:** AI 기반 재고 예측 및 최적화
 
