@@ -36,6 +36,20 @@ router.get('/brands/:brandId/suppliers', authenticateToken, isBrandManager, asyn
 });
 
 /**
+ * Generate unique supplier code
+ */
+const generateSupplierCode = async (ownerType, ownerId) => {
+  const prefix = 'SUP';
+  const whereClause = ownerType === 'brand'
+    ? { brand_id: ownerId, owner_type: 'brand' }
+    : { restaurant_id: ownerId, owner_type: 'restaurant' };
+
+  const count = await Supplier.count({ where: whereClause });
+  const nextNum = count + 1;
+  return `${prefix}-${String(nextNum).padStart(3, '0')}`;
+};
+
+/**
  * POST /api/brands/:brandId/suppliers
  * 브랜드 공급업체 생성
  */
@@ -48,12 +62,15 @@ router.post('/brands/:brandId/suppliers', authenticateToken, isBrandManager, asy
       return res.status(400).json({ error: '공급업체 이름은 필수입니다' });
     }
 
+    // Auto-generate code if not provided
+    const finalCode = code || await generateSupplierCode('brand', brandId);
+
     const supplier = await Supplier.create({
       owner_type: 'brand',
       brand_id: brandId,
       restaurant_id: null,
       supplier_category_id: supplier_category_id || null,
-      code,
+      code: finalCode,
       name,
       contact_name,
       phone,
@@ -275,12 +292,15 @@ router.post('/restaurants/:restaurantId/suppliers', authenticateToken, checkRest
       return res.status(400).json({ error: '공급업체 이름은 필수입니다' });
     }
 
+    // Auto-generate code if not provided
+    const finalCode = code || await generateSupplierCode('restaurant', restaurantId);
+
     const supplier = await Supplier.create({
       owner_type: 'restaurant',
       brand_id: null,
       restaurant_id: restaurantId,
       supplier_category_id: supplier_category_id || null,
-      code,
+      code: finalCode,
       name,
       contact_name,
       phone,

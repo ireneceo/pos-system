@@ -4,6 +4,20 @@ const { Recipe, Ingredient, RecipeIngredient, Restaurant, Product, RecipeCategor
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { canEditRecipe, isBrandManager } = require('../middleware/recipeAuth');
 
+/**
+ * Generate unique recipe code
+ */
+const generateRecipeCode = async (ownerType, ownerId) => {
+  const prefix = 'RCP';
+  const whereClause = ownerType === 'brand'
+    ? { brand_id: ownerId, owner_type: 'brand' }
+    : { restaurant_id: ownerId, owner_type: 'restaurant' };
+
+  const count = await Recipe.count({ where: whereClause });
+  const nextNum = count + 1;
+  return `${prefix}-${String(nextNum).padStart(3, '0')}`;
+};
+
 // ============================================
 // Brand Recipes (Brand General/Manager)
 // ============================================
@@ -55,11 +69,15 @@ router.post('/brands/:brandId/recipes', authenticateToken, isBrandManager, async
       return res.status(400).json({ error: '레시피 이름은 필수입니다' });
     }
 
+    // Auto-generate code if not provided
+    const finalCode = req.body.code || await generateRecipeCode('brand', brandId);
+
     // 레시피 생성 (owner_type = 'brand')
     const recipe = await Recipe.create({
       owner_type: 'brand',
       brand_id,
       restaurant_id: null,
+      code: finalCode,
       name: name.trim(),
       description: description || null,
       category: category || null,
@@ -326,11 +344,15 @@ router.post('/restaurants/:restaurantId/recipes', authenticateToken, checkRestau
       return res.status(400).json({ error: '레시피 이름은 필수입니다' });
     }
 
+    // Auto-generate code if not provided
+    const finalCode = req.body.code || await generateRecipeCode('restaurant', restaurantId);
+
     // 레시피 생성 (owner_type = 'restaurant')
     const recipe = await Recipe.create({
       owner_type: 'restaurant',
       brand_id: null,
       restaurant_id: restaurantId,
+      code: finalCode,
       name: name.trim(),
       description: description || null,
       category: category || null,

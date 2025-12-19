@@ -4,6 +4,20 @@ const { Ingredient, IngredientCategory, Restaurant, Supplier } = require('../mod
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
 
+/**
+ * Generate unique ingredient code
+ */
+const generateIngredientCode = async (ownerType, ownerId) => {
+  const prefix = 'ING';
+  const whereClause = ownerType === 'brand'
+    ? { brand_id: ownerId, owner_type: 'brand' }
+    : { restaurant_id: ownerId, owner_type: 'restaurant' };
+
+  const count = await Ingredient.count({ where: whereClause });
+  const nextNum = count + 1;
+  return `${prefix}-${String(nextNum).padStart(3, '0')}`;
+};
+
 // ============================================
 // Brand Ingredients
 // ============================================
@@ -51,12 +65,15 @@ router.post('/brands/:brandId/ingredients', authenticateToken, isBrandManager, a
     const brand_id = brandId;
     const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock } = req.body;
 
+    // Auto-generate code if not provided
+    const finalCode = code || await generateIngredientCode('brand', brandId);
+
     const ingredient = await Ingredient.create({
       owner_type: 'brand',
       brand_id,
       restaurant_id: null,
       ingredient_category_id: ingredient_category_id || null,
-      code,
+      code: finalCode,
       name,
       image_url: image_url || null,
       category,
@@ -229,12 +246,15 @@ router.post('/restaurants/:restaurantId/ingredients', authenticateToken, checkRe
     const { restaurantId } = req.params;
     const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock } = req.body;
 
+    // Auto-generate code if not provided
+    const finalCode = code || await generateIngredientCode('restaurant', restaurantId);
+
     const ingredient = await Ingredient.create({
       owner_type: 'restaurant',
       brand_id: null,
       restaurant_id: restaurantId,
       ingredient_category_id: ingredient_category_id || null,
-      code,
+      code: finalCode,
       name,
       image_url: image_url || null,
       category,

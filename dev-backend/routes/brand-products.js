@@ -14,6 +14,16 @@ const { authenticateToken } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
 
 /**
+ * Generate unique product SKU
+ */
+const generateProductSKU = async () => {
+  const prefix = 'PRD';
+  const count = await BrandProduct.count();
+  const nextNum = count + 1;
+  return `${prefix}-${String(nextNum).padStart(3, '0')}`;
+};
+
+/**
  * Sync brand product to ingredients table
  * Creates or updates ingredient records for each brand linked to the product
  */
@@ -551,12 +561,15 @@ router.post('/brand-products', authenticateToken, isBrandManager, async (req, re
       return res.status(400).json({ error: 'Product name is required' });
     }
 
+    // Auto-generate SKU if not provided
+    const finalSku = sku || await generateProductSKU();
+
     // Create product
     const product = await BrandProduct.create({
       category_id: category_id || null,
       name: name.trim(),
       description: description || null,
-      sku: sku || null,
+      sku: finalSku,
       unit: unit || null,
       base_quantity: base_quantity || 1,
       unit_price: unit_price || 0,
