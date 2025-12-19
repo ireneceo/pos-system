@@ -100,6 +100,10 @@ const RecipesPage = React.lazy(() => import('./pages/Recipes/RecipesPage'));
 const IngredientsPage = React.lazy(() => import('./pages/Ingredients/IngredientsPage'));
 const SuppliersPage = React.lazy(() => import('./pages/Suppliers/SuppliersPage'));
 
+// Inventory Management
+const InventoryPage = React.lazy(() => import('./pages/Inventory/InventoryPage'));
+const StockTakePage = React.lazy(() => import('./pages/Inventory/StockTakePage'));
+
 // Brand Product Management
 const BrandProductManagementPage = React.lazy(() => import('./pages/BrandProductManagement/BrandProductManagementPage'));
 
@@ -660,6 +664,28 @@ function App() {
                       <Route path="/restaurant/:restaurantId/notification-settings" element={
                         <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin']}>
                           <NotificationSettingsPage />
+                        </ProtectedRoute>
+                      } />
+
+                      {/* Inventory Management Routes */}
+                      <Route path="/restaurant/:restaurantId/inventory" element={
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
+                          <InventoryPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/restaurant/:restaurantId/stock-take" element={
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
+                          <StockTakePage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/restaurants/:restaurantId/inventory" element={
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
+                          <InventoryPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/restaurants/:restaurantId/stock-take" element={
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
+                          <StockTakePage />
                         </ProtectedRoute>
                       } />
                     </Routes>
