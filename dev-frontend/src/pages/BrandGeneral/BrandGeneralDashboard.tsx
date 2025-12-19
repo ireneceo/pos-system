@@ -4,6 +4,8 @@ import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { TabContainer, Tab, DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue, ModalComponent, FormGroup, FormLabel, FormInput, Button } from '../../components/UI';
 import ConfirmModal from '../../components/ConfirmModal';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { formatCurrency } from '../../utils/currency';
 
 interface BrandMetrics {
   totalBrands: number;
@@ -335,6 +337,14 @@ const BrandGeneralDashboard: React.FC = () => {
   const [, setRevenueData] = useState<RevenueData[]>([]);
   const [timePeriod, setTimePeriod] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
   const [showManagerModal, setShowManagerModal] = useState(false);
+  const { defaultCurrency } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+
+  useEffect(() => {
+    if (defaultCurrency) {
+      setSelectedCurrency(defaultCurrency);
+    }
+  }, [defaultCurrency]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedManager, setSelectedManager] = useState<BrandManager | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -598,7 +608,7 @@ const BrandGeneralDashboard: React.FC = () => {
                   <DashboardStatLabel>Total Franchises</DashboardStatLabel>
                 </DashboardStatCard>
                 <DashboardStatCard>
-                  <DashboardStatValue>RM {(metrics.monthlyRevenue / 1000).toFixed(0)}K</DashboardStatValue>
+                  <DashboardStatValue>{formatCurrency(metrics.monthlyRevenue, selectedCurrency)}</DashboardStatValue>
                   <DashboardStatLabel>Monthly Revenue</DashboardStatLabel>
                 </DashboardStatCard>
                 <DashboardStatCard>
@@ -639,7 +649,7 @@ const BrandGeneralDashboard: React.FC = () => {
                   </QuickStatItem>
                   <QuickStatItem>
                     <QuickStatLabel>Average Revenue per Store</QuickStatLabel>
-                    <QuickStatValue>RM {(metrics.averageRevenuePerStore).toFixed(0)}</QuickStatValue>
+                    <QuickStatValue>{formatCurrency(metrics.averageRevenuePerStore, selectedCurrency)}</QuickStatValue>
                   </QuickStatItem>
                   <QuickStatItem>
                     <QuickStatLabel>Growth Rate (vs Last Month)</QuickStatLabel>
@@ -674,7 +684,7 @@ const BrandGeneralDashboard: React.FC = () => {
                       </ManagerHeader>
                       <ManagerInfo>
                         <span>{manager.assignedBrand} • {manager.storeCount} stores</span>
-                        <span>RM {(manager.monthlyRevenue / 1000).toFixed(0)}K/month</span>
+                        <span>{formatCurrency(manager.monthlyRevenue, selectedCurrency)}/month</span>
                       </ManagerInfo>
                       <ManagerInfo style={{ marginTop: '4px' }}>
                         <span>{manager.email}</span>

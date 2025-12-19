@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 // Updated with new UI components
 import styled from 'styled-components';
@@ -20,6 +20,8 @@ import {
   Tab
 } from '../../components/UI';
 import SearchableSelect from '../../components/Common/SearchableSelect';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { formatCurrency } from '../../utils/currency';
 
 // Styled Components
 const Container = styled.div`

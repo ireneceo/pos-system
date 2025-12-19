@@ -6,6 +6,8 @@ import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import CustomerModal from '../../components/Customer/CustomerModal';
 import Modal, { ModalButton } from '../../components/UI/Modal';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { formatCurrency } from '../../utils/currency';
 
 // 스타일 컴포넌트
 const CustomersContainer = styled.div`

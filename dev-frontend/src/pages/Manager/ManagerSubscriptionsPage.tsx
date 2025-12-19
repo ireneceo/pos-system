@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { formatCurrency } from '../../utils/currency';
 
 interface Subscription {
   id: string;
@@ -359,6 +361,14 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'danger' }>`
 const ManagerSubscriptionsPage: React.FC = () => {
   const { user } = useAuth();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const { defaultCurrency } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+
+  useEffect(() => {
+    if (defaultCurrency) {
+      setSelectedCurrency(defaultCurrency);
+    }
+  }, [defaultCurrency]);
 
   useEffect(() => {
     const fetchManagerSubscriptions = async () => {
@@ -515,7 +525,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
               <StatLabel>Non-Active Subscriptions</StatLabel>
             </StatCard>
             <StatCard color="#7C3AED">
-              <StatValue>RM {totalMonthlyFee.toLocaleString()}</StatValue>
+              <StatValue>{formatCurrency(totalMonthlyFee, selectedCurrency)}</StatValue>
               <StatLabel>Monthly Fees</StatLabel>
             </StatCard>
           </StatsGrid>
@@ -527,7 +537,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
                   <RestaurantName>{subscription.restaurantName}</RestaurantName>
                   <PlanInfo>
                     <PlanName>{subscription.planName}</PlanName>
-                    <MonthlyFee>RM {subscription.monthlyFee}/mo</MonthlyFee>
+                    <MonthlyFee>{formatCurrency(subscription.monthlyFee, selectedCurrency)}/mo</MonthlyFee>
                   </PlanInfo>
                 </CardHeader>
 

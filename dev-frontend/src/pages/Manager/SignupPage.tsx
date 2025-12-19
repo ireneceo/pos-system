@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { formatCurrency } from '../../utils/currency';
 
 interface SignupFormData {
   name: string;
@@ -316,6 +318,14 @@ const ManagerSignupPage: React.FC = () => {
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { defaultCurrency } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+
+  useEffect(() => {
+    if (defaultCurrency) {
+      setSelectedCurrency(defaultCurrency);
+    }
+  }, [defaultCurrency]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -526,11 +536,11 @@ const ManagerSignupPage: React.FC = () => {
                   </PriceRow>
                   <PriceRow>
                     <span>Monthly Subscription:</span>
-                    <span>RM {selectedOption.basePrice}</span>
+                    <span>{formatCurrency(selectedOption.basePrice, selectedCurrency)}</span>
                   </PriceRow>
                   <PriceRow>
                     <span>Total Monthly Fee:</span>
-                    <span>RM {calculateTotalPrice()}</span>
+                    <span>{formatCurrency(calculateTotalPrice(), selectedCurrency)}</span>
                   </PriceRow>
                 </PricingInfo>
               )}

@@ -8,6 +8,8 @@ import { StatsGrid, StatCard, StatValue, StatLabel, StatTrend } from '../../comp
 // Using page-specific filter components instead of common ones
 // 매니저는 브랜드 테마 적용 안함
 import { BaseRestaurant } from '../../interfaces/Restaurant';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { formatCurrency } from '../../utils/currency';
 
 interface Restaurant extends Omit<BaseRestaurant, 'status'> {
   status: 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled';
@@ -588,6 +590,14 @@ const ManagerRestaurantsPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const { defaultCurrency } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+
+  useEffect(() => {
+    if (defaultCurrency) {
+      setSelectedCurrency(defaultCurrency);
+    }
+  }, [defaultCurrency]);
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -1142,7 +1152,7 @@ const ManagerRestaurantsPage: React.FC = () => {
               <StatTrend trend="up">{Math.round((activeRestaurants/totalRestaurants)*100)}% operational</StatTrend>
             </StatCard>
             <StatCard color="#7C3AED">
-              <StatValue>RM {totalSales.toLocaleString()}</StatValue>
+              <StatValue>{formatCurrency(totalSales, selectedCurrency)}</StatValue>
               <StatLabel>Today's Total Sales</StatLabel>
               <StatTrend trend="up">+24% vs yesterday</StatTrend>
             </StatCard>
@@ -1246,7 +1256,7 @@ const ManagerRestaurantsPage: React.FC = () => {
 
                 <MetricsGrid>
                   <Metric>
-                    <MetricValue>RM {restaurant.todaySales.toLocaleString()}</MetricValue>
+                    <MetricValue>{formatCurrency(restaurant.todaySales, selectedCurrency)}</MetricValue>
                     <MetricLabel>Today's Sales</MetricLabel>
                   </Metric>
                   <Metric>
@@ -1370,9 +1380,9 @@ const ManagerRestaurantsPage: React.FC = () => {
                       });
                     }}
                   >
-                    <option value="Basic Plan">Basic Plan (RM 29/month)</option>
-                    <option value="Professional Plan">Professional Plan (RM 99/month)</option>
-                    <option value="Enterprise Plan">Enterprise Plan (RM 199/month)</option>
+                    <option value="Basic Plan">Basic Plan ({formatCurrency(29, selectedCurrency)}/month)</option>
+                    <option value="Professional Plan">Professional Plan ({formatCurrency(99, selectedCurrency)}/month)</option>
+                    <option value="Enterprise Plan">Enterprise Plan ({formatCurrency(199, selectedCurrency)}/month)</option>
                   </FormSelect>
                 </FormGroup>
 
@@ -1585,9 +1595,9 @@ const ManagerRestaurantsPage: React.FC = () => {
                       });
                     }}
                   >
-                    <option value="Basic Plan">Basic Plan (RM 29/month)</option>
-                    <option value="Professional Plan">Professional Plan (RM 99/month)</option>
-                    <option value="Enterprise Plan">Enterprise Plan (RM 199/month)</option>
+                    <option value="Basic Plan">Basic Plan ({formatCurrency(29, selectedCurrency)}/month)</option>
+                    <option value="Professional Plan">Professional Plan ({formatCurrency(99, selectedCurrency)}/month)</option>
+                    <option value="Enterprise Plan">Enterprise Plan ({formatCurrency(199, selectedCurrency)}/month)</option>
                   </FormSelect>
                 </FormGroup>
 

@@ -6,6 +6,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI/Modal';
 import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
 import ConfirmModal from '../../components/ConfirmModal';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 
 interface RecipesTabProps {
   brandId: number | null;
@@ -823,12 +825,20 @@ const RecipeDetailText = styled.div`
 
 const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRestaurantId, onCountChange, categoryRefreshKey }) => {
   const { user } = useAuth();
+  const { defaultCurrency } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
   // URL 파라미터의 restaurantId가 우선, 없으면 user.restaurant_id 또는 user.restaurantId 사용
   const effectiveRestaurantId = propsRestaurantId || user?.restaurant_id || user?.restaurantId;
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [recipeCategories, setRecipeCategories] = useState<RecipeCategory[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (defaultCurrency) {
+      setSelectedCurrency(defaultCurrency);
+    }
+  }, [defaultCurrency]);
 
   // Get initial search term from URL parameter
   const getInitialSearchTerm = () => {
@@ -1463,11 +1473,11 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               <RecipeCosts>
                 <CostItem>
                   <CostLabel>Cost</CostLabel>
-                  <CostValue>RM {Number(recipe.total_ingredient_cost || 0).toFixed(2)}</CostValue>
+                  <CostValue>{formatCurrency(Number(recipe.total_ingredient_cost || 0), selectedCurrency)}</CostValue>
                 </CostItem>
                 <CostItem>
                   <CostLabel>Suggested</CostLabel>
-                  <CostValue>RM {Number(recipe.suggested_price || 0).toFixed(2)}</CostValue>
+                  <CostValue>{formatCurrency(Number(recipe.suggested_price || 0), selectedCurrency)}</CostValue>
                 </CostItem>
               </RecipeCosts>
 
@@ -1581,11 +1591,11 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               <ViewGrid>
                 <ViewGridItem>
                   <ViewGridLabel>Ingredient Cost</ViewGridLabel>
-                  <ViewGridValue>RM {Number(selectedRecipe.total_ingredient_cost || 0).toFixed(2)}</ViewGridValue>
+                  <ViewGridValue>{formatCurrency(Number(selectedRecipe.total_ingredient_cost || 0), selectedCurrency)}</ViewGridValue>
                 </ViewGridItem>
                 <ViewGridItem>
                   <ViewGridLabel>Suggested Price</ViewGridLabel>
-                  <ViewGridValue>RM {Number(formData.suggested_price || 0).toFixed(2)}</ViewGridValue>
+                  <ViewGridValue>{formatCurrency(Number(formData.suggested_price || 0), selectedCurrency)}</ViewGridValue>
                 </ViewGridItem>
                 {formData.prep_time && (
                   <ViewGridItem>
@@ -1623,8 +1633,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                         <tr key={idx}>
                           <td><strong>{ingredient?.name || `Ingredient #${ri.ingredient_id}`}</strong></td>
                           <td>{ri.quantity} {ri.unit}</td>
-                          <td>RM {Number(ingredient?.unit_cost || 0).toFixed(2)}/{ingredient?.unit}</td>
-                          <td>RM {subtotal.toFixed(2)}</td>
+                          <td>{formatCurrency(Number(ingredient?.unit_cost || 0), selectedCurrency)}/{ingredient?.unit}</td>
+                          <td>{formatCurrency(subtotal, selectedCurrency)}</td>
                         </tr>
                       );
                     })}
@@ -1632,7 +1642,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                 </ViewIngredientTable>
                 <ViewTotalRow>
                   <span>Total Ingredient Cost</span>
-                  <span>RM {calculateTotalCost().toFixed(2)}</span>
+                  <span>{formatCurrency(calculateTotalCost(), selectedCurrency)}</span>
                 </ViewTotalRow>
               </ViewSection>
             )}
@@ -1821,7 +1831,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                       <option value={0}>Select ingredient...</option>
                       {ingredients.map(ing => (
                         <option key={ing.id} value={ing.id}>
-                          {ing.name} (RM {Number(ing.unit_cost).toFixed(2)}/{ing.unit})
+                          {ing.name} ({getCurrencySymbol(selectedCurrency)} {Number(ing.unit_cost).toFixed(2)}/{ing.unit})
                         </option>
                       ))}
                     </FormSelect>
@@ -1860,7 +1870,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               {recipeIngredients.length > 0 && (
                 <CostSummary>
                   <CostSummaryLabel>Total Ingredient Cost</CostSummaryLabel>
-                  <CostSummaryValue>RM {calculateTotalCost().toFixed(2)}</CostSummaryValue>
+                  <CostSummaryValue>{formatCurrency(calculateTotalCost(), selectedCurrency)}</CostSummaryValue>
                 </CostSummary>
               )}
             </div>

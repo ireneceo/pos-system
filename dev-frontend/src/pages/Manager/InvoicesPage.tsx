@@ -4,6 +4,7 @@ import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import { API_BASE_URL } from '../../config/api';
 import { formatCurrency } from '../../utils/currency';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 
 interface Invoice {
   id: string;
@@ -505,6 +506,14 @@ const ManagerInvoicesPage: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterMonth, setFilterMonth] = useState('all');
   const [showCreateInvoiceModal, setShowCreateInvoiceModal] = useState(false);
+  const { defaultCurrency } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+
+  useEffect(() => {
+    if (defaultCurrency) {
+      setSelectedCurrency(defaultCurrency);
+    }
+  }, [defaultCurrency]);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -1026,15 +1035,15 @@ const ManagerInvoicesPage: React.FC = () => {
                   <InvoiceSummary>
                     <SummaryRow>
                       <span>Subtotal:</span>
-                      <span>RM {parseFloat(newInvoice.amount || '0').toFixed(2)}</span>
+                      <span>{formatCurrency(parseFloat(newInvoice.amount || '0'), selectedCurrency)}</span>
                     </SummaryRow>
                     <SummaryRow>
                       <span>Tax (6%):</span>
-                      <span>RM {(parseFloat(newInvoice.amount || '0') * 0.06).toFixed(2)}</span>
+                      <span>{formatCurrency(parseFloat(newInvoice.amount || '0') * 0.06, selectedCurrency)}</span>
                     </SummaryRow>
                     <SummaryRow highlight>
                       <span><strong>Total:</strong></span>
-                      <span><strong>RM {(parseFloat(newInvoice.amount || '0') * 1.06).toFixed(2)}</strong></span>
+                      <span><strong>{formatCurrency(parseFloat(newInvoice.amount || '0') * 1.06, selectedCurrency)}</strong></span>
                     </SummaryRow>
                   </InvoiceSummary>
                 )}
@@ -1100,22 +1109,22 @@ const ManagerInvoicesPage: React.FC = () => {
                   <FormLabel>Items</FormLabel>
                   {selectedInvoice.items.map((item, index) => (
                     <div key={index} style={{ padding: '8px', background: '#F8FAFC', borderRadius: '4px', marginBottom: '8px' }}>
-                      {item.description} - RM {item.total.toFixed(2)}
+                      {item.description} - {formatCurrency(item.total, selectedCurrency)}
                     </div>
                   ))}
                 </FormGroup>
                 <InvoiceSummary>
                   <SummaryRow>
                     <span>Subtotal:</span>
-                    <span>RM {selectedInvoice.amount.toFixed(2)}</span>
+                    <span>{formatCurrency(selectedInvoice.amount, selectedCurrency)}</span>
                   </SummaryRow>
                   <SummaryRow>
                     <span>Tax (6%):</span>
-                    <span>RM {selectedInvoice.tax.toFixed(2)}</span>
+                    <span>{formatCurrency(selectedInvoice.tax, selectedCurrency)}</span>
                   </SummaryRow>
                   <SummaryRow highlight>
                     <span>Total:</span>
-                    <span><strong>RM {selectedInvoice.total.toFixed(2)}</strong></span>
+                    <span><strong>{formatCurrency(selectedInvoice.total, selectedCurrency)}</strong></span>
                   </SummaryRow>
                 </InvoiceSummary>
               </ModalBody>
@@ -1181,7 +1190,7 @@ const ManagerInvoicesPage: React.FC = () => {
                     <SummaryRow>
                       <span>Payment Amount:</span>
                       <span style={{ color: '#059669', fontWeight: '600' }}>
-                        RM {selectedInvoice.total.toFixed(2)}
+                        {formatCurrency(selectedInvoice.total, selectedCurrency)}
                       </span>
                     </SummaryRow>
                     <SummaryRow>
@@ -1414,15 +1423,15 @@ const ManagerInvoicesPage: React.FC = () => {
                 <InvoiceSummary>
                   <SummaryRow>
                     <span>Subtotal:</span>
-                    <span>RM {parseFloat(editInvoice.amount || 0).toFixed(2)}</span>
+                    <span>{formatCurrency(parseFloat(editInvoice.amount || 0), selectedCurrency)}</span>
                   </SummaryRow>
                   <SummaryRow>
                     <span>Tax (6%):</span>
-                    <span>RM {parseFloat(editInvoice.tax || 0).toFixed(2)}</span>
+                    <span>{formatCurrency(parseFloat(editInvoice.tax || 0), selectedCurrency)}</span>
                   </SummaryRow>
                   <SummaryRow highlight>
                     <span>Total:</span>
-                    <span><strong>RM {parseFloat(editInvoice.total || 0).toFixed(2)}</strong></span>
+                    <span><strong>{formatCurrency(parseFloat(editInvoice.total || 0), selectedCurrency)}</strong></span>
                   </SummaryRow>
                 </InvoiceSummary>
               </ModalBody>

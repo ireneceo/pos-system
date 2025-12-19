@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { RestaurantSubscription } from '../../interfaces/RestaurantSubscription';
 import { API_BASE_URL } from '../../config/api';
 import { formatCurrency } from '../../utils/currency';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -516,6 +517,14 @@ const ModalButton = styled.button<{ variant?: 'primary' | 'secondary' }>`
 const ManagerSubscriptionsPage: React.FC = () => {
   const { user } = useAuth();
   const [subscriptions, setSubscriptions] = useState<RestaurantSubscription[]>([]);
+  const { defaultCurrency } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+
+  useEffect(() => {
+    if (defaultCurrency) {
+      setSelectedCurrency(defaultCurrency);
+    }
+  }, [defaultCurrency]);
 
   useEffect(() => {
     // 실제 API에서 매니저의 레스토랑 구독 데이터 로드
@@ -945,7 +954,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
                 onClick={() => setSelectedPlan('basic')}
               >
                 <PlanTitle>Basic</PlanTitle>
-                <ModalPlanPrice>RM 29/month</ModalPlanPrice>
+                <ModalPlanPrice>{formatCurrency(29, selectedCurrency)}/month</ModalPlanPrice>
                 <PlanFeatures>
                   <li>Up to 1,000 orders/month</li>
                   <li>Basic analytics</li>
@@ -958,7 +967,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
                 onClick={() => setSelectedPlan('professional')}
               >
                 <PlanTitle>Professional</PlanTitle>
-                <ModalPlanPrice>RM 99/month</ModalPlanPrice>
+                <ModalPlanPrice>{formatCurrency(99, selectedCurrency)}/month</ModalPlanPrice>
                 <PlanFeatures>
                   <li>Up to 10,000 orders/month</li>
                   <li>Advanced analytics</li>
@@ -971,7 +980,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
                 onClick={() => setSelectedPlan('enterprise')}
               >
                 <PlanTitle>Enterprise</PlanTitle>
-                <ModalPlanPrice>RM 199/month</ModalPlanPrice>
+                <ModalPlanPrice>{formatCurrency(199, selectedCurrency)}/month</ModalPlanPrice>
                 <PlanFeatures>
                   <li>Unlimited orders</li>
                   <li>Custom analytics</li>
@@ -1058,7 +1067,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
                 onClick={() => setSelectedPlan('basic')}
               >
                 <PlanTitle>Basic</PlanTitle>
-                <ModalPlanPrice>RM 29/month</ModalPlanPrice>
+                <ModalPlanPrice>{formatCurrency(29, selectedCurrency)}/month</ModalPlanPrice>
                 <PlanFeatures>
                   <li>Up to 1,000 orders/month</li>
                   <li>Basic analytics</li>
@@ -1071,7 +1080,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
                 onClick={() => setSelectedPlan('professional')}
               >
                 <PlanTitle>Professional</PlanTitle>
-                <ModalPlanPrice>RM 99/month</ModalPlanPrice>
+                <ModalPlanPrice>{formatCurrency(99, selectedCurrency)}/month</ModalPlanPrice>
                 <PlanFeatures>
                   <li>Up to 10,000 orders/month</li>
                   <li>Advanced analytics</li>
@@ -1084,7 +1093,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
                 onClick={() => setSelectedPlan('enterprise')}
               >
                 <PlanTitle>Enterprise</PlanTitle>
-                <ModalPlanPrice>RM 199/month</ModalPlanPrice>
+                <ModalPlanPrice>{formatCurrency(199, selectedCurrency)}/month</ModalPlanPrice>
                 <PlanFeatures>
                   <li>Unlimited orders</li>
                   <li>Custom analytics</li>

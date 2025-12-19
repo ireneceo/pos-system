@@ -6,6 +6,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormRow as UIFormRow } from '../../components/UI/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
 import SearchableSelect from '../../components/Common/SearchableSelect';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { formatCurrency } from '../../utils/currency';
 
 interface IngredientsTabProps {
   brandId: number | null;
@@ -302,8 +304,16 @@ const HeaderSection = styled.div`
 
 const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: propsRestaurantId, onCountChange, categoryRefreshKey }) => {
   const { user } = useAuth();
+  const { defaultCurrency } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
   // URL 파라미터의 restaurantId가 우선, 없으면 user.restaurant_id 사용
   const effectiveRestaurantId = propsRestaurantId || user?.restaurant_id || (user as any)?.restaurantId;
+
+  useEffect(() => {
+    if (defaultCurrency) {
+      setSelectedCurrency(defaultCurrency);
+    }
+  }, [defaultCurrency]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [ingredientCategories, setIngredientCategories] = useState<IngredientCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -763,7 +773,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
               <IngredientInfo>
                 <InfoRow>
                   <InfoLabel>Unit Cost</InfoLabel>
-                  <InfoValue>RM {Number(ingredient.unit_cost).toFixed(2)}</InfoValue>
+                  <InfoValue>{formatCurrency(Number(ingredient.unit_cost), selectedCurrency)}</InfoValue>
                 </InfoRow>
                 <InfoRow>
                   <InfoLabel>Base Qty / Unit</InfoLabel>

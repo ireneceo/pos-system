@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { formatCurrency } from '../../utils/currency';
 
 interface Restaurant {
   id: string;
@@ -634,6 +636,14 @@ const ManagerPromotionsPage: React.FC = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null);
+  const { defaultCurrency } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+
+  useEffect(() => {
+    if (defaultCurrency) {
+      setSelectedCurrency(defaultCurrency);
+    }
+  }, [defaultCurrency]);
 
   const [newPromotion, setNewPromotion] = useState({
     name: '',
@@ -979,7 +989,7 @@ const ManagerPromotionsPage: React.FC = () => {
             </StatCard>
             <StatCard color="#D97706">
               <StatLabel>Generated Revenue</StatLabel>
-              <StatValue>RM {stats.totalRevenue.toLocaleString()}</StatValue>
+              <StatValue>{formatCurrency(stats.totalRevenue, selectedCurrency)}</StatValue>
               <StatChange positive>From all promotions</StatChange>
             </StatCard>
           </StatsGrid>
@@ -1042,7 +1052,7 @@ const ManagerPromotionsPage: React.FC = () => {
                     </ValueCell>
                     
                     <ValueCell style={{ color: '#059669', fontWeight: '600' }}>
-                      RM {promotion.generatedRevenue.toLocaleString()}
+                      {formatCurrency(promotion.generatedRevenue, selectedCurrency)}
                     </ValueCell>
                     
                     <StatusBadge status={promotion.status}>
@@ -1080,7 +1090,7 @@ const ManagerPromotionsPage: React.FC = () => {
                       
                       <MobilePromotionStats>
                         <span>{promotion.usageCount} used</span>
-                        <span style={{ color: '#059669', fontWeight: '600' }}>RM {promotion.generatedRevenue.toLocaleString()}</span>
+                        <span style={{ color: '#059669', fontWeight: '600' }}>{formatCurrency(promotion.generatedRevenue, selectedCurrency)}</span>
                         <span>{formatDate(promotion.endDate)}</span>
                       </MobilePromotionStats>
                     </MobilePromotionCard>
@@ -1129,7 +1139,7 @@ const ManagerPromotionsPage: React.FC = () => {
                     <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '12px' }}>Usage & Performance</h4>
                     <div style={{ fontSize: '14px', color: '#374151', lineHeight: '1.5' }}>
                       <p><strong>Usage:</strong> {selectedPromotion.usageCount} / {selectedPromotion.usageLimit || '∞'}</p>
-                      <p><strong>Revenue:</strong> RM {selectedPromotion.generatedRevenue.toLocaleString()}</p>
+                      <p><strong>Revenue:</strong> {formatCurrency(selectedPromotion.generatedRevenue, selectedCurrency)}</p>
                       <p><strong>Created:</strong> {formatDate(selectedPromotion.createdDate)}</p>
                     </div>
                   </div>

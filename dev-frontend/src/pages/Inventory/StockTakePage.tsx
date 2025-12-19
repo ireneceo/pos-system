@@ -7,7 +7,9 @@ import {
   Container,
   Header,
   Title,
-  ActionSection
+  ActionSection,
+  Content,
+  Button
 } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
@@ -182,19 +184,53 @@ const ButtonGroup = styled.div`
 const EmptyState = styled.div`
   text-align: center;
   padding: 60px 20px;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #E6EBF1;
 `;
 
 const EmptyTitle = styled.h3`
   font-size: 20px;
   font-weight: 600;
   color: #0A2540;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 `;
 
 const EmptyDescription = styled.p`
   font-size: 14px;
   color: #6B7280;
   margin-bottom: 24px;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.6;
+`;
+
+const GuideBox = styled.div`
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 24px;
+`;
+
+const GuideTitle = styled.h4`
+  font-size: 15px;
+  font-weight: 600;
+  color: #166534;
+  margin-bottom: 12px;
+`;
+
+const GuideList = styled.ol`
+  margin: 0;
+  padding-left: 20px;
+  color: #166534;
+  font-size: 14px;
+  line-height: 1.8;
+`;
+
+const GuideStep = styled.li`
+  margin-bottom: 4px;
 `;
 
 const HistoryList = styled.div`
@@ -520,22 +556,33 @@ const StockTakePage: React.FC = () => {
         <Header>
           <Title>Stock Take</Title>
           <ActionSection>
-            <ThemedButton
+            <Button
               variant="secondary"
               onClick={() => window.location.href = `/restaurant/${restaurantId}/inventory`}
             >
               Back to Inventory
-            </ThemedButton>
+            </Button>
           </ActionSection>
         </Header>
 
-        {currentStockTake ? (
-          <>
-            <InfoBox>
-              Measure and enter the actual quantity of each ingredient.
-              When completed, your stock levels will be updated to match the counted values.
-              Any difference between theoretical and actual stock will be recorded as Loss.
-            </InfoBox>
+        <Content>
+          {currentStockTake ? (
+            <>
+              <GuideBox>
+                <GuideTitle>How to Complete Stock Take</GuideTitle>
+                <GuideList>
+                  <GuideStep>Physically count each ingredient in your inventory</GuideStep>
+                  <GuideStep>Enter the actual quantity in the "Actual Stock" column</GuideStep>
+                  <GuideStep>If there's a variance, select a reason from the dropdown</GuideStep>
+                  <GuideStep>Click "Save Progress" to save your work and continue later</GuideStep>
+                  <GuideStep>When all items are counted, click "Complete Stock Take" to finalize</GuideStep>
+                </GuideList>
+              </GuideBox>
+
+              <InfoBox>
+                The "Theoretical Stock" shows what the system expects based on purchases and sales.
+                Any difference between theoretical and actual stock will be recorded as loss/gain.
+              </InfoBox>
 
             <ProgressText>
               Progress: {countedItems} / {totalItems} items counted
@@ -641,15 +688,26 @@ const StockTakePage: React.FC = () => {
           </>
         ) : (
           <>
+            <GuideBox>
+              <GuideTitle>What is Stock Take?</GuideTitle>
+              <GuideList>
+                <GuideStep>Stock Take is a process of physically counting all ingredients in your inventory</GuideStep>
+                <GuideStep>It helps identify discrepancies between system records and actual stock</GuideStep>
+                <GuideStep>Regular stock takes help reduce loss and improve inventory accuracy</GuideStep>
+                <GuideStep>We recommend doing a stock take at least once a week</GuideStep>
+              </GuideList>
+            </GuideBox>
+
             <EmptyState>
-              <EmptyTitle>Start a New Stock Take</EmptyTitle>
+              <EmptyTitle>Ready to Start?</EmptyTitle>
               <EmptyDescription>
-                Count your physical inventory and compare it with the system records.
-                This helps identify loss and keep your stock levels accurate.
+                Click the button below to begin counting your inventory.
+                You can save your progress and continue later if needed.
+                Once completed, your stock levels will be updated automatically.
               </EmptyDescription>
-              <ThemedButton variant="primary" onClick={handleStartStockTake}>
+              <Button variant="primary" onClick={handleStartStockTake}>
                 Start Stock Take
-              </ThemedButton>
+              </Button>
             </EmptyState>
 
             {stockTakeHistory.length > 0 && (
@@ -676,6 +734,7 @@ const StockTakePage: React.FC = () => {
             )}
           </>
         )}
+        </Content>
       </Container>
     </MainLayout>
   );

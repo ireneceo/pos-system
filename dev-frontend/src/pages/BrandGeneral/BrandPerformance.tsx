@@ -14,6 +14,8 @@ import {
   StatLabel,
   StatDescription
 } from '../../components/UI';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { formatCurrency as formatCurrencyUtil } from '../../utils/currency';
 
 // Filter styles
 const FilterControls = styled.div`
@@ -349,6 +351,14 @@ const BrandPerformance: React.FC = () => {
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [selectedBrandId, setSelectedBrandId] = useState<string>('all');
   const [selectedMetric, setSelectedMetric] = useState('sales');
+  const { defaultCurrency } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+
+  useEffect(() => {
+    if (defaultCurrency) {
+      setSelectedCurrency(defaultCurrency);
+    }
+  }, [defaultCurrency]);
 
   const [brands, setBrands] = useState<Brand[]>([]);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -691,13 +701,9 @@ const BrandPerformance: React.FC = () => {
     };
   }, [filteredRestaurants]);
 
-  const formatCurrency = (amount: number, currency: string = 'RM') => {
-    if (amount >= 1000000) {
-      return `${currency} ${(amount / 1000000).toFixed(1)}M`;
-    } else if (amount >= 1000) {
-      return `${currency} ${(amount / 1000).toFixed(1)}K`;
-    }
-    return `${currency} ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const formatCurrency = (amount: number, currency?: string) => {
+    const currencyCode = currency || selectedCurrency;
+    return formatCurrencyUtil(amount, currencyCode);
   };
 
   const getPeriodLabel = () => {

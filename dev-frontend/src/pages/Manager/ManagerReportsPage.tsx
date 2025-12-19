@@ -5,6 +5,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
 import { FilterBar, FilterSelect } from '../../components/Common/FilterComponents';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { formatCurrency } from '../../utils/currency';
 
 interface Restaurant {
   id: string;
@@ -227,6 +229,15 @@ const ManagerReportsPage: React.FC = () => {
   const location = useLocation();
   const [selectedRestaurant, setSelectedRestaurant] = useState('all');
   const [dateRange, setDateRange] = useState('today');
+  const { defaultCurrency } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+
+  useEffect(() => {
+    if (defaultCurrency) {
+      setSelectedCurrency(defaultCurrency);
+    }
+  }, [defaultCurrency]);
+
   const [restaurants] = useState<Restaurant[]>([
     { id: 'rest-001', name: 'Nasi Lemak Corner', location: 'KLCC' },
     { id: 'rest-002', name: 'Char Kuey Teow King', location: 'Pavilion KL' },
@@ -425,7 +436,7 @@ const ManagerReportsPage: React.FC = () => {
           {/* Sales Summary */}
           <StatsGrid>
             <StatCard>
-              <StatValue>RM {reportData.totalRevenue.toLocaleString()}</StatValue>
+              <StatValue>{formatCurrency(reportData.totalRevenue, selectedCurrency)}</StatValue>
               <StatLabel>Total Revenue</StatLabel>
               <StatTrend trend="up">+18% vs yesterday</StatTrend>
             </StatCard>
@@ -435,7 +446,7 @@ const ManagerReportsPage: React.FC = () => {
               <StatTrend trend="up">+12% vs yesterday</StatTrend>
             </StatCard>
             <StatCard>
-              <StatValue>RM {reportData.averageOrderValue.toFixed(2)}</StatValue>
+              <StatValue>{formatCurrency(reportData.averageOrderValue, selectedCurrency)}</StatValue>
               <StatLabel>Average Order Value</StatLabel>
               <StatTrend trend="up">+5.3% vs yesterday</StatTrend>
             </StatCard>
@@ -560,7 +571,7 @@ const ManagerReportsPage: React.FC = () => {
                       </TableCell>
                       <TableCell style={{ fontWeight: '600' }}>{item.name}</TableCell>
                       <TableCell>{item.quantity}</TableCell>
-                      <TableCell>RM {item.revenue}</TableCell>
+                      <TableCell>{formatCurrency(item.revenue, selectedCurrency)}</TableCell>
                       <TableCell>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <ProgressBar percentage={(item.quantity / maxQuantity) * 100} />
@@ -601,8 +612,8 @@ const ManagerReportsPage: React.FC = () => {
                   <tr key={index}>
                     <TableCell style={{ fontWeight: '600' }}>{hourData.hour}</TableCell>
                     <TableCell>{hourData.orders}</TableCell>
-                    <TableCell>RM {hourData.revenue}</TableCell>
-                    <TableCell>RM {(hourData.revenue / hourData.orders).toFixed(2)}</TableCell>
+                    <TableCell>{formatCurrency(hourData.revenue, selectedCurrency)}</TableCell>
+                    <TableCell>{formatCurrency(hourData.revenue / hourData.orders, selectedCurrency)}</TableCell>
                   </tr>
                 ))}
               </tbody>

@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { formatCurrency } from '../../utils/currency';
 
 const DashboardContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;

@@ -4,6 +4,8 @@ import MainLayout from '../../components/Layout/MainLayout';
 import { TabContainer, Tab, StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useAuth } from '../../contexts/AuthContext';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { formatCurrency } from '../../utils/currency';
 
 interface Staff {
   id: string;
@@ -358,6 +360,15 @@ const ManagerStaffManagementPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [restaurantFilter, setRestaurantFilter] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
+  const { defaultCurrency } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+
+  useEffect(() => {
+    if (defaultCurrency) {
+      setSelectedCurrency(defaultCurrency);
+    }
+  }, [defaultCurrency]);
+
   const [newStaff, setNewStaff] = useState({
     name: '',
     email: '',
@@ -796,7 +807,7 @@ const ManagerStaffManagementPage: React.FC = () => {
               <StatSubtext>From {restaurants.length} restaurants</StatSubtext>
             </StatCard>
             <StatCard color="#DC2626">
-              <StatValue>RM {stats.totalSalary.toLocaleString()}</StatValue>
+              <StatValue>{formatCurrency(stats.totalSalary, selectedCurrency)}</StatValue>
               <StatLabel>Monthly Payroll</StatLabel>
               <StatSubtext>Company staff only</StatSubtext>
             </StatCard>

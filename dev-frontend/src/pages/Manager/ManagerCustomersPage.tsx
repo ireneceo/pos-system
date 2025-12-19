@@ -3,6 +3,8 @@ import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { formatCurrency } from '../../utils/currency';
 
 interface Customer {
   id: string;
@@ -184,6 +186,14 @@ const ManagerCustomersPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [tierFilter, setTierFilter] = useState('all');
   const [selectedRestaurant, setSelectedRestaurant] = useState('all');
+  const { defaultCurrency } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+
+  useEffect(() => {
+    if (defaultCurrency) {
+      setSelectedCurrency(defaultCurrency);
+    }
+  }, [defaultCurrency]);
 
   // Load customers from API
   useEffect(() => {
@@ -267,11 +277,11 @@ const ManagerCustomersPage: React.FC = () => {
               <StatLabel>Active Customers</StatLabel>
             </StatCard>
             <StatCard>
-              <StatValue>RM {totalRevenue.toLocaleString()}</StatValue>
+              <StatValue>{formatCurrency(totalRevenue, selectedCurrency)}</StatValue>
               <StatLabel>Total Revenue</StatLabel>
             </StatCard>
             <StatCard>
-              <StatValue>RM {avgOrderValue.toFixed(2)}</StatValue>
+              <StatValue>{formatCurrency(avgOrderValue, selectedCurrency)}</StatValue>
               <StatLabel>Avg Order Value</StatLabel>
             </StatCard>
           </StatsGrid>
@@ -339,7 +349,7 @@ const ManagerCustomersPage: React.FC = () => {
                       </TableCell>
                       <TableCell>{customer.restaurant}</TableCell>
                       <TableCell>{customer.totalOrders}</TableCell>
-                      <TableCell>RM {customer.totalSpent.toLocaleString()}</TableCell>
+                      <TableCell>{formatCurrency(customer.totalSpent, selectedCurrency)}</TableCell>
                       <TableCell>
                         <StatusBadge status={customer.status}>{customer.status}</StatusBadge>
                       </TableCell>

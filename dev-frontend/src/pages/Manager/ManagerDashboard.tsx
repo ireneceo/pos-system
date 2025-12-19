@@ -4,6 +4,8 @@ import MainLayout from '../../components/Layout/MainLayout';
 import { useNavigate } from 'react-router-dom';
 import { RestaurantSubscription } from '../../interfaces/RestaurantSubscription';
 import { StatsGrid, StatCard, StatLabel, StatValue } from '../../components/UI';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { formatCurrency } from '../../utils/currency';
 
 // API base URL - replaced at build time
 const API_BASE = process.env.REACT_APP_API_URL || '';
@@ -250,6 +252,14 @@ const QuickActionText = styled.div`
 const ManagerDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const { defaultCurrency } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+
+  useEffect(() => {
+    if (defaultCurrency) {
+      setSelectedCurrency(defaultCurrency);
+    }
+  }, [defaultCurrency]);
 
   useEffect(() => {
     const fetchRestaurantsData = async () => {
@@ -328,7 +338,7 @@ const ManagerDashboard: React.FC = () => {
           <StatsGrid>
           <StatCard color="#059669">
             <StatLabel>Today's Total Sales</StatLabel>
-            <StatValue>RM {totalSales.toLocaleString()}</StatValue>
+            <StatValue>{formatCurrency(totalSales, selectedCurrency)}</StatValue>
           </StatCard>
           <StatCard color="#2563EB">
             <StatLabel>Total Orders</StatLabel>
@@ -413,7 +423,7 @@ const ManagerDashboard: React.FC = () => {
               <RestaurantStats>
                 <RestaurantStat>
                   <RestaurantDashboardStatValue>
-                    RM {restaurant.todaySales.toLocaleString()}
+                    {formatCurrency(restaurant.todaySales, selectedCurrency)}
                   </RestaurantDashboardStatValue>
                   <RestaurantDashboardStatLabel>Today's Sales</RestaurantDashboardStatLabel>
                 </RestaurantStat>

@@ -4,6 +4,8 @@ import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { formatCurrency } from '../../utils/currency';
 
 interface DashboardData {
   restaurant: {

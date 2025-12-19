@@ -5,6 +5,7 @@ import MainLayout from '../../components/Layout/MainLayout';
 import { TabContainer, Tab, StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/currency';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -405,6 +406,14 @@ const COLORS = ['#635BFF', '#00D924', '#FF6B6B', '#FFB800', '#0EA5E9', '#8B5CF6'
 const BrandReportsPage: React.FC = () => {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { defaultCurrency } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+
+  useEffect(() => {
+    if (defaultCurrency) {
+      setSelectedCurrency(defaultCurrency);
+    }
+  }, [defaultCurrency]);
 
   // Tab state
   const [activeTab, setActiveTab] = useState<TabType>(() => {
@@ -1177,7 +1186,7 @@ const BrandReportsPage: React.FC = () => {
                 <StatsRow>
                   <StatCard color="#059669">
                     <StatLabel>Total Revenue</StatLabel>
-                    <StatValue>{formatCurrency(salesData.reduce((sum, item) => sum + item.sales, 0), 'RM')}</StatValue>
+                    <StatValue>{formatCurrency(salesData.reduce((sum, item) => sum + item.sales, 0), selectedCurrency)}</StatValue>
                     <StatDescription>{filteredOrders.length} orders in selected period</StatDescription>
                   </StatCard>
                   <StatCard color="#2563EB">
@@ -1187,7 +1196,7 @@ const BrandReportsPage: React.FC = () => {
                   </StatCard>
                   <StatCard color="#DC2626">
                     <StatLabel>Average Order Value</StatLabel>
-                    <StatValue>{formatCurrency(filteredOrders.length > 0 ? (salesData.reduce((sum, item) => sum + item.sales, 0) / filteredOrders.length) : 0, 'RM')}</StatValue>
+                    <StatValue>{formatCurrency(filteredOrders.length > 0 ? (salesData.reduce((sum, item) => sum + item.sales, 0) / filteredOrders.length) : 0, selectedCurrency)}</StatValue>
                     <StatDescription>Per order</StatDescription>
                   </StatCard>
                   <StatCard color="#7C3AED">
@@ -1252,7 +1261,7 @@ const BrandReportsPage: React.FC = () => {
                 <StatsRow>
                   <StatCard color="#059669">
                     <StatLabel>Total Revenue</StatLabel>
-                    <StatValue>{formatCurrency(salesData.reduce((sum, item) => sum + item.sales, 0), 'RM')}</StatValue>
+                    <StatValue>{formatCurrency(salesData.reduce((sum, item) => sum + item.sales, 0), selectedCurrency)}</StatValue>
                     <StatDescription>{filteredOrders.length} orders in selected period</StatDescription>
                   </StatCard>
                   <StatCard color="#2563EB">
@@ -1262,7 +1271,7 @@ const BrandReportsPage: React.FC = () => {
                   </StatCard>
                   <StatCard color="#DC2626">
                     <StatLabel>Average Order Value</StatLabel>
-                    <StatValue>{formatCurrency(filteredOrders.length > 0 ? (salesData.reduce((sum, item) => sum + item.sales, 0) / filteredOrders.length) : 0, 'RM')}</StatValue>
+                    <StatValue>{formatCurrency(filteredOrders.length > 0 ? (salesData.reduce((sum, item) => sum + item.sales, 0) / filteredOrders.length) : 0, selectedCurrency)}</StatValue>
                     <StatDescription>Per order average</StatDescription>
                   </StatCard>
                   <StatCard color="#7C3AED">
@@ -1295,9 +1304,9 @@ const BrandReportsPage: React.FC = () => {
                                 <ExpandIcon expanded={isYearExpanded}>▶</ExpandIcon>
                                 {year}
                               </DrilldownCell>
-                              <DrilldownCell level={0} bold style={{ textAlign: 'right' }}>{formatCurrency(yearInfo.revenue, 'RM')}</DrilldownCell>
+                              <DrilldownCell level={0} bold style={{ textAlign: 'right' }}>{formatCurrency(yearInfo.revenue, selectedCurrency)}</DrilldownCell>
                               <DrilldownCell level={0} bold style={{ textAlign: 'right' }}>{yearInfo.orders}</DrilldownCell>
-                              <DrilldownCell level={0} bold style={{ textAlign: 'right' }}>{formatCurrency(yearInfo.revenue / yearInfo.orders, 'RM')}</DrilldownCell>
+                              <DrilldownCell level={0} bold style={{ textAlign: 'right' }}>{formatCurrency(yearInfo.revenue / yearInfo.orders, selectedCurrency)}</DrilldownCell>
                             </DrilldownRow>
 
                             {isYearExpanded && Object.keys(yearInfo.months).sort((a, b) => b.localeCompare(a)).map(month => {
@@ -1313,9 +1322,9 @@ const BrandReportsPage: React.FC = () => {
                                       <ExpandIcon expanded={isMonthExpanded}>▶</ExpandIcon>
                                       {monthName}
                                     </DrilldownCell>
-                                    <DrilldownCell level={1} style={{ textAlign: 'right' }}>{formatCurrency(monthInfo.revenue, 'RM')}</DrilldownCell>
+                                    <DrilldownCell level={1} style={{ textAlign: 'right' }}>{formatCurrency(monthInfo.revenue, selectedCurrency)}</DrilldownCell>
                                     <DrilldownCell level={1} style={{ textAlign: 'right' }}>{monthInfo.orders}</DrilldownCell>
-                                    <DrilldownCell level={1} style={{ textAlign: 'right' }}>{formatCurrency(monthInfo.revenue / monthInfo.orders, 'RM')}</DrilldownCell>
+                                    <DrilldownCell level={1} style={{ textAlign: 'right' }}>{formatCurrency(monthInfo.revenue / monthInfo.orders, selectedCurrency)}</DrilldownCell>
                                   </DrilldownRow>
 
                                   {isMonthExpanded && Object.keys(monthInfo.days).sort((a, b) => b.localeCompare(a)).map(day => {
@@ -1325,9 +1334,9 @@ const BrandReportsPage: React.FC = () => {
                                     return (
                                       <DrilldownRow key={day} level={2}>
                                         <DrilldownCell level={2}>{dayName}</DrilldownCell>
-                                        <DrilldownCell level={2} style={{ textAlign: 'right', color: '#059669', fontWeight: 500 }}>{formatCurrency(dayInfo.revenue, 'RM')}</DrilldownCell>
+                                        <DrilldownCell level={2} style={{ textAlign: 'right', color: '#059669', fontWeight: 500 }}>{formatCurrency(dayInfo.revenue, selectedCurrency)}</DrilldownCell>
                                         <DrilldownCell level={2} style={{ textAlign: 'right' }}>{dayInfo.orders}</DrilldownCell>
-                                        <DrilldownCell level={2} style={{ textAlign: 'right' }}>{formatCurrency(dayInfo.revenue / dayInfo.orders, 'RM')}</DrilldownCell>
+                                        <DrilldownCell level={2} style={{ textAlign: 'right' }}>{formatCurrency(dayInfo.revenue / dayInfo.orders, selectedCurrency)}</DrilldownCell>
                                       </DrilldownRow>
                                     );
                                   })}
@@ -1365,7 +1374,7 @@ const BrandReportsPage: React.FC = () => {
               </StatCard>
               <StatCard color="#8B5CF6">
                 <StatLabel>Total Revenue</StatLabel>
-                <StatValue>{formatCurrency(allMenuData.reduce((sum, item) => sum + item.revenue, 0), 'RM')}</StatValue>
+                <StatValue>{formatCurrency(allMenuData.reduce((sum, item) => sum + item.revenue, 0), selectedCurrency)}</StatValue>
                 <StatDescription>For selected period</StatDescription>
               </StatCard>
             </StatsRow>
@@ -1394,9 +1403,9 @@ const BrandReportsPage: React.FC = () => {
                         </TableCell>
                         <TableCell style={{ fontWeight: 600 }}>{menu.name}</TableCell>
                         <TableCell><span style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '11px', backgroundColor: '#F3F4F6', color: '#6B7280' }}>{menu.category}</span></TableCell>
-                        <TableCell>{formatCurrency(menu.price, 'RM')}</TableCell>
+                        <TableCell>{formatCurrency(menu.price, selectedCurrency)}</TableCell>
                         <TableCell>{menu.orders.toLocaleString()}</TableCell>
-                        <TableCell>{formatCurrency(menu.revenue, 'RM')}</TableCell>
+                        <TableCell>{formatCurrency(menu.revenue, selectedCurrency)}</TableCell>
                         <TableCell>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <ProgressBar percentage={(menu.orders / maxOrders) * 100} />
@@ -1427,7 +1436,7 @@ const BrandReportsPage: React.FC = () => {
               </StatCard>
               <StatCard color="#FFB800">
                 <StatLabel>Average Spent</StatLabel>
-                <StatValue>{formatCurrency(customers.length > 0 ? (customers.reduce((sum: number, c: any) => sum + parseFloat(c.total_spent || 0), 0) / customers.length) : 0, 'RM')}</StatValue>
+                <StatValue>{formatCurrency(customers.length > 0 ? (customers.reduce((sum: number, c: any) => sum + parseFloat(c.total_spent || 0), 0) / customers.length) : 0, selectedCurrency)}</StatValue>
                 <StatDescription>Per customer</StatDescription>
               </StatCard>
               <StatCard color="#8B5CF6">
@@ -1484,7 +1493,7 @@ const BrandReportsPage: React.FC = () => {
                     <tr key={index}>
                       <TableCell style={{ fontWeight: 600 }}>{item.time}</TableCell>
                       <TableCell>{item.orders}</TableCell>
-                      <TableCell>{formatCurrency(item.revenue, 'RM')}</TableCell>
+                      <TableCell>{formatCurrency(item.revenue, selectedCurrency)}</TableCell>
                       <TableCell>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <ProgressBar percentage={item.efficiency} />
@@ -1544,7 +1553,7 @@ const BrandReportsPage: React.FC = () => {
                         <TableCell style={{ fontWeight: 600 }}>{brand.name}</TableCell>
                         <TableCell style={{ textAlign: 'right' }}>{brand.restaurantCount}</TableCell>
                         <TableCell style={{ textAlign: 'right' }}>{brand.orders.toLocaleString()}</TableCell>
-                        <TableCell style={{ textAlign: 'right', fontWeight: 600, color: '#635BFF' }}>{formatCurrency(brand.revenue, 'RM')}</TableCell>
+                        <TableCell style={{ textAlign: 'right', fontWeight: 600, color: '#635BFF' }}>{formatCurrency(brand.revenue, selectedCurrency)}</TableCell>
                         <TableCell>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <ProgressBar percentage={percentage} />
@@ -1591,7 +1600,7 @@ const BrandReportsPage: React.FC = () => {
                           </span>
                         </TableCell>
                         <TableCell style={{ textAlign: 'right' }}>{restaurant.orders.toLocaleString()}</TableCell>
-                        <TableCell style={{ textAlign: 'right', fontWeight: 600, color: '#635BFF' }}>{formatCurrency(restaurant.revenue, 'RM')}</TableCell>
+                        <TableCell style={{ textAlign: 'right', fontWeight: 600, color: '#635BFF' }}>{formatCurrency(restaurant.revenue, selectedCurrency)}</TableCell>
                         <TableCell>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <ProgressBar percentage={percentage} />

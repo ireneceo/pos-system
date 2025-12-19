@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { formatCurrency } from '../../utils/currency';
 // Chart libraries temporarily removed - will be added when needed
 
 interface RestaurantSales {
@@ -270,6 +272,14 @@ const ManagerSalesPage: React.FC = () => {
   const [selectedRestaurant, setSelectedRestaurant] = useState('all');
   const [dateRange, setDateRange] = useState('today');
   const [restaurantSales, setRestaurantSales] = useState<RestaurantSales[]>([]);
+  const { defaultCurrency } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+
+  useEffect(() => {
+    if (defaultCurrency) {
+      setSelectedCurrency(defaultCurrency);
+    }
+  }, [defaultCurrency]);
 
   useEffect(() => {
     const fetchSalesData = async () => {
@@ -402,7 +412,7 @@ const ManagerSalesPage: React.FC = () => {
           <StatsGrid>
             <StatCard color="#059669">
               <StatLabel>Total Sales</StatLabel>
-              <StatValue>RM {totals.todaySales.toLocaleString()}</StatValue>
+              <StatValue>{formatCurrency(totals.todaySales, selectedCurrency)}</StatValue>
               <StatTrend positive={salesChange > 0}>
                 {salesChange > 0 ? '↑' : '↓'} {Math.abs(salesChange).toFixed(1)}% vs yesterday
               </StatTrend>
@@ -416,7 +426,7 @@ const ManagerSalesPage: React.FC = () => {
             </StatCard>
             <StatCard color="#7C3AED">
               <StatLabel>Average Order Value</StatLabel>
-              <StatValue>RM {averageOrderValue.toFixed(2)}</StatValue>
+              <StatValue>{formatCurrency(averageOrderValue, selectedCurrency)}</StatValue>
               <StatTrend positive>
                 ↑ 5.3% vs yesterday
               </StatTrend>
@@ -497,15 +507,15 @@ const ManagerSalesPage: React.FC = () => {
                     <RestaurantLocation>{restaurant.location}</RestaurantLocation>
                   </RestaurantInfo>
                   <ValueCell>
-                    RM {restaurant.todaySales.toLocaleString()}
+                    {formatCurrency(restaurant.todaySales, selectedCurrency)}
                     <ChangeCell positive={change > 0}>
                       {change > 0 ? '↑' : '↓'} {Math.abs(change).toFixed(1)}%
                     </ChangeCell>
                   </ValueCell>
                   <ValueCell>{restaurant.todayOrders}</ValueCell>
-                  <ValueCell>RM {restaurant.averageOrderValue.toFixed(2)}</ValueCell>
-                  <ValueCell>RM {restaurant.weekSales.toLocaleString()}</ValueCell>
-                  <ValueCell>RM {restaurant.monthSales.toLocaleString()}</ValueCell>
+                  <ValueCell>{formatCurrency(restaurant.averageOrderValue, selectedCurrency)}</ValueCell>
+                  <ValueCell>{formatCurrency(restaurant.weekSales, selectedCurrency)}</ValueCell>
+                  <ValueCell>{formatCurrency(restaurant.monthSales, selectedCurrency)}</ValueCell>
                   <ActionButton>View Details</ActionButton>
                 </TableRow>
               );
