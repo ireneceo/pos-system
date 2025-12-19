@@ -308,33 +308,20 @@ const dateKey = `${(orderDate.getMonth() + 1).toString().padStart(2, '0')}/${ord
 
 ## 🚧 진행 중인 작업
 
-### 재고관리 시스템 (Inventory Management) - UI 테스트 필요
-
-**상태:** Backend 완료, Frontend 빌드 완료, UI 테스트 대기
-
-**남은 작업:**
-- 브라우저에서 Inventory 페이지 UI 테스트
-- 입고/폐기/재고실사 기능 테스트
-- 테스트 계정: admin@kdine.com (Restaurant 5)
-
-**테스트 데이터 (Restaurant 5):**
-- Tomato: 10kg (정상)
-- Onion: 1.5kg (Low Stock)
-- Salt: 0kg (Out of Stock)
-- Olive Oil: 5L (정상)
+**현재 진행 중인 작업 없음**
 
 ---
 
 ## ✅ 완료된 작업 (2025-12-19)
 
-### 재고관리 시스템 Backend/Frontend 구현
+### 재고관리 시스템 완료
 
 **구현 내용:**
 1. **Backend API 라우터 수정**
    - `inventory.js` auth middleware import 수정 (`authenticateToken` destructuring)
    - `inventory-routes.js` 생성 (restaurants.js에서 마운트)
-   - `restaurants.js`에 inventory-routes 마운트
-   - `app.js` 중복 라우터 등록 제거
+   - `server.js`에 inventory-routes 마운트 추가
+   - 기존 중복 라우터 등록 정리
 
 2. **API 엔드포인트 (모두 동작 확인됨)**
    - GET `/api/restaurants/:id/inventory` - 재고 현황
@@ -346,17 +333,28 @@ const dateKey = `${(orderDate.getMonth() + 1).toString().padStart(2, '0')}/${ord
    - POST 엔드포인트들 (receive, waste, adjust, initial, stock-take 등)
 
 3. **Frontend**
-   - InventoryPage.tsx 구현 완료
-   - StockTakePage.tsx 구현 완료
-   - 프론트엔드 빌드 및 배포 완료
+   - InventoryPage.tsx 구현 완료 (Dashboard, Stock List, History 탭)
+   - StockTakePage.tsx 구현 완료 (재고 실사 기능)
+   - 공통 UI 컴포넌트 활용 (Table, TableHeader, TableRow 등)
 
 **관련 파일:**
 - `/var/www/dev-backend/routes/inventory-routes.js` (신규)
 - `/var/www/dev-backend/routes/inventory.js`
-- `/var/www/dev-backend/routes/restaurants.js`
+- `/var/www/dev-backend/server.js` (라우터 마운트 추가)
 - `/var/www/dev-frontend/src/pages/Inventory/InventoryPage.tsx`
 - `/var/www/dev-frontend/src/pages/Inventory/StockTakePage.tsx`
 - `/var/www/docs/INVENTORY_MANAGEMENT_SYSTEM.md` (설계문서)
+
+### RM 하드코딩 통화 수정 (18개 파일)
+
+**문제:** 여러 페이지에서 통화가 'RM'으로 하드코딩되어 있었음
+
+**해결:** `useBrandCurrency` 훅과 `formatCurrency` 유틸리티를 사용하여 동적 통화 표시
+
+**수정된 파일:**
+- Manager 페이지 (11개): SalesPage, ManagerDashboard, ManagerCustomersPage, ManagerPromotionsPage, ManagerReportsPage, InvoicesPage, RestaurantsPage, StaffManagementPage, ManagerSubscriptionsPage, SignupPage, SubscriptionsPage
+- BrandGeneral 페이지 (3개): BrandGeneralDashboard, BrandReportsPage, BrandPerformance
+- 기타 페이지 (4개): CustomersPage, RestaurantDashboard, MenuManagementPage, DashboardContent
 
 ---
 
@@ -954,8 +952,8 @@ ALTER TABLE users MODIFY COLUMN role ENUM(
 |------|-------|------|--------|
 | 1 | Phase 3 | 브랜드 제품 관리 | ✅ 완료 (2025-12-15) |
 | 2 | Phase 4 | 제품-재료 연동 | ✅ 완료 (2025-12-15) |
-| 3 | Phase 5 | 재고 관리 | 📋 다음 개발 |
-| 4 | Phase 6 | 발주 관리 | 대기 중 |
+| 3 | Phase 5 | 재고 관리 | ✅ 완료 (2025-12-19) |
+| 4 | Phase 6 | 발주 관리 | 📋 다음 개발 |
 | 5 | Phase 7 | AI 재고 예측 | 대기 중 |
 | 6 | Phase 8 | Restaurant Owner 역할 | 대기 중 |
 | 7 | Phase 9 | 구독 서비스 구조 개편 | 대기 중 |
@@ -1252,4 +1250,4 @@ const token = localStorage.getItem('auth_token'); // 'token' → 'auth_token'
 **프로젝트:** Purple POS System
 **개발 환경:** Development Server
 **데이터베이스:** purple_dev_db (MySQL)
-**마지막 업데이트:** 2025-12-16
+**마지막 업데이트:** 2025-12-19

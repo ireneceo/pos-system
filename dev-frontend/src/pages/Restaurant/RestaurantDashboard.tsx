@@ -414,6 +414,14 @@ const RestaurantDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [timePeriod, setTimePeriod] = useState<'week' | 'month' | 'year'>('week');
   const [salesChartData, setSalesChartData] = useState<SalesChartData[]>([]);
+  const { defaultCurrency } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+
+  useEffect(() => {
+    if (defaultCurrency) {
+      setSelectedCurrency(defaultCurrency);
+    }
+  }, [defaultCurrency]);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -565,7 +573,7 @@ const RestaurantDashboard: React.FC = () => {
               onClick={() => navigate('/pos/sales')}
             >
               <DashboardStatLabel>Today's Sales</DashboardStatLabel>
-              <DashboardStatValue>RM {(today.revenue || 0).toLocaleString()}</DashboardStatValue>
+              <DashboardStatValue>{formatCurrency(today.revenue || 0, selectedCurrency)}</DashboardStatValue>
             </DashboardStatCard>
 
             <DashboardStatCard
@@ -583,7 +591,7 @@ const RestaurantDashboard: React.FC = () => {
               onClick={() => navigate('/pos/sales')}
             >
               <DashboardStatLabel>Monthly Revenue</DashboardStatLabel>
-              <DashboardStatValue>RM {(monthly.revenue || 0).toLocaleString()}</DashboardStatValue>
+              <DashboardStatValue>{formatCurrency(monthly.revenue || 0, selectedCurrency)}</DashboardStatValue>
             </DashboardStatCard>
 
             <DashboardStatCard
@@ -601,7 +609,7 @@ const RestaurantDashboard: React.FC = () => {
               onClick={() => navigate('/pos/sales')}
             >
               <DashboardStatLabel>Annual Revenue</DashboardStatLabel>
-              <DashboardStatValue>RM {(yearly.revenue || 0).toLocaleString()}</DashboardStatValue>
+              <DashboardStatValue>{formatCurrency(yearly.revenue || 0, selectedCurrency)}</DashboardStatValue>
             </DashboardStatCard>
 
             <DashboardStatCard
@@ -619,7 +627,7 @@ const RestaurantDashboard: React.FC = () => {
               onClick={() => navigate('/pos/sales')}
             >
               <DashboardStatLabel>Total Revenue</DashboardStatLabel>
-              <DashboardStatValue>RM {(total.revenue || 0).toLocaleString()}</DashboardStatValue>
+              <DashboardStatValue>{formatCurrency(total.revenue || 0, selectedCurrency)}</DashboardStatValue>
             </DashboardStatCard>
 
             <DashboardStatCard
@@ -720,7 +728,7 @@ const RestaurantDashboard: React.FC = () => {
                             }
                           </div>
                           <div style={{ fontSize: '10px', color: '#6B7280', textAlign: 'center' }}>
-                            {data.revenue > 0 ? `RM ${(data.revenue / 1000).toFixed(1)}K` : 'RM 0'}
+                            {formatCurrency(data.revenue, selectedCurrency)}
                           </div>
                           <div style={{ fontSize: '9px', color: '#9CA3AF', textAlign: 'center' }}>
                             {data.orders || 0} ord
@@ -749,7 +757,7 @@ const RestaurantDashboard: React.FC = () => {
               ) : (
                 <div style={{ padding: '20px', background: '#F8FAFC', borderRadius: '12px', minHeight: '160px' }}>
                   <div style={{ textAlign: 'center', paddingTop: '40px', color: '#6B7280' }}>
-                    <p>Total Revenue: RM {(monthly.revenue / 1000).toFixed(0)}K</p>
+                    <p>Total Revenue: {formatCurrency(monthly.revenue, selectedCurrency)}</p>
                     <p>Loading chart data...</p>
                   </div>
                 </div>
@@ -780,7 +788,7 @@ const RestaurantDashboard: React.FC = () => {
                 >
                   <div className="title">Unpaid Invoices</div>
                   <div className="description">
-                    {billing.unpaidInvoices || 0} invoice(s) • RM {(billing.totalUnpaidAmount || 0).toLocaleString()} due
+                    {billing.unpaidInvoices || 0} invoice(s) • {formatCurrency(billing.totalUnpaidAmount || 0, selectedCurrency)} due
                   </div>
                 </Alert>
               )}
@@ -793,7 +801,7 @@ const RestaurantDashboard: React.FC = () => {
                 >
                   <div className="title">Today's Performance</div>
                   <div className="description">
-                    RM {(today.revenue || 0).toLocaleString()} earned from {today.orders || 0} order(s)
+                    {formatCurrency(today.revenue || 0, selectedCurrency)} earned from {today.orders || 0} order(s)
                   </div>
                 </Alert>
               )}
@@ -932,7 +940,7 @@ const RestaurantDashboard: React.FC = () => {
                         </TimeInfo>
                       </Td>
                       <Td>
-                        <Amount>RM {parseFloat(order.total_amount || 0).toFixed(2)}</Amount>
+                        <Amount>{formatCurrency(parseFloat(order.total_amount || 0), selectedCurrency)}</Amount>
                         <PaymentMethod isPending={order.payment_status === 'pending'}>
                           {order.payment_status === 'pending' ? 'Pending' : (order.payment_method || 'Cash')}
                         </PaymentMethod>

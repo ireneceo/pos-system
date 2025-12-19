@@ -673,6 +673,14 @@ const MenuManagementPage: React.FC = () => {
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [priceEditItem, setPriceEditItem] = useState<MenuItemType | null>(null);
+  const { defaultCurrency } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+
+  useEffect(() => {
+    if (defaultCurrency) {
+      setSelectedCurrency(defaultCurrency);
+    }
+  }, [defaultCurrency]);
 
   // Recipe list for linking
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -1110,7 +1118,7 @@ const MenuManagementPage: React.FC = () => {
                   </MenuCategory>
                   <MenuHeader>
                     <MenuName>{item.code ? `${item.code} ` : ''}{item.name}</MenuName>
-                    <MenuPrice>RM {item.price.toFixed(2)}</MenuPrice>
+                    <MenuPrice>{formatCurrency(item.price, selectedCurrency)}</MenuPrice>
                   </MenuHeader>
                   <MenuDescription>
                     {item.description || 'No description available'}
@@ -1695,7 +1703,7 @@ const MenuManagementPage: React.FC = () => {
                       <MenuItemOptionInfo>
                         <MenuItemOptionName>{item.code ? `${item.code} ` : ''}{item.name}</MenuItemOptionName>
                         <MenuItemOptionPrice>
-                          RM {item.price.toFixed(2)} · {categories.find(c => c.id === item.category)?.name}
+                          {formatCurrency(item.price, selectedCurrency)} · {categories.find(c => c.id === item.category)?.name}
                         </MenuItemOptionPrice>
                       </MenuItemOptionInfo>
                     </MenuItemOption>

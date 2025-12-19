@@ -277,6 +277,14 @@ const DashboardContent: React.FC = () => {
   });
   const [recentOrders, setRecentOrders] = React.useState<any[]>([]);
   const [systemAlerts, setSystemAlerts] = React.useState<SystemAlert[]>([]);
+  const { defaultCurrency } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+
+  useEffect(() => {
+    if (defaultCurrency) {
+      setSelectedCurrency(defaultCurrency);
+    }
+  }, [defaultCurrency]);
 
   React.useEffect(() => {
     const fetchStats = async () => {
@@ -488,7 +496,7 @@ const DashboardContent: React.FC = () => {
         {/* Statistics Cards */}
         <StatsGrid>
           <StatCard color="#059669">
-            <StatValue>RM {stats.todaySales.toFixed(2)}</StatValue>
+            <StatValue>{formatCurrency(stats.todaySales, selectedCurrency)}</StatValue>
             <StatLabel>Today's Sales</StatLabel>
             <StatDescription>Revenue generated today</StatDescription>
           </StatCard>

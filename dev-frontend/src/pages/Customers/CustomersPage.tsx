@@ -460,6 +460,14 @@ const CustomersPage: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const { defaultCurrency } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+
+  useEffect(() => {
+    if (defaultCurrency) {
+      setSelectedCurrency(defaultCurrency);
+    }
+  }, [defaultCurrency]);
 
   // 필터링 및 정렬 로직
   useEffect(() => {
@@ -708,7 +716,7 @@ const CustomersPage: React.FC = () => {
                       </div>
                       
                       <div style={{ fontSize: '14px', fontWeight: '600', color: '#059669' }}>
-                        RM {customer.totalSpent.toLocaleString()}
+                        {formatCurrency(customer.totalSpent, selectedCurrency)}
                       </div>
                       
                       <ActionButtons onClick={(e) => e.stopPropagation()}>
@@ -768,7 +776,7 @@ const CustomersPage: React.FC = () => {
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#6B7280' }}>
                         <span>{customer.points} pts</span>
                         <span>{customer.totalOrders} orders</span>
-                        <span style={{ color: '#059669', fontWeight: '600' }}>RM {customer.totalSpent.toLocaleString()}</span>
+                        <span style={{ color: '#059669', fontWeight: '600' }}>{formatCurrency(customer.totalSpent, selectedCurrency)}</span>
                       </div>
                     </MobileTableRow>
                   ))}
@@ -842,7 +850,7 @@ const CustomersPage: React.FC = () => {
                     </DetailItem>
                     <DetailItem>
                       <DetailLabel>Total Spent</DetailLabel>
-                      <DetailValue>RM {selectedCustomer.totalSpent.toLocaleString()}</DetailValue>
+                      <DetailValue>{formatCurrency(selectedCustomer.totalSpent, selectedCurrency)}</DetailValue>
                     </DetailItem>
                     <DetailItem>
                       <DetailLabel>Loyalty Points</DetailLabel>
@@ -851,9 +859,9 @@ const CustomersPage: React.FC = () => {
                     <DetailItem>
                       <DetailLabel>Average Order Value</DetailLabel>
                       <DetailValue>
-                        RM {selectedCustomer.totalOrders > 0 
-                          ? (selectedCustomer.totalSpent / selectedCustomer.totalOrders).toFixed(2) 
-                          : '0.00'}
+                        {formatCurrency(selectedCustomer.totalOrders > 0
+                          ? (selectedCustomer.totalSpent / selectedCustomer.totalOrders)
+                          : 0, selectedCurrency)}
                       </DetailValue>
                     </DetailItem>
                   </DetailGrid>
