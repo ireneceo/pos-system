@@ -510,9 +510,18 @@ const BrandReportsPage: React.FC = () => {
   // Fetch orders data
   useEffect(() => {
     const fetchData = async () => {
+      // Wait for restaurants to be loaded first
+      if (restaurants.length === 0) {
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       try {
         const token = localStorage.getItem('auth_token');
+
+        // Get restaurant IDs that this user has access to
+        const allowedRestaurantIds = restaurants.map(r => r.id);
 
         // Build query params based on filters
         let ordersUrl = '/api/orders?limit=5000';
@@ -527,6 +536,11 @@ const BrandReportsPage: React.FC = () => {
         if (ordersResponse.ok) {
           const ordersData = await ordersResponse.json();
           let allOrders = ordersData.data || ordersData || [];
+
+          // Filter orders to only include those from allowed restaurants
+          allOrders = allOrders.filter((order: any) =>
+            allowedRestaurantIds.includes(order.restaurant_id?.toString())
+          );
 
           // Filter by brand if selected
           if (selectedBrand !== 'all') {
@@ -917,14 +931,20 @@ const BrandReportsPage: React.FC = () => {
       .map(([id, stats]) => ({ id, ...stats, revenue: Math.round(stats.revenue) }))
       .sort((a, b) => b.revenue - a.revenue);
 
-    // Brand rankings
+    // Brand rankings - only include brands that have connected restaurants
     const brandStats: Record<string, { name: string; orders: number; revenue: number; restaurantCount: number }> = {};
 
-    // Initialize with all brands
+    // Initialize with brands that have connected restaurants only
+    const connectedBrandIds = new Set(restaurants.map(r => r.brand_id?.toString()).filter(Boolean));
     brands.forEach(brand => {
-      brandStats[brand.id.toString()] = { name: brand.name, orders: 0, revenue: 0, restaurantCount: 0 };
+      if (connectedBrandIds.has(brand.id.toString())) {
+        brandStats[brand.id.toString()] = { name: brand.name, orders: 0, revenue: 0, restaurantCount: 0 };
+      }
     });
-    brandStats['independent'] = { name: 'Independent', orders: 0, revenue: 0, restaurantCount: 0 };
+    // Add 'independent' only if there are restaurants without brand
+    if (restaurants.some(r => !r.brand_id)) {
+      brandStats['independent'] = { name: 'Independent', orders: 0, revenue: 0, restaurantCount: 0 };
+    }
 
     // Count restaurants per brand
     restaurants.forEach(restaurant => {

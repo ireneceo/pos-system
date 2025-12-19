@@ -145,7 +145,6 @@
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  height: 100%;
 
   &:hover {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
