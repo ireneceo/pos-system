@@ -64,10 +64,15 @@ Supplier.init({
     allowNull: true,
     comment: 'Business registration number'
   },
-  bank_info: {
-    type: DataTypes.TEXT,
+  bank_name: {
+    type: DataTypes.STRING(100),
     allowNull: true,
-    comment: 'Bank account information'
+    comment: 'Bank name'
+  },
+  bank_account: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: 'Bank account number'
   },
   payment_terms: {
     type: DataTypes.STRING(100),

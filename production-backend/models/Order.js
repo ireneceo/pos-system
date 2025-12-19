@@ -39,7 +39,7 @@ Order.init({
     allowNull: false
   },
   status: {
-    type: DataTypes.ENUM('awaiting_payment', 'pending', 'preparing', 'ready', 'served', 'completed', 'cancelled'),
+    type: DataTypes.ENUM('awaiting_payment', 'pending', 'preparing', 'ready', 'served', 'completed', 'cancelled', 'outstanding'),
     defaultValue: 'awaiting_payment'
   },
   order_type: {

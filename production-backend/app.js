@@ -173,7 +173,7 @@ app.use('/api/categories', categoriesRouter);
 app.use('/api', recipesRouter);
 app.use('/api', ingredientsRouter);
 app.use('/api', recipeCategoriesRouter);
-app.use('/api/restaurants', restaurantsRouter);
+app.use('/api/restaurants', restaurantsRouter);  // Includes inventory routes via inventory-routes.js
 app.use('/api/plans', plansRouter);
 app.use('/api/admin-analytics', adminAnalyticsRouter);
 app.use('/api/admin/settings', adminSettingsRouter);

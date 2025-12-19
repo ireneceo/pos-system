@@ -982,4 +982,10 @@ router.delete('/:restaurantId/ingredients/:ingredientId', authenticateToken, che
 // Restaurant Recipes Routes - MOVED TO /routes/recipes.js
 // ============================================
 
+// ============================================
+// Inventory Routes - Mount inventory router
+// ============================================
+const inventoryRoutes = require('./inventory-routes');
+router.use('/', inventoryRoutes);
+
 module.exports = router;

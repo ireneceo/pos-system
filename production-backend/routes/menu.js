@@ -14,6 +14,9 @@ router.get('/', async (req, res) => {
     // Allow restaurantId from query parameter (for System Admin)
     // or from authenticated user (for restaurant users)
     const restaurantId = req.query.restaurantId || req.user.restaurant_id;
+    const { page = 1, limit = 0, categoryId } = req.query; // limit 0 = all items (backward compatible)
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
 
     if (!restaurantId) {
       return res.status(400).json({
@@ -31,10 +34,27 @@ router.get('/', async (req, res) => {
       order: [['displayOrder', 'ASC'], ['name', 'ASC']]
     });
 
-    // Get products
-    const products = await Product.findAll({
-      where: { restaurant_id: restaurantId }
-    });
+    // Build product query
+    const productWhere = { restaurant_id: restaurantId };
+    if (categoryId) {
+      productWhere.category = categoryId;
+    }
+
+    // Get total count for pagination
+    const totalCount = await Product.count({ where: productWhere });
+
+    // Get products (with pagination if limit > 0)
+    const queryOptions = {
+      where: productWhere,
+      order: [['id', 'ASC']]
+    };
+
+    if (limitNum > 0) {
+      queryOptions.limit = limitNum;
+      queryOptions.offset = (pageNum - 1) * limitNum;
+    }
+
+    const products = await Product.findAll(queryOptions);
 
     // Transform categories with emoji, id, and displayOrder
     const categories = dbCategories.map(cat => ({
@@ -109,13 +129,27 @@ router.get('/', async (req, res) => {
       return a.id - b.id;
     });
 
-    res.json({
+    // Build response with pagination info if limit was specified
+    const response = {
       success: true,
       data: {
         categories,
         items
       }
-    });
+    };
+
+    if (limitNum > 0) {
+      const totalPages = Math.ceil(totalCount / limitNum);
+      response.pagination = {
+        page: pageNum,
+        limit: limitNum,
+        totalItems: totalCount,
+        totalPages,
+        hasMore: pageNum < totalPages
+      };
+    }
+
+    res.json(response);
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

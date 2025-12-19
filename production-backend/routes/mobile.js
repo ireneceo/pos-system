@@ -205,6 +205,8 @@ router.get('/store/:slug', async (req, res) => {
 router.get('/menu/:slug', async (req, res) => {
   try {
     const { slug } = req.params;
+    const { page = 1, limit = 20, categoryId } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
 
     // Find restaurant by slug
     const restaurant = await Restaurant.findOne({
@@ -220,15 +222,29 @@ router.get('/menu/:slug', async (req, res) => {
     // Get categories for this restaurant
     const dbCategories = await Category.findAll({
       where: { restaurant_id: restaurantId, isActive: true },
-      order: [['name', 'ASC']]
+      order: [['displayOrder', 'ASC'], ['name', 'ASC']]
     });
 
-    // Get products for this restaurant (exclude sold out items)
+    // Build product query with pagination
+    const productWhere = {
+      restaurant_id: restaurantId,
+      soldOut: false  // Only show available items
+    };
+
+    // Filter by category if specified
+    if (categoryId) {
+      productWhere.category = categoryId;
+    }
+
+    // Get total count for pagination
+    const totalCount = await Product.count({ where: productWhere });
+
+    // Get products with pagination
     const products = await Product.findAll({
-      where: {
-        restaurant_id: restaurantId,
-        soldOut: false  // Only show available items
-      }
+      where: productWhere,
+      limit: parseInt(limit),
+      offset: offset,
+      order: [['id', 'ASC']]
     });
 
     // Get option groups for this restaurant
@@ -338,7 +354,21 @@ router.get('/menu/:slug', async (req, res) => {
       };
     });
 
-    res.json({ success: true, data: { categories, items } });
+    // Pagination info
+    const totalPages = Math.ceil(totalCount / parseInt(limit));
+    const hasMore = parseInt(page) < totalPages;
+
+    res.json({
+      success: true,
+      data: { categories, items },
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalItems: totalCount,
+        totalPages,
+        hasMore
+      }
+    });
   } catch (error) {
     console.error('Error fetching menu:', error);
     res.status(500).json({ success: false, error: error.message });
