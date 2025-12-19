@@ -24,7 +24,8 @@ interface Supplier {
   email: string | null;
   address: string | null;
   business_number: string | null;
-  bank_info: string | null;
+  bank_name: string | null;
+  bank_account: string | null;
   payment_terms: string | null;
   notes: string | null;
   is_active: boolean;
@@ -210,7 +211,8 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: prop
     email: '',
     address: '',
     business_number: '',
-    bank_info: '',
+    bank_name: '',
+    bank_account: '',
     payment_terms: '',
     notes: ''
   });

@@ -56,7 +56,7 @@ const generateSupplierCode = async (ownerType, ownerId) => {
 router.post('/brands/:brandId/suppliers', authenticateToken, isBrandManager, async (req, res) => {
   try {
     const { brandId } = req.params;
-    const { code, name, contact_name, phone, email, address, business_number, bank_info, payment_terms, notes, supplier_category_id } = req.body;
+    const { code, name, contact_name, phone, email, address, business_number, bank_name, bank_account, payment_terms, notes, supplier_category_id } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: '공급업체 이름은 필수입니다' });
@@ -77,7 +77,8 @@ router.post('/brands/:brandId/suppliers', authenticateToken, isBrandManager, asy
       email,
       address,
       business_number,
-      bank_info,
+      bank_name,
+      bank_account,
       payment_terms,
       notes
     });
@@ -96,7 +97,7 @@ router.post('/brands/:brandId/suppliers', authenticateToken, isBrandManager, asy
 router.put('/brands/:brandId/suppliers/:supplierId', authenticateToken, isBrandManager, async (req, res) => {
   try {
     const { supplierId } = req.params;
-    const { code, name, contact_name, phone, email, address, business_number, bank_info, payment_terms, notes, is_active, supplier_category_id } = req.body;
+    const { code, name, contact_name, phone, email, address, business_number, bank_name, bank_account, payment_terms, notes, is_active, supplier_category_id } = req.body;
 
     const supplier = await Supplier.findByPk(supplierId);
     if (!supplier) {
@@ -111,7 +112,8 @@ router.put('/brands/:brandId/suppliers/:supplierId', authenticateToken, isBrandM
       email,
       address,
       business_number,
-      bank_info,
+      bank_name,
+      bank_account,
       payment_terms,
       notes,
       is_active: is_active !== undefined ? is_active : supplier.is_active,
@@ -286,7 +288,7 @@ router.get('/restaurants/:restaurantId/all-suppliers', authenticateToken, checkR
 router.post('/restaurants/:restaurantId/suppliers', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
-    const { code, name, contact_name, phone, email, address, business_number, bank_info, payment_terms, notes, supplier_category_id } = req.body;
+    const { code, name, contact_name, phone, email, address, business_number, bank_name, bank_account, payment_terms, notes, supplier_category_id } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: '공급업체 이름은 필수입니다' });
@@ -307,7 +309,8 @@ router.post('/restaurants/:restaurantId/suppliers', authenticateToken, checkRest
       email,
       address,
       business_number,
-      bank_info,
+      bank_name,
+      bank_account,
       payment_terms,
       notes
     });
@@ -326,7 +329,7 @@ router.post('/restaurants/:restaurantId/suppliers', authenticateToken, checkRest
 router.put('/restaurants/:restaurantId/suppliers/:supplierId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { supplierId } = req.params;
-    const { code, name, contact_name, phone, email, address, business_number, bank_info, payment_terms, notes, is_active, supplier_category_id } = req.body;
+    const { code, name, contact_name, phone, email, address, business_number, bank_name, bank_account, payment_terms, notes, is_active, supplier_category_id } = req.body;
 
     const supplier = await Supplier.findByPk(supplierId);
     if (!supplier) {
@@ -346,7 +349,8 @@ router.put('/restaurants/:restaurantId/suppliers/:supplierId', authenticateToken
       email,
       address,
       business_number,
-      bank_info,
+      bank_name,
+      bank_account,
       payment_terms,
       notes,
       is_active: is_active !== undefined ? is_active : supplier.is_active,
