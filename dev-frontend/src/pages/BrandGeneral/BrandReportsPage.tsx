@@ -403,7 +403,7 @@ interface Restaurant {
 const COLORS = ['#635BFF', '#00D924', '#FF6B6B', '#FFB800', '#0EA5E9', '#8B5CF6'];
 
 const BrandReportsPage: React.FC = () => {
-  useAuth(); // For auth context
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Tab state
@@ -477,8 +477,13 @@ const BrandReportsPage: React.FC = () => {
           setFilteredBrands(brandsData.slice(0, 10));
         }
 
-        // Fetch all restaurants for manager
-        const restaurantsResponse = await fetch('/api/restaurants', {
+        // Fetch restaurants - use manager-specific endpoint for Brand General/Manager
+        let restaurantsUrl = '/api/restaurants';
+        if (user?.id && (user.role === 'Brand General' || user.role === 'Brand Manager')) {
+          restaurantsUrl = `/api/restaurants/manager/${user.id}`;
+        }
+
+        const restaurantsResponse = await fetch(restaurantsUrl, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (restaurantsResponse.ok) {
@@ -487,7 +492,7 @@ const BrandReportsPage: React.FC = () => {
             id: r.id?.toString(),
             name: r.name,
             brand_id: r.brand_id,
-            brand_name: r.brand_name
+            brand_name: r.brand_name || r.brand?.name
           }));
           setRestaurants(formattedRestaurants);
           setFilteredRestaurants(formattedRestaurants.slice(0, 10));
@@ -497,8 +502,10 @@ const BrandReportsPage: React.FC = () => {
       }
     };
 
-    fetchBrandsAndRestaurants();
-  }, []);
+    if (user) {
+      fetchBrandsAndRestaurants();
+    }
+  }, [user]);
 
   // Fetch orders data
   useEffect(() => {
