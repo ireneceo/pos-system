@@ -13,7 +13,7 @@ router.use(authenticateToken);
 // ============================================
 
 // GET /api/restaurants/:restaurantId/inventory - 재고 현황 (전체)
-router.get('/restaurants/:restaurantId/inventory', async (req, res) => {
+router.get('/:restaurantId/inventory', async (req, res) => {
   try {
     const { restaurantId } = req.params;
     const { category, status, search } = req.query;
@@ -67,7 +67,7 @@ router.get('/restaurants/:restaurantId/inventory', async (req, res) => {
 });
 
 // GET /api/restaurants/:restaurantId/inventory/summary - 요약
-router.get('/restaurants/:restaurantId/inventory/summary', async (req, res) => {
+router.get('/:restaurantId/inventory/summary', async (req, res) => {
   try {
     const { restaurantId } = req.params;
 
@@ -133,7 +133,7 @@ router.get('/restaurants/:restaurantId/inventory/summary', async (req, res) => {
 });
 
 // GET /api/restaurants/:restaurantId/inventory/alerts - 알림 목록
-router.get('/restaurants/:restaurantId/inventory/alerts', async (req, res) => {
+router.get('/:restaurantId/inventory/alerts', async (req, res) => {
   try {
     const { restaurantId } = req.params;
     const { resolved } = req.query;
@@ -161,7 +161,7 @@ router.get('/restaurants/:restaurantId/inventory/alerts', async (req, res) => {
 });
 
 // PUT /api/restaurants/:restaurantId/inventory/alerts/:alertId/resolve - 알림 해결
-router.put('/restaurants/:restaurantId/inventory/alerts/:alertId/resolve', async (req, res) => {
+router.put('/:restaurantId/inventory/alerts/:alertId/resolve', async (req, res) => {
   try {
     const { alertId } = req.params;
 
@@ -182,7 +182,7 @@ router.put('/restaurants/:restaurantId/inventory/alerts/:alertId/resolve', async
 // ============================================
 
 // POST /api/restaurants/:restaurantId/inventory/initial - 초기 재고 설정
-router.post('/restaurants/:restaurantId/inventory/initial', async (req, res) => {
+router.post('/:restaurantId/inventory/initial', async (req, res) => {
   const transaction = await database.sequelize.transaction();
 
   try {
@@ -229,7 +229,7 @@ router.post('/restaurants/:restaurantId/inventory/initial', async (req, res) => 
 });
 
 // POST /api/restaurants/:restaurantId/inventory/receive - 입고 처리
-router.post('/restaurants/:restaurantId/inventory/receive', async (req, res) => {
+router.post('/:restaurantId/inventory/receive', async (req, res) => {
   const transaction = await database.sequelize.transaction();
 
   try {
@@ -287,7 +287,7 @@ router.post('/restaurants/:restaurantId/inventory/receive', async (req, res) => 
 });
 
 // POST /api/restaurants/:restaurantId/inventory/waste - 폐기 처리
-router.post('/restaurants/:restaurantId/inventory/waste', async (req, res) => {
+router.post('/:restaurantId/inventory/waste', async (req, res) => {
   const transaction = await database.sequelize.transaction();
 
   try {
@@ -336,7 +336,7 @@ router.post('/restaurants/:restaurantId/inventory/waste', async (req, res) => {
 });
 
 // POST /api/restaurants/:restaurantId/inventory/adjust - 수동 조정
-router.post('/restaurants/:restaurantId/inventory/adjust', async (req, res) => {
+router.post('/:restaurantId/inventory/adjust', async (req, res) => {
   const transaction = await database.sequelize.transaction();
 
   try {
@@ -385,7 +385,7 @@ router.post('/restaurants/:restaurantId/inventory/adjust', async (req, res) => {
 });
 
 // GET /api/restaurants/:restaurantId/inventory/transactions - 거래 내역
-router.get('/restaurants/:restaurantId/inventory/transactions', async (req, res) => {
+router.get('/:restaurantId/inventory/transactions', async (req, res) => {
   try {
     const { restaurantId } = req.params;
     const { ingredient_id, type, from_date, to_date, limit = 100, offset = 0 } = req.query;
@@ -438,7 +438,7 @@ router.get('/restaurants/:restaurantId/inventory/transactions', async (req, res)
 // ============================================
 
 // GET /api/restaurants/:restaurantId/stock-takes - 실사 목록
-router.get('/restaurants/:restaurantId/stock-takes', async (req, res) => {
+router.get('/:restaurantId/stock-takes', async (req, res) => {
   try {
     const { restaurantId } = req.params;
     const { status, limit = 20, offset = 0 } = req.query;
@@ -467,7 +467,7 @@ router.get('/restaurants/:restaurantId/stock-takes', async (req, res) => {
 });
 
 // POST /api/restaurants/:restaurantId/stock-takes - 새 실사 시작
-router.post('/restaurants/:restaurantId/stock-takes', async (req, res) => {
+router.post('/:restaurantId/stock-takes', async (req, res) => {
   const transaction = await database.sequelize.transaction();
 
   try {
@@ -542,7 +542,7 @@ router.post('/restaurants/:restaurantId/stock-takes', async (req, res) => {
 });
 
 // GET /api/restaurants/:restaurantId/stock-takes/:stockTakeId - 실사 상세
-router.get('/restaurants/:restaurantId/stock-takes/:stockTakeId', async (req, res) => {
+router.get('/:restaurantId/stock-takes/:stockTakeId', async (req, res) => {
   try {
     const { stockTakeId } = req.params;
 
@@ -570,7 +570,7 @@ router.get('/restaurants/:restaurantId/stock-takes/:stockTakeId', async (req, re
 });
 
 // PUT /api/restaurants/:restaurantId/stock-takes/:stockTakeId/items - 실사 항목 업데이트
-router.put('/restaurants/:restaurantId/stock-takes/:stockTakeId/items', async (req, res) => {
+router.put('/:restaurantId/stock-takes/:stockTakeId/items', async (req, res) => {
   try {
     const { stockTakeId } = req.params;
     const { items } = req.body; // [{ id, actual_stock, variance_reason, notes }]
@@ -621,7 +621,7 @@ router.put('/restaurants/:restaurantId/stock-takes/:stockTakeId/items', async (r
 });
 
 // POST /api/restaurants/:restaurantId/stock-takes/:stockTakeId/complete - 실사 완료
-router.post('/restaurants/:restaurantId/stock-takes/:stockTakeId/complete', async (req, res) => {
+router.post('/:restaurantId/stock-takes/:stockTakeId/complete', async (req, res) => {
   const transaction = await database.sequelize.transaction();
 
   try {
@@ -727,7 +727,7 @@ router.post('/restaurants/:restaurantId/stock-takes/:stockTakeId/complete', asyn
 });
 
 // POST /api/restaurants/:restaurantId/stock-takes/:stockTakeId/cancel - 실사 취소
-router.post('/restaurants/:restaurantId/stock-takes/:stockTakeId/cancel', async (req, res) => {
+router.post('/:restaurantId/stock-takes/:stockTakeId/cancel', async (req, res) => {
   try {
     const { stockTakeId } = req.params;
 
@@ -753,7 +753,7 @@ router.post('/restaurants/:restaurantId/stock-takes/:stockTakeId/cancel', async 
 // ============================================
 
 // GET /api/restaurants/:restaurantId/inventory/reorder-suggestions - 발주 제안 목록
-router.get('/restaurants/:restaurantId/inventory/reorder-suggestions', async (req, res) => {
+router.get('/:restaurantId/inventory/reorder-suggestions', async (req, res) => {
   try {
     const { restaurantId } = req.params;
 

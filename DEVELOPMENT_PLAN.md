@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2025-12-18
+> **최종 업데이트:** 2025-12-19
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -308,7 +308,55 @@ const dateKey = `${(orderDate.getMonth() + 1).toString().padStart(2, '0')}/${ord
 
 ## 🚧 진행 중인 작업
 
-현재 진행 중인 작업 없음
+### 재고관리 시스템 (Inventory Management) - UI 테스트 필요
+
+**상태:** Backend 완료, Frontend 빌드 완료, UI 테스트 대기
+
+**남은 작업:**
+- 브라우저에서 Inventory 페이지 UI 테스트
+- 입고/폐기/재고실사 기능 테스트
+- 테스트 계정: admin@kdine.com (Restaurant 5)
+
+**테스트 데이터 (Restaurant 5):**
+- Tomato: 10kg (정상)
+- Onion: 1.5kg (Low Stock)
+- Salt: 0kg (Out of Stock)
+- Olive Oil: 5L (정상)
+
+---
+
+## ✅ 완료된 작업 (2025-12-19)
+
+### 재고관리 시스템 Backend/Frontend 구현
+
+**구현 내용:**
+1. **Backend API 라우터 수정**
+   - `inventory.js` auth middleware import 수정 (`authenticateToken` destructuring)
+   - `inventory-routes.js` 생성 (restaurants.js에서 마운트)
+   - `restaurants.js`에 inventory-routes 마운트
+   - `app.js` 중복 라우터 등록 제거
+
+2. **API 엔드포인트 (모두 동작 확인됨)**
+   - GET `/api/restaurants/:id/inventory` - 재고 현황
+   - GET `/api/restaurants/:id/inventory/summary` - 요약
+   - GET `/api/restaurants/:id/inventory/alerts` - 알림 목록
+   - GET `/api/restaurants/:id/inventory/transactions` - 거래 내역
+   - GET `/api/restaurants/:id/inventory/reorder-suggestions` - 발주 제안
+   - GET `/api/restaurants/:id/stock-takes` - 재고 실사 목록
+   - POST 엔드포인트들 (receive, waste, adjust, initial, stock-take 등)
+
+3. **Frontend**
+   - InventoryPage.tsx 구현 완료
+   - StockTakePage.tsx 구현 완료
+   - 프론트엔드 빌드 및 배포 완료
+
+**관련 파일:**
+- `/var/www/dev-backend/routes/inventory-routes.js` (신규)
+- `/var/www/dev-backend/routes/inventory.js`
+- `/var/www/dev-backend/routes/restaurants.js`
+- `/var/www/dev-frontend/src/pages/Inventory/InventoryPage.tsx`
+- `/var/www/dev-frontend/src/pages/Inventory/StockTakePage.tsx`
+- `/var/www/docs/INVENTORY_MANAGEMENT_SYSTEM.md` (설계문서)
 
 ---
 
