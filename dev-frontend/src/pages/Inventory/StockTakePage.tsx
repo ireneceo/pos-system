@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
@@ -261,6 +262,7 @@ const CategoryHeader = styled.tr`
 
 const StockTakePage: React.FC = () => {
   const { user } = useAuth();
+  const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
   const [loading, setLoading] = useState(true);
@@ -269,7 +271,8 @@ const StockTakePage: React.FC = () => {
   const [localItems, setLocalItems] = useState<StockTakeItem[]>([]);
   const [saving, setSaving] = useState(false);
 
-  const restaurantId = user?.restaurant_id;
+  // URL 파라미터 우선, 없으면 user의 restaurant_id 사용
+  const restaurantId = urlRestaurantId ? parseInt(urlRestaurantId, 10) : user?.restaurant_id;
 
   useEffect(() => {
     if (defaultCurrency) {
@@ -519,7 +522,7 @@ const StockTakePage: React.FC = () => {
           <ActionSection>
             <ThemedButton
               variant="secondary"
-              onClick={() => window.location.href = `/restaurants/${restaurantId}/inventory`}
+              onClick={() => window.location.href = `/restaurant/${restaurantId}/inventory`}
             >
               Back to Inventory
             </ThemedButton>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
-import { ThemedButton } from '../../components/Theme/ThemedButton';
 import {
   StatsGrid,
   StatCard,
@@ -12,13 +12,24 @@ import {
   Header,
   Title,
   ActionSection,
-  Content
+  Content,
+  Button,
+  Table,
+  TableHeader,
+  TableRow,
+  MobileLabel,
+  MobileValue,
+  MobileGrid,
+  ActionButtons,
+  EmptyState,
+  TabContainer,
+  Tab
 } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput } from '../../components/UI/Modal';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
-import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
+import { formatCurrency } from '../../utils/currency';
 import { fetchAPI } from '../../utils/api';
 
 interface IngredientStock {
@@ -76,7 +87,7 @@ interface Summary {
   unresolved_alerts: number;
 }
 
-// Styled Components
+// Styled Components - 최소한의 페이지 전용 스타일만 정의
 const InfoBox = styled.div`
   background: #F0F9FF;
   border: 1px solid #BAE6FD;
@@ -95,45 +106,13 @@ const SectionTitle = styled.h2`
   margin: 24px 0 16px 0;
 `;
 
-const StockGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 20px;
-  margin-top: 16px;
-`;
-
-const StockCard = styled.div<{ status?: string }>`
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #E6EBF1;
-  padding: 20px;
-  transition: all 0.2s;
-
-  &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    border-color: #635BFF;
-  }
-`;
-
-const CardHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 12px;
-`;
-
-const IngredientName = styled.h3`
-  font-size: 18px;
-  font-weight: 600;
-  color: #0A2540;
-`;
-
 const StatusBadge = styled.span<{ status: string }>`
-  padding: 4px 10px;
-  border-radius: 12px;
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 6px;
   font-size: 11px;
   font-weight: 600;
-  text-transform: uppercase;
+  white-space: nowrap;
 
   ${props => {
     switch (props.status) {
@@ -142,83 +121,9 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'low_stock':
         return 'background: #FEF3C7; color: #D97706;';
       default:
-        return 'background: #D1FAE5; color: #059669;';
+        return 'background: #ECFDF5; color: #059669;';
     }
   }}
-`;
-
-const StockInfo = styled.div`
-  margin: 16px 0;
-`;
-
-const InfoRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #F3F4F6;
-
-  &:last-child {
-    border-bottom: none;
-  }
-`;
-
-const InfoLabel = styled.span`
-  font-size: 13px;
-  color: #6B7280;
-`;
-
-const InfoValue = styled.span`
-  font-size: 14px;
-  font-weight: 600;
-  color: #0A2540;
-`;
-
-const CardActions = styled.div`
-  display: flex;
-  gap: 8px;
-  margin-top: 16px;
-`;
-
-const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
-  flex: 1;
-  padding: 10px 12px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-
-  ${props => {
-    switch (props.variant) {
-      case 'primary':
-        return `
-          background: #635BFF;
-          color: white;
-          &:hover { background: #4F46E5; }
-        `;
-      case 'danger':
-        return `
-          background: #FEE2E2;
-          color: #DC2626;
-          &:hover { background: #FCA5A5; }
-        `;
-      default:
-        return `
-          background: #F3F4F6;
-          color: #374151;
-          &:hover { background: #E5E7EB; }
-        `;
-    }
-  }}
-`;
-
-const AlertsList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 16px;
 `;
 
 const AlertCard = styled.div<{ type: string }>`
@@ -229,6 +134,11 @@ const AlertCard = styled.div<{ type: string }>`
   background: ${props => props.type === 'out_of_stock' ? '#FEF2F2' : '#FFFBEB'};
   border: 1px solid ${props => props.type === 'out_of_stock' ? '#FECACA' : '#FED7AA'};
   border-radius: 8px;
+  margin-bottom: 12px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
 `;
 
 const AlertInfo = styled.div`
@@ -244,43 +154,6 @@ const AlertTitle = styled.div`
 const AlertDetail = styled.div`
   font-size: 13px;
   color: #6B7280;
-`;
-
-const AlertActions = styled.div`
-  display: flex;
-  gap: 8px;
-`;
-
-const SuggestionTable = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 16px;
-  background: white;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid #E6EBF1;
-
-  th, td {
-    padding: 12px 16px;
-    text-align: left;
-    border-bottom: 1px solid #E6EBF1;
-  }
-
-  th {
-    background: #F9FAFB;
-    font-weight: 600;
-    font-size: 13px;
-    color: #374151;
-  }
-
-  td {
-    font-size: 14px;
-    color: #0A2540;
-  }
-
-  tr:last-child td {
-    border-bottom: none;
-  }
 `;
 
 const UrgencyBadge = styled.span<{ level: string }>`
@@ -308,12 +181,6 @@ const QuickActions = styled.div`
   flex-wrap: wrap;
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 40px 20px;
-  color: #6B7280;
-`;
-
 const ButtonGroup = styled.div`
   display: flex;
   gap: 12px;
@@ -321,34 +188,54 @@ const ButtonGroup = styled.div`
   margin-top: 24px;
 `;
 
-const TabContainer = styled.div`
-  display: flex;
-  gap: 4px;
-  background: #F3F4F6;
-  padding: 4px;
-  border-radius: 8px;
-  margin-bottom: 24px;
+const IngredientInfo = styled.div``;
+
+const IngredientName = styled.div`
+  font-weight: 600;
+  color: #0A2540;
+  margin-bottom: 4px;
 `;
 
-const Tab = styled.button<{ active?: boolean }>`
-  padding: 10px 20px;
-  border: none;
-  background: ${props => props.active ? 'white' : 'transparent'};
-  color: ${props => props.active ? '#635BFF' : '#6B7280'};
-  font-weight: 600;
-  font-size: 14px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: ${props => props.active ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};
+const IngredientMeta = styled.div`
+  font-size: 13px;
+  color: #6B7280;
+`;
 
-  &:hover {
-    color: ${props => props.active ? '#635BFF' : '#374151'};
+// 반응형 테이블 헤더
+const InventoryTableHeader = styled(TableHeader)`
+  @media (max-width: 1200px) {
+    & > span:nth-child(5),
+    & > span:nth-child(6) {
+      display: none;
+    }
+  }
+
+  @media (max-width: 1024px) {
+    & > span:nth-child(4) {
+      display: none;
+    }
+  }
+`;
+
+// 반응형 테이블 행
+const InventoryTableRow = styled(TableRow)`
+  @media (max-width: 1200px) {
+    & > div:nth-child(5),
+    & > div:nth-child(6) {
+      display: none;
+    }
+  }
+
+  @media (max-width: 1024px) {
+    & > div:nth-child(4) {
+      display: none;
+    }
   }
 `;
 
 const InventoryPage: React.FC = () => {
   const { user } = useAuth();
+  const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'list' | 'history'>('dashboard');
@@ -363,12 +250,12 @@ const InventoryPage: React.FC = () => {
   // Modals
   const [showReceiveModal, setShowReceiveModal] = useState(false);
   const [showWasteModal, setShowWasteModal] = useState(false);
-  const [showInitialModal, setShowInitialModal] = useState(false);
   const [selectedIngredient, setSelectedIngredient] = useState<IngredientStock | null>(null);
   const [quantity, setQuantity] = useState('');
   const [notes, setNotes] = useState('');
 
-  const restaurantId = user?.restaurant_id;
+  // URL 파라미터 우선, 없으면 user의 restaurant_id 사용
+  const restaurantId = urlRestaurantId ? parseInt(urlRestaurantId, 10) : user?.restaurant_id;
 
   useEffect(() => {
     if (defaultCurrency) {
@@ -527,209 +414,243 @@ const InventoryPage: React.FC = () => {
         <Header>
           <Title>Inventory</Title>
           <ActionSection>
-            <ThemedButton
+            <Button
               variant="secondary"
-              onClick={() => window.location.href = `/restaurants/${restaurantId}/stock-take`}
+              onClick={() => window.location.href = `/restaurant/${restaurantId}/inventory/stock-take`}
             >
               Stock Take
-            </ThemedButton>
+            </Button>
           </ActionSection>
         </Header>
 
-        <TabContainer>
-          <Tab active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')}>
-            Dashboard
-          </Tab>
-          <Tab active={activeTab === 'list'} onClick={() => setActiveTab('list')}>
-            Stock List
-          </Tab>
-          <Tab active={activeTab === 'history'} onClick={() => setActiveTab('history')}>
-            History
-          </Tab>
-        </TabContainer>
+        <Content>
+          <TabContainer>
+            <Tab active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')}>
+              Dashboard
+            </Tab>
+            <Tab active={activeTab === 'list'} onClick={() => setActiveTab('list')}>
+              Stock List
+            </Tab>
+            <Tab active={activeTab === 'history'} onClick={() => setActiveTab('history')}>
+              History
+            </Tab>
+          </TabContainer>
 
-        {loading ? (
-          <EmptyState>Loading...</EmptyState>
-        ) : activeTab === 'dashboard' ? (
-          <>
-            <StatsGrid>
-              <StatCard>
-                <StatLabel>Total Ingredients</StatLabel>
-                <StatValue>{summary?.total_items || 0}</StatValue>
-                <StatDescription>managed items</StatDescription>
-              </StatCard>
-              <StatCard>
-                <StatLabel>Low Stock</StatLabel>
-                <StatValue style={{ color: '#D97706' }}>{summary?.low_stock_count || 0}</StatValue>
-                <StatDescription>need attention</StatDescription>
-              </StatCard>
-              <StatCard>
-                <StatLabel>Out of Stock</StatLabel>
-                <StatValue style={{ color: '#DC2626' }}>{summary?.out_of_stock_count || 0}</StatValue>
-                <StatDescription>urgent</StatDescription>
-              </StatCard>
-              <StatCard>
-                <StatLabel>Monthly Loss</StatLabel>
-                <StatValue>{formatCurrency(summary?.monthly_loss || 0, selectedCurrency)}</StatValue>
-                <StatDescription>this month</StatDescription>
-              </StatCard>
-            </StatsGrid>
+          {loading ? (
+            <EmptyState>Loading...</EmptyState>
+          ) : activeTab === 'dashboard' ? (
+            <>
+              <StatsGrid>
+                <StatCard color="#059669">
+                  <StatValue>{summary?.total_items || 0}</StatValue>
+                  <StatLabel>Total Ingredients</StatLabel>
+                  <StatDescription>managed items</StatDescription>
+                </StatCard>
+                <StatCard color="#D97706">
+                  <StatValue>{summary?.low_stock_count || 0}</StatValue>
+                  <StatLabel>Low Stock</StatLabel>
+                  <StatDescription>need attention</StatDescription>
+                </StatCard>
+                <StatCard color="#DC2626">
+                  <StatValue>{summary?.out_of_stock_count || 0}</StatValue>
+                  <StatLabel>Out of Stock</StatLabel>
+                  <StatDescription>urgent</StatDescription>
+                </StatCard>
+                <StatCard color="#7C3AED">
+                  <StatValue>{formatCurrency(summary?.monthly_loss || 0, selectedCurrency)}</StatValue>
+                  <StatLabel>Monthly Loss</StatLabel>
+                  <StatDescription>this month</StatDescription>
+                </StatCard>
+              </StatsGrid>
 
-            {alerts.length > 0 && (
-              <>
-                <SectionTitle>Stock Alerts</SectionTitle>
-                <AlertsList>
-                  {alerts.slice(0, 5).map(alert => (
-                    <AlertCard key={alert.id} type={alert.alert_type}>
-                      <AlertInfo>
-                        <AlertTitle>{alert.ingredient.name}</AlertTitle>
-                        <AlertDetail>
-                          Current: {alert.current_stock} {alert.ingredient.unit} / Min: {alert.min_stock} {alert.ingredient.unit}
-                        </AlertDetail>
-                      </AlertInfo>
-                      <AlertActions>
-                        <ActionButton
-                          variant="primary"
-                          onClick={() => {
-                            const ing = inventory.find(i => i.id === alert.ingredient_id);
-                            if (ing) openReceiveModal(ing);
-                          }}
-                        >
-                          Receive
-                        </ActionButton>
-                        <ActionButton onClick={() => handleResolveAlert(alert.id)}>
-                          Dismiss
-                        </ActionButton>
-                      </AlertActions>
-                    </AlertCard>
-                  ))}
-                </AlertsList>
-              </>
-            )}
+              {alerts.length > 0 && (
+                <>
+                  <SectionTitle>Stock Alerts</SectionTitle>
+                  <div>
+                    {alerts.slice(0, 5).map(alert => (
+                      <AlertCard key={alert.id} type={alert.alert_type}>
+                        <AlertInfo>
+                          <AlertTitle>{alert.ingredient.name}</AlertTitle>
+                          <AlertDetail>
+                            Current: {alert.current_stock} {alert.ingredient.unit} / Min: {alert.min_stock} {alert.ingredient.unit}
+                          </AlertDetail>
+                        </AlertInfo>
+                        <ActionButtons>
+                          <Button
+                            variant="primary"
+                            onClick={() => {
+                              const ing = inventory.find(i => i.id === alert.ingredient_id);
+                              if (ing) openReceiveModal(ing);
+                            }}
+                            style={{ padding: '8px 16px', fontSize: '13px' }}
+                          >
+                            Receive
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            onClick={() => handleResolveAlert(alert.id)}
+                            style={{ padding: '8px 16px', fontSize: '13px' }}
+                          >
+                            Dismiss
+                          </Button>
+                        </ActionButtons>
+                      </AlertCard>
+                    ))}
+                  </div>
+                </>
+              )}
 
-            {suggestions.length > 0 && (
-              <>
-                <SectionTitle>Reorder Suggestions</SectionTitle>
-                <InfoBox>
-                  Calculated based on average daily usage over the last 30 days and supplier lead time.
-                </InfoBox>
-                <SuggestionTable>
-                  <thead>
-                    <tr>
-                      <th>Ingredient</th>
-                      <th>Current Stock</th>
-                      <th>Daily Usage</th>
-                      <th>Suggested Qty</th>
-                      <th>Est. Cost</th>
-                      <th>Urgency</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              {suggestions.length > 0 && (
+                <>
+                  <SectionTitle>Reorder Suggestions</SectionTitle>
+                  <InfoBox>
+                    Calculated based on average daily usage over the last 30 days and supplier lead time.
+                  </InfoBox>
+                  <Table>
+                    <TableHeader columns="2fr 1fr 1fr 1fr 1fr 100px">
+                      <span>Ingredient</span>
+                      <span>Current Stock</span>
+                      <span>Daily Usage</span>
+                      <span>Suggested Qty</span>
+                      <span>Est. Cost</span>
+                      <span>Urgency</span>
+                    </TableHeader>
                     {suggestions.slice(0, 10).map(s => (
-                      <tr key={s.ingredient.id}>
-                        <td>{s.ingredient.name}</td>
-                        <td>{s.current_stock} {s.ingredient.unit}</td>
-                        <td>{s.avg_daily_usage.toFixed(2)} {s.ingredient.unit}/day</td>
-                        <td><strong>{s.suggested_qty} {s.ingredient.unit}</strong></td>
-                        <td>{formatCurrency(s.estimated_cost, selectedCurrency)}</td>
-                        <td>
+                      <TableRow key={s.ingredient.id} columns="2fr 1fr 1fr 1fr 1fr 100px">
+                        <div>{s.ingredient.name}</div>
+                        <div>{s.current_stock} {s.ingredient.unit}</div>
+                        <div>{s.avg_daily_usage.toFixed(2)} {s.ingredient.unit}/day</div>
+                        <div style={{ fontWeight: 600 }}>{s.suggested_qty} {s.ingredient.unit}</div>
+                        <div>{formatCurrency(s.estimated_cost, selectedCurrency)}</div>
+                        <div>
                           <UrgencyBadge level={s.urgency}>
                             {s.urgency.toUpperCase()}
                           </UrgencyBadge>
-                        </td>
-                      </tr>
+                        </div>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </SuggestionTable>
-              </>
-            )}
+                  </Table>
+                </>
+              )}
 
-            <QuickActions>
-              <ThemedButton variant="primary" onClick={() => setActiveTab('list')}>
-                + Receive Stock
-              </ThemedButton>
-              <ThemedButton variant="secondary" onClick={() => setActiveTab('list')}>
-                + Record Waste
-              </ThemedButton>
-              <ThemedButton variant="secondary" onClick={() => setActiveTab('history')}>
-                View All Transactions
-              </ThemedButton>
-            </QuickActions>
-          </>
-        ) : activeTab === 'list' ? (
-          <>
-            <FilterBar>
-              <SearchInput
-                type="text"
-                placeholder="Search ingredients..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <FilterSelect
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                <option value="all">All Status</option>
-                <option value="normal">Normal</option>
-                <option value="low_stock">Low Stock</option>
-                <option value="out_of_stock">Out of Stock</option>
-              </FilterSelect>
-            </FilterBar>
+              <QuickActions>
+                <Button variant="primary" onClick={() => setActiveTab('list')}>
+                  + Receive Stock
+                </Button>
+                <Button variant="secondary" onClick={() => setActiveTab('list')}>
+                  + Record Waste
+                </Button>
+                <Button variant="secondary" onClick={() => setActiveTab('history')}>
+                  View All Transactions
+                </Button>
+              </QuickActions>
+            </>
+          ) : activeTab === 'list' ? (
+            <>
+              <FilterBar>
+                <SearchInput
+                  type="text"
+                  placeholder="Search ingredients..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <FilterSelect
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="all">All Status</option>
+                  <option value="normal">Normal</option>
+                  <option value="low_stock">Low Stock</option>
+                  <option value="out_of_stock">Out of Stock</option>
+                </FilterSelect>
+              </FilterBar>
 
-            {filteredInventory.length === 0 ? (
-              <EmptyState>
-                <p>No ingredients found. Add ingredients in the Ingredients page first.</p>
-              </EmptyState>
-            ) : (
-              <StockGrid>
-                {filteredInventory.map(item => (
-                  <StockCard key={item.id} status={item.stock_status}>
-                    <CardHeader>
-                      <IngredientName>{item.name}</IngredientName>
-                      <StatusBadge status={item.stock_status}>
-                        {getStatusLabel(item.stock_status)}
-                      </StatusBadge>
-                    </CardHeader>
-
-                    <StockInfo>
-                      <InfoRow>
-                        <InfoLabel>Current Stock</InfoLabel>
-                        <InfoValue>{item.current_stock} {item.unit}</InfoValue>
-                      </InfoRow>
-                      <InfoRow>
-                        <InfoLabel>Min Stock (Safety)</InfoLabel>
-                        <InfoValue>{item.min_stock} {item.unit}</InfoValue>
-                      </InfoRow>
-                      <InfoRow>
-                        <InfoLabel>Unit Cost</InfoLabel>
-                        <InfoValue>{formatCurrency(item.unit_cost, selectedCurrency)}</InfoValue>
-                      </InfoRow>
-                      <InfoRow>
-                        <InfoLabel>Avg. Daily Usage</InfoLabel>
-                        <InfoValue>{item.avg_daily_usage?.toFixed(2) || '0'} {item.unit}/day</InfoValue>
-                      </InfoRow>
-                      <InfoRow>
-                        <InfoLabel>Last Stock Take</InfoLabel>
-                        <InfoValue>{formatDate(item.last_stock_take_at)}</InfoValue>
-                      </InfoRow>
-                    </StockInfo>
-
-                    <CardActions>
-                      <ActionButton variant="primary" onClick={() => openReceiveModal(item)}>
-                        Receive
-                      </ActionButton>
-                      <ActionButton variant="danger" onClick={() => openWasteModal(item)}>
-                        Waste
-                      </ActionButton>
-                    </CardActions>
-                  </StockCard>
-                ))}
-              </StockGrid>
-            )}
-          </>
-        ) : (
-          <TransactionHistory restaurantId={restaurantId} currency={selectedCurrency} />
-        )}
+              {filteredInventory.length === 0 ? (
+                <EmptyState>
+                  <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
+                    No ingredients found
+                  </div>
+                  <div style={{ fontSize: '14px' }}>
+                    Add ingredients in the Ingredients page first.
+                  </div>
+                </EmptyState>
+              ) : (
+                <Table>
+                  <InventoryTableHeader columns="2fr 1fr 1fr 1fr 1fr 1fr 150px">
+                    <span>Ingredient</span>
+                    <span>Status</span>
+                    <span>Current Stock</span>
+                    <span>Min Stock</span>
+                    <span>Unit Cost</span>
+                    <span>Last Stock Take</span>
+                    <span>Actions</span>
+                  </InventoryTableHeader>
+                  {filteredInventory.map(item => (
+                    <InventoryTableRow key={item.id} columns="2fr 1fr 1fr 1fr 1fr 1fr 150px">
+                      <MobileGrid>
+                        <MobileValue>
+                          <MobileLabel>Ingredient</MobileLabel>
+                          <IngredientInfo>
+                            <IngredientName>{item.name}</IngredientName>
+                            <IngredientMeta>{item.category} • {item.avg_daily_usage?.toFixed(2) || '0'} {item.unit}/day</IngredientMeta>
+                          </IngredientInfo>
+                        </MobileValue>
+                        <MobileValue>
+                          <MobileLabel>Status</MobileLabel>
+                          <StatusBadge status={item.stock_status}>
+                            {getStatusLabel(item.stock_status)}
+                          </StatusBadge>
+                        </MobileValue>
+                        <MobileValue>
+                          <MobileLabel>Current Stock</MobileLabel>
+                          <div style={{ fontWeight: 600, color: '#0A2540' }}>
+                            {item.current_stock} {item.unit}
+                          </div>
+                        </MobileValue>
+                        <MobileValue>
+                          <MobileLabel>Min Stock</MobileLabel>
+                          <div style={{ color: '#6B7280' }}>
+                            {item.min_stock} {item.unit}
+                          </div>
+                        </MobileValue>
+                        <MobileValue>
+                          <MobileLabel>Unit Cost</MobileLabel>
+                          <div style={{ color: '#0A2540' }}>
+                            {formatCurrency(item.unit_cost, selectedCurrency)}
+                          </div>
+                        </MobileValue>
+                        <MobileValue>
+                          <MobileLabel>Last Stock Take</MobileLabel>
+                          <div style={{ color: '#6B7280' }}>
+                            {formatDate(item.last_stock_take_at)}
+                          </div>
+                        </MobileValue>
+                      </MobileGrid>
+                      <ActionButtons>
+                        <Button
+                          variant="primary"
+                          onClick={() => openReceiveModal(item)}
+                          style={{ padding: '6px 12px', fontSize: '13px' }}
+                        >
+                          Receive
+                        </Button>
+                        <Button
+                          variant="danger"
+                          onClick={() => openWasteModal(item)}
+                          style={{ padding: '6px 12px', fontSize: '13px' }}
+                        >
+                          Waste
+                        </Button>
+                      </ActionButtons>
+                    </InventoryTableRow>
+                  ))}
+                </Table>
+              )}
+            </>
+          ) : (
+            <TransactionHistory restaurantId={restaurantId} currency={selectedCurrency} />
+          )}
+        </Content>
       </Container>
 
       {/* Receive Stock Modal */}
@@ -860,6 +781,7 @@ interface Transaction {
   };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TransactionHistory: React.FC<TransactionHistoryProps> = ({ restaurantId, currency }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -914,40 +836,74 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ restaurantId, c
   }
 
   if (transactions.length === 0) {
-    return <EmptyState>No transactions recorded yet.</EmptyState>;
+    return (
+      <EmptyState>
+        <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
+          No transactions recorded yet
+        </div>
+        <div style={{ fontSize: '14px' }}>
+          Transactions will appear here when you receive or waste stock.
+        </div>
+      </EmptyState>
+    );
   }
 
   return (
-    <SuggestionTable>
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Ingredient</th>
-          <th>Type</th>
-          <th>Change</th>
-          <th>After</th>
-          <th>Notes</th>
-        </tr>
-      </thead>
-      <tbody>
-        {transactions.map(t => (
-          <tr key={t.id}>
-            <td>{new Date(t.created_at).toLocaleString()}</td>
-            <td>{t.ingredient?.name || '-'}</td>
-            <td>
+    <Table>
+      <TableHeader columns="1.5fr 1.5fr 1fr 1fr 1fr 2fr">
+        <span>Date</span>
+        <span>Ingredient</span>
+        <span>Type</span>
+        <span>Change</span>
+        <span>After</span>
+        <span>Notes</span>
+      </TableHeader>
+      {transactions.map(t => (
+        <TableRow key={t.id} columns="1.5fr 1.5fr 1fr 1fr 1fr 2fr">
+          <MobileGrid>
+            <MobileValue>
+              <MobileLabel>Date</MobileLabel>
+              <div style={{ fontSize: '14px', color: '#0A2540' }}>
+                {new Date(t.created_at).toLocaleString()}
+              </div>
+            </MobileValue>
+            <MobileValue>
+              <MobileLabel>Ingredient</MobileLabel>
+              <div style={{ fontWeight: 600, color: '#0A2540' }}>
+                {t.ingredient?.name || '-'}
+              </div>
+            </MobileValue>
+            <MobileValue>
+              <MobileLabel>Type</MobileLabel>
               <span style={{ color: getTypeColor(t.transaction_type), fontWeight: 600 }}>
                 {getTypeLabel(t.transaction_type)}
               </span>
-            </td>
-            <td style={{ color: parseFloat(String(t.quantity_change)) >= 0 ? '#059669' : '#DC2626' }}>
-              {parseFloat(String(t.quantity_change)) >= 0 ? '+' : ''}{t.quantity_change} {t.unit}
-            </td>
-            <td>{t.stock_after} {t.unit}</td>
-            <td>{t.notes || '-'}</td>
-          </tr>
-        ))}
-      </tbody>
-    </SuggestionTable>
+            </MobileValue>
+            <MobileValue>
+              <MobileLabel>Change</MobileLabel>
+              <div style={{
+                color: parseFloat(String(t.quantity_change)) >= 0 ? '#059669' : '#DC2626',
+                fontWeight: 600
+              }}>
+                {parseFloat(String(t.quantity_change)) >= 0 ? '+' : ''}{t.quantity_change} {t.unit}
+              </div>
+            </MobileValue>
+            <MobileValue>
+              <MobileLabel>After</MobileLabel>
+              <div style={{ color: '#0A2540' }}>
+                {t.stock_after} {t.unit}
+              </div>
+            </MobileValue>
+            <MobileValue>
+              <MobileLabel>Notes</MobileLabel>
+              <div style={{ color: '#6B7280', fontSize: '13px' }}>
+                {t.notes || '-'}
+              </div>
+            </MobileValue>
+          </MobileGrid>
+        </TableRow>
+      ))}
+    </Table>
   );
 };
 
