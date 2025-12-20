@@ -76,15 +76,26 @@ router.get('/me', async (req, res, next) => {
 // 로그아웃
 router.post('/logout', async (req, res, next) => {
   try {
+    // 세션이 없는 경우에도 정상 처리
+    if (!req.session) {
+      res.clearCookie('connect.sid');
+      return successResponse(res, null, 'Logout successful');
+    }
+
     req.session.destroy((err) => {
       if (err) {
-        return errorResponse(res, 'Logout failed', 500, 'LOGOUT_ERROR');
+        console.error('Session destroy error:', err);
+        // 에러가 발생해도 쿠키는 삭제하고 성공 응답
+        res.clearCookie('connect.sid');
+        return successResponse(res, null, 'Logout successful');
       }
       res.clearCookie('connect.sid');
       successResponse(res, null, 'Logout successful');
     });
   } catch (error) {
-    next(error);
+    // 예외 발생 시에도 쿠키 삭제 후 성공 응답
+    res.clearCookie('connect.sid');
+    successResponse(res, null, 'Logout successful');
   }
 });
 
