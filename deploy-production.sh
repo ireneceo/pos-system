@@ -275,7 +275,15 @@ echo -e "${GREEN}   ✅ Frontend build deployed${NC}"
 # ==============================================
 echo ""
 echo -e "${YELLOW}Step 11: Restart Backend Server${NC}"
-pm2 restart production-backend
+
+# sudo로 실행된 경우 원래 사용자의 PM2로 실행
+if [ "$SUDO_USER" != "" ]; then
+    # sudo로 실행됨 - 원래 사용자(irene)의 PM2 사용
+    su - $SUDO_USER -c "pm2 restart production-backend && pm2 save"
+else
+    # 일반 사용자로 실행됨
+    pm2 restart production-backend && pm2 save
+fi
 sleep 3
 echo -e "${GREEN}   ✅ Backend server restarted${NC}"
 
