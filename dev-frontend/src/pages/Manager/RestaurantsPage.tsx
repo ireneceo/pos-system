@@ -591,7 +591,7 @@ const ManagerRestaurantsPage: React.FC = () => {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const { defaultCurrency } = useBrandCurrency();
-  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
 
   useEffect(() => {
     if (defaultCurrency) {

@@ -278,7 +278,7 @@ const DashboardContent: React.FC = () => {
   const [recentOrders, setRecentOrders] = React.useState<any[]>([]);
   const [systemAlerts, setSystemAlerts] = React.useState<SystemAlert[]>([]);
   const { defaultCurrency } = useBrandCurrency();
-  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
 
   useEffect(() => {
     if (defaultCurrency) {

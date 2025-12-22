@@ -21,7 +21,7 @@ import {
 } from '../../components/UI';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 
 // Styled Components
 const Container = styled.div`
@@ -674,7 +674,7 @@ const MenuManagementPage: React.FC = () => {
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [priceEditItem, setPriceEditItem] = useState<MenuItemType | null>(null);
   const { defaultCurrency } = useBrandCurrency();
-  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
 
   useEffect(() => {
     if (defaultCurrency) {

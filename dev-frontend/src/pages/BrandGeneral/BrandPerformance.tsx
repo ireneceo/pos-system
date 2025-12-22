@@ -352,7 +352,7 @@ const BrandPerformance: React.FC = () => {
   const [selectedBrandId, setSelectedBrandId] = useState<string>('all');
   const [selectedMetric, setSelectedMetric] = useState('sales');
   const { defaultCurrency } = useBrandCurrency();
-  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
 
   useEffect(() => {
     if (defaultCurrency) {

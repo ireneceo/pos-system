@@ -848,10 +848,12 @@ const SettingsPage: React.FC = () => {
             } : defaultOps;
 
             // Override with currency settings from restaurant table (these take priority)
+            // Individual columns (currency, cash_rounding, rounding_apply_to) are the source of truth
             const currencyFromDB = restaurant.currency || 'RM';
+            // null means rounding is disabled - preserve null, don't default to 0.05
             const cashRoundingFromDB = restaurant.cash_rounding !== null && restaurant.cash_rounding !== undefined
               ? parseFloat(restaurant.cash_rounding)
-              : 0.05;
+              : null;
             const roundingApplyToFromDB = restaurant.rounding_apply_to || 'cash_only';
 
             const finalOperationSettings = {
@@ -2826,10 +2828,21 @@ const SettingsPage: React.FC = () => {
                     }}
                   >
                     <option value="RM">Malaysian Ringgit (RM)</option>
-                    <option value="USD">US Dollar (USD)</option>
-                    <option value="SGD">Singapore Dollar (SGD)</option>
-                    <option value="JPY">Japanese Yen (JPY)</option>
-                    <option value="THB">Thai Baht (THB)</option>
+                    <option value="USD">US Dollar ($)</option>
+                    <option value="SGD">Singapore Dollar (S$)</option>
+                    <option value="JPY">Japanese Yen (¥)</option>
+                    <option value="THB">Thai Baht (฿)</option>
+                    <option value="KRW">Korean Won (₩)</option>
+                    <option value="EUR">Euro (€)</option>
+                    <option value="GBP">British Pound (£)</option>
+                    <option value="AUD">Australian Dollar (A$)</option>
+                    <option value="CNY">Chinese Yuan (¥)</option>
+                    <option value="INR">Indian Rupee (₹)</option>
+                    <option value="PHP">Philippine Peso (₱)</option>
+                    <option value="VND">Vietnamese Dong (₫)</option>
+                    <option value="IDR">Indonesian Rupiah (Rp)</option>
+                    <option value="TWD">Taiwan Dollar (NT$)</option>
+                    <option value="HKD">Hong Kong Dollar (HK$)</option>
                   </Select>
                 </FormGroup>
 

@@ -415,7 +415,7 @@ const RestaurantDashboard: React.FC = () => {
   const [timePeriod, setTimePeriod] = useState<'week' | 'month' | 'year'>('week');
   const [salesChartData, setSalesChartData] = useState<SalesChartData[]>([]);
   const { defaultCurrency } = useBrandCurrency();
-  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
 
   useEffect(() => {
     if (defaultCurrency) {

@@ -126,7 +126,7 @@ class MobileApiService {
   }
 
   // Payment
-  async createPaymentIntent(amount: number, currency: string = 'MYR') {
+  async createPaymentIntent(amount: number, currency: string = 'RM') {
     return this.request('/mobile/payment/intent', {
       method: 'POST',
       body: JSON.stringify({ amount, currency })

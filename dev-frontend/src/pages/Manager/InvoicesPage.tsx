@@ -507,7 +507,7 @@ const ManagerInvoicesPage: React.FC = () => {
   const [filterMonth, setFilterMonth] = useState('all');
   const [showCreateInvoiceModal, setShowCreateInvoiceModal] = useState(false);
   const { defaultCurrency } = useBrandCurrency();
-  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
 
   useEffect(() => {
     if (defaultCurrency) {

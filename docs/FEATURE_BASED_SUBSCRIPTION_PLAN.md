@@ -76,7 +76,7 @@
 - [x] Recipe Management (레시피 관리) - 완료
 - [x] Brand Product Management (브랜드 제품 관리) - 2025-12-15 완료
 - [x] Product-Ingredient Sync (제품-재료 연동) - 2025-12-15 완료
-- [ ] Advanced Inventory (재고 관리)
+- [x] Advanced Inventory (재고 관리) - 2025-12-19 완료
 - [ ] Purchase Order System (발주 관리)
 - [ ] AI Stock Prediction (재고 예측)
 
@@ -230,7 +230,7 @@ Brand General/Manager: 접근 불가 (표시 안됨)
 
 ---
 
-### 📦 Phase 3: Advanced Inventory (진행 중)
+### ✅ Phase 3: Advanced Inventory (완료 - 2025-12-19)
 
 **목표:** 이론재고/실사재고 기반 재고 관리 및 Loss 분석
 
@@ -244,34 +244,34 @@ Brand General/Manager: 접근 불가 (표시 안됨)
 #### 작업 목록
 
 **3.1 DB 스키마**
-- [ ] `inventory_transactions` 테이블 (입출고 내역)
-- [ ] `stock_takes` 테이블 (재고 실사)
-- [ ] `stock_take_items` 테이블 (실사 상세)
-- [ ] `stock_alerts` 테이블 (재고 알림)
-- [ ] `ingredients` 테이블 필드 추가 (last_actual_stock, avg_daily_usage 등)
+- [x] `inventory_transactions` 테이블 (입출고 내역)
+- [x] `stock_takes` 테이블 (재고 실사)
+- [x] `stock_take_items` 테이블 (실사 상세)
+- [x] `stock_alerts` 테이블 (재고 알림)
+- [x] `ingredients` 테이블 필드 추가 (current_stock, min_stock 등)
 
 **3.2 Backend**
-- [ ] Models: InventoryTransaction, StockTake, StockTakeItem, StockAlert
-- [ ] APIs: 재고 현황, 입출고, 실사, 알림
-- [ ] 자동 재고 차감 로직 (Order 생성 시)
-- [ ] 발주 제안 계산 로직
+- [x] Models: InventoryTransaction, StockTake, StockTakeItem, StockAlert
+- [x] APIs: 재고 현황, 입출고, 실사, 알림
+- [x] 입고/폐기/조정 로직
+- [x] 발주 제안 계산 로직
 
 **3.3 Frontend**
-- [ ] `/restaurant/:id/inventory` - 재고 현황 대시보드
-- [ ] `/restaurant/:id/inventory/list` - 재고 목록 (입고/출고/폐기)
-- [ ] `/restaurant/:id/inventory/stock-take` - 재고 실사
-- [ ] `/restaurant/:id/inventory/history` - 거래 내역
+- [x] `/restaurant/:id/inventory` - 재고 현황 대시보드 (Dashboard 탭)
+- [x] `/restaurant/:id/inventory` - 재고 목록 (Stock List 탭, 입고/폐기)
+- [x] `/restaurant/:id/inventory/stock-take` - 재고 실사
+- [x] `/restaurant/:id/inventory` - 거래 내역 (History 탭)
 
 **3.4 Integration**
-- [ ] Order → Recipe → Inventory 자동 차감
-- [ ] 최소 재고 도달 시 알림 생성
-- [ ] 발주 필요 수량 자동 계산
+- [ ] Order → Recipe → Inventory 자동 차감 (향후 구현)
+- [x] 최소 재고 도달 시 알림 생성
+- [x] 발주 필요 수량 자동 계산
 
 **산출물:**
-- 초기 재고 설정 및 수동 입출고
-- 주문 시 레시피 기반 자동 재고 차감
-- 정기 재고 실사 및 Loss 분석
-- Low Stock 알림 및 발주 제안
+- ✅ 초기 재고 설정 및 수동 입출고
+- ✅ 정기 재고 실사 및 Loss 분석
+- ✅ Low Stock 알림 및 발주 제안
+- 📋 주문 시 레시피 기반 자동 재고 차감 (Phase 4와 함께 구현 예정)
 
 ---
 

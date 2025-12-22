@@ -187,7 +187,7 @@ const ManagerCustomersPage: React.FC = () => {
   const [tierFilter, setTierFilter] = useState('all');
   const [selectedRestaurant, setSelectedRestaurant] = useState('all');
   const { defaultCurrency } = useBrandCurrency();
-  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
 
   useEffect(() => {
     if (defaultCurrency) {

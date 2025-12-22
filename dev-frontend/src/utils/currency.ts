@@ -16,10 +16,11 @@ export interface CurrencyData {
   decimals: number;
 }
 
-// Complete currency configurations (matches backend CURRENCY_CONFIG)
+// Complete currency configurations
+// RM is used as the primary key for Malaysian Ringgit (local convention)
 export const CURRENCY_CONFIG: Record<string, CurrencyConfig> = {
+  RM: { symbol: 'RM', name: 'Malaysian Ringgit', decimals: 2 },
   USD: { symbol: '$', name: 'US Dollar', decimals: 2 },
-  MYR: { symbol: 'RM', name: 'Malaysian Ringgit', decimals: 2 },
   KRW: { symbol: '₩', name: 'Korean Won', decimals: 0 },
   SGD: { symbol: 'S$', name: 'Singapore Dollar', decimals: 2 },
   THB: { symbol: '฿', name: 'Thai Baht', decimals: 2 },
@@ -68,13 +69,13 @@ export function getAllCurrencies(): CurrencyData[] {
 /**
  * Format a number as currency with the specified currency code
  * @param amount - The amount to format
- * @param currencyCode - Currency code (USD, KRW, MYR, etc.)
+ * @param currencyCode - Currency code (RM, USD, KRW, etc.)
  * @param showDecimals - Whether to show decimal places (default: based on currency config)
  * @returns Formatted currency string
  */
 export function formatCurrency(
   amount: number | string,
-  currencyCode: string = 'USD',
+  currencyCode: string = 'RM',
   showDecimals?: boolean
 ): string {
   const config = CURRENCY_CONFIG[currencyCode];

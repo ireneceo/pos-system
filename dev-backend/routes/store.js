@@ -155,6 +155,31 @@ router.put('/settings', authenticateToken, async (req, res) => {
       }
     });
 
+    // Sync operation_settings with individual currency columns
+    // This ensures both locations have the same values
+    if (req.body.operation_settings) {
+      const opSettings = req.body.operation_settings;
+
+      // Sync currency values: individual columns take priority
+      if (req.body.currency !== undefined) {
+        opSettings.currency = req.body.currency;
+      }
+      if (req.body.cash_rounding !== undefined) {
+        opSettings.cashRounding = req.body.cash_rounding;
+      }
+      if (req.body.rounding_apply_to !== undefined) {
+        opSettings.roundingApplyTo = req.body.rounding_apply_to;
+      }
+
+      // Update operation_settings with synced values
+      restaurant.operation_settings = opSettings;
+      console.log('✅ Synced currency settings in operation_settings:', {
+        currency: opSettings.currency,
+        cashRounding: opSettings.cashRounding,
+        roundingApplyTo: opSettings.roundingApplyTo
+      });
+    }
+
     console.log('💾 Saving to database...');
     await restaurant.save();
     console.log('✅ Settings saved successfully!');

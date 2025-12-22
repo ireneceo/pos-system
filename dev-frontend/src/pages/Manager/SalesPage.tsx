@@ -273,7 +273,7 @@ const ManagerSalesPage: React.FC = () => {
   const [dateRange, setDateRange] = useState('today');
   const [restaurantSales, setRestaurantSales] = useState<RestaurantSales[]>([]);
   const { defaultCurrency } = useBrandCurrency();
-  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
 
   useEffect(() => {
     if (defaultCurrency) {

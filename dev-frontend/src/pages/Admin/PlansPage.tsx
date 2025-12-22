@@ -641,7 +641,7 @@ const PlansPage: React.FC = () => {
       }
     } catch (error) {
       console.error('Error fetching supported currencies:', error);
-      setSupportedCurrencies(['USD', 'MYR', 'KRW']);
+      setSupportedCurrencies(['USD', 'RM', 'KRW']);
     }
   };
 

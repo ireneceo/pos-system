@@ -237,7 +237,7 @@ const InventoryPage: React.FC = () => {
   const { user } = useAuth();
   const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
   const { defaultCurrency } = useBrandCurrency();
-  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'list' | 'history'>('dashboard');
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<Summary | null>(null);

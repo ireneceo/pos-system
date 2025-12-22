@@ -312,6 +312,39 @@ const dateKey = `${(orderDate.getMonth() + 1).toString().padStart(2, '0')}/${ord
 
 ---
 
+## ✅ 완료된 작업 (2025-12-22)
+
+### 통화 설정 시스템 개선
+
+**문제 1: 통화 코드 불일치**
+- 메뉴 페이지에서 레스토랑 통화가 RM으로 설정되어 있어도 $로 표시됨
+- `useBrandCurrency` 훅이 브랜드 API에서 통화를 가져오고 있었음
+
+**해결:**
+1. `useBrandCurrency` 훅을 레스토랑 기반으로 변경
+   - `/api/restaurants/${restaurantId}`에서 통화 가져오기
+   - 토큰 키 수정 (`token` → `auth_token`)
+2. `CURRENCY_CONFIG`에 `RM` 키 추가 (말레이시아 현지 관례)
+3. 모든 페이지의 기본 통화값을 `MYR` → `RM`으로 변경 (23개 파일)
+
+**문제 2: 배포 시 설정값 리셋**
+- 운영 배포 후 통화 반올림, Pager 설정 등이 초기화됨
+- `operation_settings` JSON과 개별 컬럼(`cash_rounding`, `currency`) 값이 불일치
+
+**해결:**
+1. 백엔드 `store.js`에서 설정 저장 시 `operation_settings` 내부 값도 개별 컬럼과 동기화
+2. 프론트엔드에서 `cash_rounding`이 null일 때 기본값 설정하지 않음 (비활성화 상태 보존)
+3. 운영 DB의 불일치 데이터 동기화 쿼리 실행
+
+**수정된 파일:**
+- `dev-backend/routes/store.js` - operation_settings 동기화 로직 추가
+- `dev-frontend/src/hooks/useBrandCurrency.ts` - 레스토랑 기반으로 변경
+- `dev-frontend/src/utils/currency.ts` - RM 키 추가, 기본값 RM
+- `dev-frontend/src/pages/Settings/SettingsPage.tsx` - null 보존 로직
+- 23개 페이지의 통화 기본값 변경
+
+---
+
 ## ✅ 완료된 작업 (2025-12-19)
 
 ### 재고관리 시스템 완료
@@ -1250,4 +1283,4 @@ const token = localStorage.getItem('auth_token'); // 'token' → 'auth_token'
 **프로젝트:** Purple POS System
 **개발 환경:** Development Server
 **데이터베이스:** purple_dev_db (MySQL)
-**마지막 업데이트:** 2025-12-19
+**마지막 업데이트:** 2025-12-22

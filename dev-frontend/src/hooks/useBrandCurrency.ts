@@ -10,29 +10,39 @@ interface BrandCurrencyData {
 }
 
 /**
- * Hook to get brand currency settings
- * Returns the default currency and supported currencies for the current brand
+ * Hook to get restaurant currency settings
+ * Returns the default currency from the restaurant's settings
+ * Currency is set per-restaurant, not per-brand
  */
 export const useBrandCurrency = (): BrandCurrencyData => {
   const { user } = useAuth();
-  const [defaultCurrency, setDefaultCurrency] = useState<string>('USD');
-  const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>(['USD']);
+  const [defaultCurrency, setDefaultCurrency] = useState<string>('RM');
+  const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>(Object.keys(CURRENCY_CONFIG));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchBrandCurrency = async () => {
-      if (!user?.brand_id) {
-        // For non-brand users, use system default
-        setDefaultCurrency('USD');
-        setSupportedCurrencies(['USD', 'MYR', 'KRW']);
+    const fetchRestaurantCurrency = async () => {
+      // Get restaurantId from URL or user context
+      const pathParts = window.location.pathname.split('/');
+      const restaurantIndex = pathParts.indexOf('restaurant');
+      let restaurantId = restaurantIndex >= 0 ? pathParts[restaurantIndex + 1] : null;
+
+      // Fallback to user's restaurant_id
+      if (!restaurantId && user?.restaurant_id) {
+        restaurantId = user.restaurant_id.toString();
+      }
+
+      if (!restaurantId) {
+        // No restaurant context, use default
+        setDefaultCurrency('RM');
         setLoading(false);
         return;
       }
 
       try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`/api/currencies/brands/${user.brand_id}`, {
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch(`/api/restaurants/${restaurantId}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -41,28 +51,24 @@ export const useBrandCurrency = (): BrandCurrencyData => {
 
         if (response.ok) {
           const data = await response.json();
-          if (data.success && data.data) {
-            setDefaultCurrency(data.data.default_currency || 'USD');
-            setSupportedCurrencies(data.data.supported_currencies || ['USD']);
-          }
+          // Restaurant currency is in the 'currency' field
+          const currency = data.currency || data.operation_settings?.currency || 'RM';
+          setDefaultCurrency(currency);
         } else {
-          // Fallback to defaults if API fails
-          setDefaultCurrency('USD');
-          setSupportedCurrencies(['USD', 'MYR', 'KRW']);
+          // Fallback to default
+          setDefaultCurrency('RM');
         }
       } catch (err) {
-        console.error('Failed to fetch brand currency:', err);
+        console.error('Failed to fetch restaurant currency:', err);
         setError('Failed to load currency settings');
-        // Use defaults
-        setDefaultCurrency('USD');
-        setSupportedCurrencies(['USD', 'MYR', 'KRW']);
+        setDefaultCurrency('RM');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchBrandCurrency();
-  }, [user?.brand_id]);
+    fetchRestaurantCurrency();
+  }, [user?.restaurant_id]);
 
   return {
     defaultCurrency,

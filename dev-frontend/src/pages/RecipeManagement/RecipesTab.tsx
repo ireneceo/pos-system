@@ -826,7 +826,7 @@ const RecipeDetailText = styled.div`
 const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRestaurantId, onCountChange, categoryRefreshKey }) => {
   const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
-  const [selectedCurrency, setSelectedCurrency] = useState<string>('MYR');
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
   // URL 파라미터의 restaurantId가 우선, 없으면 user.restaurant_id 또는 user.restaurantId 사용
   const effectiveRestaurantId = propsRestaurantId || user?.restaurant_id || user?.restaurantId;
   const [recipes, setRecipes] = useState<Recipe[]>([]);
