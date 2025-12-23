@@ -80,7 +80,7 @@ interface DbOrder {
   table_number: string | null;
   pager_number: string | null;
   total_amount: number;
-  status: 'awaiting_payment' | 'pending' | 'preparing' | 'ready' | 'served' | 'completed' | 'cancelled';
+  status: 'outstanding' | 'awaiting_payment' | 'pending' | 'preparing' | 'ready' | 'served' | 'completed' | 'cancelled';
   order_type: 'dine_in' | 'takeaway' | 'pickup' | 'delivery';
   scheduled_pickup_time?: string | null;
   payment_method: string | null;
