@@ -1440,8 +1440,10 @@ const LiveOrdersPage: React.FC = () => {
   }, [user?.restaurantId]);
 
   // Helper function to determine if order is Outstanding
+  // Mobile order creates orders with status='outstanding', POS creates with status='awaiting_payment'
   const isOutstanding = (order: DbOrder) => {
-    return order.status === 'awaiting_payment' ||
+    return order.status === 'outstanding' ||
+           order.status === 'awaiting_payment' ||
            order.payment_status === 'payment_verification_pending';
   };
 
@@ -1604,6 +1606,7 @@ const LiveOrdersPage: React.FC = () => {
 
   const getNextStatus = (currentStatus: DbOrder['status'], paymentStatus?: string): DbOrder['status'] | null => {
     const statusFlow: Record<string, DbOrder['status'] | null> = {
+      outstanding: 'pending',
       awaiting_payment: 'pending',
       pending: 'preparing',
       preparing: 'ready',
@@ -1615,10 +1618,11 @@ const LiveOrdersPage: React.FC = () => {
     return statusFlow[currentStatus] || null;
   };
 
-  const getActionLabel = (status: DbOrder['status'], paymentStatus?: string, orderType?: string) => {
+  const getActionLabel = (status: DbOrder['status'], _paymentStatus?: string, orderType?: string) => {
     // For delivery orders, use delivery-specific labels
     if (orderType === 'delivery') {
       const deliveryLabels: Record<string, string> = {
+        outstanding: 'Proceed Without Payment',
         awaiting_payment: 'Proceed Without Payment',
         pending: 'Start Preparing',
         preparing: 'Mark Ready',
@@ -1631,6 +1635,7 @@ const LiveOrdersPage: React.FC = () => {
     }
 
     const labels: Record<string, string> = {
+      outstanding: 'Proceed Without Payment',
       awaiting_payment: 'Proceed Without Payment',
       pending: 'Start Cooking',
       preparing: 'Mark Ready',
