@@ -691,34 +691,12 @@ const MenuManagementPage: React.FC = () => {
   const [, ] = useState(0);
   const [setMenuSearchQuery, setSetMenuSearchQuery] = useState('');
 
-  // Progressive rendering for menu items
-  const INITIAL_RENDER_COUNT = 20;
-  const LOAD_MORE_COUNT = 15;
+  // Progressive rendering state
+  const PROGRESSIVE_THRESHOLD = 50;
+  const INITIAL_RENDER_COUNT = 40;
+  const LOAD_MORE_COUNT = 30;
   const [visibleCount, setVisibleCount] = useState(INITIAL_RENDER_COUNT);
   const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
-
-  // Reset visible count when category or search changes
-  useEffect(() => {
-    setVisibleCount(INITIAL_RENDER_COUNT);
-  }, [selectedCategory, searchQuery]);
-
-  // Intersection Observer for progressive loading
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setVisibleCount(prev => prev + LOAD_MORE_COUNT);
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (loadMoreTriggerRef.current) {
-      observer.observe(loadMoreTriggerRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
 
   // Form state
   const [formData, setFormData] = useState<Partial<MenuItemType>>({
@@ -834,6 +812,35 @@ const MenuManagementPage: React.FC = () => {
   };
 
   const filteredItems = getFilteredItems();
+
+  // Progressive rendering - only activate for large lists (50+ items)
+  const useProgressive = filteredItems.length > PROGRESSIVE_THRESHOLD;
+
+  // Reset visible count when category or search changes
+  useEffect(() => {
+    setVisibleCount(INITIAL_RENDER_COUNT);
+  }, [selectedCategory, searchQuery]);
+
+  // Intersection Observer for progressive loading - only when needed
+  useEffect(() => {
+    if (!useProgressive) return;
+
+    const trigger = loadMoreTriggerRef.current;
+    if (!trigger) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount(prev => prev + LOAD_MORE_COUNT);
+        }
+      },
+      { threshold: 0.1, rootMargin: '100px' }
+    );
+
+    observer.observe(trigger);
+
+    return () => observer.disconnect();
+  }, [useProgressive, visibleCount, filteredItems.length]);
 
   const handleAddItem = () => {
     setFormData({
@@ -1115,7 +1122,7 @@ const MenuManagementPage: React.FC = () => {
             </NoResultsMessage>
           ) : (
             <MenuGrid>
-              {filteredItems.slice(0, visibleCount).map(item => (
+              {(useProgressive ? filteredItems.slice(0, visibleCount) : filteredItems).map(item => (
               <MenuCard key={item.id} soldOut={item.soldOut}>
                 <MenuImage>
                   {item.is_set_menu && <SetBadge>SET</SetBadge>}
@@ -1210,8 +1217,8 @@ const MenuManagementPage: React.FC = () => {
               <AddText>Add New Menu Item</AddText>
             </AddCard>
 
-            {/* Progressive loading trigger */}
-            {visibleCount < filteredItems.length && (
+            {/* Progressive loading trigger - only show when using progressive rendering */}
+            {useProgressive && visibleCount < filteredItems.length && (
               <div ref={loadMoreTriggerRef} style={{ gridColumn: '1 / -1', height: '20px' }} />
             )}
           </MenuGrid>

@@ -1165,35 +1165,12 @@ const POSTerminalPage: React.FC = () => {
   const [cashRounding, setCashRounding] = useState<number | null>(null);
   const [roundingApplyTo, setRoundingApplyTo] = useState<'cash_only' | 'all'>('cash_only');
 
-  // Progressive rendering for menu items (virtual scrolling alternative)
-  const INITIAL_RENDER_COUNT = 30;
-  const LOAD_MORE_COUNT = 20;
+  // Progressive rendering state
+  const PROGRESSIVE_THRESHOLD = 50;
+  const INITIAL_RENDER_COUNT = 40;
+  const LOAD_MORE_COUNT = 30;
   const [visibleCount, setVisibleCount] = useState(INITIAL_RENDER_COUNT);
-  const menuGridRef = useRef<HTMLDivElement>(null);
   const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
-
-  // Reset visible count when category or search changes
-  useEffect(() => {
-    setVisibleCount(INITIAL_RENDER_COUNT);
-  }, [selectedCategory, searchQuery]);
-
-  // Intersection Observer for progressive loading
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setVisibleCount(prev => prev + LOAD_MORE_COUNT);
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (loadMoreTriggerRef.current) {
-      observer.observe(loadMoreTriggerRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
 
   // Load brand logo from site settings
   useEffect(() => {
@@ -1330,6 +1307,35 @@ const POSTerminalPage: React.FC = () => {
   };
   
   const filteredMenuItems = getFilteredItems();
+
+  // Progressive rendering - only activate for large lists (50+ items)
+  const useProgressive = filteredMenuItems.length > PROGRESSIVE_THRESHOLD;
+
+  // Reset visible count when category or search changes
+  useEffect(() => {
+    setVisibleCount(INITIAL_RENDER_COUNT);
+  }, [selectedCategory, searchQuery]);
+
+  // Intersection Observer for progressive loading - only when needed
+  useEffect(() => {
+    if (!useProgressive) return;
+
+    const trigger = loadMoreTriggerRef.current;
+    if (!trigger) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount(prev => prev + LOAD_MORE_COUNT);
+        }
+      },
+      { threshold: 0.1, rootMargin: '100px' }
+    );
+
+    observer.observe(trigger);
+
+    return () => observer.disconnect();
+  }, [useProgressive, visibleCount, filteredMenuItems.length]);
 
   const handleAddItemDirectly = (menuItem: MenuItemType) => {
     if (menuItem.soldOut) return;
@@ -2083,10 +2089,10 @@ const POSTerminalPage: React.FC = () => {
             ))}
           </CategoryTabs>
 
-          <MenuGrid ref={menuGridRef}>
+          <MenuGrid>
             {filteredMenuItems.length > 0 ? (
               <>
-                {filteredMenuItems.slice(0, visibleCount).map(item => {
+                {(useProgressive ? filteredMenuItems.slice(0, visibleCount) : filteredMenuItems).map(item => {
                   // Check if item has option groups defined in menu data
                   const hasOptions = item.optionGroups && item.optionGroups.length > 0;
 
@@ -2124,8 +2130,8 @@ const POSTerminalPage: React.FC = () => {
                     </MenuItem>
                   );
                 })}
-                {/* Progressive loading trigger */}
-                {visibleCount < filteredMenuItems.length && (
+                {/* Progressive loading trigger - only show when using progressive rendering */}
+                {useProgressive && visibleCount < filteredMenuItems.length && (
                   <div ref={loadMoreTriggerRef} style={{ gridColumn: '1 / -1', height: '20px' }} />
                 )}
               </>

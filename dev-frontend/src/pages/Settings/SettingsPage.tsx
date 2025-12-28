@@ -986,11 +986,40 @@ const SettingsPage: React.FC = () => {
   };
   
   const handleDownloadQR = (table: Table) => {
-    const canvas = document.getElementById(`qr-${table.id}`) as HTMLCanvasElement;
-    if (canvas) {
+    const tableNumber = `${tableSettings.tablePrefix}${String(table.number).padStart(3, '0')}`;
+    const qrCanvas = document.getElementById(`qr-${table.id}`) as HTMLCanvasElement;
+
+    if (qrCanvas) {
+      // Create new canvas with table number label + QR code
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const padding = 20;
+      const labelHeight = 50;
+      const qrSize = qrCanvas.width || 100;
+
+      canvas.width = qrSize + padding * 2;
+      canvas.height = qrSize + padding * 2 + labelHeight;
+
+      // White background
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw table number label at top
+      ctx.fillStyle = '#0A2540';
+      ctx.font = 'bold 28px Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(tableNumber, canvas.width / 2, padding + labelHeight / 2);
+
+      // Draw QR code below label
+      ctx.drawImage(qrCanvas, padding, padding + labelHeight);
+
+      // Download
       const url = canvas.toDataURL('image/png');
       const link = document.createElement('a');
-      link.download = `table-${tableSettings.tablePrefix}${String(table.number).padStart(3, '0')}-qr.png`;
+      link.download = `${tableNumber}-qr.png`;
       link.href = url;
       link.click();
     }

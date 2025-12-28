@@ -305,14 +305,49 @@ const TableManagementPage: React.FC = () => {
   };
   
   const handleDownloadQR = (table: Table) => {
-    const canvas = document.getElementById(`qr-${table.id}`) as HTMLCanvasElement;
-    if (canvas) {
-      const url = canvas.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.download = `table-${settings.tablePrefix}${String(table.number).padStart(3, '0')}-qr.png`;
-      link.href = url;
-      link.click();
+    const tableNumber = `${settings.tablePrefix}${String(table.number).padStart(3, '0')}`;
+
+    // Find canvas inside the QR container
+    const qrContainer = document.getElementById(`qr-container-${table.id}`);
+    const qrCanvas = qrContainer?.querySelector('canvas') as HTMLCanvasElement;
+
+    if (!qrCanvas) {
+      console.error('QR canvas not found for table:', table.id);
+      return;
     }
+
+    // Create a new canvas with table number label + QR code
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const padding = 20;
+    const labelHeight = 50;
+    const qrSize = qrCanvas.width || 128;
+
+    canvas.width = qrSize + padding * 2;
+    canvas.height = qrSize + padding * 2 + labelHeight;
+
+    // White background
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw table number label at top
+    ctx.fillStyle = '#0A2540';
+    ctx.font = 'bold 28px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(tableNumber, canvas.width / 2, padding + labelHeight / 2);
+
+    // Draw QR code below label
+    ctx.drawImage(qrCanvas, padding, padding + labelHeight);
+
+    // Download
+    const url = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.download = `${tableNumber}-qr.png`;
+    link.href = url;
+    link.click();
   };
   
   const handlePrintQR = (table: Table) => {
@@ -341,11 +376,11 @@ const TableManagementPage: React.FC = () => {
             </style>
           </head>
           <body>
-            <h1>Table ${tableNumber}</h1>
+            <h1>${tableNumber}</h1>
             <div class="qr-container">
               <canvas id="qr-print"></canvas>
             </div>
-            <p>Scan to order from this table</p>
+            <p>Scan to order</p>
           </body>
         </html>
       `);
@@ -353,7 +388,8 @@ const TableManagementPage: React.FC = () => {
       printWindow.document.close();
       
       // Draw QR code in print window
-      const canvas = document.getElementById(`qr-${table.id}`) as HTMLCanvasElement;
+      const qrContainer = document.getElementById(`qr-container-${table.id}`);
+      const canvas = qrContainer?.querySelector('canvas') as HTMLCanvasElement;
       const printCanvas = printWindow.document.getElementById('qr-print') as HTMLCanvasElement;
       if (canvas && printCanvas) {
         const ctx = printCanvas.getContext('2d');
@@ -451,9 +487,8 @@ const TableManagementPage: React.FC = () => {
               return (
                 <TableItem key={table.id}>
                   <TableNumber>{tableNumber}</TableNumber>
-                  <QRContainer>
+                  <QRContainer id={`qr-container-${table.id}`}>
                     <QRCodeCanvas
-                      id={`qr-${table.id}`}
                       value={table.qrCode}
                       size={128}
                       level="M"

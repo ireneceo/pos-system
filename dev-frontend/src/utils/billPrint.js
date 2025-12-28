@@ -698,14 +698,14 @@ export function printTableQR(tableNumber, qrCanvas, storeName = 'Restaurant') {
       // Table number header
       content += CMD.BOLD_ON;
       content += CMD.TEXT_DOUBLE;
-      content += 'TABLE ' + tableNumber + CMD.LINE_FEED;
+      content += tableNumber + CMD.LINE_FEED;
       content += CMD.TEXT_NORMAL;
       content += CMD.BOLD_OFF;
       content += CMD.LINE_FEED;
 
       // Note: ESC/POS QR image printing requires specific printer support
       // For now, we'll print text-based info and use browser print for QR
-      content += 'Scan QR code to order' + CMD.LINE_FEED;
+      content += 'Scan to order' + CMD.LINE_FEED;
       content += CMD.LINE_FEED;
       content += CMD.DASHED_LINE + CMD.LINE_FEED;
       content += CMD.LINE_FEED;
@@ -764,11 +764,11 @@ export function printTableQR(tableNumber, qrCanvas, storeName = 'Restaurant') {
           </head>
           <body>
             <div class="store-name">${storeName}</div>
-            <div class="table-number">TABLE ${tableNumber}</div>
+            <div class="table-number">${tableNumber}</div>
             <div class="qr-container">
               <img src="${qrCanvas.toDataURL('image/png')}" width="200" height="200" />
             </div>
-            <div class="instruction">Scan to order from this table</div>
+            <div class="instruction">Scan to order</div>
           </body>
         </html>
       `);
