@@ -8,6 +8,12 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormTextArea, FormRow as UIFormRow } from '../../components/UI/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
 
+interface Brand {
+  id: number;
+  name: string;
+  code: string;
+}
+
 interface Supplier {
   id: number;
   brand_id: number | null;
@@ -25,38 +31,13 @@ interface Supplier {
   payment_terms: string | null;
   notes: string | null;
   is_active: boolean;
-}
-
-interface Brand {
-  id: number;
-  name: string;
-  code: string;
+  connectedBrands?: Brand[];
 }
 
 const HeaderActions = styled.div`
   display: flex;
   gap: 12px;
   align-items: center;
-`;
-
-const BrandSelect = styled.select`
-  padding: 10px 16px;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  font-size: 14px;
-  color: #0A2540;
-  background: white;
-  cursor: pointer;
-  min-width: 200px;
-
-  &:hover {
-    border-color: #CBD5E1;
-  }
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-  }
 `;
 
 const SuppliersGrid = styled.div`
@@ -109,9 +90,25 @@ const SupplierCode = styled.span`
   margin-left: 8px;
 `;
 
-const BrandBadge = styled.span`
-  padding: 4px 8px;
-  border-radius: 4px;
+const BrandTagsContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+`;
+
+const BrandTag = styled.span`
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  background: #EEF2FF;
+  color: #4F46E5;
+`;
+
+const NoBrandTag = styled.span`
+  padding: 4px 10px;
+  border-radius: 12px;
   font-size: 11px;
   font-weight: 500;
   background: #FEF3C7;
@@ -222,6 +219,52 @@ const SectionTitle = styled.h4`
   gap: 8px;
 `;
 
+// Brand selection in form
+const BrandCheckboxContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px;
+  background: #F9FAFB;
+  border-radius: 8px;
+  border: 1px solid #E5E7EB;
+`;
+
+const BrandCheckboxLabel = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #374151;
+  transition: all 0.15s;
+
+  &:hover {
+    border-color: #635BFF;
+  }
+
+  input:checked + & {
+    border-color: #635BFF;
+    background: #EEF2FF;
+  }
+`;
+
+const HiddenCheckbox = styled.input`
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+`;
+
+const CheckboxWrapper = styled.div`
+  position: relative;
+  display: inline-flex;
+`;
+
 const SuppliersPage: React.FC = () => {
   const { user } = useAuth();
   const effectiveRestaurantId = user?.restaurant_id || (user as any)?.restaurantId;
@@ -229,7 +272,6 @@ const SuppliersPage: React.FC = () => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [brandSuppliers, setBrandSuppliers] = useState<Supplier[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
-  const [selectedBrandId, setSelectedBrandId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
@@ -245,7 +287,8 @@ const SuppliersPage: React.FC = () => {
     bank_name: '',
     bank_account: '',
     payment_terms: '',
-    notes: ''
+    notes: '',
+    brand_ids: [] as number[]
   });
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; supplierId: number | null; supplierName: string }>({
     isOpen: false,
@@ -258,23 +301,17 @@ const SuppliersPage: React.FC = () => {
 
   const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
 
-  // Fetch brands for Brand General
+  // Fetch brands for Brand General/Manager
   useEffect(() => {
     if (isBrandUser) {
       fetchBrands();
+      fetchSuppliers();
+    } else if (isRestaurantAdmin && effectiveRestaurantId) {
+      fetchRestaurantSuppliers();
     } else {
       setLoading(false);
     }
-  }, [isBrandUser]);
-
-  // Fetch suppliers when brand selected or for restaurant admin
-  useEffect(() => {
-    if (isBrandUser && selectedBrandId) {
-      fetchSuppliers();
-    } else if (isRestaurantAdmin && effectiveRestaurantId) {
-      fetchSuppliers();
-    }
-  }, [selectedBrandId, effectiveRestaurantId, isBrandUser, isRestaurantAdmin]);
+  }, [isBrandUser, isRestaurantAdmin, effectiveRestaurantId]);
 
   const fetchBrands = async () => {
     try {
@@ -286,14 +323,9 @@ const SuppliersPage: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setBrands(data);
-        if (data.length > 0) {
-          setSelectedBrandId(data[0].id);
-        }
       }
     } catch (error) {
       console.error('Error fetching brands:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -302,23 +334,33 @@ const SuppliersPage: React.FC = () => {
     setLoading(true);
 
     try {
-      if (isBrandUser && selectedBrandId) {
-        const response = await fetch(`/api/brands/${selectedBrandId}/suppliers`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await response.json();
-        if (data.success) {
-          setSuppliers(data.data);
-        }
-      } else if (isRestaurantAdmin && effectiveRestaurantId) {
-        const response = await fetch(`/api/restaurants/${effectiveRestaurantId}/all-suppliers`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await response.json();
-        if (data.success) {
-          setSuppliers(data.data.own_suppliers || []);
-          setBrandSuppliers(data.data.brand_suppliers || []);
-        }
+      // Use new unified API
+      const response = await fetch('/api/suppliers', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setSuppliers(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch suppliers:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchRestaurantSuppliers = async () => {
+    const token = getToken();
+    setLoading(true);
+
+    try {
+      const response = await fetch(`/api/restaurants/${effectiveRestaurantId}/all-suppliers`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setSuppliers(data.data.own_suppliers || []);
+        setBrandSuppliers(data.data.brand_suppliers || []);
       }
     } catch (error) {
       console.error('Failed to fetch suppliers:', error);
@@ -341,7 +383,8 @@ const SuppliersPage: React.FC = () => {
         bank_name: supplier.bank_name || '',
         bank_account: supplier.bank_account || '',
         payment_terms: supplier.payment_terms || '',
-        notes: supplier.notes || ''
+        notes: supplier.notes || '',
+        brand_ids: supplier.connectedBrands?.map(b => b.id) || []
       });
     } else {
       setSelectedSupplier(null);
@@ -356,7 +399,8 @@ const SuppliersPage: React.FC = () => {
         bank_name: '',
         bank_account: '',
         payment_terms: '',
-        notes: ''
+        notes: '',
+        brand_ids: []
       });
     }
     setShowModal(true);
@@ -376,8 +420,18 @@ const SuppliersPage: React.FC = () => {
       bank_name: '',
       bank_account: '',
       payment_terms: '',
-      notes: ''
+      notes: '',
+      brand_ids: []
     });
+  };
+
+  const handleBrandToggle = (brandId: number) => {
+    setFormData(prev => ({
+      ...prev,
+      brand_ids: prev.brand_ids.includes(brandId)
+        ? prev.brand_ids.filter(id => id !== brandId)
+        : [...prev.brand_ids, brandId]
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -389,10 +443,11 @@ const SuppliersPage: React.FC = () => {
       let url = '';
       const method = selectedSupplier ? 'PUT' : 'POST';
 
-      if (isBrandUser && selectedBrandId) {
+      if (isBrandUser) {
+        // Use new unified API
         url = selectedSupplier
-          ? `/api/brands/${selectedBrandId}/suppliers/${selectedSupplier.id}`
-          : `/api/brands/${selectedBrandId}/suppliers`;
+          ? `/api/suppliers/${selectedSupplier.id}`
+          : '/api/suppliers';
       } else if (isRestaurantAdmin && effectiveRestaurantId) {
         url = selectedSupplier
           ? `/api/restaurants/${effectiveRestaurantId}/suppliers/${selectedSupplier.id}`
@@ -414,7 +469,11 @@ const SuppliersPage: React.FC = () => {
 
       if (data.success) {
         handleCloseModal();
-        fetchSuppliers();
+        if (isBrandUser) {
+          fetchSuppliers();
+        } else {
+          fetchRestaurantSuppliers();
+        }
       } else {
         alert(data.error || 'Failed to save');
       }
@@ -431,8 +490,8 @@ const SuppliersPage: React.FC = () => {
       const token = getToken();
       let url = '';
 
-      if (isBrandUser && selectedBrandId) {
-        url = `/api/brands/${selectedBrandId}/suppliers/${deleteConfirm.supplierId}`;
+      if (isBrandUser) {
+        url = `/api/suppliers/${deleteConfirm.supplierId}`;
       } else if (isRestaurantAdmin && effectiveRestaurantId) {
         url = `/api/restaurants/${effectiveRestaurantId}/suppliers/${deleteConfirm.supplierId}`;
       }
@@ -448,7 +507,11 @@ const SuppliersPage: React.FC = () => {
 
       if (data.success) {
         setDeleteConfirm({ isOpen: false, supplierId: null, supplierName: '' });
-        fetchSuppliers();
+        if (isBrandUser) {
+          fetchSuppliers();
+        } else {
+          fetchRestaurantSuppliers();
+        }
       } else {
         alert(data.error || 'Failed to delete');
       }
@@ -487,10 +550,22 @@ const SuppliersPage: React.FC = () => {
           </SupplierName>
         </div>
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          {readOnly && <BrandBadge>Brand</BrandBadge>}
           {!readOnly && <StatusBadge active={supplier.is_active}>{supplier.is_active ? 'Active' : 'Inactive'}</StatusBadge>}
         </div>
       </SupplierHeader>
+
+      {/* Show connected brands as tags */}
+      {isBrandUser && (
+        <BrandTagsContainer>
+          {supplier.connectedBrands && supplier.connectedBrands.length > 0 ? (
+            supplier.connectedBrands.map(brand => (
+              <BrandTag key={brand.id}>{brand.name}</BrandTag>
+            ))
+          ) : (
+            <NoBrandTag>No brand connected</NoBrandTag>
+          )}
+        </BrandTagsContainer>
+      )}
 
       <SupplierInfo>
         {supplier.contact_name && (
@@ -566,20 +641,11 @@ const SuppliersPage: React.FC = () => {
       <Container>
         <Header>
           <Title>Suppliers</Title>
-          {isBrandUser && brands.length > 0 && (
-            <HeaderActions>
-              <BrandSelect
-                value={selectedBrandId || ''}
-                onChange={(e) => setSelectedBrandId(Number(e.target.value))}
-              >
-                {brands.map(brand => (
-                  <option key={brand.id} value={brand.id}>
-                    {brand.name}
-                  </option>
-                ))}
-              </BrandSelect>
-            </HeaderActions>
-          )}
+          <HeaderActions>
+            <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
+              Add Supplier
+            </ThemedButton>
+          </HeaderActions>
         </Header>
 
         <Content>
@@ -592,9 +658,6 @@ const SuppliersPage: React.FC = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </FilterBar>
-            <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
-              Add Supplier
-            </ThemedButton>
           </FilterSection>
 
           {isRestaurantAdmin && filteredBrandSuppliers.length > 0 && (
@@ -610,7 +673,8 @@ const SuppliersPage: React.FC = () => {
             <EmptyState>
               <EmptyTitle>No suppliers yet</EmptyTitle>
               <EmptyDescription>
-                Add suppliers to manage your ingredient sources
+                Add suppliers to manage your ingredient sources.
+                {isBrandUser && ' You can connect suppliers to multiple brands.'}
               </EmptyDescription>
               <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
                 Add Supplier
@@ -671,6 +735,40 @@ const SuppliersPage: React.FC = () => {
                 />
               </UIFormGroup>
             </UIFormRow>
+
+            {/* Brand connection for Brand General/Manager */}
+            {isBrandUser && brands.length > 0 && (
+              <UIFormGroup>
+                <FormLabel>Connect to Brands</FormLabel>
+                <BrandCheckboxContainer>
+                  {brands.map(brand => (
+                    <CheckboxWrapper key={brand.id}>
+                      <HiddenCheckbox
+                        type="checkbox"
+                        id={`brand-${brand.id}`}
+                        checked={formData.brand_ids.includes(brand.id)}
+                        onChange={() => handleBrandToggle(brand.id)}
+                      />
+                      <BrandCheckboxLabel
+                        htmlFor={`brand-${brand.id}`}
+                        style={{
+                          borderColor: formData.brand_ids.includes(brand.id) ? '#635BFF' : '#E5E7EB',
+                          background: formData.brand_ids.includes(brand.id) ? '#EEF2FF' : 'white'
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={formData.brand_ids.includes(brand.id)}
+                          onChange={() => handleBrandToggle(brand.id)}
+                          style={{ accentColor: '#635BFF' }}
+                        />
+                        {brand.name}
+                      </BrandCheckboxLabel>
+                    </CheckboxWrapper>
+                  ))}
+                </BrandCheckboxContainer>
+              </UIFormGroup>
+            )}
 
             <UIFormRow>
               <UIFormGroup>
