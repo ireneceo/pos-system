@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import styled, { createGlobalStyle } from 'styled-components';
 import { io, Socket } from 'socket.io-client';
@@ -1141,6 +1141,12 @@ const LiveOrdersPage: React.FC = () => {
     }
   }, [user?.restaurantId]);
 
+  // Store playNotificationSound in ref to avoid socket reconnection on audio state changes
+  const playNotificationSoundRef = useRef(playNotificationSound);
+  useEffect(() => {
+    playNotificationSoundRef.current = playNotificationSound;
+  }, [playNotificationSound]);
+
   // Initialize Socket.IO connection
   useEffect(() => {
     if (!user?.restaurantId) {
@@ -1152,6 +1158,7 @@ const LiveOrdersPage: React.FC = () => {
     });
 
     newSocket.on('connect', () => {
+      console.log('✅ Connected to Socket.IO /orders namespace');
       newSocket.emit('join-restaurant', user.restaurantId);
     });
 
@@ -1160,19 +1167,22 @@ const LiveOrdersPage: React.FC = () => {
     });
 
     newSocket.on('order-created', (order: DbOrder) => {
+      console.log('📥 Socket: order-created', order.id);
       setOrders(prev => [order, ...prev]);
       setAllOrders(prev => [order, ...prev]); // Add to allOrders for tab counts
 
-      // Play notification sound for new order
-      playNotificationSound();
+      // Play notification sound for new order (use ref to avoid dependency)
+      playNotificationSoundRef.current();
     });
 
     newSocket.on('order-updated', (order: DbOrder) => {
+      console.log('📥 Socket: order-updated', order.id, order.status);
       setOrders(prev => prev.map(o => o.id === order.id ? order : o));
       setAllOrders(prev => prev.map(o => o.id === order.id ? order : o)); // Update in allOrders too
     });
 
     newSocket.on('order-deleted', ({ id }: { id: number }) => {
+      console.log('📥 Socket: order-deleted', id);
       setOrders(prev => prev.filter(o => o.id !== id));
       setAllOrders(prev => prev.filter(o => o.id !== id)); // Remove from allOrders too
     });
@@ -1182,7 +1192,7 @@ const LiveOrdersPage: React.FC = () => {
     return () => {
       newSocket.disconnect();
     };
-  }, [user?.restaurantId, playNotificationSound]);
+  }, [user?.restaurantId]); // Removed playNotificationSound - using ref instead
 
   // Initial fetch
   useEffect(() => {

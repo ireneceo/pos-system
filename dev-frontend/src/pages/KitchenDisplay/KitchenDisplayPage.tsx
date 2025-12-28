@@ -1011,7 +1011,7 @@ const KitchenDisplayPage: React.FC = () => {
                   <OrderHeader>
                     <OrderNumber>
                       {order.tableNumber ? `T${order.tableNumber.replace(/^T/i, '')}` :
-                       order.pagerNumber ? `P${order.pagerNumber}` : `#${order.pickupNumber}`}
+                       order.pagerNumber ? `Pager #${order.pagerNumber}` : `#${order.pickupNumber}`}
                       {order.orderType === 'takeaway' && (
                         <OrderTypeBadge>TAKEAWAY</OrderTypeBadge>
                       )}
@@ -1130,7 +1130,7 @@ const KitchenDisplayPage: React.FC = () => {
                   <OrderHeader>
                     <OrderNumber>
                       {order.tableNumber ? `T${order.tableNumber.replace(/^T/i, '')}` :
-                       order.pagerNumber ? `P${order.pagerNumber}` : `#${order.pickupNumber}`}
+                       order.pagerNumber ? `Pager #${order.pagerNumber}` : `#${order.pickupNumber}`}
                       {order.orderType === 'takeaway' && (
                         <OrderTypeBadge>TAKEAWAY</OrderTypeBadge>
                       )}
@@ -1301,7 +1301,7 @@ const KitchenDisplayPage: React.FC = () => {
                   <OrderHeader>
                     <OrderNumber>
                       {order.tableNumber ? `T${order.tableNumber.replace(/^T/i, '')}` :
-                       order.pagerNumber ? `P${order.pagerNumber}` : `#${order.pickupNumber}`}
+                       order.pagerNumber ? `Pager #${order.pagerNumber}` : `#${order.pickupNumber}`}
                       {order.orderType === 'takeaway' && (
                         <OrderTypeBadge>TAKEAWAY</OrderTypeBadge>
                       )}

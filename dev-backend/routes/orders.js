@@ -330,11 +330,15 @@ router.patch('/:id/status', async (req, res) => {
     }
 
     await order.update(updateData);
+    await order.reload(); // Ensure we have the latest data
 
     // Emit socket event for real-time update
     const io = req.app.get('io');
     if (io && order.restaurant_id) {
+      console.log(`📡 [STATUS] Emitting order-updated for order ${order.id}, status: ${order.status}`);
       io.of('/orders').to(`restaurant_${order.restaurant_id}`).emit('order-updated', order);
+    } else {
+      console.warn('⚠️ [STATUS] Socket.IO not available or restaurant_id missing');
     }
 
     res.json({ success: true, data: order });

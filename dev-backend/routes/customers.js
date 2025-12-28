@@ -883,6 +883,8 @@ router.post('/forgot-password', async (req, res) => {
   try {
     const { email, phone, slug } = req.body;
 
+    console.log('🔑 [FORGOT-PASSWORD] Request:', { email: email || '(none)', phone: phone || '(none)', slug: slug || '(none)' });
+
     if (!email && !phone) {
       return res.status(400).json({
         success: false,
