@@ -29,6 +29,8 @@
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.3",
     "react-scripts": "5.0.1",
+    "react-window": "^2.2.3",
+    "react-window-infinite-loader": "^2.0.0",
     "recharts": "^3.1.1",
     "socket.io-client": "^4.8.1",
     "styled-components": "^6.1.19",
@@ -67,6 +69,7 @@
     ]
   },
   "devDependencies": {
+    "@types/react-window": "^1.8.8",
     "fs-extra": "^11.3.2"
   }
 }

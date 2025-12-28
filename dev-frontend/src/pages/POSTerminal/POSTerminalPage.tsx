@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import PaymentModal from '../../components/POSTerminal/PaymentModal';
@@ -1165,6 +1165,36 @@ const POSTerminalPage: React.FC = () => {
   const [cashRounding, setCashRounding] = useState<number | null>(null);
   const [roundingApplyTo, setRoundingApplyTo] = useState<'cash_only' | 'all'>('cash_only');
 
+  // Progressive rendering for menu items (virtual scrolling alternative)
+  const INITIAL_RENDER_COUNT = 30;
+  const LOAD_MORE_COUNT = 20;
+  const [visibleCount, setVisibleCount] = useState(INITIAL_RENDER_COUNT);
+  const menuGridRef = useRef<HTMLDivElement>(null);
+  const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
+
+  // Reset visible count when category or search changes
+  useEffect(() => {
+    setVisibleCount(INITIAL_RENDER_COUNT);
+  }, [selectedCategory, searchQuery]);
+
+  // Intersection Observer for progressive loading
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount(prev => prev + LOAD_MORE_COUNT);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadMoreTriggerRef.current) {
+      observer.observe(loadMoreTriggerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
   // Load brand logo from site settings
   useEffect(() => {
     const loadBrandLogo = async () => {
@@ -2053,46 +2083,52 @@ const POSTerminalPage: React.FC = () => {
             ))}
           </CategoryTabs>
 
-          <MenuGrid>
+          <MenuGrid ref={menuGridRef}>
             {filteredMenuItems.length > 0 ? (
-              filteredMenuItems.map(item => {
-                // Check if item has option groups defined in menu data
-                const hasOptions = item.optionGroups && item.optionGroups.length > 0;
-                
-                return (
-                  <MenuItem
-                    key={item.id}
-                    soldOut={item.soldOut}
-                    onClick={() => handleAddItemDirectly(item)}
-                  >
-                    {item.is_set_menu && <SetBadge>SET</SetBadge>}
-                    <MenuImage hasImage={!!item.image}>
-                      {item.image ? (
-                        <img src={item.image} alt={item.name} loading="lazy" />
-                      ) : (
-                        item.emoji
+              <>
+                {filteredMenuItems.slice(0, visibleCount).map(item => {
+                  // Check if item has option groups defined in menu data
+                  const hasOptions = item.optionGroups && item.optionGroups.length > 0;
+
+                  return (
+                    <MenuItem
+                      key={item.id}
+                      soldOut={item.soldOut}
+                      onClick={() => handleAddItemDirectly(item)}
+                    >
+                      {item.is_set_menu && <SetBadge>SET</SetBadge>}
+                      <MenuImage hasImage={!!item.image}>
+                        {item.image ? (
+                          <img src={item.image} alt={item.name} loading="lazy" />
+                        ) : (
+                          item.emoji
+                        )}
+                      </MenuImage>
+                      <MenuName>{item.code ? `${item.code} ` : ''}{item.name}</MenuName>
+                      <MenuPrice>{currency} {item.price.toFixed(2)}</MenuPrice>
+                      {item.is_set_menu && item.set_items && item.set_items.length > 0 && (
+                        <SetItemsPreview>
+                          {item.set_items.map(si => `${si.name} x${si.quantity}`).join(', ')}
+                        </SetItemsPreview>
                       )}
-                    </MenuImage>
-                    <MenuName>{item.code ? `${item.code} ` : ''}{item.name}</MenuName>
-                    <MenuPrice>{currency} {item.price.toFixed(2)}</MenuPrice>
-                    {item.is_set_menu && item.set_items && item.set_items.length > 0 && (
-                      <SetItemsPreview>
-                        {item.set_items.map(si => `${si.name} x${si.quantity}`).join(', ')}
-                      </SetItemsPreview>
-                    )}
-                    {hasOptions && (
-                      <MenuItemActions>
-                        <OptionButton
-                          onClick={(e) => handleShowOptions(item, e)}
-                          disabled={item.soldOut}
-                        >
-                          Options
-                        </OptionButton>
-                      </MenuItemActions>
-                    )}
-                  </MenuItem>
-                );
-              })
+                      {hasOptions && (
+                        <MenuItemActions>
+                          <OptionButton
+                            onClick={(e) => handleShowOptions(item, e)}
+                            disabled={item.soldOut}
+                          >
+                            Options
+                          </OptionButton>
+                        </MenuItemActions>
+                      )}
+                    </MenuItem>
+                  );
+                })}
+                {/* Progressive loading trigger */}
+                {visibleCount < filteredMenuItems.length && (
+                  <div ref={loadMoreTriggerRef} style={{ gridColumn: '1 / -1', height: '20px' }} />
+                )}
+              </>
             ) : (
               <NoResultsMessage>
                 <div className="icon">🔍</div>

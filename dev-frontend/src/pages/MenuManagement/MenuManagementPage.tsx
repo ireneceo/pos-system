@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 // Updated with new UI components
 import styled from 'styled-components';
@@ -691,6 +691,35 @@ const MenuManagementPage: React.FC = () => {
   const [, ] = useState(0);
   const [setMenuSearchQuery, setSetMenuSearchQuery] = useState('');
 
+  // Progressive rendering for menu items
+  const INITIAL_RENDER_COUNT = 20;
+  const LOAD_MORE_COUNT = 15;
+  const [visibleCount, setVisibleCount] = useState(INITIAL_RENDER_COUNT);
+  const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
+
+  // Reset visible count when category or search changes
+  useEffect(() => {
+    setVisibleCount(INITIAL_RENDER_COUNT);
+  }, [selectedCategory, searchQuery]);
+
+  // Intersection Observer for progressive loading
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount(prev => prev + LOAD_MORE_COUNT);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadMoreTriggerRef.current) {
+      observer.observe(loadMoreTriggerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
   // Form state
   const [formData, setFormData] = useState<Partial<MenuItemType>>({
     name: '',
@@ -1086,7 +1115,7 @@ const MenuManagementPage: React.FC = () => {
             </NoResultsMessage>
           ) : (
             <MenuGrid>
-              {filteredItems.map(item => (
+              {filteredItems.slice(0, visibleCount).map(item => (
               <MenuCard key={item.id} soldOut={item.soldOut}>
                 <MenuImage>
                   {item.is_set_menu && <SetBadge>SET</SetBadge>}
@@ -1175,11 +1204,16 @@ const MenuManagementPage: React.FC = () => {
                 </MenuContent>
               </MenuCard>
             ))}
-            
+
             <AddCard onClick={handleAddItem}>
               <AddIcon>+</AddIcon>
               <AddText>Add New Menu Item</AddText>
             </AddCard>
+
+            {/* Progressive loading trigger */}
+            {visibleCount < filteredItems.length && (
+              <div ref={loadMoreTriggerRef} style={{ gridColumn: '1 / -1', height: '20px' }} />
+            )}
           </MenuGrid>
           )}
         </Content>
