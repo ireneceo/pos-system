@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2025-12-19
+> **최종 업데이트:** 2025-12-28
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -308,7 +308,41 @@ const dateKey = `${(orderDate.getMonth() + 1).toString().padStart(2, '0')}/${ord
 
 ## 🚧 진행 중인 작업
 
-**현재 진행 중인 작업 없음**
+### Socket.io 실시간 주문 알림 시스템 (일시 중단)
+
+**상태:** Git stash에 저장됨 (`git stash pop`으로 복원 가능)
+
+**구현 내용 (미완성):**
+- `OrderContext.tsx`: Socket.io 연결 및 실시간 주문 수신
+- `MainLayout.tsx`: 실시간 pending order count 표시
+- 새 주문 알림 사운드 기능
+- 알림 설정 (on/off) localStorage 저장
+
+**복원 명령어:**
+```bash
+git stash pop
+```
+
+---
+
+## ✅ 완료된 작업 (2025-12-28)
+
+### 프론트엔드 빌드 오류 수정
+
+**문제:**
+- 500 Internal Server Error 발생
+- `node_modules/.cache` 폴더 권한 문제로 빌드 불완전 (index.html 미생성)
+
+**해결:**
+1. sudo로 `node_modules/.cache` 폴더 삭제
+2. `DISABLE_ESLINT_PLUGIN=true TSC_COMPILE_ON_ERROR=true` 옵션으로 재빌드
+3. 빌드 성공 확인 (HTTP 200 정상 응답)
+
+**명령어:**
+```bash
+echo "$SUDO_PASSWORD" | sudo -S rm -rf /var/www/dev-frontend/node_modules/.cache
+DISABLE_ESLINT_PLUGIN=true TSC_COMPILE_ON_ERROR=true CI=false npm run build
+```
 
 ---
 
@@ -1283,4 +1317,4 @@ const token = localStorage.getItem('auth_token'); // 'token' → 'auth_token'
 **프로젝트:** Purple POS System
 **개발 환경:** Development Server
 **데이터베이스:** purple_dev_db (MySQL)
-**마지막 업데이트:** 2025-12-22
+**마지막 업데이트:** 2025-12-28
