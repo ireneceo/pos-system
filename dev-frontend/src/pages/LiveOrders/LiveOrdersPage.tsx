@@ -1439,12 +1439,12 @@ const LiveOrdersPage: React.FC = () => {
     loadCompanyInfo();
   }, [user?.restaurantId]);
 
-  // Helper function to determine if order is Outstanding
+  // Helper function to determine if order is Outstanding (not yet sent to kitchen)
   // Mobile order creates orders with status='outstanding', POS creates with status='awaiting_payment'
+  // Only checks status, NOT payment_status - they are independent
   const isOutstanding = (order: DbOrder) => {
     return order.status === 'outstanding' ||
-           order.status === 'awaiting_payment' ||
-           order.payment_status === 'payment_verification_pending';
+           order.status === 'awaiting_payment';
   };
 
   // Helper function to get display status
@@ -2426,8 +2426,8 @@ const LiveOrdersPage: React.FC = () => {
                             {/* Show "Proceed Without Payment" button for Outstanding orders */}
                             {isOutstanding(order) ? (
                               <ActionButton
-                                onClick={() => {
-                                  // Change status to pending (send to kitchen)
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   handleStatusChange(order.id, 'pending');
                                 }}
                                 style={{ background: '#F59E0B', borderColor: '#F59E0B', color: 'white' }}

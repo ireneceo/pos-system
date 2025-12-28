@@ -317,12 +317,13 @@ router.patch('/:id/status', async (req, res) => {
     // If reverting to pending, reset all item statuses
     if (status === 'pending' && order.order_items) {
       try {
-        const items = JSON.parse(order.order_items);
+        // order_items는 모델의 getter에서 이미 파싱됨
+        const items = Array.isArray(order.order_items) ? order.order_items : JSON.parse(order.order_items);
         const resetItems = items.map(item => ({
           ...item,
           status: 'pending'
         }));
-        updateData.order_items = JSON.stringify(resetItems);
+        updateData.order_items = resetItems; // 모델의 setter가 stringify 처리
       } catch (e) {
         console.error('Failed to reset item statuses:', e);
       }
