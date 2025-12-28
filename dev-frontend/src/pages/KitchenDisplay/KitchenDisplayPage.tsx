@@ -382,6 +382,7 @@ interface KitchenOrder {
   id: string;
   orderNumber: string;
   pickupNumber: string;
+  pagerNumber?: string;
   items: Array<{
     id?: string;
     name: string;
@@ -505,6 +506,7 @@ const KitchenDisplayPage: React.FC = () => {
               id: order.id.toString(),
               orderNumber: order.order_number,
               pickupNumber: order.order_number.split('-')[1] || order.order_number.slice(-3),
+              pagerNumber: order.pager_number || undefined,
               items: processedItems,
               status: order.status as 'pending' | 'preparing' | 'ready' | 'served' | 'completed',
               orderTime: new Date(order.createdAt),
@@ -1008,7 +1010,8 @@ const KitchenDisplayPage: React.FC = () => {
                 <OrderCard key={order.id}>
                   <OrderHeader>
                     <OrderNumber>
-                      {order.tableNumber ? `T${order.tableNumber.replace(/^T/i, '')}` : `#${order.pickupNumber}`}
+                      {order.tableNumber ? `T${order.tableNumber.replace(/^T/i, '')}` :
+                       order.pagerNumber ? `P${order.pagerNumber}` : `#${order.pickupNumber}`}
                       {order.orderType === 'takeaway' && (
                         <OrderTypeBadge>TAKEAWAY</OrderTypeBadge>
                       )}
@@ -1126,7 +1129,8 @@ const KitchenDisplayPage: React.FC = () => {
                 <OrderCard key={order.id}>
                   <OrderHeader>
                     <OrderNumber>
-                      {order.tableNumber ? `T${order.tableNumber.replace(/^T/i, '')}` : `#${order.pickupNumber}`}
+                      {order.tableNumber ? `T${order.tableNumber.replace(/^T/i, '')}` :
+                       order.pagerNumber ? `P${order.pagerNumber}` : `#${order.pickupNumber}`}
                       {order.orderType === 'takeaway' && (
                         <OrderTypeBadge>TAKEAWAY</OrderTypeBadge>
                       )}
@@ -1296,7 +1300,8 @@ const KitchenDisplayPage: React.FC = () => {
                 <OrderCard key={order.id}>
                   <OrderHeader>
                     <OrderNumber>
-                      {order.tableNumber ? `T${order.tableNumber.replace(/^T/i, '')}` : `#${order.pickupNumber}`}
+                      {order.tableNumber ? `T${order.tableNumber.replace(/^T/i, '')}` :
+                       order.pagerNumber ? `P${order.pagerNumber}` : `#${order.pickupNumber}`}
                       {order.orderType === 'takeaway' && (
                         <OrderTypeBadge>TAKEAWAY</OrderTypeBadge>
                       )}

@@ -226,11 +226,11 @@ const OrdersPage: React.FC = () => {
     }
 
     try {
-      // 로그인한 회원인 경우 - 고객 ID 기반으로 주문 조회
+      // 로그인한 회원인 경우 - 고객 ID 기반으로 주문 조회 (현재 레스토랑의 주문만)
       if (currentCustomer && currentCustomer.id) {
-        console.log('🔄 Loading orders for logged-in customer:', currentCustomer.id);
+        console.log('🔄 Loading orders for logged-in customer:', currentCustomer.id, 'restaurant:', currentStore.id);
 
-        const response = await fetch(`/api/customers/${currentCustomer.id}/orders?restaurant_id=${currentStore.id}`);
+        const response = await fetch(`/api/customers/${currentCustomer.id}/orders?restaurant_id=${currentStore.id}&limit=100`);
         if (response.ok) {
           const result = await response.json();
           if (result.success && result.data) {

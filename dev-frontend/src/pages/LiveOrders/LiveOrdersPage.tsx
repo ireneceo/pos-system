@@ -1870,9 +1870,9 @@ const LiveOrdersPage: React.FC = () => {
         throw new Error('Failed to confirm payment');
       }
 
-      // 결제 완료 후 awaiting_payment이면 pending으로 변경 (주방에 전송)
-      if (selectedOrder.status === 'awaiting_payment') {
-        await fetch(`/api/orders/${selectedOrder.id}`, getFetchOptions({
+      // 결제 완료 후 outstanding/awaiting_payment이면 pending으로 변경 (주방에 전송)
+      if (selectedOrder.status === 'awaiting_payment' || selectedOrder.status === 'outstanding') {
+        await fetch(`/api/orders/${selectedOrder.id}/status`, getFetchOptions({
           method: 'PATCH',
           body: JSON.stringify({
             status: 'pending'
@@ -1910,9 +1910,9 @@ const LiveOrdersPage: React.FC = () => {
         throw new Error('Failed to confirm payment');
       }
 
-      // 결제 완료 후 awaiting_payment이면 pending으로 변경 (주방에 전송)
-      if (order && order.status === 'awaiting_payment') {
-        await fetch(`/api/orders/${orderId}`, getFetchOptions({
+      // 결제 완료 후 outstanding/awaiting_payment이면 pending으로 변경 (주방에 전송)
+      if (order && (order.status === 'awaiting_payment' || order.status === 'outstanding')) {
+        await fetch(`/api/orders/${orderId}/status`, getFetchOptions({
           method: 'PATCH',
           body: JSON.stringify({
             status: 'pending'
@@ -2413,9 +2413,9 @@ const LiveOrdersPage: React.FC = () => {
                         isPending={order.payment_status === 'pending'}
                         isVerificationPending={order.payment_status === 'payment_verification_pending'}
                       >
-                        {order.payment_status === 'pending' ? 'Pending' :
-                         order.payment_status === 'payment_verification_pending' ? 'Verifying' :
-                         order.payment_method}
+                        {order.payment_method || 'N/A'}
+                        {order.payment_status === 'pending' && ' (Pending)'}
+                        {order.payment_status === 'payment_verification_pending' && ' (Verifying)'}
                       </PaymentMethod>
                     </TableCell>
                     <TableCell data-label="ACTION">
@@ -2956,6 +2956,18 @@ const LiveOrdersPage: React.FC = () => {
                       style={{ background: '#FF6B6B', borderColor: '#FF6B6B', color: 'white' }}
                     >
                       Cancel Order
+                    </ActionButton>
+                  )}
+                  {/* Outstanding 상태에서 Proceed Without Payment 버튼 */}
+                  {isOutstanding(selectedOrder) && selectedOrder.status !== 'pending' && (
+                    <ActionButton
+                      onClick={() => {
+                        handleStatusChange(selectedOrder.id, 'pending');
+                        handleCloseModal();
+                      }}
+                      style={{ background: '#F59E0B', borderColor: '#F59E0B', color: 'white' }}
+                    >
+                      Proceed Without Payment
                     </ActionButton>
                   )}
                   {/* Payment 버튼 - 결제 미완료 시 표시 (라이브 오더에서는 바로 결제 확인) */}
