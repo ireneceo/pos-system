@@ -9,6 +9,7 @@ function initSocketServer(server) {
       origin: [
         'https://orderhere.wor-pro.com',
         'https://purplehere.com',
+        'https://dev.purplehere.com',
         'https://pos.orderhere.center',
         'https://solution.orderhere.center',
         'http://localhost:3001',

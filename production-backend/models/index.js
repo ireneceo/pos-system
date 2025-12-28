@@ -33,6 +33,7 @@ const BrandProductBrand = require('./BrandProductBrand');
 const BrandProductOptionGroupProduct = require('./BrandProductOptionGroupProduct');
 const Supplier = require('./Supplier');
 const SupplierCategory = require('./SupplierCategory');
+const SupplierBrand = require('./SupplierBrand');
 const InventoryTransaction = require('./InventoryTransaction');
 const StockTake = require('./StockTake');
 const StockTakeItem = require('./StockTakeItem');
@@ -230,11 +231,29 @@ BrandProductOptionGroupProduct.belongsTo(BrandProductOptionGroup, { foreignKey: 
 BrandProductOption.belongsTo(BrandProductOptionGroup, { foreignKey: 'option_group_id', as: 'optionGroup' });
 BrandProductOptionGroup.hasMany(BrandProductOption, { foreignKey: 'option_group_id', as: 'options' });
 
-// Supplier associations
+// Supplier associations (legacy - keep for backward compatibility)
 Supplier.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
 Brand.hasMany(Supplier, { foreignKey: 'brand_id', as: 'suppliers' });
 Supplier.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
 Restaurant.hasMany(Supplier, { foreignKey: 'restaurant_id', as: 'suppliers' });
+
+// Supplier - Brand (N:M through SupplierBrand) - NEW: Multiple brands can share suppliers
+Supplier.belongsToMany(Brand, {
+  through: SupplierBrand,
+  foreignKey: 'supplier_id',
+  otherKey: 'brand_id',
+  as: 'connectedBrands'
+});
+Brand.belongsToMany(Supplier, {
+  through: SupplierBrand,
+  foreignKey: 'brand_id',
+  otherKey: 'supplier_id',
+  as: 'connectedSuppliers'
+});
+
+// SupplierBrand associations for direct access
+SupplierBrand.belongsTo(Supplier, { foreignKey: 'supplier_id', as: 'supplier' });
+SupplierBrand.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
 
 // Ingredient - Supplier association
 Ingredient.belongsTo(Supplier, { foreignKey: 'supplier_id', as: 'supplier' });
@@ -306,6 +325,7 @@ module.exports = {
   BrandProductOptionGroupProduct,
   Supplier,
   SupplierCategory,
+  SupplierBrand,
   InventoryTransaction,
   StockTake,
   StockTakeItem,

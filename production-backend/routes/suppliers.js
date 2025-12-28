@@ -1,31 +1,39 @@
 const express = require('express');
 const router = express.Router();
-const { Supplier, Restaurant, SupplierCategory } = require('../models');
+const { Supplier, Restaurant, SupplierCategory, SupplierBrand, Brand } = require('../models');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
 
 // ============================================
-// Brand Suppliers
+// Brand Suppliers (통합 관리 - 브랜드 연결 방식)
 // ============================================
 
 /**
  * GET /api/brands/:brandId/suppliers
- * 브랜드 공급업체 목록 조회
+ * 브랜드에 연결된 공급업체 목록 조회 (supplier_brands 테이블 사용)
  */
 router.get('/brands/:brandId/suppliers', authenticateToken, isBrandManager, async (req, res) => {
   try {
     const { brandId } = req.params;
 
+    // 해당 브랜드에 연결된 공급업체 조회
     const suppliers = await Supplier.findAll({
-      where: { brand_id: brandId, owner_type: 'brand' },
-      order: [['name', 'ASC']],
       include: [
         {
           model: SupplierCategory,
           as: 'supplierCategory',
           attributes: ['id', 'name', 'color']
+        },
+        {
+          model: Brand,
+          as: 'connectedBrands',
+          attributes: ['id', 'name', 'code'],
+          through: { attributes: [] },
+          where: { id: brandId },
+          required: true
         }
-      ]
+      ],
+      order: [['name', 'ASC']]
     });
 
     res.json({ success: true, data: suppliers });
@@ -38,36 +46,91 @@ router.get('/brands/:brandId/suppliers', authenticateToken, isBrandManager, asyn
 /**
  * Generate unique supplier code
  */
-const generateSupplierCode = async (ownerType, ownerId) => {
+const generateSupplierCode = async (userId) => {
   const prefix = 'SUP';
-  const whereClause = ownerType === 'brand'
-    ? { brand_id: ownerId, owner_type: 'brand' }
-    : { restaurant_id: ownerId, owner_type: 'restaurant' };
-
-  const count = await Supplier.count({ where: whereClause });
+  const count = await Supplier.count();
   const nextNum = count + 1;
   return `${prefix}-${String(nextNum).padStart(3, '0')}`;
 };
 
 /**
- * POST /api/brands/:brandId/suppliers
- * 브랜드 공급업체 생성
+ * GET /api/suppliers
+ * 통합 공급업체 목록 조회 (Brand General/Manager가 소유한 모든 공급업체)
  */
-router.post('/brands/:brandId/suppliers', authenticateToken, isBrandManager, async (req, res) => {
+router.get('/suppliers', authenticateToken, async (req, res) => {
   try {
-    const { brandId } = req.params;
-    const { code, name, contact_name, phone, email, address, business_number, bank_name, bank_account, payment_terms, notes, supplier_category_id } = req.body;
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
+    // Brand General/Manager만 접근 가능
+    if (userRole !== 'Brand General' && userRole !== 'Brand Manager' && userRole !== 'System Admin') {
+      return res.status(403).json({ error: '권한이 없습니다' });
+    }
+
+    // 사용자가 소유한 브랜드 조회
+    const userBrands = await Brand.findAll({
+      where: { owner_id: userId },
+      attributes: ['id']
+    });
+    const brandIds = userBrands.map(b => b.id);
+
+    // 해당 브랜드들에 연결된 모든 공급업체 조회
+    const suppliers = await Supplier.findAll({
+      include: [
+        {
+          model: SupplierCategory,
+          as: 'supplierCategory',
+          attributes: ['id', 'name', 'color']
+        },
+        {
+          model: Brand,
+          as: 'connectedBrands',
+          attributes: ['id', 'name', 'code'],
+          through: { attributes: [] }
+        }
+      ],
+      order: [['name', 'ASC']]
+    });
+
+    // 사용자 브랜드와 연결된 공급업체만 필터링
+    const filteredSuppliers = suppliers.filter(supplier => {
+      const connectedBrandIds = supplier.connectedBrands.map(b => b.id);
+      return connectedBrandIds.some(id => brandIds.includes(id)) || supplier.connectedBrands.length === 0;
+    });
+
+    res.json({ success: true, data: filteredSuppliers });
+  } catch (error) {
+    console.error('Get all suppliers error:', error);
+    res.status(500).json({ error: '공급업체 목록 조회 실패' });
+  }
+});
+
+/**
+ * POST /api/suppliers
+ * 통합 공급업체 생성 (브랜드 연결 포함)
+ */
+router.post('/suppliers', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
+    if (userRole !== 'Brand General' && userRole !== 'Brand Manager' && userRole !== 'System Admin') {
+      return res.status(403).json({ error: '권한이 없습니다' });
+    }
+
+    const { code, name, contact_name, phone, email, address, business_number, bank_name, bank_account, payment_terms, notes, supplier_category_id, brand_ids } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: '공급업체 이름은 필수입니다' });
     }
 
     // Auto-generate code if not provided
-    const finalCode = code || await generateSupplierCode('brand', brandId);
+    const finalCode = code || await generateSupplierCode(userId);
 
+    // 공급업체 생성 (owner_type은 이제 의미 없음, 통합 관리)
     const supplier = await Supplier.create({
       owner_type: 'brand',
-      brand_id: brandId,
+      brand_id: null,
       restaurant_id: null,
       supplier_category_id: supplier_category_id || null,
       code: finalCode,
@@ -83,7 +146,259 @@ router.post('/brands/:brandId/suppliers', authenticateToken, isBrandManager, asy
       notes
     });
 
-    res.json({ success: true, data: supplier });
+    // 브랜드 연결
+    if (brand_ids && brand_ids.length > 0) {
+      for (const brandId of brand_ids) {
+        await SupplierBrand.create({
+          supplier_id: supplier.id,
+          brand_id: brandId
+        });
+      }
+    }
+
+    // 연결된 브랜드 정보와 함께 반환
+    const supplierWithBrands = await Supplier.findByPk(supplier.id, {
+      include: [
+        {
+          model: SupplierCategory,
+          as: 'supplierCategory',
+          attributes: ['id', 'name', 'color']
+        },
+        {
+          model: Brand,
+          as: 'connectedBrands',
+          attributes: ['id', 'name', 'code'],
+          through: { attributes: [] }
+        }
+      ]
+    });
+
+    res.json({ success: true, data: supplierWithBrands });
+  } catch (error) {
+    console.error('Create supplier error:', error);
+    res.status(500).json({ error: '공급업체 생성 실패' });
+  }
+});
+
+/**
+ * PUT /api/suppliers/:supplierId
+ * 통합 공급업체 수정 (브랜드 연결 포함)
+ */
+router.put('/suppliers/:supplierId', authenticateToken, async (req, res) => {
+  try {
+    const { supplierId } = req.params;
+    const userRole = req.user.role;
+
+    if (userRole !== 'Brand General' && userRole !== 'Brand Manager' && userRole !== 'System Admin') {
+      return res.status(403).json({ error: '권한이 없습니다' });
+    }
+
+    const { code, name, contact_name, phone, email, address, business_number, bank_name, bank_account, payment_terms, notes, is_active, supplier_category_id, brand_ids } = req.body;
+
+    const supplier = await Supplier.findByPk(supplierId);
+    if (!supplier) {
+      return res.status(404).json({ error: '공급업체를 찾을 수 없습니다' });
+    }
+
+    await supplier.update({
+      code,
+      name,
+      contact_name,
+      phone,
+      email,
+      address,
+      business_number,
+      bank_name,
+      bank_account,
+      payment_terms,
+      notes,
+      is_active: is_active !== undefined ? is_active : supplier.is_active,
+      supplier_category_id: supplier_category_id !== undefined ? supplier_category_id : supplier.supplier_category_id
+    });
+
+    // 브랜드 연결 업데이트 (기존 연결 삭제 후 새로 생성)
+    if (brand_ids !== undefined) {
+      await SupplierBrand.destroy({ where: { supplier_id: supplierId } });
+      if (brand_ids && brand_ids.length > 0) {
+        for (const brandId of brand_ids) {
+          await SupplierBrand.create({
+            supplier_id: supplierId,
+            brand_id: brandId
+          });
+        }
+      }
+    }
+
+    // 연결된 브랜드 정보와 함께 반환
+    const supplierWithBrands = await Supplier.findByPk(supplierId, {
+      include: [
+        {
+          model: SupplierCategory,
+          as: 'supplierCategory',
+          attributes: ['id', 'name', 'color']
+        },
+        {
+          model: Brand,
+          as: 'connectedBrands',
+          attributes: ['id', 'name', 'code'],
+          through: { attributes: [] }
+        }
+      ]
+    });
+
+    res.json({ success: true, data: supplierWithBrands });
+  } catch (error) {
+    console.error('Update supplier error:', error);
+    res.status(500).json({ error: '공급업체 수정 실패' });
+  }
+});
+
+/**
+ * DELETE /api/suppliers/:supplierId
+ * 통합 공급업체 삭제
+ */
+router.delete('/suppliers/:supplierId', authenticateToken, async (req, res) => {
+  try {
+    const { supplierId } = req.params;
+    const userRole = req.user.role;
+
+    if (userRole !== 'Brand General' && userRole !== 'Brand Manager' && userRole !== 'System Admin') {
+      return res.status(403).json({ error: '권한이 없습니다' });
+    }
+
+    const supplier = await Supplier.findByPk(supplierId);
+    if (!supplier) {
+      return res.status(404).json({ error: '공급업체를 찾을 수 없습니다' });
+    }
+
+    // 브랜드 연결 먼저 삭제
+    await SupplierBrand.destroy({ where: { supplier_id: supplierId } });
+
+    await supplier.destroy();
+
+    res.json({ success: true, message: '공급업체가 삭제되었습니다' });
+  } catch (error) {
+    console.error('Delete supplier error:', error);
+    res.status(500).json({ error: '공급업체 삭제 실패' });
+  }
+});
+
+/**
+ * POST /api/suppliers/:supplierId/brands
+ * 공급업체에 브랜드 연결 추가
+ */
+router.post('/suppliers/:supplierId/brands', authenticateToken, async (req, res) => {
+  try {
+    const { supplierId } = req.params;
+    const { brand_id } = req.body;
+    const userRole = req.user.role;
+
+    if (userRole !== 'Brand General' && userRole !== 'Brand Manager' && userRole !== 'System Admin') {
+      return res.status(403).json({ error: '권한이 없습니다' });
+    }
+
+    // 이미 연결되어 있는지 확인
+    const existing = await SupplierBrand.findOne({
+      where: { supplier_id: supplierId, brand_id: brand_id }
+    });
+
+    if (existing) {
+      return res.status(400).json({ error: '이미 연결된 브랜드입니다' });
+    }
+
+    await SupplierBrand.create({
+      supplier_id: supplierId,
+      brand_id: brand_id
+    });
+
+    res.json({ success: true, message: '브랜드가 연결되었습니다' });
+  } catch (error) {
+    console.error('Add supplier brand error:', error);
+    res.status(500).json({ error: '브랜드 연결 실패' });
+  }
+});
+
+/**
+ * DELETE /api/suppliers/:supplierId/brands/:brandId
+ * 공급업체에서 브랜드 연결 해제
+ */
+router.delete('/suppliers/:supplierId/brands/:brandId', authenticateToken, async (req, res) => {
+  try {
+    const { supplierId, brandId } = req.params;
+    const userRole = req.user.role;
+
+    if (userRole !== 'Brand General' && userRole !== 'Brand Manager' && userRole !== 'System Admin') {
+      return res.status(403).json({ error: '권한이 없습니다' });
+    }
+
+    await SupplierBrand.destroy({
+      where: { supplier_id: supplierId, brand_id: brandId }
+    });
+
+    res.json({ success: true, message: '브랜드 연결이 해제되었습니다' });
+  } catch (error) {
+    console.error('Remove supplier brand error:', error);
+    res.status(500).json({ error: '브랜드 연결 해제 실패' });
+  }
+});
+
+// ============================================
+// Legacy Brand Suppliers API (하위 호환)
+// ============================================
+
+/**
+ * POST /api/brands/:brandId/suppliers
+ * 브랜드 공급업체 생성 (레거시 - 새 API 사용 권장)
+ */
+router.post('/brands/:brandId/suppliers', authenticateToken, isBrandManager, async (req, res) => {
+  try {
+    const { brandId } = req.params;
+    const { code, name, contact_name, phone, email, address, business_number, bank_name, bank_account, payment_terms, notes, supplier_category_id } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ error: '공급업체 이름은 필수입니다' });
+    }
+
+    // Auto-generate code if not provided
+    const finalCode = code || await generateSupplierCode(req.user.id);
+
+    const supplier = await Supplier.create({
+      owner_type: 'brand',
+      brand_id: null,
+      restaurant_id: null,
+      supplier_category_id: supplier_category_id || null,
+      code: finalCode,
+      name,
+      contact_name,
+      phone,
+      email,
+      address,
+      business_number,
+      bank_name,
+      bank_account,
+      payment_terms,
+      notes
+    });
+
+    // 브랜드 연결
+    await SupplierBrand.create({
+      supplier_id: supplier.id,
+      brand_id: brandId
+    });
+
+    // 연결된 브랜드 정보와 함께 반환
+    const supplierWithBrands = await Supplier.findByPk(supplier.id, {
+      include: [
+        {
+          model: Brand,
+          as: 'connectedBrands',
+          attributes: ['id', 'name', 'code'],
+          through: { attributes: [] }
+        }
+      ]
+    });
+
+    res.json({ success: true, data: supplierWithBrands });
   } catch (error) {
     console.error('Create brand supplier error:', error);
     res.status(500).json({ error: '공급업체 생성 실패' });

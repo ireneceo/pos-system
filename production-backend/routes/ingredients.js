@@ -122,7 +122,23 @@ router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBr
       min_stock
     });
 
-    res.json({ success: true, data: ingredient });
+    // Reload with associations for frontend display
+    const updatedIngredient = await Ingredient.findByPk(ingredient_id, {
+      include: [
+        {
+          model: IngredientCategory,
+          as: 'ingredientCategory',
+          attributes: ['id', 'name', 'emoji']
+        },
+        {
+          model: Supplier,
+          as: 'supplier',
+          attributes: ['id', 'name', 'owner_type']
+        }
+      ]
+    });
+
+    res.json({ success: true, data: updatedIngredient });
   } catch (error) {
     console.error('Update brand ingredient error:', error);
     res.status(500).json({ error: 'Failed to update ingredient' });
@@ -302,7 +318,23 @@ router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateT
       min_stock
     });
 
-    res.json({ success: true, data: ingredient });
+    // Reload with associations for frontend display
+    const updatedIngredient = await Ingredient.findByPk(ingredientId, {
+      include: [
+        {
+          model: IngredientCategory,
+          as: 'ingredientCategory',
+          attributes: ['id', 'name', 'emoji']
+        },
+        {
+          model: Supplier,
+          as: 'supplier',
+          attributes: ['id', 'name', 'owner_type']
+        }
+      ]
+    });
+
+    res.json({ success: true, data: updatedIngredient });
   } catch (error) {
     console.error('Update restaurant ingredient error:', error);
     res.status(500).json({ error: 'Failed to update ingredient' });

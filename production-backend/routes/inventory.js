@@ -18,9 +18,28 @@ router.get('/restaurants/:restaurantId/inventory', async (req, res) => {
     const { restaurantId } = req.params;
     const { category, status, search } = req.query;
 
+    // Get restaurant to check if it belongs to a brand
+    const restaurant = await Restaurant.findByPk(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ success: false, message: 'Restaurant not found' });
+    }
+
+    // Build where clause to include both restaurant's own ingredients and brand ingredients
+    const whereConditions = [
+      { restaurant_id: restaurantId, is_active: true }
+    ];
+
+    // If restaurant belongs to a brand, also include brand ingredients
+    if (restaurant.brand_id) {
+      whereConditions.push({
+        brand_id: restaurant.brand_id,
+        owner_type: 'brand',
+        is_active: true
+      });
+    }
+
     const whereClause = {
-      restaurant_id: restaurantId,
-      is_active: true
+      [Op.or]: whereConditions
     };
 
     if (category) {
@@ -71,8 +90,27 @@ router.get('/restaurants/:restaurantId/inventory/summary', async (req, res) => {
   try {
     const { restaurantId } = req.params;
 
+    // Get restaurant to check if it belongs to a brand
+    const restaurant = await Restaurant.findByPk(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ success: false, message: 'Restaurant not found' });
+    }
+
+    // Build where clause to include both restaurant's own ingredients and brand ingredients
+    const whereConditions = [
+      { restaurant_id: restaurantId, is_active: true }
+    ];
+
+    if (restaurant.brand_id) {
+      whereConditions.push({
+        brand_id: restaurant.brand_id,
+        owner_type: 'brand',
+        is_active: true
+      });
+    }
+
     const ingredients = await Ingredient.findAll({
-      where: { restaurant_id: restaurantId, is_active: true }
+      where: { [Op.or]: whereConditions }
     });
 
     let totalItems = 0;

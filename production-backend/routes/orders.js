@@ -317,23 +317,28 @@ router.patch('/:id/status', async (req, res) => {
     // If reverting to pending, reset all item statuses
     if (status === 'pending' && order.order_items) {
       try {
-        const items = JSON.parse(order.order_items);
+        // order_items는 모델의 getter에서 이미 파싱됨
+        const items = Array.isArray(order.order_items) ? order.order_items : JSON.parse(order.order_items);
         const resetItems = items.map(item => ({
           ...item,
           status: 'pending'
         }));
-        updateData.order_items = JSON.stringify(resetItems);
+        updateData.order_items = resetItems; // 모델의 setter가 stringify 처리
       } catch (e) {
         console.error('Failed to reset item statuses:', e);
       }
     }
 
     await order.update(updateData);
+    await order.reload(); // Ensure we have the latest data
 
     // Emit socket event for real-time update
     const io = req.app.get('io');
     if (io && order.restaurant_id) {
+      console.log(`📡 [STATUS] Emitting order-updated for order ${order.id}, status: ${order.status}`);
       io.of('/orders').to(`restaurant_${order.restaurant_id}`).emit('order-updated', order);
+    } else {
+      console.warn('⚠️ [STATUS] Socket.IO not available or restaurant_id missing');
     }
 
     res.json({ success: true, data: order });

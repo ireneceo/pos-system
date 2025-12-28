@@ -481,6 +481,76 @@ router.get('/stats/:customerId', async (req, res) => {
   }
 });
 
+// ========================================
+// 고객 주문 내역 조회 (모바일 오더용)
+// IMPORTANT: 이 라우트는 /:restaurantId 보다 먼저 정의되어야 함
+// ========================================
+
+/**
+ * GET /api/customers/:customerId/orders
+ * 특정 고객의 주문 내역 조회
+ *
+ * Query params:
+ * - restaurant_id: 레스토랑 ID (선택, 없으면 전체)
+ * - limit: 최대 조회 개수 (기본 50)
+ */
+router.get('/:customerId/orders', async (req, res) => {
+  try {
+    const { customerId } = req.params;
+    const { restaurant_id, limit = 50 } = req.query;
+
+    // 고객 존재 확인
+    const customer = await Customer.findByPk(customerId);
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Customer not found'
+      });
+    }
+
+    // 주문 조회 조건
+    const whereClause = { customer_id: customerId };
+    if (restaurant_id) {
+      whereClause.restaurant_id = restaurant_id;
+    }
+
+    // 주문 조회
+    const orders = await Order.findAll({
+      where: whereClause,
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(limit)
+    });
+
+    // 응답 형식 맞추기
+    const formattedOrders = orders.map(order => ({
+      id: order.id,
+      order_number: order.order_number,
+      pickup_number: order.order_number ? order.order_number.split('-').pop() : null,
+      status: order.status,
+      payment_status: order.payment_status,
+      order_type: order.order_type,
+      total_amount: parseFloat(order.total_amount),
+      customer_name: order.customer_name,
+      customer_phone: order.customer_phone,
+      table_number: order.table_number,
+      order_items: order.order_items,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt
+    }));
+
+    res.json({
+      success: true,
+      data: formattedOrders
+    });
+  } catch (error) {
+    console.error('Get customer orders error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get customer orders'
+    });
+  }
+});
+
 /**
  * GET /api/customers/:restaurantId
  * 레스토랑의 고객 목록 조회
@@ -883,6 +953,8 @@ router.post('/forgot-password', async (req, res) => {
   try {
     const { email, phone, slug } = req.body;
 
+    console.log('🔑 [FORGOT-PASSWORD] Request:', { email: email || '(none)', phone: phone || '(none)', slug: slug || '(none)' });
+
     if (!email && !phone) {
       return res.status(400).json({
         success: false,
@@ -1086,75 +1158,6 @@ router.post('/reset-password', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to reset password'
-    });
-  }
-});
-
-// ========================================
-// 고객 주문 내역 조회 (모바일 오더용)
-// ========================================
-
-/**
- * GET /api/customers/:customerId/orders
- * 특정 고객의 주문 내역 조회
- *
- * Query params:
- * - restaurant_id: 레스토랑 ID (선택, 없으면 전체)
- * - limit: 최대 조회 개수 (기본 50)
- */
-router.get('/:customerId/orders', async (req, res) => {
-  try {
-    const { customerId } = req.params;
-    const { restaurant_id, limit = 50 } = req.query;
-
-    // 고객 존재 확인
-    const customer = await Customer.findByPk(customerId);
-    if (!customer) {
-      return res.status(404).json({
-        success: false,
-        message: 'Customer not found'
-      });
-    }
-
-    // 주문 조회 조건
-    const whereClause = { customer_id: customerId };
-    if (restaurant_id) {
-      whereClause.restaurant_id = restaurant_id;
-    }
-
-    // 주문 조회
-    const orders = await Order.findAll({
-      where: whereClause,
-      order: [['createdAt', 'DESC']],
-      limit: parseInt(limit)
-    });
-
-    // 응답 형식 맞추기
-    const formattedOrders = orders.map(order => ({
-      id: order.id,
-      order_number: order.order_number,
-      pickup_number: order.order_number ? order.order_number.split('-').pop() : null,
-      status: order.status,
-      payment_status: order.payment_status,
-      order_type: order.order_type,
-      total_amount: parseFloat(order.total_amount),
-      customer_name: order.customer_name,
-      customer_phone: order.customer_phone,
-      table_number: order.table_number,
-      order_items: order.order_items,
-      createdAt: order.createdAt,
-      updatedAt: order.updatedAt
-    }));
-
-    res.json({
-      success: true,
-      data: formattedOrders
-    });
-  } catch (error) {
-    console.error('Get customer orders error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to get customer orders'
     });
   }
 });
