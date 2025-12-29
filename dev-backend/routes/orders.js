@@ -5,6 +5,7 @@ const Restaurant = require('../models/Restaurant');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const { executeQuery, executeTransaction } = require('../utils/queryWrapper');
+const { deductInventoryForOrder } = require('../services/inventoryDeductionService');
 
 // Get all orders
 router.get('/', async (req, res) => {
@@ -329,8 +330,36 @@ router.patch('/:id/status', async (req, res) => {
       }
     }
 
+    // Track if status changed to completed (for inventory deduction)
+    const wasCompleted = order.status === 'completed';
+    const willBeCompleted = status === 'completed';
+
     await order.update(updateData);
     await order.reload(); // Ensure we have the latest data
+
+    // Deduct inventory when order is completed (only if it wasn't already completed)
+    if (willBeCompleted && !wasCompleted && order.order_items) {
+      try {
+        const items = Array.isArray(order.order_items) ? order.order_items : JSON.parse(order.order_items);
+        const deductionResult = await deductInventoryForOrder(
+          order.restaurant_id,
+          items,
+          order.order_number || order.id.toString()
+        );
+
+        if (!deductionResult.success) {
+          console.error(`⚠️ [INVENTORY] Deduction failed for order ${order.id}:`, deductionResult.error);
+        } else {
+          console.log(`✅ [INVENTORY] Deducted ${deductionResult.deductions.length} ingredients for order ${order.id}`);
+          if (deductionResult.warnings.length > 0) {
+            console.warn(`⚠️ [INVENTORY] Warnings:`, deductionResult.warnings);
+          }
+        }
+      } catch (inventoryError) {
+        // Don't fail the order update if inventory deduction fails
+        console.error(`❌ [INVENTORY] Error deducting inventory for order ${order.id}:`, inventoryError);
+      }
+    }
 
     // Emit socket event for real-time update
     const io = req.app.get('io');

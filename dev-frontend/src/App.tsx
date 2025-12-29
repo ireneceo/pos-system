@@ -104,6 +104,7 @@ const SuppliersPage = React.lazy(() => import('./pages/Suppliers/SuppliersPage')
 const InventoryPage = React.lazy(() => import('./pages/Inventory/InventoryPage'));
 const StockTakePage = React.lazy(() => import('./pages/Inventory/StockTakePage'));
 const BrandInventoryPage = React.lazy(() => import('./pages/BrandInventory/BrandInventoryPage'));
+const ProductRecipePage = React.lazy(() => import('./pages/ProductRecipe/ProductRecipePage'));
 
 // Brand Product Management
 const BrandProductManagementPage = React.lazy(() => import('./pages/BrandProductManagement/BrandProductManagementPage'));
@@ -694,6 +695,13 @@ function App() {
                       <Route path="/restaurants/:restaurantId/stock-take" element={
                         <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
                           <StockTakePage />
+                        </ProtectedRoute>
+                      } />
+
+                      {/* Product Recipe Management */}
+                      <Route path="/restaurant/:restaurantId/product-recipes" element={
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
+                          <ProductRecipePage />
                         </ProtectedRoute>
                       } />
                     </Routes>
