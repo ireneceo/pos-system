@@ -92,6 +92,18 @@ interface Summary {
   unresolved_alerts: number;
 }
 
+interface ExpiringItem {
+  id: number;
+  batch_number: string | null;
+  ingredient_id: number;
+  ingredient_name: string;
+  remaining_quantity: number;
+  unit: string;
+  expiry_date: string;
+  days_until_expiry: number;
+  urgency: 'expired' | 'critical' | 'warning' | 'normal';
+}
+
 // Styled Components - 최소한의 페이지 전용 스타일만 정의
 const InfoBox = styled.div`
   background: #F0F9FF;
@@ -175,6 +187,57 @@ const UrgencyBadge = styled.span<{ level: string }>`
         return 'background: #F59E0B; color: white;';
       default:
         return 'background: #10B981; color: white;';
+    }
+  }}
+`;
+
+const ExpiryAlertCard = styled.div<{ urgency: string }>`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: ${props => {
+    switch (props.urgency) {
+      case 'expired': return '#FEF2F2';
+      case 'critical': return '#FEF2F2';
+      case 'warning': return '#FFFBEB';
+      default: return '#F0F9FF';
+    }
+  }};
+  border: 1px solid ${props => {
+    switch (props.urgency) {
+      case 'expired': return '#FECACA';
+      case 'critical': return '#FECACA';
+      case 'warning': return '#FED7AA';
+      default: return '#BAE6FD';
+    }
+  }};
+  border-radius: 8px;
+  margin-bottom: 12px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+`;
+
+const ExpiryBadge = styled.span<{ urgency: string }>`
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+
+  ${props => {
+    switch (props.urgency) {
+      case 'expired':
+        return 'background: #7F1D1D; color: white;';
+      case 'critical':
+        return 'background: #DC2626; color: white;';
+      case 'warning':
+        return 'background: #F59E0B; color: white;';
+      default:
+        return 'background: #059669; color: white;';
     }
   }}
 `;
@@ -287,6 +350,7 @@ const InventoryPage: React.FC = () => {
   const [inventory, setInventory] = useState<IngredientStock[]>([]);
   const [alerts, setAlerts] = useState<StockAlert[]>([]);
   const [suggestions, setSuggestions] = useState<ReorderSuggestion[]>([]);
+  const [expiringItems, setExpiringItems] = useState<ExpiringItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
@@ -297,6 +361,10 @@ const InventoryPage: React.FC = () => {
   const [selectedIngredient, setSelectedIngredient] = useState<IngredientStock | null>(null);
   const [quantity, setQuantity] = useState('');
   const [notes, setNotes] = useState('');
+  // Batch info for receive modal
+  const [batchNumber, setBatchNumber] = useState('');
+  const [manufactureDate, setManufactureDate] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
 
   // Initial Stock Setup
   const [initialStockItems, setInitialStockItems] = useState<{[key: number]: { quantity: string; min_stock: string }}>({});
@@ -329,17 +397,19 @@ const InventoryPage: React.FC = () => {
     try {
       setLoading(true);
 
-      const [summaryRes, inventoryRes, alertsRes, suggestionsRes] = await Promise.all([
+      const [summaryRes, inventoryRes, alertsRes, suggestionsRes, expiringRes] = await Promise.all([
         fetchAPI(`/api/restaurants/${restaurantId}/inventory/summary`),
         fetchAPI(`/api/restaurants/${restaurantId}/inventory`),
         fetchAPI(`/api/restaurants/${restaurantId}/inventory/alerts?resolved=false`),
-        fetchAPI(`/api/restaurants/${restaurantId}/inventory/reorder-suggestions`)
+        fetchAPI(`/api/restaurants/${restaurantId}/inventory/reorder-suggestions`),
+        fetchAPI(`/api/restaurants/${restaurantId}/inventory/expiring?days=14`)
       ]);
 
       if (summaryRes.success) setSummary(summaryRes.data);
       if (inventoryRes.success) setInventory(inventoryRes.data);
       if (alertsRes.success) setAlerts(alertsRes.data);
       if (suggestionsRes.success) setSuggestions(suggestionsRes.data);
+      if (expiringRes.success) setExpiringItems(expiringRes.data);
     } catch (error) {
       console.error('Failed to fetch inventory data:', error);
     } finally {
@@ -483,7 +553,10 @@ const InventoryPage: React.FC = () => {
         body: JSON.stringify({
           ingredient_id: selectedIngredient.id,
           quantity: parseFloat(quantity),
-          notes
+          notes,
+          batch_number: batchNumber || null,
+          manufacture_date: manufactureDate || null,
+          expiry_date: expiryDate || null
         })
       });
 
@@ -493,6 +566,9 @@ const InventoryPage: React.FC = () => {
         setSelectedIngredient(null);
         setQuantity('');
         setNotes('');
+        setBatchNumber('');
+        setManufactureDate('');
+        setExpiryDate('');
         fetchData();
       } else {
         alert(response.message || 'Failed to receive stock');
@@ -550,6 +626,9 @@ const InventoryPage: React.FC = () => {
     setSelectedIngredient(ingredient);
     setQuantity('');
     setNotes('');
+    setBatchNumber('');
+    setManufactureDate('');
+    setExpiryDate('');
     setShowReceiveModal(true);
   };
 
@@ -659,6 +738,11 @@ const InventoryPage: React.FC = () => {
                   <StatLabel>Monthly Loss</StatLabel>
                   <StatDescription>this month</StatDescription>
                 </StatCard>
+                <StatCard color="#EA580C">
+                  <StatValue>{expiringItems.filter(i => i.urgency === 'expired' || i.urgency === 'critical').length}</StatValue>
+                  <StatLabel>Expiring Soon</StatLabel>
+                  <StatDescription>within 3 days</StatDescription>
+                </StatCard>
               </StatsGrid>
 
               {alerts.length > 0 && (
@@ -693,6 +777,49 @@ const InventoryPage: React.FC = () => {
                           </Button>
                         </ActionButtons>
                       </AlertCard>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {expiringItems.length > 0 && (
+                <>
+                  <SectionTitle>Expiring Items</SectionTitle>
+                  <div>
+                    {expiringItems.slice(0, 5).map(item => (
+                      <ExpiryAlertCard key={item.id} urgency={item.urgency}>
+                        <AlertInfo>
+                          <AlertTitle>
+                            {item.ingredient_name}
+                            {item.batch_number && (
+                              <span style={{ fontSize: '12px', color: '#6B7280', marginLeft: '8px' }}>
+                                Batch: {item.batch_number}
+                              </span>
+                            )}
+                          </AlertTitle>
+                          <AlertDetail>
+                            {item.remaining_quantity} {item.unit} remaining • Expires: {new Date(item.expiry_date).toLocaleDateString()}
+                          </AlertDetail>
+                        </AlertInfo>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <ExpiryBadge urgency={item.urgency}>
+                            {item.urgency === 'expired' ? 'EXPIRED' :
+                             item.urgency === 'critical' ? `${item.days_until_expiry}d LEFT` :
+                             item.urgency === 'warning' ? `${item.days_until_expiry} DAYS` :
+                             `${item.days_until_expiry} days`}
+                          </ExpiryBadge>
+                          <Button
+                            variant="danger"
+                            onClick={() => {
+                              const ing = inventory.find(i => i.id === item.ingredient_id);
+                              if (ing) openWasteModal(ing);
+                            }}
+                            style={{ padding: '6px 12px', fontSize: '12px' }}
+                          >
+                            Dispose
+                          </Button>
+                        </div>
+                      </ExpiryAlertCard>
                     ))}
                   </div>
                 </>
@@ -862,12 +989,12 @@ const InventoryPage: React.FC = () => {
         isOpen={showReceiveModal}
         onClose={() => setShowReceiveModal(false)}
         title="Receive Stock"
-        size="small"
+        size="medium"
       >
         {selectedIngredient && (
           <>
             <InfoBox>
-              Enter the quantity received. This will be added to the current stock.
+              Enter the quantity received and batch details for inventory tracking.
             </InfoBox>
             <UIFormGroup>
               <FormLabel>Ingredient</FormLabel>
@@ -888,6 +1015,43 @@ const InventoryPage: React.FC = () => {
                 required
               />
             </UIFormGroup>
+
+            <div style={{ borderTop: '1px solid #E5E7EB', margin: '16px 0', paddingTop: '16px' }}>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540', marginBottom: '12px' }}>
+                Batch Details (Optional)
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <UIFormGroup style={{ marginBottom: 0 }}>
+                  <FormLabel>Batch/Lot Number</FormLabel>
+                  <FormInput
+                    type="text"
+                    value={batchNumber}
+                    onChange={(e) => setBatchNumber(e.target.value)}
+                    placeholder="e.g., LOT-2024-001"
+                  />
+                </UIFormGroup>
+                <UIFormGroup style={{ marginBottom: 0 }}>
+                  <FormLabel>Manufacture Date</FormLabel>
+                  <FormInput
+                    type="date"
+                    value={manufactureDate}
+                    onChange={(e) => setManufactureDate(e.target.value)}
+                  />
+                </UIFormGroup>
+              </div>
+              <UIFormGroup style={{ marginTop: '12px' }}>
+                <FormLabel>Expiry Date</FormLabel>
+                <FormInput
+                  type="date"
+                  value={expiryDate}
+                  onChange={(e) => setExpiryDate(e.target.value)}
+                />
+                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                  Items with earlier expiry dates will be used first (FIFO)
+                </div>
+              </UIFormGroup>
+            </div>
+
             <UIFormGroup>
               <FormLabel>Notes (Optional)</FormLabel>
               <FormInput

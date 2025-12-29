@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Op } = require('sequelize');
 const database = require('../config/database');
-const { Ingredient, InventoryTransaction, StockTake, StockTakeItem, StockAlert, Restaurant } = require('../models');
+const { Ingredient, InventoryTransaction, StockTake, StockTakeItem, StockAlert, Restaurant, InventoryBatch } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 
 // Apply auth middleware to all routes
@@ -268,13 +268,23 @@ router.post('/restaurants/:restaurantId/inventory/initial', async (req, res) => 
   }
 });
 
-// POST /api/restaurants/:restaurantId/inventory/receive - 입고 처리
+// POST /api/restaurants/:restaurantId/inventory/receive - 입고 처리 (배치 정보 포함)
 router.post('/restaurants/:restaurantId/inventory/receive', async (req, res) => {
   const transaction = await database.sequelize.transaction();
 
   try {
     const { restaurantId } = req.params;
-    const { ingredient_id, quantity, notes } = req.body;
+    const {
+      ingredient_id,
+      quantity,
+      notes,
+      // New batch fields
+      batch_number,
+      manufacture_date,
+      expiry_date,
+      unit_cost,
+      supplier_id
+    } = req.body;
     const userId = req.user.id;
 
     const ingredient = await Ingredient.findByPk(ingredient_id);
@@ -292,6 +302,24 @@ router.post('/restaurants/:restaurantId/inventory/receive', async (req, res) => 
       { current_stock: newStock },
       { where: { id: ingredient_id }, transaction }
     );
+
+    // Create inventory batch for FIFO tracking
+    const batch = await InventoryBatch.create({
+      restaurant_id: restaurantId,
+      ingredient_id: ingredient_id,
+      batch_number: batch_number || null,
+      initial_quantity: addQty,
+      remaining_quantity: addQty,
+      unit: ingredient.unit,
+      unit_cost: unit_cost || ingredient.unit_cost || 0,
+      manufacture_date: manufacture_date || null,
+      expiry_date: expiry_date || null,
+      received_date: new Date(),
+      status: 'active',
+      supplier_id: supplier_id || ingredient.supplier_id || null,
+      notes: notes || null,
+      created_by: userId
+    }, { transaction });
 
     // Create transaction record
     await InventoryTransaction.create({
@@ -318,7 +346,12 @@ router.post('/restaurants/:restaurantId/inventory/receive', async (req, res) => 
     );
 
     await transaction.commit();
-    res.json({ success: true, message: 'Stock received successfully', new_stock: newStock });
+    res.json({
+      success: true,
+      message: 'Stock received successfully',
+      new_stock: newStock,
+      batch_id: batch.id
+    });
   } catch (error) {
     await transaction.rollback();
     console.error('Receive stock error:', error);
@@ -1164,6 +1197,277 @@ router.get('/restaurants/:restaurantId/inventory/reorder-suggestions', async (re
     res.json({ success: true, data: suggestions });
   } catch (error) {
     console.error('Get reorder suggestions error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// Batch Management APIs
+// ============================================
+
+// GET /api/restaurants/:restaurantId/inventory/:ingredientId/batches - 배치 목록 조회
+router.get('/restaurants/:restaurantId/inventory/:ingredientId/batches', async (req, res) => {
+  try {
+    const { ingredientId } = req.params;
+    const { status } = req.query;
+
+    const whereClause = { ingredient_id: ingredientId };
+    if (status) {
+      whereClause.status = status;
+    }
+
+    const batches = await InventoryBatch.findAll({
+      where: whereClause,
+      order: [['received_date', 'ASC']], // FIFO order
+      include: [{
+        model: require('../models').Supplier,
+        as: 'supplier',
+        attributes: ['id', 'name']
+      }]
+    });
+
+    res.json({ success: true, data: batches });
+  } catch (error) {
+    console.error('Get batches error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/restaurants/:restaurantId/inventory/expiring - 유통기한 임박 항목 조회
+router.get('/restaurants/:restaurantId/inventory/expiring', async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const { days = 7 } = req.query; // Default: items expiring within 7 days
+
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + parseInt(days));
+
+    const batches = await InventoryBatch.findAll({
+      where: {
+        restaurant_id: restaurantId,
+        status: 'active',
+        remaining_quantity: { [Op.gt]: 0 },
+        expiry_date: {
+          [Op.ne]: null,
+          [Op.lte]: expiryDate
+        }
+      },
+      include: [{
+        model: Ingredient,
+        as: 'ingredient',
+        attributes: ['id', 'name', 'unit', 'category']
+      }],
+      order: [['expiry_date', 'ASC']]
+    });
+
+    // Group by urgency
+    const now = new Date();
+    const result = batches.map(batch => {
+      const daysUntilExpiry = Math.ceil((new Date(batch.expiry_date) - now) / (1000 * 60 * 60 * 24));
+      let urgency = 'normal';
+      if (daysUntilExpiry <= 0) {
+        urgency = 'expired';
+      } else if (daysUntilExpiry <= 3) {
+        urgency = 'critical';
+      } else if (daysUntilExpiry <= 7) {
+        urgency = 'warning';
+      }
+
+      return {
+        ...batch.toJSON(),
+        days_until_expiry: daysUntilExpiry,
+        urgency
+      };
+    });
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Get expiring items error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// FIFO 차감 함수 (내부 사용)
+async function deductStockFIFO(ingredientId, quantityToDeduct, transaction) {
+  let remainingToDeduct = parseFloat(quantityToDeduct);
+  const deductedBatches = [];
+
+  // Get active batches ordered by FIFO (oldest first, then by expiry date)
+  const batches = await InventoryBatch.findAll({
+    where: {
+      ingredient_id: ingredientId,
+      status: 'active',
+      remaining_quantity: { [Op.gt]: 0 }
+    },
+    order: [
+      ['expiry_date', 'ASC'], // Use items expiring soonest first
+      ['received_date', 'ASC'] // Then by received date (FIFO)
+    ],
+    transaction
+  });
+
+  for (const batch of batches) {
+    if (remainingToDeduct <= 0) break;
+
+    const batchRemaining = parseFloat(batch.remaining_quantity);
+    const deductFromBatch = Math.min(batchRemaining, remainingToDeduct);
+
+    const newRemaining = batchRemaining - deductFromBatch;
+    const newStatus = newRemaining <= 0 ? 'depleted' : 'active';
+
+    await InventoryBatch.update({
+      remaining_quantity: newRemaining,
+      status: newStatus
+    }, {
+      where: { id: batch.id },
+      transaction
+    });
+
+    deductedBatches.push({
+      batch_id: batch.id,
+      batch_number: batch.batch_number,
+      quantity_deducted: deductFromBatch,
+      expiry_date: batch.expiry_date
+    });
+
+    remainingToDeduct -= deductFromBatch;
+  }
+
+  return {
+    success: remainingToDeduct <= 0,
+    deducted_quantity: parseFloat(quantityToDeduct) - remainingToDeduct,
+    remaining_to_deduct: remainingToDeduct,
+    batches: deductedBatches
+  };
+}
+
+// POST /api/restaurants/:restaurantId/inventory/deduct - FIFO 기반 재고 차감
+router.post('/restaurants/:restaurantId/inventory/deduct', async (req, res) => {
+  const transaction = await database.sequelize.transaction();
+
+  try {
+    const { restaurantId } = req.params;
+    const { ingredient_id, quantity, reason, notes } = req.body;
+    const userId = req.user.id;
+
+    const ingredient = await Ingredient.findByPk(ingredient_id);
+    if (!ingredient) {
+      await transaction.rollback();
+      return res.status(404).json({ success: false, message: 'Ingredient not found' });
+    }
+
+    const deductQty = parseFloat(quantity) || 0;
+    const currentStock = parseFloat(ingredient.current_stock) || 0;
+
+    if (deductQty > currentStock) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: `Insufficient stock. Available: ${currentStock} ${ingredient.unit}`
+      });
+    }
+
+    // FIFO deduction from batches
+    const fifoResult = await deductStockFIFO(ingredient_id, deductQty, transaction);
+
+    const newStock = currentStock - fifoResult.deducted_quantity;
+
+    // Update ingredient stock
+    await Ingredient.update(
+      { current_stock: newStock },
+      { where: { id: ingredient_id }, transaction }
+    );
+
+    // Create transaction record
+    await InventoryTransaction.create({
+      restaurant_id: restaurantId,
+      ingredient_id: ingredient_id,
+      transaction_type: reason || 'order_deduct',
+      quantity_change: -fifoResult.deducted_quantity,
+      unit: ingredient.unit,
+      stock_after: newStock,
+      notes: notes || `Deducted via FIFO from ${fifoResult.batches.length} batch(es)`,
+      created_by: userId
+    }, { transaction });
+
+    // Check and create alerts if needed
+    await checkAndCreateAlert(restaurantId, ingredient_id, newStock, ingredient.min_stock, transaction);
+
+    await transaction.commit();
+
+    res.json({
+      success: true,
+      message: 'Stock deducted successfully',
+      new_stock: newStock,
+      fifo_details: fifoResult
+    });
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Deduct stock error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// PUT /api/restaurants/:restaurantId/inventory/batches/:batchId/dispose - 배치 폐기
+router.put('/restaurants/:restaurantId/inventory/batches/:batchId/dispose', async (req, res) => {
+  const transaction = await database.sequelize.transaction();
+
+  try {
+    const { restaurantId, batchId } = req.params;
+    const { reason } = req.body;
+    const userId = req.user.id;
+
+    const batch = await InventoryBatch.findByPk(batchId);
+    if (!batch) {
+      await transaction.rollback();
+      return res.status(404).json({ success: false, message: 'Batch not found' });
+    }
+
+    const disposedQty = parseFloat(batch.remaining_quantity);
+
+    // Update batch status
+    await InventoryBatch.update({
+      status: 'disposed',
+      remaining_quantity: 0,
+      notes: reason || 'Disposed'
+    }, {
+      where: { id: batchId },
+      transaction
+    });
+
+    // Update ingredient stock
+    const ingredient = await Ingredient.findByPk(batch.ingredient_id);
+    const currentStock = parseFloat(ingredient.current_stock) || 0;
+    const newStock = Math.max(0, currentStock - disposedQty);
+
+    await Ingredient.update(
+      { current_stock: newStock },
+      { where: { id: batch.ingredient_id }, transaction }
+    );
+
+    // Create transaction record
+    await InventoryTransaction.create({
+      restaurant_id: restaurantId,
+      ingredient_id: batch.ingredient_id,
+      transaction_type: 'waste',
+      quantity_change: -disposedQty,
+      unit: batch.unit,
+      stock_after: newStock,
+      notes: reason || `Batch ${batch.batch_number || batchId} disposed`,
+      created_by: userId
+    }, { transaction });
+
+    await transaction.commit();
+
+    res.json({
+      success: true,
+      message: 'Batch disposed successfully',
+      disposed_quantity: disposedQty,
+      new_stock: newStock
+    });
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Dispose batch error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
