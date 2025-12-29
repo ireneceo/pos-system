@@ -325,6 +325,63 @@ git stash pop
 
 ---
 
+## ✅ 완료된 작업 (2025-12-29)
+
+### Inventory 페이지 버그 수정 및 개선
+
+**수정된 파일:**
+- `dev-backend/routes/inventory-routes.js`
+- `dev-frontend/src/pages/Inventory/InventoryPage.tsx`
+- `dev-frontend/src/hooks/useAllowedRoutes.ts`
+- `dev-frontend/src/components/Layout/MainLayout.tsx`
+
+**해결된 문제들:**
+
+1. **재고 페이지 "No ingredients found" 문제**
+   - 원인: API가 `restaurant_id`만 쿼리하고 `brand_id` 재료를 포함하지 않음
+   - 해결: `inventory-routes.js`에서 브랜드 재료도 포함하도록 OR 조건 추가
+   ```javascript
+   const orConditions = [{ restaurant_id: restaurantId }];
+   if (restaurant?.brand_id) {
+     orConditions.push({ brand_id: restaurant.brand_id });
+   }
+   ```
+
+2. **404 오류: `/inventory/expiring` API 누락**
+   - 원인: `inventory.js`에 있던 API가 실제 사용되는 `inventory-routes.js`에 없음
+   - 해결: `inventory-routes.js`에 `/expiring` 엔드포인트 추가
+
+3. **`toFixed is not a function` 오류**
+   - 원인: DB에서 `avg_daily_usage`가 문자열("0.0000")로 반환됨
+   - 해결: `parseFloat(String(value))`로 변환 후 `toFixed()` 호출
+   ```typescript
+   // 수정 전
+   <div>{item.avg_daily_usage.toFixed(2)}</div>
+   // 수정 후
+   <div>{(parseFloat(String(item.avg_daily_usage)) || 0).toFixed(2)}</div>
+   ```
+
+4. **Authorization 헤더 누락**
+   - 원인: `fetchAPI`가 쿠키 기반이나 시스템은 Bearer 토큰 사용
+   - 해결: `authFetch` 헬퍼 함수 추가하여 `Authorization: Bearer` 헤더 포함
+
+5. **디버그 로그 제거**
+   - `MainLayout.tsx`와 `useAllowedRoutes.ts`에서 과도한 console.log 제거
+   - 콘솔 스팸 문제 해결
+
+### Reports 페이지 통계 분석
+
+**분석 완료 - 코드 정확성 확인:**
+- `filteredOrders`에서 `status === 'completed'`만 필터링됨
+- 모든 통계(salesData, categoryData, menuData, drilldownData)가 completed 주문 기준
+- cancelled 주문은 정확하게 제외됨
+
+**운영 DB 확인 (restaurant_id=8, 2025-12-29):**
+- completed: 32건, RM 785.50
+- cancelled: 2건, RM 37.00
+
+---
+
 ## ✅ 완료된 작업 (2025-12-28)
 
 ### 프론트엔드 빌드 오류 수정
@@ -1317,4 +1374,4 @@ const token = localStorage.getItem('auth_token'); // 'token' → 'auth_token'
 **프로젝트:** Purple POS System
 **개발 환경:** Development Server
 **데이터베이스:** purple_dev_db (MySQL)
-**마지막 업데이트:** 2025-12-28
+**마지막 업데이트:** 2025-12-29
