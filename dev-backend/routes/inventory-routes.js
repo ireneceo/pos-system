@@ -18,8 +18,19 @@ router.get('/:restaurantId/inventory', async (req, res) => {
     const { restaurantId } = req.params;
     const { category, status, search } = req.query;
 
+    // Get restaurant's brand_id
+    const restaurant = await Restaurant.findByPk(restaurantId, {
+      attributes: ['id', 'brand_id']
+    });
+
+    // Build where clause to include both restaurant and brand ingredients
+    const orConditions = [{ restaurant_id: restaurantId }];
+    if (restaurant?.brand_id) {
+      orConditions.push({ brand_id: restaurant.brand_id });
+    }
+
     const whereClause = {
-      restaurant_id: restaurantId,
+      [Op.or]: orConditions,
       is_active: true
     };
 
@@ -71,8 +82,19 @@ router.get('/:restaurantId/inventory/summary', async (req, res) => {
   try {
     const { restaurantId } = req.params;
 
+    // Get restaurant's brand_id
+    const restaurant = await Restaurant.findByPk(restaurantId, {
+      attributes: ['id', 'brand_id']
+    });
+
+    // Build where clause to include both restaurant and brand ingredients
+    const orConditions = [{ restaurant_id: restaurantId }];
+    if (restaurant?.brand_id) {
+      orConditions.push({ brand_id: restaurant.brand_id });
+    }
+
     const ingredients = await Ingredient.findAll({
-      where: { restaurant_id: restaurantId, is_active: true }
+      where: { [Op.or]: orConditions, is_active: true }
     });
 
     let totalItems = 0;

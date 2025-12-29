@@ -389,6 +389,18 @@ const InventoryPage: React.FC = () => {
   });
   const [savingSettings, setSavingSettings] = useState(false);
 
+  // Add Ingredient Modal
+  const [showAddIngredientModal, setShowAddIngredientModal] = useState(false);
+  const [addIngredientForm, setAddIngredientForm] = useState({
+    name: '',
+    unit: 'kg',
+    unit_cost: '',
+    category: 'Produce',
+    current_stock: '',
+    min_stock: ''
+  });
+  const [savingIngredient, setSavingIngredient] = useState(false);
+
   // URL 파라미터 우선, 없으면 user의 restaurant_id 사용
   const restaurantId = urlRestaurantId ? parseInt(urlRestaurantId, 10) : user?.restaurant_id;
 
@@ -398,6 +410,23 @@ const InventoryPage: React.FC = () => {
     }
   }, [defaultCurrency]);
 
+  // Helper to get auth token
+  const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
+
+  // Helper for authenticated fetch
+  const authFetch = useCallback(async (url: string, options: RequestInit = {}) => {
+    const token = getToken();
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        ...options.headers
+      }
+    });
+    return response.json();
+  }, [getToken]);
+
   const fetchData = useCallback(async () => {
     if (!restaurantId) return;
 
@@ -405,11 +434,11 @@ const InventoryPage: React.FC = () => {
       setLoading(true);
 
       const [summaryRes, inventoryRes, alertsRes, suggestionsRes, expiringRes] = await Promise.all([
-        fetchAPI(`/api/restaurants/${restaurantId}/inventory/summary`),
-        fetchAPI(`/api/restaurants/${restaurantId}/inventory`),
-        fetchAPI(`/api/restaurants/${restaurantId}/inventory/alerts?resolved=false`),
-        fetchAPI(`/api/restaurants/${restaurantId}/inventory/reorder-suggestions`),
-        fetchAPI(`/api/restaurants/${restaurantId}/inventory/expiring?days=14`)
+        authFetch(`/api/restaurants/${restaurantId}/inventory/summary`),
+        authFetch(`/api/restaurants/${restaurantId}/inventory`),
+        authFetch(`/api/restaurants/${restaurantId}/inventory/alerts?resolved=false`),
+        authFetch(`/api/restaurants/${restaurantId}/inventory/reorder-suggestions`),
+        authFetch(`/api/restaurants/${restaurantId}/inventory/expiring?days=14`)
       ]);
 
       if (summaryRes.success) setSummary(summaryRes.data);
@@ -422,7 +451,7 @@ const InventoryPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [restaurantId]);
+  }, [restaurantId, authFetch]);
 
   useEffect(() => {
     fetchData();
@@ -466,7 +495,7 @@ const InventoryPage: React.FC = () => {
 
     try {
       setSavingInitialStock(true);
-      const response = await fetchAPI(`/api/restaurants/${restaurantId}/inventory/initial`, {
+      const response = await authFetch(`/api/restaurants/${restaurantId}/inventory/initial`, {
         method: 'POST',
         body: JSON.stringify({ items: itemsToSave })
       });
@@ -516,7 +545,7 @@ const InventoryPage: React.FC = () => {
 
     try {
       setSavingSettings(true);
-      const response = await fetchAPI(`/api/restaurants/${restaurantId}/inventory/${settingsIngredient.id}/settings`, {
+      const response = await authFetch(`/api/restaurants/${restaurantId}/inventory/${settingsIngredient.id}/settings`, {
         method: 'PUT',
         body: JSON.stringify({
           lead_time_days: parseInt(settingsForm.lead_time_days) || 1,
@@ -555,7 +584,7 @@ const InventoryPage: React.FC = () => {
     if (!selectedIngredient || !quantity) return;
 
     try {
-      const response = await fetchAPI(`/api/restaurants/${restaurantId}/inventory/receive`, {
+      const response = await authFetch(`/api/restaurants/${restaurantId}/inventory/receive`, {
         method: 'POST',
         body: JSON.stringify({
           ingredient_id: selectedIngredient.id,
@@ -870,7 +899,7 @@ const InventoryPage: React.FC = () => {
                   variant="primary"
                   onClick={() => {
                     if (inventory.length === 0) {
-                      window.location.href = `/restaurant/${restaurantId}/ingredients`;
+                      window.location.href = `/restaurant/${restaurantId}/recipe-management?tab=ingredients`;
                     } else {
                       setActiveTab('list');
                     }
@@ -882,7 +911,7 @@ const InventoryPage: React.FC = () => {
                   variant="secondary"
                   onClick={() => {
                     if (inventory.length === 0) {
-                      window.location.href = `/restaurant/${restaurantId}/ingredients`;
+                      window.location.href = `/restaurant/${restaurantId}/recipe-management?tab=ingredients`;
                     } else {
                       setActiveTab('list');
                     }
@@ -928,7 +957,7 @@ const InventoryPage: React.FC = () => {
                   {inventory.length === 0 && (
                     <Button
                       variant="primary"
-                      onClick={() => window.location.href = `/restaurant/${restaurantId}/ingredients`}
+                      onClick={() => window.location.href = `/restaurant/${restaurantId}/recipe-management?tab=ingredients`}
                     >
                       Go to Ingredients
                     </Button>
