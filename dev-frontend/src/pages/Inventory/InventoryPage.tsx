@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import {
@@ -342,9 +342,16 @@ const InventoryTableRow = styled(TableRow)`
 const InventoryPage: React.FC = () => {
   const { user } = useAuth();
   const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'list' | 'history'>('dashboard');
+
+  // Get tab from URL, default to 'dashboard'
+  const activeTab = (searchParams.get('tab') as 'dashboard' | 'list' | 'history') || 'dashboard';
+
+  const setActiveTab = (tab: 'dashboard' | 'list' | 'history') => {
+    setSearchParams({ tab });
+  };
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [inventory, setInventory] = useState<IngredientStock[]>([]);
@@ -859,10 +866,28 @@ const InventoryPage: React.FC = () => {
               )}
 
               <QuickActions>
-                <Button variant="primary" onClick={() => setActiveTab('list')}>
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    if (inventory.length === 0) {
+                      window.location.href = `/restaurant/${restaurantId}/ingredients`;
+                    } else {
+                      setActiveTab('list');
+                    }
+                  }}
+                >
                   + Receive Stock
                 </Button>
-                <Button variant="secondary" onClick={() => setActiveTab('list')}>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    if (inventory.length === 0) {
+                      window.location.href = `/restaurant/${restaurantId}/ingredients`;
+                    } else {
+                      setActiveTab('list');
+                    }
+                  }}
+                >
                   + Record Waste
                 </Button>
                 <Button variant="secondary" onClick={() => setActiveTab('history')}>
@@ -893,11 +918,21 @@ const InventoryPage: React.FC = () => {
               {filteredInventory.length === 0 ? (
                 <EmptyState>
                   <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
-                    No ingredients found
+                    {inventory.length === 0 ? 'No ingredients found' : 'No matching ingredients'}
                   </div>
-                  <div style={{ fontSize: '14px' }}>
-                    Add ingredients in the Ingredients page first.
+                  <div style={{ fontSize: '14px', marginBottom: '16px' }}>
+                    {inventory.length === 0
+                      ? 'Add ingredients in the Ingredients page first.'
+                      : 'Try adjusting your search or filter.'}
                   </div>
+                  {inventory.length === 0 && (
+                    <Button
+                      variant="primary"
+                      onClick={() => window.location.href = `/restaurant/${restaurantId}/ingredients`}
+                    >
+                      Go to Ingredients
+                    </Button>
+                  )}
                 </EmptyState>
               ) : (
                 <Table>
