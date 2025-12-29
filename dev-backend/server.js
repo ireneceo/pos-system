@@ -193,6 +193,8 @@ const currenciesRouter = require('./routes/currencies');
 const brandProductsRouter = require('./routes/brand-products');
 const suppliersRouter = require('./routes/suppliers');
 const inventoryRouter = require('./routes/inventory-routes');
+const brandInventoryRouter = require('./routes/brand-inventory');
+const productRecipeRouter = require('./routes/product-recipe');
 
 // Health check endpoint - PM2 모니터링 및 로드밸런서용 (가장 먼저)
 app.get('/api/health', (req, res) => {
@@ -244,6 +246,8 @@ app.use('/api', ingredientCategoriesRouter);
 app.use('/api', suppliersRouter);
 app.use('/api/currencies', currenciesRouter);
 app.use('/api/restaurants', inventoryRouter);
+app.use('/api', brandInventoryRouter);
+app.use('/api', productRecipeRouter);
 
 // GitHub Webhook for Auto-Deployment
 const { exec } = require('child_process');
