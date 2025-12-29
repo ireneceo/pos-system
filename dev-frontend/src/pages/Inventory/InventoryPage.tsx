@@ -106,11 +106,11 @@ interface ExpiringItem {
 
 // Styled Components - 최소한의 페이지 전용 스타일만 정의
 const InfoBox = styled.div`
-  background: #F0F9FF;
-  border: 1px solid #BAE6FD;
+  background: #F0F4FF;
+  border: 1px solid #E6EBF1;
   border-radius: 8px;
   padding: 12px 16px;
-  color: #0369A1;
+  color: #635BFF;
   font-size: 14px;
   margin-bottom: 24px;
   line-height: 1.5;
@@ -619,7 +619,7 @@ const InventoryPage: React.FC = () => {
     if (!selectedIngredient || !quantity) return;
 
     try {
-      const response = await fetchAPI(`/api/restaurants/${restaurantId}/inventory/waste`, {
+      const response = await authFetch(`/api/restaurants/${restaurantId}/inventory/waste`, {
         method: 'POST',
         body: JSON.stringify({
           ingredient_id: selectedIngredient.id,
@@ -646,7 +646,7 @@ const InventoryPage: React.FC = () => {
 
   const handleResolveAlert = async (alertId: number) => {
     try {
-      const response = await fetchAPI(`/api/restaurants/${restaurantId}/inventory/alerts/${alertId}/resolve`, {
+      const response = await authFetch(`/api/restaurants/${restaurantId}/inventory/alerts/${alertId}/resolve`, {
         method: 'PUT'
       });
 
@@ -880,7 +880,7 @@ const InventoryPage: React.FC = () => {
                       <TableRow key={s.ingredient.id} columns="2fr 1fr 1fr 1fr 1fr 100px">
                         <div>{s.ingredient.name}</div>
                         <div>{s.current_stock} {s.ingredient.unit}</div>
-                        <div>{s.avg_daily_usage.toFixed(2)} {s.ingredient.unit}/day</div>
+                        <div>{(parseFloat(s.avg_daily_usage) || 0).toFixed(2)} {s.ingredient.unit}/day</div>
                         <div style={{ fontWeight: 600 }}>{s.suggested_qty} {s.ingredient.unit}</div>
                         <div>{formatCurrency(s.estimated_cost, selectedCurrency)}</div>
                         <div>
@@ -981,7 +981,7 @@ const InventoryPage: React.FC = () => {
                           <MobileLabel>Ingredient</MobileLabel>
                           <IngredientInfo>
                             <IngredientName>{item.name}</IngredientName>
-                            <IngredientMeta>{item.category} • {item.avg_daily_usage?.toFixed(2) || '0'} {item.unit}/day</IngredientMeta>
+                            <IngredientMeta>{item.category} • {(parseFloat(String(item.avg_daily_usage)) || 0).toFixed(2)} {item.unit}/day</IngredientMeta>
                           </IngredientInfo>
                         </MobileValue>
                         <MobileValue>
@@ -1287,7 +1287,7 @@ const InventoryPage: React.FC = () => {
                   {getConfidenceLabel(settingsIngredient.prediction_confidence || 'none')}
                 </ConfidenceBadge>
                 <span style={{ fontSize: '14px', color: '#0A2540' }}>
-                  {settingsIngredient.avg_daily_usage?.toFixed(2) || '0'} {settingsIngredient.unit}/day (calculated)
+                  {(parseFloat(String(settingsIngredient.avg_daily_usage)) || 0).toFixed(2)} {settingsIngredient.unit}/day (calculated)
                 </span>
               </div>
             </div>
@@ -1396,7 +1396,11 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ restaurantId, c
   useEffect(() => {
     const fetchTransactions = async () => {
       try {
-        const response = await fetchAPI(`/api/restaurants/${restaurantId}/inventory/transactions?limit=50`);
+        const token = localStorage.getItem('auth_token');
+        const res = await fetch(`/api/restaurants/${restaurantId}/inventory/transactions?limit=50`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const response = await res.json();
         if (response.success) {
           setTransactions(response.data);
         }

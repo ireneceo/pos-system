@@ -1515,7 +1515,7 @@ const LiveOrdersPage: React.FC = () => {
       };
     }
 
-    // Calculate sales
+    // Calculate sales from orders in current tab
     const totalSales = orders.reduce((sum, order) => sum + parseFloat(order.total_amount.toString()), 0);
     const avgOrderAmount = totalSales / orders.length;
     const maxOrderAmount = Math.max(...orders.map(o => parseFloat(o.total_amount.toString())));

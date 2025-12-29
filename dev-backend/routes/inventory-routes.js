@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Op } = require('sequelize');
 const database = require('../config/database');
-const { Ingredient, InventoryTransaction, StockTake, StockTakeItem, StockAlert, Restaurant } = require('../models');
+const { Ingredient, InventoryTransaction, StockTake, StockTakeItem, StockAlert, Restaurant, InventoryBatch } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 
 // Apply auth middleware to all routes
@@ -892,5 +892,64 @@ async function checkAndCreateAlert(ingredientId, restaurantId, newStock, transac
     );
   }
 }
+
+// GET /api/restaurants/:restaurantId/inventory/expiring - 유통기한 임박 항목 조회
+router.get('/:restaurantId/inventory/expiring', async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const { days = 14 } = req.query;
+
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + parseInt(days));
+
+    const batches = await InventoryBatch.findAll({
+      where: {
+        restaurant_id: restaurantId,
+        status: 'active',
+        remaining_quantity: { [Op.gt]: 0 },
+        expiry_date: {
+          [Op.ne]: null,
+          [Op.lte]: expiryDate
+        }
+      },
+      include: [{
+        model: Ingredient,
+        as: 'ingredient',
+        attributes: ['id', 'name', 'unit', 'category']
+      }],
+      order: [['expiry_date', 'ASC']]
+    });
+
+    const now = new Date();
+    const result = batches.map(batch => {
+      const daysUntilExpiry = Math.ceil((new Date(batch.expiry_date) - now) / (1000 * 60 * 60 * 24));
+      let urgency = 'normal';
+      if (daysUntilExpiry <= 0) {
+        urgency = 'expired';
+      } else if (daysUntilExpiry <= 3) {
+        urgency = 'critical';
+      } else if (daysUntilExpiry <= 7) {
+        urgency = 'warning';
+      }
+
+      return {
+        id: batch.id,
+        batch_number: batch.batch_number,
+        ingredient_id: batch.ingredient_id,
+        ingredient_name: batch.ingredient?.name || 'Unknown',
+        remaining_quantity: parseFloat(batch.remaining_quantity),
+        unit: batch.ingredient?.unit || batch.unit,
+        expiry_date: batch.expiry_date,
+        days_until_expiry: daysUntilExpiry,
+        urgency
+      };
+    });
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Get expiring items error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 module.exports = router;
