@@ -38,6 +38,7 @@ const InventoryTransaction = require('./InventoryTransaction');
 const StockTake = require('./StockTake');
 const StockTakeItem = require('./StockTakeItem');
 const StockAlert = require('./StockAlert');
+const InventoryBatch = require('./InventoryBatch');
 
 // Define associations
 // Brand - Restaurant associations
@@ -289,6 +290,14 @@ Restaurant.hasMany(StockAlert, { foreignKey: 'restaurant_id', as: 'stockAlerts' 
 StockAlert.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as: 'ingredient' });
 Ingredient.hasMany(StockAlert, { foreignKey: 'ingredient_id', as: 'stockAlerts' });
 
+// InventoryBatch associations
+InventoryBatch.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Restaurant.hasMany(InventoryBatch, { foreignKey: 'restaurant_id', as: 'inventoryBatches' });
+InventoryBatch.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as: 'ingredient' });
+Ingredient.hasMany(InventoryBatch, { foreignKey: 'ingredient_id', as: 'inventoryBatches' });
+InventoryBatch.belongsTo(Supplier, { foreignKey: 'supplier_id', as: 'supplier' });
+Supplier.hasMany(InventoryBatch, { foreignKey: 'supplier_id', as: 'inventoryBatches' });
+
 module.exports = {
   User,
   Restaurant,
@@ -329,5 +338,6 @@ module.exports = {
   InventoryTransaction,
   StockTake,
   StockTakeItem,
-  StockAlert
+  StockAlert,
+  InventoryBatch
 };

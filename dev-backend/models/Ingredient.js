@@ -92,6 +92,42 @@ Ingredient.init({
     defaultValue: 0,
     comment: 'Current stock level'
   },
+  // PAR Level calculation fields
+  lead_time_days: {
+    type: DataTypes.INTEGER,
+    defaultValue: 1,
+    comment: 'Supplier lead time in days'
+  },
+  safety_stock_percent: {
+    type: DataTypes.DECIMAL(5, 2),
+    defaultValue: 20.00,
+    comment: 'Safety stock as percentage of lead time usage'
+  },
+  manual_daily_usage: {
+    type: DataTypes.DECIMAL(10, 4),
+    allowNull: true,
+    comment: 'Manually set daily usage when prediction is not available'
+  },
+  avg_daily_usage: {
+    type: DataTypes.DECIMAL(10, 4),
+    defaultValue: 0,
+    comment: 'Calculated average daily usage from history'
+  },
+  prediction_confidence: {
+    type: DataTypes.ENUM('high', 'medium', 'low', 'none'),
+    defaultValue: 'none',
+    comment: 'Confidence level of usage prediction'
+  },
+  last_actual_stock: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0,
+    comment: 'Last confirmed stock from stock take'
+  },
+  last_stock_take_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Last stock take date'
+  },
   is_active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true

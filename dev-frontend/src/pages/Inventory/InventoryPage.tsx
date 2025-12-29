@@ -44,6 +44,9 @@ interface IngredientStock {
   last_stock_take_at: string | null;
   avg_daily_usage: number;
   lead_time_days: number;
+  safety_stock_percent: number;
+  manual_daily_usage: number | null;
+  prediction_confidence: 'high' | 'medium' | 'low' | 'none';
   stock_status: 'normal' | 'low_stock' | 'out_of_stock';
 }
 
@@ -74,9 +77,11 @@ interface ReorderSuggestion {
   avg_daily_usage: number;
   lead_time_days: number;
   reorder_point: number;
+  par_level: number;
   suggested_qty: number;
   estimated_cost: number;
   urgency: 'critical' | 'high' | 'normal';
+  prediction_confidence: 'high' | 'medium' | 'low' | 'none';
 }
 
 interface Summary {
@@ -174,6 +179,44 @@ const UrgencyBadge = styled.span<{ level: string }>`
   }}
 `;
 
+const ConfidenceBadge = styled.span<{ level: string }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+
+  ${props => {
+    switch (props.level) {
+      case 'high':
+        return 'background: #ECFDF5; color: #059669;';
+      case 'medium':
+        return 'background: #FEF3C7; color: #D97706;';
+      case 'low':
+        return 'background: #FEE2E2; color: #DC2626;';
+      default:
+        return 'background: #F3F4F6; color: #6B7280;';
+    }
+  }}
+`;
+
+const SettingsButton = styled.button`
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  cursor: pointer;
+  color: #6B7280;
+  border-radius: 4px;
+  font-size: 12px;
+
+  &:hover {
+    background: #F3F4F6;
+    color: #0A2540;
+  }
+`;
+
 const QuickActions = styled.div`
   display: flex;
   gap: 12px;
@@ -250,9 +293,26 @@ const InventoryPage: React.FC = () => {
   // Modals
   const [showReceiveModal, setShowReceiveModal] = useState(false);
   const [showWasteModal, setShowWasteModal] = useState(false);
+  const [showInitialStockModal, setShowInitialStockModal] = useState(false);
   const [selectedIngredient, setSelectedIngredient] = useState<IngredientStock | null>(null);
   const [quantity, setQuantity] = useState('');
   const [notes, setNotes] = useState('');
+
+  // Initial Stock Setup
+  const [initialStockItems, setInitialStockItems] = useState<{[key: number]: { quantity: string; min_stock: string }}>({});
+  const [needsInitialSetup, setNeedsInitialSetup] = useState(false);
+  const [savingInitialStock, setSavingInitialStock] = useState(false);
+
+  // Settings Modal
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsIngredient, setSettingsIngredient] = useState<IngredientStock | null>(null);
+  const [settingsForm, setSettingsForm] = useState({
+    lead_time_days: '',
+    safety_stock_percent: '',
+    manual_daily_usage: '',
+    min_stock: ''
+  });
+  const [savingSettings, setSavingSettings] = useState(false);
 
   // URL 파라미터 우선, 없으면 user의 restaurant_id 사용
   const restaurantId = urlRestaurantId ? parseInt(urlRestaurantId, 10) : user?.restaurant_id;
@@ -290,6 +350,129 @@ const InventoryPage: React.FC = () => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Check if initial stock setup is needed
+  useEffect(() => {
+    if (inventory.length > 0) {
+      const hasAnyStock = inventory.some(item => item.current_stock > 0 || item.last_stock_take_at);
+      setNeedsInitialSetup(!hasAnyStock);
+    }
+  }, [inventory]);
+
+  // Initialize initial stock items when modal opens
+  const openInitialStockModal = () => {
+    const items: {[key: number]: { quantity: string; min_stock: string }} = {};
+    inventory.forEach(item => {
+      items[item.id] = {
+        quantity: item.current_stock.toString(),
+        min_stock: item.min_stock.toString()
+      };
+    });
+    setInitialStockItems(items);
+    setShowInitialStockModal(true);
+  };
+
+  // Handle initial stock save
+  const handleSaveInitialStock = async () => {
+    const itemsToSave = Object.entries(initialStockItems)
+      .filter(([_, values]) => parseFloat(values.quantity) > 0)
+      .map(([id, values]) => ({
+        ingredient_id: parseInt(id),
+        quantity: parseFloat(values.quantity),
+        min_stock: parseFloat(values.min_stock) || 0
+      }));
+
+    if (itemsToSave.length === 0) {
+      alert('Please enter quantity for at least one item');
+      return;
+    }
+
+    try {
+      setSavingInitialStock(true);
+      const response = await fetchAPI(`/api/restaurants/${restaurantId}/inventory/initial`, {
+        method: 'POST',
+        body: JSON.stringify({ items: itemsToSave })
+      });
+
+      if (response.success) {
+        alert('Initial stock saved successfully');
+        setShowInitialStockModal(false);
+        setNeedsInitialSetup(false);
+        fetchData();
+      } else {
+        alert(response.message || 'Failed to save initial stock');
+      }
+    } catch (error) {
+      console.error('Failed to save initial stock:', error);
+      alert('Failed to save initial stock');
+    } finally {
+      setSavingInitialStock(false);
+    }
+  };
+
+  // Update initial stock item
+  const updateInitialStockItem = (id: number, field: 'quantity' | 'min_stock', value: string) => {
+    setInitialStockItems(prev => ({
+      ...prev,
+      [id]: {
+        ...prev[id],
+        [field]: value
+      }
+    }));
+  };
+
+  // Open settings modal
+  const openSettingsModal = (ingredient: IngredientStock) => {
+    setSettingsIngredient(ingredient);
+    setSettingsForm({
+      lead_time_days: (ingredient.lead_time_days || 1).toString(),
+      safety_stock_percent: (ingredient.safety_stock_percent || 20).toString(),
+      manual_daily_usage: ingredient.manual_daily_usage?.toString() || '',
+      min_stock: (ingredient.min_stock || 0).toString()
+    });
+    setShowSettingsModal(true);
+  };
+
+  // Save ingredient settings
+  const handleSaveSettings = async () => {
+    if (!settingsIngredient) return;
+
+    try {
+      setSavingSettings(true);
+      const response = await fetchAPI(`/api/restaurants/${restaurantId}/inventory/${settingsIngredient.id}/settings`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          lead_time_days: parseInt(settingsForm.lead_time_days) || 1,
+          safety_stock_percent: parseFloat(settingsForm.safety_stock_percent) || 20,
+          manual_daily_usage: settingsForm.manual_daily_usage ? parseFloat(settingsForm.manual_daily_usage) : null,
+          min_stock: parseFloat(settingsForm.min_stock) || 0
+        })
+      });
+
+      if (response.success) {
+        alert('Settings saved successfully');
+        setShowSettingsModal(false);
+        fetchData();
+      } else {
+        alert(response.message || 'Failed to save settings');
+      }
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+      alert('Failed to save settings');
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  // Get confidence label
+  const getConfidenceLabel = (confidence: string) => {
+    switch (confidence) {
+      case 'high': return 'High';
+      case 'medium': return 'Medium';
+      case 'low': return 'Low';
+      default: return 'No Data';
+    }
+  };
 
   const handleReceive = async () => {
     if (!selectedIngredient || !quantity) return;
@@ -414,9 +597,17 @@ const InventoryPage: React.FC = () => {
         <Header>
           <Title>Inventory</Title>
           <ActionSection>
+            {needsInitialSetup && (
+              <Button
+                variant="primary"
+                onClick={openInitialStockModal}
+              >
+                Set Initial Stock
+              </Button>
+            )}
             <Button
               variant="secondary"
-              onClick={() => window.location.href = `/restaurant/${restaurantId}/inventory/stock-take`}
+              onClick={() => window.location.href = `/restaurant/${restaurantId}/stock-take`}
             >
               Stock Take
             </Button>
@@ -440,6 +631,13 @@ const InventoryPage: React.FC = () => {
             <EmptyState>Loading...</EmptyState>
           ) : activeTab === 'dashboard' ? (
             <>
+              {needsInitialSetup && inventory.length > 0 && (
+                <InfoBox>
+                  <strong>Welcome to Inventory Management</strong>
+                  <br />
+                  Set your initial stock levels to start tracking inventory. Click the "Set Initial Stock" button above to enter your current stock quantities.
+                </InfoBox>
+              )}
               <StatsGrid>
                 <StatCard color="#059669">
                   <StatValue>{summary?.total_items || 0}</StatValue>
@@ -576,17 +774,17 @@ const InventoryPage: React.FC = () => {
                 </EmptyState>
               ) : (
                 <Table>
-                  <InventoryTableHeader columns="2fr 1fr 1fr 1fr 1fr 1fr 150px">
+                  <InventoryTableHeader columns="2fr 1fr 1fr 1fr 1fr 1fr 180px">
                     <span>Ingredient</span>
                     <span>Status</span>
                     <span>Current Stock</span>
-                    <span>Min Stock</span>
+                    <span>Min / Prediction</span>
                     <span>Unit Cost</span>
                     <span>Last Stock Take</span>
                     <span>Actions</span>
                   </InventoryTableHeader>
                   {filteredInventory.map(item => (
-                    <InventoryTableRow key={item.id} columns="2fr 1fr 1fr 1fr 1fr 1fr 150px">
+                    <InventoryTableRow key={item.id} columns="2fr 1fr 1fr 1fr 1fr 1fr 180px">
                       <MobileGrid>
                         <MobileValue>
                           <MobileLabel>Ingredient</MobileLabel>
@@ -608,10 +806,13 @@ const InventoryPage: React.FC = () => {
                           </div>
                         </MobileValue>
                         <MobileValue>
-                          <MobileLabel>Min Stock</MobileLabel>
-                          <div style={{ color: '#6B7280' }}>
-                            {item.min_stock} {item.unit}
+                          <MobileLabel>Min / Prediction</MobileLabel>
+                          <div style={{ color: '#6B7280', marginBottom: '4px' }}>
+                            Min: {item.min_stock} {item.unit}
                           </div>
+                          <ConfidenceBadge level={item.prediction_confidence || 'none'}>
+                            {getConfidenceLabel(item.prediction_confidence || 'none')}
+                          </ConfidenceBadge>
                         </MobileValue>
                         <MobileValue>
                           <MobileLabel>Unit Cost</MobileLabel>
@@ -641,6 +842,9 @@ const InventoryPage: React.FC = () => {
                         >
                           Waste
                         </Button>
+                        <SettingsButton onClick={() => openSettingsModal(item)}>
+                          Settings
+                        </SettingsButton>
                       </ActionButtons>
                     </InventoryTableRow>
                   ))}
@@ -751,6 +955,181 @@ const InventoryPage: React.FC = () => {
               </ModalButton>
               <ModalButton variant="primary" onClick={handleWaste}>
                 Confirm Waste
+              </ModalButton>
+            </ButtonGroup>
+          </>
+        )}
+      </Modal>
+
+      {/* Initial Stock Modal */}
+      <Modal
+        isOpen={showInitialStockModal}
+        onClose={() => setShowInitialStockModal(false)}
+        title="Set Initial Stock"
+        size="large"
+      >
+        <InfoBox>
+          Enter your current stock quantities and minimum stock levels. Items with 0 quantity will be skipped.
+        </InfoBox>
+        <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+          {/* Group by category */}
+          {Object.entries(
+            inventory.reduce((acc, item) => {
+              const category = item.category || 'Other';
+              if (!acc[category]) acc[category] = [];
+              acc[category].push(item);
+              return acc;
+            }, {} as {[key: string]: IngredientStock[]})
+          ).map(([category, items]) => (
+            <div key={category} style={{ marginBottom: '24px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#0A2540', marginBottom: '12px', textTransform: 'capitalize' }}>
+                {category.replace('_', ' ')}
+              </h3>
+              <Table>
+                <TableHeader columns="2fr 1fr 1fr">
+                  <span>Ingredient</span>
+                  <span>Current Qty</span>
+                  <span>Min Stock</span>
+                </TableHeader>
+                {items.map(item => (
+                  <TableRow key={item.id} columns="2fr 1fr 1fr" style={{ padding: '12px 16px' }}>
+                    <div>
+                      <div style={{ fontWeight: 600, color: '#0A2540' }}>{item.name}</div>
+                      <div style={{ fontSize: '13px', color: '#6B7280' }}>{item.unit}</div>
+                    </div>
+                    <div>
+                      <FormInput
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={initialStockItems[item.id]?.quantity || ''}
+                        onChange={(e) => updateInitialStockItem(item.id, 'quantity', e.target.value)}
+                        placeholder="0"
+                        style={{ width: '100px' }}
+                      />
+                    </div>
+                    <div>
+                      <FormInput
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={initialStockItems[item.id]?.min_stock || ''}
+                        onChange={(e) => updateInitialStockItem(item.id, 'min_stock', e.target.value)}
+                        placeholder="0"
+                        style={{ width: '100px' }}
+                      />
+                    </div>
+                  </TableRow>
+                ))}
+              </Table>
+            </div>
+          ))}
+        </div>
+        <ButtonGroup>
+          <ModalButton variant="secondary" onClick={() => setShowInitialStockModal(false)}>
+            Cancel
+          </ModalButton>
+          <ModalButton
+            variant="primary"
+            onClick={handleSaveInitialStock}
+            disabled={savingInitialStock}
+          >
+            {savingInitialStock ? 'Saving...' : 'Save Initial Stock'}
+          </ModalButton>
+        </ButtonGroup>
+      </Modal>
+
+      {/* Settings Modal */}
+      <Modal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        title={`Settings: ${settingsIngredient?.name || ''}`}
+        size="small"
+      >
+        {settingsIngredient && (
+          <>
+            <InfoBox>
+              Configure PAR Level calculation parameters and manual usage settings.
+            </InfoBox>
+
+            <div style={{ marginBottom: '16px', padding: '12px', background: '#F9FAFB', borderRadius: '8px' }}>
+              <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '8px' }}>Current Prediction</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <ConfidenceBadge level={settingsIngredient.prediction_confidence || 'none'}>
+                  {getConfidenceLabel(settingsIngredient.prediction_confidence || 'none')}
+                </ConfidenceBadge>
+                <span style={{ fontSize: '14px', color: '#0A2540' }}>
+                  {settingsIngredient.avg_daily_usage?.toFixed(2) || '0'} {settingsIngredient.unit}/day (calculated)
+                </span>
+              </div>
+            </div>
+
+            <UIFormGroup>
+              <FormLabel>Minimum Stock Level ({settingsIngredient.unit})</FormLabel>
+              <FormInput
+                type="number"
+                step="0.01"
+                min="0"
+                value={settingsForm.min_stock}
+                onChange={(e) => setSettingsForm({ ...settingsForm, min_stock: e.target.value })}
+                placeholder="0"
+              />
+            </UIFormGroup>
+
+            <UIFormGroup>
+              <FormLabel>Lead Time (days)</FormLabel>
+              <FormInput
+                type="number"
+                min="1"
+                value={settingsForm.lead_time_days}
+                onChange={(e) => setSettingsForm({ ...settingsForm, lead_time_days: e.target.value })}
+                placeholder="1"
+              />
+              <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                Time from order to delivery
+              </div>
+            </UIFormGroup>
+
+            <UIFormGroup>
+              <FormLabel>Safety Stock (%)</FormLabel>
+              <FormInput
+                type="number"
+                min="0"
+                max="100"
+                value={settingsForm.safety_stock_percent}
+                onChange={(e) => setSettingsForm({ ...settingsForm, safety_stock_percent: e.target.value })}
+                placeholder="20"
+              />
+              <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                Buffer percentage for unexpected demand
+              </div>
+            </UIFormGroup>
+
+            <UIFormGroup>
+              <FormLabel>Manual Daily Usage ({settingsIngredient.unit}/day)</FormLabel>
+              <FormInput
+                type="number"
+                step="0.01"
+                min="0"
+                value={settingsForm.manual_daily_usage}
+                onChange={(e) => setSettingsForm({ ...settingsForm, manual_daily_usage: e.target.value })}
+                placeholder="Leave empty to use calculated value"
+              />
+              <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                Override calculated usage when prediction confidence is low
+              </div>
+            </UIFormGroup>
+
+            <ButtonGroup>
+              <ModalButton variant="secondary" onClick={() => setShowSettingsModal(false)}>
+                Cancel
+              </ModalButton>
+              <ModalButton
+                variant="primary"
+                onClick={handleSaveSettings}
+                disabled={savingSettings}
+              >
+                {savingSettings ? 'Saving...' : 'Save Settings'}
               </ModalButton>
             </ButtonGroup>
           </>

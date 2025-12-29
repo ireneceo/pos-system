@@ -225,7 +225,7 @@ router.post('/restaurants/:restaurantId/inventory/initial', async (req, res) => 
 
   try {
     const { restaurantId } = req.params;
-    const { items } = req.body; // [{ ingredient_id, quantity }]
+    const { items } = req.body; // [{ ingredient_id, quantity, min_stock }]
     const userId = req.user.id;
 
     for (const item of items) {
@@ -233,13 +233,15 @@ router.post('/restaurants/:restaurantId/inventory/initial', async (req, res) => 
       if (!ingredient) continue;
 
       const quantity = parseFloat(item.quantity) || 0;
+      const minStock = parseFloat(item.min_stock) || 0;
 
-      // Update ingredient stock
+      // Update ingredient stock and min_stock
       await Ingredient.update(
         {
           current_stock: quantity,
           last_actual_stock: quantity,
-          last_stock_take_at: new Date()
+          last_stock_take_at: new Date(),
+          min_stock: minStock
         },
         { where: { id: item.ingredient_id }, transaction }
       );
@@ -908,5 +910,262 @@ async function checkAndCreateAlert(ingredientId, restaurantId, newStock, transac
     );
   }
 }
+
+// ============================================
+// PAR Level & Prediction APIs
+// ============================================
+
+// GET /api/restaurants/:restaurantId/inventory/:ingredientId/par-level - PAR Level 계산
+router.get('/restaurants/:restaurantId/inventory/:ingredientId/par-level', async (req, res) => {
+  try {
+    const { restaurantId, ingredientId } = req.params;
+
+    const ingredient = await Ingredient.findByPk(ingredientId);
+    if (!ingredient) {
+      return res.status(404).json({ success: false, message: 'Ingredient not found' });
+    }
+
+    // Get daily usage (from manual setting or calculated)
+    const dailyUsage = parseFloat(ingredient.manual_daily_usage) || parseFloat(ingredient.avg_daily_usage) || 0;
+    const leadTimeDays = parseInt(ingredient.lead_time_days) || 1;
+    const safetyStockPercent = parseFloat(ingredient.safety_stock_percent) || 20;
+
+    // PAR Level = (Daily Usage × Lead Time) + Safety Stock
+    const leadTimeUsage = dailyUsage * leadTimeDays;
+    const safetyStock = leadTimeUsage * (safetyStockPercent / 100);
+    const parLevel = leadTimeUsage + safetyStock;
+
+    // Reorder Point = PAR Level (simplified)
+    const reorderPoint = parLevel;
+
+    // Suggested Order Quantity = PAR Level - Current Stock (if current < PAR)
+    const currentStock = parseFloat(ingredient.current_stock) || 0;
+    const suggestedOrderQty = Math.max(0, parLevel - currentStock);
+
+    res.json({
+      success: true,
+      data: {
+        ingredient_id: ingredientId,
+        ingredient_name: ingredient.name,
+        unit: ingredient.unit,
+        current_stock: currentStock,
+        daily_usage: dailyUsage,
+        lead_time_days: leadTimeDays,
+        safety_stock_percent: safetyStockPercent,
+        lead_time_usage: leadTimeUsage,
+        safety_stock: safetyStock,
+        par_level: parseFloat(parLevel.toFixed(2)),
+        reorder_point: parseFloat(reorderPoint.toFixed(2)),
+        suggested_order_qty: parseFloat(suggestedOrderQty.toFixed(2)),
+        prediction_confidence: ingredient.prediction_confidence || 'none',
+        data_source: ingredient.manual_daily_usage ? 'manual' : (ingredient.avg_daily_usage > 0 ? 'calculated' : 'none')
+      }
+    });
+  } catch (error) {
+    console.error('Get PAR level error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// PUT /api/restaurants/:restaurantId/inventory/:ingredientId/settings - PAR 설정 업데이트
+router.put('/restaurants/:restaurantId/inventory/:ingredientId/settings', async (req, res) => {
+  try {
+    const { ingredientId } = req.params;
+    const { lead_time_days, safety_stock_percent, manual_daily_usage, min_stock } = req.body;
+
+    const updateData = {};
+    if (lead_time_days !== undefined) updateData.lead_time_days = lead_time_days;
+    if (safety_stock_percent !== undefined) updateData.safety_stock_percent = safety_stock_percent;
+    if (manual_daily_usage !== undefined) updateData.manual_daily_usage = manual_daily_usage;
+    if (min_stock !== undefined) updateData.min_stock = min_stock;
+
+    await Ingredient.update(updateData, { where: { id: ingredientId } });
+
+    const ingredient = await Ingredient.findByPk(ingredientId);
+    res.json({ success: true, data: ingredient });
+  } catch (error) {
+    console.error('Update ingredient settings error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/restaurants/:restaurantId/inventory/calculate-usage - 사용량 계산 (전체)
+router.post('/restaurants/:restaurantId/inventory/calculate-usage', async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const { days = 30 } = req.body; // Default to last 30 days
+
+    // Get all ingredients for this restaurant
+    const restaurant = await Restaurant.findByPk(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ success: false, message: 'Restaurant not found' });
+    }
+
+    const whereConditions = [
+      { restaurant_id: restaurantId, is_active: true }
+    ];
+    if (restaurant.brand_id) {
+      whereConditions.push({
+        brand_id: restaurant.brand_id,
+        owner_type: 'brand',
+        is_active: true
+      });
+    }
+
+    const ingredients = await Ingredient.findAll({
+      where: { [Op.or]: whereConditions }
+    });
+
+    const results = [];
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    for (const ingredient of ingredients) {
+      // Get purchase transactions for this ingredient
+      const transactions = await InventoryTransaction.findAll({
+        where: {
+          ingredient_id: ingredient.id,
+          transaction_type: 'purchase',
+          created_at: { [Op.gte]: startDate }
+        },
+        order: [['created_at', 'ASC']]
+      });
+
+      let avgDailyUsage = 0;
+      let confidence = 'none';
+
+      if (transactions.length >= 3) {
+        // Calculate average daily usage from purchase history
+        // Total purchased / days between first and last purchase
+        const totalPurchased = transactions.reduce((sum, t) =>
+          sum + parseFloat(t.quantity_change || 0), 0);
+
+        const firstDate = new Date(transactions[0].created_at);
+        const lastDate = new Date(transactions[transactions.length - 1].created_at);
+        const daysBetween = Math.max(1, Math.ceil((lastDate - firstDate) / (1000 * 60 * 60 * 24)));
+
+        avgDailyUsage = totalPurchased / daysBetween;
+
+        // Determine confidence level
+        if (transactions.length >= 10) {
+          confidence = 'high';
+        } else if (transactions.length >= 5) {
+          confidence = 'medium';
+        } else {
+          confidence = 'low';
+        }
+      }
+
+      // Update ingredient with calculated values
+      await Ingredient.update({
+        avg_daily_usage: avgDailyUsage,
+        prediction_confidence: confidence
+      }, { where: { id: ingredient.id } });
+
+      results.push({
+        ingredient_id: ingredient.id,
+        ingredient_name: ingredient.name,
+        avg_daily_usage: parseFloat(avgDailyUsage.toFixed(4)),
+        prediction_confidence: confidence,
+        transaction_count: transactions.length
+      });
+    }
+
+    res.json({
+      success: true,
+      data: results,
+      message: `Usage calculated for ${results.length} ingredients based on last ${days} days`
+    });
+  } catch (error) {
+    console.error('Calculate usage error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/restaurants/:restaurantId/inventory/reorder-suggestions - 발주 제안 목록 (PAR 기반)
+router.get('/restaurants/:restaurantId/inventory/reorder-suggestions', async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+
+    const restaurant = await Restaurant.findByPk(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ success: false, message: 'Restaurant not found' });
+    }
+
+    const whereConditions = [
+      { restaurant_id: restaurantId, is_active: true }
+    ];
+    if (restaurant.brand_id) {
+      whereConditions.push({
+        brand_id: restaurant.brand_id,
+        owner_type: 'brand',
+        is_active: true
+      });
+    }
+
+    const ingredients = await Ingredient.findAll({
+      where: { [Op.or]: whereConditions }
+    });
+
+    const suggestions = [];
+
+    for (const ing of ingredients) {
+      const currentStock = parseFloat(ing.current_stock) || 0;
+      const minStock = parseFloat(ing.min_stock) || 0;
+      const dailyUsage = parseFloat(ing.manual_daily_usage) || parseFloat(ing.avg_daily_usage) || 0;
+      const leadTimeDays = parseInt(ing.lead_time_days) || 1;
+      const safetyStockPercent = parseFloat(ing.safety_stock_percent) || 20;
+
+      // Calculate PAR Level
+      const leadTimeUsage = dailyUsage * leadTimeDays;
+      const safetyStock = leadTimeUsage * (safetyStockPercent / 100);
+      const parLevel = leadTimeUsage + safetyStock;
+      const reorderPoint = Math.max(minStock, parLevel * 0.5); // Reorder at 50% of PAR or min_stock
+
+      // Only suggest if current stock is below reorder point
+      if (currentStock <= reorderPoint || currentStock <= minStock) {
+        const suggestedQty = Math.max(0, parLevel - currentStock);
+        const estimatedCost = suggestedQty * (parseFloat(ing.unit_cost) || 0);
+
+        // Determine urgency
+        let urgency = 'normal';
+        if (currentStock <= 0) {
+          urgency = 'critical';
+        } else if (currentStock <= minStock * 0.5) {
+          urgency = 'high';
+        }
+
+        suggestions.push({
+          ingredient: {
+            id: ing.id,
+            name: ing.name,
+            unit: ing.unit,
+            unit_cost: ing.unit_cost,
+            category: ing.category
+          },
+          current_stock: currentStock,
+          min_stock: minStock,
+          avg_daily_usage: dailyUsage,
+          lead_time_days: leadTimeDays,
+          reorder_point: parseFloat(reorderPoint.toFixed(2)),
+          par_level: parseFloat(parLevel.toFixed(2)),
+          suggested_qty: parseFloat(suggestedQty.toFixed(2)),
+          estimated_cost: parseFloat(estimatedCost.toFixed(2)),
+          urgency,
+          prediction_confidence: ing.prediction_confidence || 'none'
+        });
+      }
+    }
+
+    // Sort by urgency
+    const urgencyOrder = { critical: 0, high: 1, normal: 2 };
+    suggestions.sort((a, b) => urgencyOrder[a.urgency] - urgencyOrder[b.urgency]);
+
+    res.json({ success: true, data: suggestions });
+  } catch (error) {
+    console.error('Get reorder suggestions error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 module.exports = router;
