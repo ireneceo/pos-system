@@ -113,21 +113,20 @@ interface ExpiringItem {
   urgency: 'expired' | 'critical' | 'warning' | 'normal';
 }
 
-interface ProductStock {
+interface GeneralStockItem {
   id: number;
   name: string;
-  price: number;
+  code: string | null;
   category: string;
-  track_stock: boolean;
   current_stock: number;
   min_stock: number;
   stock_unit: string;
+  unit: string;
   unit_cost: number;
   supplier_id: number | null;
   supplier_name: string | null;
   last_stock_take_at: string | null;
   stock_status: 'normal' | 'low_stock' | 'out_of_stock';
-  soldOut: boolean;
 }
 
 // Styled Components - 최소한의 페이지 전용 스타일만 정의
@@ -292,17 +291,20 @@ const ConfidenceBadge = styled.span<{ level: string }>`
 `;
 
 const SettingsButton = styled.button`
-  background: none;
-  border: none;
-  padding: 4px 8px;
+  background: #F3F4F6;
+  border: 1px solid #E5E7EB;
+  padding: 6px 12px;
   cursor: pointer;
   color: #6B7280;
-  border-radius: 4px;
-  font-size: 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s ease;
 
   &:hover {
-    background: #F3F4F6;
+    background: #E5E7EB;
     color: #0A2540;
+    border-color: #D1D5DB;
   }
 `;
 
@@ -365,6 +367,66 @@ const InventoryTableRow = styled(TableRow)`
   }
 `;
 
+// Inline editable stock value
+const EditableStock = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.15s;
+
+  &:hover {
+    background: #F3F4F6;
+  }
+`;
+
+const InlineStockInput = styled.input`
+  width: 80px;
+  padding: 4px 8px;
+  border: 1px solid #635BFF;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0A2540;
+  outline: none;
+
+  &:focus {
+    box-shadow: 0 0 0 2px rgba(99, 91, 255, 0.2);
+  }
+`;
+
+const OrderInput = styled.input`
+  width: 70px;
+  padding: 4px 8px;
+  border: 1px solid #E5E7EB;
+  border-radius: 4px;
+  font-size: 13px;
+  text-align: right;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+  }
+`;
+
+const OrderButton = styled.button`
+  padding: 4px 12px;
+  background: #635BFF;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover {
+    background: #5046E4;
+  }
+`;
+
 const InventoryPage: React.FC = () => {
   const { user } = useAuth();
   const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
@@ -387,16 +449,15 @@ const InventoryPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  // Product inventory
-  const [productInventory, setProductInventory] = useState<ProductStock[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<ProductStock | null>(null);
-  const [showProductReceiveModal, setShowProductReceiveModal] = useState(false);
-  const [showProductAdjustModal, setShowProductAdjustModal] = useState(false);
-  const [productQuantity, setProductQuantity] = useState('');
-  const [productNotes, setProductNotes] = useState('');
+  // General Stock inventory
+  const [generalStockInventory, setGeneralStockInventory] = useState<GeneralStockItem[]>([]);
+  const [selectedGeneralStock, setSelectedGeneralStock] = useState<GeneralStockItem | null>(null);
+  const [showGeneralStockReceiveModal, setShowGeneralStockReceiveModal] = useState(false);
+  const [generalStockQuantity, setGeneralStockQuantity] = useState('');
+  const [generalStockNotes, setGeneralStockNotes] = useState('');
 
-  // Stock list type filter (ingredients or products)
-  const [stockTypeFilter, setStockTypeFilter] = useState<'all' | 'ingredients' | 'products'>('all');
+  // Stock list type filter (ingredients or general_stock)
+  const [stockTypeFilter, setStockTypeFilter] = useState<'all' | 'ingredients' | 'general_stock'>('all');
 
   // Modals
   const [showReceiveModal, setShowReceiveModal] = useState(false);
@@ -442,6 +503,14 @@ const InventoryPage: React.FC = () => {
   });
   const [savingGeneralStock, setSavingGeneralStock] = useState(false);
   const [suppliers, setSuppliers] = useState<{id: number; name: string}[]>([]);
+
+  // Inline editing for stock
+  const [editingStockId, setEditingStockId] = useState<number | null>(null);
+  const [editingStockValue, setEditingStockValue] = useState('');
+  const [editingStockType, setEditingStockType] = useState<'ingredient' | 'product'>('ingredient');
+
+  // Reorder quantities
+  const [orderQuantities, setOrderQuantities] = useState<{[key: number]: string}>({});
 
   // URL 파라미터 우선, 없으면 user의 restaurant_id 사용
   const restaurantId = urlRestaurantId ? parseInt(urlRestaurantId, 10) : user?.restaurant_id;
@@ -492,9 +561,9 @@ const InventoryPage: React.FC = () => {
       // General stock은 별도로 가져오기 (실패해도 재료 표시에 영향 없음)
       try {
         const generalStockRes = await authFetch(`/api/restaurants/${restaurantId}/inventory/general-stock`);
-        if (generalStockRes.success) setProductInventory(generalStockRes.data || []);
+        if (generalStockRes.success) setGeneralStockInventory(generalStockRes.data || []);
       } catch {
-        setProductInventory([]);
+        setGeneralStockInventory([]);
       }
 
       // 공급업체 목록 가져오기
@@ -587,7 +656,9 @@ const InventoryPage: React.FC = () => {
       lead_time_days: (ingredient.lead_time_days || 1).toString(),
       safety_stock_percent: (ingredient.safety_stock_percent || 20).toString(),
       manual_daily_usage: ingredient.manual_daily_usage?.toString() || '',
-      min_stock: (ingredient.min_stock || 0).toString()
+      min_stock: (ingredient.min_stock || 0).toString(),
+      new_stock: '',
+      adjustment_reason: ''
     });
     setShowSettingsModal(true);
   };
@@ -716,6 +787,62 @@ const InventoryPage: React.FC = () => {
     setShowWasteModal(true);
   };
 
+  // Inline stock editing handlers
+  const startEditingStock = (id: number, currentValue: number, type: 'ingredient' | 'product') => {
+    setEditingStockId(id);
+    setEditingStockValue(currentValue.toString());
+    setEditingStockType(type);
+  };
+
+  const cancelEditingStock = () => {
+    setEditingStockId(null);
+    setEditingStockValue('');
+  };
+
+  const saveInlineStock = async (id: number) => {
+    const newValue = parseFloat(editingStockValue);
+    if (isNaN(newValue) || newValue < 0) {
+      cancelEditingStock();
+      return;
+    }
+
+    try {
+      const endpoint = editingStockType === 'ingredient'
+        ? `/api/restaurants/${restaurantId}/inventory/adjust`
+        : `/api/restaurants/${restaurantId}/inventory/products/${id}/adjust`;
+
+      const body = editingStockType === 'ingredient'
+        ? { ingredient_id: id, new_quantity: newValue, reason: 'Stock adjustment' }
+        : { new_quantity: newValue, reason: 'Stock adjustment' };
+
+      const response = await authFetch(endpoint, {
+        method: 'POST',
+        body: JSON.stringify(body)
+      });
+
+      if (response.success) {
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Failed to adjust stock:', error);
+    } finally {
+      cancelEditingStock();
+    }
+  };
+
+  const handleStockKeyDown = (e: React.KeyboardEvent, id: number) => {
+    if (e.key === 'Enter') {
+      saveInlineStock(id);
+    } else if (e.key === 'Escape') {
+      cancelEditingStock();
+    }
+  };
+
+  // Order button handler (placeholder)
+  const handleOrderClick = (ingredientId: number) => {
+    alert('발주 관리 기능 준비 중입니다.');
+  };
+
   const filteredInventory = inventory.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || item.stock_status === statusFilter;
@@ -753,14 +880,12 @@ const InventoryPage: React.FC = () => {
         <Header>
           <Title>Inventory</Title>
           <ActionSection>
-            {needsInitialSetup && (
-              <Button
-                variant="primary"
-                onClick={openInitialStockModal}
-              >
-                Set Initial Stock
-              </Button>
-            )}
+            <Button
+              variant="secondary"
+              onClick={openInitialStockModal}
+            >
+              Set Initial Stock
+            </Button>
             <Button
               variant="secondary"
               onClick={() => window.location.href = `/restaurant/${restaurantId}/stock-take`}
@@ -909,16 +1034,17 @@ const InventoryPage: React.FC = () => {
                     Calculated based on average daily usage over the last 30 days and supplier lead time.
                   </InfoBox>
                   <Table>
-                    <TableHeader columns="2fr 1fr 1fr 1fr 1fr 100px">
+                    <TableHeader columns="2fr 1fr 1fr 1fr 1fr 100px 150px">
                       <span>Ingredient</span>
                       <span>Current Stock</span>
                       <span>Daily Usage</span>
                       <span>Suggested Qty</span>
                       <span>Est. Cost</span>
                       <span>Urgency</span>
+                      <span>Order</span>
                     </TableHeader>
                     {suggestions.slice(0, 10).map(s => (
-                      <TableRow key={s.ingredient.id} columns="2fr 1fr 1fr 1fr 1fr 100px">
+                      <TableRow key={s.ingredient.id} columns="2fr 1fr 1fr 1fr 1fr 100px 150px">
                         <div>{s.ingredient.name}</div>
                         <div>{s.current_stock} {s.ingredient.unit}</div>
                         <div>{(parseFloat(String(s.avg_daily_usage)) || 0).toFixed(2)} {s.ingredient.unit}/day</div>
@@ -928,6 +1054,22 @@ const InventoryPage: React.FC = () => {
                           <UrgencyBadge level={s.urgency}>
                             {s.urgency.toUpperCase()}
                           </UrgencyBadge>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <OrderInput
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={orderQuantities[s.ingredient.id] || s.suggested_qty}
+                            onChange={(e) => setOrderQuantities(prev => ({
+                              ...prev,
+                              [s.ingredient.id]: e.target.value
+                            }))}
+                            placeholder={String(s.suggested_qty)}
+                          />
+                          <OrderButton onClick={() => handleOrderClick(s.ingredient.id)}>
+                            Order
+                          </OrderButton>
                         </div>
                       </TableRow>
                     ))}
@@ -1043,9 +1185,25 @@ const InventoryPage: React.FC = () => {
                           </MobileValue>
                           <MobileValue>
                             <MobileLabel>Current Stock</MobileLabel>
-                            <div style={{ fontWeight: 600, color: '#0A2540' }}>
-                              {product.current_stock} {product.stock_unit}
-                            </div>
+                            {editingStockId === product.id && editingStockType === 'product' ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <InlineStockInput
+                                  type="number"
+                                  step="0.01"
+                                  value={editingStockValue}
+                                  onChange={(e) => setEditingStockValue(e.target.value)}
+                                  onKeyDown={(e) => handleStockKeyDown(e, product.id)}
+                                  onBlur={() => saveInlineStock(product.id)}
+                                  autoFocus
+                                />
+                                <span style={{ fontSize: '13px', color: '#6B7280' }}>{product.stock_unit}</span>
+                              </div>
+                            ) : (
+                              <EditableStock onClick={() => startEditingStock(product.id, product.current_stock, 'product')}>
+                                <span style={{ fontWeight: 600, color: '#0A2540' }}>{product.current_stock}</span>
+                                <span style={{ fontSize: '13px', color: '#6B7280' }}>{product.stock_unit}</span>
+                              </EditableStock>
+                            )}
                           </MobileValue>
                           <MobileValue>
                             <MobileLabel>Min Stock</MobileLabel>
@@ -1079,18 +1237,12 @@ const InventoryPage: React.FC = () => {
                           >
                             Receive
                           </Button>
-                          <Button
-                            variant="danger"
-                            onClick={() => {
-                              setSelectedProduct(product);
-                              setProductQuantity('');
-                              setProductNotes('');
-                              setShowProductAdjustModal(true);
-                            }}
-                            style={{ padding: '6px 12px', fontSize: '13px' }}
-                          >
-                            Adjust
-                          </Button>
+                          <SettingsButton onClick={() => {
+                            // TODO: Open settings modal for general stock
+                            alert('Settings for general stock - coming soon');
+                          }}>
+                            Settings
+                          </SettingsButton>
                         </ActionButtons>
                       </InventoryTableRow>
                     ))}
@@ -1151,9 +1303,25 @@ const InventoryPage: React.FC = () => {
                         </MobileValue>
                         <MobileValue>
                           <MobileLabel>Current Stock</MobileLabel>
-                          <div style={{ fontWeight: 600, color: '#0A2540' }}>
-                            {item.current_stock} {item.unit}
-                          </div>
+                          {editingStockId === item.id && editingStockType === 'ingredient' ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <InlineStockInput
+                                type="number"
+                                step="0.01"
+                                value={editingStockValue}
+                                onChange={(e) => setEditingStockValue(e.target.value)}
+                                onKeyDown={(e) => handleStockKeyDown(e, item.id)}
+                                onBlur={() => saveInlineStock(item.id)}
+                                autoFocus
+                              />
+                              <span style={{ fontSize: '13px', color: '#6B7280' }}>{item.unit}</span>
+                            </div>
+                          ) : (
+                            <EditableStock onClick={() => startEditingStock(item.id, item.current_stock, 'ingredient')}>
+                              <span style={{ fontWeight: 600, color: '#0A2540' }}>{item.current_stock}</span>
+                              <span style={{ fontSize: '13px', color: '#6B7280' }}>{item.unit}</span>
+                            </EditableStock>
+                          )}
                         </MobileValue>
                         <MobileValue>
                           <MobileLabel>Min / Prediction</MobileLabel>
@@ -1190,13 +1358,6 @@ const InventoryPage: React.FC = () => {
                           style={{ padding: '6px 12px', fontSize: '13px' }}
                         >
                           Receive
-                        </Button>
-                        <Button
-                          variant="danger"
-                          onClick={() => openWasteModal(item)}
-                          style={{ padding: '6px 12px', fontSize: '13px' }}
-                        >
-                          Waste
                         </Button>
                         <SettingsButton onClick={() => openSettingsModal(item)}>
                           Settings

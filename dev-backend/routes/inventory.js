@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Op } = require('sequelize');
 const database = require('../config/database');
-const { Ingredient, InventoryTransaction, StockTake, StockTakeItem, StockAlert, Restaurant, InventoryBatch, Supplier, Product } = require('../models');
+const { Ingredient, InventoryTransaction, StockTake, StockTakeItem, StockAlert, Restaurant, InventoryBatch, Supplier, GeneralStock } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 
 // Apply auth middleware to all routes
@@ -164,7 +164,7 @@ router.get('/restaurants/:restaurantId/inventory/general-stock', async (req, res
 
     const whereClause = {
       restaurant_id: restaurantId,
-      track_stock: true
+      is_active: true
     };
 
     if (category) {
@@ -175,7 +175,7 @@ router.get('/restaurants/:restaurantId/inventory/general-stock', async (req, res
       whereClause.name = { [Op.like]: `%${search}%` };
     }
 
-    let items = await Product.findAll({
+    let items = await GeneralStock.findAll({
       where: whereClause,
       include: [{
         model: Supplier,
@@ -203,6 +203,7 @@ router.get('/restaurants/:restaurantId/inventory/general-stock', async (req, res
         ...itemData,
         item_type: 'general_stock',
         stock_status: stockStatus,
+        stock_unit: itemData.unit,  // Map unit to stock_unit for frontend compatibility
         supplier_name: itemData.supplier?.name || null
       };
     });
@@ -223,31 +224,31 @@ router.get('/restaurants/:restaurantId/inventory/general-stock', async (req, res
 router.post('/restaurants/:restaurantId/inventory/general-stock', async (req, res) => {
   try {
     const { restaurantId } = req.params;
-    const { name, stock_unit, unit_cost, category, current_stock, min_stock, supplier_id } = req.body;
+    const { name, stock_unit, unit_cost, category, current_stock, min_stock, supplier_id, code } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, message: 'Name is required' });
     }
 
-    // Create a new product with track_stock enabled (used as general stock item)
-    const newItem = await Product.create({
+    const newItem = await GeneralStock.create({
       restaurant_id: restaurantId,
       name: name.trim(),
-      price: 0,  // Not for sale, so price is 0
+      code: code || null,
       category: category || 'Supplies',
-      track_stock: true,
+      unit: stock_unit || 'piece',
       current_stock: parseFloat(current_stock) || 0,
       min_stock: parseFloat(min_stock) || 0,
-      stock_unit: stock_unit || 'piece',
       unit_cost: parseFloat(unit_cost) || 0,
       supplier_id: supplier_id || null,
-      soldOut: true,  // Not for sale
-      description: ''
+      is_active: true
     });
 
     res.json({
       success: true,
-      data: newItem
+      data: {
+        ...newItem.toJSON(),
+        stock_unit: newItem.unit  // Map for frontend compatibility
+      }
     });
   } catch (error) {
     console.error('Add general stock error:', error);
@@ -255,130 +256,97 @@ router.post('/restaurants/:restaurantId/inventory/general-stock', async (req, re
   }
 });
 
-// POST /api/restaurants/:restaurantId/inventory/products/:productId/receive - 상품 입고
-router.post('/restaurants/:restaurantId/inventory/products/:productId/receive', async (req, res) => {
+// POST /api/restaurants/:restaurantId/inventory/general-stock/:itemId/receive - 일반 재고 입고
+router.post('/restaurants/:restaurantId/inventory/general-stock/:itemId/receive', async (req, res) => {
   try {
-    const { restaurantId, productId } = req.params;
-    const { quantity, notes, supplier_id, unit_cost } = req.body;
+    const { restaurantId, itemId } = req.params;
+    const { quantity, notes } = req.body;
 
-    const product = await Product.findOne({
-      where: { id: productId, restaurant_id: restaurantId }
+    const item = await GeneralStock.findOne({
+      where: { id: itemId, restaurant_id: restaurantId, is_active: true }
     });
 
-    if (!product) {
-      return res.status(404).json({ success: false, message: 'Product not found' });
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'General stock item not found' });
     }
 
-    const currentStock = parseFloat(product.current_stock) || 0;
+    const currentStock = parseFloat(item.current_stock) || 0;
     const newStock = currentStock + parseFloat(quantity);
 
-    const updateData = {
-      current_stock: newStock,
-      track_stock: true
-    };
-
-    if (supplier_id) {
-      updateData.supplier_id = supplier_id;
-    }
-
-    if (unit_cost) {
-      updateData.unit_cost = unit_cost;
-    }
-
-    await product.update(updateData);
-
-    // Update soldOut status based on stock
-    if (newStock > 0 && product.soldOut) {
-      await product.update({ soldOut: false });
-    }
+    await item.update({ current_stock: newStock });
 
     res.json({
       success: true,
       data: {
-        id: product.id,
-        name: product.name,
+        id: item.id,
+        name: item.name,
         previous_stock: currentStock,
         added_quantity: parseFloat(quantity),
         current_stock: newStock
       }
     });
   } catch (error) {
-    console.error('Product receive error:', error);
+    console.error('General stock receive error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// POST /api/restaurants/:restaurantId/inventory/products/:productId/adjust - 상품 재고 조정
-router.post('/restaurants/:restaurantId/inventory/products/:productId/adjust', async (req, res) => {
+// POST /api/restaurants/:restaurantId/inventory/general-stock/:itemId/adjust - 일반 재고 조정
+router.post('/restaurants/:restaurantId/inventory/general-stock/:itemId/adjust', async (req, res) => {
   try {
-    const { restaurantId, productId } = req.params;
-    const { quantity, reason, notes } = req.body;
+    const { restaurantId, itemId } = req.params;
+    const { new_quantity, reason } = req.body;
 
-    const product = await Product.findOne({
-      where: { id: productId, restaurant_id: restaurantId }
+    const item = await GeneralStock.findOne({
+      where: { id: itemId, restaurant_id: restaurantId, is_active: true }
     });
 
-    if (!product) {
-      return res.status(404).json({ success: false, message: 'Product not found' });
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'General stock item not found' });
     }
 
-    const currentStock = parseFloat(product.current_stock) || 0;
-    const adjustmentQty = parseFloat(quantity);
-    const newStock = Math.max(0, currentStock + adjustmentQty);
+    const currentStock = parseFloat(item.current_stock) || 0;
+    const newStock = Math.max(0, parseFloat(new_quantity));
 
-    await product.update({
-      current_stock: newStock,
-      track_stock: true
-    });
-
-    // Update soldOut status based on stock
-    if (newStock <= 0 && !product.soldOut) {
-      await product.update({ soldOut: true });
-    } else if (newStock > 0 && product.soldOut) {
-      await product.update({ soldOut: false });
-    }
+    await item.update({ current_stock: newStock });
 
     res.json({
       success: true,
       data: {
-        id: product.id,
-        name: product.name,
+        id: item.id,
+        name: item.name,
         previous_stock: currentStock,
-        adjustment: adjustmentQty,
         current_stock: newStock,
         reason: reason || 'adjustment'
       }
     });
   } catch (error) {
-    console.error('Product adjust error:', error);
+    console.error('General stock adjust error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// PUT /api/restaurants/:restaurantId/inventory/products/:productId/settings - 상품 재고 설정
-router.put('/restaurants/:restaurantId/inventory/products/:productId/settings', async (req, res) => {
+// PUT /api/restaurants/:restaurantId/inventory/general-stock/:itemId/settings - 일반 재고 설정
+router.put('/restaurants/:restaurantId/inventory/general-stock/:itemId/settings', async (req, res) => {
   try {
-    const { restaurantId, productId } = req.params;
-    const { track_stock, min_stock, stock_unit, supplier_id, unit_cost } = req.body;
+    const { restaurantId, itemId } = req.params;
+    const { min_stock, unit, supplier_id, unit_cost } = req.body;
 
-    const product = await Product.findOne({
-      where: { id: productId, restaurant_id: restaurantId }
+    const item = await GeneralStock.findOne({
+      where: { id: itemId, restaurant_id: restaurantId, is_active: true }
     });
 
-    if (!product) {
-      return res.status(404).json({ success: false, message: 'Product not found' });
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'General stock item not found' });
     }
 
     const updateData = {};
 
-    if (track_stock !== undefined) {
-      updateData.track_stock = track_stock;
-    }
     if (min_stock !== undefined) {
       updateData.min_stock = min_stock;
     }
-    if (stock_unit !== undefined) {
-      updateData.stock_unit = stock_unit;
+    if (unit !== undefined) {
+      updateData.unit = unit;
     }
     if (supplier_id !== undefined) {
       updateData.supplier_id = supplier_id;
@@ -387,14 +355,17 @@ router.put('/restaurants/:restaurantId/inventory/products/:productId/settings', 
       updateData.unit_cost = unit_cost;
     }
 
-    await product.update(updateData);
+    await item.update(updateData);
 
     res.json({
       success: true,
-      data: product
+      data: {
+        ...item.toJSON(),
+        stock_unit: item.unit
+      }
     });
   } catch (error) {
-    console.error('Product settings error:', error);
+    console.error('General stock settings error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
