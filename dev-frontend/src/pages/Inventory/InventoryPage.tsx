@@ -35,11 +35,14 @@ import { fetchAPI } from '../../utils/api';
 interface IngredientStock {
   id: number;
   name: string;
+  code: string | null;
+  image_url: string | null;
   unit: string;
   unit_cost: number;
   category: string;
   current_stock: number;
   min_stock: number;
+  min_order: number;
   last_actual_stock: number;
   last_stock_take_at: string | null;
   avg_daily_usage: number;
@@ -117,9 +120,11 @@ interface GeneralStockItem {
   id: number;
   name: string;
   code: string | null;
+  image_url: string | null;
   category: string;
   current_stock: number;
   min_stock: number;
+  min_order: number;
   stock_unit: string;
   unit: string;
   unit_cost: number;
@@ -196,6 +201,41 @@ const AlertTitle = styled.div`
 const AlertDetail = styled.div`
   font-size: 13px;
   color: #6B7280;
+`;
+
+const StockItemImage = styled.div`
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #F3F4F6;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+const StockItemInfo = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+`;
+
+const StockItemDetails = styled.div`
+  display: flex;
+  flex-direction: column;
+`;
+
+const StockItemCode = styled.span`
+  font-size: 11px;
+  color: #9CA3AF;
+  font-family: monospace;
 `;
 
 const UrgencyBadge = styled.span<{ level: string }>`
@@ -412,18 +452,18 @@ const OrderInput = styled.input`
 `;
 
 const OrderButton = styled.button`
-  padding: 4px 12px;
-  background: #635BFF;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 12px;
+  padding: 6px 12px;
+  background: #F0FDF4;
+  color: #16A34A;
+  border: 1px solid #16A34A;
+  border-radius: 6px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
 
   &:hover {
-    background: #5046E4;
+    background: #DCFCE7;
   }
 `;
 
@@ -571,6 +611,7 @@ const InventoryPage: React.FC = () => {
     safety_stock_percent: '',
     manual_daily_usage: '',
     min_stock: '',
+    min_order: '',
     new_stock: '',
     adjustment_reason: ''
   });
@@ -580,6 +621,8 @@ const InventoryPage: React.FC = () => {
   const [showAddGeneralStockModal, setShowAddGeneralStockModal] = useState(false);
   const [generalStockForm, setGeneralStockForm] = useState({
     name: '',
+    code: '',
+    image_url: '',
     stock_unit: 'piece',
     unit_cost: '',
     category: '',
@@ -601,6 +644,11 @@ const InventoryPage: React.FC = () => {
   // Delete confirmation modal
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{type: 'ingredient' | 'general_stock'; id: number; name: string} | null>(null);
+
+  // Order modal
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [orderItem, setOrderItem] = useState<UnifiedStockItem | null>(null);
+  const [orderQuantity, setOrderQuantity] = useState('');
 
   // Unit options - comprehensive list
   const unitOptions = [
@@ -803,6 +851,7 @@ const InventoryPage: React.FC = () => {
       safety_stock_percent: (ingredient.safety_stock_percent || 20).toString(),
       manual_daily_usage: ingredient.manual_daily_usage?.toString() || '',
       min_stock: (ingredient.min_stock || 0).toString(),
+      min_order: ((ingredient as any).min_order || 0).toString(),
       new_stock: '',
       adjustment_reason: ''
     });
@@ -821,7 +870,8 @@ const InventoryPage: React.FC = () => {
           lead_time_days: parseInt(settingsForm.lead_time_days) || 1,
           safety_stock_percent: parseFloat(settingsForm.safety_stock_percent) || 20,
           manual_daily_usage: settingsForm.manual_daily_usage ? parseFloat(settingsForm.manual_daily_usage) : null,
-          min_stock: parseFloat(settingsForm.min_stock) || 0
+          min_stock: parseFloat(settingsForm.min_stock) || 0,
+          min_order: parseFloat(settingsForm.min_order) || 0
         })
       });
 
@@ -994,9 +1044,40 @@ const InventoryPage: React.FC = () => {
     }
   };
 
-  // Order button handler (placeholder)
-  const handleOrderClick = (ingredientId: number) => {
-    alert('발주 관리 기능 준비 중입니다.');
+  // Order button handler
+  const handleOrderClick = (item: UnifiedStockItem) => {
+    setOrderItem(item);
+    setOrderQuantity(item.min_order ? String(item.min_order) : '');
+    setShowOrderModal(true);
+  };
+
+  const handleSendOrder = () => {
+    if (!orderItem || !orderQuantity) return;
+    // TODO: Implement actual order sending to supplier
+    alert(`Order sent: ${orderQuantity} ${orderItem.unit} of ${orderItem.name}`);
+    setShowOrderModal(false);
+    setOrderItem(null);
+    setOrderQuantity('');
+  };
+
+  // Helper type for unified stock list (moved here for handleOrderClick)
+  type UnifiedStockItem = {
+    id: number;
+    name: string;
+    code?: string | null;
+    image_url?: string | null;
+    category: string;
+    current_stock: number;
+    min_stock: number;
+    min_order?: number;
+    unit: string;
+    unit_cost: number;
+    supplier_name: string | null;
+    stock_status: 'normal' | 'low_stock' | 'out_of_stock';
+    last_stock_take_at: string | null;
+    item_type: 'ingredient' | 'general_stock';
+    avg_daily_usage?: number;
+    prediction_confidence?: string;
   };
 
   const filteredInventory = inventory.filter(item => {
@@ -1006,24 +1087,6 @@ const InventoryPage: React.FC = () => {
   });
 
   // 통합 재고 리스트 (Ingredients + General Stock)
-  type UnifiedStockItem = {
-    id: number;
-    name: string;
-    code?: string | null;
-    category: string;
-    current_stock: number;
-    min_stock: number;
-    unit: string;
-    unit_cost: number;
-    supplier_name: string | null;
-    stock_status: 'normal' | 'low_stock' | 'out_of_stock';
-    last_stock_take_at: string | null;
-    item_type: 'ingredient' | 'general_stock';
-    // Ingredient specific
-    avg_daily_usage?: number;
-    prediction_confidence?: string;
-  };
-
   const unifiedStockList: UnifiedStockItem[] = [
     // Ingredients
     ...(stockTypeFilter === 'all' || stockTypeFilter === 'ingredients'
@@ -1031,9 +1094,11 @@ const InventoryPage: React.FC = () => {
           id: item.id,
           name: item.name,
           code: item.code || null,
+          image_url: item.image_url || null,
           category: item.category,
           current_stock: item.current_stock,
           min_stock: item.min_stock,
+          min_order: item.min_order || 0,
           unit: item.unit,
           unit_cost: item.unit_cost,
           supplier_name: item.supplier_name,
@@ -1056,9 +1121,11 @@ const InventoryPage: React.FC = () => {
             id: item.id,
             name: item.name,
             code: item.code || null,
+            image_url: item.image_url || null,
             category: item.category,
             current_stock: item.current_stock,
             min_stock: item.min_stock,
+            min_order: item.min_order || 0,
             unit: item.stock_unit || item.unit,
             unit_cost: item.unit_cost,
             supplier_name: item.supplier_name,
@@ -1266,7 +1333,30 @@ const InventoryPage: React.FC = () => {
                             }))}
                             placeholder={String(s.suggested_qty)}
                           />
-                          <OrderButton onClick={() => handleOrderClick(s.ingredient.id)}>
+                          <OrderButton onClick={() => {
+                            // Find the ingredient from inventory to get full details
+                            const ing = inventory.find(i => i.id === s.ingredient.id);
+                            if (ing) {
+                              handleOrderClick({
+                                id: ing.id,
+                                name: ing.name,
+                                code: ing.code,
+                                image_url: ing.image_url,
+                                category: ing.category,
+                                current_stock: s.current_stock,
+                                min_stock: s.min_stock,
+                                min_order: ing.min_order || 0,
+                                unit: ing.unit,
+                                unit_cost: ing.unit_cost,
+                                supplier_name: ing.supplier_name,
+                                stock_status: ing.stock_status,
+                                last_stock_take_at: ing.last_stock_take_at,
+                                item_type: 'ingredient',
+                                avg_daily_usage: s.avg_daily_usage,
+                                prediction_confidence: ing.prediction_confidence
+                              });
+                            }
+                          }}>
                             Order
                           </OrderButton>
                         </div>
@@ -1351,7 +1441,7 @@ const InventoryPage: React.FC = () => {
                     return matchesSearch && matchesStatus;
                   }).length})</SectionTitle>}
                   <Table style={{ marginBottom: '24px' }}>
-                    <InventoryTableHeader columns="2fr 1fr 1fr 1fr 1fr 1fr 150px">
+                    <InventoryTableHeader columns="2.5fr 1fr 1fr 1fr 1fr 1fr 180px">
                       <span>Item</span>
                       <span>Status</span>
                       <span>Current Stock</span>
@@ -1367,14 +1457,24 @@ const InventoryPage: React.FC = () => {
                         return matchesSearch && matchesStatus;
                       })
                       .map(item => (
-                      <InventoryTableRow key={`general-stock-${item.id}`} columns="2fr 1fr 1fr 1fr 1fr 1fr 150px">
+                      <InventoryTableRow key={`general-stock-${item.id}`} columns="2.5fr 1fr 1fr 1fr 1fr 1fr 180px">
                         <MobileGrid>
                           <MobileValue>
                             <MobileLabel>Item</MobileLabel>
-                            <IngredientInfo>
-                              <IngredientName>{item.name}</IngredientName>
-                              <IngredientMeta>{item.category} {item.code && `• ${item.code}`}</IngredientMeta>
-                            </IngredientInfo>
+                            <StockItemInfo>
+                              <StockItemImage>
+                                {item.image_url ? (
+                                  <img src={item.image_url} alt={item.name} />
+                                ) : (
+                                  <span style={{ fontSize: '16px', color: '#9CA3AF' }}>📦</span>
+                                )}
+                              </StockItemImage>
+                              <StockItemDetails>
+                                <IngredientName>{item.name}</IngredientName>
+                                {item.code && <StockItemCode>{item.code}</StockItemCode>}
+                                <IngredientMeta>{item.category}</IngredientMeta>
+                              </StockItemDetails>
+                            </StockItemInfo>
                           </MobileValue>
                           <MobileValue>
                             <MobileLabel>Status</MobileLabel>
@@ -1436,19 +1536,36 @@ const InventoryPage: React.FC = () => {
                           >
                             Receive
                           </Button>
-                          <OrderButton onClick={() => handleOrderClick(item.id)}>
+                          <OrderButton onClick={() => handleOrderClick({
+                            id: item.id,
+                            name: item.name,
+                            code: item.code,
+                            image_url: item.image_url,
+                            category: item.category,
+                            current_stock: item.current_stock,
+                            min_stock: item.min_stock,
+                            min_order: item.min_order || 0,
+                            unit: item.stock_unit || item.unit,
+                            unit_cost: item.unit_cost,
+                            supplier_name: item.supplier_name,
+                            stock_status: item.stock_status,
+                            last_stock_take_at: item.last_stock_take_at,
+                            item_type: 'general_stock'
+                          })}>
                             Order
                           </OrderButton>
                           <EditButton onClick={() => {
                             setEditingGeneralStock(item);
                             setGeneralStockForm({
                               name: item.name,
+                              code: item.code || '',
+                              image_url: item.image_url || '',
                               stock_unit: item.stock_unit || item.unit,
                               unit_cost: item.unit_cost.toString(),
                               category: item.category,
                               current_stock: item.current_stock.toString(),
                               min_stock: item.min_stock.toString(),
-                              min_order: ((item as any).min_order || 0).toString(),
+                              min_order: (item.min_order || 0).toString(),
                               supplier_id: item.supplier_id?.toString() || ''
                             });
                             setShowEditGeneralStockModal(true);
@@ -1495,7 +1612,7 @@ const InventoryPage: React.FC = () => {
                     </EmptyState>
                   ) : (
                 <Table>
-                  <InventoryTableHeader columns="2fr 1fr 1fr 1fr 1fr 1fr 1fr 180px">
+                  <InventoryTableHeader columns="2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 180px">
                     <span>Ingredient</span>
                     <span>Status</span>
                     <span>Current Stock</span>
@@ -1506,14 +1623,24 @@ const InventoryPage: React.FC = () => {
                     <span>Actions</span>
                   </InventoryTableHeader>
                   {filteredInventory.map(item => (
-                    <InventoryTableRow key={item.id} columns="2fr 1fr 1fr 1fr 1fr 1fr 1fr 180px">
+                    <InventoryTableRow key={item.id} columns="2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 180px">
                       <MobileGrid>
                         <MobileValue>
                           <MobileLabel>Ingredient</MobileLabel>
-                          <IngredientInfo>
-                            <IngredientName>{item.name}</IngredientName>
-                            <IngredientMeta>{item.category} • {(parseFloat(String(item.avg_daily_usage)) || 0).toFixed(2)} {item.unit}/day</IngredientMeta>
-                          </IngredientInfo>
+                          <StockItemInfo>
+                            <StockItemImage>
+                              {item.image_url ? (
+                                <img src={item.image_url} alt={item.name} />
+                              ) : (
+                                <span style={{ fontSize: '16px', color: '#9CA3AF' }}>🥗</span>
+                              )}
+                            </StockItemImage>
+                            <StockItemDetails>
+                              <IngredientName>{item.name}</IngredientName>
+                              {item.code && <StockItemCode>{item.code}</StockItemCode>}
+                              <IngredientMeta>{item.category} • {(parseFloat(String(item.avg_daily_usage)) || 0).toFixed(2)} {item.unit}/day</IngredientMeta>
+                            </StockItemDetails>
+                          </StockItemInfo>
                         </MobileValue>
                         <MobileValue>
                           <MobileLabel>Status</MobileLabel>
@@ -1579,7 +1706,24 @@ const InventoryPage: React.FC = () => {
                         >
                           Receive
                         </Button>
-                        <OrderButton onClick={() => handleOrderClick(item.id)}>
+                        <OrderButton onClick={() => handleOrderClick({
+                          id: item.id,
+                          name: item.name,
+                          code: item.code,
+                          image_url: item.image_url,
+                          category: item.category,
+                          current_stock: item.current_stock,
+                          min_stock: item.min_stock,
+                          min_order: item.min_order || 0,
+                          unit: item.unit,
+                          unit_cost: item.unit_cost,
+                          supplier_name: item.supplier_name,
+                          stock_status: item.stock_status,
+                          last_stock_take_at: item.last_stock_take_at,
+                          item_type: 'ingredient',
+                          avg_daily_usage: item.avg_daily_usage,
+                          prediction_confidence: item.prediction_confidence
+                        })}>
                           Order
                         </OrderButton>
                         <SettingsButton onClick={() => openSettingsModal(item)}>
@@ -1896,6 +2040,76 @@ const InventoryPage: React.FC = () => {
         )}
       </Modal>
 
+      {/* Order Modal */}
+      <Modal
+        isOpen={showOrderModal}
+        onClose={() => setShowOrderModal(false)}
+        title={`Order: ${orderItem?.name || ''}`}
+        size="small"
+      >
+        {orderItem && (
+          <>
+            <div style={{ marginBottom: '16px', padding: '12px', background: '#F9FAFB', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <div>
+                  <div style={{ fontSize: '13px', color: '#6B7280' }}>Current Stock</div>
+                  <div style={{ fontSize: '18px', fontWeight: 600, color: '#0A2540' }}>
+                    {orderItem.current_stock} {orderItem.unit}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '13px', color: '#6B7280' }}>Min Stock</div>
+                  <div style={{ fontSize: '18px', fontWeight: 600, color: '#6B7280' }}>
+                    {orderItem.min_stock} {orderItem.unit}
+                  </div>
+                </div>
+              </div>
+              {orderItem.min_order && orderItem.min_order > 0 && (
+                <div style={{ fontSize: '12px', color: '#16A34A', marginTop: '8px' }}>
+                  Minimum order quantity: {orderItem.min_order} {orderItem.unit}
+                </div>
+              )}
+              {orderItem.supplier_name && (
+                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                  Supplier: {orderItem.supplier_name}
+                </div>
+              )}
+            </div>
+            <UIFormGroup>
+              <FormLabel>Order Quantity ({orderItem.unit}) *</FormLabel>
+              <FormInput
+                type="number"
+                min="0"
+                step="0.01"
+                value={orderQuantity}
+                onChange={(e) => setOrderQuantity(e.target.value)}
+                placeholder={orderItem.min_order ? `Min: ${orderItem.min_order}` : 'Enter quantity'}
+              />
+            </UIFormGroup>
+            {orderQuantity && parseFloat(orderQuantity) > 0 && (
+              <div style={{ padding: '12px', background: '#F0FDF4', borderRadius: '8px', marginBottom: '16px' }}>
+                <div style={{ fontSize: '13px', color: '#6B7280' }}>Estimated Cost</div>
+                <div style={{ fontSize: '18px', fontWeight: 600, color: '#16A34A' }}>
+                  {formatCurrency(parseFloat(orderQuantity) * orderItem.unit_cost, selectedCurrency)}
+                </div>
+              </div>
+            )}
+            <ButtonGroup>
+              <ModalButton variant="secondary" onClick={() => setShowOrderModal(false)}>
+                Cancel
+              </ModalButton>
+              <ModalButton
+                variant="primary"
+                onClick={handleSendOrder}
+                disabled={!orderQuantity || parseFloat(orderQuantity) <= 0}
+              >
+                Send Order
+              </ModalButton>
+            </ButtonGroup>
+          </>
+        )}
+      </Modal>
+
       {/* Settings Modal */}
       <Modal
         isOpen={showSettingsModal}
@@ -1921,17 +2135,33 @@ const InventoryPage: React.FC = () => {
               </div>
             </div>
 
-            <UIFormGroup>
-              <FormLabel>Minimum Stock Level ({settingsIngredient.unit})</FormLabel>
-              <FormInput
-                type="number"
-                step="0.01"
-                min="0"
-                value={settingsForm.min_stock}
-                onChange={(e) => setSettingsForm({ ...settingsForm, min_stock: e.target.value })}
-                placeholder="0"
-              />
-            </UIFormGroup>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <UIFormGroup>
+                <FormLabel>Minimum Stock Level ({settingsIngredient.unit})</FormLabel>
+                <FormInput
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={settingsForm.min_stock}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, min_stock: e.target.value })}
+                  placeholder="0"
+                />
+              </UIFormGroup>
+              <UIFormGroup>
+                <FormLabel>Minimum Order ({settingsIngredient.unit})</FormLabel>
+                <FormInput
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={settingsForm.min_order}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, min_order: e.target.value })}
+                  placeholder="0"
+                />
+                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                  Minimum order quantity from supplier
+                </div>
+              </UIFormGroup>
+            </div>
 
             <UIFormGroup>
               <FormLabel>Lead Time (days)</FormLabel>
@@ -2000,14 +2230,59 @@ const InventoryPage: React.FC = () => {
         title="Add General Stock"
         size="medium"
       >
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <UIFormGroup>
+            <FormLabel>Item Name *</FormLabel>
+            <FormInput
+              type="text"
+              value={generalStockForm.name}
+              onChange={(e) => setGeneralStockForm({ ...generalStockForm, name: e.target.value })}
+              placeholder="e.g., Takeaway Containers"
+            />
+          </UIFormGroup>
+          <UIFormGroup>
+            <FormLabel>Code (SKU)</FormLabel>
+            <FormInput
+              type="text"
+              value={generalStockForm.code}
+              onChange={(e) => setGeneralStockForm({ ...generalStockForm, code: e.target.value })}
+              placeholder="Auto-generate if empty"
+            />
+          </UIFormGroup>
+        </div>
         <UIFormGroup>
-          <FormLabel>Item Name *</FormLabel>
-          <FormInput
-            type="text"
-            value={generalStockForm.name}
-            onChange={(e) => setGeneralStockForm({ ...generalStockForm, name: e.target.value })}
-            placeholder="e.g., Takeaway Containers"
-          />
+          <FormLabel>Image (Optional)</FormLabel>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {generalStockForm.image_url && (
+              <div style={{ width: '80px', height: '80px', borderRadius: '8px', overflow: 'hidden', flexShrink: 0 }}>
+                <img src={generalStockForm.image_url} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+            )}
+            <FormInput
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onloadend = () => {
+                    setGeneralStockForm({ ...generalStockForm, image_url: reader.result as string });
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }}
+              style={{ flex: 1 }}
+            />
+            {generalStockForm.image_url && (
+              <button
+                type="button"
+                onClick={() => setGeneralStockForm({ ...generalStockForm, image_url: '' })}
+                style={{ padding: '4px 8px', background: '#FEE2E2', color: '#DC2626', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+              >
+                Remove
+              </button>
+            )}
+          </div>
         </UIFormGroup>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <UIFormGroup>
@@ -2145,6 +2420,8 @@ const InventoryPage: React.FC = () => {
                   method: 'POST',
                   body: JSON.stringify({
                     name: generalStockForm.name,
+                    code: generalStockForm.code || null,
+                    image_url: generalStockForm.image_url || null,
                     stock_unit: generalStockForm.stock_unit,
                     unit_cost: parseFloat(generalStockForm.unit_cost) || 0,
                     category: generalStockForm.category || 'Other',
@@ -2158,6 +2435,8 @@ const InventoryPage: React.FC = () => {
                   setShowAddGeneralStockModal(false);
                   setGeneralStockForm({
                     name: '',
+                    code: '',
+                    image_url: '',
                     stock_unit: 'piece',
                     unit_cost: '',
                     category: '',
@@ -2188,14 +2467,59 @@ const InventoryPage: React.FC = () => {
         title="Edit General Stock"
         size="medium"
       >
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <UIFormGroup>
+            <FormLabel>Item Name *</FormLabel>
+            <FormInput
+              type="text"
+              value={generalStockForm.name}
+              onChange={(e) => setGeneralStockForm({ ...generalStockForm, name: e.target.value })}
+              placeholder="e.g., Takeaway Containers"
+            />
+          </UIFormGroup>
+          <UIFormGroup>
+            <FormLabel>Code (SKU)</FormLabel>
+            <FormInput
+              type="text"
+              value={generalStockForm.code}
+              onChange={(e) => setGeneralStockForm({ ...generalStockForm, code: e.target.value })}
+              placeholder="Auto-generate if empty"
+            />
+          </UIFormGroup>
+        </div>
         <UIFormGroup>
-          <FormLabel>Item Name *</FormLabel>
-          <FormInput
-            type="text"
-            value={generalStockForm.name}
-            onChange={(e) => setGeneralStockForm({ ...generalStockForm, name: e.target.value })}
-            placeholder="e.g., Takeaway Containers"
-          />
+          <FormLabel>Image (Optional)</FormLabel>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {generalStockForm.image_url && (
+              <div style={{ width: '80px', height: '80px', borderRadius: '8px', overflow: 'hidden', flexShrink: 0 }}>
+                <img src={generalStockForm.image_url} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+            )}
+            <FormInput
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onloadend = () => {
+                    setGeneralStockForm({ ...generalStockForm, image_url: reader.result as string });
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }}
+              style={{ flex: 1 }}
+            />
+            {generalStockForm.image_url && (
+              <button
+                type="button"
+                onClick={() => setGeneralStockForm({ ...generalStockForm, image_url: '' })}
+                style={{ padding: '4px 8px', background: '#FEE2E2', color: '#DC2626', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+              >
+                Remove
+              </button>
+            )}
+          </div>
         </UIFormGroup>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <UIFormGroup>

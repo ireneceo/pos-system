@@ -133,6 +133,11 @@ Ingredient.init({
     allowNull: true,
     comment: 'Last stock take date'
   },
+  track_stock: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+    comment: 'Whether to track this ingredient in inventory stock list'
+  },
   is_active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true

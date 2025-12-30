@@ -25,16 +25,18 @@ router.get('/restaurants/:restaurantId/inventory', async (req, res) => {
     }
 
     // Build where clause to include both restaurant's own ingredients and brand ingredients
+    // Only include ingredients with track_stock: true
     const whereConditions = [
-      { restaurant_id: restaurantId, is_active: true }
+      { restaurant_id: restaurantId, is_active: true, track_stock: true }
     ];
 
-    // If restaurant belongs to a brand, also include brand ingredients
+    // If restaurant belongs to a brand, also include brand ingredients with track_stock: true
     if (restaurant.brand_id) {
       whereConditions.push({
         brand_id: restaurant.brand_id,
         owner_type: 'brand',
-        is_active: true
+        is_active: true,
+        track_stock: true
       });
     }
 
@@ -224,7 +226,7 @@ router.get('/restaurants/:restaurantId/inventory/general-stock', async (req, res
 router.post('/restaurants/:restaurantId/inventory/general-stock', async (req, res) => {
   try {
     const { restaurantId } = req.params;
-    const { name, stock_unit, unit_cost, category, current_stock, min_stock, supplier_id, code } = req.body;
+    const { name, stock_unit, unit_cost, category, current_stock, min_stock, min_order, supplier_id, code } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, message: 'Name is required' });
@@ -238,6 +240,7 @@ router.post('/restaurants/:restaurantId/inventory/general-stock', async (req, re
       unit: stock_unit || 'piece',
       current_stock: parseFloat(current_stock) || 0,
       min_stock: parseFloat(min_stock) || 0,
+      min_order: parseFloat(min_order) || 0,
       unit_cost: parseFloat(unit_cost) || 0,
       supplier_id: supplier_id || null,
       is_active: true
@@ -366,6 +369,70 @@ router.put('/restaurants/:restaurantId/inventory/general-stock/:itemId/settings'
     });
   } catch (error) {
     console.error('General stock settings error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// PUT /api/restaurants/:restaurantId/inventory/general-stock/:itemId - 일반 재고 전체 수정
+router.put('/restaurants/:restaurantId/inventory/general-stock/:itemId', async (req, res) => {
+  try {
+    const { restaurantId, itemId } = req.params;
+    const { name, stock_unit, unit_cost, category, current_stock, min_stock, min_order, supplier_id } = req.body;
+
+    const item = await GeneralStock.findOne({
+      where: { id: itemId, restaurant_id: restaurantId, is_active: true }
+    });
+
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'General stock item not found' });
+    }
+
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (stock_unit !== undefined) updateData.unit = stock_unit;
+    if (unit_cost !== undefined) updateData.unit_cost = unit_cost;
+    if (category !== undefined) updateData.category = category;
+    if (current_stock !== undefined) updateData.current_stock = current_stock;
+    if (min_stock !== undefined) updateData.min_stock = min_stock;
+    if (min_order !== undefined) updateData.min_order = min_order;
+    if (supplier_id !== undefined) updateData.supplier_id = supplier_id;
+
+    await item.update(updateData);
+
+    res.json({
+      success: true,
+      data: {
+        ...item.toJSON(),
+        stock_unit: item.unit
+      }
+    });
+  } catch (error) {
+    console.error('General stock update error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// DELETE /api/restaurants/:restaurantId/inventory/general-stock/:itemId - 일반 재고 삭제
+router.delete('/restaurants/:restaurantId/inventory/general-stock/:itemId', async (req, res) => {
+  try {
+    const { restaurantId, itemId } = req.params;
+
+    const item = await GeneralStock.findOne({
+      where: { id: itemId, restaurant_id: restaurantId, is_active: true }
+    });
+
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'General stock item not found' });
+    }
+
+    await item.update({ is_active: false });
+
+    res.json({
+      success: true,
+      message: 'General stock item deleted'
+    });
+  } catch (error) {
+    console.error('General stock delete error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -1289,13 +1356,14 @@ router.get('/restaurants/:restaurantId/inventory/:ingredientId/par-level', async
 router.put('/restaurants/:restaurantId/inventory/:ingredientId/settings', async (req, res) => {
   try {
     const { ingredientId } = req.params;
-    const { lead_time_days, safety_stock_percent, manual_daily_usage, min_stock } = req.body;
+    const { lead_time_days, safety_stock_percent, manual_daily_usage, min_stock, min_order } = req.body;
 
     const updateData = {};
     if (lead_time_days !== undefined) updateData.lead_time_days = lead_time_days;
     if (safety_stock_percent !== undefined) updateData.safety_stock_percent = safety_stock_percent;
     if (manual_daily_usage !== undefined) updateData.manual_daily_usage = manual_daily_usage;
     if (min_stock !== undefined) updateData.min_stock = min_stock;
+    if (min_order !== undefined) updateData.min_order = min_order;
 
     await Ingredient.update(updateData, { where: { id: ingredientId } });
 

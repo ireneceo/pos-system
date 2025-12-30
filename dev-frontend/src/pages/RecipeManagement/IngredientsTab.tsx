@@ -60,6 +60,7 @@ interface Ingredient {
   is_active: boolean;
   min_stock?: number;
   current_stock?: number;
+  track_stock?: boolean;
 }
 
 const IngredientsGrid = styled.div`
@@ -119,6 +120,17 @@ const BrandBadge = styled.span`
   padding: 4px 8px;
   background: #FEF3C7;
   color: #92400E;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 8px;
+`;
+
+const TrackStockBadge = styled.span`
+  display: inline-block;
+  padding: 4px 8px;
+  background: #D1FAE5;
+  color: #065F46;
   border-radius: 6px;
   font-size: 11px;
   font-weight: 600;
@@ -240,11 +252,6 @@ const IngredientImage = styled.img`
   object-fit: cover;
 `;
 
-const NoImagePlaceholder = styled.div`
-  color: #9CA3AF;
-  font-size: 12px;
-`;
-
 const ImagePreview = styled.div`
   width: 100%;
   height: 150px;
@@ -330,7 +337,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
     base_quantity: '1',
     unit_cost: '',
     supplier_id: '' as string | number,
-    min_stock: '0'
+    min_stock: '0',
+    track_stock: true
   });
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; ingredientId: number | null; ingredientName: string }>({
@@ -575,7 +583,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
         base_quantity: ingredient.base_quantity?.toString() || '1',
         unit_cost: ingredient.unit_cost.toString(),
         supplier_id: ingredient.supplier_id || '',
-        min_stock: ingredient.min_stock?.toString() || '0'
+        min_stock: ingredient.min_stock?.toString() || '0',
+        track_stock: ingredient.track_stock || false
       });
     } else {
       setSelectedIngredient(null);
@@ -588,7 +597,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
         base_quantity: '1',
         unit_cost: '',
         supplier_id: '',
-        min_stock: '0'
+        min_stock: '0',
+        track_stock: true
       });
     }
     setShowModal(true);
@@ -606,7 +616,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
       base_quantity: '1',
       unit_cost: '',
       supplier_id: '',
-      min_stock: '0'
+      min_stock: '0',
+      track_stock: true
     });
   };
 
@@ -668,7 +679,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
             : '',
           base_quantity: parseFloat(formData.base_quantity) || 1,
           unit_cost: parseFloat(formData.unit_cost),
-          min_stock: parseInt(formData.min_stock) || 0
+          min_stock: parseInt(formData.min_stock) || 0,
+          track_stock: formData.track_stock
         })
       });
 
@@ -770,6 +782,9 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                     {ingredient.name}
                     {isRestaurantAdmin && ingredient.owner_type === 'brand' && (
                       <BrandBadge>Brand</BrandBadge>
+                    )}
+                    {ingredient.track_stock && (
+                      <TrackStockBadge>Stock</TrackStockBadge>
                     )}
                   </IngredientName>
                   <IngredientCategoryBadge>
@@ -958,6 +973,23 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
               />
             </UIFormGroup>
           </UIFormRow>
+
+          <UIFormGroup>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={formData.track_stock}
+                onChange={(e) => setFormData({ ...formData, track_stock: e.target.checked })}
+                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+              />
+              <span style={{ fontSize: '14px', color: '#0A2540' }}>
+                Track in Inventory Stock List
+              </span>
+            </label>
+            <span style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px', display: 'block' }}>
+              Enable to include this ingredient in inventory stock management
+            </span>
+          </UIFormGroup>
 
           <ButtonGroup>
             <ModalButton type="button" variant="secondary" onClick={handleCloseModal}>

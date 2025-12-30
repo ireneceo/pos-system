@@ -20,6 +20,11 @@ const GeneralStock = database.sequelize.define('GeneralStock', {
     allowNull: true,
     comment: 'SKU or item code'
   },
+  image_url: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Product image URL or base64'
+  },
   category: {
     type: DataTypes.STRING(50),
     defaultValue: 'Supplies',
