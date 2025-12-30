@@ -4,6 +4,7 @@ const Product = require('../models/Product');
 const Restaurant = require('../models/Restaurant');
 const Category = require('../models/Category');
 const { authenticateToken } = require('../middleware/auth');
+const { processImage, getImageUrl } = require('../utils/imageProcessor');
 
 // Apply authentication to all routes
 router.use(authenticateToken);
@@ -87,6 +88,19 @@ router.get('/', async (req, res) => {
         }
       }
 
+      // Parse image data - support both old format (string) and new format (JSON with sizes)
+      let imageData = null;
+      if (prod.image) {
+        try {
+          // Try to parse as JSON (new format with multiple sizes)
+          const parsed = JSON.parse(prod.image);
+          imageData = parsed;
+        } catch {
+          // Old format - single image string
+          imageData = { thumbnail: prod.image, medium: prod.image, original: prod.image };
+        }
+      }
+
       return {
         id: prod.id,
         code: prod.code || null,
@@ -95,7 +109,10 @@ router.get('/', async (req, res) => {
         price: prod.price,
         categoryId: categoryId,  // Use matched category ID
         emoji: prod.emoji || '🍽️',
-        image: prod.image,
+        image: imageData?.medium || imageData?.original || null,  // Default to medium for admin
+        imageThumbnail: imageData?.thumbnail || null,
+        imageMedium: imageData?.medium || null,
+        imageOriginal: imageData?.original || null,
         restaurant_id: prod.restaurant_id,
         soldOut: prod.soldOut || false,
         optionGroups: prod.optionGroups || [],  // Include optionGroups data
@@ -260,6 +277,21 @@ router.post('/product', async (req, res) => {
       restaurant_id: restaurantId
     };
 
+    // Process image if provided (generate thumbnail, medium, original)
+    if (productData.image && productData.image.startsWith('data:image/')) {
+      try {
+        const processedImages = await processImage(productData.image);
+        if (processedImages) {
+          // Store as JSON with multiple sizes
+          productData.image = JSON.stringify(processedImages);
+          console.log('Image processed for new product');
+        }
+      } catch (imgError) {
+        console.error('Image processing error:', imgError);
+        // Keep original image if processing fails
+      }
+    }
+
     const product = await Product.create(productData);
     res.status(201).json({ success: true, data: product });
   } catch (error) {
@@ -339,6 +371,21 @@ router.put('/product/:id', async (req, res) => {
     // Prevent changing restaurant_id
     const updateData = { ...req.body };
     delete updateData.restaurant_id;
+
+    // Process image if provided and it's a new base64 image
+    if (updateData.image && updateData.image.startsWith('data:image/')) {
+      try {
+        const processedImages = await processImage(updateData.image);
+        if (processedImages) {
+          // Store as JSON with multiple sizes
+          updateData.image = JSON.stringify(processedImages);
+          console.log('Image processed for product update:', req.params.id);
+        }
+      } catch (imgError) {
+        console.error('Image processing error:', imgError);
+        // Keep original image if processing fails
+      }
+    }
 
     await product.update(updateData);
     res.json({ success: true, data: product });
