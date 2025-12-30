@@ -507,7 +507,7 @@ const InventoryPage: React.FC = () => {
   // Inline editing for stock
   const [editingStockId, setEditingStockId] = useState<number | null>(null);
   const [editingStockValue, setEditingStockValue] = useState('');
-  const [editingStockType, setEditingStockType] = useState<'ingredient' | 'product'>('ingredient');
+  const [editingStockType, setEditingStockType] = useState<'ingredient' | 'general_stock'>('ingredient');
 
   // Reorder quantities
   const [orderQuantities, setOrderQuantities] = useState<{[key: number]: string}>({});
@@ -788,7 +788,7 @@ const InventoryPage: React.FC = () => {
   };
 
   // Inline stock editing handlers
-  const startEditingStock = (id: number, currentValue: number, type: 'ingredient' | 'product') => {
+  const startEditingStock = (id: number, currentValue: number, type: 'ingredient' | 'general_stock') => {
     setEditingStockId(id);
     setEditingStockValue(currentValue.toString());
     setEditingStockType(type);
@@ -809,11 +809,12 @@ const InventoryPage: React.FC = () => {
     try {
       const endpoint = editingStockType === 'ingredient'
         ? `/api/restaurants/${restaurantId}/inventory/adjust`
-        : `/api/restaurants/${restaurantId}/inventory/products/${id}/adjust`;
+        : `/api/restaurants/${restaurantId}/inventory/general-stock/${id}/adjust`;
 
-      const body = editingStockType === 'ingredient'
-        ? { ingredient_id: id, new_quantity: newValue, reason: 'Stock adjustment' }
-        : { new_quantity: newValue, reason: 'Stock adjustment' };
+      const body = { new_quantity: newValue, reason: 'Stock adjustment' };
+      if (editingStockType === 'ingredient') {
+        (body as any).ingredient_id = id;
+      }
 
       const response = await authFetch(endpoint, {
         method: 'POST',
@@ -821,7 +822,16 @@ const InventoryPage: React.FC = () => {
       });
 
       if (response.success) {
-        fetchData();
+        // Update local state instead of full refresh to preserve scroll position
+        if (editingStockType === 'ingredient') {
+          setInventory(prev => prev.map(item =>
+            item.id === id ? { ...item, current_stock: newValue } : item
+          ));
+        } else {
+          setGeneralStockInventory(prev => prev.map(item =>
+            item.id === id ? { ...item, current_stock: newValue } : item
+          ));
+        }
       }
     } catch (error) {
       console.error('Failed to adjust stock:', error);
@@ -848,6 +858,70 @@ const InventoryPage: React.FC = () => {
     const matchesStatus = statusFilter === 'all' || item.stock_status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  // 통합 재고 리스트 (Ingredients + General Stock)
+  type UnifiedStockItem = {
+    id: number;
+    name: string;
+    code?: string | null;
+    category: string;
+    current_stock: number;
+    min_stock: number;
+    unit: string;
+    unit_cost: number;
+    supplier_name: string | null;
+    stock_status: 'normal' | 'low_stock' | 'out_of_stock';
+    last_stock_take_at: string | null;
+    item_type: 'ingredient' | 'general_stock';
+    // Ingredient specific
+    avg_daily_usage?: number;
+    prediction_confidence?: string;
+  };
+
+  const unifiedStockList: UnifiedStockItem[] = [
+    // Ingredients
+    ...(stockTypeFilter === 'all' || stockTypeFilter === 'ingredients'
+      ? filteredInventory.map(item => ({
+          id: item.id,
+          name: item.name,
+          code: item.code || null,
+          category: item.category,
+          current_stock: item.current_stock,
+          min_stock: item.min_stock,
+          unit: item.unit,
+          unit_cost: item.unit_cost,
+          supplier_name: item.supplier_name,
+          stock_status: item.stock_status,
+          last_stock_take_at: item.last_stock_take_at,
+          item_type: 'ingredient' as const,
+          avg_daily_usage: parseFloat(String(item.avg_daily_usage)) || 0,
+          prediction_confidence: item.prediction_confidence
+        }))
+      : []),
+    // General Stock
+    ...(stockTypeFilter === 'all' || stockTypeFilter === 'general_stock'
+      ? generalStockInventory
+          .filter(item => {
+            const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesStatus = statusFilter === 'all' || item.stock_status === statusFilter;
+            return matchesSearch && matchesStatus;
+          })
+          .map(item => ({
+            id: item.id,
+            name: item.name,
+            code: item.code || null,
+            category: item.category,
+            current_stock: item.current_stock,
+            min_stock: item.min_stock,
+            unit: item.stock_unit || item.unit,
+            unit_cost: item.unit_cost,
+            supplier_name: item.supplier_name,
+            stock_status: item.stock_status,
+            last_stock_take_at: item.last_stock_take_at,
+            item_type: 'general_stock' as const
+          }))
+      : [])
+  ];
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '-';
@@ -879,20 +953,6 @@ const InventoryPage: React.FC = () => {
       <Container>
         <Header>
           <Title>Inventory</Title>
-          <ActionSection>
-            <Button
-              variant="secondary"
-              onClick={openInitialStockModal}
-            >
-              Set Initial Stock
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => window.location.href = `/restaurant/${restaurantId}/stock-take`}
-            >
-              Stock Take
-            </Button>
-          </ActionSection>
         </Header>
 
         <Content>
@@ -912,13 +972,6 @@ const InventoryPage: React.FC = () => {
             <EmptyState>Loading...</EmptyState>
           ) : activeTab === 'dashboard' ? (
             <>
-              {needsInitialSetup && inventory.length > 0 && (
-                <InfoBox>
-                  <strong>Welcome to Inventory Management</strong>
-                  <br />
-                  Set your initial stock levels to start tracking inventory. Click the "Set Initial Stock" button above to enter your current stock quantities.
-                </InfoBox>
-              )}
               <StatsGrid>
                 <StatCard color="#059669">
                   <StatValue>{summary?.total_items || 0}</StatValue>
@@ -1112,12 +1165,12 @@ const InventoryPage: React.FC = () => {
               <FilterBar>
                 <FilterSelect
                   value={stockTypeFilter}
-                  onChange={(e) => setStockTypeFilter(e.target.value as 'all' | 'ingredients' | 'products')}
+                  onChange={(e) => setStockTypeFilter(e.target.value as 'all' | 'ingredients' | 'general_stock')}
                   style={{ minWidth: '140px' }}
                 >
                   <option value="all">All Items</option>
                   <option value="ingredients">Ingredients</option>
-                  <option value="products">General Stock</option>
+                  <option value="general_stock">General Stock</option>
                 </FilterSelect>
                 <SearchInput
                   type="text"
@@ -1144,11 +1197,11 @@ const InventoryPage: React.FC = () => {
               </FilterBar>
 
               {/* Show General Stock Section */}
-              {(stockTypeFilter === 'all' || stockTypeFilter === 'products') && productInventory.length > 0 && (
+              {(stockTypeFilter === 'all' || stockTypeFilter === 'general_stock') && generalStockInventory.length > 0 && (
                 <>
-                  {stockTypeFilter === 'all' && <SectionTitle>General Stock ({productInventory.filter(p => {
-                    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
-                    const matchesStatus = statusFilter === 'all' || p.stock_status === statusFilter;
+                  {stockTypeFilter === 'all' && <SectionTitle>General Stock ({generalStockInventory.filter(item => {
+                    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+                    const matchesStatus = statusFilter === 'all' || item.stock_status === statusFilter;
                     return matchesSearch && matchesStatus;
                   }).length})</SectionTitle>}
                   <Table style={{ marginBottom: '24px' }}>
@@ -1161,66 +1214,66 @@ const InventoryPage: React.FC = () => {
                       <span>Supplier</span>
                       <span>Actions</span>
                     </InventoryTableHeader>
-                    {productInventory
-                      .filter(p => {
-                        const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
-                        const matchesStatus = statusFilter === 'all' || p.stock_status === statusFilter;
+                    {generalStockInventory
+                      .filter(item => {
+                        const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+                        const matchesStatus = statusFilter === 'all' || item.stock_status === statusFilter;
                         return matchesSearch && matchesStatus;
                       })
-                      .map(product => (
-                      <InventoryTableRow key={`product-${product.id}`} columns="2fr 1fr 1fr 1fr 1fr 1fr 150px">
+                      .map(item => (
+                      <InventoryTableRow key={`general-stock-${item.id}`} columns="2fr 1fr 1fr 1fr 1fr 1fr 150px">
                         <MobileGrid>
                           <MobileValue>
                             <MobileLabel>Item</MobileLabel>
                             <IngredientInfo>
-                              <IngredientName>{product.name}</IngredientName>
-                              <IngredientMeta>{product.category} • {formatCurrency(product.price, selectedCurrency)}</IngredientMeta>
+                              <IngredientName>{item.name}</IngredientName>
+                              <IngredientMeta>{item.category} {item.code && `• ${item.code}`}</IngredientMeta>
                             </IngredientInfo>
                           </MobileValue>
                           <MobileValue>
                             <MobileLabel>Status</MobileLabel>
-                            <StatusBadge status={product.stock_status}>
-                              {getStatusLabel(product.stock_status)}
+                            <StatusBadge status={item.stock_status}>
+                              {getStatusLabel(item.stock_status)}
                             </StatusBadge>
                           </MobileValue>
                           <MobileValue>
                             <MobileLabel>Current Stock</MobileLabel>
-                            {editingStockId === product.id && editingStockType === 'product' ? (
+                            {editingStockId === item.id && editingStockType === 'general_stock' ? (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 <InlineStockInput
                                   type="number"
                                   step="0.01"
                                   value={editingStockValue}
                                   onChange={(e) => setEditingStockValue(e.target.value)}
-                                  onKeyDown={(e) => handleStockKeyDown(e, product.id)}
-                                  onBlur={() => saveInlineStock(product.id)}
+                                  onKeyDown={(e) => handleStockKeyDown(e, item.id)}
+                                  onBlur={() => saveInlineStock(item.id)}
                                   autoFocus
                                 />
-                                <span style={{ fontSize: '13px', color: '#6B7280' }}>{product.stock_unit}</span>
+                                <span style={{ fontSize: '13px', color: '#6B7280' }}>{item.stock_unit}</span>
                               </div>
                             ) : (
-                              <EditableStock onClick={() => startEditingStock(product.id, product.current_stock, 'product')}>
-                                <span style={{ fontWeight: 600, color: '#0A2540' }}>{product.current_stock}</span>
-                                <span style={{ fontSize: '13px', color: '#6B7280' }}>{product.stock_unit}</span>
+                              <EditableStock onClick={() => startEditingStock(item.id, item.current_stock, 'general_stock')}>
+                                <span style={{ fontWeight: 600, color: '#0A2540' }}>{item.current_stock}</span>
+                                <span style={{ fontSize: '13px', color: '#6B7280' }}>{item.stock_unit}</span>
                               </EditableStock>
                             )}
                           </MobileValue>
                           <MobileValue>
                             <MobileLabel>Min Stock</MobileLabel>
                             <div style={{ color: '#6B7280' }}>
-                              {product.min_stock} {product.stock_unit}
+                              {item.min_stock} {item.stock_unit}
                             </div>
                           </MobileValue>
                           <MobileValue>
                             <MobileLabel>Unit Cost</MobileLabel>
                             <div style={{ color: '#0A2540' }}>
-                              {formatCurrency(product.unit_cost, selectedCurrency)}
+                              {formatCurrency(item.unit_cost, selectedCurrency)}
                             </div>
                           </MobileValue>
                           <MobileValue>
                             <MobileLabel>Supplier</MobileLabel>
-                            <div style={{ color: product.supplier_name ? '#0A2540' : '#9CA3AF', fontSize: '13px' }}>
-                              {product.supplier_name || '-'}
+                            <div style={{ color: item.supplier_name ? '#0A2540' : '#9CA3AF', fontSize: '13px' }}>
+                              {item.supplier_name || '-'}
                             </div>
                           </MobileValue>
                         </MobileGrid>
@@ -1228,17 +1281,19 @@ const InventoryPage: React.FC = () => {
                           <Button
                             variant="primary"
                             onClick={() => {
-                              setSelectedProduct(product);
-                              setProductQuantity('');
-                              setProductNotes('');
-                              setShowProductReceiveModal(true);
+                              setSelectedGeneralStock(item);
+                              setGeneralStockQuantity('');
+                              setGeneralStockNotes('');
+                              setShowGeneralStockReceiveModal(true);
                             }}
                             style={{ padding: '6px 12px', fontSize: '13px' }}
                           >
                             Receive
                           </Button>
+                          <OrderButton onClick={() => handleOrderClick(item.id)}>
+                            Order
+                          </OrderButton>
                           <SettingsButton onClick={() => {
-                            // TODO: Open settings modal for general stock
                             alert('Settings for general stock - coming soon');
                           }}>
                             Settings
@@ -1359,6 +1414,9 @@ const InventoryPage: React.FC = () => {
                         >
                           Receive
                         </Button>
+                        <OrderButton onClick={() => handleOrderClick(item.id)}>
+                          Order
+                        </OrderButton>
                         <SettingsButton onClick={() => openSettingsModal(item)}>
                           Settings
                         </SettingsButton>
@@ -1595,19 +1653,19 @@ const InventoryPage: React.FC = () => {
         </ButtonGroup>
       </Modal>
 
-      {/* Product Receive Modal */}
+      {/* General Stock Receive Modal */}
       <Modal
-        isOpen={showProductReceiveModal}
-        onClose={() => setShowProductReceiveModal(false)}
-        title={`Receive Stock: ${selectedProduct?.name || ''}`}
+        isOpen={showGeneralStockReceiveModal}
+        onClose={() => setShowGeneralStockReceiveModal(false)}
+        title={`Receive Stock: ${selectedGeneralStock?.name || ''}`}
         size="small"
       >
-        {selectedProduct && (
+        {selectedGeneralStock && (
           <>
             <div style={{ marginBottom: '16px', padding: '12px', background: '#F9FAFB', borderRadius: '8px' }}>
               <div style={{ fontSize: '13px', color: '#6B7280' }}>Current Stock</div>
               <div style={{ fontSize: '18px', fontWeight: 600, color: '#0A2540' }}>
-                {selectedProduct.current_stock} {selectedProduct.stock_unit}
+                {selectedGeneralStock.current_stock} {selectedGeneralStock.stock_unit}
               </div>
             </div>
             <UIFormGroup>
@@ -1616,122 +1674,49 @@ const InventoryPage: React.FC = () => {
                 type="number"
                 min="0"
                 step="0.01"
-                value={productQuantity}
-                onChange={(e) => setProductQuantity(e.target.value)}
+                value={generalStockQuantity}
+                onChange={(e) => setGeneralStockQuantity(e.target.value)}
                 placeholder="Enter quantity"
               />
             </UIFormGroup>
             <UIFormGroup>
               <FormLabel>Notes (Optional)</FormLabel>
               <FormInput
-                value={productNotes}
-                onChange={(e) => setProductNotes(e.target.value)}
+                value={generalStockNotes}
+                onChange={(e) => setGeneralStockNotes(e.target.value)}
                 placeholder="Enter notes"
               />
             </UIFormGroup>
             <ButtonGroup>
-              <ModalButton variant="secondary" onClick={() => setShowProductReceiveModal(false)}>
+              <ModalButton variant="secondary" onClick={() => setShowGeneralStockReceiveModal(false)}>
                 Cancel
               </ModalButton>
               <ModalButton
                 variant="primary"
                 onClick={async () => {
-                  if (!productQuantity || parseFloat(productQuantity) <= 0) return;
+                  if (!generalStockQuantity || parseFloat(generalStockQuantity) <= 0) return;
                   try {
                     const response = await authFetch(
-                      `/api/restaurants/${restaurantId}/inventory/products/${selectedProduct.id}/receive`,
+                      `/api/restaurants/${restaurantId}/inventory/general-stock/${selectedGeneralStock.id}/receive`,
                       {
                         method: 'POST',
                         body: JSON.stringify({
-                          quantity: parseFloat(productQuantity),
-                          notes: productNotes
+                          quantity: parseFloat(generalStockQuantity),
+                          notes: generalStockNotes
                         })
                       }
                     );
                     if (response.success) {
-                      setShowProductReceiveModal(false);
+                      setShowGeneralStockReceiveModal(false);
                       fetchData();
                     }
                   } catch (error) {
-                    console.error('Failed to receive product:', error);
+                    console.error('Failed to receive general stock:', error);
                   }
                 }}
-                disabled={!productQuantity || parseFloat(productQuantity) <= 0}
+                disabled={!generalStockQuantity || parseFloat(generalStockQuantity) <= 0}
               >
                 Receive
-              </ModalButton>
-            </ButtonGroup>
-          </>
-        )}
-      </Modal>
-
-      {/* Product Adjust Modal */}
-      <Modal
-        isOpen={showProductAdjustModal}
-        onClose={() => setShowProductAdjustModal(false)}
-        title={`Adjust Stock: ${selectedProduct?.name || ''}`}
-        size="small"
-      >
-        {selectedProduct && (
-          <>
-            <div style={{ marginBottom: '16px', padding: '12px', background: '#F9FAFB', borderRadius: '8px' }}>
-              <div style={{ fontSize: '13px', color: '#6B7280' }}>Current Stock</div>
-              <div style={{ fontSize: '18px', fontWeight: 600, color: '#0A2540' }}>
-                {selectedProduct.current_stock} {selectedProduct.stock_unit}
-              </div>
-            </div>
-            <UIFormGroup>
-              <FormLabel>Adjustment Quantity *</FormLabel>
-              <FormInput
-                type="number"
-                step="0.01"
-                value={productQuantity}
-                onChange={(e) => setProductQuantity(e.target.value)}
-                placeholder="Enter quantity (negative to reduce)"
-              />
-              <div style={{ fontSize: '12px', color: '#8898AA', marginTop: '4px' }}>
-                Use negative value to reduce stock (e.g., -5 for waste/damage)
-              </div>
-            </UIFormGroup>
-            <UIFormGroup>
-              <FormLabel>Reason / Notes</FormLabel>
-              <FormInput
-                value={productNotes}
-                onChange={(e) => setProductNotes(e.target.value)}
-                placeholder="e.g., Damaged, Expired, Correction"
-              />
-            </UIFormGroup>
-            <ButtonGroup>
-              <ModalButton variant="secondary" onClick={() => setShowProductAdjustModal(false)}>
-                Cancel
-              </ModalButton>
-              <ModalButton
-                variant="primary"
-                onClick={async () => {
-                  if (!productQuantity) return;
-                  try {
-                    const response = await authFetch(
-                      `/api/restaurants/${restaurantId}/inventory/products/${selectedProduct.id}/adjust`,
-                      {
-                        method: 'POST',
-                        body: JSON.stringify({
-                          quantity: parseFloat(productQuantity),
-                          reason: productNotes,
-                          notes: productNotes
-                        })
-                      }
-                    );
-                    if (response.success) {
-                      setShowProductAdjustModal(false);
-                      fetchData();
-                    }
-                  } catch (error) {
-                    console.error('Failed to adjust product:', error);
-                  }
-                }}
-                disabled={!productQuantity}
-              >
-                Adjust
               </ModalButton>
             </ButtonGroup>
           </>
