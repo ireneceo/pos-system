@@ -489,7 +489,6 @@ const InventoryPage: React.FC = () => {
       }));
 
     if (itemsToSave.length === 0) {
-      alert('Please enter quantity for at least one item');
       return;
     }
 
