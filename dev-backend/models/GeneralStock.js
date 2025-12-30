@@ -45,6 +45,11 @@ const GeneralStock = database.sequelize.define('GeneralStock', {
     defaultValue: 0,
     comment: 'Minimum stock level for alerts'
   },
+  min_order: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0,
+    comment: 'Minimum order quantity from supplier'
+  },
   supplier_id: {
     type: DataTypes.INTEGER,
     allowNull: true,

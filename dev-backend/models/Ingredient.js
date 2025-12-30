@@ -87,6 +87,11 @@ Ingredient.init({
     defaultValue: 0,
     comment: 'Minimum stock level'
   },
+  min_order: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0,
+    comment: 'Minimum order quantity from supplier'
+  },
   current_stock: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 0,

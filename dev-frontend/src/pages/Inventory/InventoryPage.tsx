@@ -427,6 +427,92 @@ const OrderButton = styled.button`
   }
 `;
 
+const SearchableSelectContainer = styled.div`
+  position: relative;
+`;
+
+const SearchableSelectInput = styled.input`
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+
+  &:focus {
+    border-color: #635BFF;
+    box-shadow: 0 0 0 2px rgba(99, 91, 255, 0.1);
+  }
+`;
+
+const SearchableSelectDropdown = styled.div`
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  margin-top: 4px;
+`;
+
+const SearchableSelectOption = styled.div<{ selected?: boolean }>`
+  padding: 10px 12px;
+  cursor: pointer;
+  background: ${props => props.selected ? '#F0F4FF' : 'white'};
+  color: ${props => props.selected ? '#635BFF' : '#0A2540'};
+
+  &:hover {
+    background: #F3F4F6;
+  }
+`;
+
+const DeleteButton = styled.button`
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: 1px solid #FEE2E2;
+  background: #FEF2F2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: #DC2626;
+
+  &:hover {
+    background: #FEE2E2;
+    border-color: #FECACA;
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+`;
+
+const EditButton = styled.button`
+  padding: 6px 12px;
+  background: #F3F4F6;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7280;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: #E5E7EB;
+    color: #0A2540;
+    border-color: #D1D5DB;
+  }
+`;
+
 const InventoryPage: React.FC = () => {
   const { user } = useAuth();
   const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
@@ -496,13 +582,59 @@ const InventoryPage: React.FC = () => {
     name: '',
     stock_unit: 'piece',
     unit_cost: '',
-    category: 'Supplies',
+    category: '',
     current_stock: '',
     min_stock: '',
+    min_order: '',
     supplier_id: ''
   });
   const [savingGeneralStock, setSavingGeneralStock] = useState(false);
   const [suppliers, setSuppliers] = useState<{id: number; name: string}[]>([]);
+  const [generalStockCategories, setGeneralStockCategories] = useState<{id: number; name: string; emoji?: string}[]>([]);
+  const [unitSearchTerm, setUnitSearchTerm] = useState('');
+  const [showUnitDropdown, setShowUnitDropdown] = useState(false);
+
+  // Edit General Stock Modal
+  const [showEditGeneralStockModal, setShowEditGeneralStockModal] = useState(false);
+  const [editingGeneralStock, setEditingGeneralStock] = useState<GeneralStockItem | null>(null);
+
+  // Delete confirmation modal
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{type: 'ingredient' | 'general_stock'; id: number; name: string} | null>(null);
+
+  // Unit options - comprehensive list
+  const unitOptions = [
+    { value: 'piece', label: 'Piece' },
+    { value: 'box', label: 'Box' },
+    { value: 'pack', label: 'Pack' },
+    { value: 'roll', label: 'Roll' },
+    { value: 'bag', label: 'Bag' },
+    { value: 'set', label: 'Set' },
+    { value: 'bundle', label: 'Bundle' },
+    { value: 'case', label: 'Case' },
+    { value: 'carton', label: 'Carton' },
+    { value: 'pallet', label: 'Pallet' },
+    { value: 'bottle', label: 'Bottle' },
+    { value: 'can', label: 'Can' },
+    { value: 'jar', label: 'Jar' },
+    { value: 'tube', label: 'Tube' },
+    { value: 'container', label: 'Container' },
+    { value: 'kg', label: 'Kilogram (kg)' },
+    { value: 'g', label: 'Gram (g)' },
+    { value: 'L', label: 'Liter (L)' },
+    { value: 'ml', label: 'Milliliter (ml)' },
+    { value: 'm', label: 'Meter (m)' },
+    { value: 'cm', label: 'Centimeter (cm)' },
+    { value: 'pair', label: 'Pair' },
+    { value: 'dozen', label: 'Dozen' },
+    { value: 'sheet', label: 'Sheet' },
+    { value: 'ream', label: 'Ream' }
+  ];
+
+  const filteredUnitOptions = unitOptions.filter(opt =>
+    opt.label.toLowerCase().includes(unitSearchTerm.toLowerCase()) ||
+    opt.value.toLowerCase().includes(unitSearchTerm.toLowerCase())
+  );
 
   // Inline editing for stock
   const [editingStockId, setEditingStockId] = useState<number | null>(null);
@@ -572,6 +704,20 @@ const InventoryPage: React.FC = () => {
         if (suppliersRes.success) setSuppliers(suppliersRes.data || []);
       } catch {
         setSuppliers([]);
+      }
+
+      // General stock 카테고리 가져오기
+      try {
+        const categoriesRes = await authFetch(`/api/restaurants/${restaurantId}/general-stock-categories`);
+        if (categoriesRes.success) {
+          const allCategories = [
+            ...(categoriesRes.data.brand_categories || []),
+            ...(categoriesRes.data.own_categories || [])
+          ];
+          setGeneralStockCategories(allCategories);
+        }
+      } catch {
+        setGeneralStockCategories([]);
       }
     } catch (error) {
       console.error('Failed to fetch inventory data:', error);
@@ -1293,11 +1439,30 @@ const InventoryPage: React.FC = () => {
                           <OrderButton onClick={() => handleOrderClick(item.id)}>
                             Order
                           </OrderButton>
-                          <SettingsButton onClick={() => {
-                            alert('Settings for general stock - coming soon');
+                          <EditButton onClick={() => {
+                            setEditingGeneralStock(item);
+                            setGeneralStockForm({
+                              name: item.name,
+                              stock_unit: item.stock_unit || item.unit,
+                              unit_cost: item.unit_cost.toString(),
+                              category: item.category,
+                              current_stock: item.current_stock.toString(),
+                              min_stock: item.min_stock.toString(),
+                              min_order: ((item as any).min_order || 0).toString(),
+                              supplier_id: item.supplier_id?.toString() || ''
+                            });
+                            setShowEditGeneralStockModal(true);
                           }}>
-                            Settings
-                          </SettingsButton>
+                            Edit
+                          </EditButton>
+                          <DeleteButton onClick={() => {
+                            setDeleteTarget({ type: 'general_stock', id: item.id, name: item.name });
+                            setShowDeleteConfirmModal(true);
+                          }}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M18 6L6 18M6 6l12 12" />
+                            </svg>
+                          </DeleteButton>
                         </ActionButtons>
                       </InventoryTableRow>
                     ))}
@@ -1420,6 +1585,14 @@ const InventoryPage: React.FC = () => {
                         <SettingsButton onClick={() => openSettingsModal(item)}>
                           Settings
                         </SettingsButton>
+                        <DeleteButton onClick={() => {
+                          setDeleteTarget({ type: 'ingredient', id: item.id, name: item.name });
+                          setShowDeleteConfirmModal(true);
+                        }}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M18 6L6 18M6 6l12 12" />
+                          </svg>
+                        </DeleteButton>
                       </ActionButtons>
                     </InventoryTableRow>
                   ))}
@@ -1823,7 +1996,7 @@ const InventoryPage: React.FC = () => {
       {/* Add General Stock Modal */}
       <Modal
         isOpen={showAddGeneralStockModal}
-        onClose={() => setShowAddGeneralStockModal(false)}
+        onClose={() => { setShowAddGeneralStockModal(false); setShowUnitDropdown(false); }}
         title="Add General Stock"
         size="medium"
       >
@@ -1839,18 +2012,41 @@ const InventoryPage: React.FC = () => {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <UIFormGroup>
             <FormLabel>Unit *</FormLabel>
-            <FilterSelect
-              value={generalStockForm.stock_unit}
-              onChange={(e) => setGeneralStockForm({ ...generalStockForm, stock_unit: e.target.value })}
-              style={{ width: '100%' }}
-            >
-              <option value="piece">Piece</option>
-              <option value="box">Box</option>
-              <option value="pack">Pack</option>
-              <option value="roll">Roll</option>
-              <option value="bag">Bag</option>
-              <option value="set">Set</option>
-            </FilterSelect>
+            <SearchableSelectContainer>
+              <SearchableSelectInput
+                type="text"
+                value={showUnitDropdown ? unitSearchTerm : (unitOptions.find(u => u.value === generalStockForm.stock_unit)?.label || generalStockForm.stock_unit)}
+                onChange={(e) => { setUnitSearchTerm(e.target.value); setShowUnitDropdown(true); }}
+                onFocus={() => { setShowUnitDropdown(true); setUnitSearchTerm(''); }}
+                onBlur={() => setTimeout(() => setShowUnitDropdown(false), 200)}
+                placeholder="Search unit..."
+              />
+              {showUnitDropdown && (
+                <SearchableSelectDropdown>
+                  {filteredUnitOptions.map(opt => (
+                    <SearchableSelectOption
+                      key={opt.value}
+                      selected={generalStockForm.stock_unit === opt.value}
+                      onClick={() => {
+                        setGeneralStockForm({ ...generalStockForm, stock_unit: opt.value });
+                        setShowUnitDropdown(false);
+                        setUnitSearchTerm('');
+                      }}
+                    >
+                      {opt.label}
+                    </SearchableSelectOption>
+                  ))}
+                  {filteredUnitOptions.length === 0 && (
+                    <SearchableSelectOption onClick={() => {
+                      setGeneralStockForm({ ...generalStockForm, stock_unit: unitSearchTerm });
+                      setShowUnitDropdown(false);
+                    }}>
+                      Use "{unitSearchTerm}"
+                    </SearchableSelectOption>
+                  )}
+                </SearchableSelectDropdown>
+              )}
+            </SearchableSelectContainer>
           </UIFormGroup>
           <UIFormGroup>
             <FormLabel>Category</FormLabel>
@@ -1859,11 +2055,20 @@ const InventoryPage: React.FC = () => {
               onChange={(e) => setGeneralStockForm({ ...generalStockForm, category: e.target.value })}
               style={{ width: '100%' }}
             >
-              <option value="Supplies">Supplies</option>
-              <option value="Packaging">Packaging</option>
-              <option value="Cleaning">Cleaning</option>
-              <option value="Equipment">Equipment</option>
-              <option value="Other">Other</option>
+              <option value="">Select Category</option>
+              {generalStockCategories.length > 0 ? (
+                generalStockCategories.map(cat => (
+                  <option key={cat.id} value={cat.name}>{cat.emoji ? `${cat.emoji} ` : ''}{cat.name}</option>
+                ))
+              ) : (
+                <>
+                  <option value="Supplies">Supplies</option>
+                  <option value="Packaging">Packaging</option>
+                  <option value="Cleaning">Cleaning</option>
+                  <option value="Equipment">Equipment</option>
+                  <option value="Other">Other</option>
+                </>
+              )}
             </FilterSelect>
           </UIFormGroup>
         </div>
@@ -1880,7 +2085,7 @@ const InventoryPage: React.FC = () => {
             ))}
           </FilterSelect>
         </UIFormGroup>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px' }}>
           <UIFormGroup>
             <FormLabel>Unit Cost</FormLabel>
             <FormInput
@@ -1914,9 +2119,20 @@ const InventoryPage: React.FC = () => {
               placeholder="0"
             />
           </UIFormGroup>
+          <UIFormGroup>
+            <FormLabel>Min Order</FormLabel>
+            <FormInput
+              type="number"
+              step="0.01"
+              min="0"
+              value={generalStockForm.min_order}
+              onChange={(e) => setGeneralStockForm({ ...generalStockForm, min_order: e.target.value })}
+              placeholder="0"
+            />
+          </UIFormGroup>
         </div>
         <ButtonGroup>
-          <ModalButton variant="secondary" onClick={() => setShowAddGeneralStockModal(false)}>
+          <ModalButton variant="secondary" onClick={() => { setShowAddGeneralStockModal(false); setShowUnitDropdown(false); }}>
             Cancel
           </ModalButton>
           <ModalButton
@@ -1931,9 +2147,10 @@ const InventoryPage: React.FC = () => {
                     name: generalStockForm.name,
                     stock_unit: generalStockForm.stock_unit,
                     unit_cost: parseFloat(generalStockForm.unit_cost) || 0,
-                    category: generalStockForm.category,
+                    category: generalStockForm.category || 'Other',
                     current_stock: parseFloat(generalStockForm.current_stock) || 0,
                     min_stock: parseFloat(generalStockForm.min_stock) || 0,
+                    min_order: parseFloat(generalStockForm.min_order) || 0,
                     supplier_id: generalStockForm.supplier_id ? parseInt(generalStockForm.supplier_id) : null
                   })
                 });
@@ -1943,9 +2160,10 @@ const InventoryPage: React.FC = () => {
                     name: '',
                     stock_unit: 'piece',
                     unit_cost: '',
-                    category: 'Supplies',
+                    category: '',
                     current_stock: '',
                     min_stock: '',
+                    min_order: '',
                     supplier_id: ''
                   });
                   fetchData();
@@ -1961,6 +2179,264 @@ const InventoryPage: React.FC = () => {
             {savingGeneralStock ? 'Adding...' : 'Add Item'}
           </ModalButton>
         </ButtonGroup>
+      </Modal>
+
+      {/* Edit General Stock Modal */}
+      <Modal
+        isOpen={showEditGeneralStockModal}
+        onClose={() => { setShowEditGeneralStockModal(false); setEditingGeneralStock(null); }}
+        title="Edit General Stock"
+        size="medium"
+      >
+        <UIFormGroup>
+          <FormLabel>Item Name *</FormLabel>
+          <FormInput
+            type="text"
+            value={generalStockForm.name}
+            onChange={(e) => setGeneralStockForm({ ...generalStockForm, name: e.target.value })}
+            placeholder="e.g., Takeaway Containers"
+          />
+        </UIFormGroup>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <UIFormGroup>
+            <FormLabel>Unit *</FormLabel>
+            <SearchableSelectContainer>
+              <SearchableSelectInput
+                type="text"
+                value={showUnitDropdown ? unitSearchTerm : (unitOptions.find(u => u.value === generalStockForm.stock_unit)?.label || generalStockForm.stock_unit)}
+                onChange={(e) => { setUnitSearchTerm(e.target.value); setShowUnitDropdown(true); }}
+                onFocus={() => { setShowUnitDropdown(true); setUnitSearchTerm(''); }}
+                onBlur={() => setTimeout(() => setShowUnitDropdown(false), 200)}
+                placeholder="Search unit..."
+              />
+              {showUnitDropdown && (
+                <SearchableSelectDropdown>
+                  {filteredUnitOptions.map(opt => (
+                    <SearchableSelectOption
+                      key={opt.value}
+                      selected={generalStockForm.stock_unit === opt.value}
+                      onClick={() => {
+                        setGeneralStockForm({ ...generalStockForm, stock_unit: opt.value });
+                        setShowUnitDropdown(false);
+                        setUnitSearchTerm('');
+                      }}
+                    >
+                      {opt.label}
+                    </SearchableSelectOption>
+                  ))}
+                  {filteredUnitOptions.length === 0 && (
+                    <SearchableSelectOption onClick={() => {
+                      setGeneralStockForm({ ...generalStockForm, stock_unit: unitSearchTerm });
+                      setShowUnitDropdown(false);
+                    }}>
+                      Use "{unitSearchTerm}"
+                    </SearchableSelectOption>
+                  )}
+                </SearchableSelectDropdown>
+              )}
+            </SearchableSelectContainer>
+          </UIFormGroup>
+          <UIFormGroup>
+            <FormLabel>Category</FormLabel>
+            <FilterSelect
+              value={generalStockForm.category}
+              onChange={(e) => setGeneralStockForm({ ...generalStockForm, category: e.target.value })}
+              style={{ width: '100%' }}
+            >
+              <option value="">Select Category</option>
+              {generalStockCategories.length > 0 ? (
+                generalStockCategories.map(cat => (
+                  <option key={cat.id} value={cat.name}>{cat.emoji ? `${cat.emoji} ` : ''}{cat.name}</option>
+                ))
+              ) : (
+                <>
+                  <option value="Supplies">Supplies</option>
+                  <option value="Packaging">Packaging</option>
+                  <option value="Cleaning">Cleaning</option>
+                  <option value="Equipment">Equipment</option>
+                  <option value="Other">Other</option>
+                </>
+              )}
+            </FilterSelect>
+          </UIFormGroup>
+        </div>
+        <UIFormGroup>
+          <FormLabel>Supplier</FormLabel>
+          <FilterSelect
+            value={generalStockForm.supplier_id}
+            onChange={(e) => setGeneralStockForm({ ...generalStockForm, supplier_id: e.target.value })}
+            style={{ width: '100%' }}
+          >
+            <option value="">Select Supplier (Optional)</option>
+            {suppliers.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </FilterSelect>
+        </UIFormGroup>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px' }}>
+          <UIFormGroup>
+            <FormLabel>Unit Cost</FormLabel>
+            <FormInput
+              type="number"
+              step="0.01"
+              min="0"
+              value={generalStockForm.unit_cost}
+              onChange={(e) => setGeneralStockForm({ ...generalStockForm, unit_cost: e.target.value })}
+              placeholder="0.00"
+            />
+          </UIFormGroup>
+          <UIFormGroup>
+            <FormLabel>Current Stock</FormLabel>
+            <FormInput
+              type="number"
+              step="0.01"
+              min="0"
+              value={generalStockForm.current_stock}
+              onChange={(e) => setGeneralStockForm({ ...generalStockForm, current_stock: e.target.value })}
+              placeholder="0"
+            />
+          </UIFormGroup>
+          <UIFormGroup>
+            <FormLabel>Min Stock</FormLabel>
+            <FormInput
+              type="number"
+              step="0.01"
+              min="0"
+              value={generalStockForm.min_stock}
+              onChange={(e) => setGeneralStockForm({ ...generalStockForm, min_stock: e.target.value })}
+              placeholder="0"
+            />
+          </UIFormGroup>
+          <UIFormGroup>
+            <FormLabel>Min Order</FormLabel>
+            <FormInput
+              type="number"
+              step="0.01"
+              min="0"
+              value={generalStockForm.min_order}
+              onChange={(e) => setGeneralStockForm({ ...generalStockForm, min_order: e.target.value })}
+              placeholder="0"
+            />
+          </UIFormGroup>
+        </div>
+        <ButtonGroup>
+          <ModalButton variant="secondary" onClick={() => { setShowEditGeneralStockModal(false); setEditingGeneralStock(null); }}>
+            Cancel
+          </ModalButton>
+          <ModalButton
+            variant="primary"
+            onClick={async () => {
+              if (!generalStockForm.name.trim() || !editingGeneralStock) return;
+              try {
+                setSavingGeneralStock(true);
+                const response = await authFetch(`/api/restaurants/${restaurantId}/inventory/general-stock/${editingGeneralStock.id}`, {
+                  method: 'PUT',
+                  body: JSON.stringify({
+                    name: generalStockForm.name,
+                    stock_unit: generalStockForm.stock_unit,
+                    unit_cost: parseFloat(generalStockForm.unit_cost) || 0,
+                    category: generalStockForm.category || 'Other',
+                    current_stock: parseFloat(generalStockForm.current_stock) || 0,
+                    min_stock: parseFloat(generalStockForm.min_stock) || 0,
+                    min_order: parseFloat(generalStockForm.min_order) || 0,
+                    supplier_id: generalStockForm.supplier_id ? parseInt(generalStockForm.supplier_id) : null
+                  })
+                });
+                if (response.success) {
+                  setShowEditGeneralStockModal(false);
+                  setEditingGeneralStock(null);
+                  setGeneralStockForm({
+                    name: '',
+                    stock_unit: 'piece',
+                    unit_cost: '',
+                    category: '',
+                    current_stock: '',
+                    min_stock: '',
+                    min_order: '',
+                    supplier_id: ''
+                  });
+                  fetchData();
+                }
+              } catch (error) {
+                console.error('Failed to update general stock:', error);
+              } finally {
+                setSavingGeneralStock(false);
+              }
+            }}
+            disabled={savingGeneralStock || !generalStockForm.name.trim()}
+          >
+            {savingGeneralStock ? 'Saving...' : 'Save Changes'}
+          </ModalButton>
+        </ButtonGroup>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteConfirmModal}
+        onClose={() => { setShowDeleteConfirmModal(false); setDeleteTarget(null); }}
+        title="Unlink from Inventory"
+        size="small"
+      >
+        {deleteTarget && (
+          <>
+            <div style={{ padding: '16px 0', textAlign: 'center' }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>
+                {deleteTarget.type === 'ingredient' ? '🥬' : '📦'}
+              </div>
+              <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', color: '#0A2540' }}>
+                {deleteTarget.name}
+              </div>
+              <div style={{ fontSize: '14px', color: '#6B7280' }}>
+                {deleteTarget.type === 'ingredient'
+                  ? 'This will unlink the ingredient from inventory tracking. The ingredient itself will not be deleted from the Recipes page.'
+                  : 'This will permanently delete this general stock item.'}
+              </div>
+            </div>
+            <ButtonGroup>
+              <ModalButton variant="secondary" onClick={() => { setShowDeleteConfirmModal(false); setDeleteTarget(null); }}>
+                Cancel
+              </ModalButton>
+              <ModalButton
+                variant="primary"
+                onClick={async () => {
+                  try {
+                    if (deleteTarget.type === 'ingredient') {
+                      // For ingredients, we just remove from inventory tracking (unlink)
+                      // This doesn't delete the ingredient, just resets its stock
+                      const response = await authFetch(`/api/restaurants/${restaurantId}/inventory/adjust`, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                          ingredient_id: deleteTarget.id,
+                          new_quantity: 0,
+                          reason: 'Unlinked from inventory'
+                        })
+                      });
+                      if (response.success) {
+                        // Update local state
+                        setInventory(prev => prev.filter(item => item.id !== deleteTarget.id));
+                      }
+                    } else {
+                      // For general stock, actually delete
+                      const response = await authFetch(`/api/restaurants/${restaurantId}/inventory/general-stock/${deleteTarget.id}`, {
+                        method: 'DELETE'
+                      });
+                      if (response.success) {
+                        setGeneralStockInventory(prev => prev.filter(item => item.id !== deleteTarget.id));
+                      }
+                    }
+                    setShowDeleteConfirmModal(false);
+                    setDeleteTarget(null);
+                  } catch (error) {
+                    console.error('Failed to delete:', error);
+                  }
+                }}
+                style={{ background: '#DC2626' }}
+              >
+                {deleteTarget.type === 'ingredient' ? 'Unlink' : 'Delete'}
+              </ModalButton>
+            </ButtonGroup>
+          </>
+        )}
       </Modal>
     </MainLayout>
   );
