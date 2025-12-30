@@ -93,6 +93,213 @@ router.get('/restaurants/:restaurantId/inventory', async (req, res) => {
   }
 });
 
+// GET /api/restaurants/:restaurantId/inventory/products - 상품 재고 현황
+router.get('/restaurants/:restaurantId/inventory/products', async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const { category, status, search } = req.query;
+
+    const whereClause = {
+      restaurant_id: restaurantId,
+      track_stock: true
+    };
+
+    if (category) {
+      whereClause.category = category;
+    }
+
+    if (search) {
+      whereClause.name = { [Op.like]: `%${search}%` };
+    }
+
+    let products = await Product.findAll({
+      where: whereClause,
+      include: [{
+        model: Supplier,
+        as: 'supplier',
+        attributes: ['id', 'name', 'code', 'contact_name', 'phone'],
+        required: false
+      }],
+      order: [['name', 'ASC']]
+    });
+
+    // Add stock status
+    products = products.map(prod => {
+      const currentStock = parseFloat(prod.current_stock) || 0;
+      const minStock = parseFloat(prod.min_stock) || 0;
+
+      let stockStatus = 'normal';
+      if (currentStock <= 0) {
+        stockStatus = 'out_of_stock';
+      } else if (currentStock <= minStock) {
+        stockStatus = 'low_stock';
+      }
+
+      const prodData = prod.toJSON();
+      return {
+        ...prodData,
+        item_type: 'product',
+        stock_status: stockStatus,
+        supplier_name: prodData.supplier?.name || null
+      };
+    });
+
+    // Filter by status if provided
+    if (status) {
+      products = products.filter(prod => prod.stock_status === status);
+    }
+
+    res.json({ success: true, data: products });
+  } catch (error) {
+    console.error('Get product inventory error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/restaurants/:restaurantId/inventory/products/:productId/receive - 상품 입고
+router.post('/restaurants/:restaurantId/inventory/products/:productId/receive', async (req, res) => {
+  try {
+    const { restaurantId, productId } = req.params;
+    const { quantity, notes, supplier_id, unit_cost } = req.body;
+
+    const product = await Product.findOne({
+      where: { id: productId, restaurant_id: restaurantId }
+    });
+
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    const currentStock = parseFloat(product.current_stock) || 0;
+    const newStock = currentStock + parseFloat(quantity);
+
+    const updateData = {
+      current_stock: newStock,
+      track_stock: true
+    };
+
+    if (supplier_id) {
+      updateData.supplier_id = supplier_id;
+    }
+
+    if (unit_cost) {
+      updateData.unit_cost = unit_cost;
+    }
+
+    await product.update(updateData);
+
+    // Update soldOut status based on stock
+    if (newStock > 0 && product.soldOut) {
+      await product.update({ soldOut: false });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        id: product.id,
+        name: product.name,
+        previous_stock: currentStock,
+        added_quantity: parseFloat(quantity),
+        current_stock: newStock
+      }
+    });
+  } catch (error) {
+    console.error('Product receive error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/restaurants/:restaurantId/inventory/products/:productId/adjust - 상품 재고 조정
+router.post('/restaurants/:restaurantId/inventory/products/:productId/adjust', async (req, res) => {
+  try {
+    const { restaurantId, productId } = req.params;
+    const { quantity, reason, notes } = req.body;
+
+    const product = await Product.findOne({
+      where: { id: productId, restaurant_id: restaurantId }
+    });
+
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    const currentStock = parseFloat(product.current_stock) || 0;
+    const adjustmentQty = parseFloat(quantity);
+    const newStock = Math.max(0, currentStock + adjustmentQty);
+
+    await product.update({
+      current_stock: newStock,
+      track_stock: true
+    });
+
+    // Update soldOut status based on stock
+    if (newStock <= 0 && !product.soldOut) {
+      await product.update({ soldOut: true });
+    } else if (newStock > 0 && product.soldOut) {
+      await product.update({ soldOut: false });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        id: product.id,
+        name: product.name,
+        previous_stock: currentStock,
+        adjustment: adjustmentQty,
+        current_stock: newStock,
+        reason: reason || 'adjustment'
+      }
+    });
+  } catch (error) {
+    console.error('Product adjust error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// PUT /api/restaurants/:restaurantId/inventory/products/:productId/settings - 상품 재고 설정
+router.put('/restaurants/:restaurantId/inventory/products/:productId/settings', async (req, res) => {
+  try {
+    const { restaurantId, productId } = req.params;
+    const { track_stock, min_stock, stock_unit, supplier_id, unit_cost } = req.body;
+
+    const product = await Product.findOne({
+      where: { id: productId, restaurant_id: restaurantId }
+    });
+
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    const updateData = {};
+
+    if (track_stock !== undefined) {
+      updateData.track_stock = track_stock;
+    }
+    if (min_stock !== undefined) {
+      updateData.min_stock = min_stock;
+    }
+    if (stock_unit !== undefined) {
+      updateData.stock_unit = stock_unit;
+    }
+    if (supplier_id !== undefined) {
+      updateData.supplier_id = supplier_id;
+    }
+    if (unit_cost !== undefined) {
+      updateData.unit_cost = unit_cost;
+    }
+
+    await product.update(updateData);
+
+    res.json({
+      success: true,
+      data: product
+    });
+  } catch (error) {
+    console.error('Product settings error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // GET /api/restaurants/:restaurantId/inventory/summary - 요약
 router.get('/restaurants/:restaurantId/inventory/summary', async (req, res) => {
   try {

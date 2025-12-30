@@ -260,6 +260,10 @@ SupplierBrand.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
 Ingredient.belongsTo(Supplier, { foreignKey: 'supplier_id', as: 'supplier' });
 Supplier.hasMany(Ingredient, { foreignKey: 'supplier_id', as: 'ingredients' });
 
+// Product - Supplier association (for product inventory)
+Product.belongsTo(Supplier, { foreignKey: 'supplier_id', as: 'supplier' });
+Supplier.hasMany(Product, { foreignKey: 'supplier_id', as: 'products' });
+
 // SupplierCategory associations
 SupplierCategory.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
 Brand.hasMany(SupplierCategory, { foreignKey: 'brand_id', as: 'supplierCategories' });

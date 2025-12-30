@@ -113,6 +113,23 @@ interface ExpiringItem {
   urgency: 'expired' | 'critical' | 'warning' | 'normal';
 }
 
+interface ProductStock {
+  id: number;
+  name: string;
+  price: number;
+  category: string;
+  track_stock: boolean;
+  current_stock: number;
+  min_stock: number;
+  stock_unit: string;
+  unit_cost: number;
+  supplier_id: number | null;
+  supplier_name: string | null;
+  last_stock_take_at: string | null;
+  stock_status: 'normal' | 'low_stock' | 'out_of_stock';
+  soldOut: boolean;
+}
+
 // Styled Components - 최소한의 페이지 전용 스타일만 정의
 const InfoBox = styled.div`
   background: #F0F4FF;
@@ -370,6 +387,17 @@ const InventoryPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
+  // Product inventory
+  const [productInventory, setProductInventory] = useState<ProductStock[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<ProductStock | null>(null);
+  const [showProductReceiveModal, setShowProductReceiveModal] = useState(false);
+  const [showProductAdjustModal, setShowProductAdjustModal] = useState(false);
+  const [productQuantity, setProductQuantity] = useState('');
+  const [productNotes, setProductNotes] = useState('');
+
+  // Stock list type filter (ingredients or products)
+  const [stockTypeFilter, setStockTypeFilter] = useState<'all' | 'ingredients' | 'products'>('all');
+
   // Modals
   const [showReceiveModal, setShowReceiveModal] = useState(false);
   const [showWasteModal, setShowWasteModal] = useState(false);
@@ -442,12 +470,13 @@ const InventoryPage: React.FC = () => {
     try {
       setLoading(true);
 
-      const [summaryRes, inventoryRes, alertsRes, suggestionsRes, expiringRes] = await Promise.all([
+      const [summaryRes, inventoryRes, alertsRes, suggestionsRes, expiringRes, productsRes] = await Promise.all([
         authFetch(`/api/restaurants/${restaurantId}/inventory/summary`),
         authFetch(`/api/restaurants/${restaurantId}/inventory`),
         authFetch(`/api/restaurants/${restaurantId}/inventory/alerts?resolved=false`),
         authFetch(`/api/restaurants/${restaurantId}/inventory/reorder-suggestions`),
-        authFetch(`/api/restaurants/${restaurantId}/inventory/expiring?days=14`)
+        authFetch(`/api/restaurants/${restaurantId}/inventory/expiring?days=14`),
+        authFetch(`/api/restaurants/${restaurantId}/inventory/products`)
       ]);
 
       if (summaryRes.success) setSummary(summaryRes.data);
@@ -455,6 +484,7 @@ const InventoryPage: React.FC = () => {
       if (alertsRes.success) setAlerts(alertsRes.data);
       if (suggestionsRes.success) setSuggestions(suggestionsRes.data);
       if (expiringRes.success) setExpiringItems(expiringRes.data);
+      if (productsRes.success) setProductInventory(productsRes.data || []);
     } catch (error) {
       console.error('Failed to fetch inventory data:', error);
     } finally {
@@ -919,9 +949,18 @@ const InventoryPage: React.FC = () => {
           ) : activeTab === 'list' ? (
             <>
               <FilterBar>
+                <FilterSelect
+                  value={stockTypeFilter}
+                  onChange={(e) => setStockTypeFilter(e.target.value as 'all' | 'ingredients' | 'products')}
+                  style={{ minWidth: '140px' }}
+                >
+                  <option value="all">All Items</option>
+                  <option value="ingredients">Ingredients</option>
+                  <option value="products">Products</option>
+                </FilterSelect>
                 <SearchInput
                   type="text"
-                  placeholder="Search ingredients..."
+                  placeholder="Search..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -936,26 +975,127 @@ const InventoryPage: React.FC = () => {
                 </FilterSelect>
               </FilterBar>
 
-              {filteredInventory.length === 0 ? (
-                <EmptyState>
-                  <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
-                    {inventory.length === 0 ? 'No ingredients found' : 'No matching ingredients'}
-                  </div>
-                  <div style={{ fontSize: '14px', marginBottom: '16px' }}>
-                    {inventory.length === 0
-                      ? 'Add ingredients in the Ingredients page first.'
-                      : 'Try adjusting your search or filter.'}
-                  </div>
-                  {inventory.length === 0 && (
-                    <Button
-                      variant="primary"
-                      onClick={() => window.location.href = `/restaurant/${restaurantId}/recipe-management?tab=ingredients`}
-                    >
-                      Go to Ingredients
-                    </Button>
-                  )}
-                </EmptyState>
-              ) : (
+              {/* Show Products Section */}
+              {(stockTypeFilter === 'all' || stockTypeFilter === 'products') && productInventory.length > 0 && (
+                <>
+                  {stockTypeFilter === 'all' && <SectionTitle>Products ({productInventory.filter(p => {
+                    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
+                    const matchesStatus = statusFilter === 'all' || p.stock_status === statusFilter;
+                    return matchesSearch && matchesStatus;
+                  }).length})</SectionTitle>}
+                  <Table style={{ marginBottom: '24px' }}>
+                    <InventoryTableHeader columns="2fr 1fr 1fr 1fr 1fr 1fr 150px">
+                      <span>Product</span>
+                      <span>Status</span>
+                      <span>Current Stock</span>
+                      <span>Min Stock</span>
+                      <span>Unit Cost</span>
+                      <span>Supplier</span>
+                      <span>Actions</span>
+                    </InventoryTableHeader>
+                    {productInventory
+                      .filter(p => {
+                        const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
+                        const matchesStatus = statusFilter === 'all' || p.stock_status === statusFilter;
+                        return matchesSearch && matchesStatus;
+                      })
+                      .map(product => (
+                      <InventoryTableRow key={`product-${product.id}`} columns="2fr 1fr 1fr 1fr 1fr 1fr 150px">
+                        <MobileGrid>
+                          <MobileValue>
+                            <MobileLabel>Product</MobileLabel>
+                            <IngredientInfo>
+                              <IngredientName>{product.name}</IngredientName>
+                              <IngredientMeta>{product.category} • {formatCurrency(product.price, selectedCurrency)}</IngredientMeta>
+                            </IngredientInfo>
+                          </MobileValue>
+                          <MobileValue>
+                            <MobileLabel>Status</MobileLabel>
+                            <StatusBadge status={product.stock_status}>
+                              {getStatusLabel(product.stock_status)}
+                            </StatusBadge>
+                          </MobileValue>
+                          <MobileValue>
+                            <MobileLabel>Current Stock</MobileLabel>
+                            <div style={{ fontWeight: 600, color: '#0A2540' }}>
+                              {product.current_stock} {product.stock_unit}
+                            </div>
+                          </MobileValue>
+                          <MobileValue>
+                            <MobileLabel>Min Stock</MobileLabel>
+                            <div style={{ color: '#6B7280' }}>
+                              {product.min_stock} {product.stock_unit}
+                            </div>
+                          </MobileValue>
+                          <MobileValue>
+                            <MobileLabel>Unit Cost</MobileLabel>
+                            <div style={{ color: '#0A2540' }}>
+                              {formatCurrency(product.unit_cost, selectedCurrency)}
+                            </div>
+                          </MobileValue>
+                          <MobileValue>
+                            <MobileLabel>Supplier</MobileLabel>
+                            <div style={{ color: product.supplier_name ? '#0A2540' : '#9CA3AF', fontSize: '13px' }}>
+                              {product.supplier_name || '-'}
+                            </div>
+                          </MobileValue>
+                        </MobileGrid>
+                        <ActionButtons>
+                          <Button
+                            variant="primary"
+                            onClick={() => {
+                              setSelectedProduct(product);
+                              setProductQuantity('');
+                              setProductNotes('');
+                              setShowProductReceiveModal(true);
+                            }}
+                            style={{ padding: '6px 12px', fontSize: '13px' }}
+                          >
+                            Receive
+                          </Button>
+                          <Button
+                            variant="danger"
+                            onClick={() => {
+                              setSelectedProduct(product);
+                              setProductQuantity('');
+                              setProductNotes('');
+                              setShowProductAdjustModal(true);
+                            }}
+                            style={{ padding: '6px 12px', fontSize: '13px' }}
+                          >
+                            Adjust
+                          </Button>
+                        </ActionButtons>
+                      </InventoryTableRow>
+                    ))}
+                  </Table>
+                </>
+              )}
+
+              {/* Show Ingredients Section */}
+              {(stockTypeFilter === 'all' || stockTypeFilter === 'ingredients') && (
+                <>
+                  {stockTypeFilter === 'all' && <SectionTitle>Ingredients ({filteredInventory.length})</SectionTitle>}
+                  {filteredInventory.length === 0 ? (
+                    <EmptyState>
+                      <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
+                        {inventory.length === 0 ? 'No ingredients found' : 'No matching ingredients'}
+                      </div>
+                      <div style={{ fontSize: '14px', marginBottom: '16px' }}>
+                        {inventory.length === 0
+                          ? 'Add ingredients in the Ingredients page first.'
+                          : 'Try adjusting your search or filter.'}
+                      </div>
+                      {inventory.length === 0 && (
+                        <Button
+                          variant="primary"
+                          onClick={() => window.location.href = `/restaurant/${restaurantId}/recipe-management?tab=ingredients`}
+                        >
+                          Go to Ingredients
+                        </Button>
+                      )}
+                    </EmptyState>
+                  ) : (
                 <Table>
                   <InventoryTableHeader columns="2fr 1fr 1fr 1fr 1fr 1fr 1fr 180px">
                     <span>Ingredient</span>
@@ -1040,6 +1180,8 @@ const InventoryPage: React.FC = () => {
                   ))}
                 </Table>
               )}
+            </>
+          )}
             </>
           ) : (
             <TransactionHistory restaurantId={restaurantId} currency={selectedCurrency} />
@@ -1264,6 +1406,149 @@ const InventoryPage: React.FC = () => {
             {savingInitialStock ? 'Saving...' : 'Save Initial Stock'}
           </ModalButton>
         </ButtonGroup>
+      </Modal>
+
+      {/* Product Receive Modal */}
+      <Modal
+        isOpen={showProductReceiveModal}
+        onClose={() => setShowProductReceiveModal(false)}
+        title={`Receive Stock: ${selectedProduct?.name || ''}`}
+        size="small"
+      >
+        {selectedProduct && (
+          <>
+            <div style={{ marginBottom: '16px', padding: '12px', background: '#F9FAFB', borderRadius: '8px' }}>
+              <div style={{ fontSize: '13px', color: '#6B7280' }}>Current Stock</div>
+              <div style={{ fontSize: '18px', fontWeight: 600, color: '#0A2540' }}>
+                {selectedProduct.current_stock} {selectedProduct.stock_unit}
+              </div>
+            </div>
+            <UIFormGroup>
+              <FormLabel>Quantity to Add *</FormLabel>
+              <FormInput
+                type="number"
+                min="0"
+                step="0.01"
+                value={productQuantity}
+                onChange={(e) => setProductQuantity(e.target.value)}
+                placeholder="Enter quantity"
+              />
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>Notes (Optional)</FormLabel>
+              <FormInput
+                value={productNotes}
+                onChange={(e) => setProductNotes(e.target.value)}
+                placeholder="Enter notes"
+              />
+            </UIFormGroup>
+            <ButtonGroup>
+              <ModalButton variant="secondary" onClick={() => setShowProductReceiveModal(false)}>
+                Cancel
+              </ModalButton>
+              <ModalButton
+                variant="primary"
+                onClick={async () => {
+                  if (!productQuantity || parseFloat(productQuantity) <= 0) return;
+                  try {
+                    const response = await authFetch(
+                      `/api/restaurants/${restaurantId}/inventory/products/${selectedProduct.id}/receive`,
+                      {
+                        method: 'POST',
+                        body: JSON.stringify({
+                          quantity: parseFloat(productQuantity),
+                          notes: productNotes
+                        })
+                      }
+                    );
+                    if (response.success) {
+                      setShowProductReceiveModal(false);
+                      fetchData();
+                    }
+                  } catch (error) {
+                    console.error('Failed to receive product:', error);
+                  }
+                }}
+                disabled={!productQuantity || parseFloat(productQuantity) <= 0}
+              >
+                Receive
+              </ModalButton>
+            </ButtonGroup>
+          </>
+        )}
+      </Modal>
+
+      {/* Product Adjust Modal */}
+      <Modal
+        isOpen={showProductAdjustModal}
+        onClose={() => setShowProductAdjustModal(false)}
+        title={`Adjust Stock: ${selectedProduct?.name || ''}`}
+        size="small"
+      >
+        {selectedProduct && (
+          <>
+            <div style={{ marginBottom: '16px', padding: '12px', background: '#F9FAFB', borderRadius: '8px' }}>
+              <div style={{ fontSize: '13px', color: '#6B7280' }}>Current Stock</div>
+              <div style={{ fontSize: '18px', fontWeight: 600, color: '#0A2540' }}>
+                {selectedProduct.current_stock} {selectedProduct.stock_unit}
+              </div>
+            </div>
+            <UIFormGroup>
+              <FormLabel>Adjustment Quantity *</FormLabel>
+              <FormInput
+                type="number"
+                step="0.01"
+                value={productQuantity}
+                onChange={(e) => setProductQuantity(e.target.value)}
+                placeholder="Enter quantity (negative to reduce)"
+              />
+              <div style={{ fontSize: '12px', color: '#8898AA', marginTop: '4px' }}>
+                Use negative value to reduce stock (e.g., -5 for waste/damage)
+              </div>
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>Reason / Notes</FormLabel>
+              <FormInput
+                value={productNotes}
+                onChange={(e) => setProductNotes(e.target.value)}
+                placeholder="e.g., Damaged, Expired, Correction"
+              />
+            </UIFormGroup>
+            <ButtonGroup>
+              <ModalButton variant="secondary" onClick={() => setShowProductAdjustModal(false)}>
+                Cancel
+              </ModalButton>
+              <ModalButton
+                variant="primary"
+                onClick={async () => {
+                  if (!productQuantity) return;
+                  try {
+                    const response = await authFetch(
+                      `/api/restaurants/${restaurantId}/inventory/products/${selectedProduct.id}/adjust`,
+                      {
+                        method: 'POST',
+                        body: JSON.stringify({
+                          quantity: parseFloat(productQuantity),
+                          reason: productNotes,
+                          notes: productNotes
+                        })
+                      }
+                    );
+                    if (response.success) {
+                      setShowProductAdjustModal(false);
+                      fetchData();
+                    }
+                  } catch (error) {
+                    console.error('Failed to adjust product:', error);
+                  }
+                }}
+                disabled={!productQuantity}
+              >
+                Adjust
+              </ModalButton>
+            </ButtonGroup>
+          </>
+        )}
       </Modal>
 
       {/* Settings Modal */}
