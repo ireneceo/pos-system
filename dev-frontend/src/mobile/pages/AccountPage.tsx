@@ -281,7 +281,7 @@ const Input = styled.input`
   padding: 12px 16px;
   border: 1px solid #E5E7EB;
   border-radius: 10px;
-  font-size: 15px;
+  font-size: 16px; /* Prevent iOS zoom on focus */
   box-sizing: border-box;
   transition: border-color 0.2s;
 

@@ -364,12 +364,9 @@ const StockTakePage: React.FC = () => {
       if (response.success) {
         setCurrentStockTake(response.data);
         setLocalItems(response.data.items || []);
-      } else {
-        alert(response.message || 'Failed to start stock take');
       }
     } catch (error) {
       console.error('Failed to start stock take:', error);
-      alert('Failed to start stock take');
     } finally {
       setLoading(false);
     }
@@ -416,14 +413,9 @@ const StockTakePage: React.FC = () => {
         }
       );
 
-      if (response.success) {
-        alert('Progress saved');
-      } else {
-        alert(response.message || 'Failed to save progress');
-      }
+      // Progress saved silently
     } catch (error) {
       console.error('Failed to save progress:', error);
-      alert('Failed to save progress');
     } finally {
       setSaving(false);
     }
@@ -434,7 +426,6 @@ const StockTakePage: React.FC = () => {
 
     const uncountedItems = localItems.filter(item => item.actual_stock === null);
     if (uncountedItems.length > 0) {
-      alert(`Please count all items. ${uncountedItems.length} items remaining.`);
       return;
     }
 
@@ -468,14 +459,10 @@ const StockTakePage: React.FC = () => {
       );
 
       if (response.success) {
-        alert('Stock take completed successfully');
         fetchStockTakes();
-      } else {
-        alert(response.message || 'Failed to complete stock take');
       }
     } catch (error) {
       console.error('Failed to complete stock take:', error);
-      alert('Failed to complete stock take');
     } finally {
       setSaving(false);
     }
@@ -496,12 +483,9 @@ const StockTakePage: React.FC = () => {
 
       if (response.success) {
         fetchStockTakes();
-      } else {
-        alert(response.message || 'Failed to cancel stock take');
       }
     } catch (error) {
       console.error('Failed to cancel stock take:', error);
-      alert('Failed to cancel stock take');
     }
   };
 

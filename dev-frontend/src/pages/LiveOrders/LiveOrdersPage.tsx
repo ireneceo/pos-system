@@ -1860,7 +1860,6 @@ const LiveOrdersPage: React.FC = () => {
 
   const handleConfirmPayment = async () => {
     if (!selectedOrder) {
-      alert('No order selected');
       return;
     }
 
@@ -1881,6 +1880,7 @@ const LiveOrdersPage: React.FC = () => {
       }
 
       // 결제 완료 후 outstanding/awaiting_payment이면 pending으로 변경 (주방에 전송)
+      // payment_verification_pending 상태 (pay at counter)도 동일하게 처리
       if (selectedOrder.status === 'awaiting_payment' || selectedOrder.status === 'outstanding') {
         await fetch(`/api/orders/${selectedOrder.id}/status`, getFetchOptions({
           method: 'PATCH',
@@ -1894,7 +1894,6 @@ const LiveOrdersPage: React.FC = () => {
       fetchOrders(); // Refresh orders list
     } catch (error) {
       console.error('Error confirming payment:', error);
-      alert('Failed to confirm payment. Please try again.');
     }
   };
 
@@ -1933,7 +1932,6 @@ const LiveOrdersPage: React.FC = () => {
       fetchOrders(); // Refresh orders list
     } catch (error) {
       console.error('Error in quick confirm:', error);
-      alert('Failed to confirm payment. Please try again.');
     }
   };
 
@@ -2055,8 +2053,8 @@ const LiveOrdersPage: React.FC = () => {
       }
 
       // 결제 완료 후 상태 변경
-      if (orderForPayment.status === 'awaiting_payment') {
-        // awaiting_payment이면 pending으로 변경 (주방에 전송)
+      if (orderForPayment.status === 'awaiting_payment' || orderForPayment.status === 'outstanding') {
+        // awaiting_payment 또는 outstanding이면 pending으로 변경 (주방에 전송)
         await fetch(`/api/orders/${orderForPayment.id}`, getFetchOptions({
           method: 'PATCH',
           body: JSON.stringify({
@@ -2088,7 +2086,6 @@ const LiveOrdersPage: React.FC = () => {
       }
     } catch (error) {
       console.error('❌ Payment error:', error);
-      alert('Failed to confirm payment. Please try again.');
     }
   };
 

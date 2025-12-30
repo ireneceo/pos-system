@@ -500,16 +500,12 @@ const InventoryPage: React.FC = () => {
       });
 
       if (response.success) {
-        alert('Initial stock saved successfully');
         setShowInitialStockModal(false);
         setNeedsInitialSetup(false);
         fetchData();
-      } else {
-        alert(response.message || 'Failed to save initial stock');
       }
     } catch (error) {
       console.error('Failed to save initial stock:', error);
-      alert('Failed to save initial stock');
     } finally {
       setSavingInitialStock(false);
     }
@@ -555,15 +551,11 @@ const InventoryPage: React.FC = () => {
       });
 
       if (response.success) {
-        alert('Settings saved successfully');
         setShowSettingsModal(false);
         fetchData();
-      } else {
-        alert(response.message || 'Failed to save settings');
       }
     } catch (error) {
       console.error('Failed to save settings:', error);
-      alert('Failed to save settings');
     } finally {
       setSavingSettings(false);
     }
@@ -596,7 +588,6 @@ const InventoryPage: React.FC = () => {
       });
 
       if (response.success) {
-        alert('Stock received successfully');
         setShowReceiveModal(false);
         setSelectedIngredient(null);
         setQuantity('');
@@ -605,12 +596,9 @@ const InventoryPage: React.FC = () => {
         setManufactureDate('');
         setExpiryDate('');
         fetchData();
-      } else {
-        alert(response.message || 'Failed to receive stock');
       }
     } catch (error) {
       console.error('Failed to receive stock:', error);
-      alert('Failed to receive stock');
     }
   };
 
@@ -628,18 +616,14 @@ const InventoryPage: React.FC = () => {
       });
 
       if (response.success) {
-        alert('Waste recorded successfully');
         setShowWasteModal(false);
         setSelectedIngredient(null);
         setQuantity('');
         setNotes('');
         fetchData();
-      } else {
-        alert(response.message || 'Failed to record waste');
       }
     } catch (error) {
       console.error('Failed to record waste:', error);
-      alert('Failed to record waste');
     }
   };
 

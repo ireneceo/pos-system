@@ -46,7 +46,7 @@ const Input = styled.input`
   padding: 12px 16px;
   border: 1px solid #E5E7EB;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 16px; /* Prevent iOS zoom on focus */
   box-sizing: border-box;
   transition: all 0.2s;
 
@@ -66,7 +66,7 @@ const TextArea = styled.textarea`
   padding: 12px 16px;
   border: 1px solid #E5E7EB;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 16px; /* Prevent iOS zoom on focus */
   box-sizing: border-box;
   resize: vertical;
   min-height: 80px;
@@ -245,18 +245,7 @@ const DeliveryAddressPage: React.FC = () => {
   }, [currentStore?.id]);
 
   const handleSubmit = () => {
-    if (!address.trim()) {
-      alert('Please enter your delivery address');
-      return;
-    }
-
-    if (!phone.trim()) {
-      alert('Please enter your phone number');
-      return;
-    }
-
-    if (!selectedZone) {
-      alert('Please select a delivery zone');
+    if (!address.trim() || !phone.trim() || !selectedZone) {
       return;
     }
 

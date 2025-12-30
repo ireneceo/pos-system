@@ -392,7 +392,7 @@ const TextArea = styled.textarea`
   padding: 10px 12px;
   border: 1px solid #E5E7EB;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 16px; /* Prevent iOS zoom on focus */
   box-sizing: border-box;
   resize: vertical;
   min-height: 80px;

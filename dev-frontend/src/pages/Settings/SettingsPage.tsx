@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { QRCodeCanvas } from 'qrcode.react';
+import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
 import MainLayout from '../../components/Layout/MainLayout';
 import { TabContainer, Tab, OrderControls } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
@@ -1027,11 +1027,143 @@ const SettingsPage: React.FC = () => {
   
   const handlePrintQR = (table: Table) => {
     const tableNumber = `${tableSettings.tablePrefix}${String(table.number).padStart(3, '0')}`;
-    const canvas = document.getElementById(`qr-${table.id}`) as HTMLCanvasElement;
     const storeName = storeSettings.name || 'Restaurant';
+    const svgElement = document.getElementById(`qr-svg-${table.id}`);
 
-    if (canvas) {
-      printTableQR(tableNumber, canvas, storeName);
+    if (svgElement) {
+      // Use SVG for high-quality print
+      const svgData = new XMLSerializer().serializeToString(svgElement);
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Print QR - ${tableNumber}</title>
+            <style>
+              body {
+                margin: 0;
+                padding: 20px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                min-height: 100vh;
+                font-family: Arial, sans-serif;
+              }
+              .store-name {
+                font-size: 18px;
+                font-weight: 600;
+                color: #0A2540;
+                margin-bottom: 8px;
+              }
+              .table-number {
+                font-size: 32px;
+                font-weight: bold;
+                color: #0A2540;
+                margin-bottom: 16px;
+              }
+              .qr-container {
+                padding: 20px;
+                background: white;
+              }
+              .qr-container svg {
+                width: 200px;
+                height: 200px;
+              }
+              @media print {
+                body { padding: 0; }
+                .qr-container svg {
+                  width: 250px;
+                  height: 250px;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="store-name">${storeName}</div>
+            <div class="table-number">${tableNumber}</div>
+            <div class="qr-container">${svgData}</div>
+            <script>
+              window.onload = function() {
+                window.print();
+                window.onafterprint = function() { window.close(); };
+              };
+            </script>
+          </body>
+          </html>
+        `);
+        printWindow.document.close();
+      }
+    }
+  };
+
+  const handleDownloadSVG = (table: Table) => {
+    const tableNumber = `${tableSettings.tablePrefix}${String(table.number).padStart(3, '0')}`;
+    const storeName = storeSettings.name || 'Restaurant';
+    const svgElement = document.getElementById(`qr-svg-${table.id}`);
+
+    if (svgElement) {
+      // Clone SVG and add styling
+      const clonedSvg = svgElement.cloneNode(true) as SVGElement;
+
+      // Create a new SVG with table number included
+      const svgWrapper = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svgWrapper.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      svgWrapper.setAttribute('width', '300');
+      svgWrapper.setAttribute('height', '350');
+      svgWrapper.setAttribute('viewBox', '0 0 300 350');
+
+      // Add white background
+      const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      bg.setAttribute('width', '300');
+      bg.setAttribute('height', '350');
+      bg.setAttribute('fill', 'white');
+      svgWrapper.appendChild(bg);
+
+      // Add store name
+      const storeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      storeText.setAttribute('x', '150');
+      storeText.setAttribute('y', '30');
+      storeText.setAttribute('text-anchor', 'middle');
+      storeText.setAttribute('font-family', 'Arial, sans-serif');
+      storeText.setAttribute('font-size', '16');
+      storeText.setAttribute('font-weight', '600');
+      storeText.setAttribute('fill', '#0A2540');
+      storeText.textContent = storeName;
+      svgWrapper.appendChild(storeText);
+
+      // Add table number
+      const tableText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      tableText.setAttribute('x', '150');
+      tableText.setAttribute('y', '60');
+      tableText.setAttribute('text-anchor', 'middle');
+      tableText.setAttribute('font-family', 'Arial, sans-serif');
+      tableText.setAttribute('font-size', '28');
+      tableText.setAttribute('font-weight', 'bold');
+      tableText.setAttribute('fill', '#0A2540');
+      tableText.textContent = tableNumber;
+      svgWrapper.appendChild(tableText);
+
+      // Create a group for the QR code and position it
+      const qrGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      qrGroup.setAttribute('transform', 'translate(50, 80)');
+
+      // Get inner content of QR SVG
+      clonedSvg.setAttribute('width', '200');
+      clonedSvg.setAttribute('height', '200');
+      qrGroup.appendChild(clonedSvg);
+      svgWrapper.appendChild(qrGroup);
+
+      // Convert to blob and download
+      const svgData = new XMLSerializer().serializeToString(svgWrapper);
+      const blob = new Blob([svgData], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = `${tableNumber}-qr.svg`;
+      link.href = url;
+      link.click();
+      URL.revokeObjectURL(url);
     }
   };
 
@@ -3569,17 +3701,30 @@ const SettingsPage: React.FC = () => {
                         <TableItem key={table.id}>
                           <TableNumber>{tableNumber}</TableNumber>
                           <QRContainer>
+                            {/* Canvas for PNG download */}
                             <QRCodeCanvas
                               id={`qr-${table.id}`}
                               value={table.qrCode}
                               size={100}
-                              level="M"
+                              level="H"
+                              includeMargin={true}
+                              style={{ display: 'none' }}
+                            />
+                            {/* SVG for display, print, and SVG download */}
+                            <QRCodeSVG
+                              id={`qr-svg-${table.id}`}
+                              value={table.qrCode}
+                              size={100}
+                              level="H"
                               includeMargin={true}
                             />
                           </QRContainer>
                           <TableActions>
-                            <ActionButton onClick={() => handleDownloadQR(table)}>
-                              Download
+                            <ActionButton onClick={() => handleDownloadSVG(table)} title="Download SVG (recommended for print)">
+                              SVG
+                            </ActionButton>
+                            <ActionButton onClick={() => handleDownloadQR(table)} title="Download PNG">
+                              PNG
                             </ActionButton>
                             <ActionButton onClick={() => handlePrintQR(table)}>
                               Print
