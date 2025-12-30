@@ -156,6 +156,105 @@ router.get('/restaurants/:restaurantId/inventory/products', async (req, res) => 
   }
 });
 
+// GET /api/restaurants/:restaurantId/inventory/general-stock - 일반 재고 목록 조회
+router.get('/restaurants/:restaurantId/inventory/general-stock', async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const { category, status, search } = req.query;
+
+    const whereClause = {
+      restaurant_id: restaurantId,
+      track_stock: true
+    };
+
+    if (category) {
+      whereClause.category = category;
+    }
+
+    if (search) {
+      whereClause.name = { [Op.like]: `%${search}%` };
+    }
+
+    let items = await Product.findAll({
+      where: whereClause,
+      include: [{
+        model: Supplier,
+        as: 'supplier',
+        attributes: ['id', 'name', 'code', 'contact_name', 'phone'],
+        required: false
+      }],
+      order: [['name', 'ASC']]
+    });
+
+    // Add stock status
+    items = items.map(item => {
+      const currentStock = parseFloat(item.current_stock) || 0;
+      const minStock = parseFloat(item.min_stock) || 0;
+
+      let stockStatus = 'normal';
+      if (currentStock <= 0) {
+        stockStatus = 'out_of_stock';
+      } else if (currentStock <= minStock) {
+        stockStatus = 'low_stock';
+      }
+
+      const itemData = item.toJSON();
+      return {
+        ...itemData,
+        item_type: 'general_stock',
+        stock_status: stockStatus,
+        supplier_name: itemData.supplier?.name || null
+      };
+    });
+
+    // Filter by status if provided
+    if (status) {
+      items = items.filter(item => item.stock_status === status);
+    }
+
+    res.json({ success: true, data: items });
+  } catch (error) {
+    console.error('Get general stock error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/restaurants/:restaurantId/inventory/general-stock - 일반 재고 항목 추가
+router.post('/restaurants/:restaurantId/inventory/general-stock', async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const { name, stock_unit, unit_cost, category, current_stock, min_stock, supplier_id } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Name is required' });
+    }
+
+    // Create a new product with track_stock enabled (used as general stock item)
+    const newItem = await Product.create({
+      restaurant_id: restaurantId,
+      name: name.trim(),
+      price: 0,  // Not for sale, so price is 0
+      category: category || 'Supplies',
+      track_stock: true,
+      current_stock: parseFloat(current_stock) || 0,
+      min_stock: parseFloat(min_stock) || 0,
+      stock_unit: stock_unit || 'piece',
+      unit_cost: parseFloat(unit_cost) || 0,
+      supplier_id: supplier_id || null,
+      soldOut: true,  // Not for sale
+      description: ''
+    });
+
+    res.json({
+      success: true,
+      data: newItem
+    });
+  } catch (error) {
+    console.error('Add general stock error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // POST /api/restaurants/:restaurantId/inventory/products/:productId/receive - 상품 입고
 router.post('/restaurants/:restaurantId/inventory/products/:productId/receive', async (req, res) => {
   try {

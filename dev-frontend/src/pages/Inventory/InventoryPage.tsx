@@ -402,6 +402,7 @@ const InventoryPage: React.FC = () => {
   const [showReceiveModal, setShowReceiveModal] = useState(false);
   const [showWasteModal, setShowWasteModal] = useState(false);
   const [showInitialStockModal, setShowInitialStockModal] = useState(false);
+  const [showIngredientAdjustModal, setShowIngredientAdjustModal] = useState(false);
   const [selectedIngredient, setSelectedIngredient] = useState<IngredientStock | null>(null);
   const [quantity, setQuantity] = useState('');
   const [notes, setNotes] = useState('');
@@ -422,21 +423,25 @@ const InventoryPage: React.FC = () => {
     lead_time_days: '',
     safety_stock_percent: '',
     manual_daily_usage: '',
-    min_stock: ''
+    min_stock: '',
+    new_stock: '',
+    adjustment_reason: ''
   });
   const [savingSettings, setSavingSettings] = useState(false);
 
-  // Add Ingredient Modal
-  const [showAddIngredientModal, setShowAddIngredientModal] = useState(false);
-  const [addIngredientForm, setAddIngredientForm] = useState({
+  // Add General Stock Modal
+  const [showAddGeneralStockModal, setShowAddGeneralStockModal] = useState(false);
+  const [generalStockForm, setGeneralStockForm] = useState({
     name: '',
-    unit: 'kg',
+    stock_unit: 'piece',
     unit_cost: '',
-    category: 'Produce',
+    category: 'Supplies',
     current_stock: '',
-    min_stock: ''
+    min_stock: '',
+    supplier_id: ''
   });
-  const [savingIngredient, setSavingIngredient] = useState(false);
+  const [savingGeneralStock, setSavingGeneralStock] = useState(false);
+  const [suppliers, setSuppliers] = useState<{id: number; name: string}[]>([]);
 
   // URL 파라미터 우선, 없으면 user의 restaurant_id 사용
   const restaurantId = urlRestaurantId ? parseInt(urlRestaurantId, 10) : user?.restaurant_id;
@@ -470,13 +475,12 @@ const InventoryPage: React.FC = () => {
     try {
       setLoading(true);
 
-      const [summaryRes, inventoryRes, alertsRes, suggestionsRes, expiringRes, productsRes] = await Promise.all([
+      const [summaryRes, inventoryRes, alertsRes, suggestionsRes, expiringRes] = await Promise.all([
         authFetch(`/api/restaurants/${restaurantId}/inventory/summary`),
         authFetch(`/api/restaurants/${restaurantId}/inventory`),
         authFetch(`/api/restaurants/${restaurantId}/inventory/alerts?resolved=false`),
         authFetch(`/api/restaurants/${restaurantId}/inventory/reorder-suggestions`),
-        authFetch(`/api/restaurants/${restaurantId}/inventory/expiring?days=14`),
-        authFetch(`/api/restaurants/${restaurantId}/inventory/products`)
+        authFetch(`/api/restaurants/${restaurantId}/inventory/expiring?days=14`)
       ]);
 
       if (summaryRes.success) setSummary(summaryRes.data);
@@ -484,7 +488,22 @@ const InventoryPage: React.FC = () => {
       if (alertsRes.success) setAlerts(alertsRes.data);
       if (suggestionsRes.success) setSuggestions(suggestionsRes.data);
       if (expiringRes.success) setExpiringItems(expiringRes.data);
-      if (productsRes.success) setProductInventory(productsRes.data || []);
+
+      // General stock은 별도로 가져오기 (실패해도 재료 표시에 영향 없음)
+      try {
+        const generalStockRes = await authFetch(`/api/restaurants/${restaurantId}/inventory/general-stock`);
+        if (generalStockRes.success) setProductInventory(generalStockRes.data || []);
+      } catch {
+        setProductInventory([]);
+      }
+
+      // 공급업체 목록 가져오기
+      try {
+        const suppliersRes = await authFetch(`/api/restaurants/${restaurantId}/suppliers`);
+        if (suppliersRes.success) setSuppliers(suppliersRes.data || []);
+      } catch {
+        setSuppliers([]);
+      }
     } catch (error) {
       console.error('Failed to fetch inventory data:', error);
     } finally {
@@ -902,7 +921,7 @@ const InventoryPage: React.FC = () => {
                       <TableRow key={s.ingredient.id} columns="2fr 1fr 1fr 1fr 1fr 100px">
                         <div>{s.ingredient.name}</div>
                         <div>{s.current_stock} {s.ingredient.unit}</div>
-                        <div>{(parseFloat(s.avg_daily_usage) || 0).toFixed(2)} {s.ingredient.unit}/day</div>
+                        <div>{(parseFloat(String(s.avg_daily_usage)) || 0).toFixed(2)} {s.ingredient.unit}/day</div>
                         <div style={{ fontWeight: 600 }}>{s.suggested_qty} {s.ingredient.unit}</div>
                         <div>{formatCurrency(s.estimated_cost, selectedCurrency)}</div>
                         <div>
@@ -956,7 +975,7 @@ const InventoryPage: React.FC = () => {
                 >
                   <option value="all">All Items</option>
                   <option value="ingredients">Ingredients</option>
-                  <option value="products">Products</option>
+                  <option value="products">General Stock</option>
                 </FilterSelect>
                 <SearchInput
                   type="text"
@@ -973,19 +992,26 @@ const InventoryPage: React.FC = () => {
                   <option value="low_stock">Low Stock</option>
                   <option value="out_of_stock">Out of Stock</option>
                 </FilterSelect>
+                <Button
+                  variant="primary"
+                  onClick={() => setShowAddGeneralStockModal(true)}
+                  style={{ marginLeft: 'auto' }}
+                >
+                  + Add General Stock
+                </Button>
               </FilterBar>
 
-              {/* Show Products Section */}
+              {/* Show General Stock Section */}
               {(stockTypeFilter === 'all' || stockTypeFilter === 'products') && productInventory.length > 0 && (
                 <>
-                  {stockTypeFilter === 'all' && <SectionTitle>Products ({productInventory.filter(p => {
+                  {stockTypeFilter === 'all' && <SectionTitle>General Stock ({productInventory.filter(p => {
                     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
                     const matchesStatus = statusFilter === 'all' || p.stock_status === statusFilter;
                     return matchesSearch && matchesStatus;
                   }).length})</SectionTitle>}
                   <Table style={{ marginBottom: '24px' }}>
                     <InventoryTableHeader columns="2fr 1fr 1fr 1fr 1fr 1fr 150px">
-                      <span>Product</span>
+                      <span>Item</span>
                       <span>Status</span>
                       <span>Current Stock</span>
                       <span>Min Stock</span>
@@ -1003,7 +1029,7 @@ const InventoryPage: React.FC = () => {
                       <InventoryTableRow key={`product-${product.id}`} columns="2fr 1fr 1fr 1fr 1fr 1fr 150px">
                         <MobileGrid>
                           <MobileValue>
-                            <MobileLabel>Product</MobileLabel>
+                            <MobileLabel>Item</MobileLabel>
                             <IngredientInfo>
                               <IngredientName>{product.name}</IngredientName>
                               <IngredientMeta>{product.category} • {formatCurrency(product.price, selectedCurrency)}</IngredientMeta>
@@ -1646,6 +1672,149 @@ const InventoryPage: React.FC = () => {
             </ButtonGroup>
           </>
         )}
+      </Modal>
+
+      {/* Add General Stock Modal */}
+      <Modal
+        isOpen={showAddGeneralStockModal}
+        onClose={() => setShowAddGeneralStockModal(false)}
+        title="Add General Stock"
+        size="medium"
+      >
+        <UIFormGroup>
+          <FormLabel>Item Name *</FormLabel>
+          <FormInput
+            type="text"
+            value={generalStockForm.name}
+            onChange={(e) => setGeneralStockForm({ ...generalStockForm, name: e.target.value })}
+            placeholder="e.g., Takeaway Containers"
+          />
+        </UIFormGroup>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <UIFormGroup>
+            <FormLabel>Unit *</FormLabel>
+            <FilterSelect
+              value={generalStockForm.stock_unit}
+              onChange={(e) => setGeneralStockForm({ ...generalStockForm, stock_unit: e.target.value })}
+              style={{ width: '100%' }}
+            >
+              <option value="piece">Piece</option>
+              <option value="box">Box</option>
+              <option value="pack">Pack</option>
+              <option value="roll">Roll</option>
+              <option value="bag">Bag</option>
+              <option value="set">Set</option>
+            </FilterSelect>
+          </UIFormGroup>
+          <UIFormGroup>
+            <FormLabel>Category</FormLabel>
+            <FilterSelect
+              value={generalStockForm.category}
+              onChange={(e) => setGeneralStockForm({ ...generalStockForm, category: e.target.value })}
+              style={{ width: '100%' }}
+            >
+              <option value="Supplies">Supplies</option>
+              <option value="Packaging">Packaging</option>
+              <option value="Cleaning">Cleaning</option>
+              <option value="Equipment">Equipment</option>
+              <option value="Other">Other</option>
+            </FilterSelect>
+          </UIFormGroup>
+        </div>
+        <UIFormGroup>
+          <FormLabel>Supplier</FormLabel>
+          <FilterSelect
+            value={generalStockForm.supplier_id}
+            onChange={(e) => setGeneralStockForm({ ...generalStockForm, supplier_id: e.target.value })}
+            style={{ width: '100%' }}
+          >
+            <option value="">Select Supplier (Optional)</option>
+            {suppliers.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </FilterSelect>
+        </UIFormGroup>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+          <UIFormGroup>
+            <FormLabel>Unit Cost</FormLabel>
+            <FormInput
+              type="number"
+              step="0.01"
+              min="0"
+              value={generalStockForm.unit_cost}
+              onChange={(e) => setGeneralStockForm({ ...generalStockForm, unit_cost: e.target.value })}
+              placeholder="0.00"
+            />
+          </UIFormGroup>
+          <UIFormGroup>
+            <FormLabel>Initial Stock</FormLabel>
+            <FormInput
+              type="number"
+              step="0.01"
+              min="0"
+              value={generalStockForm.current_stock}
+              onChange={(e) => setGeneralStockForm({ ...generalStockForm, current_stock: e.target.value })}
+              placeholder="0"
+            />
+          </UIFormGroup>
+          <UIFormGroup>
+            <FormLabel>Min Stock</FormLabel>
+            <FormInput
+              type="number"
+              step="0.01"
+              min="0"
+              value={generalStockForm.min_stock}
+              onChange={(e) => setGeneralStockForm({ ...generalStockForm, min_stock: e.target.value })}
+              placeholder="0"
+            />
+          </UIFormGroup>
+        </div>
+        <ButtonGroup>
+          <ModalButton variant="secondary" onClick={() => setShowAddGeneralStockModal(false)}>
+            Cancel
+          </ModalButton>
+          <ModalButton
+            variant="primary"
+            onClick={async () => {
+              if (!generalStockForm.name.trim()) return;
+              try {
+                setSavingGeneralStock(true);
+                const response = await authFetch(`/api/restaurants/${restaurantId}/inventory/general-stock`, {
+                  method: 'POST',
+                  body: JSON.stringify({
+                    name: generalStockForm.name,
+                    stock_unit: generalStockForm.stock_unit,
+                    unit_cost: parseFloat(generalStockForm.unit_cost) || 0,
+                    category: generalStockForm.category,
+                    current_stock: parseFloat(generalStockForm.current_stock) || 0,
+                    min_stock: parseFloat(generalStockForm.min_stock) || 0,
+                    supplier_id: generalStockForm.supplier_id ? parseInt(generalStockForm.supplier_id) : null
+                  })
+                });
+                if (response.success) {
+                  setShowAddGeneralStockModal(false);
+                  setGeneralStockForm({
+                    name: '',
+                    stock_unit: 'piece',
+                    unit_cost: '',
+                    category: 'Supplies',
+                    current_stock: '',
+                    min_stock: '',
+                    supplier_id: ''
+                  });
+                  fetchData();
+                }
+              } catch (error) {
+                console.error('Failed to add general stock:', error);
+              } finally {
+                setSavingGeneralStock(false);
+              }
+            }}
+            disabled={savingGeneralStock || !generalStockForm.name.trim()}
+          >
+            {savingGeneralStock ? 'Adding...' : 'Add Item'}
+          </ModalButton>
+        </ButtonGroup>
       </Modal>
     </MainLayout>
   );
