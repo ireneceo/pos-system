@@ -50,6 +50,42 @@ Product.init({
     type: DataTypes.BOOLEAN,
     defaultValue: false
   },
+  // Stock management fields
+  track_stock: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    comment: 'Whether to track stock for this product'
+  },
+  current_stock: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0,
+    comment: 'Current stock quantity'
+  },
+  min_stock: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0,
+    comment: 'Minimum stock level for alerts'
+  },
+  stock_unit: {
+    type: DataTypes.STRING(20),
+    defaultValue: 'piece',
+    comment: 'Stock unit (piece, box, pack, etc)'
+  },
+  supplier_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Supplier FK'
+  },
+  unit_cost: {
+    type: DataTypes.DECIMAL(10, 4),
+    defaultValue: 0,
+    comment: 'Cost per unit for inventory valuation'
+  },
+  last_stock_take_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Last stock take date'
+  },
   is_set_menu: {
     type: DataTypes.BOOLEAN,
     defaultValue: false

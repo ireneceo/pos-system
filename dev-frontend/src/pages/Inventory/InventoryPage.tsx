@@ -48,6 +48,15 @@ interface IngredientStock {
   manual_daily_usage: number | null;
   prediction_confidence: 'high' | 'medium' | 'low' | 'none';
   stock_status: 'normal' | 'low_stock' | 'out_of_stock';
+  supplier_id: number | null;
+  supplier_name: string | null;
+  supplier?: {
+    id: number;
+    name: string;
+    code: string | null;
+    contact_name: string | null;
+    phone: string | null;
+  } | null;
 }
 
 interface StockAlert {
@@ -948,17 +957,18 @@ const InventoryPage: React.FC = () => {
                 </EmptyState>
               ) : (
                 <Table>
-                  <InventoryTableHeader columns="2fr 1fr 1fr 1fr 1fr 1fr 180px">
+                  <InventoryTableHeader columns="2fr 1fr 1fr 1fr 1fr 1fr 1fr 180px">
                     <span>Ingredient</span>
                     <span>Status</span>
                     <span>Current Stock</span>
                     <span>Min / Prediction</span>
                     <span>Unit Cost</span>
+                    <span>Supplier</span>
                     <span>Last Stock Take</span>
                     <span>Actions</span>
                   </InventoryTableHeader>
                   {filteredInventory.map(item => (
-                    <InventoryTableRow key={item.id} columns="2fr 1fr 1fr 1fr 1fr 1fr 180px">
+                    <InventoryTableRow key={item.id} columns="2fr 1fr 1fr 1fr 1fr 1fr 1fr 180px">
                       <MobileGrid>
                         <MobileValue>
                           <MobileLabel>Ingredient</MobileLabel>
@@ -992,6 +1002,12 @@ const InventoryPage: React.FC = () => {
                           <MobileLabel>Unit Cost</MobileLabel>
                           <div style={{ color: '#0A2540' }}>
                             {formatCurrency(item.unit_cost, selectedCurrency)}
+                          </div>
+                        </MobileValue>
+                        <MobileValue>
+                          <MobileLabel>Supplier</MobileLabel>
+                          <div style={{ color: item.supplier_name ? '#0A2540' : '#9CA3AF', fontSize: '13px' }}>
+                            {item.supplier_name || '-'}
                           </div>
                         </MobileValue>
                         <MobileValue>

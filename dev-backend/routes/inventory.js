@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Op } = require('sequelize');
 const database = require('../config/database');
-const { Ingredient, InventoryTransaction, StockTake, StockTakeItem, StockAlert, Restaurant, InventoryBatch } = require('../models');
+const { Ingredient, InventoryTransaction, StockTake, StockTakeItem, StockAlert, Restaurant, InventoryBatch, Supplier, Product } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 
 // Apply auth middleware to all routes
@@ -52,6 +52,12 @@ router.get('/restaurants/:restaurantId/inventory', async (req, res) => {
 
     let ingredients = await Ingredient.findAll({
       where: whereClause,
+      include: [{
+        model: Supplier,
+        as: 'supplier',
+        attributes: ['id', 'name', 'code', 'contact_name', 'phone'],
+        required: false
+      }],
       order: [['name', 'ASC']]
     });
 
@@ -67,9 +73,11 @@ router.get('/restaurants/:restaurantId/inventory', async (req, res) => {
         stockStatus = 'low_stock';
       }
 
+      const ingData = ing.toJSON();
       return {
-        ...ing.toJSON(),
-        stock_status: stockStatus
+        ...ingData,
+        stock_status: stockStatus,
+        supplier_name: ingData.supplier?.name || ingData.supplier_name || null
       };
     });
 
