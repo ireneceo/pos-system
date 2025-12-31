@@ -387,6 +387,32 @@ const isMenuAllowed = (route: string) => {
 **수정 파일:**
 - `/var/www/dev-frontend/src/components/Layout/MainLayout.tsx`
 
+### 개발/운영 DB 설정값 동기화
+
+**사용자 요청:** "운영서버 세팅값이 개발서버에서 배포하면 자꾸 바뀌고 있어"
+
+**분석:**
+- 개발 DB와 운영 DB의 레스토랑 설정값이 다름
+- 개발 DB: `cash_rounding: NULL`, `rounding_apply_to: cash_only`, `operation_settings: NULL`
+- 운영 DB: `cash_rounding: 0.10`, `rounding_apply_to: all`, `operation_settings: {...}`
+- 배포 스크립트는 스키마(테이블/컬럼)만 동기화하고 데이터는 변경하지 않음
+- 문제의 원인은 DB 데이터 불일치가 아닌, 프론트엔드에서 기본값으로 병합하는 로직
+
+**해결:**
+1. 개발 DB의 restaurant 10 설정값을 운영 DB와 동기화
+   ```sql
+   UPDATE restaurants SET
+     cash_rounding = 0.10,
+     rounding_apply_to = 'all',
+     operation_settings = (운영 DB의 operation_settings)
+   WHERE id = 10;
+   ```
+2. 배포 스크립트는 데이터를 변경하지 않으므로 운영 설정값은 보존됨
+
+**확인 완료:**
+- 운영 API `/api/restaurants/10` → 올바른 설정값 반환
+- 프론트엔드 코드: DB 컬럼값(currency, cash_rounding, rounding_apply_to)을 우선 사용
+
 ---
 
 ## ✅ 완료된 작업 (2025-12-29)
@@ -1438,4 +1464,4 @@ const token = localStorage.getItem('auth_token'); // 'token' → 'auth_token'
 **프로젝트:** Purple POS System
 **개발 환경:** Development Server
 **데이터베이스:** purple_dev_db (MySQL)
-**마지막 업데이트:** 2025-12-29
+**마지막 업데이트:** 2025-12-30
