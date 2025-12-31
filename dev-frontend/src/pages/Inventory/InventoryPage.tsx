@@ -31,6 +31,7 @@ import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput } fr
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import { fetchAPI } from '../../utils/api';
+import GeneralStockCategoriesTab from '../RecipeManagement/GeneralStockCategoriesTab';
 
 interface IngredientStock {
   id: number;
@@ -561,11 +562,15 @@ const InventoryPage: React.FC = () => {
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
 
   // Get tab from URL, default to 'dashboard'
-  const activeTab = (searchParams.get('tab') as 'dashboard' | 'list' | 'history') || 'dashboard';
+  const activeTab = (searchParams.get('tab') as 'dashboard' | 'list' | 'history' | 'categories') || 'dashboard';
 
-  const setActiveTab = (tab: 'dashboard' | 'list' | 'history') => {
+  const setActiveTab = (tab: 'dashboard' | 'list' | 'history' | 'categories') => {
     setSearchParams({ tab });
   };
+
+  // General Stock Categories state
+  const [generalStockCategoriesCount, setGeneralStockCategoriesCount] = useState(0);
+  const [generalStockCategoryRefreshKey, setGeneralStockCategoryRefreshKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [inventory, setInventory] = useState<IngredientStock[]>([]);
@@ -1179,6 +1184,9 @@ const InventoryPage: React.FC = () => {
             <Tab active={activeTab === 'history'} onClick={() => setActiveTab('history')}>
               History
             </Tab>
+            <Tab active={activeTab === 'categories'} onClick={() => setActiveTab('categories')}>
+              Categories
+            </Tab>
           </TabContainer>
 
           {loading ? (
@@ -1745,6 +1753,13 @@ const InventoryPage: React.FC = () => {
             </>
           )}
             </>
+          ) : activeTab === 'categories' ? (
+            <GeneralStockCategoriesTab
+              brandId={null}
+              restaurantId={restaurantId ? Number(restaurantId) : null}
+              onCountChange={setGeneralStockCategoriesCount}
+              onCategoryChange={() => setGeneralStockCategoryRefreshKey(k => k + 1)}
+            />
           ) : (
             <TransactionHistory restaurantId={restaurantId} currency={selectedCurrency} />
           )}
@@ -2657,6 +2672,8 @@ const InventoryPage: React.FC = () => {
                   method: 'PUT',
                   body: JSON.stringify({
                     name: generalStockForm.name,
+                    code: generalStockForm.code || null,
+                    image_url: generalStockForm.image_url || null,
                     stock_unit: generalStockForm.stock_unit,
                     unit_cost: parseFloat(generalStockForm.unit_cost) || 0,
                     category: generalStockForm.category || 'Other',
@@ -2671,6 +2688,8 @@ const InventoryPage: React.FC = () => {
                   setEditingGeneralStock(null);
                   setGeneralStockForm({
                     name: '',
+                    code: '',
+                    image_url: '',
                     stock_unit: 'piece',
                     unit_cost: '',
                     category: '',

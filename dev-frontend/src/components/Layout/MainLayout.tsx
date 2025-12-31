@@ -1162,7 +1162,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           {(user?.role === 'Restaurant Admin' || user?.role === 'Staff') && (
             <NavSection>
               <NavTitle>System Access</NavTitle>
-              {(isRouteAllowed(`/restaurant/${restaurantId}/pos-terminal`) || true) && (
+              {isRouteAllowed(`/restaurant/${restaurantId}/pos-terminal`) && (
                 <NavItem
                   to={`/restaurant/${restaurantId}/pos-terminal`}
                   active={isActive(`/restaurant/${restaurantId}/pos-terminal`)}
@@ -1298,12 +1298,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <NavItem to={`/restaurant/${restaurantId}/inventory`} active={isActive(`/restaurant/${restaurantId}/inventory`)} onClick={closeSidebar}>
                   <NavIcon>▤</NavIcon>
                   Inventory
-                </NavItem>
-              )}
-              {isRouteAllowed(`/restaurant/${restaurantId}/product-recipes`) && (
-                <NavItem to={`/restaurant/${restaurantId}/product-recipes`} active={isActive(`/restaurant/${restaurantId}/product-recipes`)} onClick={closeSidebar}>
-                  <NavIcon>▧</NavIcon>
-                  Product Recipes
                 </NavItem>
               )}
             </NavSection>

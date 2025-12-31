@@ -226,16 +226,24 @@ router.get('/restaurants/:restaurantId/inventory/general-stock', async (req, res
 router.post('/restaurants/:restaurantId/inventory/general-stock', async (req, res) => {
   try {
     const { restaurantId } = req.params;
-    const { name, stock_unit, unit_cost, category, current_stock, min_stock, min_order, supplier_id, code } = req.body;
+    const { name, stock_unit, unit_cost, category, current_stock, min_stock, min_order, supplier_id, code, image_url } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, message: 'Name is required' });
     }
 
+    // Auto-generate code if not provided
+    let finalCode = code;
+    if (!finalCode) {
+      const count = await GeneralStock.count({ where: { restaurant_id: restaurantId } });
+      finalCode = `GS-${String(count + 1).padStart(3, '0')}`;
+    }
+
     const newItem = await GeneralStock.create({
       restaurant_id: restaurantId,
       name: name.trim(),
-      code: code || null,
+      code: finalCode,
+      image_url: image_url || null,
       category: category || 'Supplies',
       unit: stock_unit || 'piece',
       current_stock: parseFloat(current_stock) || 0,
@@ -377,7 +385,7 @@ router.put('/restaurants/:restaurantId/inventory/general-stock/:itemId/settings'
 router.put('/restaurants/:restaurantId/inventory/general-stock/:itemId', async (req, res) => {
   try {
     const { restaurantId, itemId } = req.params;
-    const { name, stock_unit, unit_cost, category, current_stock, min_stock, min_order, supplier_id } = req.body;
+    const { name, code, image_url, stock_unit, unit_cost, category, current_stock, min_stock, min_order, supplier_id } = req.body;
 
     const item = await GeneralStock.findOne({
       where: { id: itemId, restaurant_id: restaurantId, is_active: true }
@@ -389,6 +397,8 @@ router.put('/restaurants/:restaurantId/inventory/general-stock/:itemId', async (
 
     const updateData = {};
     if (name !== undefined) updateData.name = name;
+    if (code !== undefined) updateData.code = code;
+    if (image_url !== undefined) updateData.image_url = image_url;
     if (stock_unit !== undefined) updateData.unit = stock_unit;
     if (unit_cost !== undefined) updateData.unit_cost = unit_cost;
     if (category !== undefined) updateData.category = category;

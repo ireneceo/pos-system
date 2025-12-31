@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2025-12-29
+> **최종 업데이트:** 2025-12-30
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -322,6 +322,70 @@ const dateKey = `${(orderDate.getMonth() + 1).toString().padStart(2, '0')}/${ord
 ```bash
 git stash pop
 ```
+
+---
+
+## ✅ 완료된 작업 (2025-12-30)
+
+### 데이터베이스 스키마 수정
+
+**문제:** Recipe Management, Inventory 페이지에서 500 에러 발생
+
+**원인:** Sequelize 모델에 정의된 컬럼이 실제 DB 테이블에 없음
+
+**해결:** 누락된 컬럼 추가
+```sql
+-- ingredients 테이블
+ALTER TABLE ingredients ADD COLUMN track_stock TINYINT(1) NOT NULL DEFAULT 1;
+ALTER TABLE ingredients ADD COLUMN min_order DECIMAL(10,2) DEFAULT 0;
+
+-- general_stock 테이블
+ALTER TABLE general_stock ADD COLUMN image_url MEDIUMTEXT;
+ALTER TABLE general_stock ADD COLUMN min_order DECIMAL(10,2) DEFAULT 0;
+```
+
+### 메뉴 깜빡임(flickering) 버그 수정
+
+**문제:** 네비게이션 메뉴 클릭할 때마다 메뉴가 나타났다 사라졌다 반복
+
+**원인:** `MainLayout.tsx`의 `isMenuAllowed` 헬퍼 함수가 로딩 중일 때 `false` 반환
+```typescript
+// 문제 코드
+const isMenuAllowed = (route: string) => {
+  if (loading) return false;  // 로딩 중 메뉴 숨김 → 깜빡임 발생
+  return isRouteAllowed(route);
+};
+```
+
+**해결:** `isMenuAllowed` 헬퍼 제거, `isRouteAllowed` 직접 사용
+- `isRouteAllowed`는 `allowedRoutes.length === 0`일 때 `true` 반환 (fail-open)
+- 로딩 중에도 메뉴 유지됨
+
+**수정 파일:**
+- `/var/www/dev-frontend/src/components/Layout/MainLayout.tsx`
+
+### General Stock Categories 탭 위치 변경
+
+**사용자 요청:** "General Stock Categories는 왜 레시피에 있어? 재고관리에 있어야지"
+
+**변경 내용:**
+- Recipe Management 페이지에서 General Stock Categories 탭 제거
+- Inventory 페이지에 Categories 탭 추가 (History 옆)
+
+**수정 파일:**
+- `/var/www/dev-frontend/src/pages/RecipeManagement/RecipeManagementPage.tsx` - 탭 제거
+- `/var/www/dev-frontend/src/pages/Inventory/InventoryPage.tsx` - 탭 추가
+
+### Product Recipes 메뉴 접근 권한 수정
+
+**사용자 요청:** "Product Recipes 메뉴가 레스토랑 관리자에서는 아예 안나와야 해"
+
+**변경 내용:**
+- Restaurant Admin 메뉴에서 Product Recipes NavItem 제거
+- 이 메뉴는 Brand General/Manager에게만 표시
+
+**수정 파일:**
+- `/var/www/dev-frontend/src/components/Layout/MainLayout.tsx`
 
 ---
 

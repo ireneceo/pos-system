@@ -8,7 +8,6 @@ import RecipesTab from './RecipesTab';
 import IngredientsTab from './IngredientsTab';
 import RecipeCategoriesTab from './RecipeCategoriesTab';
 import IngredientCategoriesTab from './IngredientCategoriesTab';
-import GeneralStockCategoriesTab from './GeneralStockCategoriesTab';
 
 const TabBadge = styled.span`
   display: inline-flex;
@@ -58,7 +57,7 @@ interface Brand {
   logo_url?: string;
 }
 
-type TabType = 'recipes' | 'ingredients' | 'recipe-categories' | 'ingredient-categories' | 'general-stock-categories';
+type TabType = 'recipes' | 'ingredients' | 'recipe-categories' | 'ingredient-categories';
 
 interface RecipeManagementPageProps {}
 
@@ -74,8 +73,6 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
   const [loading, setLoading] = useState(true);
   const [recipeCategoryRefreshKey, setRecipeCategoryRefreshKey] = useState(0);
   const [ingredientCategoryRefreshKey, setIngredientCategoryRefreshKey] = useState(0);
-  const [generalStockCategoriesCount, setGeneralStockCategoriesCount] = useState(0);
-  const [generalStockCategoryRefreshKey, setGeneralStockCategoryRefreshKey] = useState(0);
 
   const activeTab = (searchParams.get('tab') as TabType) || 'recipes';
   const brandIdFromUrl = searchParams.get('brandId');
@@ -198,10 +195,6 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
               Ingredient Categories
               <TabBadge>{ingredientCategoriesCount}</TabBadge>
             </Tab>
-            <Tab active={activeTab === 'general-stock-categories'} onClick={() => handleTabChange('general-stock-categories')}>
-              General Stock Categories
-              <TabBadge>{generalStockCategoriesCount}</TabBadge>
-            </Tab>
           </TabContainer>
 
           {(selectedBrand || user?.role !== 'Brand General') && (
@@ -217,9 +210,6 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
               </div>
               <div style={{ display: activeTab === 'ingredient-categories' ? 'block' : 'none' }}>
                 <IngredientCategoriesTab brandId={selectedBrand} restaurantId={urlRestaurantId ? Number(urlRestaurantId) : null} onCountChange={setIngredientCategoriesCount} onCategoryChange={() => setIngredientCategoryRefreshKey(k => k + 1)} />
-              </div>
-              <div style={{ display: activeTab === 'general-stock-categories' ? 'block' : 'none' }}>
-                <GeneralStockCategoriesTab brandId={selectedBrand} restaurantId={urlRestaurantId ? Number(urlRestaurantId) : null} onCountChange={setGeneralStockCategoriesCount} onCategoryChange={() => setGeneralStockCategoryRefreshKey(k => k + 1)} />
               </div>
             </>
           )}
