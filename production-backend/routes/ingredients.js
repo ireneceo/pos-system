@@ -63,7 +63,7 @@ router.post('/brands/:brandId/ingredients', authenticateToken, isBrandManager, a
   try {
     const { brandId } = req.params;
     const brand_id = brandId;
-    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock } = req.body;
+    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock, track_stock } = req.body;
 
     // Auto-generate code if not provided
     const finalCode = code || await generateIngredientCode('brand', brandId);
@@ -83,7 +83,8 @@ router.post('/brands/:brandId/ingredients', authenticateToken, isBrandManager, a
       supplier_name,
       supplier_id: supplier_id || null,
       min_stock: min_stock || 0,
-      current_stock: 0
+      current_stock: 0,
+      track_stock: track_stock || false
     });
 
     res.json({ success: true, data: ingredient });
@@ -101,7 +102,7 @@ router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBr
   try {
     const { ingredientId } = req.params;
     const ingredient_id = ingredientId;
-    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock } = req.body;
+    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock, track_stock } = req.body;
 
     const ingredient = await Ingredient.findByPk(ingredient_id);
     if (!ingredient) {
@@ -119,7 +120,8 @@ router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBr
       unit_cost,
       supplier_name,
       supplier_id: supplier_id !== undefined ? supplier_id : ingredient.supplier_id,
-      min_stock
+      min_stock,
+      track_stock: track_stock !== undefined ? track_stock : ingredient.track_stock
     });
 
     // Reload with associations for frontend display
@@ -260,7 +262,7 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
 router.post('/restaurants/:restaurantId/ingredients', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
-    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock } = req.body;
+    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock, track_stock } = req.body;
 
     // Auto-generate code if not provided
     const finalCode = code || await generateIngredientCode('restaurant', restaurantId);
@@ -280,7 +282,8 @@ router.post('/restaurants/:restaurantId/ingredients', authenticateToken, checkRe
       supplier_name,
       supplier_id: supplier_id || null,
       min_stock: min_stock || 0,
-      current_stock: 0
+      current_stock: 0,
+      track_stock: track_stock || false
     });
 
     res.json({ success: true, data: ingredient });
@@ -297,7 +300,7 @@ router.post('/restaurants/:restaurantId/ingredients', authenticateToken, checkRe
 router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { ingredientId } = req.params;
-    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock } = req.body;
+    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock, track_stock } = req.body;
 
     const ingredient = await Ingredient.findByPk(ingredientId);
     if (!ingredient) {
@@ -315,7 +318,8 @@ router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateT
       unit_cost,
       supplier_name,
       supplier_id: supplier_id !== undefined ? supplier_id : ingredient.supplier_id,
-      min_stock
+      min_stock,
+      track_stock: track_stock !== undefined ? track_stock : ingredient.track_stock
     });
 
     // Reload with associations for frontend display

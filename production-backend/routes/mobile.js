@@ -9,6 +9,18 @@ const Option = require('../models/Option');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 
+// Helper function to parse image data (supports old single-image format and new multi-size format)
+function parseImageData(imageStr) {
+  if (!imageStr) return null;
+  try {
+    const parsed = JSON.parse(imageStr);
+    return parsed;
+  } catch {
+    // Old format - single image string
+    return { thumbnail: imageStr, medium: imageStr, original: imageStr };
+  }
+}
+
 // Generate order number per restaurant with transaction support
 // Returns null - order number will be generated during transaction
 const generateOrderNumber = async (restaurantId, transaction = null) => {
@@ -334,6 +346,9 @@ router.get('/menu/:slug', async (req, res) => {
         }
       }
 
+      // Parse image data for multiple sizes (thumbnail for list, medium for detail)
+      const imageData = parseImageData(product.image);
+
       return {
         id: product.id.toString(),
         categoryId: categoryId,
@@ -342,7 +357,9 @@ router.get('/menu/:slug', async (req, res) => {
         price: parseFloat(product.price),
         description: product.description || '',
         emoji: product.emoji || getProductEmoji(categoryName),  // Use DB emoji first, fallback to generated
-        image: product.image || undefined,  // Only use actual image from DB, no fallback
+        image: imageData?.thumbnail || undefined,  // Use thumbnail for list view (faster loading)
+        imageMedium: imageData?.medium || undefined,  // Medium size for detail view
+        imageOriginal: imageData?.original || undefined,  // Original for full view
         isAvailable: !product.soldOut,  // Available if not sold out
         preparationTime: product.preparation_time || 15,
         calories: product.calories || 0,
@@ -429,13 +446,18 @@ router.get('/menu/item/:itemId', async (req, res) => {
       })
       .filter(og => og !== null);
 
+    // Parse image data for detail view (use medium size)
+    const imageData = parseImageData(product.image);
+
     const item = {
       id: product.id.toString(),
       name: product.name,
       price: parseFloat(product.price),
       description: product.description || '',
       emoji: product.emoji || getProductEmoji(product.category),  // Use DB emoji first, fallback to generated
-      image: product.image || undefined,  // Only use actual image from DB, no fallback
+      image: imageData?.medium || imageData?.original || undefined,  // Use medium for detail view
+      imageThumbnail: imageData?.thumbnail || undefined,
+      imageOriginal: imageData?.original || undefined,
       isAvailable: true,
       preparationTime: product.preparation_time || getPreparationTime(product.category),
       calories: Math.floor(Math.random() * 400) + 200,

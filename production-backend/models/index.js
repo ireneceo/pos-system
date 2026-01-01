@@ -38,6 +38,9 @@ const InventoryTransaction = require('./InventoryTransaction');
 const StockTake = require('./StockTake');
 const StockTakeItem = require('./StockTakeItem');
 const StockAlert = require('./StockAlert');
+const InventoryBatch = require('./InventoryBatch');
+const GeneralStock = require('./GeneralStock');
+const GeneralStockCategory = require('./GeneralStockCategory');
 
 // Define associations
 // Brand - Restaurant associations
@@ -259,6 +262,10 @@ SupplierBrand.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
 Ingredient.belongsTo(Supplier, { foreignKey: 'supplier_id', as: 'supplier' });
 Supplier.hasMany(Ingredient, { foreignKey: 'supplier_id', as: 'ingredients' });
 
+// Product - Supplier association (for product inventory)
+Product.belongsTo(Supplier, { foreignKey: 'supplier_id', as: 'supplier' });
+Supplier.hasMany(Product, { foreignKey: 'supplier_id', as: 'products' });
+
 // SupplierCategory associations
 SupplierCategory.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
 Brand.hasMany(SupplierCategory, { foreignKey: 'brand_id', as: 'supplierCategories' });
@@ -288,6 +295,26 @@ StockAlert.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant'
 Restaurant.hasMany(StockAlert, { foreignKey: 'restaurant_id', as: 'stockAlerts' });
 StockAlert.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as: 'ingredient' });
 Ingredient.hasMany(StockAlert, { foreignKey: 'ingredient_id', as: 'stockAlerts' });
+
+// InventoryBatch associations
+InventoryBatch.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Restaurant.hasMany(InventoryBatch, { foreignKey: 'restaurant_id', as: 'inventoryBatches' });
+InventoryBatch.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as: 'ingredient' });
+Ingredient.hasMany(InventoryBatch, { foreignKey: 'ingredient_id', as: 'inventoryBatches' });
+InventoryBatch.belongsTo(Supplier, { foreignKey: 'supplier_id', as: 'supplier' });
+Supplier.hasMany(InventoryBatch, { foreignKey: 'supplier_id', as: 'inventoryBatches' });
+
+// GeneralStock associations
+GeneralStock.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Restaurant.hasMany(GeneralStock, { foreignKey: 'restaurant_id', as: 'generalStocks' });
+GeneralStock.belongsTo(Supplier, { foreignKey: 'supplier_id', as: 'supplier' });
+Supplier.hasMany(GeneralStock, { foreignKey: 'supplier_id', as: 'generalStocks' });
+
+// GeneralStockCategory associations
+GeneralStockCategory.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
+Brand.hasMany(GeneralStockCategory, { foreignKey: 'brand_id', as: 'generalStockCategories' });
+GeneralStockCategory.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Restaurant.hasMany(GeneralStockCategory, { foreignKey: 'restaurant_id', as: 'generalStockCategories' });
 
 module.exports = {
   User,
@@ -329,5 +356,8 @@ module.exports = {
   InventoryTransaction,
   StockTake,
   StockTakeItem,
-  StockAlert
+  StockAlert,
+  InventoryBatch,
+  GeneralStock,
+  GeneralStockCategory
 };
