@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { SaveButtonContainer, SaveButtonGroup, SaveButton, StatusMessage } from '../../components/UI';
+import { COUNTRIES } from '../../constants/countries';
+import PhoneInput from '../../components/common/PhoneInput';
 
 interface CompanySettings {
   companyName: string;
@@ -128,6 +130,24 @@ const FormTextArea = styled.textarea`
   }
 `;
 
+const FormSelect = styled.select`
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s;
+  box-sizing: border-box;
+  background: white;
+  cursor: pointer;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+`;
+
 const LogoUpload = styled.div<{ isDragging?: boolean }>`
   border: 2px dashed #E6EBF1;
   border-radius: 8px;
@@ -175,7 +195,7 @@ const AdminSettingsPage: React.FC = () => {
     city: '',
     state: '',
     postalCode: '',
-    country: 'Malaysia',
+    country: 'MY',
     phone: '',
     email: '',
     website: '',
@@ -450,25 +470,27 @@ const AdminSettingsPage: React.FC = () => {
               </FormGroup>
               <FormGroup>
                 <FormLabel>Country *</FormLabel>
-                <FormInput
-                  type="text"
+                <FormSelect
                   value={settings.country}
                   onChange={(e) => handleInputChange('country', e.target.value)}
-                  placeholder="Enter country"
                   required
-                />
+                >
+                  {COUNTRIES.map(country => (
+                    <option key={country.code} value={country.code}>
+                      {country.name}
+                    </option>
+                  ))}
+                </FormSelect>
               </FormGroup>
             </FormRow>
 
             <FormRow>
               <FormGroup>
                 <FormLabel>Phone Number *</FormLabel>
-                <FormInput
-                  type="tel"
+                <PhoneInput
                   value={settings.phone}
-                  onChange={(e) => handleInputChange('phone', e.target.value)}
-                  placeholder="+60 3-1234 5678"
-                  required
+                  onChange={(value) => handleInputChange('phone', value)}
+                  defaultCountry={settings.country}
                 />
               </FormGroup>
               <FormGroup>

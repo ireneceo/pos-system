@@ -10,6 +10,8 @@ import { StatsGrid, StatCard, StatValue, StatLabel, StatTrend } from '../../comp
 import { BaseRestaurant } from '../../interfaces/Restaurant';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
+import { COUNTRIES } from '../../constants/countries';
+import PhoneInput from '../../components/common/PhoneInput';
 
 interface Restaurant extends Omit<BaseRestaurant, 'status'> {
   status: 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled';
@@ -613,6 +615,10 @@ const ManagerRestaurantsPage: React.FC = () => {
     email: '',
     phone: '',
     address: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: 'MY',
     cuisine: '',
     planType: 'Basic Plan',
     planAmount: '29.00',
@@ -822,6 +828,10 @@ const ManagerRestaurantsPage: React.FC = () => {
       email: '',
       phone: '',
       address: '',
+      city: '',
+      state: '',
+      postalCode: '',
+      country: 'MY',
       cuisine: '',
       planType: 'Basic Plan',
       planAmount: '29.00',
@@ -847,6 +857,10 @@ const ManagerRestaurantsPage: React.FC = () => {
       const restaurantData = {
         name: newRestaurant.name,
         address: newRestaurant.address,
+        city: newRestaurant.city,
+        state: newRestaurant.state,
+        postal_code: newRestaurant.postalCode,
+        country: newRestaurant.country,
         phone: newRestaurant.phone,
         email: newRestaurant.email,
         cuisine: newRestaurant.cuisine,
@@ -922,6 +936,10 @@ const ManagerRestaurantsPage: React.FC = () => {
           email: '',
           phone: '',
           address: '',
+          city: '',
+          state: '',
+          postalCode: '',
+          country: 'MY',
           cuisine: '',
           planType: 'Basic Plan',
           planAmount: '29.00',
@@ -993,6 +1011,10 @@ const ManagerRestaurantsPage: React.FC = () => {
       email: restaurant.email,
       phone: restaurant.phone,
       address: restaurant.address,
+      city: (restaurant as any).city || '',
+      state: (restaurant as any).state || '',
+      postalCode: (restaurant as any).postalCode || '',
+      country: (restaurant as any).country || 'MY',
       cuisine: restaurant.cuisine,
       planType: restaurant.plan === 'basic' ? 'Basic Plan' : restaurant.plan === 'professional' ? 'Professional Plan' : 'Enterprise Plan',
       planAmount: restaurant.monthlyFee?.toString() || '29.00',
@@ -1063,6 +1085,10 @@ const ManagerRestaurantsPage: React.FC = () => {
             email: '',
             phone: '',
             address: '',
+            city: '',
+            state: '',
+            postalCode: '',
+            country: 'MY',
             cuisine: '',
             planType: 'Basic Plan',
             planAmount: '29.00',
@@ -1320,21 +1346,64 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
+                  <FormLabel>Country *</FormLabel>
+                  <FormSelect
+                    value={newRestaurant.country}
+                    onChange={(e) => setNewRestaurant({...newRestaurant, country: e.target.value})}
+                  >
+                    {COUNTRIES.map(country => (
+                      <option key={country.code} value={country.code}>
+                        {country.name}
+                      </option>
+                    ))}
+                  </FormSelect>
+                </FormGroup>
+
+                <FormGroup>
                   <FormLabel>Phone Number *</FormLabel>
-                  <FormInput
-                    type="tel"
-                    placeholder="+60123456789"
+                  <PhoneInput
                     value={newRestaurant.phone}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, phone: e.target.value})}
+                    onChange={(value) => setNewRestaurant({...newRestaurant, phone: value})}
+                    defaultCountry={newRestaurant.country}
                   />
                 </FormGroup>
 
                 <FormGroup style={{gridColumn: '1 / -1'}}>
                   <FormLabel>Address *</FormLabel>
                   <FormTextarea
-                    placeholder="Enter restaurant address"
+                    placeholder="Enter street address"
                     value={newRestaurant.address}
                     onChange={(e) => setNewRestaurant({...newRestaurant, address: e.target.value})}
+                  />
+                </FormGroup>
+
+                <FormGroup>
+                  <FormLabel>City</FormLabel>
+                  <FormInput
+                    type="text"
+                    placeholder="e.g., Kuala Lumpur"
+                    value={newRestaurant.city}
+                    onChange={(e) => setNewRestaurant({...newRestaurant, city: e.target.value})}
+                  />
+                </FormGroup>
+
+                <FormGroup>
+                  <FormLabel>State</FormLabel>
+                  <FormInput
+                    type="text"
+                    placeholder="e.g., Wilayah Persekutuan"
+                    value={newRestaurant.state}
+                    onChange={(e) => setNewRestaurant({...newRestaurant, state: e.target.value})}
+                  />
+                </FormGroup>
+
+                <FormGroup>
+                  <FormLabel>Postal Code</FormLabel>
+                  <FormInput
+                    type="text"
+                    placeholder="e.g., 50000"
+                    value={newRestaurant.postalCode}
+                    onChange={(e) => setNewRestaurant({...newRestaurant, postalCode: e.target.value})}
                   />
                 </FormGroup>
 
@@ -1535,21 +1604,64 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
+                  <FormLabel>Country *</FormLabel>
+                  <FormSelect
+                    value={newRestaurant.country}
+                    onChange={(e) => setNewRestaurant({...newRestaurant, country: e.target.value})}
+                  >
+                    {COUNTRIES.map(country => (
+                      <option key={country.code} value={country.code}>
+                        {country.name}
+                      </option>
+                    ))}
+                  </FormSelect>
+                </FormGroup>
+
+                <FormGroup>
                   <FormLabel>Phone Number *</FormLabel>
-                  <FormInput
-                    type="tel"
-                    placeholder="+60123456789"
+                  <PhoneInput
                     value={newRestaurant.phone}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, phone: e.target.value})}
+                    onChange={(value) => setNewRestaurant({...newRestaurant, phone: value})}
+                    defaultCountry={newRestaurant.country}
                   />
                 </FormGroup>
 
                 <FormGroup style={{gridColumn: '1 / -1'}}>
                   <FormLabel>Address *</FormLabel>
                   <FormTextarea
-                    placeholder="Enter restaurant address"
+                    placeholder="Enter street address"
                     value={newRestaurant.address}
                     onChange={(e) => setNewRestaurant({...newRestaurant, address: e.target.value})}
+                  />
+                </FormGroup>
+
+                <FormGroup>
+                  <FormLabel>City</FormLabel>
+                  <FormInput
+                    type="text"
+                    placeholder="e.g., Kuala Lumpur"
+                    value={newRestaurant.city}
+                    onChange={(e) => setNewRestaurant({...newRestaurant, city: e.target.value})}
+                  />
+                </FormGroup>
+
+                <FormGroup>
+                  <FormLabel>State</FormLabel>
+                  <FormInput
+                    type="text"
+                    placeholder="e.g., Wilayah Persekutuan"
+                    value={newRestaurant.state}
+                    onChange={(e) => setNewRestaurant({...newRestaurant, state: e.target.value})}
+                  />
+                </FormGroup>
+
+                <FormGroup>
+                  <FormLabel>Postal Code</FormLabel>
+                  <FormInput
+                    type="text"
+                    placeholder="e.g., 50000"
+                    value={newRestaurant.postalCode}
+                    onChange={(e) => setNewRestaurant({...newRestaurant, postalCode: e.target.value})}
                   />
                 </FormGroup>
 
