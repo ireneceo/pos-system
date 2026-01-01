@@ -179,7 +179,7 @@ const StatusMessage = styled.div<{ type: 'success' | 'error' }>`
   font-size: 14px;
 `;
 
-const BrandCompanyInfoPage: React.FC = () => {
+const FoodcourtCompanyInfoPage: React.FC = () => {
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -210,8 +210,8 @@ const BrandCompanyInfoPage: React.FC = () => {
   const fetchCompanyInfo = async () => {
     try {
       const token = localStorage.getItem('auth_token');
-      // Brand의 company info는 brand 테이블에서 가져옴
-      const response = await fetch('/api/brands/company-info', {
+      // Foodcourt의 company info는 foodcourt 엔드포인트에서 가져옴
+      const response = await fetch('/api/foodcourts/company-info', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -255,7 +255,7 @@ const BrandCompanyInfoPage: React.FC = () => {
 
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/brands/company-info', {
+      const response = await fetch('/api/foodcourts/company-info', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -500,4 +500,4 @@ const BrandCompanyInfoPage: React.FC = () => {
   );
 };
 
-export default BrandCompanyInfoPage;
+export default FoodcourtCompanyInfoPage;

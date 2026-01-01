@@ -1,9 +1,9 @@
 const { DataTypes, Model } = require('sequelize');
 const database = require('../config/database');
 
-class Brand extends Model {}
+class Foodcourt extends Model {}
 
-Brand.init({
+Foodcourt.init({
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
@@ -12,13 +12,13 @@ Brand.init({
   name: {
     type: DataTypes.STRING(255),
     allowNull: false,
-    comment: 'Brand name'
+    comment: 'Foodcourt name'
   },
   code: {
     type: DataTypes.STRING(50),
     allowNull: true,
     unique: true,
-    comment: 'Brand code for identification'
+    comment: 'Foodcourt code for identification'
   },
   description: {
     type: DataTypes.TEXT,
@@ -27,18 +27,18 @@ Brand.init({
   logo_url: {
     type: DataTypes.TEXT,
     allowNull: true,
-    comment: 'Brand logo image URL or base64'
+    comment: 'Foodcourt logo image URL or base64'
   },
   owner_id: {
     type: DataTypes.INTEGER,
     allowNull: true,
-    comment: 'Brand General user ID who owns this brand'
+    comment: 'Foodcourt General user ID who owns this foodcourt'
   },
   status: {
     type: DataTypes.ENUM('active', 'inactive'),
     defaultValue: 'active'
   },
-  // 회사 정보
+  // Company Information
   company_name: {
     type: DataTypes.STRING(255),
     allowNull: true,
@@ -59,7 +59,7 @@ Brand.init({
     allowNull: true,
     comment: 'Tax registration number (SST/GST)'
   },
-  // 연락처 정보
+  // Contact Information
   email: {
     type: DataTypes.STRING(100),
     allowNull: true
@@ -93,7 +93,7 @@ Brand.init({
     type: DataTypes.STRING(255),
     allowNull: true
   },
-  // 은행 정보
+  // Banking Information
   bank_name: {
     type: DataTypes.STRING(100),
     allowNull: true
@@ -110,16 +110,16 @@ Brand.init({
     type: DataTypes.STRING(10),
     defaultValue: 'RM',
     allowNull: false,
-    comment: 'Default currency for brand restaurants (RM, USD, SGD, JPY, THB, KRW)'
+    comment: 'Default currency for foodcourt restaurants (RM, USD, SGD, JPY, THB, KRW)'
   }
 }, {
   sequelize: database.sequelize,
-  modelName: 'Brand',
-  tableName: 'brands',
+  modelName: 'Foodcourt',
+  tableName: 'foodcourts',
   timestamps: true,
   underscored: true,
   createdAt: 'created_at',
   updatedAt: 'updated_at'
 });
 
-module.exports = Brand;
+module.exports = Foodcourt;

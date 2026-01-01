@@ -262,4 +262,92 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Get company info for brand owner
+router.get('/company-info', authenticateToken, async (req, res) => {
+  try {
+    console.log(`🏢 GET /api/brands/company-info - User: ${req.user.email} (${req.user.role})`);
+
+    // Brand General/Manager는 자신이 소유한 브랜드의 회사정보를 가져옴
+    if (req.user.role !== 'Brand General' && req.user.role !== 'Brand Manager') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const brand = await Brand.findOne({
+      where: { owner_id: req.user.id }
+    });
+
+    if (!brand) {
+      return res.status(404).json({ error: 'Brand not found' });
+    }
+
+    res.json({
+      company_name: brand.company_name || brand.name,
+      registration_no: brand.registration_no,
+      trade_name: brand.trade_name,
+      address: brand.address,
+      city: brand.city,
+      state: brand.state,
+      postal_code: brand.postal_code,
+      country: brand.country || 'MY',
+      phone: brand.phone,
+      email: brand.email,
+      website: brand.website,
+      tax_no: brand.tax_no,
+      bank_name: brand.bank_name,
+      bank_account: brand.bank_account,
+      bank_account_name: brand.bank_account_name,
+      logo_url: brand.logo_url
+    });
+  } catch (error) {
+    console.error('Error fetching brand company info:', error);
+    res.status(500).json({ error: 'Failed to fetch company info' });
+  }
+});
+
+// Update company info for brand owner
+router.put('/company-info', authenticateToken, async (req, res) => {
+  try {
+    console.log(`🏢 PUT /api/brands/company-info - User: ${req.user.email}`);
+
+    if (req.user.role !== 'Brand General' && req.user.role !== 'Brand Manager') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const brand = await Brand.findOne({
+      where: { owner_id: req.user.id }
+    });
+
+    if (!brand) {
+      return res.status(404).json({ error: 'Brand not found' });
+    }
+
+    const updateData = {
+      company_name: req.body.company_name,
+      registration_no: req.body.registration_no,
+      trade_name: req.body.trade_name,
+      address: req.body.address,
+      city: req.body.city,
+      state: req.body.state,
+      postal_code: req.body.postal_code,
+      country: req.body.country,
+      phone: req.body.phone,
+      email: req.body.email,
+      website: req.body.website,
+      tax_no: req.body.tax_no,
+      bank_name: req.body.bank_name,
+      bank_account: req.body.bank_account,
+      bank_account_name: req.body.bank_account_name,
+      logo_url: req.body.logo_url
+    };
+
+    await brand.update(updateData);
+    console.log(`✅ Brand company info updated: ${brand.name}`);
+
+    res.json({ success: true, message: 'Company info updated successfully' });
+  } catch (error) {
+    console.error('Error updating brand company info:', error);
+    res.status(500).json({ error: 'Failed to update company info' });
+  }
+});
+
 module.exports = router;

@@ -49,6 +49,8 @@ const StaffPage = React.lazy(() => import('./pages/Staff/StaffPage'));
 const ProfilePage = React.lazy(() => import('./pages/Profile/ProfilePage'));
 const SalesPage = React.lazy(() => import('./pages/Sales/SalesPage'));
 const CompanyInformationPage = React.lazy(() => import('./pages/CompanyInformation/CompanyInformationPage'));
+const BrandCompanyInfoPage = React.lazy(() => import('./pages/Brand/BrandCompanyInfoPage'));
+const FoodcourtCompanyInfoPage = React.lazy(() => import('./pages/Foodcourt/FoodcourtCompanyInfoPage'));
 const ActivityHistoryPage = React.lazy(() => import('./pages/ActivityHistory/ActivityHistoryPage'));
 
 // Admin pages
@@ -400,6 +402,16 @@ function App() {
                       <Route path="/pos/brand/general/reports" element={
                         <ProtectedRoute requiredRole={['Brand General']}>
                           <BrandReportsPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/brand/company-info" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
+                          <BrandCompanyInfoPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/foodcourt/company-info" element={
+                        <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
+                          <FoodcourtCompanyInfoPage />
                         </ProtectedRoute>
                       } />
 

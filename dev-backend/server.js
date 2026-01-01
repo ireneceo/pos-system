@@ -185,6 +185,7 @@ const siteSettingsRouter = require('./routes/siteSettings');
 const addonModulesRouter = require('./routes/addon-modules');
 const notificationSettingsRouter = require('./routes/notification-settings');
 const brandsRouter = require('./routes/brands');
+const foodcourtsRouter = require('./routes/foodcourts');
 const recipesRouter = require('./routes/recipes');
 const ingredientsRouter = require('./routes/ingredients');
 const recipeCategoriesRouter = require('./routes/recipe-categories');
@@ -239,6 +240,7 @@ app.use('/api/site-settings', siteSettingsRouter);
 app.use('/api/notification-settings', notificationSettingsRouter);
 app.use('/api', brandProductsRouter);  // Brand products routes (must be before /api/brands to handle /api/brands/:id/product-categories)
 app.use('/api/brands', brandsRouter);
+app.use('/api/foodcourts', foodcourtsRouter);
 app.use('/api', recipesRouter);
 app.use('/api', ingredientsRouter);
 app.use('/api', recipeCategoriesRouter);
