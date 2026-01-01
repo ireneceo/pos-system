@@ -3,6 +3,8 @@ import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
+import PhoneInput from '../../components/common/PhoneInput';
+import { COUNTRIES } from '../../constants/countries';
 
 interface CompanyInfo {
   id: string;
@@ -210,7 +212,7 @@ const CompanyInformationPage: React.FC = () => {
     city: '',
     state: '',
     postcode: '',
-    country: 'Malaysia',
+    country: 'MY',
     phone: '',
     email: '',
     website: '',
@@ -254,7 +256,7 @@ const CompanyInformationPage: React.FC = () => {
             city: restaurant.city || '',
             state: restaurant.state || '',
             postcode: restaurant.postal_code || '',
-            country: restaurant.country || 'Malaysia',
+            country: restaurant.country || 'MY',
             phone: restaurant.phone || '',
             email: restaurant.email || '',
             website: restaurant.website || '',
@@ -462,20 +464,20 @@ const CompanyInformationPage: React.FC = () => {
                   value={companyInfo.country}
                   onChange={(e) => handleInputChange('country', e.target.value)}
                 >
-                  <option value="Malaysia">Malaysia</option>
-                  <option value="Singapore">Singapore</option>
-                  <option value="Thailand">Thailand</option>
-                  <option value="Indonesia">Indonesia</option>
+                  {COUNTRIES.map(country => (
+                    <option key={country.code} value={country.code}>
+                      {country.name}
+                    </option>
+                  ))}
                 </Select>
               </FormGroup>
 
               <FormGroup>
                 <Label>Phone <span>*</span></Label>
-                <Input
-                  type="tel"
+                <PhoneInput
                   value={companyInfo.phone}
-                  onChange={(e) => handleInputChange('phone', e.target.value)}
-                  placeholder="+60 3-1234 5678"
+                  onChange={(value) => handleInputChange('phone', value)}
+                  defaultCountry={companyInfo.country}
                 />
               </FormGroup>
 

@@ -5,6 +5,7 @@ import { useStaff } from '../../contexts/StaffContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton } from '../../components/UI/Modal';
 import Tabs from '../../components/UI/Tabs';
+import PhoneInput from '../../components/common/PhoneInput';
 
 // 스타일 컴포넌트
 const ProfileContainer = styled.div`
@@ -864,11 +865,9 @@ const ProfilePage: React.FC = () => {
                   </FormGroup>
                   <FormGroup>
                     <Label>Phone Number</Label>
-                    <Input
-                      type="tel"
+                    <PhoneInput
                       value={formData.phone || ''}
-                      onChange={(e) => handleInputChange('phone', e.target.value)}
-                      placeholder="Enter phone number"
+                      onChange={(value) => handleInputChange('phone', value)}
                     />
                   </FormGroup>
 

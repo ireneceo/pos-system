@@ -26,6 +26,7 @@ import {
 } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { formatCurrency } from '../../utils/currency';
+import PhoneInput from '../../components/common/PhoneInput';
 import { useStore } from '../../contexts/StoreContext';
 
 interface Manager {
@@ -1330,11 +1331,9 @@ const ManagersPage: React.FC = () => {
 
                 <FormGroup>
                   <FormLabel>Phone Number *</FormLabel>
-                  <FormInput
-                    type="tel"
-                    placeholder="Enter phone number"
+                  <PhoneInput
                     value={newManager.phone}
-                    onChange={(e) => handleInputChange('phone', e.target.value)}
+                    onChange={(value) => handleInputChange('phone', value)}
                   />
                 </FormGroup>
 
@@ -1571,10 +1570,9 @@ const ManagersPage: React.FC = () => {
                 </FormGroup>
                 <FormGroup>
                   <FormLabel>Phone Number *</FormLabel>
-                  <FormInput
-                    type="tel"
+                  <PhoneInput
                     value={editingManager.phone}
-                    onChange={(e) => setEditingManager({...editingManager, phone: e.target.value})}
+                    onChange={(value) => setEditingManager({...editingManager, phone: value})}
                   />
                 </FormGroup>
                 <FormGroup>

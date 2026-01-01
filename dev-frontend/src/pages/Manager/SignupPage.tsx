@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
+import PhoneInput from '../../components/common/PhoneInput';
 
 interface SignupFormData {
   name: string;
@@ -476,13 +477,9 @@ const ManagerSignupPage: React.FC = () => {
               <Row>
                 <InputGroup>
                   <Label>Phone Number *</Label>
-                  <Input
-                    type="tel"
-                    name="phone"
+                  <PhoneInput
                     value={formData.phone}
-                    onChange={handleInputChange}
-                    placeholder="+60 12-345-6789"
-                    required
+                    onChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
                   />
                 </InputGroup>
                 <InputGroup>

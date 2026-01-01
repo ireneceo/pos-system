@@ -19,6 +19,7 @@ import { ModalWarning } from '../../components/UI/Modal';
 // Using page-specific filter components instead of common ones
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
+import PhoneInput from '../../components/common/PhoneInput';
 // API imports removed - using direct fetch like StaffManagementPage and ManagersPage
 
 interface Restaurant {
@@ -1662,11 +1663,10 @@ const RestaurantsPage: React.FC = () => {
 
                   <FormGroup>
                     <FormLabel>Phone Number *</FormLabel>
-                    <FormInput
-                      type="tel"
-                      placeholder="+60123456789"
+                    <PhoneInput
                       value={newRestaurant.phone}
-                      onChange={(e) => setNewRestaurant({...newRestaurant, phone: e.target.value})}
+                      onChange={(value) => setNewRestaurant({...newRestaurant, phone: value})}
+                      defaultCountry={newRestaurant.country}
                     />
                   </FormGroup>
 
@@ -1897,11 +1897,10 @@ const RestaurantsPage: React.FC = () => {
 
                   <FormGroup>
                     <FormLabel>Phone Number *</FormLabel>
-                    <FormInput
-                      type="tel"
-                      placeholder="+60123456789"
+                    <PhoneInput
                       value={editingRestaurant.phone || ''}
-                      onChange={(e) => setEditingRestaurant({...editingRestaurant, phone: e.target.value})}
+                      onChange={(value) => setEditingRestaurant({...editingRestaurant, phone: value})}
+                      defaultCountry={editingRestaurant.country}
                     />
                   </FormGroup>
 

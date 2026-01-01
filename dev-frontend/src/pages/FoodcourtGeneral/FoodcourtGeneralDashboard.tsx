@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { TabContainer, Tab, DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue, ModalComponent, FormGroup, FormLabel, FormInput, Button } from '../../components/UI';
 import ConfirmModal from '../../components/ConfirmModal';
+import PhoneInput from '../../components/common/PhoneInput';
 
 interface FoodcourtMetrics {
   totalFoodcourts: number;
@@ -718,10 +719,9 @@ const FoodcourtGeneralDashboard: React.FC = () => {
 
               <FormGroup>
                 <FormLabel>전화번호</FormLabel>
-                <FormInput
-                  type="tel"
+                <PhoneInput
                   value={formData.phone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                  onChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
                 />
               </FormGroup>
 

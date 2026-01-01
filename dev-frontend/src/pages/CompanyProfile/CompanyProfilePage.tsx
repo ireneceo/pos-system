@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
+import PhoneInput from '../../components/common/PhoneInput';
 
 interface CompanyProfile {
   id: string;
@@ -587,11 +588,10 @@ const CompanyProfilePage: React.FC = () => {
 
               <FormGroup>
                 <Label>Phone <span>*</span></Label>
-                <Input
-                  type="tel"
+                <PhoneInput
                   value={profile.phone}
-                  onChange={(e) => handleInputChange('phone', e.target.value)}
-                  placeholder="+60 3-1234 5678"
+                  onChange={(value) => handleInputChange('phone', value)}
+                  defaultCountry={profile.country === 'Malaysia' ? 'MY' : profile.country === 'Singapore' ? 'SG' : 'MY'}
                 />
               </FormGroup>
 

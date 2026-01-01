@@ -24,6 +24,7 @@ import {
   IconButton
 } from '../../components/UI';
 import ConfirmModal from '../../components/ConfirmModal';
+import PhoneInput from '../../components/common/PhoneInput';
 
 // Page-specific styled components
 const Subtitle = styled.p`
@@ -500,11 +501,9 @@ const BrandManagement: React.FC = () => {
 
               <FormGroup>
                 <FormLabel>Phone</FormLabel>
-                <FormInput
-                  type="tel"
+                <PhoneInput
                   value={formData.phone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                  placeholder="+60123456789"
+                  onChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
                 />
               </FormGroup>
 

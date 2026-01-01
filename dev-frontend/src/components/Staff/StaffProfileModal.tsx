@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useStaff, Staff } from '../../contexts/StaffContext';
+import PhoneInput from '../common/PhoneInput';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   display: ${props => props.isOpen ? 'flex' : 'none'};
@@ -489,13 +490,18 @@ const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, onClose }
                   </FormGroup>
                   <FormGroup>
                     <Label>Phone Number</Label>
-                    <Input
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      disabled={!isEditing}
-                      required
-                    />
+                    {isEditing ? (
+                      <PhoneInput
+                        value={formData.phone}
+                        onChange={(value) => setFormData({ ...formData, phone: value })}
+                      />
+                    ) : (
+                      <Input
+                        type="text"
+                        value={formData.phone}
+                        disabled
+                      />
+                    )}
                   </FormGroup>
                   <FormGroup>
                     <Label>Role</Label>

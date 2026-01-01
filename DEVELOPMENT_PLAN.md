@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2025-12-30
+> **최종 업데이트:** 2026-01-01
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -322,6 +322,53 @@ const dateKey = `${(orderDate.getMonth() + 1).toString().padStart(2, '0')}/${ord
 ```bash
 git stash pop
 ```
+
+---
+
+## ✅ 완료된 작업 (2026-01-01)
+
+### PhoneInput 컴포넌트 표준화
+
+**목적:** 모든 페이지의 전화번호 입력을 국가코드를 지원하는 PhoneInput 컴포넌트로 통일
+
+**수정된 파일 (12개):**
+- `dev-frontend/src/pages/Settings/SettingsPage.tsx`
+- `dev-frontend/src/pages/Profile/ProfilePage.tsx`
+- `dev-frontend/src/pages/Admin/ManagersPage.tsx` (신규/수정 폼)
+- `dev-frontend/src/pages/Admin/RestaurantsPage.tsx` (신규/수정 폼)
+- `dev-frontend/src/pages/Manager/SignupPage.tsx`
+- `dev-frontend/src/components/Staff/StaffProfileModal.tsx`
+- `dev-frontend/src/pages/CompanyProfile/CompanyProfilePage.tsx`
+- `dev-frontend/src/pages/BrandGeneral/BrandGeneralDashboard.tsx`
+- `dev-frontend/src/pages/BrandGeneral/BrandManagement.tsx`
+- `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtGeneralDashboard.tsx`
+- `dev-frontend/src/pages/CompanyInformation/CompanyInformationPage.tsx`
+- `dev-frontend/src/components/Layout/MainLayout.tsx`
+
+**변경 내용:**
+- 기존 `<Input type="tel">` → `<PhoneInput>` 컴포넌트로 교체
+- 국가 선택에 따른 국가코드 자동 변경 지원
+- `defaultCountry` prop으로 기본 국가 설정
+
+### Country Select 표준화
+
+**목적:** 국가 선택 드롭다운을 COUNTRIES 상수를 사용하도록 통일
+
+**수정된 파일:**
+- `dev-frontend/src/pages/CompanyInformation/CompanyInformationPage.tsx`
+
+**변경 내용:**
+- 하드코딩된 국가 옵션 → `COUNTRIES` 상수 import 사용
+- 기본값 `'Malaysia'` → `'MY'` (국가 코드 표준)
+
+### Foodcourt 메뉴 구조 개선
+
+**수정된 파일:**
+- `dev-frontend/src/components/Layout/MainLayout.tsx`
+
+**변경 내용:**
+- Foodcourt General/Manager 메뉴에 Company Information 항목 추가
+- 메뉴 섹션 구조화 (Management, Analytics, Administration, Support)
 
 ---
 
@@ -1464,4 +1511,4 @@ const token = localStorage.getItem('auth_token'); // 'token' → 'auth_token'
 **프로젝트:** Purple POS System
 **개발 환경:** Development Server
 **데이터베이스:** purple_dev_db (MySQL)
-**마지막 업데이트:** 2025-12-30
+**마지막 업데이트:** 2026-01-01

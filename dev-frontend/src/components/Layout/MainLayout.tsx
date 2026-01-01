@@ -1011,37 +1011,24 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>■</NavIcon>
                   Dashboard
                 </NavItem>
-                <NavItem to="/pos/foodcourt/rent-management" active={isActive('/pos/foodcourt/rent-management')} onClick={closeSidebar}>
-                  <NavIcon>$</NavIcon>
-                  Rent Management
-                </NavItem>
-                <NavItem to="/pos/foodcourt/tenant-support" active={isActive('/pos/foodcourt/tenant-support')} onClick={closeSidebar}>
-                  <NavIcon>◎</NavIcon>
-                  Tenant Support
-                </NavItem>
+              </>
+            )}
+
+            {/* Foodcourt Manager - Management Section */}
+            {user?.role === 'Foodcourt Manager' && (
+              <>
+                <NavTitle>Management</NavTitle>
                 <NavItem to="/pos/manager/restaurants" active={isActive('/pos/manager/restaurants')} onClick={closeSidebar}>
                   <NavIcon>◐</NavIcon>
                   Restaurants
                 </NavItem>
-                <NavItem to="/pos/manager/invoices" active={isActive('/pos/manager/invoices')} onClick={closeSidebar}>
-                  <NavIcon>▦</NavIcon>
-                  Invoices
-                </NavItem>
-                <NavItem to="/pos/manager/subscriptions" active={isActive('/pos/manager/subscriptions')} onClick={closeSidebar}>
-                  <NavIcon>◈</NavIcon>
-                  Subscriptions
+                <NavItem to="/pos/foodcourt/rent-management" active={isActive('/pos/foodcourt/rent-management')} onClick={closeSidebar}>
+                  <NavIcon>$</NavIcon>
+                  Rent Management
                 </NavItem>
                 <NavItem to="/pos/manager/staff" active={isActive('/pos/manager/staff')} onClick={closeSidebar}>
                   <NavIcon>◆</NavIcon>
                   Staff
-                </NavItem>
-                <NavItem to="/pos/manager/sales" active={isActive('/pos/manager/sales')} onClick={closeSidebar}>
-                  <NavIcon>$</NavIcon>
-                  Sales
-                </NavItem>
-                <NavItem to="/pos/manager/reports" active={isActive('/pos/manager/reports')} onClick={closeSidebar}>
-                  <NavIcon>≡</NavIcon>
-                  Reports
                 </NavItem>
                 <NavItem to="/pos/manager/customers" active={isActive('/pos/manager/customers')} onClick={closeSidebar}>
                   <NavIcon>○</NavIcon>
@@ -1051,9 +1038,54 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>%</NavIcon>
                   Promotions
                 </NavItem>
+              </>
+            )}
+
+            {/* Foodcourt Manager - Analytics Section */}
+            {user?.role === 'Foodcourt Manager' && (
+              <>
+                <NavTitle>Analytics</NavTitle>
+                <NavItem to="/pos/manager/sales" active={isActive('/pos/manager/sales')} onClick={closeSidebar}>
+                  <NavIcon>$</NavIcon>
+                  Sales
+                </NavItem>
+                <NavItem to="/pos/manager/reports" active={isActive('/pos/manager/reports')} onClick={closeSidebar}>
+                  <NavIcon>≡</NavIcon>
+                  Reports
+                </NavItem>
+              </>
+            )}
+
+            {/* Foodcourt Manager - Administration Section */}
+            {user?.role === 'Foodcourt Manager' && (
+              <>
+                <NavTitle>Administration</NavTitle>
+                <NavItem to="/pos/foodcourt/company-info" active={isActive('/pos/foodcourt/company-info')} onClick={closeSidebar}>
+                  <NavIcon>◐</NavIcon>
+                  Company Information
+                </NavItem>
+                <NavItem to="/pos/manager/invoices" active={isActive('/pos/manager/invoices')} onClick={closeSidebar}>
+                  <NavIcon>▦</NavIcon>
+                  Invoices
+                </NavItem>
+                <NavItem to="/pos/manager/subscriptions" active={isActive('/pos/manager/subscriptions')} onClick={closeSidebar}>
+                  <NavIcon>◈</NavIcon>
+                  Subscriptions
+                </NavItem>
                 <NavItem to="/pos/manager/plans" active={isActive('/pos/manager/plans')} onClick={closeSidebar}>
                   <NavIcon>⊡</NavIcon>
                   Plans
+                </NavItem>
+              </>
+            )}
+
+            {/* Foodcourt Manager - Support Section */}
+            {user?.role === 'Foodcourt Manager' && (
+              <>
+                <NavTitle>Support</NavTitle>
+                <NavItem to="/pos/foodcourt/tenant-support" active={isActive('/pos/foodcourt/tenant-support')} onClick={closeSidebar}>
+                  <NavIcon>◎</NavIcon>
+                  Tenant Support
                 </NavItem>
                 <NavItem to="/pos/manager/support" active={isActive('/pos/manager/support')} onClick={closeSidebar}>
                   <NavIcon>◎</NavIcon>

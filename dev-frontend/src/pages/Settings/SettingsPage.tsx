@@ -9,6 +9,7 @@ import { useMenu } from '../../contexts/MenuContext';
 import { useBrandTheme } from '../../contexts/BrandThemeContext';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
+import PhoneInput from '../../components/common/PhoneInput';
 import { useTabParam } from '../../hooks/useTabParam';
 import { printTableQR } from '../../utils/billPrint';
 
@@ -2494,14 +2495,13 @@ const SettingsPage: React.FC = () => {
                 </FormGroup>
                 <FormGroup>
                   <Label>Phone Number</Label>
-                  <Input 
-                    type="tel" 
+                  <PhoneInput
                     value={storeSettings.phone}
-                    onChange={(e) => {
-                      setStoreSettings(prev => ({ ...prev, phone: e.target.value }));
+                    onChange={(value) => {
+                      setStoreSettings(prev => ({ ...prev, phone: value }));
                       setHasChanges(true);
                     }}
-                    placeholder="+60 3-1234-5678" 
+                    defaultCountry={storeSettings.country}
                   />
                 </FormGroup>
                 <FormGroup>
