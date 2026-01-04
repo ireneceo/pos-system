@@ -8,6 +8,7 @@ import CustomerModal from '../../components/Customer/CustomerModal';
 import Modal, { ModalButton } from '../../components/UI/Modal';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
+import { formatPhoneForDisplay } from '../../utils/phoneUtils';
 
 // 스타일 컴포넌트
 const CustomersContainer = styled.div`
@@ -694,7 +695,7 @@ const CustomersPage: React.FC = () => {
                       
                       <div>
                         <div style={{ fontSize: '14px', fontWeight: '500', color: '#1F2937' }}>
-                          {customer.phone}
+                          {formatPhoneForDisplay(customer.phone)}
                         </div>
                         {customer.email && (
                           <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
@@ -751,7 +752,7 @@ const CustomersPage: React.FC = () => {
                         </CustomerAvatar>
                         <CustomerDetails>
                           <CustomerName>{customer.name}</CustomerName>
-                          <CustomerMeta>{customer.phone}</CustomerMeta>
+                          <CustomerMeta>{formatPhoneForDisplay(customer.phone)}</CustomerMeta>
                         </CustomerDetails>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                           <DeleteButton
@@ -822,7 +823,7 @@ const CustomersPage: React.FC = () => {
                   <DetailGrid>
                     <DetailItem>
                       <DetailLabel>Phone Number</DetailLabel>
-                      <DetailValue>{selectedCustomer.phone}</DetailValue>
+                      <DetailValue>{formatPhoneForDisplay(selectedCustomer.phone)}</DetailValue>
                     </DetailItem>
                     <DetailItem>
                       <DetailLabel>Email Address</DetailLabel>

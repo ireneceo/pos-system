@@ -357,6 +357,8 @@ router.post('/', authenticateToken, async (req, res) => {
       state: req.body.state || null,
       postal_code: req.body.postal_code || null,
       country: req.body.country || 'MY',
+      business_registration: req.body.business_registration || null,
+      tax_id: req.body.tax_id || null,
       plan_type: req.body.planType || 'Basic Plan',
       plan_amount: parseFloat(req.body.planAmount) || (planSnapshot ? planSnapshot.base_price_monthly : 29.00),
       status: req.body.status === 'active' ? 'active' : 'inactive',

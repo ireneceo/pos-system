@@ -651,6 +651,12 @@ const RestaurantsPage: React.FC = () => {
     email: '',
     phone: '',
     address: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: 'MY',
+    businessRegistration: '',
+    taxId: '',
     cuisine: '',
     planType: 'Basic Plan',
     planAmount: '29.00',
@@ -1106,6 +1112,12 @@ const RestaurantsPage: React.FC = () => {
         email: newRestaurant.email,
         phone: newRestaurant.phone,
         address: newRestaurant.address,
+        city: newRestaurant.city,
+        state: newRestaurant.state,
+        postal_code: newRestaurant.postalCode,
+        country: newRestaurant.country,
+        business_registration: newRestaurant.businessRegistration,
+        tax_id: newRestaurant.taxId,
         location: newRestaurant.address, // Use address as location
         cuisine: newRestaurant.cuisine || 'Various',
         status: newRestaurant.status,
@@ -1677,6 +1689,72 @@ const RestaurantsPage: React.FC = () => {
                       placeholder="Enter restaurant address"
                       value={newRestaurant.address}
                       onChange={(e) => setNewRestaurant({...newRestaurant, address: e.target.value})}
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>City</FormLabel>
+                    <FormInput
+                      type="text"
+                      placeholder="e.g., Kuala Lumpur"
+                      value={newRestaurant.city}
+                      onChange={(e) => setNewRestaurant({...newRestaurant, city: e.target.value})}
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>State / Province</FormLabel>
+                    <FormInput
+                      type="text"
+                      placeholder="e.g., Selangor"
+                      value={newRestaurant.state}
+                      onChange={(e) => setNewRestaurant({...newRestaurant, state: e.target.value})}
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>Postal Code</FormLabel>
+                    <FormInput
+                      type="text"
+                      placeholder="e.g., 50000"
+                      value={newRestaurant.postalCode}
+                      onChange={(e) => setNewRestaurant({...newRestaurant, postalCode: e.target.value})}
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>Country</FormLabel>
+                    <FormSelect
+                      value={newRestaurant.country}
+                      onChange={(e) => setNewRestaurant({...newRestaurant, country: e.target.value})}
+                    >
+                      <option value="MY">Malaysia</option>
+                      <option value="SG">Singapore</option>
+                      <option value="TH">Thailand</option>
+                      <option value="KR">South Korea</option>
+                      <option value="ID">Indonesia</option>
+                      <option value="PH">Philippines</option>
+                      <option value="VN">Vietnam</option>
+                    </FormSelect>
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>Business Registration No.</FormLabel>
+                    <FormInput
+                      type="text"
+                      placeholder="e.g., 123456-A"
+                      value={newRestaurant.businessRegistration}
+                      onChange={(e) => setNewRestaurant({...newRestaurant, businessRegistration: e.target.value})}
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>Tax ID / GST No.</FormLabel>
+                    <FormInput
+                      type="text"
+                      placeholder="e.g., 000123456789"
+                      value={newRestaurant.taxId}
+                      onChange={(e) => setNewRestaurant({...newRestaurant, taxId: e.target.value})}
                     />
                   </FormGroup>
 

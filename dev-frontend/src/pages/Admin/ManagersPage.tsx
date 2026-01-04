@@ -26,6 +26,7 @@ import {
 } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { formatCurrency } from '../../utils/currency';
+import { formatPhoneForDisplay } from '../../utils/phoneUtils';
 import PhoneInput from '../../components/common/PhoneInput';
 import { useStore } from '../../contexts/StoreContext';
 
@@ -1474,7 +1475,7 @@ const ManagersPage: React.FC = () => {
                 </FormGroup>
                 <FormGroup>
                   <FormLabel>Phone Number</FormLabel>
-                  <FormInput type="tel" value={selectedManager.phone} disabled />
+                  <FormInput type="tel" value={formatPhoneForDisplay(selectedManager.phone)} disabled />
                 </FormGroup>
                 <FormGroup>
                   <FormLabel>Status</FormLabel>
