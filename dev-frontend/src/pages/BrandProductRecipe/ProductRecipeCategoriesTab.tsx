@@ -6,6 +6,7 @@ import { fetchAPI } from '../../utils/api';
 
 interface ProductRecipeCategoriesTabProps {
   onCountChange?: (count: number) => void;
+  onCategoryChange?: () => void;
 }
 
 interface Category {
@@ -180,7 +181,7 @@ const EmojiOption = styled.button<{ selected?: boolean }>`
   }
 `;
 
-const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({ onCountChange }) => {
+const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({ onCountChange, onCategoryChange }) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -256,6 +257,7 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
       if (response.success) {
         setShowModal(false);
         fetchCategories();
+        onCategoryChange?.();
       } else {
         alert(response.error || 'Failed to save category');
       }
@@ -277,6 +279,7 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
 
       if (response.success) {
         fetchCategories();
+        onCategoryChange?.();
       } else {
         alert(response.error || 'Failed to delete category');
       }

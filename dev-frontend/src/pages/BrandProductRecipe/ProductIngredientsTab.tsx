@@ -9,6 +9,7 @@ import { formatCurrency } from '../../utils/currency';
 
 interface ProductIngredientsTabProps {
   onCountChange?: (count: number) => void;
+  categoryRefreshKey?: number;
 }
 
 interface Category {
@@ -129,7 +130,7 @@ const FormRow = styled.div`
   }
 `;
 
-const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountChange }) => {
+const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountChange, categoryRefreshKey }) => {
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
@@ -183,7 +184,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, categoryRefreshKey]);
 
   const handleOpenModal = (ingredient?: Ingredient) => {
     if (ingredient) {

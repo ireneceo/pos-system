@@ -34,6 +34,7 @@ const BrandProductRecipePage: React.FC = () => {
   const [recipeCategoriesCount, setRecipeCategoriesCount] = useState(0);
   const [ingredientCategoriesCount, setIngredientCategoriesCount] = useState(0);
   const [ingredientCategoryRefreshKey, setIngredientCategoryRefreshKey] = useState(0);
+  const [recipeCategoryRefreshKey, setRecipeCategoryRefreshKey] = useState(0);
 
   const activeTab = (searchParams.get('tab') as TabType) || 'recipes';
   const brandId = user?.brand_id;
@@ -87,7 +88,10 @@ const BrandProductRecipePage: React.FC = () => {
           </TabContainer>
 
           <div style={{ display: activeTab === 'recipes' ? 'block' : 'none' }}>
-            <ProductRecipesTab onCountChange={setRecipesCount} />
+            <ProductRecipesTab
+              onCountChange={setRecipesCount}
+              categoryRefreshKey={recipeCategoryRefreshKey}
+            />
           </div>
           <div style={{ display: activeTab === 'ingredients' ? 'block' : 'none' }}>
             <ProductIngredientsTab
@@ -96,7 +100,10 @@ const BrandProductRecipePage: React.FC = () => {
             />
           </div>
           <div style={{ display: activeTab === 'recipe-categories' ? 'block' : 'none' }}>
-            <ProductRecipeCategoriesTab onCountChange={setRecipeCategoriesCount} />
+            <ProductRecipeCategoriesTab
+              onCountChange={setRecipeCategoriesCount}
+              onCategoryChange={() => setRecipeCategoryRefreshKey(k => k + 1)}
+            />
           </div>
           <div style={{ display: activeTab === 'ingredient-categories' ? 'block' : 'none' }}>
             <ProductIngredientCategoriesTab

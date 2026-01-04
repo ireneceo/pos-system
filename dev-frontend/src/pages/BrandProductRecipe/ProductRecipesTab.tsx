@@ -1,0 +1,922 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import styled from 'styled-components';
+import { ThemedButton } from '../../components/Theme/ThemedButton';
+import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { useAuth } from '../../contexts/AuthContext';
+import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI/Modal';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { formatCurrency } from '../../utils/currency';
+import { fetchAPI } from '../../utils/api';
+
+interface ProductRecipesTabProps {
+  onCountChange?: (count: number) => void;
+  categoryRefreshKey?: number;
+}
+
+interface ProductRecipe {
+  id: number;
+  brand_id: number;
+  code: string | null;
+  name: string;
+  description: string | null;
+  category_id: number | null;
+  category?: ProductRecipeCategory;
+  emoji: string | null;
+  image_url: string | null;
+  total_ingredient_cost: number;
+  suggested_price: number | null;
+  prep_time: number | null;
+  cook_time: number | null;
+  instructions: string | null;
+  is_active: boolean;
+  recipeIngredients?: RecipeIngredient[];
+}
+
+interface ProductRecipeCategory {
+  id: number;
+  name: string;
+  emoji: string | null;
+}
+
+interface ProductIngredient {
+  id: number;
+  code: string;
+  name: string;
+  unit: string;
+  unit_cost: number;
+  category?: { id: number; name: string; emoji?: string };
+  is_active: boolean;
+}
+
+interface RecipeIngredient {
+  id?: number;
+  recipe_id?: number;
+  ingredient_id: number;
+  quantity: number;
+  unit: string;
+  cost: number;
+  notes: string | null;
+  ingredient?: ProductIngredient;
+}
+
+// Styled Components
+const RecipesGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+  margin-top: 24px;
+  align-items: start;
+`;
+
+const RecipeCard = styled.div<{ isActive?: boolean }>`
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #E6EBF1;
+  padding: 20px;
+  transition: all 0.2s;
+  opacity: ${props => props.isActive !== false ? 1 : 0.6};
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+    border-color: #635BFF;
+  }
+`;
+
+const RecipeHeader = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+`;
+
+const RecipeEmoji = styled.div`
+  font-size: 40px;
+  line-height: 1;
+  flex-shrink: 0;
+`;
+
+const RecipeImage = styled.img`
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+`;
+
+const RecipeInfo = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const RecipeName = styled.h3`
+  font-size: 18px;
+  font-weight: 600;
+  color: #0A2540;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const RecipeCategoryBadge = styled.div`
+  display: inline-block;
+  padding: 4px 8px;
+  background: #F0F4FF;
+  color: #635BFF;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+`;
+
+const RecipeDescription = styled.p`
+  font-size: 14px;
+  color: #6B7280;
+  margin: 12px 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+`;
+
+const RecipeCosts = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 12px;
+  background: #F8FAFC;
+  border-radius: 8px;
+`;
+
+const CostItem = styled.div``;
+
+const CostLabel = styled.div`
+  font-size: 11px;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+`;
+
+const CostValue = styled.div`
+  font-size: 16px;
+  font-weight: 700;
+  color: #0A2540;
+`;
+
+const RecipeIngredients = styled.div`
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #E6EBF1;
+`;
+
+const IngredientsCount = styled.div`
+  font-size: 12px;
+  color: #6B7280;
+  margin-bottom: 8px;
+`;
+
+const IngredientTags = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+`;
+
+const IngredientTag = styled.span`
+  display: inline-block;
+  padding: 2px 8px;
+  background: #F3F4F6;
+  color: #4B5563;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+`;
+
+const RecipeActions = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 16px;
+`;
+
+const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  ${props => {
+    switch (props.variant) {
+      case 'primary':
+        return `
+          background: #635BFF;
+          color: white;
+          border: 1px solid #635BFF;
+          &:hover {
+            background: #4F46E5;
+            transform: translateY(-1px);
+          }
+        `;
+      case 'danger':
+        return `
+          background: #FEF2F2;
+          border: 1px solid #EF4444;
+          color: #EF4444;
+          &:hover {
+            background: #FEE2E2;
+            transform: translateY(-1px);
+          }
+        `;
+      default:
+        return `
+          background: #F6F9FC;
+          border: 1px solid #E6EBF1;
+          color: #6B7280;
+          &:hover {
+            border-color: #635BFF;
+            color: #635BFF;
+            background: #F4F3FF;
+            transform: translateY(-1px);
+          }
+        `;
+    }
+  }}
+`;
+
+const EmptyState = styled.div`
+  text-align: center;
+  padding: 60px 20px;
+`;
+
+const EmptyTitle = styled.h3`
+  font-size: 20px;
+  font-weight: 600;
+  color: #0A2540;
+  margin-bottom: 8px;
+`;
+
+const EmptyDescription = styled.p`
+  font-size: 14px;
+  color: #6B7280;
+  margin-bottom: 24px;
+`;
+
+const HeaderSection = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 16px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+`;
+
+const SectionTitle = styled.h3`
+  font-size: 16px;
+  font-weight: 600;
+  color: #0A2540;
+  margin: 8px 0;
+`;
+
+const IngredientsList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const IngredientHeaderRow = styled.div`
+  display: grid;
+  grid-template-columns: 3fr 1fr 0.7fr 2fr 40px;
+  gap: 8px;
+  padding: 8px 0;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #E5E7EB;
+
+  span {
+    font-size: 13px;
+    font-weight: 600;
+    color: #6B7280;
+  }
+
+  @media (max-width: 768px) {
+    display: none;
+  }
+`;
+
+const IngredientRow = styled.div`
+  display: grid;
+  grid-template-columns: 3fr 1fr 0.7fr 2fr 40px;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const RemoveButton = styled.button`
+  background: #FEE2E2;
+  color: #DC2626;
+  border: 1px solid #FCA5A5;
+  border-radius: 8px;
+  width: 38px;
+  height: 38px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: #FCA5A5;
+  }
+`;
+
+const AddButton = styled.button`
+  background: #F0F4FF;
+  color: #635BFF;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  margin-bottom: 16px;
+
+  &:hover {
+    background: #E0E7FF;
+  }
+`;
+
+const CostSummary = styled.div`
+  padding: 16px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid #E5E7EB;
+`;
+
+const CostSummaryLabel = styled.div`
+  font-size: 14px;
+  color: #6B7280;
+  font-weight: 600;
+`;
+
+const CostSummaryValue = styled.div`
+  font-size: 18px;
+  font-weight: 600;
+  color: #0A2540;
+`;
+
+const ButtonGroup = styled.div`
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+`;
+
+const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, categoryRefreshKey }) => {
+  const { user } = useAuth();
+  const { defaultCurrency } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
+  const [recipes, setRecipes] = useState<ProductRecipe[]>([]);
+  const [ingredients, setIngredients] = useState<ProductIngredient[]>([]);
+  const [categories, setCategories] = useState<ProductRecipeCategory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+
+  // Modal states
+  const [showModal, setShowModal] = useState(false);
+  const [editingRecipe, setEditingRecipe] = useState<ProductRecipe | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  // Form data
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    category_id: '',
+    emoji: '',
+    prep_time: '',
+    cook_time: '',
+    instructions: '',
+    suggested_price: ''
+  });
+
+  // Recipe ingredients in form
+  const [formIngredients, setFormIngredients] = useState<Array<{
+    ingredient_id: number;
+    quantity: string;
+    unit: string;
+    notes: string;
+  }>>([]);
+
+  const brandId = user?.brand_id;
+
+  useEffect(() => {
+    if (defaultCurrency) {
+      setSelectedCurrency(defaultCurrency);
+    }
+  }, [defaultCurrency]);
+
+  const fetchData = useCallback(async () => {
+    if (!brandId) return;
+
+    try {
+      setLoading(true);
+      const [recipesRes, ingredientsRes, categoriesRes] = await Promise.all([
+        fetchAPI('/api/product-recipes'),
+        fetchAPI('/api/product-ingredients'),
+        fetchAPI('/api/product-recipe-categories')
+      ]);
+
+      if (recipesRes.success) {
+        setRecipes(recipesRes.data || []);
+        onCountChange?.(recipesRes.data?.length || 0);
+      }
+      if (ingredientsRes.success) {
+        setIngredients((ingredientsRes.data || []).filter((i: ProductIngredient) => i.is_active));
+      }
+      if (categoriesRes.success) {
+        setCategories(categoriesRes.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [brandId, onCountChange]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Refresh categories when categoryRefreshKey changes
+  useEffect(() => {
+    if (categoryRefreshKey) {
+      fetchCategories();
+    }
+  }, [categoryRefreshKey]);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetchAPI('/api/product-recipe-categories');
+      if (response.success) {
+        setCategories(response.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch categories:', error);
+    }
+  };
+
+  const handleOpenModal = (recipe?: ProductRecipe) => {
+    if (recipe) {
+      setEditingRecipe(recipe);
+      setFormData({
+        name: recipe.name,
+        description: recipe.description || '',
+        category_id: recipe.category_id?.toString() || '',
+        emoji: recipe.emoji || '',
+        prep_time: recipe.prep_time?.toString() || '',
+        cook_time: recipe.cook_time?.toString() || '',
+        instructions: recipe.instructions || '',
+        suggested_price: recipe.suggested_price?.toString() || ''
+      });
+      // Load recipe ingredients
+      if (recipe.recipeIngredients) {
+        setFormIngredients(recipe.recipeIngredients.map(ri => ({
+          ingredient_id: ri.ingredient_id,
+          quantity: ri.quantity.toString(),
+          unit: ri.unit,
+          notes: ri.notes || ''
+        })));
+      } else {
+        setFormIngredients([]);
+      }
+    } else {
+      setEditingRecipe(null);
+      setFormData({
+        name: '',
+        description: '',
+        category_id: '',
+        emoji: '',
+        prep_time: '',
+        cook_time: '',
+        instructions: '',
+        suggested_price: ''
+      });
+      setFormIngredients([]);
+    }
+    setShowModal(true);
+  };
+
+  const addIngredientRow = () => {
+    setFormIngredients([...formIngredients, {
+      ingredient_id: 0,
+      quantity: '',
+      unit: '',
+      notes: ''
+    }]);
+  };
+
+  const updateIngredientRow = (index: number, field: string, value: any) => {
+    const updated = [...formIngredients];
+    updated[index] = { ...updated[index], [field]: value };
+
+    // Auto-fill unit when ingredient selected
+    if (field === 'ingredient_id') {
+      const ing = ingredients.find(i => i.id === parseInt(value));
+      if (ing) {
+        updated[index].unit = ing.unit;
+      }
+    }
+
+    setFormIngredients(updated);
+  };
+
+  const removeIngredientRow = (index: number) => {
+    setFormIngredients(formIngredients.filter((_, i) => i !== index));
+  };
+
+  const calculateTotalCost = () => {
+    return formIngredients.reduce((sum, fi) => {
+      const ing = ingredients.find(i => i.id === fi.ingredient_id);
+      if (ing && fi.quantity) {
+        return sum + (ing.unit_cost * parseFloat(fi.quantity));
+      }
+      return sum;
+    }, 0);
+  };
+
+  const handleSave = async () => {
+    if (!formData.name.trim()) {
+      alert('Recipe name is required');
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      const payload = {
+        name: formData.name,
+        description: formData.description || null,
+        category_id: formData.category_id ? parseInt(formData.category_id) : null,
+        emoji: formData.emoji || null,
+        prep_time: formData.prep_time ? parseInt(formData.prep_time) : null,
+        cook_time: formData.cook_time ? parseInt(formData.cook_time) : null,
+        instructions: formData.instructions || null,
+        suggested_price: formData.suggested_price ? parseFloat(formData.suggested_price) : null,
+        ingredients: formIngredients
+          .filter(fi => fi.ingredient_id && fi.quantity)
+          .map(fi => ({
+            ingredient_id: fi.ingredient_id,
+            quantity: parseFloat(fi.quantity),
+            unit: fi.unit,
+            notes: fi.notes || null
+          }))
+      };
+
+      const url = editingRecipe
+        ? `/api/product-recipes/${editingRecipe.id}`
+        : '/api/product-recipes';
+      const method = editingRecipe ? 'PUT' : 'POST';
+
+      const response = await fetchAPI(url, {
+        method,
+        body: JSON.stringify(payload)
+      });
+
+      if (response.success) {
+        setShowModal(false);
+        fetchData();
+      } else {
+        alert(response.error || 'Failed to save recipe');
+      }
+    } catch (error) {
+      console.error('Failed to save recipe:', error);
+      alert('Failed to save recipe');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (recipe: ProductRecipe) => {
+    if (!confirm(`Are you sure you want to delete "${recipe.name}"?`)) return;
+
+    try {
+      const response = await fetchAPI(`/api/product-recipes/${recipe.id}`, {
+        method: 'DELETE'
+      });
+
+      if (response.success) {
+        fetchData();
+      } else {
+        alert(response.error || 'Failed to delete recipe');
+      }
+    } catch (error) {
+      console.error('Failed to delete recipe:', error);
+      alert('Failed to delete recipe');
+    }
+  };
+
+  const filteredRecipes = recipes.filter(item => {
+    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (item.code?.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesCategory = categoryFilter === 'all' ||
+                           (item.category_id?.toString() === categoryFilter);
+    return matchesSearch && matchesCategory;
+  });
+
+  if (loading) {
+    return <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>Loading...</div>;
+  }
+
+  return (
+    <>
+      <HeaderSection>
+        <div>
+          <SectionTitle>Product Recipes ({recipes.length})</SectionTitle>
+        </div>
+        <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
+          Add Recipe
+        </ThemedButton>
+      </HeaderSection>
+
+      <FilterBar>
+        <SearchInput
+          type="text"
+          placeholder="Search recipes..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <FilterSelect
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+        >
+          <option value="all">All Categories</option>
+          {categories.map(cat => (
+            <option key={cat.id} value={cat.id}>{cat.emoji} {cat.name}</option>
+          ))}
+        </FilterSelect>
+      </FilterBar>
+
+      {filteredRecipes.length === 0 ? (
+        <EmptyState>
+          <EmptyTitle>No recipes found</EmptyTitle>
+          <EmptyDescription>
+            Create product recipes to track ingredient costs and manage production.
+          </EmptyDescription>
+          <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
+            Add First Recipe
+          </ThemedButton>
+        </EmptyState>
+      ) : (
+        <RecipesGrid>
+          {filteredRecipes.map(recipe => (
+            <RecipeCard key={recipe.id} isActive={recipe.is_active} onClick={() => handleOpenModal(recipe)}>
+              <RecipeHeader>
+                {recipe.image_url ? (
+                  <RecipeImage src={recipe.image_url} alt={recipe.name} />
+                ) : (
+                  <RecipeEmoji>{recipe.emoji || recipe.category?.emoji || '📋'}</RecipeEmoji>
+                )}
+                <RecipeInfo>
+                  <RecipeName>{recipe.name}</RecipeName>
+                  <RecipeCategoryBadge>
+                    {recipe.category?.name || 'Uncategorized'}
+                  </RecipeCategoryBadge>
+                </RecipeInfo>
+              </RecipeHeader>
+
+              {recipe.description && (
+                <RecipeDescription>{recipe.description}</RecipeDescription>
+              )}
+
+              <RecipeCosts>
+                <CostItem>
+                  <CostLabel>Ingredient Cost</CostLabel>
+                  <CostValue>{formatCurrency(recipe.total_ingredient_cost || 0, selectedCurrency)}</CostValue>
+                </CostItem>
+                <CostItem>
+                  <CostLabel>Suggested Price</CostLabel>
+                  <CostValue>
+                    {recipe.suggested_price
+                      ? formatCurrency(recipe.suggested_price, selectedCurrency)
+                      : '-'}
+                  </CostValue>
+                </CostItem>
+              </RecipeCosts>
+
+              {recipe.recipeIngredients && recipe.recipeIngredients.length > 0 && (
+                <RecipeIngredients>
+                  <IngredientsCount>
+                    {recipe.recipeIngredients.length} ingredient{recipe.recipeIngredients.length > 1 ? 's' : ''}
+                  </IngredientsCount>
+                  <IngredientTags>
+                    {recipe.recipeIngredients.slice(0, 4).map((ri, idx) => (
+                      <IngredientTag key={idx}>
+                        {ri.ingredient?.name || `Ingredient #${ri.ingredient_id}`}
+                      </IngredientTag>
+                    ))}
+                    {recipe.recipeIngredients.length > 4 && (
+                      <IngredientTag>+{recipe.recipeIngredients.length - 4} more</IngredientTag>
+                    )}
+                  </IngredientTags>
+                </RecipeIngredients>
+              )}
+
+              <RecipeActions>
+                <ActionButton variant="secondary" onClick={(e) => { e.stopPropagation(); handleOpenModal(recipe); }}>
+                  Edit
+                </ActionButton>
+                <ActionButton variant="danger" onClick={(e) => { e.stopPropagation(); handleDelete(recipe); }}>
+                  Delete
+                </ActionButton>
+              </RecipeActions>
+            </RecipeCard>
+          ))}
+        </RecipesGrid>
+      )}
+
+      {/* Recipe Form Modal */}
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={editingRecipe ? 'Edit Recipe' : 'Add Recipe'}
+        size="large"
+      >
+        <UIFormGroup>
+          <FormLabel>Recipe Name *</FormLabel>
+          <FormInput
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            placeholder="e.g., Grilled Chicken"
+          />
+        </UIFormGroup>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <UIFormGroup>
+            <FormLabel>Category</FormLabel>
+            <FormSelect
+              value={formData.category_id}
+              onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+            >
+              <option value="">Select Category</option>
+              {categories.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.emoji} {cat.name}</option>
+              ))}
+            </FormSelect>
+          </UIFormGroup>
+          <UIFormGroup>
+            <FormLabel>Emoji</FormLabel>
+            <FormInput
+              value={formData.emoji}
+              onChange={(e) => setFormData({ ...formData, emoji: e.target.value })}
+              placeholder="e.g., 🍗"
+            />
+          </UIFormGroup>
+        </div>
+
+        <UIFormGroup>
+          <FormLabel>Description</FormLabel>
+          <FormTextArea
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            placeholder="Brief description of the recipe"
+            rows={2}
+          />
+        </UIFormGroup>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+          <UIFormGroup>
+            <FormLabel>Prep Time (min)</FormLabel>
+            <FormInput
+              type="number"
+              min="0"
+              value={formData.prep_time}
+              onChange={(e) => setFormData({ ...formData, prep_time: e.target.value })}
+            />
+          </UIFormGroup>
+          <UIFormGroup>
+            <FormLabel>Cook Time (min)</FormLabel>
+            <FormInput
+              type="number"
+              min="0"
+              value={formData.cook_time}
+              onChange={(e) => setFormData({ ...formData, cook_time: e.target.value })}
+            />
+          </UIFormGroup>
+          <UIFormGroup>
+            <FormLabel>Suggested Price ({selectedCurrency})</FormLabel>
+            <FormInput
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.suggested_price}
+              onChange={(e) => setFormData({ ...formData, suggested_price: e.target.value })}
+            />
+          </UIFormGroup>
+        </div>
+
+        <UIFormGroup>
+          <FormLabel>Instructions</FormLabel>
+          <FormTextArea
+            value={formData.instructions}
+            onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
+            placeholder="Step-by-step cooking instructions"
+            rows={4}
+          />
+        </UIFormGroup>
+
+        {/* Ingredients Section */}
+        <SectionTitle>Ingredients</SectionTitle>
+
+        <AddButton onClick={addIngredientRow}>
+          + Add Ingredient
+        </AddButton>
+
+        {formIngredients.length > 0 && (
+          <IngredientsList>
+            <IngredientHeaderRow>
+              <span>Ingredient</span>
+              <span>Quantity</span>
+              <span>Unit</span>
+              <span>Notes</span>
+              <span></span>
+            </IngredientHeaderRow>
+
+            {formIngredients.map((fi, index) => (
+              <IngredientRow key={index}>
+                <FormSelect
+                  value={fi.ingredient_id || ''}
+                  onChange={(e) => updateIngredientRow(index, 'ingredient_id', parseInt(e.target.value))}
+                >
+                  <option value="">Select Ingredient</option>
+                  {ingredients.map(ing => (
+                    <option key={ing.id} value={ing.id}>
+                      {ing.name} ({formatCurrency(ing.unit_cost, selectedCurrency)}/{ing.unit})
+                    </option>
+                  ))}
+                </FormSelect>
+                <FormInput
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="Qty"
+                  value={fi.quantity}
+                  onChange={(e) => updateIngredientRow(index, 'quantity', e.target.value)}
+                />
+                <FormInput
+                  value={fi.unit}
+                  onChange={(e) => updateIngredientRow(index, 'unit', e.target.value)}
+                  placeholder="Unit"
+                />
+                <FormInput
+                  value={fi.notes}
+                  onChange={(e) => updateIngredientRow(index, 'notes', e.target.value)}
+                  placeholder="Notes"
+                />
+                <RemoveButton onClick={() => removeIngredientRow(index)}>×</RemoveButton>
+              </IngredientRow>
+            ))}
+          </IngredientsList>
+        )}
+
+        <CostSummary>
+          <CostSummaryLabel>Total Ingredient Cost</CostSummaryLabel>
+          <CostSummaryValue>{formatCurrency(calculateTotalCost(), selectedCurrency)}</CostSummaryValue>
+        </CostSummary>
+
+        <ButtonGroup>
+          <ModalButton variant="secondary" onClick={() => setShowModal(false)}>
+            Cancel
+          </ModalButton>
+          <ModalButton variant="primary" onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving...' : 'Save Recipe'}
+          </ModalButton>
+        </ButtonGroup>
+      </Modal>
+    </>
+  );
+};
+
+export default ProductRecipesTab;
