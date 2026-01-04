@@ -203,6 +203,10 @@ BrandProduct.hasMany(Ingredient, { foreignKey: 'brand_product_id', as: 'ingredie
 BrandProduct.belongsTo(BrandProductCategory, { foreignKey: 'category_id', as: 'category' });
 BrandProductCategory.hasMany(BrandProduct, { foreignKey: 'category_id', as: 'products' });
 
+// BrandProduct - Recipe association
+BrandProduct.belongsTo(Recipe, { foreignKey: 'recipe_id', as: 'recipe' });
+Recipe.hasMany(BrandProduct, { foreignKey: 'recipe_id', as: 'brandProducts' });
+
 // BrandProduct - Brand (N:M through BrandProductBrand)
 BrandProduct.belongsToMany(Brand, {
   through: BrandProductBrand,

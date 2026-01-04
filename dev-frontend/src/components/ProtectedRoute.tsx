@@ -164,13 +164,44 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // requiredRole이 명시되지 않은 경우는 체크 스킵
   if (requiredRole && requiredRole.length > 0) {
     // Brand-level routes that don't require restaurant context
-    const brandLevelRoutes = ['/pos/recipes', '/pos/ingredients', '/pos/brand-products', '/pos/suppliers'];
+    const brandLevelRoutes = [
+      '/pos/recipes',
+      '/pos/ingredients',
+      '/pos/brand-products',
+      '/pos/brand-product-recipes',
+      '/pos/brand-inventory',
+      '/pos/suppliers',
+      '/pos/brand/company-info',
+      '/pos/brand/general',
+      '/pos/brand/dashboard',
+      '/pos/brand/reports',
+      '/pos/brand/franchise-support',
+      '/pos/manager/restaurants',
+      '/pos/manager/invoices',
+      '/pos/manager/subscriptions',
+      '/pos/manager/staff',
+      '/pos/manager/customers',
+      '/pos/manager/promotions',
+      '/pos/manager/sales',
+      '/pos/manager/reports',
+      '/pos/manager/support',
+      '/pos/manager/operation-inquiry',
+      '/pos/manager/plans',
+      '/pos/foodcourt/company-info',
+      '/pos/foodcourt/general',
+      '/pos/foodcourt/dashboard',
+      '/pos/foodcourt/rent-management',
+      '/pos/foodcourt/tenant-support',
+      '/pos/profile'
+    ];
     const isBrandLevelRoute = brandLevelRoutes.some(route => location.pathname.startsWith(route));
 
-    // Brand General, Brand Manager, System Admin이 brand-level route에 접근하는 경우는 체크 스킵
+    // Manager 역할들이 manager-level route에 접근하는 경우는 체크 스킵
     const shouldSkipRouteCheck = isBrandLevelRoute &&
                                   user &&
-                                  (user.role === 'Brand General' || user.role === 'Brand Manager' || user.role === 'System Admin');
+                                  (user.role === 'Brand General' || user.role === 'Brand Manager' ||
+                                   user.role === 'Foodcourt General' || user.role === 'Foodcourt Manager' ||
+                                   user.role === 'System Admin');
 
     // requiredRole이 지정된 경우만 엄격하게 체크 (단, brand-level route는 제외)
     if (!shouldSkipRouteCheck && !canAccessRoute(location.pathname)) {
