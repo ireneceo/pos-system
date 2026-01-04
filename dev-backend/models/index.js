@@ -42,6 +42,11 @@ const StockAlert = require('./StockAlert');
 const InventoryBatch = require('./InventoryBatch');
 const GeneralStock = require('./GeneralStock');
 const GeneralStockCategory = require('./GeneralStockCategory');
+const ProductRecipe = require('./ProductRecipe');
+const ProductIngredient = require('./ProductIngredient');
+const ProductRecipeCategory = require('./ProductRecipeCategory');
+const ProductIngredientCategory = require('./ProductIngredientCategory');
+const ProductRecipeIngredient = require('./ProductRecipeIngredient');
 
 // Define associations
 // Brand - Restaurant associations
@@ -329,6 +334,24 @@ Brand.hasMany(GeneralStockCategory, { foreignKey: 'brand_id', as: 'generalStockC
 GeneralStockCategory.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
 Restaurant.hasMany(GeneralStockCategory, { foreignKey: 'restaurant_id', as: 'generalStockCategories' });
 
+// ProductRecipe associations
+ProductRecipe.belongsTo(ProductRecipeCategory, { foreignKey: 'category_id', as: 'category' });
+ProductRecipeCategory.hasMany(ProductRecipe, { foreignKey: 'category_id', as: 'recipes' });
+
+ProductRecipe.hasMany(ProductRecipeIngredient, { foreignKey: 'recipe_id', as: 'recipeIngredients' });
+ProductRecipeIngredient.belongsTo(ProductRecipe, { foreignKey: 'recipe_id', as: 'recipe' });
+
+// ProductIngredient associations
+ProductIngredient.belongsTo(ProductIngredientCategory, { foreignKey: 'category_id', as: 'category' });
+ProductIngredientCategory.hasMany(ProductIngredient, { foreignKey: 'category_id', as: 'ingredients' });
+
+ProductIngredient.hasMany(ProductRecipeIngredient, { foreignKey: 'ingredient_id', as: 'recipeIngredients' });
+ProductRecipeIngredient.belongsTo(ProductIngredient, { foreignKey: 'ingredient_id', as: 'ingredient' });
+
+// BrandProduct - ProductRecipe association
+BrandProduct.belongsTo(ProductRecipe, { foreignKey: 'product_recipe_id', as: 'productRecipe' });
+ProductRecipe.hasMany(BrandProduct, { foreignKey: 'product_recipe_id', as: 'brandProducts' });
+
 module.exports = {
   User,
   Restaurant,
@@ -373,5 +396,10 @@ module.exports = {
   StockAlert,
   InventoryBatch,
   GeneralStock,
-  GeneralStockCategory
+  GeneralStockCategory,
+  ProductRecipe,
+  ProductIngredient,
+  ProductRecipeCategory,
+  ProductIngredientCategory,
+  ProductRecipeIngredient
 };

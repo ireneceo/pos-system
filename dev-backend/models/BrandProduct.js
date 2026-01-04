@@ -73,7 +73,16 @@ const BrandProduct = sequelize.define('BrandProduct', {
       model: 'recipes',
       key: 'id'
     },
-    comment: 'Linked recipe for ingredient cost tracking'
+    comment: 'Linked recipe for ingredient cost tracking (legacy)'
+  },
+  product_recipe_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'product_recipes',
+      key: 'id'
+    },
+    comment: 'Linked product recipe (new system)'
   }
 }, {
   tableName: 'brand_products',
