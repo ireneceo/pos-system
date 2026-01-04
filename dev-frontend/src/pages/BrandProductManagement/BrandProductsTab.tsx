@@ -5,6 +5,7 @@ import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/Fi
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI/Modal';
 import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
 import ConfirmModal from '../../components/ConfirmModal';
+import SearchableSelect from '../../components/Common/SearchableSelect';
 
 interface Brand {
   id: number;
@@ -33,6 +34,13 @@ interface OptionGroup {
   max_selections: number;
 }
 
+interface ProductRecipe {
+  id: number;
+  name: string;
+  total_ingredient_cost: number;
+  category?: { name: string; emoji?: string };
+}
+
 interface Product {
   id: number;
   category_id: number | null;
@@ -46,7 +54,8 @@ interface Product {
   min_order_quantity: number;
   image_url: string | null;
   is_active: boolean;
-  sync_to_ingredients: boolean;
+  product_recipe_id: number | null;
+  productRecipe?: ProductRecipe;
   sort_order: number;
   brands?: Brand[];
   optionGroups?: OptionGroup[];
@@ -284,6 +293,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [optionGroups, setOptionGroups] = useState<OptionGroup[]>([]);
+  const [productRecipes, setProductRecipes] = useState<ProductRecipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -304,7 +314,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     category_id: '',
     image_url: '',
     is_active: true,
-    sync_to_ingredients: true,
+    product_recipe_id: null as number | null,
     brand_ids: [] as number[],
     option_group_ids: [] as number[]
   });
@@ -373,14 +383,30 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     }
   }, [getToken]);
 
+  const fetchProductRecipes = useCallback(async () => {
+    try {
+      const token = getToken();
+      const response = await fetch('/api/product-recipes', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setProductRecipes(data.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch product recipes:', error);
+    }
+  }, [getToken]);
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchProducts(), fetchCategories(), fetchOptionGroups()]);
+      await Promise.all([fetchProducts(), fetchCategories(), fetchOptionGroups(), fetchProductRecipes()]);
       setLoading(false);
     };
     loadData();
-  }, [fetchProducts, fetchCategories, fetchOptionGroups]);
+  }, [fetchProducts, fetchCategories, fetchOptionGroups, fetchProductRecipes]);
 
   useEffect(() => {
     if (categoryRefreshKey !== undefined) {
@@ -408,7 +434,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         category_id: product.category_id?.toString() || '',
         image_url: product.image_url || '',
         is_active: product.is_active,
-        sync_to_ingredients: product.sync_to_ingredients !== false,
+        product_recipe_id: product.product_recipe_id || null,
         brand_ids: product.brands?.map(b => b.id) || [],
         option_group_ids: product.optionGroups?.map(og => og.id) || []
       });
@@ -425,7 +451,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         category_id: categories.length > 0 ? categories[0].id.toString() : '',
         image_url: '',
         is_active: true,
-        sync_to_ingredients: true,
+        product_recipe_id: null,
         brand_ids: [],
         option_group_ids: []
       });
@@ -480,7 +506,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
           category_id: formData.category_id ? parseInt(formData.category_id) : null,
           image_url: formData.image_url || null,
           is_active: formData.is_active,
-          sync_to_ingredients: formData.sync_to_ingredients,
+          product_recipe_id: formData.product_recipe_id,
           brand_ids: formData.brand_ids,
           option_group_ids: formData.option_group_ids
         })
@@ -844,28 +870,32 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
               )}
             </UIFormGroup>
 
-            <div style={{ display: 'flex', gap: '24px' }}>
-              <UIFormGroup style={{ marginBottom: 0 }}>
-                <CheckboxLabel>
-                  <input
-                    type="checkbox"
-                    checked={formData.is_active}
-                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                  />
-                  Active
-                </CheckboxLabel>
-              </UIFormGroup>
-              <UIFormGroup style={{ marginBottom: 0 }}>
-                <CheckboxLabel>
-                  <input
-                    type="checkbox"
-                    checked={formData.sync_to_ingredients}
-                    onChange={(e) => setFormData({ ...formData, sync_to_ingredients: e.target.checked })}
-                  />
-                  Sync to Recipe Ingredients
-                </CheckboxLabel>
-              </UIFormGroup>
-            </div>
+            <UIFormGroup>
+              <FormLabel>Linked Product Recipe</FormLabel>
+              <SearchableSelect
+                options={productRecipes.map(recipe => ({
+                  value: recipe.id,
+                  label: recipe.name,
+                  subLabel: `Cost: RM ${Number(recipe.total_ingredient_cost || 0).toFixed(2)}`
+                }))}
+                value={formData.product_recipe_id}
+                onChange={(value) => setFormData({ ...formData, product_recipe_id: value as number | null })}
+                placeholder="Search or select recipe..."
+                allowClear={true}
+                noOptionsMessage="No product recipes found"
+              />
+            </UIFormGroup>
+
+            <UIFormGroup style={{ marginBottom: 0 }}>
+              <CheckboxLabel>
+                <input
+                  type="checkbox"
+                  checked={formData.is_active}
+                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                />
+                Active
+              </CheckboxLabel>
+            </UIFormGroup>
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
               <ModalButton type="button" onClick={handleCloseModal} disabled={isSubmitting}>

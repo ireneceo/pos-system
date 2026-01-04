@@ -10,7 +10,8 @@ const {
   Brand,
   Ingredient,
   Recipe,
-  RecipeIngredient
+  RecipeIngredient,
+  ProductRecipe
 } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
@@ -490,6 +491,11 @@ router.get('/brand-products', authenticateToken, isBrandManager, async (req, res
               as: 'options'
             }
           ]
+        },
+        {
+          model: ProductRecipe,
+          as: 'productRecipe',
+          attributes: ['id', 'name', 'total_ingredient_cost']
         }
       ],
       order: [['sort_order', 'ASC'], ['name', 'ASC']]
@@ -556,7 +562,7 @@ router.post('/brand-products', authenticateToken, isBrandManager, async (req, re
     const {
       name, description, sku, unit, base_quantity, unit_price,
       min_order_quantity, image_url, category_id,
-      is_active, sync_to_ingredients, sort_order, brand_ids, option_group_ids
+      is_active, product_recipe_id, sort_order, brand_ids, option_group_ids
     } = req.body;
 
     if (!name || !name.trim()) {
@@ -578,7 +584,7 @@ router.post('/brand-products', authenticateToken, isBrandManager, async (req, re
       min_order_quantity: min_order_quantity || 1,
       image_url: image_url || null,
       is_active: is_active !== false,
-      sync_to_ingredients: sync_to_ingredients !== false,
+      product_recipe_id: product_recipe_id || null,
       sort_order: sort_order || 0
     });
 
@@ -636,7 +642,7 @@ router.put('/brand-products/:productId', authenticateToken, isBrandManager, asyn
     const {
       name, description, sku, unit, base_quantity, unit_price,
       min_order_quantity, image_url, category_id,
-      is_active, sync_to_ingredients, sort_order, brand_ids, option_group_ids
+      is_active, product_recipe_id, sort_order, brand_ids, option_group_ids
     } = req.body;
 
     const product = await BrandProduct.findByPk(productId);
@@ -657,7 +663,7 @@ router.put('/brand-products/:productId', authenticateToken, isBrandManager, asyn
       image_url: image_url !== undefined ? image_url : product.image_url,
       category_id: category_id !== undefined ? category_id : product.category_id,
       is_active: is_active !== undefined ? is_active : product.is_active,
-      sync_to_ingredients: sync_to_ingredients !== undefined ? sync_to_ingredients : product.sync_to_ingredients,
+      product_recipe_id: product_recipe_id !== undefined ? product_recipe_id : product.product_recipe_id,
       sort_order: sort_order !== undefined ? sort_order : product.sort_order
     });
 
