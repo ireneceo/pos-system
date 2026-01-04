@@ -102,7 +102,7 @@ router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBr
   try {
     const { ingredientId } = req.params;
     const ingredient_id = ingredientId;
-    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock, track_stock } = req.body;
+    const { code, name, image_url, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock, track_stock } = req.body;
 
     const ingredient = await Ingredient.findByPk(ingredient_id);
     if (!ingredient) {
@@ -113,7 +113,6 @@ router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBr
       code,
       name,
       image_url: image_url !== undefined ? image_url : ingredient.image_url,
-      category,
       ingredient_category_id: ingredient_category_id !== undefined ? ingredient_category_id : ingredient.ingredient_category_id,
       unit,
       base_quantity: base_quantity !== undefined ? base_quantity : ingredient.base_quantity,
@@ -300,7 +299,7 @@ router.post('/restaurants/:restaurantId/ingredients', authenticateToken, checkRe
 router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { ingredientId } = req.params;
-    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock, track_stock } = req.body;
+    const { code, name, image_url, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock, track_stock } = req.body;
 
     const ingredient = await Ingredient.findByPk(ingredientId);
     if (!ingredient) {
@@ -311,7 +310,6 @@ router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateT
       code,
       name,
       image_url: image_url !== undefined ? image_url : ingredient.image_url,
-      category,
       ingredient_category_id: ingredient_category_id !== undefined ? ingredient_category_id : ingredient.ingredient_category_id,
       unit,
       base_quantity: base_quantity !== undefined ? base_quantity : ingredient.base_quantity,

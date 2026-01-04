@@ -670,13 +670,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
           name: formData.name,
           image_url: formData.image_url || null,
           ingredient_category_id: formData.ingredient_category_id ? parseInt(formData.ingredient_category_id as string) : null,
-          // Get category name from selected category for backend compatibility
-          category: formData.ingredient_category_id
-            ? ingredientCategories.find(c => c.id === parseInt(formData.ingredient_category_id as string))?.name || ''
-            : '',
           unit: formData.unit,
           supplier_id: formData.supplier_id ? Number(formData.supplier_id) : null,
-          // Get supplier name from selected supplier for backend compatibility
           supplier_name: formData.supplier_id
             ? suppliers.find(s => s.id === Number(formData.supplier_id))?.name || ''
             : '',

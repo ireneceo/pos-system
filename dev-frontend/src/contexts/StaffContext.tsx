@@ -163,11 +163,15 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, user]);
 
-  // 초기 데이터 로드 - DB에서 가져오기
+  // 초기 데이터 로드 - DB에서 가져오기 (레스토랑 역할만)
   useEffect(() => {
-    loadInitialData();
+    // Brand/Foodcourt 역할은 staff API가 필요 없음
+    // restaurant_id가 있고 유효한 숫자인 경우에만 호출
+    if (user && user.restaurant_id && Number(user.restaurant_id) > 0) {
+      loadInitialData();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user]);
 
   // localStorage 세션 체크 제거 - 서버 세션만 사용
 
