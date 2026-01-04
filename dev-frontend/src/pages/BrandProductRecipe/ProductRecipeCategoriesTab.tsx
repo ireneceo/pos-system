@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
-import { Button } from '../../components/UI';
+import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormTextArea } from '../../components/UI/Modal';
+import { OrderControls } from '../../components/UI';
+import ConfirmModal from '../../components/ConfirmModal';
 import { fetchAPI } from '../../utils/api';
 
 interface ProductRecipeCategoriesTabProps {
@@ -20,21 +22,7 @@ interface Category {
 }
 
 const Container = styled.div`
-  padding: 0;
-`;
-
-const HeaderRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-`;
-
-const SectionTitle = styled.h3`
-  font-size: 16px;
-  font-weight: 600;
-  color: #1F2937;
-  margin: 0;
+  padding: 24px 0;
 `;
 
 const CategoryGrid = styled.div`
@@ -115,11 +103,26 @@ const IconButton = styled.button`
     border-color: #635BFF;
     background: #F4F3FF;
     transform: translateY(-1px);
+
+    svg {
+      color: #635BFF;
+    }
+  }
+
+  &:active {
+    transform: translateY(0);
   }
 
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  svg {
+    width: 18px;
+    height: 18px;
+    color: #6B7280;
+    transition: color 0.15s;
   }
 `;
 
@@ -153,6 +156,20 @@ const EmptyDescription = styled.p`
   margin: 0 0 16px 0;
 `;
 
+const HeaderRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+`;
+
+const SectionTitle = styled.h3`
+  font-size: 18px;
+  font-weight: 600;
+  color: #1F2937;
+  margin: 0;
+`;
+
 const EmojiPicker = styled.div`
   display: grid;
   grid-template-columns: repeat(10, 1fr);
@@ -171,6 +188,7 @@ const EmojiOption = styled.button<{ selected?: boolean }>`
   background: ${props => props.selected ? '#E5E7EB' : 'white'};
   border: 1px solid ${props => props.selected ? '#9CA3AF' : '#E5E7EB'};
   cursor: pointer;
+  transition: all 0.2s;
   font-size: 20px;
   display: flex;
   align-items: center;
@@ -187,6 +205,8 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
   const [showModal, setShowModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     emoji: '',
@@ -236,11 +256,15 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
     setShowModal(true);
   };
 
-  const handleSave = async () => {
-    if (!formData.name.trim()) {
-      alert('Category name is required');
-      return;
-    }
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingCategory(null);
+    setFormData({ name: '', emoji: '', description: '' });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name.trim()) return;
 
     try {
       setSaving(true);
@@ -251,11 +275,15 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
 
       const response = await fetchAPI(url, {
         method,
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          emoji: formData.emoji || null,
+          description: formData.description.trim() || null
+        })
       });
 
       if (response.success) {
-        setShowModal(false);
+        handleCloseModal();
         fetchCategories();
         onCategoryChange?.();
       } else {
@@ -269,15 +297,22 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
     }
   };
 
-  const handleDelete = async (category: Category) => {
-    if (!confirm(`Are you sure you want to delete "${category.name}"?`)) return;
+  const handleDeleteClick = (category: Category) => {
+    setCategoryToDelete(category);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!categoryToDelete) return;
 
     try {
-      const response = await fetchAPI(`/api/product-recipe-categories/${category.id}`, {
+      const response = await fetchAPI(`/api/product-recipe-categories/${categoryToDelete.id}`, {
         method: 'DELETE'
       });
 
       if (response.success) {
+        setDeleteModalOpen(false);
+        setCategoryToDelete(null);
         fetchCategories();
         onCategoryChange?.();
       } else {
@@ -286,6 +321,31 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
     } catch (error) {
       console.error('Failed to delete category:', error);
       alert('Failed to delete category');
+    }
+  };
+
+  const handleReorder = async (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+
+    if (targetIndex < 0 || targetIndex >= categories.length) return;
+
+    const items = [...categories];
+    [items[index], items[targetIndex]] = [items[targetIndex], items[index]];
+
+    const orders = items.map((item, idx) => ({
+      id: item.id,
+      display_order: idx
+    }));
+
+    try {
+      await fetchAPI('/api/product-recipe-categories/reorder', {
+        method: 'PUT',
+        body: JSON.stringify({ orders })
+      });
+
+      fetchCategories();
+    } catch (error) {
+      console.error('Failed to reorder:', error);
     }
   };
 
@@ -305,31 +365,43 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
   };
 
   if (loading) {
-    return <Container>Loading...</Container>;
+    return (
+      <Container>
+        <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>Loading...</div>
+      </Container>
+    );
   }
 
   return (
     <Container>
       <HeaderRow>
-        <SectionTitle>Recipe Categories ({categories.length})</SectionTitle>
-        <Button variant="primary" onClick={() => handleOpenModal()}>
+        <SectionTitle>Recipe Categories</SectionTitle>
+        <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
           Add Category
-        </Button>
+        </ThemedButton>
       </HeaderRow>
 
       {categories.length === 0 ? (
         <EmptyState>
           <EmptyTitle>No categories yet</EmptyTitle>
           <EmptyDescription>Create categories to organize your product recipes</EmptyDescription>
-          <Button variant="primary" onClick={() => handleOpenModal()}>
+          <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
             Add First Category
-          </Button>
+          </ThemedButton>
         </EmptyState>
       ) : (
         <CategoryGrid>
-          {categories.map(category => (
+          {categories.map((category, index) => (
             <CategoryCard key={category.id} isActive={category.is_active}>
-              <CategoryIcon>{category.emoji || '📁'}</CategoryIcon>
+              <OrderControls
+                onMoveUp={() => handleReorder(index, 'up')}
+                onMoveDown={() => handleReorder(index, 'down')}
+                disableUp={index === 0}
+                disableDown={index === categories.length - 1}
+              />
+              {category.emoji && (
+                <CategoryIcon>{category.emoji}</CategoryIcon>
+              )}
               <CategoryInfo>
                 <CategoryName>{category.name}</CategoryName>
                 <CategoryMeta>
@@ -344,26 +416,27 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
               </CategoryInfo>
               <CategoryActions>
                 <IconButton onClick={() => handleOpenModal(category)} title="Edit">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                   </svg>
                 </IconButton>
                 <IconButton onClick={() => handleToggleActive(category)} title={category.is_active ? 'Deactivate' : 'Activate'}>
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg viewBox="0 0 24 24" fill="none">
                     {category.is_active ? (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                      <path d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                     ) : (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     )}
                   </svg>
                 </IconButton>
                 <IconButton
-                  onClick={() => handleDelete(category)}
+                  onClick={() => handleDeleteClick(category)}
                   title="Delete"
                   disabled={(category.recipe_count || 0) > 0}
                 >
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                   </svg>
                 </IconButton>
               </CategoryActions>
@@ -374,53 +447,73 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
 
       <Modal
         isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        title={editingCategory ? 'Edit Category' : 'Add Category'}
+        onClose={handleCloseModal}
+        title={`${editingCategory ? 'Edit' : 'New'} Recipe Category`}
         size="medium"
+        footer={
+          <>
+            <ModalButton variant="secondary" onClick={handleCloseModal}>Cancel</ModalButton>
+            <ModalButton variant="primary" onClick={handleSubmit} disabled={!formData.name.trim() || saving}>
+              {saving ? 'Saving...' : (editingCategory ? 'Update' : 'Create')}
+            </ModalButton>
+          </>
+        }
       >
-        <UIFormGroup>
-          <FormLabel>Name *</FormLabel>
-          <FormInput
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="e.g., Main Dishes"
-          />
-        </UIFormGroup>
+        <form onSubmit={handleSubmit}>
+          <UIFormGroup>
+            <FormLabel>Category Name *</FormLabel>
+            <FormInput
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="e.g., Main Dishes"
+              autoFocus
+              required
+            />
+          </UIFormGroup>
 
-        <UIFormGroup>
-          <FormLabel>Emoji</FormLabel>
-          <EmojiPicker>
-            {emojiOptions.map(emoji => (
-              <EmojiOption
-                key={emoji}
-                selected={formData.emoji === emoji}
-                onClick={() => setFormData({ ...formData, emoji })}
-              >
-                {emoji}
-              </EmojiOption>
-            ))}
-          </EmojiPicker>
-        </UIFormGroup>
+          <UIFormGroup>
+            <FormLabel>Icon</FormLabel>
+            <EmojiPicker>
+              {emojiOptions.map(emoji => (
+                <EmojiOption
+                  key={emoji}
+                  selected={formData.emoji === emoji}
+                  onClick={() => setFormData({ ...formData, emoji })}
+                  type="button"
+                >
+                  {emoji}
+                </EmojiOption>
+              ))}
+            </EmojiPicker>
+          </UIFormGroup>
 
-        <UIFormGroup>
-          <FormLabel>Description</FormLabel>
-          <FormTextArea
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            placeholder="Optional description"
-            rows={3}
-          />
-        </UIFormGroup>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
-          <ModalButton variant="secondary" onClick={() => setShowModal(false)}>
-            Cancel
-          </ModalButton>
-          <ModalButton variant="primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save'}
-          </ModalButton>
-        </div>
+          <UIFormGroup>
+            <FormLabel>Description</FormLabel>
+            <FormTextArea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Brief description of this category..."
+              rows={3}
+            />
+          </UIFormGroup>
+        </form>
       </Modal>
+
+      <ConfirmModal
+        isOpen={deleteModalOpen}
+        onCancel={() => { setDeleteModalOpen(false); setCategoryToDelete(null); }}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Category"
+        message={
+          categoryToDelete
+            ? `Are you sure you want to delete "${categoryToDelete.name}"? This action cannot be undone.`
+            : ''
+        }
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
     </Container>
   );
 };
