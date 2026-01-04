@@ -68,31 +68,6 @@ interface RecipeIngredient {
 }
 
 // Styled Components
-const TabContainer = styled.div`
-  display: flex;
-  gap: 0;
-  border-bottom: 1px solid #E6EBF1;
-  margin-bottom: 24px;
-  overflow-x: auto;
-`;
-
-const Tab = styled.button<{ active: boolean }>`
-  padding: 12px 24px;
-  border: none;
-  background: none;
-  font-size: 14px;
-  font-weight: 600;
-  color: ${props => props.active ? '#635BFF' : '#6B7280'};
-  border-bottom: 2px solid ${props => props.active ? '#635BFF' : 'transparent'};
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-
-  &:hover {
-    color: #635BFF;
-  }
-`;
-
 const InfoBox = styled.div`
   background: #F0F9FF;
   border: 1px solid #BAE6FD;
@@ -235,7 +210,6 @@ const BrandProductRecipePage: React.FC = () => {
   const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
-  const [activeTab, setActiveTab] = useState<'recipes' | 'categories' | 'ingredients' | 'ingredient-categories'>('recipes');
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<BrandProduct[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -510,33 +484,19 @@ const BrandProductRecipePage: React.FC = () => {
       <Container>
         <Header>
           <Title>Product Recipes</Title>
+          <ActionSection>
+            <Button variant="secondary" onClick={() => window.location.href = '/pos/recipe-management'}>
+              Manage Recipes
+            </Button>
+          </ActionSection>
         </Header>
 
-        {/* 4 Tabs */}
-        <TabContainer>
-          <Tab active={activeTab === 'recipes'} onClick={() => setActiveTab('recipes')}>
-            Product Recipes
-          </Tab>
-          <Tab active={activeTab === 'categories'} onClick={() => setActiveTab('categories')}>
-            Categories
-          </Tab>
-          <Tab active={activeTab === 'ingredients'} onClick={() => setActiveTab('ingredients')}>
-            Ingredients
-          </Tab>
-          <Tab active={activeTab === 'ingredient-categories'} onClick={() => setActiveTab('ingredient-categories')}>
-            Ingredient Categories
-          </Tab>
-        </TabContainer>
-
         <Content>
-          {/* ===== RECIPES TAB ===== */}
-          {activeTab === 'recipes' && (
-            <>
-              <InfoBox>
-                Link recipes to your brand products to track ingredient costs and manage inventory deduction when products are sold.
-              </InfoBox>
+          <InfoBox>
+            Link recipes to your brand products to track ingredient costs and manage inventory deduction when products are sold.
+          </InfoBox>
 
-              <FilterBar>
+          <FilterBar>
             <SearchInput
               type="text"
               placeholder="Search products..."
@@ -653,35 +613,6 @@ const BrandProductRecipePage: React.FC = () => {
                 </TableRow>
               ))}
             </Table>
-          )}
-            </>
-          )}
-
-          {/* ===== CATEGORIES TAB ===== */}
-          {activeTab === 'categories' && (
-            <EmptyState>
-              <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
-                Categories - Coming Soon
-              </div>
-            </EmptyState>
-          )}
-
-          {/* ===== INGREDIENTS TAB ===== */}
-          {activeTab === 'ingredients' && (
-            <EmptyState>
-              <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
-                Ingredients - Coming Soon
-              </div>
-            </EmptyState>
-          )}
-
-          {/* ===== INGREDIENT CATEGORIES TAB ===== */}
-          {activeTab === 'ingredient-categories' && (
-            <EmptyState>
-              <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
-                Ingredient Categories - Coming Soon
-              </div>
-            </EmptyState>
           )}
         </Content>
       </Container>
