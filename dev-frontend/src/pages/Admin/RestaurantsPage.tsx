@@ -19,6 +19,7 @@ import { ModalWarning } from '../../components/UI/Modal';
 // Using page-specific filter components instead of common ones
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
+import { formatPhoneForDisplay } from '../../utils/phoneUtils';
 import PhoneInput from '../../components/common/PhoneInput';
 // API imports removed - using direct fetch like StaffManagementPage and ManagersPage
 
@@ -2108,7 +2109,7 @@ const RestaurantsPage: React.FC = () => {
                     <FormLabel>Phone Number</FormLabel>
                     <FormInput
                       type="tel"
-                      value={selectedRestaurant.phone || 'N/A'}
+                      value={formatPhoneForDisplay(selectedRestaurant.phone) || 'N/A'}
                       disabled
                       style={{ backgroundColor: '#F8FAFC', color: '#6B7280' }}
                     />

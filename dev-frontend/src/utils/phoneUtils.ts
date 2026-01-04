@@ -112,6 +112,82 @@ export const extractNumbers = (phone: string): string => {
 };
 
 /**
+ * 전화번호를 사용자에게 보기 좋게 표시
+ * 예: +60123456789 → +60 12-345 6789
+ * 예: +821012345678 → +82 10-1234-5678
+ * @param phone - 정규화된 전화번호 (+60123456789)
+ * @returns 포맷팅된 전화번호 (+60 12-345 6789)
+ */
+export const formatPhoneForDisplay = (phone: string): string => {
+  if (!phone) return '';
+
+  // 숫자와 + 기호만 남김
+  const cleaned = phone.replace(/[^0-9+]/g, '');
+
+  // 말레이시아 (+60)
+  if (cleaned.startsWith('+60')) {
+    const local = cleaned.substring(3);
+    if (local.length === 9) {
+      // +60 12-345 6789
+      return `+60 ${local.substring(0, 2)}-${local.substring(2, 5)} ${local.substring(5)}`;
+    }
+    if (local.length === 10) {
+      // +60 12-3456 7890
+      return `+60 ${local.substring(0, 2)}-${local.substring(2, 6)} ${local.substring(6)}`;
+    }
+    return `+60 ${local}`;
+  }
+
+  // 한국 (+82)
+  if (cleaned.startsWith('+82')) {
+    const local = cleaned.substring(3);
+    // 휴대폰: 10-1234-5678
+    if (local.startsWith('10') && local.length === 10) {
+      return `+82 ${local.substring(0, 2)}-${local.substring(2, 6)}-${local.substring(6)}`;
+    }
+    // 서울: 2-1234-5678
+    if (local.startsWith('2') && local.length >= 9) {
+      return `+82 ${local.substring(0, 1)}-${local.substring(1, 5)}-${local.substring(5)}`;
+    }
+    // 기타 지역: 31-1234-5678
+    if (local.length >= 10) {
+      return `+82 ${local.substring(0, 2)}-${local.substring(2, 6)}-${local.substring(6)}`;
+    }
+    return `+82 ${local}`;
+  }
+
+  // 싱가포르 (+65)
+  if (cleaned.startsWith('+65')) {
+    const local = cleaned.substring(3);
+    if (local.length === 8) {
+      return `+65 ${local.substring(0, 4)} ${local.substring(4)}`;
+    }
+    return `+65 ${local}`;
+  }
+
+  // 태국 (+66)
+  if (cleaned.startsWith('+66')) {
+    const local = cleaned.substring(3);
+    if (local.length === 9) {
+      return `+66 ${local.substring(0, 2)}-${local.substring(2, 5)}-${local.substring(5)}`;
+    }
+    return `+66 ${local}`;
+  }
+
+  // 인도네시아 (+62)
+  if (cleaned.startsWith('+62')) {
+    const local = cleaned.substring(3);
+    if (local.length >= 10) {
+      return `+62 ${local.substring(0, 3)}-${local.substring(3, 7)}-${local.substring(7)}`;
+    }
+    return `+62 ${local}`;
+  }
+
+  // 기타는 그대로 반환
+  return cleaned;
+};
+
+/**
  * 전화번호 에러 메시지
  */
 export const getPhoneErrorMessage = (phone: string, countryCode: string = 'MY'): string | null => {
