@@ -538,6 +538,11 @@ router.get('/brand-products/:productId', authenticateToken, isBrandManager, asyn
               as: 'options'
             }
           ]
+        },
+        {
+          model: ProductRecipe,
+          as: 'productRecipe',
+          attributes: ['id', 'name', 'total_ingredient_cost']
         }
       ]
     });
@@ -621,6 +626,11 @@ router.post('/brand-products', authenticateToken, isBrandManager, async (req, re
           as: 'optionGroups',
           through: { attributes: [] },
           include: [{ model: BrandProductOption, as: 'options' }]
+        },
+        {
+          model: ProductRecipe,
+          as: 'productRecipe',
+          attributes: ['id', 'name', 'total_ingredient_cost']
         }
       ]
     });
@@ -706,6 +716,11 @@ router.put('/brand-products/:productId', authenticateToken, isBrandManager, asyn
           as: 'optionGroups',
           through: { attributes: [] },
           include: [{ model: BrandProductOption, as: 'options' }]
+        },
+        {
+          model: ProductRecipe,
+          as: 'productRecipe',
+          attributes: ['id', 'name', 'total_ingredient_cost']
         }
       ]
     });

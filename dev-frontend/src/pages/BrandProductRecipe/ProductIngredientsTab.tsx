@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
-import { Button, Table, TableHeader, TableRow, MobileLabel, MobileValue, MobileGrid, ActionButtons, EmptyState as UIEmptyState } from '../../components/UI';
+import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
-import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect } from '../../components/UI/Modal';
+import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormRow as UIFormRow } from '../../components/UI/Modal';
+import ConfirmModal from '../../components/ConfirmModal';
 import { fetchAPI } from '../../utils/api';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
@@ -36,70 +37,239 @@ interface Ingredient {
   is_active: boolean;
 }
 
-const Container = styled.div`
-  padding: 0;
+const IngredientsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  margin-top: 24px;
+  align-items: start;
 `;
 
-const HeaderRow = styled.div`
+const IngredientCard = styled.div<{ isActive?: boolean }>`
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #E6EBF1;
+  padding: 20px;
+  transition: all 0.2s;
+  opacity: ${props => props.isActive ? 1 : 0.6};
+  cursor: pointer;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
+  flex-direction: column;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+    border-color: #635BFF;
+  }
 `;
 
-const SectionTitle = styled.h3`
-  font-size: 16px;
-  font-weight: 600;
-  color: #1F2937;
-  margin: 0;
-`;
-
-const IngredientInfo = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-`;
-
-const IngredientImage = styled.img`
-  width: 40px;
-  height: 40px;
-  border-radius: 6px;
-  object-fit: cover;
-`;
-
-const IngredientImagePlaceholder = styled.div`
-  width: 40px;
-  height: 40px;
-  border-radius: 6px;
-  background: #F3F4F6;
+const IngredientImageContainer = styled.div`
+  width: 100%;
+  height: 120px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 12px;
+  background: #F6F9FC;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #9CA3AF;
-  font-size: 18px;
 `;
 
-const IngredientDetails = styled.div``;
+const IngredientImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+`;
 
-const IngredientName = styled.div`
+const IngredientHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+`;
+
+const IngredientName = styled.h3`
+  font-size: 18px;
   font-weight: 600;
   color: #0A2540;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 `;
 
-const IngredientCode = styled.div`
+const IngredientCategoryBadge = styled.div`
+  display: inline-block;
+  padding: 4px 8px;
+  background: #F0F4FF;
+  color: #635BFF;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const TrackStockBadge = styled.span`
+  display: inline-block;
+  padding: 4px 8px;
+  background: #D1FAE5;
+  color: #065F46;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 8px;
+`;
+
+const IngredientInfo = styled.div`
+  margin: 12px 0;
+`;
+
+const InfoRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #F3F4F6;
+
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const InfoLabel = styled.span`
   font-size: 12px;
   color: #6B7280;
 `;
 
-const StatusBadge = styled.span<{ active: boolean }>`
-  display: inline-block;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 11px;
+const InfoValue = styled.span`
+  font-size: 14px;
   font-weight: 600;
-  background: ${props => props.active ? '#ECFDF5' : '#FEE2E2'};
-  color: ${props => props.active ? '#059669' : '#DC2626'};
+  color: #0A2540;
+`;
+
+const IngredientActions = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 16px;
+`;
+
+const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  ${props => {
+    switch (props.variant) {
+      case 'primary':
+        return `
+          background: #635BFF;
+          color: white;
+          border: 1px solid #635BFF;
+          &:hover {
+            background: #4F46E5;
+            transform: translateY(-1px);
+          }
+        `;
+      case 'danger':
+        return `
+          background: #FEF2F2;
+          border: 1px solid #EF4444;
+          color: #EF4444;
+          &:hover {
+            background: #FEE2E2;
+            transform: translateY(-1px);
+          }
+        `;
+      default:
+        return `
+          background: #F6F9FC;
+          border: 1px solid #E6EBF1;
+          color: #6B7280;
+          &:hover {
+            border-color: #635BFF;
+            color: #635BFF;
+            background: #F4F3FF;
+            transform: translateY(-1px);
+          }
+        `;
+    }
+  }}
+
+  &:active {
+    transform: translateY(0);
+  }
+`;
+
+const ButtonGroup = styled.div`
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+`;
+
+const EmptyState = styled.div`
+  text-align: center;
+  padding: 60px 20px;
+`;
+
+const EmptyTitle = styled.h3`
+  font-size: 20px;
+  font-weight: 600;
+  color: #0A2540;
+  margin-bottom: 8px;
+`;
+
+const EmptyDescription = styled.p`
+  font-size: 14px;
+  color: #6B7280;
+  margin-bottom: 24px;
+`;
+
+const HeaderSection = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 16px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+`;
+
+const ImagePreview = styled.div`
+  width: 100%;
+  height: 150px;
+  border: 2px dashed #E6EBF1;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #F9FAFB;
+
+  &:hover {
+    border-color: #635BFF;
+    background: #F4F3FF;
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+const ImagePlaceholder = styled.div`
+  text-align: center;
+  color: #9CA3AF;
+  font-size: 13px;
 `;
 
 const StockBadge = styled.span<{ status: 'normal' | 'low' | 'out' }>`
@@ -120,16 +290,6 @@ const StockBadge = styled.span<{ status: 'normal' | 'low' | 'out' }>`
   }};
 `;
 
-const FormRow = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
 const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountChange, categoryRefreshKey }) => {
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
@@ -141,9 +301,15 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
   const [showModal, setShowModal] = useState(false);
   const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; ingredientId: number | null; ingredientName: string }>({
+    isOpen: false,
+    ingredientId: null,
+    ingredientName: ''
+  });
   const [formData, setFormData] = useState({
     name: '',
     category_id: '',
+    image_url: '',
     unit: '',
     base_quantity: '1',
     unit_cost: '0',
@@ -192,6 +358,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
       setFormData({
         name: ingredient.name,
         category_id: ingredient.category_id?.toString() || '',
+        image_url: ingredient.image_url || '',
         unit: ingredient.unit,
         base_quantity: ingredient.base_quantity.toString(),
         unit_cost: ingredient.unit_cost.toString(),
@@ -206,6 +373,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
       setFormData({
         name: '',
         category_id: '',
+        image_url: '',
         unit: '',
         base_quantity: '1',
         unit_cost: '0',
@@ -217,6 +385,35 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
       });
     }
     setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingIngredient(null);
+    setFormData({
+      name: '',
+      category_id: '',
+      image_url: '',
+      unit: '',
+      base_quantity: '1',
+      unit_cost: '0',
+      supplier_name: '',
+      min_stock: '0',
+      min_order: '0',
+      current_stock: '0',
+      track_stock: true
+    });
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, image_url: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSave = async () => {
@@ -237,6 +434,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
         body: JSON.stringify({
           name: formData.name,
           category_id: formData.category_id ? parseInt(formData.category_id) : null,
+          image_url: formData.image_url || null,
           unit: formData.unit,
           base_quantity: parseFloat(formData.base_quantity) || 1,
           unit_cost: parseFloat(formData.unit_cost) || 0,
@@ -249,7 +447,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
       });
 
       if (response.success) {
-        setShowModal(false);
+        handleCloseModal();
         fetchData();
       } else {
         alert(response.error || 'Failed to save ingredient');
@@ -262,11 +460,19 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
     }
   };
 
-  const handleDelete = async (ingredient: Ingredient) => {
-    if (!confirm(`Are you sure you want to delete "${ingredient.name}"?`)) return;
+  const handleDeleteClick = (ingredient: Ingredient) => {
+    setDeleteConfirm({
+      isOpen: true,
+      ingredientId: ingredient.id,
+      ingredientName: ingredient.name
+    });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirm.ingredientId) return;
 
     try {
-      const response = await fetchAPI(`/api/product-ingredients/${ingredient.id}`, {
+      const response = await fetchAPI(`/api/product-ingredients/${deleteConfirm.ingredientId}`, {
         method: 'DELETE'
       });
 
@@ -278,7 +484,13 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
     } catch (error) {
       console.error('Failed to delete ingredient:', error);
       alert('Failed to delete ingredient');
+    } finally {
+      setDeleteConfirm({ isOpen: false, ingredientId: null, ingredientName: '' });
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirm({ isOpen: false, ingredientId: null, ingredientName: '' });
   };
 
   const getStockStatus = (ingredient: Ingredient): 'normal' | 'low' | 'out' => {
@@ -296,230 +508,315 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
     return matchesSearch && matchesCategory;
   });
 
+  const filterCategories = [
+    { id: 'all', name: 'All Categories' },
+    ...categories.map(c => ({ id: c.id.toString(), name: c.name }))
+  ];
+
   if (loading) {
-    return <Container>Loading...</Container>;
+    return (
+      <EmptyState>
+        <EmptyTitle>Loading...</EmptyTitle>
+      </EmptyState>
+    );
   }
 
   return (
-    <Container>
-      <HeaderRow>
-        <SectionTitle>Ingredients ({ingredients.length})</SectionTitle>
-        <Button variant="primary" onClick={() => handleOpenModal()}>
-          Add Ingredient
-        </Button>
-      </HeaderRow>
+    <>
+      <HeaderSection>
+        <FilterBar style={{ marginBottom: 0, flex: 1 }}>
+          <SearchInput
+            type="text"
+            placeholder="Search ingredients..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <FilterSelect
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+          >
+            {filterCategories.map(cat => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
+            ))}
+          </FilterSelect>
+        </FilterBar>
 
-      <FilterBar>
-        <SearchInput
-          type="text"
-          placeholder="Search ingredients..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        <FilterSelect
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
+        <ThemedButton
+          variant="primary"
+          onClick={() => handleOpenModal()}
+          style={{ whiteSpace: 'nowrap' }}
         >
-          <option value="all">All Categories</option>
-          {categories.map(cat => (
-            <option key={cat.id} value={cat.id}>{cat.emoji} {cat.name}</option>
-          ))}
-        </FilterSelect>
-      </FilterBar>
+          + New Ingredient
+        </ThemedButton>
+      </HeaderSection>
 
       {filteredIngredients.length === 0 ? (
-        <UIEmptyState>
-          <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
-            No ingredients found
-          </div>
-          <div style={{ fontSize: '14px', marginBottom: '16px' }}>
-            Add ingredients to use in your product recipes
-          </div>
-          <Button variant="primary" onClick={() => handleOpenModal()}>
-            Add First Ingredient
-          </Button>
-        </UIEmptyState>
+        <EmptyState>
+          <EmptyTitle>No ingredients found</EmptyTitle>
+          <EmptyDescription>
+            {searchTerm || categoryFilter !== 'all'
+              ? 'Try adjusting your filters'
+              : 'Add ingredients to use in your product recipes'}
+          </EmptyDescription>
+          {!searchTerm && categoryFilter === 'all' && (
+            <ThemedButton
+              variant="primary"
+              onClick={() => handleOpenModal()}
+            >
+              + Create First Ingredient
+            </ThemedButton>
+          )}
+        </EmptyState>
       ) : (
-        <Table>
-          <TableHeader columns="2fr 1fr 1fr 1fr 1fr 120px">
-            <span>Ingredient</span>
-            <span>Category</span>
-            <span>Unit Cost</span>
-            <span>Stock</span>
-            <span>Status</span>
-            <span>Actions</span>
-          </TableHeader>
+        <IngredientsGrid>
           {filteredIngredients.map(ingredient => (
-            <TableRow key={ingredient.id} columns="2fr 1fr 1fr 1fr 1fr 120px">
-              <MobileGrid>
-                <MobileValue>
-                  <MobileLabel>Ingredient</MobileLabel>
-                  <IngredientInfo>
-                    {ingredient.image_url ? (
-                      <IngredientImage src={ingredient.image_url} alt={ingredient.name} />
-                    ) : (
-                      <IngredientImagePlaceholder>
-                        {ingredient.category?.emoji || '📦'}
-                      </IngredientImagePlaceholder>
+            <IngredientCard key={ingredient.id} isActive={ingredient.is_active}>
+              {ingredient.image_url && (
+                <IngredientImageContainer>
+                  <IngredientImage src={ingredient.image_url} alt={ingredient.name} />
+                </IngredientImageContainer>
+              )}
+              <IngredientHeader>
+                <div>
+                  <IngredientName>
+                    {ingredient.name}
+                    {ingredient.track_stock && (
+                      <TrackStockBadge>Stock</TrackStockBadge>
                     )}
-                    <IngredientDetails>
-                      <IngredientName>{ingredient.name}</IngredientName>
-                      <IngredientCode>{ingredient.code}</IngredientCode>
-                    </IngredientDetails>
-                  </IngredientInfo>
-                </MobileValue>
-                <MobileValue>
-                  <MobileLabel>Category</MobileLabel>
-                  <span>{ingredient.category?.name || '-'}</span>
-                </MobileValue>
-                <MobileValue>
-                  <MobileLabel>Unit Cost</MobileLabel>
-                  <span>{formatCurrency(ingredient.unit_cost, selectedCurrency)}/{ingredient.unit}</span>
-                </MobileValue>
-                <MobileValue>
-                  <MobileLabel>Stock</MobileLabel>
-                  {ingredient.track_stock ? (
+                  </IngredientName>
+                  <IngredientCategoryBadge>
+                    {ingredient.category?.emoji} {ingredient.category?.name || 'Uncategorized'}
+                  </IngredientCategoryBadge>
+                </div>
+              </IngredientHeader>
+
+              <IngredientInfo>
+                <InfoRow>
+                  <InfoLabel>Unit Cost</InfoLabel>
+                  <InfoValue>{formatCurrency(Number(ingredient.unit_cost), selectedCurrency)}</InfoValue>
+                </InfoRow>
+                <InfoRow>
+                  <InfoLabel>Base Qty / Unit</InfoLabel>
+                  <InfoValue>{Number(ingredient.base_quantity || 1)} {ingredient.unit}</InfoValue>
+                </InfoRow>
+                {ingredient.supplier_name && (
+                  <InfoRow>
+                    <InfoLabel>Supplier</InfoLabel>
+                    <InfoValue>{ingredient.supplier_name}</InfoValue>
+                  </InfoRow>
+                )}
+                {ingredient.code && (
+                  <InfoRow>
+                    <InfoLabel>Code</InfoLabel>
+                    <InfoValue>{ingredient.code}</InfoValue>
+                  </InfoRow>
+                )}
+                {ingredient.track_stock && (
+                  <InfoRow>
+                    <InfoLabel>Stock</InfoLabel>
                     <StockBadge status={getStockStatus(ingredient)}>
                       {ingredient.current_stock} {ingredient.unit}
                     </StockBadge>
-                  ) : (
-                    <span style={{ color: '#9CA3AF' }}>Not tracked</span>
-                  )}
-                </MobileValue>
-                <MobileValue>
-                  <MobileLabel>Status</MobileLabel>
-                  <StatusBadge active={ingredient.is_active}>
-                    {ingredient.is_active ? 'Active' : 'Inactive'}
-                  </StatusBadge>
-                </MobileValue>
-              </MobileGrid>
-              <ActionButtons>
-                <Button
+                  </InfoRow>
+                )}
+              </IngredientInfo>
+
+              <IngredientActions>
+                <ActionButton
                   variant="secondary"
                   onClick={() => handleOpenModal(ingredient)}
-                  style={{ padding: '6px 12px', fontSize: '12px' }}
                 >
                   Edit
-                </Button>
-                <Button
+                </ActionButton>
+                <ActionButton
                   variant="danger"
-                  onClick={() => handleDelete(ingredient)}
-                  style={{ padding: '6px 12px', fontSize: '12px' }}
+                  onClick={() => handleDeleteClick(ingredient)}
                 >
                   Delete
-                </Button>
-              </ActionButtons>
-            </TableRow>
+                </ActionButton>
+              </IngredientActions>
+            </IngredientCard>
           ))}
-        </Table>
+        </IngredientsGrid>
       )}
 
       <Modal
         isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        title={editingIngredient ? 'Edit Ingredient' : 'Add Ingredient'}
-        size="large"
+        onClose={handleCloseModal}
+        title={editingIngredient ? 'Edit Ingredient' : 'New Ingredient'}
+        size="medium"
       >
-        <FormRow>
+        <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <UIFormGroup>
-            <FormLabel>Name *</FormLabel>
-            <FormInput
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="e.g., Chicken Breast"
+            <FormLabel>Image</FormLabel>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              style={{ display: 'none' }}
+              id="ingredient-image-upload"
             />
-          </UIFormGroup>
-          <UIFormGroup>
-            <FormLabel>Category</FormLabel>
-            <FormSelect
-              value={formData.category_id}
-              onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+            <ImagePreview
+              onClick={() => document.getElementById('ingredient-image-upload')?.click()}
             >
-              <option value="">Select Category</option>
-              {categories.map(cat => (
-                <option key={cat.id} value={cat.id}>{cat.emoji} {cat.name}</option>
-              ))}
-            </FormSelect>
+              {formData.image_url ? (
+                <img src={formData.image_url} alt="Ingredient" />
+              ) : (
+                <ImagePlaceholder>Click to upload image</ImagePlaceholder>
+              )}
+            </ImagePreview>
           </UIFormGroup>
-        </FormRow>
 
-        <FormRow>
-          <UIFormGroup>
-            <FormLabel>Unit *</FormLabel>
-            <FormInput
-              value={formData.unit}
-              onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-              placeholder="e.g., kg, pcs, ml"
-            />
-          </UIFormGroup>
-          <UIFormGroup>
-            <FormLabel>Unit Cost ({selectedCurrency})</FormLabel>
-            <FormInput
-              type="number"
-              step="0.01"
-              min="0"
-              value={formData.unit_cost}
-              onChange={(e) => setFormData({ ...formData, unit_cost: e.target.value })}
-            />
-          </UIFormGroup>
-        </FormRow>
-
-        <FormRow>
-          <UIFormGroup>
-            <FormLabel>Supplier</FormLabel>
-            <FormInput
-              value={formData.supplier_name}
-              onChange={(e) => setFormData({ ...formData, supplier_name: e.target.value })}
-              placeholder="Supplier name"
-            />
-          </UIFormGroup>
-          <UIFormGroup>
-            <FormLabel>Track Stock</FormLabel>
-            <FormSelect
-              value={formData.track_stock ? 'yes' : 'no'}
-              onChange={(e) => setFormData({ ...formData, track_stock: e.target.value === 'yes' })}
-            >
-              <option value="yes">Yes</option>
-              <option value="no">No</option>
-            </FormSelect>
-          </UIFormGroup>
-        </FormRow>
-
-        {formData.track_stock && (
-          <FormRow>
+          <UIFormRow>
             <UIFormGroup>
-              <FormLabel>Current Stock</FormLabel>
+              <FormLabel>Ingredient Name *</FormLabel>
+              <FormInput
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g., Chicken Breast"
+                required
+              />
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>Category</FormLabel>
+              <FormSelect
+                value={formData.category_id}
+                onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+              >
+                <option value="">Select category...</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.emoji} {cat.name}
+                  </option>
+                ))}
+              </FormSelect>
+            </UIFormGroup>
+          </UIFormRow>
+
+          <UIFormRow>
+            <UIFormGroup>
+              <FormLabel>Base Quantity *</FormLabel>
+              <FormInput
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={formData.base_quantity}
+                onChange={(e) => setFormData({ ...formData, base_quantity: e.target.value })}
+                placeholder="1"
+                required
+              />
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>Unit *</FormLabel>
+              <FormSelect
+                value={formData.unit}
+                onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                required
+              >
+                <option value="">Select unit...</option>
+                <option value="kg">kg</option>
+                <option value="g">g</option>
+                <option value="L">L</option>
+                <option value="ml">ml</option>
+                <option value="piece">piece</option>
+                <option value="pack">pack</option>
+                <option value="can">can</option>
+                <option value="bottle">bottle</option>
+              </FormSelect>
+            </UIFormGroup>
+          </UIFormRow>
+
+          <UIFormRow>
+            <UIFormGroup>
+              <FormLabel>Unit Cost ({selectedCurrency}) *</FormLabel>
               <FormInput
                 type="number"
                 step="0.01"
                 min="0"
-                value={formData.current_stock}
-                onChange={(e) => setFormData({ ...formData, current_stock: e.target.value })}
+                value={formData.unit_cost}
+                onChange={(e) => setFormData({ ...formData, unit_cost: e.target.value })}
+                placeholder="0.00"
+                required
               />
             </UIFormGroup>
             <UIFormGroup>
-              <FormLabel>Min Stock (Alert)</FormLabel>
+              <FormLabel>Supplier</FormLabel>
               <FormInput
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.min_stock}
-                onChange={(e) => setFormData({ ...formData, min_stock: e.target.value })}
+                type="text"
+                value={formData.supplier_name}
+                onChange={(e) => setFormData({ ...formData, supplier_name: e.target.value })}
+                placeholder="Supplier name"
               />
             </UIFormGroup>
-          </FormRow>
-        )}
+          </UIFormRow>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
-          <ModalButton variant="secondary" onClick={() => setShowModal(false)}>
-            Cancel
-          </ModalButton>
-          <ModalButton variant="primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save'}
-          </ModalButton>
-        </div>
+          <UIFormGroup>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={formData.track_stock}
+                onChange={(e) => setFormData({ ...formData, track_stock: e.target.checked })}
+                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+              />
+              <span style={{ fontSize: '14px', color: '#0A2540' }}>
+                Track in Inventory Stock List
+              </span>
+            </label>
+            <span style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px', display: 'block' }}>
+              Enable to include this ingredient in inventory stock management
+            </span>
+          </UIFormGroup>
+
+          {formData.track_stock && (
+            <UIFormRow>
+              <UIFormGroup>
+                <FormLabel>Current Stock</FormLabel>
+                <FormInput
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.current_stock}
+                  onChange={(e) => setFormData({ ...formData, current_stock: e.target.value })}
+                />
+              </UIFormGroup>
+              <UIFormGroup>
+                <FormLabel>Min Stock (Alert)</FormLabel>
+                <FormInput
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.min_stock}
+                  onChange={(e) => setFormData({ ...formData, min_stock: e.target.value })}
+                />
+              </UIFormGroup>
+            </UIFormRow>
+          )}
+
+          <ButtonGroup>
+            <ModalButton type="button" variant="secondary" onClick={handleCloseModal}>
+              Cancel
+            </ModalButton>
+            <ModalButton type="submit" variant="primary" disabled={saving}>
+              {saving ? 'Saving...' : (editingIngredient ? 'Update Ingredient' : 'Create Ingredient')}
+            </ModalButton>
+          </ButtonGroup>
+        </form>
       </Modal>
-    </Container>
+
+      <ConfirmModal
+        isOpen={deleteConfirm.isOpen}
+        title="Delete Ingredient"
+        message={`Are you sure you want to delete "${deleteConfirm.ingredientName}"? This action cannot be undone.`}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
+    </>
   );
 };
 
