@@ -320,6 +320,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               role: apiUser.role as UserRole,
               restaurantId: apiUser.restaurant_id?.toString() || null,
               managerId: apiUser.manager_id?.toString() || null,
+              brand_id: apiUser.brand_id || null,
+              foodcourt_id: apiUser.foodcourt_id || null,
               permissions: ROLE_PERMISSIONS[apiUser.role as UserRole] || [],
               restaurantStatus: apiUser.restaurantStatus,
               restaurantName: apiUser.restaurantName
@@ -392,6 +394,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             role: apiUser.role as UserRole,
             restaurantId: apiUser.restaurant_id?.toString() || null,
             managerId: apiUser.manager_id?.toString() || null,
+            brand_id: apiUser.brand_id || null,
+            foodcourt_id: apiUser.foodcourt_id || null,
             permissions: ROLE_PERMISSIONS[apiUser.role as UserRole] || [],
             restaurantStatus: restaurantStatus,
             restaurantName: restaurantName

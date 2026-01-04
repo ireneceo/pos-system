@@ -89,7 +89,7 @@ const RecipeCard = styled.div<{ isActive?: boolean }>`
   border: 1px solid #E6EBF1;
   padding: 20px;
   transition: all 0.2s;
-  opacity: ${props => props.isActive ? 1 : 0.6};
+  opacity: ${props => props.isActive !== false ? 1 : 0.6};
   cursor: pointer;
   display: flex;
   flex-direction: column;

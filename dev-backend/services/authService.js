@@ -41,7 +41,9 @@ async function login(emailOrUsername, password) {
       role: user.role,
       username: user.username,
       restaurant_id: user.restaurant_id,
-      manager_id: user.manager_id
+      manager_id: user.manager_id,
+      brand_id: user.brand_id,
+      foodcourt_id: user.foodcourt_id
     }
   };
 }

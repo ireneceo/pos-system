@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import {
@@ -30,57 +31,45 @@ import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput } fr
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import { fetchAPI } from '../../utils/api';
-
-interface Restaurant {
-  id: number;
-  name: string;
-  brand_id: number;
-}
+import GeneralStockCategoriesTab from '../RecipeManagement/GeneralStockCategoriesTab';
 
 interface IngredientStock {
   id: number;
   name: string;
+  code: string | null;
+  image_url: string | null;
   unit: string;
   unit_cost: number;
   category: string;
   current_stock: number;
   min_stock: number;
+  min_order: number;
+  last_actual_stock: number;
+  last_stock_take_at: string | null;
   avg_daily_usage: number;
+  lead_time_days: number;
+  safety_stock_percent: number;
+  manual_daily_usage: number | null;
   prediction_confidence: 'high' | 'medium' | 'low' | 'none';
   stock_status: 'normal' | 'low_stock' | 'out_of_stock';
-  restaurant_name?: string;
-  restaurant_id?: number;
+  supplier_id: number | null;
+  supplier_name: string | null;
 }
 
-interface ExpiringItem {
-  id: number;
-  batch_number: string | null;
-  ingredient_id: number;
-  ingredient_name: string;
-  remaining_quantity: number;
-  unit: string;
-  expiry_date: string;
-  days_until_expiry: number;
-  urgency: 'expired' | 'critical' | 'warning' | 'normal';
-  restaurant_name?: string;
-  restaurant_id?: number;
-}
-
-interface BrandSummary {
-  total_restaurants: number;
-  total_ingredients: number;
+interface Summary {
+  total_items: number;
   low_stock_count: number;
   out_of_stock_count: number;
-  expiring_count: number;
+  total_value: number;
 }
 
 // Styled Components
 const InfoBox = styled.div`
-  background: #F0F9FF;
-  border: 1px solid #BAE6FD;
+  background: #F0F4FF;
+  border: 1px solid #E6EBF1;
   border-radius: 8px;
   padding: 12px 16px;
-  color: #0369A1;
+  color: #635BFF;
   font-size: 14px;
   margin-bottom: 24px;
   line-height: 1.5;
@@ -113,70 +102,39 @@ const StatusBadge = styled.span<{ status: string }>`
   }}
 `;
 
-const ExpiryAlertCard = styled.div<{ urgency: string }>`
+const StockItemImage = styled.div`
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #F3F4F6;
+  flex-shrink: 0;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 16px;
-  background: ${props => {
-    switch (props.urgency) {
-      case 'expired': return '#FEF2F2';
-      case 'critical': return '#FEF2F2';
-      case 'warning': return '#FFFBEB';
-      default: return '#F0F9FF';
-    }
-  }};
-  border: 1px solid ${props => {
-    switch (props.urgency) {
-      case 'expired': return '#FECACA';
-      case 'critical': return '#FECACA';
-      case 'warning': return '#FED7AA';
-      default: return '#BAE6FD';
-    }
-  }};
-  border-radius: 8px;
-  margin-bottom: 12px;
+  justify-content: center;
 
-  &:last-child {
-    margin-bottom: 0;
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 `;
 
-const AlertInfo = styled.div`
-  flex: 1;
+const StockItemInfo = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
 `;
 
-const AlertTitle = styled.div`
-  font-weight: 600;
-  color: #0A2540;
-  margin-bottom: 4px;
+const StockItemDetails = styled.div`
+  display: flex;
+  flex-direction: column;
 `;
 
-const AlertDetail = styled.div`
-  font-size: 13px;
-  color: #6B7280;
-`;
-
-const ExpiryBadge = styled.span<{ urgency: string }>`
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 4px;
+const StockItemCode = styled.span`
   font-size: 11px;
-  font-weight: 600;
-  white-space: nowrap;
-
-  ${props => {
-    switch (props.urgency) {
-      case 'expired':
-        return 'background: #7F1D1D; color: white;';
-      case 'critical':
-        return 'background: #DC2626; color: white;';
-      case 'warning':
-        return 'background: #F59E0B; color: white;';
-      default:
-        return 'background: #059669; color: white;';
-    }
-  }}
+  color: #9CA3AF;
+  font-family: monospace;
 `;
 
 const ConfidenceBadge = styled.span<{ level: string }>`
@@ -202,6 +160,31 @@ const ConfidenceBadge = styled.span<{ level: string }>`
   }}
 `;
 
+const SettingsButton = styled.button`
+  background: #F3F4F6;
+  border: 1px solid #E5E7EB;
+  padding: 6px 12px;
+  cursor: pointer;
+  color: #6B7280;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: #E5E7EB;
+    color: #0A2540;
+    border-color: #D1D5DB;
+  }
+`;
+
+const ButtonGroup = styled.div`
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+`;
+
 const IngredientInfo = styled.div``;
 
 const IngredientName = styled.div`
@@ -215,34 +198,116 @@ const IngredientMeta = styled.div`
   color: #6B7280;
 `;
 
-const RestaurantTag = styled.span`
-  display: inline-block;
-  padding: 2px 8px;
-  background: #E0E7FF;
-  color: #4338CA;
+const InventoryTableHeader = styled(TableHeader)`
+  @media (max-width: 1200px) {
+    & > span:nth-child(5),
+    & > span:nth-child(6) {
+      display: none;
+    }
+  }
+
+  @media (max-width: 1024px) {
+    & > span:nth-child(4) {
+      display: none;
+    }
+  }
+`;
+
+const InventoryTableRow = styled(TableRow)`
+  @media (max-width: 1200px) {
+    & > div:nth-child(5),
+    & > div:nth-child(6) {
+      display: none;
+    }
+  }
+
+  @media (max-width: 1024px) {
+    & > div:nth-child(4) {
+      display: none;
+    }
+  }
+`;
+
+const EditableStock = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 4px 8px;
   border-radius: 4px;
-  font-size: 11px;
+  transition: background 0.15s;
+
+  &:hover {
+    background: #F3F4F6;
+  }
+`;
+
+const InlineStockInput = styled.input`
+  width: 80px;
+  padding: 4px 8px;
+  border: 1px solid #635BFF;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0A2540;
+  outline: none;
+
+  &:focus {
+    box-shadow: 0 0 0 2px rgba(99, 91, 255, 0.2);
+  }
+`;
+
+const EditButton = styled.button`
+  padding: 6px 12px;
+  background: #F3F4F6;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  font-size: 13px;
   font-weight: 500;
-  margin-left: 8px;
+  color: #6B7280;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: #E5E7EB;
+    color: #0A2540;
+    border-color: #D1D5DB;
+  }
 `;
 
 const BrandInventoryPage: React.FC = () => {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
-  const [activeTab, setActiveTab] = useState<'overview' | 'alerts' | 'by-restaurant'>('overview');
+
+  // Get tab from URL, default to 'dashboard'
+  const activeTab = (searchParams.get('tab') as 'dashboard' | 'list' | 'categories') || 'dashboard';
+
+  const setActiveTab = (tab: 'dashboard' | 'list' | 'categories') => {
+    setSearchParams({ tab });
+  };
+
   const [loading, setLoading] = useState(true);
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [selectedRestaurant, setSelectedRestaurant] = useState<string>('all');
-  const [summary, setSummary] = useState<BrandSummary | null>(null);
+  const [summary, setSummary] = useState<Summary | null>(null);
   const [inventory, setInventory] = useState<IngredientStock[]>([]);
-  const [expiringItems, setExpiringItems] = useState<ExpiringItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+
+  // Categories state
+  const [generalStockCategoriesCount, setGeneralStockCategoriesCount] = useState(0);
 
   // Modal states
-  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showReceiveModal, setShowReceiveModal] = useState(false);
+  const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [selectedIngredient, setSelectedIngredient] = useState<IngredientStock | null>(null);
+  const [quantity, setQuantity] = useState('');
+  const [notes, setNotes] = useState('');
+
+  // Inline editing
+  const [editingStockId, setEditingStockId] = useState<number | null>(null);
+  const [editingStockValue, setEditingStockValue] = useState('');
 
   const brandId = user?.brand_id;
 
@@ -258,28 +323,45 @@ const BrandInventoryPage: React.FC = () => {
     try {
       setLoading(true);
 
-      // Fetch restaurants under this brand
-      const restaurantsRes = await fetchAPI(`/api/brands/${brandId}/restaurants`);
-      if (restaurantsRes.success) {
-        setRestaurants(restaurantsRes.data || []);
-      }
+      // Fetch brand-level ingredients
+      const ingredientsRes = await fetchAPI(`/api/brands/${brandId}/ingredients`);
+      if (ingredientsRes.success) {
+        const ingredients = ingredientsRes.data || [];
 
-      // Fetch brand-level inventory summary
-      const summaryRes = await fetchAPI(`/api/brands/${brandId}/inventory/summary`);
-      if (summaryRes.success) {
-        setSummary(summaryRes.data);
-      }
+        // Calculate stock status for each ingredient
+        const inventoryData = ingredients.map((ing: any) => {
+          const currentStock = parseFloat(ing.current_stock) || 0;
+          const minStock = parseFloat(ing.min_stock) || 0;
 
-      // Fetch all inventory across restaurants
-      const inventoryRes = await fetchAPI(`/api/brands/${brandId}/inventory`);
-      if (inventoryRes.success) {
-        setInventory(inventoryRes.data || []);
-      }
+          let stockStatus = 'normal';
+          if (currentStock <= 0) {
+            stockStatus = 'out_of_stock';
+          } else if (currentStock <= minStock) {
+            stockStatus = 'low_stock';
+          }
 
-      // Fetch expiring items across all restaurants
-      const expiringRes = await fetchAPI(`/api/brands/${brandId}/inventory/expiring?days=14`);
-      if (expiringRes.success) {
-        setExpiringItems(expiringRes.data || []);
+          return {
+            ...ing,
+            current_stock: currentStock,
+            min_stock: minStock,
+            stock_status: stockStatus
+          };
+        });
+
+        setInventory(inventoryData);
+
+        // Calculate summary
+        const lowStockCount = inventoryData.filter((i: any) => i.stock_status === 'low_stock').length;
+        const outOfStockCount = inventoryData.filter((i: any) => i.stock_status === 'out_of_stock').length;
+        const totalValue = inventoryData.reduce((acc: number, i: any) =>
+          acc + (parseFloat(i.current_stock) || 0) * (parseFloat(i.unit_cost) || 0), 0);
+
+        setSummary({
+          total_items: inventoryData.length,
+          low_stock_count: lowStockCount,
+          out_of_stock_count: outOfStockCount,
+          total_value: totalValue
+        });
       }
     } catch (error) {
       console.error('Failed to fetch brand inventory data:', error);
@@ -292,12 +374,15 @@ const BrandInventoryPage: React.FC = () => {
     fetchData();
   }, [fetchData]);
 
+  // Get unique categories
+  const categories = [...new Set(inventory.map(i => i.category).filter(Boolean))];
+
   const filteredInventory = inventory.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.code && item.code.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesStatus = statusFilter === 'all' || item.stock_status === statusFilter;
-    const matchesRestaurant = selectedRestaurant === 'all' ||
-      item.restaurant_id?.toString() === selectedRestaurant;
-    return matchesSearch && matchesStatus && matchesRestaurant;
+    const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
+    return matchesSearch && matchesStatus && matchesCategory;
   });
 
   const getStatusLabel = (status: string) => {
@@ -317,9 +402,101 @@ const BrandInventoryPage: React.FC = () => {
     }
   };
 
-  const openDetailModal = (ingredient: IngredientStock) => {
-    setSelectedIngredient(ingredient);
-    setShowDetailModal(true);
+  // Handle inline stock edit
+  const handleStockClick = (item: IngredientStock) => {
+    setEditingStockId(item.id);
+    setEditingStockValue(item.current_stock.toString());
+  };
+
+  const handleStockSave = async (item: IngredientStock) => {
+    if (!brandId) return;
+
+    const newStock = parseFloat(editingStockValue);
+    if (isNaN(newStock) || newStock < 0) {
+      setEditingStockId(null);
+      return;
+    }
+
+    try {
+      const response = await fetchAPI(`/api/brands/${brandId}/ingredients/${item.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ current_stock: newStock })
+      });
+
+      if (response.success) {
+        // Update local state
+        setInventory(prev => prev.map(i =>
+          i.id === item.id
+            ? { ...i, current_stock: newStock, stock_status: newStock <= 0 ? 'out_of_stock' : newStock <= i.min_stock ? 'low_stock' : 'normal' }
+            : i
+        ));
+      }
+    } catch (error) {
+      console.error('Failed to update stock:', error);
+    }
+
+    setEditingStockId(null);
+  };
+
+  const handleStockKeyDown = (e: React.KeyboardEvent, item: IngredientStock) => {
+    if (e.key === 'Enter') {
+      handleStockSave(item);
+    } else if (e.key === 'Escape') {
+      setEditingStockId(null);
+    }
+  };
+
+  // Handle receive stock
+  const openReceiveModal = (item: IngredientStock) => {
+    setSelectedIngredient(item);
+    setQuantity('');
+    setNotes('');
+    setShowReceiveModal(true);
+  };
+
+  const handleReceive = async () => {
+    if (!selectedIngredient || !quantity || !brandId) return;
+
+    try {
+      const newStock = selectedIngredient.current_stock + parseFloat(quantity);
+      const response = await fetchAPI(`/api/brands/${brandId}/ingredients/${selectedIngredient.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ current_stock: newStock })
+      });
+
+      if (response.success) {
+        fetchData();
+        setShowReceiveModal(false);
+      }
+    } catch (error) {
+      console.error('Failed to receive stock:', error);
+    }
+  };
+
+  // Handle adjust stock
+  const openAdjustModal = (item: IngredientStock) => {
+    setSelectedIngredient(item);
+    setQuantity(item.current_stock.toString());
+    setNotes('');
+    setShowAdjustModal(true);
+  };
+
+  const handleAdjust = async () => {
+    if (!selectedIngredient || !quantity || !brandId) return;
+
+    try {
+      const response = await fetchAPI(`/api/brands/${brandId}/ingredients/${selectedIngredient.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ current_stock: parseFloat(quantity) })
+      });
+
+      if (response.success) {
+        fetchData();
+        setShowAdjustModal(false);
+      }
+    } catch (error) {
+      console.error('Failed to adjust stock:', error);
+    }
   };
 
   if (!brandId) {
@@ -338,53 +515,45 @@ const BrandInventoryPage: React.FC = () => {
     <MainLayout>
       <Container>
         <Header>
-          <Title>Brand Inventory</Title>
+          <Title>Inventory Management</Title>
           <ActionSection>
-            <FilterSelect
-              value={selectedRestaurant}
-              onChange={(e) => setSelectedRestaurant(e.target.value)}
-              style={{ minWidth: '200px' }}
-            >
-              <option value="all">All Restaurants</option>
-              {restaurants.map(r => (
-                <option key={r.id} value={r.id.toString()}>{r.name}</option>
-              ))}
-            </FilterSelect>
+            <Button variant="primary" onClick={() => window.location.href = '/pos/ingredients'}>
+              Manage Ingredients
+            </Button>
           </ActionSection>
         </Header>
 
         <Content>
           <TabContainer>
-            <Tab active={activeTab === 'overview'} onClick={() => setActiveTab('overview')}>
-              Overview
+            <Tab active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')}>
+              Dashboard
             </Tab>
-            <Tab active={activeTab === 'alerts'} onClick={() => setActiveTab('alerts')}>
-              Alerts ({(expiringItems.filter(i => i.urgency === 'expired' || i.urgency === 'critical').length) +
-                (inventory.filter(i => i.stock_status === 'out_of_stock' || i.stock_status === 'low_stock').length)})
+            <Tab active={activeTab === 'list'} onClick={() => setActiveTab('list')}>
+              Stock List
             </Tab>
-            <Tab active={activeTab === 'by-restaurant'} onClick={() => setActiveTab('by-restaurant')}>
-              By Restaurant
+            <Tab active={activeTab === 'categories'} onClick={() => setActiveTab('categories')}>
+              Categories ({generalStockCategoriesCount})
             </Tab>
           </TabContainer>
 
           {loading ? (
             <EmptyState>Loading...</EmptyState>
-          ) : activeTab === 'overview' ? (
+          ) : activeTab === 'dashboard' ? (
             <>
               <InfoBox>
-                Brand-wide inventory overview showing stock levels across all your restaurants.
+                Brand-level inventory management for ingredients used in your recipes. Track stock levels, receive deliveries, and adjust quantities.
               </InfoBox>
 
               <StatsGrid>
                 <StatCard color="#635BFF">
-                  <StatValue>{summary?.total_restaurants || 0}</StatValue>
-                  <StatLabel>Restaurants</StatLabel>
-                  <StatDescription>active locations</StatDescription>
+                  <StatValue>{summary?.total_items || 0}</StatValue>
+                  <StatLabel>Total Items</StatLabel>
+                  <StatDescription>ingredients tracked</StatDescription>
                 </StatCard>
                 <StatCard color="#059669">
-                  <StatValue>{summary?.total_ingredients || 0}</StatValue>
-                  <StatLabel>Total Items</StatLabel>
-                  <StatDescription>tracked ingredients</StatDescription>
+                  <StatValue>{formatCurrency(summary?.total_value || 0, selectedCurrency)}</StatValue>
+                  <StatLabel>Total Value</StatLabel>
+                  <StatDescription>inventory worth</StatDescription>
                 </StatCard>
                 <StatCard color="#D97706">
                   <StatValue>{summary?.low_stock_count || 0}</StatValue>
@@ -396,14 +565,75 @@ const BrandInventoryPage: React.FC = () => {
                   <StatLabel>Out of Stock</StatLabel>
                   <StatDescription>urgent</StatDescription>
                 </StatCard>
-                <StatCard color="#EA580C">
-                  <StatValue>{summary?.expiring_count || 0}</StatValue>
-                  <StatLabel>Expiring Soon</StatLabel>
-                  <StatDescription>within 7 days</StatDescription>
-                </StatCard>
               </StatsGrid>
 
-              <SectionTitle>Inventory Status</SectionTitle>
+              {/* Low Stock Alert Section */}
+              {(summary?.low_stock_count || 0) + (summary?.out_of_stock_count || 0) > 0 && (
+                <>
+                  <SectionTitle>Stock Alerts</SectionTitle>
+                  <Table>
+                    <InventoryTableHeader columns="2fr 1fr 1fr 1fr 120px">
+                      <span>Ingredient</span>
+                      <span>Status</span>
+                      <span>Current</span>
+                      <span>Min Stock</span>
+                      <span>Actions</span>
+                    </InventoryTableHeader>
+                    {inventory
+                      .filter(item => item.stock_status === 'low_stock' || item.stock_status === 'out_of_stock')
+                      .slice(0, 5)
+                      .map(item => (
+                        <InventoryTableRow key={item.id} columns="2fr 1fr 1fr 1fr 120px">
+                          <MobileGrid>
+                            <MobileValue>
+                              <StockItemInfo>
+                                <StockItemImage>
+                                  {item.image_url ? (
+                                    <img src={item.image_url} alt={item.name} />
+                                  ) : (
+                                    <span style={{ fontSize: '16px', color: '#9CA3AF' }}>-</span>
+                                  )}
+                                </StockItemImage>
+                                <StockItemDetails>
+                                  <IngredientName>{item.name}</IngredientName>
+                                  {item.code && <StockItemCode>{item.code}</StockItemCode>}
+                                </StockItemDetails>
+                              </StockItemInfo>
+                            </MobileValue>
+                            <MobileValue>
+                              <MobileLabel>Status</MobileLabel>
+                              <StatusBadge status={item.stock_status}>
+                                {getStatusLabel(item.stock_status)}
+                              </StatusBadge>
+                            </MobileValue>
+                            <MobileValue>
+                              <MobileLabel>Current</MobileLabel>
+                              <div style={{ fontWeight: 600, color: item.stock_status === 'out_of_stock' ? '#DC2626' : '#0A2540' }}>
+                                {item.current_stock} {item.unit}
+                              </div>
+                            </MobileValue>
+                            <MobileValue>
+                              <MobileLabel>Min Stock</MobileLabel>
+                              <div>{item.min_stock} {item.unit}</div>
+                            </MobileValue>
+                          </MobileGrid>
+                          <ActionButtons>
+                            <Button
+                              variant="primary"
+                              onClick={() => openReceiveModal(item)}
+                              style={{ padding: '6px 12px', fontSize: '13px' }}
+                            >
+                              Receive
+                            </Button>
+                          </ActionButtons>
+                        </InventoryTableRow>
+                      ))}
+                  </Table>
+                </>
+              )}
+            </>
+          ) : activeTab === 'list' ? (
+            <>
               <FilterBar>
                 <SearchInput
                   type="text"
@@ -420,42 +650,57 @@ const BrandInventoryPage: React.FC = () => {
                   <option value="low_stock">Low Stock</option>
                   <option value="out_of_stock">Out of Stock</option>
                 </FilterSelect>
+                <FilterSelect
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                >
+                  <option value="all">All Categories</option>
+                  {categories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </FilterSelect>
               </FilterBar>
 
               {filteredInventory.length === 0 ? (
                 <EmptyState>
                   <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
-                    No inventory data found
+                    No ingredients found
                   </div>
                   <div style={{ fontSize: '14px' }}>
-                    Inventory data from your restaurants will appear here.
+                    Add ingredients in the Ingredients page to manage their stock here.
                   </div>
                 </EmptyState>
               ) : (
                 <Table>
-                  <TableHeader columns="2fr 1fr 1fr 1fr 1fr 120px">
+                  <InventoryTableHeader columns="2fr 1fr 1fr 1fr 1fr 150px">
                     <span>Ingredient</span>
-                    <span>Restaurant</span>
+                    <span>Category</span>
                     <span>Status</span>
                     <span>Current Stock</span>
-                    <span>Prediction</span>
+                    <span>Unit Cost</span>
                     <span>Actions</span>
-                  </TableHeader>
-                  {filteredInventory.slice(0, 20).map(item => (
-                    <TableRow key={`${item.restaurant_id}-${item.id}`} columns="2fr 1fr 1fr 1fr 1fr 120px">
+                  </InventoryTableHeader>
+                  {filteredInventory.map(item => (
+                    <InventoryTableRow key={item.id} columns="2fr 1fr 1fr 1fr 1fr 150px">
                       <MobileGrid>
                         <MobileValue>
-                          <MobileLabel>Ingredient</MobileLabel>
-                          <IngredientInfo>
-                            <IngredientName>{item.name}</IngredientName>
-                            <IngredientMeta>{item.category} - {formatCurrency(item.unit_cost, selectedCurrency)}/{item.unit}</IngredientMeta>
-                          </IngredientInfo>
+                          <StockItemInfo>
+                            <StockItemImage>
+                              {item.image_url ? (
+                                <img src={item.image_url} alt={item.name} />
+                              ) : (
+                                <span style={{ fontSize: '16px', color: '#9CA3AF' }}>-</span>
+                              )}
+                            </StockItemImage>
+                            <StockItemDetails>
+                              <IngredientName>{item.name}</IngredientName>
+                              {item.code && <StockItemCode>{item.code}</StockItemCode>}
+                            </StockItemDetails>
+                          </StockItemInfo>
                         </MobileValue>
                         <MobileValue>
-                          <MobileLabel>Restaurant</MobileLabel>
-                          <div style={{ fontSize: '13px', color: '#4338CA' }}>
-                            {item.restaurant_name || '-'}
-                          </div>
+                          <MobileLabel>Category</MobileLabel>
+                          <div>{item.category || '-'}</div>
                         </MobileValue>
                         <MobileValue>
                           <MobileLabel>Status</MobileLabel>
@@ -465,255 +710,144 @@ const BrandInventoryPage: React.FC = () => {
                         </MobileValue>
                         <MobileValue>
                           <MobileLabel>Current Stock</MobileLabel>
-                          <div style={{ fontWeight: 600, color: '#0A2540' }}>
-                            {item.current_stock} {item.unit}
-                          </div>
+                          {editingStockId === item.id ? (
+                            <InlineStockInput
+                              type="number"
+                              value={editingStockValue}
+                              onChange={(e) => setEditingStockValue(e.target.value)}
+                              onBlur={() => handleStockSave(item)}
+                              onKeyDown={(e) => handleStockKeyDown(e, item)}
+                              autoFocus
+                            />
+                          ) : (
+                            <EditableStock onClick={() => handleStockClick(item)}>
+                              <span style={{ fontWeight: 600, color: item.stock_status === 'out_of_stock' ? '#DC2626' : '#0A2540' }}>
+                                {item.current_stock}
+                              </span>
+                              <span style={{ color: '#6B7280' }}>{item.unit}</span>
+                            </EditableStock>
+                          )}
                         </MobileValue>
                         <MobileValue>
-                          <MobileLabel>Prediction</MobileLabel>
-                          <ConfidenceBadge level={item.prediction_confidence || 'none'}>
-                            {getConfidenceLabel(item.prediction_confidence || 'none')}
-                          </ConfidenceBadge>
+                          <MobileLabel>Unit Cost</MobileLabel>
+                          <div>{formatCurrency(item.unit_cost || 0, selectedCurrency)}</div>
                         </MobileValue>
                       </MobileGrid>
                       <ActionButtons>
                         <Button
-                          variant="secondary"
-                          onClick={() => openDetailModal(item)}
-                          style={{ padding: '6px 12px', fontSize: '13px' }}
+                          variant="primary"
+                          onClick={() => openReceiveModal(item)}
+                          style={{ padding: '6px 10px', fontSize: '12px' }}
                         >
-                          View
+                          +
                         </Button>
+                        <EditButton onClick={() => openAdjustModal(item)}>
+                          Adjust
+                        </EditButton>
                       </ActionButtons>
-                    </TableRow>
+                    </InventoryTableRow>
                   ))}
                 </Table>
               )}
             </>
-          ) : activeTab === 'alerts' ? (
-            <>
-              <InfoBox>
-                Stock alerts and expiring items across all your restaurants.
-              </InfoBox>
-
-              {/* Low Stock / Out of Stock Alerts */}
-              {inventory.filter(i => i.stock_status === 'out_of_stock' || i.stock_status === 'low_stock').length > 0 && (
-                <>
-                  <SectionTitle>Stock Alerts</SectionTitle>
-                  <div>
-                    {inventory
-                      .filter(i => i.stock_status === 'out_of_stock' || i.stock_status === 'low_stock')
-                      .slice(0, 10)
-                      .map(item => (
-                        <ExpiryAlertCard
-                          key={`stock-${item.restaurant_id}-${item.id}`}
-                          urgency={item.stock_status === 'out_of_stock' ? 'expired' : 'warning'}
-                        >
-                          <AlertInfo>
-                            <AlertTitle>
-                              {item.name}
-                              <RestaurantTag>{item.restaurant_name}</RestaurantTag>
-                            </AlertTitle>
-                            <AlertDetail>
-                              Current: {item.current_stock} {item.unit} / Min: {item.min_stock} {item.unit}
-                            </AlertDetail>
-                          </AlertInfo>
-                          <StatusBadge status={item.stock_status}>
-                            {getStatusLabel(item.stock_status)}
-                          </StatusBadge>
-                        </ExpiryAlertCard>
-                      ))}
-                  </div>
-                </>
-              )}
-
-              {/* Expiring Items */}
-              {expiringItems.length > 0 && (
-                <>
-                  <SectionTitle>Expiring Items</SectionTitle>
-                  <div>
-                    {expiringItems.slice(0, 10).map(item => (
-                      <ExpiryAlertCard key={item.id} urgency={item.urgency}>
-                        <AlertInfo>
-                          <AlertTitle>
-                            {item.ingredient_name}
-                            {item.batch_number && (
-                              <span style={{ fontSize: '12px', color: '#6B7280', marginLeft: '8px' }}>
-                                Batch: {item.batch_number}
-                              </span>
-                            )}
-                            <RestaurantTag>{item.restaurant_name}</RestaurantTag>
-                          </AlertTitle>
-                          <AlertDetail>
-                            {item.remaining_quantity} {item.unit} remaining - Expires: {new Date(item.expiry_date).toLocaleDateString()}
-                          </AlertDetail>
-                        </AlertInfo>
-                        <ExpiryBadge urgency={item.urgency}>
-                          {item.urgency === 'expired' ? 'EXPIRED' :
-                           item.urgency === 'critical' ? `${item.days_until_expiry}d LEFT` :
-                           item.urgency === 'warning' ? `${item.days_until_expiry} DAYS` :
-                           `${item.days_until_expiry} days`}
-                        </ExpiryBadge>
-                      </ExpiryAlertCard>
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {inventory.filter(i => i.stock_status !== 'normal').length === 0 && expiringItems.length === 0 && (
-                <EmptyState>
-                  <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
-                    No alerts
-                  </div>
-                  <div style={{ fontSize: '14px' }}>
-                    All inventory levels are healthy across your restaurants.
-                  </div>
-                </EmptyState>
-              )}
-            </>
-          ) : (
-            <>
-              <InfoBox>
-                View inventory breakdown by individual restaurant.
-              </InfoBox>
-
-              {restaurants.map(restaurant => {
-                const restaurantInventory = inventory.filter(i => i.restaurant_id === restaurant.id);
-                const lowStockCount = restaurantInventory.filter(i => i.stock_status === 'low_stock').length;
-                const outOfStockCount = restaurantInventory.filter(i => i.stock_status === 'out_of_stock').length;
-
-                return (
-                  <div key={restaurant.id} style={{ marginBottom: '32px' }}>
-                    <SectionTitle style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      {restaurant.name}
-                      {outOfStockCount > 0 && (
-                        <StatusBadge status="out_of_stock">{outOfStockCount} Out</StatusBadge>
-                      )}
-                      {lowStockCount > 0 && (
-                        <StatusBadge status="low_stock">{lowStockCount} Low</StatusBadge>
-                      )}
-                    </SectionTitle>
-
-                    {restaurantInventory.length === 0 ? (
-                      <div style={{ color: '#6B7280', fontSize: '14px', padding: '16px 0' }}>
-                        No inventory data for this restaurant.
-                      </div>
-                    ) : (
-                      <Table>
-                        <TableHeader columns="2fr 1fr 1fr 1fr 100px">
-                          <span>Ingredient</span>
-                          <span>Status</span>
-                          <span>Current Stock</span>
-                          <span>Min Stock</span>
-                          <span>Actions</span>
-                        </TableHeader>
-                        {restaurantInventory.slice(0, 10).map(item => (
-                          <TableRow key={item.id} columns="2fr 1fr 1fr 1fr 100px">
-                            <MobileGrid>
-                              <MobileValue>
-                                <MobileLabel>Ingredient</MobileLabel>
-                                <IngredientInfo>
-                                  <IngredientName>{item.name}</IngredientName>
-                                  <IngredientMeta>{item.category}</IngredientMeta>
-                                </IngredientInfo>
-                              </MobileValue>
-                              <MobileValue>
-                                <MobileLabel>Status</MobileLabel>
-                                <StatusBadge status={item.stock_status}>
-                                  {getStatusLabel(item.stock_status)}
-                                </StatusBadge>
-                              </MobileValue>
-                              <MobileValue>
-                                <MobileLabel>Current Stock</MobileLabel>
-                                <div style={{ fontWeight: 600 }}>
-                                  {item.current_stock} {item.unit}
-                                </div>
-                              </MobileValue>
-                              <MobileValue>
-                                <MobileLabel>Min Stock</MobileLabel>
-                                <div style={{ color: '#6B7280' }}>
-                                  {item.min_stock} {item.unit}
-                                </div>
-                              </MobileValue>
-                            </MobileGrid>
-                            <ActionButtons>
-                              <Button
-                                variant="secondary"
-                                onClick={() => window.location.href = `/restaurant/${restaurant.id}/inventory`}
-                                style={{ padding: '6px 12px', fontSize: '12px' }}
-                              >
-                                Manage
-                              </Button>
-                            </ActionButtons>
-                          </TableRow>
-                        ))}
-                      </Table>
-                    )}
-                  </div>
-                );
-              })}
-            </>
-          )}
+          ) : activeTab === 'categories' ? (
+            <GeneralStockCategoriesTab
+              brandId={brandId}
+              onCategoryCountChange={setGeneralStockCategoriesCount}
+            />
+          ) : null}
         </Content>
       </Container>
 
-      {/* Detail Modal */}
-      <Modal
-        isOpen={showDetailModal}
-        onClose={() => setShowDetailModal(false)}
-        title={`Inventory Detail: ${selectedIngredient?.name || ''}`}
-        size="medium"
-      >
-        {selectedIngredient && (
-          <>
-            <div style={{ marginBottom: '16px' }}>
-              <UIFormGroup>
-                <FormLabel>Restaurant</FormLabel>
-                <FormInput type="text" value={selectedIngredient.restaurant_name || '-'} disabled />
-              </UIFormGroup>
-              <UIFormGroup>
-                <FormLabel>Category</FormLabel>
-                <FormInput type="text" value={selectedIngredient.category} disabled />
-              </UIFormGroup>
-              <UIFormGroup>
-                <FormLabel>Current Stock</FormLabel>
-                <FormInput type="text" value={`${selectedIngredient.current_stock} ${selectedIngredient.unit}`} disabled />
-              </UIFormGroup>
-              <UIFormGroup>
-                <FormLabel>Minimum Stock</FormLabel>
-                <FormInput type="text" value={`${selectedIngredient.min_stock} ${selectedIngredient.unit}`} disabled />
-              </UIFormGroup>
-              <UIFormGroup>
-                <FormLabel>Unit Cost</FormLabel>
-                <FormInput type="text" value={formatCurrency(selectedIngredient.unit_cost, selectedCurrency)} disabled />
-              </UIFormGroup>
-              <UIFormGroup>
-                <FormLabel>Avg. Daily Usage</FormLabel>
-                <FormInput type="text" value={`${selectedIngredient.avg_daily_usage?.toFixed(2) || '0'} ${selectedIngredient.unit}/day`} disabled />
-              </UIFormGroup>
-              <UIFormGroup>
-                <FormLabel>Prediction Confidence</FormLabel>
-                <div style={{ marginTop: '8px' }}>
-                  <ConfidenceBadge level={selectedIngredient.prediction_confidence || 'none'}>
-                    {getConfidenceLabel(selectedIngredient.prediction_confidence || 'none')}
-                  </ConfidenceBadge>
-                </div>
-              </UIFormGroup>
+      {/* Receive Stock Modal */}
+      {showReceiveModal && selectedIngredient && (
+        <Modal
+          isOpen={showReceiveModal}
+          onClose={() => setShowReceiveModal(false)}
+          title={`Receive Stock - ${selectedIngredient.name}`}
+        >
+          <UIFormGroup>
+            <FormLabel>Current Stock</FormLabel>
+            <div style={{ padding: '10px', background: '#F3F4F6', borderRadius: '6px', fontWeight: 600 }}>
+              {selectedIngredient.current_stock} {selectedIngredient.unit}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-              <ModalButton variant="secondary" onClick={() => setShowDetailModal(false)}>
-                Close
-              </ModalButton>
-              <ModalButton
-                variant="primary"
-                onClick={() => window.location.href = `/restaurant/${selectedIngredient.restaurant_id}/inventory`}
-              >
-                Go to Restaurant Inventory
-              </ModalButton>
+          </UIFormGroup>
+          <UIFormGroup>
+            <FormLabel>Quantity to Receive *</FormLabel>
+            <FormInput
+              type="number"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              placeholder={`Enter quantity in ${selectedIngredient.unit}`}
+              min="0"
+              step="0.01"
+            />
+          </UIFormGroup>
+          <UIFormGroup>
+            <FormLabel>Notes</FormLabel>
+            <FormInput
+              type="text"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Optional notes"
+            />
+          </UIFormGroup>
+          {quantity && (
+            <div style={{ padding: '12px', background: '#F0FDF4', borderRadius: '6px', marginTop: '12px' }}>
+              <div style={{ fontSize: '13px', color: '#6B7280' }}>New Stock Level:</div>
+              <div style={{ fontSize: '18px', fontWeight: 600, color: '#059669' }}>
+                {(selectedIngredient.current_stock + parseFloat(quantity || '0')).toFixed(2)} {selectedIngredient.unit}
+              </div>
             </div>
-          </>
-        )}
-      </Modal>
+          )}
+          <ButtonGroup>
+            <Button variant="secondary" onClick={() => setShowReceiveModal(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={handleReceive} disabled={!quantity}>
+              Receive Stock
+            </Button>
+          </ButtonGroup>
+        </Modal>
+      )}
+
+      {/* Adjust Stock Modal */}
+      {showAdjustModal && selectedIngredient && (
+        <Modal
+          isOpen={showAdjustModal}
+          onClose={() => setShowAdjustModal(false)}
+          title={`Adjust Stock - ${selectedIngredient.name}`}
+        >
+          <UIFormGroup>
+            <FormLabel>New Stock Level *</FormLabel>
+            <FormInput
+              type="number"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              placeholder={`Enter new quantity in ${selectedIngredient.unit}`}
+              min="0"
+              step="0.01"
+            />
+          </UIFormGroup>
+          <UIFormGroup>
+            <FormLabel>Reason for Adjustment</FormLabel>
+            <FormInput
+              type="text"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="e.g., Stock count correction, waste, etc."
+            />
+          </UIFormGroup>
+          <ButtonGroup>
+            <Button variant="secondary" onClick={() => setShowAdjustModal(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={handleAdjust} disabled={!quantity}>
+              Save Adjustment
+            </Button>
+          </ButtonGroup>
+        </Modal>
+      )}
     </MainLayout>
   );
 };
