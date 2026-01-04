@@ -107,6 +107,7 @@ const InventoryPage = React.lazy(() => import('./pages/Inventory/InventoryPage')
 const StockTakePage = React.lazy(() => import('./pages/Inventory/StockTakePage'));
 const BrandInventoryPage = React.lazy(() => import('./pages/BrandInventory/BrandInventoryPage'));
 const ProductRecipePage = React.lazy(() => import('./pages/ProductRecipe/ProductRecipePage'));
+const BrandProductRecipePage = React.lazy(() => import('./pages/BrandProductRecipe/BrandProductRecipePage'));
 
 // Brand Product Management
 const BrandProductManagementPage = React.lazy(() => import('./pages/BrandProductManagement/BrandProductManagementPage'));
@@ -433,6 +434,13 @@ function App() {
                       <Route path="/pos/brand-inventory" element={
                         <ProtectedRoute requiredRole={['Brand General', 'Brand Manager', 'System Admin']}>
                           <BrandInventoryPage />
+                        </ProtectedRoute>
+                      } />
+
+                      {/* Brand Product Recipe Management */}
+                      <Route path="/pos/brand-product-recipes" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager', 'System Admin']}>
+                          <BrandProductRecipePage />
                         </ProtectedRoute>
                       } />
 
