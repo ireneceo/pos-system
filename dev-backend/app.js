@@ -77,6 +77,8 @@ app.use('/api', dbHealthCheck);
 const allowedOrigins = [
   'https://pos.orderhere.center',
   'https://solution.orderhere.center',
+  'https://dev.purplehere.com',
+  'https://purplehere.com',
   'http://localhost:3001',
   'http://localhost:3000'
 ];
