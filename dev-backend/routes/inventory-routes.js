@@ -24,6 +24,7 @@ router.get('/:restaurantId/inventory', async (req, res) => {
     });
 
     // Build where clause to include both restaurant and brand ingredients
+    // Only include ingredients with track_stock: true
     const orConditions = [{ restaurant_id: restaurantId }];
     if (restaurant?.brand_id) {
       orConditions.push({ brand_id: restaurant.brand_id });
@@ -31,7 +32,8 @@ router.get('/:restaurantId/inventory', async (req, res) => {
 
     const whereClause = {
       [Op.or]: orConditions,
-      is_active: true
+      is_active: true,
+      track_stock: true
     };
 
     if (category) {

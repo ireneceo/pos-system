@@ -471,6 +471,7 @@ const OrderButton = styled.button`
 
 const SearchableSelectContainer = styled.div`
   position: relative;
+  z-index: 10;
 `;
 
 const SearchableSelectInput = styled.input`
@@ -2375,20 +2376,20 @@ const InventoryPage: React.FC = () => {
               )}
             </FilterSelect>
           </UIFormGroup>
+          <UIFormGroup>
+            <FormLabel>Supplier</FormLabel>
+            <FilterSelect
+              value={generalStockForm.supplier_id}
+              onChange={(e) => setGeneralStockForm({ ...generalStockForm, supplier_id: e.target.value })}
+              style={{ width: '100%' }}
+            >
+              <option value="">Select Supplier (Optional)</option>
+              {suppliers.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </FilterSelect>
+          </UIFormGroup>
         </div>
-        <UIFormGroup>
-          <FormLabel>Supplier</FormLabel>
-          <FilterSelect
-            value={generalStockForm.supplier_id}
-            onChange={(e) => setGeneralStockForm({ ...generalStockForm, supplier_id: e.target.value })}
-            style={{ width: '100%' }}
-          >
-            <option value="">Select Supplier (Optional)</option>
-            {suppliers.map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </FilterSelect>
-        </UIFormGroup>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px' }}>
           <UIFormGroup>
             <FormLabel>Unit Cost</FormLabel>
@@ -2585,20 +2586,20 @@ const InventoryPage: React.FC = () => {
               )}
             </FilterSelect>
           </UIFormGroup>
+          <UIFormGroup>
+            <FormLabel>Supplier</FormLabel>
+            <FilterSelect
+              value={generalStockForm.supplier_id}
+              onChange={(e) => setGeneralStockForm({ ...generalStockForm, supplier_id: e.target.value })}
+              style={{ width: '100%' }}
+            >
+              <option value="">Select Supplier (Optional)</option>
+              {suppliers.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </FilterSelect>
+          </UIFormGroup>
         </div>
-        <UIFormGroup>
-          <FormLabel>Supplier</FormLabel>
-          <FilterSelect
-            value={generalStockForm.supplier_id}
-            onChange={(e) => setGeneralStockForm({ ...generalStockForm, supplier_id: e.target.value })}
-            style={{ width: '100%' }}
-          >
-            <option value="">Select Supplier (Optional)</option>
-            {suppliers.map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </FilterSelect>
-        </UIFormGroup>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px' }}>
           <UIFormGroup>
             <FormLabel>Unit Cost</FormLabel>
@@ -2731,18 +2732,15 @@ const InventoryPage: React.FC = () => {
                 onClick={async () => {
                   try {
                     if (deleteTarget.type === 'ingredient') {
-                      // For ingredients, we just remove from inventory tracking (unlink)
-                      // This doesn't delete the ingredient, just resets its stock
-                      const response = await authFetch(`/api/restaurants/${restaurantId}/inventory/adjust`, {
-                        method: 'POST',
+                      // For ingredients, set track_stock to false to unlink from inventory
+                      const response = await authFetch(`/api/restaurants/${restaurantId}/ingredients/${deleteTarget.id}`, {
+                        method: 'PUT',
                         body: JSON.stringify({
-                          ingredient_id: deleteTarget.id,
-                          new_quantity: 0,
-                          reason: 'Unlinked from inventory'
+                          track_stock: false
                         })
                       });
                       if (response.success) {
-                        // Update local state
+                        // Update local state - remove from inventory list
                         setInventory(prev => prev.filter(item => item.id !== deleteTarget.id));
                       }
                     } else {

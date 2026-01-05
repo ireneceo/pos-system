@@ -137,6 +137,71 @@ const TrackStockBadge = styled.span`
   margin-left: 8px;
 `;
 
+const StockToggleRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #F9FAFB;
+  border-radius: 6px;
+  margin-top: 12px;
+`;
+
+const StockToggleLabel = styled.span`
+  font-size: 13px;
+  color: #6B7280;
+`;
+
+const ToggleSwitch = styled.label`
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  cursor: pointer;
+
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  span {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #D1D5DB;
+    border-radius: 22px;
+    transition: 0.3s;
+
+    &:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+  }
+
+  input:checked + span {
+    background: #10B981;
+  }
+
+  input:checked + span:before {
+    transform: translateX(18px);
+  }
+
+  input:disabled + span {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
 const IngredientInfo = styled.div`
   margin: 12px 0;
 `;
@@ -695,6 +760,41 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
     }
   };
 
+  // Toggle track_stock directly from list
+  const handleToggleTrackStock = async (ingredient: Ingredient, newValue: boolean) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      let url: string;
+
+      if (brandId) {
+        url = `/api/brands/${brandId}/ingredients/${ingredient.id}`;
+      } else {
+        url = `/api/restaurants/${effectiveRestaurantId}/ingredients/${ingredient.id}`;
+      }
+
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          track_stock: newValue
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        // Update local state
+        setIngredients(prev => prev.map(ing =>
+          ing.id === ingredient.id ? { ...ing, track_stock: newValue } : ing
+        ));
+      }
+    } catch (error) {
+      console.error('Failed to toggle track_stock:', error);
+    }
+  };
+
   const filteredIngredients = ingredients.filter(ingredient => {
     const matchesSearch = ingredient.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' ||
@@ -813,6 +913,18 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                   </InfoRow>
                 )}
               </IngredientInfo>
+
+              <StockToggleRow>
+                <StockToggleLabel>Track in Stock List</StockToggleLabel>
+                <ToggleSwitch>
+                  <input
+                    type="checkbox"
+                    checked={ingredient.track_stock || false}
+                    onChange={(e) => handleToggleTrackStock(ingredient, e.target.checked)}
+                  />
+                  <span></span>
+                </ToggleSwitch>
+              </StockToggleRow>
 
               {!isItemReadOnly(ingredient) && (
                 <IngredientActions>
