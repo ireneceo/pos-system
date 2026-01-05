@@ -1449,13 +1449,14 @@ const InventoryPage: React.FC = () => {
                     return matchesSearch && matchesStatus;
                   }).length})</SectionTitle>}
                   <Table style={{ marginBottom: '24px' }}>
-                    <InventoryTableHeader columns="2.5fr 1fr 1fr 1fr 1fr 1fr 180px">
+                    <InventoryTableHeader columns="2.5fr 1fr 1fr 1fr 1fr 1fr 150px 120px">
                       <span>Item</span>
                       <span>Status</span>
                       <span>Current Stock</span>
                       <span>Min Stock</span>
                       <span>Unit Cost</span>
                       <span>Supplier</span>
+                      <span>Order</span>
                       <span>Actions</span>
                     </InventoryTableHeader>
                     {generalStockInventory
@@ -1465,7 +1466,7 @@ const InventoryPage: React.FC = () => {
                         return matchesSearch && matchesStatus;
                       })
                       .map(item => (
-                      <InventoryTableRow key={`general-stock-${item.id}`} columns="2.5fr 1fr 1fr 1fr 1fr 1fr 180px">
+                      <InventoryTableRow key={`general-stock-${item.id}`} columns="2.5fr 1fr 1fr 1fr 1fr 1fr 150px 120px">
                         <MobileGrid>
                           <MobileValue>
                             <MobileLabel>Item</MobileLabel>
@@ -1531,6 +1532,43 @@ const InventoryPage: React.FC = () => {
                             </div>
                           </MobileValue>
                         </MobileGrid>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <OrderInput
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={orderQuantities[`gs_${item.id}`] || ''}
+                            onChange={(e) => setOrderQuantities(prev => ({
+                              ...prev,
+                              [`gs_${item.id}`]: e.target.value
+                            }))}
+                            placeholder={String(item.min_order || 1)}
+                          />
+                          <OrderButton onClick={() => {
+                            const qty = orderQuantities[`gs_${item.id}`] || String(item.min_order || 1);
+                            if (qty && parseFloat(qty) > 0) {
+                              handleOrderClick({
+                                id: item.id,
+                                name: item.name,
+                                code: item.code,
+                                image_url: item.image_url,
+                                category: item.category,
+                                current_stock: item.current_stock,
+                                min_stock: item.min_stock,
+                                min_order: item.min_order || 0,
+                                unit: item.stock_unit || item.unit,
+                                unit_cost: item.unit_cost,
+                                supplier_name: item.supplier_name,
+                                stock_status: item.stock_status,
+                                last_stock_take_at: item.last_stock_take_at,
+                                item_type: 'general_stock'
+                              });
+                              setOrderQuantity(qty);
+                            }
+                          }}>
+                            Order
+                          </OrderButton>
+                        </div>
                         <ActionButtons>
                           <Button
                             variant="primary"
@@ -1544,24 +1582,6 @@ const InventoryPage: React.FC = () => {
                           >
                             Receive
                           </Button>
-                          <OrderButton onClick={() => handleOrderClick({
-                            id: item.id,
-                            name: item.name,
-                            code: item.code,
-                            image_url: item.image_url,
-                            category: item.category,
-                            current_stock: item.current_stock,
-                            min_stock: item.min_stock,
-                            min_order: item.min_order || 0,
-                            unit: item.stock_unit || item.unit,
-                            unit_cost: item.unit_cost,
-                            supplier_name: item.supplier_name,
-                            stock_status: item.stock_status,
-                            last_stock_take_at: item.last_stock_take_at,
-                            item_type: 'general_stock'
-                          })}>
-                            Order
-                          </OrderButton>
                           <EditButton onClick={() => {
                             setEditingGeneralStock(item);
                             setGeneralStockForm({
