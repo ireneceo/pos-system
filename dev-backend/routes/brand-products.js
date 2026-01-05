@@ -1064,29 +1064,7 @@ router.put('/brand-products/:productId/recipe/ingredients', authenticateToken, i
   }
 });
 
-/**
- * GET /api/brands/:brandId/recipes
- * Get available recipes for a brand
- */
-router.get('/brands/:brandId/recipes', authenticateToken, async (req, res) => {
-  try {
-    const { brandId } = req.params;
-
-    const recipes = await Recipe.findAll({
-      where: {
-        brand_id: brandId,
-        owner_type: 'brand',
-        is_active: true
-      },
-      attributes: ['id', 'name', 'description', 'category', 'total_ingredient_cost', 'owner_type'],
-      order: [['name', 'ASC']]
-    });
-
-    res.json({ success: true, data: recipes });
-  } catch (error) {
-    console.error('Error fetching available recipes:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch recipes' });
-  }
-});
+// NOTE: GET /api/brands/:brandId/recipes is handled by recipes.js
+// Removed duplicate route that was limiting response fields
 
 module.exports = router;

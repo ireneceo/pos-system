@@ -123,6 +123,27 @@ mv $ENV_BACKUP_FILE $PROD_BACKEND/.env
 echo -e "${GREEN}   ✅ .env restored${NC}"
 
 # ==============================================
+# Step 5.5: Check for Duplicate Routes
+# ==============================================
+echo ""
+echo -e "${YELLOW}Step 5.5: Check for Duplicate Routes${NC}"
+DUPLICATE_ROUTES=$(grep -rh "router\.\(get\|post\|put\|delete\).*['\"]/" $DEV_BACKEND/routes/*.js 2>/dev/null | \
+  sed "s/.*router\.\(get\|post\|put\|delete\)(\s*['\"]//g" | \
+  sed "s/['\"].*//g" | \
+  sort | uniq -d)
+
+if [ -n "$DUPLICATE_ROUTES" ]; then
+    echo -e "${YELLOW}   Warning: Potential duplicate routes detected:${NC}"
+    echo "$DUPLICATE_ROUTES" | while read route; do
+        echo -e "${YELLOW}      - $route${NC}"
+        grep -rn "router\.\(get\|post\|put\|delete\).*$route" $DEV_BACKEND/routes/*.js 2>/dev/null | head -5
+    done
+    echo -e "${YELLOW}   Please review these routes before deployment${NC}"
+else
+    echo -e "${GREEN}   ✅ No duplicate routes detected${NC}"
+fi
+
+# ==============================================
 # Step 6: Install Backend Dependencies
 # ==============================================
 echo ""
@@ -294,8 +315,19 @@ echo ""
 echo -e "${YELLOW}Step 9: Build Frontend${NC}"
 cd $DEV_FRONTEND
 
-# 캐시 클리어
-rm -rf node_modules/.cache build
+# 캐시 폴더 권한 문제 자동 해결
+CACHE_DIR="node_modules/.cache"
+if [ -d "$CACHE_DIR" ]; then
+    CACHE_OWNER=$(stat -c '%U' "$CACHE_DIR" 2>/dev/null || echo "unknown")
+    CURRENT_USER=$(whoami)
+    if [ "$CACHE_OWNER" = "root" ] && [ "$CURRENT_USER" != "root" ]; then
+        echo -e "${BLUE}   Fixing cache folder permissions...${NC}"
+        sudo chown -R "$CURRENT_USER":"$CURRENT_USER" "$CACHE_DIR"
+    fi
+fi
+
+# 캐시 및 빌드 폴더 클리어
+rm -rf node_modules/.cache build 2>/dev/null || sudo rm -rf node_modules/.cache build
 
 echo -e "${BLUE}   Building React app...${NC}"
 npm run build
