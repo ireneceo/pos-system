@@ -2711,9 +2711,6 @@ const InventoryPage: React.FC = () => {
         {deleteTarget && (
           <>
             <div style={{ padding: '16px 0', textAlign: 'center' }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>
-                {deleteTarget.type === 'ingredient' ? '🥬' : '📦'}
-              </div>
               <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', color: '#0A2540' }}>
                 {deleteTarget.name}
               </div>

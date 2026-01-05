@@ -960,10 +960,26 @@ router.post('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcce
 router.put('/:restaurantId/ingredients/:ingredientId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { ingredientId } = req.params;
-    const { code, name, category, unit, unit_cost, supplier_name, min_stock } = req.body;
+    const { code, name, category, unit, unit_cost, supplier_name, min_stock, image_url, ingredient_category_id, base_quantity, supplier_id, track_stock } = req.body;
     const ingredient = await Ingredient.findByPk(ingredientId);
     if (!ingredient) return res.status(404).json({ error: '재료를 찾을 수 없습니다' });
-    await ingredient.update({ code, name, category, unit, unit_cost, supplier_name, min_stock });
+
+    // Build update object with only provided fields
+    const updateData = {};
+    if (code !== undefined) updateData.code = code;
+    if (name !== undefined) updateData.name = name;
+    if (category !== undefined) updateData.category = category;
+    if (unit !== undefined) updateData.unit = unit;
+    if (unit_cost !== undefined) updateData.unit_cost = unit_cost;
+    if (supplier_name !== undefined) updateData.supplier_name = supplier_name;
+    if (min_stock !== undefined) updateData.min_stock = min_stock;
+    if (image_url !== undefined) updateData.image_url = image_url;
+    if (ingredient_category_id !== undefined) updateData.ingredient_category_id = ingredient_category_id;
+    if (base_quantity !== undefined) updateData.base_quantity = base_quantity;
+    if (supplier_id !== undefined) updateData.supplier_id = supplier_id;
+    if (track_stock !== undefined) updateData.track_stock = track_stock;
+
+    await ingredient.update(updateData);
     res.json({ success: true, data: ingredient });
   } catch (error) {
     console.error('Update restaurant ingredient error:', error);
