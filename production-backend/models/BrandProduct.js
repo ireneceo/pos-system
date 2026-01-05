@@ -65,6 +65,24 @@ const BrandProduct = sequelize.define('BrandProduct', {
   sort_order: {
     type: DataTypes.INTEGER,
     defaultValue: 0
+  },
+  recipe_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'recipes',
+      key: 'id'
+    },
+    comment: 'Linked recipe for ingredient cost tracking (legacy)'
+  },
+  product_recipe_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'product_recipes',
+      key: 'id'
+    },
+    comment: 'Linked product recipe (new system)'
   }
 }, {
   tableName: 'brand_products',

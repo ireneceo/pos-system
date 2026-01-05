@@ -59,6 +59,14 @@ User.init({
     type: DataTypes.INTEGER,
     allowNull: true
   },
+  brand_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  foodcourt_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
   permissions: {
     type: DataTypes.TEXT,
     allowNull: true,

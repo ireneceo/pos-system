@@ -174,25 +174,27 @@ if [ -n "$MISSING_TABLES" ]; then
     done
 fi
 
-# 주요 테이블 컬럼 비교 및 자동 추가
-TABLES_TO_CHECK="products categories restaurants users orders options option_groups recipes ingredients customers restaurant_customers plan_templates brands invoices"
-for table in $TABLES_TO_CHECK; do
-    # 테이블 존재 여부 확인
-    TABLE_EXISTS=$(mysql -u $DB_USER -p$DB_PASS $DB_NAME -N -e "SHOW TABLES LIKE '$table';" 2>/dev/null)
-    if [ -z "$TABLE_EXISTS" ]; then
+# 모든 테이블 컬럼 비교 및 자동 추가/수정
+echo -e "${BLUE}   Comparing all table schemas...${NC}"
+
+# 공통 테이블 목록 가져오기
+COMMON_TABLES=$(comm -12 <(echo "$DEV_TABLES") <(echo "$PROD_TABLES"))
+
+for table in $COMMON_TABLES; do
+    if [ -z "$table" ]; then
         continue
     fi
 
+    # 1. 누락된 컬럼 추가
     DEV_COLS=$(mysql -u $DEV_DB_USER -p$DEV_DB_PASS $DEV_DB_NAME -N -e "SELECT GROUP_CONCAT(COLUMN_NAME ORDER BY ORDINAL_POSITION) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='$DEV_DB_NAME' AND TABLE_NAME='$table';" 2>/dev/null)
     PROD_COLS=$(mysql -u $DB_USER -p$DB_PASS $DB_NAME -N -e "SELECT GROUP_CONCAT(COLUMN_NAME ORDER BY ORDINAL_POSITION) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='$DB_NAME' AND TABLE_NAME='$table';" 2>/dev/null)
 
     if [ -n "$DEV_COLS" ] && [ -n "$PROD_COLS" ]; then
         MISSING_COLS=$(comm -23 <(echo "$DEV_COLS" | tr ',' '\n' | sort) <(echo "$PROD_COLS" | tr ',' '\n' | sort))
         if [ -n "$MISSING_COLS" ]; then
-            echo -e "${BLUE}   $table 테이블에 누락된 컬럼 추가 중...${NC}"
+            echo -e "${BLUE}   [$table] 누락된 컬럼 추가 중...${NC}"
             echo "$MISSING_COLS" | while read col; do
                 if [ -n "$col" ]; then
-                    # 개발DB에서 컬럼 정의 가져오기
                     COL_DEF=$(mysql -u $DEV_DB_USER -p$DEV_DB_PASS $DEV_DB_NAME -N -e "
                         SELECT CONCAT(
                             COLUMN_NAME, ' ',
@@ -204,17 +206,68 @@ for table in $TABLES_TO_CHECK; do
                         WHERE TABLE_SCHEMA='$DEV_DB_NAME' AND TABLE_NAME='$table' AND COLUMN_NAME='$col';" 2>/dev/null)
 
                     if [ -n "$COL_DEF" ]; then
-                        echo -e "${BLUE}      Adding column: $col${NC}"
-                        mysql -u $DB_USER -p$DB_PASS $DB_NAME -e "ALTER TABLE $table ADD COLUMN $COL_DEF;" 2>/dev/null
+                        echo -e "${BLUE}      + $col${NC}"
+                        mysql -u $DB_USER -p$DB_PASS $DB_NAME -e "ALTER TABLE \`$table\` ADD COLUMN $COL_DEF;" 2>/dev/null
                         if [ $? -eq 0 ]; then
-                            echo -e "${GREEN}      ✅ $col 컬럼 추가 완료${NC}"
-                        else
-                            echo -e "${YELLOW}      ⚠️  $col 컬럼 추가 실패 (이미 존재할 수 있음)${NC}"
+                            echo -e "${GREEN}        ✅ 추가 완료${NC}"
                         fi
                     fi
                 fi
             done
         fi
+    fi
+
+    # 2. 컬럼 타입 차이 자동 수정
+    TYPE_DIFF=$(mysql -u $DEV_DB_USER -p$DEV_DB_PASS -N -e "
+        SELECT d.COLUMN_NAME, d.COLUMN_TYPE as dev_type, p.COLUMN_TYPE as prod_type
+        FROM information_schema.COLUMNS d
+        JOIN information_schema.COLUMNS p
+            ON d.COLUMN_NAME = p.COLUMN_NAME
+        WHERE d.TABLE_SCHEMA = '$DEV_DB_NAME'
+            AND d.TABLE_NAME = '$table'
+            AND p.TABLE_SCHEMA = '$DB_NAME'
+            AND p.TABLE_NAME = '$table'
+            AND d.COLUMN_TYPE != p.COLUMN_TYPE
+    " 2>/dev/null)
+
+    if [ -n "$TYPE_DIFF" ]; then
+        echo -e "${BLUE}   [$table] 컬럼 타입 차이 수정 중...${NC}"
+        echo "$TYPE_DIFF" | while read line; do
+            col=$(echo "$line" | awk '{print $1}')
+            dev_type=$(echo "$line" | awk '{print $2}')
+            prod_type=$(echo "$line" | awk '{print $3}')
+
+            if [ -n "$col" ] && [ -n "$dev_type" ]; then
+                # 전체 컬럼 정의 가져오기 (DEFAULT 값 포함)
+                FULL_DEF=$(mysql -u $DEV_DB_USER -p$DEV_DB_PASS $DEV_DB_NAME -N -e "
+                    SELECT CONCAT(
+                        COLUMN_TYPE,
+                        IF(IS_NULLABLE='NO', ' NOT NULL', ' NULL'),
+                        IF(COLUMN_DEFAULT IS NOT NULL,
+                            CONCAT(' DEFAULT ',
+                                CASE
+                                    WHEN DATA_TYPE IN ('varchar','text','char','mediumtext','longtext') THEN CONCAT('''', REPLACE(COLUMN_DEFAULT, '''', ''''''), '''')
+                                    WHEN DATA_TYPE = 'enum' THEN CONCAT('''', COLUMN_DEFAULT, '''')
+                                    ELSE COLUMN_DEFAULT
+                                END
+                            ),
+                            IF(IS_NULLABLE='YES', ' DEFAULT NULL', '')
+                        ),
+                        IF(EXTRA != '', CONCAT(' ', EXTRA), '')
+                    ) FROM information_schema.COLUMNS
+                    WHERE TABLE_SCHEMA='$DEV_DB_NAME' AND TABLE_NAME='$table' AND COLUMN_NAME='$col';" 2>/dev/null)
+
+                if [ -n "$FULL_DEF" ]; then
+                    echo -e "${BLUE}      ~ $col: $prod_type -> $dev_type${NC}"
+                    mysql -u $DB_USER -p$DB_PASS $DB_NAME -e "ALTER TABLE \`$table\` MODIFY COLUMN \`$col\` $FULL_DEF;" 2>/dev/null
+                    if [ $? -eq 0 ]; then
+                        echo -e "${GREEN}        ✅ 수정 완료${NC}"
+                    else
+                        echo -e "${YELLOW}        ⚠️  수정 실패 (데이터 호환성 문제일 수 있음)${NC}"
+                    fi
+                fi
+            fi
+        done
     fi
 done
 

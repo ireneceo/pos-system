@@ -8,7 +8,10 @@ const {
   BrandProductBrand,
   BrandProductOptionGroupProduct,
   Brand,
-  Ingredient
+  Ingredient,
+  Recipe,
+  RecipeIngredient,
+  ProductRecipe
 } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
@@ -488,6 +491,11 @@ router.get('/brand-products', authenticateToken, isBrandManager, async (req, res
               as: 'options'
             }
           ]
+        },
+        {
+          model: ProductRecipe,
+          as: 'productRecipe',
+          attributes: ['id', 'name', 'total_ingredient_cost']
         }
       ],
       order: [['sort_order', 'ASC'], ['name', 'ASC']]
@@ -530,6 +538,11 @@ router.get('/brand-products/:productId', authenticateToken, isBrandManager, asyn
               as: 'options'
             }
           ]
+        },
+        {
+          model: ProductRecipe,
+          as: 'productRecipe',
+          attributes: ['id', 'name', 'total_ingredient_cost']
         }
       ]
     });
@@ -554,7 +567,7 @@ router.post('/brand-products', authenticateToken, isBrandManager, async (req, re
     const {
       name, description, sku, unit, base_quantity, unit_price,
       min_order_quantity, image_url, category_id,
-      is_active, sync_to_ingredients, sort_order, brand_ids, option_group_ids
+      is_active, product_recipe_id, sort_order, brand_ids, option_group_ids
     } = req.body;
 
     if (!name || !name.trim()) {
@@ -576,7 +589,7 @@ router.post('/brand-products', authenticateToken, isBrandManager, async (req, re
       min_order_quantity: min_order_quantity || 1,
       image_url: image_url || null,
       is_active: is_active !== false,
-      sync_to_ingredients: sync_to_ingredients !== false,
+      product_recipe_id: product_recipe_id || null,
       sort_order: sort_order || 0
     });
 
@@ -613,6 +626,11 @@ router.post('/brand-products', authenticateToken, isBrandManager, async (req, re
           as: 'optionGroups',
           through: { attributes: [] },
           include: [{ model: BrandProductOption, as: 'options' }]
+        },
+        {
+          model: ProductRecipe,
+          as: 'productRecipe',
+          attributes: ['id', 'name', 'total_ingredient_cost']
         }
       ]
     });
@@ -634,7 +652,7 @@ router.put('/brand-products/:productId', authenticateToken, isBrandManager, asyn
     const {
       name, description, sku, unit, base_quantity, unit_price,
       min_order_quantity, image_url, category_id,
-      is_active, sync_to_ingredients, sort_order, brand_ids, option_group_ids
+      is_active, product_recipe_id, sort_order, brand_ids, option_group_ids
     } = req.body;
 
     const product = await BrandProduct.findByPk(productId);
@@ -655,7 +673,7 @@ router.put('/brand-products/:productId', authenticateToken, isBrandManager, asyn
       image_url: image_url !== undefined ? image_url : product.image_url,
       category_id: category_id !== undefined ? category_id : product.category_id,
       is_active: is_active !== undefined ? is_active : product.is_active,
-      sync_to_ingredients: sync_to_ingredients !== undefined ? sync_to_ingredients : product.sync_to_ingredients,
+      product_recipe_id: product_recipe_id !== undefined ? product_recipe_id : product.product_recipe_id,
       sort_order: sort_order !== undefined ? sort_order : product.sort_order
     });
 
@@ -698,6 +716,11 @@ router.put('/brand-products/:productId', authenticateToken, isBrandManager, asyn
           as: 'optionGroups',
           through: { attributes: [] },
           include: [{ model: BrandProductOption, as: 'options' }]
+        },
+        {
+          model: ProductRecipe,
+          as: 'productRecipe',
+          attributes: ['id', 'name', 'total_ingredient_cost']
         }
       ]
     });
@@ -784,6 +807,285 @@ router.get('/brands/:brandId/products', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Get brand products error:', error);
     res.status(500).json({ error: 'Failed to fetch products' });
+  }
+});
+
+// ============================================
+// Brand Product Recipe Management
+// ============================================
+
+/**
+ * GET /api/brand-products/:productId/recipe
+ * Get product with recipe details
+ */
+router.get('/brand-products/:productId/recipe', authenticateToken, isBrandManager, async (req, res) => {
+  try {
+    const { productId } = req.params;
+
+    const product = await BrandProduct.findByPk(productId, {
+      include: [
+        {
+          model: Recipe,
+          as: 'recipe',
+          include: [{
+            model: RecipeIngredient,
+            as: 'recipeIngredients',
+            include: [{
+              model: Ingredient,
+              as: 'ingredient',
+              attributes: ['id', 'name', 'unit', 'unit_cost', 'category', 'current_stock']
+            }]
+          }]
+        }
+      ]
+    });
+
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    // Calculate total ingredient cost if recipe exists
+    let totalCost = 0;
+    if (product.recipe && product.recipe.recipeIngredients) {
+      product.recipe.recipeIngredients.forEach(ri => {
+        if (ri.ingredient) {
+          const ingredientCost = parseFloat(ri.ingredient.unit_cost) * parseFloat(ri.quantity);
+          totalCost += ingredientCost;
+        }
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        product: {
+          id: product.id,
+          name: product.name,
+          unit_price: product.unit_price,
+          category: product.category,
+          recipe_id: product.recipe_id
+        },
+        recipe: product.recipe ? {
+          id: product.recipe.id,
+          name: product.recipe.name,
+          description: product.recipe.description,
+          prep_time: product.recipe.prep_time,
+          cook_time: product.recipe.cook_time,
+          total_ingredient_cost: totalCost,
+          ingredients: product.recipe.recipeIngredients?.map(ri => ({
+            id: ri.id,
+            ingredient_id: ri.ingredient_id,
+            ingredient_name: ri.ingredient?.name,
+            quantity: parseFloat(ri.quantity),
+            unit: ri.unit,
+            unit_cost: parseFloat(ri.ingredient?.unit_cost || 0),
+            total_cost: parseFloat(ri.ingredient?.unit_cost || 0) * parseFloat(ri.quantity),
+            current_stock: parseFloat(ri.ingredient?.current_stock || 0),
+            notes: ri.notes
+          })) || []
+        } : null
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching product recipe:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch product recipe' });
+  }
+});
+
+/**
+ * PUT /api/brand-products/:productId/recipe
+ * Link/unlink recipe to product
+ */
+router.put('/brand-products/:productId/recipe', authenticateToken, isBrandManager, async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const { recipe_id } = req.body;
+
+    const product = await BrandProduct.findByPk(productId);
+
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    // If recipe_id is provided, verify it exists
+    if (recipe_id) {
+      const recipe = await Recipe.findByPk(recipe_id);
+      if (!recipe) {
+        return res.status(404).json({ success: false, message: 'Recipe not found' });
+      }
+    }
+
+    await product.update({ recipe_id: recipe_id || null });
+
+    res.json({
+      success: true,
+      message: recipe_id ? 'Recipe linked successfully' : 'Recipe unlinked successfully',
+      data: { product_id: productId, recipe_id }
+    });
+  } catch (error) {
+    console.error('Error updating product recipe:', error);
+    res.status(500).json({ success: false, message: 'Failed to update product recipe' });
+  }
+});
+
+/**
+ * POST /api/brand-products/:productId/recipe
+ * Create inline recipe for a product (creates recipe and links it)
+ */
+router.post('/brand-products/:productId/recipe', authenticateToken, isBrandManager, async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const { name, description, ingredients, prep_time, cook_time } = req.body;
+
+    const product = await BrandProduct.findByPk(productId, {
+      include: [{ model: Brand, as: 'brands', through: { attributes: [] } }]
+    });
+
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    // Get brand_id from the product's first linked brand
+    const brandId = product.brands && product.brands.length > 0 ? product.brands[0].id : null;
+
+    // Create recipe
+    const recipe = await Recipe.create({
+      owner_type: 'brand',
+      brand_id: brandId,
+      restaurant_id: null,
+      name: name || product.name,
+      description,
+      prep_time,
+      cook_time,
+      is_active: true
+    });
+
+    // Add ingredients if provided
+    let totalCost = 0;
+    if (ingredients && ingredients.length > 0) {
+      for (const ing of ingredients) {
+        // Get ingredient unit cost
+        const ingredient = await Ingredient.findByPk(ing.ingredient_id);
+        const cost = ingredient ? parseFloat(ingredient.unit_cost) * parseFloat(ing.quantity) : 0;
+        totalCost += cost;
+
+        await RecipeIngredient.create({
+          recipe_id: recipe.id,
+          ingredient_id: ing.ingredient_id,
+          quantity: ing.quantity,
+          unit: ing.unit,
+          cost,
+          notes: ing.notes
+        });
+      }
+
+      // Update recipe total cost
+      await recipe.update({ total_ingredient_cost: totalCost });
+    }
+
+    // Link recipe to product
+    await product.update({ recipe_id: recipe.id });
+
+    res.json({
+      success: true,
+      message: 'Recipe created and linked successfully',
+      data: {
+        product_id: productId,
+        recipe_id: recipe.id,
+        recipe_name: recipe.name,
+        total_ingredient_cost: totalCost
+      }
+    });
+  } catch (error) {
+    console.error('Error creating product recipe:', error);
+    res.status(500).json({ success: false, message: 'Failed to create product recipe' });
+  }
+});
+
+/**
+ * PUT /api/brand-products/:productId/recipe/ingredients
+ * Update recipe ingredients for a product's recipe
+ */
+router.put('/brand-products/:productId/recipe/ingredients', authenticateToken, isBrandManager, async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const { ingredients } = req.body;
+
+    const product = await BrandProduct.findByPk(productId);
+
+    if (!product || !product.recipe_id) {
+      return res.status(404).json({ success: false, message: 'Product or recipe not found' });
+    }
+
+    const recipeId = product.recipe_id;
+
+    // Delete existing ingredients
+    await RecipeIngredient.destroy({
+      where: { recipe_id: recipeId }
+    });
+
+    // Add new ingredients
+    let totalCost = 0;
+    if (ingredients && ingredients.length > 0) {
+      for (const ing of ingredients) {
+        const ingredient = await Ingredient.findByPk(ing.ingredient_id);
+        const cost = ingredient ? parseFloat(ingredient.unit_cost) * parseFloat(ing.quantity) : 0;
+        totalCost += cost;
+
+        await RecipeIngredient.create({
+          recipe_id: recipeId,
+          ingredient_id: ing.ingredient_id,
+          quantity: ing.quantity,
+          unit: ing.unit,
+          cost,
+          notes: ing.notes
+        });
+      }
+    }
+
+    // Update recipe total cost
+    await Recipe.update(
+      { total_ingredient_cost: totalCost },
+      { where: { id: recipeId } }
+    );
+
+    res.json({
+      success: true,
+      message: 'Recipe ingredients updated successfully',
+      data: {
+        recipe_id: recipeId,
+        total_ingredient_cost: totalCost,
+        ingredient_count: ingredients?.length || 0
+      }
+    });
+  } catch (error) {
+    console.error('Error updating recipe ingredients:', error);
+    res.status(500).json({ success: false, message: 'Failed to update recipe ingredients' });
+  }
+});
+
+/**
+ * GET /api/brands/:brandId/recipes
+ * Get available recipes for a brand
+ */
+router.get('/brands/:brandId/recipes', authenticateToken, async (req, res) => {
+  try {
+    const { brandId } = req.params;
+
+    const recipes = await Recipe.findAll({
+      where: {
+        brand_id: brandId,
+        owner_type: 'brand',
+        is_active: true
+      },
+      attributes: ['id', 'name', 'description', 'category', 'total_ingredient_cost', 'owner_type'],
+      order: [['name', 'ASC']]
+    });
+
+    res.json({ success: true, data: recipes });
+  } catch (error) {
+    console.error('Error fetching available recipes:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch recipes' });
   }
 });
 

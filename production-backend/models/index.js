@@ -1,6 +1,7 @@
 const User = require('./User');
 const Restaurant = require('./Restaurant');
 const Brand = require('./Brand');
+const Foodcourt = require('./Foodcourt');
 const Invoice = require('./Invoice');
 const InvoiceItem = require('./InvoiceItem');
 const InvoiceSettings = require('./InvoiceSettings');
@@ -41,6 +42,11 @@ const StockAlert = require('./StockAlert');
 const InventoryBatch = require('./InventoryBatch');
 const GeneralStock = require('./GeneralStock');
 const GeneralStockCategory = require('./GeneralStockCategory');
+const ProductRecipe = require('./ProductRecipe');
+const ProductIngredient = require('./ProductIngredient');
+const ProductRecipeCategory = require('./ProductRecipeCategory');
+const ProductIngredientCategory = require('./ProductIngredientCategory');
+const ProductRecipeIngredient = require('./ProductRecipeIngredient');
 
 // Define associations
 // Brand - Restaurant associations
@@ -50,6 +56,14 @@ Restaurant.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
 // Brand - User (owner) associations
 Brand.belongsTo(User, { foreignKey: 'owner_id', as: 'owner' });
 User.hasMany(Brand, { foreignKey: 'owner_id', as: 'brands' });
+
+// Foodcourt - User (owner) associations
+Foodcourt.belongsTo(User, { foreignKey: 'owner_id', as: 'owner' });
+User.hasMany(Foodcourt, { foreignKey: 'owner_id', as: 'foodcourts' });
+
+// Foodcourt - Restaurant associations
+Foodcourt.hasMany(Restaurant, { foreignKey: 'foodcourt_id', as: 'restaurants' });
+Restaurant.belongsTo(Foodcourt, { foreignKey: 'foodcourt_id', as: 'foodcourt' });
 
 // Keep old single manager relationship for backward compatibility
 Restaurant.belongsTo(User, { foreignKey: 'manager_id', as: 'manager' });
@@ -194,6 +208,10 @@ BrandProduct.hasMany(Ingredient, { foreignKey: 'brand_product_id', as: 'ingredie
 BrandProduct.belongsTo(BrandProductCategory, { foreignKey: 'category_id', as: 'category' });
 BrandProductCategory.hasMany(BrandProduct, { foreignKey: 'category_id', as: 'products' });
 
+// BrandProduct - Recipe association
+BrandProduct.belongsTo(Recipe, { foreignKey: 'recipe_id', as: 'recipe' });
+Recipe.hasMany(BrandProduct, { foreignKey: 'recipe_id', as: 'brandProducts' });
+
 // BrandProduct - Brand (N:M through BrandProductBrand)
 BrandProduct.belongsToMany(Brand, {
   through: BrandProductBrand,
@@ -316,10 +334,29 @@ Brand.hasMany(GeneralStockCategory, { foreignKey: 'brand_id', as: 'generalStockC
 GeneralStockCategory.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
 Restaurant.hasMany(GeneralStockCategory, { foreignKey: 'restaurant_id', as: 'generalStockCategories' });
 
+// ProductRecipe associations
+ProductRecipe.belongsTo(ProductRecipeCategory, { foreignKey: 'category_id', as: 'category' });
+ProductRecipeCategory.hasMany(ProductRecipe, { foreignKey: 'category_id', as: 'recipes' });
+
+ProductRecipe.hasMany(ProductRecipeIngredient, { foreignKey: 'recipe_id', as: 'recipeIngredients' });
+ProductRecipeIngredient.belongsTo(ProductRecipe, { foreignKey: 'recipe_id', as: 'recipe' });
+
+// ProductIngredient associations
+ProductIngredient.belongsTo(ProductIngredientCategory, { foreignKey: 'category_id', as: 'category' });
+ProductIngredientCategory.hasMany(ProductIngredient, { foreignKey: 'category_id', as: 'ingredients' });
+
+ProductIngredient.hasMany(ProductRecipeIngredient, { foreignKey: 'ingredient_id', as: 'recipeIngredients' });
+ProductRecipeIngredient.belongsTo(ProductIngredient, { foreignKey: 'ingredient_id', as: 'ingredient' });
+
+// BrandProduct - ProductRecipe association
+BrandProduct.belongsTo(ProductRecipe, { foreignKey: 'product_recipe_id', as: 'productRecipe' });
+ProductRecipe.hasMany(BrandProduct, { foreignKey: 'product_recipe_id', as: 'brandProducts' });
+
 module.exports = {
   User,
   Restaurant,
   Brand,
+  Foodcourt,
   Invoice,
   InvoiceItem,
   InvoiceSettings,
@@ -359,5 +396,10 @@ module.exports = {
   StockAlert,
   InventoryBatch,
   GeneralStock,
-  GeneralStockCategory
+  GeneralStockCategory,
+  ProductRecipe,
+  ProductIngredient,
+  ProductRecipeCategory,
+  ProductIngredientCategory,
+  ProductRecipeIngredient
 };

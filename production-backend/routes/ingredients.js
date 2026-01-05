@@ -102,27 +102,28 @@ router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBr
   try {
     const { ingredientId } = req.params;
     const ingredient_id = ingredientId;
-    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock, track_stock } = req.body;
+    const { code, name, image_url, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock, track_stock } = req.body;
 
     const ingredient = await Ingredient.findByPk(ingredient_id);
     if (!ingredient) {
       return res.status(404).json({ error: 'Ingredient not found' });
     }
 
-    await ingredient.update({
-      code,
-      name,
-      image_url: image_url !== undefined ? image_url : ingredient.image_url,
-      category,
-      ingredient_category_id: ingredient_category_id !== undefined ? ingredient_category_id : ingredient.ingredient_category_id,
-      unit,
-      base_quantity: base_quantity !== undefined ? base_quantity : ingredient.base_quantity,
-      unit_cost,
-      supplier_name,
-      supplier_id: supplier_id !== undefined ? supplier_id : ingredient.supplier_id,
-      min_stock,
-      track_stock: track_stock !== undefined ? track_stock : ingredient.track_stock
-    });
+    // Build update object with only provided fields
+    const updateData = {};
+    if (code !== undefined) updateData.code = code;
+    if (name !== undefined) updateData.name = name;
+    if (image_url !== undefined) updateData.image_url = image_url;
+    if (ingredient_category_id !== undefined) updateData.ingredient_category_id = ingredient_category_id;
+    if (unit !== undefined) updateData.unit = unit;
+    if (base_quantity !== undefined) updateData.base_quantity = base_quantity;
+    if (unit_cost !== undefined) updateData.unit_cost = unit_cost;
+    if (supplier_name !== undefined) updateData.supplier_name = supplier_name;
+    if (supplier_id !== undefined) updateData.supplier_id = supplier_id;
+    if (min_stock !== undefined) updateData.min_stock = min_stock;
+    if (track_stock !== undefined) updateData.track_stock = track_stock;
+
+    await ingredient.update(updateData);
 
     // Reload with associations for frontend display
     const updatedIngredient = await Ingredient.findByPk(ingredient_id, {
@@ -300,27 +301,32 @@ router.post('/restaurants/:restaurantId/ingredients', authenticateToken, checkRe
 router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { ingredientId } = req.params;
-    const { code, name, image_url, category, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock, track_stock } = req.body;
+    const { code, name, image_url, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock, track_stock } = req.body;
+
+    console.log('[DEBUG] PUT restaurant ingredient - ingredientId:', ingredientId, 'body:', req.body);
 
     const ingredient = await Ingredient.findByPk(ingredientId);
     if (!ingredient) {
       return res.status(404).json({ error: 'Ingredient not found' });
     }
 
-    await ingredient.update({
-      code,
-      name,
-      image_url: image_url !== undefined ? image_url : ingredient.image_url,
-      category,
-      ingredient_category_id: ingredient_category_id !== undefined ? ingredient_category_id : ingredient.ingredient_category_id,
-      unit,
-      base_quantity: base_quantity !== undefined ? base_quantity : ingredient.base_quantity,
-      unit_cost,
-      supplier_name,
-      supplier_id: supplier_id !== undefined ? supplier_id : ingredient.supplier_id,
-      min_stock,
-      track_stock: track_stock !== undefined ? track_stock : ingredient.track_stock
-    });
+    // Build update object with only provided fields
+    const updateData = {};
+    if (code !== undefined) updateData.code = code;
+    if (name !== undefined) updateData.name = name;
+    if (image_url !== undefined) updateData.image_url = image_url;
+    if (ingredient_category_id !== undefined) updateData.ingredient_category_id = ingredient_category_id;
+    if (unit !== undefined) updateData.unit = unit;
+    if (base_quantity !== undefined) updateData.base_quantity = base_quantity;
+    if (unit_cost !== undefined) updateData.unit_cost = unit_cost;
+    if (supplier_name !== undefined) updateData.supplier_name = supplier_name;
+    if (supplier_id !== undefined) updateData.supplier_id = supplier_id;
+    if (min_stock !== undefined) updateData.min_stock = min_stock;
+    if (track_stock !== undefined) updateData.track_stock = track_stock;
+
+    console.log('[DEBUG] updateData:', updateData);
+    await ingredient.update(updateData);
+    console.log('[DEBUG] After update - track_stock:', ingredient.track_stock);
 
     // Reload with associations for frontend display
     const updatedIngredient = await Ingredient.findByPk(ingredientId, {

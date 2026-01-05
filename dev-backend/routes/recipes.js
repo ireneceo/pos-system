@@ -154,22 +154,23 @@ router.put('/brands/:brandId/recipes/:recipeId', authenticateToken, canEditRecip
       return res.status(404).json({ error: 'Recipe not found' });
     }
 
-    // 기본 정보 업데이트
-    await recipe.update({
-      name,
-      description,
-      category,
-      recipe_category_id: recipe_category_id !== undefined ? recipe_category_id : recipe.recipe_category_id,
-      emoji,
-      image,
-      option_groups,
-      prep_time,
-      cook_time,
-      instructions,
-      instructions_summary,
-      instructions_detail,
-      suggested_price
-    });
+    // 기본 정보 업데이트 (빈 문자열은 null로 처리)
+    const updateData = {};
+    if (name !== undefined) updateData.name = name || recipe.name;
+    if (description !== undefined) updateData.description = description || null;
+    if (category !== undefined) updateData.category = category || null;
+    if (recipe_category_id !== undefined) updateData.recipe_category_id = recipe_category_id || null;
+    if (emoji !== undefined) updateData.emoji = emoji || null;
+    if (image !== undefined) updateData.image = image || null;
+    if (option_groups !== undefined) updateData.option_groups = option_groups || null;
+    if (prep_time !== undefined) updateData.prep_time = prep_time ? parseInt(prep_time) : null;
+    if (cook_time !== undefined) updateData.cook_time = cook_time ? parseInt(cook_time) : null;
+    if (instructions !== undefined) updateData.instructions = instructions || null;
+    if (instructions_summary !== undefined) updateData.instructions_summary = instructions_summary || null;
+    if (instructions_detail !== undefined) updateData.instructions_detail = instructions_detail || null;
+    if (suggested_price !== undefined) updateData.suggested_price = suggested_price ? parseFloat(suggested_price) : 0;
+
+    await recipe.update(updateData);
 
     // 재료 업데이트 (기존 삭제 후 재생성)
     if (ingredients) {

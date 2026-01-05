@@ -61,7 +61,9 @@ router.get('/me', async (req, res, next) => {
       username: user.username,
       role: user.role,
       restaurant_id: user.restaurant_id,
-      manager_id: user.manager_id
+      manager_id: user.manager_id,
+      brand_id: user.brand_id,
+      foodcourt_id: user.foodcourt_id
     };
 
     successResponse(res, userData, 'User information retrieved');

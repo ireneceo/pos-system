@@ -185,6 +185,7 @@ const siteSettingsRouter = require('./routes/siteSettings');
 const addonModulesRouter = require('./routes/addon-modules');
 const notificationSettingsRouter = require('./routes/notification-settings');
 const brandsRouter = require('./routes/brands');
+const foodcourtsRouter = require('./routes/foodcourts');
 const recipesRouter = require('./routes/recipes');
 const ingredientsRouter = require('./routes/ingredients');
 const recipeCategoriesRouter = require('./routes/recipe-categories');
@@ -193,8 +194,14 @@ const currenciesRouter = require('./routes/currencies');
 const brandProductsRouter = require('./routes/brand-products');
 const suppliersRouter = require('./routes/suppliers');
 const inventoryRouter = require('./routes/inventory-routes');
+const inventoryAdvancedRouter = require('./routes/inventory');
 const brandInventoryRouter = require('./routes/brand-inventory');
 const productRecipeRouter = require('./routes/product-recipe');
+const productRecipesRouter = require('./routes/product-recipes');
+const productIngredientsRouter = require('./routes/product-ingredients');
+const productRecipeCategoriesRouter = require('./routes/product-recipe-categories');
+const productIngredientCategoriesRouter = require('./routes/product-ingredient-categories');
+const generalStockCategoriesRouter = require('./routes/general-stock-categories');
 
 // Health check endpoint - PM2 모니터링 및 로드밸런서용 (가장 먼저)
 app.get('/api/health', (req, res) => {
@@ -239,6 +246,7 @@ app.use('/api/site-settings', siteSettingsRouter);
 app.use('/api/notification-settings', notificationSettingsRouter);
 app.use('/api', brandProductsRouter);  // Brand products routes (must be before /api/brands to handle /api/brands/:id/product-categories)
 app.use('/api/brands', brandsRouter);
+app.use('/api/foodcourts', foodcourtsRouter);
 app.use('/api', recipesRouter);
 app.use('/api', ingredientsRouter);
 app.use('/api', recipeCategoriesRouter);
@@ -246,8 +254,14 @@ app.use('/api', ingredientCategoriesRouter);
 app.use('/api', suppliersRouter);
 app.use('/api/currencies', currenciesRouter);
 app.use('/api/restaurants', inventoryRouter);
+app.use('/api', inventoryAdvancedRouter);
 app.use('/api', brandInventoryRouter);
 app.use('/api', productRecipeRouter);
+app.use('/api/product-recipes', productRecipesRouter);
+app.use('/api/product-ingredients', productIngredientsRouter);
+app.use('/api/product-recipe-categories', productRecipeCategoriesRouter);
+app.use('/api', generalStockCategoriesRouter);
+app.use('/api/product-ingredient-categories', productIngredientCategoriesRouter);
 
 // GitHub Webhook for Auto-Deployment
 const { exec } = require('child_process');

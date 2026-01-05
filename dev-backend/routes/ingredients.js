@@ -76,7 +76,7 @@ router.post('/brands/:brandId/ingredients', authenticateToken, isBrandManager, a
       code: finalCode,
       name,
       image_url: image_url || null,
-      category,
+      category: 'other', // Use default - category is managed via ingredient_category_id
       unit,
       base_quantity: base_quantity || 1,
       unit_cost,
