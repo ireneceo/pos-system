@@ -1501,7 +1501,8 @@ const LiveOrdersPage: React.FC = () => {
 
   // Calculate statistics from filtered orders
   const calculateStatistics = () => {
-    const orders = getFilteredOrdersByTab();
+    // Exclude cancelled orders from statistics
+    const orders = getFilteredOrdersByTab().filter(order => order.status !== 'cancelled');
 
     if (orders.length === 0) {
       return {
@@ -1515,7 +1516,7 @@ const LiveOrdersPage: React.FC = () => {
       };
     }
 
-    // Calculate sales from orders in current tab
+    // Calculate sales from orders in current tab (excluding cancelled)
     const totalSales = orders.reduce((sum, order) => sum + parseFloat(order.total_amount.toString()), 0);
     const avgOrderAmount = totalSales / orders.length;
     const maxOrderAmount = Math.max(...orders.map(o => parseFloat(o.total_amount.toString())));

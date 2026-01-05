@@ -15,7 +15,7 @@ interface ImageUploadDropzoneProps {
 }
 
 const Container = styled.div`
-  /* Container styling - spacing handled by parent */
+  margin-bottom: 16px;
 `;
 
 const Label = styled.label`

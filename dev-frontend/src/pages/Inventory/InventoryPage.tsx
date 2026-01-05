@@ -32,6 +32,7 @@ import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import { fetchAPI } from '../../utils/api';
 import GeneralStockCategoriesTab from '../RecipeManagement/GeneralStockCategoriesTab';
+import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
 
 interface IngredientStock {
   id: number;
@@ -497,7 +498,7 @@ const SearchableSelectDropdown = styled.div`
   border: 1px solid #E5E7EB;
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 100;
+  z-index: 1000;
   margin-top: 4px;
 `;
 
@@ -1640,7 +1641,7 @@ const InventoryPage: React.FC = () => {
                     </EmptyState>
                   ) : (
                 <Table>
-                  <InventoryTableHeader columns="2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 180px">
+                  <InventoryTableHeader columns="2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 120px">
                     <span>Ingredient</span>
                     <span>Status</span>
                     <span>Current Stock</span>
@@ -1648,10 +1649,11 @@ const InventoryPage: React.FC = () => {
                     <span>Unit Cost</span>
                     <span>Supplier</span>
                     <span>Last Stock Take</span>
+                    <span>Order</span>
                     <span>Actions</span>
                   </InventoryTableHeader>
                   {filteredInventory.map(item => (
-                    <InventoryTableRow key={item.id} columns="2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 180px">
+                    <InventoryTableRow key={item.id} columns="2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 120px">
                       <MobileGrid>
                         <MobileValue>
                           <MobileLabel>Ingredient</MobileLabel>
@@ -1726,6 +1728,45 @@ const InventoryPage: React.FC = () => {
                           </div>
                         </MobileValue>
                       </MobileGrid>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <OrderInput
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={orderQuantities[item.id] || ''}
+                          onChange={(e) => setOrderQuantities(prev => ({
+                            ...prev,
+                            [item.id]: e.target.value
+                          }))}
+                          placeholder={String(item.min_order || 1)}
+                        />
+                        <OrderButton onClick={() => {
+                          const qty = orderQuantities[item.id] || String(item.min_order || 1);
+                          if (qty && parseFloat(qty) > 0) {
+                            handleOrderClick({
+                              id: item.id,
+                              name: item.name,
+                              code: item.code,
+                              image_url: item.image_url,
+                              category: item.category,
+                              current_stock: item.current_stock,
+                              min_stock: item.min_stock,
+                              min_order: item.min_order || 0,
+                              unit: item.unit,
+                              unit_cost: item.unit_cost,
+                              supplier_name: item.supplier_name,
+                              stock_status: item.stock_status,
+                              last_stock_take_at: item.last_stock_take_at,
+                              item_type: 'ingredient',
+                              avg_daily_usage: item.avg_daily_usage,
+                              prediction_confidence: item.prediction_confidence
+                            });
+                            setOrderQuantity(qty);
+                          }
+                        }}>
+                          Order
+                        </OrderButton>
+                      </div>
                       <ActionButtons>
                         <Button
                           variant="primary"
@@ -1734,26 +1775,6 @@ const InventoryPage: React.FC = () => {
                         >
                           Receive
                         </Button>
-                        <OrderButton onClick={() => handleOrderClick({
-                          id: item.id,
-                          name: item.name,
-                          code: item.code,
-                          image_url: item.image_url,
-                          category: item.category,
-                          current_stock: item.current_stock,
-                          min_stock: item.min_stock,
-                          min_order: item.min_order || 0,
-                          unit: item.unit,
-                          unit_cost: item.unit_cost,
-                          supplier_name: item.supplier_name,
-                          stock_status: item.stock_status,
-                          last_stock_take_at: item.last_stock_take_at,
-                          item_type: 'ingredient',
-                          avg_daily_usage: item.avg_daily_usage,
-                          prediction_confidence: item.prediction_confidence
-                        })}>
-                          Order
-                        </OrderButton>
                         <SettingsButton onClick={() => openSettingsModal(item)}>
                           Settings
                         </SettingsButton>
@@ -2285,40 +2306,13 @@ const InventoryPage: React.FC = () => {
             />
           </UIFormGroup>
         </div>
-        <UIFormGroup>
-          <FormLabel>Image (Optional)</FormLabel>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            {generalStockForm.image_url && (
-              <div style={{ width: '80px', height: '80px', borderRadius: '8px', overflow: 'hidden', flexShrink: 0 }}>
-                <img src={generalStockForm.image_url} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              </div>
-            )}
-            <FormInput
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  const reader = new FileReader();
-                  reader.onloadend = () => {
-                    setGeneralStockForm({ ...generalStockForm, image_url: reader.result as string });
-                  };
-                  reader.readAsDataURL(file);
-                }
-              }}
-              style={{ flex: 1 }}
-            />
-            {generalStockForm.image_url && (
-              <button
-                type="button"
-                onClick={() => setGeneralStockForm({ ...generalStockForm, image_url: '' })}
-                style={{ padding: '4px 8px', background: '#FEE2E2', color: '#DC2626', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
-              >
-                Remove
-              </button>
-            )}
-          </div>
-        </UIFormGroup>
+        <ImageUploadDropzone
+          value={generalStockForm.image_url}
+          onChange={(base64) => setGeneralStockForm({ ...generalStockForm, image_url: base64 })}
+          label="Image (Optional)"
+          helpText="Drag & drop or click to upload item image"
+          maxSize={2}
+        />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <UIFormGroup>
             <FormLabel>Unit *</FormLabel>
@@ -2522,40 +2516,13 @@ const InventoryPage: React.FC = () => {
             />
           </UIFormGroup>
         </div>
-        <UIFormGroup>
-          <FormLabel>Image (Optional)</FormLabel>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            {generalStockForm.image_url && (
-              <div style={{ width: '80px', height: '80px', borderRadius: '8px', overflow: 'hidden', flexShrink: 0 }}>
-                <img src={generalStockForm.image_url} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              </div>
-            )}
-            <FormInput
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  const reader = new FileReader();
-                  reader.onloadend = () => {
-                    setGeneralStockForm({ ...generalStockForm, image_url: reader.result as string });
-                  };
-                  reader.readAsDataURL(file);
-                }
-              }}
-              style={{ flex: 1 }}
-            />
-            {generalStockForm.image_url && (
-              <button
-                type="button"
-                onClick={() => setGeneralStockForm({ ...generalStockForm, image_url: '' })}
-                style={{ padding: '4px 8px', background: '#FEE2E2', color: '#DC2626', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
-              >
-                Remove
-              </button>
-            )}
-          </div>
-        </UIFormGroup>
+        <ImageUploadDropzone
+          value={generalStockForm.image_url}
+          onChange={(base64) => setGeneralStockForm({ ...generalStockForm, image_url: base64 })}
+          label="Image (Optional)"
+          helpText="Drag & drop or click to upload item image"
+          maxSize={2}
+        />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <UIFormGroup>
             <FormLabel>Unit *</FormLabel>
