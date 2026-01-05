@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * 중복 라우트 검사 스크립트
- * 개발 중 실행하여 중복 라우트를 사전에 감지
+ * /brands/, /restaurants/ 경로의 중복만 검사 (실제 문제가 되는 중복)
  *
  * 사용법: node scripts/check-duplicates.js
  */
@@ -27,22 +27,27 @@ files.forEach(file => {
     if (match) {
       const method = match[1].toUpperCase();
       const routePath = match[2];
-      const key = `${method} ${routePath}`;
 
-      if (!routes.has(key)) {
-        routes.set(key, []);
+      // /brands/ 또는 /restaurants/ 경로만 검사 (실제 중복 문제가 발생하는 경로)
+      if (routePath.includes('/brands/') || routePath.includes('/restaurants/')) {
+        const key = `${method} ${routePath}`;
+
+        if (!routes.has(key)) {
+          routes.set(key, []);
+        }
+        routes.get(key).push({
+          file: file,
+          line: index + 1,
+          code: line.trim().substring(0, 100)
+        });
       }
-      routes.get(key).push({
-        file: file,
-        line: index + 1,
-        code: line.trim()
-      });
     }
   });
 });
 
 // 중복 검사
 console.log('=== Checking for duplicate routes ===\n');
+console.log('Checking /brands/ and /restaurants/ routes...\n');
 
 let duplicateCount = 0;
 routes.forEach((locations, route) => {
@@ -52,6 +57,7 @@ routes.forEach((locations, route) => {
     console.log(`DUPLICATE: ${route}`);
     locations.forEach(loc => {
       console.log(`  - ${loc.file}:${loc.line}`);
+      console.log(`    ${loc.code}...`);
     });
     console.log('');
   }

@@ -1183,68 +1183,8 @@ router.post('/restaurants/:restaurantId/stock-takes/:stockTakeId/cancel', async 
   }
 });
 
-// ============================================
-// 발주 제안 API
-// ============================================
-
-// GET /api/restaurants/:restaurantId/inventory/reorder-suggestions - 발주 제안 목록
-router.get('/restaurants/:restaurantId/inventory/reorder-suggestions', async (req, res) => {
-  try {
-    const { restaurantId } = req.params;
-
-    const ingredients = await Ingredient.findAll({
-      where: { restaurant_id: restaurantId, is_active: true }
-    });
-
-    const suggestions = [];
-
-    for (const ing of ingredients) {
-      const currentStock = parseFloat(ing.current_stock) || 0;
-      const minStock = parseFloat(ing.min_stock) || 0;
-      const avgDailyUsage = parseFloat(ing.avg_daily_usage) || 0;
-      const leadTimeDays = ing.lead_time_days || 2;
-
-      // 발주점 = (일평균 사용량 × 리드타임) + 안전재고
-      const reorderPoint = (avgDailyUsage * leadTimeDays) + minStock;
-
-      // 현재고 <= 발주점이면 발주 필요
-      if (currentStock <= reorderPoint) {
-        // 제안 수량 = 발주점 - 현재고 + (일평균 × 7일)
-        const suggestedQty = reorderPoint - currentStock + (avgDailyUsage * 7);
-        const roundedQty = Math.ceil(suggestedQty * 10) / 10; // Round up to 1 decimal
-
-        if (roundedQty > 0) {
-          suggestions.push({
-            ingredient: {
-              id: ing.id,
-              name: ing.name,
-              unit: ing.unit,
-              unit_cost: ing.unit_cost,
-              category: ing.category
-            },
-            current_stock: currentStock,
-            min_stock: minStock,
-            avg_daily_usage: avgDailyUsage,
-            lead_time_days: leadTimeDays,
-            reorder_point: reorderPoint,
-            suggested_qty: roundedQty,
-            estimated_cost: roundedQty * parseFloat(ing.unit_cost),
-            urgency: currentStock <= 0 ? 'critical' : currentStock <= minStock ? 'high' : 'normal'
-          });
-        }
-      }
-    }
-
-    // Sort by urgency
-    const urgencyOrder = { critical: 0, high: 1, normal: 2 };
-    suggestions.sort((a, b) => urgencyOrder[a.urgency] - urgencyOrder[b.urgency]);
-
-    res.json({ success: true, data: suggestions });
-  } catch (error) {
-    console.error('Get reorder suggestions error:', error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+// NOTE: 발주 제안 API는 아래 PAR 레벨 기반 버전으로 통합됨
+// (GET /restaurants/:restaurantId/inventory/reorder-suggestions)
 
 // ============================================
 // Helper Functions

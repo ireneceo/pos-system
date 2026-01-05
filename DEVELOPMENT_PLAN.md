@@ -306,6 +306,71 @@ const dateKey = `${(orderDate.getMonth() + 1).toString().padStart(2, '0')}/${ord
 
 ---
 
+## ✅ 완료된 작업 (2026-01-05)
+
+### 운영서버 문제 해결 및 빌드 시스템 개선
+
+#### Nginx 500 에러 해결
+**문제:** 운영서버(purplehere.com)에서 500 Internal Server Error 발생
+
+**원인:** Nginx 설정의 `.html` location 블록에서 `try_files $uri /index.html;`가 무한 리다이렉트 루프 발생
+
+**해결:**
+- `/etc/nginx/sites-available/purplehere.com`에서 `.html` location 블록 수정
+- `try_files $uri /index.html;` → `try_files $uri =404;`
+
+#### 빌드 캐시 권한 문제 영구 해결
+**문제:** `node_modules/.cache` 폴더의 root 소유권으로 빌드 실패 (index.html 미생성)
+
+**해결:**
+1. `dev-frontend/deploy-dev.sh` - 빌드 전 캐시 권한 자동 수정
+2. `dev-frontend/package.json` - build 스크립트에 권한 수정 로직 추가
+3. `deploy-production.sh` - Step 9에 캐시 권한 자동 수정 추가
+4. `BUILD_TROUBLESHOOTING.md` 가이드 문서 생성
+
+#### 레시피 상세 필드 API 응답 누락 해결
+**문제:** 운영서버에서 레시피 상세 필드(prep_time, cook_time, instructions_summary, instructions_detail)가 API 응답에 누락
+
+**원인:** `brand-products.js`에 중복 라우트가 있어 `attributes` 제한으로 필드 누락
+```javascript
+// 문제의 중복 라우트 (brand-products.js)
+router.get('/brands/:brandId/recipes', authenticateToken, async (req, res) => {
+  const recipes = await Recipe.findAll({
+    attributes: ['id', 'name', 'description', 'category', 'total_ingredient_cost', 'owner_type'],
+    // ... prep_time, cook_time 등 누락
+  });
+});
+```
+
+**해결:**
+- `dev-backend/routes/brand-products.js` 중복 라우트 제거
+- `production-backend/routes/brand-products.js` 동일하게 수정
+
+#### 중복 라우트 검사 시스템 구축
+**목적:** 향후 중복 라우트 문제 사전 방지
+
+**구현:**
+1. `dev-backend/scripts/check-duplicates.js` 스크립트 생성
+   - `/brands/` 및 `/restaurants/` 경로의 중복만 검사 (실제 문제 발생 경로)
+2. `package.json`에 스크립트 추가
+   - `npm run check`: 수동 중복 검사
+   - `prestart`: 서버 시작 전 자동 검사
+3. `deploy-production.sh`에 Step 5.5 추가 (배포 전 중복 검사)
+
+#### inventory.js 중복 라우트 수정
+**발견:** `npm run check` 실행 결과 inventory.js에서 중복 발견
+```
+DUPLICATE: GET /restaurants/:restaurantId/inventory/reorder-suggestions
+  - inventory.js:1191 (이전 버전)
+  - inventory.js:1482 (PAR-level 기반 버전)
+```
+
+**해결:**
+- dev-backend/routes/inventory.js: 라인 1191의 이전 버전 삭제
+- production-backend/routes/inventory.js: 동일하게 수정
+
+---
+
 ## 🚧 진행 중인 작업
 
 ### Socket.io 실시간 주문 알림 시스템 (일시 중단)
@@ -1530,4 +1595,4 @@ const token = localStorage.getItem('auth_token'); // 'token' → 'auth_token'
 **프로젝트:** Purple POS System
 **개발 환경:** Development Server
 **데이터베이스:** purple_dev_db (MySQL)
-**마지막 업데이트:** 2026-01-01
+**마지막 업데이트:** 2026-01-05
