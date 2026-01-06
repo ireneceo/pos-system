@@ -5,6 +5,12 @@ import { COUNTRIES } from '../../constants/countries';
 import PhoneInput from '../../components/common/PhoneInput';
 import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
 
+interface OperationSettings {
+  openingTime: string;
+  closingTime: string;
+  timeZone: string;
+}
+
 interface CompanyInfo {
   companyName: string;
   registrationNo: string;
@@ -22,7 +28,28 @@ interface CompanyInfo {
   bankAccount: string;
   bankAccountName: string;
   logoUrl: string;
+  operationSettings: OperationSettings;
 }
+
+// Common timezones for F&B businesses
+const TIMEZONES = [
+  { value: 'Asia/Kuala_Lumpur', label: 'Malaysia (GMT+8)' },
+  { value: 'Asia/Singapore', label: 'Singapore (GMT+8)' },
+  { value: 'Asia/Bangkok', label: 'Thailand (GMT+7)' },
+  { value: 'Asia/Jakarta', label: 'Indonesia - Jakarta (GMT+7)' },
+  { value: 'Asia/Ho_Chi_Minh', label: 'Vietnam (GMT+7)' },
+  { value: 'Asia/Manila', label: 'Philippines (GMT+8)' },
+  { value: 'Asia/Tokyo', label: 'Japan (GMT+9)' },
+  { value: 'Asia/Seoul', label: 'South Korea (GMT+9)' },
+  { value: 'Asia/Shanghai', label: 'China (GMT+8)' },
+  { value: 'Asia/Hong_Kong', label: 'Hong Kong (GMT+8)' },
+  { value: 'Asia/Taipei', label: 'Taiwan (GMT+8)' },
+  { value: 'Asia/Dubai', label: 'UAE (GMT+4)' },
+  { value: 'Europe/London', label: 'UK (GMT+0/+1)' },
+  { value: 'America/New_York', label: 'US Eastern (GMT-5/-4)' },
+  { value: 'America/Los_Angeles', label: 'US Pacific (GMT-8/-7)' },
+  { value: 'Australia/Sydney', label: 'Australia - Sydney (GMT+10/+11)' }
+];
 
 const Container = styled.div`
   background: #FAFBFC;
@@ -200,7 +227,12 @@ const BrandCompanyInfoPage: React.FC = () => {
     bankName: '',
     bankAccount: '',
     bankAccountName: '',
-    logoUrl: ''
+    logoUrl: '',
+    operationSettings: {
+      openingTime: '09:00',
+      closingTime: '22:00',
+      timeZone: 'Asia/Kuala_Lumpur'
+    }
   });
 
   useEffect(() => {
@@ -234,7 +266,12 @@ const BrandCompanyInfoPage: React.FC = () => {
             bankName: data.bank_name || '',
             bankAccount: data.bank_account || '',
             bankAccountName: data.bank_account_name || '',
-            logoUrl: data.logo_url || ''
+            logoUrl: data.logo_url || '',
+            operationSettings: {
+              openingTime: data.operation_settings?.openingTime || '09:00',
+              closingTime: data.operation_settings?.closingTime || '22:00',
+              timeZone: data.operation_settings?.timeZone || 'Asia/Kuala_Lumpur'
+            }
           });
         }
       }
@@ -245,6 +282,18 @@ const BrandCompanyInfoPage: React.FC = () => {
 
   const handleInputChange = (field: keyof CompanyInfo, value: string) => {
     setCompanyInfo(prev => ({ ...prev, [field]: value }));
+    setHasChanges(true);
+    setMessage(null);
+  };
+
+  const handleOperationSettingChange = (field: keyof OperationSettings, value: string) => {
+    setCompanyInfo(prev => ({
+      ...prev,
+      operationSettings: {
+        ...prev.operationSettings,
+        [field]: value
+      }
+    }));
     setHasChanges(true);
     setMessage(null);
   };
@@ -277,7 +326,8 @@ const BrandCompanyInfoPage: React.FC = () => {
           bank_name: companyInfo.bankName,
           bank_account: companyInfo.bankAccount,
           bank_account_name: companyInfo.bankAccountName,
-          logo_url: companyInfo.logoUrl
+          logo_url: companyInfo.logoUrl,
+          operation_settings: companyInfo.operationSettings
         })
       });
 
@@ -482,6 +532,43 @@ const BrandCompanyInfoPage: React.FC = () => {
                   onChange={(e) => handleInputChange('bankAccountName', e.target.value)}
                   placeholder="Account holder name"
                 />
+              </FormGroup>
+            </FormGrid>
+          </Section>
+
+          <Section>
+            <SectionTitle>Operation Settings</SectionTitle>
+            <FormGrid>
+              <FormGroup>
+                <Label>Opening Time</Label>
+                <Input
+                  type="time"
+                  value={companyInfo.operationSettings.openingTime}
+                  onChange={(e) => handleOperationSettingChange('openingTime', e.target.value)}
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <Label>Closing Time</Label>
+                <Input
+                  type="time"
+                  value={companyInfo.operationSettings.closingTime}
+                  onChange={(e) => handleOperationSettingChange('closingTime', e.target.value)}
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <Label>Timezone</Label>
+                <Select
+                  value={companyInfo.operationSettings.timeZone}
+                  onChange={(e) => handleOperationSettingChange('timeZone', e.target.value)}
+                >
+                  {TIMEZONES.map(tz => (
+                    <option key={tz.value} value={tz.value}>
+                      {tz.label}
+                    </option>
+                  ))}
+                </Select>
               </FormGroup>
             </FormGrid>
           </Section>

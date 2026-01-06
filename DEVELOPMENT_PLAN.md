@@ -373,6 +373,49 @@ DUPLICATE: GET /restaurants/:restaurantId/inventory/reorder-suggestions
 
 ## 🚧 진행 중인 작업
 
+### Phase 4: Purchase Order System - 설계 완료 (2026-01-06)
+
+**상태:** 설계 완료, 다음 개발 예정
+
+**상세 설계 문서:** `/var/www/docs/PURCHASE_ORDER_SYSTEM.md`
+
+**핵심 기능:**
+1. **2가지 발주 경로**
+   - 재고관리 Stock List에서 수량 입력 → [+ Order]
+   - 발주관리에서 재료 검색 → 직접 추가
+
+2. **공급업체별 발주서 그룹핑**
+   - 같은 날 + 같은 공급업체 = 1개 발주서
+   - Order Cart에서 공급업체별로 분리 표시
+
+3. **메신저 공유**
+   - WhatsApp, Telegram, KakaoTalk 직접 공유
+   - PDF 다운로드, 이미지 저장
+   - 텍스트 복사
+
+4. **실 단가 관리 + 가격 히스토리**
+   - 입고 시 실제 인보이스 단가 입력
+   - 단가 변경 시 재료 원가 업데이트 옵션
+   - 모든 가격 변동 히스토리 기록 (어디서 바꿨든)
+   - 재료별 가격 변동 팝업 조회
+
+5. **인보이스 연동**
+   - 입고 시 인보이스 번호/날짜/금액/파일 저장
+   - 발주서에서 인보이스 정보 조회
+
+6. **입고 → 재고 자동 반영**
+   - current_stock 증가
+   - inventory_transactions 기록
+   - inventory_batches 생성 (로트/유통기한)
+
+**신규 테이블 (4개):**
+- `purchase_orders` - 발주서 마스터 (인보이스 포함)
+- `purchase_order_items` - 발주 품목 (예상단가 + 실단가)
+- `order_cart_items` - 발주 대기 목록 (장바구니)
+- `ingredient_price_history` - 가격 변동 히스토리
+
+---
+
 ### Socket.io 실시간 주문 알림 시스템 (일시 중단)
 
 **상태:** Git stash에 저장됨 (`git stash pop`으로 복원 가능)
@@ -1298,10 +1341,12 @@ ALTER TABLE users MODIFY COLUMN role ENUM(
 | 1 | Phase 3 | 브랜드 제품 관리 | ✅ 완료 (2025-12-15) |
 | 2 | Phase 4 | 제품-재료 연동 | ✅ 완료 (2025-12-15) |
 | 3 | Phase 5 | 재고 관리 | ✅ 완료 (2025-12-19) |
-| 4 | Phase 6 | 발주 관리 | 📋 다음 개발 |
+| 4 | Phase 6 | 발주 관리 | 📝 설계 완료 (2026-01-06), 다음 개발 |
 | 5 | Phase 7 | AI 재고 예측 | 대기 중 |
 | 6 | Phase 8 | Restaurant Owner 역할 | 대기 중 |
 | 7 | Phase 9 | 구독 서비스 구조 개편 | 대기 중 |
+
+**Phase 6 (발주 관리) 상세 설계 문서:** `/var/www/docs/PURCHASE_ORDER_SYSTEM.md`
 
 ---
 
@@ -1595,4 +1640,4 @@ const token = localStorage.getItem('auth_token'); // 'token' → 'auth_token'
 **프로젝트:** Purple POS System
 **개발 환경:** Development Server
 **데이터베이스:** purple_dev_db (MySQL)
-**마지막 업데이트:** 2026-01-05
+**마지막 업데이트:** 2026-01-06

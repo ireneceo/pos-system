@@ -296,7 +296,8 @@ router.get('/company-info', authenticateToken, async (req, res) => {
       bank_name: foodcourt.bank_name,
       bank_account: foodcourt.bank_account,
       bank_account_name: foodcourt.bank_account_name,
-      logo_url: foodcourt.logo_url
+      logo_url: foodcourt.logo_url,
+      operation_settings: foodcourt.operation_settings
     });
   } catch (error) {
     console.error('Error fetching foodcourt company info:', error);
@@ -337,7 +338,8 @@ router.put('/company-info', authenticateToken, async (req, res) => {
       bank_name: req.body.bank_name,
       bank_account: req.body.bank_account,
       bank_account_name: req.body.bank_account_name,
-      logo_url: req.body.logo_url
+      logo_url: req.body.logo_url,
+      operation_settings: req.body.operation_settings
     };
 
     await foodcourt.update(updateData);

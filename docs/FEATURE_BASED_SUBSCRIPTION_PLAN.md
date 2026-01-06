@@ -277,37 +277,86 @@ Brand General/Manager: 접근 불가 (표시 안됨)
 
 ### 🛒 Phase 4: Purchase Order System
 
-**목표:** 체계적 발주 관리
+**목표:** 체계적 발주 관리 + 실 단가 관리 + 가격 히스토리
+
+**📄 상세 설계 문서:** `/var/www/docs/PURCHASE_ORDER_SYSTEM.md`
+
+**상태:** 설계 완료 (2026-01-06), 다음 개발 예정
 
 #### 현재 상태
 - [x] `suppliers` 테이블 존재 (Phase 2.5에서 구현)
 - [x] Supplier CRUD 완료
+- [x] **상세 설계 문서 작성 완료**
+
+#### 핵심 기능
+
+**2가지 발주 경로:**
+```
+[재고관리 Stock List]              [발주관리 Purchase Orders]
+    수량 입력 → [+ Order]              재료 검색 → [Add to Cart]
+              │                                │
+              └──────────┬─────────────────────┘
+                         ▼
+               [발주 대기 Cart] ─→ [발주 확정] ─→ [메신저/PDF 공유]
+               (공급업체별 그룹)     (PO-0001)
+                                        │
+                                        ▼
+                                  [입고 처리]
+                                  실단가 확인 + 인보이스 등록
+                                        │
+                                        ▼
+                                  재료 원가 업데이트 (선택)
+                                        │
+                                        ▼
+                                  [가격 히스토리 자동 기록]
+```
 
 #### 작업 목록
 
-**4.1 DB 스키마**
+**4.1 DB 스키마 (4개 테이블)**
 ```sql
-- purchase_orders (발주서)
-- purchase_order_items (발주 상세)
+- purchase_orders (발주서 + 인보이스 정보)
+- purchase_order_items (발주 품목: 예상단가 + 실단가)
+- order_cart_items (발주 대기 목록/장바구니)
+- ingredient_price_history (가격 변동 히스토리)
 ```
 
 **4.2 Backend**
-- [ ] Models: PurchaseOrder, PurchaseOrderItem
-- [ ] APIs: 발주서 CRUD, 입고 처리
+- [ ] Models: PurchaseOrder, PurchaseOrderItem, OrderCartItem, IngredientPriceHistory
+- [ ] 장바구니 API (추가/수정/삭제/조회)
+- [ ] 발주서 CRUD API (공급업체별 생성)
+- [ ] 입고 처리 API (실단가 + 인보이스)
+- [ ] 가격 히스토리 API
 - [ ] 입고 → 재고 증가 연동
 
 **4.3 Frontend**
+- [ ] OrderCartContext (장바구니 상태 관리)
+- [ ] Stock List에 [+ Order] 버튼 추가
+- [ ] OrderCartDrawer (공급업체별 그룹)
 - [ ] `/restaurant/:id/purchase-orders` - 발주서 목록
-- [ ] `/restaurant/:id/purchase-orders/create` - 발주서 생성
-- [ ] `/restaurant/:id/purchase-orders/:id/receive` - 입고 처리
+- [ ] 발주서 상세 페이지 (인보이스 포함)
+- [ ] 입고 처리 모달 (실단가 입력)
+- [ ] 가격 히스토리 팝업
 
-**4.4 Integration**
+**4.4 공유 기능**
+- [ ] 메신저 공유 (WhatsApp, Telegram, KakaoTalk)
+- [ ] PDF 다운로드
+- [ ] 이미지 저장
+- [ ] 텍스트 복사
+
+**4.5 Integration**
 - [ ] 재고 알림 → 발주 제안 연동
 - [ ] 입고 처리 → inventory_transactions 기록
+- [ ] 입고 처리 → inventory_batches 생성 (로트/유통기한)
+- [ ] 실단가 변경 → ingredients.unit_cost 업데이트
+- [ ] 가격 변경 → ingredient_price_history 기록
 
 **산출물:**
-- 발주서 생성/승인/입고
-- 발주 제안 기반 빠른 발주
+- 2가지 경로로 발주 (재고관리/발주관리)
+- 공급업체별 발주서 그룹핑
+- 메신저로 발주서 공유
+- 실 단가 관리 + 가격 변동 히스토리
+- 인보이스 연동
 - 입고 시 자동 재고 반영
 
 ---
