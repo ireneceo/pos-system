@@ -117,6 +117,86 @@ const DiscountRow = styled(SummaryRow)`
   color: #10B981;
 `;
 
+const PointsSection = styled.div`
+  background: #F0F9FF;
+  border: 1px solid #BAE6FD;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+`;
+
+const PointsHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+`;
+
+const PointsTitle = styled.div`
+  font-weight: 600;
+  color: #0369A1;
+  font-size: 14px;
+`;
+
+const PointsBalance = styled.div`
+  font-weight: 700;
+  color: #0EA5E9;
+  font-size: 16px;
+`;
+
+const PointsToggle = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin-bottom: 12px;
+
+  input {
+    width: 18px;
+    height: 18px;
+    accent-color: #0EA5E9;
+  }
+
+  span {
+    font-size: 14px;
+    color: #1F2937;
+  }
+`;
+
+const PointsSlider = styled.input`
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: #E0E7FF;
+  accent-color: #0EA5E9;
+  cursor: pointer;
+`;
+
+const PointsInfo = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding: 12px;
+  background: white;
+  border-radius: 6px;
+`;
+
+const PointsUsing = styled.div`
+  font-size: 14px;
+  color: #1F2937;
+
+  strong {
+    color: #0EA5E9;
+  }
+`;
+
+const PointsDiscount = styled.div`
+  font-weight: 700;
+  color: #059669;
+  font-size: 16px;
+`;
+
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -127,18 +207,23 @@ interface PaymentModalProps {
   takeawayCharge?: number;
   discountAmount?: number;
   couponDiscount?: number;
-  onConfirmPayment: (paymentMethod: string, amountReceived?: number, change?: number) => void;
+  onConfirmPayment: (paymentMethod: string, amountReceived?: number, change?: number, pointsUsed?: number, pointDiscount?: number) => void;
   paymentMethods?: any;
   taxRate?: number;
   serviceChargeRate?: number;
   taxEnabled?: boolean;
   serviceChargeEnabled?: boolean;
+  // Points props
+  customerPoints?: number;
+  customerTier?: string;
+  membershipSettings?: any;
+  onPointsChange?: (pointsUsed: number, discount: number) => void;
 }
 
 const PaymentModal: React.FC<PaymentModalProps> = ({
   isOpen,
   onClose,
-  total,
+  total: originalTotal,
   subtotal,
   tax,
   serviceCharge = 0,
@@ -150,9 +235,65 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   taxRate = 6,
   serviceChargeRate = 10,
   taxEnabled = true,
-  serviceChargeEnabled = false
+  serviceChargeEnabled = false,
+  customerPoints = 0,
+  customerTier = 'Bronze',
+  membershipSettings,
+  onPointsChange
 }) => {
   const { operationSettings } = useStore();
+
+  // Points state
+  const [usePoints, setUsePoints] = useState(false);
+  const [pointsToUse, setPointsToUse] = useState(0);
+  const [pointDiscount, setPointDiscount] = useState(0);
+
+  // Calculate max points that can be used
+  const maxPointsForOrder = React.useMemo(() => {
+    if (!membershipSettings || !membershipSettings.is_active || customerPoints <= 0) return 0;
+
+    const minPointsToUse = membershipSettings.min_points_to_use || 100;
+    const maxPercentage = parseFloat(membershipSettings.max_points_per_order_percent) || 50;
+    const pointsToCurrency = parseFloat(membershipSettings.points_to_currency) || 100;
+
+    // Max discount based on percentage
+    const maxDiscountByPercent = (subtotal - discountAmount - couponDiscount) * (maxPercentage / 100);
+    // Convert to points
+    const maxPointsByPercent = Math.floor(maxDiscountByPercent * pointsToCurrency);
+
+    // Can't use more points than available
+    const maxUsable = Math.min(customerPoints, maxPointsByPercent);
+
+    // Must meet minimum threshold
+    if (customerPoints < minPointsToUse) return 0;
+
+    return maxUsable;
+  }, [membershipSettings, customerPoints, subtotal, discountAmount, couponDiscount]);
+
+  // Calculate point discount when pointsToUse changes
+  useEffect(() => {
+    if (membershipSettings && pointsToUse > 0) {
+      const pointsToCurrency = parseFloat(membershipSettings.points_to_currency) || 100;
+      const discount = pointsToUse / pointsToCurrency;
+      setPointDiscount(discount);
+      onPointsChange?.(pointsToUse, discount);
+    } else {
+      setPointDiscount(0);
+      onPointsChange?.(0, 0);
+    }
+  }, [pointsToUse, membershipSettings, onPointsChange]);
+
+  // Reset points when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setUsePoints(false);
+      setPointsToUse(0);
+      setPointDiscount(0);
+    }
+  }, [isOpen]);
+
+  // Adjusted total after point discount
+  const total = originalTotal - pointDiscount;
 
   // Get available payment methods for POS
   const getAvailablePaymentMethods = () => {
@@ -217,10 +358,10 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     if (paymentMethod === 'cash') {
       const amount = parseFloat(cashAmount) || 0;
       if (amount >= total) {
-        onConfirmPayment(paymentMethod, amount, calculateChange());
+        onConfirmPayment(paymentMethod, amount, calculateChange(), pointsToUse, pointDiscount);
       }
     } else {
-      onConfirmPayment(paymentMethod);
+      onConfirmPayment(paymentMethod, undefined, undefined, pointsToUse, pointDiscount);
     }
   };
   
@@ -273,6 +414,12 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
             <SummaryValue>{formatCurrency(-couponDiscount, operationSettings.currency)}</SummaryValue>
           </DiscountRow>
         )}
+        {pointDiscount > 0 && (
+          <DiscountRow>
+            <SummaryLabel>Points Discount ({pointsToUse.toLocaleString()} pts)</SummaryLabel>
+            <SummaryValue>{formatCurrency(-pointDiscount, operationSettings.currency)}</SummaryValue>
+          </DiscountRow>
+        )}
         {serviceChargeEnabled && serviceCharge > 0 && (
           <SummaryRow>
             <SummaryLabel>Service Charge ({serviceChargeRate}%)</SummaryLabel>
@@ -291,6 +438,64 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         <TotalLabel>Total Amount</TotalLabel>
         <TotalPrice>{formatCurrency(total, operationSettings.currency)}</TotalPrice>
       </TotalSection>
+
+      {/* Points Section - Only show if customer has points and membership is active */}
+      {membershipSettings?.is_active && customerPoints > 0 && (
+        <PointsSection>
+          <PointsHeader>
+            <PointsTitle>Use Points ({customerTier})</PointsTitle>
+            <PointsBalance>{customerPoints.toLocaleString()} pts available</PointsBalance>
+          </PointsHeader>
+
+          {maxPointsForOrder > 0 ? (
+            <>
+              <PointsToggle>
+                <input
+                  type="checkbox"
+                  checked={usePoints}
+                  onChange={(e) => {
+                    setUsePoints(e.target.checked);
+                    if (!e.target.checked) {
+                      setPointsToUse(0);
+                    } else {
+                      setPointsToUse(maxPointsForOrder);
+                    }
+                  }}
+                />
+                <span>Use points for this order</span>
+              </PointsToggle>
+
+              {usePoints && (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#6B7280', marginBottom: '8px' }}>
+                    <span>{membershipSettings?.min_points_to_use || 100} pts</span>
+                    <span>{maxPointsForOrder.toLocaleString()} pts (max)</span>
+                  </div>
+                  <PointsSlider
+                    type="range"
+                    min={membershipSettings?.min_points_to_use || 100}
+                    max={maxPointsForOrder}
+                    value={pointsToUse}
+                    onChange={(e) => setPointsToUse(Number(e.target.value))}
+                  />
+                  <PointsInfo>
+                    <PointsUsing>
+                      Using: <strong>{pointsToUse.toLocaleString()} pts</strong>
+                    </PointsUsing>
+                    <PointsDiscount>
+                      -{formatCurrency(pointDiscount, operationSettings.currency)}
+                    </PointsDiscount>
+                  </PointsInfo>
+                </>
+              )}
+            </>
+          ) : (
+            <div style={{ fontSize: '13px', color: '#6B7280', textAlign: 'center' }}>
+              Minimum {membershipSettings?.min_points_to_use || 100} points required to use
+            </div>
+          )}
+        </PointsSection>
+      )}
 
       <Section>
         <Label>Payment Method</Label>

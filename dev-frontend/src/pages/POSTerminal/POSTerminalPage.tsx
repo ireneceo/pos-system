@@ -1165,6 +1165,11 @@ const POSTerminalPage: React.FC = () => {
   const [cashRounding, setCashRounding] = useState<number | null>(null);
   const [roundingApplyTo, setRoundingApplyTo] = useState<'cash_only' | 'all'>('cash_only');
 
+  // Membership/Points state
+  const [membershipSettings, setMembershipSettings] = useState<any>(null);
+  const [customerPoints, setCustomerPoints] = useState(0);
+  const [customerTier, setCustomerTier] = useState('Bronze');
+
   // Progressive rendering state
   const PROGRESSIVE_THRESHOLD = 50;
   const INITIAL_RENDER_COUNT = 40;
@@ -1279,6 +1284,55 @@ const POSTerminalPage: React.FC = () => {
 
     loadPaymentSettings();
   }, [user?.restaurantId]);
+
+  // Load membership settings
+  useEffect(() => {
+    const loadMembershipSettings = async () => {
+      if (user?.restaurantId) {
+        try {
+          const response = await fetch(`/api/membership/settings/${user.restaurantId}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.data) {
+              setMembershipSettings(data.data);
+              console.log('✅ Membership settings loaded for POS:', data.data);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to load membership settings:', error);
+        }
+      }
+    };
+
+    loadMembershipSettings();
+  }, [user?.restaurantId]);
+
+  // Load customer points when a customer is selected
+  useEffect(() => {
+    const loadCustomerPoints = async () => {
+      if (user?.restaurantId && selectedCustomerForOrder?.id) {
+        try {
+          const response = await fetch(`/api/membership/customer/${user.restaurantId}/${selectedCustomerForOrder.id}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.data) {
+              setCustomerPoints(data.data.points || 0);
+              setCustomerTier(data.data.loyalty_tier || 'Bronze');
+              console.log('✅ Customer points loaded:', data.data.points, 'Tier:', data.data.loyalty_tier);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to load customer points:', error);
+        }
+      } else {
+        // Reset points when no customer selected
+        setCustomerPoints(0);
+        setCustomerTier('Bronze');
+      }
+    };
+
+    loadCustomerPoints();
+  }, [user?.restaurantId, selectedCustomerForOrder?.id]);
 
   // Filter menu items based on category and search query
   const getFilteredItems = () => {
@@ -1776,7 +1830,7 @@ const POSTerminalPage: React.FC = () => {
     setShowPaymentModal(true);
   };
 
-  const handleConfirmPayment = async (method: string, amountReceived?: number, change?: number) => {
+  const handleConfirmPayment = async (method: string, amountReceived?: number, change?: number, pointsUsed?: number, pointDiscountAmount?: number) => {
     // 중복 실행 방지
     if (isProcessingPayment) {
       console.warn('POS - Payment already in progress, ignoring duplicate call');
@@ -1784,7 +1838,10 @@ const POSTerminalPage: React.FC = () => {
     }
 
     setIsProcessingPayment(true);
-    console.log('POS - Processing payment for method:', method);
+    console.log('POS - Processing payment for method:', method, 'Points used:', pointsUsed);
+
+    // Adjust total if points were used
+    const adjustedTotal = pointDiscountAmount ? total - pointDiscountAmount : total;
 
     try {
       const now = new Date();
@@ -1802,9 +1859,11 @@ const POSTerminalPage: React.FC = () => {
         serviceChargeRate: operationSettings.serviceChargeRate,
         tax,
         taxRate: operationSettings.taxRate,
-        total,
+        total: adjustedTotal,
+        pointsUsed: pointsUsed || 0,
+        pointDiscount: pointDiscountAmount || 0,
         paymentMethod: method,
-        amountReceived: amountReceived || total,
+        amountReceived: amountReceived || adjustedTotal,
         change: change || 0
       };
 
@@ -1857,7 +1916,9 @@ const POSTerminalPage: React.FC = () => {
       coupon: appliedCoupon ? { code: appliedCoupon.code, amount: appliedCoupon.discount } : undefined,
       discountPolicy: appliedDiscountPolicy ? { name: appliedDiscountPolicy.name, amount: appliedDiscountPolicy.discount } : undefined,
       takeawayCharge: takeawayCharge,
-      total,
+      total: adjustedTotal,
+      points_used: pointsUsed || null,
+      point_discount: pointDiscountAmount || null,
       paymentMethod: method,
       paymentStatus: 'completed' as const,
       orderType: orderType,
@@ -2505,6 +2566,9 @@ const POSTerminalPage: React.FC = () => {
         serviceChargeRate={operationSettings.serviceChargeRate}
         taxEnabled={operationSettings.taxEnabled}
         serviceChargeEnabled={operationSettings.serviceChargeEnabled}
+        customerPoints={customerPoints}
+        customerTier={customerTier}
+        membershipSettings={membershipSettings}
       />
       
       {selectedMenuItem && (
