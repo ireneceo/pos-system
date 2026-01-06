@@ -185,7 +185,7 @@
     box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
   }
 `},4669:(e,r,t)=>{t.d(r,{A:()=>y});var i=t(9950),n=t(4752),o=t(4414);const a=n.Ay.div`
-  /* Container styling - spacing handled by parent */
+  margin-bottom: 16px;
 `,s=n.Ay.label`
   display: block;
   font-size: 13px;

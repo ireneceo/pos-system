@@ -362,7 +362,7 @@
     box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
   }
 `},4669:(e,n,r)=>{r.d(n,{A:()=>v});var t=r(9950),i=r(4752),a=r(4414);const o=i.Ay.div`
-  /* Container styling - spacing handled by parent */
+  margin-bottom: 16px;
 `,s=i.Ay.label`
   display: block;
   font-size: 13px;

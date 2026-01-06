@@ -895,8 +895,10 @@ const ReportsPage: React.FC = () => {
         start.setDate(start.getDate() - 29);
         break;
       case 'year':
-        // From January 1 of current year to today
-        start = new Date(now.getFullYear(), 0, 1);
+        // Last 12 months including today (today - 365 days)
+        start = new Date(now);
+        start.setFullYear(start.getFullYear() - 1);
+        start.setDate(start.getDate() + 1); // Start from 1 year ago + 1 day to include exactly 365 days
         break;
       case 'all':
         // Get the earliest order date, or default to 5 years ago
