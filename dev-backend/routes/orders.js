@@ -6,6 +6,7 @@ const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const { executeQuery, executeTransaction } = require('../utils/queryWrapper');
 const { deductInventoryForOrder } = require('../services/inventoryDeductionService');
+const { earnPointsForOrder, refundPointsForOrder, usePointsForOrder } = require('../services/pointService');
 const { authenticateToken } = require('../middleware/auth');
 
 // Get all orders
@@ -239,6 +240,27 @@ router.post('/', authenticateToken, async (req, res) => {
       }
     }
 
+    // Process points usage if provided
+    if (order.points_used && order.points_used > 0 && order.customer_id && order.restaurant_id) {
+      try {
+        const pointResult = await usePointsForOrder(
+          order.restaurant_id,
+          order.customer_id,
+          order.id,
+          order.points_used
+        );
+        if (pointResult.success) {
+          console.log(`✅ [POINTS] Used ${order.points_used} points for order ${order.id}`);
+        } else {
+          console.warn(`⚠️ [POINTS] Failed to use points for order ${order.id}:`, pointResult.error);
+          // Note: We don't fail the order if points usage fails
+          // The order will still be created, but points won't be deducted
+        }
+      } catch (pointError) {
+        console.error(`❌ [POINTS] Error using points for order ${order.id}:`, pointError);
+      }
+    }
+
     // Emit socket event for real-time update
     const io = req.app.get('io');
     if (io && order.restaurant_id) {
@@ -362,6 +384,43 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
       } catch (inventoryError) {
         // Don't fail the order update if inventory deduction fails
         console.error(`❌ [INVENTORY] Error deducting inventory for order ${order.id}:`, inventoryError);
+      }
+
+      // Earn points when order is completed (if customer exists)
+      if (order.customer_id) {
+        try {
+          const pointResult = await earnPointsForOrder(
+            order.restaurant_id,
+            order.customer_id,
+            order.id,
+            parseFloat(order.total_amount) || 0
+          );
+
+          if (pointResult.success && pointResult.earnedPoints > 0) {
+            console.log(`✅ [POINTS] Earned ${pointResult.earnedPoints} points for order ${order.id}`);
+          }
+        } catch (pointError) {
+          // Don't fail the order update if point earning fails
+          console.error(`❌ [POINTS] Error earning points for order ${order.id}:`, pointError);
+        }
+      }
+    }
+
+    // Refund points when order is cancelled (if customer exists)
+    if (status === 'cancelled' && order.customer_id) {
+      try {
+        const refundResult = await refundPointsForOrder(
+          order.restaurant_id,
+          order.customer_id,
+          order.id
+        );
+
+        if (refundResult.success && refundResult.refundedPoints > 0) {
+          console.log(`✅ [POINTS] Refunded ${refundResult.refundedPoints} points for order ${order.id}`);
+        }
+      } catch (pointError) {
+        // Don't fail the order update if point refund fails
+        console.error(`❌ [POINTS] Error refunding points for order ${order.id}:`, pointError);
       }
     }
 

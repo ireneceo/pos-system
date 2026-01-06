@@ -375,7 +375,7 @@ const ActionButton = styled.button`
 `;
 
 // 타입 정의
-type TabType = 'store' | 'operations' | 'payment' | 'company' | 'brands' | 'billing' | 'managers';
+type TabType = 'store' | 'operations' | 'payment' | 'company' | 'brands' | 'billing' | 'managers' | 'membership';
 
 interface Table {
   id: string;
@@ -533,6 +533,48 @@ interface Manager {
   phone: string;
   isPrimary: boolean;
 }
+
+interface MembershipSettings {
+  is_active: boolean;
+  points_per_currency: number;
+  points_to_currency: number;
+  min_points_to_use: number;
+  max_points_per_order_percent: number;
+  silver_threshold: number;
+  gold_threshold: number;
+  vip_threshold: number;
+  bronze_bonus_rate: number;
+  silver_bonus_rate: number;
+  gold_bonus_rate: number;
+  vip_bonus_rate: number;
+  bronze_discount_percent: number;
+  silver_discount_percent: number;
+  gold_discount_percent: number;
+  vip_discount_percent: number;
+  points_expiry_days: number;
+  welcome_points: number;
+}
+
+const defaultMembershipSettings: MembershipSettings = {
+  is_active: true,
+  points_per_currency: 1,
+  points_to_currency: 100,
+  min_points_to_use: 100,
+  max_points_per_order_percent: 50,
+  silver_threshold: 500,
+  gold_threshold: 2000,
+  vip_threshold: 5000,
+  bronze_bonus_rate: 1.0,
+  silver_bonus_rate: 1.2,
+  gold_bonus_rate: 1.5,
+  vip_bonus_rate: 2.0,
+  bronze_discount_percent: 0,
+  silver_discount_percent: 0,
+  gold_discount_percent: 5,
+  vip_discount_percent: 10,
+  points_expiry_days: 0,
+  welcome_points: 0
+};
 
 const SettingsPage: React.FC = () => {
   const { user } = useAuth();
@@ -726,6 +768,8 @@ const SettingsPage: React.FC = () => {
   const [tables, setTables] = useState<Table[]>([]);
   const [managers, setManagers] = useState<Manager[]>([]);
   const [loadingManagers, setLoadingManagers] = useState(false);
+  const [membershipSettings, setMembershipSettings] = useState<MembershipSettings>(defaultMembershipSettings);
+  const [loadingMembership, setLoadingMembership] = useState(false);
   // loadingStoreData removed - not used
 
   // Load store data from restaurants API on mount
@@ -933,6 +977,58 @@ const SettingsPage: React.FC = () => {
 
     if (activeTab === 'managers') {
       loadManagers();
+    }
+  }, [activeTab, user?.restaurantId]);
+
+  // Load membership settings
+  useEffect(() => {
+    const loadMembershipSettings = async () => {
+      if (!user?.restaurantId) return;
+
+      setLoadingMembership(true);
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch(`/api/membership/settings/${user.restaurantId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            setMembershipSettings({
+              is_active: result.data.is_active ?? true,
+              points_per_currency: parseFloat(result.data.points_per_currency) || 1,
+              points_to_currency: parseFloat(result.data.points_to_currency) || 100,
+              min_points_to_use: result.data.min_points_to_use || 100,
+              max_points_per_order_percent: parseFloat(result.data.max_points_per_order_percent) || 50,
+              silver_threshold: parseFloat(result.data.silver_threshold) || 500,
+              gold_threshold: parseFloat(result.data.gold_threshold) || 2000,
+              vip_threshold: parseFloat(result.data.vip_threshold) || 5000,
+              bronze_bonus_rate: parseFloat(result.data.bronze_bonus_rate) || 1.0,
+              silver_bonus_rate: parseFloat(result.data.silver_bonus_rate) || 1.2,
+              gold_bonus_rate: parseFloat(result.data.gold_bonus_rate) || 1.5,
+              vip_bonus_rate: parseFloat(result.data.vip_bonus_rate) || 2.0,
+              bronze_discount_percent: parseFloat(result.data.bronze_discount_percent) || 0,
+              silver_discount_percent: parseFloat(result.data.silver_discount_percent) || 0,
+              gold_discount_percent: parseFloat(result.data.gold_discount_percent) || 5,
+              vip_discount_percent: parseFloat(result.data.vip_discount_percent) || 10,
+              points_expiry_days: result.data.points_expiry_days || 0,
+              welcome_points: result.data.welcome_points || 0
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load membership settings:', error);
+      } finally {
+        setLoadingMembership(false);
+      }
+    };
+
+    if (activeTab === 'membership') {
+      loadMembershipSettings();
     }
   }, [activeTab, user?.restaurantId]);
 
@@ -1395,6 +1491,40 @@ const SettingsPage: React.FC = () => {
     }
   };
 
+  const handleSaveMembership = async () => {
+    if (!user?.restaurantId) return;
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/membership/settings/${user.restaurantId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(membershipSettings)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save membership settings');
+      }
+
+      setSaveStatus({ type: 'success', message: 'Membership settings saved successfully!' });
+      setHasChanges(false);
+
+      setTimeout(() => {
+        setSaveStatus(null);
+      }, 5000);
+    } catch (error) {
+      console.error('Failed to save membership settings:', error);
+      setSaveStatus({ type: 'error', message: 'Failed to save membership settings' });
+
+      setTimeout(() => {
+        setSaveStatus(null);
+      }, 8000);
+    }
+  };
+
   return (
     <MainLayout>
       <SettingsContainer>
@@ -1430,6 +1560,9 @@ const SettingsPage: React.FC = () => {
                 </Tab>
                 <Tab active={activeTab === 'managers'} onClick={() => handleTabChange('managers')}>
                   Managers
+                </Tab>
+                <Tab active={activeTab === 'membership'} onClick={() => handleTabChange('membership')}>
+                  Membership
                 </Tab>
               </>
             )}
@@ -3882,6 +4015,353 @@ const SettingsPage: React.FC = () => {
                   </StatusMessage>
                 )}
               </SaveButtonContainer>
+            </div>
+          )}
+
+          {activeTab === 'membership' && (
+            <div>
+              <div style={{ background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '8px', padding: '16px', marginBottom: '24px' }}>
+                <p style={{ margin: 0, fontSize: '14px', color: '#075985', lineHeight: '1.5' }}>
+                  Configure membership and loyalty point settings for your customers. Points are earned on purchases and can be redeemed for discounts.
+                </p>
+              </div>
+
+              {loadingMembership ? (
+                <SettingsCard>
+                  <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
+                    Loading membership settings...
+                  </div>
+                </SettingsCard>
+              ) : (
+                <>
+                  {/* Membership Toggle */}
+                  <SettingsCard style={{ marginBottom: '24px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <CardTitle style={{ marginBottom: '8px' }}>Membership Program</CardTitle>
+                        <p style={{ margin: 0, fontSize: '14px', color: '#6B7C93' }}>
+                          Enable or disable the membership program for your store
+                        </p>
+                      </div>
+                      <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={membershipSettings.is_active}
+                          onChange={(e) => {
+                            setMembershipSettings({ ...membershipSettings, is_active: e.target.checked });
+                            setHasChanges(true);
+                          }}
+                          style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                        />
+                        <span style={{ marginLeft: '8px', fontWeight: '500', color: membershipSettings.is_active ? '#059669' : '#6B7C93' }}>
+                          {membershipSettings.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </label>
+                    </div>
+                  </SettingsCard>
+
+                  <SettingsGrid>
+                    {/* Points Settings */}
+                    <SettingsCard>
+                      <CardTitle>Points Settings</CardTitle>
+
+                      <FormGroup>
+                        <Label>Points per Currency Unit</Label>
+                        <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#8898AA' }}>
+                          How many points customer earns per RM 1 spent
+                        </p>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          value={membershipSettings.points_per_currency}
+                          onChange={(e) => {
+                            setMembershipSettings({ ...membershipSettings, points_per_currency: parseFloat(e.target.value) || 0 });
+                            setHasChanges(true);
+                          }}
+                        />
+                      </FormGroup>
+
+                      <FormGroup>
+                        <Label>Points to Currency Ratio</Label>
+                        <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#8898AA' }}>
+                          How many points equal RM 1 when redeeming
+                        </p>
+                        <Input
+                          type="number"
+                          step="1"
+                          min="1"
+                          value={membershipSettings.points_to_currency}
+                          onChange={(e) => {
+                            setMembershipSettings({ ...membershipSettings, points_to_currency: parseFloat(e.target.value) || 100 });
+                            setHasChanges(true);
+                          }}
+                        />
+                      </FormGroup>
+
+                      <FormGroup>
+                        <Label>Minimum Points to Use</Label>
+                        <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#8898AA' }}>
+                          Minimum points required before customer can redeem
+                        </p>
+                        <Input
+                          type="number"
+                          step="1"
+                          min="0"
+                          value={membershipSettings.min_points_to_use}
+                          onChange={(e) => {
+                            setMembershipSettings({ ...membershipSettings, min_points_to_use: parseInt(e.target.value) || 0 });
+                            setHasChanges(true);
+                          }}
+                        />
+                      </FormGroup>
+
+                      <FormGroup>
+                        <Label>Max Points Per Order (%)</Label>
+                        <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#8898AA' }}>
+                          Maximum percentage of order that can be paid with points
+                        </p>
+                        <Input
+                          type="number"
+                          step="1"
+                          min="0"
+                          max="100"
+                          value={membershipSettings.max_points_per_order_percent}
+                          onChange={(e) => {
+                            setMembershipSettings({ ...membershipSettings, max_points_per_order_percent: parseFloat(e.target.value) || 0 });
+                            setHasChanges(true);
+                          }}
+                        />
+                      </FormGroup>
+
+                      <FormGroup>
+                        <Label>Points Expiry (Days)</Label>
+                        <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#8898AA' }}>
+                          Number of days until points expire (0 = never)
+                        </p>
+                        <Input
+                          type="number"
+                          step="1"
+                          min="0"
+                          value={membershipSettings.points_expiry_days}
+                          onChange={(e) => {
+                            setMembershipSettings({ ...membershipSettings, points_expiry_days: parseInt(e.target.value) || 0 });
+                            setHasChanges(true);
+                          }}
+                        />
+                      </FormGroup>
+
+                      <FormGroup>
+                        <Label>Welcome Points</Label>
+                        <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#8898AA' }}>
+                          Points given to new members on registration
+                        </p>
+                        <Input
+                          type="number"
+                          step="1"
+                          min="0"
+                          value={membershipSettings.welcome_points}
+                          onChange={(e) => {
+                            setMembershipSettings({ ...membershipSettings, welcome_points: parseInt(e.target.value) || 0 });
+                            setHasChanges(true);
+                          }}
+                        />
+                      </FormGroup>
+                    </SettingsCard>
+
+                    {/* Tier Settings */}
+                    <SettingsCard>
+                      <CardTitle>Tier Thresholds</CardTitle>
+                      <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: '#8898AA' }}>
+                        Total spending required to reach each tier
+                      </p>
+
+                      <FormGroup>
+                        <Label>Silver Threshold (RM)</Label>
+                        <Input
+                          type="number"
+                          step="100"
+                          min="0"
+                          value={membershipSettings.silver_threshold}
+                          onChange={(e) => {
+                            setMembershipSettings({ ...membershipSettings, silver_threshold: parseFloat(e.target.value) || 0 });
+                            setHasChanges(true);
+                          }}
+                        />
+                      </FormGroup>
+
+                      <FormGroup>
+                        <Label>Gold Threshold (RM)</Label>
+                        <Input
+                          type="number"
+                          step="100"
+                          min="0"
+                          value={membershipSettings.gold_threshold}
+                          onChange={(e) => {
+                            setMembershipSettings({ ...membershipSettings, gold_threshold: parseFloat(e.target.value) || 0 });
+                            setHasChanges(true);
+                          }}
+                        />
+                      </FormGroup>
+
+                      <FormGroup>
+                        <Label>VIP Threshold (RM)</Label>
+                        <Input
+                          type="number"
+                          step="100"
+                          min="0"
+                          value={membershipSettings.vip_threshold}
+                          onChange={(e) => {
+                            setMembershipSettings({ ...membershipSettings, vip_threshold: parseFloat(e.target.value) || 0 });
+                            setHasChanges(true);
+                          }}
+                        />
+                      </FormGroup>
+
+                      <CardTitle style={{ marginTop: '24px' }}>Bonus Rates</CardTitle>
+                      <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: '#8898AA' }}>
+                        Point earning multiplier for each tier
+                      </p>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        <FormGroup>
+                          <Label>Bronze (x)</Label>
+                          <Input
+                            type="number"
+                            step="0.1"
+                            min="1"
+                            value={membershipSettings.bronze_bonus_rate}
+                            onChange={(e) => {
+                              setMembershipSettings({ ...membershipSettings, bronze_bonus_rate: parseFloat(e.target.value) || 1 });
+                              setHasChanges(true);
+                            }}
+                          />
+                        </FormGroup>
+
+                        <FormGroup>
+                          <Label>Silver (x)</Label>
+                          <Input
+                            type="number"
+                            step="0.1"
+                            min="1"
+                            value={membershipSettings.silver_bonus_rate}
+                            onChange={(e) => {
+                              setMembershipSettings({ ...membershipSettings, silver_bonus_rate: parseFloat(e.target.value) || 1 });
+                              setHasChanges(true);
+                            }}
+                          />
+                        </FormGroup>
+
+                        <FormGroup>
+                          <Label>Gold (x)</Label>
+                          <Input
+                            type="number"
+                            step="0.1"
+                            min="1"
+                            value={membershipSettings.gold_bonus_rate}
+                            onChange={(e) => {
+                              setMembershipSettings({ ...membershipSettings, gold_bonus_rate: parseFloat(e.target.value) || 1 });
+                              setHasChanges(true);
+                            }}
+                          />
+                        </FormGroup>
+
+                        <FormGroup>
+                          <Label>VIP (x)</Label>
+                          <Input
+                            type="number"
+                            step="0.1"
+                            min="1"
+                            value={membershipSettings.vip_bonus_rate}
+                            onChange={(e) => {
+                              setMembershipSettings({ ...membershipSettings, vip_bonus_rate: parseFloat(e.target.value) || 1 });
+                              setHasChanges(true);
+                            }}
+                          />
+                        </FormGroup>
+                      </div>
+
+                      <CardTitle style={{ marginTop: '24px' }}>Tier Discounts (%)</CardTitle>
+                      <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: '#8898AA' }}>
+                        Automatic discount for each tier
+                      </p>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        <FormGroup>
+                          <Label>Bronze (%)</Label>
+                          <Input
+                            type="number"
+                            step="1"
+                            min="0"
+                            max="100"
+                            value={membershipSettings.bronze_discount_percent}
+                            onChange={(e) => {
+                              setMembershipSettings({ ...membershipSettings, bronze_discount_percent: parseFloat(e.target.value) || 0 });
+                              setHasChanges(true);
+                            }}
+                          />
+                        </FormGroup>
+
+                        <FormGroup>
+                          <Label>Silver (%)</Label>
+                          <Input
+                            type="number"
+                            step="1"
+                            min="0"
+                            max="100"
+                            value={membershipSettings.silver_discount_percent}
+                            onChange={(e) => {
+                              setMembershipSettings({ ...membershipSettings, silver_discount_percent: parseFloat(e.target.value) || 0 });
+                              setHasChanges(true);
+                            }}
+                          />
+                        </FormGroup>
+
+                        <FormGroup>
+                          <Label>Gold (%)</Label>
+                          <Input
+                            type="number"
+                            step="1"
+                            min="0"
+                            max="100"
+                            value={membershipSettings.gold_discount_percent}
+                            onChange={(e) => {
+                              setMembershipSettings({ ...membershipSettings, gold_discount_percent: parseFloat(e.target.value) || 0 });
+                              setHasChanges(true);
+                            }}
+                          />
+                        </FormGroup>
+
+                        <FormGroup>
+                          <Label>VIP (%)</Label>
+                          <Input
+                            type="number"
+                            step="1"
+                            min="0"
+                            max="100"
+                            value={membershipSettings.vip_discount_percent}
+                            onChange={(e) => {
+                              setMembershipSettings({ ...membershipSettings, vip_discount_percent: parseFloat(e.target.value) || 0 });
+                              setHasChanges(true);
+                            }}
+                          />
+                        </FormGroup>
+                      </div>
+                    </SettingsCard>
+                  </SettingsGrid>
+
+                  <SaveButtonContainer>
+                    <SaveButton onClick={handleSaveMembership} disabled={!hasChanges}>
+                      {hasChanges ? 'Save Changes' : 'Saved'}
+                    </SaveButton>
+                    {saveStatus && (
+                      <StatusMessage type={saveStatus.type}>
+                        {saveStatus.message}
+                      </StatusMessage>
+                    )}
+                  </SaveButtonContainer>
+                </>
+              )}
             </div>
           )}
 

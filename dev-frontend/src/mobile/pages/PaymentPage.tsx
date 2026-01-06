@@ -553,6 +553,67 @@ const PaymentPage: React.FC = () => {
   // Member login state
   const [memberPassword, setMemberPassword] = useState('');
 
+  // Points state
+  const [availablePoints, setAvailablePoints] = useState(0);
+  const [pointsToUse, setPointsToUse] = useState(0);
+  const [pointDiscount, setPointDiscount] = useState(0);
+  const [membershipSettings, setMembershipSettings] = useState<any>(null);
+  const [usePoints, setUsePoints] = useState(false);
+  const [customerTier, setCustomerTier] = useState<string>('Bronze');
+
+  // Load membership settings and customer points
+  React.useEffect(() => {
+    const loadMembershipData = async () => {
+      if (!currentStore?.id) return;
+
+      try {
+        // Load membership settings
+        const settingsResponse = await fetch(`/api/membership/settings/${currentStore.id}`);
+        if (settingsResponse.ok) {
+          const settingsData = await settingsResponse.json();
+          if (settingsData.success && settingsData.data) {
+            setMembershipSettings(settingsData.data);
+            console.log('✅ Membership settings loaded:', settingsData.data);
+          }
+        }
+
+        // Load customer points if logged in
+        if (currentCustomer?.id) {
+          const customerResponse = await fetch(`/api/membership/customer/${currentStore.id}/${currentCustomer.id}`);
+          if (customerResponse.ok) {
+            const customerData = await customerResponse.json();
+            if (customerData.success && customerData.data) {
+              setAvailablePoints(customerData.data.points || 0);
+              setCustomerTier(customerData.data.loyalty_tier || 'Bronze');
+              console.log('✅ Customer points loaded:', customerData.data.points, 'Tier:', customerData.data.loyalty_tier);
+            }
+          }
+        } else {
+          // Reset points if not logged in
+          setAvailablePoints(0);
+          setPointsToUse(0);
+          setPointDiscount(0);
+          setUsePoints(false);
+        }
+      } catch (error) {
+        console.error('Failed to load membership data:', error);
+      }
+    };
+
+    loadMembershipData();
+  }, [currentStore?.id, currentCustomer?.id]);
+
+  // Calculate point discount when pointsToUse changes
+  React.useEffect(() => {
+    if (membershipSettings && pointsToUse > 0) {
+      const pointsToCurrency = parseFloat(membershipSettings.points_to_currency) || 100;
+      const discount = pointsToUse / pointsToCurrency;
+      setPointDiscount(discount);
+    } else {
+      setPointDiscount(0);
+    }
+  }, [pointsToUse, membershipSettings]);
+
   // Calculate takeaway charge (using existing function from StoreContext)
   const orderType = sessionStorage.getItem('orderType') as 'dine-in' | 'takeaway' | 'pickup' | 'delivery' || 'dine-in';
 
@@ -632,13 +693,35 @@ const PaymentPage: React.FC = () => {
   // Apply service charge from operation settings (if enabled)
   const serviceCharge = operationSettings.serviceChargeEnabled ? subtotal * (operationSettings.serviceChargeRate / 100) : 0;
 
-  const discountedSubtotal = subtotal - couponDiscount;
+  const discountedSubtotal = subtotal - couponDiscount - pointDiscount;
   const totalBeforeRounding = discountedSubtotal + tax + serviceCharge + takeawayCharge + deliveryFee;
 
   // Apply rounding based on settings
   const total = roundingApplyTo === 'all' && cashRounding
     ? applyRounding(totalBeforeRounding)
     : totalBeforeRounding;
+
+  // Calculate max points that can be used for this order
+  const maxPointsForOrder = React.useMemo(() => {
+    if (!membershipSettings || !membershipSettings.is_active) return 0;
+
+    const minPointsToUse = membershipSettings.min_points_to_use || 100;
+    const maxPercentage = parseFloat(membershipSettings.max_points_per_order_percent) || 50;
+    const pointsToCurrency = parseFloat(membershipSettings.points_to_currency) || 100;
+
+    // Max discount based on percentage
+    const maxDiscountByPercent = (subtotal - couponDiscount) * (maxPercentage / 100);
+    // Convert to points
+    const maxPointsByPercent = Math.floor(maxDiscountByPercent * pointsToCurrency);
+
+    // Can't use more points than available
+    const maxUsable = Math.min(availablePoints, maxPointsByPercent);
+
+    // Must meet minimum threshold
+    if (availablePoints < minPointsToUse) return 0;
+
+    return maxUsable;
+  }, [membershipSettings, availablePoints, subtotal, couponDiscount]);
 
   // Get available payment methods for mobile - recalculates when paymentMethods changes
   const availableMethods = React.useMemo(() => {
@@ -1057,6 +1140,8 @@ const PaymentPage: React.FC = () => {
               total_amount: total,
               takeaway_charge: takeawayCharge,
               delivery_fee: deliveryFee,
+              points_used: pointsToUse > 0 ? pointsToUse : null,
+              point_discount: pointDiscount > 0 ? pointDiscount : null,
               // Store delivery info as JSON object
               delivery_info: orderType === 'delivery' ? {
                 address: deliveryAddress,
@@ -1208,6 +1293,8 @@ const PaymentPage: React.FC = () => {
             total_amount: total,
             takeaway_charge: takeawayCharge,
             delivery_fee: deliveryFee,
+            points_used: pointsToUse > 0 ? pointsToUse : null,
+            point_discount: pointDiscount > 0 ? pointDiscount : null,
             // Store delivery info as JSON object
             delivery_info: orderType === 'delivery' ? {
               address: deliveryAddress,
@@ -1294,6 +1381,8 @@ const PaymentPage: React.FC = () => {
               total_amount: total,
               takeaway_charge: takeawayCharge,
               delivery_fee: deliveryFee,
+              points_used: pointsToUse > 0 ? pointsToUse : null,
+              point_discount: pointDiscount > 0 ? pointDiscount : null,
               // Store delivery info as JSON object
               delivery_info: orderType === 'delivery' ? {
                 address: deliveryAddress,
@@ -1490,8 +1579,14 @@ const PaymentPage: React.FC = () => {
           </SummaryRow>
           {couponDiscount > 0 && (
             <SummaryRow>
-              <span>Discount</span>
+              <span>Coupon Discount</span>
               <span style={{ color: '#059669' }}>-{formatCurrency(couponDiscount, currency)}</span>
+            </SummaryRow>
+          )}
+          {pointDiscount > 0 && (
+            <SummaryRow>
+              <span>Points Discount ({pointsToUse} pts)</span>
+              <span style={{ color: '#059669' }}>-{formatCurrency(pointDiscount, currency)}</span>
             </SummaryRow>
           )}
           {takeawayCharge > 0 && (
@@ -2038,7 +2133,153 @@ const PaymentPage: React.FC = () => {
             </div>
           )}
         </Section>
-        
+
+        {/* Points Section - Only show for logged in members with active membership */}
+        {currentCustomer && membershipSettings?.is_active && (
+          <Section>
+            <SectionTitle>Use Points</SectionTitle>
+
+            {/* Points Info */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '12px',
+              background: '#F9FAFB',
+              borderRadius: '8px',
+              marginBottom: '12px'
+            }}>
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: '600', color: '#1F2937' }}>
+                  Available Points
+                </div>
+                <div style={{ fontSize: '12px', color: '#6B7280' }}>
+                  {customerTier} Member
+                </div>
+              </div>
+              <div style={{ fontSize: '20px', fontWeight: '700', color: '#635BFF' }}>
+                {availablePoints.toLocaleString()} pts
+              </div>
+            </div>
+
+            {/* Points usage toggle and slider */}
+            {availablePoints >= (membershipSettings?.min_points_to_use || 100) ? (
+              <>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '12px',
+                  cursor: 'pointer'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={usePoints}
+                    onChange={(e) => {
+                      setUsePoints(e.target.checked);
+                      if (!e.target.checked) {
+                        setPointsToUse(0);
+                      } else {
+                        // Default to max points
+                        setPointsToUse(maxPointsForOrder);
+                      }
+                    }}
+                    style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
+                  />
+                  <span style={{ fontSize: '14px', fontWeight: '500', color: '#1F2937' }}>
+                    Use points for this order
+                  </span>
+                </label>
+
+                {usePoints && maxPointsForOrder > 0 && (
+                  <div>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      fontSize: '13px',
+                      color: '#6B7280',
+                      marginBottom: '8px'
+                    }}>
+                      <span>{membershipSettings?.min_points_to_use || 100} pts</span>
+                      <span>{maxPointsForOrder.toLocaleString()} pts (max)</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={membershipSettings?.min_points_to_use || 100}
+                      max={maxPointsForOrder}
+                      value={pointsToUse}
+                      onChange={(e) => setPointsToUse(Number(e.target.value))}
+                      style={{
+                        width: '100%',
+                        height: '8px',
+                        borderRadius: '4px',
+                        background: '#E5E7EB',
+                        accentColor: '#635BFF'
+                      }}
+                    />
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginTop: '12px',
+                      padding: '12px',
+                      background: '#EFF6FF',
+                      borderRadius: '8px'
+                    }}>
+                      <div>
+                        <div style={{ fontSize: '14px', fontWeight: '600', color: '#1F2937' }}>
+                          Using: {pointsToUse.toLocaleString()} pts
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#6B7280' }}>
+                          ({membershipSettings?.points_to_currency || 100} pts = {formatCurrency(1, currency)})
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '16px', fontWeight: '700', color: '#059669' }}>
+                        -{formatCurrency(pointDiscount, currency)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div style={{
+                fontSize: '13px',
+                color: '#6B7280',
+                textAlign: 'center',
+                padding: '12px'
+              }}>
+                Minimum {membershipSettings?.min_points_to_use || 100} points required to use
+              </div>
+            )}
+
+            {/* Points earning preview */}
+            {membershipSettings?.points_per_currency && (
+              <div style={{
+                marginTop: '12px',
+                padding: '12px',
+                background: '#FEF3C7',
+                borderRadius: '8px',
+                fontSize: '13px',
+                color: '#92400E'
+              }}>
+                You will earn approximately <strong>
+                  {Math.floor((subtotal - couponDiscount) * parseFloat(membershipSettings.points_per_currency) * (
+                    customerTier === 'VIP' ? parseFloat(membershipSettings.vip_bonus_rate) :
+                    customerTier === 'Gold' ? parseFloat(membershipSettings.gold_bonus_rate) :
+                    customerTier === 'Silver' ? parseFloat(membershipSettings.silver_bonus_rate) :
+                    parseFloat(membershipSettings.bronze_bonus_rate)
+                  ))}
+                </strong> points from this order
+                {customerTier !== 'Bronze' && ` (${customerTier} ${
+                  customerTier === 'VIP' ? membershipSettings.vip_bonus_rate :
+                  customerTier === 'Gold' ? membershipSettings.gold_bonus_rate :
+                  membershipSettings.silver_bonus_rate
+                }x bonus)`}
+              </div>
+            )}
+          </Section>
+        )}
+
         {sessionStorage.getItem('orderType') === 'dine-in' && availableTables.length > 0 && (
           <TableSection>
             <SectionTitle>Table Number</SectionTitle>

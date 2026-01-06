@@ -78,6 +78,64 @@ router.put('/settings/:restaurantId', async (req, res) => {
 });
 
 // ========================================
+// 고객 멤버십 정보 조회
+// ========================================
+
+/**
+ * GET /api/membership/customer/:restaurantId/:customerId
+ * 고객의 멤버십 정보 (포인트, 등급 등) 조회
+ */
+router.get('/customer/:restaurantId/:customerId', async (req, res) => {
+  try {
+    const { restaurantId, customerId } = req.params;
+
+    // 고객-레스토랑 관계 조회
+    let customerRelation = await RestaurantCustomer.findOne({
+      where: { restaurant_id: restaurantId, customer_id: customerId },
+      include: [{
+        model: Customer,
+        as: 'customer',
+        attributes: ['id', 'name', 'phone', 'email']
+      }]
+    });
+
+    // 관계가 없으면 기본값 반환
+    if (!customerRelation) {
+      return res.json({
+        success: true,
+        data: {
+          points: 0,
+          total_orders: 0,
+          total_spent: 0,
+          loyalty_tier: 'Bronze',
+          customer: null
+        }
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        points: customerRelation.points || 0,
+        total_orders: customerRelation.total_orders || 0,
+        total_spent: customerRelation.total_spent || 0,
+        loyalty_tier: customerRelation.loyalty_tier || 'Bronze',
+        last_order_at: customerRelation.last_order_at,
+        points_expiring: customerRelation.points_expiring || 0,
+        points_expiry_date: customerRelation.points_expiry_date,
+        customer: customerRelation.customer
+      }
+    });
+  } catch (error) {
+    console.error('Get customer membership error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get customer membership info'
+    });
+  }
+});
+
+// ========================================
 // 포인트 적립/사용
 // ========================================
 

@@ -186,6 +186,18 @@ Order.init({
     defaultValue: 0,
     comment: 'Delivery fee amount'
   },
+  points_used: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: 0,
+    comment: 'Points used for this order'
+  },
+  point_discount: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0,
+    comment: 'Discount amount from points usage'
+  },
   is_deleted: {
     type: DataTypes.BOOLEAN,
     allowNull: false,
