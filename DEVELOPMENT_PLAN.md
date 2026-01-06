@@ -6,6 +6,55 @@
 
 ---
 
+## 🚨 다음 접속 시 필수 작업
+
+### 멤버십/포인트 시스템 테스트 (2026-01-06 개발 완료)
+
+**개발 완료된 기능:**
+- Settings > Membership 탭 (멤버십 설정 UI)
+- 모바일 오더 포인트 사용 UI
+- POS 시스템 포인트 사용 UI
+- 주문 완료 시 포인트 자동 적립
+- 주문 취소 시 포인트 환불
+
+**테스트 체크리스트:**
+
+1. **멤버십 설정 테스트**
+   - [ ] Settings > Membership 탭 접근
+   - [ ] Enable Membership 토글 작동
+   - [ ] 포인트 설정 저장 (적립비율, 사용환율, 최소사용 등)
+   - [ ] 등급 threshold/bonus 설정 저장
+
+2. **모바일 오더 테스트**
+   - [ ] 회원 로그인 시 포인트 섹션 표시
+   - [ ] 포인트 사용 체크박스/슬라이더 작동
+   - [ ] 포인트 할인 금액 실시간 계산
+   - [ ] 주문 생성 시 points_used 저장 확인
+
+3. **POS 시스템 테스트**
+   - [ ] 고객 선택 시 포인트 로드
+   - [ ] Payment Modal에서 포인트 사용 UI 표시
+   - [ ] 결제 시 포인트 차감 확인
+
+4. **포인트 적립/환불 테스트**
+   - [ ] 주문 완료(completed) 시 포인트 적립 확인
+   - [ ] 주문 취소(cancelled) 시 포인트 환불 확인
+   - [ ] point_transactions 테이블 기록 확인
+
+5. **배포 필요**
+   - [ ] `/var/www/html/static/js` 권한 문제 해결 필요 (root 소유)
+   - [ ] 프론트엔드 수동 배포 또는 권한 수정 후 재배포
+
+**관련 파일:**
+- `/var/www/dev-frontend/src/pages/Settings/SettingsPage.tsx` (Membership 탭)
+- `/var/www/dev-frontend/src/mobile/pages/PaymentPage.tsx` (모바일 포인트)
+- `/var/www/dev-frontend/src/components/POSTerminal/PaymentModal.tsx` (POS 포인트)
+- `/var/www/dev-backend/services/pointService.js` (포인트 비즈니스 로직)
+- `/var/www/dev-backend/routes/membership.js` (멤버십 API)
+- `/var/www/dev-backend/routes/orders.js` (주문 생성 시 포인트 처리)
+
+---
+
 ## 📋 목차
 1. [시스템 구조](#시스템-구조)
 2. [완료된 작업](#완료된-작업)
@@ -307,6 +356,65 @@ const dateKey = `${(orderDate.getMonth() + 1).toString().padStart(2, '0')}/${ord
 ---
 
 ## ✅ 완료된 작업 (2026-01-06)
+
+### 멤버십/포인트 시스템 구현
+
+**목적:** 레스토랑별 고객 포인트 적립/사용 시스템
+
+**완료 항목:**
+
+#### 1. 데이터베이스 설계
+- [x] `membership_settings` 테이블 생성 (포인트 설정, 등급별 보너스)
+- [x] `point_transactions` 테이블 생성 (포인트 거래 내역)
+- [x] `restaurant_customers` 테이블에 points, loyalty_tier 필드 추가
+- [x] `orders` 테이블에 points_used, point_discount 컬럼 추가
+
+#### 2. Backend 구현
+- [x] MembershipSettings 모델 (`/var/www/dev-backend/models/MembershipSettings.js`)
+- [x] PointTransaction 모델 (`/var/www/dev-backend/models/PointTransaction.js`)
+- [x] 포인트 서비스 (`/var/www/dev-backend/services/pointService.js`)
+  - earnPointsForOrder: 주문 완료 시 포인트 적립
+  - usePointsForOrder: 주문 시 포인트 사용
+  - refundPointsForOrder: 주문 취소 시 포인트 환불
+- [x] 멤버십 API (`/var/www/dev-backend/routes/membership.js`)
+  - GET `/settings/:restaurantId` - 설정 조회
+  - PUT `/settings/:restaurantId` - 설정 저장
+  - GET `/customer/:restaurantId/:customerId` - 고객 포인트 조회
+- [x] orders.js에 포인트 처리 로직 추가
+
+#### 3. Frontend - 모바일 오더
+- [x] PaymentPage.tsx에 포인트 UI 추가
+  - 포인트 사용 체크박스/슬라이더
+  - 포인트 할인 금액 실시간 계산
+  - 예상 적립 포인트 표시
+- [x] 주문 생성 시 points_used, point_discount 전송
+
+#### 4. Frontend - POS 시스템
+- [x] PaymentModal.tsx에 포인트 UI 추가
+  - 고객 포인트 표시
+  - 포인트 사용 토글/슬라이더
+  - 할인 금액 계산
+- [x] POSTerminalPage.tsx에 포인트 상태/로딩 로직 추가
+
+#### 5. Frontend - Settings
+- [x] SettingsPage.tsx에 Membership 탭 추가
+  - Enable Membership 토글
+  - 포인트 적립 비율 설정
+  - 포인트 사용 환율 설정
+  - 최소 사용 포인트 설정
+  - 최대 사용 비율 설정
+  - 등급별 threshold/bonus 설정
+
+**관련 파일:**
+- Backend: `membership.js`, `pointService.js`, `orders.js`, Order 모델
+- Frontend: `PaymentPage.tsx`, `PaymentModal.tsx`, `POSTerminalPage.tsx`, `SettingsPage.tsx`
+- Migration: `add-points-columns-to-orders.sql`
+
+**알려진 이슈:**
+- `/var/www/html/static/js` 권한 문제로 프론트엔드 배포 실패 (root 소유)
+- 해결 필요: 권한 수정 또는 수동 배포
+
+---
 
 ### Dashboard 타임존 설정 문제 해결
 
