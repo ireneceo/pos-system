@@ -111,43 +111,56 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-// Get sales data for charts
+// Get sales data for charts (Optimized - single query instead of N+1)
 router.get('/sales-chart', async (req, res) => {
   try {
     const { days = 7 } = req.query;
     const daysCount = parseInt(days);
-    
-    const dates = [];
+
+    // Calculate date range
+    const endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - daysCount + 1);
+    startDate.setHours(0, 0, 0, 0);
+
+    // Single query to get all orders in the range
+    const orders = await Order.findAll({
+      where: {
+        createdAt: {
+          [Op.gte]: startDate,
+          [Op.lte]: endDate
+        },
+        status: 'completed'
+      },
+      attributes: ['createdAt', 'total_amount']
+    });
+
+    // Group by date in memory
+    const ordersByDate = {};
+    orders.forEach(order => {
+      const dateKey = order.createdAt.toISOString().split('T')[0];
+      if (!ordersByDate[dateKey]) {
+        ordersByDate[dateKey] = { revenue: 0, orders: 0 };
+      }
+      ordersByDate[dateKey].revenue += parseFloat(order.total_amount);
+      ordersByDate[dateKey].orders += 1;
+    });
+
+    // Build result for all days (including days with no orders)
     const salesData = [];
-    
     for (let i = daysCount - 1; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
-      date.setHours(0, 0, 0, 0);
-      
-      const nextDate = new Date(date);
-      nextDate.setDate(nextDate.getDate() + 1);
-      
-      const orders = await Order.findAll({
-        where: {
-          createdAt: {
-            [Op.gte]: date,
-            [Op.lt]: nextDate
-          },
-          status: 'completed'
-        }
-      });
-      
-      const dayRevenue = orders.reduce((sum, order) => sum + parseFloat(order.total_amount), 0);
-      
-      dates.push(date.toISOString().split('T')[0]);
+      const dateKey = date.toISOString().split('T')[0];
+
       salesData.push({
-        date: date.toISOString().split('T')[0],
-        revenue: dayRevenue,
-        orders: orders.length
+        date: dateKey,
+        revenue: ordersByDate[dateKey]?.revenue || 0,
+        orders: ordersByDate[dateKey]?.orders || 0
       });
     }
-    
+
     res.json({
       success: true,
       data: salesData
@@ -501,103 +514,117 @@ router.get('/restaurant/:restaurantId/stats', authenticateToken, checkRestaurant
   }
 });
 
-// Get restaurant sales chart data
+// Get restaurant sales chart data (Optimized - single query instead of N+1)
 router.get('/restaurant/:restaurantId/sales-chart', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
     const { period = 'week' } = req.query; // week, month, year
 
+    // Calculate date range based on period
+    let startDate, endDate;
+    const now = new Date();
+
+    if (period === 'week') {
+      startDate = new Date(now);
+      startDate.setDate(startDate.getDate() - 6);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(now);
+      endDate.setHours(23, 59, 59, 999);
+    } else if (period === 'month') {
+      startDate = new Date(now);
+      startDate.setDate(startDate.getDate() - 27); // 4 weeks
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(now);
+      endDate.setHours(23, 59, 59, 999);
+    } else if (period === 'year') {
+      startDate = new Date(now);
+      startDate.setMonth(startDate.getMonth() - 11);
+      startDate.setDate(1);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(now);
+      endDate.setHours(23, 59, 59, 999);
+    }
+
+    // Single query to get all orders in the range
+    const orders = await Order.findAll({
+      where: {
+        restaurant_id: restaurantId,
+        createdAt: {
+          [Op.gte]: startDate,
+          [Op.lte]: endDate
+        },
+        status: 'completed'
+      },
+      attributes: ['createdAt', 'total_amount']
+    });
+
+    // Group orders by the appropriate time unit
     const salesData = [];
 
     if (period === 'week') {
-      // Last 7 days
+      // Group by day
+      const ordersByDate = {};
+      orders.forEach(order => {
+        const dateKey = order.createdAt.toISOString().split('T')[0];
+        if (!ordersByDate[dateKey]) {
+          ordersByDate[dateKey] = { revenue: 0, orders: 0 };
+        }
+        ordersByDate[dateKey].revenue += parseFloat(order.total_amount);
+        ordersByDate[dateKey].orders += 1;
+      });
+
       for (let i = 6; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
-        date.setHours(0, 0, 0, 0);
-
-        const nextDate = new Date(date);
-        nextDate.setDate(nextDate.getDate() + 1);
-
-        const orders = await Order.findAll({
-          where: {
-            restaurant_id: restaurantId,
-            createdAt: {
-              [Op.gte]: date,
-              [Op.lt]: nextDate
-            },
-            status: 'completed'
-          }
-        });
-
-        const dayRevenue = orders.reduce((sum, order) => sum + parseFloat(order.total_amount), 0);
-
+        const dateKey = date.toISOString().split('T')[0];
         salesData.push({
-          date: date.toISOString().split('T')[0],
-          revenue: dayRevenue,
-          orders: orders.length
+          date: dateKey,
+          revenue: ordersByDate[dateKey]?.revenue || 0,
+          orders: ordersByDate[dateKey]?.orders || 0
         });
       }
     } else if (period === 'month') {
-      // Last 4 weeks
-      for (let i = 3; i >= 0; i--) {
-        const weekEnd = new Date();
-        weekEnd.setDate(weekEnd.getDate() - (i * 7));
-        weekEnd.setHours(23, 59, 59, 999);
+      // Group by week
+      const weekData = [{revenue: 0, orders: 0}, {revenue: 0, orders: 0}, {revenue: 0, orders: 0}, {revenue: 0, orders: 0}];
+      orders.forEach(order => {
+        const daysAgo = Math.floor((now - order.createdAt) / (1000 * 60 * 60 * 24));
+        const weekIndex = 3 - Math.floor(daysAgo / 7);
+        if (weekIndex >= 0 && weekIndex < 4) {
+          weekData[weekIndex].revenue += parseFloat(order.total_amount);
+          weekData[weekIndex].orders += 1;
+        }
+      });
 
-        const weekStart = new Date(weekEnd);
-        weekStart.setDate(weekEnd.getDate() - 6);
-        weekStart.setHours(0, 0, 0, 0);
-
-        const orders = await Order.findAll({
-          where: {
-            restaurant_id: restaurantId,
-            createdAt: {
-              [Op.gte]: weekStart,
-              [Op.lte]: weekEnd
-            },
-            status: 'completed'
-          }
-        });
-
-        const weekRevenue = orders.reduce((sum, order) => sum + parseFloat(order.total_amount), 0);
-
+      for (let i = 0; i < 4; i++) {
+        const weekStart = new Date();
+        weekStart.setDate(weekStart.getDate() - ((3 - i) * 7 + 6));
         salesData.push({
           date: weekStart.toISOString().split('T')[0],
-          revenue: weekRevenue,
-          orders: orders.length
+          revenue: weekData[i].revenue,
+          orders: weekData[i].orders
         });
       }
     } else if (period === 'year') {
-      // Last 12 months
+      // Group by month
+      const ordersByMonth = {};
+      orders.forEach(order => {
+        const monthKey = order.createdAt.toISOString().slice(0, 7); // YYYY-MM
+        if (!ordersByMonth[monthKey]) {
+          ordersByMonth[monthKey] = { revenue: 0, orders: 0 };
+        }
+        ordersByMonth[monthKey].revenue += parseFloat(order.total_amount);
+        ordersByMonth[monthKey].orders += 1;
+      });
+
       for (let i = 11; i >= 0; i--) {
         const monthStart = new Date();
         monthStart.setMonth(monthStart.getMonth() - i);
         monthStart.setDate(1);
-        monthStart.setHours(0, 0, 0, 0);
-
-        const monthEnd = new Date(monthStart);
-        monthEnd.setMonth(monthStart.getMonth() + 1);
-        monthEnd.setDate(0);
-        monthEnd.setHours(23, 59, 59, 999);
-
-        const orders = await Order.findAll({
-          where: {
-            restaurant_id: restaurantId,
-            createdAt: {
-              [Op.gte]: monthStart,
-              [Op.lte]: monthEnd
-            },
-            status: 'completed'
-          }
-        });
-
-        const monthRevenue = orders.reduce((sum, order) => sum + parseFloat(order.total_amount), 0);
-
+        const monthKey = monthStart.toISOString().slice(0, 7);
         salesData.push({
           date: monthStart.toISOString().split('T')[0],
-          revenue: monthRevenue,
-          orders: orders.length
+          revenue: ordersByMonth[monthKey]?.revenue || 0,
+          orders: ordersByMonth[monthKey]?.orders || 0
         });
       }
     }
