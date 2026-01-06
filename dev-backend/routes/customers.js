@@ -4,6 +4,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { Customer, RestaurantCustomer, Restaurant, Order } = require('../models');
 const { Op } = require('sequelize');
+const { sequelize } = require('../config/database');
 const emailService = require('../utils/emailService');
 
 // ========================================
