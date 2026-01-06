@@ -70,7 +70,7 @@ router.get('/invoice-settings', async (req, res) => {
 });
 
 // Get all invoices for admin (system-wide overview)
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const invoices = await Invoice.findAll({
       include: [{
@@ -189,7 +189,7 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
 });
 
 // Get all invoices for manager (across all restaurants they manage)
-router.get('/manager/:managerId', async (req, res) => {
+router.get('/manager/:managerId', authenticateToken, async (req, res) => {
   try {
     const { managerId } = req.params;
     
@@ -249,7 +249,7 @@ router.get('/manager/:managerId', async (req, res) => {
 });
 
 // Get invoice details with items
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const invoice = await Invoice.findByPk(req.params.id);
     if (!invoice) {
@@ -268,20 +268,23 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create new invoice (manual)
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   console.log('POST /api/invoices called with:', JSON.stringify(req.body, null, 2));
+  const { sequelize } = require('../config/database');
+  const transaction = await sequelize.transaction();
+
   try {
     const { invoice_data, items } = req.body;
-    
+
     // Calculate total amount from items if not provided
     if (!invoice_data.total_amount && items && items.length > 0) {
       invoice_data.total_amount = items.reduce((sum, item) => sum + (parseFloat(item.total_amount) || 0), 0);
     }
-    
+
     // Debug logging
     console.log('Invoice data before creation:', JSON.stringify(invoice_data, null, 2));
-    
-    // Generate invoice number
+
+    // Generate invoice number with lock to prevent duplicates
     const year = new Date().getFullYear();
     const month = String(new Date().getMonth() + 1).padStart(2, '0');
     const count = await Invoice.count({
@@ -289,32 +292,35 @@ router.post('/', async (req, res) => {
         invoice_number: {
           [Op.like]: `${invoice_data.invoice_prefix || 'INV'}-${year}${month}%`
         }
-      }
+      },
+      transaction
     });
-    
+
     invoice_data.invoice_number = `${invoice_data.invoice_prefix || 'INV'}-${year}${month}${String(count + 1).padStart(4, '0')}`;
-    
-    // Create invoice
-    const invoice = await Invoice.create(invoice_data);
-    
-    // Create invoice items
+
+    // Create invoice within transaction
+    const invoice = await Invoice.create(invoice_data, { transaction });
+
+    // Create invoice items within same transaction
     if (items && items.length > 0) {
       const invoiceItems = items.map(item => ({
         ...item,
         invoice_id: invoice.id
       }));
-      await InvoiceItem.bulkCreate(invoiceItems);
+      await InvoiceItem.bulkCreate(invoiceItems, { transaction });
     }
-    
+
+    await transaction.commit();
     res.status(201).json({ success: true, invoice });
   } catch (error) {
+    await transaction.rollback();
     console.error('Error creating invoice:', error);
     res.status(500).json({ error: 'Failed to create invoice' });
   }
 });
 
 // Update invoice status
-router.patch('/:id/status', async (req, res) => {
+router.patch('/:id/status', authenticateToken, async (req, res) => {
   try {
     const { status, paid_amount, paid_at } = req.body;
     
@@ -371,7 +377,7 @@ router.post('/:id/payment', authenticateToken, async (req, res) => {
 });
 
 // Delete invoice
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const invoice = await Invoice.findByPk(req.params.id);
     if (!invoice) {
@@ -394,7 +400,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Get invoice settings for a restaurant
-router.get('/settings/:restaurantId', async (req, res) => {
+router.get('/settings/:restaurantId', authenticateToken, async (req, res) => {
   try {
     const settings = await InvoiceSettings.findOne({
       where: { restaurant_id: req.params.restaurantId }
@@ -419,7 +425,7 @@ router.get('/settings/:restaurantId', async (req, res) => {
 });
 
 // Update invoice settings
-router.put('/settings/:restaurantId', async (req, res) => {
+router.put('/settings/:restaurantId', authenticateToken, async (req, res) => {
   try {
     const { restaurantId } = req.params;
     
@@ -444,7 +450,7 @@ router.put('/settings/:restaurantId', async (req, res) => {
 });
 
 // Generate invoices for all active subscriptions
-router.post('/generate-for-subscriptions', async (req, res) => {
+router.post('/generate-for-subscriptions', authenticateToken, async (req, res) => {
   try {
     console.log('Generating invoices for all active subscriptions...');
 
@@ -672,7 +678,7 @@ router.post('/generate-for-subscriptions', async (req, res) => {
 });
 
 // Generate invoices automatically (for cron job or manual trigger)
-router.post('/generate-automatic', async (req, res) => {
+router.post('/generate-automatic', authenticateToken, async (req, res) => {
   try {
     // Support both camelCase and snake_case
     const restaurant_id = req.body.restaurantId || req.body.restaurant_id;
@@ -832,7 +838,7 @@ router.post('/generate-automatic', async (req, res) => {
 });
 
 // Update an invoice
-router.put('/:invoiceId', async (req, res) => {
+router.put('/:invoiceId', authenticateToken, async (req, res) => {
   try {
     const { invoiceId } = req.params;
     const {

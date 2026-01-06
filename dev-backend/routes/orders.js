@@ -6,9 +6,10 @@ const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const { executeQuery, executeTransaction } = require('../utils/queryWrapper');
 const { deductInventoryForOrder } = require('../services/inventoryDeductionService');
+const { authenticateToken } = require('../middleware/auth');
 
 // Get all orders
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const { status, date, limit = 50, restaurantId, restaurant_id } = req.query;
     // Support both camelCase (new) and snake_case (legacy)
@@ -57,7 +58,7 @@ router.get('/', async (req, res) => {
 });
 
 // Get single order
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticateToken, async (req, res) => {
   try {
     // 쿼리 래퍼 사용 (자동 재시도)
     const order = await executeQuery(async () => {
@@ -75,7 +76,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create new order
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const orderData = req.body;
     // Support both camelCase (new) and snake_case (legacy)
@@ -262,7 +263,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update order (full update)
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', authenticateToken, async (req, res) => {
   try {
     // 쿼리 래퍼 사용 (트랜잭션 및 자동 재시도)
     const result = await executeTransaction(async (t) => {
@@ -295,7 +296,7 @@ router.patch('/:id', async (req, res) => {
 });
 
 // Update order status
-router.patch('/:id/status', async (req, res) => {
+router.patch('/:id/status', authenticateToken, async (req, res) => {
   try {
     const { status, kitchen_ready, served_at } = req.body;
     const order = await Order.findByPk(req.params.id);
@@ -338,6 +339,9 @@ router.patch('/:id/status', async (req, res) => {
     await order.reload(); // Ensure we have the latest data
 
     // Deduct inventory when order is completed (only if it wasn't already completed)
+    // Note: deductInventoryForOrder uses its own transaction internally
+    // If inventory deduction fails, the order status is already saved
+    // This is intentional - we don't want to block order completion due to inventory issues
     if (willBeCompleted && !wasCompleted && order.order_items) {
       try {
         const items = Array.isArray(order.order_items) ? order.order_items : JSON.parse(order.order_items);
@@ -377,7 +381,7 @@ router.patch('/:id/status', async (req, res) => {
 });
 
 // Update order items (for kitchen item status tracking)
-router.patch('/:id/items', async (req, res) => {
+router.patch('/:id/items', authenticateToken, async (req, res) => {
   try {
     const { order_items } = req.body;
     const order = await Order.findByPk(req.params.id);
@@ -404,7 +408,7 @@ router.patch('/:id/items', async (req, res) => {
 });
 
 // Delete order (soft delete - preserves order number)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const order = await Order.findByPk(req.params.id);
     if (!order) {
@@ -433,7 +437,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Get orders by restaurant ID
-router.get('/restaurant/:restaurantId', async (req, res) => {
+router.get('/restaurant/:restaurantId', authenticateToken, async (req, res) => {
   try {
     const {
       status,
@@ -495,7 +499,7 @@ router.get('/restaurant/:restaurantId', async (req, res) => {
 });
 
 // Get orders by table number
-router.get('/table/:tableNumber', async (req, res) => {
+router.get('/table/:tableNumber', authenticateToken, async (req, res) => {
   try {
     const orders = await Order.findAll({
       where: {
@@ -512,7 +516,7 @@ router.get('/table/:tableNumber', async (req, res) => {
 });
 
 // Get kitchen orders (pending and preparing)
-router.get('/kitchen/active', async (req, res) => {
+router.get('/kitchen/active', authenticateToken, async (req, res) => {
   try {
     const orders = await Order.findAll({
       where: { 
@@ -528,7 +532,7 @@ router.get('/kitchen/active', async (req, res) => {
 });
 
 // Get sales data
-router.get('/analytics/sales', async (req, res) => {
+router.get('/analytics/sales', authenticateToken, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     
@@ -563,7 +567,7 @@ router.get('/analytics/sales', async (req, res) => {
 });
 
 // Generate next order number (prevents duplicates)
-router.get('/restaurant/:restaurantId/next-order-number', async (req, res) => {
+router.get('/restaurant/:restaurantId/next-order-number', authenticateToken, async (req, res) => {
   try {
     const { restaurantId } = req.params;
     let timeZone = req.query.timeZone || 'Asia/Kuala_Lumpur';
