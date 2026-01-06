@@ -332,18 +332,40 @@ router.get('/restaurant/:restaurantId/stats', authenticateToken, checkRestaurant
 
     // Reload the restaurant to ensure we have the latest data
     await restaurant.reload();
-    
+
+    // Get timezone from operation_settings (default: Asia/Kuala_Lumpur)
+    const operationSettings = restaurant.operation_settings || {};
+    const timeZone = operationSettings.timeZone || 'Asia/Kuala_Lumpur';
+
+    // Helper function to get today's start and end in restaurant's timezone
+    const getTodayBounds = (tz) => {
+      const now = new Date();
+      // Get current date string in the target timezone
+      const dateStr = now.toLocaleDateString('en-CA', { timeZone: tz }); // YYYY-MM-DD format
+      // Create start and end of day in UTC that corresponds to the timezone's day
+      const startOfDay = new Date(`${dateStr}T00:00:00`);
+      const endOfDay = new Date(`${dateStr}T23:59:59.999`);
+
+      // Adjust for timezone offset
+      const tzOffset = new Date().toLocaleString('en-US', { timeZone: tz, timeZoneName: 'shortOffset' });
+      const offsetMatch = tzOffset.match(/GMT([+-]\d+)/);
+      const offsetHours = offsetMatch ? parseInt(offsetMatch[1]) : 8; // Default to +8 for Asia/Kuala_Lumpur
+
+      startOfDay.setHours(startOfDay.getHours() - offsetHours);
+      endOfDay.setHours(endOfDay.getHours() - offsetHours);
+
+      return { startOfDay, endOfDay };
+    };
+
+    const { startOfDay: today, endOfDay: todayEnd } = getTodayBounds(timeZone);
+    const tomorrow = new Date(todayEnd.getTime() + 1);
+
     // Get restaurant orders
     const orders = await Order.findAll({
       where: { restaurant_id: restaurantId }
     });
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    
-    // Today's orders
+
+    // Today's orders (using timezone-aware bounds)
     const todayOrders = orders.filter(order => {
       const orderDate = new Date(order.order_date);
       return orderDate >= today && orderDate < tomorrow;

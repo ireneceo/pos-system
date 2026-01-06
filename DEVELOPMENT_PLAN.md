@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-01-04
+> **최종 업데이트:** 2026-01-06
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -303,6 +303,51 @@ const dateKey = `${(orderDate.getMonth() + 1).toString().padStart(2, '0')}/${ord
 - 개발 세션 종료 시 사용하는 명령어
 - 문서 자동 업데이트 (DEVELOPMENT_PLAN.md 등)
 - Git 커밋 및 푸시 자동화
+
+---
+
+## ✅ 완료된 작업 (2026-01-06)
+
+### Dashboard 타임존 설정 문제 해결
+
+**문제:** Dashboard "오늘의 매출" 통계가 레스토랑 타임존 설정을 무시하고 있었음
+
+**원인:**
+- Dashboard API가 "오늘" 날짜 계산 시 고정된 자정(00:00)을 사용
+- Brand/Foodcourt 역할은 operation_settings 필드가 없어서 타임존 설정 자체가 불가능
+
+**해결:**
+1. **Brand/Foodcourt 모델에 operation_settings 필드 추가**
+   - `dev-backend/models/Brand.js` - JSON getter/setter로 operation_settings 추가
+   - `dev-backend/models/Foodcourt.js` - 동일하게 추가
+   - 기본값: `{ openingTime: '09:00', closingTime: '22:00', timeZone: 'Asia/Kuala_Lumpur' }`
+
+2. **Brand/Foodcourt API 업데이트**
+   - `dev-backend/routes/brands.js` - GET/PUT company-info에 operation_settings 포함
+   - `dev-backend/routes/foodcourts.js` - GET/PUT company-info에 operation_settings 포함
+
+3. **Company Information 페이지에 Operation Settings UI 추가**
+   - `dev-frontend/src/pages/Brand/BrandCompanyInfoPage.tsx`
+   - `dev-frontend/src/pages/Foodcourt/FoodcourtCompanyInfoPage.tsx`
+   - Opening Time, Closing Time, Timezone 필드 추가
+   - 16개 주요 타임존 선택 가능
+
+4. **Dashboard API 타임존 기반 날짜 계산 적용**
+   - `dev-backend/routes/dashboard.js` - getTodayBounds() 함수 추가
+   - operation_settings.timeZone에 따라 "오늘"의 시작/끝 시간 계산
+
+**테스트 완료:**
+- DB 저장/로드 테스트 성공
+- Frontend 빌드 성공
+
+**수정된 파일 (7개):**
+- `dev-backend/models/Brand.js`
+- `dev-backend/models/Foodcourt.js`
+- `dev-backend/routes/brands.js`
+- `dev-backend/routes/foodcourts.js`
+- `dev-backend/routes/dashboard.js`
+- `dev-frontend/src/pages/Brand/BrandCompanyInfoPage.tsx`
+- `dev-frontend/src/pages/Foodcourt/FoodcourtCompanyInfoPage.tsx`
 
 ---
 
