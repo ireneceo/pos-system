@@ -144,6 +144,7 @@ const adminSettingsRouter = require('./routes/admin-settings');
 const supportTicketsRouter = require('./routes/support-tickets');
 const operationTicketsRouter = require('./routes/operationTickets');
 const customersRouter = require('./routes/customers');
+const membershipRouter = require('./routes/membership');
 const activityLogsRouter = require('./routes/activityLogs');
 const optionGroupsRouter = require('./routes/optionGroups');
 const healthRouter = require('./routes/health');
@@ -184,6 +185,7 @@ app.use('/api/admin/settings', adminSettingsRouter);
 app.use('/api/admin-settings', adminSettingsRouter); // Alternative route for backward compatibility
 app.use('/api/support-tickets', supportTicketsRouter);
 app.use('/api/customers', customersRouter);
+app.use('/api/membership', membershipRouter);
 app.use('/api/operation-tickets', operationTicketsRouter);
 app.use('/api/activity-logs', activityLogsRouter);
 app.use('/api/option-groups', optionGroupsRouter);

@@ -47,6 +47,8 @@ const ProductIngredient = require('./ProductIngredient');
 const ProductRecipeCategory = require('./ProductRecipeCategory');
 const ProductIngredientCategory = require('./ProductIngredientCategory');
 const ProductRecipeIngredient = require('./ProductRecipeIngredient');
+const MembershipSettings = require('./MembershipSettings');
+const PointTransaction = require('./PointTransaction');
 
 // Define associations
 // Brand - Restaurant associations
@@ -352,6 +354,18 @@ ProductRecipeIngredient.belongsTo(ProductIngredient, { foreignKey: 'ingredient_i
 BrandProduct.belongsTo(ProductRecipe, { foreignKey: 'product_recipe_id', as: 'productRecipe' });
 ProductRecipe.hasMany(BrandProduct, { foreignKey: 'product_recipe_id', as: 'brandProducts' });
 
+// MembershipSettings - Restaurant association (1:1)
+MembershipSettings.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Restaurant.hasOne(MembershipSettings, { foreignKey: 'restaurant_id', as: 'membershipSettings' });
+
+// PointTransaction associations
+PointTransaction.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Restaurant.hasMany(PointTransaction, { foreignKey: 'restaurant_id', as: 'pointTransactions' });
+PointTransaction.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer' });
+Customer.hasMany(PointTransaction, { foreignKey: 'customer_id', as: 'pointTransactions' });
+PointTransaction.belongsTo(Order, { foreignKey: 'order_id', as: 'order' });
+Order.hasMany(PointTransaction, { foreignKey: 'order_id', as: 'pointTransactions' });
+
 module.exports = {
   User,
   Restaurant,
@@ -401,5 +415,7 @@ module.exports = {
   ProductIngredient,
   ProductRecipeCategory,
   ProductIngredientCategory,
-  ProductRecipeIngredient
+  ProductRecipeIngredient,
+  MembershipSettings,
+  PointTransaction
 };
