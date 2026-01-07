@@ -33,20 +33,28 @@ echo -e "${YELLOW}Step 0: Fixing file ownership issues...${NC}"
 TARGET_USER="${SUDO_USER:-$(whoami)}"
 TARGET_GROUP="${TARGET_USER}"
 
-# root 소유 파일이 있으면 수정
-ROOT_FILES_FRONTEND=$(find "$PROD_FRONTEND" -user root 2>/dev/null | wc -l)
-ROOT_FILES_BACKEND=$(find "$PROD_BACKEND/node_modules" -user root 2>/dev/null | wc -l)
+# root 소유 파일이 있으면 수정 (dev, prod 모두 체크)
+ROOT_FILES_PROD_FRONTEND=$(find "$PROD_FRONTEND" -user root 2>/dev/null | wc -l)
+ROOT_FILES_DEV_FRONTEND=$(find "$DEV_FRONTEND" -user root 2>/dev/null | wc -l)
+ROOT_FILES_PROD_BACKEND=$(find "$PROD_BACKEND/node_modules" -user root 2>/dev/null | wc -l)
+ROOT_FILES_DEV_BACKEND=$(find "$DEV_BACKEND" -user root 2>/dev/null | wc -l)
 
-if [ "$ROOT_FILES_FRONTEND" -gt 0 ] || [ "$ROOT_FILES_BACKEND" -gt 0 ]; then
+TOTAL_ROOT_FILES=$((ROOT_FILES_PROD_FRONTEND + ROOT_FILES_DEV_FRONTEND + ROOT_FILES_PROD_BACKEND + ROOT_FILES_DEV_BACKEND))
+
+if [ "$TOTAL_ROOT_FILES" -gt 0 ]; then
     echo -e "${BLUE}   Found root-owned files. Fixing ownership...${NC}"
     if [ "$EUID" -eq 0 ]; then
         # root로 실행 중 - 직접 chown
-        [ "$ROOT_FILES_FRONTEND" -gt 0 ] && chown -R "$TARGET_USER:$TARGET_GROUP" "$PROD_FRONTEND"
-        [ "$ROOT_FILES_BACKEND" -gt 0 ] && chown -R "$TARGET_USER:$TARGET_GROUP" "$PROD_BACKEND/node_modules"
+        [ "$ROOT_FILES_PROD_FRONTEND" -gt 0 ] && chown -R "$TARGET_USER:$TARGET_GROUP" "$PROD_FRONTEND"
+        [ "$ROOT_FILES_DEV_FRONTEND" -gt 0 ] && chown -R "$TARGET_USER:$TARGET_GROUP" "$DEV_FRONTEND"
+        [ "$ROOT_FILES_PROD_BACKEND" -gt 0 ] && chown -R "$TARGET_USER:$TARGET_GROUP" "$PROD_BACKEND/node_modules"
+        [ "$ROOT_FILES_DEV_BACKEND" -gt 0 ] && chown -R "$TARGET_USER:$TARGET_GROUP" "$DEV_BACKEND"
     else
         # sudo 시도
-        [ "$ROOT_FILES_FRONTEND" -gt 0 ] && sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$PROD_FRONTEND"
-        [ "$ROOT_FILES_BACKEND" -gt 0 ] && sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$PROD_BACKEND/node_modules"
+        [ "$ROOT_FILES_PROD_FRONTEND" -gt 0 ] && sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$PROD_FRONTEND"
+        [ "$ROOT_FILES_DEV_FRONTEND" -gt 0 ] && sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$DEV_FRONTEND"
+        [ "$ROOT_FILES_PROD_BACKEND" -gt 0 ] && sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$PROD_BACKEND/node_modules"
+        [ "$ROOT_FILES_DEV_BACKEND" -gt 0 ] && sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$DEV_BACKEND"
     fi
     echo -e "${GREEN}   ✅ Ownership fixed for $TARGET_USER${NC}"
 else
@@ -344,22 +352,16 @@ echo ""
 echo -e "${YELLOW}Step 9: Build Frontend${NC}"
 cd $DEV_FRONTEND
 
-# 캐시 폴더 권한 문제 자동 해결
-CACHE_DIR="node_modules/.cache"
-if [ -d "$CACHE_DIR" ]; then
-    CACHE_OWNER=$(stat -c '%U' "$CACHE_DIR" 2>/dev/null || echo "unknown")
-    CURRENT_USER=$(whoami)
-    if [ "$CACHE_OWNER" = "root" ] && [ "$CURRENT_USER" != "root" ]; then
-        echo -e "${BLUE}   Fixing cache folder permissions...${NC}"
-        sudo chown -R "$CURRENT_USER":"$CURRENT_USER" "$CACHE_DIR"
-    fi
-fi
-
 # 캐시 및 빌드 폴더 클리어
-rm -rf node_modules/.cache build 2>/dev/null || sudo rm -rf node_modules/.cache build
+rm -rf node_modules/.cache build 2>/dev/null || true
 
 echo -e "${BLUE}   Building React app...${NC}"
-npm run build
+# sudo로 실행된 경우 원래 사용자로 빌드 (root 소유 파일 생성 방지)
+if [ -n "$SUDO_USER" ]; then
+    su - $SUDO_USER -c "cd $DEV_FRONTEND && npm run build"
+else
+    npm run build
+fi
 
 if [ ! -d "build" ]; then
     echo -e "${RED}   ❌ Frontend build failed!${NC}"
@@ -373,14 +375,12 @@ echo -e "${GREEN}   ✅ Frontend built successfully${NC}"
 echo ""
 echo -e "${YELLOW}Step 10: Deploy Frontend Build${NC}"
 
-# 빌드 폴더 삭제 및 복사 (권한 문제 시 sudo 사용)
-if rm -rf $PROD_FRONTEND/build 2>/dev/null; then
-    cp -r $DEV_FRONTEND/build $PROD_FRONTEND/
-else
-    echo -e "${BLUE}   Using sudo for frontend deployment...${NC}"
-    sudo rm -rf $PROD_FRONTEND/build
-    sudo cp -r $DEV_FRONTEND/build $PROD_FRONTEND/
-    sudo chown -R $(whoami):$(whoami) $PROD_FRONTEND/build
+# 빌드 폴더 삭제 및 복사 (원래 사용자 권한으로)
+rm -rf $PROD_FRONTEND/build 2>/dev/null || true
+cp -r $DEV_FRONTEND/build $PROD_FRONTEND/
+# 원래 사용자 소유로 설정
+if [ -n "$SUDO_USER" ]; then
+    chown -R $SUDO_USER:$SUDO_USER $PROD_FRONTEND/build
 fi
 echo -e "${GREEN}   ✅ Frontend build deployed${NC}"
 

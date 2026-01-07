@@ -1121,7 +1121,7 @@ const POSTerminalPage: React.FC = () => {
   const restaurantId = useRestaurantId();
   const { addOrder } = useOrders();
   const { getTakeawayCharge, operationSettings } = useStore();
-  const { categories, menuItems, getItemsByCategory, loadMenuByCategory, isLoadingMenu } = useMenu();
+  const { categories, menuItems, getItemsByCategory, isLoadingMenu } = useMenu();
   const {
     updateCustomerOrderStats,
     searchCustomers
@@ -1216,16 +1216,15 @@ const POSTerminalPage: React.FC = () => {
   // Staff login is handled by auth system - no need for modal in POS
   // User must be authenticated to access this page via ProtectedRoute
 
-  // 초기 카테고리 설정: 첫 번째 카테고리 선택 및 해당 메뉴만 로딩
+  // 초기 카테고리 설정: 첫 번째 카테고리 선택 (메뉴는 MenuContext에서 이미 로드됨)
   useEffect(() => {
     if (categories.length > 0 && selectedCategory === null) {
       const firstCategoryId = categories[0].id;
       setSelectedCategory(firstCategoryId);
-      loadMenuByCategory(firstCategoryId);
     }
-  }, [categories, selectedCategory, loadMenuByCategory]);
+  }, [categories, selectedCategory]);
 
-  // 카테고리 변경 시 해당 카테고리 메뉴 로딩
+  // 카테고리 변경 (메뉴는 이미 로드되어 있으므로 필터링만 수행)
   const handleCategorySelect = (categoryId: string) => {
     if (isSearchMode) {
       // 검색 모드에서 탭 클릭하면 검색 모드 해제
@@ -1233,10 +1232,9 @@ const POSTerminalPage: React.FC = () => {
       setSearchQuery('');
     }
     setSelectedCategory(categoryId);
-    loadMenuByCategory(categoryId);
   };
 
-  // 검색어 입력 처리
+  // 검색어 입력 처리 (메뉴는 이미 로드되어 있으므로 필터링만 수행)
   const handleSearchChange = (query: string) => {
     setSearchQuery(query);
 
@@ -1246,8 +1244,7 @@ const POSTerminalPage: React.FC = () => {
         setPreviousCategory(selectedCategory);
         setIsSearchMode(true);
         setSelectedCategory(null); // 탭 선택 해제
-        // 전체 메뉴 로딩 (검색용)
-        loadMenuByCategory('all');
+        // 메뉴는 MenuContext에서 이미 전체 로드되어 있음 - 필터링만 수행
       }
     } else {
       // 검색어 지움: 이전 카테고리로 복귀

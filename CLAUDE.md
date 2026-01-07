@@ -8,8 +8,12 @@
 - 개발 완료 후 "배포할까요?" 같은 질문도 하지 않는다
 - `deploy-production.sh` 스크립트는 `/배포` 명령어 없이 실행하지 않는다
 
-### 개발서버 배포
+### 개발서버 배포 (필수!)
 - 개발서버(`dev-backend`, `dev-frontend`)는 자유롭게 배포 가능
+- **프론트엔드 빌드/배포는 반드시 스크립트 사용:**
+  - dev-frontend: `cd /var/www/dev-frontend && npm run build:dev`
+  - **절대로 `npm run build`를 직접 실행하지 않는다**
+  - **절대로 `rm -rf build`나 수동 복사를 하지 않는다**
 - 배포 방법은 `.claude/commands/배포.md` 참고
 
 ### 배포 관련 파일
