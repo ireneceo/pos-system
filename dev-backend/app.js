@@ -145,6 +145,7 @@ const supportTicketsRouter = require('./routes/support-tickets');
 const operationTicketsRouter = require('./routes/operationTickets');
 const customersRouter = require('./routes/customers');
 const membershipRouter = require('./routes/membership');
+console.log('✅ membershipRouter loaded, routes:', membershipRouter.stack ? membershipRouter.stack.length : 'no stack');
 const activityLogsRouter = require('./routes/activityLogs');
 const optionGroupsRouter = require('./routes/optionGroups');
 const healthRouter = require('./routes/health');
