@@ -56,8 +56,11 @@ interface MenuContextType {
   categories: MenuCategory[];
   menuItems: MenuItem[];
   optionGroups: OptionGroup[];
+  isLoadingMenu: boolean;
+  loadedCategories: Set<string>;
   getItemsByCategory: (categoryId: string) => MenuItem[];
   getItemById: (itemId: string) => MenuItem | undefined;
+  loadMenuByCategory: (categoryId: string) => Promise<void>;
   updateMenuItem: (item: MenuItem) => Promise<void>;
   addMenuItem: (item: MenuItem) => Promise<void>;
   removeMenuItem: (itemId: string) => Promise<void>;
@@ -89,7 +92,35 @@ interface MenuProviderProps {
 // 기본 메뉴 카테고리 (DB에서 가져옴)
 const DEFAULT_CATEGORIES: MenuCategory[] = [];
 
-// localStorage 사용 안함
+// 카테고리 캐시 키 생성 (레스토랑별로 구분)
+const getCategoryCacheKey = (restaurantId: string | null) =>
+  restaurantId ? `menu_categories_${restaurantId}` : null;
+
+// 캐시된 카테고리 불러오기
+const loadCachedCategories = (restaurantId: string | null): MenuCategory[] => {
+  const cacheKey = getCategoryCacheKey(restaurantId);
+  if (!cacheKey) return [];
+  try {
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+  } catch (e) {
+    console.warn('Failed to load cached categories:', e);
+  }
+  return [];
+};
+
+// 카테고리 캐시 저장
+const saveCategoriesCache = (restaurantId: string | null, categories: MenuCategory[]) => {
+  const cacheKey = getCategoryCacheKey(restaurantId);
+  if (!cacheKey || categories.length === 0) return;
+  try {
+    localStorage.setItem(cacheKey, JSON.stringify(categories));
+  } catch (e) {
+    console.warn('Failed to save categories cache:', e);
+  }
+};
 
 const DEFAULT_OPTION_GROUPS: OptionGroup[] = [];
 
@@ -98,6 +129,8 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
   const [categories, setCategories] = useState<MenuCategory[]>(DEFAULT_CATEGORIES);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [optionGroups, setOptionGroups] = useState<OptionGroup[]>(DEFAULT_OPTION_GROUPS);
+  const [isLoadingMenu, setIsLoadingMenu] = useState(false);
+  const [loadedCategories, setLoadedCategories] = useState<Set<string>>(new Set());
 
   // Helper function to get fetch options with credentials
   const getFetchOptions = (options: RequestInit = {}): RequestInit => {
@@ -168,6 +201,8 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         });
 
         setCategories(cats);
+        // 카테고리 캐시 저장
+        saveCategoriesCache(restaurantId, cats);
 
         // 메뉴 아이템 변환
         const items = data.data.items.map((item: any) => {
@@ -290,6 +325,15 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
 
     // Only load if we're on a restaurant or mobile page
     if (restaurantId || slug) {
+      // 캐시된 카테고리 먼저 로드 (즉시 탭 표시를 위해)
+      if (restaurantId) {
+        const cachedCategories = loadCachedCategories(restaurantId);
+        if (cachedCategories.length > 0) {
+          setCategories(cachedCategories);
+        }
+      }
+
+      // API에서 최신 데이터 로드
       loadMenuFromAPI();
       if (restaurantId) {
         // Only load option groups for restaurant admin pages
