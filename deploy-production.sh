@@ -24,6 +24,35 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_DIR="$PROJECT_DIR/backups/${TIMESTAMP}"
 ENV_BACKUP_FILE="/tmp/.env.backup.${TIMESTAMP}"
 
+# ==============================================
+# Step 0: Fix Ownership Issues (Pre-deployment cleanup)
+# ==============================================
+echo -e "${YELLOW}Step 0: Fixing file ownership issues...${NC}"
+
+# 대상 사용자 결정 (sudo로 실행시 원래 사용자, 아니면 현재 사용자)
+TARGET_USER="${SUDO_USER:-$(whoami)}"
+TARGET_GROUP="${TARGET_USER}"
+
+# root 소유 파일이 있으면 수정
+ROOT_FILES_FRONTEND=$(find "$PROD_FRONTEND" -user root 2>/dev/null | wc -l)
+ROOT_FILES_BACKEND=$(find "$PROD_BACKEND/node_modules" -user root 2>/dev/null | wc -l)
+
+if [ "$ROOT_FILES_FRONTEND" -gt 0 ] || [ "$ROOT_FILES_BACKEND" -gt 0 ]; then
+    echo -e "${BLUE}   Found root-owned files. Fixing ownership...${NC}"
+    if [ "$EUID" -eq 0 ]; then
+        # root로 실행 중 - 직접 chown
+        [ "$ROOT_FILES_FRONTEND" -gt 0 ] && chown -R "$TARGET_USER:$TARGET_GROUP" "$PROD_FRONTEND"
+        [ "$ROOT_FILES_BACKEND" -gt 0 ] && chown -R "$TARGET_USER:$TARGET_GROUP" "$PROD_BACKEND/node_modules"
+    else
+        # sudo 시도
+        [ "$ROOT_FILES_FRONTEND" -gt 0 ] && sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$PROD_FRONTEND"
+        [ "$ROOT_FILES_BACKEND" -gt 0 ] && sudo chown -R "$TARGET_USER:$TARGET_GROUP" "$PROD_BACKEND/node_modules"
+    fi
+    echo -e "${GREEN}   ✅ Ownership fixed for $TARGET_USER${NC}"
+else
+    echo -e "${GREEN}   ✅ No ownership issues found${NC}"
+fi
+
 # 백업 디렉토리 생성
 echo -e "${BLUE}📦 Creating backup directory...${NC}"
 mkdir -p "${BACKUP_DIR}"

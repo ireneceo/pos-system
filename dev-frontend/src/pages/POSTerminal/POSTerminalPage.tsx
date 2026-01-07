@@ -1121,14 +1121,16 @@ const POSTerminalPage: React.FC = () => {
   const restaurantId = useRestaurantId();
   const { addOrder } = useOrders();
   const { getTakeawayCharge, operationSettings } = useStore();
-  const { categories, menuItems, getItemsByCategory } = useMenu();
+  const { categories, menuItems, getItemsByCategory, loadMenuByCategory, isLoadingMenu } = useMenu();
   const {
     updateCustomerOrderStats,
     searchCustomers
   } = useCustomer();
   const { currentStaff, isLoggedIn, logout, updateStaff } = useStaff();
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [previousCategory, setPreviousCategory] = useState<string | null>(null); // 검색 전 카테고리 저장
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchMode, setIsSearchMode] = useState(false); // 검색 모드 여부
   const [orderItems, setOrderItems] = useState<OrderItemType[]>([]);
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -1214,22 +1216,67 @@ const POSTerminalPage: React.FC = () => {
   // Staff login is handled by auth system - no need for modal in POS
   // User must be authenticated to access this page via ProtectedRoute
 
-  // 초기 진입 시 첫 번째 카테고리 자동 선택 (빠른 로딩)
-  const [initialCategorySet, setInitialCategorySet] = useState(false);
+  // 초기 카테고리 설정: 첫 번째 카테고리 선택 및 해당 메뉴만 로딩
   useEffect(() => {
-    if (categories.length > 0 && !initialCategorySet) {
-      // 첫 번째 카테고리를 기본 선택 (all보다 빠름)
-      setSelectedCategory(categories[0].id);
-      setInitialCategorySet(true);
+    if (categories.length > 0 && selectedCategory === null) {
+      const firstCategoryId = categories[0].id;
+      setSelectedCategory(firstCategoryId);
+      loadMenuByCategory(firstCategoryId);
     }
-  }, [categories, initialCategorySet]);
+  }, [categories, selectedCategory, loadMenuByCategory]);
 
-  // Use effect to update selected category when categories change
-  useEffect(() => {
-    if (categories.length > 0 && selectedCategory !== 'all' && !categories.find(cat => cat.id === selectedCategory)) {
-      setSelectedCategory(categories[0]?.id || 'all');
+  // 카테고리 변경 시 해당 카테고리 메뉴 로딩
+  const handleCategorySelect = (categoryId: string) => {
+    if (isSearchMode) {
+      // 검색 모드에서 탭 클릭하면 검색 모드 해제
+      setIsSearchMode(false);
+      setSearchQuery('');
     }
-  }, [categories, selectedCategory]);
+    setSelectedCategory(categoryId);
+    loadMenuByCategory(categoryId);
+  };
+
+  // 검색어 입력 처리
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+
+    if (query.trim()) {
+      // 검색 모드 진입: 현재 카테고리 저장 후 전체 검색
+      if (!isSearchMode) {
+        setPreviousCategory(selectedCategory);
+        setIsSearchMode(true);
+        setSelectedCategory(null); // 탭 선택 해제
+        // 전체 메뉴 로딩 (검색용)
+        loadMenuByCategory('all');
+      }
+    } else {
+      // 검색어 지움: 이전 카테고리로 복귀
+      if (isSearchMode) {
+        setIsSearchMode(false);
+        const restoreCategory = previousCategory || categories[0]?.id || null;
+        setSelectedCategory(restoreCategory);
+        setPreviousCategory(null);
+      }
+    }
+  };
+
+  // 검색 클리어 버튼
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    if (isSearchMode) {
+      setIsSearchMode(false);
+      const restoreCategory = previousCategory || categories[0]?.id || null;
+      setSelectedCategory(restoreCategory);
+      setPreviousCategory(null);
+    }
+  };
+
+  // 선택된 카테고리가 삭제된 경우 처리
+  useEffect(() => {
+    if (categories.length > 0 && selectedCategory && !isSearchMode && !categories.find(cat => cat.id === selectedCategory)) {
+      setSelectedCategory(categories[0]?.id || null);
+    }
+  }, [categories, selectedCategory, isSearchMode]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -1346,25 +1393,19 @@ const POSTerminalPage: React.FC = () => {
 
   // Filter menu items based on category and search query
   const getFilteredItems = () => {
-    let items = selectedCategory === 'all' ? menuItems : getItemsByCategory(selectedCategory);
+    let items: typeof menuItems = [];
 
-    if (searchQuery.trim()) {
+    if (isSearchMode) {
+      // 검색 모드: 전체 메뉴에서 검색
       const query = searchQuery.toLowerCase().trim();
-      items = items.filter(item =>
+      items = menuItems.filter(item =>
         item.name.toLowerCase().includes(query) ||
         (item.code && item.code.toLowerCase().includes(query)) ||
         (item.description && item.description.toLowerCase().includes(query))
       );
-    }
-
-    // Debug: Log first item with code
-    const itemWithCode = items.find(i => i.code);
-    if (itemWithCode) {
-      console.log('🔍 POS Menu Item with code:', {
-        id: itemWithCode.id,
-        code: itemWithCode.code,
-        name: itemWithCode.name
-      });
+    } else if (selectedCategory) {
+      // 일반 모드: 선택된 카테고리 메뉴만 표시
+      items = getItemsByCategory(selectedCategory);
     }
 
     return items;
@@ -2145,13 +2186,13 @@ const POSTerminalPage: React.FC = () => {
               <SearchIcon>🔍</SearchIcon>
               <SearchInput
                 type="text"
-                placeholder="Search menu items by name or description..."
+                placeholder="Search menu items..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
               />
               {searchQuery && (
                 <ClearSearchBtn
-                  onClick={() => setSearchQuery('')}
+                  onClick={handleClearSearch}
                   title="Clear search"
                 >
                   ×
@@ -2159,25 +2200,35 @@ const POSTerminalPage: React.FC = () => {
               )}
             </SearchInputContainer>
           </SearchSection>
-          
+
           <CategoryTabs>
-            <CategoryTab
-              key="all"
-              active={selectedCategory === 'all'}
-              onClick={() => setSelectedCategory('all')}
-            >
-              All Items
-            </CategoryTab>
             {categories.map(category => (
               <CategoryTab
                 key={category.id}
-                active={selectedCategory === category.id}
-                onClick={() => setSelectedCategory(category.id)}
+                active={selectedCategory === category.id && !isSearchMode}
+                onClick={() => handleCategorySelect(category.id)}
               >
                 {category.emoji} {category.name}
               </CategoryTab>
             ))}
           </CategoryTabs>
+
+          {isSearchMode && (
+            <div style={{
+              padding: '8px 16px',
+              background: '#f0f7ff',
+              borderRadius: '8px',
+              marginBottom: '12px',
+              fontSize: '14px',
+              color: '#1a73e8',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span>🔍</span>
+              <span>Search results for "{searchQuery}" ({filteredMenuItems.length} items)</span>
+            </div>
+          )}
 
           <MenuGrid>
             {filteredMenuItems.length > 0 ? (
@@ -2225,14 +2276,19 @@ const POSTerminalPage: React.FC = () => {
                   <div ref={loadMoreTriggerRef} style={{ gridColumn: '1 / -1', height: '20px' }} />
                 )}
               </>
+            ) : isLoadingMenu ? (
+              <NoResultsMessage>
+                <div className="icon">⏳</div>
+                <div className="title">Loading...</div>
+              </NoResultsMessage>
             ) : (
               <NoResultsMessage>
                 <div className="icon">🔍</div>
                 <div className="title">
-                  {searchQuery ? `No results for "${searchQuery}"` : 'No items in this category'}
+                  {isSearchMode ? `No results for "${searchQuery}"` : 'No items in this category'}
                 </div>
                 <div className="message">
-                  {searchQuery ? 'Try searching with different keywords' : 'Select a different category to view items'}
+                  {isSearchMode ? 'Try searching with different keywords' : 'Select a different category to view items'}
                 </div>
               </NoResultsMessage>
             )}
