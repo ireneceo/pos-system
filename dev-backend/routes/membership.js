@@ -1,14 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { MembershipSettings, PointTransaction, RestaurantCustomer, Customer, Restaurant, Order } = require('../models');
-const { Op } = require('sequelize');
+const { MembershipSettings, PointTransaction, RestaurantCustomer, Customer } = require('../models');
 const { sequelize } = require('../config/database');
-
-// 디버그용 테스트 엔드포인트
-router.get('/test', (req, res) => {
-  console.log('Membership test endpoint called');
-  res.json({ success: true, message: 'Membership router is working!' });
-});
 
 // ========================================
 // 멤버십 설정 조회/수정
