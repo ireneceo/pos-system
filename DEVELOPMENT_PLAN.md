@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-01-06
+> **최종 업데이트:** 2026-01-07
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -352,6 +352,25 @@ const dateKey = `${(orderDate.getMonth() + 1).toString().padStart(2, '0')}/${ord
 - 개발 세션 종료 시 사용하는 명령어
 - 문서 자동 업데이트 (DEVELOPMENT_PLAN.md 등)
 - Git 커밋 및 푸시 자동화
+
+---
+
+## ✅ 완료된 작업 (2026-01-07)
+
+### 배포 스크립트 권한 문제 근본 해결
+
+**문제:** `sudo`로 배포 스크립트 실행 시 build 폴더가 root 소유로 생성되어 이후 배포에서 권한 오류 발생
+
+**해결:**
+- [x] `deploy-production.sh` - `npm run build`를 `su - $SUDO_USER`로 실행하여 원래 사용자 권한으로 빌드
+- [x] `deploy-production.sh` - Step 0에서 dev-frontend, dev-backend 권한도 체크
+- [x] `deploy-dev.sh` - 캐시, 빌드, node_modules 폴더 권한 자동 수정 함수 추가
+- [x] `CLAUDE.md` - 개발서버 배포 규칙 명시 (`npm run build:dev` 스크립트 사용 필수)
+
+**변경 파일:**
+- `/var/www/deploy-production.sh`
+- `/var/www/dev-frontend/deploy-dev.sh`
+- `/var/www/CLAUDE.md`
 
 ---
 
