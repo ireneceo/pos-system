@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const bcrypt = require('bcrypt');
+const { authenticateToken } = require('../middleware/auth');
 
 // Get all users
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   console.log('🔄 GET /api/users - Request received');
   console.log('📝 Query params:', req.query);
 
@@ -53,7 +54,7 @@ router.get('/', async (req, res) => {
 });
 
 // Get single user
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id, {
       attributes: { exclude: ['password'] }
@@ -68,7 +69,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create user (admin only)
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   console.log('🔄 POST /api/users - Request received');
   console.log('📝 Request body:', req.body);
 
@@ -167,7 +168,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update user
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateToken, async (req, res) => {
   console.log('🔄 PUT /api/users/:id - Request received');
   console.log('📝 User ID:', req.params.id);
   console.log('📝 Request body:', req.body);
@@ -211,7 +212,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Delete user
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id);
     if (!user) {
@@ -226,7 +227,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Update user password
-router.patch('/:id/password', async (req, res) => {
+router.patch('/:id/password', authenticateToken, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     const user = await User.findByPk(req.params.id);
@@ -252,7 +253,7 @@ router.patch('/:id/password', async (req, res) => {
 });
 
 // Admin password reset endpoint (no current password verification required)
-router.post('/:id/reset-password', async (req, res) => {
+router.post('/:id/reset-password', authenticateToken, async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id);
 
@@ -265,10 +266,10 @@ router.post('/:id/reset-password', async (req, res) => {
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
     await user.update({ password: hashedPassword });
 
+    // Note: Default password is '1234' - communicate this through secure channel, not API response
     res.json({
       success: true,
-      message: 'Password reset successfully',
-      defaultPassword: defaultPassword
+      message: 'Password has been reset to default. Please inform the user through a secure channel.'
     });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });

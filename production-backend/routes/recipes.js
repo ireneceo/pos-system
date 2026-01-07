@@ -3,20 +3,7 @@ const router = express.Router();
 const { Recipe, Ingredient, RecipeIngredient, Restaurant, Product, RecipeCategory, Category } = require('../models');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { canEditRecipe, isBrandManager } = require('../middleware/recipeAuth');
-
-/**
- * Generate unique recipe code
- */
-const generateRecipeCode = async (ownerType, ownerId) => {
-  const prefix = 'RCP';
-  const whereClause = ownerType === 'brand'
-    ? { brand_id: ownerId, owner_type: 'brand' }
-    : { restaurant_id: ownerId, owner_type: 'restaurant' };
-
-  const count = await Recipe.count({ where: whereClause });
-  const nextNum = count + 1;
-  return `${prefix}-${String(nextNum).padStart(3, '0')}`;
-};
+const { generateRecipeCode } = require('../utils/codeGenerator');
 
 // ============================================
 // Brand Recipes (Brand General/Manager)
@@ -70,7 +57,7 @@ router.post('/brands/:brandId/recipes', authenticateToken, isBrandManager, async
     }
 
     // Auto-generate code if not provided
-    const finalCode = req.body.code || await generateRecipeCode('brand', brandId);
+    const finalCode = req.body.code || await generateRecipeCode(Recipe, 'brand', brandId);
 
     // 레시피 생성 (owner_type = 'brand')
     const recipe = await Recipe.create({
@@ -346,7 +333,7 @@ router.post('/restaurants/:restaurantId/recipes', authenticateToken, checkRestau
     }
 
     // Auto-generate code if not provided
-    const finalCode = req.body.code || await generateRecipeCode('restaurant', restaurantId);
+    const finalCode = req.body.code || await generateRecipeCode(Recipe, 'restaurant', restaurantId);
 
     // 레시피 생성 (owner_type = 'restaurant')
     const recipe = await Recipe.create({

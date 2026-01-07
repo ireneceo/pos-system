@@ -77,6 +77,8 @@ app.use('/api', dbHealthCheck);
 const allowedOrigins = [
   'https://pos.orderhere.center',
   'https://solution.orderhere.center',
+  'https://dev.purplehere.com',
+  'https://purplehere.com',
   'http://localhost:3001',
   'http://localhost:3000'
 ];
@@ -142,6 +144,7 @@ const adminSettingsRouter = require('./routes/admin-settings');
 const supportTicketsRouter = require('./routes/support-tickets');
 const operationTicketsRouter = require('./routes/operationTickets');
 const customersRouter = require('./routes/customers');
+const membershipRouter = require('./routes/membership');
 const activityLogsRouter = require('./routes/activityLogs');
 const optionGroupsRouter = require('./routes/optionGroups');
 const healthRouter = require('./routes/health');
@@ -154,8 +157,6 @@ const brandProductsRouter = require('./routes/brand-products');
 const notificationSettingsRouter = require('./routes/notification-settings');
 const inventoryRouter = require('./routes/inventory');
 const generalStockCategoriesRouter = require('./routes/general-stock-categories');
-console.log('✅ brandProductsRouter loaded, routes:', brandProductsRouter.stack ? brandProductsRouter.stack.length : 'no stack');
-
 // 헬스 체크 라우터 (가장 먼저, DB 체크 없이)
 app.use('/api/health', healthRouter);
 
@@ -163,6 +164,7 @@ app.use('/api/health', healthRouter);
 app.use('/', indexRouter);
 
 // API 라우터들
+app.use('/api/membership', membershipRouter);  // 멤버십 라우터를 가장 먼저 등록 (디버깅용)
 app.use('/api/auth', authRouter);
 app.use('/api/menu', menuRouter);
 app.use('/api/mobile', mobileRouter);
@@ -182,6 +184,7 @@ app.use('/api/admin/settings', adminSettingsRouter);
 app.use('/api/admin-settings', adminSettingsRouter); // Alternative route for backward compatibility
 app.use('/api/support-tickets', supportTicketsRouter);
 app.use('/api/customers', customersRouter);
+// app.use('/api/membership', membershipRouter);  // 위로 이동됨
 app.use('/api/operation-tickets', operationTicketsRouter);
 app.use('/api/activity-logs', activityLogsRouter);
 app.use('/api/option-groups', optionGroupsRouter);

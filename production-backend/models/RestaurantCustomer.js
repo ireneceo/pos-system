@@ -49,6 +49,16 @@ RestaurantCustomer.init({
     allowNull: true,
     comment: '마지막 주문 일시'
   },
+  points_expiring: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    comment: '곧 만료될 포인트'
+  },
+  points_expiry_date: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+    comment: '포인트 만료 예정일'
+  },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW,

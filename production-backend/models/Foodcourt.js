@@ -111,6 +111,31 @@ Foodcourt.init({
     defaultValue: 'RM',
     allowNull: false,
     comment: 'Default currency for foodcourt restaurants (RM, USD, SGD, JPY, THB, KRW)'
+  },
+  // Operation Settings
+  operation_settings: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'JSON settings for foodcourt operations (timezone, opening hours)',
+    get() {
+      const rawValue = this.getDataValue('operation_settings');
+      const defaultSettings = {
+        openingTime: '09:00',
+        closingTime: '22:00',
+        timeZone: 'Asia/Kuala_Lumpur'
+      };
+      if (!rawValue) {
+        return defaultSettings;
+      }
+      try {
+        return { ...defaultSettings, ...JSON.parse(rawValue) };
+      } catch (e) {
+        return defaultSettings;
+      }
+    },
+    set(value) {
+      this.setDataValue('operation_settings', value ? JSON.stringify(value) : null);
+    }
   }
 }, {
   sequelize: database.sequelize,

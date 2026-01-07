@@ -172,6 +172,43 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Get categories only (lightweight endpoint for fast initial load)
+router.get('/categories', async (req, res) => {
+  try {
+    const restaurantId = req.query.restaurantId || req.user.restaurant_id;
+
+    if (!restaurantId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Restaurant ID is required'
+      });
+    }
+
+    // Get categories from categories table
+    const dbCategories = await Category.findAll({
+      where: {
+        restaurant_id: restaurantId,
+        isActive: true
+      },
+      order: [['displayOrder', 'ASC'], ['name', 'ASC']]
+    });
+
+    const categories = dbCategories.map(cat => ({
+      id: cat.id,
+      name: cat.name,
+      emoji: cat.emoji || '🍽️',
+      displayOrder: cat.displayOrder
+    }));
+
+    res.json({
+      success: true,
+      data: { categories }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Get single product
 router.get('/product/:id', async (req, res) => {
   try {

@@ -3,6 +3,7 @@ const router = express.Router();
 const { Supplier, Restaurant, SupplierCategory, SupplierBrand, Brand } = require('../models');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
+const { generateSupplierCode } = require('../utils/codeGenerator');
 
 // ============================================
 // Brand Suppliers (통합 관리 - 브랜드 연결 방식)
@@ -42,16 +43,6 @@ router.get('/brands/:brandId/suppliers', authenticateToken, isBrandManager, asyn
     res.status(500).json({ error: '공급업체 목록 조회 실패' });
   }
 });
-
-/**
- * Generate unique supplier code
- */
-const generateSupplierCode = async (userId) => {
-  const prefix = 'SUP';
-  const count = await Supplier.count();
-  const nextNum = count + 1;
-  return `${prefix}-${String(nextNum).padStart(3, '0')}`;
-};
 
 /**
  * GET /api/suppliers
@@ -125,7 +116,7 @@ router.post('/suppliers', authenticateToken, async (req, res) => {
     }
 
     // Auto-generate code if not provided
-    const finalCode = code || await generateSupplierCode(userId);
+    const finalCode = code || await generateSupplierCode(Supplier);
 
     // 공급업체 생성 (owner_type은 이제 의미 없음, 통합 관리)
     const supplier = await Supplier.create({
@@ -360,7 +351,7 @@ router.post('/brands/:brandId/suppliers', authenticateToken, isBrandManager, asy
     }
 
     // Auto-generate code if not provided
-    const finalCode = code || await generateSupplierCode(req.user.id);
+    const finalCode = code || await generateSupplierCode(Supplier);
 
     const supplier = await Supplier.create({
       owner_type: 'brand',
@@ -610,7 +601,7 @@ router.post('/restaurants/:restaurantId/suppliers', authenticateToken, checkRest
     }
 
     // Auto-generate code if not provided
-    const finalCode = code || await generateSupplierCode('restaurant', restaurantId);
+    const finalCode = code || await generateSupplierCode(Supplier);
 
     const supplier = await Supplier.create({
       owner_type: 'restaurant',

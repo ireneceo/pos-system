@@ -48,7 +48,10 @@ router.get('/me', async (req, res, next) => {
     const jwt = require('jsonwebtoken');
     const User = require('../models/User');
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-key');
+    if (!process.env.JWT_SECRET) {
+      return errorResponse(res, 'Server configuration error', 500, 'CONFIG_ERROR');
+    }
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findByPk(decoded.userId);
 
     if (!user) {

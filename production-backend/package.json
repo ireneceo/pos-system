@@ -10,7 +10,9 @@
     "production": "node server.js",
     "staging": "node server.js",
     "plesk": "node server.js",
-    "sync-db": "node sync-database.js"
+    "sync-db": "node sync-database.js",
+    "check": "node scripts/check-duplicates.js",
+    "prestart": "node scripts/check-duplicates.js || true"
   },
   "dependencies": {
     "@socket.io/redis-adapter": "^8.3.0",

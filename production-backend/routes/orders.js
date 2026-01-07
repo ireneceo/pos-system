@@ -6,9 +6,11 @@ const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const { executeQuery, executeTransaction } = require('../utils/queryWrapper');
 const { deductInventoryForOrder } = require('../services/inventoryDeductionService');
+const { earnPointsForOrder, refundPointsForOrder, usePointsForOrder } = require('../services/pointService');
+const { authenticateToken } = require('../middleware/auth');
 
 // Get all orders
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const { status, date, limit = 50, restaurantId, restaurant_id } = req.query;
     // Support both camelCase (new) and snake_case (legacy)
@@ -57,7 +59,7 @@ router.get('/', async (req, res) => {
 });
 
 // Get single order
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticateToken, async (req, res) => {
   try {
     // 쿼리 래퍼 사용 (자동 재시도)
     const order = await executeQuery(async () => {
@@ -75,7 +77,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create new order
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const orderData = req.body;
     // Support both camelCase (new) and snake_case (legacy)
@@ -238,6 +240,27 @@ router.post('/', async (req, res) => {
       }
     }
 
+    // Process points usage if provided
+    if (order.points_used && order.points_used > 0 && order.customer_id && order.restaurant_id) {
+      try {
+        const pointResult = await usePointsForOrder(
+          order.restaurant_id,
+          order.customer_id,
+          order.id,
+          order.points_used
+        );
+        if (pointResult.success) {
+          console.log(`✅ [POINTS] Used ${order.points_used} points for order ${order.id}`);
+        } else {
+          console.warn(`⚠️ [POINTS] Failed to use points for order ${order.id}:`, pointResult.error);
+          // Note: We don't fail the order if points usage fails
+          // The order will still be created, but points won't be deducted
+        }
+      } catch (pointError) {
+        console.error(`❌ [POINTS] Error using points for order ${order.id}:`, pointError);
+      }
+    }
+
     // Emit socket event for real-time update
     const io = req.app.get('io');
     if (io && order.restaurant_id) {
@@ -262,7 +285,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update order (full update)
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', authenticateToken, async (req, res) => {
   try {
     // 쿼리 래퍼 사용 (트랜잭션 및 자동 재시도)
     const result = await executeTransaction(async (t) => {
@@ -295,7 +318,7 @@ router.patch('/:id', async (req, res) => {
 });
 
 // Update order status
-router.patch('/:id/status', async (req, res) => {
+router.patch('/:id/status', authenticateToken, async (req, res) => {
   try {
     const { status, kitchen_ready, served_at } = req.body;
     const order = await Order.findByPk(req.params.id);
@@ -338,6 +361,9 @@ router.patch('/:id/status', async (req, res) => {
     await order.reload(); // Ensure we have the latest data
 
     // Deduct inventory when order is completed (only if it wasn't already completed)
+    // Note: deductInventoryForOrder uses its own transaction internally
+    // If inventory deduction fails, the order status is already saved
+    // This is intentional - we don't want to block order completion due to inventory issues
     if (willBeCompleted && !wasCompleted && order.order_items) {
       try {
         const items = Array.isArray(order.order_items) ? order.order_items : JSON.parse(order.order_items);
@@ -359,6 +385,43 @@ router.patch('/:id/status', async (req, res) => {
         // Don't fail the order update if inventory deduction fails
         console.error(`❌ [INVENTORY] Error deducting inventory for order ${order.id}:`, inventoryError);
       }
+
+      // Earn points when order is completed (if customer exists)
+      if (order.customer_id) {
+        try {
+          const pointResult = await earnPointsForOrder(
+            order.restaurant_id,
+            order.customer_id,
+            order.id,
+            parseFloat(order.total_amount) || 0
+          );
+
+          if (pointResult.success && pointResult.earnedPoints > 0) {
+            console.log(`✅ [POINTS] Earned ${pointResult.earnedPoints} points for order ${order.id}`);
+          }
+        } catch (pointError) {
+          // Don't fail the order update if point earning fails
+          console.error(`❌ [POINTS] Error earning points for order ${order.id}:`, pointError);
+        }
+      }
+    }
+
+    // Refund points when order is cancelled (if customer exists)
+    if (status === 'cancelled' && order.customer_id) {
+      try {
+        const refundResult = await refundPointsForOrder(
+          order.restaurant_id,
+          order.customer_id,
+          order.id
+        );
+
+        if (refundResult.success && refundResult.refundedPoints > 0) {
+          console.log(`✅ [POINTS] Refunded ${refundResult.refundedPoints} points for order ${order.id}`);
+        }
+      } catch (pointError) {
+        // Don't fail the order update if point refund fails
+        console.error(`❌ [POINTS] Error refunding points for order ${order.id}:`, pointError);
+      }
     }
 
     // Emit socket event for real-time update
@@ -377,7 +440,7 @@ router.patch('/:id/status', async (req, res) => {
 });
 
 // Update order items (for kitchen item status tracking)
-router.patch('/:id/items', async (req, res) => {
+router.patch('/:id/items', authenticateToken, async (req, res) => {
   try {
     const { order_items } = req.body;
     const order = await Order.findByPk(req.params.id);
@@ -404,7 +467,7 @@ router.patch('/:id/items', async (req, res) => {
 });
 
 // Delete order (soft delete - preserves order number)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const order = await Order.findByPk(req.params.id);
     if (!order) {
@@ -433,7 +496,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Get orders by restaurant ID
-router.get('/restaurant/:restaurantId', async (req, res) => {
+router.get('/restaurant/:restaurantId', authenticateToken, async (req, res) => {
   try {
     const {
       status,
@@ -495,7 +558,7 @@ router.get('/restaurant/:restaurantId', async (req, res) => {
 });
 
 // Get orders by table number
-router.get('/table/:tableNumber', async (req, res) => {
+router.get('/table/:tableNumber', authenticateToken, async (req, res) => {
   try {
     const orders = await Order.findAll({
       where: {
@@ -512,7 +575,7 @@ router.get('/table/:tableNumber', async (req, res) => {
 });
 
 // Get kitchen orders (pending and preparing)
-router.get('/kitchen/active', async (req, res) => {
+router.get('/kitchen/active', authenticateToken, async (req, res) => {
   try {
     const orders = await Order.findAll({
       where: { 
@@ -528,7 +591,7 @@ router.get('/kitchen/active', async (req, res) => {
 });
 
 // Get sales data
-router.get('/analytics/sales', async (req, res) => {
+router.get('/analytics/sales', authenticateToken, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     
@@ -563,7 +626,7 @@ router.get('/analytics/sales', async (req, res) => {
 });
 
 // Generate next order number (prevents duplicates)
-router.get('/restaurant/:restaurantId/next-order-number', async (req, res) => {
+router.get('/restaurant/:restaurantId/next-order-number', authenticateToken, async (req, res) => {
   try {
     const { restaurantId } = req.params;
     let timeZone = req.query.timeZone || 'Asia/Kuala_Lumpur';
