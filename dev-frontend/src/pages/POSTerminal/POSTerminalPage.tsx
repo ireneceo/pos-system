@@ -1214,10 +1214,20 @@ const POSTerminalPage: React.FC = () => {
   // Staff login is handled by auth system - no need for modal in POS
   // User must be authenticated to access this page via ProtectedRoute
 
+  // 초기 진입 시 첫 번째 카테고리 자동 선택 (빠른 로딩)
+  const [initialCategorySet, setInitialCategorySet] = useState(false);
+  useEffect(() => {
+    if (categories.length > 0 && !initialCategorySet) {
+      // 첫 번째 카테고리를 기본 선택 (all보다 빠름)
+      setSelectedCategory(categories[0].id);
+      setInitialCategorySet(true);
+    }
+  }, [categories, initialCategorySet]);
+
   // Use effect to update selected category when categories change
   useEffect(() => {
     if (categories.length > 0 && selectedCategory !== 'all' && !categories.find(cat => cat.id === selectedCategory)) {
-      setSelectedCategory('all');
+      setSelectedCategory(categories[0]?.id || 'all');
     }
   }, [categories, selectedCategory]);
 
@@ -2085,16 +2095,35 @@ const POSTerminalPage: React.FC = () => {
   return (
     <POSContainer>
       <Header>
-        <Logo onClick={handleResetPOS}>
-          {brandLogo ? (
-            <>
-              <LogoImage src={brandLogo} alt="Brand Logo" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <Logo onClick={handleResetPOS}>
+            {brandLogo ? (
+              <>
+                <LogoImage src={brandLogo} alt="Brand Logo" />
+                <span style={{ color: '#6B7C93', fontSize: '14px', fontWeight: 500 }}>POS Terminal</span>
+              </>
+            ) : (
               <span style={{ color: '#6B7C93', fontSize: '14px', fontWeight: 500 }}>POS Terminal</span>
-            </>
-          ) : (
-            <span style={{ color: '#6B7C93', fontSize: '14px', fontWeight: 500 }}>POS Terminal</span>
-          )}
-        </Logo>
+            )}
+          </Logo>
+          <button
+            onClick={() => navigate('/pos/dashboard')}
+            style={{
+              background: 'none',
+              border: '1px solid #E6EBF1',
+              borderRadius: '6px',
+              padding: '6px 12px',
+              cursor: 'pointer',
+              color: '#6B7C93',
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            ← Back
+          </button>
+        </div>
         <HeaderInfo>
           <StaffInfo clickable={false}>
             <span style={{ fontSize: '16px' }}>◆</span>
@@ -2544,11 +2573,6 @@ const POSTerminalPage: React.FC = () => {
         </OrderSection>
       </MainLayout>
 
-      <QuickActions>
-        <QuickActionBtn onClick={() => navigate('/pos/dashboard')}>
-          ← Back to Dashboard
-        </QuickActionBtn>
-      </QuickActions>
 
       <PaymentModal
         isOpen={showPaymentModal}

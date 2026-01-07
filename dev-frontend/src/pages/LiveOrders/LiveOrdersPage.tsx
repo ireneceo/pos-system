@@ -1242,7 +1242,7 @@ const LiveOrdersPage: React.FC = () => {
         start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         break;
       case 'year':
-        start = new Date(now.getFullYear(), 0, 1);
+        start = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
         break;
       case 'all':
         if (allOrders.length > 0) {

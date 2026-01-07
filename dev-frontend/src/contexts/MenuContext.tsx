@@ -313,6 +313,141 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
     }
   }, []); // No dependencies - uses window.location directly
 
+  // 카테고리별 메뉴 로딩 함수 (POS Terminal 등에서 사용)
+  const loadMenuByCategory = useCallback(async (categoryId: string) => {
+    try {
+      // 이미 로드된 카테고리는 스킵 (all 제외)
+      if (categoryId !== 'all' && loadedCategories.has(categoryId)) {
+        return;
+      }
+
+      const pathParts = window.location.pathname.split('/');
+      const restaurantIndex = pathParts.indexOf('restaurant');
+      const restaurantId = restaurantIndex >= 0 ? pathParts[restaurantIndex + 1] : null;
+
+      if (!restaurantId) return;
+
+      setIsLoadingMenu(true);
+
+      // all이면 전체 로드, 아니면 카테고리별 로드
+      const url = categoryId === 'all'
+        ? `/api/menu?restaurantId=${restaurantId}`
+        : `/api/menu?restaurantId=${restaurantId}&categoryId=${categoryId}`;
+
+      const response = await fetch(url, { ...getFetchOptions() });
+
+      if (!response.ok) {
+        console.error('Failed to load menu by category:', response.status);
+        return;
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        // 메뉴 아이템 변환
+        const newItems = data.data.items.map((item: any) => {
+          let parsedOptionGroups = [];
+          if (item.optionGroups) {
+            try {
+              parsedOptionGroups = typeof item.optionGroups === 'string'
+                ? JSON.parse(item.optionGroups)
+                : item.optionGroups;
+            } catch (e) {
+              parsedOptionGroups = [];
+            }
+          }
+
+          let catId = '';
+          if (item.categoryId) {
+            catId = item.categoryId.toString();
+          } else if (item.category) {
+            catId = item.category.toLowerCase().replace(/\s+/g, '_');
+          }
+
+          return {
+            id: item.id.toString(),
+            code: item.code || undefined,
+            name: item.name,
+            price: parseFloat(item.price),
+            category: catId,
+            description: item.description || '',
+            emoji: item.emoji || '🍽️',
+            soldOut: item.soldOut || false,
+            image: item.image || undefined,
+            options: item.options || [],
+            optionGroups: parsedOptionGroups,
+            preparationTime: item.preparationTime || 15,
+            is_set_menu: item.is_set_menu || false,
+            set_items: item.set_items || undefined,
+            set_display_order: item.set_display_order || 0,
+            recipe_id: item.recipe_id || null
+          };
+        });
+
+        // 정렬
+        newItems.sort((a: MenuItem, b: MenuItem) => {
+          if (a.category !== b.category) return 0;
+          if (a.is_set_menu && !b.is_set_menu) return -1;
+          if (!a.is_set_menu && b.is_set_menu) return 1;
+          if (a.is_set_menu && b.is_set_menu) {
+            return (a.set_display_order || 0) - (b.set_display_order || 0);
+          }
+          return parseInt(a.id) - parseInt(b.id);
+        });
+
+        if (categoryId === 'all') {
+          // 전체 로드 시 교체
+          setMenuItems(newItems);
+          setLoadedCategories(new Set(['all']));
+        } else {
+          // 카테고리별 로드 시 병합 (중복 제거)
+          setMenuItems(prev => {
+            const existingIds = new Set(prev.map(item => item.id));
+            const uniqueNewItems = newItems.filter((item: MenuItem) => !existingIds.has(item.id));
+            return [...prev, ...uniqueNewItems];
+          });
+          setLoadedCategories(prev => new Set([...prev, categoryId]));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load menu by category:', error);
+    } finally {
+      setIsLoadingMenu(false);
+    }
+  }, [loadedCategories]);
+
+  // 카테고리만 빠르게 로드하는 함수
+  const loadCategoriesOnly = useCallback(async () => {
+    try {
+      const pathParts = window.location.pathname.split('/');
+      const restaurantIndex = pathParts.indexOf('restaurant');
+      const restaurantId = restaurantIndex >= 0 ? pathParts[restaurantIndex + 1] : null;
+
+      if (!restaurantId) return;
+
+      const response = await fetch(`/api/menu/categories?restaurantId=${restaurantId}`, {
+        ...getFetchOptions()
+      });
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+      if (data.success && data.data?.categories) {
+        const categoryEmojis = ['🍔', '🍕', '🥤', '🍰', '🍜', '🥗', '🍣', '🌮'];
+        const cats = data.data.categories.map((cat: any, idx: number) => ({
+          id: cat.id ? cat.id.toString() : cat.name.toLowerCase().replace(/\s+/g, '_'),
+          name: cat.name,
+          emoji: cat.emoji || categoryEmojis[idx % categoryEmojis.length],
+          order: cat.displayOrder !== undefined ? cat.displayOrder : idx
+        }));
+        setCategories(cats);
+        saveCategoriesCache(restaurantId, cats);
+      }
+    } catch (error) {
+      console.error('Failed to load categories:', error);
+    }
+  }, []);
+
   // 초기 로드 및 레스토랑 변경 시 다시 로드
   useEffect(() => {
     // Extract restaurant ID or slug from URL
@@ -321,7 +456,6 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
     const mobileIndex = pathParts.indexOf('mobile');
     const restaurantId = restaurantIndex >= 0 ? pathParts[restaurantIndex + 1] : null;
     const slug = mobileIndex >= 0 ? pathParts[mobileIndex + 1] : null;
-
 
     // Only load if we're on a restaurant or mobile page
     if (restaurantId || slug) {
@@ -805,8 +939,11 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
       categories,
       menuItems,
       optionGroups,
+      isLoadingMenu,
+      loadedCategories,
       getItemsByCategory,
       getItemById,
+      loadMenuByCategory,
       updateMenuItem,
       addMenuItem,
       removeMenuItem,
