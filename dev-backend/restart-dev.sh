@@ -1,8 +1,10 @@
 #!/bin/bash
 # Dev Backend 안전 재시작 스크립트
 # 포트 충돌 문제를 방지하기 위해 항상 이 스크립트를 사용
+#
+# 필요한 sudoers 설정:
+#   irene ALL=(ALL) NOPASSWD: /usr/bin/kill, /usr/sbin/lsof
 
-SUDO_PASS="7u7LnxNr"
 PORT=3001
 
 echo "=== Dev Backend 재시작 ==="
@@ -14,7 +16,12 @@ sleep 1
 
 # 2. 포트 3001 사용 프로세스 강제 종료
 echo "2. 포트 $PORT 정리..."
-echo "$SUDO_PASS" | sudo -S kill -9 $(sudo lsof -t -i:$PORT) 2>/dev/null || true
+# sudoers 설정으로 비밀번호 없이 실행 (sudo -n)
+PIDS=$(sudo -n lsof -t -i:$PORT 2>/dev/null)
+if [ -n "$PIDS" ]; then
+    echo "   종료할 PID: $PIDS"
+    sudo -n kill -9 $PIDS 2>/dev/null || true
+fi
 sleep 1
 
 # 3. 포트 확인

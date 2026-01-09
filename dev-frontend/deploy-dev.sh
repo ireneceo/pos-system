@@ -19,7 +19,6 @@ echo -e "${BLUE}Dev Frontend 배포 시작...${NC}"
 
 # 0. 권한 문제 자동 해결 (캐시, 빌드, node_modules)
 CURRENT_USER=$(whoami)
-SUDO_PW=$(grep SUDO_PASSWORD /var/www/dev-backend/.env 2>/dev/null | cut -d= -f2)
 
 fix_ownership() {
     local dir=$1
@@ -28,11 +27,11 @@ fix_ownership() {
         local owner=$(stat -c '%U' "$dir" 2>/dev/null || echo "unknown")
         if [ "$owner" = "root" ] && [ "$CURRENT_USER" != "root" ]; then
             echo -e "${YELLOW}$name 권한 문제 감지 - 자동 수정 중...${NC}"
-            if [ -n "$SUDO_PW" ]; then
-                echo "$SUDO_PW" | sudo -S chown -R "$CURRENT_USER":"$CURRENT_USER" "$dir" 2>/dev/null
+            # sudoers 설정으로 비밀번호 없이 실행 (sudo -n)
+            if sudo -n chown -R "$CURRENT_USER":"$CURRENT_USER" "$dir" 2>/dev/null; then
                 echo -e "${GREEN}$name 권한 수정 완료${NC}"
             else
-                echo -e "${RED}SUDO_PASSWORD를 찾을 수 없습니다. 수동으로 권한을 수정하세요:${NC}"
+                echo -e "${RED}sudo 권한이 없습니다. 수동으로 권한을 수정하세요:${NC}"
                 echo -e "  sudo chown -R $CURRENT_USER:$CURRENT_USER $dir"
                 exit 1
             fi

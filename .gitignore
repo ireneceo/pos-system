@@ -6,6 +6,10 @@
 .env.production.local
 .env.codespace
 *.env
+**/.env
+**/.env.*
+!**/.env.example
+backups/**/.env*
 
 # Node modules
 node_modules/
