@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-01-07
+> **최종 업데이트:** 2026-01-09
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -352,6 +352,60 @@ const dateKey = `${(orderDate.getMonth() + 1).toString().padStart(2, '0')}/${ord
 - 개발 세션 종료 시 사용하는 명령어
 - 문서 자동 업데이트 (DEVELOPMENT_PLAN.md 등)
 - Git 커밋 및 푸시 자동화
+
+---
+
+## ✅ 완료된 작업 (2026-01-09)
+
+### 보안 강화 작업
+
+**목적:** 프로젝트 전반적인 보안 취약점 점검 및 개선
+
+**완료 항목:**
+
+#### 1. 파일 권한 보안
+- [x] `.env` 파일 권한 600 적용 (dev, production)
+- [x] `.gitignore` 강화 - `.env` 관련 패턴 추가
+
+#### 2. 민감정보 제거
+- [x] `SUDO_PASSWORD` 환경변수 제거 (dev-backend/.env)
+- [x] `restart-dev.sh` 스크립트에서 하드코딩된 비밀번호 제거
+- [x] `deploy-dev.sh`에서 SUDO_PASSWORD 의존성 제거 (sudo -n 사용)
+
+#### 3. JWT 보안 강화
+- [x] `authService.js` - JWT 폴백 시크릿 제거
+- [x] `authService.js` - JWT_SECRET 환경변수 필수 검증 추가
+- [x] 개발서버 JWT_SECRET 128자로 강화
+
+#### 4. API 보안
+- [x] `helmet` 패키지 설치 및 적용 (HTTP 헤더 보안)
+- [x] `express-rate-limit` 패키지 설치 및 적용
+  - 전체 API: 15분당 1000회
+  - 로그인 API: 15분당 20회
+- [x] `/api/deploy` 엔드포인트에 System Admin 인증 추가
+
+#### 5. 문서 업데이트
+- [x] `ARC.md` 생성 - 프로젝트 아키텍처 요약
+- [x] `CLAUDE.md` - AI 보안 규칙 추가
+- [x] `개발시작.md` - 보안 필수 규칙, 4줄 규칙 추가
+- [x] `개발완료.md` - 배포 전 체크리스트 추가
+
+**변경 파일:**
+- `/var/www/dev-backend/.env`
+- `/var/www/dev-backend/services/authService.js`
+- `/var/www/dev-backend/app.js`
+- `/var/www/dev-backend/server.js`
+- `/var/www/dev-backend/restart-dev.sh`
+- `/var/www/dev-frontend/deploy-dev.sh`
+- `/var/www/production-backend/restart-dev.sh`
+- `/var/www/.gitignore`
+- `/var/www/CLAUDE.md`
+- `/var/www/ARC.md` (신규)
+- `/var/www/.claude/commands/개발시작.md`
+- `/var/www/.claude/commands/개발완료.md`
+
+**보류 작업 (야간 작업 예정):**
+- [ ] 운영서버 JWT_SECRET 128자로 강화
 
 ---
 
