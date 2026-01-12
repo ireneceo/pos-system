@@ -866,7 +866,7 @@ const RecipesPage: React.FC = () => {
           ) : (
             <RecipesGrid>
               {filteredRecipes.map(recipe => (
-                <RecipeCard key={recipe.id} isActive={recipe.is_active}>
+                <RecipeCard key={recipe.id} isActive={recipe.is_active} onClick={() => handleOpenModal(recipe, true)}>
                   <RecipeHeader>
                     {recipe.emoji && <RecipeEmoji>{recipe.emoji}</RecipeEmoji>}
                     <RecipeInfo>
@@ -948,13 +948,7 @@ const RecipesPage: React.FC = () => {
                     )}
                   </RecipeIngredients>
 
-                  <RecipeActions>
-                    <ActionButton
-                      variant="secondary"
-                      onClick={() => handleOpenModal(recipe, true)}
-                    >
-                      View
-                    </ActionButton>
+                  <RecipeActions onClick={(e) => e.stopPropagation()}>
                     {recipe.editable !== false && (
                       <>
                         <ActionButton

@@ -433,6 +433,75 @@ const ButtonGroup = styled.div`
   margin-top: 8px;
 `;
 
+// View mode styles
+const ViewValue = styled.div`
+  font-size: 14px;
+  color: #0A2540;
+  padding: 8px 0;
+  min-height: 20px;
+`;
+
+const ViewSection = styled.div`
+  margin-bottom: 20px;
+`;
+
+const ViewRow = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+`;
+
+const ViewItem = styled.div``;
+
+const ViewLabel = styled.div`
+  font-size: 12px;
+  color: #6B7280;
+  margin-bottom: 4px;
+  font-weight: 500;
+`;
+
+const ViewInstructions = styled.div`
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.6;
+  padding: 12px;
+  background: #F9FAFB;
+  border-radius: 8px;
+  white-space: pre-wrap;
+`;
+
+const ViewIngredientTable = styled.div`
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  overflow: hidden;
+`;
+
+const ViewIngredientHeader = styled.div`
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 2fr;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #F3F4F6;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6B7280;
+`;
+
+const ViewIngredientRow = styled.div`
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 2fr;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid #E5E7EB;
+  font-size: 14px;
+  color: #374151;
+
+  &:first-of-type {
+    border-top: none;
+  }
+`;
+
 const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, categoryRefreshKey }) => {
   const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
@@ -735,7 +804,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
       ) : (
         <RecipesGrid>
           {filteredRecipes.map(recipe => (
-            <RecipeCard key={recipe.id} isActive={recipe.is_active} onClick={() => handleOpenModal(recipe)}>
+            <RecipeCard key={recipe.id} isActive={recipe.is_active} onClick={() => handleOpenModal(recipe, true)}>
               <RecipeHeader>
                 {recipe.image_url ? (
                   <RecipeImage src={recipe.image_url} alt={recipe.name} />
@@ -818,14 +887,14 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
                 </RecipeIngredients>
               )}
 
-              <RecipeActions>
-                <ActionButton variant="secondary" onClick={(e) => { e.stopPropagation(); handleOpenModal(recipe, true); }}>
-                  View
+              <RecipeActions onClick={(e) => e.stopPropagation()}>
+                <ActionButton onClick={() => handleOpenModal(recipe, true)}>
+                  Recipe
                 </ActionButton>
-                <ActionButton variant="primary" onClick={(e) => { e.stopPropagation(); handleOpenModal(recipe); }}>
+                <ActionButton variant="primary" onClick={() => handleOpenModal(recipe)}>
                   Edit
                 </ActionButton>
-                <ActionButton variant="danger" onClick={(e) => { e.stopPropagation(); handleDelete(recipe); }}>
+                <ActionButton variant="danger" onClick={() => handleDelete(recipe)}>
                   Delete
                 </ActionButton>
               </RecipeActions>
@@ -842,7 +911,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
         size="large"
       >
         <UIFormGroup>
-          <FormLabel>Recipe Name *</FormLabel>
+          <FormLabel>Recipe Name {!viewMode && '*'}</FormLabel>
           <FormInput
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -857,6 +926,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
             <FormSelect
               value={formData.category_id}
               onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+              disabled={viewMode}
             >
               <option value="">Select Category</option>
               {categories.map(cat => (
@@ -870,6 +940,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
               value={formData.emoji}
               onChange={(e) => setFormData({ ...formData, emoji: e.target.value })}
               placeholder="e.g., 🍗"
+              disabled={viewMode}
             />
           </UIFormGroup>
         </div>
@@ -881,6 +952,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             placeholder="Brief description of the recipe"
             rows={2}
+            disabled={viewMode}
           />
         </UIFormGroup>
 
@@ -892,6 +964,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
               min="0"
               value={formData.prep_time}
               onChange={(e) => setFormData({ ...formData, prep_time: e.target.value })}
+              disabled={viewMode}
             />
           </UIFormGroup>
           <UIFormGroup>
@@ -901,6 +974,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
               min="0"
               value={formData.cook_time}
               onChange={(e) => setFormData({ ...formData, cook_time: e.target.value })}
+              disabled={viewMode}
             />
           </UIFormGroup>
           <UIFormGroup>
@@ -911,6 +985,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
               min="0"
               value={formData.suggested_price}
               onChange={(e) => setFormData({ ...formData, suggested_price: e.target.value })}
+              disabled={viewMode}
             />
           </UIFormGroup>
         </div>
@@ -922,15 +997,18 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
             onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
             placeholder="Step-by-step cooking instructions"
             rows={4}
+            disabled={viewMode}
           />
         </UIFormGroup>
 
         {/* Ingredients Section */}
         <SectionTitle>Ingredients</SectionTitle>
 
-        <AddButton onClick={addIngredientRow}>
-          + Add Ingredient
-        </AddButton>
+        {!viewMode && (
+          <AddButton onClick={addIngredientRow}>
+            + Add Ingredient
+          </AddButton>
+        )}
 
         {formIngredients.length > 0 && (
           <IngredientsList>
@@ -939,14 +1017,15 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
               <span>Quantity</span>
               <span>Unit</span>
               <span>Notes</span>
-              <span></span>
+              {!viewMode && <span></span>}
             </IngredientHeaderRow>
 
             {formIngredients.map((fi, index) => (
-              <IngredientRow key={index}>
+              <IngredientRow key={index} style={viewMode ? { gridTemplateColumns: '3fr 1fr 0.7fr 2fr' } : undefined}>
                 <FormSelect
                   value={fi.ingredient_id || ''}
                   onChange={(e) => updateIngredientRow(index, 'ingredient_id', parseInt(e.target.value))}
+                  disabled={viewMode}
                 >
                   <option value="">Select Ingredient</option>
                   {ingredients.map(ing => (
@@ -962,18 +1041,21 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
                   placeholder="Qty"
                   value={fi.quantity}
                   onChange={(e) => updateIngredientRow(index, 'quantity', e.target.value)}
+                  disabled={viewMode}
                 />
                 <FormInput
                   value={fi.unit}
                   onChange={(e) => updateIngredientRow(index, 'unit', e.target.value)}
                   placeholder="Unit"
+                  disabled={viewMode}
                 />
                 <FormInput
                   value={fi.notes}
                   onChange={(e) => updateIngredientRow(index, 'notes', e.target.value)}
                   placeholder="Notes"
+                  disabled={viewMode}
                 />
-                <RemoveButton onClick={() => removeIngredientRow(index)}>×</RemoveButton>
+                {!viewMode && <RemoveButton onClick={() => removeIngredientRow(index)}>×</RemoveButton>}
               </IngredientRow>
             ))}
           </IngredientsList>
