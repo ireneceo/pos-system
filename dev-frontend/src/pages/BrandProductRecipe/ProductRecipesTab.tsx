@@ -469,6 +469,9 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
     notes: string;
   }>>([]);
 
+  // View mode for modal
+  const [viewMode, setViewMode] = useState(false);
+
   const brandId = user?.brand_id;
 
   useEffect(() => {
@@ -527,7 +530,8 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
     }
   };
 
-  const handleOpenModal = (recipe?: ProductRecipe) => {
+  const handleOpenModal = (recipe?: ProductRecipe, isViewMode: boolean = false) => {
+    setViewMode(isViewMode);
     if (recipe) {
       setEditingRecipe(recipe);
       setFormData({
@@ -818,7 +822,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
                 <ActionButton variant="secondary" onClick={(e) => { e.stopPropagation(); handleOpenModal(recipe, true); }}>
                   View
                 </ActionButton>
-                <ActionButton variant="secondary" onClick={(e) => { e.stopPropagation(); handleOpenModal(recipe); }}>
+                <ActionButton variant="primary" onClick={(e) => { e.stopPropagation(); handleOpenModal(recipe); }}>
                   Edit
                 </ActionButton>
                 <ActionButton variant="danger" onClick={(e) => { e.stopPropagation(); handleDelete(recipe); }}>
@@ -834,7 +838,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
       <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        title={editingRecipe ? 'Edit Recipe' : 'Add Recipe'}
+        title={viewMode ? 'Recipe Details' : (editingRecipe ? 'Edit Recipe' : 'Add Recipe')}
         size="large"
       >
         <UIFormGroup>
@@ -843,6 +847,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             placeholder="e.g., Grilled Chicken"
+            disabled={viewMode}
           />
         </UIFormGroup>
 
@@ -981,11 +986,13 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
 
         <ButtonGroup>
           <ModalButton variant="secondary" onClick={() => setShowModal(false)}>
-            Cancel
+            {viewMode ? 'Close' : 'Cancel'}
           </ModalButton>
-          <ModalButton variant="primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save Recipe'}
-          </ModalButton>
+          {!viewMode && (
+            <ModalButton variant="primary" onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving...' : 'Save Recipe'}
+            </ModalButton>
+          )}
         </ButtonGroup>
       </Modal>
     </>

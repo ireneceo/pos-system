@@ -233,12 +233,11 @@ const RecipeActions = styled.div`
 const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
   flex: 1;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
-  border: none;
+  transition: all 0.15s;
 
   ${props => {
     switch (props.variant) {
@@ -246,19 +245,31 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger
         return `
           background: #635BFF;
           color: white;
-          &:hover { background: #4F46E5; }
+          border: 1px solid #635BFF;
+          &:hover {
+            background: #4F46E5;
+            transform: translateY(-1px);
+          }
         `;
       case 'danger':
         return `
-          background: #FEE2E2;
-          color: #DC2626;
-          &:hover { background: #FCA5A5; }
+          background: #FEF2F2;
+          border: 1px solid #EF4444;
+          color: #EF4444;
+          &:hover {
+            background: #FEE2E2;
+            transform: translateY(-1px);
+          }
         `;
       default:
         return `
-          background: #F3F4F6;
-          color: #374151;
-          &:hover { background: #E5E7EB; }
+          background: #F8FAFC;
+          border: 1px solid #E2E8F0;
+          color: #475569;
+          &:hover {
+            background: #F1F5F9;
+            transform: translateY(-1px);
+          }
         `;
     }
   }}

@@ -6,66 +6,80 @@
 
 ---
 
-## 🚧 현재 진행 중: 브랜드 재고관리 통합
+## ✅ 완료: 레시피/재료/재고관리 구조 통합 (2026-01-12)
 
-> **시작일:** 2026-01-12
-> **상태:** 완료 (2026-01-12)
+### 핵심 구조 차이
 
-### 목표
-브랜드제너럴/매니저의 ProductIngredient 재고관리를 레스토랑 InventoryManager와 통합
+| 구분 | 레스토랑 관리자 | 브랜드제너럴/매니저 |
+|-----|---------------|-------------------|
+| **재료 관리** | Ingredients (RecipeManagement) | ProductIngredients (BrandProductRecipe) |
+| **레시피 관리** | Recipes (RecipesPage) | ProductRecipes (ProductRecipesTab) |
+| **재고 관리** | InventoryManager mode='restaurant' | InventoryManager mode='brand' |
+| **재고 추적** | 모든 재료 자동 추적 | track_stock 토글로 선택 |
+| **재고 차감** | 주문 완료 시 자동 (deductInventoryForOrder) | 수동 조정만 (향후 PO 연동) |
 
-### 구조
+### 구조도
 
 ```
-[레스토랑 관리자] - 완성됨
-Ingredients ──► Recipes ──► Inventory (InventoryManager)
-     │              │            │
-     │              │            └─► 주문 시 자동 차감 (deductInventoryForOrder)
-     │              │
-     └── 브랜드 재료 (읽기전용)
+[레스토랑 관리자] ─────────────────────────────────────────────────────
 
-[브랜드제너럴/매니저] - 개발 중
-ProductIngredients ──► ProductRecipes ──► Inventory (InventoryManager mode='brand')
-        │                                       │
-  track_stock=true                              └─► 수동 조정만 (현재)
-        │                                            │
-        └───────────────────────────────────────────┘
-                                                     │
-                                           [향후] Purchase Order 연동 시
-                                           레스토랑 발주 → 브랜드 재고 차감
+  /pos/recipes?tab=ingredients     /pos/recipes?tab=recipes     /pos/inventory
+  ┌──────────────────────┐        ┌──────────────────────┐     ┌──────────────────┐
+  │   IngredientsTab     │───────►│    RecipesPage       │     │  InventoryPage   │
+  │  (재료 CRUD)          │        │  (레시피 CRUD)        │     │ (InventoryManager│
+  │  - 토글 없음 (전체추적) │        │  - View/Edit/Delete  │     │   mode=restaurant)│
+  └──────────────────────┘        └──────────────────────┘     └──────────────────┘
+           │                                │                          │
+           └───────── 재료 선택 ─────────────┘                          │
+                                            │                          │
+                                     Recipe 연결된 Product              │
+                                            │                          │
+                                     주문 완료 ─────────────────────────┘
+                                            │
+                                     자동 재고 차감 (deductInventoryForOrder)
+
+[브랜드제너럴/매니저] ────────────────────────────────────────────────────
+
+  /pos/brand-product-recipes?tab=ingredients    ?tab=recipes      /pos/brand-inventory
+  ┌──────────────────────┐        ┌──────────────────────┐     ┌──────────────────┐
+  │ ProductIngredientsTab│───────►│  ProductRecipesTab   │     │BrandInventoryPage│
+  │  (재료 CRUD)          │        │  (레시피 CRUD)        │     │ (InventoryManager│
+  │  - track_stock 토글   │        │  - View/Edit/Delete  │     │   mode=brand)    │
+  └──────────────────────┘        └──────────────────────┘     └──────────────────┘
+           │                                                           │
+     track_stock=true ─────────────────────────────────────────────────┘
+           │
+     재고관리 대상으로 표시 (/api/product-ingredients?track_stock=true)
 ```
 
-### 작업 항목
+### 완료된 작업
 
 | 상태 | 항목 | 파일 |
 |:---:|------|------|
-| ✅ | InventoryManager 브랜드 모드 기본 구조 | `components/Inventory/InventoryManager.tsx` |
-| ✅ | ProductIngredient API 연동 (`/api/product-ingredients?track_stock=true`) | 위 파일 |
-| ✅ | 입고/폐기/조정 시 current_stock 업데이트 | 위 파일 |
-| ✅ | BrandInventoryPage에서 InventoryManager 사용 | `pages/BrandInventory/BrandInventoryPage.tsx` |
-| ✅ | 빌드 및 테스트 | 2026-01-12 완료 |
+| ✅ | InventoryManager 브랜드 모드 | `components/Inventory/InventoryManager.tsx` |
+| ✅ | BrandInventoryPage 통합 | `pages/BrandInventory/BrandInventoryPage.tsx` |
+| ✅ | ProductIngredientsTab track_stock 토글 추가 | `pages/BrandProductRecipe/ProductIngredientsTab.tsx` |
+| ✅ | IngredientsTab track_stock 토글 제거 | `pages/RecipeManagement/IngredientsTab.tsx` |
+| ✅ | ProductRecipesTab UI 통일 (View 버튼, 시간정보) | `pages/BrandProductRecipe/ProductRecipesTab.tsx` |
+| ✅ | **InventoryPage 중복 제거** (~2900줄→22줄) | `pages/Inventory/InventoryPage.tsx` |
+| ✅ | **RecipesPage ActionButton 스타일 통일** | `pages/Recipes/RecipesPage.tsx` |
+| ✅ | **개발시작 가이드 컴포넌트 통일 규칙 추가** | `.claude/commands/개발시작.md` |
 
 ### API 매핑
 
-| 기능 | 레스토랑 (mode='restaurant') | 브랜드 (mode='brand') |
-|------|------------------------------|----------------------|
+| 기능 | 레스토랑 | 브랜드 |
+|------|---------|--------|
+| 재료 조회 | `/api/restaurants/:id/ingredients` | `/api/product-ingredients` |
+| 재료 수정 | `PUT /api/restaurants/:id/ingredients/:id` | `PUT /api/product-ingredients/:id` |
+| 레시피 조회 | `/api/restaurants/:id/recipes` | `/api/product-recipes` |
 | 재고 조회 | `/api/restaurants/:id/inventory` | `/api/product-ingredients?track_stock=true` |
-| 수량 조정 | `/api/restaurants/:id/inventory/adjust` | `PUT /api/product-ingredients/:id` |
-| 입고 | `/api/restaurants/:id/inventory/receive` | `PUT /api/product-ingredients/:id` (current_stock +) |
-| 폐기 | `/api/restaurants/:id/inventory/waste` | `PUT /api/product-ingredients/:id` (current_stock -) |
-| 카테고리 | `GeneralStockCategoriesTab` | `ProductIngredientCategoriesTab` |
-| 거래내역 | `TransactionHistory` | 미지원 (향후 Purchase Order 연동 시 추가) |
+| 재고 조정 | `/api/restaurants/:id/inventory/adjust` | `PUT /api/product-ingredients/:id` |
 
-### 관련 파일
-- `/var/www/dev-frontend/src/components/Inventory/InventoryManager.tsx` - 통합 컴포넌트
-- `/var/www/dev-frontend/src/pages/BrandInventory/BrandInventoryPage.tsx` - 브랜드 재고 페이지
-- `/var/www/dev-frontend/src/pages/Inventory/InventoryPage.tsx` - 레스토랑 재고 페이지 (참조용)
-- `/var/www/dev-frontend/src/pages/BrandProductRecipe/ProductIngredientsTab.tsx` - 제품재료 관리
+### 향후 작업: Purchase Order 시스템
 
-### 향후 확장 (Purchase Order 시스템)
 ```
-레스토랑 발주 요청 → 브랜드 승인 → 브랜드 ProductIngredient current_stock 차감
-                              → 레스토랑 Ingredient current_stock 증가
+레스토랑 발주 요청 → 브랜드 승인/출고 → 브랜드 ProductIngredient 차감
+                                   → 레스토랑 Ingredient 증가
 ```
 
 ---
