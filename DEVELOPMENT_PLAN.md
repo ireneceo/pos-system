@@ -1,49 +1,33 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-01-09
+> **최종 업데이트:** 2026-01-12
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
 ---
 
-## 🚨 다음 접속 시 필수 작업
+## 다음 개발 작업: Phase 4 - Purchase Order System
 
-### 멤버십/포인트 시스템 테스트 (2026-01-06 개발 완료)
+**설계 문서:** `/var/www/docs/PURCHASE_ORDER_SYSTEM.md`
 
-**개발 완료된 기능:**
-- Settings > Membership 탭 (멤버십 설정 UI)
-- 모바일 오더 포인트 사용 UI
-- POS 시스템 포인트 사용 UI
-- 주문 완료 시 포인트 자동 적립
-- 주문 취소 시 포인트 환불
+**상태:** 설계 완료, 개발 대기 중
 
-**테스트 체크리스트:**
+---
 
-1. **멤버십 설정 테스트**
-   - [ ] Settings > Membership 탭 접근
-   - [ ] Enable Membership 토글 작동
-   - [ ] 포인트 설정 저장 (적립비율, 사용환율, 최소사용 등)
-   - [ ] 등급 threshold/bonus 설정 저장
+## 완료된 테스트
 
-2. **모바일 오더 테스트**
-   - [ ] 회원 로그인 시 포인트 섹션 표시
-   - [ ] 포인트 사용 체크박스/슬라이더 작동
-   - [ ] 포인트 할인 금액 실시간 계산
-   - [ ] 주문 생성 시 points_used 저장 확인
+### 멤버십/포인트 시스템 (2026-01-12 코드 리뷰 완료)
 
-3. **POS 시스템 테스트**
-   - [ ] 고객 선택 시 포인트 로드
-   - [ ] Payment Modal에서 포인트 사용 UI 표시
-   - [ ] 결제 시 포인트 차감 확인
-
-4. **포인트 적립/환불 테스트**
-   - [ ] 주문 완료(completed) 시 포인트 적립 확인
-   - [ ] 주문 취소(cancelled) 시 포인트 환불 확인
-   - [ ] point_transactions 테이블 기록 확인
-
-5. **배포 필요**
-   - [ ] `/var/www/html/static/js` 권한 문제 해결 필요 (root 소유)
-   - [ ] 프론트엔드 수동 배포 또는 권한 수정 후 재배포
+**코드 리뷰 결과:**
+- [x] Settings > Membership 탭 UI 구현 완료
+- [x] 모바일 오더 포인트 사용 UI 구현 완료
+- [x] POS 시스템 포인트 사용 UI 구현 완료
+- [x] Backend API 전체 구현 완료 (membership.js, pointService.js)
+- [x] DB 모델 구현 완료 (MembershipSettings, PointTransaction)
+- [x] 주문 연동 구현 완료 (orders.js)
+- [x] UI 디자인 가이드 준수 확인 및 수정 완료 (2026-01-12)
+  - 성공 메시지 제거 (가이드 위반 수정)
+  - 에러 메시지 이모지 제거
 
 **관련 파일:**
 - `/var/www/dev-frontend/src/pages/Settings/SettingsPage.tsx` (Membership 탭)

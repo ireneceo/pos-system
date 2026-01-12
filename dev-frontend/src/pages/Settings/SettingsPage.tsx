@@ -1419,7 +1419,7 @@ const SettingsPage: React.FC = () => {
           const errorText = await response.text();
           console.error('❌ Failed to save store info to database. Status:', response.status, 'Error:', errorText);
           console.error('❌ Full error response:', errorText);
-          setSaveStatus({ type: 'error', message: `❌ Failed to save settings to database (${response.status}: ${response.statusText})` });
+          setSaveStatus({ type: 'error', message: `Failed to save settings to database (${response.status}: ${response.statusText})` });
 
           // Auto-clear error message after 8 seconds
           setTimeout(() => {
@@ -1472,17 +1472,13 @@ const SettingsPage: React.FC = () => {
         console.log('⚠️  No restaurantId found, skipping database save');
       }
 
-      setSaveStatus({ type: 'success', message: '✅ Settings saved successfully!' });
+      // 성공 시 알림 없이 처리 (UI 디자인 가이드 준수)
       setHasChanges(false);
+      setSaveStatus(null);
       console.log('✅ Save completed successfully');
-
-      // Auto-clear success message after 5 seconds
-      setTimeout(() => {
-        setSaveStatus(null);
-      }, 5000);
     } catch (error) {
       console.error('❌ Error saving settings:', error);
-      setSaveStatus({ type: 'error', message: '❌ Failed to save settings' });
+      setSaveStatus({ type: 'error', message: 'Failed to save settings' });
 
       // Auto-clear error message after 8 seconds
       setTimeout(() => {
@@ -1509,12 +1505,9 @@ const SettingsPage: React.FC = () => {
         throw new Error('Failed to save membership settings');
       }
 
-      setSaveStatus({ type: 'success', message: 'Membership settings saved successfully!' });
+      // 성공 시 알림 없이 처리 (UI 디자인 가이드 준수)
       setHasChanges(false);
-
-      setTimeout(() => {
-        setSaveStatus(null);
-      }, 5000);
+      setSaveStatus(null);
     } catch (error) {
       console.error('Failed to save membership settings:', error);
       setSaveStatus({ type: 'error', message: 'Failed to save membership settings' });
