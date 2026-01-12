@@ -6,6 +6,15 @@
 
 ---
 
+## ✅ 완료: UI 개선 및 코드 정리 (2026-01-12)
+
+| 상태 | 항목 | 파일 |
+|:---:|------|------|
+| ✅ | POS 할인 입력 통화 기호 동적 표시 | `pages/POSTerminal/POSTerminalPage.tsx` |
+| ✅ | Loyalty Tier Settings UI 제거 (미사용 기능 정리) | `pages/Settings/SettingsPage.tsx` |
+
+---
+
 ## ✅ 완료: 레시피/재료/재고관리 구조 통합 (2026-01-12)
 
 ### 핵심 구조 차이

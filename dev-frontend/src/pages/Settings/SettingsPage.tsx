@@ -12,6 +12,7 @@ import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
 import PhoneInput from '../../components/common/PhoneInput';
 import { useTabParam } from '../../hooks/useTabParam';
 import { printTableQR } from '../../utils/billPrint';
+import { getCurrencySymbol } from '../../utils/currency';
 
 // 스타일 컴포넌트
 const SettingsContainer = styled.div`
@@ -3448,207 +3449,6 @@ const SettingsPage: React.FC = () => {
               </SettingsCard>
 
               <SettingsCard style={{ gridColumn: '1 / -1' }}>
-                <CardTitle>Loyalty Tier Settings</CardTitle>
-                <Toggle>
-                  <ToggleLabel>Enable Loyalty Tier System</ToggleLabel>
-                  <ToggleSwitch>
-                    <ToggleInput
-                      type="checkbox"
-                      checked={operationSettings?.loyaltyTiers?.enabled || false}
-                      onChange={(e) => {
-                        setOperationSettings(prev => ({
-                          ...prev,
-                          loyaltyTiers: {
-                            ...(prev.loyaltyTiers || {}),
-                            enabled: e.target.checked,
-                            bronze: prev?.loyaltyTiers?.bronze || { minOrders: 0, minSpent: 0 },
-                            silver: prev?.loyaltyTiers?.silver || { minOrders: 5, minSpent: 500 },
-                            gold: prev?.loyaltyTiers?.gold || { minOrders: 15, minSpent: 1500 },
-                            vip: prev?.loyaltyTiers?.vip || { minOrders: 30, minSpent: 3000 }
-                          }
-                        }));
-                        setHasChanges(true);
-                      }}
-                    />
-                    <ToggleSlider />
-                  </ToggleSwitch>
-                </Toggle>
-                <HelpText>Enable automatic loyalty tier upgrades based on customer orders and spending</HelpText>
-
-                {operationSettings?.loyaltyTiers?.enabled && (
-                  <>
-                    <Divider />
-
-                    {/* Bronze Tier */}
-                    <div style={{ marginBottom: '24px' }}>
-                      <Label style={{ color: '#CD7F32', fontWeight: 600, fontSize: '15px', marginBottom: '8px' }}>🥉 Bronze Tier (Default)</Label>
-                      <HelpText>All new customers start at Bronze tier</HelpText>
-                    </div>
-
-                    {/* Silver Tier */}
-                    <div style={{ marginBottom: '32px' }}>
-                      <Label style={{ color: '#C0C0C0', fontWeight: 600, fontSize: '15px', marginBottom: '16px', display: 'block' }}>🥈 Silver Tier Requirements</Label>
-                      <SettingsGrid>
-                        <FormGroup>
-                          <Label>Minimum Orders</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            value={operationSettings?.loyaltyTiers?.silver?.minOrders || 5}
-                            onChange={(e) => {
-                              setOperationSettings(prev => ({
-                                ...prev,
-                                loyaltyTiers: {
-                                  ...prev.loyaltyTiers,
-                                  silver: {
-                                    ...prev.loyaltyTiers.silver,
-                                    minOrders: Number(e.target.value)
-                                  }
-                                }
-                              }));
-                              setHasChanges(true);
-                            }}
-                          />
-                          <HelpText>Number of completed orders</HelpText>
-                        </FormGroup>
-                        <FormGroup>
-                          <Label>Minimum Spent ({currencySettings.currency})</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={operationSettings?.loyaltyTiers?.silver?.minSpent || 500}
-                            onChange={(e) => {
-                              setOperationSettings(prev => ({
-                                ...prev,
-                                loyaltyTiers: {
-                                  ...prev.loyaltyTiers,
-                                  silver: {
-                                    ...prev.loyaltyTiers.silver,
-                                    minSpent: Number(e.target.value)
-                                  }
-                                }
-                              }));
-                              setHasChanges(true);
-                            }}
-                          />
-                          <HelpText>Total amount spent</HelpText>
-                        </FormGroup>
-                      </SettingsGrid>
-                    </div>
-
-                    {/* Gold Tier */}
-                    <div style={{ marginBottom: '32px' }}>
-                      <Label style={{ color: '#FFD700', fontWeight: 600, fontSize: '15px', marginBottom: '16px', display: 'block' }}>🥇 Gold Tier Requirements</Label>
-                      <SettingsGrid>
-                        <FormGroup>
-                          <Label>Minimum Orders</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            value={operationSettings?.loyaltyTiers?.gold?.minOrders || 15}
-                            onChange={(e) => {
-                              setOperationSettings(prev => ({
-                                ...prev,
-                                loyaltyTiers: {
-                                  ...prev.loyaltyTiers,
-                                  gold: {
-                                    ...prev.loyaltyTiers.gold,
-                                    minOrders: Number(e.target.value)
-                                  }
-                                }
-                              }));
-                              setHasChanges(true);
-                            }}
-                          />
-                          <HelpText>Number of completed orders</HelpText>
-                        </FormGroup>
-                        <FormGroup>
-                          <Label>Minimum Spent ({currencySettings.currency})</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={operationSettings?.loyaltyTiers?.gold?.minSpent || 1500}
-                            onChange={(e) => {
-                              setOperationSettings(prev => ({
-                                ...prev,
-                                loyaltyTiers: {
-                                  ...prev.loyaltyTiers,
-                                  gold: {
-                                    ...prev.loyaltyTiers.gold,
-                                    minSpent: Number(e.target.value)
-                                  }
-                                }
-                              }));
-                              setHasChanges(true);
-                            }}
-                          />
-                          <HelpText>Total amount spent</HelpText>
-                        </FormGroup>
-                      </SettingsGrid>
-                    </div>
-
-                    {/* VIP Tier */}
-                    <div style={{ marginBottom: '24px' }}>
-                      <Label style={{ color: '#9B59B6', fontWeight: 600, fontSize: '15px', marginBottom: '16px', display: 'block' }}>💎 VIP Tier Requirements</Label>
-                      <SettingsGrid>
-                        <FormGroup>
-                          <Label>Minimum Orders</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            value={operationSettings?.loyaltyTiers?.vip?.minOrders || 30}
-                            onChange={(e) => {
-                              setOperationSettings(prev => ({
-                                ...prev,
-                                loyaltyTiers: {
-                                  ...prev.loyaltyTiers,
-                                  vip: {
-                                    ...prev.loyaltyTiers.vip,
-                                    minOrders: Number(e.target.value)
-                                  }
-                                }
-                              }));
-                              setHasChanges(true);
-                            }}
-                          />
-                          <HelpText>Number of completed orders</HelpText>
-                        </FormGroup>
-                        <FormGroup>
-                          <Label>Minimum Spent ({currencySettings.currency})</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={operationSettings?.loyaltyTiers?.vip?.minSpent || 3000}
-                            onChange={(e) => {
-                              setOperationSettings(prev => ({
-                                ...prev,
-                                loyaltyTiers: {
-                                  ...prev.loyaltyTiers,
-                                  vip: {
-                                    ...prev.loyaltyTiers.vip,
-                                    minSpent: Number(e.target.value)
-                                  }
-                                }
-                              }));
-                              setHasChanges(true);
-                            }}
-                          />
-                          <HelpText>Total amount spent</HelpText>
-                        </FormGroup>
-                      </SettingsGrid>
-                    </div>
-
-                    <HelpText style={{ fontSize: '13px', marginTop: '16px' }}>
-                      <strong>Note:</strong> Customers are automatically upgraded when they meet <strong>EITHER</strong> the minimum orders <strong>OR</strong> minimum spent requirement for a tier.
-                    </HelpText>
-                  </>
-                )}
-              </SettingsCard>
-
-              <SettingsCard style={{ gridColumn: '1 / -1' }}>
                 <CardTitle>Pager System Settings</CardTitle>
                 <Toggle>
                   <ToggleLabel>Enable Pager System</ToggleLabel>
@@ -4061,7 +3861,7 @@ const SettingsPage: React.FC = () => {
                       <FormGroup>
                         <Label>Points per Currency Unit</Label>
                         <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#8898AA' }}>
-                          How many points customer earns per RM 1 spent
+                          How many points customer earns per {getCurrencySymbol(currencySettings.currency)} 1 spent
                         </p>
                         <Input
                           type="number"
@@ -4078,7 +3878,7 @@ const SettingsPage: React.FC = () => {
                       <FormGroup>
                         <Label>Points to Currency Ratio</Label>
                         <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#8898AA' }}>
-                          How many points equal RM 1 when redeeming
+                          How many points equal {getCurrencySymbol(currencySettings.currency)} 1 when redeeming
                         </p>
                         <Input
                           type="number"
@@ -4170,7 +3970,7 @@ const SettingsPage: React.FC = () => {
                       </p>
 
                       <FormGroup>
-                        <Label>Silver Threshold (RM)</Label>
+                        <Label>Silver Threshold ({getCurrencySymbol(currencySettings.currency)})</Label>
                         <Input
                           type="number"
                           step="100"
@@ -4184,7 +3984,7 @@ const SettingsPage: React.FC = () => {
                       </FormGroup>
 
                       <FormGroup>
-                        <Label>Gold Threshold (RM)</Label>
+                        <Label>Gold Threshold ({getCurrencySymbol(currencySettings.currency)})</Label>
                         <Input
                           type="number"
                           step="100"
@@ -4198,7 +3998,7 @@ const SettingsPage: React.FC = () => {
                       </FormGroup>
 
                       <FormGroup>
-                        <Label>VIP Threshold (RM)</Label>
+                        <Label>VIP Threshold ({getCurrencySymbol(currencySettings.currency)})</Label>
                         <Input
                           type="number"
                           step="100"

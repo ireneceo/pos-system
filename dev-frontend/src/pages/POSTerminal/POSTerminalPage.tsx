@@ -16,7 +16,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import CustomerModal from '../../components/Customer/CustomerModal';
 // StaffLoginModal removed - authentication handled by ProtectedRoute
 import { normalizeCustomerName } from '../../utils/orderUtils';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { useRestaurantId } from '../../hooks/useRestaurantId';
 
 const POSContainer = styled.div`
@@ -2712,7 +2712,7 @@ const POSTerminalPage: React.FC = () => {
         label="Enter discount amount:"
         placeholder="25"
         min={0}
-        suffix=" RM"
+        suffix={` ${getCurrencySymbol(currency)}`}
         confirmText="Apply Discount"
         cancelText="Cancel"
       />
