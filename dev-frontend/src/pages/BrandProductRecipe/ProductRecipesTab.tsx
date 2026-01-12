@@ -197,6 +197,45 @@ const IngredientTag = styled.span`
   font-weight: 500;
 `;
 
+const RecipeMetaInfo = styled.div`
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: #6B7280;
+  margin: 8px 0;
+  padding: 8px;
+  background: #F9FAFB;
+  border-radius: 6px;
+`;
+
+const MetaItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+
+  span {
+    color: #9CA3AF;
+  }
+
+  strong {
+    color: #374151;
+    font-weight: 600;
+  }
+`;
+
+const InstructionsPreview = styled.div`
+  font-size: 13px;
+  color: #6B7280;
+  margin: 8px 0;
+  padding: 8px;
+  background: #FEFCE8;
+  border-radius: 6px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+`;
+
 const RecipeActions = styled.div`
   display: flex;
   gap: 8px;
@@ -726,6 +765,37 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
                 </CostItem>
               </RecipeCosts>
 
+              {/* Cook Time & Prep Time */}
+              {(recipe.prep_time || recipe.cook_time) && (
+                <RecipeMetaInfo>
+                  {recipe.prep_time && (
+                    <MetaItem>
+                      <span>Prep:</span>
+                      <strong>{recipe.prep_time} min</strong>
+                    </MetaItem>
+                  )}
+                  {recipe.cook_time && (
+                    <MetaItem>
+                      <span>Cook:</span>
+                      <strong>{recipe.cook_time} min</strong>
+                    </MetaItem>
+                  )}
+                  {recipe.prep_time && recipe.cook_time && (
+                    <MetaItem>
+                      <span>Total:</span>
+                      <strong>{recipe.prep_time + recipe.cook_time} min</strong>
+                    </MetaItem>
+                  )}
+                </RecipeMetaInfo>
+              )}
+
+              {/* Instructions Preview */}
+              {recipe.instructions && (
+                <InstructionsPreview>
+                  {recipe.instructions}
+                </InstructionsPreview>
+              )}
+
               {recipe.recipeIngredients && recipe.recipeIngredients.length > 0 && (
                 <RecipeIngredients>
                   <IngredientsCount>
@@ -745,6 +815,9 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
               )}
 
               <RecipeActions>
+                <ActionButton variant="secondary" onClick={(e) => { e.stopPropagation(); handleOpenModal(recipe, true); }}>
+                  View
+                </ActionButton>
                 <ActionButton variant="secondary" onClick={(e) => { e.stopPropagation(); handleOpenModal(recipe); }}>
                   Edit
                 </ActionButton>

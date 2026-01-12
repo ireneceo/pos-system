@@ -914,18 +914,6 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                 )}
               </IngredientInfo>
 
-              <StockToggleRow>
-                <StockToggleLabel>Track in Stock List</StockToggleLabel>
-                <ToggleSwitch>
-                  <input
-                    type="checkbox"
-                    checked={ingredient.track_stock || false}
-                    onChange={(e) => handleToggleTrackStock(ingredient, e.target.checked)}
-                  />
-                  <span></span>
-                </ToggleSwitch>
-              </StockToggleRow>
-
               {!isItemReadOnly(ingredient) && (
                 <IngredientActions>
                   <ActionButton

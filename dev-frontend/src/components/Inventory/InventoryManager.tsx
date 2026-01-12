@@ -708,9 +708,6 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   // Reorder quantities
   const [orderQuantities, setOrderQuantities] = useState<{[key: number]: string}>({});
 
-  // URL 파라미터 우선, 없으면 user의 restaurant_id 사용
-  const restaurantId = urlRestaurantId ? parseInt(urlRestaurantId, 10) : user?.restaurant_id;
-
   useEffect(() => {
     if (defaultCurrency) {
       setSelectedCurrency(defaultCurrency);
@@ -1537,15 +1534,17 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
           ) : activeTab === 'list' ? (
             <>
               <FilterBar>
-                <FilterSelect
-                  value={stockTypeFilter}
-                  onChange={(e) => setStockTypeFilter(e.target.value as 'all' | 'ingredients' | 'general_stock')}
-                  style={{ minWidth: '140px' }}
-                >
-                  <option value="all">All Items</option>
-                  <option value="ingredients">Ingredients</option>
-                  <option value="general_stock">General Stock</option>
-                </FilterSelect>
+                {mode === 'restaurant' && (
+                  <FilterSelect
+                    value={stockTypeFilter}
+                    onChange={(e) => setStockTypeFilter(e.target.value as 'all' | 'ingredients' | 'general_stock')}
+                    style={{ minWidth: '140px' }}
+                  >
+                    <option value="all">All Items</option>
+                    <option value="ingredients">Ingredients</option>
+                    <option value="general_stock">General Stock</option>
+                  </FilterSelect>
+                )}
                 <SearchInput
                   type="text"
                   placeholder="Search..."
@@ -1561,17 +1560,19 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                   <option value="low_stock">Low Stock</option>
                   <option value="out_of_stock">Out of Stock</option>
                 </FilterSelect>
-                <Button
-                  variant="primary"
-                  onClick={() => setShowAddGeneralStockModal(true)}
-                  style={{ marginLeft: 'auto' }}
-                >
-                  + Add General Stock
-                </Button>
+                {mode === 'restaurant' && (
+                  <Button
+                    variant="primary"
+                    onClick={() => setShowAddGeneralStockModal(true)}
+                    style={{ marginLeft: 'auto' }}
+                  >
+                    + Add General Stock
+                  </Button>
+                )}
               </FilterBar>
 
-              {/* Show General Stock Section */}
-              {(stockTypeFilter === 'all' || stockTypeFilter === 'general_stock') && generalStockInventory.length > 0 && (
+              {/* Show General Stock Section (Restaurant mode only) */}
+              {mode === 'restaurant' && (stockTypeFilter === 'all' || stockTypeFilter === 'general_stock') && generalStockInventory.length > 0 && (
                 <>
                   {stockTypeFilter === 'all' && <SectionTitle>General Stock ({generalStockInventory.filter(item => {
                     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -1746,9 +1747,9 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
               )}
 
               {/* Show Ingredients Section */}
-              {(stockTypeFilter === 'all' || stockTypeFilter === 'ingredients') && (
+              {(mode === 'brand' || stockTypeFilter === 'all' || stockTypeFilter === 'ingredients') && (
                 <>
-                  {stockTypeFilter === 'all' && <SectionTitle>Ingredients ({filteredInventory.length})</SectionTitle>}
+                  {mode === 'restaurant' && stockTypeFilter === 'all' && <SectionTitle>Ingredients ({filteredInventory.length})</SectionTitle>}
                   {filteredInventory.length === 0 ? (
                     <EmptyState>
                       <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
@@ -1756,15 +1757,19 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                       </div>
                       <div style={{ fontSize: '14px', marginBottom: '16px' }}>
                         {inventory.length === 0
-                          ? 'Add ingredients in the Ingredients page first.'
+                          ? mode === 'brand'
+                            ? 'Add ingredients with "Track in Inventory" enabled in the Product Ingredients page first.'
+                            : 'Add ingredients in the Ingredients page first.'
                           : 'Try adjusting your search or filter.'}
                       </div>
                       {inventory.length === 0 && (
                         <Button
                           variant="primary"
-                          onClick={() => window.location.href = `/restaurant/${restaurantId}/recipe-management?tab=ingredients`}
+                          onClick={() => window.location.href = mode === 'brand'
+                            ? '/brand/product-recipe?tab=ingredients'
+                            : `/restaurant/${restaurantId}/recipe-management?tab=ingredients`}
                         >
-                          Go to Ingredients
+                          Go to {mode === 'brand' ? 'Product Ingredients' : 'Ingredients'}
                         </Button>
                       )}
                     </EmptyState>
@@ -1919,6 +1924,8 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                     </InventoryTableRow>
                   ))}
                 </Table>
+                  )}
+                </>
               )}
             </>
           ) : activeTab === 'categories' ? (

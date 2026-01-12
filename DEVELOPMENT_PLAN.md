@@ -6,6 +6,70 @@
 
 ---
 
+## 🚧 현재 진행 중: 브랜드 재고관리 통합
+
+> **시작일:** 2026-01-12
+> **상태:** 완료 (2026-01-12)
+
+### 목표
+브랜드제너럴/매니저의 ProductIngredient 재고관리를 레스토랑 InventoryManager와 통합
+
+### 구조
+
+```
+[레스토랑 관리자] - 완성됨
+Ingredients ──► Recipes ──► Inventory (InventoryManager)
+     │              │            │
+     │              │            └─► 주문 시 자동 차감 (deductInventoryForOrder)
+     │              │
+     └── 브랜드 재료 (읽기전용)
+
+[브랜드제너럴/매니저] - 개발 중
+ProductIngredients ──► ProductRecipes ──► Inventory (InventoryManager mode='brand')
+        │                                       │
+  track_stock=true                              └─► 수동 조정만 (현재)
+        │                                            │
+        └───────────────────────────────────────────┘
+                                                     │
+                                           [향후] Purchase Order 연동 시
+                                           레스토랑 발주 → 브랜드 재고 차감
+```
+
+### 작업 항목
+
+| 상태 | 항목 | 파일 |
+|:---:|------|------|
+| ✅ | InventoryManager 브랜드 모드 기본 구조 | `components/Inventory/InventoryManager.tsx` |
+| ✅ | ProductIngredient API 연동 (`/api/product-ingredients?track_stock=true`) | 위 파일 |
+| ✅ | 입고/폐기/조정 시 current_stock 업데이트 | 위 파일 |
+| ✅ | BrandInventoryPage에서 InventoryManager 사용 | `pages/BrandInventory/BrandInventoryPage.tsx` |
+| ✅ | 빌드 및 테스트 | 2026-01-12 완료 |
+
+### API 매핑
+
+| 기능 | 레스토랑 (mode='restaurant') | 브랜드 (mode='brand') |
+|------|------------------------------|----------------------|
+| 재고 조회 | `/api/restaurants/:id/inventory` | `/api/product-ingredients?track_stock=true` |
+| 수량 조정 | `/api/restaurants/:id/inventory/adjust` | `PUT /api/product-ingredients/:id` |
+| 입고 | `/api/restaurants/:id/inventory/receive` | `PUT /api/product-ingredients/:id` (current_stock +) |
+| 폐기 | `/api/restaurants/:id/inventory/waste` | `PUT /api/product-ingredients/:id` (current_stock -) |
+| 카테고리 | `GeneralStockCategoriesTab` | `ProductIngredientCategoriesTab` |
+| 거래내역 | `TransactionHistory` | 미지원 (향후 Purchase Order 연동 시 추가) |
+
+### 관련 파일
+- `/var/www/dev-frontend/src/components/Inventory/InventoryManager.tsx` - 통합 컴포넌트
+- `/var/www/dev-frontend/src/pages/BrandInventory/BrandInventoryPage.tsx` - 브랜드 재고 페이지
+- `/var/www/dev-frontend/src/pages/Inventory/InventoryPage.tsx` - 레스토랑 재고 페이지 (참조용)
+- `/var/www/dev-frontend/src/pages/BrandProductRecipe/ProductIngredientsTab.tsx` - 제품재료 관리
+
+### 향후 확장 (Purchase Order 시스템)
+```
+레스토랑 발주 요청 → 브랜드 승인 → 브랜드 ProductIngredient current_stock 차감
+                              → 레스토랑 Ingredient current_stock 증가
+```
+
+---
+
 ## 다음 개발 작업: Phase 4 - Purchase Order System
 
 **설계 문서:** `/var/www/docs/PURCHASE_ORDER_SYSTEM.md`

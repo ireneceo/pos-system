@@ -290,6 +290,66 @@ const StockBadge = styled.span<{ status: 'normal' | 'low' | 'out' }>`
   }};
 `;
 
+const StockToggleRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #F9FAFB;
+  border-radius: 6px;
+  margin-top: 12px;
+`;
+
+const StockToggleLabel = styled.span`
+  font-size: 13px;
+  color: #6B7280;
+`;
+
+const ToggleSwitch = styled.label`
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  cursor: pointer;
+
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  span {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #D1D5DB;
+    border-radius: 22px;
+    transition: 0.3s;
+
+    &:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+  }
+
+  input:checked + span {
+    background: #10B981;
+  }
+
+  input:checked + span:before {
+    transform: translateX(18px);
+  }
+`;
+
 const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountChange, categoryRefreshKey }) => {
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
@@ -500,6 +560,28 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
     return 'normal';
   };
 
+  // Toggle track_stock directly from list
+  const handleToggleTrackStock = async (ingredient: Ingredient, newValue: boolean) => {
+    try {
+      const response = await fetchAPI(`/api/product-ingredients/${ingredient.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          track_stock: newValue
+        })
+      });
+
+      if (response.success) {
+        setIngredients(prev =>
+          prev.map(ing =>
+            ing.id === ingredient.id ? { ...ing, track_stock: newValue } : ing
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Failed to toggle track_stock:', error);
+    }
+  };
+
   const filteredIngredients = ingredients.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          item.code.toLowerCase().includes(searchTerm.toLowerCase());
@@ -622,6 +704,18 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
                   </InfoRow>
                 )}
               </IngredientInfo>
+
+              <StockToggleRow>
+                <StockToggleLabel>Track in Stock List</StockToggleLabel>
+                <ToggleSwitch>
+                  <input
+                    type="checkbox"
+                    checked={ingredient.track_stock || false}
+                    onChange={(e) => handleToggleTrackStock(ingredient, e.target.checked)}
+                  />
+                  <span></span>
+                </ToggleSwitch>
+              </StockToggleRow>
 
               <IngredientActions>
                 <ActionButton
