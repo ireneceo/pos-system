@@ -735,60 +735,145 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   }, [getToken]);
 
   const fetchData = useCallback(async () => {
-    if (!restaurantId) return;
+    // Check for valid ID based on mode
+    if (mode === 'restaurant' && !restaurantId) return;
+    if (mode === 'brand' && !brandId) return;
 
     try {
       setLoading(true);
 
-      const [summaryRes, inventoryRes, alertsRes, suggestionsRes, expiringRes] = await Promise.all([
-        authFetch(`/api/restaurants/${restaurantId}/inventory/summary`),
-        authFetch(`/api/restaurants/${restaurantId}/inventory`),
-        authFetch(`/api/restaurants/${restaurantId}/inventory/alerts?resolved=false`),
-        authFetch(`/api/restaurants/${restaurantId}/inventory/reorder-suggestions`),
-        authFetch(`/api/restaurants/${restaurantId}/inventory/expiring?days=14`)
-      ]);
+      if (mode === 'restaurant') {
+        // Restaurant mode - use existing restaurant inventory APIs
+        const [summaryRes, inventoryRes, alertsRes, suggestionsRes, expiringRes] = await Promise.all([
+          authFetch(`/api/restaurants/${restaurantId}/inventory/summary`),
+          authFetch(`/api/restaurants/${restaurantId}/inventory`),
+          authFetch(`/api/restaurants/${restaurantId}/inventory/alerts?resolved=false`),
+          authFetch(`/api/restaurants/${restaurantId}/inventory/reorder-suggestions`),
+          authFetch(`/api/restaurants/${restaurantId}/inventory/expiring?days=14`)
+        ]);
 
-      if (summaryRes.success) setSummary(summaryRes.data);
-      if (inventoryRes.success) setInventory(inventoryRes.data);
-      if (alertsRes.success) setAlerts(alertsRes.data);
-      if (suggestionsRes.success) setSuggestions(suggestionsRes.data);
-      if (expiringRes.success) setExpiringItems(expiringRes.data);
+        if (summaryRes.success) setSummary(summaryRes.data);
+        if (inventoryRes.success) setInventory(inventoryRes.data);
+        if (alertsRes.success) setAlerts(alertsRes.data);
+        if (suggestionsRes.success) setSuggestions(suggestionsRes.data);
+        if (expiringRes.success) setExpiringItems(expiringRes.data);
 
-      // General stock은 별도로 가져오기 (실패해도 재료 표시에 영향 없음)
-      try {
-        const generalStockRes = await authFetch(`/api/restaurants/${restaurantId}/inventory/general-stock`);
-        if (generalStockRes.success) setGeneralStockInventory(generalStockRes.data || []);
-      } catch {
-        setGeneralStockInventory([]);
-      }
-
-      // 공급업체 목록 가져오기
-      try {
-        const suppliersRes = await authFetch(`/api/restaurants/${restaurantId}/suppliers`);
-        if (suppliersRes.success) setSuppliers(suppliersRes.data || []);
-      } catch {
-        setSuppliers([]);
-      }
-
-      // General stock 카테고리 가져오기
-      try {
-        const categoriesRes = await authFetch(`/api/restaurants/${restaurantId}/general-stock-categories`);
-        if (categoriesRes.success) {
-          const allCategories = [
-            ...(categoriesRes.data.brand_categories || []),
-            ...(categoriesRes.data.own_categories || [])
-          ];
-          setGeneralStockCategories(allCategories);
+        // General stock은 별도로 가져오기 (실패해도 재료 표시에 영향 없음)
+        try {
+          const generalStockRes = await authFetch(`/api/restaurants/${restaurantId}/inventory/general-stock`);
+          if (generalStockRes.success) setGeneralStockInventory(generalStockRes.data || []);
+        } catch {
+          setGeneralStockInventory([]);
         }
-      } catch {
-        setGeneralStockCategories([]);
+
+        // 공급업체 목록 가져오기
+        try {
+          const suppliersRes = await authFetch(`/api/restaurants/${restaurantId}/suppliers`);
+          if (suppliersRes.success) setSuppliers(suppliersRes.data || []);
+        } catch {
+          setSuppliers([]);
+        }
+
+        // General stock 카테고리 가져오기
+        try {
+          const categoriesRes = await authFetch(`/api/restaurants/${restaurantId}/general-stock-categories`);
+          if (categoriesRes.success) {
+            const allCategories = [
+              ...(categoriesRes.data.brand_categories || []),
+              ...(categoriesRes.data.own_categories || [])
+            ];
+            setGeneralStockCategories(allCategories);
+          }
+        } catch {
+          setGeneralStockCategories([]);
+        }
+      } else {
+        // Brand mode - use ProductIngredient APIs
+        const inventoryRes = await authFetch('/api/product-ingredients?track_stock=true');
+
+        if (inventoryRes.success) {
+          const ingredients = inventoryRes.data || [];
+
+          // Transform ProductIngredient to IngredientStock format
+          const transformedInventory = ingredients.map((ing: any) => {
+            const currentStock = parseFloat(ing.current_stock) || 0;
+            const minStock = parseFloat(ing.min_stock) || 0;
+
+            let stockStatus: 'normal' | 'low_stock' | 'out_of_stock' = 'normal';
+            if (currentStock <= 0) {
+              stockStatus = 'out_of_stock';
+            } else if (currentStock <= minStock) {
+              stockStatus = 'low_stock';
+            }
+
+            return {
+              id: ing.id,
+              name: ing.name,
+              code: ing.code,
+              image_url: ing.image_url,
+              unit: ing.unit,
+              unit_cost: parseFloat(ing.unit_cost) || 0,
+              category: ing.category?.name || 'Uncategorized',
+              current_stock: currentStock,
+              min_stock: minStock,
+              min_order: parseFloat(ing.min_order) || 0,
+              last_actual_stock: parseFloat(ing.last_actual_stock) || 0,
+              last_stock_take_at: ing.last_stock_take_at,
+              avg_daily_usage: parseFloat(ing.avg_daily_usage) || 0,
+              lead_time_days: ing.lead_time_days || 1,
+              safety_stock_percent: parseFloat(ing.safety_stock_percent) || 20,
+              manual_daily_usage: ing.manual_daily_usage ? parseFloat(ing.manual_daily_usage) : null,
+              prediction_confidence: ing.prediction_confidence || 'none',
+              stock_status: stockStatus,
+              supplier_id: ing.supplier_id,
+              supplier_name: ing.supplier_name
+            };
+          });
+
+          setInventory(transformedInventory);
+
+          // Calculate summary
+          const lowStockCount = transformedInventory.filter((i: any) => i.stock_status === 'low_stock').length;
+          const outOfStockCount = transformedInventory.filter((i: any) => i.stock_status === 'out_of_stock').length;
+
+          setSummary({
+            total_items: transformedInventory.length,
+            low_stock_count: lowStockCount,
+            out_of_stock_count: outOfStockCount,
+            monthly_loss: 0,
+            unresolved_alerts: lowStockCount + outOfStockCount
+          });
+
+          // Generate alerts from low/out of stock items
+          const generatedAlerts = transformedInventory
+            .filter((i: any) => i.stock_status !== 'normal')
+            .map((i: any, idx: number) => ({
+              id: idx,
+              ingredient_id: i.id,
+              alert_type: i.stock_status as 'low_stock' | 'out_of_stock',
+              current_stock: i.current_stock,
+              min_stock: i.min_stock,
+              ingredient: {
+                id: i.id,
+                name: i.name,
+                unit: i.unit,
+                unit_cost: i.unit_cost
+              }
+            }));
+          setAlerts(generatedAlerts);
+        }
+
+        // Brand mode doesn't use general stock
+        setGeneralStockInventory([]);
+        setSuggestions([]);
+        setExpiringItems([]);
       }
     } catch (error) {
       console.error('Failed to fetch inventory data:', error);
     } finally {
       setLoading(false);
     }
-  }, [restaurantId, authFetch]);
+  }, [mode, restaurantId, brandId, authFetch]);
 
   useEffect(() => {
     fetchData();
@@ -916,17 +1001,27 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
     if (!selectedIngredient || !quantity) return;
 
     try {
-      const response = await authFetch(`/api/restaurants/${restaurantId}/inventory/receive`, {
-        method: 'POST',
-        body: JSON.stringify({
-          ingredient_id: selectedIngredient.id,
-          quantity: parseFloat(quantity),
-          notes,
-          batch_number: batchNumber || null,
-          manufacture_date: manufactureDate || null,
-          expiry_date: expiryDate || null
-        })
-      });
+      let response;
+      if (mode === 'restaurant') {
+        response = await authFetch(`/api/restaurants/${restaurantId}/inventory/receive`, {
+          method: 'POST',
+          body: JSON.stringify({
+            ingredient_id: selectedIngredient.id,
+            quantity: parseFloat(quantity),
+            notes,
+            batch_number: batchNumber || null,
+            manufacture_date: manufactureDate || null,
+            expiry_date: expiryDate || null
+          })
+        });
+      } else {
+        // Brand mode - update ProductIngredient current_stock directly
+        const newStock = selectedIngredient.current_stock + parseFloat(quantity);
+        response = await authFetch(`/api/product-ingredients/${selectedIngredient.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ current_stock: newStock })
+        });
+      }
 
       if (response.success) {
         setShowReceiveModal(false);
@@ -947,14 +1042,24 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
     if (!selectedIngredient || !quantity) return;
 
     try {
-      const response = await authFetch(`/api/restaurants/${restaurantId}/inventory/waste`, {
-        method: 'POST',
-        body: JSON.stringify({
-          ingredient_id: selectedIngredient.id,
-          quantity: parseFloat(quantity),
-          notes
-        })
-      });
+      let response;
+      if (mode === 'restaurant') {
+        response = await authFetch(`/api/restaurants/${restaurantId}/inventory/waste`, {
+          method: 'POST',
+          body: JSON.stringify({
+            ingredient_id: selectedIngredient.id,
+            quantity: parseFloat(quantity),
+            notes
+          })
+        });
+      } else {
+        // Brand mode - update ProductIngredient current_stock directly
+        const newStock = Math.max(0, selectedIngredient.current_stock - parseFloat(quantity));
+        response = await authFetch(`/api/product-ingredients/${selectedIngredient.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ current_stock: newStock })
+        });
+      }
 
       if (response.success) {
         setShowWasteModal(false);
@@ -969,6 +1074,8 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   };
 
   const handleResolveAlert = async (alertId: number) => {
+    if (mode === 'brand') return; // Brand mode doesn't have alert resolution
+
     try {
       const response = await authFetch(`/api/restaurants/${restaurantId}/inventory/alerts/${alertId}/resolve`, {
         method: 'PUT'
@@ -1019,19 +1126,28 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
     }
 
     try {
-      const endpoint = editingStockType === 'ingredient'
-        ? `/api/restaurants/${restaurantId}/inventory/adjust`
-        : `/api/restaurants/${restaurantId}/inventory/general-stock/${id}/adjust`;
+      let response;
+      if (mode === 'restaurant') {
+        const endpoint = editingStockType === 'ingredient'
+          ? `/api/restaurants/${restaurantId}/inventory/adjust`
+          : `/api/restaurants/${restaurantId}/inventory/general-stock/${id}/adjust`;
 
-      const body = { new_quantity: newValue, reason: 'Stock adjustment' };
-      if (editingStockType === 'ingredient') {
-        (body as any).ingredient_id = id;
+        const body = { new_quantity: newValue, reason: 'Stock adjustment' };
+        if (editingStockType === 'ingredient') {
+          (body as any).ingredient_id = id;
+        }
+
+        response = await authFetch(endpoint, {
+          method: 'POST',
+          body: JSON.stringify(body)
+        });
+      } else {
+        // Brand mode - update ProductIngredient directly
+        response = await authFetch(`/api/product-ingredients/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ current_stock: newValue })
+        });
       }
-
-      const response = await authFetch(endpoint, {
-        method: 'POST',
-        body: JSON.stringify(body)
-      });
 
       if (response.success) {
         // Update local state instead of full refresh to preserve scroll position
@@ -1165,24 +1281,27 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
     }
   };
 
-  if (!restaurantId) {
+  // Check for valid ID based on mode
+  const hasValidId = mode === 'restaurant' ? !!restaurantId : !!brandId;
+
+  if (!hasValidId) {
     return (
-      <MainLayout>
-        <Container>
-          <EmptyState>
-            <p>Restaurant not found. Please log in with a restaurant account.</p>
-          </EmptyState>
-        </Container>
-      </MainLayout>
+      <Container>
+        <EmptyState>
+          <p>{mode === 'restaurant'
+            ? 'Restaurant not found. Please log in with a restaurant account.'
+            : 'Brand not found. Please log in with a brand account.'}
+          </p>
+        </EmptyState>
+      </Container>
     );
   }
 
   return (
-    <MainLayout>
-      <Container>
-        <Header>
-          <Title>Inventory</Title>
-        </Header>
+    <Container>
+      <Header>
+        <Title>Inventory</Title>
+      </Header>
 
         <Content>
           <TabContainer>
@@ -1802,20 +1921,28 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                 </Table>
               )}
             </>
-          )}
-            </>
           ) : activeTab === 'categories' ? (
-            <GeneralStockCategoriesTab
-              brandId={null}
-              restaurantId={restaurantId ? Number(restaurantId) : null}
-              onCountChange={setGeneralStockCategoriesCount}
-              onCategoryChange={() => setGeneralStockCategoryRefreshKey(k => k + 1)}
-            />
+            mode === 'restaurant' ? (
+              <GeneralStockCategoriesTab
+                brandId={null}
+                restaurantId={restaurantId ? Number(restaurantId) : null}
+                onCountChange={setGeneralStockCategoriesCount}
+                onCategoryChange={() => setGeneralStockCategoryRefreshKey(k => k + 1)}
+              />
+            ) : (
+              <ProductIngredientCategoriesTab
+                onCountChange={setGeneralStockCategoriesCount}
+                onCategoryChange={() => setGeneralStockCategoryRefreshKey(k => k + 1)}
+              />
+            )
           ) : (
-            <TransactionHistory restaurantId={restaurantId} currency={selectedCurrency} />
+            mode === 'restaurant' && restaurantId ? (
+              <TransactionHistory restaurantId={restaurantId} currency={selectedCurrency} />
+            ) : (
+              <EmptyState>Transaction history is not available in brand mode.</EmptyState>
+            )
           )}
         </Content>
-      </Container>
 
       {/* Receive Stock Modal */}
       <Modal
@@ -2772,9 +2899,11 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
           </>
         )}
       </Modal>
-    </MainLayout>
+    </Container>
   );
 };
+
+export default InventoryManager;
 
 // Transaction History Component
 interface TransactionHistoryProps {
@@ -2926,5 +3055,3 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ restaurantId, c
     </Table>
   );
 };
-
-export default InventoryPage;
