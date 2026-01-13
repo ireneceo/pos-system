@@ -118,8 +118,7 @@ const DiscountRow = styled(SummaryRow)`
 `;
 
 const PointsSection = styled.div`
-  background: #F0F9FF;
-  border: 1px solid #BAE6FD;
+  background: #F9FAFB;
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 20px;
@@ -129,19 +128,27 @@ const PointsHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 12px;
+  background: #F9FAFB;
+  border-radius: 8px;
   margin-bottom: 12px;
 `;
 
 const PointsTitle = styled.div`
-  font-weight: 600;
-  color: #0369A1;
   font-size: 14px;
+  font-weight: 600;
+  color: #1F2937;
+`;
+
+const PointsTier = styled.div`
+  font-size: 12px;
+  color: #6B7280;
 `;
 
 const PointsBalance = styled.div`
+  font-size: 20px;
   font-weight: 700;
-  color: #0EA5E9;
-  font-size: 16px;
+  color: #635BFF;
 `;
 
 const PointsToggle = styled.label`
@@ -154,11 +161,12 @@ const PointsToggle = styled.label`
   input {
     width: 18px;
     height: 18px;
-    accent-color: #0EA5E9;
+    accent-color: #635BFF;
   }
 
   span {
     font-size: 14px;
+    font-weight: 500;
     color: #1F2937;
   }
 `;
@@ -167,8 +175,8 @@ const PointsSlider = styled.input`
   width: 100%;
   height: 8px;
   border-radius: 4px;
-  background: #E0E7FF;
-  accent-color: #0EA5E9;
+  background: #E5E7EB;
+  accent-color: #635BFF;
   cursor: pointer;
 `;
 
@@ -178,17 +186,19 @@ const PointsInfo = styled.div`
   align-items: center;
   margin-top: 12px;
   padding: 12px;
-  background: white;
-  border-radius: 6px;
+  background: #EFF6FF;
+  border-radius: 8px;
 `;
 
 const PointsUsing = styled.div`
   font-size: 14px;
+  font-weight: 600;
   color: #1F2937;
+`;
 
-  strong {
-    color: #0EA5E9;
-  }
+const PointsConversion = styled.div`
+  font-size: 12px;
+  color: #6B7280;
 `;
 
 const PointsDiscount = styled.div`
@@ -442,9 +452,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       {/* Points Section - Only show if customer has points and membership is active */}
       {membershipSettings?.is_active && customerPoints > 0 && (
         <PointsSection>
+          {/* Points Info Header */}
           <PointsHeader>
-            <PointsTitle>Use Points ({customerTier})</PointsTitle>
-            <PointsBalance>{customerPoints.toLocaleString()} pts available</PointsBalance>
+            <div>
+              <PointsTitle>Available Points</PointsTitle>
+              <PointsTier>{customerTier} Member</PointsTier>
+            </div>
+            <PointsBalance>{customerPoints.toLocaleString()} pts</PointsBalance>
           </PointsHeader>
 
           {maxPointsForOrder > 0 ? (
@@ -467,7 +481,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
               {usePoints && (
                 <>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#6B7280', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#6B7280', marginBottom: '8px' }}>
                     <span>{membershipSettings?.min_points_to_use || 100} pts</span>
                     <span>{maxPointsForOrder.toLocaleString()} pts (max)</span>
                   </div>
@@ -479,9 +493,10 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                     onChange={(e) => setPointsToUse(Number(e.target.value))}
                   />
                   <PointsInfo>
-                    <PointsUsing>
-                      Using: <strong>{pointsToUse.toLocaleString()} pts</strong>
-                    </PointsUsing>
+                    <div>
+                      <PointsUsing>Using: {pointsToUse.toLocaleString()} pts</PointsUsing>
+                      <PointsConversion>({membershipSettings?.points_to_currency || 100} pts = {formatCurrency(1, operationSettings.currency)})</PointsConversion>
+                    </div>
                     <PointsDiscount>
                       -{formatCurrency(pointDiscount, operationSettings.currency)}
                     </PointsDiscount>
@@ -490,7 +505,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
               )}
             </>
           ) : (
-            <div style={{ fontSize: '13px', color: '#6B7280', textAlign: 'center' }}>
+            <div style={{ fontSize: '13px', color: '#6B7280', textAlign: 'center', padding: '12px' }}>
               Minimum {membershipSettings?.min_points_to_use || 100} points required to use
             </div>
           )}
@@ -515,9 +530,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                 const pointValue = earnedPoints / parseFloat(membershipSettings.points_to_currency);
                 return (
                   <>
-                    Will earn: <strong>{earnedPoints.toLocaleString()}</strong> pts
-                    {' '}({formatCurrency(pointValue, operationSettings.currency)} value)
-                    {customerTier !== 'Bronze' && ` (${customerTier} ${bonusRate}x)`}
+                    You will earn approximately <strong>{earnedPoints.toLocaleString()}</strong> pts
+                    {' '}({formatCurrency(pointValue, operationSettings.currency)} value) from this order
+                    {customerTier !== 'Bronze' && ` (${customerTier} ${bonusRate}x bonus)`}
                   </>
                 );
               })()}

@@ -249,6 +249,12 @@ export function generateBillContent(orderData, storeInfo) {
     content += formatLine(couponLabel, '- RM ' + orderData.coupon.discount.toFixed(2)) + CMD.LINE_FEED;
   }
 
+  // Points Discount
+  if (orderData.pointDiscount && Number(orderData.pointDiscount) > 0) {
+    const pointsLabel = 'Points (' + (orderData.pointsUsed || 0).toLocaleString() + ' pts):';
+    content += formatLine(pointsLabel, '- RM ' + Number(orderData.pointDiscount).toFixed(2)) + CMD.LINE_FEED;
+  }
+
   // Service Charge (after discounts)
   if (orderData.serviceCharge && orderData.serviceCharge > 0) {
     const scLabel = 'Service Charge (' + (orderData.serviceChargeRate || 10) + '%):';

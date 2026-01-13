@@ -585,6 +585,7 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' }>`
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
+  white-space: nowrap;
 
   &:hover {
     background: ${props => props.variant === 'secondary' ? '#E6EBF1' : '#5A51E6'};
@@ -822,8 +823,9 @@ const ModalFooter = styled.div`
   padding: 24px;
   border-top: 1px solid #E6EBF1;
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 8px;
 `;
 
 // Bill print styles
@@ -1015,6 +1017,11 @@ const LiveOrdersPage: React.FC = () => {
   const [timeDisplayKey, setTimeDisplayKey] = useState(0); // Time display update key
   const [audioEnabled, setAudioEnabled] = useState(true); // Audio notification toggle
 
+  // Membership and Points
+  const [membershipSettings, setMembershipSettings] = useState<any>(null);
+  const [customerPointsForPayment, setCustomerPointsForPayment] = useState<number>(0);
+  const [customerTierForPayment, setCustomerTierForPayment] = useState<string>('Bronze');
+
   // Date filter state (default to 'today')
   const [activePeriod, setActivePeriod] = useState<PeriodType>('today');
   const [dateRange, setDateRange] = useState(() => {
@@ -1138,6 +1145,44 @@ const LiveOrdersPage: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to fetch all orders:', error);
+    }
+  }, [user?.restaurantId]);
+
+  // Fetch membership settings
+  const fetchMembershipSettings = useCallback(async () => {
+    if (!user?.restaurantId) return;
+    try {
+      const response = await fetch(`/api/membership/${user.restaurantId}/settings`, getFetchOptions());
+      const result = await response.json();
+      if (result.success && result.data) {
+        setMembershipSettings(result.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch membership settings:', error);
+    }
+  }, [user?.restaurantId]);
+
+  // Fetch customer points for payment
+  const fetchCustomerPointsForPayment = useCallback(async (customerId: number) => {
+    if (!user?.restaurantId || !customerId) {
+      setCustomerPointsForPayment(0);
+      setCustomerTierForPayment('Bronze');
+      return;
+    }
+    try {
+      const response = await fetch(`/api/membership/${user.restaurantId}/customer/${customerId}`, getFetchOptions());
+      const result = await response.json();
+      if (result.success && result.data) {
+        setCustomerPointsForPayment(result.data.points || 0);
+        setCustomerTierForPayment(result.data.loyalty_tier || 'Bronze');
+      } else {
+        setCustomerPointsForPayment(0);
+        setCustomerTierForPayment('Bronze');
+      }
+    } catch (error) {
+      console.error('Failed to fetch customer points:', error);
+      setCustomerPointsForPayment(0);
+      setCustomerTierForPayment('Bronze');
     }
   }, [user?.restaurantId]);
 
@@ -1450,7 +1495,8 @@ const LiveOrdersPage: React.FC = () => {
     };
 
     loadCompanyInfo();
-  }, [user?.restaurantId]);
+    fetchMembershipSettings();
+  }, [user?.restaurantId, fetchMembershipSettings]);
 
   // Helper function to determine if order is Outstanding (not yet sent to kitchen)
   // Mobile order creates orders with status='outstanding', POS creates with status='awaiting_payment'
@@ -2026,9 +2072,18 @@ const LiveOrdersPage: React.FC = () => {
     setShowCancelConfirm(false);
   };
 
-  const handlePaymentClick = (order: DbOrder, e?: React.MouseEvent) => {
+  const handlePaymentClick = async (order: DbOrder, e?: React.MouseEvent) => {
     if (e) {
       e.stopPropagation(); // Prevent opening the order detail modal
+    }
+
+    // Fetch customer points if order has customer_id
+    const customerId = (order as any).customer_id;
+    if (customerId) {
+      await fetchCustomerPointsForPayment(customerId);
+    } else {
+      setCustomerPointsForPayment(0);
+      setCustomerTierForPayment('Bronze');
     }
 
     // PaymentModal 열기 (결제 방법 선택)
@@ -2036,20 +2091,31 @@ const LiveOrdersPage: React.FC = () => {
     setShowPaymentModal(true);
   };
 
-  const handlePaymentConfirm = async (method: string, amountReceived?: number, change?: number) => {
+  const handlePaymentConfirm = async (method: string, amountReceived?: number, change?: number, pointsUsed?: number, pointDiscount?: number) => {
     if (!orderForPayment) return;
 
     // Stop notification sound when payment confirmed
     setAudioEnabled(false);
 
     try {
+      // Build update payload
+      const updatePayload: any = {
+        payment_status: 'completed',
+        payment_method: method
+      };
+
+      // Include points if used
+      if (pointsUsed && pointsUsed > 0 && pointDiscount && pointDiscount > 0) {
+        updatePayload.points_used = pointsUsed;
+        updatePayload.point_discount = pointDiscount;
+        // Recalculate total
+        updatePayload.total_amount = Number(orderForPayment.total_amount) - pointDiscount;
+      }
+
       // 결제 완료 처리 - POS Terminal과 동일한 로직
       const response = await fetch(`/api/orders/${orderForPayment.id}`, getFetchOptions({
         method: 'PATCH',
-        body: JSON.stringify({
-          payment_status: 'completed',
-          payment_method: method
-        })
+        body: JSON.stringify(updatePayload)
       }));
 
       if (!response.ok) {
@@ -2419,7 +2485,14 @@ const LiveOrdersPage: React.FC = () => {
                       </TimeInfo>
                     </TableCell>
                     <TableCell data-label="AMOUNT">
-                      <Amount>{formatCurrency(Number(order.total_amount), operationSettings.currency)}</Amount>
+                      <Amount>
+                        {formatCurrency(Number(order.total_amount), operationSettings.currency)}
+                        {(order as any).point_discount > 0 && (
+                          <span style={{ fontSize: '11px', color: '#10B981', marginLeft: '4px' }}>
+                            (-{(order as any).points_used}P)
+                          </span>
+                        )}
+                      </Amount>
                       <PaymentMethod
                         isPending={order.payment_status === 'pending'}
                         isVerificationPending={order.payment_status === 'payment_verification_pending'}
@@ -2923,6 +2996,12 @@ const LiveOrdersPage: React.FC = () => {
                         <span>{formatCurrency(-Number((selectedOrder as any).coupon_discount), operationSettings.currency)}</span>
                       </TotalRow>
                     )}
+                    {Number((selectedOrder as any).point_discount) > 0 && (
+                      <TotalRow>
+                        <span>Points ({Number((selectedOrder as any).points_used || 0).toLocaleString()} pts)</span>
+                        <span>{formatCurrency(-Number((selectedOrder as any).point_discount), operationSettings.currency)}</span>
+                      </TotalRow>
+                    )}
                     {(selectedOrder as any).service_charge > 0 && (
                       <TotalRow>
                         <span>Service Charge ({(selectedOrder as any).service_charge_rate || 10}%)</span>
@@ -3245,7 +3324,6 @@ const LiveOrdersPage: React.FC = () => {
           </ModalContent>
         </ModalOverlay>
 
-        {/* Payment Modal - POS Terminal과 동일한 모달 사용 (OrderCompleteModal만 제외) */}
         {/* Payment Modal - POS Terminal과 동일한 모달 사용 */}
         {showPaymentModal && orderForPayment && (
           <PaymentModal
@@ -3254,6 +3332,8 @@ const LiveOrdersPage: React.FC = () => {
               setShowPaymentModal(false);
               setTimeout(() => {
                 setOrderForPayment(null);
+                setCustomerPointsForPayment(0);
+                setCustomerTierForPayment('Bronze');
               }, 100);
             }}
             total={Number(orderForPayment.total_amount)}
@@ -3264,6 +3344,9 @@ const LiveOrdersPage: React.FC = () => {
             couponDiscount={Number((orderForPayment as any).coupon_discount || 0)}
             onConfirmPayment={handlePaymentConfirm}
             paymentMethods={paymentMethods}
+            customerPoints={customerPointsForPayment}
+            customerTier={customerTierForPayment}
+            membershipSettings={membershipSettings}
           />
         )}
         

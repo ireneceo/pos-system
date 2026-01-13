@@ -247,6 +247,9 @@ interface OrderCompleteModalProps {
     paymentMethod: string;
     amountReceived: number;
     change: number;
+    // Points
+    pointsUsed?: number;
+    pointDiscount?: number;
   };
   onPrintBill: () => void;
 }
@@ -349,7 +352,7 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
             }}>
               <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>Pickup Number</div>
               <div style={{ fontSize: '36px', fontWeight: '700', lineHeight: 1 }}>
-                {orderData.pickupNumber || orderData.orderNumber.split('-')[1] || '000'}
+                {orderData.pickupNumber || (orderData.orderNumber?.includes('-') ? orderData.orderNumber.split('-')[1] : orderData.orderNumber) || '-'}
               </div>
             </div>
           )}
@@ -476,7 +479,7 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
             <span>POS Terminal</span>
           </PrintRow>
           <div style={{ fontSize: '20px', fontWeight: 'bold', textAlign: 'center', margin: '10px 0' }}>
-            PICKUP #{orderData.pickupNumber || orderData.orderNumber.split('-')[1] || '000'}
+            PICKUP #{orderData.pickupNumber || (orderData.orderNumber?.includes('-') ? orderData.orderNumber.split('-')[1] : orderData.orderNumber) || '-'}
           </div>
           {orderData.pagerNumber && (
             <div style={{ fontSize: '16px', fontWeight: 'bold', textAlign: 'center', margin: '5px 0' }}>
@@ -544,6 +547,12 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
             <PrintRow>
               <span>Coupon ({orderData.coupon.code}):</span>
               <span>{formatCurrency(-Number(orderData.coupon.discount), operationSettings.currency)}</span>
+            </PrintRow>
+          )}
+          {orderData.pointDiscount && Number(orderData.pointDiscount) > 0 && (
+            <PrintRow>
+              <span>Points ({orderData.pointsUsed?.toLocaleString()} pts):</span>
+              <span>{formatCurrency(-Number(orderData.pointDiscount), operationSettings.currency)}</span>
             </PrintRow>
           )}
           {orderData.serviceCharge && Number(orderData.serviceCharge) > 0 && (

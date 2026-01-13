@@ -1844,7 +1844,7 @@ const POSTerminalPage: React.FC = () => {
       setCompletedOrderData({
         ...orderData,
         orderNumber: savedOrder?.order_number || savedOrder?.orderNumber || newOrder.orderNumber,
-        pickupNumber: savedOrder?.pickupNumber || (savedOrder?.order_number ? savedOrder.order_number.split('-')[1] : newOrder.pickupNumber),
+        pickupNumber: savedOrder?.pickup_number || savedOrder?.pickupNumber || (savedOrder?.order_number ? savedOrder.order_number.split('-')[1] : newOrder.pickupNumber),
         pagerNumber: savedOrder?.pager_number || pagerNumber || undefined,
         // Ensure takeawayCharge from backend is used if available
         takeawayCharge: savedOrder?.takeaway_charge || savedOrder?.takeawayCharge || orderData.takeawayCharge,
@@ -1854,6 +1854,8 @@ const POSTerminalPage: React.FC = () => {
         discount: savedOrder?.discount || orderData.discount,
         discountPolicy: orderData.discountPolicy,
         coupon: orderData.coupon,
+        pointsUsed: 0,
+        pointDiscount: 0,
         total: savedOrder?.total || orderData.total
       });
       setShowOrderCompleteModal(true);
@@ -2007,7 +2009,7 @@ const POSTerminalPage: React.FC = () => {
       setCompletedOrderData({
         ...orderData,
         orderNumber: savedOrder?.order_number || savedOrder?.orderNumber || '',
-        pickupNumber: savedOrder?.pickupNumber || (savedOrder?.order_number ? savedOrder.order_number.split('-')[1] : ''),
+        pickupNumber: savedOrder?.pickup_number || savedOrder?.pickupNumber || (savedOrder?.order_number ? savedOrder.order_number.split('-')[1] : null),
         pagerNumber: savedOrder?.pager_number || pagerNumber || undefined,
         // Ensure takeawayCharge from backend is used if available
         takeawayCharge: savedOrder?.takeaway_charge || savedOrder?.takeawayCharge || orderData.takeawayCharge,
