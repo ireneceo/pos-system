@@ -404,43 +404,43 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
             <DetailLabel>Subtotal</DetailLabel>
             <DetailValue>{formatCurrency(orderData.subtotal, operationSettings.currency)}</DetailValue>
           </DetailRow>
-          {orderData.takeawayCharge && Number(orderData.takeawayCharge) > 0 && (
+          {Number(orderData.takeawayCharge) > 0 && (
             <DetailRow>
               <DetailLabel>Takeaway Charge</DetailLabel>
               <DetailValue>{formatCurrency(Number(orderData.takeawayCharge), operationSettings.currency)}</DetailValue>
             </DetailRow>
           )}
-          {orderData.discount && Number(orderData.discount) > 0 && (
+          {Number(orderData.discount) > 0 && (
             <DetailRow>
               <DetailLabel>Discount</DetailLabel>
               <DetailValue style={{ color: '#10B981' }}>{formatCurrency(-Number(orderData.discount), operationSettings.currency)}</DetailValue>
             </DetailRow>
           )}
-          {orderData.discountPolicy && orderData.discountPolicy.amount && Number(orderData.discountPolicy.amount) > 0 && (
+          {orderData.discountPolicy && Number(orderData.discountPolicy.amount) > 0 && (
             <DetailRow>
               <DetailLabel>Discount ({orderData.discountPolicy.name})</DetailLabel>
               <DetailValue style={{ color: '#10B981' }}>{formatCurrency(-Number(orderData.discountPolicy.amount), operationSettings.currency)}</DetailValue>
             </DetailRow>
           )}
-          {orderData.coupon && orderData.coupon.discount && Number(orderData.coupon.discount) > 0 && (
+          {orderData.coupon && Number(orderData.coupon.discount) > 0 && (
             <DetailRow>
               <DetailLabel>Coupon ({orderData.coupon.code})</DetailLabel>
               <DetailValue style={{ color: '#10B981' }}>{formatCurrency(-Number(orderData.coupon.discount), operationSettings.currency)}</DetailValue>
             </DetailRow>
           )}
-          {orderData.pointDiscount && Number(orderData.pointDiscount) > 0 && (
+          {Number(orderData.pointDiscount) > 0 && (
             <DetailRow>
               <DetailLabel>Points ({orderData.pointsUsed?.toLocaleString()} pts)</DetailLabel>
               <DetailValue style={{ color: '#10B981' }}>{formatCurrency(-Number(orderData.pointDiscount), operationSettings.currency)}</DetailValue>
             </DetailRow>
           )}
-          {orderData.serviceCharge && Number(orderData.serviceCharge) > 0 && (
+          {Number(orderData.serviceCharge) > 0 && (
             <DetailRow>
               <DetailLabel>Service Charge ({orderData.serviceChargeRate || 10}%)</DetailLabel>
               <DetailValue>{formatCurrency(Number(orderData.serviceCharge), operationSettings.currency)}</DetailValue>
             </DetailRow>
           )}
-          {orderData.tax && Number(orderData.tax) > 0 && (
+          {Number(orderData.tax) > 0 && (
             <DetailRow>
               <DetailLabel>Tax ({orderData.taxRate || 6}%)</DetailLabel>
               <DetailValue>{formatCurrency(Number(orderData.tax), operationSettings.currency)}</DetailValue>
@@ -525,43 +525,43 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
             <span>Subtotal:</span>
             <span>{formatCurrency(orderData.subtotal, operationSettings.currency)}</span>
           </PrintRow>
-          {orderData.takeawayCharge && Number(orderData.takeawayCharge) > 0 && (
+          {Number(orderData.takeawayCharge) > 0 && (
             <PrintRow>
               <span>Takeaway Charge:</span>
               <span>{formatCurrency(Number(orderData.takeawayCharge), operationSettings.currency)}</span>
             </PrintRow>
           )}
-          {orderData.discount && Number(orderData.discount) > 0 && (
+          {Number(orderData.discount) > 0 && (
             <PrintRow>
               <span>Discount:</span>
               <span>{formatCurrency(-Number(orderData.discount), operationSettings.currency)}</span>
             </PrintRow>
           )}
-          {orderData.discountPolicy && orderData.discountPolicy.amount && Number(orderData.discountPolicy.amount) > 0 && (
+          {orderData.discountPolicy && Number(orderData.discountPolicy.amount) > 0 && (
             <PrintRow>
               <span>Discount ({orderData.discountPolicy.name}):</span>
               <span>{formatCurrency(-Number(orderData.discountPolicy.amount), operationSettings.currency)}</span>
             </PrintRow>
           )}
-          {orderData.coupon && orderData.coupon.discount && Number(orderData.coupon.discount) > 0 && (
+          {orderData.coupon && Number(orderData.coupon.discount) > 0 && (
             <PrintRow>
               <span>Coupon ({orderData.coupon.code}):</span>
               <span>{formatCurrency(-Number(orderData.coupon.discount), operationSettings.currency)}</span>
             </PrintRow>
           )}
-          {orderData.pointDiscount && Number(orderData.pointDiscount) > 0 && (
+          {Number(orderData.pointDiscount) > 0 && (
             <PrintRow>
               <span>Points ({orderData.pointsUsed?.toLocaleString()} pts):</span>
               <span>{formatCurrency(-Number(orderData.pointDiscount), operationSettings.currency)}</span>
             </PrintRow>
           )}
-          {orderData.serviceCharge && Number(orderData.serviceCharge) > 0 && (
+          {Number(orderData.serviceCharge) > 0 && (
             <PrintRow>
               <span>Service Charge ({orderData.serviceChargeRate || 10}%):</span>
               <span>{formatCurrency(Number(orderData.serviceCharge), operationSettings.currency)}</span>
             </PrintRow>
           )}
-          {orderData.tax && Number(orderData.tax) > 0 && (
+          {Number(orderData.tax) > 0 && (
             <PrintRow>
               <span>Tax ({orderData.taxRate || 6}%):</span>
               <span>{formatCurrency(Number(orderData.tax), operationSettings.currency)}</span>

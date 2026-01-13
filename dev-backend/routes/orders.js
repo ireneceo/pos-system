@@ -85,6 +85,10 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
     if (orderData.restaurantId && !orderData.restaurant_id) {
       orderData.restaurant_id = orderData.restaurantId;
     }
+    // Support customerId → customer_id mapping
+    if (orderData.customerId && !orderData.customer_id) {
+      orderData.customer_id = orderData.customerId;
+    }
 
     // Check order limit if restaurant_id is provided
     if (orderData.restaurant_id) {

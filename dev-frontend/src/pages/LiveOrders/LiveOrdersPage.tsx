@@ -1150,37 +1150,49 @@ const LiveOrdersPage: React.FC = () => {
 
   // Fetch membership settings
   const fetchMembershipSettings = useCallback(async () => {
+    console.log('[DEBUG] fetchMembershipSettings called, restaurantId:', user?.restaurantId);
     if (!user?.restaurantId) return;
     try {
-      const response = await fetch(`/api/membership/${user.restaurantId}/settings`, getFetchOptions());
+      const url = `/api/membership/settings/${user.restaurantId}`;
+      console.log('[DEBUG] Fetching membership settings from:', url);
+      const response = await fetch(url, getFetchOptions());
       const result = await response.json();
+      console.log('[DEBUG] Membership settings result:', result);
       if (result.success && result.data) {
+        console.log('[DEBUG] Setting membershipSettings:', result.data);
         setMembershipSettings(result.data);
       }
     } catch (error) {
-      console.error('Failed to fetch membership settings:', error);
+      console.error('[DEBUG] Failed to fetch membership settings:', error);
     }
   }, [user?.restaurantId]);
 
   // Fetch customer points for payment
   const fetchCustomerPointsForPayment = useCallback(async (customerId: number) => {
+    console.log('[DEBUG] fetchCustomerPointsForPayment called with customerId:', customerId, 'restaurantId:', user?.restaurantId);
     if (!user?.restaurantId || !customerId) {
+      console.log('[DEBUG] Missing restaurantId or customerId, setting 0 points');
       setCustomerPointsForPayment(0);
       setCustomerTierForPayment('Bronze');
       return;
     }
     try {
-      const response = await fetch(`/api/membership/${user.restaurantId}/customer/${customerId}`, getFetchOptions());
+      const url = `/api/membership/customer/${user.restaurantId}/${customerId}`;
+      console.log('[DEBUG] Fetching customer points from:', url);
+      const response = await fetch(url, getFetchOptions());
       const result = await response.json();
+      console.log('[DEBUG] Customer points API result:', result);
       if (result.success && result.data) {
+        console.log('[DEBUG] Setting points:', result.data.points, 'tier:', result.data.loyalty_tier);
         setCustomerPointsForPayment(result.data.points || 0);
         setCustomerTierForPayment(result.data.loyalty_tier || 'Bronze');
       } else {
+        console.log('[DEBUG] API returned no data, setting 0 points');
         setCustomerPointsForPayment(0);
         setCustomerTierForPayment('Bronze');
       }
     } catch (error) {
-      console.error('Failed to fetch customer points:', error);
+      console.error('[DEBUG] Failed to fetch customer points:', error);
       setCustomerPointsForPayment(0);
       setCustomerTierForPayment('Bronze');
     }
@@ -2077,11 +2089,16 @@ const LiveOrdersPage: React.FC = () => {
       e.stopPropagation(); // Prevent opening the order detail modal
     }
 
+    console.log('[DEBUG] handlePaymentClick - order:', order.order_number, 'customer_id:', (order as any).customer_id);
+    console.log('[DEBUG] handlePaymentClick - membershipSettings:', membershipSettings);
+
     // Fetch customer points if order has customer_id
     const customerId = (order as any).customer_id;
     if (customerId) {
+      console.log('[DEBUG] handlePaymentClick - calling fetchCustomerPointsForPayment with:', customerId);
       await fetchCustomerPointsForPayment(customerId);
     } else {
+      console.log('[DEBUG] handlePaymentClick - no customer_id, setting 0 points');
       setCustomerPointsForPayment(0);
       setCustomerTierForPayment('Bronze');
     }
@@ -2487,7 +2504,7 @@ const LiveOrdersPage: React.FC = () => {
                     <TableCell data-label="AMOUNT">
                       <Amount>
                         {formatCurrency(Number(order.total_amount), operationSettings.currency)}
-                        {(order as any).point_discount > 0 && (
+                        {Number((order as any).point_discount) > 0 && (
                           <span style={{ fontSize: '11px', color: '#10B981', marginLeft: '4px' }}>
                             (-{(order as any).points_used}P)
                           </span>
