@@ -1,8 +1,38 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-01-12
+> **최종 업데이트:** 2026-01-13
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
+
+---
+
+## ✅ 완료: 멤버십/포인트 시스템 구조 개선 (2026-01-13)
+
+### 구조 변경
+- **멤버십**: 항상 활성화 (로그인, 티어, 티어별 할인)
+- **포인트 시스템**: `is_active` 필드로 ON/OFF 제어
+
+### 완료된 작업
+
+| 상태 | 항목 | 파일 |
+|:---:|------|------|
+| ✅ | Settings 페이지 "Points System" 토글 위치 개선 (Points Settings 카드 내부로 이동) | `pages/Settings/SettingsPage.tsx` |
+| ✅ | Mobile AccountPage 포인트 조건부 표시 (pointsEnabled) | `mobile/pages/AccountPage.tsx` |
+| ✅ | PaymentModal 내부 데이터 fetch 로직 개선 (customerId/restaurantId 기반) | `components/POSTerminal/PaymentModal.tsx` |
+| ✅ | LiveOrders PaymentModal 포인트 연동 | `pages/LiveOrders/LiveOrdersPage.tsx` |
+| ✅ | POS Terminal 포인트 적립/사용 완료 | `pages/POSTerminal/POSTerminalPage.tsx` |
+| ✅ | OrderCompleteModal 포인트 할인 표시 | `components/POSTerminal/OrderCompleteModal.tsx` |
+| ✅ | billPrint 포인트 할인 출력 | `utils/billPrint.js` |
+| ✅ | API 레벨 검증 - 포인트 비활성화 시 적립/사용 차단 확인 | `services/pointService.js` |
+
+### 포인트 시스템 체크 위치
+
+| 컴포넌트 | is_active 체크 |
+|----------|---------------|
+| PaymentModal | `membershipSettings?.is_active` |
+| Mobile PaymentPage | `membershipSettings?.is_active` |
+| Mobile AccountPage | `pointsEnabled` (is_active 기반) |
+| Backend pointService | `settings.is_active` (적립/사용 차단) |
 
 ---
 

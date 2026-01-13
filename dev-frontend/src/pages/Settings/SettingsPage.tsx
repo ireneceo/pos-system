@@ -3827,38 +3827,28 @@ const SettingsPage: React.FC = () => {
                 </SettingsCard>
               ) : (
                 <>
-                  {/* Points System Toggle */}
-                  <SettingsCard style={{ marginBottom: '24px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <CardTitle style={{ marginBottom: '8px' }}>Points System</CardTitle>
-                        <p style={{ margin: 0, fontSize: '14px', color: '#6B7C93' }}>
-                          Enable or disable points earning and redemption for customers
-                        </p>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <ToggleSwitch>
-                          <ToggleInput
-                            type="checkbox"
-                            checked={membershipSettings.is_active}
-                            onChange={(e) => {
-                              setMembershipSettings({ ...membershipSettings, is_active: e.target.checked });
-                              setHasChanges(true);
-                            }}
-                          />
-                          <ToggleSlider />
-                        </ToggleSwitch>
-                        <span style={{ fontSize: '14px', fontWeight: '500', color: membershipSettings.is_active ? '#635BFF' : '#6B7C93' }}>
-                          {membershipSettings.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </div>
-                    </div>
-                  </SettingsCard>
-
                   <SettingsGrid>
                     {/* Points Settings */}
                     <SettingsCard>
-                      <CardTitle>Points Settings</CardTitle>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                        <CardTitle style={{ marginBottom: 0 }}>Points Settings</CardTitle>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <ToggleSwitch>
+                            <ToggleInput
+                              type="checkbox"
+                              checked={membershipSettings.is_active}
+                              onChange={(e) => {
+                                setMembershipSettings({ ...membershipSettings, is_active: e.target.checked });
+                                setHasChanges(true);
+                              }}
+                            />
+                            <ToggleSlider />
+                          </ToggleSwitch>
+                          <span style={{ fontSize: '14px', fontWeight: '500', color: membershipSettings.is_active ? '#635BFF' : '#6B7C93' }}>
+                            {membershipSettings.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                      </div>
 
                       <FormGroup>
                         <Label>Earn Rate (%)</Label>

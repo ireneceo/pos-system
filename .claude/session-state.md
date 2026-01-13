@@ -7,37 +7,43 @@
 
 ## 현재 작업 상태
 
-**마지막 업데이트:** 2026-01-13 (진행 중)
+**마지막 업데이트:** 2026-01-13 16:30
 **작업 상태:** 완료
 
 ### 진행 중인 작업
 - 없음
 
 ### 완료된 작업 (이번 세션)
-1. Sidebar 메뉴에서 특수문자(⟤) 제거 - MainLayout.tsx
-2. CustomersPage 통계 카드 색상 차별화 (파랑, 초록, 노랑, 보라)
-3. 검색창 너비 400px 고정, 필터 좌측 정렬
-4. "View Details" → "View" 버튼 텍스트 변경
-5. 모달 외부 클릭 시 닫기 기능 추가
-6. CustomerContext에 reloadCustomers 함수 추가
-7. CustomersPage에서 restaurantId 기반 고객 목록 동적 로드 구현
-8. 빌드 완료 및 dev 서버 배포
+1. 멤버십/포인트 시스템 구조 개선
+   - 멤버십: 항상 활성화 (로그인, 티어, 티어별 할인)
+   - 포인트 시스템: is_active 필드로 ON/OFF 제어
+2. Settings 페이지 UI 개선
+   - "Points System" 토글을 Points Settings 카드 내부로 이동
+3. API 레벨 검증 완료
+   - 포인트 비활성화 시 적립 차단 (earnPointsForOrder → earnedPoints: 0)
+   - 포인트 비활성화 시 사용 차단 (usePointsForOrder → error: "Membership not active")
+4. 프론트엔드 is_active 체크 확인
+   - PaymentModal, Mobile PaymentPage, AccountPage 등
 
 ### 다음 할 일
-- 없음 (사용자 추가 지시 대기)
+- 특별히 예정된 작업 없음
+- Phase 4: Purchase Order System 개발 대기 중
 
 ---
 
 ## 최근 수정 파일
-- `dev-frontend/src/components/Layout/MainLayout.tsx` - ⟤ 문자 제거
-- `dev-frontend/src/pages/Customers/CustomersPage.tsx` - 디자인 및 데이터 로딩 개선
-- `dev-frontend/src/contexts/CustomerContext.tsx` - reloadCustomers 함수 추가
+- `dev-frontend/src/pages/Settings/SettingsPage.tsx` - Points Settings 토글 위치 개선
+- `dev-frontend/src/mobile/pages/AccountPage.tsx` - pointsEnabled 조건부 표시
+- `dev-frontend/src/components/POSTerminal/PaymentModal.tsx` - 내부 데이터 fetch 로직
+- `dev-frontend/src/pages/LiveOrders/LiveOrdersPage.tsx` - PaymentModal 포인트 연동
+- `dev-frontend/src/components/POSTerminal/OrderCompleteModal.tsx` - 포인트 할인 표시
+- `dev-frontend/src/utils/billPrint.js` - 포인트 할인 출력
 
 ---
 
 ## 메모
-- CustomersPage는 이제 URL의 restaurantId를 기반으로 해당 레스토랑의 고객만 로드
-- `/restaurant/5/customers` 접속 시 restaurant 5의 고객(Irene Kim 포함)이 표시됨
-- Recent Activity는 `/api/customers/:customerId/orders` API를 통해 구현 가능 (현재는 "coming soon" 표시)
-- 고객 API `/api/customers/5`는 Irene Kim 포함 2명의 고객 반환 확인됨
+- 멤버십 기능(로그인, 티어, 할인)은 항상 활성화
+- 포인트 시스템만 is_active로 ON/OFF 가능
+- 포인트 비활성화 시 모든 UI에서 포인트 관련 요소 숨김
+- Backend pointService.js에서 is_active 체크하여 적립/사용 차단
 
