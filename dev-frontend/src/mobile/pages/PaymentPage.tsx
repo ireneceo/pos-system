@@ -2262,19 +2262,21 @@ const PaymentPage: React.FC = () => {
                 fontSize: '13px',
                 color: '#92400E'
               }}>
-                You will earn approximately <strong>
-                  {Math.floor((subtotal - couponDiscount) * parseFloat(membershipSettings.points_per_currency) * (
-                    customerTier === 'VIP' ? parseFloat(membershipSettings.vip_bonus_rate) :
+                {(() => {
+                  const bonusRate = customerTier === 'VIP' ? parseFloat(membershipSettings.vip_bonus_rate) :
                     customerTier === 'Gold' ? parseFloat(membershipSettings.gold_bonus_rate) :
                     customerTier === 'Silver' ? parseFloat(membershipSettings.silver_bonus_rate) :
-                    parseFloat(membershipSettings.bronze_bonus_rate)
-                  ))}
-                </strong> points from this order
-                {customerTier !== 'Bronze' && ` (${customerTier} ${
-                  customerTier === 'VIP' ? membershipSettings.vip_bonus_rate :
-                  customerTier === 'Gold' ? membershipSettings.gold_bonus_rate :
-                  membershipSettings.silver_bonus_rate
-                }x bonus)`}
+                    parseFloat(membershipSettings.bronze_bonus_rate);
+                  const earnedPoints = Math.floor((subtotal - couponDiscount) * parseFloat(membershipSettings.points_per_currency) * bonusRate);
+                  const pointValue = earnedPoints / parseFloat(membershipSettings.points_to_currency);
+                  return (
+                    <>
+                      You will earn approximately <strong>{earnedPoints.toLocaleString()}</strong> points
+                      {' '}({formatCurrency(pointValue, currency)} value) from this order
+                      {customerTier !== 'Bronze' && ` (${customerTier} ${bonusRate}x bonus)`}
+                    </>
+                  );
+                })()}
               </div>
             )}
           </Section>

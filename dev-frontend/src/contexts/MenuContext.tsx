@@ -527,11 +527,33 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
 
       // API 응답에서 실제 저장된 데이터 가져오기
       const responseData = await response.json();
-      const savedItem = responseData.data || updatedItem;
+      const savedItem = responseData.data;
+      console.log('🔵 API response savedItem:', savedItem);
 
-      // 성공 시 로컬 상태 업데이트 (API에서 받은 데이터 사용)
+      // 성공 시 로컬 상태 업데이트
+      // API 응답 데이터와 updatedItem을 병합 (image가 누락될 수 있으므로)
+      const mergedItem: MenuItem = {
+        ...updatedItem,
+        ...(savedItem && {
+          id: String(savedItem.id),
+          name: savedItem.name,
+          price: parseFloat(savedItem.price),
+          category: savedItem.category,
+          description: savedItem.description || '',
+          emoji: savedItem.emoji || updatedItem.emoji,
+          soldOut: savedItem.soldOut || false,
+          // image는 savedItem에 있으면 사용, 없으면 updatedItem 유지
+          image: savedItem.image || updatedItem.image,
+          optionGroups: savedItem.option_groups ? JSON.parse(savedItem.option_groups) : updatedItem.optionGroups,
+          is_set_menu: savedItem.is_set_menu || false,
+          set_items: savedItem.set_items || updatedItem.set_items,
+          set_display_order: savedItem.set_display_order || 0,
+          recipe_id: savedItem.recipe_id || null
+        })
+      };
+
       const newItems = menuItems.map(item =>
-        item.id === updatedItem.id ? { ...savedItem, id: String(savedItem.id) } : item
+        item.id === updatedItem.id ? mergedItem : item
       );
       setMenuItems(newItems);
     } catch (error) {

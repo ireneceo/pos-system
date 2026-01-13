@@ -425,6 +425,12 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
               <DetailValue style={{ color: '#10B981' }}>{formatCurrency(-Number(orderData.coupon.discount), operationSettings.currency)}</DetailValue>
             </DetailRow>
           )}
+          {orderData.pointDiscount && Number(orderData.pointDiscount) > 0 && (
+            <DetailRow>
+              <DetailLabel>Points ({orderData.pointsUsed?.toLocaleString()} pts)</DetailLabel>
+              <DetailValue style={{ color: '#10B981' }}>{formatCurrency(-Number(orderData.pointDiscount), operationSettings.currency)}</DetailValue>
+            </DetailRow>
+          )}
           {orderData.serviceCharge && Number(orderData.serviceCharge) > 0 && (
             <DetailRow>
               <DetailLabel>Service Charge ({orderData.serviceChargeRate || 10}%)</DetailLabel>

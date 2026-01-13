@@ -494,7 +494,61 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
               Minimum {membershipSettings?.min_points_to_use || 100} points required to use
             </div>
           )}
+
+          {/* Points earning preview */}
+          {membershipSettings?.points_per_currency && (
+            <div style={{
+              marginTop: '12px',
+              padding: '12px',
+              background: '#FEF3C7',
+              borderRadius: '8px',
+              fontSize: '13px',
+              color: '#92400E'
+            }}>
+              {(() => {
+                const bonusRate = customerTier === 'VIP' ? parseFloat(membershipSettings.vip_bonus_rate) :
+                  customerTier === 'Gold' ? parseFloat(membershipSettings.gold_bonus_rate) :
+                  customerTier === 'Silver' ? parseFloat(membershipSettings.silver_bonus_rate) :
+                  parseFloat(membershipSettings.bronze_bonus_rate);
+                const orderAmount = subtotal - discountAmount - couponDiscount - pointDiscount;
+                const earnedPoints = Math.floor(orderAmount * parseFloat(membershipSettings.points_per_currency) * bonusRate);
+                const pointValue = earnedPoints / parseFloat(membershipSettings.points_to_currency);
+                return (
+                  <>
+                    Will earn: <strong>{earnedPoints.toLocaleString()}</strong> pts
+                    {' '}({formatCurrency(pointValue, operationSettings.currency)} value)
+                    {customerTier !== 'Bronze' && ` (${customerTier} ${bonusRate}x)`}
+                  </>
+                );
+              })()}
+            </div>
+          )}
         </PointsSection>
+      )}
+
+      {/* Points earning preview for non-member customers */}
+      {membershipSettings?.is_active && customerPoints === 0 && membershipSettings?.points_per_currency && (
+        <div style={{
+          marginBottom: '16px',
+          padding: '12px',
+          background: '#F0FDF4',
+          borderRadius: '8px',
+          fontSize: '13px',
+          color: '#166534',
+          border: '1px solid #BBF7D0'
+        }}>
+          {(() => {
+            const orderAmount = subtotal - discountAmount - couponDiscount;
+            const earnedPoints = Math.floor(orderAmount * parseFloat(membershipSettings.points_per_currency));
+            const pointValue = earnedPoints / parseFloat(membershipSettings.points_to_currency);
+            return (
+              <>
+                Members earn: <strong>{earnedPoints.toLocaleString()}</strong> pts
+                {' '}({formatCurrency(pointValue, operationSettings.currency)} value)
+              </>
+            );
+          })()}
+        </div>
       )}
 
       <Section>

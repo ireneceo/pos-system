@@ -2017,6 +2017,8 @@ const POSTerminalPage: React.FC = () => {
         discount: savedOrder?.discount || orderData.discount,
         discountPolicy: orderData.discountPolicy,
         coupon: orderData.coupon,
+        pointsUsed: orderData.pointsUsed || 0,
+        pointDiscount: orderData.pointDiscount || 0,
         total: savedOrder?.total || orderData.total
       });
       setShowOrderCompleteModal(true);

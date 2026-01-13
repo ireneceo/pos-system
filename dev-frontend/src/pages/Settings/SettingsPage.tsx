@@ -3225,7 +3225,7 @@ const SettingsPage: React.FC = () => {
                             setHasChanges(true);
                           }}
                         />
-                        <span style={{ color: '#6B7C93', fontSize: '14px' }}>RM</span>
+                        <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
                         <HelpText>This amount will be added to each item for takeaway orders</HelpText>
                       </FormGroup>
                     ) : (
@@ -3253,7 +3253,7 @@ const SettingsPage: React.FC = () => {
                                   setHasChanges(true);
                                 }}
                               />
-                              <span style={{ color: '#6B7C93', fontSize: '14px' }}>RM</span>
+                              <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
                             </FormGroup>
                           ))}
                         </SettingsGrid>
@@ -3301,7 +3301,7 @@ const SettingsPage: React.FC = () => {
                           setHasChanges(true);
                         }}
                       />
-                      <span style={{ color: '#6B7C93', fontSize: '14px' }}>RM</span>
+                      <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
                       <HelpText>Minimum subtotal required for delivery orders (0 = no minimum)</HelpText>
                     </FormGroup>
 
@@ -3319,7 +3319,7 @@ const SettingsPage: React.FC = () => {
                           setHasChanges(true);
                         }}
                       />
-                      <span style={{ color: '#6B7C93', fontSize: '14px' }}>RM</span>
+                      <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
                       <HelpText>Waive delivery fee if order subtotal exceeds this amount (999999 = never free)</HelpText>
                     </FormGroup>
 
@@ -3409,7 +3409,7 @@ const SettingsPage: React.FC = () => {
                               setHasChanges(true);
                             }}
                           />
-                          <span style={{ color: '#6B7C93', fontSize: '14px' }}>RM</span>
+                          <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
                         </FormGroup>
                       </div>
                     ))}
@@ -3861,24 +3861,39 @@ const SettingsPage: React.FC = () => {
                       <CardTitle>Points Settings</CardTitle>
 
                       <FormGroup>
-                        <Label>Points per Currency Unit</Label>
+                        <Label>Earn Rate (%)</Label>
                         <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#8898AA' }}>
-                          How many points customer earns per {getCurrencySymbol(currencySettings.currency)} 1 spent
+                          Percentage of order value earned as points value
                         </p>
                         <Input
                           type="number"
                           step="0.1"
                           min="0"
-                          value={membershipSettings.points_per_currency}
+                          max="100"
+                          value={membershipSettings.points_per_currency && membershipSettings.points_to_currency
+                            ? ((membershipSettings.points_per_currency / membershipSettings.points_to_currency) * 100).toFixed(1)
+                            : 1}
                           onChange={(e) => {
-                            setMembershipSettings({ ...membershipSettings, points_per_currency: parseFloat(e.target.value) || 0 });
+                            const earnRatePercent = parseFloat(e.target.value) || 0;
+                            // Keep points_to_currency at 100, adjust points_per_currency
+                            // earnRate% = (points_per_currency / points_to_currency) * 100
+                            // points_per_currency = earnRate% * points_to_currency / 100
+                            const pointsPerCurrency = (earnRatePercent * membershipSettings.points_to_currency) / 100;
+                            setMembershipSettings({
+                              ...membershipSettings,
+                              points_per_currency: pointsPerCurrency
+                            });
                             setHasChanges(true);
                           }}
                         />
+                        <p style={{ margin: '8px 0 0 0', fontSize: '11px', color: '#6B7C93' }}>
+                          e.g., {((membershipSettings.points_per_currency / membershipSettings.points_to_currency) * 100).toFixed(1)}% earn rate:
+                          {getCurrencySymbol(currencySettings.currency)} 100 spent = {Math.round(100 * membershipSettings.points_per_currency)} points = {getCurrencySymbol(currencySettings.currency)} {(100 * membershipSettings.points_per_currency / membershipSettings.points_to_currency).toFixed(2)} value
+                        </p>
                       </FormGroup>
 
                       <FormGroup>
-                        <Label>Points to Currency Ratio</Label>
+                        <Label>Points Value</Label>
                         <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#8898AA' }}>
                           How many points equal {getCurrencySymbol(currencySettings.currency)} 1 when redeeming
                         </p>
@@ -3892,6 +3907,9 @@ const SettingsPage: React.FC = () => {
                             setHasChanges(true);
                           }}
                         />
+                        <p style={{ margin: '8px 0 0 0', fontSize: '11px', color: '#6B7C93' }}>
+                          {membershipSettings.points_to_currency} points = {getCurrencySymbol(currencySettings.currency)} 1
+                        </p>
                       </FormGroup>
 
                       <FormGroup>
@@ -4144,6 +4162,29 @@ const SettingsPage: React.FC = () => {
                       </div>
                     </SettingsCard>
                   </SettingsGrid>
+
+                  {/* Point Policy Reference */}
+                  <SettingsCard style={{ marginTop: '24px', background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+                    <CardTitle style={{ fontSize: '14px', color: '#64748B' }}>Point System Policy Reference</CardTitle>
+                    <div style={{ fontSize: '13px', color: '#64748B', lineHeight: '1.8' }}>
+                      <p style={{ marginBottom: '12px', fontWeight: '500', color: '#475569' }}>
+                        These are the system rules that cannot be changed:
+                      </p>
+                      <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                        <li><strong>Point Earning:</strong> Points are earned when an order status changes to "Completed"</li>
+                        <li><strong>Point Calculation:</strong> (Order Amount) × (Earn Rate %) × (Tier Bonus Rate)</li>
+                        <li><strong>Setting Changes:</strong> New settings apply to orders placed after the change</li>
+                        <li><strong>Existing Points:</strong> Previously earned points are not affected by setting changes</li>
+                        <li><strong>Point Redemption:</strong> Points can only be redeemed up to the maximum % of order total</li>
+                        <li><strong>Tier Calculation:</strong> Customer tier is based on total spending at your restaurant</li>
+                        <li><strong>Point Expiry:</strong> Expired points are automatically deducted (if expiry is set)</li>
+                      </ul>
+                      <p style={{ marginTop: '12px', fontSize: '12px', color: '#94A3B8' }}>
+                        Current setting: {((membershipSettings.points_per_currency / membershipSettings.points_to_currency) * 100).toFixed(1)}% earn rate
+                        ({membershipSettings.points_to_currency} points = {getCurrencySymbol(currencySettings.currency)} 1)
+                      </p>
+                    </div>
+                  </SettingsCard>
 
                   <SaveButtonContainer>
                     <SaveButton onClick={handleSaveMembership} disabled={!hasChanges}>

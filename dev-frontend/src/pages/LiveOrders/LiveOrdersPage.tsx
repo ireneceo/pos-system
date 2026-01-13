@@ -1300,6 +1300,9 @@ const LiveOrdersPage: React.FC = () => {
         // Search in customer name
         if (order.customer_name?.toLowerCase().includes(query)) return true;
 
+        // Search in customer phone
+        if (order.customer_phone?.replace(/\D/g, '').includes(query.replace(/\D/g, ''))) return true;
+
         // Search in table number
         if (order.table_number?.toString().includes(query)) return true;
 

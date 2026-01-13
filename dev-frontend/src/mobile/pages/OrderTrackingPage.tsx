@@ -543,6 +543,14 @@ const OrderTrackingPage: React.FC = () => {
             <span style={{ color: '#6B7280' }}>Total Amount</span>
             <span style={{ fontWeight: 600 }}>{formatCurrency(getTotalAmount(), currency)}</span>
           </DetailRow>
+          {(order.point_discount || order.points_used) && Number(order.point_discount || 0) > 0 && (
+            <DetailRow>
+              <span style={{ color: '#6B7280' }}>Points Used</span>
+              <span style={{ fontWeight: 600, color: '#10B981' }}>
+                -{formatCurrency(Number(order.point_discount), currency)} ({order.points_used?.toLocaleString()} pts)
+              </span>
+            </DetailRow>
+          )}
           <DetailRow>
             <span style={{ color: '#6B7280' }}>Payment</span>
             <span style={{
