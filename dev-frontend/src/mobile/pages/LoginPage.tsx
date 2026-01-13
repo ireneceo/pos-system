@@ -259,10 +259,8 @@ const LoginPage: React.FC = () => {
           isActive: true
         };
         setCurrentCustomer(customerData);
-        showAlert('success', 'Welcome!', `Welcome back, ${result.data.name}!`);
-        setTimeout(() => {
-          navigate(`/mobile/${slug}/account`);
-        }, 1500);
+        // 바로 account 페이지로 이동
+        navigate(`/mobile/${slug}/account`);
       } else {
         showAlert('error', 'Login Failed', result.message || 'Invalid email/phone or password');
       }

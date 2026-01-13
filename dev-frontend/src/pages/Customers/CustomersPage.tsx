@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { useParams } from 'react-router-dom';
 import MainLayout from '../../components/Layout/MainLayout';
 import { useCustomer, Customer } from '../../contexts/CustomerContext';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
@@ -83,8 +84,8 @@ const Content = styled.main`
 `;
 
 const SearchContainer = styled.div`
-  flex: 1;
-  min-width: 300px;
+  flex: 0 0 400px;
+  max-width: 400px;
   position: relative;
 `;
 
@@ -443,12 +444,14 @@ const DetailValue = styled.span`
 
 
 const CustomersPage: React.FC = () => {
+  const { restaurantId } = useParams<{ restaurantId: string }>();
   const {
     customers,
     searchCustomers,
     setShowCustomerModal,
     setCustomerModalMode,
-    updateCustomer
+    updateCustomer,
+    reloadCustomers
   } = useCustomer();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -463,6 +466,13 @@ const CustomersPage: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
+
+  // 페이지 마운트 시 현재 레스토랑의 고객 목록 로드
+  useEffect(() => {
+    if (restaurantId) {
+      reloadCustomers(restaurantId);
+    }
+  }, [restaurantId, reloadCustomers]);
 
   useEffect(() => {
     if (defaultCurrency) {
@@ -632,19 +642,19 @@ const CustomersPage: React.FC = () => {
           </FilterBar>
 
           <StatsGrid>
-            <StatCard>
+            <StatCard color="#635BFF">
               <StatLabel>Total Customers</StatLabel>
               <StatValue>{stats.totalCustomers}</StatValue>
             </StatCard>
-            <StatCard>
+            <StatCard color="#10B981">
               <StatLabel>Active Customers</StatLabel>
               <StatValue>{stats.activeCustomers}</StatValue>
             </StatCard>
-            <StatCard>
+            <StatCard color="#F59E0B">
               <StatLabel>VIP Members</StatLabel>
               <StatValue>{stats.vipCustomers}</StatValue>
             </StatCard>
-            <StatCard>
+            <StatCard color="#8B5CF6">
               <StatLabel>Avg Orders per Customer</StatLabel>
               <StatValue>{stats.averageOrders}</StatValue>
             </StatCard>
@@ -722,7 +732,7 @@ const CustomersPage: React.FC = () => {
                       
                       <ActionButtons onClick={(e) => e.stopPropagation()}>
                         <ActionButton onClick={() => handleCustomerClick(customer)}>
-                          View Details
+                          View
                         </ActionButton>
                         <ActionButton onClick={() => handleToggleStatus(customer)}>
                           {customer.isActive ? 'Deactivate' : 'Activate'}
@@ -788,8 +798,8 @@ const CustomersPage: React.FC = () => {
         </Content>
 
         {/* Customer Detail Modal */}
-        <CustomerDetailModal isOpen={showDetailModal}>
-          <ModalContent>
+        <CustomerDetailModal isOpen={showDetailModal} onClick={() => setShowDetailModal(false)}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
             <ModalHeader>
               <ModalTitle>Customer Details</ModalTitle>
               <CloseButton onClick={() => setShowDetailModal(false)}>×</CloseButton>

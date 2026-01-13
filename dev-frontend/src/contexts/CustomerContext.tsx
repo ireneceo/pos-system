@@ -54,6 +54,7 @@ interface CustomerContextType {
   getCustomerByPhone: (phone: string) => Customer | null;
   getCustomerById: (id: string) => Customer | null;
   deleteCustomer: (customerId: string) => Promise<boolean>;
+  reloadCustomers: (restaurantId?: string | number) => Promise<void>;
 
   // 포인트 및 히스토리
   addPoints: (customerId: string, points: number) => void;
@@ -82,9 +83,42 @@ export const useCustomer = () => {
 };
 
 export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // localStorage 제거 - 메모리 기반 상태 관리 (세션 중에만 유지)
-  const [currentCustomer, setCurrentCustomer] = useState<Customer | null>(null);
-  const [guestInfo, setGuestInfo] = useState<GuestInfo | null>(null);
+  // 모바일 고객 로그인 상태 유지를 위해 sessionStorage 사용
+  const [currentCustomer, setCurrentCustomerState] = useState<Customer | null>(() => {
+    try {
+      const saved = sessionStorage.getItem('mobile_customer');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [guestInfo, setGuestInfoState] = useState<GuestInfo | null>(() => {
+    try {
+      const saved = sessionStorage.getItem('mobile_guest');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // sessionStorage 동기화 wrapper 함수
+  const setCurrentCustomer = (customer: Customer | null) => {
+    setCurrentCustomerState(customer);
+    if (customer) {
+      sessionStorage.setItem('mobile_customer', JSON.stringify(customer));
+    } else {
+      sessionStorage.removeItem('mobile_customer');
+    }
+  };
+
+  const setGuestInfo = (guest: GuestInfo | null) => {
+    setGuestInfoState(guest);
+    if (guest) {
+      sessionStorage.setItem('mobile_guest', JSON.stringify(guest));
+    } else {
+      sessionStorage.removeItem('mobile_guest');
+    }
+  };
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
@@ -413,6 +447,7 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     getCustomerByPhone,
     getCustomerById,
     deleteCustomer,
+    reloadCustomers: loadInitialCustomers,
     addPoints,
     usePoints,
     addToFavorites,
