@@ -3827,13 +3827,13 @@ const SettingsPage: React.FC = () => {
                 </SettingsCard>
               ) : (
                 <>
-                  {/* Membership Toggle */}
+                  {/* Points System Toggle */}
                   <SettingsCard style={{ marginBottom: '24px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <CardTitle style={{ marginBottom: '8px' }}>Membership Program</CardTitle>
+                        <CardTitle style={{ marginBottom: '8px' }}>Points System</CardTitle>
                         <p style={{ margin: 0, fontSize: '14px', color: '#6B7C93' }}>
-                          Enable or disable the membership program for your store
+                          Enable or disable points earning and redemption for customers
                         </p>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

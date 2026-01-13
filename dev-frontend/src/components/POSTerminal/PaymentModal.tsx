@@ -207,6 +207,20 @@ const PointsDiscount = styled.div`
   font-size: 16px;
 `;
 
+// Helper function to get fetch options with auth token
+const getFetchOptionsForModal = (options: RequestInit = {}): RequestInit => {
+  const token = localStorage.getItem('auth_token');
+  return {
+    ...options,
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      ...(options.headers || {})
+    }
+  };
+};
+
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -223,10 +237,12 @@ interface PaymentModalProps {
   serviceChargeRate?: number;
   taxEnabled?: boolean;
   serviceChargeEnabled?: boolean;
-  // Points props
-  customerPoints?: number;
-  customerTier?: string;
-  membershipSettings?: any;
+  // Points props - can use customerId/restaurantId OR direct values
+  customerId?: number;        // If provided, modal will fetch data internally
+  restaurantId?: number;      // Required if customerId is provided
+  customerPoints?: number;    // Direct value (used by POS Terminal)
+  customerTier?: string;      // Direct value (used by POS Terminal)
+  membershipSettings?: any;   // Direct value or will be fetched if restaurantId provided
   onPointsChange?: (pointsUsed: number, discount: number) => void;
 }
 
@@ -246,12 +262,66 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   serviceChargeRate = 10,
   taxEnabled = true,
   serviceChargeEnabled = false,
-  customerPoints = 0,
-  customerTier = 'Bronze',
-  membershipSettings,
+  customerId,
+  restaurantId,
+  customerPoints: propCustomerPoints = 0,
+  customerTier: propCustomerTier = 'Bronze',
+  membershipSettings: propMembershipSettings,
   onPointsChange
 }) => {
   const { operationSettings } = useStore();
+
+  // Internal state for fetched data (when customerId/restaurantId are provided)
+  const [fetchedPoints, setFetchedPoints] = useState<number>(0);
+  const [fetchedTier, setFetchedTier] = useState<string>('Bronze');
+  const [fetchedMembershipSettings, setFetchedMembershipSettings] = useState<any>(null);
+  const [isLoadingPoints, setIsLoadingPoints] = useState(false);
+
+  // Use fetched values if customerId is provided, otherwise use props
+  const customerPoints = customerId ? fetchedPoints : propCustomerPoints;
+  const customerTier = customerId ? fetchedTier : propCustomerTier;
+  const membershipSettings = customerId && !propMembershipSettings ? fetchedMembershipSettings : propMembershipSettings;
+
+  // Fetch membership settings and customer points when modal opens with customerId
+  useEffect(() => {
+    if (!isOpen || !customerId || !restaurantId) {
+      return;
+    }
+
+    const fetchData = async () => {
+      setIsLoadingPoints(true);
+      try {
+        // Fetch membership settings if not provided
+        if (!propMembershipSettings) {
+          const settingsResponse = await fetch(
+            `/api/membership/settings/${restaurantId}`,
+            getFetchOptionsForModal()
+          );
+          const settingsResult = await settingsResponse.json();
+          if (settingsResult.success && settingsResult.data) {
+            setFetchedMembershipSettings(settingsResult.data);
+          }
+        }
+
+        // Fetch customer points
+        const pointsResponse = await fetch(
+          `/api/membership/customer/${restaurantId}/${customerId}`,
+          getFetchOptionsForModal()
+        );
+        const pointsResult = await pointsResponse.json();
+        if (pointsResult.success && pointsResult.data) {
+          setFetchedPoints(pointsResult.data.points || 0);
+          setFetchedTier(pointsResult.data.loyalty_tier || 'Bronze');
+        }
+      } catch (error) {
+        console.error('PaymentModal: Failed to fetch membership data:', error);
+      } finally {
+        setIsLoadingPoints(false);
+      }
+    };
+
+    fetchData();
+  }, [isOpen, customerId, restaurantId, propMembershipSettings]);
 
   // Points state
   const [usePoints, setUsePoints] = useState(false);
@@ -299,6 +369,10 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       setUsePoints(false);
       setPointsToUse(0);
       setPointDiscount(0);
+      // Reset fetched data for next open
+      setFetchedPoints(0);
+      setFetchedTier('Bronze');
+      setFetchedMembershipSettings(null);
     }
   }, [isOpen]);
 
@@ -449,8 +523,18 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         <TotalPrice>{formatCurrency(total, operationSettings.currency)}</TotalPrice>
       </TotalSection>
 
-      {/* Points Section - Only show if customer has points and membership is active */}
-      {membershipSettings?.is_active && customerPoints > 0 && (
+      {/* Points Section - Show loading state or points info */}
+      {isLoadingPoints && customerId && (
+        <PointsSection>
+          <PointsHeader>
+            <div>
+              <PointsTitle>Loading Points...</PointsTitle>
+              <PointsTier>Please wait</PointsTier>
+            </div>
+          </PointsHeader>
+        </PointsSection>
+      )}
+      {!isLoadingPoints && membershipSettings?.is_active && customerPoints > 0 && (
         <PointsSection>
           {/* Points Info Header */}
           <PointsHeader>
@@ -542,7 +626,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       )}
 
       {/* Points earning preview for non-member customers */}
-      {membershipSettings?.is_active && customerPoints === 0 && membershipSettings?.points_per_currency && (
+      {!isLoadingPoints && membershipSettings?.is_active && customerPoints === 0 && membershipSettings?.points_per_currency && (
         <div style={{
           marginBottom: '16px',
           padding: '12px',

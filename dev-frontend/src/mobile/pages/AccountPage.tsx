@@ -343,6 +343,8 @@ const AccountPage: React.FC = () => {
     points: number;
   }>({ totalOrders: 0, totalSpent: 0, points: 0 });
 
+  const [pointsEnabled, setPointsEnabled] = useState<boolean>(true);
+
   // Load restaurant data from slug on mount
   useEffect(() => {
     const loadRestaurant = async () => {
@@ -370,6 +372,26 @@ const AccountPage: React.FC = () => {
     };
     loadRestaurant();
   }, [slug, currentStore, setCurrentStore]);
+
+  // Load membership settings to check if points are enabled
+  useEffect(() => {
+    const loadMembershipSettings = async () => {
+      if (currentStore) {
+        try {
+          const response = await fetch(`/api/membership/settings/${currentStore.id}`);
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success && result.data) {
+              setPointsEnabled(result.data.is_active === true);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to load membership settings:', error);
+        }
+      }
+    };
+    loadMembershipSettings();
+  }, [currentStore]);
 
   // Load customer stats
   useEffect(() => {
@@ -477,7 +499,7 @@ const AccountPage: React.FC = () => {
             </Avatar>
             <GuestTitle>Welcome!</GuestTitle>
             <GuestDescription>
-              Login or create an account to track your orders, earn points, and enjoy a faster checkout experience.
+              Login or create an account to track your orders{pointsEnabled ? ', earn points,' : ''} and enjoy a faster checkout experience.
             </GuestDescription>
             <LoginButton onClick={() => navigate(`/mobile/${slug}/login`)}>
               Login
@@ -546,10 +568,12 @@ const AccountPage: React.FC = () => {
               <StatValue>{formatCurrency(customerStats.totalSpent, currency)}</StatValue>
               <StatLabel>Total Spent</StatLabel>
             </StatItem>
-            <StatItem>
-              <StatValue>{customerStats.points}</StatValue>
-              <StatLabel>Points</StatLabel>
-            </StatItem>
+            {pointsEnabled && (
+              <StatItem>
+                <StatValue>{customerStats.points}</StatValue>
+                <StatLabel>Points</StatLabel>
+              </StatItem>
+            )}
           </StatsRow>
         </ProfileSection>
 

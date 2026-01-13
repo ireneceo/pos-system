@@ -1017,10 +1017,8 @@ const LiveOrdersPage: React.FC = () => {
   const [timeDisplayKey, setTimeDisplayKey] = useState(0); // Time display update key
   const [audioEnabled, setAudioEnabled] = useState(true); // Audio notification toggle
 
-  // Membership and Points
+  // Membership settings (used by PaymentModal for membership info display)
   const [membershipSettings, setMembershipSettings] = useState<any>(null);
-  const [customerPointsForPayment, setCustomerPointsForPayment] = useState<number>(0);
-  const [customerTierForPayment, setCustomerTierForPayment] = useState<string>('Bronze');
 
   // Date filter state (default to 'today')
   const [activePeriod, setActivePeriod] = useState<PeriodType>('today');
@@ -1150,53 +1148,18 @@ const LiveOrdersPage: React.FC = () => {
 
   // Fetch membership settings
   const fetchMembershipSettings = useCallback(async () => {
-    console.log('[DEBUG] fetchMembershipSettings called, restaurantId:', user?.restaurantId);
     if (!user?.restaurantId) return;
     try {
-      const url = `/api/membership/settings/${user.restaurantId}`;
-      console.log('[DEBUG] Fetching membership settings from:', url);
-      const response = await fetch(url, getFetchOptions());
+      const response = await fetch(`/api/membership/settings/${user.restaurantId}`, getFetchOptions());
       const result = await response.json();
-      console.log('[DEBUG] Membership settings result:', result);
       if (result.success && result.data) {
-        console.log('[DEBUG] Setting membershipSettings:', result.data);
         setMembershipSettings(result.data);
       }
     } catch (error) {
-      console.error('[DEBUG] Failed to fetch membership settings:', error);
+      console.error('Failed to fetch membership settings:', error);
     }
   }, [user?.restaurantId]);
 
-  // Fetch customer points for payment
-  const fetchCustomerPointsForPayment = useCallback(async (customerId: number) => {
-    console.log('[DEBUG] fetchCustomerPointsForPayment called with customerId:', customerId, 'restaurantId:', user?.restaurantId);
-    if (!user?.restaurantId || !customerId) {
-      console.log('[DEBUG] Missing restaurantId or customerId, setting 0 points');
-      setCustomerPointsForPayment(0);
-      setCustomerTierForPayment('Bronze');
-      return;
-    }
-    try {
-      const url = `/api/membership/customer/${user.restaurantId}/${customerId}`;
-      console.log('[DEBUG] Fetching customer points from:', url);
-      const response = await fetch(url, getFetchOptions());
-      const result = await response.json();
-      console.log('[DEBUG] Customer points API result:', result);
-      if (result.success && result.data) {
-        console.log('[DEBUG] Setting points:', result.data.points, 'tier:', result.data.loyalty_tier);
-        setCustomerPointsForPayment(result.data.points || 0);
-        setCustomerTierForPayment(result.data.loyalty_tier || 'Bronze');
-      } else {
-        console.log('[DEBUG] API returned no data, setting 0 points');
-        setCustomerPointsForPayment(0);
-        setCustomerTierForPayment('Bronze');
-      }
-    } catch (error) {
-      console.error('[DEBUG] Failed to fetch customer points:', error);
-      setCustomerPointsForPayment(0);
-      setCustomerTierForPayment('Bronze');
-    }
-  }, [user?.restaurantId]);
 
   // Store playNotificationSound in ref to avoid socket reconnection on audio state changes
   const playNotificationSoundRef = useRef(playNotificationSound);
@@ -2084,26 +2047,12 @@ const LiveOrdersPage: React.FC = () => {
     setShowCancelConfirm(false);
   };
 
-  const handlePaymentClick = async (order: DbOrder, e?: React.MouseEvent) => {
+  const handlePaymentClick = (order: DbOrder, e?: React.MouseEvent) => {
     if (e) {
       e.stopPropagation(); // Prevent opening the order detail modal
     }
 
-    console.log('[DEBUG] handlePaymentClick - order:', order.order_number, 'customer_id:', (order as any).customer_id);
-    console.log('[DEBUG] handlePaymentClick - membershipSettings:', membershipSettings);
-
-    // Fetch customer points if order has customer_id
-    const customerId = (order as any).customer_id;
-    if (customerId) {
-      console.log('[DEBUG] handlePaymentClick - calling fetchCustomerPointsForPayment with:', customerId);
-      await fetchCustomerPointsForPayment(customerId);
-    } else {
-      console.log('[DEBUG] handlePaymentClick - no customer_id, setting 0 points');
-      setCustomerPointsForPayment(0);
-      setCustomerTierForPayment('Bronze');
-    }
-
-    // PaymentModal 열기 (결제 방법 선택)
+    // PaymentModal 열기 - 모달이 내부에서 customer points를 직접 로드함
     setOrderForPayment(order);
     setShowPaymentModal(true);
   };
@@ -3349,8 +3298,6 @@ const LiveOrdersPage: React.FC = () => {
               setShowPaymentModal(false);
               setTimeout(() => {
                 setOrderForPayment(null);
-                setCustomerPointsForPayment(0);
-                setCustomerTierForPayment('Bronze');
               }, 100);
             }}
             total={Number(orderForPayment.total_amount)}
@@ -3361,8 +3308,8 @@ const LiveOrdersPage: React.FC = () => {
             couponDiscount={Number((orderForPayment as any).coupon_discount || 0)}
             onConfirmPayment={handlePaymentConfirm}
             paymentMethods={paymentMethods}
-            customerPoints={customerPointsForPayment}
-            customerTier={customerTierForPayment}
+            customerId={(orderForPayment as any).customer_id || undefined}
+            restaurantId={user?.restaurantId ? Number(user.restaurantId) : undefined}
             membershipSettings={membershipSettings}
           />
         )}
