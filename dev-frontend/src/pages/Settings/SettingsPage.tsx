@@ -3836,20 +3836,22 @@ const SettingsPage: React.FC = () => {
                           Enable or disable the membership program for your store
                         </p>
                       </div>
-                      <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={membershipSettings.is_active}
-                          onChange={(e) => {
-                            setMembershipSettings({ ...membershipSettings, is_active: e.target.checked });
-                            setHasChanges(true);
-                          }}
-                          style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-                        />
-                        <span style={{ marginLeft: '8px', fontWeight: '500', color: membershipSettings.is_active ? '#059669' : '#6B7C93' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <ToggleSwitch>
+                          <ToggleInput
+                            type="checkbox"
+                            checked={membershipSettings.is_active}
+                            onChange={(e) => {
+                              setMembershipSettings({ ...membershipSettings, is_active: e.target.checked });
+                              setHasChanges(true);
+                            }}
+                          />
+                          <ToggleSlider />
+                        </ToggleSwitch>
+                        <span style={{ fontSize: '14px', fontWeight: '500', color: membershipSettings.is_active ? '#635BFF' : '#6B7C93' }}>
                           {membershipSettings.is_active ? 'Active' : 'Inactive'}
                         </span>
-                      </label>
+                      </div>
                     </div>
                   </SettingsCard>
 

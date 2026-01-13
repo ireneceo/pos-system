@@ -44,8 +44,8 @@ interface CustomerContextType {
   setGuestInfo: (guest: GuestInfo | null) => void;
   
   // 회원 관리
-  registerCustomer: (customerData: Partial<Customer>) => Promise<Customer>;
-  loginCustomer: (phone: string, password?: string) => Promise<Customer | null>;
+  registerCustomer: (customerData: Partial<Customer>, restaurantId?: string | number) => Promise<Customer>;
+  loginCustomer: (phone: string, password?: string, restaurantId?: string | number) => Promise<Customer | null>;
   logoutCustomer: () => void;
   updateCustomer: (customerId: string, updates: Partial<Customer>) => Promise<Customer>;
   
@@ -114,10 +114,30 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // localStorage 동기화 제거 - 메모리 상태만 사용
 
-  const loadInitialCustomers = async () => {
+  const loadInitialCustomers = async (restaurantIdParam?: string | number) => {
     try {
-      // 실제 데이터베이스에서 고객 목록 가져오기
-      const restaurantId = 1; // TODO: 실제 레스토랑 ID 가져오기
+      // restaurantId 결정: 파라미터 > localStorage > URL에서 추출 > 기본값 1
+      let restaurantId = restaurantIdParam;
+      if (!restaurantId) {
+        // localStorage에서 사용자 정보 확인
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          try {
+            const user = JSON.parse(userStr);
+            restaurantId = user.restaurantId || user.restaurant_id;
+          } catch (e) { /* ignore */ }
+        }
+      }
+      if (!restaurantId) {
+        // URL에서 restaurant ID 추출 시도 (/restaurant/:id/...)
+        const match = window.location.pathname.match(/\/restaurant\/(\d+)/);
+        if (match) {
+          restaurantId = match[1];
+        }
+      }
+      if (!restaurantId) {
+        restaurantId = 1; // 기본값
+      }
 
       const response = await fetch(`/api/customers/${restaurantId}`, getFetchOptions());
       const data = await response.json();
@@ -152,9 +172,9 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  const registerCustomer = async (customerData: Partial<Customer> & { password?: string }): Promise<Customer> => {
+  const registerCustomer = async (customerData: Partial<Customer> & { password?: string }, restaurantId?: string | number): Promise<Customer> => {
     try {
-      // API 호출
+      // API 호출 - restaurantId는 선택적 (모바일에서는 currentStore.id 전달)
       const response = await fetch('/api/customers/register', getFetchOptions({
         method: 'POST',
         body: JSON.stringify({
@@ -162,7 +182,7 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           name: customerData.name,
           email: customerData.email,
           password: customerData.password,
-          restaurantId: 1 // 기본 레스토랑 ID
+          restaurantId: restaurantId || undefined
         })
       }));
 
@@ -204,15 +224,15 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  const loginCustomer = async (phone: string, password?: string): Promise<Customer | null> => {
+  const loginCustomer = async (phone: string, password?: string, restaurantId?: string | number): Promise<Customer | null> => {
     try {
-      // API 호출 (restaurant ID 1을 기본값으로 사용)
+      // API 호출 - restaurantId는 선택적 (모바일에서는 currentStore.id 전달)
       const response = await fetch('/api/customers/auth', getFetchOptions({
         method: 'POST',
         body: JSON.stringify({
           phone,
           password,
-          restaurantId: 1 // 기본 레스토랑 ID
+          restaurantId: restaurantId || undefined
         })
       }));
 

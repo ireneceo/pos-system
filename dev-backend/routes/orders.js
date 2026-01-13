@@ -7,7 +7,7 @@ const { sequelize } = require('../config/database');
 const { executeQuery, executeTransaction } = require('../utils/queryWrapper');
 const { deductInventoryForOrder } = require('../services/inventoryDeductionService');
 const { earnPointsForOrder, refundPointsForOrder, usePointsForOrder } = require('../services/pointService');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, optionalAuthenticateToken } = require('../middleware/auth');
 
 // Get all orders
 router.get('/', authenticateToken, async (req, res) => {
@@ -77,7 +77,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
 });
 
 // Create new order
-router.post('/', authenticateToken, async (req, res) => {
+// Uses optionalAuthenticateToken to allow both authenticated (POS) and guest (mobile) orders
+router.post('/', optionalAuthenticateToken, async (req, res) => {
   try {
     const orderData = req.body;
     // Support both camelCase (new) and snake_case (legacy)

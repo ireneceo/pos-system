@@ -1771,7 +1771,7 @@ const PaymentPage: React.FC = () => {
                         phone: guestPhone,
                         email: guestEmail,
                         password: registerPassword
-                      } as any);
+                      } as any, currentStore?.id);
                       console.log('✅ Customer registered:', customer);
                       alert('Registration successful! You are now logged in as a member.');
                       setShowGuestForm(false);
@@ -1843,7 +1843,7 @@ const PaymentPage: React.FC = () => {
                     return;
                   }
                   try {
-                    const customer = await loginCustomer(guestPhone, memberPassword);
+                    const customer = await loginCustomer(guestPhone, memberPassword, currentStore?.id);
                     if (customer) {
                       console.log('✅ Member logged in:', customer);
                       setShowMemberForm(false);

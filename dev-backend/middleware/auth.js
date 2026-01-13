@@ -118,8 +118,50 @@ const checkRestaurantAccess = async (req, res, next) => {
   }
 };
 
+// Optional authentication - allows request to continue even without token
+// Used for endpoints that support both authenticated and guest access
+const optionalAuthenticateToken = async (req, res, next) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+      // No token - continue as guest
+      req.user = null;
+      return next();
+    }
+
+    if (!process.env.JWT_SECRET) {
+      // Server config error but continue as guest
+      req.user = null;
+      return next();
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findByPk(decoded.userId);
+
+    if (user) {
+      req.user = {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        restaurant_id: user.restaurant_id
+      };
+    } else {
+      req.user = null;
+    }
+
+    next();
+  } catch (error) {
+    // Token verification failed - continue as guest
+    req.user = null;
+    next();
+  }
+};
+
 module.exports = {
   authenticateToken,
+  optionalAuthenticateToken,
   requireRole,
   checkRestaurantAccess
 };

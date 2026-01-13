@@ -1161,6 +1161,9 @@ const POSTerminalPage: React.FC = () => {
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [selectedCustomerForOrder, setSelectedCustomerForOrder] = useState<any>(null);
+  const [apiSearchResults, setApiSearchResults] = useState<any[]>([]);
+  const [isSearchingCustomers, setIsSearchingCustomers] = useState(false);
+  const customerSearchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Currency and rounding settings
   const [currency, setCurrency] = useState<string>('RM');
@@ -2106,12 +2109,53 @@ const POSTerminalPage: React.FC = () => {
     });
   };
 
-  // Get customers from CustomerContext and filter by search query
+  // API-based customer search for real-time results
+  const searchCustomersFromAPI = async (query: string) => {
+    if (!query.trim() || !user?.restaurantId) {
+      setApiSearchResults([]);
+      return;
+    }
+
+    setIsSearchingCustomers(true);
+    try {
+      const response = await fetch(`/api/customers/${user.restaurantId}?search=${encodeURIComponent(query)}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          // Transform API response to match expected format
+          const transformedResults = data.data.map((item: any) => ({
+            id: item.customer?.id || item.customer_id,
+            name: item.customer?.name || 'Unknown',
+            phone: item.customer?.phone || '',
+            email: item.customer?.email || '',
+            type: item.customer?.type || 'member',
+            points: item.points || 0,
+            loyaltyTier: item.loyalty_tier || 'Bronze',
+            totalOrders: item.total_orders || 0,
+            totalSpent: item.total_spent || 0
+          }));
+          setApiSearchResults(transformedResults.slice(0, 10));
+        }
+      }
+    } catch (error) {
+      console.error('Customer search error:', error);
+    } finally {
+      setIsSearchingCustomers(false);
+    }
+  };
+
+  // Get customers - use API results if available, fallback to local search
   const getFilteredCustomers = () => {
     if (!customerSearchQuery.trim()) return [];
 
+    // Prefer API results
+    if (apiSearchResults.length > 0) {
+      return apiSearchResults;
+    }
+
+    // Fallback to local search
     const results = searchCustomers(customerSearchQuery);
-    return results.slice(0, 10); // Limit to 10 results
+    return results.slice(0, 10);
   };
 
   const filteredCustomers = getFilteredCustomers();
@@ -2120,17 +2164,32 @@ const POSTerminalPage: React.FC = () => {
     setSelectedCustomerForOrder(customer);
     setCustomerSearchQuery('');
     setShowCustomerDropdown(false);
+    setApiSearchResults([]);
   };
 
   const handleClearCustomer = () => {
     setSelectedCustomerForOrder(null);
     setCustomerSearchQuery('');
+    setApiSearchResults([]);
   };
 
   const handleCustomerSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setCustomerSearchQuery(value);
     setShowCustomerDropdown(value.trim().length > 0);
+
+    // Debounced API search
+    if (customerSearchTimeoutRef.current) {
+      clearTimeout(customerSearchTimeoutRef.current);
+    }
+
+    if (value.trim().length >= 2) {
+      customerSearchTimeoutRef.current = setTimeout(() => {
+        searchCustomersFromAPI(value);
+      }, 300);
+    } else {
+      setApiSearchResults([]);
+    }
   };
 
   return (
@@ -2354,9 +2413,14 @@ const POSTerminalPage: React.FC = () => {
                     </CustomerSearchItem>
                   ))}
                 </CustomerSearchDropdown>
-                <CustomerSearchDropdown show={showCustomerDropdown && customerSearchQuery.trim().length > 0 && filteredCustomers.length === 0}>
+                <CustomerSearchDropdown show={showCustomerDropdown && customerSearchQuery.trim().length > 0 && filteredCustomers.length === 0 && !isSearchingCustomers}>
                   <CustomerSearchItem style={{ cursor: 'default', color: '#6B7C93' }}>
                     No customers found
+                  </CustomerSearchItem>
+                </CustomerSearchDropdown>
+                <CustomerSearchDropdown show={showCustomerDropdown && isSearchingCustomers}>
+                  <CustomerSearchItem style={{ cursor: 'default', color: '#6B7C93' }}>
+                    Searching...
                   </CustomerSearchItem>
                 </CustomerSearchDropdown>
               </CustomerSearchContainer>
