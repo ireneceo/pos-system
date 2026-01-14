@@ -1180,4 +1180,79 @@ router.post('/:id/add-items', authenticateToken, async (req, res) => {
   }
 });
 
+// POST /api/orders/:id/merge-items
+// Add items with order_group tracking (used by Live Orders Add Items)
+router.post('/:id/merge-items', authenticateToken, async (req, res) => {
+  try {
+    const { items, source } = req.body;
+    const orderId = req.params.id;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Items array is required'
+      });
+    }
+
+    const order = await Order.findByPk(orderId);
+
+    if (!order) {
+      return res.status(404).json({ success: false, error: 'Order not found' });
+    }
+
+    // Validate order can accept new items
+    if (order.payment_status === 'completed') {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot add items to a paid order'
+      });
+    }
+
+    if (['served', 'completed', 'cancelled'].includes(order.status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Cannot add items to an order with status "${order.status}"`
+      });
+    }
+
+    // Use mergeItemsIntoOrder for consistent order_group handling
+    const mergeResult = await mergeItemsIntoOrder(order, items);
+
+    console.log(`✅ [MERGE-ITEMS] Added ${mergeResult.addedItems.length} items to order ${order.id} (group: ${mergeResult.orderGroup}, source: ${source || 'unknown'})`);
+
+    // Emit socket events
+    const io = req.app.get('io');
+    if (io && order.restaurant_id) {
+      const room = `restaurant_${order.restaurant_id}`;
+
+      // Emit order-updated for general UI refresh
+      io.of('/orders').to(room).emit('order-updated', mergeResult.order);
+
+      // Emit order-items-added for notification (same as auto-merge)
+      io.of('/orders').to(room).emit('order-items-added', {
+        orderId: order.id,
+        orderNumber: order.order_number,
+        tableNumber: order.table_number,
+        pagerNumber: order.pager_number,
+        orderGroup: mergeResult.orderGroup,
+        itemCount: mergeResult.addedItems.length,
+        source: source || 'live_orders'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: mergeResult.order,
+      addedItems: mergeResult.addedItems,
+      orderGroup: mergeResult.orderGroup,
+      previousTotal: mergeResult.previousTotal,
+      newTotal: mergeResult.newTotal
+    });
+
+  } catch (error) {
+    console.error('❌ [MERGE-ITEMS] Error:', error.message);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;

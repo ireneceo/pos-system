@@ -466,12 +466,14 @@ const KitchenDisplayPage: React.FC = () => {
             }
 
             // Process order items (regular and set menus)
+            // IMPORTANT: Preserve ALL original item data for proper DB updates
             const processedItems: any[] = [];
             orderItems.forEach((item: any, itemIndex: number) => {
               // Check if this is a set menu from the database
               if (item.is_set_menu && item.set_items && item.set_items.length > 0) {
                 // This is a set menu - keep parent item and sub-items
                 const setItems = item.set_items.map((setItem: any, setIndex: number) => ({
+                  ...setItem, // Preserve all original set item data
                   id: `item-${order.id}-${itemIndex}-set-${setIndex}`,
                   name: setItem.name,
                   quantity: setItem.quantity * (item.quantity || 1),
@@ -479,6 +481,7 @@ const KitchenDisplayPage: React.FC = () => {
                 }));
 
                 processedItems.push({
+                  ...item, // Preserve ALL original item data (price, added_at, order_group, etc.)
                   id: `item-${order.id}-${itemIndex}`,
                   name: item.name || item.menuItem?.name || 'Set Menu',
                   quantity: item.quantity,
@@ -489,8 +492,9 @@ const KitchenDisplayPage: React.FC = () => {
                   set_items: setItems
                 });
               } else {
-                // Regular item - add as is
+                // Regular item - preserve all original data
                 processedItems.push({
+                  ...item, // Preserve ALL original item data (price, added_at, order_group, etc.)
                   id: `item-${order.id}-${itemIndex}`,
                   name: item.name || item.menuItem?.name || 'Item',
                   quantity: item.quantity,

@@ -2079,7 +2079,7 @@ const LiveOrdersPage: React.FC = () => {
     const selectedOptions: any[] = [];
     Object.entries(optionSelections).forEach(([groupId, optionIds]) => {
       const group = selectedMenuItemForOption.optionGroups?.find((g: any) => g.id === groupId);
-      if (group) {
+      if (group && group.options) {
         optionIds.forEach(optionId => {
           const option = group.options.find((o: any) => o.id === optionId);
           if (option) {
@@ -2099,6 +2099,7 @@ const LiveOrdersPage: React.FC = () => {
     setSelectedMenuItemForOption(null);
     setOptionSelections({});
     setOptionQuantity(1);
+    setAddItemsSearchQuery('');
   };
 
   // Toggle option selection
@@ -3381,158 +3382,310 @@ const LiveOrdersPage: React.FC = () => {
                 </ModalHeader>
 
                 {showAddItemsView ? (
-                  /* Add Items View - Search-based UI */
-                  <ModalBody style={{ padding: '20px', maxHeight: '70vh', overflow: 'auto' }}>
-                    {/* Search Input */}
-                    <div style={{ marginBottom: '20px' }}>
-                      <input
-                        type="text"
-                        placeholder="Search menu items..."
-                        value={addItemsSearchQuery}
-                        onChange={(e) => setAddItemsSearchQuery(e.target.value)}
-                        style={{
-                          width: '100%',
-                          padding: '12px 16px',
-                          border: '2px solid #E5E7EB',
-                          borderRadius: '8px',
-                          fontSize: '15px',
-                          outline: 'none',
-                          transition: 'border-color 0.15s'
-                        }}
-                        onFocus={(e) => e.currentTarget.style.borderColor = '#635BFF'}
-                        onBlur={(e) => e.currentTarget.style.borderColor = '#E5E7EB'}
-                        autoFocus
-                      />
-                    </div>
-
-                    {/* Search Results - Click to add */}
-                    {addItemsSearchQuery.length > 0 && (
-                      <div style={{ marginBottom: '20px', maxHeight: '200px', overflowY: 'auto', border: '1px solid #E5E7EB', borderRadius: '8px' }}>
-                        {menuItems
-                          .filter((item: any) =>
-                            item.name.toLowerCase().includes(addItemsSearchQuery.toLowerCase())
-                          )
-                          .slice(0, 10)
-                          .map((item: any) => (
-                            <div
-                              key={item.id}
-                              onClick={() => {
-                                handleAddToItemsCart(item);
-                                setAddItemsSearchQuery('');
-                              }}
-                              style={{
-                                padding: '12px 16px',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                cursor: 'pointer',
-                                borderBottom: '1px solid #F3F4F6',
-                                transition: 'background 0.1s'
-                              }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = '#F9FAFB'}
-                              onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                            >
-                              <span style={{ fontWeight: 500 }}>{item.name}</span>
-                              <span style={{ color: '#635BFF', fontWeight: 500 }}>
-                                {formatCurrency(parseFloat(item.price), operationSettings.currency)}
-                              </span>
+                  /* Add Items View - Improved UI with options support */
+                  <>
+                    <ModalBody style={{ padding: '20px', maxHeight: 'calc(70vh - 80px)', overflow: 'auto' }}>
+                      {/* Option Selection Modal */}
+                      {showOptionModal && selectedMenuItemForOption && (
+                        <div style={{
+                          position: 'fixed',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          background: 'rgba(0,0,0,0.5)',
+                          zIndex: 1100,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '20px'
+                        }} onClick={() => setShowOptionModal(false)}>
+                          <div style={{
+                            background: 'white',
+                            borderRadius: '12px',
+                            width: '100%',
+                            maxWidth: '400px',
+                            maxHeight: '80vh',
+                            overflow: 'auto'
+                          }} onClick={(e) => e.stopPropagation()}>
+                            <div style={{ padding: '20px', borderBottom: '1px solid #E5E7EB' }}>
+                              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>{selectedMenuItemForOption.name}</h3>
+                              <p style={{ margin: '4px 0 0', color: '#6B7280', fontSize: '14px' }}>
+                                {formatCurrency(parseFloat(selectedMenuItemForOption.price), operationSettings.currency)}
+                              </p>
                             </div>
-                          ))}
-                        {menuItems.filter((item: any) =>
-                          item.name.toLowerCase().includes(addItemsSearchQuery.toLowerCase())
-                        ).length === 0 && (
-                          <div style={{ padding: '16px', textAlign: 'center', color: '#9CA3AF' }}>
-                            No items found
+
+                            <div style={{ padding: '20px' }}>
+                              {/* Option Groups */}
+                              {selectedMenuItemForOption.optionGroups?.map((group: any) => (
+                                <div key={group.id} style={{ marginBottom: '20px' }}>
+                                  <div style={{ fontWeight: 600, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    {group.name}
+                                    {group.required && <span style={{ fontSize: '11px', color: '#EF4444', fontWeight: 500 }}>Required</span>}
+                                    {group.multiple && <span style={{ fontSize: '11px', color: '#6B7280' }}>(Multiple)</span>}
+                                  </div>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    {(group.options || []).map((option: any) => {
+                                      const isSelected = (optionSelections[group.id] || []).includes(option.id);
+                                      return (
+                                        <div
+                                          key={option.id}
+                                          onClick={() => handleOptionToggle(group.id, option.id, group.multiple)}
+                                          style={{
+                                            padding: '12px',
+                                            border: `2px solid ${isSelected ? '#635BFF' : '#E5E7EB'}`,
+                                            borderRadius: '8px',
+                                            cursor: 'pointer',
+                                            background: isSelected ? '#F0EEFF' : 'white',
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center'
+                                          }}
+                                        >
+                                          <span>{option.name}</span>
+                                          {option.price > 0 && (
+                                            <span style={{ color: '#635BFF', fontWeight: 500 }}>
+                                              +{formatCurrency(option.price, operationSettings.currency)}
+                                            </span>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ))}
+
+                              {/* Quantity */}
+                              <div style={{ marginBottom: '20px' }}>
+                                <div style={{ fontWeight: 600, marginBottom: '8px' }}>Quantity</div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                  <button
+                                    onClick={() => setOptionQuantity(Math.max(1, optionQuantity - 1))}
+                                    style={{ width: '40px', height: '40px', border: '1px solid #E5E7EB', borderRadius: '8px', background: 'white', cursor: 'pointer', fontSize: '20px' }}
+                                  >-</button>
+                                  <span style={{ fontSize: '18px', fontWeight: 600, minWidth: '40px', textAlign: 'center' }}>{optionQuantity}</span>
+                                  <button
+                                    onClick={() => setOptionQuantity(optionQuantity + 1)}
+                                    style={{ width: '40px', height: '40px', border: '1px solid #E5E7EB', borderRadius: '8px', background: 'white', cursor: 'pointer', fontSize: '20px' }}
+                                  >+</button>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div style={{ padding: '20px', borderTop: '1px solid #E5E7EB', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                              <button
+                                onClick={() => setShowOptionModal(false)}
+                                style={{ padding: '10px 20px', border: '1px solid #E5E7EB', borderRadius: '8px', background: 'white', cursor: 'pointer', fontWeight: 500 }}
+                              >Cancel</button>
+                              <button
+                                onClick={handleConfirmOptions}
+                                style={{ padding: '10px 20px', border: 'none', borderRadius: '8px', background: '#635BFF', color: 'white', cursor: 'pointer', fontWeight: 600 }}
+                              >Add to Cart</button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Search Input - Fixed width */}
+                      <div style={{ marginBottom: '20px' }}>
+                        <input
+                          type="text"
+                          placeholder="Search menu items..."
+                          value={addItemsSearchQuery}
+                          onChange={(e) => setAddItemsSearchQuery(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            border: '2px solid #E5E7EB',
+                            borderRadius: '8px',
+                            fontSize: '15px',
+                            outline: 'none',
+                            transition: 'border-color 0.15s',
+                            boxSizing: 'border-box'
+                          }}
+                          onFocus={(e) => e.currentTarget.style.borderColor = '#635BFF'}
+                          onBlur={(e) => e.currentTarget.style.borderColor = '#E5E7EB'}
+                          autoFocus
+                        />
+                      </div>
+
+                      {/* Search Results - Click to add */}
+                      {addItemsSearchQuery.length > 0 && (
+                        <div style={{ marginBottom: '20px', maxHeight: '200px', overflowY: 'auto', border: '1px solid #E5E7EB', borderRadius: '8px' }}>
+                          {menuItems
+                            .filter((item: any) =>
+                              item.name.toLowerCase().includes(addItemsSearchQuery.toLowerCase()) ||
+                              (item.code && item.code.toLowerCase().includes(addItemsSearchQuery.toLowerCase()))
+                            )
+                            .slice(0, 15)
+                            .map((item: any) => {
+                              const hasOptions = item.optionGroups && item.optionGroups.length > 0;
+                              return (
+                                <div
+                                  key={item.id}
+                                  style={{
+                                    padding: '12px 16px',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    borderBottom: '1px solid #F3F4F6',
+                                    transition: 'background 0.1s'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = '#F9FAFB'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                                >
+                                  <div
+                                    style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}
+                                    onClick={() => {
+                                      // Items without options - add directly
+                                      if (!hasOptions) {
+                                        handleAddToItemsCart(item, 1, []);
+                                        setAddItemsSearchQuery('');
+                                      }
+                                    }}
+                                  >
+                                    <span style={{ fontWeight: 500 }}>{item.code ? `${item.code} ` : ''}{item.name}</span>
+                                    {item.is_set_menu && <span style={{ marginLeft: '8px', fontSize: '11px', background: '#EDE9FE', color: '#7C3AED', padding: '2px 6px', borderRadius: '4px' }}>SET</span>}
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                                    <span style={{ color: '#635BFF', fontWeight: 500 }}>
+                                      {formatCurrency(parseFloat(item.price), operationSettings.currency)}
+                                    </span>
+                                    {hasOptions ? (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedMenuItemForOption(item);
+                                          setOptionSelections({});
+                                          setOptionQuantity(1);
+                                          setShowOptionModal(true);
+                                        }}
+                                        style={{
+                                          padding: '4px 10px',
+                                          fontSize: '12px',
+                                          background: '#FEF3C7',
+                                          color: '#D97706',
+                                          border: '1px solid #FCD34D',
+                                          borderRadius: '4px',
+                                          cursor: 'pointer',
+                                          fontWeight: 500
+                                        }}
+                                      >
+                                        Options
+                                      </button>
+                                    ) : (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleAddToItemsCart(item, 1, []);
+                                          setAddItemsSearchQuery('');
+                                        }}
+                                        style={{
+                                          padding: '4px 10px',
+                                          fontSize: '12px',
+                                          background: '#635BFF',
+                                          color: 'white',
+                                          border: 'none',
+                                          borderRadius: '4px',
+                                          cursor: 'pointer',
+                                          fontWeight: 500
+                                        }}
+                                      >
+                                        Add
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          {menuItems.filter((item: any) =>
+                            item.name.toLowerCase().includes(addItemsSearchQuery.toLowerCase()) ||
+                            (item.code && item.code.toLowerCase().includes(addItemsSearchQuery.toLowerCase()))
+                          ).length === 0 && (
+                            <div style={{ padding: '16px', textAlign: 'center', color: '#9CA3AF' }}>
+                              No items found
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Items to Add */}
+                      <div>
+                        <h4 style={{ margin: '0 0 12px 0', fontWeight: 600, color: '#0A2540' }}>
+                          Items to Add ({addItemsCart.reduce((sum: number, item: any) => sum + item.quantity, 0)})
+                        </h4>
+                        {addItemsCart.length === 0 ? (
+                          <div style={{ padding: '24px', textAlign: 'center', color: '#9CA3AF', background: '#F9FAFB', borderRadius: '8px' }}>
+                            Search and select items to add
+                          </div>
+                        ) : (
+                          <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden' }}>
+                            {addItemsCart.map((item: any) => (
+                              <div key={item.cartId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #F3F4F6' }}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontWeight: 500 }}>{item.name}</div>
+                                  {item.selectedOptions && item.selectedOptions.length > 0 && (
+                                    <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+                                      {item.selectedOptions.map((opt: any) => opt.name).join(', ')}
+                                    </div>
+                                  )}
+                                  <div style={{ color: '#6B7280', fontSize: '13px' }}>
+                                    {formatCurrency(item.unitPrice || parseFloat(item.price), operationSettings.currency)} each
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                                  <button
+                                    onClick={() => handleRemoveFromItemsCart(item.cartId)}
+                                    style={{ width: '32px', height: '32px', border: '1px solid #E5E7EB', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '18px', fontWeight: 500 }}
+                                  >-</button>
+                                  <span style={{ minWidth: '28px', textAlign: 'center', fontWeight: 600, fontSize: '15px' }}>{item.quantity}</span>
+                                  <button
+                                    onClick={() => handleIncreaseCartItem(item.cartId)}
+                                    style={{ width: '32px', height: '32px', border: '1px solid #E5E7EB', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '18px', fontWeight: 500 }}
+                                  >+</button>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         )}
                       </div>
-                    )}
+                    </ModalBody>
 
-                    {/* Items to Add */}
-                    <div>
-                      <h4 style={{ margin: '0 0 12px 0', fontWeight: 600, color: '#0A2540' }}>Items to Add ({addItemsCart.length})</h4>
-                      {addItemsCart.length === 0 ? (
-                        <div style={{ padding: '24px', textAlign: 'center', color: '#9CA3AF', background: '#F9FAFB', borderRadius: '8px' }}>
-                          Search and select items to add
+                    {/* Fixed Footer - Total and Buttons */}
+                    <ModalFooter style={{ borderTop: '1px solid #E5E7EB', padding: '16px 20px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                        <div style={{ fontWeight: 600 }}>
+                          Total: {formatCurrency(
+                            addItemsCart.reduce((sum: number, item: any) => sum + ((item.unitPrice || parseFloat(item.price)) * item.quantity), 0),
+                            operationSettings.currency
+                          )}
                         </div>
-                      ) : (
-                        <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden' }}>
-                          {addItemsCart.map((item: any) => (
-                            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #F3F4F6' }}>
-                              <div>
-                                <div style={{ fontWeight: 500 }}>{item.name}</div>
-                                <div style={{ color: '#6B7280', fontSize: '13px' }}>
-                                  {formatCurrency(parseFloat(item.price), operationSettings.currency)} each
-                                </div>
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <button
-                                  onClick={() => handleRemoveFromItemsCart(item.id)}
-                                  style={{ width: '32px', height: '32px', border: '1px solid #E5E7EB', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '18px', fontWeight: 500 }}
-                                >
-                                  -
-                                </button>
-                                <span style={{ minWidth: '28px', textAlign: 'center', fontWeight: 600, fontSize: '15px' }}>{item.quantity}</span>
-                                <button
-                                  onClick={() => handleAddToItemsCart(item)}
-                                  style={{ width: '32px', height: '32px', border: '1px solid #E5E7EB', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '18px', fontWeight: 500 }}
-                                >
-                                  +
-                                </button>
-                              </div>
-                            </div>
-                          ))}
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                          <ActionButton
+                            onClick={() => {
+                              setShowAddItemsView(false);
+                              setAddItemsCart([]);
+                              setAddItemsSearchQuery('');
+                            }}
+                            style={{ background: 'white', color: '#6B7C93', border: '1px solid #E5E7EB' }}
+                          >
+                            Cancel
+                          </ActionButton>
+                          <ActionButton
+                            onClick={handleSubmitAddItems}
+                            disabled={addItemsCart.length === 0 || isAddingItems}
+                            style={{
+                              background: addItemsCart.length === 0 ? '#E5E7EB' : '#635BFF',
+                              color: 'white',
+                              cursor: addItemsCart.length === 0 ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            {isAddingItems ? 'Adding...' : 'Add to Order'}
+                          </ActionButton>
                         </div>
-                      )}
-                      {/* Total and Submit */}
-                      <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '16px', marginTop: '16px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', fontWeight: 600 }}>
-                          <span>Total:</span>
-                          <span>
-                            {formatCurrency(
-                              addItemsCart.reduce((sum: number, item: any) => sum + (parseFloat(item.price) * item.quantity), 0),
-                              operationSettings.currency
-                            )}
-                          </span>
-                        </div>
-                        <button
-                          onClick={handleSubmitAddItems}
-                          disabled={addItemsCart.length === 0 || isAddingItems}
-                          style={{
-                            width: '100%',
-                            padding: '12px',
-                            border: 'none',
-                            borderRadius: '8px',
-                            background: addItemsCart.length === 0 ? '#E5E7EB' : '#635BFF',
-                            color: 'white',
-                            fontWeight: 600,
-                            cursor: addItemsCart.length === 0 ? 'not-allowed' : 'pointer'
-                          }}
-                        >
-                          {isAddingItems ? 'Adding...' : 'Add to Order'}
-                        </button>
-                        <button
-                          onClick={() => {
-                            setShowAddItemsView(false);
-                            setAddItemsCart([]);
-                          }}
-                          style={{
-                            width: '100%',
-                            padding: '12px',
-                            marginTop: '8px',
-                            border: '1px solid #E5E7EB',
-                            borderRadius: '8px',
-                            background: 'white',
-                            color: '#6B7C93',
-                            fontWeight: 500,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Back to Order Details
-                        </button>
                       </div>
-                    </div>
-                  </ModalBody>
+                    </ModalFooter>
+                  </>
                 ) : showKitchenTicketView ? (
                   <ModalBody style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
                     <div style={{
