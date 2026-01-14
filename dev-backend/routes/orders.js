@@ -130,6 +130,12 @@ async function mergeItemsIntoOrder(existingOrder, newItems, transaction = null) 
     currentItems = JSON.parse(currentItems);
   }
 
+  // Ensure existing items have order_group preserved (default to 0 if not set)
+  currentItems = currentItems.map(item => ({
+    ...item,
+    order_group: item.order_group !== undefined ? item.order_group : 0
+  }));
+
   // Calculate next order_group number
   // Original items have order_group: 0, first merge is order_group: 1, etc.
   const existingGroups = currentItems.map(item => item.order_group || 0);

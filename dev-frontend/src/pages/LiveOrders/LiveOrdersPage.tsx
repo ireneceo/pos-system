@@ -1130,6 +1130,8 @@ const LiveOrdersPage: React.FC = () => {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
   const [isMerging, setIsMerging] = useState(false);
+  const [showMergeModal, setShowMergeModal] = useState(false);
+  const [mergeTargetOrderId, setMergeTargetOrderId] = useState<number | null>(null);
 
   // Add Items View state (inside order detail modal)
   const [showAddItemsView, setShowAddItemsView] = useState(false);
@@ -1139,6 +1141,10 @@ const LiveOrdersPage: React.FC = () => {
   const [addItemsCart, setAddItemsCart] = useState<any[]>([]);
   const [isAddingItems, setIsAddingItems] = useState(false);
   const [addItemsSearchQuery, setAddItemsSearchQuery] = useState('');
+  const [showOptionModal, setShowOptionModal] = useState(false);
+  const [selectedMenuItemForOption, setSelectedMenuItemForOption] = useState<any>(null);
+  const [optionSelections, setOptionSelections] = useState<Record<string, string[]>>({});
+  const [optionQuantity, setOptionQuantity] = useState(1);
 
   // Toast notification state
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info'; isVisible: boolean }>({
@@ -1354,7 +1360,7 @@ const LiveOrdersPage: React.FC = () => {
       // Play notification sound
       playNotificationSoundRef.current();
 
-      // Show alert notification
+      // Show alert notification (stays until manually dismissed or View Order clicked)
       setItemsAddedAlert({
         isVisible: true,
         orderId: data.orderId,
@@ -1363,11 +1369,6 @@ const LiveOrdersPage: React.FC = () => {
         orderGroup: data.orderGroup,
         itemCount: data.itemCount
       });
-
-      // Auto-hide after 10 seconds
-      setTimeout(() => {
-        setItemsAddedAlert(prev => prev?.orderId === data.orderId ? null : prev);
-      }, 10000);
     });
 
     setSocket(newSocket);
@@ -1897,14 +1898,8 @@ const LiveOrdersPage: React.FC = () => {
       return;
     }
 
-    // Validate: all selected orders should have the same table_number
+    // Get selected orders
     const selectedOrders = orders.filter(o => selectedOrderIds.includes(o.id));
-    const tableNumbers = Array.from(new Set(selectedOrders.map(o => o.table_number)));
-
-    if (tableNumbers.length > 1) {
-      showToast('Cannot merge orders from different tables. Please select orders from the same table.', 'error');
-      return;
-    }
 
     // Validate: all orders should have pending payment
     const invalidOrders = selectedOrders.filter(o =>
@@ -1917,22 +1912,23 @@ const LiveOrdersPage: React.FC = () => {
       return;
     }
 
+    // Show modal to select which order to merge INTO
+    setShowMergeModal(true);
+  };
+
+  // Execute the actual merge after target is selected
+  const executeMergeOrders = async (targetId: number) => {
     try {
       setIsMerging(true);
+      setShowMergeModal(false);
 
-      // Sort by createdAt - oldest order becomes the target
-      const sortedOrders = [...selectedOrders].sort((a, b) =>
-        new Date(a.createdAt || a.order_date).getTime() - new Date(b.createdAt || b.order_date).getTime()
-      );
-
-      const targetOrderId = sortedOrders[0].id;
-      const allOrderIds = sortedOrders.map(o => o.id);
+      const allOrderIds = selectedOrderIds;
 
       const response = await fetch('/api/orders/merge', getFetchOptions({
         method: 'POST',
         body: JSON.stringify({
           orderIds: allOrderIds,
-          targetOrderId
+          targetOrderId: targetId
         })
       }));
 
@@ -1959,6 +1955,7 @@ const LiveOrdersPage: React.FC = () => {
       // Reset select mode
       setSelectMode(false);
       setSelectedOrderIds([]);
+      setMergeTargetOrderId(null);
 
       // Refresh orders
       fetchOrders();
@@ -2020,47 +2017,153 @@ const LiveOrdersPage: React.FC = () => {
     }
   };
 
-  // Add item to cart in Add Items modal
-  const handleAddToItemsCart = (item: any) => {
+  // Open option modal or add directly
+  const handleMenuItemClick = (item: any) => {
+    const hasOptions = item.optionGroups && item.optionGroups.length > 0;
+    if (hasOptions) {
+      setSelectedMenuItemForOption(item);
+      setOptionSelections({});
+      setOptionQuantity(1);
+      setShowOptionModal(true);
+    } else {
+      // Add directly without options
+      handleAddToItemsCart(item, 1, []);
+    }
+  };
+
+  // Add item to cart in Add Items modal (with options support)
+  const handleAddToItemsCart = (item: any, quantity: number = 1, selectedOptions: any[] = []) => {
+    const optionsKey = selectedOptions.map((o: any) => o.id || o.name).sort().join(',');
+
     setAddItemsCart(prev => {
-      const existing = prev.find(i => i.id === item.id);
-      if (existing) {
-        return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
+      // For items without options, check if same item exists
+      if (selectedOptions.length === 0) {
+        const existing = prev.find(i => i.menuItemId === item.id && (!i.selectedOptions || i.selectedOptions.length === 0));
+        if (existing) {
+          return prev.map(i => i.cartId === existing.cartId ? { ...i, quantity: i.quantity + quantity } : i);
+        }
+      } else {
+        // For items with options, check if same item with same options exists
+        const existing = prev.find(i =>
+          i.menuItemId === item.id &&
+          i.selectedOptions?.map((o: any) => o.id || o.name).sort().join(',') === optionsKey
+        );
+        if (existing) {
+          return prev.map(i => i.cartId === existing.cartId ? { ...i, quantity: i.quantity + quantity } : i);
+        }
       }
-      return [...prev, { ...item, quantity: 1 }];
+
+      // Calculate total price including options
+      const optionsTotalPrice = selectedOptions.reduce((sum: number, opt: any) => sum + (parseFloat(opt.price) || 0), 0);
+      const unitPrice = parseFloat(item.price) + optionsTotalPrice;
+
+      return [...prev, {
+        cartId: `cart-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        menuItemId: item.id,
+        name: item.name,
+        price: item.price,
+        unitPrice: unitPrice,
+        quantity: quantity,
+        selectedOptions: selectedOptions,
+        is_set_menu: item.is_set_menu,
+        set_items: item.set_items
+      }];
     });
   };
 
-  // Remove item from cart in Add Items modal
-  const handleRemoveFromItemsCart = (itemId: number) => {
+  // Confirm option selection
+  const handleConfirmOptions = () => {
+    if (!selectedMenuItemForOption) return;
+
+    // Convert selections to options array
+    const selectedOptions: any[] = [];
+    Object.entries(optionSelections).forEach(([groupId, optionIds]) => {
+      const group = selectedMenuItemForOption.optionGroups?.find((g: any) => g.id === groupId);
+      if (group) {
+        optionIds.forEach(optionId => {
+          const option = group.options.find((o: any) => o.id === optionId);
+          if (option) {
+            selectedOptions.push({
+              id: option.id,
+              name: option.name,
+              price: option.price || 0,
+              groupName: group.name
+            });
+          }
+        });
+      }
+    });
+
+    handleAddToItemsCart(selectedMenuItemForOption, optionQuantity, selectedOptions);
+    setShowOptionModal(false);
+    setSelectedMenuItemForOption(null);
+    setOptionSelections({});
+    setOptionQuantity(1);
+  };
+
+  // Toggle option selection
+  const handleOptionToggle = (groupId: string, optionId: string, isMultiple: boolean) => {
+    setOptionSelections(prev => {
+      const current = prev[groupId] || [];
+      if (isMultiple) {
+        // Multiple selection - toggle
+        if (current.includes(optionId)) {
+          return { ...prev, [groupId]: current.filter(id => id !== optionId) };
+        } else {
+          return { ...prev, [groupId]: [...current, optionId] };
+        }
+      } else {
+        // Single selection - replace
+        return { ...prev, [groupId]: [optionId] };
+      }
+    });
+  };
+
+  // Remove item from cart in Add Items modal (by cartId)
+  const handleRemoveFromItemsCart = (cartId: string) => {
     setAddItemsCart(prev => {
-      const existing = prev.find(i => i.id === itemId);
+      const existing = prev.find(i => i.cartId === cartId);
       if (existing && existing.quantity > 1) {
-        return prev.map(i => i.id === itemId ? { ...i, quantity: i.quantity - 1 } : i);
+        return prev.map(i => i.cartId === cartId ? { ...i, quantity: i.quantity - 1 } : i);
       }
-      return prev.filter(i => i.id !== itemId);
+      return prev.filter(i => i.cartId !== cartId);
     });
   };
 
-  // Submit Add Items
+  // Increase quantity in cart
+  const handleIncreaseCartItem = (cartId: string) => {
+    setAddItemsCart(prev =>
+      prev.map(i => i.cartId === cartId ? { ...i, quantity: i.quantity + 1 } : i)
+    );
+  };
+
+  // Submit Add Items - uses mergeItemsIntoOrder API for order_group support
   const handleSubmitAddItems = async () => {
     if (!selectedOrder?.id || addItemsCart.length === 0) return;
 
     try {
       setIsAddingItems(true);
 
+      // Format items with options for the merge API
       const items = addItemsCart.map(item => ({
-        menu_item_id: item.id,
+        menu_item_id: item.menuItemId,
         menu_item_name: item.name,
         name: item.name,
         quantity: item.quantity,
         price: item.price,
-        options: []
+        unitPrice: item.unitPrice || item.price,
+        options: item.selectedOptions?.map((opt: any) => ({
+          name: opt.name,
+          price: opt.price || 0
+        })) || [],
+        is_set_menu: item.is_set_menu,
+        set_items: item.set_items
       }));
 
-      const response = await fetch(`/api/orders/${selectedOrder?.id}/add-items`, getFetchOptions({
+      // Use merge API which supports order_group tracking
+      const response = await fetch(`/api/orders/${selectedOrder?.id}/merge-items`, getFetchOptions({
         method: 'POST',
-        body: JSON.stringify({ items })
+        body: JSON.stringify({ items, source: 'live_orders' })
       }));
 
       if (!response.ok) {
@@ -2073,6 +2176,7 @@ const LiveOrdersPage: React.FC = () => {
       // Reset state and go back to order detail view
       setShowAddItemsView(false);
       setAddItemsCart([]);
+      setAddItemsSearchQuery('');
 
       // Refresh orders
       fetchOrders();
@@ -2701,12 +2805,9 @@ const LiveOrdersPage: React.FC = () => {
           </div>
           <button
             onClick={() => {
-              // Find and select the order
-              const order = orders.find(o => o.id === itemsAddedAlert.orderId);
-              if (order) {
-                setSelectedOrder(order);
-                setShowModal(true);
-              }
+              // Set search query to order number and switch to All tab to show filtered results
+              setSearchQuery(itemsAddedAlert.orderNumber);
+              setActiveTab('all');
               setItemsAddedAlert(null);
             }}
             style={{
@@ -3215,6 +3316,25 @@ const LiveOrdersPage: React.FC = () => {
                             <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                           </svg>
                         </IconButton>
+                        {/* Print Latest Group Ticket (only show if order has multiple groups) */}
+                        {(() => {
+                          const items = Array.isArray(order.order_items) ? order.order_items : [];
+                          const maxGroup = items.length > 0 ? Math.max(...items.map((item: any) => item.order_group || 0)) : 0;
+                          return maxGroup > 0 ? (
+                            <IconButton
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePrintLatestGroupTicket(order);
+                              }}
+                              title={`Print +Order ${maxGroup} Ticket`}
+                              style={{ background: '#FEF3C7', color: '#92400E' }}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M12 4v16m8-8H4"/>
+                              </svg>
+                            </IconButton>
+                          ) : null;
+                        })()}
                         <IconButton
                           onClick={(e) => {
                             e.stopPropagation();
@@ -4183,6 +4303,91 @@ const LiveOrdersPage: React.FC = () => {
         
         {/* Order Complete Modal - 라이브 오더에서는 사용하지 않음 */}
         {/* POS Terminal에서만 사용하는 모달이므로 여기서는 렌더링하지 않음 */}
+
+        {/* Merge Target Selection Modal */}
+        <ModalOverlay isOpen={showMergeModal} onClick={() => setShowMergeModal(false)} data-modal="merge-target">
+          <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <ModalHeader>
+              <ModalTitle>Select Target Order</ModalTitle>
+              <CloseButton onClick={() => setShowMergeModal(false)}>×</CloseButton>
+            </ModalHeader>
+            <ModalBody>
+              <p style={{ marginBottom: '16px', color: '#6B7C93', fontSize: '14px' }}>
+                Select which order to merge INTO. The selected order's table/pager number will be kept.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {orders
+                  .filter(o => selectedOrderIds.includes(o.id))
+                  .sort((a, b) => new Date(a.createdAt || a.order_date).getTime() - new Date(b.createdAt || b.order_date).getTime())
+                  .map(order => (
+                    <div
+                      key={order.id}
+                      onClick={() => setMergeTargetOrderId(order.id)}
+                      style={{
+                        padding: '16px',
+                        border: `2px solid ${mergeTargetOrderId === order.id ? '#635BFF' : '#E6EBF1'}`,
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        background: mergeTargetOrderId === order.id ? '#F0EEFF' : 'white',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: '16px', color: '#0A2540' }}>
+                            {order.order_number}
+                          </div>
+                          <div style={{ fontSize: '13px', color: '#6B7C93', marginTop: '4px' }}>
+                            {order.table_number ? `Table ${order.table_number}` : ''}
+                            {order.table_number && order.pager_number ? ' / ' : ''}
+                            {order.pager_number ? `Pager ${order.pager_number}` : ''}
+                            {!order.table_number && !order.pager_number ? 'No Table/Pager' : ''}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: '14px', fontWeight: 500, color: '#0A2540' }}>
+                            {formatCurrency(order.total_amount, operationSettings.currency)}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#6B7C93' }}>
+                            {order.order_items?.length || 0} items
+                          </div>
+                        </div>
+                      </div>
+                      {mergeTargetOrderId === order.id && (
+                        <div style={{
+                          marginTop: '8px',
+                          fontSize: '12px',
+                          color: '#635BFF',
+                          fontWeight: 500
+                        }}>
+                          Other orders will be merged into this order
+                        </div>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            </ModalBody>
+            <ModalFooter>
+              <ActionButton
+                onClick={() => setShowMergeModal(false)}
+                style={{ background: 'white', color: '#374151', border: '1px solid #E5E7EB' }}
+              >
+                Cancel
+              </ActionButton>
+              <ActionButton
+                onClick={() => mergeTargetOrderId && executeMergeOrders(mergeTargetOrderId)}
+                disabled={!mergeTargetOrderId || isMerging}
+                style={{
+                  background: mergeTargetOrderId ? '#635BFF' : '#E5E7EB',
+                  color: mergeTargetOrderId ? 'white' : '#9CA3AF',
+                  cursor: mergeTargetOrderId ? 'pointer' : 'not-allowed'
+                }}
+              >
+                {isMerging ? 'Merging...' : 'Merge Orders'}
+              </ActionButton>
+            </ModalFooter>
+          </ModalContent>
+        </ModalOverlay>
         </Content>
 
         {/* Pagination */}

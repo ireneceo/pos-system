@@ -569,14 +569,26 @@ router.post('/order', async (req, res) => {
           currentItems = JSON.parse(currentItems);
         }
 
-        // Add new items with added_at timestamp
+        // Ensure existing items have order_group preserved
+        currentItems = currentItems.map(item => ({
+          ...item,
+          order_group: item.order_group !== undefined ? item.order_group : 0
+        }));
+
+        // Calculate next order_group number
+        const existingGroups = currentItems.map(item => item.order_group || 0);
+        const maxGroup = existingGroups.length > 0 ? Math.max(...existingGroups) : 0;
+        const nextGroup = maxGroup + 1;
+
+        // Add new items with added_at timestamp and order_group
         const newItemsWithTimestamp = items.map(item => ({
           name: item.name,
           quantity: item.quantity,
           price: item.price,
           options: item.options || [],
           status: 'pending',
-          added_at: now
+          added_at: now,
+          order_group: nextGroup
         }));
 
         const mergedItems = [...currentItems, ...newItemsWithTimestamp];
@@ -596,12 +608,23 @@ router.post('/order', async (req, res) => {
         });
         await mergeableOrder.reload();
 
-        console.log(`✅ [MOBILE AUTO-MERGE] Merged ${newItemsWithTimestamp.length} items into order ${mergeableOrder.id}`);
+        console.log(`✅ [MOBILE AUTO-MERGE] Merged ${newItemsWithTimestamp.length} items into order ${mergeableOrder.id} (group: ${nextGroup})`);
 
-        // Emit socket event for real-time update
+        // Emit socket events for real-time update
         const io = req.app.get('io');
         if (io) {
-          io.of('/orders').to(`restaurant_${restaurantId}`).emit('order-updated', mergeableOrder);
+          const room = `restaurant_${restaurantId}`;
+          // Regular order update
+          io.of('/orders').to(room).emit('order-updated', mergeableOrder);
+          // Special event for new items added (for notification sound)
+          io.of('/orders').to(room).emit('order-items-added', {
+            orderId: mergeableOrder.id,
+            orderNumber: mergeableOrder.order_number,
+            tableNumber: mergeableOrder.table_number,
+            orderGroup: nextGroup,
+            addedItems: newItemsWithTimestamp,
+            itemCount: newItemsWithTimestamp.length
+          });
         }
 
         const orderResponse = {

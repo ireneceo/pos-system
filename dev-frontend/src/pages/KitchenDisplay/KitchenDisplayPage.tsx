@@ -842,9 +842,7 @@ const KitchenDisplayPage: React.FC = () => {
         },
         body: JSON.stringify({
           order_items: updatedItems.map(item => ({
-            name: item.name,
-            quantity: item.quantity,
-            options: item.options || [],
+            ...item,
             status: item.status
           }))
         })
@@ -923,12 +921,8 @@ const KitchenDisplayPage: React.FC = () => {
         },
         body: JSON.stringify({
           order_items: updatedItems.map(item => ({
-            name: item.name,
-            quantity: item.quantity,
-            options: item.options || [],
-            status: item.status,
-            is_set_menu: item.is_set_menu,
-            set_items: item.set_items
+            ...item,
+            status: item.status
           }))
         })
       });
