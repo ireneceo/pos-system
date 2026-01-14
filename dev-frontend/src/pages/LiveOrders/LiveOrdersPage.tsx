@@ -1079,9 +1079,8 @@ const LiveOrdersPage: React.FC = () => {
   const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
   const [isMerging, setIsMerging] = useState(false);
 
-  // Add Items Modal state
-  const [showAddItemsModal, setShowAddItemsModal] = useState(false);
-  const [addItemsOrderId, setAddItemsOrderId] = useState<number | null>(null);
+  // Add Items View state (inside order detail modal)
+  const [showAddItemsView, setShowAddItemsView] = useState(false);
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [menuCategories, setMenuCategories] = useState<any[]>([]);
   const [addItemsSelectedCategory, setAddItemsSelectedCategory] = useState<number | null>(null);
@@ -1814,7 +1813,7 @@ const LiveOrdersPage: React.FC = () => {
       );
 
       const targetOrderId = sortedOrders[0].id;
-      const sourceOrderIds = sortedOrders.slice(1).map(o => o.id);
+      const allOrderIds = sortedOrders.map(o => o.id);
 
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/orders/merge`, {
         method: 'POST',
@@ -1823,14 +1822,24 @@ const LiveOrdersPage: React.FC = () => {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
-          targetOrderId,
-          sourceOrderIds
+          orderIds: allOrderIds,
+          targetOrderId
         })
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to merge orders');
+        let errorMessage = 'Failed to merge orders';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch {
+          if (response.status === 403) {
+            errorMessage = 'Session expired. Please refresh the page and try again.';
+          } else if (response.status === 401) {
+            errorMessage = 'Authentication required. Please log in again.';
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
@@ -1860,8 +1869,12 @@ const LiveOrdersPage: React.FC = () => {
   // Fetch menu items for Add Items modal
   const fetchMenuForAddItems = async () => {
     try {
-      const restaurantId = user?.restaurantId;
-      if (!restaurantId) return;
+      // Use restaurant_id from selected order, or user's restaurantId, or selectedRestaurant
+      const restaurantId = selectedOrder?.restaurant_id || user?.restaurantId || selectedRestaurant;
+      if (!restaurantId) {
+        console.error('No restaurant ID available for fetching menu');
+        return;
+      }
 
       const [categoriesRes, itemsRes] = await Promise.all([
         fetch(`${process.env.REACT_APP_API_URL}/api/menu/categories?restaurant_id=${restaurantId}`, {
@@ -1910,7 +1923,7 @@ const LiveOrdersPage: React.FC = () => {
 
   // Submit Add Items
   const handleSubmitAddItems = async () => {
-    if (!addItemsOrderId || addItemsCart.length === 0) return;
+    if (!selectedOrder?.id || addItemsCart.length === 0) return;
 
     try {
       setIsAddingItems(true);
@@ -1924,7 +1937,7 @@ const LiveOrdersPage: React.FC = () => {
         options: []
       }));
 
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/orders/${addItemsOrderId}/add-items`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/orders/${selectedOrder?.id}/add-items`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1940,13 +1953,11 @@ const LiveOrdersPage: React.FC = () => {
 
       alert('Items added successfully');
 
-      // Reset modal state
-      setShowAddItemsModal(false);
-      setAddItemsOrderId(null);
+      // Reset state and go back to order detail view
+      setShowAddItemsView(false);
       setAddItemsCart([]);
 
-      // Close order detail modal and refresh
-      handleCloseModal();
+      // Refresh orders
       fetchOrders();
     } catch (error: any) {
       console.error('Add items error:', error);
@@ -1958,14 +1969,14 @@ const LiveOrdersPage: React.FC = () => {
 
   // Open Add Items modal effect
   useEffect(() => {
-    if (showAddItemsModal) {
+    if (showAddItemsView) {
       fetchMenuForAddItems();
     } else {
       setAddItemsCart([]);
       setAddItemsSelectedCategory(null);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showAddItemsModal]);
+  }, [showAddItemsView]);
 
   const handleOrderClick = (order: DbOrder) => {
     setSelectedOrder(order);
@@ -1977,6 +1988,8 @@ const LiveOrdersPage: React.FC = () => {
     setSelectedOrder(null);
     setShowReceiptView(false);
     setShowKitchenTicketView(false);
+    setShowAddItemsView(false);
+    setAddItemsCart([]);
   };
 
   const handlePrintReceipt = async () => {
@@ -2928,12 +2941,138 @@ const LiveOrdersPage: React.FC = () => {
               <>
                 <ModalHeader>
                   <ModalTitle>
-                    {showReceiptView ? 'Receipt Preview' : showKitchenTicketView ? 'Kitchen Order Ticket Preview' : `Order ${selectedOrder.order_number}`}
+                    {showAddItemsView ? 'Add Items to Order' : showReceiptView ? 'Receipt Preview' : showKitchenTicketView ? 'Kitchen Order Ticket Preview' : `Order ${selectedOrder.order_number}`}
                   </ModalTitle>
-                  <CloseButton onClick={handleCloseModal}>×</CloseButton>
+                  {(showReceiptView || showKitchenTicketView || showAddItemsView) ? (
+                    <CloseButton onClick={() => {
+                      setShowReceiptView(false);
+                      setShowKitchenTicketView(false);
+                      setShowAddItemsView(false);
+                      setAddItemsCart([]);
+                    }}>← Back</CloseButton>
+                  ) : (
+                    <CloseButton onClick={handleCloseModal}>×</CloseButton>
+                  )}
                 </ModalHeader>
 
-                {showKitchenTicketView ? (
+                {showAddItemsView ? (
+                  /* Add Items View */
+                  <ModalBody style={{ display: 'flex', gap: '20px', padding: '20px', maxHeight: '60vh', overflow: 'hidden' }}>
+                    {/* Left: Menu Selection */}
+                    <div style={{ flex: 2, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                      {/* Category Tabs */}
+                      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                        {menuCategories.map((cat: any) => (
+                          <button
+                            key={cat.id}
+                            onClick={() => setAddItemsSelectedCategory(cat.id)}
+                            style={{
+                              padding: '8px 16px',
+                              border: addItemsSelectedCategory === cat.id ? '2px solid #635BFF' : '1px solid #E5E7EB',
+                              borderRadius: '8px',
+                              background: addItemsSelectedCategory === cat.id ? '#EEF2FF' : 'white',
+                              color: addItemsSelectedCategory === cat.id ? '#635BFF' : '#1F2937',
+                              fontWeight: 500,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {cat.name}
+                          </button>
+                        ))}
+                      </div>
+                      {/* Menu Items Grid */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '12px', overflowY: 'auto', flex: 1 }}>
+                        {menuItems
+                          .filter((item: any) => item.category_id === addItemsSelectedCategory)
+                          .map((item: any) => (
+                            <div
+                              key={item.id}
+                              onClick={() => handleAddToItemsCart(item)}
+                              style={{
+                                padding: '12px',
+                                border: '1px solid #E5E7EB',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s',
+                                backgroundColor: 'white'
+                              }}
+                              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#635BFF'; e.currentTarget.style.backgroundColor = '#F9FAFB'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#E5E7EB'; e.currentTarget.style.backgroundColor = 'white'; }}
+                            >
+                              <div style={{ fontWeight: 500, marginBottom: '4px' }}>{item.name}</div>
+                              <div style={{ color: '#635BFF', fontSize: '14px' }}>
+                                {formatCurrency(parseFloat(item.price), operationSettings.currency)}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+
+                    {/* Right: Cart */}
+                    <div style={{ flex: 1, borderLeft: '1px solid #E5E7EB', paddingLeft: '20px', display: 'flex', flexDirection: 'column' }}>
+                      <h4 style={{ margin: '0 0 16px 0', fontWeight: 600 }}>Items to Add</h4>
+                      <div style={{ flex: 1, overflowY: 'auto' }}>
+                        {addItemsCart.length === 0 ? (
+                          <p style={{ color: '#9CA3AF', textAlign: 'center' }}>Select items from the menu</p>
+                        ) : (
+                          addItemsCart.map((item: any) => (
+                            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #F3F4F6' }}>
+                              <div>
+                                <div style={{ fontWeight: 500 }}>{item.name}</div>
+                                <div style={{ color: '#6B7280', fontSize: '13px' }}>
+                                  {formatCurrency(parseFloat(item.price), operationSettings.currency)} each
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <button
+                                  onClick={() => handleRemoveFromItemsCart(item.id)}
+                                  style={{ width: '28px', height: '28px', border: '1px solid #E5E7EB', borderRadius: '4px', background: 'white', cursor: 'pointer', fontSize: '16px' }}
+                                >
+                                  -
+                                </button>
+                                <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 500 }}>{item.quantity}</span>
+                                <button
+                                  onClick={() => handleAddToItemsCart(item)}
+                                  style={{ width: '28px', height: '28px', border: '1px solid #E5E7EB', borderRadius: '4px', background: 'white', cursor: 'pointer', fontSize: '16px' }}
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      {/* Total and Submit */}
+                      <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '16px', marginTop: '16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', fontWeight: 600 }}>
+                          <span>Total:</span>
+                          <span>
+                            {formatCurrency(
+                              addItemsCart.reduce((sum: number, item: any) => sum + (parseFloat(item.price) * item.quantity), 0),
+                              operationSettings.currency
+                            )}
+                          </span>
+                        </div>
+                        <button
+                          onClick={handleSubmitAddItems}
+                          disabled={addItemsCart.length === 0 || isAddingItems}
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            border: 'none',
+                            borderRadius: '8px',
+                            background: addItemsCart.length === 0 ? '#E5E7EB' : '#635BFF',
+                            color: 'white',
+                            fontWeight: 600,
+                            cursor: addItemsCart.length === 0 ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          {isAddingItems ? 'Adding...' : 'Add to Order'}
+                        </button>
+                      </div>
+                    </div>
+                  </ModalBody>
+                ) : showKitchenTicketView ? (
                   <ModalBody style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
                     <div style={{
                       width: '302px',
@@ -3365,10 +3504,7 @@ const LiveOrdersPage: React.FC = () => {
                   {/* Add Items button - only show for unpaid orders */}
                   {selectedOrder.payment_status === 'pending' && !['served', 'completed', 'cancelled'].includes(selectedOrder.status) && (
                     <ActionButton
-                      onClick={() => {
-                        setShowAddItemsModal(true);
-                        setAddItemsOrderId(selectedOrder.id);
-                      }}
+                      onClick={() => setShowAddItemsView(true)}
                       style={{ background: '#8B5CF6', borderColor: '#8B5CF6', color: 'white' }}
                     >
                       Add Items
@@ -3615,135 +3751,6 @@ const LiveOrdersPage: React.FC = () => {
                 }}
               >
                 Yes, Cancel Order
-              </ActionButton>
-            </ModalFooter>
-          </ModalContent>
-        </ModalOverlay>
-
-        {/* Add Items Modal */}
-        <ModalOverlay
-          isOpen={showAddItemsModal}
-          onClick={(e) => e.target === e.currentTarget && setShowAddItemsModal(false)}
-        >
-          <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px', width: '90%', maxHeight: '80vh' }}>
-            <ModalHeader>
-              <ModalTitle>Add Items to Order</ModalTitle>
-              <CloseButton onClick={() => setShowAddItemsModal(false)}>×</CloseButton>
-            </ModalHeader>
-            <ModalBody style={{ display: 'flex', gap: '20px', padding: '20px', maxHeight: '60vh', overflow: 'hidden' }}>
-              {/* Left: Menu Selection */}
-              <div style={{ flex: 2, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                {/* Category Tabs */}
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                  {menuCategories.map((cat: any) => (
-                    <button
-                      key={cat.id}
-                      onClick={() => setAddItemsSelectedCategory(cat.id)}
-                      style={{
-                        padding: '8px 16px',
-                        border: addItemsSelectedCategory === cat.id ? '2px solid #635BFF' : '1px solid #E5E7EB',
-                        borderRadius: '8px',
-                        background: addItemsSelectedCategory === cat.id ? '#EEF2FF' : 'white',
-                        color: addItemsSelectedCategory === cat.id ? '#635BFF' : '#1F2937',
-                        fontWeight: 500,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {cat.name}
-                    </button>
-                  ))}
-                </div>
-                {/* Menu Items Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '12px', overflowY: 'auto', flex: 1 }}>
-                  {menuItems
-                    .filter((item: any) => item.category_id === addItemsSelectedCategory)
-                    .map((item: any) => (
-                      <div
-                        key={item.id}
-                        onClick={() => handleAddToItemsCart(item)}
-                        style={{
-                          padding: '12px',
-                          border: '1px solid #E5E7EB',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s',
-                          backgroundColor: 'white'
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#635BFF'; e.currentTarget.style.backgroundColor = '#F9FAFB'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#E5E7EB'; e.currentTarget.style.backgroundColor = 'white'; }}
-                      >
-                        <div style={{ fontWeight: 500, marginBottom: '4px' }}>{item.name}</div>
-                        <div style={{ color: '#635BFF', fontSize: '14px' }}>
-                          {formatCurrency(parseFloat(item.price), operationSettings.currency)}
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </div>
-
-              {/* Right: Cart */}
-              <div style={{ flex: 1, borderLeft: '1px solid #E5E7EB', paddingLeft: '20px', display: 'flex', flexDirection: 'column' }}>
-                <h4 style={{ margin: '0 0 16px 0', fontWeight: 600 }}>Items to Add</h4>
-                <div style={{ flex: 1, overflowY: 'auto' }}>
-                  {addItemsCart.length === 0 ? (
-                    <p style={{ color: '#9CA3AF', textAlign: 'center' }}>Select items from the menu</p>
-                  ) : (
-                    addItemsCart.map((item: any) => (
-                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #F3F4F6' }}>
-                        <div>
-                          <div style={{ fontWeight: 500 }}>{item.name}</div>
-                          <div style={{ color: '#6B7280', fontSize: '13px' }}>
-                            {formatCurrency(parseFloat(item.price), operationSettings.currency)} each
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <button
-                            onClick={() => handleRemoveFromItemsCart(item.id)}
-                            style={{ width: '28px', height: '28px', border: '1px solid #E5E7EB', borderRadius: '4px', background: 'white', cursor: 'pointer', fontSize: '16px' }}
-                          >
-                            -
-                          </button>
-                          <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 500 }}>{item.quantity}</span>
-                          <button
-                            onClick={() => handleAddToItemsCart(item)}
-                            style={{ width: '28px', height: '28px', border: '1px solid #E5E7EB', borderRadius: '4px', background: 'white', cursor: 'pointer', fontSize: '16px' }}
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-                {addItemsCart.length > 0 && (
-                  <div style={{ borderTop: '2px solid #E5E7EB', paddingTop: '16px', marginTop: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, fontSize: '16px' }}>
-                      <span>Total:</span>
-                      <span>
-                        {formatCurrency(
-                          addItemsCart.reduce((sum: number, item: any) => sum + (parseFloat(item.price) * item.quantity), 0),
-                          operationSettings.currency
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </ModalBody>
-            <ModalFooter>
-              <ActionButton variant="secondary" onClick={() => setShowAddItemsModal(false)}>
-                Cancel
-              </ActionButton>
-              <ActionButton
-                onClick={handleSubmitAddItems}
-                disabled={addItemsCart.length === 0 || isAddingItems}
-                style={{
-                  background: addItemsCart.length === 0 ? '#9CA3AF' : '#8B5CF6',
-                  borderColor: addItemsCart.length === 0 ? '#9CA3AF' : '#8B5CF6',
-                  color: 'white'
-                }}
-              >
-                {isAddingItems ? 'Adding...' : `Add ${addItemsCart.reduce((sum: number, item: any) => sum + item.quantity, 0)} Items`}
               </ActionButton>
             </ModalFooter>
           </ModalContent>
