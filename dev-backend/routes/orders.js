@@ -76,6 +76,81 @@ router.get('/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Helper: Find mergeable order for auto-merge
+async function findMergeableOrder(restaurantId, tableNumber, orderType, transaction = null) {
+  if (!restaurantId || !tableNumber) return null;
+
+  const queryOptions = {
+    where: {
+      restaurant_id: restaurantId,
+      table_number: tableNumber,
+      order_type: orderType || 'dine_in',
+      payment_status: 'pending',
+      status: {
+        [Op.notIn]: ['served', 'completed', 'cancelled']
+      },
+      [Op.or]: [
+        { is_deleted: false },
+        { is_deleted: null }
+      ]
+    },
+    order: [['createdAt', 'DESC']],
+    limit: 1
+  };
+
+  if (transaction) {
+    queryOptions.lock = transaction.LOCK.UPDATE;
+    queryOptions.transaction = transaction;
+  }
+
+  const existingOrders = await Order.findAll(queryOptions);
+  return existingOrders.length > 0 ? existingOrders[0] : null;
+}
+
+// Helper: Merge items into existing order
+async function mergeItemsIntoOrder(existingOrder, newItems, transaction = null) {
+  const now = new Date().toISOString();
+
+  // Get current items
+  let currentItems = existingOrder.order_items || [];
+  if (typeof currentItems === 'string') {
+    currentItems = JSON.parse(currentItems);
+  }
+
+  // Add new items with added_at timestamp
+  const itemsWithTimestamp = newItems.map(item => ({
+    ...item,
+    status: 'pending',
+    added_at: now
+  }));
+
+  const mergedItems = [...currentItems, ...itemsWithTimestamp];
+
+  // Recalculate total
+  const newTotal = mergedItems.reduce((sum, item) => {
+    const itemPrice = parseFloat(item.price) || 0;
+    const itemQty = parseInt(item.quantity) || 1;
+    return sum + (itemPrice * itemQty);
+  }, 0);
+
+  // Update order
+  const updateOptions = transaction ? { transaction } : {};
+  await existingOrder.update({
+    order_items: JSON.stringify(mergedItems),
+    total_amount: newTotal,
+    status: 'pending' // Reset to pending for kitchen
+  }, updateOptions);
+
+  await existingOrder.reload(updateOptions);
+
+  return {
+    order: existingOrder,
+    addedItems: itemsWithTimestamp,
+    previousTotal: parseFloat(existingOrder.total_amount),
+    newTotal
+  };
+}
+
 // Create new order
 // Uses optionalAuthenticateToken to allow both authenticated (POS) and guest (mobile) orders
 router.post('/', optionalAuthenticateToken, async (req, res) => {
@@ -88,6 +163,44 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
     // Support customerId → customer_id mapping
     if (orderData.customerId && !orderData.customer_id) {
       orderData.customer_id = orderData.customerId;
+    }
+
+    // Auto-merge: Check if there's an existing order to merge into
+    // Only merge if: same restaurant, same table (non-null), same order_type, payment pending
+    const skipAutoMerge = orderData.skipAutoMerge === true;
+    if (!skipAutoMerge && orderData.restaurant_id && orderData.table_number) {
+      const mergeableOrder = await findMergeableOrder(
+        orderData.restaurant_id,
+        orderData.table_number,
+        orderData.order_type || 'dine_in'
+      );
+
+      if (mergeableOrder) {
+        console.log(`🔀 [AUTO-MERGE] Found mergeable order ${mergeableOrder.id} for table ${orderData.table_number}`);
+
+        // Merge items into existing order
+        const mergeResult = await mergeItemsIntoOrder(mergeableOrder, orderData.order_items || []);
+
+        console.log(`✅ [AUTO-MERGE] Merged ${mergeResult.addedItems.length} items into order ${mergeableOrder.id}`);
+
+        // Emit socket event for real-time update
+        const io = req.app.get('io');
+        if (io && mergeableOrder.restaurant_id) {
+          io.of('/orders').to(`restaurant_${mergeableOrder.restaurant_id}`).emit('order-updated', mergeResult.order);
+        }
+
+        return res.status(200).json({
+          success: true,
+          data: mergeResult.order,
+          merged: true,
+          mergeInfo: {
+            originalOrderId: mergeableOrder.id,
+            addedItems: mergeResult.addedItems,
+            previousTotal: mergeResult.previousTotal,
+            newTotal: mergeResult.newTotal
+          }
+        });
+      }
     }
 
     // Check order limit if restaurant_id is provided
@@ -447,17 +560,31 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
 // Update order items (for kitchen item status tracking)
 router.patch('/:id/items', authenticateToken, async (req, res) => {
   try {
-    const { order_items } = req.body;
+    const { order_items, recalculateTotal = false } = req.body;
     const order = await Order.findByPk(req.params.id);
 
     if (!order) {
       return res.status(404).json({ success: false, error: 'Order not found' });
     }
 
-    // Update order items
-    await order.update({
+    const updateData = {
       order_items: JSON.stringify(order_items)
-    });
+    };
+
+    // Recalculate total_amount if requested or if items changed significantly
+    if (recalculateTotal && order_items && Array.isArray(order_items)) {
+      const newTotal = order_items.reduce((sum, item) => {
+        const itemPrice = parseFloat(item.price) || 0;
+        const itemQty = parseInt(item.quantity) || 1;
+        return sum + (itemPrice * itemQty);
+      }, 0);
+      updateData.total_amount = newTotal;
+      console.log(`📊 [ITEMS] Recalculated total_amount for order ${order.id}: ${newTotal}`);
+    }
+
+    // Update order items
+    await order.update(updateData);
+    await order.reload();
 
     // Emit socket event for real-time update
     const io = req.app.get('io');
@@ -705,6 +832,243 @@ router.get('/restaurant/:restaurantId/next-order-number', authenticateToken, asy
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Manual merge orders
+// POST /api/orders/merge
+router.post('/merge', authenticateToken, async (req, res) => {
+  try {
+    const { orderIds, targetOrderId } = req.body;
+
+    // Validate input
+    if (!orderIds || !Array.isArray(orderIds) || orderIds.length < 2) {
+      return res.status(400).json({
+        success: false,
+        error: 'At least 2 order IDs are required for merging'
+      });
+    }
+
+    // Use transaction for atomicity
+    const result = await sequelize.transaction(async (t) => {
+      // Fetch all orders with lock
+      const orders = await Order.findAll({
+        where: {
+          id: { [Op.in]: orderIds }
+        },
+        lock: t.LOCK.UPDATE,
+        transaction: t
+      });
+
+      if (orders.length !== orderIds.length) {
+        throw new Error('Some orders were not found');
+      }
+
+      // Validate all orders are mergeable
+      const restaurantIds = new Set(orders.map(o => o.restaurant_id));
+      if (restaurantIds.size > 1) {
+        throw new Error('Cannot merge orders from different restaurants');
+      }
+
+      for (const order of orders) {
+        if (order.payment_status === 'completed') {
+          throw new Error(`Order ${order.order_number} is already paid and cannot be merged`);
+        }
+        if (['served', 'completed', 'cancelled'].includes(order.status)) {
+          throw new Error(`Order ${order.order_number} has status "${order.status}" and cannot be merged`);
+        }
+      }
+
+      // Determine target order (specified or oldest)
+      let target;
+      if (targetOrderId) {
+        target = orders.find(o => o.id === targetOrderId);
+        if (!target) {
+          throw new Error('Target order not found in the provided order IDs');
+        }
+      } else {
+        // Use the oldest order as target
+        target = orders.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))[0];
+      }
+
+      const sourceOrders = orders.filter(o => o.id !== target.id);
+
+      // Merge all items
+      let targetItems = target.order_items || [];
+      if (typeof targetItems === 'string') {
+        targetItems = JSON.parse(targetItems);
+      }
+
+      const now = new Date().toISOString();
+      const deletedOrderIds = [];
+
+      for (const source of sourceOrders) {
+        let sourceItems = source.order_items || [];
+        if (typeof sourceItems === 'string') {
+          sourceItems = JSON.parse(sourceItems);
+        }
+
+        // Add merged_from info and timestamp to source items
+        const itemsWithMergeInfo = sourceItems.map(item => ({
+          ...item,
+          merged_from: source.order_number,
+          merged_at: now
+        }));
+
+        targetItems = [...targetItems, ...itemsWithMergeInfo];
+
+        // Soft delete source order
+        await source.update({
+          is_deleted: true,
+          deleted_at: new Date(),
+          status: 'cancelled'
+        }, { transaction: t });
+
+        deletedOrderIds.push(source.id);
+      }
+
+      // Recalculate total
+      const newTotal = targetItems.reduce((sum, item) => {
+        const itemPrice = parseFloat(item.price) || 0;
+        const itemQty = parseInt(item.quantity) || 1;
+        return sum + (itemPrice * itemQty);
+      }, 0);
+
+      // Update target order
+      await target.update({
+        order_items: JSON.stringify(targetItems),
+        total_amount: newTotal,
+        status: 'pending' // Reset to pending for kitchen re-review
+      }, { transaction: t });
+
+      await target.reload({ transaction: t });
+
+      return {
+        mergedOrder: target,
+        deletedOrderIds
+      };
+    });
+
+    console.log(`✅ [MERGE] Merged orders ${orderIds.join(', ')} into order ${result.mergedOrder.id}`);
+
+    // Emit socket events
+    const io = req.app.get('io');
+    if (io && result.mergedOrder.restaurant_id) {
+      const room = `restaurant_${result.mergedOrder.restaurant_id}`;
+
+      // Emit update for merged order
+      io.of('/orders').to(room).emit('order-updated', result.mergedOrder);
+
+      // Emit delete for source orders
+      for (const deletedId of result.deletedOrderIds) {
+        io.of('/orders').to(room).emit('order-deleted', { id: deletedId });
+      }
+    }
+
+    res.json({
+      success: true,
+      data: result.mergedOrder,
+      deletedOrderIds: result.deletedOrderIds,
+      message: `Successfully merged ${orderIds.length} orders`
+    });
+
+  } catch (error) {
+    console.error('❌ [MERGE] Error:', error.message);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Add items to existing order
+// POST /api/orders/:id/add-items
+router.post('/:id/add-items', authenticateToken, async (req, res) => {
+  try {
+    const { items } = req.body;
+    const orderId = req.params.id;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Items array is required'
+      });
+    }
+
+    const order = await Order.findByPk(orderId);
+
+    if (!order) {
+      return res.status(404).json({ success: false, error: 'Order not found' });
+    }
+
+    // Validate order can accept new items
+    if (order.payment_status === 'completed') {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot add items to a paid order'
+      });
+    }
+
+    if (['served', 'completed', 'cancelled'].includes(order.status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Cannot add items to an order with status "${order.status}"`
+      });
+    }
+
+    const now = new Date().toISOString();
+
+    // Get current items
+    let currentItems = order.order_items || [];
+    if (typeof currentItems === 'string') {
+      currentItems = JSON.parse(currentItems);
+    }
+
+    // Add new items with added_at timestamp
+    const newItemsWithTimestamp = items.map(item => ({
+      name: item.name,
+      quantity: item.quantity,
+      price: item.price,
+      options: item.options || [],
+      status: 'pending',
+      added_at: now
+    }));
+
+    const mergedItems = [...currentItems, ...newItemsWithTimestamp];
+
+    // Recalculate total
+    const newTotal = mergedItems.reduce((sum, item) => {
+      const itemPrice = parseFloat(item.price) || 0;
+      const itemQty = parseInt(item.quantity) || 1;
+      return sum + (itemPrice * itemQty);
+    }, 0);
+
+    // Update order
+    await order.update({
+      order_items: JSON.stringify(mergedItems),
+      total_amount: newTotal,
+      status: 'pending' // Reset to pending for kitchen
+    });
+
+    await order.reload();
+
+    console.log(`✅ [ADD-ITEMS] Added ${newItemsWithTimestamp.length} items to order ${order.id}`);
+
+    // Emit socket event
+    const io = req.app.get('io');
+    if (io && order.restaurant_id) {
+      io.of('/orders').to(`restaurant_${order.restaurant_id}`).emit('order-updated', order);
+    }
+
+    res.json({
+      success: true,
+      data: order,
+      addedItems: newItemsWithTimestamp,
+      previousTotal: parseFloat(order.total_amount) - newItemsWithTimestamp.reduce((sum, item) =>
+        sum + (parseFloat(item.price) * parseInt(item.quantity)), 0),
+      newTotal
+    });
+
+  } catch (error) {
+    console.error('❌ [ADD-ITEMS] Error:', error.message);
+    res.status(400).json({ success: false, error: error.message });
   }
 });
 

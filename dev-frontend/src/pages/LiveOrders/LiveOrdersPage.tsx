@@ -1037,6 +1037,11 @@ const LiveOrdersPage: React.FC = () => {
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Select Mode for merging orders
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
+  const [isMerging, setIsMerging] = useState(false);
+
   // Audio notification for new orders
   const playNotificationSound = useCallback(() => {
     if (!audioEnabled) return;
@@ -1694,6 +1699,118 @@ const LiveOrdersPage: React.FC = () => {
     return reverseFlow[currentStatus] || null;
   };
 
+  // Select Mode handlers for merging orders
+  const handleSelectOrder = (orderId: number) => {
+    setSelectedOrderIds(prev => {
+      if (prev.includes(orderId)) {
+        return prev.filter(id => id !== orderId);
+      } else {
+        return [...prev, orderId];
+      }
+    });
+  };
+
+  const handleSelectAll = () => {
+    const mergeableOrders = getFilteredOrdersByTab()
+      .slice((currentPage - 1) * 50, currentPage * 50)
+      .filter(order =>
+        order.payment_status === 'pending' &&
+        !['served', 'completed', 'cancelled'].includes(order.status)
+      );
+
+    if (selectedOrderIds.length === mergeableOrders.length) {
+      setSelectedOrderIds([]);
+    } else {
+      setSelectedOrderIds(mergeableOrders.map(o => o.id));
+    }
+  };
+
+  const toggleSelectMode = () => {
+    if (selectMode) {
+      // Exiting select mode
+      setSelectedOrderIds([]);
+    }
+    setSelectMode(!selectMode);
+  };
+
+  const handleMergeOrders = async () => {
+    if (selectedOrderIds.length < 2) {
+      alert('Please select at least 2 orders to merge');
+      return;
+    }
+
+    // Validate: all selected orders should have the same table_number
+    const selectedOrders = orders.filter(o => selectedOrderIds.includes(o.id));
+    const tableNumbers = [...new Set(selectedOrders.map(o => o.table_number))];
+
+    if (tableNumbers.length > 1) {
+      alert('Cannot merge orders from different tables. Please select orders from the same table.');
+      return;
+    }
+
+    // Validate: all orders should have pending payment
+    const invalidOrders = selectedOrders.filter(o =>
+      o.payment_status !== 'pending' ||
+      ['served', 'completed', 'cancelled'].includes(o.status)
+    );
+
+    if (invalidOrders.length > 0) {
+      alert('Cannot merge orders that are already paid, served, completed, or cancelled.');
+      return;
+    }
+
+    try {
+      setIsMerging(true);
+
+      // Sort by createdAt - oldest order becomes the target
+      const sortedOrders = [...selectedOrders].sort((a, b) =>
+        new Date(a.createdAt || a.order_date).getTime() - new Date(b.createdAt || b.order_date).getTime()
+      );
+
+      const targetOrderId = sortedOrders[0].id;
+      const sourceOrderIds = sortedOrders.slice(1).map(o => o.id);
+
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/orders/merge`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          targetOrderId,
+          sourceOrderIds
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to merge orders');
+      }
+
+      const result = await response.json();
+
+      // Show success message
+      alert(`Successfully merged ${sourceOrderIds.length + 1} orders into ${result.order.order_number}`);
+
+      // Reset select mode
+      setSelectMode(false);
+      setSelectedOrderIds([]);
+
+      // Refresh orders
+      fetchOrders();
+    } catch (error: any) {
+      console.error('Merge error:', error);
+      alert(error.message || 'Failed to merge orders');
+    } finally {
+      setIsMerging(false);
+    }
+  };
+
+  const canOrderBeMerged = (order: DbOrder): boolean => {
+    return order.payment_status === 'pending' &&
+           !['served', 'completed', 'cancelled'].includes(order.status);
+  };
+
   const handleOrderClick = (order: DbOrder) => {
     setSelectedOrder(order);
     setIsModalOpen(true);
@@ -2137,6 +2254,25 @@ const LiveOrdersPage: React.FC = () => {
         <Header>
           <HeaderTitle>Live Orders</HeaderTitle>
           <HeaderActions>
+            {/* Select Mode Toggle & Merge Button */}
+            {selectMode && (
+              <>
+                <MergeButton
+                  onClick={handleMergeOrders}
+                  disabled={selectedOrderIds.length < 2 || isMerging}
+                >
+                  {isMerging ? 'Merging...' : `Merge (${selectedOrderIds.length})`}
+                </MergeButton>
+                <SelectModeButton active={false} onClick={toggleSelectMode}>
+                  Cancel
+                </SelectModeButton>
+              </>
+            )}
+            {!selectMode && (
+              <SelectModeButton active={selectMode} onClick={toggleSelectMode}>
+                Select to Merge
+              </SelectModeButton>
+            )}
             <AudioToggleButton
               enabled={audioEnabled}
               onClick={() => setAudioEnabled(!audioEnabled)}
