@@ -178,8 +178,9 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
       if (mergeableOrder) {
         console.log(`🔀 [AUTO-MERGE] Found mergeable order ${mergeableOrder.id} for table ${orderData.table_number}`);
 
-        // Merge items into existing order
-        const mergeResult = await mergeItemsIntoOrder(mergeableOrder, orderData.order_items || []);
+        // Merge items into existing order (support both 'items' and 'order_items')
+        const newItems = orderData.order_items || orderData.items || [];
+        const mergeResult = await mergeItemsIntoOrder(mergeableOrder, newItems);
 
         console.log(`✅ [AUTO-MERGE] Merged ${mergeResult.addedItems.length} items into order ${mergeableOrder.id}`);
 
@@ -334,9 +335,24 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
           console.log('Creating order with order_number:', generatedOrderNumber);
           // Create order within transaction with generated number
           // Note: We bypass validation because order_number is generated dynamically
+
+          // Prepare order data - convert items to order_items JSON
+          const itemsArray = orderData.order_items || orderData.items || [];
+          const orderItemsJson = itemsArray.length > 0 ? JSON.stringify(itemsArray) : null;
+
+          // Calculate total if not set
+          let calculatedTotal = orderData.total_amount;
+          if (!calculatedTotal && itemsArray.length > 0) {
+            calculatedTotal = itemsArray.reduce((sum, item) => {
+              return sum + (parseFloat(item.price) * parseInt(item.quantity));
+            }, 0);
+          }
+
           return await Order.create({
             ...orderData,
-            order_number: generatedOrderNumber
+            order_number: generatedOrderNumber,
+            order_items: orderItemsJson,
+            total_amount: calculatedTotal || 0
           }, {
             transaction: t,
             validate: false  // Skip validation since we're generating order_number
