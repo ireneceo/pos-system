@@ -5,6 +5,7 @@ import { io, Socket } from 'socket.io-client';
 import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import PaymentModal from '../../components/POSTerminal/PaymentModal';
+import OptionModal from '../../components/POSTerminal/OptionModal';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
 // OLD: import { printBill } from '../../utils/thermalPrinter';
@@ -1143,8 +1144,6 @@ const LiveOrdersPage: React.FC = () => {
   const [addItemsSearchQuery, setAddItemsSearchQuery] = useState('');
   const [showOptionModal, setShowOptionModal] = useState(false);
   const [selectedMenuItemForOption, setSelectedMenuItemForOption] = useState<any>(null);
-  const [optionSelections, setOptionSelections] = useState<Record<string, string[]>>({});
-  const [optionQuantity, setOptionQuantity] = useState(1);
 
   // Toast notification state
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info'; isVisible: boolean }>({
@@ -1999,11 +1998,23 @@ const LiveOrdersPage: React.FC = () => {
         console.log('📦 Add Items - Items loaded:', items.length);
 
         setMenuCategories(categories.filter((c: any) => c.is_active !== false));
-        // Normalize category ID field (API returns categoryId, we need category_id)
-        const normalizedItems = items.map((i: any) => ({
-          ...i,
-          category_id: i.category_id || i.categoryId
-        }));
+        // Normalize category ID field and parse optionGroups if it's a string
+        const normalizedItems = items.map((i: any) => {
+          let optionGroups = i.optionGroups;
+          // Parse optionGroups if it's a string
+          if (typeof optionGroups === 'string') {
+            try {
+              optionGroups = JSON.parse(optionGroups);
+            } catch {
+              optionGroups = [];
+            }
+          }
+          return {
+            ...i,
+            category_id: i.category_id || i.categoryId,
+            optionGroups: Array.isArray(optionGroups) ? optionGroups : []
+          };
+        });
         setMenuItems(normalizedItems.filter((i: any) => i.is_available !== false));
         if (categories.length > 0) {
           // Store as string for consistent comparison
@@ -2071,55 +2082,6 @@ const LiveOrdersPage: React.FC = () => {
     });
   };
 
-  // Confirm option selection
-  const handleConfirmOptions = () => {
-    if (!selectedMenuItemForOption) return;
-
-    // Convert selections to options array
-    const selectedOptions: any[] = [];
-    Object.entries(optionSelections).forEach(([groupId, optionIds]) => {
-      const group = selectedMenuItemForOption.optionGroups?.find((g: any) => g.id === groupId);
-      if (group && group.options) {
-        optionIds.forEach(optionId => {
-          const option = group.options.find((o: any) => o.id === optionId);
-          if (option) {
-            selectedOptions.push({
-              id: option.id,
-              name: option.name,
-              price: option.price || 0,
-              groupName: group.name
-            });
-          }
-        });
-      }
-    });
-
-    handleAddToItemsCart(selectedMenuItemForOption, optionQuantity, selectedOptions);
-    setShowOptionModal(false);
-    setSelectedMenuItemForOption(null);
-    setOptionSelections({});
-    setOptionQuantity(1);
-    setAddItemsSearchQuery('');
-  };
-
-  // Toggle option selection
-  const handleOptionToggle = (groupId: string, optionId: string, isMultiple: boolean) => {
-    setOptionSelections(prev => {
-      const current = prev[groupId] || [];
-      if (isMultiple) {
-        // Multiple selection - toggle
-        if (current.includes(optionId)) {
-          return { ...prev, [groupId]: current.filter(id => id !== optionId) };
-        } else {
-          return { ...prev, [groupId]: [...current, optionId] };
-        }
-      } else {
-        // Single selection - replace
-        return { ...prev, [groupId]: [optionId] };
-      }
-    });
-  };
-
   // Remove item from cart in Add Items modal (by cartId)
   const handleRemoveFromItemsCart = (cartId: string) => {
     setAddItemsCart(prev => {
@@ -2174,10 +2136,11 @@ const LiveOrdersPage: React.FC = () => {
 
       showToast('Items added successfully', 'success');
 
-      // Reset state and go back to order detail view
+      // Reset state and close the entire modal
       setShowAddItemsView(false);
       setAddItemsCart([]);
       setAddItemsSearchQuery('');
+      handleCloseModal();
 
       // Refresh orders
       fetchOrders();
@@ -3385,107 +3348,6 @@ const LiveOrdersPage: React.FC = () => {
                   /* Add Items View - Improved UI with options support */
                   <>
                     <ModalBody style={{ padding: '20px', maxHeight: 'calc(70vh - 80px)', overflow: 'auto' }}>
-                      {/* Option Selection Modal */}
-                      {showOptionModal && selectedMenuItemForOption && (
-                        <div style={{
-                          position: 'fixed',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          background: 'rgba(0,0,0,0.5)',
-                          zIndex: 1100,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          padding: '20px'
-                        }} onClick={() => setShowOptionModal(false)}>
-                          <div style={{
-                            background: 'white',
-                            borderRadius: '12px',
-                            width: '100%',
-                            maxWidth: '400px',
-                            maxHeight: '80vh',
-                            overflow: 'auto'
-                          }} onClick={(e) => e.stopPropagation()}>
-                            <div style={{ padding: '20px', borderBottom: '1px solid #E5E7EB' }}>
-                              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>{selectedMenuItemForOption.name}</h3>
-                              <p style={{ margin: '4px 0 0', color: '#6B7280', fontSize: '14px' }}>
-                                {formatCurrency(parseFloat(selectedMenuItemForOption.price), operationSettings.currency)}
-                              </p>
-                            </div>
-
-                            <div style={{ padding: '20px' }}>
-                              {/* Option Groups */}
-                              {selectedMenuItemForOption.optionGroups?.map((group: any) => (
-                                <div key={group.id} style={{ marginBottom: '20px' }}>
-                                  <div style={{ fontWeight: 600, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    {group.name}
-                                    {group.required && <span style={{ fontSize: '11px', color: '#EF4444', fontWeight: 500 }}>Required</span>}
-                                    {group.multiple && <span style={{ fontSize: '11px', color: '#6B7280' }}>(Multiple)</span>}
-                                  </div>
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    {(group.options || []).map((option: any) => {
-                                      const isSelected = (optionSelections[group.id] || []).includes(option.id);
-                                      return (
-                                        <div
-                                          key={option.id}
-                                          onClick={() => handleOptionToggle(group.id, option.id, group.multiple)}
-                                          style={{
-                                            padding: '12px',
-                                            border: `2px solid ${isSelected ? '#635BFF' : '#E5E7EB'}`,
-                                            borderRadius: '8px',
-                                            cursor: 'pointer',
-                                            background: isSelected ? '#F0EEFF' : 'white',
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center'
-                                          }}
-                                        >
-                                          <span>{option.name}</span>
-                                          {option.price > 0 && (
-                                            <span style={{ color: '#635BFF', fontWeight: 500 }}>
-                                              +{formatCurrency(option.price, operationSettings.currency)}
-                                            </span>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              ))}
-
-                              {/* Quantity */}
-                              <div style={{ marginBottom: '20px' }}>
-                                <div style={{ fontWeight: 600, marginBottom: '8px' }}>Quantity</div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                  <button
-                                    onClick={() => setOptionQuantity(Math.max(1, optionQuantity - 1))}
-                                    style={{ width: '40px', height: '40px', border: '1px solid #E5E7EB', borderRadius: '8px', background: 'white', cursor: 'pointer', fontSize: '20px' }}
-                                  >-</button>
-                                  <span style={{ fontSize: '18px', fontWeight: 600, minWidth: '40px', textAlign: 'center' }}>{optionQuantity}</span>
-                                  <button
-                                    onClick={() => setOptionQuantity(optionQuantity + 1)}
-                                    style={{ width: '40px', height: '40px', border: '1px solid #E5E7EB', borderRadius: '8px', background: 'white', cursor: 'pointer', fontSize: '20px' }}
-                                  >+</button>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div style={{ padding: '20px', borderTop: '1px solid #E5E7EB', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                              <button
-                                onClick={() => setShowOptionModal(false)}
-                                style={{ padding: '10px 20px', border: '1px solid #E5E7EB', borderRadius: '8px', background: 'white', cursor: 'pointer', fontWeight: 500 }}
-                              >Cancel</button>
-                              <button
-                                onClick={handleConfirmOptions}
-                                style={{ padding: '10px 20px', border: 'none', borderRadius: '8px', background: '#635BFF', color: 'white', cursor: 'pointer', fontWeight: 600 }}
-                              >Add to Cart</button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
                       {/* Search Input - Fixed width */}
                       <div style={{ marginBottom: '20px' }}>
                         <input
@@ -3513,13 +3375,17 @@ const LiveOrdersPage: React.FC = () => {
                       {addItemsSearchQuery.length > 0 && (
                         <div style={{ marginBottom: '20px', maxHeight: '200px', overflowY: 'auto', border: '1px solid #E5E7EB', borderRadius: '8px' }}>
                           {menuItems
-                            .filter((item: any) =>
-                              item.name.toLowerCase().includes(addItemsSearchQuery.toLowerCase()) ||
-                              (item.code && item.code.toLowerCase().includes(addItemsSearchQuery.toLowerCase()))
-                            )
+                            .filter((item: any) => {
+                              if (!item || !item.name) return false;
+                              const searchLower = addItemsSearchQuery.toLowerCase();
+                              const nameMatch = item.name.toLowerCase().includes(searchLower);
+                              const codeMatch = item.code ? item.code.toLowerCase().includes(searchLower) : false;
+                              return nameMatch || codeMatch;
+                            })
                             .slice(0, 15)
                             .map((item: any) => {
-                              const hasOptions = item.optionGroups && item.optionGroups.length > 0;
+                              // Check if item has optionGroups (can be ID array or object array)
+                              const hasOptions = Array.isArray(item.optionGroups) && item.optionGroups.length > 0;
                               return (
                                 <div
                                   key={item.id}
@@ -3537,11 +3403,9 @@ const LiveOrdersPage: React.FC = () => {
                                   <div
                                     style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}
                                     onClick={() => {
-                                      // Items without options - add directly
-                                      if (!hasOptions) {
-                                        handleAddToItemsCart(item, 1, []);
-                                        setAddItemsSearchQuery('');
-                                      }
+                                      // Like POS Terminal: Click item area = add directly without options
+                                      handleAddToItemsCart(item, 1, []);
+                                      setAddItemsSearchQuery('');
                                     }}
                                   >
                                     <span style={{ fontWeight: 500 }}>{item.code ? `${item.code} ` : ''}{item.name}</span>
@@ -3549,15 +3413,15 @@ const LiveOrdersPage: React.FC = () => {
                                   </div>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                                     <span style={{ color: '#635BFF', fontWeight: 500 }}>
-                                      {formatCurrency(parseFloat(item.price), operationSettings.currency)}
+                                      {formatCurrency(parseFloat(item.price) || 0, operationSettings.currency)}
                                     </span>
-                                    {hasOptions ? (
+                                    {hasOptions && (
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
+                                          // Set item for OptionModal - optionGroups contains ID array like ["6", "7"]
+                                          // OptionModal will use MenuContext to get actual option data
                                           setSelectedMenuItemForOption(item);
-                                          setOptionSelections({});
-                                          setOptionQuantity(1);
                                           setShowOptionModal(true);
                                         }}
                                         style={{
@@ -3572,26 +3436,6 @@ const LiveOrdersPage: React.FC = () => {
                                         }}
                                       >
                                         Options
-                                      </button>
-                                    ) : (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleAddToItemsCart(item, 1, []);
-                                          setAddItemsSearchQuery('');
-                                        }}
-                                        style={{
-                                          padding: '4px 10px',
-                                          fontSize: '12px',
-                                          background: '#635BFF',
-                                          color: 'white',
-                                          border: 'none',
-                                          borderRadius: '4px',
-                                          cursor: 'pointer',
-                                          fontWeight: 500
-                                        }}
-                                      >
-                                        Add
                                       </button>
                                     )}
                                   </div>
@@ -3663,9 +3507,11 @@ const LiveOrdersPage: React.FC = () => {
                         <div style={{ display: 'flex', gap: '12px' }}>
                           <ActionButton
                             onClick={() => {
+                              // Cancel closes the entire modal
                               setShowAddItemsView(false);
                               setAddItemsCart([]);
                               setAddItemsSearchQuery('');
+                              handleCloseModal();
                             }}
                             style={{ background: 'white', color: '#6B7C93', border: '1px solid #E5E7EB' }}
                           >
@@ -4456,6 +4302,32 @@ const LiveOrdersPage: React.FC = () => {
         
         {/* Order Complete Modal - 라이브 오더에서는 사용하지 않음 */}
         {/* POS Terminal에서만 사용하는 모달이므로 여기서는 렌더링하지 않음 */}
+
+        {/* Option Modal for Add Items - POS Terminal과 동일한 모달 사용 */}
+        {selectedMenuItemForOption && (
+          <OptionModal
+            isOpen={showOptionModal}
+            onClose={() => {
+              setShowOptionModal(false);
+              setSelectedMenuItemForOption(null);
+            }}
+            menuItem={{
+              id: selectedMenuItemForOption.id,
+              name: selectedMenuItemForOption.name,
+              price: parseFloat(selectedMenuItemForOption.price) || 0,
+              emoji: selectedMenuItemForOption.emoji || '🍽️',
+              image: selectedMenuItemForOption.image,
+              optionGroups: selectedMenuItemForOption.optionGroups
+            }}
+            onConfirm={(quantity, selectedOptions, selectedOptionsData) => {
+              // Add item to cart with options
+              handleAddToItemsCart(selectedMenuItemForOption, quantity, selectedOptionsData);
+              setShowOptionModal(false);
+              setSelectedMenuItemForOption(null);
+              setAddItemsSearchQuery('');
+            }}
+          />
+        )}
 
         {/* Merge Target Selection Modal */}
         <ModalOverlay isOpen={showMergeModal} onClick={() => setShowMergeModal(false)} data-modal="merge-target">
