@@ -865,6 +865,58 @@ const ModalFooter = styled.div`
   gap: 8px;
 `;
 
+// Toast notification styles
+const ToastContainer = styled.div<{ isVisible: boolean; type: 'success' | 'error' | 'info' }>`
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  transform: translateX(${props => props.isVisible ? '0' : '120%'});
+  opacity: ${props => props.isVisible ? 1 : 0};
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  background: ${props => {
+    switch(props.type) {
+      case 'success': return '#10B981';
+      case 'error': return '#EF4444';
+      case 'info': return '#3B82F6';
+      default: return '#10B981';
+    }
+  }};
+  color: white;
+  max-width: 400px;
+`;
+
+const ToastMessage = styled.span`
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+`;
+
+const ToastCloseBtn = styled.button`
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+`;
+
 // Bill print styles
 const BillPrintContainer = styled.div`
   display: none;
@@ -1086,6 +1138,22 @@ const LiveOrdersPage: React.FC = () => {
   const [addItemsSelectedCategory, setAddItemsSelectedCategory] = useState<number | null>(null);
   const [addItemsCart, setAddItemsCart] = useState<any[]>([]);
   const [isAddingItems, setIsAddingItems] = useState(false);
+
+  // Toast notification state
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info'; isVisible: boolean }>({
+    message: '',
+    type: 'success',
+    isVisible: false
+  });
+
+  // Show toast notification
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToast({ message, type, isVisible: true });
+    // Auto-hide after 4 seconds
+    setTimeout(() => {
+      setToast(prev => ({ ...prev, isVisible: false }));
+    }, 4000);
+  }, []);
 
   // Audio notification for new orders
   const playNotificationSound = useCallback(() => {
@@ -1407,7 +1475,7 @@ const LiveOrdersPage: React.FC = () => {
     const filtered = getFilteredOrders();
 
     if (filtered.length === 0) {
-      alert('No orders to download');
+      showToast('No orders to download', 'info');
       return;
     }
 
@@ -1780,7 +1848,7 @@ const LiveOrdersPage: React.FC = () => {
 
   const handleMergeOrders = async () => {
     if (selectedOrderIds.length < 2) {
-      alert('Please select at least 2 orders to merge');
+      showToast('Please select at least 2 orders to merge', 'info');
       return;
     }
 
@@ -1789,7 +1857,7 @@ const LiveOrdersPage: React.FC = () => {
     const tableNumbers = Array.from(new Set(selectedOrders.map(o => o.table_number)));
 
     if (tableNumbers.length > 1) {
-      alert('Cannot merge orders from different tables. Please select orders from the same table.');
+      showToast('Cannot merge orders from different tables. Please select orders from the same table.', 'error');
       return;
     }
 
@@ -1800,7 +1868,7 @@ const LiveOrdersPage: React.FC = () => {
     );
 
     if (invalidOrders.length > 0) {
-      alert('Cannot merge orders that are already paid, served, completed, or cancelled.');
+      showToast('Cannot merge orders that are already paid, served, completed, or cancelled.', 'error');
       return;
     }
 
@@ -1841,7 +1909,7 @@ const LiveOrdersPage: React.FC = () => {
       const result = await response.json();
 
       // Show success message
-      alert(`Successfully merged ${allOrderIds.length} orders into ${result.order.order_number}`);
+      showToast(`Successfully merged ${allOrderIds.length} orders into ${result.data.order_number}`, 'success');
 
       // Reset select mode
       setSelectMode(false);
@@ -1851,7 +1919,7 @@ const LiveOrdersPage: React.FC = () => {
       fetchOrders();
     } catch (error: any) {
       console.error('Merge error:', error);
-      alert(error.message || 'Failed to merge orders');
+      showToast(error.message || 'Failed to merge orders', 'error');
     } finally {
       setIsMerging(false);
     }
@@ -1939,7 +2007,7 @@ const LiveOrdersPage: React.FC = () => {
         throw new Error(error.message || 'Failed to add items');
       }
 
-      alert('Items added successfully');
+      showToast('Items added successfully', 'success');
 
       // Reset state and go back to order detail view
       setShowAddItemsView(false);
@@ -1949,7 +2017,7 @@ const LiveOrdersPage: React.FC = () => {
       fetchOrders();
     } catch (error: any) {
       console.error('Add items error:', error);
-      alert(error.message || 'Failed to add items');
+      showToast(error.message || 'Failed to add items', 'error');
     } finally {
       setIsAddingItems(false);
     }
@@ -2039,7 +2107,7 @@ const LiveOrdersPage: React.FC = () => {
 
       if (orderItems.length === 0) {
         console.error('❌ No items found in order!');
-        alert('Cannot print: Order has no items. Check console for details.');
+        showToast('Cannot print: Order has no items.', 'error');
         return;
       }
 
@@ -2106,7 +2174,7 @@ const LiveOrdersPage: React.FC = () => {
 
       if (orderItems.length === 0) {
         console.error('❌ No items found in order!');
-        alert('Cannot print: Order has no items.');
+        showToast('Cannot print: Order has no items.', 'error');
         return;
       }
 
@@ -3836,6 +3904,17 @@ const LiveOrdersPage: React.FC = () => {
         );
         })()}
       </Container>
+
+      {/* Toast Notification */}
+      {ReactDOM.createPortal(
+        <ToastContainer isVisible={toast.isVisible} type={toast.type}>
+          <ToastMessage>{toast.message}</ToastMessage>
+          <ToastCloseBtn onClick={() => setToast(prev => ({ ...prev, isVisible: false }))}>
+            ×
+          </ToastCloseBtn>
+        </ToastContainer>,
+        document.body
+      )}
     </MainLayout>
   );
 };

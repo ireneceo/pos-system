@@ -134,9 +134,10 @@ async function mergeItemsIntoOrder(existingOrder, newItems, transaction = null) 
   }, 0);
 
   // Update order
+  // Note: Don't use JSON.stringify - Sequelize setter handles it automatically
   const updateOptions = transaction ? { transaction } : {};
   await existingOrder.update({
-    order_items: JSON.stringify(mergedItems),
+    order_items: mergedItems,
     total_amount: newTotal,
     status: 'pending' // Reset to pending for kitchen
   }, updateOptions);
@@ -588,8 +589,9 @@ router.patch('/:id/items', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, error: 'Order not found' });
     }
 
+    // Note: Don't use JSON.stringify - Sequelize setter handles it automatically
     const updateData = {
-      order_items: JSON.stringify(order_items)
+      order_items: order_items
     };
 
     // Recalculate total_amount if requested or if items changed significantly
@@ -956,8 +958,9 @@ router.post('/merge', authenticateToken, async (req, res) => {
       }, 0);
 
       // Update target order
+      // Note: Don't use JSON.stringify - Sequelize setter handles it automatically
       await target.update({
-        order_items: JSON.stringify(targetItems),
+        order_items: targetItems,
         total_amount: newTotal,
         status: 'pending' // Reset to pending for kitchen re-review
       }, { transaction: t });
@@ -1062,8 +1065,9 @@ router.post('/:id/add-items', authenticateToken, async (req, res) => {
     }, 0);
 
     // Update order
+    // Note: Don't use JSON.stringify - Sequelize setter handles it automatically
     await order.update({
-      order_items: JSON.stringify(mergedItems),
+      order_items: mergedItems,
       total_amount: newTotal,
       status: 'pending' // Reset to pending for kitchen
     });
