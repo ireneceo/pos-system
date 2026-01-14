@@ -130,11 +130,18 @@ async function mergeItemsIntoOrder(existingOrder, newItems, transaction = null) 
     currentItems = JSON.parse(currentItems);
   }
 
-  // Add new items with added_at timestamp
+  // Calculate next order_group number
+  // Original items have order_group: 0, first merge is order_group: 1, etc.
+  const existingGroups = currentItems.map(item => item.order_group || 0);
+  const maxGroup = existingGroups.length > 0 ? Math.max(...existingGroups) : 0;
+  const nextGroup = maxGroup + 1;
+
+  // Add new items with added_at timestamp and order_group
   const itemsWithTimestamp = newItems.map(item => ({
     ...item,
     status: 'pending',
-    added_at: now
+    added_at: now,
+    order_group: nextGroup
   }));
 
   const mergedItems = [...currentItems, ...itemsWithTimestamp];
@@ -161,7 +168,8 @@ async function mergeItemsIntoOrder(existingOrder, newItems, transaction = null) 
     order: existingOrder,
     addedItems: itemsWithTimestamp,
     previousTotal: parseFloat(existingOrder.total_amount),
-    newTotal
+    newTotal,
+    orderGroup: nextGroup
   };
 }
 
@@ -196,12 +204,23 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
         const newItems = orderData.order_items || orderData.items || [];
         const mergeResult = await mergeItemsIntoOrder(mergeableOrder, newItems);
 
-        console.log(`✅ [AUTO-MERGE] Merged ${mergeResult.addedItems.length} items into order ${mergeableOrder.id}`);
+        console.log(`✅ [AUTO-MERGE] Merged ${mergeResult.addedItems.length} items into order ${mergeableOrder.id} (group: ${mergeResult.orderGroup})`);
 
-        // Emit socket event for real-time update
+        // Emit socket events for real-time update
         const io = req.app.get('io');
         if (io && mergeableOrder.restaurant_id) {
-          io.of('/orders').to(`restaurant_${mergeableOrder.restaurant_id}`).emit('order-updated', mergeResult.order);
+          const room = `restaurant_${mergeableOrder.restaurant_id}`;
+          // Regular order update
+          io.of('/orders').to(room).emit('order-updated', mergeResult.order);
+          // Special event for new items added (for notification sound)
+          io.of('/orders').to(room).emit('order-items-added', {
+            orderId: mergeableOrder.id,
+            orderNumber: mergeableOrder.order_number,
+            tableNumber: mergeableOrder.table_number,
+            orderGroup: mergeResult.orderGroup,
+            addedItems: mergeResult.addedItems,
+            itemCount: mergeResult.addedItems.length
+          });
         }
 
         return res.status(200).json({
@@ -210,6 +229,7 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
           merged: true,
           mergeInfo: {
             originalOrderId: mergeableOrder.id,
+            orderGroup: mergeResult.orderGroup,
             addedItems: mergeResult.addedItems,
             previousTotal: mergeResult.previousTotal,
             newTotal: mergeResult.newTotal
@@ -351,7 +371,11 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
           // Note: We bypass validation because order_number is generated dynamically
 
           // Prepare order data - convert items to order_items JSON
-          const itemsArray = orderData.order_items || orderData.items || [];
+          // Add order_group: 0 to all original items
+          const itemsArray = (orderData.order_items || orderData.items || []).map(item => ({
+            ...item,
+            order_group: item.order_group !== undefined ? item.order_group : 0
+          }));
           const orderItemsJson = itemsArray.length > 0 ? JSON.stringify(itemsArray) : null;
 
           // Calculate total if not set

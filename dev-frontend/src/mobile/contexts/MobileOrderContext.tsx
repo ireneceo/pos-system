@@ -162,8 +162,24 @@ export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ childr
     }
   }, []);
 
-  // Cart state - localStorage 제거, 메모리 기반 상태 관리
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  // Cart state - localStorage로 페이지 새로고침 시에도 유지
+  const [cartItems, setCartItemsState] = useState<CartItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('mobile_cart');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Wrapper to sync cartItems with localStorage
+  const setCartItems = useCallback((updater: CartItem[] | ((prev: CartItem[]) => CartItem[])) => {
+    setCartItemsState(prev => {
+      const newItems = typeof updater === 'function' ? updater(prev) : updater;
+      localStorage.setItem('mobile_cart', JSON.stringify(newItems));
+      return newItems;
+    });
+  }, []);
 
   // Order state - localStorage 제거, 메모리 기반 상태 관리
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
@@ -256,7 +272,8 @@ export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ childr
   
   // Clear cart
   const clearCart = useCallback(() => {
-    setCartItems([]);
+    setCartItemsState([]);
+    localStorage.removeItem('mobile_cart');
   }, []);
   
   // Get currency from current store or default to 'RM'

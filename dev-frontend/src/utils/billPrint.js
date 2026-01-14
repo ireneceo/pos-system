@@ -406,6 +406,17 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
   // Initialize printer
   content += CMD.INIT;
 
+  // === GROUP LABEL (for partial order printing) ===
+  if (orderData.groupLabel) {
+    content += CMD.ALIGN_CENTER;
+    content += CMD.TEXT_DOUBLE;
+    content += CMD.BOLD_ON;
+    content += '** ' + orderData.groupLabel.toUpperCase() + ' **' + CMD.LINE_FEED;
+    content += CMD.TEXT_NORMAL;
+    content += CMD.BOLD_OFF;
+    content += CMD.LINE_FEED;
+  }
+
   // === ORDER INFO ===
   content += CMD.ALIGN_LEFT;
   content += CMD.DASHED_LINE + CMD.LINE_FEED;

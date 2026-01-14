@@ -1147,6 +1147,20 @@ const LiveOrdersPage: React.FC = () => {
     isVisible: false
   });
 
+  // New items added notification (for merged orders)
+  const [itemsAddedAlert, setItemsAddedAlert] = useState<{
+    isVisible: boolean;
+    orderId: number | null;
+    orderNumber: string;
+    tableNumber: string | null;
+    orderGroup: number;
+    itemCount: number;
+  } | null>(null);
+
+  // Order group print selector
+  const [showGroupPrintSelector, setShowGroupPrintSelector] = useState(false);
+  const [selectedPrintGroup, setSelectedPrintGroup] = useState<number | null>(null);
+
   // Show toast notification
   const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ message, type, isVisible: true });
@@ -1324,6 +1338,36 @@ const LiveOrdersPage: React.FC = () => {
       console.log('📥 Socket: order-deleted', id);
       setOrders(prev => prev.filter(o => o.id !== id));
       setAllOrders(prev => prev.filter(o => o.id !== id)); // Remove from allOrders too
+    });
+
+    // New items added to existing order (merged order notification)
+    newSocket.on('order-items-added', (data: {
+      orderId: number;
+      orderNumber: string;
+      tableNumber: string | null;
+      orderGroup: number;
+      addedItems: any[];
+      itemCount: number;
+    }) => {
+      console.log('📥 Socket: order-items-added', data.orderId, `+Order ${data.orderGroup}`);
+
+      // Play notification sound
+      playNotificationSoundRef.current();
+
+      // Show alert notification
+      setItemsAddedAlert({
+        isVisible: true,
+        orderId: data.orderId,
+        orderNumber: data.orderNumber,
+        tableNumber: data.tableNumber,
+        orderGroup: data.orderGroup,
+        itemCount: data.itemCount
+      });
+
+      // Auto-hide after 10 seconds
+      setTimeout(() => {
+        setItemsAddedAlert(prev => prev?.orderId === data.orderId ? null : prev);
+      }, 10000);
     });
 
     setSocket(newSocket);
@@ -2242,6 +2286,117 @@ const LiveOrdersPage: React.FC = () => {
     }
   };
 
+  // Print kitchen ticket for a specific order group (merged orders)
+  const handlePrintGroupTicket = async (groupNum: number, groupItems: any[]) => {
+    if (!selectedOrder) return;
+
+    const storeInfo = getStoreInfo();
+
+    if (groupItems.length === 0) {
+      showToast('No items in this group', 'error');
+      return;
+    }
+
+    const orderData = {
+      orderNumber: selectedOrder.order_number,
+      pickupNumber: selectedOrder.order_number.split('-')[1],
+      date: groupItems[0]?.added_at ? new Date(groupItems[0].added_at) : new Date(selectedOrder.order_date || selectedOrder.createdAt),
+      orderType: selectedOrder.order_type,
+      orderSource: (selectedOrder as any).order_source || 'pos',
+      tableNumber: selectedOrder.table_number || null,
+      pagerNumber: selectedOrder.pager_number || null,
+      customerName: selectedOrder.customer_name || 'Walk-in Customer',
+      // Add group label to show this is a partial ticket
+      groupLabel: groupNum === 0 ? 'Original Order' : `+Order ${groupNum}`,
+      items: groupItems.map((item: any) => {
+        let itemOptions = item.options || [];
+        if (typeof itemOptions === 'string') {
+          try { itemOptions = JSON.parse(itemOptions); } catch (e) { itemOptions = []; }
+        }
+        if (!Array.isArray(itemOptions)) itemOptions = [];
+
+        return {
+          menuItem: {
+            name: item.menu_item_name || item.name || (item.menuItem && item.menuItem.name) || 'Unknown Item',
+            price: parseFloat(item.price || (item.menuItem && item.menuItem.price) || '0'),
+            is_set_menu: item.is_set_menu || false,
+            set_items: item.set_items || []
+          },
+          quantity: item.quantity || 1,
+          options: itemOptions
+        };
+      }),
+      notes: (selectedOrder as any).notes || '',
+      takeawayCharge: 0 // Don't include in group ticket
+    };
+
+    const success = await printKitchenTicketViaRawBT(orderData, storeInfo);
+    if (success) {
+      showToast(`Kitchen ticket for ${groupNum === 0 ? 'Original Order' : `+Order ${groupNum}`} printed`, 'success');
+    }
+  };
+
+  // Print kitchen ticket for the LATEST order group only (for merged orders)
+  const handlePrintLatestGroupTicket = async (order: DbOrder) => {
+    const storeInfo = getStoreInfo();
+    const orderItems = Array.isArray(order.order_items) ? order.order_items : [];
+
+    if (orderItems.length === 0) {
+      showToast('No items in order', 'error');
+      return;
+    }
+
+    // Find the latest (highest) order_group
+    const groups = orderItems.map((item: any) => item.order_group || 0);
+    const latestGroup = Math.max(...groups);
+
+    // If only group 0, print the full ticket
+    if (latestGroup === 0) {
+      handlePrintKitchenTicket(order);
+      return;
+    }
+
+    // Filter items for latest group only
+    const latestGroupItems = orderItems.filter((item: any) => (item.order_group || 0) === latestGroup);
+
+    const orderData = {
+      orderNumber: order.order_number,
+      pickupNumber: order.order_number.split('-')[1],
+      date: latestGroupItems[0]?.added_at ? new Date(latestGroupItems[0].added_at) : new Date(order.order_date || order.createdAt),
+      orderType: order.order_type,
+      orderSource: (order as any).order_source || 'pos',
+      tableNumber: order.table_number || null,
+      pagerNumber: order.pager_number || null,
+      customerName: order.customer_name || 'Walk-in Customer',
+      groupLabel: `+Order ${latestGroup}`,
+      items: latestGroupItems.map((item: any) => {
+        let itemOptions = item.options || [];
+        if (typeof itemOptions === 'string') {
+          try { itemOptions = JSON.parse(itemOptions); } catch (e) { itemOptions = []; }
+        }
+        if (!Array.isArray(itemOptions)) itemOptions = [];
+
+        return {
+          menuItem: {
+            name: item.menu_item_name || item.name || (item.menuItem && item.menuItem.name) || 'Unknown Item',
+            price: parseFloat(item.price || (item.menuItem && item.menuItem.price) || '0'),
+            is_set_menu: item.is_set_menu || false,
+            set_items: item.set_items || []
+          },
+          quantity: item.quantity || 1,
+          options: itemOptions
+        };
+      }),
+      notes: '',
+      takeawayCharge: 0
+    };
+
+    const success = await printKitchenTicketViaRawBT(orderData, storeInfo);
+    if (success) {
+      showToast(`Kitchen ticket for +Order ${latestGroup} printed`, 'success');
+    }
+  };
+
   const handleConfirmPayment = async () => {
     if (!selectedOrder) {
       return;
@@ -2492,6 +2647,85 @@ const LiveOrdersPage: React.FC = () => {
   return (
     <MainLayout>
       <PrintStyles />
+
+      {/* Items Added Alert - for merged orders */}
+      {itemsAddedAlert?.isVisible && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            background: '#FEF3C7',
+            border: '2px solid #F59E0B',
+            borderRadius: '12px',
+            padding: '16px 20px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+            zIndex: 10000,
+            maxWidth: '320px',
+            animation: 'slideIn 0.3s ease-out'
+          }}
+        >
+          <style>{`
+            @keyframes slideIn {
+              from { transform: translateX(100%); opacity: 0; }
+              to { transform: translateX(0); opacity: 1; }
+            }
+          `}</style>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+            <div style={{ fontWeight: 700, fontSize: '15px', color: '#92400E' }}>
+              New Items Added
+            </div>
+            <button
+              onClick={() => setItemsAddedAlert(null)}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '20px',
+                cursor: 'pointer',
+                color: '#92400E',
+                padding: '0',
+                lineHeight: 1
+              }}
+            >
+              ×
+            </button>
+          </div>
+          <div style={{ color: '#78350F', fontSize: '14px', marginBottom: '12px' }}>
+            <strong>Order {itemsAddedAlert.orderNumber}</strong>
+            {itemsAddedAlert.tableNumber && ` (Table ${itemsAddedAlert.tableNumber})`}
+            <br />
+            <span style={{ background: '#FCD34D', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+              +Order {itemsAddedAlert.orderGroup}
+            </span>
+            {' '}{itemsAddedAlert.itemCount} item{itemsAddedAlert.itemCount > 1 ? 's' : ''} added
+          </div>
+          <button
+            onClick={() => {
+              // Find and select the order
+              const order = orders.find(o => o.id === itemsAddedAlert.orderId);
+              if (order) {
+                setSelectedOrder(order);
+                setShowModal(true);
+              }
+              setItemsAddedAlert(null);
+            }}
+            style={{
+              width: '100%',
+              padding: '10px',
+              background: '#F59E0B',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontSize: '14px'
+            }}
+          >
+            View Order
+          </button>
+        </div>
+      )}
+
       <Container className="no-print">
         <Header>
           <HeaderTitle>Live Orders</HeaderTitle>
@@ -3027,67 +3261,84 @@ const LiveOrdersPage: React.FC = () => {
                 </ModalHeader>
 
                 {showAddItemsView ? (
-                  /* Add Items View */
-                  <ModalBody style={{ display: 'flex', gap: '20px', padding: '20px', maxHeight: '60vh', overflow: 'hidden' }}>
-                    {/* Left: Menu Selection */}
-                    <div style={{ flex: 2, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                      {/* Category Tabs */}
-                      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                        {menuCategories.map((cat: any) => (
-                          <button
-                            key={cat.id}
-                            onClick={() => setAddItemsSelectedCategory(String(cat.id))}
-                            style={{
-                              padding: '8px 16px',
-                              border: String(addItemsSelectedCategory) === String(cat.id) ? '2px solid #635BFF' : '1px solid #E5E7EB',
-                              borderRadius: '8px',
-                              background: String(addItemsSelectedCategory) === String(cat.id) ? '#EEF2FF' : 'white',
-                              color: String(addItemsSelectedCategory) === String(cat.id) ? '#635BFF' : '#1F2937',
-                              fontWeight: 500,
-                              cursor: 'pointer'
-                            }}
-                          >
-                            {cat.name}
-                          </button>
-                        ))}
-                      </div>
-                      {/* Menu Items Grid */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '12px', overflowY: 'auto', flex: 1 }}>
+                  /* Add Items View - Search-based UI */
+                  <ModalBody style={{ padding: '20px', maxHeight: '70vh', overflow: 'auto' }}>
+                    {/* Search Input */}
+                    <div style={{ marginBottom: '20px' }}>
+                      <input
+                        type="text"
+                        placeholder="Search menu items..."
+                        value={addItemsSearchQuery}
+                        onChange={(e) => setAddItemsSearchQuery(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '12px 16px',
+                          border: '2px solid #E5E7EB',
+                          borderRadius: '8px',
+                          fontSize: '15px',
+                          outline: 'none',
+                          transition: 'border-color 0.15s'
+                        }}
+                        onFocus={(e) => e.currentTarget.style.borderColor = '#635BFF'}
+                        onBlur={(e) => e.currentTarget.style.borderColor = '#E5E7EB'}
+                        autoFocus
+                      />
+                    </div>
+
+                    {/* Search Results - Click to add */}
+                    {addItemsSearchQuery.length > 0 && (
+                      <div style={{ marginBottom: '20px', maxHeight: '200px', overflowY: 'auto', border: '1px solid #E5E7EB', borderRadius: '8px' }}>
                         {menuItems
-                          .filter((item: any) => String(item.category_id) === String(addItemsSelectedCategory))
+                          .filter((item: any) =>
+                            item.name.toLowerCase().includes(addItemsSearchQuery.toLowerCase())
+                          )
+                          .slice(0, 10)
                           .map((item: any) => (
                             <div
                               key={item.id}
-                              onClick={() => handleAddToItemsCart(item)}
-                              style={{
-                                padding: '12px',
-                                border: '1px solid #E5E7EB',
-                                borderRadius: '8px',
-                                cursor: 'pointer',
-                                transition: 'all 0.15s',
-                                backgroundColor: 'white'
+                              onClick={() => {
+                                handleAddToItemsCart(item);
+                                setAddItemsSearchQuery('');
                               }}
-                              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#635BFF'; e.currentTarget.style.backgroundColor = '#F9FAFB'; }}
-                              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#E5E7EB'; e.currentTarget.style.backgroundColor = 'white'; }}
+                              style={{
+                                padding: '12px 16px',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                cursor: 'pointer',
+                                borderBottom: '1px solid #F3F4F6',
+                                transition: 'background 0.1s'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = '#F9FAFB'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
                             >
-                              <div style={{ fontWeight: 500, marginBottom: '4px' }}>{item.name}</div>
-                              <div style={{ color: '#635BFF', fontSize: '14px' }}>
+                              <span style={{ fontWeight: 500 }}>{item.name}</span>
+                              <span style={{ color: '#635BFF', fontWeight: 500 }}>
                                 {formatCurrency(parseFloat(item.price), operationSettings.currency)}
-                              </div>
+                              </span>
                             </div>
                           ))}
+                        {menuItems.filter((item: any) =>
+                          item.name.toLowerCase().includes(addItemsSearchQuery.toLowerCase())
+                        ).length === 0 && (
+                          <div style={{ padding: '16px', textAlign: 'center', color: '#9CA3AF' }}>
+                            No items found
+                          </div>
+                        )}
                       </div>
-                    </div>
+                    )}
 
-                    {/* Right: Cart */}
-                    <div style={{ flex: 1, borderLeft: '1px solid #E5E7EB', paddingLeft: '20px', display: 'flex', flexDirection: 'column' }}>
-                      <h4 style={{ margin: '0 0 16px 0', fontWeight: 600 }}>Items to Add</h4>
-                      <div style={{ flex: 1, overflowY: 'auto' }}>
-                        {addItemsCart.length === 0 ? (
-                          <p style={{ color: '#9CA3AF', textAlign: 'center' }}>Select items from the menu</p>
-                        ) : (
-                          addItemsCart.map((item: any) => (
-                            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #F3F4F6' }}>
+                    {/* Items to Add */}
+                    <div>
+                      <h4 style={{ margin: '0 0 12px 0', fontWeight: 600, color: '#0A2540' }}>Items to Add ({addItemsCart.length})</h4>
+                      {addItemsCart.length === 0 ? (
+                        <div style={{ padding: '24px', textAlign: 'center', color: '#9CA3AF', background: '#F9FAFB', borderRadius: '8px' }}>
+                          Search and select items to add
+                        </div>
+                      ) : (
+                        <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden' }}>
+                          {addItemsCart.map((item: any) => (
+                            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #F3F4F6' }}>
                               <div>
                                 <div style={{ fontWeight: 500 }}>{item.name}</div>
                                 <div style={{ color: '#6B7280', fontSize: '13px' }}>
@@ -3097,22 +3348,22 @@ const LiveOrdersPage: React.FC = () => {
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <button
                                   onClick={() => handleRemoveFromItemsCart(item.id)}
-                                  style={{ width: '28px', height: '28px', border: '1px solid #E5E7EB', borderRadius: '4px', background: 'white', cursor: 'pointer', fontSize: '16px' }}
+                                  style={{ width: '32px', height: '32px', border: '1px solid #E5E7EB', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '18px', fontWeight: 500 }}
                                 >
                                   -
                                 </button>
-                                <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 500 }}>{item.quantity}</span>
+                                <span style={{ minWidth: '28px', textAlign: 'center', fontWeight: 600, fontSize: '15px' }}>{item.quantity}</span>
                                 <button
                                   onClick={() => handleAddToItemsCart(item)}
-                                  style={{ width: '28px', height: '28px', border: '1px solid #E5E7EB', borderRadius: '4px', background: 'white', cursor: 'pointer', fontSize: '16px' }}
+                                  style={{ width: '32px', height: '32px', border: '1px solid #E5E7EB', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '18px', fontWeight: 500 }}
                                 >
                                   +
                                 </button>
                               </div>
                             </div>
-                          ))
-                        )}
-                      </div>
+                          ))}
+                        </div>
+                      )}
                       {/* Total and Submit */}
                       <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '16px', marginTop: '16px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', fontWeight: 600 }}>
@@ -3456,25 +3707,82 @@ const LiveOrdersPage: React.FC = () => {
 
                   <Divider />
 
-                  {/* Items */}
+                  {/* Items - grouped by order_group */}
                   <OrderDetailSection>
                     <SectionTitle>Order Items</SectionTitle>
-                    {selectedOrder.order_items && Array.isArray(selectedOrder.order_items) && selectedOrder.order_items.map((item: any, idx: number) => (
-                      <ItemDetail key={idx}>
-                        <ItemInfo>
-                          <ItemName>{item.name || item.menuItem?.name || 'Item'}</ItemName>
-                          {item.options && item.options.length > 0 && (
-                            <ItemOptions>
-                              {Array.isArray(item.options) ? item.options.join(', ') : item.options}
-                            </ItemOptions>
+                    {(() => {
+                      const items = selectedOrder.order_items && Array.isArray(selectedOrder.order_items) ? selectedOrder.order_items : [];
+                      // Group items by order_group
+                      const groupedItems: { [key: number]: any[] } = {};
+                      items.forEach((item: any) => {
+                        const group = item.order_group || 0;
+                        if (!groupedItems[group]) groupedItems[group] = [];
+                        groupedItems[group].push(item);
+                      });
+                      const groupKeys = Object.keys(groupedItems).map(Number).sort((a, b) => a - b);
+                      const hasMultipleGroups = groupKeys.length > 1 || (groupKeys.length === 1 && groupKeys[0] > 0);
+
+                      return groupKeys.map((groupNum) => (
+                        <div key={groupNum}>
+                          {hasMultipleGroups && (
+                            <div style={{
+                              background: groupNum === 0 ? '#F3F4F6' : '#FEF3C7',
+                              padding: '6px 12px',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              color: groupNum === 0 ? '#6B7280' : '#92400E',
+                              marginTop: groupNum > 0 ? '12px' : '0',
+                              marginBottom: '8px',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center'
+                            }}>
+                              <span>{groupNum === 0 ? 'Original Order' : `+Order ${groupNum}`}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                {groupNum > 0 && groupedItems[groupNum][0]?.added_at && (
+                                  <span style={{ fontWeight: 400, fontSize: '11px' }}>
+                                    {new Date(groupedItems[groupNum][0].added_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                )}
+                                <button
+                                  onClick={() => handlePrintGroupTicket(groupNum, groupedItems[groupNum])}
+                                  style={{
+                                    background: groupNum === 0 ? '#6B7280' : '#F59E0B',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    padding: '4px 8px',
+                                    fontSize: '11px',
+                                    fontWeight: 500,
+                                    cursor: 'pointer'
+                                  }}
+                                  title="Print kitchen ticket for this group"
+                                >
+                                  Print
+                                </button>
+                              </div>
+                            </div>
                           )}
-                          <ItemPrice>
-                            <span>{item.quantity} × {formatCurrency(parseFloat(item.price || item.menuItem?.price || 0), operationSettings.currency)}</span>
-                            <span>{formatCurrency(item.quantity * parseFloat(item.price || item.menuItem?.price || 0), operationSettings.currency)}</span>
-                          </ItemPrice>
-                        </ItemInfo>
-                      </ItemDetail>
-                    ))}
+                          {groupedItems[groupNum].map((item: any, idx: number) => (
+                            <ItemDetail key={`${groupNum}-${idx}`}>
+                              <ItemInfo>
+                                <ItemName>{item.name || item.menuItem?.name || 'Item'}</ItemName>
+                                {item.options && item.options.length > 0 && (
+                                  <ItemOptions>
+                                    {Array.isArray(item.options) ? item.options.join(', ') : item.options}
+                                  </ItemOptions>
+                                )}
+                                <ItemPrice>
+                                  <span>{item.quantity} × {formatCurrency(parseFloat(item.price || item.menuItem?.price || 0), operationSettings.currency)}</span>
+                                  <span>{formatCurrency(item.quantity * parseFloat(item.price || item.menuItem?.price || 0), operationSettings.currency)}</span>
+                                </ItemPrice>
+                              </ItemInfo>
+                            </ItemDetail>
+                          ))}
+                        </div>
+                      ));
+                    })()}
                   </OrderDetailSection>
 
                   <Divider />
