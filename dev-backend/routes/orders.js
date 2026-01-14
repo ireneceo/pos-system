@@ -51,7 +51,20 @@ router.get('/', authenticateToken, async (req, res) => {
       return await Order.findAll(queryOptions);
     }, { maxRetries: 3 });
 
-    res.json({ success: true, data: orders });
+    // Parse order_items for each order
+    const ordersWithParsedItems = orders.map(order => {
+      const plainOrder = order.get({ plain: true });
+      if (typeof plainOrder.order_items === 'string') {
+        try {
+          plainOrder.order_items = JSON.parse(plainOrder.order_items);
+        } catch (e) {
+          plainOrder.order_items = [];
+        }
+      }
+      return plainOrder;
+    });
+
+    res.json({ success: true, data: ordersWithParsedItems });
   } catch (error) {
     console.error('❌ Orders 조회 실패:', error.message);
     res.status(500).json({ success: false, error: error.message });
@@ -694,11 +707,25 @@ router.get('/restaurant/:restaurantId', authenticateToken, async (req, res) => {
       offset: offset
     });
 
+    // Parse order_items for each order (getter may not work with res.json)
+    const ordersWithParsedItems = orders.map(order => {
+      const plainOrder = order.get({ plain: true });
+      // Ensure order_items is parsed
+      if (typeof plainOrder.order_items === 'string') {
+        try {
+          plainOrder.order_items = JSON.parse(plainOrder.order_items);
+        } catch (e) {
+          plainOrder.order_items = [];
+        }
+      }
+      return plainOrder;
+    });
+
     const totalPages = Math.ceil(totalCount / limitNum);
 
     res.json({
       success: true,
-      data: orders,
+      data: ordersWithParsedItems,
       pagination: {
         currentPage: pageNum,
         totalPages: totalPages,
@@ -723,7 +750,20 @@ router.get('/table/:tableNumber', authenticateToken, async (req, res) => {
       order: [['createdAt', 'DESC']]
     });
 
-    res.json({ success: true, data: orders });
+    // Parse order_items for each order
+    const ordersWithParsedItems = orders.map(order => {
+      const plainOrder = order.get({ plain: true });
+      if (typeof plainOrder.order_items === 'string') {
+        try {
+          plainOrder.order_items = JSON.parse(plainOrder.order_items);
+        } catch (e) {
+          plainOrder.order_items = [];
+        }
+      }
+      return plainOrder;
+    });
+
+    res.json({ success: true, data: ordersWithParsedItems });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -733,13 +773,26 @@ router.get('/table/:tableNumber', authenticateToken, async (req, res) => {
 router.get('/kitchen/active', authenticateToken, async (req, res) => {
   try {
     const orders = await Order.findAll({
-      where: { 
+      where: {
         status: ['pending', 'preparing']
       },
       order: [['createdAt', 'ASC']]
     });
-    
-    res.json({ success: true, data: orders });
+
+    // Parse order_items for each order
+    const ordersWithParsedItems = orders.map(order => {
+      const plainOrder = order.get({ plain: true });
+      if (typeof plainOrder.order_items === 'string') {
+        try {
+          plainOrder.order_items = JSON.parse(plainOrder.order_items);
+        } catch (e) {
+          plainOrder.order_items = [];
+        }
+      }
+      return plainOrder;
+    });
+
+    res.json({ success: true, data: ordersWithParsedItems });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

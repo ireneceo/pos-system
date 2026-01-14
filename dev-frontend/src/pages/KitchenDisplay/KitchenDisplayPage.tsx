@@ -1025,7 +1025,7 @@ const KitchenDisplayPage: React.FC = () => {
                       )}
                     </OrderNumber>
                     <OrderTime>
-                      <TimeLabel>Waiting</TimeLabel>
+                      <TimeLabel>{order.orderNumber}</TimeLabel>
                       <TimeValue urgent={isUrgent}>{elapsedTime} min</TimeValue>
                     </OrderTime>
                   </OrderHeader>
@@ -1193,7 +1193,7 @@ const KitchenDisplayPage: React.FC = () => {
                       )}
                     </OrderNumber>
                     <OrderTime>
-                      <TimeLabel>Cooking</TimeLabel>
+                      <TimeLabel>{order.orderNumber}</TimeLabel>
                       <TimeValue>{elapsedTime} min</TimeValue>
                     </OrderTime>
                   </OrderHeader>
@@ -1364,7 +1364,7 @@ const KitchenDisplayPage: React.FC = () => {
                       )}
                     </OrderNumber>
                     <OrderTime>
-                      <TimeLabel>Ready</TimeLabel>
+                      <TimeLabel>{order.orderNumber}</TimeLabel>
                       <TimeValue>{elapsedTime} min ago</TimeValue>
                     </OrderTime>
                   </OrderHeader>

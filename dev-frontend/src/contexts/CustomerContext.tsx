@@ -83,10 +83,10 @@ export const useCustomer = () => {
 };
 
 export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // 모바일 고객 로그인 상태 유지를 위해 sessionStorage 사용
+  // 모바일 고객 로그인 상태 유지를 위해 localStorage 사용 (sessionStorage는 탭 닫으면 사라짐)
   const [currentCustomer, setCurrentCustomerState] = useState<Customer | null>(() => {
     try {
-      const saved = sessionStorage.getItem('mobile_customer');
+      const saved = localStorage.getItem('mobile_customer');
       return saved ? JSON.parse(saved) : null;
     } catch {
       return null;
@@ -94,29 +94,29 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   });
   const [guestInfo, setGuestInfoState] = useState<GuestInfo | null>(() => {
     try {
-      const saved = sessionStorage.getItem('mobile_guest');
+      const saved = localStorage.getItem('mobile_guest');
       return saved ? JSON.parse(saved) : null;
     } catch {
       return null;
     }
   });
 
-  // sessionStorage 동기화 wrapper 함수
+  // localStorage 동기화 wrapper 함수
   const setCurrentCustomer = (customer: Customer | null) => {
     setCurrentCustomerState(customer);
     if (customer) {
-      sessionStorage.setItem('mobile_customer', JSON.stringify(customer));
+      localStorage.setItem('mobile_customer', JSON.stringify(customer));
     } else {
-      sessionStorage.removeItem('mobile_customer');
+      localStorage.removeItem('mobile_customer');
     }
   };
 
   const setGuestInfo = (guest: GuestInfo | null) => {
     setGuestInfoState(guest);
     if (guest) {
-      sessionStorage.setItem('mobile_guest', JSON.stringify(guest));
+      localStorage.setItem('mobile_guest', JSON.stringify(guest));
     } else {
-      sessionStorage.removeItem('mobile_guest');
+      localStorage.removeItem('mobile_guest');
     }
   };
 

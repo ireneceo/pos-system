@@ -1135,9 +1135,10 @@ const LiveOrdersPage: React.FC = () => {
   const [showAddItemsView, setShowAddItemsView] = useState(false);
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [menuCategories, setMenuCategories] = useState<any[]>([]);
-  const [addItemsSelectedCategory, setAddItemsSelectedCategory] = useState<number | null>(null);
+  const [addItemsSelectedCategory, setAddItemsSelectedCategory] = useState<string | null>(null);
   const [addItemsCart, setAddItemsCart] = useState<any[]>([]);
   const [isAddingItems, setIsAddingItems] = useState(false);
+  const [addItemsSearchQuery, setAddItemsSearchQuery] = useState('');
 
   // Toast notification state
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info'; isVisible: boolean }>({
@@ -1946,13 +1947,29 @@ const LiveOrdersPage: React.FC = () => {
       ]);
 
       if (categoriesRes.ok && itemsRes.ok) {
-        const categories = await categoriesRes.json();
-        const items = await itemsRes.json();
-        setMenuCategories(categories.filter((c: any) => c.is_active));
-        setMenuItems(items.filter((i: any) => i.is_available));
+        const categoriesResult = await categoriesRes.json();
+        const itemsResult = await itemsRes.json();
+
+        // Extract data from API response format { success: true, data: { categories, items } }
+        const categories = categoriesResult.data?.categories || categoriesResult.categories || [];
+        const items = itemsResult.data?.items || itemsResult.items || [];
+
+        console.log('📦 Add Items - Categories loaded:', categories.length);
+        console.log('📦 Add Items - Items loaded:', items.length);
+
+        setMenuCategories(categories.filter((c: any) => c.is_active !== false));
+        // Normalize category ID field (API returns categoryId, we need category_id)
+        const normalizedItems = items.map((i: any) => ({
+          ...i,
+          category_id: i.category_id || i.categoryId
+        }));
+        setMenuItems(normalizedItems.filter((i: any) => i.is_available !== false));
         if (categories.length > 0) {
-          setAddItemsSelectedCategory(categories[0].id);
+          // Store as string for consistent comparison
+          setAddItemsSelectedCategory(String(categories[0].id));
         }
+      } else {
+        console.error('Failed to fetch menu - Categories:', categoriesRes.status, 'Items:', itemsRes.status);
       }
     } catch (error) {
       console.error('Failed to fetch menu:', error);
@@ -2999,16 +3016,14 @@ const LiveOrdersPage: React.FC = () => {
                   <ModalTitle>
                     {showAddItemsView ? 'Add Items to Order' : showReceiptView ? 'Receipt Preview' : showKitchenTicketView ? 'Kitchen Order Ticket Preview' : `Order ${selectedOrder.order_number}`}
                   </ModalTitle>
-                  {(showReceiptView || showKitchenTicketView || showAddItemsView) ? (
-                    <CloseButton onClick={() => {
-                      setShowReceiptView(false);
-                      setShowKitchenTicketView(false);
-                      setShowAddItemsView(false);
-                      setAddItemsCart([]);
-                    }}>← Back</CloseButton>
-                  ) : (
-                    <CloseButton onClick={handleCloseModal}>×</CloseButton>
-                  )}
+                  <CloseButton onClick={() => {
+                    // X button always closes the entire modal
+                    setShowReceiptView(false);
+                    setShowKitchenTicketView(false);
+                    setShowAddItemsView(false);
+                    setAddItemsCart([]);
+                    handleCloseModal();
+                  }}>×</CloseButton>
                 </ModalHeader>
 
                 {showAddItemsView ? (
@@ -3021,13 +3036,13 @@ const LiveOrdersPage: React.FC = () => {
                         {menuCategories.map((cat: any) => (
                           <button
                             key={cat.id}
-                            onClick={() => setAddItemsSelectedCategory(cat.id)}
+                            onClick={() => setAddItemsSelectedCategory(String(cat.id))}
                             style={{
                               padding: '8px 16px',
-                              border: addItemsSelectedCategory === cat.id ? '2px solid #635BFF' : '1px solid #E5E7EB',
+                              border: String(addItemsSelectedCategory) === String(cat.id) ? '2px solid #635BFF' : '1px solid #E5E7EB',
                               borderRadius: '8px',
-                              background: addItemsSelectedCategory === cat.id ? '#EEF2FF' : 'white',
-                              color: addItemsSelectedCategory === cat.id ? '#635BFF' : '#1F2937',
+                              background: String(addItemsSelectedCategory) === String(cat.id) ? '#EEF2FF' : 'white',
+                              color: String(addItemsSelectedCategory) === String(cat.id) ? '#635BFF' : '#1F2937',
                               fontWeight: 500,
                               cursor: 'pointer'
                             }}
@@ -3039,7 +3054,7 @@ const LiveOrdersPage: React.FC = () => {
                       {/* Menu Items Grid */}
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '12px', overflowY: 'auto', flex: 1 }}>
                         {menuItems
-                          .filter((item: any) => item.category_id === addItemsSelectedCategory)
+                          .filter((item: any) => String(item.category_id) === String(addItemsSelectedCategory))
                           .map((item: any) => (
                             <div
                               key={item.id}
@@ -3124,6 +3139,25 @@ const LiveOrdersPage: React.FC = () => {
                           }}
                         >
                           {isAddingItems ? 'Adding...' : 'Add to Order'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowAddItemsView(false);
+                            setAddItemsCart([]);
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            marginTop: '8px',
+                            border: '1px solid #E5E7EB',
+                            borderRadius: '8px',
+                            background: 'white',
+                            color: '#6B7C93',
+                            fontWeight: 500,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Back to Order Details
                         </button>
                       </div>
                     </div>
@@ -3501,6 +3535,8 @@ const LiveOrdersPage: React.FC = () => {
                 </ModalBody>
                 )}
 
+                {/* Hide footer for Add Items view - it has its own buttons */}
+                {!showAddItemsView && (
                 <ModalFooter>
                   {showReceiptView ? (
                     <ActionButton onClick={() => setShowReceiptView(false)}>
@@ -3578,6 +3614,7 @@ const LiveOrdersPage: React.FC = () => {
                     </>
                   )}
                 </ModalFooter>
+                )}
               </>
             )}
           </ModalContent>
