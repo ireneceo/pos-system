@@ -149,6 +149,13 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
   // 메뉴 로드 함수를 별도로 분리 (useCallback으로 감싸서 안정적인 참조 유지)
   const loadMenuFromAPI = useCallback(async () => {
     try {
+      // Skip API calls if no auth token (except for mobile pages which use slug-based API)
+      const token = localStorage.getItem('auth_token');
+      const isMobilePage = window.location.pathname.includes('/mobile/');
+
+      if (!token && !isMobilePage) {
+        return;
+      }
 
       // Get restaurantId from URL path (e.g., /restaurant/5/menu)
       const pathParts = window.location.pathname.split('/');

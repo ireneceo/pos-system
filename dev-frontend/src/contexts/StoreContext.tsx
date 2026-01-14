@@ -133,7 +133,11 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
     const loadSettingsFromDB = async () => {
       try {
         const token = localStorage.getItem('auth_token');
-        console.log('🔑 StoreContext: Auth token exists:', !!token);
+
+        // Skip API calls if no auth token (user not logged in)
+        if (!token) {
+          return;
+        }
 
         // Try to get restaurant_id from URL first
         // Support both /restaurant/:id and /mobile/:slug patterns

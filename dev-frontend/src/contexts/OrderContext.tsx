@@ -86,6 +86,12 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
   useEffect(() => {
     const loadOrders = async () => {
       try {
+        // Skip API calls if no auth token (user not logged in)
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+          return;
+        }
+
         const response = await fetch('/api/orders?limit=100', getFetchOptions());
         const result = await response.json();
 

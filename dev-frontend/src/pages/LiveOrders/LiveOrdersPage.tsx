@@ -1815,17 +1815,13 @@ const LiveOrdersPage: React.FC = () => {
       const targetOrderId = sortedOrders[0].id;
       const allOrderIds = sortedOrders.map(o => o.id);
 
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/orders/merge`, {
+      const response = await fetch('/api/orders/merge', getFetchOptions({
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: JSON.stringify({
           orderIds: allOrderIds,
           targetOrderId
         })
-      });
+      }));
 
       if (!response.ok) {
         let errorMessage = 'Failed to merge orders';
@@ -1845,7 +1841,7 @@ const LiveOrdersPage: React.FC = () => {
       const result = await response.json();
 
       // Show success message
-      alert(`Successfully merged ${sourceOrderIds.length + 1} orders into ${result.order.order_number}`);
+      alert(`Successfully merged ${allOrderIds.length} orders into ${result.order.order_number}`);
 
       // Reset select mode
       setSelectMode(false);
@@ -1869,20 +1865,16 @@ const LiveOrdersPage: React.FC = () => {
   // Fetch menu items for Add Items modal
   const fetchMenuForAddItems = async () => {
     try {
-      // Use restaurant_id from selected order, or user's restaurantId, or selectedRestaurant
-      const restaurantId = selectedOrder?.restaurant_id || user?.restaurantId || selectedRestaurant;
+      // Use restaurant_id from selected order, or user's restaurantId
+      const restaurantId = selectedOrder?.restaurant_id || user?.restaurantId;
       if (!restaurantId) {
         console.error('No restaurant ID available for fetching menu');
         return;
       }
 
       const [categoriesRes, itemsRes] = await Promise.all([
-        fetch(`${process.env.REACT_APP_API_URL}/api/menu/categories?restaurant_id=${restaurantId}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        }),
-        fetch(`${process.env.REACT_APP_API_URL}/api/menu?restaurant_id=${restaurantId}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        })
+        fetch(`/api/menu/categories?restaurantId=${restaurantId}`, getFetchOptions()),
+        fetch(`/api/menu?restaurantId=${restaurantId}`, getFetchOptions())
       ]);
 
       if (categoriesRes.ok && itemsRes.ok) {
@@ -1937,14 +1929,10 @@ const LiveOrdersPage: React.FC = () => {
         options: []
       }));
 
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/orders/${selectedOrder?.id}/add-items`, {
+      const response = await fetch(`/api/orders/${selectedOrder?.id}/add-items`, getFetchOptions({
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: JSON.stringify({ items })
-      });
+      }));
 
       if (!response.ok) {
         const error = await response.json();
