@@ -16,10 +16,19 @@
 |------|------|:----:|
 | Auto-merge | 같은 테이블/조건 주문 자동 통합 | 대기 |
 | Manual Merge | 선택한 주문들 수동 병합 | 대기 |
-| Add Items | 기존 주문에 메뉴 추가 + 키친티켓 | 대기 |
+| Add Items | 기존 주문에 메뉴 추가 + 키친티켓 | **UI 완료, 테스트 필요** |
 | Kitchen Display 개선 | Pending 컬럼 아이템별 Done 버튼 | 대기 |
 | Coupon System | 쿠폰 모델/API 백엔드 구현 | 대기 |
 | Printer Settings | 빌/키친 프린터 분리 설정 | 대기 |
+
+### 테스트 대기 항목
+
+| 기능 | 테스트 내용 | 상태 |
+|------|------------|:----:|
+| Print Settings | 빌/키친 프린터 분리 설정 확인 | 대기 |
+| Coupon System | 쿠폰 적용 UI 및 할인 계산 | 대기 |
+| Order Merge | 주문 병합 기능 테스트 | 대기 |
+| Add Items | 메뉴 추가 (옵션 있는/없는 메뉴) | 대기 |
 
 ### 핵심 변경 사항
 
@@ -31,6 +40,43 @@
 ### 수정 필요 버그
 
 - `PATCH /api/orders/:id/items`에서 `total_amount` 재계산 누락 (orders.js:448-472)
+
+---
+
+## ✅ 완료: Live Orders Add Items 모달 개선 (2026-01-14)
+
+### 변경 사항
+
+| 상태 | 항목 | 파일 |
+|:---:|------|------|
+| ✅ | POS Terminal OptionModal 컴포넌트 재사용 | `pages/LiveOrders/LiveOrdersPage.tsx` |
+| ✅ | optionGroups 문자열→배열 파싱 버그 수정 | `pages/LiveOrders/LiveOrdersPage.tsx` |
+| ✅ | 아이템 클릭 시 바로 추가, Options 버튼 시 옵션 모달 | `pages/LiveOrders/LiveOrdersPage.tsx` |
+| ✅ | Cancel/Add to Order 버튼 동작 개선 (전체 모달 닫힘) | `pages/LiveOrders/LiveOrdersPage.tsx` |
+
+### 수정 내용
+
+1. **OptionModal 컴포넌트 재사용**
+   - POS Terminal의 `OptionModal` 컴포넌트를 Live Orders에서도 사용
+   - MenuContext의 optionGroups를 활용하여 옵션 데이터 조회
+
+2. **optionGroups 파싱 버그 수정**
+   - DB에서 `optionGroups`가 문자열 `"[]"`로 저장됨
+   - `fetchMenuForAddItems`에서 JSON.parse 처리 추가
+   - `Array.isArray()` 체크가 실패하던 문제 해결
+
+3. **UI 동작 개선**
+   - 아이템 클릭: 바로 장바구니에 추가 (옵션 없이)
+   - Options 버튼: 옵션 선택 모달 표시
+   - Cancel 버튼: 전체 모달 닫힘 (order detail로 돌아가지 않음)
+   - Add to Order 버튼: 주문에 추가 후 전체 모달 닫힘
+
+### 테스트 필요 항목
+
+- [ ] 옵션 있는 메뉴 추가 테스트
+- [ ] 옵션 없는 메뉴 추가 테스트
+- [ ] 장바구니 수량 조절 테스트
+- [ ] Add to Order 후 팝업 닫힘 확인
 
 ---
 
