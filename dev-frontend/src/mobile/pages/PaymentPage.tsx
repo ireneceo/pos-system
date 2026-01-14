@@ -484,12 +484,27 @@ const InfoBox = styled.div`
   color: #92400E;
 `;
 
-// Mock coupon codes for demo
-const VALID_COUPONS: Record<string, { type: 'percentage' | 'fixed'; value: number; minOrder?: number }> = {
-  'SAVE10': { type: 'percentage', value: 10, minOrder: 30 },
-  'SAVE5': { type: 'fixed', value: 5, minOrder: 20 },
-  'WELCOME': { type: 'percentage', value: 15, minOrder: 0 },
-  'FOODIE20': { type: 'percentage', value: 20, minOrder: 50 }
+// Coupon validation API endpoint
+const validateCouponAPI = async (code: string, restaurantId: number, orderAmount: number, orderType: string) => {
+  const response = await fetch(`${process.env.REACT_APP_API_URL}/api/coupons/validate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      code,
+      restaurant_id: restaurantId,
+      order_amount: orderAmount,
+      order_type: orderType
+    })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Invalid coupon');
+  }
+
+  return response.json();
 };
 
 const PaymentPage: React.FC = () => {
@@ -1516,7 +1531,7 @@ const PaymentPage: React.FC = () => {
     return v;
   };
   
-  const handleApplyCoupon = () => {
+  const handleApplyCoupon = async () => {
     setCouponError('');
 
     if (!couponCode) {
@@ -1524,30 +1539,30 @@ const PaymentPage: React.FC = () => {
       return;
     }
 
-    const coupon = VALID_COUPONS[couponCode];
-
-    if (!coupon) {
-      setCouponError('Invalid coupon code');
-      setCouponDiscount(0);
+    if (!currentStore?.id) {
+      setCouponError('Store not found');
       return;
     }
 
-    if (coupon.minOrder && subtotal < coupon.minOrder) {
-      setCouponError(`Minimum order of ${formatCurrency(coupon.minOrder, currency)} required`);
+    try {
+      const result = await validateCouponAPI(
+        couponCode,
+        currentStore.id,
+        subtotal,
+        orderType
+      );
+
+      if (result.valid) {
+        setCouponDiscount(result.discount_amount);
+        setCouponError('');
+      } else {
+        setCouponError(result.message || 'Invalid coupon');
+        setCouponDiscount(0);
+      }
+    } catch (error: any) {
+      setCouponError(error.message || 'Failed to validate coupon');
       setCouponDiscount(0);
-      return;
     }
-
-    // Calculate discount
-    let discount = 0;
-    if (coupon.type === 'percentage') {
-      discount = (subtotal * coupon.value) / 100;
-    } else {
-      discount = Math.min(coupon.value, subtotal); // Can't discount more than subtotal
-    }
-
-    setCouponDiscount(discount);
-    setCouponError('');
   };
   
   return (

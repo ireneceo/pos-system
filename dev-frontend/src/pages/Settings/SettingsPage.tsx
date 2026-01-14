@@ -376,7 +376,7 @@ const ActionButton = styled.button`
 `;
 
 // 타입 정의
-type TabType = 'store' | 'operations' | 'payment' | 'company' | 'brands' | 'billing' | 'managers' | 'membership';
+type TabType = 'store' | 'operations' | 'payment' | 'printer' | 'company' | 'brands' | 'billing' | 'managers' | 'membership';
 
 interface Table {
   id: string;
@@ -593,6 +593,20 @@ const SettingsPage: React.FC = () => {
   // Payment settings state - start with null, will be loaded from DB
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
   const [paymentOrder, setPaymentOrder] = useState<string[]>([]);
+
+  // Printer settings state
+  const [printerSettings, setPrinterSettings] = useState({
+    billPrinter: {
+      enabled: true,
+      name: '',
+      autoPrint: false
+    },
+    kitchenPrinter: {
+      enabled: true,
+      name: '',
+      autoPrint: true
+    }
+  });
 
   // Load settings from localStorage or use defaults
   const loadSettings = () => {
@@ -980,6 +994,22 @@ const SettingsPage: React.FC = () => {
       loadManagers();
     }
   }, [activeTab, user?.restaurantId]);
+
+  // Load printer settings from localStorage
+  useEffect(() => {
+    const savedPrinterSettings = localStorage.getItem('printerSettings');
+    if (savedPrinterSettings) {
+      try {
+        const parsed = JSON.parse(savedPrinterSettings);
+        setPrinterSettings(prev => ({
+          billPrinter: { ...prev.billPrinter, ...parsed.billPrinter },
+          kitchenPrinter: { ...prev.kitchenPrinter, ...parsed.kitchenPrinter }
+        }));
+      } catch (e) {
+        console.error('Failed to parse printer settings:', e);
+      }
+    }
+  }, []);
 
   // Load membership settings
   useEffect(() => {
@@ -1551,6 +1581,9 @@ const SettingsPage: React.FC = () => {
                 </Tab>
                 <Tab active={activeTab === 'payment'} onClick={() => handleTabChange('payment')}>
                   Payment Methods
+                </Tab>
+                <Tab active={activeTab === 'printer'} onClick={() => handleTabChange('printer')}>
+                  Printer
                 </Tab>
                 <Tab active={activeTab === 'managers'} onClick={() => handleTabChange('managers')}>
                   Managers
@@ -3675,6 +3708,123 @@ const SettingsPage: React.FC = () => {
                 )}
               </SaveButtonContainer>
             </>
+          )}
+
+          {activeTab === 'printer' && (
+            <SettingsCard>
+              <CardTitle>Printer Settings</CardTitle>
+              <p style={{ color: '#6B7C93', marginBottom: '24px', fontSize: '14px' }}>
+                Configure bill printer and kitchen printer settings for your restaurant
+              </p>
+
+              {/* Bill Printer Settings */}
+              <FormGroup style={{ marginBottom: '32px' }}>
+                <Label style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', display: 'block' }}>Bill Printer</Label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                  <input
+                    type="checkbox"
+                    checked={printerSettings.billPrinter.enabled}
+                    onChange={(e) => setPrinterSettings(prev => ({
+                      ...prev,
+                      billPrinter: { ...prev.billPrinter, enabled: e.target.checked }
+                    }))}
+                    style={{ width: '18px', height: '18px' }}
+                  />
+                  <span>Enable Bill Printer</span>
+                </div>
+                {printerSettings.billPrinter.enabled && (
+                  <>
+                    <Label>Printer Name (RawBT)</Label>
+                    <Input
+                      type="text"
+                      value={printerSettings.billPrinter.name}
+                      onChange={(e) => setPrinterSettings(prev => ({
+                        ...prev,
+                        billPrinter: { ...prev.billPrinter, name: e.target.value }
+                      }))}
+                      placeholder="e.g., InnerPrinter, XP-80C, etc."
+                    />
+                    <p style={{ fontSize: '12px', color: '#6B7C93', marginTop: '4px' }}>Enter the printer name as registered in RawBT app. Leave empty for default printer.</p>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '16px' }}>
+                      <input
+                        type="checkbox"
+                        checked={printerSettings.billPrinter.autoPrint}
+                        onChange={(e) => setPrinterSettings(prev => ({
+                          ...prev,
+                          billPrinter: { ...prev.billPrinter, autoPrint: e.target.checked }
+                        }))}
+                        style={{ width: '18px', height: '18px' }}
+                      />
+                      <span>Auto-print bill after payment</span>
+                    </div>
+                  </>
+                )}
+              </FormGroup>
+
+              {/* Kitchen Printer Settings */}
+              <FormGroup>
+                <Label style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', display: 'block' }}>Kitchen Printer</Label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                  <input
+                    type="checkbox"
+                    checked={printerSettings.kitchenPrinter.enabled}
+                    onChange={(e) => setPrinterSettings(prev => ({
+                      ...prev,
+                      kitchenPrinter: { ...prev.kitchenPrinter, enabled: e.target.checked }
+                    }))}
+                    style={{ width: '18px', height: '18px' }}
+                  />
+                  <span>Enable Kitchen Printer</span>
+                </div>
+                {printerSettings.kitchenPrinter.enabled && (
+                  <>
+                    <Label>Printer Name (RawBT)</Label>
+                    <Input
+                      type="text"
+                      value={printerSettings.kitchenPrinter.name}
+                      onChange={(e) => setPrinterSettings(prev => ({
+                        ...prev,
+                        kitchenPrinter: { ...prev.kitchenPrinter, name: e.target.value }
+                      }))}
+                      placeholder="e.g., KitchenPrinter, XP-80C, etc."
+                    />
+                    <p style={{ fontSize: '12px', color: '#6B7C93', marginTop: '4px' }}>Enter the printer name as registered in RawBT app. Leave empty for default printer.</p>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '16px' }}>
+                      <input
+                        type="checkbox"
+                        checked={printerSettings.kitchenPrinter.autoPrint}
+                        onChange={(e) => setPrinterSettings(prev => ({
+                          ...prev,
+                          kitchenPrinter: { ...prev.kitchenPrinter, autoPrint: e.target.checked }
+                        }))}
+                        style={{ width: '18px', height: '18px' }}
+                      />
+                      <span>Auto-print kitchen ticket on new order</span>
+                    </div>
+                  </>
+                )}
+              </FormGroup>
+
+              <SaveButtonContainer style={{ marginTop: '32px' }}>
+                <SaveButton
+                  onClick={() => {
+                    // Save printer settings to localStorage
+                    localStorage.setItem('printerSettings', JSON.stringify(printerSettings));
+                    setSaveStatus({ type: 'success', message: 'Printer settings saved successfully!' });
+                    setTimeout(() => setSaveStatus(null), 3000);
+                  }}
+                >
+                  Save Printer Settings
+                </SaveButton>
+                {saveStatus && (
+                  <StatusMessage status={saveStatus.type}>
+                    {saveStatus.message}
+                  </StatusMessage>
+                )}
+              </SaveButtonContainer>
+            </SettingsCard>
           )}
 
           {activeTab === 'managers' && (

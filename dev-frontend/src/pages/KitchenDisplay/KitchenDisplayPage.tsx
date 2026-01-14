@@ -1006,6 +1006,8 @@ const KitchenDisplayPage: React.FC = () => {
               const elapsedTime = getElapsedTime(order.orderTime);
               const isUrgent = elapsedTime > 15;
 
+              const completedItems = order.items.filter(item => item.status === 'completed').length;
+
               return (
                 <OrderCard key={order.id}>
                   <OrderHeader>
@@ -1054,50 +1056,99 @@ const KitchenDisplayPage: React.FC = () => {
                         🚚 DELIVERY
                       </MetaItem>
                     )}
+                    <MetaItem>
+                      ✓ {completedItems}/{order.items.length} items
+                    </MetaItem>
                   </OrderMeta>
 
                   <OrderItems>
-                    {order.items.map((item, index) => (
-                      <OrderItem key={index}>
-                        <ItemInfo>
-                          <ItemName>{formatItemName(item.name)}</ItemName>
-                          {item.options && item.options.length > 0 && (() => {
-                            // Separate set menu items and regular options
-                            const setItems: string[] = [];
-                            const regularOptions: string[] = [];
+                    {order.items.map((item) => (
+                      <React.Fragment key={item.id}>
+                        <OrderItem>
+                          <ItemInfo style={{ opacity: item.status === 'completed' ? 0.5 : 1 }}>
+                            <ItemName style={{ textDecoration: item.status === 'completed' ? 'line-through' : 'none' }}>
+                              {formatItemName(item.name)}
+                            </ItemName>
+                            {item.options && item.options.length > 0 && (() => {
+                              // Separate set menu items and regular options
+                              const setItems: string[] = [];
+                              const regularOptions: string[] = [];
 
-                            item.options.forEach(option => {
-                              // Check if this is a set menu item (format: "item name xN")
-                              if (/^.+\sx\d+$/.test(option)) {
-                                setItems.push(option);
-                              } else {
-                                regularOptions.push(option);
-                              }
-                            });
+                              item.options.forEach(option => {
+                                // Check if this is a set menu item (format: "item name xN")
+                                if (/^.+\sx\d+$/.test(option)) {
+                                  setItems.push(option);
+                                } else {
+                                  regularOptions.push(option);
+                                }
+                              });
 
-                            return (
-                              <>
-                                {setItems.length > 0 && (
-                                  <ItemOptions style={{ fontWeight: 600 }}>
-                                    {setItems.join(', ')}
-                                  </ItemOptions>
-                                )}
-                                {regularOptions.length > 0 && (
-                                  <ItemOptions>
-                                    ⭐ {regularOptions.join(', ')}
-                                  </ItemOptions>
-                                )}
-                              </>
-                            );
-                          })()}
-                          {item.special_instructions && (
-                            <ItemOptions style={{ color: '#DC2626', fontStyle: 'italic' }}>
-                              📝 {item.special_instructions}
-                            </ItemOptions>
+                              return (
+                                <>
+                                  {setItems.length > 0 && (
+                                    <ItemOptions style={{ fontWeight: 600 }}>
+                                      {setItems.join(', ')}
+                                    </ItemOptions>
+                                  )}
+                                  {regularOptions.length > 0 && (
+                                    <ItemOptions>
+                                      ⭐ {regularOptions.join(', ')}
+                                    </ItemOptions>
+                                  )}
+                                </>
+                              );
+                            })()}
+                            {item.special_instructions && (
+                              <ItemOptions style={{ color: '#DC2626', fontStyle: 'italic' }}>
+                                📝 {item.special_instructions}
+                              </ItemOptions>
+                            )}
+                          </ItemInfo>
+                          <ItemQuantity>×{item.quantity}</ItemQuantity>
+                          {!item.is_set_menu && (
+                            <ItemActions>
+                              <ItemButton
+                                onClick={() => updateItemStatus(order.id, item.id!)}
+                                style={{
+                                  background: item.status === 'completed' ? '#F59E0B' : '#F3F4F6',
+                                  color: item.status === 'completed' ? 'white' : '#6B7280',
+                                  border: item.status === 'completed' ? '1px solid #F59E0B' : '1px solid #E5E7EB'
+                                }}
+                              >
+                                {item.status === 'completed' ? '✓ Done' : 'Done'}
+                              </ItemButton>
+                            </ItemActions>
                           )}
-                        </ItemInfo>
-                        <ItemQuantity>×{item.quantity}</ItemQuantity>
-                      </OrderItem>
+                        </OrderItem>
+
+                        {/* Show set menu items individually */}
+                        {item.is_set_menu && item.set_items && item.set_items.length > 0 && (
+                          <SetItemsContainer>
+                            {item.set_items.map((setItem) => (
+                              <SetItemRow key={setItem.id}>
+                                <SetItemName style={{
+                                  textDecoration: setItem.status === 'completed' ? 'line-through' : 'none',
+                                  opacity: setItem.status === 'completed' ? 0.5 : 1
+                                }}>
+                                  • {formatItemName(setItem.name)} x{setItem.quantity}
+                                </SetItemName>
+                                <ItemActions>
+                                  <ItemButton
+                                    onClick={() => updateSetItemStatus(order.id, item.id!, setItem.id!)}
+                                    style={{
+                                      background: setItem.status === 'completed' ? '#F59E0B' : '#F3F4F6',
+                                      color: setItem.status === 'completed' ? 'white' : '#6B7280',
+                                      border: setItem.status === 'completed' ? '1px solid #F59E0B' : '1px solid #E5E7EB'
+                                    }}
+                                  >
+                                    {setItem.status === 'completed' ? '✓' : 'Done'}
+                                  </ItemButton>
+                                </ItemActions>
+                              </SetItemRow>
+                            ))}
+                          </SetItemsContainer>
+                        )}
+                      </React.Fragment>
                     ))}
                   </OrderItems>
 
