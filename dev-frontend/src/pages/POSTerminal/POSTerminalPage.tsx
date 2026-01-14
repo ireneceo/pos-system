@@ -1633,35 +1633,39 @@ const POSTerminalPage: React.FC = () => {
     }
   };
 
-  const handleApplyCoupon = () => {
-    // Get coupons from promotion management system
-    const coupons: {[key: string]: {discount: string; status: string}} = {
-      'SUMMER2025': { discount: '10%', status: 'active' },
-      'NEWUSER': { discount: `${operationSettings.currency} 5`, status: 'active' },
-      'SAVE10': { discount: '10%', status: 'active' },
-      'SAVE20': { discount: '20%', status: 'active' },
-      'WELCOME5': { discount: `${operationSettings.currency} 5`, status: 'active' },
-      'LUNCH15': { discount: '15%', status: 'active' }
-    };
-    
-    const upperCode = couponCode.toUpperCase();
-    const coupon = coupons[upperCode];
-    
-    if (coupon && coupon.status === 'active') {
-      // Parse discount value (percentage or fixed amount)
-      let discountValue = 0;
-      if (coupon.discount.includes('%')) {
-        // Percentage discount
-        const percentage = parseFloat(coupon.discount.replace('%', ''));
-        discountValue = subtotal * (percentage / 100);
-      } else if (coupon.discount.includes(operationSettings.currency)) {
-        // Fixed amount discount
-        discountValue = parseFloat(coupon.discount.replace(`${operationSettings.currency} `, ''));
+  const handleApplyCoupon = async () => {
+    if (!couponCode) return;
+
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/coupons/validate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          code: couponCode.toUpperCase(),
+          restaurant_id: user?.restaurantId,
+          order_amount: subtotal,
+          order_type: orderType
+        })
+      });
+
+      if (!response.ok) {
+        setShowCouponError(true);
+        return;
       }
 
-      setAppliedCoupon({ code: upperCode, discount: discountValue });
-      setCouponCode('');
-    } else if (couponCode) {
+      const result = await response.json();
+
+      if (result.valid) {
+        setAppliedCoupon({ code: couponCode.toUpperCase(), discount: result.discount_amount });
+        setCouponCode('');
+      } else {
+        setShowCouponError(true);
+      }
+    } catch (error) {
+      console.error('Coupon validation error:', error);
       setShowCouponError(true);
     }
   };

@@ -239,10 +239,15 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
     }
 
     // Calculate total amount if not provided
-    if (!orderData.total_amount && orderData.order_items) {
-      orderData.total_amount = orderData.order_items.reduce((sum, item) => {
-        return sum + (item.price * item.quantity);
+    const itemsArray = orderData.order_items || orderData.items || [];
+    if (!orderData.total_amount && itemsArray.length > 0) {
+      orderData.total_amount = itemsArray.reduce((sum, item) => {
+        return sum + (parseFloat(item.price) * parseInt(item.quantity));
       }, 0);
+    }
+    // Ensure total_amount has a default value
+    if (!orderData.total_amount) {
+      orderData.total_amount = 0;
     }
 
     // Get restaurant for timezone and operation settings

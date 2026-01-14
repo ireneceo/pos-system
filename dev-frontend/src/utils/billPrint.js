@@ -307,14 +307,44 @@ export function generateBillContent(orderData, storeInfo) {
 // ============================================
 
 /**
+ * Get printer settings from localStorage
+ * @returns {Object} Printer settings
+ */
+function getPrinterSettings() {
+  try {
+    const savedSettings = localStorage.getItem('printerSettings');
+    if (savedSettings) {
+      return JSON.parse(savedSettings);
+    }
+  } catch (e) {
+    console.error('Failed to load printer settings:', e);
+  }
+  return {
+    billPrinter: { enabled: true, name: '', autoPrint: false },
+    kitchenPrinter: { enabled: true, name: '', autoPrint: true }
+  };
+}
+
+/**
  * Print bill via RawBT app using Android Intent
  *
  * @param {Object} orderData - Order data
  * @param {Object} storeInfo - Store info
+ * @param {string} [printerName] - Optional printer name (overrides settings)
  * @returns {Promise<boolean>} Success status
  */
-export async function printBillViaRawBT(orderData, storeInfo) {
+export async function printBillViaRawBT(orderData, storeInfo, printerName) {
   try {
+    // Check if bill printer is enabled
+    const settings = getPrinterSettings();
+    if (!settings.billPrinter.enabled) {
+      console.log('Bill printer is disabled in settings');
+      return true; // Return success but skip printing
+    }
+
+    // Use provided printerName or get from settings
+    const targetPrinter = printerName || settings.billPrinter.name;
+
     // Generate ESC/POS content
     const escposContent = generateBillContent(orderData, storeInfo);
 
@@ -323,7 +353,11 @@ export async function printBillViaRawBT(orderData, storeInfo) {
     const base64Content = btoa(unescape(encodeURIComponent(escposContent)));
 
     // Build Android Intent URL for RawBT
-    const intentScheme = '#Intent;scheme=rawbt;';
+    let intentScheme = '#Intent;scheme=rawbt;';
+    // Add printer name if specified (RawBT uses S.s parameter for printer selection)
+    if (targetPrinter) {
+      intentScheme += 'S.s=' + encodeURIComponent(targetPrinter) + ';';
+    }
     const intentPackage = 'package=ru.a402d.rawbtprinter;end;';
     const intentUrl = 'intent:base64,' + base64Content + intentScheme + intentPackage;
 
@@ -537,14 +571,29 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
  *
  * @param {Object} orderData - Order data
  * @param {Object} storeInfo - Store info
+ * @param {string} [printerName] - Optional printer name (overrides settings)
  * @returns {Promise<boolean>} Success status
  */
-export async function printKitchenTicketViaRawBT(orderData, storeInfo) {
+export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerName) {
   try {
+    // Check if kitchen printer is enabled
+    const settings = getPrinterSettings();
+    if (!settings.kitchenPrinter.enabled) {
+      console.log('Kitchen printer is disabled in settings');
+      return true; // Return success but skip printing
+    }
+
+    // Use provided printerName or get from settings
+    const targetPrinter = printerName || settings.kitchenPrinter.name;
+
     const escposContent = generateKitchenTicketContent(orderData, storeInfo);
     const base64Content = btoa(unescape(encodeURIComponent(escposContent)));
 
-    const intentScheme = '#Intent;scheme=rawbt;';
+    let intentScheme = '#Intent;scheme=rawbt;';
+    // Add printer name if specified
+    if (targetPrinter) {
+      intentScheme += 'S.s=' + encodeURIComponent(targetPrinter) + ';';
+    }
     const intentPackage = 'package=ru.a402d.rawbtprinter;end;';
     const intentUrl = 'intent:base64,' + base64Content + intentScheme + intentPackage;
 
@@ -563,6 +612,175 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo) {
     console.error('❌ Kitchen Ticket print error:', error);
     alert(
       'Failed to print kitchen order ticket.\n\n' +
+      'Please ensure:\n' +
+      '1. RawBT app is installed\n' +
+      '2. WiFi printer is configured in RawBT\n' +
+      '3. Printer is connected and ready\n\n' +
+      'Error: ' + error.message
+    );
+    return false;
+  }
+}
+
+// ============================================
+// Additional Items Kitchen Ticket
+// ============================================
+
+/**
+ * Generate Additional Items Kitchen Ticket (추가 주문 티켓)
+ * Only prints items that have been added after initial order
+ *
+ * @param {Object} orderData - Order information with added items
+ * @param {Object} storeInfo - Store information
+ * @returns {string} ESC/POS command string
+ */
+export function generateAdditionalItemsTicketContent(orderData, storeInfo) {
+  let content = '';
+
+  // Filter only newly added items (items with added_at timestamp)
+  const addedItems = orderData.items.filter(item => item.added_at);
+
+  if (addedItems.length === 0) {
+    return ''; // No additional items to print
+  }
+
+  // Initialize printer
+  content += CMD.INIT;
+
+  // === HEADER - ADDITIONAL ORDER ===
+  content += CMD.ALIGN_CENTER;
+  content += CMD.TEXT_DOUBLE;
+  content += CMD.BOLD_ON;
+  content += '** ADDITIONAL ORDER **' + CMD.LINE_FEED;
+  content += CMD.TEXT_NORMAL;
+  content += CMD.BOLD_OFF;
+  content += CMD.LINE_FEED;
+
+  // === ORDER INFO ===
+  content += CMD.ALIGN_LEFT;
+  content += CMD.DASHED_LINE + CMD.LINE_FEED;
+  content += formatLine('Order:', orderData.orderNumber) + CMD.LINE_FEED;
+
+  const timeStr = new Date().toLocaleTimeString('en-MY', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+  content += formatLine('Time:', timeStr) + CMD.LINE_FEED;
+
+  // Table info
+  if (orderData.tableNumber) {
+    content += CMD.BOLD_ON;
+    content += formatLine('TABLE:', orderData.tableNumber) + CMD.LINE_FEED;
+    content += CMD.BOLD_OFF;
+  }
+
+  content += CMD.DASHED_LINE + CMD.LINE_FEED;
+  content += CMD.LINE_FEED;
+
+  // === ADDED ITEMS ===
+  content += CMD.BOLD_ON;
+  content += CMD.TEXT_DOUBLE_HEIGHT;
+  content += 'ADDED ITEMS:' + CMD.LINE_FEED;
+  content += CMD.TEXT_NORMAL;
+  content += CMD.BOLD_OFF;
+  content += CMD.LINE_FEED;
+
+  addedItems.forEach((item, index) => {
+    const itemName = item.menuItem?.name || item.name;
+    const qty = item.quantity;
+
+    // Item: Quantity x Name (LARGE & BOLD)
+    content += CMD.BOLD_ON;
+    content += CMD.TEXT_DOUBLE;
+    content += qty + ' x ' + itemName + CMD.LINE_FEED;
+    content += CMD.TEXT_NORMAL;
+    content += CMD.BOLD_OFF;
+
+    // Options with marker
+    if (item.options && item.options.length > 0) {
+      item.options.forEach(option => {
+        content += '  ★ ' + option + CMD.LINE_FEED;
+      });
+    }
+
+    // Spacing between items
+    if (index < addedItems.length - 1) {
+      content += CMD.LINE_FEED;
+    }
+  });
+
+  content += CMD.LINE_FEED;
+  content += CMD.DASHED_LINE + CMD.LINE_FEED;
+
+  // === FOOTER ===
+  content += CMD.LINE_FEED;
+  content += CMD.ALIGN_CENTER;
+  content += CMD.BOLD_ON;
+  content += 'ADDED TO EXISTING ORDER' + CMD.LINE_FEED;
+  content += CMD.BOLD_OFF;
+  content += CMD.LINE_FEED;
+  content += CMD.LINE_FEED;
+
+  // Paper cut
+  content += CMD.CUT_PARTIAL;
+
+  return content;
+}
+
+/**
+ * Print Additional Items Kitchen Ticket via RawBT
+ *
+ * @param {Object} orderData - Order data with added items
+ * @param {Object} storeInfo - Store info
+ * @param {string} [printerName] - Optional printer name (overrides settings)
+ * @returns {Promise<boolean>} Success status
+ */
+export async function printAdditionalItemsTicketViaRawBT(orderData, storeInfo, printerName) {
+  try {
+    // Check if kitchen printer is enabled
+    const settings = getPrinterSettings();
+    if (!settings.kitchenPrinter.enabled) {
+      console.log('Kitchen printer is disabled in settings');
+      return true; // Return success but skip printing
+    }
+
+    // Use provided printerName or get from settings
+    const targetPrinter = printerName || settings.kitchenPrinter.name;
+
+    const escposContent = generateAdditionalItemsTicketContent(orderData, storeInfo);
+
+    // If no content (no added items), return success
+    if (!escposContent) {
+      console.log('No additional items to print');
+      return true;
+    }
+
+    const base64Content = btoa(unescape(encodeURIComponent(escposContent)));
+
+    let intentScheme = '#Intent;scheme=rawbt;';
+    // Add printer name if specified
+    if (targetPrinter) {
+      intentScheme += 'S.s=' + encodeURIComponent(targetPrinter) + ';';
+    }
+    const intentPackage = 'package=ru.a402d.rawbtprinter;end;';
+    const intentUrl = 'intent:base64,' + base64Content + intentScheme + intentPackage;
+
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = intentUrl;
+    document.body.appendChild(iframe);
+
+    setTimeout(() => {
+      document.body.removeChild(iframe);
+    }, 1000);
+
+    return true;
+
+  } catch (error) {
+    console.error('Additional Items Ticket print error:', error);
+    alert(
+      'Failed to print additional items ticket.\n\n' +
       'Please ensure:\n' +
       '1. RawBT app is installed\n' +
       '2. WiFi printer is configured in RawBT\n' +
