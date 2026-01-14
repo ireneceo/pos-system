@@ -7,43 +7,46 @@
 
 ## 현재 작업 상태
 
-**마지막 업데이트:** 2026-01-13 16:30
-**작업 상태:** 완료
+**마지막 업데이트:** 2026-01-14 (기획 완료)
+**작업 상태:** 개발 대기
 
 ### 진행 중인 작업
-- 없음
+- 주문 관리 개선 기획 완료 → 개발 대기
 
 ### 완료된 작업 (이번 세션)
-1. 멤버십/포인트 시스템 구조 개선
-   - 멤버십: 항상 활성화 (로그인, 티어, 티어별 할인)
-   - 포인트 시스템: is_active 필드로 ON/OFF 제어
-2. Settings 페이지 UI 개선
-   - "Points System" 토글을 Points Settings 카드 내부로 이동
-3. API 레벨 검증 완료
-   - 포인트 비활성화 시 적립 차단 (earnPointsForOrder → earnedPoints: 0)
-   - 포인트 비활성화 시 사용 차단 (usePointsForOrder → error: "Membership not active")
-4. 프론트엔드 is_active 체크 확인
-   - PaymentModal, Mobile PaymentPage, AccountPage 등
+1. 주문 관리 개선 전체 기획
+   - Auto-merge, Manual Merge, Add Items
+   - Kitchen Display 개선
+   - Coupon System
+   - Printer Settings (빌/키친 분리)
+2. 리스크 검증 완료
+   - 주문 생성 진입점 3개 확인 (orders.js, mobile.js, orderService.js)
+   - Socket.IO 이벤트 영향도 분석
+   - DB 스키마 변경 계획 수립
+   - 롤백 전략 수립
+3. 기획 문서 작성
+   - `/var/www/docs/ORDER_MANAGEMENT_IMPROVEMENTS.md` 신규 생성
+   - `/var/www/DEVELOPMENT_PLAN.md` 업데이트
 
 ### 다음 할 일
-- 특별히 예정된 작업 없음
-- Phase 4: Purchase Order System 개발 대기 중
+- Phase 3.5: 주문 관리 개선 개발 시작
+  - Backend: Auto-merge, Merge API, Add Items API
+  - Coupon 모델 및 API
+  - Frontend: Live Orders 머지/추가 UI
+  - Kitchen Display 개선
+  - Printer Settings
 
 ---
 
 ## 최근 수정 파일
-- `dev-frontend/src/pages/Settings/SettingsPage.tsx` - Points Settings 토글 위치 개선
-- `dev-frontend/src/mobile/pages/AccountPage.tsx` - pointsEnabled 조건부 표시
-- `dev-frontend/src/components/POSTerminal/PaymentModal.tsx` - 내부 데이터 fetch 로직
-- `dev-frontend/src/pages/LiveOrders/LiveOrdersPage.tsx` - PaymentModal 포인트 연동
-- `dev-frontend/src/components/POSTerminal/OrderCompleteModal.tsx` - 포인트 할인 표시
-- `dev-frontend/src/utils/billPrint.js` - 포인트 할인 출력
+- `/var/www/docs/ORDER_MANAGEMENT_IMPROVEMENTS.md` - 신규 생성 (상세 기획서)
+- `/var/www/DEVELOPMENT_PLAN.md` - Phase 3.5 섹션 추가
 
 ---
 
 ## 메모
-- 멤버십 기능(로그인, 티어, 할인)은 항상 활성화
-- 포인트 시스템만 is_active로 ON/OFF 가능
-- 포인트 비활성화 시 모든 UI에서 포인트 관련 요소 숨김
-- Backend pointService.js에서 is_active 체크하여 적립/사용 차단
+- 기존 버그: `PATCH /api/orders/:id/items`에서 total_amount 재계산 안됨 → 개발 시 함께 수정
+- Mock 쿠폰 위치: PaymentPage.tsx:488-492, POSTerminalPage.tsx:1638-1644
+- Table View는 이번 개발 범위에서 제외 (별도 기획 필요)
+- Phase 4 Purchase Order는 Phase 3.5 완료 후 진행
 
