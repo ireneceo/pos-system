@@ -39,6 +39,150 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
+// Validate coupon (for order placement) - MUST be before /:id routes
+// POST /api/coupons/validate
+router.post('/validate', optionalAuthenticateToken, async (req, res) => {
+  try {
+    const {
+      code,
+      restaurantId,
+      restaurant_id,
+      customerId,
+      customer_id,
+      orderTotal,
+      order_total,
+      order_amount,
+      orderType,
+      order_type
+    } = req.body;
+
+    const finalRestaurantId = restaurantId || restaurant_id;
+    const finalCustomerId = customerId || customer_id;
+    const finalOrderTotal = parseFloat(orderTotal || order_total || order_amount || 0);
+    const finalOrderType = orderType || order_type || 'dine_in';
+
+    if (!code || !finalRestaurantId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Coupon code and restaurant ID are required'
+      });
+    }
+
+    // Find coupon
+    const coupon = await Coupon.findOne({
+      where: {
+        restaurant_id: finalRestaurantId,
+        code: code.toUpperCase()
+      }
+    });
+
+    if (!coupon) {
+      return res.status(404).json({
+        success: false,
+        error: 'Invalid coupon code',
+        valid: false
+      });
+    }
+
+    // Check if active
+    if (!coupon.is_active) {
+      return res.status(400).json({
+        success: false,
+        error: 'This coupon is no longer active',
+        valid: false
+      });
+    }
+
+    // Check validity dates
+    const now = new Date();
+    if (coupon.valid_from && new Date(coupon.valid_from) > now) {
+      return res.status(400).json({
+        success: false,
+        error: 'This coupon is not yet valid',
+        valid: false
+      });
+    }
+
+    if (coupon.valid_until && new Date(coupon.valid_until) < now) {
+      return res.status(400).json({
+        success: false,
+        error: 'This coupon has expired',
+        valid: false
+      });
+    }
+
+    // Check usage limit
+    if (coupon.usage_limit !== null && coupon.usage_count >= coupon.usage_limit) {
+      return res.status(400).json({
+        success: false,
+        error: 'This coupon has reached its usage limit',
+        valid: false
+      });
+    }
+
+    // Check minimum order amount
+    if (coupon.min_order && finalOrderTotal < parseFloat(coupon.min_order)) {
+      return res.status(400).json({
+        success: false,
+        error: `Minimum order amount is ${coupon.min_order}`,
+        valid: false,
+        minOrder: parseFloat(coupon.min_order)
+      });
+    }
+
+    // Check applicable order types
+    if (coupon.applicable_order_types && coupon.applicable_order_types.length > 0) {
+      if (!coupon.applicable_order_types.includes(finalOrderType)) {
+        return res.status(400).json({
+          success: false,
+          error: `This coupon is not applicable for ${finalOrderType} orders`,
+          valid: false
+        });
+      }
+    }
+
+    // Calculate discount
+    let discountAmount = 0;
+    if (coupon.type === 'percentage') {
+      discountAmount = finalOrderTotal * (parseFloat(coupon.value) / 100);
+      // Apply max discount cap if set
+      if (coupon.max_discount && discountAmount > parseFloat(coupon.max_discount)) {
+        discountAmount = parseFloat(coupon.max_discount);
+      }
+    } else {
+      // Fixed amount
+      discountAmount = parseFloat(coupon.value);
+      // Don't exceed order total
+      if (discountAmount > finalOrderTotal) {
+        discountAmount = finalOrderTotal;
+      }
+    }
+
+    // Round to 2 decimal places
+    discountAmount = Math.round(discountAmount * 100) / 100;
+
+    res.json({
+      success: true,
+      valid: true,
+      data: {
+        coupon: {
+          id: coupon.id,
+          code: coupon.code,
+          name: coupon.name,
+          type: coupon.type,
+          value: parseFloat(coupon.value)
+        },
+        discountAmount,
+        originalTotal: finalOrderTotal,
+        finalTotal: Math.round((finalOrderTotal - discountAmount) * 100) / 100
+      }
+    });
+  } catch (error) {
+    console.error('❌ [COUPONS] Error validating coupon:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Get single coupon
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
@@ -207,150 +351,6 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     res.json({ success: true, message: 'Coupon deleted successfully' });
   } catch (error) {
     console.error('❌ [COUPONS] Error deleting coupon:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Validate coupon (for order placement)
-// POST /api/coupons/validate
-router.post('/validate', optionalAuthenticateToken, async (req, res) => {
-  try {
-    const {
-      code,
-      restaurantId,
-      restaurant_id,
-      customerId,
-      customer_id,
-      orderTotal,
-      order_total,
-      order_amount,
-      orderType,
-      order_type
-    } = req.body;
-
-    const finalRestaurantId = restaurantId || restaurant_id;
-    const finalCustomerId = customerId || customer_id;
-    const finalOrderTotal = parseFloat(orderTotal || order_total || order_amount || 0);
-    const finalOrderType = orderType || order_type || 'dine_in';
-
-    if (!code || !finalRestaurantId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Coupon code and restaurant ID are required'
-      });
-    }
-
-    // Find coupon
-    const coupon = await Coupon.findOne({
-      where: {
-        restaurant_id: finalRestaurantId,
-        code: code.toUpperCase()
-      }
-    });
-
-    if (!coupon) {
-      return res.status(404).json({
-        success: false,
-        error: 'Invalid coupon code',
-        valid: false
-      });
-    }
-
-    // Check if active
-    if (!coupon.is_active) {
-      return res.status(400).json({
-        success: false,
-        error: 'This coupon is no longer active',
-        valid: false
-      });
-    }
-
-    // Check validity dates
-    const now = new Date();
-    if (coupon.valid_from && new Date(coupon.valid_from) > now) {
-      return res.status(400).json({
-        success: false,
-        error: 'This coupon is not yet valid',
-        valid: false
-      });
-    }
-
-    if (coupon.valid_until && new Date(coupon.valid_until) < now) {
-      return res.status(400).json({
-        success: false,
-        error: 'This coupon has expired',
-        valid: false
-      });
-    }
-
-    // Check usage limit
-    if (coupon.usage_limit !== null && coupon.usage_count >= coupon.usage_limit) {
-      return res.status(400).json({
-        success: false,
-        error: 'This coupon has reached its usage limit',
-        valid: false
-      });
-    }
-
-    // Check minimum order amount
-    if (coupon.min_order && finalOrderTotal < parseFloat(coupon.min_order)) {
-      return res.status(400).json({
-        success: false,
-        error: `Minimum order amount is ${coupon.min_order}`,
-        valid: false,
-        minOrder: parseFloat(coupon.min_order)
-      });
-    }
-
-    // Check applicable order types
-    if (coupon.applicable_order_types && coupon.applicable_order_types.length > 0) {
-      if (!coupon.applicable_order_types.includes(finalOrderType)) {
-        return res.status(400).json({
-          success: false,
-          error: `This coupon is not applicable for ${finalOrderType} orders`,
-          valid: false
-        });
-      }
-    }
-
-    // Calculate discount
-    let discountAmount = 0;
-    if (coupon.type === 'percentage') {
-      discountAmount = finalOrderTotal * (parseFloat(coupon.value) / 100);
-      // Apply max discount cap if set
-      if (coupon.max_discount && discountAmount > parseFloat(coupon.max_discount)) {
-        discountAmount = parseFloat(coupon.max_discount);
-      }
-    } else {
-      // Fixed amount
-      discountAmount = parseFloat(coupon.value);
-      // Don't exceed order total
-      if (discountAmount > finalOrderTotal) {
-        discountAmount = finalOrderTotal;
-      }
-    }
-
-    // Round to 2 decimal places
-    discountAmount = Math.round(discountAmount * 100) / 100;
-
-    res.json({
-      success: true,
-      valid: true,
-      data: {
-        coupon: {
-          id: coupon.id,
-          code: coupon.code,
-          name: coupon.name,
-          type: coupon.type,
-          value: parseFloat(coupon.value)
-        },
-        discountAmount,
-        originalTotal: finalOrderTotal,
-        finalTotal: Math.round((finalOrderTotal - discountAmount) * 100) / 100
-      }
-    });
-  } catch (error) {
-    console.error('❌ [COUPONS] Error validating coupon:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

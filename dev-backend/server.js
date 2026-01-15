@@ -253,6 +253,8 @@ app.get('/api/health', (req, res) => {
 app.use('/', indexRouter);
 
 // API 라우터들
+// IMPORTANT: coupons must be before /api mounted routers to prevent /:id matching
+app.use('/api/coupons', couponsRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/menu', menuRouter);
 app.use('/api/mobile', mobileRouter);
@@ -295,7 +297,6 @@ app.use('/api/product-ingredients', productIngredientsRouter);
 app.use('/api/product-recipe-categories', productRecipeCategoriesRouter);
 app.use('/api', generalStockCategoriesRouter);
 app.use('/api/product-ingredient-categories', productIngredientCategoriesRouter);
-app.use('/api/coupons', couponsRouter);
 
 // GitHub Webhook for Auto-Deployment (보안: System Admin 인증 필요)
 const { exec } = require('child_process');
