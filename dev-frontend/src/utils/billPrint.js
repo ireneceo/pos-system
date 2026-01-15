@@ -86,6 +86,31 @@ function formatLine(left, right, width = 48) {
 
 // centerText function removed - not used in current implementation
 
+// Currency symbol mapping
+const CURRENCY_SYMBOLS = {
+  MYR: 'RM',
+  USD: '$',
+  SGD: 'S$',
+  EUR: '€',
+  GBP: '£',
+  JPY: '¥',
+  KRW: '₩',
+  THB: '฿',
+  VND: '₫',
+  IDR: 'Rp',
+  PHP: '₱',
+  INR: '₹',
+  CNY: '¥',
+  AUD: 'A$',
+  NZD: 'NZ$',
+  HKD: 'HK$',
+  TWD: 'NT$'
+};
+
+function getCurrencySymbol(currency) {
+  return CURRENCY_SYMBOLS[currency] || currency || 'RM';
+}
+
 // ============================================
 // ESC/POS Receipt Content Generation
 // ============================================
@@ -109,6 +134,7 @@ function formatLine(left, right, width = 48) {
  * @param {string} orderData.paymentMethod - Payment method
  * @param {number} orderData.amountReceived - Amount received (cash)
  * @param {number} orderData.change - Change given
+ * @param {string} orderData.currency - Currency code (e.g., 'MYR', 'USD')
  *
  * @param {Object} storeInfo - Store information
  * @param {string} storeInfo.name - Store name
@@ -119,6 +145,7 @@ function formatLine(left, right, width = 48) {
  * @returns {string} ESC/POS command string
  */
 export function generateBillContent(orderData, storeInfo) {
+  const currencySymbol = getCurrencySymbol(orderData.currency);
   let content = '';
 
   // Initialize printer
@@ -205,12 +232,12 @@ export function generateBillContent(orderData, storeInfo) {
     // Item name and total
     content += formatLine(
       itemName,
-      'RM ' + total.toFixed(2)
+      currencySymbol + ' ' + total.toFixed(2)
     ) + CMD.LINE_FEED;
 
     // Quantity and unit price
     content += formatLine(
-      '  ' + qty + ' x RM ' + price.toFixed(2),
+      '  ' + qty + ' x ' + currencySymbol + ' ' + price.toFixed(2),
       ''
     ) + CMD.LINE_FEED;
 
@@ -225,52 +252,52 @@ export function generateBillContent(orderData, storeInfo) {
   // === TOTALS ===
   content += CMD.LINE_FEED;
   content += CMD.DASHED_LINE + CMD.LINE_FEED;
-  content += formatLine('Subtotal:', 'RM ' + orderData.subtotal.toFixed(2)) + CMD.LINE_FEED;
+  content += formatLine('Subtotal:', currencySymbol + ' ' + orderData.subtotal.toFixed(2)) + CMD.LINE_FEED;
 
   // Takeaway Charge (before discounts)
   if (orderData.takeawayCharge && orderData.takeawayCharge > 0) {
-    content += formatLine('Takeaway Charge:', 'RM ' + orderData.takeawayCharge.toFixed(2)) + CMD.LINE_FEED;
+    content += formatLine('Takeaway Charge:', currencySymbol + ' ' + orderData.takeawayCharge.toFixed(2)) + CMD.LINE_FEED;
   }
 
   // Fixed Amount Discount
   if (orderData.discount && orderData.discount > 0) {
-    content += formatLine('Discount:', '- RM ' + orderData.discount.toFixed(2)) + CMD.LINE_FEED;
+    content += formatLine('Discount:', '- ' + currencySymbol + ' ' + orderData.discount.toFixed(2)) + CMD.LINE_FEED;
   }
 
   // Percentage Discount Policy
   if (orderData.discountPolicy && orderData.discountPolicy.amount > 0) {
     const policyLabel = 'Discount (' + orderData.discountPolicy.name + '):';
-    content += formatLine(policyLabel, '- RM ' + orderData.discountPolicy.amount.toFixed(2)) + CMD.LINE_FEED;
+    content += formatLine(policyLabel, '- ' + currencySymbol + ' ' + orderData.discountPolicy.amount.toFixed(2)) + CMD.LINE_FEED;
   }
 
   // Coupon Discount
   if (orderData.coupon && orderData.coupon.discount > 0) {
     const couponLabel = 'Coupon (' + orderData.coupon.code + '):';
-    content += formatLine(couponLabel, '- RM ' + orderData.coupon.discount.toFixed(2)) + CMD.LINE_FEED;
+    content += formatLine(couponLabel, '- ' + currencySymbol + ' ' + orderData.coupon.discount.toFixed(2)) + CMD.LINE_FEED;
   }
 
   // Points Discount
   if (orderData.pointDiscount && Number(orderData.pointDiscount) > 0) {
     const pointsLabel = 'Points (' + (orderData.pointsUsed || 0).toLocaleString() + ' pts):';
-    content += formatLine(pointsLabel, '- RM ' + Number(orderData.pointDiscount).toFixed(2)) + CMD.LINE_FEED;
+    content += formatLine(pointsLabel, '- ' + currencySymbol + ' ' + Number(orderData.pointDiscount).toFixed(2)) + CMD.LINE_FEED;
   }
 
   // Service Charge (after discounts)
   if (orderData.serviceCharge && orderData.serviceCharge > 0) {
     const scLabel = 'Service Charge (' + (orderData.serviceChargeRate || 10) + '%):';
-    content += formatLine(scLabel, 'RM ' + orderData.serviceCharge.toFixed(2)) + CMD.LINE_FEED;
+    content += formatLine(scLabel, currencySymbol + ' ' + orderData.serviceCharge.toFixed(2)) + CMD.LINE_FEED;
   }
 
   // Tax (after discounts)
   if (orderData.tax && orderData.tax > 0) {
     const taxLabel = 'Tax (' + (orderData.taxRate || 6) + '%):';
-    content += formatLine(taxLabel, 'RM ' + orderData.tax.toFixed(2)) + CMD.LINE_FEED;
+    content += formatLine(taxLabel, currencySymbol + ' ' + orderData.tax.toFixed(2)) + CMD.LINE_FEED;
   }
 
   content += CMD.DASHED_LINE + CMD.LINE_FEED;
   content += CMD.BOLD_ON;
   content += CMD.TEXT_DOUBLE_HEIGHT;
-  content += formatLine('TOTAL:', 'RM ' + orderData.total.toFixed(2)) + CMD.LINE_FEED;
+  content += formatLine('TOTAL:', currencySymbol + ' ' + orderData.total.toFixed(2)) + CMD.LINE_FEED;
   content += CMD.TEXT_NORMAL;
   content += CMD.BOLD_OFF;
   content += CMD.LINE_FEED;
@@ -281,8 +308,8 @@ export function generateBillContent(orderData, storeInfo) {
   content += formatLine('Payment:', paymentMethodDisplay) + CMD.LINE_FEED;
 
   if (orderData.paymentMethod === 'cash' && orderData.amountReceived > 0) {
-    content += formatLine('Received:', 'RM ' + orderData.amountReceived.toFixed(2)) + CMD.LINE_FEED;
-    content += formatLine('Change:', 'RM ' + orderData.change.toFixed(2)) + CMD.LINE_FEED;
+    content += formatLine('Received:', currencySymbol + ' ' + orderData.amountReceived.toFixed(2)) + CMD.LINE_FEED;
+    content += formatLine('Change:', currencySymbol + ' ' + orderData.change.toFixed(2)) + CMD.LINE_FEED;
   }
 
   // === FOOTER ===

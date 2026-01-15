@@ -533,7 +533,7 @@ function App() {
                           <ManagerCustomersPage />
                         </ProtectedRoute>
                       } />
-                      <Route path="/pos/manager/promotions" element={
+                      <Route path="/pos/manager/coupons" element={
                         <ProtectedRoute requiredRole={['Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager']}>
                           <ManagerPromotionsPage />
                         </ProtectedRoute>
@@ -633,7 +633,7 @@ function App() {
                           <SalesPage />
                         </ProtectedRoute>
                       } />
-                      <Route path="/restaurant/:restaurantId/promotions" element={
+                      <Route path="/restaurant/:restaurantId/coupons" element={
                         <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
                           <PromotionsPage />
                         </ProtectedRoute>

@@ -1658,8 +1658,8 @@ const POSTerminalPage: React.FC = () => {
 
       const result = await response.json();
 
-      if (result.valid) {
-        setAppliedCoupon({ code: couponCode.toUpperCase(), discount: result.discount_amount });
+      if (result.valid && result.data) {
+        setAppliedCoupon({ code: couponCode.toUpperCase(), discount: result.data.discountAmount });
         setCouponCode('');
       } else {
         setShowCouponError(true);
@@ -2583,7 +2583,7 @@ const POSTerminalPage: React.FC = () => {
                         type="text"
                         placeholder="Enter coupon code"
                         value={couponCode}
-                        onChange={(e) => setCouponCode(e.target.value)}
+                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                         onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
                       />
                       <DiscountButton

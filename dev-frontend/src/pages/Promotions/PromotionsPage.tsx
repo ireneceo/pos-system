@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
+import { useStore } from '../../contexts/StoreContext';
+import { formatCurrency } from '../../utils/currency';
 
 // 스타일 컴포넌트
 const CouponsContainer = styled.div`
@@ -385,6 +387,9 @@ interface Coupon {
 
 const CouponsPage: React.FC = () => {
   const { user } = useAuth();
+  const { operationSettings } = useStore();
+  const restaurantId = user?.restaurantId;
+  const currency = operationSettings?.currency || 'MYR';
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -406,8 +411,6 @@ const CouponsPage: React.FC = () => {
     valid_until: ''
   });
   const [formError, setFormError] = useState<string | null>(null);
-
-  const restaurantId = user?.restaurantId;
 
   // 쿠폰 목록 로드
   useEffect(() => {
@@ -592,7 +595,7 @@ const CouponsPage: React.FC = () => {
     if (coupon.type === 'percentage') {
       return `${coupon.value}%`;
     }
-    return `RM ${coupon.value.toFixed(2)}`;
+    return formatCurrency(coupon.value, currency);
   };
 
   const getCouponStatus = (coupon: Coupon): 'active' | 'inactive' | 'expired' => {
@@ -651,7 +654,7 @@ const CouponsPage: React.FC = () => {
                         <TableCell>{coupon.name || '-'}</TableCell>
                         <TableCell>{formatDiscount(coupon)}</TableCell>
                         <TableCell>
-                          {coupon.min_order > 0 ? `RM ${coupon.min_order}` : '-'}
+                          {coupon.min_order > 0 ? formatCurrency(coupon.min_order, currency) : '-'}
                         </TableCell>
                         <TableCell>{formatDate(coupon.valid_until)}</TableCell>
                         <TableCell>

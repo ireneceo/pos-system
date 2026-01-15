@@ -223,13 +223,14 @@ router.post('/validate', optionalAuthenticateToken, async (req, res) => {
       customer_id,
       orderTotal,
       order_total,
+      order_amount,
       orderType,
       order_type
     } = req.body;
 
     const finalRestaurantId = restaurantId || restaurant_id;
     const finalCustomerId = customerId || customer_id;
-    const finalOrderTotal = parseFloat(orderTotal || order_total || 0);
+    const finalOrderTotal = parseFloat(orderTotal || order_total || order_amount || 0);
     const finalOrderType = orderType || order_type || 'dine_in';
 
     if (!code || !finalRestaurantId) {

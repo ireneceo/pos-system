@@ -170,7 +170,7 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
     '/pos/options',
     '/pos/customers',
     '/pos/staff',
-    '/pos/promotions',
+    '/pos/coupons',
     '/pos/reports',
     '/pos/settings',
     '/pos/profile'
@@ -194,7 +194,7 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
     '/pos/options',
     '/pos/customers',
     '/pos/staff',
-    '/pos/promotions',
+    '/pos/coupons',
     '/pos/reports',
     '/pos/settings',
     '/pos/profile'
@@ -215,7 +215,7 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
     '/pos/options',
     '/pos/customers',
     '/pos/staff',
-    '/pos/promotions',
+    '/pos/coupons',
     '/pos/reports',
     '/pos/settings',
     '/pos/profile'
@@ -239,7 +239,7 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
     '/pos/options',
     '/pos/customers',
     '/pos/staff',
-    '/pos/promotions',
+    '/pos/coupons',
     '/pos/reports',
     '/pos/settings',
     '/pos/profile'
@@ -260,7 +260,7 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
     '/pos/options',
     '/pos/customers',
     '/pos/staff',
-    '/pos/promotions',
+    '/pos/coupons',
     '/pos/reports',
     '/pos/settings',
     '/pos/company-information',

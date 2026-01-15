@@ -104,7 +104,7 @@ export const canAccessPage = (pagePath: string, restrictionLevel: PaymentStatus[
         '/pos-terminal',
         '/reports',
         '/analytics',
-        '/promotions'
+        '/coupons'
       ];
       return !restrictedInPartial.some(path => pagePath.includes(path));
       

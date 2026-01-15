@@ -858,7 +858,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>○</NavIcon>
                   Customers
                 </NavItem>
-                <NavItem to="/pos/manager/promotions" active={isActive('/pos/manager/promotions')} onClick={closeSidebar}>
+                <NavItem to="/pos/manager/coupons" active={isActive('/pos/manager/coupons')} onClick={closeSidebar}>
                   <NavIcon>%</NavIcon>
                   Coupons
                 </NavItem>
@@ -1035,7 +1035,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>○</NavIcon>
                   Customers
                 </NavItem>
-                <NavItem to="/pos/manager/promotions" active={isActive('/pos/manager/promotions')} onClick={closeSidebar}>
+                <NavItem to="/pos/manager/coupons" active={isActive('/pos/manager/coupons')} onClick={closeSidebar}>
                   <NavIcon>%</NavIcon>
                   Coupons
                 </NavItem>
@@ -1145,7 +1145,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>○</NavIcon>
                   Customers
                 </NavItem>
-                <NavItem to="/pos/manager/promotions" active={isActive('/pos/manager/promotions')} onClick={closeSidebar}>
+                <NavItem to="/pos/manager/coupons" active={isActive('/pos/manager/coupons')} onClick={closeSidebar}>
                   <NavIcon>%</NavIcon>
                   Coupons
                 </NavItem>
@@ -1394,8 +1394,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>◯</NavIcon>
                   Customers                </NavItem>
               )}
-              {isRouteAllowed(`/restaurant/${restaurantId}/promotions`) && (
-                <NavItem to={`/restaurant/${restaurantId}/promotions`} active={isActive(`/restaurant/${restaurantId}/promotions`)} onClick={closeSidebar}>
+              {isRouteAllowed(`/restaurant/${restaurantId}/coupons`) && (
+                <NavItem to={`/restaurant/${restaurantId}/coupons`} active={isActive(`/restaurant/${restaurantId}/coupons`)} onClick={closeSidebar}>
                   <NavIcon>%</NavIcon>
                   Coupons                </NavItem>
               )}

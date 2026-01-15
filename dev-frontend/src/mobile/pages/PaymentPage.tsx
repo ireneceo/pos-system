@@ -702,13 +702,15 @@ const PaymentPage: React.FC = () => {
   const takeawayCharge = calculateTakeawayCharge();
   const deliveryFee = calculateDeliveryFee();
 
-  // Apply tax from operation settings
-  const tax = operationSettings.taxEnabled ? subtotal * (operationSettings.taxRate / 100) : 0;
-
-  // Apply service charge from operation settings (if enabled)
-  const serviceCharge = operationSettings.serviceChargeEnabled ? subtotal * (operationSettings.serviceChargeRate / 100) : 0;
-
+  // Calculate discounted subtotal first (consistent with POS)
   const discountedSubtotal = subtotal - couponDiscount - pointDiscount;
+
+  // Apply tax from operation settings (on discounted amount - consistent with POS)
+  const tax = operationSettings.taxEnabled ? discountedSubtotal * (operationSettings.taxRate / 100) : 0;
+
+  // Apply service charge from operation settings (on discounted amount - consistent with POS)
+  const serviceCharge = operationSettings.serviceChargeEnabled ? discountedSubtotal * (operationSettings.serviceChargeRate / 100) : 0;
+
   const totalBeforeRounding = discountedSubtotal + tax + serviceCharge + takeawayCharge + deliveryFee;
 
   // Apply rounding based on settings
@@ -1556,11 +1558,11 @@ const PaymentPage: React.FC = () => {
         orderType
       );
 
-      if (result.valid) {
-        setCouponDiscount(result.discount_amount);
+      if (result.valid && result.data) {
+        setCouponDiscount(result.data.discountAmount);
         setCouponError('');
       } else {
-        setCouponError(result.message || 'Invalid coupon');
+        setCouponError(result.error || 'Invalid coupon');
         setCouponDiscount(0);
       }
     } catch (error: any) {

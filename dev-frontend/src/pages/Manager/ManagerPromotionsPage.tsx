@@ -778,10 +778,10 @@ const ManagerPromotionsPage: React.FC = () => {
   };
 
   const handleSavePromotion = () => {
-    const discountText = newPromotion.type === 'percentage' 
+    const discountText = newPromotion.type === 'percentage'
       ? `${newPromotion.discountValue}% off`
       : newPromotion.type === 'fixed_amount'
-      ? `RM ${newPromotion.discountValue} off`
+      ? `${formatCurrency(newPromotion.discountValue, selectedCurrency)} off`
       : newPromotion.type === 'bogo'
       ? `BOGO ${newPromotion.discountValue}% off`
       : newPromotion.type === 'free_shipping'
@@ -1131,8 +1131,8 @@ const ManagerPromotionsPage: React.FC = () => {
                     <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '12px' }}>Discount Details</h4>
                     <div style={{ fontSize: '14px', color: '#374151', lineHeight: '1.5' }}>
                       <p><strong>Discount:</strong> {selectedPromotion.discountText}</p>
-                      <p><strong>Min Order:</strong> {selectedPromotion.minOrderAmount ? `RM ${selectedPromotion.minOrderAmount}` : 'No minimum'}</p>
-                      <p><strong>Max Discount:</strong> {selectedPromotion.maxDiscount ? `RM ${selectedPromotion.maxDiscount}` : 'No limit'}</p>
+                      <p><strong>Min Order:</strong> {selectedPromotion.minOrderAmount ? formatCurrency(selectedPromotion.minOrderAmount, selectedCurrency) : 'No minimum'}</p>
+                      <p><strong>Max Discount:</strong> {selectedPromotion.maxDiscount ? formatCurrency(selectedPromotion.maxDiscount, selectedCurrency) : 'No limit'}</p>
                     </div>
                   </div>
                   <div>

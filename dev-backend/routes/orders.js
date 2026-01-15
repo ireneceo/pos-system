@@ -153,18 +153,39 @@ async function mergeItemsIntoOrder(existingOrder, newItems, transaction = null) 
 
   const mergedItems = [...currentItems, ...itemsWithTimestamp];
 
-  // Recalculate total
-  const newTotal = mergedItems.reduce((sum, item) => {
+  // Recalculate total - preserve existing discounts
+  const itemsSubtotal = mergedItems.reduce((sum, item) => {
     const itemPrice = parseFloat(item.price) || 0;
     const itemQty = parseInt(item.quantity) || 1;
     return sum + (itemPrice * itemQty);
   }, 0);
+
+  // Preserve existing discount fields (already calculated amounts)
+  const discount = parseFloat(existingOrder.discount) || 0;
+  const couponDiscount = parseFloat(existingOrder.coupon_discount) || 0;
+  const discountPolicyAmount = parseFloat(existingOrder.discount_policy_amount) || 0;
+  const pointDiscount = parseFloat(existingOrder.point_discount) || 0;
+  const tax = parseFloat(existingOrder.tax) || 0;
+  const serviceCharge = parseFloat(existingOrder.service_charge) || 0;
+  const takeawayCharge = parseFloat(existingOrder.takeaway_charge) || 0;
+  const deliveryFee = parseFloat(existingOrder.delivery_fee) || 0;
+
+  const newTotal = itemsSubtotal
+    - discount
+    - couponDiscount
+    - discountPolicyAmount
+    - pointDiscount
+    + tax
+    + serviceCharge
+    + takeawayCharge
+    + deliveryFee;
 
   // Update order
   // Note: Don't use JSON.stringify - Sequelize setter handles it automatically
   const updateOptions = transaction ? { transaction } : {};
   await existingOrder.update({
     order_items: mergedItems,
+    subtotal: itemsSubtotal,
     total_amount: newTotal,
     status: 'pending' // Reset to pending for kitchen
   }, updateOptions);
@@ -1054,17 +1075,38 @@ router.post('/merge', authenticateToken, async (req, res) => {
         deletedOrderIds.push(source.id);
       }
 
-      // Recalculate total
-      const newTotal = targetItems.reduce((sum, item) => {
+      // Recalculate total - preserve existing discounts from target order
+      const itemsSubtotal = targetItems.reduce((sum, item) => {
         const itemPrice = parseFloat(item.price) || 0;
         const itemQty = parseInt(item.quantity) || 1;
         return sum + (itemPrice * itemQty);
       }, 0);
 
+      // Preserve existing discount fields from target order
+      const discount = parseFloat(target.discount) || 0;
+      const couponDiscount = parseFloat(target.coupon_discount) || 0;
+      const discountPolicyAmount = parseFloat(target.discount_policy_amount) || 0;
+      const pointDiscount = parseFloat(target.point_discount) || 0;
+      const tax = parseFloat(target.tax) || 0;
+      const serviceCharge = parseFloat(target.service_charge) || 0;
+      const takeawayCharge = parseFloat(target.takeaway_charge) || 0;
+      const deliveryFee = parseFloat(target.delivery_fee) || 0;
+
+      const newTotal = itemsSubtotal
+        - discount
+        - couponDiscount
+        - discountPolicyAmount
+        - pointDiscount
+        + tax
+        + serviceCharge
+        + takeawayCharge
+        + deliveryFee;
+
       // Update target order
       // Note: Don't use JSON.stringify - Sequelize setter handles it automatically
       await target.update({
         order_items: targetItems,
+        subtotal: itemsSubtotal,
         total_amount: newTotal,
         status: 'pending' // Reset to pending for kitchen re-review
       }, { transaction: t });
@@ -1161,17 +1203,38 @@ router.post('/:id/add-items', authenticateToken, async (req, res) => {
 
     const mergedItems = [...currentItems, ...newItemsWithTimestamp];
 
-    // Recalculate total
-    const newTotal = mergedItems.reduce((sum, item) => {
+    // Recalculate total - preserve existing discounts
+    const itemsSubtotal = mergedItems.reduce((sum, item) => {
       const itemPrice = parseFloat(item.price) || 0;
       const itemQty = parseInt(item.quantity) || 1;
       return sum + (itemPrice * itemQty);
     }, 0);
 
+    // Preserve existing discount fields
+    const discount = parseFloat(order.discount) || 0;
+    const couponDiscount = parseFloat(order.coupon_discount) || 0;
+    const discountPolicyAmount = parseFloat(order.discount_policy_amount) || 0;
+    const pointDiscount = parseFloat(order.point_discount) || 0;
+    const tax = parseFloat(order.tax) || 0;
+    const serviceCharge = parseFloat(order.service_charge) || 0;
+    const takeawayCharge = parseFloat(order.takeaway_charge) || 0;
+    const deliveryFee = parseFloat(order.delivery_fee) || 0;
+
+    const newTotal = itemsSubtotal
+      - discount
+      - couponDiscount
+      - discountPolicyAmount
+      - pointDiscount
+      + tax
+      + serviceCharge
+      + takeawayCharge
+      + deliveryFee;
+
     // Update order
     // Note: Don't use JSON.stringify - Sequelize setter handles it automatically
     await order.update({
       order_items: mergedItems,
+      subtotal: itemsSubtotal,
       total_amount: newTotal,
       status: 'pending' // Reset to pending for kitchen
     });
