@@ -13,7 +13,6 @@
 | 기능 | 설명 | 상태 |
 |------|------|:----:|
 | Kitchen Display 개선 | Pending 컬럼 아이템별 Done 버튼 | 대기 |
-| Coupon Frontend UI | 쿠폰 적용 UI (Settings, Payment) | 대기 |
 
 ---
 
@@ -29,8 +28,17 @@
 | Manual Merge | 선택한 주문들 수동 병합 | ✅ 통과 |
 | Add Items | 기존 주문에 메뉴 추가 + 키친티켓 | ✅ 통과 |
 | Coupon Model/API | 쿠폰 CRUD + 검증 API | ✅ 통과 |
+| Coupon Frontend UI | POS Terminal + Mobile Order 쿠폰 적용 | ✅ 통과 |
 | Printer Settings UI | 빌/키친 프린터 분리 설정 | ✅ UI 완료 |
 | total_amount 재계산 | 아이템 추가/병합 시 자동 계산 | ✅ 통과 |
+
+### 버그 수정 (2026-01-15)
+
+| 이슈 | 원인 | 해결 |
+|------|------|------|
+| URL /promotions → /coupons | 메뉴명 변경 후 URL 미수정 | App.tsx, MainLayout.tsx, DB addon_modules 수정 |
+| 쿠폰 API 인증 오류 | Express 라우터 순서 문제 | server.js에서 coupons 라우터 최상단 배치 |
+| 쿠폰 할인액 미반영 | 응답 파싱 오류 (result.data.discountAmount) | POSTerminalPage.tsx, PaymentPage.tsx 수정 |
 
 ### API 테스트 결과 (2026-01-15)
 
