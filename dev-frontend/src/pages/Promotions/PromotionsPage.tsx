@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
-import { TabContainer, Tab } from '../../components/UI';
+import { useAuth } from '../../contexts/AuthContext';
 
-// 스타일 컴포넌트 (대시보드 스타일가이드 준수)
-const PromotionsContainer = styled.div`
+// 스타일 컴포넌트
+const CouponsContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: #FAFBFC;
   min-height: 100vh;
@@ -49,11 +49,11 @@ const Button = styled.button<{ primary?: boolean }>`
   cursor: pointer;
   transition: all 0.15s;
   border: none;
-  
+
   ${props => props.primary ? `
     background: #635BFF;
     color: white;
-    
+
     &:hover {
       background: #5A51E6;
       transform: translateY(-1px);
@@ -62,12 +62,18 @@ const Button = styled.button<{ primary?: boolean }>`
     background: white;
     color: #6B7C93;
     border: 1px solid #E6EBF1;
-    
+
     &:hover {
       background: #F6F9FC;
       border-color: #C7D2FE;
     }
   `}
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
 `;
 
 const Content = styled.main`
@@ -79,8 +85,6 @@ const Content = styled.main`
     padding: 20px;
   }
 `;
-
-// TabContainer and Tab components now imported from ../../components/UI
 
 const SectionCard = styled.div`
   background: white;
@@ -102,7 +106,6 @@ const EmptyState = styled.div`
   padding: 48px 0;
   color: #6B7C93;
 `;
-
 
 const EmptyStateText = styled.p`
   font-size: 14px;
@@ -140,7 +143,7 @@ const StatusBadge = styled.span<{ status: 'active' | 'inactive' | 'expired' }>`
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.3px;
-  
+
   ${props => {
     switch(props.status) {
       case 'active':
@@ -176,11 +179,17 @@ const ActionButton = styled.button`
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.15s;
-  
+
   &:hover {
     background: #F6F9FC;
     color: #0A2540;
     border-color: #C7D2FE;
+  }
+
+  &.danger:hover {
+    background: #FEF2F2;
+    color: #DC2626;
+    border-color: #FECACA;
   }
 `;
 
@@ -197,7 +206,7 @@ const Modal = styled.div<{ isOpen: boolean }>`
   justify-content: center;
   z-index: 1000;
   animation: fadeIn 0.2s;
-  
+
   @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -212,7 +221,7 @@ const ModalContent = styled.div`
   max-height: 90vh;
   overflow: auto;
   animation: slideUp 0.3s;
-  
+
   @keyframes slideUp {
     from {
       transform: translateY(20px);
@@ -253,7 +262,7 @@ const CloseButton = styled.button`
   align-items: center;
   justify-content: center;
   border-radius: 4px;
-  
+
   &:hover {
     background: #F6F9FC;
     color: #0A2540;
@@ -335,276 +344,298 @@ const TextArea = styled.textarea`
   }
 `;
 
-const CheckboxLabel = styled.label`
+const FormRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+`;
+
+const ErrorText = styled.p`
+  color: #DC2626;
+  font-size: 13px;
+  margin-top: 8px;
+`;
+
+const LoadingSpinner = styled.div`
   display: flex;
+  justify-content: center;
   align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  color: #374151;
-  
-  input {
-    width: 16px;
-    height: 16px;
-    accent-color: #635BFF;
-  }
+  padding: 48px;
+  color: #6B7C93;
 `;
 
 // 타입 정의
-type TabType = 'coupons' | 'discounts';
-
 interface Coupon {
   id: number;
   code: string;
   name: string;
-  discount: string;
-  validUntil: string;
-  used: number;
-  limit: number | null;
-  status: 'active' | 'inactive' | 'expired';
+  description: string | null;
+  type: 'percentage' | 'fixed';
+  value: number;
+  min_order: number;
+  max_discount: number | null;
+  usage_limit: number | null;
+  usage_count: number;
+  per_user_limit: number | null;
+  valid_from: string | null;
+  valid_until: string | null;
+  is_active: boolean;
+  applicable_order_types: string[] | null;
 }
 
-interface DiscountPolicy {
-  id: number;
-  name: string;
-  discount: string;
-  requiresApproval: boolean;
-  status: 'active' | 'inactive';
-}
-
-const PromotionsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabType>('coupons');
+const CouponsPage: React.FC = () => {
+  const { user } = useAuth();
   const [coupons, setCoupons] = useState<Coupon[]>([]);
-  const [discountPolicies, setDiscountPolicies] = useState<DiscountPolicy[]>([]);
-  const [showCouponModal, setShowCouponModal] = useState(false);
-  const [showDiscountModal, setShowDiscountModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
-  const [editingDiscount, setEditingDiscount] = useState<DiscountPolicy | null>(null);
-  
+
   // 쿠폰 폼 상태
   const [couponForm, setCouponForm] = useState({
     code: '',
     name: '',
-    discountType: 'percentage',
-    discountValue: '',
-    validUntil: '',
-    limit: '',
-    description: ''
+    description: '',
+    type: 'percentage' as 'percentage' | 'fixed',
+    value: '',
+    min_order: '',
+    max_discount: '',
+    usage_limit: '',
+    valid_from: '',
+    valid_until: ''
   });
-  
-  // 할인 정책 폼 상태
-  const [discountForm, setDiscountForm] = useState({
-    name: '',
-    discountType: 'percentage',
-    discountValue: '',
-    requiresApproval: false,
-    description: ''
-  });
-  
-  // 초기 데이터 로드
-  React.useEffect(() => {
-    const initialCoupons: Coupon[] = [
-      {
-        id: 1,
-        code: 'SUMMER2025',
-        name: 'Summer Special',
-        discount: '10%',
-        validUntil: '2025-08-31',
-        used: 45,
-        limit: 100,
-        status: 'active'
-      },
-      {
-        id: 2,
-        code: 'NEWUSER',
-        name: 'New Customer',
-        discount: 'RM 5',
-        validUntil: '2025-12-31',
-        used: 120,
-        limit: null,
-        status: 'active'
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const restaurantId = user?.restaurantId;
+
+  // 쿠폰 목록 로드
+  useEffect(() => {
+    if (restaurantId) {
+      fetchCoupons();
+    }
+  }, [restaurantId]);
+
+  const fetchCoupons = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/coupons?restaurantId=${restaurantId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      const result = await response.json();
+      if (result.success) {
+        setCoupons(result.data);
+      } else {
+        setError(result.error || 'Failed to load coupons');
       }
-    ];
-    
-    const initialDiscounts: DiscountPolicy[] = [
-      {
-        id: 1,
-        name: 'Staff Discount',
-        discount: '20%',
-        requiresApproval: false,
-        status: 'active'
-      },
-      {
-        id: 2,
-        name: 'VIP Customer',
-        discount: '15%',
-        requiresApproval: true,
-        status: 'active'
-      }
-    ];
-    
-    setCoupons(initialCoupons);
-    setDiscountPolicies(initialDiscounts);
-  }, []);
-  
-  // 쿠폰 관리 함수들
+    } catch (err) {
+      setError('Failed to load coupons');
+      console.error('Error fetching coupons:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCreateCoupon = () => {
     setEditingCoupon(null);
     setCouponForm({
       code: '',
       name: '',
-      discountType: 'percentage',
-      discountValue: '',
-      validUntil: '',
-      limit: '',
-      description: ''
+      description: '',
+      type: 'percentage',
+      value: '',
+      min_order: '',
+      max_discount: '',
+      usage_limit: '',
+      valid_from: '',
+      valid_until: ''
     });
-    setShowCouponModal(true);
+    setFormError(null);
+    setShowModal(true);
   };
-  
+
   const handleEditCoupon = (coupon: Coupon) => {
     setEditingCoupon(coupon);
     setCouponForm({
       code: coupon.code,
-      name: coupon.name,
-      discountType: coupon.discount.includes('%') ? 'percentage' : 'fixed',
-      discountValue: coupon.discount.replace(/[%RM\s]/g, ''),
-      validUntil: coupon.validUntil,
-      limit: coupon.limit?.toString() || '',
-      description: ''
+      name: coupon.name || '',
+      description: coupon.description || '',
+      type: coupon.type,
+      value: coupon.value.toString(),
+      min_order: coupon.min_order?.toString() || '',
+      max_discount: coupon.max_discount?.toString() || '',
+      usage_limit: coupon.usage_limit?.toString() || '',
+      valid_from: coupon.valid_from ? coupon.valid_from.split('T')[0] : '',
+      valid_until: coupon.valid_until ? coupon.valid_until.split('T')[0] : ''
     });
-    setShowCouponModal(true);
+    setFormError(null);
+    setShowModal(true);
   };
-  
-  const handleSaveCoupon = () => {
-    const discountText = couponForm.discountType === 'percentage' 
-      ? `${couponForm.discountValue}%` 
-      : `RM ${couponForm.discountValue}`;
-    
-    const newCoupon: Coupon = {
-      id: editingCoupon?.id || Date.now(),
-      code: couponForm.code,
-      name: couponForm.name,
-      discount: discountText,
-      validUntil: couponForm.validUntil,
-      used: editingCoupon?.used || 0,
-      limit: couponForm.limit ? parseInt(couponForm.limit) : null,
-      status: 'active'
-    };
-    
-    if (editingCoupon) {
-      setCoupons(coupons.map(c => c.id === editingCoupon.id ? newCoupon : c));
-    } else {
-      setCoupons([...coupons, newCoupon]);
+
+  const handleSaveCoupon = async () => {
+    // Validation
+    if (!couponForm.code.trim()) {
+      setFormError('Coupon code is required');
+      return;
     }
-    
-    setShowCouponModal(false);
-  };
-  
-  const handleToggleCouponStatus = (id: number) => {
-    setCoupons(coupons.map(c => 
-      c.id === id 
-        ? { ...c, status: c.status === 'active' ? 'inactive' : 'active' as 'active' | 'inactive' | 'expired' }
-        : c
-    ));
-  };
-  
-  // 할인 정책 관리 함수들
-  const handleCreateDiscount = () => {
-    setEditingDiscount(null);
-    setDiscountForm({
-      name: '',
-      discountType: 'percentage',
-      discountValue: '',
-      requiresApproval: false,
-      description: ''
-    });
-    setShowDiscountModal(true);
-  };
-  
-  const handleEditDiscount = (discount: DiscountPolicy) => {
-    setEditingDiscount(discount);
-    setDiscountForm({
-      name: discount.name,
-      discountType: discount.discount.includes('%') ? 'percentage' : 'fixed',
-      discountValue: discount.discount.replace(/[%RM\s]/g, ''),
-      requiresApproval: discount.requiresApproval,
-      description: ''
-    });
-    setShowDiscountModal(true);
-  };
-  
-  const handleSaveDiscount = () => {
-    const discountText = discountForm.discountType === 'percentage' 
-      ? `${discountForm.discountValue}%` 
-      : `RM ${discountForm.discountValue}`;
-    
-    const newDiscount: DiscountPolicy = {
-      id: editingDiscount?.id || Date.now(),
-      name: discountForm.name,
-      discount: discountText,
-      requiresApproval: discountForm.requiresApproval,
-      status: 'active'
-    };
-    
-    if (editingDiscount) {
-      setDiscountPolicies(discountPolicies.map(d => d.id === editingDiscount.id ? newDiscount : d));
-    } else {
-      setDiscountPolicies([...discountPolicies, newDiscount]);
+    if (!couponForm.value || parseFloat(couponForm.value) <= 0) {
+      setFormError('Discount value must be greater than 0');
+      return;
     }
-    
-    setShowDiscountModal(false);
+
+    try {
+      setSaving(true);
+      setFormError(null);
+      const token = localStorage.getItem('auth_token');
+
+      const payload = {
+        restaurant_id: restaurantId,
+        code: couponForm.code.toUpperCase(),
+        name: couponForm.name || null,
+        description: couponForm.description || null,
+        type: couponForm.type,
+        value: parseFloat(couponForm.value),
+        min_order: couponForm.min_order ? parseFloat(couponForm.min_order) : 0,
+        max_discount: couponForm.max_discount ? parseFloat(couponForm.max_discount) : null,
+        usage_limit: couponForm.usage_limit ? parseInt(couponForm.usage_limit) : null,
+        valid_from: couponForm.valid_from || null,
+        valid_until: couponForm.valid_until || null,
+        is_active: true
+      };
+
+      const url = editingCoupon
+        ? `${process.env.REACT_APP_API_URL}/api/coupons/${editingCoupon.id}`
+        : `${process.env.REACT_APP_API_URL}/api/coupons`;
+
+      const response = await fetch(url, {
+        method: editingCoupon ? 'PUT' : 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setShowModal(false);
+        fetchCoupons();
+      } else {
+        setFormError(result.error || 'Failed to save coupon');
+      }
+    } catch (err) {
+      setFormError('Failed to save coupon');
+      console.error('Error saving coupon:', err);
+    } finally {
+      setSaving(false);
+    }
   };
-  
-  const handleToggleDiscountStatus = (id: number) => {
-    setDiscountPolicies(discountPolicies.map(d => 
-      d.id === id 
-        ? { ...d, status: d.status === 'active' ? 'inactive' : 'active' as 'active' | 'inactive' }
-        : d
-    ));
+
+  const handleToggleStatus = async (coupon: Coupon) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/coupons/${coupon.id}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ is_active: !coupon.is_active })
+        }
+      );
+
+      const result = await response.json();
+      if (result.success) {
+        fetchCoupons();
+      }
+    } catch (err) {
+      console.error('Error toggling coupon status:', err);
+    }
+  };
+
+  const handleDeleteCoupon = async (coupon: Coupon) => {
+    if (!window.confirm(`Are you sure you want to delete coupon "${coupon.code}"?`)) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/coupons/${coupon.id}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      const result = await response.json();
+      if (result.success) {
+        fetchCoupons();
+      }
+    } catch (err) {
+      console.error('Error deleting coupon:', err);
+    }
+  };
+
+  const formatDiscount = (coupon: Coupon) => {
+    if (coupon.type === 'percentage') {
+      return `${coupon.value}%`;
+    }
+    return `RM ${coupon.value.toFixed(2)}`;
+  };
+
+  const getCouponStatus = (coupon: Coupon): 'active' | 'inactive' | 'expired' => {
+    if (!coupon.is_active) return 'inactive';
+    if (coupon.valid_until && new Date(coupon.valid_until) < new Date()) return 'expired';
+    if (coupon.usage_limit && coupon.usage_count >= coupon.usage_limit) return 'expired';
+    return 'active';
+  };
+
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return '-';
+    return new Date(dateStr).toLocaleDateString();
   };
 
   return (
     <MainLayout>
-      <PromotionsContainer>
+      <CouponsContainer>
         <Header>
-          <HeaderTitle>Promotions Management</HeaderTitle>
+          <HeaderTitle>Coupons</HeaderTitle>
           <HeaderActions>
-            {activeTab === 'coupons' && (
-              <Button primary onClick={handleCreateCoupon}>Create Coupon</Button>
-            )}
-            {activeTab === 'discounts' && (
-              <Button primary onClick={handleCreateDiscount}>Add Discount Policy</Button>
-            )}
+            <Button primary onClick={handleCreateCoupon}>Create Coupon</Button>
           </HeaderActions>
         </Header>
 
-      <Content>
-        <TabContainer>
-          <Tab 
-            active={activeTab === 'coupons'} 
-            onClick={() => setActiveTab('coupons')}
-          >
-            Coupons (Mobile)
-          </Tab>
-          <Tab 
-            active={activeTab === 'discounts'} 
-            onClick={() => setActiveTab('discounts')}
-          >
-            Discount Policies (POS)
-          </Tab>
-        </TabContainer>
-
-        {activeTab === 'coupons' && (
+        <Content>
           <SectionCard>
-            <SectionTitle>Active Coupons</SectionTitle>
-            {coupons.length > 0 ? (
+            <SectionTitle>Coupon List</SectionTitle>
+
+            {loading ? (
+              <LoadingSpinner>Loading coupons...</LoadingSpinner>
+            ) : error ? (
+              <EmptyState>
+                <EmptyStateText>{error}</EmptyStateText>
+                <Button onClick={fetchCoupons}>Retry</Button>
+              </EmptyState>
+            ) : coupons.length > 0 ? (
               <Table>
                 <thead>
                   <tr>
                     <TableHeader>Code</TableHeader>
                     <TableHeader>Name</TableHeader>
                     <TableHeader>Discount</TableHeader>
+                    <TableHeader>Min Order</TableHeader>
                     <TableHeader>Valid Until</TableHeader>
                     <TableHeader>Usage</TableHeader>
                     <TableHeader>Status</TableHeader>
@@ -612,30 +643,44 @@ const PromotionsPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {coupons.map(coupon => (
-                    <tr key={coupon.id}>
-                      <TableCell style={{ fontWeight: 600 }}>{coupon.code}</TableCell>
-                      <TableCell>{coupon.name}</TableCell>
-                      <TableCell>{coupon.discount}</TableCell>
-                      <TableCell>{coupon.validUntil}</TableCell>
-                      <TableCell>
-                        {coupon.used} / {coupon.limit || '∞'}
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={coupon.status}>
-                          {coupon.status}
-                        </StatusBadge>
-                      </TableCell>
-                      <TableCell>
-                        <ActionButtons>
-                          <ActionButton onClick={() => handleEditCoupon(coupon)}>Edit</ActionButton>
-                          <ActionButton onClick={() => handleToggleCouponStatus(coupon.id)}>
-                            {coupon.status === 'active' ? 'Deactivate' : 'Activate'}
-                          </ActionButton>
-                        </ActionButtons>
-                      </TableCell>
-                    </tr>
-                  ))}
+                  {coupons.map(coupon => {
+                    const status = getCouponStatus(coupon);
+                    return (
+                      <tr key={coupon.id}>
+                        <TableCell style={{ fontWeight: 600 }}>{coupon.code}</TableCell>
+                        <TableCell>{coupon.name || '-'}</TableCell>
+                        <TableCell>{formatDiscount(coupon)}</TableCell>
+                        <TableCell>
+                          {coupon.min_order > 0 ? `RM ${coupon.min_order}` : '-'}
+                        </TableCell>
+                        <TableCell>{formatDate(coupon.valid_until)}</TableCell>
+                        <TableCell>
+                          {coupon.usage_count} / {coupon.usage_limit || '∞'}
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge status={status}>
+                            {status}
+                          </StatusBadge>
+                        </TableCell>
+                        <TableCell>
+                          <ActionButtons>
+                            <ActionButton onClick={() => handleEditCoupon(coupon)}>
+                              Edit
+                            </ActionButton>
+                            <ActionButton onClick={() => handleToggleStatus(coupon)}>
+                              {coupon.is_active ? 'Deactivate' : 'Activate'}
+                            </ActionButton>
+                            <ActionButton
+                              className="danger"
+                              onClick={() => handleDeleteCoupon(coupon)}
+                            >
+                              Delete
+                            </ActionButton>
+                          </ActionButtons>
+                        </TableCell>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </Table>
             ) : (
@@ -645,213 +690,141 @@ const PromotionsPage: React.FC = () => {
               </EmptyState>
             )}
           </SectionCard>
-        )}
+        </Content>
 
-        {activeTab === 'discounts' && (
-          <SectionCard>
-            <SectionTitle>Discount Policies</SectionTitle>
-            {discountPolicies.length > 0 ? (
-              <Table>
-                <thead>
-                  <tr>
-                    <TableHeader>Policy Name</TableHeader>
-                    <TableHeader>Discount</TableHeader>
-                    <TableHeader>Approval Required</TableHeader>
-                    <TableHeader>Status</TableHeader>
-                    <TableHeader>Actions</TableHeader>
-                  </tr>
-                </thead>
-                <tbody>
-                  {discountPolicies.map(policy => (
-                    <tr key={policy.id}>
-                      <TableCell style={{ fontWeight: 600 }}>{policy.name}</TableCell>
-                      <TableCell>{policy.discount}</TableCell>
-                      <TableCell>{policy.requiresApproval ? 'Yes' : 'No'}</TableCell>
-                      <TableCell>
-                        <StatusBadge status={policy.status}>
-                          {policy.status}
-                        </StatusBadge>
-                      </TableCell>
-                      <TableCell>
-                        <ActionButtons>
-                          <ActionButton onClick={() => handleEditDiscount(policy)}>Edit</ActionButton>
-                          <ActionButton onClick={() => handleToggleDiscountStatus(policy.id)}>
-                            {policy.status === 'active' ? 'Deactivate' : 'Activate'}
-                          </ActionButton>
-                        </ActionButtons>
-                      </TableCell>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            ) : (
-              <EmptyState>
-                <EmptyStateText>No discount policies created yet</EmptyStateText>
-                <Button primary onClick={handleCreateDiscount}>Create Your First Policy</Button>
-              </EmptyState>
-            )}
-          </SectionCard>
-        )}
-      </Content>
-      
-      {/* 쿠폰 생성/편집 모달 */}
-      <Modal isOpen={showCouponModal}>
-        <ModalContent>
-          <ModalHeader>
-            <ModalTitle>{editingCoupon ? 'Edit Coupon' : 'Create New Coupon'}</ModalTitle>
-            <CloseButton onClick={() => setShowCouponModal(false)}>×</CloseButton>
-          </ModalHeader>
-          <ModalBody>
-            <FormGroup>
-              <Label>Coupon Code</Label>
-              <Input
-                type="text"
-                value={couponForm.code}
-                onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })}
-                placeholder="e.g., SUMMER2025"
-              />
-            </FormGroup>
-            
-            <FormGroup>
-              <Label>Coupon Name</Label>
-              <Input
-                type="text"
-                value={couponForm.name}
-                onChange={(e) => setCouponForm({ ...couponForm, name: e.target.value })}
-                placeholder="e.g., Summer Special Discount"
-              />
-            </FormGroup>
-            
-            <FormGroup>
-              <Label>Discount Type</Label>
-              <Select
-                value={couponForm.discountType}
-                onChange={(e) => setCouponForm({ ...couponForm, discountType: e.target.value })}
-              >
-                <option value="percentage">Percentage (%)</option>
-                <option value="fixed">Fixed Amount (RM)</option>
-              </Select>
-            </FormGroup>
-            
-            <FormGroup>
-              <Label>Discount Value</Label>
-              <Input
-                type="number"
-                value={couponForm.discountValue}
-                onChange={(e) => setCouponForm({ ...couponForm, discountValue: e.target.value })}
-                placeholder={couponForm.discountType === 'percentage' ? '10' : '5.00'}
-                step={couponForm.discountType === 'percentage' ? '1' : '0.01'}
-              />
-            </FormGroup>
-            
-            <FormGroup>
-              <Label>Valid Until</Label>
-              <Input
-                type="date"
-                value={couponForm.validUntil}
-                onChange={(e) => setCouponForm({ ...couponForm, validUntil: e.target.value })}
-              />
-            </FormGroup>
-            
-            <FormGroup>
-              <Label>Usage Limit (optional)</Label>
-              <Input
-                type="number"
-                value={couponForm.limit}
-                onChange={(e) => setCouponForm({ ...couponForm, limit: e.target.value })}
-                placeholder="Leave empty for unlimited use"
-              />
-            </FormGroup>
-            
-            <FormGroup>
-              <Label>Description (optional)</Label>
-              <TextArea
-                value={couponForm.description}
-                onChange={(e) => setCouponForm({ ...couponForm, description: e.target.value })}
-                placeholder="Describe when and how this coupon can be used..."
-              />
-            </FormGroup>
-          </ModalBody>
-          <ModalFooter>
-            <Button onClick={() => setShowCouponModal(false)}>Cancel</Button>
-            <Button primary onClick={handleSaveCoupon}>
-              {editingCoupon ? 'Update Coupon' : 'Create Coupon'}
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-      
-      {/* 할인 정책 생성/편집 모달 */}
-      <Modal isOpen={showDiscountModal}>
-        <ModalContent>
-          <ModalHeader>
-            <ModalTitle>{editingDiscount ? 'Edit Discount Policy' : 'Create New Discount Policy'}</ModalTitle>
-            <CloseButton onClick={() => setShowDiscountModal(false)}>×</CloseButton>
-          </ModalHeader>
-          <ModalBody>
-            <FormGroup>
-              <Label>Policy Name</Label>
-              <Input
-                type="text"
-                value={discountForm.name}
-                onChange={(e) => setDiscountForm({ ...discountForm, name: e.target.value })}
-                placeholder="e.g., Staff Discount"
-              />
-            </FormGroup>
-            
-            <FormGroup>
-              <Label>Discount Type</Label>
-              <Select
-                value={discountForm.discountType}
-                onChange={(e) => setDiscountForm({ ...discountForm, discountType: e.target.value })}
-              >
-                <option value="percentage">Percentage (%)</option>
-                <option value="fixed">Fixed Amount (RM)</option>
-              </Select>
-            </FormGroup>
-            
-            <FormGroup>
-              <Label>Discount Value</Label>
-              <Input
-                type="number"
-                value={discountForm.discountValue}
-                onChange={(e) => setDiscountForm({ ...discountForm, discountValue: e.target.value })}
-                placeholder={discountForm.discountType === 'percentage' ? '20' : '10.00'}
-                step={discountForm.discountType === 'percentage' ? '1' : '0.01'}
-              />
-            </FormGroup>
-            
-            <FormGroup>
-              <CheckboxLabel>
-                <input
-                  type="checkbox"
-                  checked={discountForm.requiresApproval}
-                  onChange={(e) => setDiscountForm({ ...discountForm, requiresApproval: e.target.checked })}
+        {/* 쿠폰 생성/편집 모달 */}
+        <Modal isOpen={showModal}>
+          <ModalContent>
+            <ModalHeader>
+              <ModalTitle>{editingCoupon ? 'Edit Coupon' : 'Create New Coupon'}</ModalTitle>
+              <CloseButton onClick={() => setShowModal(false)}>×</CloseButton>
+            </ModalHeader>
+            <ModalBody>
+              <FormGroup>
+                <Label>Coupon Code *</Label>
+                <Input
+                  type="text"
+                  value={couponForm.code}
+                  onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })}
+                  placeholder="e.g., SAVE10"
                 />
-                Requires manager approval
-              </CheckboxLabel>
-            </FormGroup>
-            
-            <FormGroup>
-              <Label>Description (optional)</Label>
-              <TextArea
-                value={discountForm.description}
-                onChange={(e) => setDiscountForm({ ...discountForm, description: e.target.value })}
-                placeholder="Describe when this discount policy applies..."
-              />
-            </FormGroup>
-          </ModalBody>
-          <ModalFooter>
-            <Button onClick={() => setShowDiscountModal(false)}>Cancel</Button>
-            <Button primary onClick={handleSaveDiscount}>
-              {editingDiscount ? 'Update Policy' : 'Create Policy'}
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-    </PromotionsContainer>
+              </FormGroup>
+
+              <FormGroup>
+                <Label>Name</Label>
+                <Input
+                  type="text"
+                  value={couponForm.name}
+                  onChange={(e) => setCouponForm({ ...couponForm, name: e.target.value })}
+                  placeholder="e.g., 10% Off Summer Sale"
+                />
+              </FormGroup>
+
+              <FormRow>
+                <FormGroup>
+                  <Label>Discount Type</Label>
+                  <Select
+                    value={couponForm.type}
+                    onChange={(e) => setCouponForm({ ...couponForm, type: e.target.value as 'percentage' | 'fixed' })}
+                  >
+                    <option value="percentage">Percentage (%)</option>
+                    <option value="fixed">Fixed Amount (RM)</option>
+                  </Select>
+                </FormGroup>
+
+                <FormGroup>
+                  <Label>Discount Value *</Label>
+                  <Input
+                    type="number"
+                    value={couponForm.value}
+                    onChange={(e) => setCouponForm({ ...couponForm, value: e.target.value })}
+                    placeholder={couponForm.type === 'percentage' ? '10' : '5.00'}
+                    step={couponForm.type === 'percentage' ? '1' : '0.01'}
+                    min="0"
+                  />
+                </FormGroup>
+              </FormRow>
+
+              <FormRow>
+                <FormGroup>
+                  <Label>Min Order Amount</Label>
+                  <Input
+                    type="number"
+                    value={couponForm.min_order}
+                    onChange={(e) => setCouponForm({ ...couponForm, min_order: e.target.value })}
+                    placeholder="0"
+                    step="0.01"
+                    min="0"
+                  />
+                </FormGroup>
+
+                <FormGroup>
+                  <Label>Max Discount (for %)</Label>
+                  <Input
+                    type="number"
+                    value={couponForm.max_discount}
+                    onChange={(e) => setCouponForm({ ...couponForm, max_discount: e.target.value })}
+                    placeholder="No limit"
+                    step="0.01"
+                    min="0"
+                    disabled={couponForm.type !== 'percentage'}
+                  />
+                </FormGroup>
+              </FormRow>
+
+              <FormRow>
+                <FormGroup>
+                  <Label>Valid From</Label>
+                  <Input
+                    type="date"
+                    value={couponForm.valid_from}
+                    onChange={(e) => setCouponForm({ ...couponForm, valid_from: e.target.value })}
+                  />
+                </FormGroup>
+
+                <FormGroup>
+                  <Label>Valid Until</Label>
+                  <Input
+                    type="date"
+                    value={couponForm.valid_until}
+                    onChange={(e) => setCouponForm({ ...couponForm, valid_until: e.target.value })}
+                  />
+                </FormGroup>
+              </FormRow>
+
+              <FormGroup>
+                <Label>Usage Limit</Label>
+                <Input
+                  type="number"
+                  value={couponForm.usage_limit}
+                  onChange={(e) => setCouponForm({ ...couponForm, usage_limit: e.target.value })}
+                  placeholder="Unlimited"
+                  min="1"
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <Label>Description</Label>
+                <TextArea
+                  value={couponForm.description}
+                  onChange={(e) => setCouponForm({ ...couponForm, description: e.target.value })}
+                  placeholder="Optional description..."
+                />
+              </FormGroup>
+
+              {formError && <ErrorText>{formError}</ErrorText>}
+            </ModalBody>
+            <ModalFooter>
+              <Button onClick={() => setShowModal(false)} disabled={saving}>Cancel</Button>
+              <Button primary onClick={handleSaveCoupon} disabled={saving}>
+                {saving ? 'Saving...' : (editingCoupon ? 'Update Coupon' : 'Create Coupon')}
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+      </CouponsContainer>
     </MainLayout>
   );
 };
 
-export default PromotionsPage;
+export default CouponsPage;

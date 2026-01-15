@@ -860,7 +860,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 </NavItem>
                 <NavItem to="/pos/manager/promotions" active={isActive('/pos/manager/promotions')} onClick={closeSidebar}>
                   <NavIcon>%</NavIcon>
-                  Promotions
+                  Coupons
                 </NavItem>
               </>
             )}
@@ -1037,7 +1037,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 </NavItem>
                 <NavItem to="/pos/manager/promotions" active={isActive('/pos/manager/promotions')} onClick={closeSidebar}>
                   <NavIcon>%</NavIcon>
-                  Promotions
+                  Coupons
                 </NavItem>
               </>
             )}
@@ -1147,7 +1147,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 </NavItem>
                 <NavItem to="/pos/manager/promotions" active={isActive('/pos/manager/promotions')} onClick={closeSidebar}>
                   <NavIcon>%</NavIcon>
-                  Promotions
+                  Coupons
                 </NavItem>
               </>
             )}
@@ -1397,7 +1397,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               {isRouteAllowed(`/restaurant/${restaurantId}/promotions`) && (
                 <NavItem to={`/restaurant/${restaurantId}/promotions`} active={isActive(`/restaurant/${restaurantId}/promotions`)} onClick={closeSidebar}>
                   <NavIcon>%</NavIcon>
-                  Promotions                </NavItem>
+                  Coupons                </NavItem>
               )}
             </NavSection>
           )}
