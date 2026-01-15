@@ -1,45 +1,85 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-01-14
+> **최종 업데이트:** 2026-01-15
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
 ---
 
-## 📋 다음 개발: 주문 관리 개선 (Phase 3.5)
+## 📋 다음 개발: Kitchen Display 개선
 
-> **상세 기획서:** [docs/ORDER_MANAGEMENT_IMPROVEMENTS.md](/docs/ORDER_MANAGEMENT_IMPROVEMENTS.md)
-
-### 개발 범위 요약
+### 남은 작업
 
 | 기능 | 설명 | 상태 |
 |------|------|:----:|
-| Auto-merge | 같은 테이블/조건 주문 자동 통합 | 대기 |
-| Manual Merge | 선택한 주문들 수동 병합 | 대기 |
-| Add Items | 기존 주문에 메뉴 추가 + 키친티켓 | **UI 완료, 테스트 필요** |
 | Kitchen Display 개선 | Pending 컬럼 아이템별 Done 버튼 | 대기 |
-| Coupon System | 쿠폰 모델/API 백엔드 구현 | 대기 |
-| Printer Settings | 빌/키친 프린터 분리 설정 | 대기 |
+| Coupon Frontend UI | 쿠폰 적용 UI (Settings, Payment) | 대기 |
 
-### 테스트 대기 항목
+---
 
-| 기능 | 테스트 내용 | 상태 |
-|------|------------|:----:|
-| Print Settings | 빌/키친 프린터 분리 설정 확인 | 대기 |
-| Coupon System | 쿠폰 적용 UI 및 할인 계산 | 대기 |
-| Order Merge | 주문 병합 기능 테스트 | 대기 |
-| Add Items | 메뉴 추가 (옵션 있는/없는 메뉴) | 대기 |
+## ✅ 완료: Phase 3.5 주문 관리 개선 (2026-01-15)
 
-### 핵심 변경 사항
+> **상세 기획서:** [docs/ORDER_MANAGEMENT_IMPROVEMENTS.md](/docs/ORDER_MANAGEMENT_IMPROVEMENTS.md)
+
+### 완료된 기능
+
+| 기능 | 설명 | API 테스트 |
+|------|------|:----:|
+| Auto-merge | 같은 테이블/조건 주문 자동 통합 | ✅ 통과 |
+| Manual Merge | 선택한 주문들 수동 병합 | ✅ 통과 |
+| Add Items | 기존 주문에 메뉴 추가 + 키친티켓 | ✅ 통과 |
+| Coupon Model/API | 쿠폰 CRUD + 검증 API | ✅ 통과 |
+| Printer Settings UI | 빌/키친 프린터 분리 설정 | ✅ UI 완료 |
+| total_amount 재계산 | 아이템 추가/병합 시 자동 계산 | ✅ 통과 |
+
+### API 테스트 결과 (2026-01-15)
+
+#### 1. Coupon API
+```bash
+# Create: POST /api/coupons
+{"success":true,"data":{"id":2,"code":"SAVE10","type":"percentage","value":10}}
+
+# Validate: POST /api/coupons/validate
+{"success":true,"valid":true,"data":{"discountAmount":10,"finalTotal":90}}
+```
+
+#### 2. Auto-merge (같은 테이블 주문 자동 병합)
+```bash
+# 두 번째 주문 생성 시 자동 병합
+POST /api/orders (table_number: "A99")
+{"success":true,"merged":true,"mergeInfo":{"orderGroup":2}}
+```
+
+#### 3. Add Items API
+```bash
+POST /api/orders/801/merge-items
+{"success":true,"addedItems":[...],"orderGroup":3,"newTotal":90}
+```
+
+#### 4. Manual Merge API
+```bash
+POST /api/orders/merge {"orderIds":[802,803],"targetOrderId":802}
+{"success":true,"deletedOrderIds":[803],"message":"Successfully merged 2 orders"}
+```
+
+### 핵심 구현 사항
 
 1. **Auto-merge 조건**: same restaurant + same table + same order_type + payment pending + not served/completed/cancelled
-2. **아이템 추가 시**: `added_at` 타임스탬프로 추가된 아이템 구분
-3. **키친 티켓**: 추가된 아이템만 별도 출력 가능
-4. **쿠폰**: Mock 데이터 → DB 기반 API로 전환
+2. **order_group**: 아이템 추가 시마다 증가 (원본=0, 첫 추가=1, ...)
+3. **added_at**: 추가된 아이템에 타임스탬프 기록
+4. **merged_from/merged_at**: 병합된 아이템에 원본 주문 정보 기록
+5. **skipAutoMerge**: true로 설정하면 자동 병합 건너뜀
 
-### 수정 필요 버그
+### 관련 파일
 
-- `PATCH /api/orders/:id/items`에서 `total_amount` 재계산 누락 (orders.js:448-472)
+**Backend:**
+- `routes/orders.js` - Auto-merge, Manual Merge, Add Items API
+- `routes/coupons.js` - Coupon CRUD + Validate API
+- `models/Coupon.js` - Coupon 모델
+
+**Frontend:**
+- `pages/Settings/SettingsPage.tsx` - Printer Settings UI
+- `pages/LiveOrders/LiveOrdersPage.tsx` - Add Items 모달
 
 ---
 

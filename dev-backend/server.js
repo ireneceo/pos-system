@@ -233,6 +233,7 @@ const productIngredientsRouter = require('./routes/product-ingredients');
 const productRecipeCategoriesRouter = require('./routes/product-recipe-categories');
 const productIngredientCategoriesRouter = require('./routes/product-ingredient-categories');
 const generalStockCategoriesRouter = require('./routes/general-stock-categories');
+const couponsRouter = require('./routes/coupons');
 
 // Health check endpoint - PM2 모니터링 및 로드밸런서용 (가장 먼저)
 app.get('/api/health', (req, res) => {
@@ -294,6 +295,7 @@ app.use('/api/product-ingredients', productIngredientsRouter);
 app.use('/api/product-recipe-categories', productRecipeCategoriesRouter);
 app.use('/api', generalStockCategoriesRouter);
 app.use('/api/product-ingredient-categories', productIngredientCategoriesRouter);
+app.use('/api/coupons', couponsRouter);
 
 // GitHub Webhook for Auto-Deployment (보안: System Admin 인증 필요)
 const { exec } = require('child_process');

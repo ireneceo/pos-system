@@ -7,53 +7,36 @@
 
 ## 현재 작업 상태
 
-**마지막 업데이트:** 2026-01-14 19:30
-**작업 상태:** 완료 (Git 푸시됨)
+**마지막 업데이트:** 2026-01-15 21:35
+**작업 상태:** Phase 3.5 완료 (모든 기능 개발 완료)
 
-### 완료된 작업 (2026-01-14 세션)
-1. **Live Orders > Add Items 모달 개선**
-   - POS Terminal과 동일한 OptionModal 컴포넌트 적용
-   - 아이템 클릭 시 바로 추가, Options 버튼 클릭 시 옵션 선택 모달
-   - optionGroups 파싱 버그 수정 (문자열 → 배열 변환)
-   - Cancel/Add to Order 버튼 클릭 시 전체 모달 닫힘
+### Phase 3.5 개발 완료 요약 (2026-01-15 검증 완료)
 
-2. **수정된 파일**
-   - `/var/www/dev-frontend/src/pages/LiveOrders/LiveOrdersPage.tsx`
-     - OptionModal 컴포넌트 import 추가
-     - fetchMenuForAddItems에서 optionGroups JSON.parse 처리
-     - 인라인 옵션 모달 제거, POS Terminal OptionModal 사용
-     - 모달 닫힘 동작 개선 (handleCloseModal 호출 추가)
+| 기능 | Backend | Frontend | API 테스트 |
+|------|:-------:|:--------:|:----------:|
+| Auto-merge | ✅ | ✅ | ✅ |
+| Manual Merge | ✅ | ✅ | ✅ |
+| Add Items | ✅ | ✅ | ✅ |
+| Coupon CRUD API | ✅ | - | ✅ |
+| Coupon Validate API | ✅ | ✅ (POS, Mobile) | ✅ |
+| Printer Settings | - | ✅ | - |
+| total_amount 재계산 | ✅ | - | ✅ |
+| Kitchen Display 아이템별 Done | - | ✅ | - |
 
-### 다음 할 일 (테스트 필요)
-1. **Print Settings** - 빌/키친 프린터 분리 설정 테스트
-2. **Coupon System** - 쿠폰 적용 기능 테스트
-3. **Order Merge** - 주문 병합 기능 테스트
-4. **Add Items (메뉴 추가)** - Live Orders > Add Items 기능 테스트
-   - 옵션 있는 메뉴 추가
-   - 옵션 없는 메뉴 추가
-   - 장바구니 수량 조절
-   - Add to Order 후 팝업 닫힘 확인
+### 남은 작업 (선택사항)
 
-### Phase 3.5 개발 예정
-- Backend: Auto-merge, Merge API, Add Items API
-- Coupon 모델 및 API
-- Frontend: Live Orders 머지/추가 UI
-- Kitchen Display 개선
-- Printer Settings
+1. **Promotions 페이지 쿠폰 관리 API 연동** - 현재 mock 데이터 사용 중
+   - `/var/www/dev-frontend/src/pages/Promotions/PromotionsPage.tsx`
+   - `initialCoupons` mock → `/api/coupons` API 연동 필요
 
----
+### 이번 세션 수정 사항
 
-## 최근 수정 파일
-- `/var/www/dev-frontend/src/pages/LiveOrders/LiveOrdersPage.tsx` - Add Items 모달 개선
-- `/var/www/docs/ORDER_MANAGEMENT_IMPROVEMENTS.md` - 상세 기획서
-- `/var/www/DEVELOPMENT_PLAN.md` - Phase 3.5 섹션
+- `/var/www/dev-backend/server.js` - coupons 라우터 마운트 추가
 
 ---
 
 ## 메모
-- 기존 버그: `PATCH /api/orders/:id/items`에서 total_amount 재계산 안됨 → 개발 시 함께 수정
-- Mock 쿠폰 위치: PaymentPage.tsx:488-492, POSTerminalPage.tsx:1638-1644
-- Table View는 이번 개발 범위에서 제외 (별도 기획 필요)
-- Phase 4 Purchase Order는 Phase 3.5 완료 후 진행
-- optionGroups는 DB에서 문자열로 저장됨 (JSON.parse 필요)
+
+- Phase 4 Purchase Order 다음 개발 예정
+- Promotions 페이지 쿠폰 CRUD는 mock 데이터 → API 연동 필요 (우선순위 낮음)
 
