@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
 const Restaurant = require('../models/Restaurant');
+const Coupon = require('../models/Coupon');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const { executeQuery, executeTransaction } = require('../utils/queryWrapper');
@@ -441,6 +442,26 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
         }
       } catch (pointError) {
         console.error(`❌ [POINTS] Error using points for order ${order.id}:`, pointError);
+      }
+    }
+
+    // Increment coupon usage_count if coupon was used
+    if (order.coupon_code && order.restaurant_id) {
+      try {
+        const coupon = await Coupon.findOne({
+          where: {
+            restaurant_id: order.restaurant_id,
+            code: order.coupon_code.toUpperCase()
+          }
+        });
+        if (coupon) {
+          await coupon.update({
+            usage_count: coupon.usage_count + 1
+          });
+          console.log(`✅ [COUPON] Incremented usage_count for coupon ${coupon.code} to ${coupon.usage_count}`);
+        }
+      } catch (couponError) {
+        console.error(`❌ [COUPON] Error incrementing coupon usage:`, couponError);
       }
     }
 

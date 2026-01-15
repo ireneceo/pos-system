@@ -31,6 +31,11 @@
 
 2. Discount Policies 기능 삭제 (멤버십이 자동할인 처리)
 
+3. 쿠폰/포인트/할인정책 전체 플로우 수정
+   - `/var/www/dev-frontend/src/mobile/pages/PaymentPage.tsx` - coupon_code, coupon_discount 주문에 추가
+   - `/var/www/dev-frontend/src/contexts/OrderContext.tsx` - points_used, point_discount, discount_policy 백엔드 전송 추가
+   - `/var/www/dev-backend/routes/orders.js` - 주문 생성 시 쿠폰 usage_count 자동 증가
+
 ---
 
 ## 메모

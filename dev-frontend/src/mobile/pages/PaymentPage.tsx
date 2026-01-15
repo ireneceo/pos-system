@@ -1157,6 +1157,8 @@ const PaymentPage: React.FC = () => {
               delivery_fee: deliveryFee,
               points_used: pointsToUse > 0 ? pointsToUse : null,
               point_discount: pointDiscount > 0 ? pointDiscount : null,
+              coupon_code: couponCode && couponDiscount > 0 ? couponCode : null,
+              coupon_discount: couponDiscount > 0 ? couponDiscount : null,
               // Store delivery info as JSON object
               delivery_info: orderType === 'delivery' ? {
                 address: deliveryAddress,
@@ -1398,6 +1400,8 @@ const PaymentPage: React.FC = () => {
               delivery_fee: deliveryFee,
               points_used: pointsToUse > 0 ? pointsToUse : null,
               point_discount: pointDiscount > 0 ? pointDiscount : null,
+              coupon_code: couponCode && couponDiscount > 0 ? couponCode : null,
+              coupon_discount: couponDiscount > 0 ? couponDiscount : null,
               // Store delivery info as JSON object
               delivery_info: orderType === 'delivery' ? {
                 address: deliveryAddress,
