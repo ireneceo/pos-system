@@ -5,10 +5,24 @@ import PageHeader from '../../components/common/PageHeader';
 import { SaveButtonContainer, SaveButtonGroup, SaveButton, StatusMessage } from '../../components/UI';
 import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
 
-interface PaymentMethod {
+interface CurrencyConfig {
+  [code: string]: {
+    symbol: string;
+    name: string;
+    decimals: number;
+  };
+}
+
+interface PaymentMethodConfig {
   enabled: boolean;
-  label: string;
-  config?: Record<string, string>;
+  // Stripe specific
+  publishableKey?: string;
+  secretKey?: string;
+  webhookSecret?: string;
+  autoCharge?: boolean;
+  // PayPal specific
+  clientId?: string;
+  clientSecret?: string;
   // Bank Transfer specific
   bankName?: string;
   accountNumber?: string;
@@ -18,12 +32,15 @@ interface PaymentMethod {
   qrDescription?: string;
 }
 
+interface CurrencyPaymentSettings {
+  stripe?: PaymentMethodConfig;
+  paypal?: PaymentMethodConfig;
+  bankTransfer?: PaymentMethodConfig;
+  qrPayment?: PaymentMethodConfig;
+}
+
 interface PaymentSettings {
-  stripe: PaymentMethod;
-  paypal: PaymentMethod;
-  bankTransfer: PaymentMethod;
-  qrPayment: PaymentMethod;
-  _order: string[];
+  [currencyCode: string]: CurrencyPaymentSettings;
 }
 
 const Container = styled.div`
@@ -42,6 +59,33 @@ const Description = styled.p`
   color: #6B7C93;
   margin-bottom: 24px;
   font-size: 14px;
+`;
+
+const CurrencyTabs = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #E6EBF1;
+  padding-bottom: 0;
+  overflow-x: auto;
+`;
+
+const CurrencyTab = styled.button<{ active: boolean }>`
+  padding: 12px 20px;
+  border: none;
+  background: none;
+  font-size: 14px;
+  font-weight: 500;
+  color: ${props => props.active ? '#635BFF' : '#6B7C93'};
+  cursor: pointer;
+  border-bottom: 2px solid ${props => props.active ? '#635BFF' : 'transparent'};
+  margin-bottom: -1px;
+  transition: all 0.2s;
+  white-space: nowrap;
+
+  &:hover {
+    color: #635BFF;
+  }
 `;
 
 const PaymentMethodCard = styled.div`
@@ -64,29 +108,16 @@ const MethodLeft = styled.div`
   gap: 12px;
 `;
 
-const OrderControls = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-`;
-
-const OrderButton = styled.button<{ disabled?: boolean }>`
-  background: none;
-  border: none;
-  padding: 2px 6px;
-  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
-  color: ${props => props.disabled ? '#D1D5DB' : '#6B7C93'};
-  font-size: 10px;
-
-  &:hover:not(:disabled) {
-    color: #0A2540;
-  }
-`;
-
 const MethodLabel = styled.span`
   font-size: 16px;
   font-weight: 600;
   color: #0A2540;
+`;
+
+const MethodDescription = styled.span`
+  font-size: 13px;
+  color: #6B7C93;
+  margin-left: 8px;
 `;
 
 const ToggleSwitch = styled.label`
@@ -194,117 +225,93 @@ const Checkbox = styled.input`
   cursor: pointer;
 `;
 
-const defaultPaymentSettings: PaymentSettings = {
-  stripe: {
-    enabled: false,
-    label: 'Stripe',
-    config: {
-      publishableKey: '',
-      secretKey: '',
-      webhookSecret: '',
-    }
-  },
-  paypal: {
-    enabled: false,
-    label: 'PayPal',
-    config: {
-      clientId: '',
-      clientSecret: '',
-    }
-  },
-  bankTransfer: {
-    enabled: false,
-    label: 'Bank Transfer',
-    bankName: '',
-    accountNumber: '',
-    accountName: '',
-  },
-  qrPayment: {
-    enabled: false,
-    label: 'QR Payment',
-    qrImage: '',
-    qrDescription: '',
-  },
-  _order: ['stripe', 'paypal', 'bankTransfer', 'qrPayment']
-};
+const NoCurrencyMessage = styled.div`
+  background: #FEF3C7;
+  border: 1px solid #F59E0B;
+  border-radius: 8px;
+  padding: 16px;
+  color: #92400E;
+  margin-bottom: 24px;
+`;
 
 const PaymentSettingsPage: React.FC = () => {
-  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>(defaultPaymentSettings);
-  const [paymentOrder, setPaymentOrder] = useState<string[]>(defaultPaymentSettings._order);
-  const [autoChargeEnabled, setAutoChargeEnabled] = useState(false);
+  const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
+  const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>([]);
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('');
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>({});
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadPaymentSettings();
+    loadInitialData();
   }, []);
 
-  const loadPaymentSettings = async () => {
+  const loadInitialData = async () => {
     try {
-      const response = await fetch('/api/admin/payment-settings');
-      if (response.ok) {
-        const data = await response.json();
-        if (data && Object.keys(data).length > 0) {
-          setPaymentSettings(data);
-          setPaymentOrder(data._order || defaultPaymentSettings._order);
-          setAutoChargeEnabled(data.stripe?.config?.autoCharge === 'true');
+      // Load currency config and supported currencies
+      const [configRes, supportedRes, settingsRes] = await Promise.all([
+        fetch('/api/currencies/config'),
+        fetch('/api/currencies/supported'),
+        fetch('/api/admin/payment-settings')
+      ]);
+
+      if (configRes.ok) {
+        const configData = await configRes.json();
+        if (configData.success && configData.currencies) {
+          setCurrencyConfig(configData.currencies);
+        }
+      }
+
+      if (supportedRes.ok) {
+        const supportedData = await supportedRes.json();
+        if (supportedData.success && supportedData.data) {
+          const currencies = supportedData.data.map((c: { code: string }) => c.code);
+          setSupportedCurrencies(currencies);
+          if (currencies.length > 0) {
+            setSelectedCurrency(currencies[0]);
+          }
+        }
+      }
+
+      if (settingsRes.ok) {
+        const settingsData = await settingsRes.json();
+        if (settingsData && Object.keys(settingsData).length > 0) {
+          setPaymentSettings(settingsData);
         }
       }
     } catch (error) {
-      console.error('Error loading payment settings:', error);
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleToggle = (key: string, enabled: boolean) => {
-    setPaymentSettings(prev => ({
-      ...prev,
-      [key]: {
-        ...prev[key as keyof PaymentSettings] as PaymentMethod,
-        enabled
-      }
-    }));
-    setHasChanges(true);
+  const getMethodConfig = (method: string): PaymentMethodConfig => {
+    return paymentSettings[selectedCurrency]?.[method as keyof CurrencyPaymentSettings] || { enabled: false };
   };
 
-  const handleConfigChange = (key: string, field: string, value: string) => {
+  const updateMethodConfig = (method: string, updates: Partial<PaymentMethodConfig>) => {
     setPaymentSettings(prev => ({
       ...prev,
-      [key]: {
-        ...prev[key as keyof PaymentSettings] as PaymentMethod,
-        config: {
-          ...(prev[key as keyof PaymentSettings] as PaymentMethod).config,
-          [field]: value
+      [selectedCurrency]: {
+        ...prev[selectedCurrency],
+        [method]: {
+          ...getMethodConfig(method),
+          ...updates
         }
       }
     }));
     setHasChanges(true);
   };
 
-  const handleFieldChange = (key: string, field: string, value: string) => {
-    setPaymentSettings(prev => ({
-      ...prev,
-      [key]: {
-        ...prev[key as keyof PaymentSettings] as PaymentMethod,
-        [field]: value
-      }
-    }));
-    setHasChanges(true);
+  const handleToggle = (method: string, enabled: boolean) => {
+    updateMethodConfig(method, { enabled });
   };
 
-  const movePaymentMethod = (key: string, direction: 'up' | 'down') => {
-    const index = paymentOrder.indexOf(key);
-    if (direction === 'up' && index > 0) {
-      const newOrder = [...paymentOrder];
-      [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
-      setPaymentOrder(newOrder);
-      setHasChanges(true);
-    } else if (direction === 'down' && index < paymentOrder.length - 1) {
-      const newOrder = [...paymentOrder];
-      [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
-      setPaymentOrder(newOrder);
-      setHasChanges(true);
-    }
+  const handleFieldChange = (method: string, field: string, value: string | boolean) => {
+    updateMethodConfig(method, { [field]: value });
   };
 
   const savePaymentSettings = async () => {
@@ -314,24 +321,14 @@ const PaymentSettingsPage: React.FC = () => {
     setSaveStatus(null);
 
     try {
-      const dataToSave = {
-        ...paymentSettings,
-        _order: paymentOrder,
-        stripe: {
-          ...paymentSettings.stripe,
-          config: {
-            ...paymentSettings.stripe.config,
-            autoCharge: autoChargeEnabled ? 'true' : 'false'
-          }
-        }
-      };
-
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/admin/payment-settings', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(dataToSave)
+        body: JSON.stringify(paymentSettings)
       });
 
       if (!response.ok) {
@@ -348,150 +345,167 @@ const PaymentSettingsPage: React.FC = () => {
     }
   };
 
-  const renderMethodContent = (key: string, method: PaymentMethod) => {
-    if (!method.enabled) return null;
+  const renderStripeConfig = () => {
+    const config = getMethodConfig('stripe');
+    if (!config.enabled) return null;
 
-    switch (key) {
-      case 'stripe':
-        return (
-          <MethodContent>
-            <FormGroup>
-              <Label>Publishable Key</Label>
-              <Input
-                type="text"
-                placeholder="pk_live_..."
-                value={method.config?.publishableKey || ''}
-                onChange={(e) => handleConfigChange(key, 'publishableKey', e.target.value)}
-              />
-              <HelpText>Your Stripe publishable key (starts with pk_)</HelpText>
-            </FormGroup>
-            <FormGroup>
-              <Label>Secret Key</Label>
-              <Input
-                type="password"
-                placeholder="sk_live_..."
-                value={method.config?.secretKey || ''}
-                onChange={(e) => handleConfigChange(key, 'secretKey', e.target.value)}
-              />
-              <HelpText>Your Stripe secret key (starts with sk_)</HelpText>
-            </FormGroup>
-            <FormGroup>
-              <Label>Webhook Secret</Label>
-              <Input
-                type="password"
-                placeholder="whsec_..."
-                value={method.config?.webhookSecret || ''}
-                onChange={(e) => handleConfigChange(key, 'webhookSecret', e.target.value)}
-              />
-              <HelpText>Webhook endpoint secret for verifying events</HelpText>
-            </FormGroup>
-            <FormGroup>
-              <CheckboxLabel>
-                <Checkbox
-                  type="checkbox"
-                  checked={autoChargeEnabled}
-                  onChange={(e) => {
-                    setAutoChargeEnabled(e.target.checked);
-                    setHasChanges(true);
-                  }}
-                />
-                Enable auto-charge for subscriptions
-              </CheckboxLabel>
-              <HelpText>Automatically charge saved cards for subscription renewals</HelpText>
-            </FormGroup>
-          </MethodContent>
-        );
-
-      case 'paypal':
-        return (
-          <MethodContent>
-            <FormGroup>
-              <Label>Client ID</Label>
-              <Input
-                type="text"
-                placeholder="Enter PayPal Client ID"
-                value={method.config?.clientId || ''}
-                onChange={(e) => handleConfigChange(key, 'clientId', e.target.value)}
-              />
-            </FormGroup>
-            <FormGroup>
-              <Label>Client Secret</Label>
-              <Input
-                type="password"
-                placeholder="Enter PayPal Client Secret"
-                value={method.config?.clientSecret || ''}
-                onChange={(e) => handleConfigChange(key, 'clientSecret', e.target.value)}
-              />
-            </FormGroup>
-          </MethodContent>
-        );
-
-      case 'bankTransfer':
-        return (
-          <MethodContent>
-            <FormGroup>
-              <Label>Bank Name</Label>
-              <Input
-                type="text"
-                placeholder="e.g., Maybank, CIMB, Public Bank"
-                value={method.bankName || ''}
-                onChange={(e) => handleFieldChange(key, 'bankName', e.target.value)}
-              />
-            </FormGroup>
-            <FormGroup>
-              <Label>Account Number</Label>
-              <Input
-                type="text"
-                placeholder="Enter Bank Account Number"
-                value={method.accountNumber || ''}
-                onChange={(e) => handleFieldChange(key, 'accountNumber', e.target.value)}
-              />
-            </FormGroup>
-            <FormGroup>
-              <Label>Account Name</Label>
-              <Input
-                type="text"
-                placeholder="Enter Account Holder Name"
-                value={method.accountName || ''}
-                onChange={(e) => handleFieldChange(key, 'accountName', e.target.value)}
-              />
-            </FormGroup>
-            <HelpText>
-              Customers will see this information when selecting bank transfer as payment method.
-              They will need to upload a receipt after making the transfer.
-            </HelpText>
-          </MethodContent>
-        );
-
-      case 'qrPayment':
-        return (
-          <MethodContent>
-            <ImageUploadDropzone
-              value={method.qrImage || ''}
-              onChange={(base64) => handleFieldChange(key, 'qrImage', base64)}
-              label="QR Code Image"
-              helpText="Upload QR code image for customers to scan and make payment (DuitNow, etc.)"
-              changeButtonText="Change QR Code"
-              removeButtonText="Remove QR Code"
-              imageAltText="Payment QR Code"
+    return (
+      <MethodContent>
+        <FormGroup>
+          <Label>Publishable Key</Label>
+          <Input
+            type="text"
+            placeholder="pk_live_..."
+            value={config.publishableKey || ''}
+            onChange={(e) => handleFieldChange('stripe', 'publishableKey', e.target.value)}
+          />
+          <HelpText>Your Stripe publishable key (starts with pk_)</HelpText>
+        </FormGroup>
+        <FormGroup>
+          <Label>Secret Key</Label>
+          <Input
+            type="password"
+            placeholder="sk_live_..."
+            value={config.secretKey || ''}
+            onChange={(e) => handleFieldChange('stripe', 'secretKey', e.target.value)}
+          />
+          <HelpText>Your Stripe secret key (starts with sk_)</HelpText>
+        </FormGroup>
+        <FormGroup>
+          <Label>Webhook Secret</Label>
+          <Input
+            type="password"
+            placeholder="whsec_..."
+            value={config.webhookSecret || ''}
+            onChange={(e) => handleFieldChange('stripe', 'webhookSecret', e.target.value)}
+          />
+          <HelpText>Webhook endpoint secret for verifying events</HelpText>
+        </FormGroup>
+        <FormGroup>
+          <CheckboxLabel>
+            <Checkbox
+              type="checkbox"
+              checked={config.autoCharge || false}
+              onChange={(e) => handleFieldChange('stripe', 'autoCharge', e.target.checked)}
             />
-            <FormGroup style={{ marginTop: '16px' }}>
-              <Label>Description</Label>
-              <Input
-                type="text"
-                placeholder="e.g., Scan to pay via DuitNow"
-                value={method.qrDescription || ''}
-                onChange={(e) => handleFieldChange(key, 'qrDescription', e.target.value)}
-              />
-              <HelpText>Short description shown below the QR code</HelpText>
-            </FormGroup>
-          </MethodContent>
-        );
-
-      default:
-        return null;
-    }
+            Enable auto-charge for subscriptions
+          </CheckboxLabel>
+          <HelpText>Automatically charge saved cards for subscription renewals</HelpText>
+        </FormGroup>
+      </MethodContent>
+    );
   };
+
+  const renderPayPalConfig = () => {
+    const config = getMethodConfig('paypal');
+    if (!config.enabled) return null;
+
+    return (
+      <MethodContent>
+        <FormGroup>
+          <Label>Client ID</Label>
+          <Input
+            type="text"
+            placeholder="Enter PayPal Client ID"
+            value={config.clientId || ''}
+            onChange={(e) => handleFieldChange('paypal', 'clientId', e.target.value)}
+          />
+        </FormGroup>
+        <FormGroup>
+          <Label>Client Secret</Label>
+          <Input
+            type="password"
+            placeholder="Enter PayPal Client Secret"
+            value={config.clientSecret || ''}
+            onChange={(e) => handleFieldChange('paypal', 'clientSecret', e.target.value)}
+          />
+        </FormGroup>
+      </MethodContent>
+    );
+  };
+
+  const renderBankTransferConfig = () => {
+    const config = getMethodConfig('bankTransfer');
+    if (!config.enabled) return null;
+
+    return (
+      <MethodContent>
+        <FormGroup>
+          <Label>Bank Name</Label>
+          <Input
+            type="text"
+            placeholder="e.g., Maybank, CIMB, Shinhan Bank"
+            value={config.bankName || ''}
+            onChange={(e) => handleFieldChange('bankTransfer', 'bankName', e.target.value)}
+          />
+        </FormGroup>
+        <FormGroup>
+          <Label>Account Number</Label>
+          <Input
+            type="text"
+            placeholder="Enter Bank Account Number"
+            value={config.accountNumber || ''}
+            onChange={(e) => handleFieldChange('bankTransfer', 'accountNumber', e.target.value)}
+          />
+        </FormGroup>
+        <FormGroup>
+          <Label>Account Name</Label>
+          <Input
+            type="text"
+            placeholder="Enter Account Holder Name"
+            value={config.accountName || ''}
+            onChange={(e) => handleFieldChange('bankTransfer', 'accountName', e.target.value)}
+          />
+        </FormGroup>
+        <HelpText>
+          Customers paying in {selectedCurrency} will see this bank information when selecting bank transfer.
+          They will need to upload a receipt after making the transfer.
+        </HelpText>
+      </MethodContent>
+    );
+  };
+
+  const renderQRPaymentConfig = () => {
+    const config = getMethodConfig('qrPayment');
+    if (!config.enabled) return null;
+
+    return (
+      <MethodContent>
+        <ImageUploadDropzone
+          value={config.qrImage || ''}
+          onChange={(base64) => handleFieldChange('qrPayment', 'qrImage', base64)}
+          label="QR Code Image"
+          helpText={`Upload QR code image for ${selectedCurrency} payments (DuitNow, KakaoPay, etc.)`}
+          changeButtonText="Change QR Code"
+          removeButtonText="Remove QR Code"
+          imageAltText="Payment QR Code"
+        />
+        <FormGroup style={{ marginTop: '16px' }}>
+          <Label>Description</Label>
+          <Input
+            type="text"
+            placeholder="e.g., Scan to pay via DuitNow"
+            value={config.qrDescription || ''}
+            onChange={(e) => handleFieldChange('qrPayment', 'qrDescription', e.target.value)}
+          />
+          <HelpText>Short description shown below the QR code</HelpText>
+        </FormGroup>
+      </MethodContent>
+    );
+  };
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <Container>
+          <PageHeader title="Payment Settings" />
+          <Content>
+            <p>Loading...</p>
+          </Content>
+        </Container>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -499,49 +513,107 @@ const PaymentSettingsPage: React.FC = () => {
         <PageHeader title="Payment Settings" />
         <Content>
           <Description>
-            Configure payment methods for subscription billing and invoice payments.
-            Customers will be able to pay using the enabled methods below.
+            Configure payment methods for each currency. Different currencies can have different payment gateways
+            (e.g., Stripe for MYR, PayPal for KRW).
           </Description>
 
-          {paymentOrder.map((key, index) => {
-            const method = paymentSettings[key as keyof PaymentSettings] as PaymentMethod;
-            if (!method || key === '_order') return null;
+          {supportedCurrencies.length === 0 ? (
+            <NoCurrencyMessage>
+              No currencies configured. Please go to Site Settings and add supported currencies first.
+            </NoCurrencyMessage>
+          ) : (
+            <>
+              <CurrencyTabs>
+                {supportedCurrencies.map(code => (
+                  <CurrencyTab
+                    key={code}
+                    active={selectedCurrency === code}
+                    onClick={() => setSelectedCurrency(code)}
+                  >
+                    {currencyConfig[code]?.symbol} {code}
+                  </CurrencyTab>
+                ))}
+              </CurrencyTabs>
 
-            return (
-              <PaymentMethodCard key={key}>
+              {/* Stripe */}
+              <PaymentMethodCard>
                 <MethodHeader>
                   <MethodLeft>
-                    <OrderControls>
-                      <OrderButton
-                        disabled={index === 0}
-                        onClick={() => movePaymentMethod(key, 'up')}
-                      >
-                        ▲
-                      </OrderButton>
-                      <OrderButton
-                        disabled={index === paymentOrder.length - 1}
-                        onClick={() => movePaymentMethod(key, 'down')}
-                      >
-                        ▼
-                      </OrderButton>
-                    </OrderControls>
-                    <MethodLabel>{method.label}</MethodLabel>
+                    <MethodLabel>Stripe</MethodLabel>
+                    <MethodDescription>Credit/Debit Card payments</MethodDescription>
                   </MethodLeft>
                   <ToggleSwitch>
                     <ToggleInput
                       type="checkbox"
-                      checked={method.enabled}
-                      onChange={(e) => handleToggle(key, e.target.checked)}
+                      checked={getMethodConfig('stripe').enabled}
+                      onChange={(e) => handleToggle('stripe', e.target.checked)}
                     />
                     <ToggleSlider />
                   </ToggleSwitch>
                 </MethodHeader>
-                {renderMethodContent(key, method)}
+                {renderStripeConfig()}
               </PaymentMethodCard>
-            );
-          })}
 
-          <SaveButtonContainer show={hasChanges}>
+              {/* PayPal */}
+              <PaymentMethodCard>
+                <MethodHeader>
+                  <MethodLeft>
+                    <MethodLabel>PayPal</MethodLabel>
+                    <MethodDescription>PayPal account or card</MethodDescription>
+                  </MethodLeft>
+                  <ToggleSwitch>
+                    <ToggleInput
+                      type="checkbox"
+                      checked={getMethodConfig('paypal').enabled}
+                      onChange={(e) => handleToggle('paypal', e.target.checked)}
+                    />
+                    <ToggleSlider />
+                  </ToggleSwitch>
+                </MethodHeader>
+                {renderPayPalConfig()}
+              </PaymentMethodCard>
+
+              {/* Bank Transfer */}
+              <PaymentMethodCard>
+                <MethodHeader>
+                  <MethodLeft>
+                    <MethodLabel>Bank Transfer</MethodLabel>
+                    <MethodDescription>Manual transfer with receipt upload</MethodDescription>
+                  </MethodLeft>
+                  <ToggleSwitch>
+                    <ToggleInput
+                      type="checkbox"
+                      checked={getMethodConfig('bankTransfer').enabled}
+                      onChange={(e) => handleToggle('bankTransfer', e.target.checked)}
+                    />
+                    <ToggleSlider />
+                  </ToggleSwitch>
+                </MethodHeader>
+                {renderBankTransferConfig()}
+              </PaymentMethodCard>
+
+              {/* QR Payment */}
+              <PaymentMethodCard>
+                <MethodHeader>
+                  <MethodLeft>
+                    <MethodLabel>QR Payment</MethodLabel>
+                    <MethodDescription>Scan QR code to pay (DuitNow, KakaoPay, etc.)</MethodDescription>
+                  </MethodLeft>
+                  <ToggleSwitch>
+                    <ToggleInput
+                      type="checkbox"
+                      checked={getMethodConfig('qrPayment').enabled}
+                      onChange={(e) => handleToggle('qrPayment', e.target.checked)}
+                    />
+                    <ToggleSlider />
+                  </ToggleSwitch>
+                </MethodHeader>
+                {renderQRPaymentConfig()}
+              </PaymentMethodCard>
+            </>
+          )}
+
+          <SaveButtonContainer>
             <SaveButtonGroup>
               {saveStatus && (
                 <StatusMessage type={saveStatus.type}>
@@ -549,7 +621,7 @@ const PaymentSettingsPage: React.FC = () => {
                 </StatusMessage>
               )}
               <SaveButton onClick={savePaymentSettings} disabled={isSaving || !hasChanges}>
-                {isSaving ? 'Saving...' : 'Save Changes'}
+                {isSaving ? 'Saving...' : hasChanges ? 'Save Changes' : 'Saved'}
               </SaveButton>
             </SaveButtonGroup>
           </SaveButtonContainer>

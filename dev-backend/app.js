@@ -227,11 +227,13 @@ app.use('/api/notification-settings', notificationSettingsRouter);
 app.use('/api', inventoryRouter);  // Inventory routes for general stock management
 app.use('/api', generalStockCategoriesRouter);  // General stock category routes
 app.use('/api/coupons', couponsRouter);  // Coupon management routes
-app.use('/api/admin/payment-settings', adminPaymentSettingsRouter);  // Payment gateway settings
 
 // GitHub Webhook for Auto-Deployment (보안: System Admin 인증 필요)
 const { exec } = require('child_process');
 const { authenticateToken, requireRole } = require('./middleware/auth');
+
+// Payment settings routes (System Admin only)
+app.use('/api/admin/payment-settings', authenticateToken, requireRole('System Admin'), adminPaymentSettingsRouter);
 app.post('/api/deploy', authenticateToken, requireRole('System Admin'), (req, res) => {
   console.log('📥 Deployment request received from:', req.user?.email);
 
