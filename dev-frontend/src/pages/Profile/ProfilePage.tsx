@@ -349,7 +349,7 @@ const ProfilePage: React.FC = () => {
   // const { restaurantId } = useParams<{ restaurantId?: string }>();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { currentStaff, updateStaff, isLoggedIn } = useStaff();
-  const { user: authUser, isAuthenticated, updateUser } = useAuth();
+  const { user: authUser, isAuthenticated, updateUser, isLoading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<'profile' | 'schedule' | 'performance' | 'security'>('profile');
   const [formData, setFormData] = useState({
     name: '',
@@ -747,6 +747,27 @@ const ProfilePage: React.FC = () => {
     return `${diffDays}d ago`;
   };
 
+  // Show loading state while auth is checking or profile is loading
+  if (authLoading || loading) {
+    return (
+      <MainLayout>
+        <ProfileContainer>
+          <Header>
+            <HeaderTitle>My Profile</HeaderTitle>
+          </Header>
+          <Content>
+            <ContentCard>
+              <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
+                <div>Loading profile...</div>
+              </div>
+            </ContentCard>
+          </Content>
+        </ProfileContainer>
+      </MainLayout>
+    );
+  }
+
+  // Show login message only after auth check is complete
   if (!isAuthenticated || !currentUser) {
     return (
       <MainLayout>
@@ -762,19 +783,6 @@ const ProfilePage: React.FC = () => {
               </div>
             </ContentCard>
           </Content>
-        </ProfileContainer>
-      </MainLayout>
-    );
-  }
-
-  // Show loading state
-  if (loading || !currentUser) {
-    return (
-      <MainLayout>
-        <ProfileContainer>
-          <div style={{ textAlign: 'center', padding: '40px' }}>
-            <div>Loading profile...</div>
-          </div>
         </ProfileContainer>
       </MainLayout>
     );

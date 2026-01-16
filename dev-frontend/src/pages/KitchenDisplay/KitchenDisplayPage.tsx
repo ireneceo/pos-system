@@ -962,6 +962,67 @@ const KitchenDisplayPage: React.FC = () => {
     }
   };
 
+  // Mark all items as completed and then update order status to ready
+  const markAllItemsCompletedAndReady = async (orderId: string) => {
+    try {
+      const order = orders.find(o => o.id === orderId);
+      if (!order) return;
+
+      // Mark all items and set items as completed
+      const updatedItems = order.items.map(item => {
+        const updatedItem = { ...item, status: 'completed' as const };
+        if (item.set_items && item.set_items.length > 0) {
+          updatedItem.set_items = item.set_items.map(setItem => ({
+            ...setItem,
+            status: 'completed' as const
+          }));
+        }
+        return updatedItem;
+      });
+
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/orders/${orderId}/items`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          order_items: updatedItems.map(item => ({
+            ...item,
+            status: item.status
+          }))
+        })
+      });
+
+      const result = await response.json();
+      if (!result.success) {
+        console.error('Failed to update items to completed');
+        return;
+      }
+
+      // Update UI with completed items
+      setOrders(prevOrders =>
+        prevOrders.map(o => {
+          if (o.id === orderId) {
+            return {
+              ...o,
+              items: updatedItems as any
+            };
+          }
+          return o;
+        })
+      );
+
+      // Now update order status to ready
+      await updateOrderStatus(orderId, 'ready', true);
+    } catch (error) {
+      console.error('Failed to mark all items completed:', error);
+      fetchOrders();
+    }
+  };
+
   const getOrdersByStatus = (status: KitchenOrder['status']) => {
     return orders
       .filter(order => order.status === status)
@@ -1316,7 +1377,7 @@ const KitchenDisplayPage: React.FC = () => {
                   <ActionButtonGroup>
                     <ActionButton
                       variant="preparing"
-                      onClick={() => updateOrderStatus(order.id, 'ready')}
+                      onClick={() => markAllItemsCompletedAndReady(order.id)}
                     >
                       Mark Ready →
                     </ActionButton>

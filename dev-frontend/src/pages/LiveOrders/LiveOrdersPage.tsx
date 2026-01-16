@@ -142,6 +142,8 @@ const HeaderActions = styled.div`
   flex-shrink: 0;
 
   @media (max-width: 768px) {
+    width: 100%;
+    justify-content: flex-end;
     gap: 8px;
   }
 `;

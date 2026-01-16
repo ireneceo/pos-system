@@ -1629,62 +1629,46 @@ const SettingsPage: React.FC = () => {
                         <ToggleLabel>{method.label}</ToggleLabel>
                       </div>
 
-                      <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                        {/* POS Terminal Checkbox */}
-                        <label style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          cursor: 'pointer'
-                        }}>
-                          <input
-                            type="checkbox"
-                            checked={method.availableIn?.includes('pos') || false}
-                            onChange={(e) => handlePaymentToggle(key, 'pos', e.target.checked)}
-                            style={{
-                              width: '18px',
-                              height: '18px',
-                              cursor: 'pointer',
-                              accentColor: '#635BFF'
-                            }}
-                          />
+                      <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+                        {/* POS Terminal Toggle */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{
                             fontSize: '13px',
                             fontWeight: '500',
                             color: method.availableIn?.includes('pos') ? '#0A2540' : '#6B7C93',
                             whiteSpace: 'nowrap'
                           }}>
-                            Enable for POS Terminal
+                            POS
                           </span>
-                        </label>
+                          <ToggleSwitch style={{ position: 'relative', width: '44px', height: '24px' }}>
+                            <ToggleInput
+                              type="checkbox"
+                              checked={method.availableIn?.includes('pos') || false}
+                              onChange={(e) => handlePaymentToggle(key, 'pos', e.target.checked)}
+                            />
+                            <ToggleSlider />
+                          </ToggleSwitch>
+                        </div>
 
-                        {/* Mobile Orders Checkbox */}
-                        <label style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          cursor: 'pointer'
-                        }}>
-                          <input
-                            type="checkbox"
-                            checked={method.availableIn?.includes('mobile') || false}
-                            onChange={(e) => handlePaymentToggle(key, 'mobile', e.target.checked)}
-                            style={{
-                              width: '18px',
-                              height: '18px',
-                              cursor: 'pointer',
-                              accentColor: '#635BFF'
-                            }}
-                          />
+                        {/* Mobile Orders Toggle */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{
                             fontSize: '13px',
                             fontWeight: '500',
                             color: method.availableIn?.includes('mobile') ? '#0A2540' : '#6B7C93',
                             whiteSpace: 'nowrap'
                           }}>
-                            Enable for Mobile Orders
+                            Mobile
                           </span>
-                        </label>
+                          <ToggleSwitch style={{ position: 'relative', width: '44px', height: '24px' }}>
+                            <ToggleInput
+                              type="checkbox"
+                              checked={method.availableIn?.includes('mobile') || false}
+                              onChange={(e) => handlePaymentToggle(key, 'mobile', e.target.checked)}
+                            />
+                            <ToggleSlider />
+                          </ToggleSwitch>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -3711,108 +3695,130 @@ const SettingsPage: React.FC = () => {
           )}
 
           {activeTab === 'printer' && (
-            <SettingsCard>
-              <CardTitle>Printer Settings</CardTitle>
-              <p style={{ color: '#6B7C93', marginBottom: '24px', fontSize: '14px' }}>
-                Configure bill printer and kitchen printer settings for your restaurant
-              </p>
+            <>
+              <SettingsGrid>
+                {/* Bill Printer Card */}
+                <SettingsCard>
+                  <CardTitle>Bill Printer</CardTitle>
+                  <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
+                    Configure receipt printer for customer bills
+                  </p>
 
-              {/* Bill Printer Settings */}
-              <FormGroup style={{ marginBottom: '32px' }}>
-                <Label style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', display: 'block' }}>Bill Printer</Label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                  <input
-                    type="checkbox"
-                    checked={printerSettings.billPrinter.enabled}
-                    onChange={(e) => setPrinterSettings(prev => ({
-                      ...prev,
-                      billPrinter: { ...prev.billPrinter, enabled: e.target.checked }
-                    }))}
-                    style={{ width: '18px', height: '18px' }}
-                  />
-                  <span>Enable Bill Printer</span>
-                </div>
-                {printerSettings.billPrinter.enabled && (
-                  <>
-                    <Label>Printer Name (RawBT)</Label>
-                    <Input
-                      type="text"
-                      value={printerSettings.billPrinter.name}
-                      onChange={(e) => setPrinterSettings(prev => ({
-                        ...prev,
-                        billPrinter: { ...prev.billPrinter, name: e.target.value }
-                      }))}
-                      placeholder="e.g., InnerPrinter, XP-80C, etc."
-                    />
-                    <p style={{ fontSize: '12px', color: '#6B7C93', marginTop: '4px' }}>Enter the printer name as registered in RawBT app. Leave empty for default printer.</p>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '16px' }}>
-                      <input
+                  <Toggle>
+                    <ToggleLabel>Enable Bill Printer</ToggleLabel>
+                    <ToggleSwitch>
+                      <ToggleInput
                         type="checkbox"
-                        checked={printerSettings.billPrinter.autoPrint}
+                        checked={printerSettings.billPrinter.enabled}
                         onChange={(e) => setPrinterSettings(prev => ({
                           ...prev,
-                          billPrinter: { ...prev.billPrinter, autoPrint: e.target.checked }
+                          billPrinter: { ...prev.billPrinter, enabled: e.target.checked }
                         }))}
-                        style={{ width: '18px', height: '18px' }}
                       />
-                      <span>Auto-print bill after payment</span>
-                    </div>
-                  </>
-                )}
-              </FormGroup>
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                  </Toggle>
 
-              {/* Kitchen Printer Settings */}
-              <FormGroup>
-                <Label style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', display: 'block' }}>Kitchen Printer</Label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                  <input
-                    type="checkbox"
-                    checked={printerSettings.kitchenPrinter.enabled}
-                    onChange={(e) => setPrinterSettings(prev => ({
-                      ...prev,
-                      kitchenPrinter: { ...prev.kitchenPrinter, enabled: e.target.checked }
-                    }))}
-                    style={{ width: '18px', height: '18px' }}
-                  />
-                  <span>Enable Kitchen Printer</span>
-                </div>
-                {printerSettings.kitchenPrinter.enabled && (
-                  <>
-                    <Label>Printer Name (RawBT)</Label>
-                    <Input
-                      type="text"
-                      value={printerSettings.kitchenPrinter.name}
-                      onChange={(e) => setPrinterSettings(prev => ({
-                        ...prev,
-                        kitchenPrinter: { ...prev.kitchenPrinter, name: e.target.value }
-                      }))}
-                      placeholder="e.g., KitchenPrinter, XP-80C, etc."
-                    />
-                    <p style={{ fontSize: '12px', color: '#6B7C93', marginTop: '4px' }}>Enter the printer name as registered in RawBT app. Leave empty for default printer.</p>
+                  {printerSettings.billPrinter.enabled && (
+                    <>
+                      <FormGroup style={{ marginTop: '20px' }}>
+                        <Label>Printer Address</Label>
+                        <Input
+                          type="text"
+                          value={printerSettings.billPrinter.name}
+                          onChange={(e) => setPrinterSettings(prev => ({
+                            ...prev,
+                            billPrinter: { ...prev.billPrinter, name: e.target.value }
+                          }))}
+                          placeholder="192.168.1.100:9100"
+                        />
+                        <p style={{ fontSize: '12px', color: '#6B7C93', marginTop: '4px', lineHeight: '1.5' }}>
+                          WiFi/LAN: Enter IP address with port (e.g., 192.168.1.100:9100)<br />
+                          Bluetooth: Enter device name from RawBT app<br />
+                          Leave empty to use default printer
+                        </p>
+                      </FormGroup>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '16px' }}>
-                      <input
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={printerSettings.billPrinter.autoPrint}
+                          onChange={(e) => setPrinterSettings(prev => ({
+                            ...prev,
+                            billPrinter: { ...prev.billPrinter, autoPrint: e.target.checked }
+                          }))}
+                          style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
+                        />
+                        <span style={{ fontSize: '14px', color: '#374151' }}>Auto-print after payment</span>
+                      </label>
+                    </>
+                  )}
+                </SettingsCard>
+
+                {/* Kitchen Printer Card */}
+                <SettingsCard>
+                  <CardTitle>Kitchen Printer</CardTitle>
+                  <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
+                    Configure printer for kitchen order tickets
+                  </p>
+
+                  <Toggle>
+                    <ToggleLabel>Enable Kitchen Printer</ToggleLabel>
+                    <ToggleSwitch>
+                      <ToggleInput
                         type="checkbox"
-                        checked={printerSettings.kitchenPrinter.autoPrint}
+                        checked={printerSettings.kitchenPrinter.enabled}
                         onChange={(e) => setPrinterSettings(prev => ({
                           ...prev,
-                          kitchenPrinter: { ...prev.kitchenPrinter, autoPrint: e.target.checked }
+                          kitchenPrinter: { ...prev.kitchenPrinter, enabled: e.target.checked }
                         }))}
-                        style={{ width: '18px', height: '18px' }}
                       />
-                      <span>Auto-print kitchen ticket on new order</span>
-                    </div>
-                  </>
-                )}
-              </FormGroup>
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                  </Toggle>
 
-              <SaveButtonContainer style={{ marginTop: '32px' }}>
+                  {printerSettings.kitchenPrinter.enabled && (
+                    <>
+                      <FormGroup style={{ marginTop: '20px' }}>
+                        <Label>Printer Address</Label>
+                        <Input
+                          type="text"
+                          value={printerSettings.kitchenPrinter.name}
+                          onChange={(e) => setPrinterSettings(prev => ({
+                            ...prev,
+                            kitchenPrinter: { ...prev.kitchenPrinter, name: e.target.value }
+                          }))}
+                          placeholder="192.168.1.101:9100"
+                        />
+                        <p style={{ fontSize: '12px', color: '#6B7C93', marginTop: '4px', lineHeight: '1.5' }}>
+                          WiFi/LAN: Enter IP address with port (e.g., 192.168.1.101:9100)<br />
+                          Bluetooth: Enter device name from RawBT app<br />
+                          Leave empty to use default printer
+                        </p>
+                      </FormGroup>
+
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={printerSettings.kitchenPrinter.autoPrint}
+                          onChange={(e) => setPrinterSettings(prev => ({
+                            ...prev,
+                            kitchenPrinter: { ...prev.kitchenPrinter, autoPrint: e.target.checked }
+                          }))}
+                          style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
+                        />
+                        <span style={{ fontSize: '14px', color: '#374151' }}>Auto-print on new order</span>
+                      </label>
+                    </>
+                  )}
+                </SettingsCard>
+              </SettingsGrid>
+
+              <SaveButtonContainer style={{ marginTop: '24px' }}>
                 <SaveButton
                   onClick={() => {
-                    // Save printer settings to localStorage
                     localStorage.setItem('printerSettings', JSON.stringify(printerSettings));
-                    setSaveStatus({ type: 'success', message: 'Printer settings saved successfully!' });
+                    setSaveStatus({ type: 'success', message: 'Printer settings saved!' });
                     setTimeout(() => setSaveStatus(null), 3000);
                   }}
                 >
@@ -3824,7 +3830,7 @@ const SettingsPage: React.FC = () => {
                   </StatusMessage>
                 )}
               </SaveButtonContainer>
-            </SettingsCard>
+            </>
           )}
 
           {activeTab === 'managers' && (

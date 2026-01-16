@@ -696,8 +696,8 @@ const CouponsPage: React.FC = () => {
         </Content>
 
         {/* 쿠폰 생성/편집 모달 */}
-        <Modal isOpen={showModal}>
-          <ModalContent>
+        <Modal isOpen={showModal} onClick={() => setShowModal(false)}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
             <ModalHeader>
               <ModalTitle>{editingCoupon ? 'Edit Coupon' : 'Create New Coupon'}</ModalTitle>
               <CloseButton onClick={() => setShowModal(false)}>×</CloseButton>
