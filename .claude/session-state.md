@@ -7,38 +7,49 @@
 
 ## 현재 작업 상태
 
-**마지막 업데이트:** 2026-01-15 22:30
-**작업 상태:** 대기 (작업 없음)
+**마지막 업데이트:** 2026-01-16 16:30
+**작업 상태:** 완료
 
 ---
 
-## 이전 세션 요약 (2026-01-15)
+## 이전 세션 요약 (2026-01-16)
 
 ### 완료된 작업
 
-1. **URL 경로 변경: /promotions → /coupons**
-   - App.tsx, MainLayout.tsx, AuthContext.tsx 등 프론트엔드 라우팅 수정
-   - DB addon_modules, plan_templates 테이블 업데이트
+1. **System Admin Payment Settings UI 구현**
+   - Currency Settings (다중 통화 설정)
+   - Online Payment (Stripe/PayPal 전역 설정)
+   - Manual Payment (Bank Transfer/QR 통화별 설정)
+   - PaymentSettingsPage.tsx 완성
 
-2. **쿠폰 API 인증 오류 수정**
-   - 원인: Express 라우터 마운트 순서 문제 (coupons가 너무 뒤에 배치)
-   - 해결: server.js에서 coupons 라우터를 API 라우터 최상단에 배치
+2. **Payment Settings Backend API 구현**
+   - admin-payment-settings.js 라우터 생성
+   - GET/POST /api/admin/payment-settings
+   - GET /api/admin/payment-settings/available/:currency
 
-3. **쿠폰 할인액 프론트엔드 파싱 수정**
-   - POSTerminalPage.tsx: `result.data.discountAmount` 사용
-   - PaymentPage.tsx: `result.data.discountAmount` 사용
+3. **PAYMENT_SYSTEM_PLAN.md 문서화**
+   - 역할별 상세 기획 추가
+   - 통화 설정 규칙 다이어그램
+   - 저장 위치별 설정 구조
 
-4. **쿠폰 기능 테스트 완료**
-   - 쿠폰 검증 (토큰 없이)
-   - 대소문자 변환
-   - 최소 주문금액 체크
-   - 주문 생성 시 쿠폰 적용
-   - usage_count 자동 증가
+4. **Git 커밋 및 푸시**
+   - Commit: 32b6c79
+   - Branch: main
+
+---
+
+## 다음 개발 예정
+
+1. Invoice Payment Page (Phase 2)
+2. Stripe Integration (Phase 3)
+3. PayPal Integration (Phase 4)
+4. Auto Payment System (Phase 5)
+5. Brand/Foodcourt Payment Settings Extension (Phase 6)
 
 ---
 
 ## 메모
 
-- Phase 3.5 완료
-- 다음 개발: Kitchen Display 개선 또는 Phase 4 Purchase Order
-
+- Payment Settings 구조: Stripe/PayPal은 전역, Bank/QR은 통화별
+- Invoice 통화 = 수신자의 Default Currency
+- Restaurant Admin은 단일 통화 (기존 구조 유지)
