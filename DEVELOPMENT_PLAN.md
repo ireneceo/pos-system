@@ -1,18 +1,64 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-01-15
+> **최종 업데이트:** 2026-01-16
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
 ---
 
-## 📋 다음 개발: Kitchen Display 개선
+## 📋 다음 개발: Payment System Integration
 
 ### 남은 작업
 
 | 기능 | 설명 | 상태 |
 |------|------|:----:|
+| Invoice Payment Page | Invoice에서 결제 선택 및 처리 UI | 대기 |
+| Stripe Integration | Stripe 결제 연동 | 대기 |
+| PayPal Integration | PayPal 결제 연동 | 대기 |
+| Auto Payment System | 자동 결제 시스템 | 대기 |
 | Kitchen Display 개선 | Pending 컬럼 아이템별 Done 버튼 | 대기 |
+
+---
+
+## ✅ 완료: Payment Settings UI (2026-01-16)
+
+> **상세 기획서:** [docs/PAYMENT_SYSTEM_PLAN.md](/docs/PAYMENT_SYSTEM_PLAN.md)
+
+### 완료된 기능
+
+| 기능 | 설명 | 상태 |
+|------|------|:----:|
+| Payment Settings Page | System Admin 결제 설정 UI | ✅ 완료 |
+| Currency Settings | 통화 설정 (Payment Settings 내) | ✅ 완료 |
+| Online Payment Settings | Stripe/PayPal 전역 설정 | ✅ 완료 |
+| Manual Payment Settings | Bank Transfer/QR 통화별 설정 | ✅ 완료 |
+| Backend API | 결제 설정 CRUD API | ✅ 완료 |
+| Role-based Documentation | 역할별 결제 시스템 문서화 | ✅ 완료 |
+
+### 핵심 구현 사항
+
+1. **결제 설정 구조**
+   - Stripe/PayPal: 전역 설정 (한 번만 설정, 다중 통화 자동 지원)
+   - Bank Transfer/QR: 통화별 설정 (각 통화마다 다른 계좌/QR)
+
+2. **역할별 통화 설정**
+   - System Admin, Brand General/Manager, Foodcourt General/Manager: 다중 통화
+   - Restaurant Admin: 단일 통화 (기존 구조 유지)
+
+3. **Invoice 통화 규칙**
+   - Invoice 통화 = 수신자의 Default Currency
+
+### 관련 파일
+
+**Backend:**
+- `routes/admin-payment-settings.js` - Payment Settings API
+- `app.js` - Router 등록 (System Admin 전용)
+
+**Frontend:**
+- `pages/Admin/PaymentSettingsPage.tsx` - Payment Settings UI
+
+**Documentation:**
+- `docs/PAYMENT_SYSTEM_PLAN.md` - 결제 시스템 통합 기획서
 
 ---
 

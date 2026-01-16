@@ -28,15 +28,110 @@
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 2. 역할별 결제 기능
+## 2. 역할별 결제 기능 상세
 
-| 역할 | 청구(Invoice 발행) | 결제(Invoice 지불) | Payment Settings |
-|------|-------------------|-------------------|------------------|
-| System Admin | O | X | O (전역 설정) |
-| Brand General/Manager | O (소속 Restaurant) | O (System Admin에게) | O (브랜드용) |
-| Foodcourt General/Manager | O (소속 Restaurant) | O (System Admin에게) | O (푸드코트용) |
-| Restaurant Admin | O (Customer - Mobile) | O (상위에게) | O (Mobile Order용, 기존) |
-| Customer | X | O (Mobile Order) | X |
+### 2.1 역할별 기능 요약
+
+| 역할 | 청구(Invoice 발행) | 결제(Invoice 지불) | Payment Settings | Currency 설정 |
+|------|-------------------|-------------------|------------------|---------------|
+| System Admin | O | X | O (전역) | 다중통화 |
+| Brand General/Manager | O (소속 Restaurant) | O (System Admin에게) | O (브랜드용) | 다중통화 |
+| Foodcourt General/Manager | O (소속 Restaurant) | O (System Admin에게) | O (푸드코트용) | 다중통화 |
+| Restaurant Admin | O (Customer - Mobile) | O (상위에게) | O (Mobile Order용) | 단일통화 |
+| Customer | X | O (Mobile Order) | X | X |
+
+### 2.2 역할별 상세 설명
+
+#### System Admin (시스템 관리자)
+**청구 기능:**
+- 구독 플랜에 따른 자동 인보이스 발행
+- 서비스/컨설팅 등 수동 인보이스 발행
+- 청구 대상: Brand Manager, Foodcourt Manager, Restaurant Admin
+
+**Payment Settings:**
+- 다중 통화 지원 (MYR, KRW, USD 등)
+- Stripe/PayPal: 글로벌 설정 (한 번만)
+- Bank Transfer/QR: 통화별 설정 (통화마다 다른 계좌/QR)
+
+**인보이스 발행 시 통화:**
+- 결제자(수신자)의 Default Currency 기준으로 발행
+- 예: Brand Manager의 Default Currency가 KRW면 KRW로 인보이스 발행
+
+---
+
+#### Brand General/Manager (브랜드 총괄/매니저)
+**청구 기능 (System Admin과 동일 구조):**
+- 소속 Restaurant에게 인보이스 발행
+- 다중 통화 지원
+- Payment Settings에서 결제 수단 설정
+
+**결제 기능:**
+- System Admin에게 받은 인보이스 결제
+- **System Admin의 Default Currency 기준**으로 결제
+- System Admin이 설정한 결제 수단 사용 (Stripe, PayPal, Bank Transfer, QR)
+
+**Payment Settings:**
+- System Admin과 동일한 UI/구조
+- 다중 통화 지원 + 통화별 Bank Transfer/QR 설정
+
+---
+
+#### Foodcourt General/Manager (푸드코트 총괄/매니저)
+**청구 기능 (System Admin과 동일 구조):**
+- 소속 Restaurant에게 인보이스 발행
+- 다중 통화 지원
+- Payment Settings에서 결제 수단 설정
+
+**결제 기능:**
+- System Admin에게 받은 인보이스 결제
+- **System Admin의 Default Currency 기준**으로 결제
+- System Admin이 설정한 결제 수단 사용
+
+**Payment Settings:**
+- System Admin과 동일한 UI/구조
+- 다중 통화 지원 + 통화별 Bank Transfer/QR 설정
+
+---
+
+#### Restaurant Admin (레스토랑 관리자)
+**청구 기능:**
+- Customer에게 Mobile Order를 통한 결제 청구
+- **단일 통화** (레스토랑에 설정된 통화)
+
+**결제 기능:**
+- System Admin에게 받은 인보이스 결제 (구독)
+- Brand/Foodcourt에게 받은 인보이스 결제 (소속비용)
+- **청구자의 설정에 따라** 결제 통화 결정
+
+**Payment Settings:**
+- Mobile Order용 결제 설정 (기존 구조)
+- 단일 통화만 지원
+- Cash, Card, Bank Transfer, QR, Pay at Counter 등
+
+---
+
+### 2.3 통화 설정 규칙
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           통화 설정 규칙                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  청구자                  인보이스 통화          결제 통화                    │
+│  ─────────────────────────────────────────────────────────────────────────  │
+│                                                                             │
+│  System Admin      →   결제자의 Default Currency   →   동일                 │
+│  Brand/Foodcourt   →   결제자(Restaurant)의 통화   →   동일                 │
+│  Restaurant        →   레스토랑 통화 (단일)         →   동일                 │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+예시:
+- System Admin → Brand Manager (Default: KRW) = KRW 인보이스
+- System Admin → Restaurant Admin (통화: MYR) = MYR 인보이스
+- Brand Manager → Restaurant Admin (통화: MYR) = MYR 인보이스
+- Restaurant Admin → Customer = Restaurant 통화 (예: MYR)
+```
 
 ## 3. 결제 수단 종류
 
@@ -55,16 +150,26 @@
 
 ## 4. Payment Settings 설계
 
-### 4.1 Stripe/PayPal vs Bank Transfer/QR 차이
-- **Stripe/PayPal**: 글로벌 설정 (한 번만 설정, 다중 통화 자동 지원)
-- **Bank Transfer/QR**: 통화별 설정 (통화마다 다른 은행계좌/QR 필요)
+### 4.1 설정 구조 비교
 
-### 4.2 System Admin Payment Settings
+| 항목 | System Admin | Brand/Foodcourt | Restaurant |
+|------|-------------|-----------------|------------|
+| Currency 설정 | 다중 (Default + Supported) | 다중 (Default + Supported) | 단일 |
+| Stripe | 글로벌 (1회) | 글로벌 (1회) | 글로벌 (1회) |
+| PayPal | 글로벌 (1회) | 글로벌 (1회) | 글로벌 (1회) |
+| Bank Transfer | 통화별 | 통화별 | 단일 |
+| QR Payment | 통화별 | 통화별 | 단일 |
+| Cash | X | X | O |
+| Pay at Counter | X | X | O |
+
+### 4.2 System Admin / Brand / Foodcourt Payment Settings
 **위치:** Settings > Payment
-**용도:** 구독/서비스 인보이스 결제 수신 + Currency 관리
+**UI 구조:** 동일 (PaymentSettingsPage.tsx 재사용)
 
 ```json
 {
+  "currencies": ["MYR", "KRW", "USD"],
+  "defaultCurrency": "MYR",
   "stripe": {
     "enabled": true,
     "publishableKey": "pk_...",
@@ -78,65 +183,48 @@
     "clientSecret": "..."
   },
   "bankTransfer": {
-    "MYR": { "bankName": "Maybank", "accountNumber": "123...", "accountName": "Purple Here Sdn Bhd" },
-    "KRW": { "bankName": "신한은행", "accountNumber": "110...", "accountName": "퍼플히어" }
+    "MYR": { "enabled": true, "bankName": "Maybank", "accountNumber": "123...", "accountName": "Purple Here" },
+    "KRW": { "enabled": true, "bankName": "신한은행", "accountNumber": "110...", "accountName": "퍼플히어" }
   },
   "qrPayment": {
-    "MYR": { "qrImage": "base64...", "description": "DuitNow" },
-    "KRW": { "qrImage": "base64...", "description": "카카오페이 QR" }
-  },
-  "currencies": ["MYR", "KRW", "USD"],
-  "defaultCurrency": "MYR"
+    "MYR": { "enabled": true, "qrImage": "base64...", "qrDescription": "DuitNow" },
+    "KRW": { "enabled": true, "qrImage": "base64...", "qrDescription": "카카오페이" }
+  }
 }
 ```
 
-### 4.3 Brand/Foodcourt Payment Settings
-**위치:** Brand Settings > Payment / Foodcourt Settings > Payment
-**용도:** 소속 레스토랑에게 인보이스 발행 시 결제 수신
-
-```json
-{
-  "stripe": { ... },
-  "paypal": { ... },
-  "bankTransfer": { "MYR": { ... } },
-  "qrPayment": { "MYR": { ... } }
-}
-```
-
-### 4.4 Restaurant Payment Settings (기존)
+### 4.3 Restaurant Payment Settings (기존)
 **위치:** Settings > Payment
-**용도:** Mobile Order 고객 결제 수신
+**특징:** 단일 통화, Mobile Order + POS용
 
 ```json
 {
+  "currency": "MYR",
   "cash": { "enabled": true, "availableIn": ["pos"] },
-  "card": { "enabled": true, "availableIn": ["pos", "mobile"], "config": { ... } },
-  "bankTransfer": { "enabled": true, "bankName": "", "accountNumber": "", "accountName": "" },
-  "qrPayment": { "enabled": true, "qrImage": "" },
-  "payAtCounter": { "enabled": true },
-  ...
+  "card": { "enabled": true, "availableIn": ["pos", "mobile"], "config": { "stripePublicKey": "..." } },
+  "bankTransfer": { "enabled": true, "bankName": "Maybank", "accountNumber": "123...", "accountName": "Seoul BBQ" },
+  "qrPayment": { "enabled": true, "qrImage": "base64..." },
+  "payAtCounter": { "enabled": true, "availableIn": ["mobile"] }
 }
 ```
 
 ## 5. UI 설계
 
-### 5.1 System Admin Payment Settings
+### 5.1 System Admin / Brand / Foodcourt Payment Settings
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │ Payment Settings                                                 │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│  Configure payment methods for subscription billing              │
-│                                                                  │
 │  ─────────────────────────────────────────────────────────────  │
 │  Currency Settings                                               │
 │  ─────────────────────────────────────────────────────────────  │
 │  Default Currency: [MYR ▼]                                       │
-│  Supported Currencies: [MYR] [KRW] [USD] [+ Add]                │
+│  Supported Currencies: [MYR] [KRW] [USD] [Click to edit]        │
 │                                                                  │
 │  ─────────────────────────────────────────────────────────────  │
-│  Online Payment (Global)                                         │
+│  Online Payment (Global - All Currencies)                        │
 │  ─────────────────────────────────────────────────────────────  │
 │                                                                  │
 │  ┌────────────────────────────────────────────────────────────┐ │
@@ -156,17 +244,17 @@
 │  ─────────────────────────────────────────────────────────────  │
 │  Manual Payment (Per Currency)                                   │
 │  ─────────────────────────────────────────────────────────────  │
-│  [MYR ▼]                                                        │
+│  [$ USD] [RM MYR] [₩ KRW]  ← 통화 탭                            │
 │                                                                  │
 │  ┌────────────────────────────────────────────────────────────┐ │
-│  │ Bank Transfer                                [Toggle ON]   │ │
+│  │ Bank Transfer (MYR)                          [Toggle ON]   │ │
 │  │ Bank Name:       [Maybank]                                 │ │
 │  │ Account Number:  [1234567890]                              │ │
 │  │ Account Name:    [Purple Here Sdn Bhd]                     │ │
 │  └────────────────────────────────────────────────────────────┘ │
 │                                                                  │
 │  ┌────────────────────────────────────────────────────────────┐ │
-│  │ QR Payment                                   [Toggle ON]   │ │
+│  │ QR Payment (MYR)                             [Toggle ON]   │ │
 │  │ QR Code Image:   [Upload QR Code]                          │ │
 │  │ Description:     [Scan to pay via DuitNow]                 │ │
 │  └────────────────────────────────────────────────────────────┘ │
@@ -175,11 +263,11 @@
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 5.2 Invoice 결제 화면
+### 5.2 Invoice 결제 화면 (결제자용)
 
 **접근 경로:**
 - 이메일 링크: `/invoice-payment/:invoiceId/:token`
-- 대시보드: Manager > Invoices > Pay 버튼
+- 대시보드: Invoices > Pay 버튼
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -194,6 +282,7 @@
 │  ─────────────────────────────────────────────────────────────  │
 │                                                                  │
 │  Select Payment Method:                                          │
+│  (청구자가 설정한 MYR 결제 수단만 표시)                          │
 │                                                                  │
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │ ○ Credit/Debit Card                                      │   │
@@ -201,21 +290,15 @@
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                                  │
 │  ┌─────────────────────────────────────────────────────────┐   │
-│  │ ○ PayPal                                                 │   │
-│  │   Pay with PayPal account or card                        │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                  │
-│  ┌─────────────────────────────────────────────────────────┐   │
 │  │ ○ Bank Transfer                                          │   │
 │  │   Bank: Maybank | Acc: 1234567890                        │   │
 │  │   Name: Purple Here Sdn Bhd | Ref: INV-2026010001        │   │
-│  │   [Upload Receipt] after transfer                         │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                                  │
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │ ○ QR Payment                                              │   │
 │  │   ┌─────────┐ Scan to pay via DuitNow                    │   │
-│  │   │ QR CODE │ [Upload Receipt] after payment             │   │
+│  │   │ QR CODE │                                            │   │
 │  │   └─────────┘                                            │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                                  │
@@ -322,29 +405,39 @@ ADD COLUMN payment_method_id VARCHAR(255) NULL
   COMMENT '저장된 결제 수단 ID';
 ```
 
-### 7.3 system_settings 테이블 (payment_settings 키)
-```sql
--- setting_key = 'payment_settings'
--- setting_value = JSON (위 4.2 구조 참고)
-```
+### 7.3 Payment Settings 저장 위치
+
+| 역할 | 저장 테이블 | 필드/키 |
+|------|-----------|---------|
+| System Admin | system_settings | setting_key = 'payment_settings' |
+| Brand | brands | payment_settings (JSON) |
+| Foodcourt | foodcourts | payment_settings (JSON) |
+| Restaurant | restaurants | payment_settings (JSON) - 기존 |
 
 ## 8. API 설계
 
 ### 8.1 Payment Settings API
 ```
-GET  /api/admin/payment-settings         # System Admin 결제 설정 조회
-POST /api/admin/payment-settings         # System Admin 결제 설정 저장
+# System Admin
+GET  /api/admin/payment-settings
+POST /api/admin/payment-settings
 
-GET  /api/brands/:id/payment-settings    # Brand 결제 설정 조회
-POST /api/brands/:id/payment-settings    # Brand 결제 설정 저장
+# Brand
+GET  /api/brands/:id/payment-settings
+POST /api/brands/:id/payment-settings
 
-GET  /api/restaurants/:id/payment-settings   # Restaurant 결제 설정 (기존)
-POST /api/restaurants/:id/payment-settings   # Restaurant 결제 설정 (기존)
+# Foodcourt
+GET  /api/foodcourts/:id/payment-settings
+POST /api/foodcourts/:id/payment-settings
+
+# Restaurant (기존)
+GET  /api/restaurants/:id/payment-settings
+POST /api/restaurants/:id/payment-settings
 ```
 
 ### 8.2 Invoice Payment API
 ```
-GET  /api/invoices/:id/payment-options   # 사용 가능한 결제 수단 조회
+GET  /api/invoices/:id/payment-options   # 사용 가능한 결제 수단 조회 (통화 기반)
 POST /api/invoices/:id/pay/stripe        # Stripe 결제 세션 생성
 POST /api/invoices/:id/pay/paypal        # PayPal 결제 시작
 POST /api/invoices/:id/submit-receipt    # 영수증 제출 (Bank/QR)
@@ -363,12 +456,12 @@ POST /api/subscriptions/:id/update-payment-method # 결제수단 변경
 
 ## 9. 구현 우선순위
 
-### Phase 1: Payment Settings UI 정리 ✓ (2026-01-16 완료)
+### Phase 1: Payment Settings UI ✓ (2026-01-16 완료)
 - [x] System Admin 사이드바에 Settings > Payment 메뉴 추가
 - [x] PaymentSettingsPage.tsx 생성
 - [x] 백엔드 API 생성 (/api/admin/payment-settings)
-- [ ] Currency Settings를 Payment Settings로 통합 (Site Settings에서 이동)
-- [ ] Stripe/PayPal 글로벌 + Bank/QR 통화별 UI 구조로 수정
+- [x] Currency Settings를 Payment Settings로 통합
+- [x] Stripe/PayPal 글로벌 + Bank/QR 통화별 UI 구조
 
 ### Phase 2: Invoice 결제 기능
 - [ ] Invoice 결제 페이지 생성 (InvoicePaymentPage.tsx)
@@ -391,8 +484,9 @@ POST /api/subscriptions/:id/update-payment-method # 결제수단 변경
 - [ ] 실패 시 이메일 알림 및 수동 결제 유도
 
 ### Phase 6: Brand/Foodcourt 확장
-- [ ] Brand Payment Settings
-- [ ] Foodcourt Payment Settings
+- [ ] Brand Payment Settings (System Admin과 동일 UI 재사용)
+- [ ] Foodcourt Payment Settings (System Admin과 동일 UI 재사용)
+- [ ] brands/foodcourts 테이블에 payment_settings 필드 추가
 - [ ] Restaurant → Brand/Foodcourt 결제 흐름
 
 ## 10. 보안 고려사항
