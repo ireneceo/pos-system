@@ -1,5 +1,7 @@
 # 결제 시스템 설계 문서
 
+> 최종 업데이트: 2026-01-16
+
 ## 1. 결제 흐름 개요
 
 ```
@@ -7,119 +9,177 @@
 │                              결제 흐름 구조                                   │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  System Admin                                                               │
-│       │                                                                     │
-│       ▼                                                                     │
-│  ┌─────────────┐    구독/서비스 비용 청구    ┌─────────────────────┐        │
-│  │ 인보이스    │ ─────────────────────────▶ │ Brand Manager       │        │
-│  │ 발행       │                            │ Foodcourt Manager   │        │
-│  │            │                            │ Restaurant Manager  │        │
-│  └─────────────┘                            └─────────────────────┘        │
-│                                                      │                     │
-│                                                      ▼                     │
-│                         ┌────────────────────────────────────────┐         │
-│                         │  Brand/Foodcourt Manager               │         │
-│                         │       │                                │         │
-│                         │       ▼                                │         │
-│                         │  ┌─────────────┐   소속 레스토랑 비용   │         │
-│                         │  │ 인보이스    │ ──────────────────────│─▶ Restaurant │
-│                         │  │ 발행       │                        │         │
-│                         │  └─────────────┘                       │         │
-│                         └────────────────────────────────────────┘         │
-│                                                      │                     │
-│                                                      ▼                     │
-│                         ┌────────────────────────────────────────┐         │
-│                         │  Restaurant                            │         │
-│                         │       │                                │         │
-│                         │       ▼                                │         │
-│                         │  ┌─────────────┐   주문 결제           │         │
-│                         │  │ Mobile      │ ──────────────────────│─▶ Customer │
-│                         │  │ Order       │                        │         │
-│                         │  └─────────────┘                       │         │
-│                         └────────────────────────────────────────┘         │
+│  청구자 (Invoice 발행)                 결제자 (Invoice 결제)                 │
+│  ─────────────────────────────────────────────────────────────────────────  │
+│                                                                             │
+│  System Admin          ──────────────▶  Brand Manager                      │
+│  (구독/서비스 청구)                      Foodcourt Manager                   │
+│                                         Restaurant Admin                    │
+│                                                                             │
+│  Brand General/Manager ──────────────▶  Restaurant Admin                   │
+│  (소속 레스토랑 비용)                    (브랜드 소속)                        │
+│                                                                             │
+│  Foodcourt General/Manager ──────────▶  Restaurant Admin                   │
+│  (소속 레스토랑 비용)                    (푸드코트 소속)                      │
+│                                                                             │
+│  Restaurant Admin      ──────────────▶  Customer                           │
+│  (Mobile Order)                         (모바일 주문 결제)                   │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 2. 역할별 결제 설정 위치
+## 2. 역할별 결제 기능
 
-| 역할 | 결제 설정 위치 | 결제 대상 | 인보이스 메뉴 |
-|------|---------------|----------|-------------|
-| System Admin | Admin Settings > Payment | Brand/Foodcourt/Restaurant Managers | Invoices (발행 + 수금) |
-| Brand General | Brand Settings > Payment | 소속 Restaurants | Invoices (발행 + 수금) |
-| Foodcourt General | Foodcourt Settings > Payment | 소속 Restaurants | Invoices (발행 + 수금) |
-| Restaurant Admin | Settings > Payment Methods | Customers (Mobile Order) | - (주문 내역에서 확인) |
+| 역할 | 청구(Invoice 발행) | 결제(Invoice 지불) | Payment Settings |
+|------|-------------------|-------------------|------------------|
+| System Admin | O | X | O (전역 설정) |
+| Brand General/Manager | O (소속 Restaurant) | O (System Admin에게) | O (브랜드용) |
+| Foodcourt General/Manager | O (소속 Restaurant) | O (System Admin에게) | O (푸드코트용) |
+| Restaurant Admin | O (Customer - Mobile) | O (상위에게) | O (Mobile Order용, 기존) |
+| Customer | X | O (Mobile Order) | X |
 
 ## 3. 결제 수단 종류
 
 ### 3.1 온라인 결제 (자동)
-- **Stripe** - 카드, 정기결제
-- **PayPal** - 카드, PayPal 계정
+- **Stripe** - 카드, 정기결제 (다중 통화 지원)
+- **PayPal** - 카드, PayPal 계정 (다중 통화 지원)
 
 ### 3.2 수동 결제
-- **Bank Transfer** - 은행 송금 (계좌 정보 표시)
-- **QR Payment** - QR 코드 스캔 결제 (DuitNow, Touch'n Go 등)
+- **Bank Transfer** - 은행 송금 (통화별 다른 계좌)
+- **QR Payment** - QR 코드 스캔 결제 (통화별 다른 QR - DuitNow, KakaoPay 등)
 
-### 3.3 오프라인 결제 (POS용)
+### 3.3 오프라인 결제 (POS용 - Restaurant만)
 - Cash
 - Card (단말기)
+- Pay at Counter
 
-## 4. UI 설계
+## 4. Payment Settings 설계
 
-### 4.1 System Admin - Payment Settings (신규)
+### 4.1 Stripe/PayPal vs Bank Transfer/QR 차이
+- **Stripe/PayPal**: 글로벌 설정 (한 번만 설정, 다중 통화 자동 지원)
+- **Bank Transfer/QR**: 통화별 설정 (통화마다 다른 은행계좌/QR 필요)
 
-**위치:** Admin Settings > Payment 탭 추가
+### 4.2 System Admin Payment Settings
+**위치:** Settings > Payment
+**용도:** 구독/서비스 인보이스 결제 수신 + Currency 관리
+
+```json
+{
+  "stripe": {
+    "enabled": true,
+    "publishableKey": "pk_...",
+    "secretKey": "sk_...",
+    "webhookSecret": "whsec_...",
+    "autoCharge": true
+  },
+  "paypal": {
+    "enabled": true,
+    "clientId": "...",
+    "clientSecret": "..."
+  },
+  "bankTransfer": {
+    "MYR": { "bankName": "Maybank", "accountNumber": "123...", "accountName": "Purple Here Sdn Bhd" },
+    "KRW": { "bankName": "신한은행", "accountNumber": "110...", "accountName": "퍼플히어" }
+  },
+  "qrPayment": {
+    "MYR": { "qrImage": "base64...", "description": "DuitNow" },
+    "KRW": { "qrImage": "base64...", "description": "카카오페이 QR" }
+  },
+  "currencies": ["MYR", "KRW", "USD"],
+  "defaultCurrency": "MYR"
+}
+```
+
+### 4.3 Brand/Foodcourt Payment Settings
+**위치:** Brand Settings > Payment / Foodcourt Settings > Payment
+**용도:** 소속 레스토랑에게 인보이스 발행 시 결제 수신
+
+```json
+{
+  "stripe": { ... },
+  "paypal": { ... },
+  "bankTransfer": { "MYR": { ... } },
+  "qrPayment": { "MYR": { ... } }
+}
+```
+
+### 4.4 Restaurant Payment Settings (기존)
+**위치:** Settings > Payment
+**용도:** Mobile Order 고객 결제 수신
+
+```json
+{
+  "cash": { "enabled": true, "availableIn": ["pos"] },
+  "card": { "enabled": true, "availableIn": ["pos", "mobile"], "config": { ... } },
+  "bankTransfer": { "enabled": true, "bankName": "", "accountNumber": "", "accountName": "" },
+  "qrPayment": { "enabled": true, "qrImage": "" },
+  "payAtCounter": { "enabled": true },
+  ...
+}
+```
+
+## 5. UI 설계
+
+### 5.1 System Admin Payment Settings
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│ Admin Settings                                                   │
-├──────────┬──────────┬──────────┬──────────┐                     │
-│ Company  │ Payment  │ ...      │          │                     │
-├──────────┴──────────┴──────────┴──────────┴─────────────────────┤
+│ Payment Settings                                                 │
+├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│  Payment Settings                                                │
 │  Configure payment methods for subscription billing              │
 │                                                                  │
+│  ─────────────────────────────────────────────────────────────  │
+│  Currency Settings                                               │
+│  ─────────────────────────────────────────────────────────────  │
+│  Default Currency: [MYR ▼]                                       │
+│  Supported Currencies: [MYR] [KRW] [USD] [+ Add]                │
+│                                                                  │
+│  ─────────────────────────────────────────────────────────────  │
+│  Online Payment (Global)                                         │
+│  ─────────────────────────────────────────────────────────────  │
+│                                                                  │
 │  ┌────────────────────────────────────────────────────────────┐ │
-│  │ ▲▼  Stripe                                    [Toggle ON]  │ │
-│  │     ─────────────────────────────────────────────────────  │ │
-│  │     Publishable Key: [pk_live_...]                         │ │
-│  │     Secret Key:      [sk_live_...]                         │ │
-│  │     Webhook Secret:  [whsec_...]                           │ │
-│  │     □ Enable auto-charge for subscriptions                 │ │
+│  │ Stripe                                       [Toggle ON]   │ │
+│  │ Publishable Key: [pk_live_...]                             │ │
+│  │ Secret Key:      [sk_live_...]                             │ │
+│  │ Webhook Secret:  [whsec_...]                               │ │
+│  │ □ Enable auto-charge for subscriptions                     │ │
 │  └────────────────────────────────────────────────────────────┘ │
 │                                                                  │
 │  ┌────────────────────────────────────────────────────────────┐ │
-│  │ ▲▼  PayPal                                    [Toggle ON]  │ │
-│  │     ─────────────────────────────────────────────────────  │ │
-│  │     Client ID:       [...]                                 │ │
-│  │     Client Secret:   [...]                                 │ │
+│  │ PayPal                                       [Toggle ON]   │ │
+│  │ Client ID:       [...]                                     │ │
+│  │ Client Secret:   [...]                                     │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│                                                                  │
+│  ─────────────────────────────────────────────────────────────  │
+│  Manual Payment (Per Currency)                                   │
+│  ─────────────────────────────────────────────────────────────  │
+│  [MYR ▼]                                                        │
+│                                                                  │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │ Bank Transfer                                [Toggle ON]   │ │
+│  │ Bank Name:       [Maybank]                                 │ │
+│  │ Account Number:  [1234567890]                              │ │
+│  │ Account Name:    [Purple Here Sdn Bhd]                     │ │
 │  └────────────────────────────────────────────────────────────┘ │
 │                                                                  │
 │  ┌────────────────────────────────────────────────────────────┐ │
-│  │ ▲▼  Bank Transfer                             [Toggle ON]  │ │
-│  │     ─────────────────────────────────────────────────────  │ │
-│  │     Bank Name:       [Maybank]                             │ │
-│  │     Account Number:  [1234567890]                          │ │
-│  │     Account Name:    [Purple Here Sdn Bhd]                 │ │
-│  └────────────────────────────────────────────────────────────┘ │
-│                                                                  │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │ ▲▼  QR Payment                                [Toggle ON]  │ │
-│  │     ─────────────────────────────────────────────────────  │ │
-│  │     QR Code Image:   [Upload QR Code]                      │ │
-│  │     Description:     [Scan to pay via DuitNow]             │ │
+│  │ QR Payment                                   [Toggle ON]   │ │
+│  │ QR Code Image:   [Upload QR Code]                          │ │
+│  │ Description:     [Scan to pay via DuitNow]                 │ │
 │  └────────────────────────────────────────────────────────────┘ │
 │                                                                  │
 │                                            [Save Settings]       │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 4.2 Invoice 결제 화면 (Manager가 결제할 때)
+### 5.2 Invoice 결제 화면
 
 **접근 경로:**
-- 이메일 링크 클릭
-- Manager > Invoices > Pay 버튼
+- 이메일 링크: `/invoice-payment/:invoiceId/:token`
+- 대시보드: Manager > Invoices > Pay 버튼
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -127,50 +187,43 @@
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  Invoice: INV-2026010001                                        │
-│  Amount:  MYR 99.00                                             │
-│  Due:     2026-01-31                                            │
+│  From: Purple Here (System Admin)                               │
+│  Amount: MYR 99.00                                              │
+│  Due: 2026-01-31                                                │
 │                                                                  │
 │  ─────────────────────────────────────────────────────────────  │
 │                                                                  │
 │  Select Payment Method:                                          │
 │                                                                  │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │ ○ Credit/Debit Card (Stripe)                               │ │
-│  │   Secure payment via Stripe                                │ │
-│  └────────────────────────────────────────────────────────────┘ │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ ○ Credit/Debit Card                                      │   │
+│  │   Secure payment via Stripe                              │   │
+│  └─────────────────────────────────────────────────────────┘   │
 │                                                                  │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │ ○ PayPal                                                   │ │
-│  │   Pay with PayPal account or card                          │ │
-│  └────────────────────────────────────────────────────────────┘ │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ ○ PayPal                                                 │   │
+│  │   Pay with PayPal account or card                        │   │
+│  └─────────────────────────────────────────────────────────┘   │
 │                                                                  │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │ ○ Bank Transfer                                            │ │
-│  │   Manual transfer - upload receipt after payment           │ │
-│  │   ─────────────────────────────────────────────────────    │ │
-│  │   Bank: Maybank                                            │ │
-│  │   Account: 1234567890                                      │ │
-│  │   Name: Purple Here Sdn Bhd                                │ │
-│  │   Reference: INV-2026010001                                │ │
-│  └────────────────────────────────────────────────────────────┘ │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ ○ Bank Transfer                                          │   │
+│  │   Bank: Maybank | Acc: 1234567890                        │   │
+│  │   Name: Purple Here Sdn Bhd | Ref: INV-2026010001        │   │
+│  │   [Upload Receipt] after transfer                         │   │
+│  └─────────────────────────────────────────────────────────┘   │
 │                                                                  │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │ ○ QR Payment                                               │ │
-│  │   Scan QR code to pay                                      │ │
-│  │   ─────────────────────────────────────────────────────    │ │
-│  │         ┌─────────────┐                                    │ │
-│  │         │   QR CODE   │                                    │ │
-│  │         │    IMAGE    │                                    │ │
-│  │         └─────────────┘                                    │ │
-│  │   Scan to pay via DuitNow                                  │ │
-│  └────────────────────────────────────────────────────────────┘ │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ ○ QR Payment                                              │   │
+│  │   ┌─────────┐ Scan to pay via DuitNow                    │   │
+│  │   │ QR CODE │ [Upload Receipt] after payment             │   │
+│  │   └─────────┘                                            │   │
+│  └─────────────────────────────────────────────────────────┘   │
 │                                                                  │
-│                                   [Continue to Payment]          │
-│                                                                  │
+│                                    [Continue to Payment]         │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 4.3 Bank Transfer / QR Payment 후 영수증 업로드
+### 5.3 영수증 업로드 화면 (Bank Transfer / QR Payment)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -186,35 +239,46 @@
 │  Upload Payment Receipt:                                         │
 │                                                                  │
 │  ┌────────────────────────────────────────────────────────────┐ │
-│  │                                                            │ │
 │  │              [Drop receipt image here]                     │ │
 │  │                  or click to browse                        │ │
-│  │                                                            │ │
 │  └────────────────────────────────────────────────────────────┘ │
 │                                                                  │
-│  Transaction Reference (optional):                               │
-│  [_________________________________________________]            │
-│                                                                  │
-│  Notes (optional):                                               │
-│  [_________________________________________________]            │
+│  Transaction Reference (optional): [_________________________]  │
+│  Notes (optional): [_________________________________________]  │
 │                                                                  │
 │                                   [Submit for Review]            │
-│                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## 5. 구독 자동결제 흐름
+## 6. 결제 프로세스
 
-### 5.1 첫 구독 시작
+### 6.1 온라인 자동 결제 (Stripe)
 ```
-1. Manager가 플랜 선택 → Subscribe 클릭
-2. 결제 수단 선택 화면 (Stripe/PayPal/Bank Transfer)
-3-A. Stripe/PayPal 선택 → 온라인 결제 → 카드 정보 저장
-3-B. Bank Transfer 선택 → 계좌 정보 표시 → 송금 후 영수증 업로드
-4. 결제 확인 → 구독 활성화
+1. Invoice 발행 → 이메일로 결제 링크 발송
+2. 결제자가 링크 클릭 → 결제 페이지
+3. Stripe Checkout으로 카드 결제
+4. 성공 시 → Invoice 상태 'paid' 업데이트
+5. 구독인 경우 → 카드 정보 저장 (다음 결제 자동)
 ```
 
-### 5.2 자동 갱신 (Stripe만 해당)
+### 6.2 온라인 자동 결제 (PayPal)
+```
+1. Invoice 발행 → 이메일로 결제 링크 발송
+2. 결제자가 링크 클릭 → PayPal 결제 페이지
+3. PayPal 계정 또는 카드로 결제
+4. 성공 시 → Invoice 상태 'paid' 업데이트
+```
+
+### 6.3 수동 결제 (Bank Transfer / QR)
+```
+1. Invoice 발행 → 은행/QR 정보 포함 이메일 발송
+2. 결제자가 송금 진행
+3. 송금 후 → Invoice 페이지에서 영수증 업로드
+4. Invoice 상태 'payment_submitted' 업데이트
+5. 청구자가 확인 → 'paid' 업데이트
+```
+
+### 6.4 구독 자동갱신 (Stripe)
 ```
 1. 갱신일 도래
 2. Stripe가 저장된 카드로 자동 결제 시도
@@ -223,97 +287,118 @@
 4. 실패 시 수동 결제 유도
 ```
 
-### 5.3 수동 결제 (Bank Transfer, 카드 결제 실패 시)
-```
-1. Invoice 발행 (pending_payment)
-2. Manager에게 이메일 발송 (결제 링크 포함)
-3. Manager가 결제 또는 영수증 업로드
-4. Admin 확인 후 paid 처리
-```
+## 7. DB 스키마
 
-## 6. DB 스키마 변경
+### 7.1 현재 구조 (변경 불필요)
 
-### 6.1 system_settings 테이블 (기존)
+**invoices 테이블:**
 ```sql
--- payment_settings JSON 필드에 저장
-{
-  "stripe": {
-    "enabled": true,
-    "publishableKey": "pk_...",
-    "secretKey": "sk_...",
-    "webhookSecret": "whsec_...",
-    "autoCharge": true
-  },
-  "paypal": {
-    "enabled": true,
-    "clientId": "...",
-    "clientSecret": "..."
-  },
-  "bankTransfer": {
-    "enabled": true,
-    "bankName": "Maybank",
-    "accountNumber": "1234567890",
-    "accountName": "Purple Here Sdn Bhd"
-  },
-  "qrPayment": {
-    "enabled": true,
-    "qrImage": "base64...",
-    "description": "Scan to pay via DuitNow"
-  }
-}
+- currency: VARCHAR(10)        -- 통화
+- payment_method: VARCHAR(50)  -- 결제 수단
+- transaction_id: VARCHAR(255) -- 트랜잭션 ID
+- receipt_url: VARCHAR(500)    -- 영수증 URL
+- payment_notes: TEXT          -- 결제 메모
+- status: ENUM('draft','pending_payment','payment_submitted','paid','overdue','cancelled')
 ```
 
-### 6.2 subscriptions 테이블 확장
+**plan_prices 테이블:**
+```sql
+- currency: VARCHAR(3)         -- 통화
+- monthly_price: DECIMAL(10,2)
+- annual_price: DECIMAL(10,2)
+```
+
+### 7.2 subscriptions 테이블 확장 필요
 ```sql
 ALTER TABLE subscriptions
-ADD COLUMN stripe_customer_id VARCHAR(255) NULL,
-ADD COLUMN stripe_subscription_id VARCHAR(255) NULL,
-ADD COLUMN stripe_payment_method_id VARCHAR(255) NULL,
-ADD COLUMN paypal_subscription_id VARCHAR(255) NULL;
+ADD COLUMN currency VARCHAR(10) DEFAULT 'MYR',
+ADD COLUMN payment_provider VARCHAR(50) NULL
+  COMMENT 'stripe, paypal, bank_transfer, qr_payment',
+ADD COLUMN payment_provider_subscription_id VARCHAR(255) NULL
+  COMMENT '결제 게이트웨이 구독 ID',
+ADD COLUMN payment_provider_customer_id VARCHAR(255) NULL
+  COMMENT '결제 게이트웨이 고객 ID',
+ADD COLUMN payment_method_id VARCHAR(255) NULL
+  COMMENT '저장된 결제 수단 ID';
 ```
 
-### 6.3 invoices 테이블 (기존 - 추가 필드 확인)
+### 7.3 system_settings 테이블 (payment_settings 키)
 ```sql
--- 기존 필드들 활용
--- payment_method: 'stripe', 'paypal', 'bank_transfer', 'qr_payment'
--- transaction_id: 결제 트랜잭션 ID
--- receipt_url: 영수증 URL 또는 업로드된 이미지
--- payment_notes: 결제 관련 메모
+-- setting_key = 'payment_settings'
+-- setting_value = JSON (위 4.2 구조 참고)
 ```
 
-## 7. 역할별 인보이스 메뉴 분석
+## 8. API 설계
 
-| 역할 | 인보이스 발행 | 인보이스 수신 | 결제 | 결제 확인 |
-|------|-------------|-------------|------|----------|
-| System Admin | O (구독/서비스) | X | X | O (모든 결제) |
-| Brand General | O (소속 레스토랑) | O (Admin에서) | O | O (소속 결제) |
-| Foodcourt General | O (소속 레스토랑) | O (Admin에서) | O | O (소속 결제) |
-| Restaurant Admin | X | O (Admin/Brand/FC) | O | X |
+### 8.1 Payment Settings API
+```
+GET  /api/admin/payment-settings         # System Admin 결제 설정 조회
+POST /api/admin/payment-settings         # System Admin 결제 설정 저장
 
-### 결론:
-- **System Admin**: 결제 설정 + 인보이스 발행/관리 (별도 결제내역 메뉴 불필요 - Invoices에서 모두 처리)
-- **Brand/Foodcourt General**: 인보이스 발행/관리 + 결제 (별도 결제내역 메뉴 불필요 - Invoices에서 처리)
-- **Restaurant Admin**: 인보이스 수신 + 결제 (별도 결제내역 메뉴 불필요 - Invoices에서 처리)
+GET  /api/brands/:id/payment-settings    # Brand 결제 설정 조회
+POST /api/brands/:id/payment-settings    # Brand 결제 설정 저장
 
-## 8. 구현 우선순위
+GET  /api/restaurants/:id/payment-settings   # Restaurant 결제 설정 (기존)
+POST /api/restaurants/:id/payment-settings   # Restaurant 결제 설정 (기존)
+```
 
-### Phase 1: System Admin Payment Settings UI
-1. AdminSettingsPage에 Payment 탭 추가
-2. 결제 수단 설정 UI (Stripe, PayPal, Bank Transfer, QR)
-3. 설정 저장/로드 API
+### 8.2 Invoice Payment API
+```
+GET  /api/invoices/:id/payment-options   # 사용 가능한 결제 수단 조회
+POST /api/invoices/:id/pay/stripe        # Stripe 결제 세션 생성
+POST /api/invoices/:id/pay/paypal        # PayPal 결제 시작
+POST /api/invoices/:id/submit-receipt    # 영수증 제출 (Bank/QR)
+POST /api/invoices/:id/confirm-payment   # 결제 확인 (청구자)
 
-### Phase 2: Invoice Payment UI
-1. Manager용 Invoice 결제 페이지
-2. 결제 수단 선택 UI
-3. Bank Transfer/QR 영수증 업로드 기능
-4. Invoice 상태 업데이트
+POST /api/webhooks/stripe                # Stripe webhook
+POST /api/webhooks/paypal                # PayPal webhook
+```
+
+### 8.3 Subscription Payment API
+```
+POST /api/subscriptions/:id/setup-auto-payment    # 자동결제 설정
+POST /api/subscriptions/:id/cancel-auto-payment   # 자동결제 취소
+POST /api/subscriptions/:id/update-payment-method # 결제수단 변경
+```
+
+## 9. 구현 우선순위
+
+### Phase 1: Payment Settings UI 정리 ✓ (2026-01-16 완료)
+- [x] System Admin 사이드바에 Settings > Payment 메뉴 추가
+- [x] PaymentSettingsPage.tsx 생성
+- [x] 백엔드 API 생성 (/api/admin/payment-settings)
+- [ ] Currency Settings를 Payment Settings로 통합 (Site Settings에서 이동)
+- [ ] Stripe/PayPal 글로벌 + Bank/QR 통화별 UI 구조로 수정
+
+### Phase 2: Invoice 결제 기능
+- [ ] Invoice 결제 페이지 생성 (InvoicePaymentPage.tsx)
+- [ ] Bank Transfer/QR 결제 프로세스 (영수증 업로드 → 확인)
+- [ ] Invoice 상태 업데이트 로직
+- [ ] 이메일 결제 링크 발송
 
 ### Phase 3: Stripe 연동
-1. Stripe Checkout 연동
-2. Webhook 처리
-3. 구독 자동결제 연동
+- [ ] Stripe Checkout 연동 (일회성 결제)
+- [ ] Stripe Customer/PaymentMethod 저장 (구독 자동결제용)
+- [ ] Stripe Webhook 처리
 
-### Phase 4: 다른 역할 확장
-1. Brand General Payment Settings
-2. Foodcourt General Payment Settings
-3. 각 역할의 Invoice 결제 기능
+### Phase 4: PayPal 연동
+- [ ] PayPal Checkout 연동
+- [ ] PayPal Webhook 처리
+
+### Phase 5: 자동 결제 (구독)
+- [ ] Subscription에 결제 정보 저장
+- [ ] 갱신일 자동 결제 처리
+- [ ] 실패 시 이메일 알림 및 수동 결제 유도
+
+### Phase 6: Brand/Foodcourt 확장
+- [ ] Brand Payment Settings
+- [ ] Foodcourt Payment Settings
+- [ ] Restaurant → Brand/Foodcourt 결제 흐름
+
+## 10. 보안 고려사항
+
+1. **API 키 암호화**: Secret Key는 DB에 암호화하여 저장
+2. **마스킹 처리**: API 응답에서 Secret Key는 마스킹 (••••last4)
+3. **Webhook 검증**: Stripe/PayPal webhook signature 검증 필수
+4. **결제 링크 토큰**: 시간제한 + 일회용 토큰 사용
+5. **PCI DSS**: 카드 정보는 Stripe/PayPal에서만 처리 (서버에 저장 안 함)

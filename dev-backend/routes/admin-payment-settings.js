@@ -4,7 +4,25 @@ const SystemSettings = require('../models/SystemSettings');
 
 const PAYMENT_SETTINGS_KEY = 'payment_settings';
 
-// GET - 결제 설정 조회 (통화별)
+// 기본 결제 설정 구조
+const defaultPaymentSettings = {
+  stripe: {
+    enabled: false,
+    publishableKey: '',
+    secretKey: '',
+    webhookSecret: '',
+    autoCharge: false
+  },
+  paypal: {
+    enabled: false,
+    clientId: '',
+    clientSecret: ''
+  },
+  bankTransfer: {},  // { "MYR": { enabled, bankName, accountNumber, accountName }, "KRW": { ... } }
+  qrPayment: {}      // { "MYR": { enabled, qrImage, qrDescription }, "KRW": { ... } }
+};
+
+// GET - 결제 설정 조회
 router.get('/', async (req, res) => {
   try {
     const settings = await SystemSettings.findOne({
@@ -12,40 +30,31 @@ router.get('/', async (req, res) => {
     });
 
     if (!settings || !settings.setting_value) {
-      // 빈 객체 반환 - 프론트엔드에서 통화별로 초기화
-      return res.json({});
+      return res.json(defaultPaymentSettings);
     }
 
-    // 저장된 설정 반환 (시크릿 키 마스킹)
     const savedSettings = settings.setting_value;
-    const maskedSettings = {};
 
-    for (const [currency, methods] of Object.entries(savedSettings)) {
-      maskedSettings[currency] = {};
+    // 저장된 설정과 기본값 병합
+    const result = {
+      stripe: { ...defaultPaymentSettings.stripe, ...savedSettings.stripe },
+      paypal: { ...defaultPaymentSettings.paypal, ...savedSettings.paypal },
+      bankTransfer: savedSettings.bankTransfer || {},
+      qrPayment: savedSettings.qrPayment || {}
+    };
 
-      for (const [method, config] of Object.entries(methods)) {
-        const maskedConfig = { ...config };
-
-        // Stripe 시크릿 마스킹
-        if (method === 'stripe') {
-          if (maskedConfig.secretKey) {
-            maskedConfig.secretKey = '••••••••' + maskedConfig.secretKey.slice(-4);
-          }
-          if (maskedConfig.webhookSecret) {
-            maskedConfig.webhookSecret = '••••••••' + maskedConfig.webhookSecret.slice(-4);
-          }
-        }
-
-        // PayPal 시크릿 마스킹
-        if (method === 'paypal' && maskedConfig.clientSecret) {
-          maskedConfig.clientSecret = '••••••••' + maskedConfig.clientSecret.slice(-4);
-        }
-
-        maskedSettings[currency][method] = maskedConfig;
-      }
+    // 시크릿 키 마스킹 (보안)
+    if (result.stripe.secretKey) {
+      result.stripe.secretKey = '••••••••' + result.stripe.secretKey.slice(-4);
+    }
+    if (result.stripe.webhookSecret) {
+      result.stripe.webhookSecret = '••••••••' + result.stripe.webhookSecret.slice(-4);
+    }
+    if (result.paypal.clientSecret) {
+      result.paypal.clientSecret = '••••••••' + result.paypal.clientSecret.slice(-4);
     }
 
-    res.json(maskedSettings);
+    res.json(result);
   } catch (error) {
     console.error('Error fetching payment settings:', error);
     res.status(500).json({
@@ -56,10 +65,10 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST - 결제 설정 저장 (통화별)
+// POST - 결제 설정 저장
 router.post('/', async (req, res) => {
   try {
-    const newSettings = req.body;
+    const { stripe, paypal, bankTransfer, qrPayment } = req.body;
 
     // 기존 설정 조회 (시크릿 키 유지를 위해)
     let existingSettings = await SystemSettings.findOne({
@@ -76,41 +85,32 @@ router.post('/', async (req, res) => {
       return newValue;
     };
 
-    // 각 통화별로 처리
-    const processedSettings = {};
-
-    for (const [currency, methods] of Object.entries(newSettings)) {
-      processedSettings[currency] = {};
-      const existingCurrency = existingData[currency] || {};
-
-      for (const [method, config] of Object.entries(methods)) {
-        const existingMethod = existingCurrency[method] || {};
-        const processedConfig = { ...config };
-
-        // Stripe 시크릿 처리
-        if (method === 'stripe') {
-          processedConfig.secretKey = processSecretField(config.secretKey, existingMethod.secretKey);
-          processedConfig.webhookSecret = processSecretField(config.webhookSecret, existingMethod.webhookSecret);
-        }
-
-        // PayPal 시크릿 처리
-        if (method === 'paypal') {
-          processedConfig.clientSecret = processSecretField(config.clientSecret, existingMethod.clientSecret);
-        }
-
-        processedSettings[currency][method] = processedConfig;
-      }
-    }
+    const settingsData = {
+      stripe: {
+        enabled: stripe?.enabled || false,
+        publishableKey: stripe?.publishableKey || '',
+        secretKey: processSecretField(stripe?.secretKey, existingData.stripe?.secretKey),
+        webhookSecret: processSecretField(stripe?.webhookSecret, existingData.stripe?.webhookSecret),
+        autoCharge: stripe?.autoCharge || false
+      },
+      paypal: {
+        enabled: paypal?.enabled || false,
+        clientId: paypal?.clientId || '',
+        clientSecret: processSecretField(paypal?.clientSecret, existingData.paypal?.clientSecret)
+      },
+      bankTransfer: bankTransfer || {},
+      qrPayment: qrPayment || {}
+    };
 
     if (existingSettings) {
       await existingSettings.update({
-        setting_value: processedSettings
+        setting_value: settingsData
       });
     } else {
       await SystemSettings.create({
         setting_key: PAYMENT_SETTINGS_KEY,
-        setting_value: processedSettings,
-        description: 'System payment gateway settings per currency'
+        setting_value: settingsData,
+        description: 'System payment gateway settings'
       });
     }
 
@@ -137,37 +137,56 @@ router.get('/available/:currency', async (req, res) => {
       where: { setting_key: PAYMENT_SETTINGS_KEY }
     });
 
-    if (!settings || !settings.setting_value || !settings.setting_value[currency]) {
+    if (!settings || !settings.setting_value) {
       return res.json({ methods: [] });
     }
 
-    const currencySettings = settings.setting_value[currency];
+    const paymentSettings = settings.setting_value;
     const availableMethods = [];
 
-    // 활성화된 결제 수단만 반환 (시크릿 키 제외)
-    for (const [method, config] of Object.entries(currencySettings)) {
-      if (config.enabled) {
-        const publicConfig = { id: method };
+    // Stripe (글로벌)
+    if (paymentSettings.stripe?.enabled) {
+      availableMethods.push({
+        id: 'stripe',
+        name: 'Credit/Debit Card',
+        description: 'Secure payment via Stripe',
+        publishableKey: paymentSettings.stripe.publishableKey
+      });
+    }
 
-        if (method === 'stripe') {
-          publicConfig.name = 'Credit/Debit Card';
-          publicConfig.publishableKey = config.publishableKey;
-        } else if (method === 'paypal') {
-          publicConfig.name = 'PayPal';
-          publicConfig.clientId = config.clientId;
-        } else if (method === 'bankTransfer') {
-          publicConfig.name = 'Bank Transfer';
-          publicConfig.bankName = config.bankName;
-          publicConfig.accountNumber = config.accountNumber;
-          publicConfig.accountName = config.accountName;
-        } else if (method === 'qrPayment') {
-          publicConfig.name = 'QR Payment';
-          publicConfig.qrImage = config.qrImage;
-          publicConfig.qrDescription = config.qrDescription;
-        }
+    // PayPal (글로벌)
+    if (paymentSettings.paypal?.enabled) {
+      availableMethods.push({
+        id: 'paypal',
+        name: 'PayPal',
+        description: 'Pay with PayPal account or card',
+        clientId: paymentSettings.paypal.clientId
+      });
+    }
 
-        availableMethods.push(publicConfig);
-      }
+    // Bank Transfer (통화별)
+    const bankConfig = paymentSettings.bankTransfer?.[currency];
+    if (bankConfig?.enabled) {
+      availableMethods.push({
+        id: 'bank_transfer',
+        name: 'Bank Transfer',
+        description: 'Manual transfer with receipt upload',
+        bankName: bankConfig.bankName,
+        accountNumber: bankConfig.accountNumber,
+        accountName: bankConfig.accountName
+      });
+    }
+
+    // QR Payment (통화별)
+    const qrConfig = paymentSettings.qrPayment?.[currency];
+    if (qrConfig?.enabled) {
+      availableMethods.push({
+        id: 'qr_payment',
+        name: 'QR Payment',
+        description: qrConfig.qrDescription || 'Scan QR code to pay',
+        qrImage: qrConfig.qrImage,
+        qrDescription: qrConfig.qrDescription
+      });
     }
 
     res.json({ methods: availableMethods });
