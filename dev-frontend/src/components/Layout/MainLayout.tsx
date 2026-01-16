@@ -824,10 +824,61 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <NavTitle>Support</NavTitle>
                 <NavItem to="/pos/admin/support" active={isActive('/pos/admin/support')} onClick={closeSidebar}>
                   <NavIcon>◎</NavIcon>
-                  System Inquiry                </NavItem>
+                  System Inquiry
+                </NavItem>
               </>
             )}
-            
+
+            {/* System Admin - Settings Section */}
+            {user?.role === 'System Admin' && (
+              <>
+                <NavTitle>Settings</NavTitle>
+                <NavItem to="/pos/admin/settings" active={isActive('/pos/admin/settings')} onClick={closeSidebar}>
+                  <NavIcon>◐</NavIcon>
+                  Company Info
+                </NavItem>
+                <NavItem to="/pos/admin/payment-settings" active={isActive('/pos/admin/payment-settings')} onClick={closeSidebar}>
+                  <NavIcon>◈</NavIcon>
+                  Payment
+                </NavItem>
+                <NavItem to="/pos/admin/site-settings" active={isActive('/pos/admin/site-settings')} onClick={closeSidebar}>
+                  <NavIcon>◉</NavIcon>
+                  Site Settings
+                </NavItem>
+                <NavItem to="/pos/admin/addon-modules" active={isActive('/pos/admin/addon-modules')} onClick={closeSidebar}>
+                  <NavIcon>⊞</NavIcon>
+                  Addon Modules
+                </NavItem>
+                <NavItem to="/pos/admin/notification-settings" active={isActive('/pos/admin/notification-settings')} onClick={closeSidebar}>
+                  <NavIcon>◯</NavIcon>
+                  Notifications
+                </NavItem>
+              </>
+            )}
+
+            {/* System Admin - System Section */}
+            {user?.role === 'System Admin' && (
+              <>
+                <NavTitle>System</NavTitle>
+                <NavItem to="/pos/admin/system-config" active={isActive('/pos/admin/system-config')} onClick={closeSidebar}>
+                  <NavIcon>⚙</NavIcon>
+                  System Config
+                </NavItem>
+                <NavItem to="/pos/admin/security" active={isActive('/pos/admin/security')} onClick={closeSidebar}>
+                  <NavIcon>◆</NavIcon>
+                  Security
+                </NavItem>
+                <NavItem to="/pos/admin/backup" active={isActive('/pos/admin/backup')} onClick={closeSidebar}>
+                  <NavIcon>▦</NavIcon>
+                  Backup & Restore
+                </NavItem>
+                <NavItem to="/pos/admin/logs" active={isActive('/pos/admin/logs')} onClick={closeSidebar}>
+                  <NavIcon>≡</NavIcon>
+                  System Logs
+                </NavItem>
+              </>
+            )}
+
             {/* Foodcourt General Menu */}
             {user?.role === 'Foodcourt General' && (
               <>

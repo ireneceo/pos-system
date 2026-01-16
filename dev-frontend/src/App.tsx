@@ -85,6 +85,7 @@ const ManagerCustomersPage = React.lazy(() => import('./pages/Manager/ManagerCus
 const ManagerPromotionsPage = React.lazy(() => import('./pages/Manager/ManagerPromotionsPage'));
 const ManagerPlansPage = React.lazy(() => import('./pages/Manager/PlansPage'));
 const AdminSettingsPage = React.lazy(() => import('./pages/Admin/AdminSettingsPage'));
+const AdminPaymentSettingsPage = React.lazy(() => import('./pages/Admin/PaymentSettingsPage'));
 const SiteSettingsPage = React.lazy(() => import('./pages/Admin/SiteSettingsPage'));
 const RestaurantDashboard = React.lazy(() => import('./pages/Restaurant/RestaurantDashboard'));
 const BasicDashboard = React.lazy(() => import('./pages/Basic/BasicDashboard'));
@@ -342,6 +343,11 @@ function App() {
                       <Route path="/pos/admin/settings" element={
                         <ProtectedRoute requiredRole={['System Admin']}>
                           <AdminSettingsPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/admin/payment-settings" element={
+                        <ProtectedRoute requiredRole={['System Admin']}>
+                          <AdminPaymentSettingsPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/admin/site-settings" element={
