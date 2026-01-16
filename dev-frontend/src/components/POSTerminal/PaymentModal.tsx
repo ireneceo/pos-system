@@ -625,8 +625,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         </PointsSection>
       )}
 
-      {/* Points earning preview for non-member customers */}
-      {!isLoadingPoints && membershipSettings?.is_active && customerPoints === 0 && membershipSettings?.points_per_currency && (
+      {/* Points earning preview - only show for logged-in customers with 0 points (not for guests) */}
+      {!isLoadingPoints && membershipSettings?.is_active && customerId && customerPoints === 0 && membershipSettings?.points_per_currency && (
         <div style={{
           marginBottom: '16px',
           padding: '12px',

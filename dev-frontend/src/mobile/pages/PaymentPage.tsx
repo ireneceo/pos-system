@@ -828,17 +828,22 @@ const PaymentPage: React.FC = () => {
     loadRestaurant();
   }, [slug, setCurrentStore]);
 
-  // Set Quick Order as default on page load
+  // Set Quick Order as default on page load, but not if logged in
   React.useEffect(() => {
-    // Only set if no customer info is already set
-    if (!currentCustomer && !guestInfo) {
+    if (currentCustomer) {
+      // If logged in, clear Quick Order guest info
+      if (guestInfo && guestInfo.name === 'Guest' && !guestInfo.phone) {
+        setGuestInfo(null);
+      }
+    } else if (!guestInfo) {
+      // Only set Quick Order if no customer info is already set
       setGuestInfo({
         name: 'Guest',
         phone: ''
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [currentCustomer]);
 
   // Load payment settings from restaurant
   React.useEffect(() => {
@@ -2116,42 +2121,81 @@ const PaymentPage: React.FC = () => {
 
         <Section>
           <SectionTitle>Coupon Code</SectionTitle>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <Input
-              type="text"
-              placeholder="Enter coupon code"
-              value={couponCode}
-              onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-              style={{ flex: 1 }}
-            />
-            <button
-              onClick={handleApplyCoupon}
-              style={{
-                padding: '12px 20px',
-                background: '#635BFF',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.15s'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = '#5A51E6'}
-              onMouseLeave={(e) => e.currentTarget.style.background = '#635BFF'}
-            >
-              Apply
-            </button>
-          </div>
-          {couponError && (
-            <div style={{ color: '#DC2626', fontSize: '12px', marginTop: '8px' }}>
-              {couponError}
+          {couponDiscount > 0 ? (
+            /* Show applied coupon with remove button */
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '12px 16px',
+              background: '#F0FDF4',
+              border: '1px solid #86EFAC',
+              borderRadius: '8px'
+            }}>
+              <div>
+                <div style={{ fontWeight: 600, color: '#166534', fontSize: '14px' }}>
+                  {couponCode}
+                </div>
+                <div style={{ fontSize: '12px', color: '#15803D', marginTop: '2px' }}>
+                  -{formatCurrency(couponDiscount, currency)} applied
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setCouponCode('');
+                  setCouponDiscount(0);
+                  setCouponError('');
+                }}
+                style={{
+                  padding: '6px 12px',
+                  background: 'white',
+                  color: '#DC2626',
+                  border: '1px solid #DC2626',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                Remove
+              </button>
             </div>
-          )}
-          {couponDiscount > 0 && (
-            <div style={{ color: '#059669', fontSize: '12px', marginTop: '8px' }}>
-              Coupon applied! You saved {formatCurrency(couponDiscount, currency)}
-            </div>
+          ) : (
+            /* Show input field when no coupon applied */
+            <>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <Input
+                  type="text"
+                  placeholder="Enter coupon code"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                  style={{ flex: 1 }}
+                />
+                <button
+                  onClick={handleApplyCoupon}
+                  style={{
+                    padding: '12px 20px',
+                    background: '#635BFF',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#5A51E6'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = '#635BFF'}
+                >
+                  Apply
+                </button>
+              </div>
+              {couponError && (
+                <div style={{ color: '#DC2626', fontSize: '12px', marginTop: '8px' }}>
+                  {couponError}
+                </div>
+              )}
+            </>
           )}
         </Section>
 

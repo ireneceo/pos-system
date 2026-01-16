@@ -398,13 +398,12 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
           // Create order within transaction with generated number
           // Note: We bypass validation because order_number is generated dynamically
 
-          // Prepare order data - convert items to order_items JSON
-          // Add order_group: 0 to all original items
+          // Prepare order data - add order_group: 0 to all original items
+          // Note: Pass array directly to Order model - the model's setter will handle stringify
           const itemsArray = (orderData.order_items || orderData.items || []).map(item => ({
             ...item,
             order_group: item.order_group !== undefined ? item.order_group : 0
           }));
-          const orderItemsJson = itemsArray.length > 0 ? JSON.stringify(itemsArray) : null;
 
           // Calculate total if not set
           let calculatedTotal = orderData.total_amount;
@@ -417,7 +416,7 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
           return await Order.create({
             ...orderData,
             order_number: generatedOrderNumber,
-            order_items: orderItemsJson,
+            order_items: itemsArray.length > 0 ? itemsArray : null,  // Pass array, not JSON string
             total_amount: calculatedTotal || 0
           }, {
             transaction: t,

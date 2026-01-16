@@ -3156,9 +3156,16 @@ const LiveOrdersPage: React.FC = () => {
                     <TableCell data-label="AMOUNT">
                       <Amount>
                         {formatCurrency(Number(order.total_amount), operationSettings.currency)}
-                        {Number((order as any).point_discount) > 0 && (
+                        {/* Points used display */}
+                        {Number((order as any).points_used) > 0 && (
                           <span style={{ fontSize: '11px', color: '#10B981', marginLeft: '4px' }}>
-                            (-{(order as any).points_used}P)
+                            (-{Number((order as any).points_used).toLocaleString()}P)
+                          </span>
+                        )}
+                        {/* Coupon discount display */}
+                        {Number((order as any).coupon_discount) > 0 && (
+                          <span style={{ fontSize: '11px', color: '#F59E0B', marginLeft: '4px' }}>
+                            (Coupon)
                           </span>
                         )}
                       </Amount>
@@ -4368,6 +4375,12 @@ const LiveOrdersPage: React.FC = () => {
                             {order.pager_number ? `Pager ${order.pager_number}` : ''}
                             {!order.table_number && !order.pager_number ? 'No Table/Pager' : ''}
                           </div>
+                          {/* Customer name display for logged-in customers */}
+                          {order.customer_name && order.customer_name !== 'Guest' && order.customer_name !== 'Mobile Guest' && (
+                            <div style={{ fontSize: '12px', color: '#635BFF', marginTop: '2px', fontWeight: 500 }}>
+                              {order.customer_name}
+                            </div>
+                          )}
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           <div style={{ fontSize: '14px', fontWeight: 500, color: '#0A2540' }}>

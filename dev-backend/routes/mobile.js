@@ -600,9 +600,9 @@ router.post('/order', async (req, res) => {
           return sum + (itemPrice * itemQty);
         }, 0);
 
-        // Update order
+        // Update order - pass array directly, model setter will handle stringify
         await mergeableOrder.update({
-          order_items: JSON.stringify(mergedItems),
+          order_items: mergedItems,
           total_amount: newTotal,
           status: 'pending' // Reset to pending for kitchen
         });
