@@ -13,9 +13,11 @@ const Container = styled.div`
 `;
 
 const Content = styled.div`
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 24px;
+  padding: 32px;
+
+  @media (max-width: 768px) {
+    padding: 20px 16px;
+  }
 `;
 
 const Header = styled.header`

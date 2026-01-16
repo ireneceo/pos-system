@@ -142,11 +142,9 @@ const DownloadButton = styled.button`
 
 const Content = styled.main`
   padding: 32px;
-  max-width: 1400px;
-  margin: 0 auto;
 
   @media (max-width: 768px) {
-    padding: 20px;
+    padding: 20px 16px;
   }
 `;
 

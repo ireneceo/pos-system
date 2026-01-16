@@ -10,6 +10,7 @@ import Modal, { ModalButton } from '../../components/UI/Modal';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import { formatPhoneForDisplay } from '../../utils/phoneUtils';
+import PageHeader from '../../components/common/PageHeader';
 
 // 스타일 컴포넌트
 const CustomersContainer = styled.div`
@@ -18,37 +19,6 @@ const CustomersContainer = styled.div`
   min-height: 100vh;
 `;
 
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
-  margin-bottom: 0;
-  height: 56px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-  @media (max-width: 768px) {
-    padding: 16px;
-    height: auto;
-    min-height: 56px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-`;
-
-const HeaderTitle = styled.h1`
-  font-size: 24px;
-  font-weight: 600;
-  color: #0A2540;
-`;
-
-const HeaderActions = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 16px;
-`;
 
 const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
   padding: 8px 16px;
@@ -75,11 +45,9 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
 
 const Content = styled.main`
   padding: 32px;
-  max-width: 1400px;
-  margin: 0 auto;
 
   @media (max-width: 768px) {
-    padding: 20px;
+    padding: 20px 16px;
   }
 `;
 
@@ -588,14 +556,11 @@ const CustomersPage: React.FC = () => {
   return (
     <MainLayout>
       <CustomersContainer>
-        <Header>
-          <HeaderTitle>Customers</HeaderTitle>
-          <HeaderActions>
-            <Button onClick={handleAddCustomer} variant="primary">
-              + Add Customer
-            </Button>
-          </HeaderActions>
-        </Header>
+        <PageHeader title="Customers">
+          <Button onClick={handleAddCustomer} variant="primary">
+            + Add Customer
+          </Button>
+        </PageHeader>
 
         <Content>
           <FilterBar>

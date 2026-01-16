@@ -11,6 +11,7 @@ import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
+import PageHeader from '../../components/common/PageHeader';
 
 // 스타일 컴포넌트
 const ReportsContainer = styled.div`
@@ -19,37 +20,6 @@ const ReportsContainer = styled.div`
   min-height: 100vh;
 `;
 
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
-  margin-bottom: 0;
-  height: 56px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-  @media (max-width: 768px) {
-    padding: 16px;
-    height: auto;
-    min-height: 56px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-`;
-
-const HeaderTitle = styled.h1`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-  line-height: 1;
-
-  @media (max-width: 768px) {
-    font-size: 20px;
-  }
-`;
 
 const DateRangeInput = styled.input`
   padding: 8px 12px;
@@ -147,11 +117,9 @@ const DownloadButton = styled.button`
 
 const Content = styled.main`
   padding: 32px;
-  max-width: 1400px;
-  margin: 0 auto;
 
   @media (max-width: 768px) {
-    padding: 20px;
+    padding: 20px 16px;
   }
 `;
 
@@ -1138,9 +1106,7 @@ const ReportsPage: React.FC = () => {
   return (
     <MainLayout>
       <ReportsContainer>
-        <Header>
-          <HeaderTitle>Reports</HeaderTitle>
-        </Header>
+        <PageHeader title="Reports" />
 
         <Content>
           <TabContainer>

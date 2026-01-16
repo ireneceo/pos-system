@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import styled, { createGlobalStyle } from 'styled-components';
 import { io, Socket } from 'socket.io-client';
 import MainLayout from '../../components/Layout/MainLayout';
+import PageHeader from '../../components/common/PageHeader';
 import { useAuth } from '../../contexts/AuthContext';
 import PaymentModal from '../../components/POSTerminal/PaymentModal';
 import OptionModal from '../../components/POSTerminal/OptionModal';
@@ -103,50 +104,6 @@ const Container = styled.div`
   min-height: 100vh;
 `;
 
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
-  margin-bottom: 0;
-  height: 56px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-  @media (max-width: 768px) {
-    padding: 16px;
-    height: auto;
-    min-height: 56px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-`;
-
-const HeaderTitle = styled.h1`
-  font-size: 24px;
-  font-weight: 600;
-  color: #0A2540;
-
-  @media (max-width: 768px) {
-    font-size: 18px;
-    flex: 1;
-    min-width: 0;
-  }
-`;
-
-const HeaderActions = styled.div`
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-shrink: 0;
-
-  @media (max-width: 768px) {
-    width: 100%;
-    justify-content: flex-end;
-    gap: 8px;
-  }
-`;
 
 
 const AudioToggleButton = styled.button<{ enabled: boolean }>`
@@ -217,11 +174,9 @@ const MergeButton = styled.button`
 
 const Content = styled.main`
   padding: 32px;
-  max-width: 1400px;
-  margin: 0 auto;
 
   @media (max-width: 768px) {
-    padding: 20px;
+    padding: 20px 16px;
   }
 `;
 
@@ -2794,46 +2749,43 @@ const LiveOrdersPage: React.FC = () => {
       )}
 
       <Container className="no-print">
-        <Header>
-          <HeaderTitle>Live Orders</HeaderTitle>
-          <HeaderActions>
-            {/* Select Mode Toggle & Merge Button */}
-            {selectMode && (
-              <>
-                <MergeButton
-                  onClick={handleMergeOrders}
-                  disabled={selectedOrderIds.length < 2 || isMerging}
-                >
-                  {isMerging ? 'Merging...' : `Merge (${selectedOrderIds.length})`}
-                </MergeButton>
-                <SelectModeButton active={false} onClick={toggleSelectMode}>
-                  Cancel
-                </SelectModeButton>
-              </>
-            )}
-            {!selectMode && (
-              <SelectModeButton active={selectMode} onClick={toggleSelectMode}>
-                Select to Merge
+        <PageHeader title="Live Orders">
+          {/* Select Mode Toggle & Merge Button */}
+          {selectMode && (
+            <>
+              <MergeButton
+                onClick={handleMergeOrders}
+                disabled={selectedOrderIds.length < 2 || isMerging}
+              >
+                {isMerging ? 'Merging...' : `Merge (${selectedOrderIds.length})`}
+              </MergeButton>
+              <SelectModeButton active={false} onClick={toggleSelectMode}>
+                Cancel
               </SelectModeButton>
+            </>
+          )}
+          {!selectMode && (
+            <SelectModeButton active={selectMode} onClick={toggleSelectMode}>
+              Select to Merge
+            </SelectModeButton>
+          )}
+          <AudioToggleButton
+            enabled={audioEnabled}
+            onClick={() => setAudioEnabled(!audioEnabled)}
+            title={audioEnabled ? 'Stop notification sound' : 'Play notification sound'}
+          >
+            {audioEnabled ? (
+              <svg viewBox="0 0 24 24">
+                <rect x="6" y="4" width="4" height="16" rx="1" />
+                <rect x="14" y="4" width="4" height="16" rx="1" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
             )}
-            <AudioToggleButton
-              enabled={audioEnabled}
-              onClick={() => setAudioEnabled(!audioEnabled)}
-              title={audioEnabled ? 'Stop notification sound' : 'Play notification sound'}
-            >
-              {audioEnabled ? (
-                <svg viewBox="0 0 24 24">
-                  <rect x="6" y="4" width="4" height="16" rx="1" />
-                  <rect x="14" y="4" width="4" height="16" rx="1" />
-                </svg>
-              ) : (
-                <svg viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              )}
-            </AudioToggleButton>
-          </HeaderActions>
-        </Header>
+          </AudioToggleButton>
+        </PageHeader>
 
         <Content>
           <FilterControls>

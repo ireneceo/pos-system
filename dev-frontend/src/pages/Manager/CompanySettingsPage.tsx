@@ -93,8 +93,10 @@ const Subtitle = styled.p`
 
 const Content = styled.div`
   padding: 32px;
-  max-width: 1200px;
-  margin: 0 auto;
+
+  @media (max-width: 768px) {
+    padding: 20px 16px;
+  }
 `;
 
 // TabContainer and Tab components now imported from ../../components/UI
