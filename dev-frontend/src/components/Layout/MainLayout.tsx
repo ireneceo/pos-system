@@ -947,7 +947,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>▦</NavIcon>
                   Invoices
                 </NavItem>
-                <NavItem to="/pos/manager/subscriptions" active={isActive('/pos/manager/subscriptions')} onClick={closeSidebar}>
+                <NavItem to="/pos/foodcourt/general/subscriptions" active={isActive('/pos/foodcourt/general/subscriptions')} onClick={closeSidebar}>
                   <NavIcon>◈</NavIcon>
                   Subscriptions
                 </NavItem>
@@ -1045,7 +1045,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>▦</NavIcon>
                   Invoices
                 </NavItem>
-                <NavItem to="/pos/manager/subscriptions" active={isActive('/pos/manager/subscriptions')} onClick={closeSidebar}>
+                <NavItem to="/pos/brand/general/subscriptions" active={isActive('/pos/brand/general/subscriptions')} onClick={closeSidebar}>
                   <NavIcon>◈</NavIcon>
                   Subscriptions
                 </NavItem>

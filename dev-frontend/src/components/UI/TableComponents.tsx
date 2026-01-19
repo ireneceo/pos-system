@@ -117,16 +117,17 @@ export const ActionButtons = styled.div`
   justify-content: flex-end;
   align-items: flex-start;
   align-content: flex-start;
-  max-width: 220px;
 
-  @media (max-width: 1200px) {
-    max-width: 200px;
+  @media (max-width: 1400px) {
     gap: 4px;
   }
 
-  @media (max-width: 1024px) {
+  @media (max-width: 1100px) {
     gap: 4px;
-    max-width: 180px;
+  }
+
+  @media (max-width: 900px) {
+    gap: 3px;
   }
 
   @media (max-width: 768px) {
@@ -136,7 +137,6 @@ export const ActionButtons = styled.div`
     padding-top: 10px;
     margin-top: 10px;
     border-top: 1px solid #F3F4F6;
-    max-width: none;
   }
 `;
 

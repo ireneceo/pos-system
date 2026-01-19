@@ -738,12 +738,12 @@ const ManagerRestaurantsPage: React.FC = () => {
             id: restaurant.id.toString(),
             name: restaurant.name,
             branchName: restaurant.name, // Use name as branchName for now
-            location: restaurant.address || 'No address provided',
-            address: restaurant.address || 'No address provided',
+            location: restaurant.address || restaurant.location || 'No address provided',
+            address: restaurant.address || restaurant.location || 'No address provided',
             phone: restaurant.phone || 'No phone provided',
             email: restaurant.email || 'No email provided',
-            brandId: restaurant.manager_id?.toString() || '1',
-            brandName: restaurant.manager_name || 'Manager Brand',
+            brandId: restaurant.managerId || restaurant.manager_id?.toString() || '1',
+            brandName: restaurant.managerName || restaurant.manager_name || 'Manager Brand',
             cuisine: restaurant.cuisine || 'Various',
             status: restaurant.status,
             plan: (restaurant.planType || restaurant.plan_type)?.toLowerCase().replace(' plan', '') as 'basic' | 'professional' | 'enterprise' || 'basic',
@@ -757,7 +757,8 @@ const ManagerRestaurantsPage: React.FC = () => {
             nextPayment: (restaurant.subscriptionEnd || restaurant.subscription_end) ?
               new Date(restaurant.subscriptionEnd || restaurant.subscription_end).toISOString().split('T')[0] :
               new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
-            brand_id: restaurant.brand_id || null
+            brand_id: restaurant.brand_id || null,
+            payment_model: restaurant.payment_model || 'restaurant'
           }));
 
           console.log('✅ Transformed restaurants:', transformedRestaurants);
@@ -1005,6 +1006,14 @@ const ManagerRestaurantsPage: React.FC = () => {
   const handleEditRestaurant = (e: React.MouseEvent, restaurant: Restaurant) => {
     e.stopPropagation();
     setEditingRestaurant(restaurant);
+
+    // payment_model 매핑: brand_manager -> manager, restaurant -> restaurant
+    const paymentModelValue = (restaurant as any).payment_model;
+    console.log('🔍 Edit Restaurant - payment_model from data:', paymentModelValue);
+    const mappedPaymentModel = paymentModelValue === 'brand_manager' ? 'manager' :
+                               paymentModelValue === 'restaurant' ? 'restaurant' : 'manager';
+    console.log('🔍 Edit Restaurant - mapped paymentModel:', mappedPaymentModel);
+
     setNewRestaurant({
       name: restaurant.name,
       managerId: restaurant.brandId || '',
@@ -1018,10 +1027,9 @@ const ManagerRestaurantsPage: React.FC = () => {
       cuisine: restaurant.cuisine,
       planType: restaurant.plan === 'basic' ? 'Basic Plan' : restaurant.plan === 'professional' ? 'Professional Plan' : 'Enterprise Plan',
       planAmount: restaurant.monthlyFee?.toString() || '29.00',
-      status: 'active',
+      status: restaurant.status || 'active',
       billingCycle: 'monthly',
-      paymentModel: (restaurant as any).payment_model === 'brand_manager' ? 'manager' :
-                    (restaurant as any).payment_model === 'restaurant' ? 'restaurant' : 'manager',
+      paymentModel: mappedPaymentModel,
       subscriptionStart: '',
       subscriptionEnd: '',
       autoRenew: true,
@@ -1074,7 +1082,8 @@ const ManagerRestaurantsPage: React.FC = () => {
                   status: newRestaurant.status as 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled',
                   plan: newRestaurant.planType.toLowerCase().replace(' plan', '') as 'basic' | 'professional' | 'enterprise',
                   monthlyFee: parseFloat(newRestaurant.planAmount),
-                  brand_id: newRestaurant.brandId ? parseInt(newRestaurant.brandId) : undefined
+                  brand_id: newRestaurant.brandId ? parseInt(newRestaurant.brandId) : undefined,
+                  payment_model: newRestaurant.paymentModel === 'manager' ? 'brand_manager' : 'restaurant'
                 }
               : rest
           );

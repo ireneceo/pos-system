@@ -465,36 +465,70 @@ const SummaryRow = styled.div<{ highlight?: boolean }>`
 // 페이지별 반응형 테이블 헤더 (Invoices 전용)
 // Header columns: Invoice(1), Customer(2), Period(3), Issued(4), Due(5), Status(6), Amount(7), Total(8), Actions(9)
 const InvoiceTableHeader = styled(CommonTableHeader)`
+  /* 1400px 이하: Period, Issued 숨김 - 7개 칼럼 */
   @media (max-width: 1400px) {
-    & > span:nth-child(3),
-    & > span:nth-child(4) {
+    grid-template-columns: 1.6fr 1.3fr 0.9fr 0.7fr 0.8fr 0.8fr minmax(140px, 180px) !important;
+    & > span.col-period,
+    & > span.col-issued {
       display: none;
     }
   }
 
-  @media (max-width: 1024px) {
-    & > span:nth-child(6),
-    & > span:nth-child(7),
-    & > span:nth-child(8) {
+  /* 1100px 이하: Period, Issued, Amount, Total 숨김 - 5개 칼럼 */
+  @media (max-width: 1100px) {
+    grid-template-columns: 1.5fr 1.2fr 0.8fr 0.8fr minmax(130px, 160px) !important;
+    & > span.col-period,
+    & > span.col-issued,
+    & > span.col-amount,
+    & > span.col-total {
+      display: none;
+    }
+  }
+
+  /* 900px 이하: Period, Issued, Status, Amount, Total 숨김 - 4개 칼럼 */
+  @media (max-width: 900px) {
+    grid-template-columns: 1.4fr 1.2fr 0.8fr minmax(120px, 150px) !important;
+    & > span.col-period,
+    & > span.col-issued,
+    & > span.col-status,
+    & > span.col-amount,
+    & > span.col-total {
       display: none;
     }
   }
 `;
 
 // 페이지별 반응형 테이블 행 (Invoices 전용)
-// MobileGrid uses display: contents, so we need to target MobileValue children inside it
+// 클래스명으로 칼럼을 식별하여 숨김 처리
 const InvoiceTableRow = styled(CommonTableRow)`
+  /* 1400px 이하: Period, Issued 숨김 - 7개 칼럼 */
   @media (max-width: 1400px) {
-    & > div > div:nth-child(3),
-    & > div > div:nth-child(4) {
+    grid-template-columns: 1.6fr 1.3fr 0.9fr 0.7fr 0.8fr 0.8fr minmax(140px, 180px) !important;
+    .col-period,
+    .col-issued {
       display: none;
     }
   }
 
-  @media (max-width: 1024px) {
-    & > div > div:nth-child(6),
-    & > div > div:nth-child(7),
-    & > div > div:nth-child(8) {
+  /* 1100px 이하: Period, Issued, Amount, Total 숨김 - 5개 칼럼 */
+  @media (max-width: 1100px) {
+    grid-template-columns: 1.5fr 1.2fr 0.8fr 0.8fr minmax(130px, 160px) !important;
+    .col-period,
+    .col-issued,
+    .col-amount,
+    .col-total {
+      display: none;
+    }
+  }
+
+  /* 900px 이하: Period, Issued, Status, Amount, Total 숨김 - 4개 칼럼 */
+  @media (max-width: 900px) {
+    grid-template-columns: 1.4fr 1.2fr 0.8fr minmax(120px, 150px) !important;
+    .col-period,
+    .col-issued,
+    .col-status,
+    .col-amount,
+    .col-total {
       display: none;
     }
   }
@@ -558,21 +592,36 @@ const InvoicesPage: React.FC = () => {
   const fetchInvoices = async () => {
     try {
       const token = localStorage.getItem('auth_token');
+      console.log('🔐 [INVOICES] Token present:', !!token);
+      console.log('🔐 [INVOICES] Token first 50 chars:', token ? token.substring(0, 50) + '...' : 'NULL');
+
+      if (!token) {
+        console.error('❌ [INVOICES] No auth token found in localStorage');
+        setInvoices([]);
+        return;
+      }
+
       const response = await fetch('/api/invoices', {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
+
+      console.log('📡 [INVOICES] API response status:', response.status);
+
       if (response.ok) {
         const invoicesData = await response.json();
-        console.log('Fetched invoices:', invoicesData);
+        console.log('✅ [INVOICES] Fetched invoices count:', invoicesData.length);
+        console.log('📋 [INVOICES] First 3 invoices:', invoicesData.slice(0, 3).map((inv: any) => ({ id: inv.id, invoiceNumber: inv.invoiceNumber })));
         setInvoices(invoicesData);
       } else {
-        console.error('Failed to fetch invoices:', response.status);
+        const errorText = await response.text();
+        console.error('❌ [INVOICES] Failed to fetch invoices:', response.status, errorText);
         setInvoices([]);
       }
     } catch (error) {
-      console.error('Error fetching invoices:', error);
+      console.error('❌ [INVOICES] Error fetching invoices:', error);
       setInvoices([]);
     }
   };
@@ -2004,15 +2053,15 @@ const InvoicesPage: React.FC = () => {
 
         <Table>
           <InvoiceTableHeader columns="1.6fr 1.3fr 1.2fr 0.9fr 0.9fr 0.7fr 0.8fr 0.8fr minmax(180px, 220px)">
-            <span>Invoice</span>
-            <span>Customer</span>
-            <span>Period</span>
-            <span>Issued</span>
-            <span>Due</span>
-            <span>Status</span>
-            <span>Amount</span>
-            <span>Total</span>
-            <span>Actions</span>
+            <span className="col-invoice">Invoice</span>
+            <span className="col-customer">Customer</span>
+            <span className="col-period">Period</span>
+            <span className="col-issued">Issued</span>
+            <span className="col-due">Due</span>
+            <span className="col-status">Status</span>
+            <span className="col-amount">Amount</span>
+            <span className="col-total">Total</span>
+            <span className="col-actions">Actions</span>
           </InvoiceTableHeader>
 
           {filteredInvoices.map(invoice => (

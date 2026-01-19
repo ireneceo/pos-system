@@ -116,9 +116,11 @@ const BrandProductManagementPage = React.lazy(() => import('./pages/BrandProduct
 // Manager Role Specific Pages
 const FoodcourtManagement = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtManagement'));
 const FoodcourtStats = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtStats'));
+const FoodcourtSubscriptionsPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtSubscriptionsPage'));
 const BrandManagement = React.lazy(() => import('./pages/BrandGeneral/BrandManagement'));
 const BrandPerformance = React.lazy(() => import('./pages/BrandGeneral/BrandPerformance'));
 const BrandReportsPage = React.lazy(() => import('./pages/BrandGeneral/BrandReportsPage'));
+const BrandSubscriptionsPage = React.lazy(() => import('./pages/BrandGeneral/BrandSubscriptionsPage'));
 const RentManagement = React.lazy(() => import('./pages/Foodcourt/RentManagement'));
 const TenantSupport = React.lazy(() => import('./pages/Foodcourt/TenantSupport'));
 const FranchiseSupport = React.lazy(() => import('./pages/Brand/FranchiseSupport'));
@@ -389,6 +391,11 @@ function App() {
                           <FoodcourtStats />
                         </ProtectedRoute>
                       } />
+                      <Route path="/pos/foodcourt/general/subscriptions" element={
+                        <ProtectedRoute requiredRole={['Foodcourt General']}>
+                          <FoodcourtSubscriptionsPage />
+                        </ProtectedRoute>
+                      } />
 
                       {/* Brand General Routes */}
                       <Route path="/pos/brand/general/dashboard" element={
@@ -409,6 +416,11 @@ function App() {
                       <Route path="/pos/brand/general/reports" element={
                         <ProtectedRoute requiredRole={['Brand General']}>
                           <BrandReportsPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/brand/general/subscriptions" element={
+                        <ProtectedRoute requiredRole={['Brand General']}>
+                          <BrandSubscriptionsPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/brand/company-info" element={
