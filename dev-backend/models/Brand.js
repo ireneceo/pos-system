@@ -136,6 +136,107 @@ Brand.init({
     set(value) {
       this.setDataValue('operation_settings', value ? JSON.stringify(value) : null);
     }
+  },
+  // Payment Settings for Invoice (B2B)
+  payment_settings: {
+    type: DataTypes.TEXT('medium'),
+    allowNull: true,
+    comment: 'JSON settings for payment methods (Stripe, PayPal, Bank Transfer, QR)',
+    get() {
+      const rawValue = this.getDataValue('payment_settings');
+      if (!rawValue) {
+        return {
+          currencies: ['MYR'],
+          defaultCurrency: 'MYR',
+          stripe: { enabled: false },
+          paypal: { enabled: false },
+          bankTransfer: {},
+          qrPayment: {}
+        };
+      }
+      try {
+        return JSON.parse(rawValue);
+      } catch (e) {
+        return {
+          currencies: ['MYR'],
+          defaultCurrency: 'MYR',
+          stripe: { enabled: false },
+          paypal: { enabled: false },
+          bankTransfer: {},
+          qrPayment: {}
+        };
+      }
+    },
+    set(value) {
+      this.setDataValue('payment_settings', value ? JSON.stringify(value) : null);
+    }
+  },
+  // Invoice Settings
+  invoice_settings: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'JSON settings for invoice generation (prefix, terms, tax)',
+    get() {
+      const rawValue = this.getDataValue('invoice_settings');
+      const defaultSettings = {
+        invoicePrefix: 'INV',
+        paymentTerms: 30,
+        taxRate: 6,
+        autoGenerate: false,
+        autoSendEmail: false
+      };
+      if (!rawValue) {
+        return defaultSettings;
+      }
+      try {
+        return { ...defaultSettings, ...JSON.parse(rawValue) };
+      } catch (e) {
+        return defaultSettings;
+      }
+    },
+    set(value) {
+      this.setDataValue('invoice_settings', value ? JSON.stringify(value) : null);
+    }
+  },
+  // Supported Currencies
+  supported_currencies: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'JSON array of supported currency codes',
+    get() {
+      const rawValue = this.getDataValue('supported_currencies');
+      if (!rawValue) {
+        return ['MYR'];
+      }
+      try {
+        return JSON.parse(rawValue);
+      } catch (e) {
+        return ['MYR'];
+      }
+    },
+    set(value) {
+      this.setDataValue('supported_currencies', value ? JSON.stringify(value) : null);
+    }
+  },
+  // Default Currency (이미 currency 필드가 있으므로 이것을 default로 사용)
+  // Subscription Info (System Admin이 발행한 Invoice 결제용)
+  subscription_status: {
+    type: DataTypes.ENUM('active', 'trial', 'expired', 'suspended', 'cancelled'),
+    defaultValue: 'active',
+    comment: 'Brand subscription status'
+  },
+  subscription_start: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  subscription_end: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  plan_type: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: 'Brand plan type (e.g., Brand Basic, Brand Professional)'
   }
 }, {
   sequelize: database.sequelize,
