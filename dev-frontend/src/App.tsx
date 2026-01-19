@@ -117,10 +117,16 @@ const BrandProductManagementPage = React.lazy(() => import('./pages/BrandProduct
 const FoodcourtManagement = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtManagement'));
 const FoodcourtStats = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtStats'));
 const FoodcourtSubscriptionsPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtSubscriptionsPage'));
+const FoodcourtInvoicesPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtInvoicesPage'));
+const FoodcourtPlansPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtPlansPage'));
+const FoodcourtPaymentSettingsPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtPaymentSettingsPage'));
 const BrandManagement = React.lazy(() => import('./pages/BrandGeneral/BrandManagement'));
 const BrandPerformance = React.lazy(() => import('./pages/BrandGeneral/BrandPerformance'));
 const BrandReportsPage = React.lazy(() => import('./pages/BrandGeneral/BrandReportsPage'));
 const BrandSubscriptionsPage = React.lazy(() => import('./pages/BrandGeneral/BrandSubscriptionsPage'));
+const BrandInvoicesPage = React.lazy(() => import('./pages/BrandGeneral/BrandInvoicesPage'));
+const BrandPlansPage = React.lazy(() => import('./pages/BrandGeneral/BrandPlansPage'));
+const BrandPaymentSettingsPage = React.lazy(() => import('./pages/BrandGeneral/BrandPaymentSettingsPage'));
 const RentManagement = React.lazy(() => import('./pages/Foodcourt/RentManagement'));
 const TenantSupport = React.lazy(() => import('./pages/Foodcourt/TenantSupport'));
 const FranchiseSupport = React.lazy(() => import('./pages/Brand/FranchiseSupport'));
@@ -396,6 +402,21 @@ function App() {
                           <FoodcourtSubscriptionsPage />
                         </ProtectedRoute>
                       } />
+                      <Route path="/pos/foodcourt/invoices" element={
+                        <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
+                          <FoodcourtInvoicesPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/foodcourt/plans" element={
+                        <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
+                          <FoodcourtPlansPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/foodcourt/payment-settings" element={
+                        <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
+                          <FoodcourtPaymentSettingsPage />
+                        </ProtectedRoute>
+                      } />
 
                       {/* Brand General Routes */}
                       <Route path="/pos/brand/general/dashboard" element={
@@ -421,6 +442,21 @@ function App() {
                       <Route path="/pos/brand/general/subscriptions" element={
                         <ProtectedRoute requiredRole={['Brand General']}>
                           <BrandSubscriptionsPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/brand/invoices" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
+                          <BrandInvoicesPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/brand/plans" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
+                          <BrandPlansPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/brand/payment-settings" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
+                          <BrandPaymentSettingsPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/brand/company-info" element={
