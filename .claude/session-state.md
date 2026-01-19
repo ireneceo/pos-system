@@ -8,7 +8,7 @@
 ## 현재 작업 상태
 
 **마지막 업데이트:** 2026-01-19
-**작업 상태:** 기획 완료, 개발 대기
+**작업 상태:** Payment Model (payer_type) 저장/반영 수정 완료
 
 ---
 
@@ -16,43 +16,81 @@
 
 ### 완료된 작업
 
-1. **청구/결제 시스템 통합 기획서 작성**
-   - `/var/www/docs/BILLING_SYSTEM_INTEGRATION_PLAN.md`
-   - 역할별 청구/결제 매트릭스 정리
-   - DB 스키마 변경 사항 정의
-   - 통합 컴포넌트 설계 (InvoiceManager)
-   - API 설계
-   - 8단계 개발 순서 정리
-   - 통합 테스트 시나리오
+#### Phase 1: DB 스키마 확장
+- **brands 테이블**: payment_settings, invoice_settings, supported_currencies, subscription_status, subscription_start, subscription_end, plan_type 추가
+- **foodcourts 테이블**: 동일 필드 추가
+- **invoices 테이블**: issuer_type, issuer_id, payment_provider, payment_intent_id, confirmed_by, confirmed_at, rejection_reason, payment_submitted_at 추가
+- sync-database.js 실행 완료
 
-### 다음 개발 작업
+#### Phase 2: Backend API 개발
+- **brands.js**: GET/PUT /:id/payment-settings, GET/PUT /:id/subscription
+- **foodcourts.js**: 동일 API 추가
+- **invoices.js**:
+  - POST /:id/submit-payment (결제 제출)
+  - POST /:id/confirm-payment (결제 확인)
+  - POST /:id/reject-payment (결제 반려)
+  - GET /issued-by/:issuerType/:issuerId (발행자별 청구서)
+  - GET /to-pay (결제해야 할 청구서)
 
-**Phase 1: DB 스키마 및 모델**
-1. brands 테이블 확장 (payment_settings, invoice_settings 등)
-2. foodcourts 테이블 확장
-3. invoices 테이블 확장 (issuer_type, payment_intent_id 등)
+#### Phase 3: 통합 컴포넌트 개발
+- **/src/components/Invoice/**
+  - types.ts: 통합 타입 정의
+  - InvoiceStatusBadge.tsx: 상태 배지 컴포넌트
+  - InvoiceList.tsx: 청구서 목록 (mode: issuer/payer/both)
+  - InvoicePaymentModal.tsx: 결제 제출 모달
+  - PaymentConfirmModal.tsx: 결제 확인/반려 모달
+  - index.ts: 컴포넌트 export
 
-**Phase 2: 백엔드 API**
-1. Brand/Foodcourt payment_settings API
-2. Invoice 역할별 필터 API
-3. 결제 제출/확인/반려 API
-4. Stripe/PayPal Stub API
+- **/src/services/invoiceService.ts**
+  - invoiceService: 청구서 API 호출
+  - brandService: 브랜드 결제설정 API
+  - foodcourtService: 푸드코트 결제설정 API
 
-**Phase 3-9: 프론트엔드 및 통합**
-- 상세 내용: BILLING_SYSTEM_INTEGRATION_PLAN.md 참조
+#### Phase 4: 역할별 페이지 생성
+- **BrandGeneral/BrandInvoicesPage.tsx**: 브랜드 청구서 관리 (발행 + 결제)
+- **FoodcourtGeneral/FoodcourtInvoicesPage.tsx**: 푸드코트 청구서 관리 (발행 + 결제)
+
+#### Phase 5: 빌드 테스트
+- 프론트엔드 빌드 성공
+- 배포 위치: /var/www/dev-frontend/build
+
+#### Phase 6: Payment Model 수정 (2026-01-19)
+- **Restaurant 모델**: payment_model, foodcourt_id 필드 추가
+  - payment_model: 'restaurant' | 'brand_manager' | 'foodcourt_manager'
+  - Restaurant Pays = 'restaurant' (Restaurant Admin이 결제)
+  - Manager Pays = 'brand_manager' (Brand General이 결제)
+- **restaurants.js 라우트**: POST/PUT에서 payment_model 저장 로직 추가
+- **Frontend (Admin/Manager)**: payment_model을 payment_model로 백엔드 전송 수정
+- **invoices.js**: 정기구독 인보이스 생성 시 restaurant.payment_model 기반 payer_type 설정
+
+### 다음 작업 (필요시)
+
+1. **라우팅 설정**: 새 페이지 라우트 추가
+2. **사이드바 메뉴**: Brand/Foodcourt 사이드바에 Invoice 메뉴 추가
+3. **Stripe/PayPal Stub**: 실제 연동 전 테스트용 Stub 구현
+4. **통합 테스트**: 역할별 워크플로우 테스트
 
 ---
 
-## 이전 세션 요약 (2026-01-16)
+## 파일 변경 내역
 
-- System Admin Payment Settings UI 구현 완료
-- Payment Settings Backend API 구현 완료
-- PAYMENT_SYSTEM_PLAN.md 문서화 완료
+### Backend 변경
+- `/var/www/dev-backend/models/Brand.js` - payment_settings 등 필드 추가
+- `/var/www/dev-backend/models/Foodcourt.js` - payment_settings 등 필드 추가
+- `/var/www/dev-backend/models/Invoice.js` - issuer_type 등 필드 추가
+- `/var/www/dev-backend/routes/brands.js` - payment-settings API 추가
+- `/var/www/dev-backend/routes/foodcourts.js` - payment-settings API 추가
+- `/var/www/dev-backend/routes/invoices.js` - 결제 워크플로우 API 추가
+
+### Frontend 변경
+- `/var/www/dev-frontend/src/components/Invoice/` - 통합 컴포넌트 폴더 생성
+- `/var/www/dev-frontend/src/services/invoiceService.ts` - API 서비스 생성
+- `/var/www/dev-frontend/src/pages/BrandGeneral/BrandInvoicesPage.tsx` - 신규
+- `/var/www/dev-frontend/src/pages/FoodcourtGeneral/FoodcourtInvoicesPage.tsx` - 신규
 
 ---
 
-## 메모
+## 참고 문서
 
-- 통합 컴포넌트: InvoiceManager (mode prop으로 역할 구분)
-- 역할별 페이지: Admin, BrandGeneral, FoodcourtGeneral, Restaurant
-- Stripe/PayPal은 Stub으로 먼저 구현, 실제 연동은 나중에
+- `/var/www/docs/BILLING_SYSTEM_INTEGRATION_PLAN.md`: 전체 통합 기획서
+- `/var/www/docs/ROLES_AND_PERMISSIONS.md`: 역할별 권한 정의

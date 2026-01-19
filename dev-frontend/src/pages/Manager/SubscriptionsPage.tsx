@@ -787,17 +787,61 @@ const ManagerSubscriptionsPage: React.FC = () => {
     }
   };
 
-  const handlePaymentModelSwitch = (subscriptionId: string, newModel: 'self' | 'manager') => {
-    setSubscriptions(subscriptions.map(sub => 
-      sub.id === subscriptionId 
-        ? { 
-            ...sub, 
-            paymentModel: newModel,
-            payerId: newModel === 'manager' ? sub.managerId : `${sub.restaurantId}-owner`,
-            payerName: newModel === 'manager' ? sub.managerName : 'Restaurant Owner'
-          }
-        : sub
-    ));
+  const handlePaymentModelSwitch = async (subscriptionId: string, newModel: 'self' | 'manager') => {
+    // Extract restaurant ID from subscription ID (format: sub-{restaurantId})
+    const restaurantId = subscriptionId.replace('sub-', '');
+
+    // Map frontend model to backend model
+    const backendModel = newModel === 'manager' ? 'brand_manager' : 'restaurant';
+
+    try {
+      const token = localStorage.getItem('auth_token');
+
+      // 1. Update restaurant payment_model
+      const response = await fetch(`${API_BASE_URL}/api/restaurants/${restaurantId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ payment_model: backendModel })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update payment model');
+      }
+
+      // 2. Update unpaid invoices payer_type
+      const invoiceResponse = await fetch(`${API_BASE_URL}/api/invoices/update-payer/${restaurantId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ payment_model: backendModel })
+      });
+
+      if (!invoiceResponse.ok) {
+        console.warn('Failed to update invoice payers, but restaurant payment model was updated');
+      }
+
+      // 3. Update local state
+      setSubscriptions(subscriptions.map(sub =>
+        sub.id === subscriptionId
+          ? {
+              ...sub,
+              paymentModel: newModel,
+              payerId: newModel === 'manager' ? sub.managerId : sub.restaurantId,
+              payerName: newModel === 'manager' ? sub.managerName : 'Restaurant Owner'
+            }
+          : sub
+      ));
+
+      alert(`Payment model switched to ${newModel === 'manager' ? 'Manager-Pay' : 'Self-Pay'} successfully!`);
+    } catch (error) {
+      console.error('Error switching payment model:', error);
+      alert('Failed to switch payment model. Please try again.');
+    }
   };
 
   const handleUpgradePlan = (subscription: RestaurantSubscription) => {

@@ -16,6 +16,25 @@ export interface InvoiceItem {
   total: number;
 }
 
+export interface CompanyInfo {
+  name: string;
+  logoUrl?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  taxId?: string;
+  businessRegistration?: string;
+  bankName?: string;
+  bankAccount?: string;
+  bankAccountName?: string;
+  swiftCode?: string;
+}
+
 export interface Invoice {
   id: string;
   invoiceNumber: string;
@@ -23,10 +42,12 @@ export interface Invoice {
   issuerType: IssuerType;
   issuerId?: string;
   issuerName?: string;
+  issuerCompany?: CompanyInfo;
   // Payer info
   payerType?: PayerType;
   payerId?: string;
   payerName?: string;
+  payerCompany?: CompanyInfo;
   // Restaurant info (legacy support)
   restaurantId?: string;
   restaurantName?: string;

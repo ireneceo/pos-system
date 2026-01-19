@@ -435,6 +435,17 @@ Restaurant.init({
     type: DataTypes.INTEGER,
     allowNull: true,
     comment: 'Brand ID if restaurant belongs to a franchise brand'
+  },
+  payment_model: {
+    type: DataTypes.ENUM('restaurant', 'brand_manager', 'foodcourt_manager'),
+    defaultValue: 'restaurant',
+    allowNull: false,
+    comment: 'Who pays invoices: restaurant (Restaurant Admin), brand_manager (Brand General), foodcourt_manager (Foodcourt General)'
+  },
+  foodcourt_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Foodcourt ID if restaurant is a tenant in a foodcourt'
   }
 }, {
   sequelize: database.sequelize,

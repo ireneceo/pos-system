@@ -864,7 +864,14 @@ const RestaurantsPage: React.FC = () => {
             rating: restaurant.rating || 4.5, // Use actual data from backend
             createdAt: restaurant.createdAt ? new Date(restaurant.createdAt).toISOString().split('T')[0] : '2024-01-01',
             lastOrder: restaurant.lastOrder || 'Never', // Use actual data from backend
-            brand_id: restaurant.brand_id || null // Include brand_id from backend
+            brand_id: restaurant.brand_id || null, // Include brand_id from backend
+            paymentModel: restaurant.payment_model || 'restaurant', // payment_model from backend
+            subscriptionStart: restaurant.subscriptionStart || null,
+            subscriptionEnd: restaurant.subscriptionEnd || null,
+            planType: restaurant.planType || 'Basic Plan',
+            planAmount: restaurant.planAmount || '29.00',
+            billingCycle: restaurant.billingCycle || 'monthly',
+            autoRenew: restaurant.autoRenew !== undefined ? restaurant.autoRenew : true
           };
         });
       
@@ -1124,7 +1131,7 @@ const RestaurantsPage: React.FC = () => {
         planType: newRestaurant.planType,
         planAmount: parseFloat(newRestaurant.planAmount),
         billingCycle: newRestaurant.billingCycle,
-        paymentModel: newRestaurant.paymentModel,
+        payment_model: newRestaurant.paymentModel,
         autoRenew: newRestaurant.autoRenew,
         subscriptionStart: newRestaurant.subscriptionStart,
         subscriptionEnd: newRestaurant.subscriptionEnd
@@ -1227,7 +1234,7 @@ const RestaurantsPage: React.FC = () => {
         planType: editingRestaurant.planType || 'Basic Plan',
         planAmount: parseFloat(editingRestaurant.planAmount || '29.00'),
         billingCycle: editingRestaurant.billingCycle || 'monthly',
-        paymentModel: editingRestaurant.paymentModel || 'manager',
+        payment_model: editingRestaurant.paymentModel || 'restaurant',
         autoRenew: editingRestaurant.autoRenew || true,
         subscriptionStart: editingRestaurant.subscriptionStart,
         subscriptionEnd: editingRestaurant.subscriptionEnd

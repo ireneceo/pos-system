@@ -617,6 +617,26 @@ router.post('/generate-for-subscriptions', authenticateToken, async (req, res) =
         const cycleText = billingCycle === 'annual' ? 'Annual' : 'Monthly';
         const periodText = `${formatDate(billingStart)} ~ ${formatDate(billingEnd)}`;
 
+        // Determine payer based on restaurant's payment_model setting
+        let payerType = 'restaurant';  // Default: Restaurant Admin pays
+        let payerId = null;
+
+        if (restaurant.payment_model === 'brand_manager' && restaurant.brand_id) {
+          // Brand Manager pays - find the brand owner
+          const brand = await Brand.findByPk(restaurant.brand_id);
+          if (brand && brand.owner_id) {
+            payerType = 'brand_manager';
+            payerId = brand.owner_id;
+          }
+        } else if (restaurant.payment_model === 'foodcourt_manager' && restaurant.foodcourt_id) {
+          // Foodcourt Manager pays - find the foodcourt owner
+          const foodcourt = await Foodcourt.findByPk(restaurant.foodcourt_id);
+          if (foodcourt && foodcourt.owner_id) {
+            payerType = 'foodcourt_manager';
+            payerId = foodcourt.owner_id;
+          }
+        }
+
         // Create invoice with currency
         const invoice = await Invoice.create({
           restaurant_id: restaurant.id,
@@ -630,7 +650,10 @@ router.post('/generate-for-subscriptions', authenticateToken, async (req, res) =
           status: 'pending_payment', // Auto-send subscription invoices
           notes: `${cycleText} subscription invoice for ${restaurant.plan_type}. Service period: ${periodText}. Prepaid - Due on service start date.`,
           issued_by: 0, // System generated
-          issued_at: issueDate
+          issued_at: issueDate,
+          issuer_type: 'system_admin',
+          payer_type: payerType,
+          payer_id: payerId
         });
 
         // Create invoice item
@@ -1284,5 +1307,67 @@ async function checkConfirmPermission(user, invoice) {
 
   return false;
 }
+
+// Update payer for unpaid invoices when payment_model changes
+router.put('/update-payer/:restaurantId', authenticateToken, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const { payment_model } = req.body;
+
+    console.log(`💰 Updating payer for unpaid invoices of restaurant ${restaurantId} to ${payment_model}`);
+
+    // Get restaurant with brand/foodcourt info
+    const restaurant = await Restaurant.findByPk(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ error: 'Restaurant not found' });
+    }
+
+    // Determine new payer based on payment_model
+    let newPayerType = 'restaurant';
+    let newPayerId = null;
+
+    if (payment_model === 'brand_manager' && restaurant.brand_id) {
+      const brand = await Brand.findByPk(restaurant.brand_id);
+      if (brand && brand.owner_id) {
+        newPayerType = 'brand_manager';
+        newPayerId = brand.owner_id;
+      }
+    } else if (payment_model === 'foodcourt_manager' && restaurant.foodcourt_id) {
+      const foodcourt = await Foodcourt.findByPk(restaurant.foodcourt_id);
+      if (foodcourt && foodcourt.owner_id) {
+        newPayerType = 'foodcourt_manager';
+        newPayerId = foodcourt.owner_id;
+      }
+    }
+
+    // Update all unpaid invoices (pending_payment, overdue, draft)
+    const unpaidStatuses = ['draft', 'pending_payment', 'overdue'];
+    const [updatedCount] = await Invoice.update(
+      {
+        payer_type: newPayerType,
+        payer_id: newPayerId
+      },
+      {
+        where: {
+          restaurant_id: restaurantId,
+          status: unpaidStatuses
+        }
+      }
+    );
+
+    console.log(`✅ Updated ${updatedCount} unpaid invoices to payer_type: ${newPayerType}`);
+
+    res.json({
+      success: true,
+      message: `Updated ${updatedCount} unpaid invoices`,
+      updatedCount,
+      newPayerType,
+      newPayerId
+    });
+  } catch (error) {
+    console.error('Error updating invoice payers:', error);
+    res.status(500).json({ error: 'Failed to update invoice payers' });
+  }
+});
 
 module.exports = router;

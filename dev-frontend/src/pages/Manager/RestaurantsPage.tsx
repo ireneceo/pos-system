@@ -1020,7 +1020,8 @@ const ManagerRestaurantsPage: React.FC = () => {
       planAmount: restaurant.monthlyFee?.toString() || '29.00',
       status: 'active',
       billingCycle: 'monthly',
-      paymentModel: 'manager',
+      paymentModel: (restaurant as any).payment_model === 'brand_manager' ? 'manager' :
+                    (restaurant as any).payment_model === 'restaurant' ? 'restaurant' : 'manager',
       subscriptionStart: '',
       subscriptionEnd: '',
       autoRenew: true,
@@ -1043,7 +1044,8 @@ const ManagerRestaurantsPage: React.FC = () => {
           status: newRestaurant.status,
           plan_type: newRestaurant.planType,
           plan_amount: parseFloat(newRestaurant.planAmount),
-          brand_id: newRestaurant.brandId ? parseInt(newRestaurant.brandId) : null
+          brand_id: newRestaurant.brandId ? parseInt(newRestaurant.brandId) : null,
+          payment_model: newRestaurant.paymentModel === 'manager' ? 'brand_manager' : 'restaurant'
         };
 
         console.log('🔄 Updating restaurant:', editingRestaurant.id, updateData);

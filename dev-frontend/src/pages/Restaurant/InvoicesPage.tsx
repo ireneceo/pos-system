@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { FilterBar, FilterSelect } from '../../components/Common/FilterComponents';
@@ -298,6 +299,7 @@ const getStatusLabel = (status: string) => {
 
 const RestaurantInvoicesPage: React.FC = () => {
   const { user } = useAuth();
+  const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -310,30 +312,32 @@ const RestaurantInvoicesPage: React.FC = () => {
   const [bankName, setBankName] = useState('');
   const [transactionId, setTransactionId] = useState('');
 
+  // URL 파라미터 또는 user context에서 restaurantId 가져오기
+  const restaurantId = urlRestaurantId || user?.restaurantId;
+
   useEffect(() => {
     fetchInvoices();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [restaurantId]);
 
   const fetchInvoices = async () => {
-    console.log('🔍 fetchInvoices called, user:', user);
+    console.log('🔍 fetchInvoices called');
+    console.log('🔍 urlRestaurantId:', urlRestaurantId);
     console.log('🔍 user.restaurantId:', user?.restaurantId);
-    console.log('🔍 user.role:', user?.role);
-    console.log('🔍 user.name:', user?.name);
+    console.log('🔍 effective restaurantId:', restaurantId);
 
-    if (!user?.restaurantId) {
-      console.error('❌ No restaurantId found in user. User must be assigned to a restaurant.');
-      console.log('❌ Current user object:', JSON.stringify(user, null, 2));
+    if (!restaurantId) {
+      console.error('❌ No restaurantId found. Check URL parameter or user assignment.');
       setIsLoading(false);
       return;
     }
 
     try {
       setIsLoading(true);
-      console.log('✅ Fetching invoices for restaurant:', user.restaurantId);
+      console.log('✅ Fetching invoices for restaurant:', restaurantId);
 
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/invoices/restaurant/${user.restaurantId}`, {
+      const response = await fetch(`/api/invoices/restaurant/${restaurantId}`, {
         headers: {
           'Authorization': 'Bearer ' + token
         }
