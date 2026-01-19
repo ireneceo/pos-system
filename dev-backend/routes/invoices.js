@@ -17,6 +17,7 @@ const invoiceScheduler = require('../services/invoiceScheduler');
 
 const PAYMENT_SETTINGS_KEY = 'payment_settings';
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
+const InvoiceCategory = require('../models/InvoiceCategory');
 
 // Helper function to get bank info from Payment Settings based on currency
 async function getBankInfoByCurrency(currency) {
@@ -432,6 +433,176 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch manager invoices' });
   }
 });
+
+// ============================================
+// Invoice Categories API (must be before /:id to avoid route conflict)
+// ============================================
+
+// Get all active invoice categories (no auth for dropdown use)
+router.get('/categories', async (req, res) => {
+  try {
+    const categories = await InvoiceCategory.findAll({
+      where: { is_active: true },
+      order: [['display_order', 'ASC'], ['name', 'ASC']]
+    });
+    res.json({ success: true, data: categories });
+  } catch (error) {
+    console.error('Error fetching invoice categories:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch invoice categories' });
+  }
+});
+
+// Get all invoice categories including inactive (admin)
+router.get('/categories/all', authenticateToken, async (req, res) => {
+  try {
+    const categories = await InvoiceCategory.findAll({
+      order: [['display_order', 'ASC'], ['name', 'ASC']]
+    });
+    res.json({ success: true, data: categories });
+  } catch (error) {
+    console.error('Error fetching all invoice categories:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch invoice categories' });
+  }
+});
+
+// Create new invoice category
+router.post('/categories', authenticateToken, async (req, res) => {
+  try {
+    const { name, code, description, display_order, is_active } = req.body;
+
+    if (!name || !code) {
+      return res.status(400).json({ success: false, error: 'Name and code are required' });
+    }
+
+    // Check for duplicate code
+    const existing = await InvoiceCategory.findOne({ where: { code } });
+    if (existing) {
+      return res.status(400).json({ success: false, error: 'Category code already exists' });
+    }
+
+    const category = await InvoiceCategory.create({
+      name,
+      code,
+      description,
+      display_order: display_order || 0,
+      is_active: is_active !== false,
+      is_system: false
+    });
+
+    res.status(201).json({ success: true, data: category });
+  } catch (error) {
+    console.error('Error creating invoice category:', error);
+    res.status(500).json({ success: false, error: 'Failed to create invoice category' });
+  }
+});
+
+// Update invoice category
+router.put('/categories/:categoryId', authenticateToken, async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const { name, code, description, display_order, is_active } = req.body;
+
+    const category = await InvoiceCategory.findByPk(categoryId);
+    if (!category) {
+      return res.status(404).json({ success: false, error: 'Category not found' });
+    }
+
+    // Check for duplicate code if changing
+    if (code && code !== category.code) {
+      const existing = await InvoiceCategory.findOne({ where: { code } });
+      if (existing) {
+        return res.status(400).json({ success: false, error: 'Category code already exists' });
+      }
+    }
+
+    // Don't allow changing system category code
+    if (category.is_system && code && code !== category.code) {
+      return res.status(400).json({ success: false, error: 'Cannot change system category code' });
+    }
+
+    await category.update({
+      name: name || category.name,
+      code: code || category.code,
+      description: description !== undefined ? description : category.description,
+      display_order: display_order !== undefined ? display_order : category.display_order,
+      is_active: is_active !== undefined ? is_active : category.is_active
+    });
+
+    res.json({ success: true, data: category });
+  } catch (error) {
+    console.error('Error updating invoice category:', error);
+    res.status(500).json({ success: false, error: 'Failed to update invoice category' });
+  }
+});
+
+// Delete invoice category (soft delete by setting is_active = false, or hard delete for non-system)
+router.delete('/categories/:categoryId', authenticateToken, async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const { force } = req.query;
+
+    const category = await InvoiceCategory.findByPk(categoryId);
+    if (!category) {
+      return res.status(404).json({ success: false, error: 'Category not found' });
+    }
+
+    if (category.is_system) {
+      return res.status(400).json({ success: false, error: 'Cannot delete system category' });
+    }
+
+    if (force === 'true') {
+      await category.destroy();
+      res.json({ success: true, message: 'Category permanently deleted' });
+    } else {
+      await category.update({ is_active: false });
+      res.json({ success: true, message: 'Category deactivated' });
+    }
+  } catch (error) {
+    console.error('Error deleting invoice category:', error);
+    res.status(500).json({ success: false, error: 'Failed to delete invoice category' });
+  }
+});
+
+// Initialize default invoice categories
+router.post('/categories/init', authenticateToken, async (req, res) => {
+  try {
+    const defaultCategories = [
+      { name: 'Subscription', code: 'subscription', description: 'Monthly/Annual subscription fees', display_order: 1, is_system: true },
+      { name: 'Service', code: 'service', description: 'One-time service fees', display_order: 2, is_system: true },
+      { name: 'Consulting', code: 'consulting', description: 'Consulting and support services', display_order: 3, is_system: true },
+      { name: 'Hardware', code: 'hardware', description: 'Hardware and equipment', display_order: 4, is_system: false },
+      { name: 'Training', code: 'training', description: 'Training and onboarding', display_order: 5, is_system: false },
+      { name: 'Others', code: 'others', description: 'Other miscellaneous charges', display_order: 99, is_system: true }
+    ];
+
+    const created = [];
+    const skipped = [];
+
+    for (const cat of defaultCategories) {
+      const existing = await InvoiceCategory.findOne({ where: { code: cat.code } });
+      if (existing) {
+        skipped.push(cat.code);
+      } else {
+        await InvoiceCategory.create({ ...cat, is_active: true });
+        created.push(cat.code);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Created ${created.length} categories, skipped ${skipped.length} existing`,
+      created,
+      skipped
+    });
+  } catch (error) {
+    console.error('Error initializing invoice categories:', error);
+    res.status(500).json({ success: false, error: 'Failed to initialize invoice categories' });
+  }
+});
+
+// ============================================
+// Invoice Detail and Management APIs
+// ============================================
 
 // Get invoice details with items and company info
 router.get('/:id', authenticateToken, async (req, res) => {

@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
+import { useSearchParams } from 'react-router-dom';
 import MainLayout from '../../components/Layout/MainLayout';
 import { formatCurrency } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
 import { BaseButton, StatusBadge as CommonStatusBadge } from '../../components/UI/CommonStyles';
+import ConfirmModal from '../../components/ConfirmModal';
 import {
   Container,
   Header,
@@ -106,6 +108,16 @@ interface Subscription {
   annual_price: number;
   start_date: string;
   end_date?: string;
+}
+
+interface InvoiceCategory {
+  id: number;
+  name: string;
+  code: string;
+  description: string;
+  display_order: number;
+  is_system: boolean;
+  is_active: boolean;
 }
 
 interface CompanySettings {
@@ -534,8 +546,11 @@ const InvoiceTableRow = styled(CommonTableRow)`
   }
 `;
 
+type TabType = 'invoices' | 'categories';
+
 const InvoicesPage: React.FC = () => {
   const { operationSettings } = useStore();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -554,7 +569,20 @@ const InvoicesPage: React.FC = () => {
   const [emailInvoice, setEmailInvoice] = useState<Invoice | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  const [activeTab, setActiveTab] = useState<'invoices' | 'categories'>('invoices');
+
+  // URL-based tab management
+  const activeTab = (searchParams.get('tab') as TabType) || 'invoices';
+  const handleTabChange = (tab: TabType) => {
+    setSearchParams({ tab });
+  };
+
+  // Category management states
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<InvoiceCategory | null>(null);
+  const [categoryFormData, setCategoryFormData] = useState({ name: '', code: '', description: '' });
+  const [savingCategory, setSavingCategory] = useState(false);
+  const [deleteCategoryModalOpen, setDeleteCategoryModalOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<InvoiceCategory | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [editInvoice, setEditInvoice] = useState<any>(null);
   const [editSearchQuery, setEditSearchQuery] = useState('');
@@ -570,6 +598,7 @@ const InvoicesPage: React.FC = () => {
   const [selectedTarget, setSelectedTarget] = useState<{type: 'manager' | 'restaurant', data: Manager | Restaurant} | null>(null);
   const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
   const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
+  const [invoiceCategories, setInvoiceCategories] = useState<InvoiceCategory[]>([]);
   const [newInvoice, setNewInvoice] = useState({
     managerId: '',
     managerName: '',
@@ -623,6 +652,21 @@ const InvoicesPage: React.FC = () => {
     } catch (error) {
       console.error('❌ [INVOICES] Error fetching invoices:', error);
       setInvoices([]);
+    }
+  };
+
+  // Fetch invoice categories from API
+  const fetchInvoiceCategories = async () => {
+    try {
+      const response = await fetch('/api/invoices/categories');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setInvoiceCategories(data.data);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching invoice categories:', error);
     }
   };
 
@@ -769,6 +813,7 @@ const InvoicesPage: React.FC = () => {
     fetchSubscriptions();
     fetchCompanySettings();
     fetchCurrencyConfig();
+    fetchInvoiceCategories();
   }, []);
 
   const fetchCurrencyConfig = async () => {
@@ -1979,16 +2024,12 @@ const InvoicesPage: React.FC = () => {
         <Content>
 
         <TabContainer>
-          <Tab active={activeTab === 'invoices'} onClick={() => setActiveTab('invoices')}>Invoices</Tab>
-          <Tab active={activeTab === 'categories'} onClick={() => setActiveTab('categories')}>Invoice Categories</Tab>
+          <Tab active={activeTab === 'invoices'} onClick={() => handleTabChange('invoices')}>Invoices</Tab>
+          <Tab active={activeTab === 'categories'} onClick={() => handleTabChange('categories')}>Invoice Categories</Tab>
         </TabContainer>
 
         {activeTab === 'invoices' && (
           <>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-            <Button variant="primary" onClick={handleCreateInvoice}>Create Invoice</Button>
-          </div>
-
         <StatsGrid>
           <StatCard color="#059669">
             <StatValue>{totalInvoices}</StatValue>
@@ -2049,6 +2090,7 @@ const InvoicesPage: React.FC = () => {
               );
             })}
           </FilterSelect>
+          <Button variant="primary" onClick={handleCreateInvoice}>Create Invoice</Button>
         </FilterBar>
 
         <Table>
@@ -2067,7 +2109,7 @@ const InvoicesPage: React.FC = () => {
           {filteredInvoices.map(invoice => (
             <InvoiceTableRow columns="1.6fr 1.3fr 1.2fr 0.9fr 0.9fr 0.7fr 0.8fr 0.8fr minmax(180px, 220px)" key={invoice.id}>
               <MobileGrid>
-                <MobileValue>
+                <MobileValue className="col-invoice">
                   <MobileLabel>Invoice</MobileLabel>
                   <InvoiceInfo>
                     <InvoiceNumber>
@@ -2078,7 +2120,7 @@ const InvoicesPage: React.FC = () => {
                   </InvoiceInfo>
                 </MobileValue>
 
-                <MobileValue>
+                <MobileValue className="col-customer">
                   <MobileLabel>Customer</MobileLabel>
                   <InvoiceInfo>
                     <InvoiceNumber>{invoice.customerName || invoice.restaurantName || 'Unknown'}</InvoiceNumber>
@@ -2086,24 +2128,24 @@ const InvoicesPage: React.FC = () => {
                   </InvoiceInfo>
                 </MobileValue>
 
-                <MobileValue>
+                <MobileValue className="col-period">
                   <MobileLabel>Period</MobileLabel>
                   <div style={{ fontSize: '12px' }}>
                     {invoice.billingPeriod || '-'}
                   </div>
                 </MobileValue>
 
-                <MobileValue>
+                <MobileValue className="col-issued">
                   <MobileLabel>Issued</MobileLabel>
                   <div style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</div>
                 </MobileValue>
 
-                <MobileValue>
+                <MobileValue className="col-due">
                   <MobileLabel>Due</MobileLabel>
                   <div style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</div>
                 </MobileValue>
 
-                <MobileValue>
+                <MobileValue className="col-status">
                   <MobileLabel>Status</MobileLabel>
                   <div>
                     <StatusBadge status={invoice.status}>
@@ -2112,18 +2154,18 @@ const InvoicesPage: React.FC = () => {
                   </div>
                 </MobileValue>
 
-                <MobileValue>
+                <MobileValue className="col-amount">
                   <MobileLabel>Amount</MobileLabel>
                   <Amount>{formatCurrency(invoice.amount, invoice.currency || 'USD')}</Amount>
                 </MobileValue>
 
-                <MobileValue>
+                <MobileValue className="col-total">
                   <MobileLabel>Total</MobileLabel>
                   <Amount highlight>{formatCurrency(invoice.total, invoice.currency || 'USD')}</Amount>
                 </MobileValue>
               </MobileGrid>
 
-              <ActionButtons>
+              <ActionButtons className="col-actions">
                       <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</LocalActionButton>
                       {invoice.status === 'draft' && (
                         <>
@@ -2482,9 +2524,19 @@ const InvoicesPage: React.FC = () => {
                     value={newInvoice.invoiceCategory || 'service'}
                     onChange={(e) => setNewInvoice({...newInvoice, invoiceCategory: e.target.value})}
                   >
-                    <option value="service">Service</option>
-                    <option value="consulting">Consulting</option>
-                    <option value="others">Others</option>
+                    {invoiceCategories.length > 0 ? (
+                      invoiceCategories
+                        .filter(cat => cat.code !== 'subscription')
+                        .map(cat => (
+                          <option key={cat.id} value={cat.code}>{cat.name}</option>
+                        ))
+                    ) : (
+                      <>
+                        <option value="service">Service</option>
+                        <option value="consulting">Consulting</option>
+                        <option value="others">Others</option>
+                      </>
+                    )}
                   </FormSelect>
                 </FormGroup>
 
@@ -2948,9 +3000,19 @@ const InvoicesPage: React.FC = () => {
                     value={editInvoice.invoiceCategory || 'service'}
                     onChange={(e) => setEditInvoice({...editInvoice, invoiceCategory: e.target.value})}
                   >
-                    <option value="service">Service</option>
-                    <option value="consulting">Consulting</option>
-                    <option value="others">Others</option>
+                    {invoiceCategories.length > 0 ? (
+                      invoiceCategories
+                        .filter(cat => cat.code !== 'subscription')
+                        .map(cat => (
+                          <option key={cat.id} value={cat.code}>{cat.name}</option>
+                        ))
+                    ) : (
+                      <>
+                        <option value="service">Service</option>
+                        <option value="consulting">Consulting</option>
+                        <option value="others">Others</option>
+                      </>
+                    )}
                   </FormSelect>
                 </FormGroup>
 
