@@ -352,4 +352,182 @@ router.put('/company-info', authenticateToken, async (req, res) => {
   }
 });
 
+// ============================================
+// Payment Settings APIs (B2B Invoice Payment)
+// ============================================
+
+// Get payment settings for a foodcourt
+router.get('/:id/payment-settings', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`💳 GET /api/foodcourts/${id}/payment-settings - User: ${req.user.email}`);
+
+    const foodcourt = await Foodcourt.findByPk(id);
+    if (!foodcourt) {
+      return res.status(404).json({ error: 'Foodcourt not found' });
+    }
+
+    // Check access permissions
+    if (req.user.role !== 'System Admin' && foodcourt.owner_id !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied to this foodcourt' });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        payment_settings: foodcourt.payment_settings,
+        invoice_settings: foodcourt.invoice_settings,
+        supported_currencies: foodcourt.supported_currencies
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching foodcourt payment settings:', error);
+    res.status(500).json({ error: 'Failed to fetch payment settings' });
+  }
+});
+
+// Update payment settings for a foodcourt
+router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`💳 PUT /api/foodcourts/${id}/payment-settings - User: ${req.user.email}`);
+
+    const foodcourt = await Foodcourt.findByPk(id);
+    if (!foodcourt) {
+      return res.status(404).json({ error: 'Foodcourt not found' });
+    }
+
+    // Check access permissions (Foodcourt General only or System Admin)
+    if (req.user.role !== 'System Admin' &&
+        (req.user.role !== 'Foodcourt General' || foodcourt.owner_id !== req.user.id)) {
+      return res.status(403).json({ error: 'Access denied. Only Foodcourt General or System Admin can update payment settings.' });
+    }
+
+    const { payment_settings, invoice_settings, supported_currencies } = req.body;
+
+    // Validate payment_settings structure if provided
+    if (payment_settings) {
+      const validPaymentSettings = {
+        currencies: payment_settings.currencies || ['MYR'],
+        defaultCurrency: payment_settings.defaultCurrency || 'MYR',
+        stripe: payment_settings.stripe || { enabled: false },
+        paypal: payment_settings.paypal || { enabled: false },
+        bankTransfer: payment_settings.bankTransfer || {},
+        qrPayment: payment_settings.qrPayment || {}
+      };
+      foodcourt.payment_settings = validPaymentSettings;
+    }
+
+    // Validate invoice_settings structure if provided
+    if (invoice_settings) {
+      const validInvoiceSettings = {
+        invoicePrefix: invoice_settings.invoicePrefix || 'INV',
+        paymentTerms: invoice_settings.paymentTerms || 30,
+        taxRate: invoice_settings.taxRate || 6,
+        autoGenerate: invoice_settings.autoGenerate || false,
+        autoSendEmail: invoice_settings.autoSendEmail || false,
+        ...invoice_settings
+      };
+      foodcourt.invoice_settings = validInvoiceSettings;
+    }
+
+    // Update supported currencies if provided
+    if (supported_currencies && Array.isArray(supported_currencies)) {
+      foodcourt.supported_currencies = supported_currencies;
+    }
+
+    await foodcourt.save();
+    console.log(`✅ Foodcourt payment settings updated: ${foodcourt.name}`);
+
+    res.json({
+      success: true,
+      message: 'Payment settings updated successfully',
+      data: {
+        payment_settings: foodcourt.payment_settings,
+        invoice_settings: foodcourt.invoice_settings,
+        supported_currencies: foodcourt.supported_currencies
+      }
+    });
+  } catch (error) {
+    console.error('Error updating foodcourt payment settings:', error);
+    res.status(500).json({ error: 'Failed to update payment settings' });
+  }
+});
+
+// Get subscription info for a foodcourt (System Admin can set, Foodcourt General can view)
+router.get('/:id/subscription', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`📋 GET /api/foodcourts/${id}/subscription - User: ${req.user.email}`);
+
+    const foodcourt = await Foodcourt.findByPk(id);
+    if (!foodcourt) {
+      return res.status(404).json({ error: 'Foodcourt not found' });
+    }
+
+    // Check access permissions
+    if (req.user.role !== 'System Admin' && foodcourt.owner_id !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied to this foodcourt' });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        subscription_status: foodcourt.subscription_status,
+        subscription_start: foodcourt.subscription_start,
+        subscription_end: foodcourt.subscription_end,
+        plan_type: foodcourt.plan_type
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching foodcourt subscription:', error);
+    res.status(500).json({ error: 'Failed to fetch subscription info' });
+  }
+});
+
+// Update subscription info for a foodcourt (System Admin only)
+router.put('/:id/subscription', authenticateToken, requireRole('System Admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`📋 PUT /api/foodcourts/${id}/subscription - User: ${req.user.email}`);
+
+    const foodcourt = await Foodcourt.findByPk(id);
+    if (!foodcourt) {
+      return res.status(404).json({ error: 'Foodcourt not found' });
+    }
+
+    const { subscription_status, subscription_start, subscription_end, plan_type } = req.body;
+
+    if (subscription_status) {
+      foodcourt.subscription_status = subscription_status;
+    }
+    if (subscription_start !== undefined) {
+      foodcourt.subscription_start = subscription_start;
+    }
+    if (subscription_end !== undefined) {
+      foodcourt.subscription_end = subscription_end;
+    }
+    if (plan_type !== undefined) {
+      foodcourt.plan_type = plan_type;
+    }
+
+    await foodcourt.save();
+    console.log(`✅ Foodcourt subscription updated: ${foodcourt.name}`);
+
+    res.json({
+      success: true,
+      message: 'Subscription info updated successfully',
+      data: {
+        subscription_status: foodcourt.subscription_status,
+        subscription_start: foodcourt.subscription_start,
+        subscription_end: foodcourt.subscription_end,
+        plan_type: foodcourt.plan_type
+      }
+    });
+  } catch (error) {
+    console.error('Error updating foodcourt subscription:', error);
+    res.status(500).json({ error: 'Failed to update subscription info' });
+  }
+});
+
 module.exports = router;

@@ -352,4 +352,182 @@ router.put('/company-info', authenticateToken, async (req, res) => {
   }
 });
 
+// ============================================
+// Payment Settings APIs (B2B Invoice Payment)
+// ============================================
+
+// Get payment settings for a brand
+router.get('/:id/payment-settings', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`💳 GET /api/brands/${id}/payment-settings - User: ${req.user.email}`);
+
+    const brand = await Brand.findByPk(id);
+    if (!brand) {
+      return res.status(404).json({ error: 'Brand not found' });
+    }
+
+    // Check access permissions
+    if (req.user.role !== 'System Admin' && brand.owner_id !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied to this brand' });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        payment_settings: brand.payment_settings,
+        invoice_settings: brand.invoice_settings,
+        supported_currencies: brand.supported_currencies
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching brand payment settings:', error);
+    res.status(500).json({ error: 'Failed to fetch payment settings' });
+  }
+});
+
+// Update payment settings for a brand
+router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`💳 PUT /api/brands/${id}/payment-settings - User: ${req.user.email}`);
+
+    const brand = await Brand.findByPk(id);
+    if (!brand) {
+      return res.status(404).json({ error: 'Brand not found' });
+    }
+
+    // Check access permissions (Brand General only or System Admin)
+    if (req.user.role !== 'System Admin' &&
+        (req.user.role !== 'Brand General' || brand.owner_id !== req.user.id)) {
+      return res.status(403).json({ error: 'Access denied. Only Brand General or System Admin can update payment settings.' });
+    }
+
+    const { payment_settings, invoice_settings, supported_currencies } = req.body;
+
+    // Validate payment_settings structure if provided
+    if (payment_settings) {
+      const validPaymentSettings = {
+        currencies: payment_settings.currencies || ['MYR'],
+        defaultCurrency: payment_settings.defaultCurrency || 'MYR',
+        stripe: payment_settings.stripe || { enabled: false },
+        paypal: payment_settings.paypal || { enabled: false },
+        bankTransfer: payment_settings.bankTransfer || {},
+        qrPayment: payment_settings.qrPayment || {}
+      };
+      brand.payment_settings = validPaymentSettings;
+    }
+
+    // Validate invoice_settings structure if provided
+    if (invoice_settings) {
+      const validInvoiceSettings = {
+        invoicePrefix: invoice_settings.invoicePrefix || 'INV',
+        paymentTerms: invoice_settings.paymentTerms || 30,
+        taxRate: invoice_settings.taxRate || 6,
+        autoGenerate: invoice_settings.autoGenerate || false,
+        autoSendEmail: invoice_settings.autoSendEmail || false,
+        ...invoice_settings
+      };
+      brand.invoice_settings = validInvoiceSettings;
+    }
+
+    // Update supported currencies if provided
+    if (supported_currencies && Array.isArray(supported_currencies)) {
+      brand.supported_currencies = supported_currencies;
+    }
+
+    await brand.save();
+    console.log(`✅ Brand payment settings updated: ${brand.name}`);
+
+    res.json({
+      success: true,
+      message: 'Payment settings updated successfully',
+      data: {
+        payment_settings: brand.payment_settings,
+        invoice_settings: brand.invoice_settings,
+        supported_currencies: brand.supported_currencies
+      }
+    });
+  } catch (error) {
+    console.error('Error updating brand payment settings:', error);
+    res.status(500).json({ error: 'Failed to update payment settings' });
+  }
+});
+
+// Get subscription info for a brand (System Admin can set, Brand General can view)
+router.get('/:id/subscription', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`📋 GET /api/brands/${id}/subscription - User: ${req.user.email}`);
+
+    const brand = await Brand.findByPk(id);
+    if (!brand) {
+      return res.status(404).json({ error: 'Brand not found' });
+    }
+
+    // Check access permissions
+    if (req.user.role !== 'System Admin' && brand.owner_id !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied to this brand' });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        subscription_status: brand.subscription_status,
+        subscription_start: brand.subscription_start,
+        subscription_end: brand.subscription_end,
+        plan_type: brand.plan_type
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching brand subscription:', error);
+    res.status(500).json({ error: 'Failed to fetch subscription info' });
+  }
+});
+
+// Update subscription info for a brand (System Admin only)
+router.put('/:id/subscription', authenticateToken, requireRole('System Admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`📋 PUT /api/brands/${id}/subscription - User: ${req.user.email}`);
+
+    const brand = await Brand.findByPk(id);
+    if (!brand) {
+      return res.status(404).json({ error: 'Brand not found' });
+    }
+
+    const { subscription_status, subscription_start, subscription_end, plan_type } = req.body;
+
+    if (subscription_status) {
+      brand.subscription_status = subscription_status;
+    }
+    if (subscription_start !== undefined) {
+      brand.subscription_start = subscription_start;
+    }
+    if (subscription_end !== undefined) {
+      brand.subscription_end = subscription_end;
+    }
+    if (plan_type !== undefined) {
+      brand.plan_type = plan_type;
+    }
+
+    await brand.save();
+    console.log(`✅ Brand subscription updated: ${brand.name}`);
+
+    res.json({
+      success: true,
+      message: 'Subscription info updated successfully',
+      data: {
+        subscription_status: brand.subscription_status,
+        subscription_start: brand.subscription_start,
+        subscription_end: brand.subscription_end,
+        plan_type: brand.plan_type
+      }
+    });
+  } catch (error) {
+    console.error('Error updating brand subscription:', error);
+    res.status(500).json({ error: 'Failed to update subscription info' });
+  }
+});
+
 module.exports = router;

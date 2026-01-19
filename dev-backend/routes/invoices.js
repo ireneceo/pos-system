@@ -9,6 +9,8 @@ const User = require('../models/User');
 const CompanySettings = require('../models/CompanySettings');
 const PlanPrice = require('../models/PlanPrice');
 const PlanTemplate = require('../models/PlanTemplate');
+const Brand = require('../models/Brand');
+const Foodcourt = require('../models/Foodcourt');
 const { Op } = require('sequelize');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 
@@ -906,5 +908,381 @@ router.put('/:invoiceId', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'Failed to update invoice' });
   }
 });
+
+// ============================================
+// Payment Flow APIs (Submit, Confirm, Reject)
+// ============================================
+
+// Submit payment for an invoice (by payer - restaurant, brand manager, foodcourt manager)
+router.post('/:id/submit-payment', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      payment_method,
+      payment_provider,
+      payment_intent_id,
+      receipt_url,
+      notes
+    } = req.body;
+
+    console.log(`💸 POST /api/invoices/${id}/submit-payment - User: ${req.user.email}`);
+
+    const invoice = await Invoice.findByPk(id, {
+      include: [{
+        model: Restaurant,
+        as: 'restaurant'
+      }]
+    });
+
+    if (!invoice) {
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+
+    // Check if invoice is in payable state
+    if (invoice.status !== 'pending_payment' && invoice.status !== 'rejected') {
+      return res.status(400).json({
+        error: `Cannot submit payment for invoice with status: ${invoice.status}`
+      });
+    }
+
+    // Verify user has permission to pay this invoice
+    const canPay = await checkPaymentPermission(req.user, invoice);
+    if (!canPay) {
+      return res.status(403).json({ error: 'You do not have permission to pay this invoice' });
+    }
+
+    // Update invoice with payment submission
+    await invoice.update({
+      status: 'payment_submitted',
+      payment_method: payment_method || 'bank_transfer',
+      payment_provider: payment_provider || null,
+      payment_intent_id: payment_intent_id || null,
+      receipt_url: receipt_url || null,
+      payment_notes: notes || null,
+      payment_submitted_at: new Date(),
+      rejection_reason: null // Clear any previous rejection
+    });
+
+    console.log(`✅ Payment submitted for invoice ${invoice.invoice_number}`);
+
+    res.json({
+      success: true,
+      message: 'Payment submitted successfully. Awaiting confirmation.',
+      invoice: await Invoice.findByPk(id)
+    });
+  } catch (error) {
+    console.error('Error submitting payment:', error);
+    res.status(500).json({ error: 'Failed to submit payment' });
+  }
+});
+
+// Confirm payment for an invoice (by issuer - system admin, brand general, foodcourt general)
+router.post('/:id/confirm-payment', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body;
+
+    console.log(`✅ POST /api/invoices/${id}/confirm-payment - User: ${req.user.email}`);
+
+    const invoice = await Invoice.findByPk(id);
+    if (!invoice) {
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+
+    // Check if invoice is in confirmable state
+    if (invoice.status !== 'payment_submitted') {
+      return res.status(400).json({
+        error: `Cannot confirm payment for invoice with status: ${invoice.status}. Expected: payment_submitted`
+      });
+    }
+
+    // Verify user has permission to confirm this invoice
+    const canConfirm = await checkConfirmPermission(req.user, invoice);
+    if (!canConfirm) {
+      return res.status(403).json({ error: 'You do not have permission to confirm this invoice' });
+    }
+
+    // Update invoice as paid
+    await invoice.update({
+      status: 'paid',
+      paid_at: new Date(),
+      paid_amount: invoice.total_amount,
+      confirmed_by: req.user.id,
+      confirmed_at: new Date(),
+      payment_notes: notes ? `${invoice.payment_notes || ''}\n[Confirmation note]: ${notes}` : invoice.payment_notes
+    });
+
+    console.log(`✅ Payment confirmed for invoice ${invoice.invoice_number} by user ${req.user.id}`);
+
+    res.json({
+      success: true,
+      message: 'Payment confirmed successfully.',
+      invoice: await Invoice.findByPk(id)
+    });
+  } catch (error) {
+    console.error('Error confirming payment:', error);
+    res.status(500).json({ error: 'Failed to confirm payment' });
+  }
+});
+
+// Reject payment for an invoice (by issuer - system admin, brand general, foodcourt general)
+router.post('/:id/reject-payment', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    console.log(`❌ POST /api/invoices/${id}/reject-payment - User: ${req.user.email}`);
+
+    if (!reason || reason.trim() === '') {
+      return res.status(400).json({ error: 'Rejection reason is required' });
+    }
+
+    const invoice = await Invoice.findByPk(id);
+    if (!invoice) {
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+
+    // Check if invoice is in rejectable state
+    if (invoice.status !== 'payment_submitted') {
+      return res.status(400).json({
+        error: `Cannot reject payment for invoice with status: ${invoice.status}. Expected: payment_submitted`
+      });
+    }
+
+    // Verify user has permission to reject this invoice
+    const canReject = await checkConfirmPermission(req.user, invoice);
+    if (!canReject) {
+      return res.status(403).json({ error: 'You do not have permission to reject this invoice' });
+    }
+
+    // Update invoice back to pending with rejection reason
+    await invoice.update({
+      status: 'pending_payment',
+      rejection_reason: reason,
+      payment_submitted_at: null
+    });
+
+    console.log(`❌ Payment rejected for invoice ${invoice.invoice_number} by user ${req.user.id}. Reason: ${reason}`);
+
+    res.json({
+      success: true,
+      message: 'Payment rejected. Invoice returned to pending status.',
+      invoice: await Invoice.findByPk(id)
+    });
+  } catch (error) {
+    console.error('Error rejecting payment:', error);
+    res.status(500).json({ error: 'Failed to reject payment' });
+  }
+});
+
+// Get invoices by issuer (for brand/foodcourt to see invoices they issued)
+router.get('/issued-by/:issuerType/:issuerId', authenticateToken, async (req, res) => {
+  try {
+    const { issuerType, issuerId } = req.params;
+    console.log(`📋 GET /api/invoices/issued-by/${issuerType}/${issuerId} - User: ${req.user.email}`);
+
+    // Validate issuer type
+    if (!['system_admin', 'brand', 'foodcourt'].includes(issuerType)) {
+      return res.status(400).json({ error: 'Invalid issuer type' });
+    }
+
+    // Check permission
+    if (req.user.role !== 'System Admin') {
+      if (issuerType === 'brand') {
+        const brand = await Brand.findByPk(issuerId);
+        if (!brand || brand.owner_id !== req.user.id) {
+          return res.status(403).json({ error: 'Access denied' });
+        }
+      } else if (issuerType === 'foodcourt') {
+        const foodcourt = await Foodcourt.findByPk(issuerId);
+        if (!foodcourt || foodcourt.owner_id !== req.user.id) {
+          return res.status(403).json({ error: 'Access denied' });
+        }
+      } else {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+    }
+
+    const whereClause = {
+      issuer_type: issuerType
+    };
+
+    if (issuerType !== 'system_admin') {
+      whereClause.issuer_id = issuerId;
+    }
+
+    const invoices = await Invoice.findAll({
+      where: whereClause,
+      include: [{
+        model: Restaurant,
+        as: 'restaurant',
+        attributes: ['id', 'name', 'manager_name', 'plan_type']
+      }, {
+        model: InvoiceItem,
+        as: 'items'
+      }],
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Transform for frontend
+    const transformedInvoices = invoices.map(invoice => ({
+      id: invoice.id.toString(),
+      invoiceNumber: invoice.invoice_number,
+      restaurantId: invoice.restaurant_id?.toString(),
+      restaurantName: invoice.restaurant?.name || 'Unknown',
+      issueDate: invoice.issued_at || invoice.createdAt,
+      dueDate: invoice.due_date,
+      paidDate: invoice.paid_at,
+      status: invoice.status,
+      currency: invoice.currency || 'MYR',
+      total: parseFloat(invoice.total_amount),
+      paymentSubmittedAt: invoice.payment_submitted_at,
+      rejectionReason: invoice.rejection_reason,
+      confirmedAt: invoice.confirmed_at,
+      confirmedBy: invoice.confirmed_by
+    }));
+
+    res.json(transformedInvoices);
+  } catch (error) {
+    console.error('Error fetching issued invoices:', error);
+    res.status(500).json({ error: 'Failed to fetch invoices' });
+  }
+});
+
+// Get invoices to pay (for brand/foodcourt managers to see invoices they need to pay)
+router.get('/to-pay', authenticateToken, async (req, res) => {
+  try {
+    console.log(`💳 GET /api/invoices/to-pay - User: ${req.user.email} (${req.user.role})`);
+
+    let whereClause = {};
+
+    // System Admin sees all
+    if (req.user.role === 'System Admin') {
+      // Return all invoices for monitoring
+    }
+    // Brand General/Manager sees invoices issued by system admin to their brand
+    else if (req.user.role === 'Brand General' || req.user.role === 'Brand Manager') {
+      const brand = await Brand.findOne({ where: { owner_id: req.user.id } });
+      if (!brand) {
+        return res.json([]);
+      }
+      whereClause = {
+        issuer_type: 'system_admin',
+        payer_type: 'brand',
+        payer_id: brand.id
+      };
+    }
+    // Foodcourt General/Manager sees invoices issued by system admin to their foodcourt
+    else if (req.user.role === 'Foodcourt General' || req.user.role === 'Foodcourt Manager') {
+      const foodcourt = await Foodcourt.findOne({ where: { owner_id: req.user.id } });
+      if (!foodcourt) {
+        return res.json([]);
+      }
+      whereClause = {
+        issuer_type: 'system_admin',
+        payer_type: 'foodcourt',
+        payer_id: foodcourt.id
+      };
+    }
+    // Restaurant Admin sees invoices for their restaurant
+    else if (req.user.role === 'Restaurant Admin') {
+      const restaurant = await Restaurant.findOne({ where: { manager_id: req.user.id } });
+      if (!restaurant) {
+        return res.json([]);
+      }
+      whereClause = {
+        restaurant_id: restaurant.id
+      };
+    }
+    else {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const invoices = await Invoice.findAll({
+      where: whereClause,
+      include: [{
+        model: Restaurant,
+        as: 'restaurant',
+        attributes: ['id', 'name', 'manager_name']
+      }, {
+        model: InvoiceItem,
+        as: 'items'
+      }],
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Transform for frontend
+    const transformedInvoices = invoices.map(invoice => ({
+      id: invoice.id.toString(),
+      invoiceNumber: invoice.invoice_number,
+      restaurantId: invoice.restaurant_id?.toString(),
+      restaurantName: invoice.restaurant?.name || 'Unknown',
+      issueDate: invoice.issued_at || invoice.createdAt,
+      dueDate: invoice.due_date,
+      paidDate: invoice.paid_at,
+      status: invoice.status,
+      currency: invoice.currency || 'MYR',
+      total: parseFloat(invoice.total_amount),
+      issuerType: invoice.issuer_type,
+      paymentSubmittedAt: invoice.payment_submitted_at,
+      rejectionReason: invoice.rejection_reason
+    }));
+
+    res.json(transformedInvoices);
+  } catch (error) {
+    console.error('Error fetching invoices to pay:', error);
+    res.status(500).json({ error: 'Failed to fetch invoices' });
+  }
+});
+
+// Helper function: Check if user can pay this invoice
+async function checkPaymentPermission(user, invoice) {
+  // System Admin can pay any invoice (for testing/support)
+  if (user.role === 'System Admin') {
+    return true;
+  }
+
+  // Restaurant Admin can pay invoices for their restaurant
+  if (user.role === 'Restaurant Admin') {
+    const restaurant = await Restaurant.findOne({ where: { manager_id: user.id } });
+    return restaurant && invoice.restaurant_id === restaurant.id;
+  }
+
+  // Brand General/Manager can pay invoices where they are the payer
+  if (user.role === 'Brand General' || user.role === 'Brand Manager') {
+    const brand = await Brand.findOne({ where: { owner_id: user.id } });
+    return brand && invoice.payer_type === 'brand' && invoice.payer_id === brand.id;
+  }
+
+  // Foodcourt General/Manager can pay invoices where they are the payer
+  if (user.role === 'Foodcourt General' || user.role === 'Foodcourt Manager') {
+    const foodcourt = await Foodcourt.findOne({ where: { owner_id: user.id } });
+    return foodcourt && invoice.payer_type === 'foodcourt' && invoice.payer_id === foodcourt.id;
+  }
+
+  return false;
+}
+
+// Helper function: Check if user can confirm/reject this invoice
+async function checkConfirmPermission(user, invoice) {
+  // System Admin can confirm any invoice
+  if (user.role === 'System Admin') {
+    return true;
+  }
+
+  // Brand General can confirm invoices they issued
+  if (user.role === 'Brand General') {
+    const brand = await Brand.findOne({ where: { owner_id: user.id } });
+    return brand && invoice.issuer_type === 'brand' && invoice.issuer_id === brand.id;
+  }
+
+  // Foodcourt General can confirm invoices they issued
+  if (user.role === 'Foodcourt General') {
+    const foodcourt = await Foodcourt.findOne({ where: { owner_id: user.id } });
+    return foodcourt && invoice.issuer_type === 'foodcourt' && invoice.issuer_id === foodcourt.id;
+  }
+
+  return false;
+}
 
 module.exports = router;
