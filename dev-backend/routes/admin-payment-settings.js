@@ -68,6 +68,8 @@ router.get('/', async (req, res) => {
 // POST - 결제 설정 저장
 router.post('/', async (req, res) => {
   try {
+    console.log('📝 [PAYMENT SETTINGS] Saving payment settings...');
+    console.log('📝 [PAYMENT SETTINGS] Request body:', JSON.stringify(req.body, null, 2));
     const { stripe, paypal, bankTransfer, qrPayment } = req.body;
 
     // 기존 설정 조회 (시크릿 키 유지를 위해)

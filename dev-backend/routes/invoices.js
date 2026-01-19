@@ -7,18 +7,52 @@ const InvoiceSettings = require('../models/InvoiceSettings');
 const Restaurant = require('../models/Restaurant');
 const User = require('../models/User');
 const CompanySettings = require('../models/CompanySettings');
+const SystemSettings = require('../models/SystemSettings');
 const PlanPrice = require('../models/PlanPrice');
 const PlanTemplate = require('../models/PlanTemplate');
 const Brand = require('../models/Brand');
 const Foodcourt = require('../models/Foodcourt');
 const { Op } = require('sequelize');
+
+const PAYMENT_SETTINGS_KEY = 'payment_settings';
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 
+// Helper function to get bank info from Payment Settings based on currency
+async function getBankInfoByCurrency(currency) {
+  try {
+    const paymentSettings = await SystemSettings.findOne({
+      where: { setting_key: PAYMENT_SETTINGS_KEY }
+    });
+
+    if (paymentSettings && paymentSettings.setting_value) {
+      const settings = paymentSettings.setting_value;
+      const bankConfig = settings.bankTransfer?.[currency];
+
+      if (bankConfig?.enabled) {
+        return {
+          bankName: bankConfig.bankName || '',
+          bankAccount: bankConfig.accountNumber || '',
+          bankAccountName: bankConfig.accountName || '',
+          swiftCode: bankConfig.swiftCode || ''
+        };
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching bank info by currency:', error);
+    return null;
+  }
+}
+
 // Helper function to build company info object
-async function getIssuerCompanyInfo(issuerType, issuerId) {
+async function getIssuerCompanyInfo(issuerType, issuerId, currency = 'MYR') {
   if (issuerType === 'system_admin') {
     // Get system admin company settings
     const companySettings = await CompanySettings.findOne({ where: { id: 1 } });
+
+    // Get bank info from Payment Settings based on currency
+    const bankInfo = await getBankInfoByCurrency(currency);
+
     if (companySettings) {
       return {
         name: companySettings.company_name || 'System Admin',
@@ -33,10 +67,11 @@ async function getIssuerCompanyInfo(issuerType, issuerId) {
         website: companySettings.website || '',
         taxId: companySettings.tax_number || '',
         businessRegistration: companySettings.registration_number || '',
-        bankName: companySettings.bank_name || '',
-        bankAccount: companySettings.bank_account || '',
-        bankAccountName: companySettings.bank_account_name || '',
-        swiftCode: companySettings.swift_code || ''
+        // Use bank info from Payment Settings (currency-based) if available
+        bankName: bankInfo?.bankName || '',
+        bankAccount: bankInfo?.bankAccount || '',
+        bankAccountName: bankInfo?.bankAccountName || '',
+        swiftCode: bankInfo?.swiftCode || ''
       };
     }
   } else if (issuerType === 'brand' && issuerId) {
@@ -158,8 +193,11 @@ function getCategoryDisplayName(category, customDescription, planType, billingCy
 }
 
 // Get company settings for invoice generation
+// Accepts optional currency query param for currency-specific bank info
 router.get('/invoice-settings', async (req, res) => {
   try {
+    const currency = req.query.currency || 'MYR';
+
     const companySettings = await CompanySettings.findOne({
       where: { id: 1 } // System admin company settings
     });
@@ -167,6 +205,9 @@ router.get('/invoice-settings', async (req, res) => {
     if (!companySettings) {
       return res.status(404).json({ error: 'Company settings not found' });
     }
+
+    // Get bank info from Payment Settings based on currency
+    const bankInfo = await getBankInfoByCurrency(currency);
 
     res.json({
       data: {
@@ -182,9 +223,11 @@ router.get('/invoice-settings', async (req, res) => {
         taxNumber: companySettings.tax_number,
         registrationNumber: companySettings.registration_number,
         companyLogo: companySettings.company_logo || '',
-        bankName: companySettings.bank_name || '',
-        bankAccount: companySettings.bank_account || '',
-        bankAccountName: companySettings.bank_account_name || ''
+        // Use bank info from Payment Settings (currency-based) if available
+        bankName: bankInfo?.bankName || '',
+        bankAccount: bankInfo?.bankAccount || '',
+        bankAccountName: bankInfo?.bankAccountName || '',
+        swiftCode: bankInfo?.swiftCode || ''
       }
     });
   } catch (error) {
@@ -393,10 +436,11 @@ router.get('/:id', authenticateToken, async (req, res) => {
       where: { invoice_id: req.params.id }
     });
 
-    // Get issuer company info
+    // Get issuer company info (with currency for bank info)
     const issuerCompany = await getIssuerCompanyInfo(
       invoice.issuer_type || 'system_admin',
-      invoice.issuer_id
+      invoice.issuer_id,
+      invoice.currency || 'MYR'
     );
 
     // Get payer company info

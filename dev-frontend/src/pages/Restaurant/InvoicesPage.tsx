@@ -280,6 +280,7 @@ interface Invoice {
   amount: number;
   tax: number;
   total: number;
+  currency: string;
   status: 'pending_payment' | 'payment_submitted' | 'paid' | 'overdue' | 'cancelled';
   issueDate: string;
   dueDate: string;
@@ -373,6 +374,7 @@ const RestaurantInvoicesPage: React.FC = () => {
             amount: parseFloat(inv.total_amount) - (parseFloat(inv.total_amount) * 0.06),
             tax: parseFloat(inv.total_amount) * 0.06,
             total: parseFloat(inv.total_amount),
+            currency: inv.currency || 'MYR',
             status: normalizedStatus,
             issueDate: new Date(inv.issued_at || inv.createdAt).toISOString().split('T')[0],
             dueDate: new Date(inv.due_date).toISOString().split('T')[0],
@@ -495,8 +497,9 @@ const RestaurantInvoicesPage: React.FC = () => {
         return;
       }
 
-      // Fetch company settings (invoice issuer info)
-      const settingsResponse = await fetch('/api/invoices/invoice-settings', {
+      // Fetch company settings (invoice issuer info) with currency for bank info
+      const invoiceCurrency = invoice.currency || 'MYR';
+      const settingsResponse = await fetch(`/api/invoices/invoice-settings?currency=${invoiceCurrency}`, {
         headers: {
           'Authorization': 'Bearer ' + token
         }
@@ -505,7 +508,7 @@ const RestaurantInvoicesPage: React.FC = () => {
       if (settingsResponse.ok) {
         const settingsData = await settingsResponse.json();
         companySettings = settingsData.data || settingsData;
-        console.log('Company settings loaded:', companySettings);
+        console.log('Company settings loaded for currency', invoiceCurrency, ':', companySettings);
       } else {
         console.error('Failed to load company settings:', settingsResponse.status);
       }

@@ -525,13 +525,18 @@ const PaymentSettingsPage: React.FC = () => {
   };
 
   const savePaymentSettings = async () => {
-    if (!hasChanges) return;
+    if (!hasChanges) {
+      console.log('No changes to save');
+      return;
+    }
 
     setIsSaving(true);
     setSaveStatus(null);
 
     try {
       const token = localStorage.getItem('auth_token');
+      console.log('Saving payment settings:', JSON.stringify(paymentSettings, null, 2));
+
       const response = await fetch('/api/admin/payment-settings', {
         method: 'POST',
         headers: {
@@ -541,15 +546,18 @@ const PaymentSettingsPage: React.FC = () => {
         body: JSON.stringify(paymentSettings)
       });
 
+      const responseData = await response.json();
+      console.log('Server response:', response.status, responseData);
+
       if (!response.ok) {
-        throw new Error('Failed to save');
+        throw new Error(responseData.error || responseData.details || 'Failed to save');
       }
 
       setSaveStatus({ type: 'success', message: 'Payment settings saved successfully!' });
       setHasChanges(false);
     } catch (error) {
       console.error('Error saving:', error);
-      setSaveStatus({ type: 'error', message: 'Failed to save payment settings' });
+      setSaveStatus({ type: 'error', message: `Failed to save payment settings: ${error instanceof Error ? error.message : 'Unknown error'}` });
     } finally {
       setIsSaving(false);
     }
