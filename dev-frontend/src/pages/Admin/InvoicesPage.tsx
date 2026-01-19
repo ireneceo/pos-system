@@ -142,6 +142,54 @@ interface CompanySettings {
 // Common components now imported from ../../components/UI
 // Page-specific styled components below
 
+// FilterBar wrapper for full width layout
+const FilterBarWrapper = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+  width: 100%;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 12px;
+  }
+`;
+
+const FiltersLeft = styled.div`
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  flex: 1;
+
+  @media (max-width: 600px) {
+    flex-direction: column;
+    width: 100%;
+
+    > * {
+      width: 100% !important;
+      min-width: 100% !important;
+      max-width: 100% !important;
+    }
+  }
+`;
+
+const FiltersRight = styled.div`
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+
+  @media (max-width: 768px) {
+    width: 100%;
+
+    > button {
+      width: 100%;
+    }
+  }
+`;
+
 // Button 컴포넌트는 BaseButton으로 교체됨
 const Button = styled(BaseButton)``;
 
@@ -656,9 +704,12 @@ const InvoicesPage: React.FC = () => {
   };
 
   // Fetch invoice categories from API
-  const fetchInvoiceCategories = async () => {
+  const fetchInvoiceCategories = useCallback(async () => {
     try {
-      const response = await fetch('/api/invoices/categories');
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/invoices/categories/all', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.data) {
@@ -667,6 +718,118 @@ const InvoicesPage: React.FC = () => {
       }
     } catch (error) {
       console.error('Error fetching invoice categories:', error);
+    }
+  }, []);
+
+  // Category management functions
+  const handleOpenCategoryModal = (category?: InvoiceCategory) => {
+    if (category) {
+      setEditingCategory(category);
+      setCategoryFormData({
+        name: category.name,
+        code: category.code,
+        description: category.description || ''
+      });
+    } else {
+      setEditingCategory(null);
+      setCategoryFormData({ name: '', code: '', description: '' });
+    }
+    setShowCategoryModal(true);
+  };
+
+  const handleCloseCategoryModal = () => {
+    setShowCategoryModal(false);
+    setEditingCategory(null);
+    setCategoryFormData({ name: '', code: '', description: '' });
+  };
+
+  const handleCategorySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!categoryFormData.name.trim() || !categoryFormData.code.trim()) return;
+
+    try {
+      setSavingCategory(true);
+      const token = localStorage.getItem('auth_token');
+      const url = editingCategory
+        ? `/api/invoices/categories/${editingCategory.id}`
+        : '/api/invoices/categories';
+      const method = editingCategory ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: categoryFormData.name.trim(),
+          code: categoryFormData.code.trim().toLowerCase().replace(/\s+/g, '_'),
+          description: categoryFormData.description.trim() || null
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        handleCloseCategoryModal();
+        fetchInvoiceCategories();
+      } else {
+        alert(data.error || 'Failed to save category');
+      }
+    } catch (error) {
+      console.error('Failed to save category:', error);
+      alert('Failed to save category');
+    } finally {
+      setSavingCategory(false);
+    }
+  };
+
+  const handleDeleteCategoryClick = (category: InvoiceCategory) => {
+    setCategoryToDelete(category);
+    setDeleteCategoryModalOpen(true);
+  };
+
+  const handleDeleteCategoryConfirm = async () => {
+    if (!categoryToDelete) return;
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/invoices/categories/${categoryToDelete.id}?force=true`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setDeleteCategoryModalOpen(false);
+        setCategoryToDelete(null);
+        fetchInvoiceCategories();
+      } else {
+        alert(data.error || 'Failed to delete category');
+      }
+    } catch (error) {
+      console.error('Failed to delete category:', error);
+      alert('Failed to delete category');
+    }
+  };
+
+  const handleToggleCategoryActive = async (category: InvoiceCategory) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/invoices/categories/${category.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ is_active: !category.is_active })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        fetchInvoiceCategories();
+      }
+    } catch (error) {
+      console.error('Failed to toggle category:', error);
     }
   };
 
@@ -832,11 +995,17 @@ const InvoicesPage: React.FC = () => {
 
   const fetchManagers = async () => {
     try {
+      const token = localStorage.getItem('auth_token');
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
       // Fetch all manager types: Manager, Foodcourt_Manager, Brand_Manager
       const [managerRes, foodcourtRes, brandRes] = await Promise.all([
-        fetch('/api/users?role=Manager'),
-        fetch('/api/users?role=Foodcourt_Manager'),
-        fetch('/api/users?role=Brand_Manager')
+        fetch('/api/users?role=Manager', { headers }),
+        fetch('/api/users?role=Foodcourt_Manager', { headers }),
+        fetch('/api/users?role=Brand_Manager', { headers })
       ]);
 
       let allManagers: Manager[] = [];
@@ -886,7 +1055,13 @@ const InvoicesPage: React.FC = () => {
 
   const fetchRestaurants = async () => {
     try {
-      const response = await fetch('/api/restaurants');
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/restaurants', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       if (response.ok) {
         const data = await response.json();
         console.log('Fetched restaurants:', data);
@@ -2053,45 +2228,49 @@ const InvoicesPage: React.FC = () => {
           </StatCard>
         </StatsGrid>
 
-        <FilterBar>
-          <SearchInput
-            placeholder="Search by invoice #, company, restaurant..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <FilterBarWrapper>
+          <FiltersLeft>
+            <SearchInput
+              placeholder="Search by invoice #, company, restaurant..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
 
-          <FilterSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-            <option value="all">All Status</option>
-            <option value="draft">Draft</option>
-            <option value="pending_payment">Pending Payment</option>
-            <option value="payment_submitted">Payment Submitted</option>
-            <option value="paid">Paid</option>
-            <option value="overdue">Overdue</option>
-            <option value="cancelled">Cancelled</option>
-          </FilterSelect>
+            <FilterSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+              <option value="all">All Status</option>
+              <option value="draft">Draft</option>
+              <option value="pending_payment">Pending Payment</option>
+              <option value="payment_submitted">Payment Submitted</option>
+              <option value="paid">Paid</option>
+              <option value="overdue">Overdue</option>
+              <option value="cancelled">Cancelled</option>
+            </FilterSelect>
 
-          <FilterSelect value={filterType} onChange={(e) => setFilterType(e.target.value)}>
-            <option value="all">All Types</option>
-            <option value="automatic">Automatic</option>
-            <option value="manual">Manual</option>
-          </FilterSelect>
+            <FilterSelect value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+              <option value="all">All Types</option>
+              <option value="automatic">Automatic</option>
+              <option value="manual">Manual</option>
+            </FilterSelect>
 
-          <FilterSelect value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}>
-            <option value="all">All Months</option>
-            {availableMonths.map(month => {
-              const [year, monthNum] = month.split('-');
-              const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-                                 'July', 'August', 'September', 'October', 'November', 'December'];
-              const monthName = monthNames[parseInt(monthNum) - 1];
-              return (
-                <option key={month} value={month}>
-                  {monthName} {year}
-                </option>
-              );
-            })}
-          </FilterSelect>
-          <Button variant="primary" onClick={handleCreateInvoice}>Create Invoice</Button>
-        </FilterBar>
+            <FilterSelect value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}>
+              <option value="all">All Months</option>
+              {availableMonths.map(month => {
+                const [year, monthNum] = month.split('-');
+                const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                                   'July', 'August', 'September', 'October', 'November', 'December'];
+                const monthName = monthNames[parseInt(monthNum) - 1];
+                return (
+                  <option key={month} value={month}>
+                    {monthName} {year}
+                  </option>
+                );
+              })}
+            </FilterSelect>
+          </FiltersLeft>
+          <FiltersRight>
+            <Button variant="primary" onClick={handleCreateInvoice}>Create Invoice</Button>
+          </FiltersRight>
+        </FilterBarWrapper>
 
         <Table>
           <InvoiceTableHeader columns="1.6fr 1.3fr 1.2fr 0.9fr 0.9fr 0.7fr 0.8fr 0.8fr minmax(180px, 220px)">
@@ -2307,40 +2486,197 @@ const InvoicesPage: React.FC = () => {
         )}
 
         {activeTab === 'categories' && (
-          <div style={{ padding: '40px', textAlign: 'center', background: '#F8FAFC', borderRadius: '12px' }}>
-            <h3 style={{ marginBottom: '16px', color: '#0A2540' }}>Invoice Categories</h3>
-            <p style={{ color: '#6B7280', marginBottom: '24px' }}>
-              Manage invoice categories that can be used when creating invoices.
-            </p>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-              gap: '16px',
-              maxWidth: '800px',
-              margin: '0 auto'
-            }}>
-              <div style={{ padding: '16px', background: 'white', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
-                <div style={{ fontWeight: '600', color: '#0A2540' }}>Subscription</div>
-                <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Monthly/Annual plans</div>
-              </div>
-              <div style={{ padding: '16px', background: 'white', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
-                <div style={{ fontWeight: '600', color: '#0A2540' }}>Service</div>
-                <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Professional services</div>
-              </div>
-              <div style={{ padding: '16px', background: 'white', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
-                <div style={{ fontWeight: '600', color: '#0A2540' }}>Consulting</div>
-                <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Consulting fees</div>
-              </div>
-              <div style={{ padding: '16px', background: 'white', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
-                <div style={{ fontWeight: '600', color: '#0A2540' }}>Others</div>
-                <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Custom invoices</div>
-              </div>
+          <div style={{ padding: '24px 0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#1F2937' }}>Invoice Categories</h3>
+              <Button variant="primary" onClick={() => handleOpenCategoryModal()}>Add Category</Button>
             </div>
-            <p style={{ color: '#9CA3AF', fontSize: '13px', marginTop: '24px' }}>
-              Custom categories can be added in future updates.
-            </p>
+
+            {invoiceCategories.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px', background: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', margin: '0 0 8px 0' }}>No categories yet</h4>
+                <p style={{ fontSize: '14px', color: '#6B7280', margin: '0 0 16px 0' }}>Create your first invoice category to get started.</p>
+                <Button variant="primary" onClick={() => handleOpenCategoryModal()}>Add Category</Button>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: '12px' }}>
+                {invoiceCategories.map((category) => (
+                  <div
+                    key={category.id}
+                    style={{
+                      background: 'white',
+                      borderRadius: '12px',
+                      padding: '16px 20px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '16px',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                      opacity: category.is_active ? 1 : 0.6
+                    }}
+                  >
+                    <div style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '8px',
+                      background: '#F3F4F6',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '18px',
+                      fontWeight: '600',
+                      color: '#635BFF',
+                      flexShrink: 0
+                    }}>
+                      {category.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <span style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937' }}>{category.name}</span>
+                        <span style={{
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          fontWeight: '500',
+                          background: category.is_active ? '#D1FAE5' : '#FEE2E2',
+                          color: category.is_active ? '#059669' : '#DC2626'
+                        }}>
+                          {category.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: '#6B7280' }}>
+                        <span>Code: <strong>{category.code}</strong></span>
+                        {category.description && <span>{category.description}</span>}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={() => handleToggleCategoryActive(category)}
+                        style={{
+                          width: '36px',
+                          height: '36px',
+                          borderRadius: '6px',
+                          border: '1px solid #E6EBF1',
+                          background: '#F6F9FC',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer'
+                        }}
+                        title={category.is_active ? 'Deactivate' : 'Activate'}
+                      >
+                        {category.is_active ? '👁️' : '👁️‍🗨️'}
+                      </button>
+                      <button
+                        onClick={() => handleOpenCategoryModal(category)}
+                        style={{
+                          width: '36px',
+                          height: '36px',
+                          borderRadius: '6px',
+                          border: '1px solid #E6EBF1',
+                          background: '#F6F9FC',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer'
+                        }}
+                        title="Edit"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      </button>
+                      <button
+                          onClick={() => handleDeleteCategoryClick(category)}
+                          style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '6px',
+                            border: '1px solid #FEE2E2',
+                            background: '#FEF2F2',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer'
+                          }}
+                          title="Delete"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2">
+                            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          </svg>
+                        </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
+
+        {/* Category Modal */}
+        {showCategoryModal && (
+          <Modal onClick={handleCloseCategoryModal}>
+            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+              <ModalHeader>
+                <ModalTitle>{editingCategory ? 'Edit Category' : 'Add Category'}</ModalTitle>
+                <CloseButton onClick={handleCloseCategoryModal}>×</CloseButton>
+              </ModalHeader>
+              <form onSubmit={handleCategorySubmit}>
+                <ModalBody>
+                  <FormGroup>
+                    <FormLabel>Name *</FormLabel>
+                    <FormInput
+                      value={categoryFormData.name}
+                      onChange={(e) => setCategoryFormData({ ...categoryFormData, name: e.target.value })}
+                      placeholder="e.g., Hardware"
+                      required
+                    />
+                  </FormGroup>
+                  <FormGroup>
+                    <FormLabel>Code *</FormLabel>
+                    <FormInput
+                      value={categoryFormData.code}
+                      onChange={(e) => setCategoryFormData({ ...categoryFormData, code: e.target.value })}
+                      placeholder="e.g., hardware"
+                      required
+                      disabled={editingCategory?.is_system}
+                    />
+                    <small style={{ color: '#6B7280', fontSize: '12px' }}>
+                      Unique identifier used in the system. Use lowercase letters and underscores.
+                    </small>
+                  </FormGroup>
+                  <FormGroup>
+                    <FormLabel>Description</FormLabel>
+                    <FormTextarea
+                      value={categoryFormData.description}
+                      onChange={(e) => setCategoryFormData({ ...categoryFormData, description: e.target.value })}
+                      placeholder="Brief description of this category"
+                      rows={3}
+                    />
+                  </FormGroup>
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant="secondary" type="button" onClick={handleCloseCategoryModal}>Cancel</Button>
+                  <Button variant="primary" type="submit" disabled={savingCategory || !categoryFormData.name || !categoryFormData.code}>
+                    {savingCategory ? 'Saving...' : (editingCategory ? 'Update' : 'Create')}
+                  </Button>
+                </ModalFooter>
+              </form>
+            </ModalContent>
+          </Modal>
+        )}
+
+        {/* Delete Category Confirmation Modal */}
+        <ConfirmModal
+          isOpen={deleteCategoryModalOpen}
+          onCancel={() => setDeleteCategoryModalOpen(false)}
+          onConfirm={handleDeleteCategoryConfirm}
+          title="Delete Category"
+          message={`Are you sure you want to delete "${categoryToDelete?.name}"? This action cannot be undone.`}
+          confirmText="Delete"
+          cancelText="Cancel"
+          type="danger"
+        />
 
         {/* Create Invoice Modal */}
         {showCreateInvoiceModal && (

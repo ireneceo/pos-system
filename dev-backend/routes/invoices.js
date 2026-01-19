@@ -535,7 +535,7 @@ router.put('/categories/:categoryId', authenticateToken, async (req, res) => {
   }
 });
 
-// Delete invoice category (soft delete by setting is_active = false, or hard delete for non-system)
+// Delete invoice category (soft delete by setting is_active = false, or hard delete)
 router.delete('/categories/:categoryId', authenticateToken, async (req, res) => {
   try {
     const { categoryId } = req.params;
@@ -544,10 +544,6 @@ router.delete('/categories/:categoryId', authenticateToken, async (req, res) => 
     const category = await InvoiceCategory.findByPk(categoryId);
     if (!category) {
       return res.status(404).json({ success: false, error: 'Category not found' });
-    }
-
-    if (category.is_system) {
-      return res.status(400).json({ success: false, error: 'Cannot delete system category' });
     }
 
     if (force === 'true') {
