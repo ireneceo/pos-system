@@ -41,7 +41,11 @@ router.get('/', async (req, res) => {
       registrationNumber: settings.registration_number,
       brandLogo: settings.brand_logo || '', // Navigation/header logo
       companyLogo: settings.company_logo || '', // Invoice/document logo
-      logo: settings.logo || '' // Keep for backward compatibility
+      logo: settings.logo || '', // Keep for backward compatibility
+      bankName: settings.bank_name || '',
+      bankAccount: settings.bank_account || '',
+      bankAccountName: settings.bank_account_name || '',
+      swiftCode: settings.swift_code || ''
     });
 
   } catch (error) {
@@ -71,7 +75,11 @@ router.post('/', async (req, res) => {
       registrationNumber,
       brandLogo,
       companyLogo,
-      logo
+      logo,
+      bankName,
+      bankAccount,
+      bankAccountName,
+      swiftCode
     } = req.body;
 
     // 첫 번째 레코드 찾기 또는 생성
@@ -91,7 +99,11 @@ router.post('/', async (req, res) => {
       registration_number: registrationNumber,
       brand_logo: brandLogo || '',
       company_logo: companyLogo || '',
-      logo: logo || brandLogo || '' // Keep for backward compatibility
+      logo: logo || brandLogo || '', // Keep for backward compatibility
+      bank_name: bankName || '',
+      bank_account: bankAccount || '',
+      bank_account_name: bankAccountName || '',
+      swift_code: swiftCode || ''
     };
 
     if (settings) {
@@ -119,7 +131,11 @@ router.post('/', async (req, res) => {
         registrationNumber: settings.registration_number,
         brandLogo: settings.brand_logo, // Navigation/header logo
         companyLogo: settings.company_logo, // Invoice/document logo
-        logo: settings.logo // Keep for backward compatibility
+        logo: settings.logo, // Keep for backward compatibility
+        bankName: settings.bank_name,
+        bankAccount: settings.bank_account,
+        bankAccountName: settings.bank_account_name,
+        swiftCode: settings.swift_code
       }
     });
 

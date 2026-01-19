@@ -8,7 +8,7 @@
 ## 현재 작업 상태
 
 **마지막 업데이트:** 2026-01-19
-**작업 상태:** Payment Model (payer_type) 저장/반영 수정 완료
+**작업 상태:** Invoice 상세보기 회사정보/은행정보 표시 기능 완료
 
 ---
 
@@ -62,6 +62,20 @@
 - **restaurants.js 라우트**: POST/PUT에서 payment_model 저장 로직 추가
 - **Frontend (Admin/Manager)**: payment_model을 payment_model로 백엔드 전송 수정
 - **invoices.js**: 정기구독 인보이스 생성 시 restaurant.payment_model 기반 payer_type 설정
+
+#### Phase 7: Invoice 회사정보/은행정보 표시 (2026-01-19)
+- **CompanySettings 모델**: bank_name, bank_account, bank_account_name, swift_code 필드 추가
+- **admin-settings.js 라우트**: GET/POST에서 은행정보 반환/저장 추가
+- **Admin/InvoicesPage.tsx**: View Modal에 전문적인 인보이스 형식 적용
+  - 발행자 회사 로고/이름, 주소, 연락처 표시
+  - Bill To 섹션 (고객 정보)
+  - Items 테이블 (Description, Qty, Unit Price, Amount)
+  - Summary 섹션 (Subtotal, Tax, Total)
+  - Bank Details 섹션 (은행명, 계좌명, 계좌번호)
+  - 등록번호/세금번호 표시
+- **invoiceService.ts**: CompanyInfo 변환 함수 및 issuerCompany/payerCompany 지원 추가
+- **Invoice/types.ts**: CompanyInfo 인터페이스 추가
+- **InvoiceDetailModal.tsx**: 통합 인보이스 상세 모달 컴포넌트 생성
 
 ### 다음 작업 (필요시)
 

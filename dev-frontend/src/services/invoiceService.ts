@@ -1,7 +1,30 @@
 import axios from 'axios';
-import { Invoice, PaymentSubmitData, PaymentSettings, InvoiceSettings } from '../components/Invoice/types';
+import { Invoice, PaymentSubmitData, PaymentSettings, InvoiceSettings, CompanyInfo } from '../components/Invoice/types';
 
 const API_BASE = '/api';
+
+// Transform backend company info to frontend format
+const transformCompanyInfo = (data: any): CompanyInfo | undefined => {
+  if (!data) return undefined;
+  return {
+    name: data.name || data.company_name || '',
+    logoUrl: data.logoUrl || data.logo_url || data.company_logo,
+    address: data.address || data.company_address,
+    city: data.city,
+    state: data.state,
+    postalCode: data.postalCode || data.postal_code,
+    country: data.country,
+    phone: data.phone || data.company_phone,
+    email: data.email || data.company_email,
+    website: data.website || data.company_website,
+    taxId: data.taxId || data.tax_id,
+    businessRegistration: data.businessRegistration || data.business_registration,
+    bankName: data.bankName || data.bank_name,
+    bankAccount: data.bankAccount || data.bank_account,
+    bankAccountName: data.bankAccountName || data.bank_account_name,
+    swiftCode: data.swiftCode || data.swift_code
+  };
+};
 
 // Transform backend invoice to frontend format
 const transformInvoice = (data: any): Invoice => ({
@@ -36,7 +59,9 @@ const transformInvoice = (data: any): Invoice => ({
   rejectionReason: data.rejectionReason || data.rejection_reason,
   notes: data.notes || data.payment_notes,
   billingPeriod: data.billingPeriod,
-  planType: data.planType
+  planType: data.planType,
+  issuerCompany: transformCompanyInfo(data.issuerCompany),
+  payerCompany: transformCompanyInfo(data.payerCompany)
 });
 
 // Invoice APIs

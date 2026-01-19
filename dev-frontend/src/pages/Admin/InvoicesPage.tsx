@@ -119,6 +119,10 @@ interface CompanySettings {
   taxNumber: string;
   registrationNumber: string;
   companyLogo?: string; // Company logo for invoices
+  bankName?: string;
+  bankAccount?: string;
+  bankAccountName?: string;
+  swiftCode?: string;
 }
 
 // Common components now imported from ../../components/UI
@@ -890,19 +894,20 @@ const InvoicesPage: React.FC = () => {
           }
         }
 
-        // Use default company settings
+        // Use default company settings - should not reach here if API works
+        console.warn('Company settings not found in API response');
         setCompanySettings({
-          companyName: 'Purple Here POS',
-          address: 'Level 12, Menara UOA Bangsar',
-          city: 'Kuala Lumpur',
-          state: 'Federal Territory',
-          postalCode: '59200',
-          country: 'Malaysia',
-          phone: '+60 3-2266 8888',
-          email: 'admin@orderhere.my',
-          website: 'www.orderhere.my',
-          taxNumber: '001234567890',
-          registrationNumber: 'ROC 202301234567',
+          companyName: '',
+          address: '',
+          city: '',
+          state: '',
+          postalCode: '',
+          country: '',
+          phone: '',
+          email: '',
+          website: '',
+          taxNumber: '',
+          registrationNumber: '',
           companyLogo: companyLogo
         });
       }
@@ -921,18 +926,19 @@ const InvoicesPage: React.FC = () => {
         }
       }
 
+      console.error('Failed to load company settings from API');
       setCompanySettings({
-        companyName: 'OrderHere POS System',
-        address: 'Level 12, Menara UOA Bangsar',
-        city: 'Kuala Lumpur',
-        state: 'Federal Territory',
-        postalCode: '59200',
-        country: 'Malaysia',
-        phone: '+60 3-2266 8888',
-        email: 'admin@orderhere.my',
-        website: 'www.orderhere.my',
-        taxNumber: '001234567890',
-        registrationNumber: 'ROC 202301234567',
+        companyName: '',
+        address: '',
+        city: '',
+        state: '',
+        postalCode: '',
+        country: '',
+        phone: '',
+        email: '',
+        website: '',
+        taxNumber: '',
+        registrationNumber: '',
         companyLogo: companyLogo
       });
     }
@@ -2093,45 +2099,55 @@ const InvoicesPage: React.FC = () => {
         {/* View Invoice Modal */}
         {showViewModal && selectedInvoice && (
           <Modal onClick={() => setShowViewModal(false)}>
-            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
               <ModalHeader>
-                <ModalTitle>Invoice Details - {selectedInvoice.invoiceNumber}</ModalTitle>
+                <ModalTitle>Invoice Details</ModalTitle>
                 <CloseButton onClick={() => setShowViewModal(false)}>×</CloseButton>
               </ModalHeader>
               <ModalBody>
-                <FormRow>
-                  <FormGroup>
-                    <FormLabel>Invoice Number</FormLabel>
-                    <div>{selectedInvoice.invoiceNumber}</div>
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>Status</FormLabel>
-                    <StatusBadge status={selectedInvoice.status}>
+                {/* Invoice Header with Company Info */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '24px', borderBottom: '2px solid #E5E7EB' }}>
+                  <div>
+                    {companySettings?.companyLogo ? (
+                      <img src={companySettings.companyLogo} alt="Company Logo" style={{ maxHeight: '60px', marginBottom: '8px' }} />
+                    ) : (
+                      <div style={{ fontSize: '20px', fontWeight: '700', color: '#0A2540', marginBottom: '8px' }}>
+                        {companySettings?.companyName || 'Company Name'}
+                      </div>
+                    )}
+                    <div style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.6' }}>
+                      {companySettings?.address && <div>{companySettings.address}</div>}
+                      {(companySettings?.city || companySettings?.state || companySettings?.postalCode) && (
+                        <div>{[companySettings?.city, companySettings?.state, companySettings?.postalCode].filter(Boolean).join(', ')}</div>
+                      )}
+                      {companySettings?.country && <div>{companySettings.country}</div>}
+                      {companySettings?.phone && <div>Tel: {companySettings.phone}</div>}
+                      {companySettings?.email && <div>Email: {companySettings.email}</div>}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '24px', fontWeight: '700', color: '#635BFF', marginBottom: '8px' }}>INVOICE</div>
+                    <div style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540' }}>{selectedInvoice.invoiceNumber}</div>
+                    <StatusBadge status={selectedInvoice.status} style={{ marginTop: '8px' }}>
                       {getStatusDisplay(selectedInvoice.status)}
                     </StatusBadge>
-                  </FormGroup>
-                </FormRow>
-                <FormRow>
-                  <FormGroup>
-                    <FormLabel>Customer</FormLabel>
-                    <div>{selectedInvoice.customerName}</div>
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>Address</FormLabel>
-                    <div>{selectedInvoice.customerAddress}</div>
-                  </FormGroup>
-                </FormRow>
-                <FormRow>
-                  <FormGroup>
-                    <FormLabel>Customer</FormLabel>
-                    <div>{getPayerDisplay(selectedInvoice.payerType || 'restaurant')}</div>
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>Restaurant</FormLabel>
-                    <div>{selectedInvoice.restaurantName}</div>
-                  </FormGroup>
-                </FormRow>
-                <FormRow>
+                  </div>
+                </div>
+
+                {/* Bill To Section */}
+                <div style={{ marginBottom: '24px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>Bill To</div>
+                  <div style={{ fontSize: '15px', fontWeight: '600', color: '#0A2540' }}>{selectedInvoice.customerName}</div>
+                  {selectedInvoice.customerAddress && (
+                    <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>{selectedInvoice.customerAddress}</div>
+                  )}
+                  {selectedInvoice.restaurantName && (
+                    <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Restaurant: {selectedInvoice.restaurantName}</div>
+                  )}
+                </div>
+
+                {/* Dates Section */}
+                <FormRow style={{ marginBottom: '24px' }}>
                   <FormGroup>
                     <FormLabel>Issue Date</FormLabel>
                     <div>{selectedInvoice.issueDate}</div>
@@ -2140,29 +2156,79 @@ const InvoicesPage: React.FC = () => {
                     <FormLabel>Due Date</FormLabel>
                     <div>{selectedInvoice.dueDate}</div>
                   </FormGroup>
+                  {selectedInvoice.paidDate && (
+                    <FormGroup>
+                      <FormLabel>Paid Date</FormLabel>
+                      <div>{selectedInvoice.paidDate}</div>
+                    </FormGroup>
+                  )}
                 </FormRow>
-                <FormGroup>
-                  <FormLabel>Items</FormLabel>
-                  {selectedInvoice.items.map((item, index) => (
-                    <div key={index} style={{ padding: '8px', background: '#F8FAFC', borderRadius: '4px', marginBottom: '8px' }}>
-                      {item.description} - {formatCurrency(item.total, selectedInvoice.currency || 'USD')}
+
+                {/* Items Table */}
+                <div style={{ marginBottom: '24px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '12px', textTransform: 'uppercase' }}>Items</div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid #E5E7EB' }}>
+                        <th style={{ textAlign: 'left', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>Description</th>
+                        <th style={{ textAlign: 'center', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>Qty</th>
+                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>Unit Price</th>
+                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedInvoice.items.map((item, index) => (
+                        <tr key={index} style={{ borderBottom: '1px solid #F3F4F6' }}>
+                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151' }}>{item.description}</td>
+                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'center' }}>{item.quantity}</td>
+                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right' }}>{formatCurrency(item.unitPrice, selectedInvoice.currency || 'MYR')}</td>
+                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right' }}>{formatCurrency(item.total, selectedInvoice.currency || 'MYR')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Summary */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
+                  <div style={{ width: '280px' }}>
+                    <InvoiceSummary>
+                      <SummaryRow>
+                        <span>Subtotal:</span>
+                        <span>{formatCurrency(selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</span>
+                      </SummaryRow>
+                      <SummaryRow>
+                        <span>Tax (6%):</span>
+                        <span>{formatCurrency(selectedInvoice.tax, selectedInvoice.currency || 'MYR')}</span>
+                      </SummaryRow>
+                      <SummaryRow highlight>
+                        <span>Total:</span>
+                        <span><strong>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</strong></span>
+                      </SummaryRow>
+                    </InvoiceSummary>
+                  </div>
+                </div>
+
+                {/* Bank Details (if company has bank info) */}
+                {companySettings?.bankName && (
+                  <div style={{ background: '#F8FAFC', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>Payment Details</div>
+                    <div style={{ fontSize: '13px', color: '#374151', lineHeight: '1.6' }}>
+                      <div><strong>Bank:</strong> {companySettings.bankName}</div>
+                      <div><strong>Account Name:</strong> {companySettings.bankAccountName}</div>
+                      <div><strong>Account Number:</strong> {companySettings.bankAccount}</div>
                     </div>
-                  ))}
-                </FormGroup>
-                <InvoiceSummary>
-                  <SummaryRow>
-                    <span>Subtotal:</span>
-                    <span>{formatCurrency(selectedInvoice.amount, selectedInvoice.currency || 'USD')}</span>
-                  </SummaryRow>
-                  <SummaryRow>
-                    <span>Tax (6%):</span>
-                    <span>{formatCurrency(selectedInvoice.tax, selectedInvoice.currency || 'USD')}</span>
-                  </SummaryRow>
-                  <SummaryRow highlight>
-                    <span>Total:</span>
-                    <span><strong>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'USD')}</strong></span>
-                  </SummaryRow>
-                </InvoiceSummary>
+                  </div>
+                )}
+
+                {/* Registration Info */}
+                {(companySettings?.taxNumber || companySettings?.registrationNumber) && (
+                  <div style={{ fontSize: '12px', color: '#9CA3AF', textAlign: 'center', marginTop: '16px' }}>
+                    {companySettings?.registrationNumber && <span>Reg No: {companySettings.registrationNumber}</span>}
+                    {companySettings?.registrationNumber && companySettings?.taxNumber && <span> | </span>}
+                    {companySettings?.taxNumber && <span>Tax No: {companySettings.taxNumber}</span>}
+                  </div>
+                )}
               </ModalBody>
             </ModalContent>
           </Modal>

@@ -14,6 +14,124 @@ const Foodcourt = require('../models/Foodcourt');
 const { Op } = require('sequelize');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 
+// Helper function to build company info object
+async function getIssuerCompanyInfo(issuerType, issuerId) {
+  if (issuerType === 'system_admin') {
+    // Get system admin company settings
+    const companySettings = await CompanySettings.findOne({ where: { id: 1 } });
+    if (companySettings) {
+      return {
+        name: companySettings.company_name || 'System Admin',
+        logoUrl: companySettings.logo_url || null,
+        address: companySettings.address || '',
+        city: companySettings.city || '',
+        state: companySettings.state || '',
+        postalCode: companySettings.postal_code || '',
+        country: companySettings.country || 'Malaysia',
+        phone: companySettings.phone || '',
+        email: companySettings.email || '',
+        website: companySettings.website || '',
+        taxId: companySettings.tax_number || '',
+        businessRegistration: companySettings.registration_number || '',
+        bankName: companySettings.bank_name || '',
+        bankAccount: companySettings.bank_account || '',
+        bankAccountName: companySettings.bank_account_name || '',
+        swiftCode: companySettings.swift_code || ''
+      };
+    }
+  } else if (issuerType === 'brand' && issuerId) {
+    const brand = await Brand.findByPk(issuerId);
+    if (brand) {
+      return {
+        name: brand.name || 'Brand',
+        logoUrl: brand.logo_url || null,
+        address: brand.address || '',
+        city: brand.city || '',
+        state: brand.state || '',
+        postalCode: brand.postal_code || '',
+        country: brand.country || 'Malaysia',
+        phone: brand.phone || '',
+        email: brand.email || '',
+        website: brand.website || '',
+        taxId: brand.tax_id || '',
+        businessRegistration: brand.business_registration || '',
+        bankName: brand.bank_name || '',
+        bankAccount: brand.bank_account || '',
+        bankAccountName: brand.bank_account_name || '',
+        swiftCode: ''
+      };
+    }
+  } else if (issuerType === 'foodcourt' && issuerId) {
+    const foodcourt = await Foodcourt.findByPk(issuerId);
+    if (foodcourt) {
+      return {
+        name: foodcourt.name || 'Foodcourt',
+        logoUrl: foodcourt.logo_url || null,
+        address: foodcourt.address || '',
+        city: foodcourt.city || '',
+        state: foodcourt.state || '',
+        postalCode: foodcourt.postal_code || '',
+        country: foodcourt.country || 'Malaysia',
+        phone: foodcourt.phone || '',
+        email: foodcourt.email || '',
+        website: foodcourt.website || '',
+        taxId: foodcourt.tax_id || '',
+        businessRegistration: foodcourt.business_registration || '',
+        bankName: foodcourt.bank_name || '',
+        bankAccount: foodcourt.bank_account || '',
+        bankAccountName: foodcourt.bank_account_name || '',
+        swiftCode: ''
+      };
+    }
+  }
+  return null;
+}
+
+// Helper function to build payer company info
+async function getPayerCompanyInfo(payerType, payerId, restaurant) {
+  if (payerType === 'restaurant' || !payerId) {
+    // Restaurant pays - use restaurant info
+    if (restaurant) {
+      return {
+        name: restaurant.name || 'Restaurant',
+        logoUrl: restaurant.logo_url || null,
+        address: restaurant.address || '',
+        city: restaurant.city || '',
+        state: restaurant.state || '',
+        postalCode: restaurant.postal_code || '',
+        country: restaurant.country || 'Malaysia',
+        phone: restaurant.phone || '',
+        email: restaurant.email || '',
+        taxId: restaurant.tax_id || '',
+        businessRegistration: restaurant.business_registration || ''
+      };
+    }
+  } else if (payerType === 'brand_manager' && payerId) {
+    // Brand manager pays - use brand owner (user) info
+    const user = await User.findByPk(payerId);
+    if (user) {
+      return {
+        name: user.company_name || user.full_name || 'Manager',
+        address: user.address || '',
+        phone: user.phone || '',
+        email: user.email || ''
+      };
+    }
+  } else if (payerType === 'foodcourt_manager' && payerId) {
+    // Foodcourt manager pays - use foodcourt owner (user) info
+    const user = await User.findByPk(payerId);
+    if (user) {
+      return {
+        name: user.company_name || user.full_name || 'Manager',
+        address: user.address || '',
+        phone: user.phone || '',
+        email: user.email || ''
+      };
+    }
+  }
+  return null;
+}
+
 // Helper function to get display name for invoice category
 function getCategoryDisplayName(category, customDescription, planType, billingCycle) {
   switch (category) {
@@ -62,7 +180,11 @@ router.get('/invoice-settings', async (req, res) => {
         email: companySettings.email,
         website: companySettings.website,
         taxNumber: companySettings.tax_number,
-        registrationNumber: companySettings.registration_number
+        registrationNumber: companySettings.registration_number,
+        companyLogo: companySettings.company_logo || '',
+        bankName: companySettings.bank_name || '',
+        bankAccount: companySettings.bank_account || '',
+        bankAccountName: companySettings.bank_account_name || ''
       }
     });
   } catch (error) {
@@ -250,19 +372,86 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
   }
 });
 
-// Get invoice details with items
+// Get invoice details with items and company info
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
-    const invoice = await Invoice.findByPk(req.params.id);
+    const invoice = await Invoice.findByPk(req.params.id, {
+      include: [{
+        model: Restaurant,
+        as: 'restaurant',
+        attributes: ['id', 'name', 'address', 'city', 'state', 'postal_code', 'country',
+                     'phone', 'email', 'tax_id', 'business_registration', 'logo_url',
+                     'manager_id', 'manager_name', 'plan_type', 'billing_cycle']
+      }]
+    });
+
     if (!invoice) {
       return res.status(404).json({ error: 'Invoice not found' });
     }
-    
+
     const items = await InvoiceItem.findAll({
       where: { invoice_id: req.params.id }
     });
-    
-    res.json({ invoice, items });
+
+    // Get issuer company info
+    const issuerCompany = await getIssuerCompanyInfo(
+      invoice.issuer_type || 'system_admin',
+      invoice.issuer_id
+    );
+
+    // Get payer company info
+    const payerCompany = await getPayerCompanyInfo(
+      invoice.payer_type,
+      invoice.payer_id,
+      invoice.restaurant
+    );
+
+    // Transform invoice with company info
+    const transformedInvoice = {
+      id: invoice.id.toString(),
+      invoiceNumber: invoice.invoice_number,
+      issuerType: invoice.issuer_type || 'system_admin',
+      issuerId: invoice.issuer_id?.toString(),
+      issuerName: issuerCompany?.name || 'System Admin',
+      issuerCompany: issuerCompany,
+      payerType: invoice.payer_type || 'restaurant',
+      payerId: invoice.payer_id?.toString(),
+      payerName: payerCompany?.name || invoice.restaurant?.name || 'Customer',
+      payerCompany: payerCompany,
+      restaurantId: invoice.restaurant_id?.toString(),
+      restaurantName: invoice.restaurant?.name || 'Unknown Restaurant',
+      issueDate: invoice.issued_at || invoice.createdAt,
+      dueDate: invoice.due_date,
+      paidDate: invoice.paid_at,
+      status: invoice.status || 'pending_payment',
+      currency: invoice.currency || 'MYR',
+      amount: parseFloat(invoice.total_amount) - (items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0),
+      tax: items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0,
+      total: parseFloat(invoice.total_amount),
+      items: items?.map(item => ({
+        id: item.id?.toString(),
+        description: item.description,
+        quantity: item.quantity || 1,
+        unitPrice: parseFloat(item.calculated_amount || item.fixed_amount || 0),
+        taxRate: parseFloat(item.tax_rate || 0),
+        taxAmount: parseFloat(item.tax_amount || 0),
+        total: parseFloat(item.total_amount || 0)
+      })) || [],
+      billingPeriod: invoice.billing_period_start && invoice.billing_period_end
+        ? `${new Date(invoice.billing_period_start).toLocaleDateString()} - ${new Date(invoice.billing_period_end).toLocaleDateString()}`
+        : null,
+      planType: invoice.restaurant?.plan_type || 'Basic Plan',
+      type: invoice.type,
+      notes: invoice.notes,
+      paymentMethod: invoice.payment_method,
+      paymentProvider: invoice.payment_provider,
+      receiptUrl: invoice.receipt_url,
+      confirmedBy: invoice.confirmed_by?.toString(),
+      confirmedAt: invoice.confirmed_at,
+      rejectionReason: invoice.rejection_reason
+    };
+
+    res.json({ invoice: transformedInvoice, items });
   } catch (error) {
     console.error('Error fetching invoice details:', error);
     res.status(500).json({ error: 'Failed to fetch invoice details' });

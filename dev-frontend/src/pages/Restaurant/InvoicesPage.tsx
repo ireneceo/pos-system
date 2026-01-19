@@ -496,11 +496,18 @@ const RestaurantInvoicesPage: React.FC = () => {
       }
 
       // Fetch company settings (invoice issuer info)
-      const settingsResponse = await fetch('/api/invoice-settings');
+      const settingsResponse = await fetch('/api/invoices/invoice-settings', {
+        headers: {
+          'Authorization': 'Bearer ' + token
+        }
+      });
       let companySettings = null;
       if (settingsResponse.ok) {
         const settingsData = await settingsResponse.json();
         companySettings = settingsData.data || settingsData;
+        console.log('Company settings loaded:', companySettings);
+      } else {
+        console.error('Failed to load company settings:', settingsResponse.status);
       }
 
       // Generate invoice HTML
@@ -688,12 +695,15 @@ const RestaurantInvoicesPage: React.FC = () => {
 <body>
   <div class="invoice-header">
     <div class="company-info">
-      <h1>${companySettings?.companyName || 'Purple Here Center'}</h1>
+      ${companySettings?.companyLogo ? `<img src="${companySettings.companyLogo}" alt="Company Logo" style="max-height: 60px; margin-bottom: 8px;">` : ''}
+      <h1>${companySettings?.companyName || 'Company Name'}</h1>
       <p>${companySettings?.address || ''}</p>
-      ${companySettings?.city && companySettings?.state ? `<p>${companySettings.city}, ${companySettings.state} ${companySettings.postalCode || ''}</p>` : ''}
+      ${companySettings?.city || companySettings?.state || companySettings?.postalCode ? `<p>${[companySettings?.city, companySettings?.state, companySettings?.postalCode].filter(Boolean).join(', ')}</p>` : ''}
+      ${companySettings?.country ? `<p>${companySettings.country}</p>` : ''}
       ${companySettings?.phone ? `<p>Phone: ${companySettings.phone}</p>` : ''}
-      <p>Email: ${companySettings?.email || 'support@orderhere.center'}</p>
+      ${companySettings?.email ? `<p>Email: ${companySettings.email}</p>` : ''}
       ${companySettings?.taxNumber ? `<p>Tax ID: ${companySettings.taxNumber}</p>` : ''}
+      ${companySettings?.registrationNumber ? `<p>Reg No: ${companySettings.registrationNumber}</p>` : ''}
     </div>
     <div class="invoice-meta">
       <div class="invoice-number">${invoice.invoiceNumber}</div>
@@ -749,6 +759,15 @@ const RestaurantInvoicesPage: React.FC = () => {
       <span>RM ${invoice.total.toFixed(2)}</span>
     </div>
   </div>
+
+  ${companySettings?.bankName ? `
+  <div style="margin-top: 30px; padding: 15px; background: #F8FAFC; border-radius: 8px;">
+    <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #0A2540;">Payment Details</h3>
+    <p style="margin: 4px 0; font-size: 13px;"><strong>Bank:</strong> ${companySettings.bankName}</p>
+    ${companySettings?.bankAccountName ? `<p style="margin: 4px 0; font-size: 13px;"><strong>Account Name:</strong> ${companySettings.bankAccountName}</p>` : ''}
+    ${companySettings?.bankAccount ? `<p style="margin: 4px 0; font-size: 13px;"><strong>Account Number:</strong> ${companySettings.bankAccount}</p>` : ''}
+  </div>
+  ` : ''}
 
   <div class="footer">
     <p>Thank you for your business!</p>
