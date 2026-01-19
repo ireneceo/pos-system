@@ -167,6 +167,23 @@ async function getPayerCompanyInfo(payerType, payerId, restaurant) {
   return null;
 }
 
+// Helper function to format billing period display
+function formatBillingPeriod(startDate, endDate) {
+  if (!startDate || !endDate) return '-';
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  // Format: "Jan 23, 2026 - Feb 22, 2026"
+  const formatDate = (date) => date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+
+  return `${formatDate(start)} - ${formatDate(end)}`;
+}
+
 // Helper function to get display name for invoice category
 function getCategoryDisplayName(category, customDescription, planType, billingCycle) {
   switch (category) {
@@ -315,7 +332,7 @@ router.get('/', authenticateToken, async (req, res) => {
           unitPrice: parseFloat(item.calculated_amount),
           total: parseFloat(item.total_amount)
         })) || [],
-        billingPeriod: `${new Date(invoice.billing_period_start).toLocaleDateString()} - ${new Date(invoice.billing_period_end).toLocaleDateString()}`,
+        billingPeriod: formatBillingPeriod(invoice.billing_period_start, invoice.billing_period_end),
         planType: invoice.restaurant?.plan_type || 'Basic Plan',
         type: invoice.type,
         payerType: invoice.payer_type,

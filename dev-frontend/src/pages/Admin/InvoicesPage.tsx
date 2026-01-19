@@ -148,11 +148,10 @@ const AutoBadge = styled.span`
   display: inline-block;
   background: #10B981;
   color: white;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 4px;
-  margin-left: 8px;
+  padding: 1px 5px;
+  border-radius: 3px;
   vertical-align: middle;
 `;
 
@@ -432,7 +431,7 @@ const SummaryRow = styled.div<{ highlight?: boolean }>`
 `;
 
 // 페이지별 반응형 테이블 헤더 (Invoices 전용)
-// Header columns: Invoice(1), Customer(2), Plan/Item(3), Due Date(4), Status(5), Amount(6), Total(7), Actions(8)
+// Header columns: Invoice(1), Customer(2), Period(3), Issued(4), Due(5), Status(6), Amount(7), Total(8), Actions(9)
 const InvoiceTableHeader = styled(CommonTableHeader)`
   @media (max-width: 1400px) {
     & > span:nth-child(3),
@@ -442,9 +441,9 @@ const InvoiceTableHeader = styled(CommonTableHeader)`
   }
 
   @media (max-width: 1024px) {
-    & > span:nth-child(5),
     & > span:nth-child(6),
-    & > span:nth-child(7) {
+    & > span:nth-child(7),
+    & > span:nth-child(8) {
       display: none;
     }
   }
@@ -461,9 +460,9 @@ const InvoiceTableRow = styled(CommonTableRow)`
   }
 
   @media (max-width: 1024px) {
-    & > div > div:nth-child(5),
     & > div > div:nth-child(6),
-    & > div > div:nth-child(7) {
+    & > div > div:nth-child(7),
+    & > div > div:nth-child(8) {
       display: none;
     }
   }
@@ -484,6 +483,9 @@ const InvoicesPage: React.FC = () => {
   const [showResendConfirmModal, setShowResendConfirmModal] = useState(false);
   const [showCancelConfirmModal, setShowCancelConfirmModal] = useState(false);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailRecipient, setEmailRecipient] = useState('');
+  const [emailInvoice, setEmailInvoice] = useState<Invoice | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -951,6 +953,221 @@ const InvoicesPage: React.FC = () => {
     }
   };
 
+  // Generate invoice HTML content (shared for PDF, Print, Email)
+  const generateInvoiceHTML = (invoice: Invoice) => {
+    if (!companySettings) return '';
+
+    const getStatusClass = (status: string) => {
+      switch (status) {
+        case 'paid': return 'status-paid';
+        case 'pending_payment': return 'status-pending';
+        case 'payment_submitted': return 'status-submitted';
+        case 'overdue': return 'status-overdue';
+        case 'cancelled': return 'status-cancelled';
+        case 'draft': return 'status-draft';
+        default: return 'status-pending';
+      }
+    };
+
+    const getStatusText = (status: string) => {
+      switch (status) {
+        case 'paid': return 'PAID';
+        case 'pending_payment': return 'PENDING PAYMENT';
+        case 'payment_submitted': return 'PAYMENT SUBMITTED';
+        case 'overdue': return 'OVERDUE';
+        case 'cancelled': return 'CANCELLED';
+        case 'draft': return 'DRAFT';
+        default: return 'PENDING';
+      }
+    };
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Invoice ${invoice.invoiceNumber}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; line-height: 1.5; color: #333; background: #fff; }
+        .invoice-container { max-width: 800px; margin: 0 auto; padding: 40px; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; padding-bottom: 24px; border-bottom: 2px solid #E5E7EB; }
+        .logo-section { flex: 1; }
+        .company-logo { max-height: 60px; margin-bottom: 10px; }
+        .company-name { font-size: 20px; font-weight: 700; color: #0A2540; margin-bottom: 8px; }
+        .company-details { font-size: 13px; color: #6B7280; line-height: 1.6; }
+        .invoice-title { text-align: right; }
+        .invoice-label { font-size: 24px; font-weight: 700; color: #635BFF; margin-bottom: 8px; }
+        .invoice-number { font-size: 16px; font-weight: 600; color: #0A2540; margin-bottom: 8px; }
+        .invoice-status { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .status-paid { background: #ECFDF5; color: #059669; }
+        .status-pending { background: #FEF3C7; color: #D97706; }
+        .status-submitted { background: #DBEAFE; color: #1E40AF; }
+        .status-overdue { background: #FEE2E2; color: #DC2626; }
+        .status-cancelled { background: #FEF2F2; color: #DC2626; }
+        .status-draft { background: #F3F4F6; color: #6B7280; }
+
+        .bill-to-section { margin-bottom: 24px; }
+        .section-label { font-size: 12px; font-weight: 600; color: #6B7280; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .customer-name { font-size: 15px; font-weight: 600; color: #0A2540; }
+        .customer-details { font-size: 13px; color: #6B7280; margin-top: 4px; }
+
+        .dates-section { display: flex; gap: 40px; margin-bottom: 24px; padding: 16px; background: #F8FAFC; border-radius: 8px; }
+        .date-group { }
+        .date-label { font-size: 12px; font-weight: 600; color: #6B7280; margin-bottom: 4px; }
+        .date-value { font-size: 14px; color: #0A2540; }
+
+        .items-section { margin-bottom: 24px; }
+        .items-table { width: 100%; border-collapse: collapse; }
+        .items-table th { text-align: left; padding: 12px 8px; font-size: 12px; font-weight: 600; color: #6B7280; text-transform: uppercase; border-bottom: 2px solid #E5E7EB; }
+        .items-table th.text-center { text-align: center; }
+        .items-table th.text-right { text-align: right; }
+        .items-table td { padding: 12px 8px; font-size: 14px; color: #374151; border-bottom: 1px solid #F3F4F6; }
+        .items-table td.text-center { text-align: center; }
+        .items-table td.text-right { text-align: right; }
+
+        .summary-section { display: flex; justify-content: flex-end; margin-bottom: 24px; }
+        .summary-box { width: 280px; }
+        .summary-row { display: flex; justify-content: space-between; padding: 8px 12px; font-size: 14px; }
+        .summary-row.subtotal { color: #6B7280; }
+        .summary-row.tax { color: #6B7280; }
+        .summary-row.total { background: #F8FAFC; border-radius: 6px; font-weight: 700; font-size: 16px; color: #0A2540; margin-top: 8px; }
+
+        .bank-section { background: #F8FAFC; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+        .bank-title { font-size: 12px; font-weight: 600; color: #6B7280; margin-bottom: 8px; text-transform: uppercase; }
+        .bank-details { font-size: 13px; color: #374151; line-height: 1.6; }
+
+        .registration-info { font-size: 12px; color: #9CA3AF; text-align: center; margin-top: 16px; }
+
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #E5E7EB; text-align: center; }
+        .footer-text { font-size: 12px; color: #6B7280; margin-bottom: 4px; }
+
+        @media print {
+            body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            .invoice-container { padding: 20px; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="invoice-container">
+        <div class="header">
+            <div class="logo-section">
+                ${companySettings.companyLogo ? `<img src="${companySettings.companyLogo}" alt="Company Logo" class="company-logo">` : ''}
+                <div class="company-name">${companySettings.companyName || 'Company Name'}</div>
+                <div class="company-details">
+                    ${companySettings.address ? `${companySettings.address}<br>` : ''}
+                    ${[companySettings.city, companySettings.state, companySettings.postalCode].filter(Boolean).join(', ')}${companySettings.city || companySettings.state || companySettings.postalCode ? '<br>' : ''}
+                    ${companySettings.country ? `${companySettings.country}<br>` : ''}
+                    ${companySettings.phone ? `Tel: ${companySettings.phone}<br>` : ''}
+                    ${companySettings.email ? `Email: ${companySettings.email}` : ''}
+                </div>
+            </div>
+            <div class="invoice-title">
+                <div class="invoice-label">INVOICE</div>
+                <div class="invoice-number">${invoice.invoiceNumber}</div>
+                <span class="invoice-status ${getStatusClass(invoice.status)}">${getStatusText(invoice.status)}</span>
+            </div>
+        </div>
+
+        <div class="bill-to-section">
+            <div class="section-label">Bill To</div>
+            <div class="customer-name">${invoice.customerName || invoice.managerName || 'Customer'}</div>
+            ${invoice.customerAddress ? `<div class="customer-details">${invoice.customerAddress}</div>` : ''}
+            ${invoice.restaurantName ? `<div class="customer-details">Restaurant: ${invoice.restaurantName}</div>` : ''}
+        </div>
+
+        <div class="dates-section">
+            <div class="date-group">
+                <div class="date-label">Billing Period</div>
+                <div class="date-value">${invoice.billingPeriod || '-'}</div>
+            </div>
+            <div class="date-group">
+                <div class="date-label">Issue Date</div>
+                <div class="date-value">${formatDate(invoice.issueDate)}</div>
+            </div>
+            <div class="date-group">
+                <div class="date-label">Due Date</div>
+                <div class="date-value">${formatDate(invoice.dueDate)}</div>
+            </div>
+            ${invoice.paidDate ? `
+            <div class="date-group">
+                <div class="date-label">Paid Date</div>
+                <div class="date-value">${formatDate(invoice.paidDate)}</div>
+            </div>
+            ` : ''}
+        </div>
+
+        <div class="items-section">
+            <div class="section-label">Items</div>
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th class="text-center">Qty</th>
+                        <th class="text-right">Unit Price</th>
+                        <th class="text-right">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${invoice.items.map(item => `
+                    <tr>
+                        <td>${item.description}</td>
+                        <td class="text-center">${item.quantity}</td>
+                        <td class="text-right">${formatCurrency(item.unitPrice, invoice.currency || 'MYR')}</td>
+                        <td class="text-right">${formatCurrency(item.total, invoice.currency || 'MYR')}</td>
+                    </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="summary-section">
+            <div class="summary-box">
+                <div class="summary-row subtotal">
+                    <span>Subtotal:</span>
+                    <span>${formatCurrency(invoice.amount, invoice.currency || 'MYR')}</span>
+                </div>
+                <div class="summary-row tax">
+                    <span>Tax (6%):</span>
+                    <span>${formatCurrency(invoice.tax, invoice.currency || 'MYR')}</span>
+                </div>
+                <div class="summary-row total">
+                    <span>Total:</span>
+                    <span>${formatCurrency(invoice.total, invoice.currency || 'MYR')}</span>
+                </div>
+            </div>
+        </div>
+
+        ${companySettings.bankName ? `
+        <div class="bank-section">
+            <div class="bank-title">Payment Details</div>
+            <div class="bank-details">
+                <strong>Bank:</strong> ${companySettings.bankName}<br>
+                <strong>Account Name:</strong> ${companySettings.bankAccountName || '-'}<br>
+                <strong>Account Number:</strong> ${companySettings.bankAccount || '-'}
+                ${companySettings.swiftCode ? `<br><strong>SWIFT Code:</strong> ${companySettings.swiftCode}` : ''}
+            </div>
+        </div>
+        ` : ''}
+
+        ${(companySettings.taxNumber || companySettings.registrationNumber) ? `
+        <div class="registration-info">
+            ${companySettings.registrationNumber ? `Reg No: ${companySettings.registrationNumber}` : ''}
+            ${companySettings.registrationNumber && companySettings.taxNumber ? ' | ' : ''}
+            ${companySettings.taxNumber ? `Tax No: ${companySettings.taxNumber}` : ''}
+        </div>
+        ` : ''}
+
+        <div class="footer">
+            <div class="footer-text">Thank you for your business!</div>
+            <div class="footer-text">This is a computer-generated invoice and does not require a signature.</div>
+        </div>
+    </div>
+</body>
+</html>`;
+  };
+
+  // Download invoice as PDF (opens print dialog where user can save as PDF)
   const generateInvoicePDF = (invoice: Invoice) => {
     if (!companySettings) {
       setSuccessMessage('Company settings not loaded. Please try again.');
@@ -958,152 +1175,35 @@ const InvoicesPage: React.FC = () => {
       return;
     }
 
-    const invoiceHTML = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Invoice ${invoice.invoiceNumber}</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4; color: #333; }
-        .invoice-container { max-width: 800px; margin: 0 auto; padding: 20px; }
-        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 2px solid #635BFF; padding-bottom: 20px; }
-        .logo-section { flex: 1; }
-        .company-name { font-size: 24px; font-weight: bold; color: #0A2540; margin-bottom: 5px; }
-        .company-details { color: #6B7280; line-height: 1.6; }
-        .invoice-title { flex: 1; text-align: right; }
-        .invoice-number { font-size: 28px; font-weight: bold; color: #635BFF; margin-bottom: 5px; }
-        .invoice-status { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 10px; font-weight: bold; text-transform: uppercase; }
-        .status-paid { background: #ECFDF5; color: #059669; }
-        .status-sent { background: #DBEAFE; color: #1E40AF; }
-        .status-draft { background: #F3F4F6; color: #6B7280; }
-        .status-overdue { background: #FEE2E2; color: #DC2626; }
-        .status-cancelled { background: #FEF2F2; color: #DC2626; }
-        .billing-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
-        .billing-section { flex: 1; }
-        .billing-title { font-weight: bold; color: #0A2540; margin-bottom: 10px; font-size: 14px; }
-        .billing-details { color: #6B7280; line-height: 1.6; }
-        .invoice-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-        .invoice-table th { background: #F8FAFC; padding: 12px; text-align: left; font-weight: bold; color: #0A2540; border-bottom: 1px solid #E6EBF1; }
-        .invoice-table td { padding: 12px; border-bottom: 1px solid #F3F4F6; }
-        .item-description { font-weight: 500; color: #0A2540; }
-        .text-right { text-align: right; }
-        .totals-section { margin-left: auto; width: 300px; }
-        .total-row { display: flex; justify-content: space-between; padding: 8px 0; }
-        .total-row.subtotal, .total-row.tax { color: #6B7280; }
-        .total-row.final { font-weight: bold; font-size: 16px; color: #0A2540; border-top: 2px solid #635BFF; padding-top: 12px; margin-top: 8px; }
-        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #E6EBF1; text-align: center; color: #6B7280; font-size: 11px; }
-        .payment-terms { margin-top: 30px; padding: 15px; background: #F8FAFC; border-radius: 6px; }
-        .payment-terms h4 { color: #0A2540; margin-bottom: 8px; }
-    </style>
-</head>
-<body>
-    <div class="invoice-container">
-        <div class="header">
-            <div class="logo-section">
-                ${companySettings.companyLogo ? `<img src="${companySettings.companyLogo}" alt="Company Logo" style="max-height: 60px; margin-bottom: 10px;">` : ''}
-                <div class="company-name">${companySettings.companyName}</div>
-                <div class="company-details">
-                    ${companySettings.address}<br>
-                    ${companySettings.city}, ${companySettings.state} ${companySettings.postalCode}<br>
-                    ${companySettings.country}<br>
-                    Phone: ${companySettings.phone}<br>
-                    Email: ${companySettings.email}
-                    ${companySettings.website ? `<br>Web: ${companySettings.website}` : ''}
-                    ${companySettings.taxNumber ? `<br>Tax No: ${companySettings.taxNumber}` : ''}
-                    ${companySettings.registrationNumber ? `<br>Reg No: ${companySettings.registrationNumber}` : ''}
-                </div>
-            </div>
-            <div class="invoice-title">
-                <div class="invoice-number">INVOICE</div>
-                <div class="invoice-number">${invoice.invoiceNumber}</div>
-                <span class="invoice-status status-${invoice.status}">${invoice.status}</span>
-            </div>
-        </div>
-        
-        <div class="billing-info">
-            <div class="billing-section">
-                <div class="billing-title">Bill To:</div>
-                <div class="billing-details">
-                    <strong>${invoice.customerName || invoice.managerName || 'Customer'}</strong><br>
-                    ${invoice.companyName && invoice.companyName !== invoice.customerName ? `${invoice.companyName}<br>` : ''}
-                    ${invoice.customerAddress ? invoice.customerAddress.split('\n').join('<br>') : ''}
-                </div>
-            </div>
-            <div class="billing-section" style="text-align: right;">
-                <div class="billing-title">Invoice Details:</div>
-                <div class="billing-details">
-                    <strong>Issue Date:</strong> ${formatDate(invoice.issueDate)}<br>
-                    <strong>Due Date:</strong> ${formatDate(invoice.dueDate)}<br>
-                    ${invoice.paidDate ? `<strong>Paid Date:</strong> ${formatDate(invoice.paidDate)}<br>` : ''}
-                    <strong>Billing Period:</strong> ${invoice.billingPeriod}<br>
-                    <strong>Plan Type:</strong> ${invoice.planType}
-                </div>
-            </div>
-        </div>
-        
-        <table class="invoice-table">
-            <thead>
-                <tr>
-                    <th>Description</th>
-                    <th class="text-right">Quantity</th>
-                    <th class="text-right">Unit Price</th>
-                    <th class="text-right">Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${invoice.items.map(item => `
-                    <tr>
-                        <td class="item-description">${item.description}</td>
-                        <td class="text-right">${item.quantity}</td>
-                        <td class="text-right">${formatCurrency(item.unitPrice, invoice.currency || 'USD')}</td>
-                        <td class="text-right">${formatCurrency(item.total, invoice.currency || 'USD')}</td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        </table>
+    const invoiceHTML = generateInvoiceHTML(invoice);
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (printWindow) {
+      printWindow.document.write(invoiceHTML);
+      printWindow.document.close();
+      // Add a small delay to ensure content is loaded
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
+    }
+  };
 
-        <div class="totals-section">
-            <div class="total-row subtotal">
-                <span>Subtotal:</span>
-                <span>${formatCurrency(invoice.amount, invoice.currency || 'USD')}</span>
-            </div>
-            <div class="total-row tax">
-                <span>Tax (6%):</span>
-                <span>${formatCurrency(invoice.tax, invoice.currency || 'USD')}</span>
-            </div>
-            <div class="total-row final">
-                <span>Total Amount:</span>
-                <span>${formatCurrency(invoice.total, invoice.currency || 'USD')}</span>
-            </div>
-        </div>
-        
-        <div class="payment-terms">
-            <h4>Payment Terms & Conditions:</h4>
-            <p>• Payment is due within 30 days of invoice date<br>
-            • Late payments may incur additional charges<br>
-            • Please reference invoice number ${invoice.invoiceNumber} when making payment<br>
-            • For any queries, please contact us at ${companySettings.email}</p>
-        </div>
-        
-        <div class="footer">
-            <p>Thank you for your business!</p>
-            <p>This is a computer-generated invoice and does not require a signature.</p>
-        </div>
-    </div>
-</body>
-</html>`;
+  // Print invoice directly
+  const handlePrintInvoice = (invoice: Invoice) => {
+    if (!companySettings) {
+      setSuccessMessage('Company settings not loaded. Please try again.');
+      setShowSuccessModal(true);
+      return;
+    }
 
-    // Create blob and download directly
-    const blob = new Blob([invoiceHTML], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `Invoice-${invoice.invoiceNumber}.html`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const invoiceHTML = generateInvoiceHTML(invoice);
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (printWindow) {
+      printWindow.document.write(invoiceHTML);
+      printWindow.document.close();
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
+    }
   };
 
   const resetInvoiceForm = () => {
@@ -1711,11 +1811,12 @@ const InvoicesPage: React.FC = () => {
         </FilterBar>
 
         <Table>
-          <InvoiceTableHeader columns="2fr 2fr 1fr 1fr 1fr 1fr 1fr 200px">
+          <InvoiceTableHeader columns="1.8fr 1.5fr 1.5fr 1fr 1fr 0.8fr 0.8fr 0.8fr 160px">
             <span>Invoice</span>
             <span>Customer</span>
-            <span>Plan/Item</span>
-            <span>Due Date</span>
+            <span>Period</span>
+            <span>Issued</span>
+            <span>Due</span>
             <span>Status</span>
             <span>Amount</span>
             <span>Total</span>
@@ -1723,16 +1824,16 @@ const InvoicesPage: React.FC = () => {
           </InvoiceTableHeader>
 
           {filteredInvoices.map(invoice => (
-            <InvoiceTableRow columns="2fr 2fr 1fr 1fr 1fr 1fr 1fr 200px" key={invoice.id}>
+            <InvoiceTableRow columns="1.8fr 1.5fr 1.5fr 1fr 1fr 0.8fr 0.8fr 0.8fr 160px" key={invoice.id}>
               <MobileGrid>
                 <MobileValue>
                   <MobileLabel>Invoice</MobileLabel>
                   <InvoiceInfo>
                     <InvoiceNumber>
                       {invoice.invoiceNumber}
-                      {invoice.type === 'automatic' && <AutoBadge>AUTO</AutoBadge>}
+                      {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>AUTO</AutoBadge>}
                     </InvoiceNumber>
-                    <CompanyName>Issued: {formatDate(invoice.issueDate)}</CompanyName>
+                    <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
                   </InvoiceInfo>
                 </MobileValue>
 
@@ -1745,15 +1846,20 @@ const InvoicesPage: React.FC = () => {
                 </MobileValue>
 
                 <MobileValue>
-                  <MobileLabel>Plan/Item</MobileLabel>
-                  <div>
-                    {invoice.categoryDisplayName || invoice.planType || 'Service'}
+                  <MobileLabel>Period</MobileLabel>
+                  <div style={{ fontSize: '12px' }}>
+                    {invoice.billingPeriod || '-'}
                   </div>
                 </MobileValue>
 
                 <MobileValue>
-                  <MobileLabel>Due Date</MobileLabel>
-                  <div>{formatDate(invoice.dueDate)}</div>
+                  <MobileLabel>Issued</MobileLabel>
+                  <div style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</div>
+                </MobileValue>
+
+                <MobileValue>
+                  <MobileLabel>Due</MobileLabel>
+                  <div style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</div>
                 </MobileValue>
 
                 <MobileValue>
@@ -1784,18 +1890,25 @@ const InvoicesPage: React.FC = () => {
                           <LocalActionButton onClick={() => handleSendInvoice(invoice)}>Send</LocalActionButton>
                         </>
                       )}
-                      {/* 미결제 상태: 편집, 다운로드, 이메일발송, 삭제 */}
+                      {/* 미결제 상태: 편집, 다운로드, 프린트, 이메일발송, 삭제 */}
                       {(invoice.status === 'pending_payment' || invoice.status === '' || !invoice.status) && (
                         <>
                           <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
-                          <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download Invoice">
+                          <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                               <polyline points="7,10 12,15 17,10"/>
                               <line x1="12" y1="15" x2="12" y2="3"/>
                             </svg>
                           </LocalActionButton>
-                          <LocalActionButton variant="email" onClick={() => handleResendInvoice(invoice)} title="Send Invoice">
+                          <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="6,9 6,2 18,2 18,9"/>
+                              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                              <rect x="6" y="14" width="12" height="8"/>
+                            </svg>
+                          </LocalActionButton>
+                          <LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Send Invoice">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                               <polyline points="22,6 12,13 2,6"/>
@@ -2175,17 +2288,21 @@ const InvoicesPage: React.FC = () => {
                 {/* Dates Section */}
                 <FormRow style={{ marginBottom: '24px' }}>
                   <FormGroup>
+                    <FormLabel>Billing Period</FormLabel>
+                    <div>{selectedInvoice.billingPeriod || '-'}</div>
+                  </FormGroup>
+                  <FormGroup>
                     <FormLabel>Issue Date</FormLabel>
-                    <div>{selectedInvoice.issueDate}</div>
+                    <div>{formatDate(selectedInvoice.issueDate)}</div>
                   </FormGroup>
                   <FormGroup>
                     <FormLabel>Due Date</FormLabel>
-                    <div>{selectedInvoice.dueDate}</div>
+                    <div>{formatDate(selectedInvoice.dueDate)}</div>
                   </FormGroup>
                   {selectedInvoice.paidDate && (
                     <FormGroup>
                       <FormLabel>Paid Date</FormLabel>
-                      <div>{selectedInvoice.paidDate}</div>
+                      <div>{formatDate(selectedInvoice.paidDate)}</div>
                     </FormGroup>
                   )}
                 </FormRow>
