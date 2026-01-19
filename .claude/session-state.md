@@ -7,12 +7,31 @@
 
 ## 현재 작업 상태
 
-**마지막 업데이트:** 2026-01-19
-**작업 상태:** Payment Model 3가지 타입 및 역할별 인보이스 API 수정 완료
+**마지막 업데이트:** 2026-01-19 22:30
+**작업 상태:** 완료
 
 ---
 
-## 현재 세션 (2026-01-19)
+## 완료된 작업 (이번 세션)
+
+- Payment Model 3가지 타입 구현 (restaurant, brand_manager, foodcourt_manager)
+- /api/invoices/to-pay API 역할별 조회 로직 수정
+- Admin RestaurantsPage Payment Model 드롭다운 3가지 옵션
+- Profile 페이지 dbUser null 시 authUser 폴백 처리
+- 프론트엔드 빌드 및 배포 완료
+- 백엔드 재시작 완료
+- DEVELOPMENT_PLAN.md 문서 업데이트
+- Git 커밋 및 푸시 완료 (f8c4b4e)
+
+## 다음 할 일
+
+- Stripe/PayPal 결제 연동
+- Auto Payment System 구현
+- Kitchen Display 개선
+
+---
+
+## 이전 세션 기록 (2026-01-19)
 
 ### 완료된 작업
 
