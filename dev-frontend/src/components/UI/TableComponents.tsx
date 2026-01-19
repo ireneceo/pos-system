@@ -116,9 +116,15 @@ export const ActionButtons = styled.div`
   flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
+  max-width: 280px;
+
+  @media (max-width: 1200px) {
+    max-width: 240px;
+  }
 
   @media (max-width: 1024px) {
     gap: 4px;
+    max-width: 220px;
   }
 
   @media (max-width: 768px) {
@@ -128,6 +134,7 @@ export const ActionButtons = styled.div`
     padding-top: 10px;
     margin-top: 10px;
     border-top: 1px solid #F3F4F6;
+    max-width: none;
   }
 `;
 

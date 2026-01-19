@@ -25,6 +25,8 @@ import {
   EmptyState
 } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface Invoice {
   id: string;
@@ -283,6 +285,11 @@ const ModalContent = styled.div`
   display: flex;
   flex-direction: column;
   overflow: hidden;
+
+  @media (max-width: 640px) {
+    width: 95%;
+    max-width: none;
+  }
 `;
 
 const ModalHeader = styled.div`
@@ -323,6 +330,7 @@ const CloseButton = styled.button`
 const ModalBody = styled.div`
   padding: 24px;
   overflow-y: auto;
+  overflow-x: hidden;
   flex: 1;
   min-height: 0;
 `;
@@ -365,7 +373,8 @@ const FormInput = styled.input`
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
-  
+  box-sizing: border-box;
+
   &:focus {
     outline: none;
     border-color: #635BFF;
@@ -705,22 +714,52 @@ const InvoicesPage: React.FC = () => {
 
   const fetchManagers = async () => {
     try {
-      const response = await fetch('/api/users?role=Manager');
-      if (response.ok) {
-        const data = await response.json();
-        // Transform API data to match interface
-        const transformedManagers = data.map((user: any) => ({
+      // Fetch all manager types: Manager, Foodcourt_Manager, Brand_Manager
+      const [managerRes, foodcourtRes, brandRes] = await Promise.all([
+        fetch('/api/users?role=Manager'),
+        fetch('/api/users?role=Foodcourt_Manager'),
+        fetch('/api/users?role=Brand_Manager')
+      ]);
+
+      let allManagers: Manager[] = [];
+
+      if (managerRes.ok) {
+        const data = await managerRes.json();
+        const transformed = data.map((user: any) => ({
           id: user.id.toString(),
           fullName: user.full_name || user.username,
           email: user.email,
           role: user.role,
-          companyName: user.company_name || 'Unknown Company'
+          companyName: user.company_name || 'Restaurant Manager'
         }));
-        setManagers(transformedManagers);
-      } else {
-        console.error('Failed to fetch managers');
-        setManagers([]);
+        allManagers = [...allManagers, ...transformed];
       }
+
+      if (foodcourtRes.ok) {
+        const data = await foodcourtRes.json();
+        const transformed = data.map((user: any) => ({
+          id: user.id.toString(),
+          fullName: user.full_name || user.username,
+          email: user.email,
+          role: user.role,
+          companyName: user.company_name || 'Foodcourt Manager'
+        }));
+        allManagers = [...allManagers, ...transformed];
+      }
+
+      if (brandRes.ok) {
+        const data = await brandRes.json();
+        const transformed = data.map((user: any) => ({
+          id: user.id.toString(),
+          fullName: user.full_name || user.username,
+          email: user.email,
+          role: user.role,
+          companyName: user.company_name || 'Brand Manager'
+        }));
+        allManagers = [...allManagers, ...transformed];
+      }
+
+      setManagers(allManagers);
     } catch (error) {
       console.error('Error fetching managers:', error);
       setManagers([]);
@@ -1006,15 +1045,16 @@ const InvoicesPage: React.FC = () => {
         .status-cancelled { background: #FEF2F2; color: #DC2626; }
         .status-draft { background: #F3F4F6; color: #6B7280; }
 
-        .bill-to-section { margin-bottom: 24px; }
+        .billing-info { display: flex; justify-content: space-between; margin-bottom: 24px; }
+        .bill-to-section { flex: 1; }
         .section-label { font-size: 12px; font-weight: 600; color: #6B7280; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
         .customer-name { font-size: 15px; font-weight: 600; color: #0A2540; }
         .customer-details { font-size: 13px; color: #6B7280; margin-top: 4px; }
 
-        .dates-section { display: flex; gap: 40px; margin-bottom: 24px; padding: 16px; background: #F8FAFC; border-radius: 8px; }
-        .date-group { }
-        .date-label { font-size: 12px; font-weight: 600; color: #6B7280; margin-bottom: 4px; }
-        .date-value { font-size: 14px; color: #0A2540; }
+        .dates-section { text-align: right; }
+        .date-row { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 6px; font-size: 13px; }
+        .date-label { color: #6B7280; }
+        .date-value { color: #0A2540; font-weight: 500; min-width: 140px; }
 
         .items-section { margin-bottom: 24px; }
         .items-table { width: 100%; border-collapse: collapse; }
@@ -1069,32 +1109,33 @@ const InvoicesPage: React.FC = () => {
             </div>
         </div>
 
-        <div class="bill-to-section">
-            <div class="section-label">Bill To</div>
-            <div class="customer-name">${invoice.customerName || invoice.managerName || 'Customer'}</div>
-            ${invoice.customerAddress ? `<div class="customer-details">${invoice.customerAddress}</div>` : ''}
-            ${invoice.restaurantName ? `<div class="customer-details">Restaurant: ${invoice.restaurantName}</div>` : ''}
-        </div>
-
-        <div class="dates-section">
-            <div class="date-group">
-                <div class="date-label">Billing Period</div>
-                <div class="date-value">${invoice.billingPeriod || '-'}</div>
+        <div class="billing-info">
+            <div class="bill-to-section">
+                <div class="section-label">Bill To</div>
+                <div class="customer-name">${invoice.customerName || invoice.managerName || 'Customer'}</div>
+                ${invoice.customerAddress ? `<div class="customer-details">${invoice.customerAddress}</div>` : ''}
+                ${invoice.restaurantName ? `<div class="customer-details">Restaurant: ${invoice.restaurantName}</div>` : ''}
             </div>
-            <div class="date-group">
-                <div class="date-label">Issue Date</div>
-                <div class="date-value">${formatDate(invoice.issueDate)}</div>
+            <div class="dates-section">
+                <div class="date-row">
+                    <span class="date-label">Billing Period:</span>
+                    <span class="date-value">${invoice.billingPeriod || '-'}</span>
+                </div>
+                <div class="date-row">
+                    <span class="date-label">Issue Date:</span>
+                    <span class="date-value">${formatDate(invoice.issueDate)}</span>
+                </div>
+                <div class="date-row">
+                    <span class="date-label">Due Date:</span>
+                    <span class="date-value">${formatDate(invoice.dueDate)}</span>
+                </div>
+                ${invoice.paidDate ? `
+                <div class="date-row">
+                    <span class="date-label">Paid Date:</span>
+                    <span class="date-value">${formatDate(invoice.paidDate)}</span>
+                </div>
+                ` : ''}
             </div>
-            <div class="date-group">
-                <div class="date-label">Due Date</div>
-                <div class="date-value">${formatDate(invoice.dueDate)}</div>
-            </div>
-            ${invoice.paidDate ? `
-            <div class="date-group">
-                <div class="date-label">Paid Date</div>
-                <div class="date-value">${formatDate(invoice.paidDate)}</div>
-            </div>
-            ` : ''}
         </div>
 
         <div class="items-section">
@@ -1167,23 +1208,57 @@ const InvoicesPage: React.FC = () => {
 </html>`;
   };
 
-  // Download invoice as PDF (opens print dialog where user can save as PDF)
-  const generateInvoicePDF = (invoice: Invoice) => {
+  // Download invoice as PDF file
+  const generateInvoicePDF = async (invoice: Invoice) => {
     if (!companySettings) {
       setSuccessMessage('Company settings not loaded. Please try again.');
       setShowSuccessModal(true);
       return;
     }
 
-    const invoiceHTML = generateInvoiceHTML(invoice);
-    const printWindow = window.open('', '_blank', 'width=800,height=600');
-    if (printWindow) {
-      printWindow.document.write(invoiceHTML);
-      printWindow.document.close();
-      // Add a small delay to ensure content is loaded
-      setTimeout(() => {
-        printWindow.print();
-      }, 250);
+    try {
+      const invoiceHTML = generateInvoiceHTML(invoice);
+
+      // Create a hidden container to render HTML for PDF generation
+      const container = document.createElement('div');
+      container.style.position = 'absolute';
+      container.style.left = '-9999px';
+      container.style.top = '0';
+      container.style.width = '800px';
+      container.innerHTML = invoiceHTML;
+      document.body.appendChild(container);
+
+      // Wait for content to render
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Convert HTML to canvas
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+
+      // Remove the container
+      document.body.removeChild(container);
+
+      // Create PDF from canvas
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const imgWidth = 210; // A4 width in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      pdf.save(`Invoice-${invoice.invoiceNumber}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      setSuccessMessage('Failed to generate PDF. Please try again.');
+      setShowSuccessModal(true);
     }
   };
 
@@ -1203,6 +1278,77 @@ const InvoicesPage: React.FC = () => {
       setTimeout(() => {
         printWindow.print();
       }, 250);
+    }
+  };
+
+  // Open email modal with default recipient based on payer type
+  const handleOpenEmailModal = async (invoice: Invoice) => {
+    setEmailInvoice(invoice);
+
+    // Get default email based on payer type
+    let defaultEmail = '';
+
+    if (invoice.payerType === 'restaurant' && invoice.restaurantId) {
+      // Find restaurant email
+      const restaurant = restaurants.find(r => r.id === invoice.restaurantId);
+      if (restaurant?.email) {
+        defaultEmail = restaurant.email;
+      }
+    } else if (invoice.payerType === 'foodcourt_manager' || invoice.payerType === 'brand_manager') {
+      // Find manager email
+      const manager = managers.find(m => m.id === invoice.managerId);
+      if (manager?.email) {
+        defaultEmail = manager.email;
+      }
+    }
+
+    // If no specific email found, try to get from the invoice customer
+    if (!defaultEmail && invoice.managerId) {
+      const manager = managers.find(m => m.id === invoice.managerId);
+      if (manager?.email) {
+        defaultEmail = manager.email;
+      }
+    }
+
+    setEmailRecipient(defaultEmail);
+    setShowEmailModal(true);
+  };
+
+  // Send invoice via email
+  const handleSendInvoiceEmail = async () => {
+    if (!emailInvoice || !emailRecipient) {
+      setSuccessMessage('Please enter a valid email address.');
+      setShowSuccessModal(true);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/invoices/${emailInvoice.id}/send-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          recipientEmail: emailRecipient
+        })
+      });
+
+      if (response.ok) {
+        setSuccessMessage(`Invoice sent successfully to ${emailRecipient}`);
+        setShowEmailModal(false);
+        setEmailInvoice(null);
+        setEmailRecipient('');
+      } else {
+        const data = await response.json();
+        setSuccessMessage(data.error || 'Failed to send invoice email.');
+      }
+      setShowSuccessModal(true);
+    } catch (error) {
+      console.error('Error sending invoice email:', error);
+      setSuccessMessage('Failed to send invoice email. Please try again.');
+      setShowSuccessModal(true);
     }
   };
 
@@ -1920,21 +2066,28 @@ const InvoicesPage: React.FC = () => {
                         </>
                       )}
 
-                      {/* 결제정보 확인중 상태: 결제확인, 편집, 다운로드, 이메일발송 */}
+                      {/* 결제정보 확인중 상태: 결제확인, 편집, 다운로드, 프린트, 이메일발송 */}
                       {invoice.status === 'payment_submitted' && (
                         <>
                           {invoice.hasPaymentInfo && (
                             <LocalActionButton variant="primary" onClick={() => handleConfirmPayment(invoice)}>Confirm</LocalActionButton>
                           )}
                           <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
-                          <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download Invoice">
+                          <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                               <polyline points="7,10 12,15 17,10"/>
                               <line x1="12" y1="15" x2="12" y2="3"/>
                             </svg>
                           </LocalActionButton>
-                          <LocalActionButton variant="email" onClick={() => handleResendInvoice(invoice)} title="Resend Invoice">
+                          <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="6,9 6,2 18,2 18,9"/>
+                              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                              <rect x="6" y="14" width="12" height="8"/>
+                            </svg>
+                          </LocalActionButton>
+                          <LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Resend Invoice">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                               <polyline points="22,6 12,13 2,6"/>
@@ -1943,18 +2096,25 @@ const InvoicesPage: React.FC = () => {
                         </>
                       )}
 
-                      {/* 연체 상태: 편집, 다운로드, 이메일발송, 삭제 */}
+                      {/* 연체 상태: 편집, 다운로드, 프린트, 이메일발송, 삭제 */}
                       {invoice.status === 'overdue' && (
                         <>
                           <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
-                          <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download Invoice">
+                          <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                               <polyline points="7,10 12,15 17,10"/>
                               <line x1="12" y1="15" x2="12" y2="3"/>
                             </svg>
                           </LocalActionButton>
-                          <LocalActionButton variant="email" onClick={() => handleResendInvoice(invoice)} title="Resend Invoice">
+                          <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="6,9 6,2 18,2 18,9"/>
+                              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                              <rect x="6" y="14" width="12" height="8"/>
+                            </svg>
+                          </LocalActionButton>
+                          <LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Resend Invoice">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                               <polyline points="22,6 12,13 2,6"/>
@@ -1966,7 +2126,22 @@ const InvoicesPage: React.FC = () => {
                         </>
                       )}
                       {invoice.status === 'paid' && (
-                        <LocalActionButton variant="primary" onClick={() => generateInvoicePDF(invoice)}>Download PDF</LocalActionButton>
+                        <>
+                          <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                              <polyline points="7,10 12,15 17,10"/>
+                              <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                          </LocalActionButton>
+                          <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="6,9 6,2 18,2 18,9"/>
+                              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                              <rect x="6" y="14" width="12" height="8"/>
+                            </svg>
+                          </LocalActionButton>
+                        </>
                       )}
                       {/* 취소됨 상태: View만 가능 */}
                       {invoice.status === 'cancelled' && (
@@ -2273,39 +2448,41 @@ const InvoicesPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Bill To Section */}
-                <div style={{ marginBottom: '24px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>Bill To</div>
-                  <div style={{ fontSize: '15px', fontWeight: '600', color: '#0A2540' }}>{selectedInvoice.customerName}</div>
-                  {selectedInvoice.customerAddress && (
-                    <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>{selectedInvoice.customerAddress}</div>
-                  )}
-                  {selectedInvoice.restaurantName && (
-                    <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Restaurant: {selectedInvoice.restaurantName}</div>
-                  )}
+                {/* Bill To + Dates Section (Side by Side) */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
+                  {/* Bill To */}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>Bill To</div>
+                    <div style={{ fontSize: '15px', fontWeight: '600', color: '#0A2540' }}>{selectedInvoice.customerName}</div>
+                    {selectedInvoice.customerAddress && (
+                      <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>{selectedInvoice.customerAddress}</div>
+                    )}
+                    {selectedInvoice.restaurantName && (
+                      <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Restaurant: {selectedInvoice.restaurantName}</div>
+                    )}
+                  </div>
+                  {/* Dates */}
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
+                      <span style={{ color: '#6B7280' }}>Billing Period:</span>
+                      <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{selectedInvoice.billingPeriod || '-'}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
+                      <span style={{ color: '#6B7280' }}>Issue Date:</span>
+                      <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{formatDate(selectedInvoice.issueDate)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
+                      <span style={{ color: '#6B7280' }}>Due Date:</span>
+                      <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{formatDate(selectedInvoice.dueDate)}</span>
+                    </div>
+                    {selectedInvoice.paidDate && (
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
+                        <span style={{ color: '#6B7280' }}>Paid Date:</span>
+                        <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{formatDate(selectedInvoice.paidDate)}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-
-                {/* Dates Section */}
-                <FormRow style={{ marginBottom: '24px' }}>
-                  <FormGroup>
-                    <FormLabel>Billing Period</FormLabel>
-                    <div>{selectedInvoice.billingPeriod || '-'}</div>
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>Issue Date</FormLabel>
-                    <div>{formatDate(selectedInvoice.issueDate)}</div>
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>Due Date</FormLabel>
-                    <div>{formatDate(selectedInvoice.dueDate)}</div>
-                  </FormGroup>
-                  {selectedInvoice.paidDate && (
-                    <FormGroup>
-                      <FormLabel>Paid Date</FormLabel>
-                      <div>{formatDate(selectedInvoice.paidDate)}</div>
-                    </FormGroup>
-                  )}
-                </FormRow>
 
                 {/* Items Table */}
                 <div style={{ marginBottom: '24px' }}>
@@ -2923,6 +3100,74 @@ const InvoicesPage: React.FC = () => {
                   style={{ background: '#DC2626', borderColor: '#DC2626' }}
                 >
                   Delete Invoice
+                </Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
+        )}
+
+        {/* Email Invoice Modal */}
+        {showEmailModal && emailInvoice && (
+          <Modal onClick={() => setShowEmailModal(false)}>
+            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+              <ModalHeader>
+                <ModalTitle>Send Invoice via Email</ModalTitle>
+                <CloseButton onClick={() => setShowEmailModal(false)}>×</CloseButton>
+              </ModalHeader>
+              <ModalBody>
+                <FormGroup>
+                  <FormLabel>Invoice</FormLabel>
+                  <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '6px', marginBottom: '16px' }}>
+                    <div style={{ fontWeight: '600', color: '#0A2540', marginBottom: '4px' }}>{emailInvoice.invoiceNumber}</div>
+                    <div style={{ fontSize: '13px', color: '#6B7280' }}>{emailInvoice.customerName}</div>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#635BFF', marginTop: '8px' }}>
+                      {formatCurrency(emailInvoice.total, emailInvoice.currency || 'MYR')}
+                    </div>
+                  </div>
+                </FormGroup>
+
+                <FormGroup>
+                  <FormLabel>Recipient Email *</FormLabel>
+                  <FormInput
+                    type="email"
+                    value={emailRecipient}
+                    onChange={(e) => setEmailRecipient(e.target.value)}
+                    placeholder="Enter recipient email address"
+                    required
+                  />
+                  <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                    {emailInvoice.payerType === 'restaurant' ? 'Restaurant' :
+                     emailInvoice.payerType === 'foodcourt_manager' ? 'Foodcourt Manager' :
+                     emailInvoice.payerType === 'brand_manager' ? 'Brand Manager' : 'Customer'} email
+                  </div>
+                </FormGroup>
+
+                <div style={{
+                  background: '#F0F9FF',
+                  border: '1px solid #0EA5E9',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  marginTop: '16px'
+                }}>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#0369A1' }}>
+                    The invoice PDF will be attached to the email automatically.
+                  </p>
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="secondary" onClick={() => {
+                  setShowEmailModal(false);
+                  setEmailInvoice(null);
+                  setEmailRecipient('');
+                }}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleSendInvoiceEmail}
+                  disabled={!emailRecipient || !emailRecipient.includes('@')}
+                >
+                  Send Email
                 </Button>
               </ModalFooter>
             </ModalContent>

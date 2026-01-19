@@ -6,6 +6,8 @@ import { FilterBar, FilterSelect } from '../../components/Common/FilterComponent
 import { useAuth } from '../../contexts/AuthContext';
 import Modal, { ModalButton, FormGroup, FormLabel, FormInput } from '../../components/UI/Modal';
 import { formatCurrency } from '../../utils/currency';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -508,20 +510,47 @@ const RestaurantInvoicesPage: React.FC = () => {
       if (settingsResponse.ok) {
         const settingsData = await settingsResponse.json();
         companySettings = settingsData.data || settingsData;
-        console.log('Company settings loaded for currency', invoiceCurrency, ':', companySettings);
-      } else {
-        console.error('Failed to load company settings:', settingsResponse.status);
       }
 
       // Generate invoice HTML
       const invoiceHTML = generateInvoiceHTML(invoice, companySettings);
 
-      // Open in new window (no auto-print)
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        printWindow.document.write(invoiceHTML);
-        printWindow.document.close();
-      }
+      // Create a hidden container to render HTML for PDF generation
+      const container = document.createElement('div');
+      container.style.position = 'absolute';
+      container.style.left = '-9999px';
+      container.style.top = '0';
+      container.style.width = '800px';
+      container.innerHTML = invoiceHTML;
+      document.body.appendChild(container);
+
+      // Wait for content to render
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Convert HTML to canvas
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+
+      // Remove the container
+      document.body.removeChild(container);
+
+      // Create PDF from canvas
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const imgWidth = 210; // A4 width in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      pdf.save(`Invoice-${invoice.invoiceNumber}.pdf`);
     } catch (error) {
       console.error('Error downloading invoice:', error);
       alert('Failed to download invoice. Please try again.');
@@ -587,8 +616,13 @@ const RestaurantInvoicesPage: React.FC = () => {
       font-size: 14px;
       color: #6B7280;
     }
-    .bill-to {
+    .billing-info {
+      display: flex;
+      justify-content: space-between;
       margin-bottom: 40px;
+    }
+    .bill-to {
+      flex: 1;
     }
     .bill-to h3 {
       margin: 0 0 12px 0;
@@ -606,6 +640,24 @@ const RestaurantInvoicesPage: React.FC = () => {
     .bill-to strong {
       font-size: 16px;
       font-weight: 600;
+    }
+    .dates-info {
+      text-align: right;
+    }
+    .date-row {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+    .date-row .label {
+      color: #6B7280;
+    }
+    .date-row .value {
+      color: #0A2540;
+      font-weight: 500;
+      min-width: 140px;
     }
     table {
       width: 100%;
@@ -710,20 +762,38 @@ const RestaurantInvoicesPage: React.FC = () => {
     </div>
     <div class="invoice-meta">
       <div class="invoice-number">${invoice.invoiceNumber}</div>
-      <p><strong>Issue Date:</strong> ${invoice.issueDate}</p>
-      <p><strong>Due Date:</strong> ${invoice.dueDate}</p>
-      ${invoice.paidDate ? `<p><strong>Paid Date:</strong> ${invoice.paidDate}</p>` : ''}
       <p><span class="status-badge status-${invoice.status === 'paid' ? 'paid' : invoice.status === 'overdue' ? 'overdue' : 'pending'}">
         ${invoice.status === 'pending_payment' ? 'Pending' : invoice.status === 'paid' ? 'Paid' : invoice.status === 'overdue' ? 'Overdue' : invoice.status}
       </span></p>
     </div>
   </div>
 
-  <div class="bill-to">
-    <h3>Bill To</h3>
-    <p><strong>${user?.restaurantName || 'Restaurant'}</strong></p>
-    <p>Plan: ${invoice.planType}</p>
-    <p>Period: ${invoice.billingPeriod}</p>
+  <div class="billing-info">
+    <div class="bill-to">
+      <h3>Bill To</h3>
+      <p><strong>${user?.restaurantName || 'Restaurant'}</strong></p>
+      <p>Plan: ${invoice.planType}</p>
+    </div>
+    <div class="dates-info">
+      <div class="date-row">
+        <span class="label">Billing Period:</span>
+        <span class="value">${invoice.billingPeriod}</span>
+      </div>
+      <div class="date-row">
+        <span class="label">Issue Date:</span>
+        <span class="value">${invoice.issueDate}</span>
+      </div>
+      <div class="date-row">
+        <span class="label">Due Date:</span>
+        <span class="value">${invoice.dueDate}</span>
+      </div>
+      ${invoice.paidDate ? `
+      <div class="date-row">
+        <span class="label">Paid Date:</span>
+        <span class="value">${invoice.paidDate}</span>
+      </div>
+      ` : ''}
+    </div>
   </div>
 
   <table>
@@ -742,8 +812,8 @@ const RestaurantInvoicesPage: React.FC = () => {
           <span style="font-size: 12px; color: #6B7280;">Billing Period: ${invoice.billingPeriod}</span>
         </td>
         <td>1</td>
-        <td>RM ${invoice.amount.toFixed(2)}</td>
-        <td>RM ${invoice.amount.toFixed(2)}</td>
+        <td>${invoice.currency || 'MYR'} ${invoice.amount.toFixed(2)}</td>
+        <td>${invoice.currency || 'MYR'} ${invoice.amount.toFixed(2)}</td>
       </tr>
     </tbody>
   </table>
@@ -751,15 +821,15 @@ const RestaurantInvoicesPage: React.FC = () => {
   <div class="totals">
     <div class="totals-row subtotal">
       <span>Subtotal:</span>
-      <span>RM ${invoice.amount.toFixed(2)}</span>
+      <span>${invoice.currency || 'MYR'} ${invoice.amount.toFixed(2)}</span>
     </div>
     <div class="totals-row tax">
       <span>Tax (6%):</span>
-      <span>RM ${invoice.tax.toFixed(2)}</span>
+      <span>${invoice.currency || 'MYR'} ${invoice.tax.toFixed(2)}</span>
     </div>
     <div class="totals-row total">
       <span>Total Amount:</span>
-      <span>RM ${invoice.total.toFixed(2)}</span>
+      <span>${invoice.currency || 'MYR'} ${invoice.total.toFixed(2)}</span>
     </div>
   </div>
 

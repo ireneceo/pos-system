@@ -1620,4 +1620,54 @@ router.put('/update-payer/:restaurantId', authenticateToken, async (req, res) =>
   }
 });
 
+// Send invoice via email
+router.post('/:id/send-email', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { recipientEmail } = req.body;
+
+    if (!recipientEmail || !recipientEmail.includes('@')) {
+      return res.status(400).json({ error: 'Valid recipient email is required' });
+    }
+
+    // Get the invoice
+    const invoice = await Invoice.findByPk(id, {
+      include: [{
+        model: Restaurant,
+        as: 'restaurant',
+        attributes: ['id', 'name', 'manager_id', 'manager_name', 'plan_type', 'email']
+      }, {
+        model: InvoiceItem,
+        as: 'items'
+      }]
+    });
+
+    if (!invoice) {
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+
+    // Get company settings for the invoice
+    const companySettings = await CompanySettings.findOne({ where: { id: 1 } });
+    const bankInfo = await getBankInfoByCurrency(invoice.currency || 'MYR');
+
+    // For now, return a message that email sending is not configured
+    // This can be implemented later when system-level SMTP is set up
+    // TODO: Implement actual email sending with system SMTP settings
+
+    console.log(`📧 Invoice email request: ${invoice.invoice_number} to ${recipientEmail}`);
+
+    // Placeholder response - email functionality to be implemented
+    res.json({
+      success: true,
+      message: `Invoice ${invoice.invoice_number} email request received for ${recipientEmail}. Email sending will be available once SMTP is configured.`,
+      invoiceNumber: invoice.invoice_number,
+      recipient: recipientEmail
+    });
+
+  } catch (error) {
+    console.error('Error sending invoice email:', error);
+    res.status(500).json({ error: 'Failed to send invoice email' });
+  }
+});
+
 module.exports = router;
