@@ -374,59 +374,127 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
   }
 });
 
-// Get all invoices for manager (across all restaurants they manage)
+// Get all invoices for manager (across all restaurants they manage + invoices where manager is payer)
 router.get('/manager/:managerId', authenticateToken, async (req, res) => {
   try {
     const { managerId } = req.params;
-    
+    console.log(`📋 GET /manager/${managerId} - Fetching invoices for manager`);
+
     // Get restaurants managed by this manager
     const restaurants = await Restaurant.findAll({
       where: { manager_id: managerId }
     });
-    
+
     const restaurantIds = restaurants.map(r => r.id);
-    
-    // Get invoices for these restaurants with restaurant details
+    console.log(`  Found ${restaurantIds.length} restaurants managed by this manager`);
+
+    // Build where clause to get:
+    // 1. Invoices for restaurants where this manager manages AND manager pays (payment_responsibility = 'manager')
+    // 2. Invoices directly issued to this manager (payer_type = 'manager', payer_id = managerId)
+    let whereConditions = [];
+
+    // Condition 1: Invoices for restaurants where manager is responsible for payment
+    if (restaurantIds.length > 0) {
+      // Get restaurants where manager pays
+      const managerPayRestaurants = await Restaurant.findAll({
+        where: {
+          id: { [Op.in]: restaurantIds },
+          payment_responsibility: 'manager'
+        }
+      });
+      const managerPayRestaurantIds = managerPayRestaurants.map(r => r.id);
+
+      if (managerPayRestaurantIds.length > 0) {
+        whereConditions.push({
+          restaurant_id: { [Op.in]: managerPayRestaurantIds }
+        });
+      }
+    }
+
+    // Condition 2: Invoices directly issued to this manager (custom invoices from system admin)
+    whereConditions.push({
+      payer_type: 'manager',
+      payer_id: managerId
+    });
+
+    // If no conditions, return empty
+    if (whereConditions.length === 0) {
+      console.log('  No valid conditions, returning empty');
+      return res.json([]);
+    }
+
+    // Get invoices matching any of the conditions
     const invoices = await Invoice.findAll({
       where: {
-        restaurant_id: {
-          [Op.in]: restaurantIds
-        }
+        [Op.or]: whereConditions
       },
-      include: [{
-        model: Restaurant,
-        as: 'restaurant',
-        attributes: ['id', 'name', 'manager_name', 'plan_type']
-      }],
+      include: [
+        {
+          model: Restaurant,
+          as: 'restaurant',
+          attributes: ['id', 'name', 'manager_name', 'plan_type'],
+          required: false
+        },
+        {
+          model: InvoiceItem,
+          as: 'items',
+          required: false
+        }
+      ],
       order: [['createdAt', 'DESC']]
     });
-    
+
+    console.log(`  Found ${invoices.length} invoices`);
+
     // Transform data to match frontend format
-    const transformedInvoices = invoices.map(invoice => ({
-      id: invoice.id,
-      invoiceNumber: invoice.invoice_number,
-      restaurantId: invoice.restaurant_id,
-      restaurantName: invoice.restaurant?.name || 'Unknown Restaurant',
-      restaurantManager: invoice.restaurant?.manager_name || 'Unknown Manager',
-      issueDate: invoice.issued_at?.toISOString().split('T')[0] || invoice.createdAt.toISOString().split('T')[0],
-      dueDate: invoice.due_date.toISOString().split('T')[0],
-      paidDate: invoice.paid_at?.toISOString().split('T')[0] || null,
-      status: invoice.status,
-      amount: parseFloat(invoice.total_amount) - (parseFloat(invoice.total_amount) * 0.06), // Remove tax for display
-      tax: parseFloat(invoice.total_amount) * 0.06,
-      total: parseFloat(invoice.total_amount),
-      billingPeriod: `${invoice.billing_period_start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`,
-      planType: invoice.restaurant?.plan_type || 'Basic Plan',
-      items: [
-        {
-          description: `${invoice.restaurant?.plan_type || 'Basic Plan'} - Monthly Subscription`,
+    const transformedInvoices = invoices.map(invoice => {
+      // Determine items to show
+      let invoiceItems = [];
+      if (invoice.items && invoice.items.length > 0) {
+        invoiceItems = invoice.items.map(item => ({
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: parseFloat(item.unit_price),
+          total: parseFloat(item.total)
+        }));
+      } else {
+        // Fallback for automatic invoices
+        invoiceItems = [{
+          description: `${invoice.restaurant?.plan_type || invoice.plan_type || 'Subscription'} - Monthly`,
           quantity: 1,
-          unitPrice: parseFloat(invoice.total_amount) - (parseFloat(invoice.total_amount) * 0.06),
-          total: parseFloat(invoice.total_amount) - (parseFloat(invoice.total_amount) * 0.06)
-        }
-      ]
-    }));
-    
+          unitPrice: parseFloat(invoice.subtotal || invoice.total_amount),
+          total: parseFloat(invoice.subtotal || invoice.total_amount)
+        }];
+      }
+
+      return {
+        id: invoice.id,
+        invoiceNumber: invoice.invoice_number,
+        restaurantId: invoice.restaurant_id,
+        restaurantName: invoice.restaurant?.name || invoice.customer_name || 'Unknown',
+        restaurantManager: invoice.restaurant?.manager_name || '',
+        issueDate: invoice.issued_at?.toISOString().split('T')[0] || invoice.createdAt.toISOString().split('T')[0],
+        dueDate: invoice.due_date?.toISOString().split('T')[0] || '',
+        paidDate: invoice.paid_at?.toISOString().split('T')[0] || null,
+        status: invoice.status,
+        currency: invoice.currency || 'MYR',
+        amount: parseFloat(invoice.subtotal || 0),
+        tax: parseFloat(invoice.tax_amount || 0),
+        total: parseFloat(invoice.total_amount),
+        billingPeriod: invoice.billing_period_start
+          ? `${invoice.billing_period_start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+          : invoice.billing_period || '',
+        planType: invoice.plan_type || invoice.restaurant?.plan_type || 'Custom',
+        type: invoice.type || 'manual',
+        categoryDisplayName: invoice.category_display_name || '',
+        payerType: invoice.payer_type,
+        payerId: invoice.payer_id,
+        issuerType: invoice.issuer_type,
+        issuerId: invoice.issuer_id,
+        items: invoiceItems
+      };
+    });
+
     res.json(transformedInvoices);
   } catch (error) {
     console.error('Error fetching manager invoices:', error);
@@ -1601,29 +1669,95 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
     if (req.user.role === 'System Admin') {
       // Return all invoices for monitoring
     }
-    // Brand General/Manager sees invoices issued by system admin to their brand
+    // Brand General/Manager sees:
+    // 1. Invoices directly issued to them (payer_type: 'brand', payer_id: brand.id)
+    // 2. Invoices for restaurants with payment_model: 'brand_manager' under their brand
+    // 3. Invoices where payer_type: 'manager' and payer_id matches any of their manager users
     else if (req.user.role === 'Brand General' || req.user.role === 'Brand Manager') {
       const brand = await Brand.findOne({ where: { owner_id: req.user.id } });
       if (!brand) {
         return res.json([]);
       }
-      whereClause = {
-        issuer_type: 'system_admin',
+
+      // Get restaurants under this brand where brand pays
+      const brandPayRestaurants = await Restaurant.findAll({
+        where: {
+          brand_id: brand.id,
+          payment_model: 'brand_manager'
+        },
+        attributes: ['id']
+      });
+      const brandPayRestaurantIds = brandPayRestaurants.map(r => r.id);
+
+      // Build OR condition
+      let conditions = [];
+
+      // Condition 1: Direct invoices to the brand
+      conditions.push({
         payer_type: 'brand',
         payer_id: brand.id
-      };
+      });
+
+      // Condition 2: Invoices for brand-pay restaurants
+      if (brandPayRestaurantIds.length > 0) {
+        conditions.push({
+          restaurant_id: { [Op.in]: brandPayRestaurantIds }
+        });
+      }
+
+      // Condition 3: Invoices directly to this user (as manager)
+      conditions.push({
+        payer_type: 'manager',
+        payer_id: req.user.id
+      });
+
+      whereClause = { [Op.or]: conditions };
+      console.log(`  Brand ${brand.id}: Found ${brandPayRestaurantIds.length} brand-pay restaurants`);
     }
-    // Foodcourt General/Manager sees invoices issued by system admin to their foodcourt
+    // Foodcourt General/Manager sees:
+    // 1. Invoices directly issued to them (payer_type: 'foodcourt', payer_id: foodcourt.id)
+    // 2. Invoices for restaurants with payment_model: 'foodcourt_manager' under their foodcourt
+    // 3. Invoices where payer_type: 'manager' and payer_id matches their user id
     else if (req.user.role === 'Foodcourt General' || req.user.role === 'Foodcourt Manager') {
       const foodcourt = await Foodcourt.findOne({ where: { owner_id: req.user.id } });
       if (!foodcourt) {
         return res.json([]);
       }
-      whereClause = {
-        issuer_type: 'system_admin',
+
+      // Get restaurants under this foodcourt where foodcourt pays
+      const foodcourtPayRestaurants = await Restaurant.findAll({
+        where: {
+          foodcourt_id: foodcourt.id,
+          payment_model: 'foodcourt_manager'
+        },
+        attributes: ['id']
+      });
+      const foodcourtPayRestaurantIds = foodcourtPayRestaurants.map(r => r.id);
+
+      // Build OR condition
+      let conditions = [];
+
+      // Condition 1: Direct invoices to the foodcourt
+      conditions.push({
         payer_type: 'foodcourt',
         payer_id: foodcourt.id
-      };
+      });
+
+      // Condition 2: Invoices for foodcourt-pay restaurants
+      if (foodcourtPayRestaurantIds.length > 0) {
+        conditions.push({
+          restaurant_id: { [Op.in]: foodcourtPayRestaurantIds }
+        });
+      }
+
+      // Condition 3: Invoices directly to this user (as manager)
+      conditions.push({
+        payer_type: 'manager',
+        payer_id: req.user.id
+      });
+
+      whereClause = { [Op.or]: conditions };
+      console.log(`  Foodcourt ${foodcourt.id}: Found ${foodcourtPayRestaurantIds.length} foodcourt-pay restaurants`);
     }
     // Restaurant Admin sees invoices for their restaurant
     else if (req.user.role === 'Restaurant Admin') {

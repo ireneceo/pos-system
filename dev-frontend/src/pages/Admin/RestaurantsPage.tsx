@@ -50,7 +50,7 @@ interface Restaurant {
   planType?: string;
   planAmount?: string;
   billingCycle?: 'monthly' | 'annual';
-  paymentModel?: 'manager' | 'restaurant';
+  paymentModel?: 'restaurant' | 'brand_manager' | 'foodcourt_manager';
   autoRenew?: boolean;
   subscriptionStart?: string;
   subscriptionEnd?: string;
@@ -663,7 +663,7 @@ const RestaurantsPage: React.FC = () => {
     status: 'active' as 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled',
     // Subscription Settings 추가
     billingCycle: 'monthly' as 'monthly' | 'annual',
-    paymentModel: 'manager' as 'manager' | 'restaurant',
+    paymentModel: 'restaurant' as 'restaurant' | 'brand_manager' | 'foodcourt_manager',
     autoRenew: true,
     subscriptionStart: new Date().toISOString().split('T')[0],
     subscriptionEnd: '',
@@ -1054,7 +1054,7 @@ const RestaurantsPage: React.FC = () => {
       planType: defaultPlanType,
       planAmount: defaultPlanAmount,
       billingCycle: (restaurant.billingCycle as 'monthly' | 'annual') || 'monthly',
-      paymentModel: (restaurant.paymentModel as 'manager' | 'restaurant') || 'restaurant',
+      paymentModel: (restaurant.paymentModel as 'restaurant' | 'brand_manager' | 'foodcourt_manager') || 'restaurant',
       autoRenew: restaurant.autoRenew !== undefined ? restaurant.autoRenew : true,
       subscriptionStart: restaurant.subscriptionStart || new Date().toISOString().split('T')[0],
       subscriptionEnd: restaurant.subscriptionEnd || new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0],
@@ -1893,7 +1893,7 @@ const RestaurantsPage: React.FC = () => {
                       {newRestaurant.planType} - ${newRestaurant.planAmount} ({newRestaurant.billingCycle})
                     </div>
                     <div style={{fontSize: '12px', color: '#6B7280', marginTop: '4px'}}>
-                      Paid by: {newRestaurant.paymentModel === 'manager' ? 'Manager' : 'Restaurant'}
+                      Paid by: {newRestaurant.paymentModel === 'brand_manager' ? 'Brand Manager' : newRestaurant.paymentModel === 'foodcourt_manager' ? 'Foodcourt Manager' : 'Restaurant Admin'}
                     </div>
                   </div>
                 </FormGrid>
@@ -2128,7 +2128,7 @@ const RestaurantsPage: React.FC = () => {
                       {editingRestaurant.planType || 'Basic Plan'} - ${editingRestaurant.planAmount || '29.00'} ({editingRestaurant.billingCycle || 'monthly'})
                     </div>
                     <div style={{fontSize: '12px', color: '#6B7280', marginTop: '4px'}}>
-                      Paid by: {(editingRestaurant.paymentModel || 'manager') === 'manager' ? 'Manager' : 'Restaurant'}
+                      Paid by: {editingRestaurant.paymentModel === 'brand_manager' ? 'Brand Manager' : editingRestaurant.paymentModel === 'foodcourt_manager' ? 'Foodcourt Manager' : 'Restaurant Admin'}
                     </div>
                   </div>
                 </FormGrid>

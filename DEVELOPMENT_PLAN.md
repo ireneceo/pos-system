@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-01-16
+> **최종 업데이트:** 2026-01-19
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -12,11 +12,59 @@
 
 | 기능 | 설명 | 상태 |
 |------|------|:----:|
-| Invoice Payment Page | Invoice에서 결제 선택 및 처리 UI | 대기 |
 | Stripe Integration | Stripe 결제 연동 | 대기 |
 | PayPal Integration | PayPal 결제 연동 | 대기 |
 | Auto Payment System | 자동 결제 시스템 | 대기 |
 | Kitchen Display 개선 | Pending 컬럼 아이템별 Done 버튼 | 대기 |
+
+---
+
+## ✅ 완료: Billing System Integration (2026-01-19)
+
+> **상세 기획서:** [docs/BILLING_SYSTEM_INTEGRATION_PLAN.md](/docs/BILLING_SYSTEM_INTEGRATION_PLAN.md)
+
+### 완료된 기능
+
+| 기능 | 설명 | 상태 |
+|------|------|:----:|
+| Invoice Page 역할별 | Brand/Foodcourt General/Manager용 Invoice 페이지 | ✅ 완료 |
+| Payment Model 3가지 | restaurant, brand_manager, foodcourt_manager | ✅ 완료 |
+| to-pay API 수정 | 역할별 결제해야 할 인보이스 조회 | ✅ 완료 |
+| Invoice 발행/결제 분리 | Issued Invoices / Invoices to Pay 탭 분리 | ✅ 완료 |
+| Plans Page 역할별 | Brand/Foodcourt용 Custom Subscription 전용 | ✅ 완료 |
+| Payment Settings 역할별 | Brand/Foodcourt용 다중 통화 결제설정 | ✅ 완료 |
+| Profile 페이지 버그 수정 | dbUser null일 때 authUser 폴백 처리 | ✅ 완료 |
+
+### 핵심 구현 사항
+
+1. **Payment Model 3가지 타입**
+   - `restaurant` - Restaurant Admin이 결제
+   - `brand_manager` - Brand General/Manager가 결제
+   - `foodcourt_manager` - Foodcourt General/Manager가 결제
+
+2. **역할별 Invoice 페이지**
+   - Brand/Foodcourt General/Manager: 2개 탭 (Issued Invoices + Invoices to Pay)
+   - Issued Invoices: 발행한 인보이스 (Create, Edit, Send)
+   - Invoices to Pay: 결제해야 할 인보이스 (View, Pay)
+
+3. **Backend /to-pay API**
+   - Brand: 직접 발행 인보이스 + brand_manager 레스토랑 인보이스 + 매니저로 직접 발행된 인보이스
+   - Foodcourt: 직접 발행 인보이스 + foodcourt_manager 레스토랑 인보이스 + 매니저로 직접 발행된 인보이스
+
+### 관련 파일
+
+**Backend:**
+- `routes/invoices.js` - /to-pay API 역할별 로직 추가
+
+**Frontend:**
+- `pages/Admin/RestaurantsPage.tsx` - Payment Model 3가지 옵션
+- `pages/BrandGeneral/BrandInvoicesPage.tsx` - 브랜드 인보이스 (Issued + To Pay)
+- `pages/FoodcourtGeneral/FoodcourtInvoicesPage.tsx` - 푸드코트 인보이스
+- `pages/BrandGeneral/BrandPlansPage.tsx` - 브랜드 플랜 (Custom only)
+- `pages/FoodcourtGeneral/FoodcourtPlansPage.tsx` - 푸드코트 플랜
+- `pages/BrandGeneral/BrandPaymentSettingsPage.tsx` - 브랜드 결제설정
+- `pages/FoodcourtGeneral/FoodcourtPaymentSettingsPage.tsx` - 푸드코트 결제설정
+- `pages/Profile/ProfilePage.tsx` - dbUser null 폴백 처리
 
 ---
 

@@ -395,36 +395,41 @@ const ProfilePage: React.FC = () => {
 
   // Tab state is now automatically managed by the Tabs component via URL params
 
-  // ALWAYS use database user as primary source - NO fallbacks for System Admin
+  // Use database user as primary source, fallback to authUser if dbUser not loaded
   // Wrapped in useMemo to prevent exhaustive-deps warnings
-  const currentUser = useMemo(() => dbUser ? {
-    id: dbUser.id,
-    name: dbUser.full_name || dbUser.name || 'Unknown',
-    email: dbUser.email,
-    phone: dbUser.phone || '',
-    username: dbUser.username || dbUser.email,
-    role: dbUser.role,
-    department: dbUser.department || dbUser.position || (dbUser.role === 'System Admin' ? 'System Administration' : 'Administration'),
-    company_name: dbUser.company_name || (dbUser.role === 'System Admin' ? 'Purple Here Technologies Sdn Bhd' : ''),
-    joinDate: dbUser.createdAt || new Date().toISOString(),
-    lastLogin: new Date().toISOString(), // Always show current time since we don't track last_login
-    schedule: {
-      monday: { active: true, start: '09:00', end: '17:00' },
-      tuesday: { active: true, start: '09:00', end: '17:00' },
-      wednesday: { active: true, start: '09:00', end: '17:00' },
-      thursday: { active: true, start: '09:00', end: '17:00' },
-      friday: { active: true, start: '09:00', end: '17:00' },
-      saturday: { active: false, start: '09:00', end: '17:00' },
-      sunday: { active: false, start: '09:00', end: '17:00' }
-    },
-    totalShifts: 0,
-    totalSales: 0,
-    performance: {
-      efficiency: 100,
-      customerRating: 5.0,
-      ordersProcessed: 0
-    }
-  } : null, [dbUser]);
+  const currentUser = useMemo(() => {
+    const user = dbUser || authUser;
+    if (!user) return null;
+
+    return {
+      id: user.id,
+      name: dbUser?.full_name || dbUser?.name || authUser?.name || authUser?.full_name || 'Unknown',
+      email: user.email,
+      phone: user.phone || '',
+      username: dbUser?.username || user.email,
+      role: user.role,
+      department: dbUser?.department || dbUser?.position || (user.role === 'System Admin' ? 'System Administration' : 'Administration'),
+      company_name: dbUser?.company_name || (user.role === 'System Admin' ? 'Purple Here Technologies Sdn Bhd' : ''),
+      joinDate: dbUser?.createdAt || new Date().toISOString(),
+      lastLogin: new Date().toISOString(),
+      schedule: {
+        monday: { active: true, start: '09:00', end: '17:00' },
+        tuesday: { active: true, start: '09:00', end: '17:00' },
+        wednesday: { active: true, start: '09:00', end: '17:00' },
+        thursday: { active: true, start: '09:00', end: '17:00' },
+        friday: { active: true, start: '09:00', end: '17:00' },
+        saturday: { active: false, start: '09:00', end: '17:00' },
+        sunday: { active: false, start: '09:00', end: '17:00' }
+      },
+      totalShifts: 0,
+      totalSales: 0,
+      performance: {
+        efficiency: 100,
+        customerRating: 5.0,
+        ordersProcessed: 0
+      }
+    };
+  }, [dbUser, authUser]);
 
   // Debug logging
   useEffect(() => {

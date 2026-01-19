@@ -8,7 +8,7 @@
 ## 현재 작업 상태
 
 **마지막 업데이트:** 2026-01-19
-**작업 상태:** Invoice 상세보기 회사정보/은행정보 표시 기능 완료
+**작업 상태:** Payment Model 3가지 타입 및 역할별 인보이스 API 수정 완료
 
 ---
 
@@ -76,6 +76,18 @@
 - **invoiceService.ts**: CompanyInfo 변환 함수 및 issuerCompany/payerCompany 지원 추가
 - **Invoice/types.ts**: CompanyInfo 인터페이스 추가
 - **InvoiceDetailModal.tsx**: 통합 인보이스 상세 모달 컴포넌트 생성
+
+#### Phase 8: Payment Model 3가지 타입 및 역할별 인보이스 수정 (2026-01-19)
+- **Payment Model 타입 수정**: `'restaurant' | 'brand_manager' | 'foodcourt_manager'`
+  - Restaurant Admin 결제 = 'restaurant'
+  - Brand General/Manager 결제 = 'brand_manager'
+  - Foodcourt General/Manager 결제 = 'foodcourt_manager'
+- **Admin/RestaurantsPage.tsx**: Payment Model 드롭다운 3가지 옵션으로 수정
+- **invoices.js /to-pay API 수정**:
+  - Brand General/Manager: 직접 발행된 인보이스 + brand_manager 레스토랑 인보이스
+  - Foodcourt General/Manager: 직접 발행된 인보이스 + foodcourt_manager 레스토랑 인보이스
+  - 직접 manager에게 발행된 인보이스 (payer_type: 'manager') 포함
+- **Profile 페이지 수정**: dbUser가 없을 때 authUser 폴백 처리
 
 ### 다음 작업 (필요시)
 
