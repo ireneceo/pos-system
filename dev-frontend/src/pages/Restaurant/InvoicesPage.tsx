@@ -515,28 +515,42 @@ const RestaurantInvoicesPage: React.FC = () => {
       // Generate invoice HTML
       const invoiceHTML = generateInvoiceHTML(invoice, companySettings);
 
-      // Create a hidden container to render HTML for PDF generation
-      const container = document.createElement('div');
-      container.style.position = 'absolute';
-      container.style.left = '-9999px';
-      container.style.top = '0';
-      container.style.width = '800px';
-      container.innerHTML = invoiceHTML;
-      document.body.appendChild(container);
+      // Create iframe for PDF generation (prevents layout shifts)
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.left = '-10000px';
+      iframe.style.top = '-10000px';
+      iframe.style.width = '800px';
+      iframe.style.height = '1200px';
+      iframe.style.visibility = 'hidden';
+      iframe.style.pointerEvents = 'none';
+      document.body.appendChild(iframe);
+
+      // Write HTML to iframe
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!iframeDoc) {
+        document.body.removeChild(iframe);
+        throw new Error('Could not access iframe document');
+      }
+      iframeDoc.open();
+      iframeDoc.write(invoiceHTML);
+      iframeDoc.close();
 
       // Wait for content to render
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 150));
 
-      // Convert HTML to canvas
-      const canvas = await html2canvas(container, {
+      // Convert iframe body to canvas
+      const canvas = await html2canvas(iframeDoc.body, {
         scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        windowWidth: 800,
+        windowHeight: 1200
       });
 
-      // Remove the container
-      document.body.removeChild(container);
+      // Remove the iframe
+      document.body.removeChild(iframe);
 
       // Create PDF from canvas
       const imgData = canvas.toDataURL('image/png');

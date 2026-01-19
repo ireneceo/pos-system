@@ -13,6 +13,7 @@ const PlanTemplate = require('../models/PlanTemplate');
 const Brand = require('../models/Brand');
 const Foodcourt = require('../models/Foodcourt');
 const { Op } = require('sequelize');
+const invoiceScheduler = require('../services/invoiceScheduler');
 
 const PAYMENT_SETTINGS_KEY = 'payment_settings';
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
@@ -1667,6 +1668,44 @@ router.post('/:id/send-email', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error sending invoice email:', error);
     res.status(500).json({ error: 'Failed to send invoice email' });
+  }
+});
+
+// Generate missing subscription invoices for a restaurant (backfill)
+router.post('/generate-missing/:restaurantId', authenticateToken, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const { fromDate } = req.body;
+
+    console.log(`📊 Generating missing invoices for restaurant ${restaurantId}...`);
+
+    const result = await invoiceScheduler.generateMissingInvoices(restaurantId, fromDate);
+
+    if (result.success) {
+      res.json({
+        success: true,
+        message: `Generated ${result.generated.length} missing invoices`,
+        generated: result.generated
+      });
+    } else {
+      res.status(400).json({ error: result.error });
+    }
+
+  } catch (error) {
+    console.error('Error generating missing invoices:', error);
+    res.status(500).json({ error: 'Failed to generate missing invoices' });
+  }
+});
+
+// Trigger daily invoice generation manually (for testing)
+router.post('/trigger-daily-generation', authenticateToken, async (req, res) => {
+  try {
+    console.log('📊 Manually triggering daily invoice generation...');
+    await invoiceScheduler.generateSubscriptionInvoices();
+    res.json({ success: true, message: 'Daily invoice generation triggered' });
+  } catch (error) {
+    console.error('Error triggering daily generation:', error);
+    res.status(500).json({ error: 'Failed to trigger daily generation' });
   }
 });
 

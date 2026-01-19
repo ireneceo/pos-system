@@ -262,6 +262,29 @@ const IconSymbol = styled.span`
   line-height: 1;
 `;
 
+const TabContainer = styled.div`
+  display: flex;
+  gap: 0;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #E6EBF1;
+`;
+
+const Tab = styled.button<{ active?: boolean }>`
+  padding: 12px 24px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid ${props => props.active ? '#635BFF' : 'transparent'};
+  color: ${props => props.active ? '#635BFF' : '#6B7280'};
+  font-weight: ${props => props.active ? '600' : '500'};
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    color: #635BFF;
+  }
+`;
+
 const Modal = styled.div`
   position: fixed;
   top: 0;
@@ -497,6 +520,7 @@ const InvoicesPage: React.FC = () => {
   const [emailInvoice, setEmailInvoice] = useState<Invoice | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [activeTab, setActiveTab] = useState<'invoices' | 'categories'>('invoices');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [editInvoice, setEditInvoice] = useState<any>(null);
   const [editSearchQuery, setEditSearchQuery] = useState('');
@@ -1219,28 +1243,42 @@ const InvoicesPage: React.FC = () => {
     try {
       const invoiceHTML = generateInvoiceHTML(invoice);
 
-      // Create a hidden container to render HTML for PDF generation
-      const container = document.createElement('div');
-      container.style.position = 'absolute';
-      container.style.left = '-9999px';
-      container.style.top = '0';
-      container.style.width = '800px';
-      container.innerHTML = invoiceHTML;
-      document.body.appendChild(container);
+      // Create iframe for PDF generation (prevents layout shifts)
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.left = '-10000px';
+      iframe.style.top = '-10000px';
+      iframe.style.width = '800px';
+      iframe.style.height = '1200px';
+      iframe.style.visibility = 'hidden';
+      iframe.style.pointerEvents = 'none';
+      document.body.appendChild(iframe);
+
+      // Write HTML to iframe
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!iframeDoc) {
+        document.body.removeChild(iframe);
+        throw new Error('Could not access iframe document');
+      }
+      iframeDoc.open();
+      iframeDoc.write(invoiceHTML);
+      iframeDoc.close();
 
       // Wait for content to render
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 150));
 
-      // Convert HTML to canvas
-      const canvas = await html2canvas(container, {
+      // Convert iframe body to canvas
+      const canvas = await html2canvas(iframeDoc.body, {
         scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        windowWidth: 800,
+        windowHeight: 1200
       });
 
-      // Remove the container
-      document.body.removeChild(container);
+      // Remove the iframe
+      document.body.removeChild(iframe);
 
       // Create PDF from canvas
       const imgData = canvas.toDataURL('image/png');
@@ -1887,12 +1925,20 @@ const InvoicesPage: React.FC = () => {
         <Header>
           <Title>Invoices</Title>
           <ActionSection>
-            <Button variant="secondary" onClick={handleExportInvoices}>Export</Button>
-            <Button variant="secondary" onClick={handleGenerateSubscriptionInvoices}>Generate Subscription Invoices</Button>
-            <Button variant="primary" onClick={handleCreateInvoice}>Create Invoice</Button>
           </ActionSection>
         </Header>
         <Content>
+
+        <TabContainer>
+          <Tab active={activeTab === 'invoices'} onClick={() => setActiveTab('invoices')}>Invoices</Tab>
+          <Tab active={activeTab === 'categories'} onClick={() => setActiveTab('categories')}>Invoice Categories</Tab>
+        </TabContainer>
+
+        {activeTab === 'invoices' && (
+          <>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+            <Button variant="primary" onClick={handleCreateInvoice}>Create Invoice</Button>
+          </div>
 
         <StatsGrid>
           <StatCard color="#059669">
@@ -1957,7 +2003,7 @@ const InvoicesPage: React.FC = () => {
         </FilterBar>
 
         <Table>
-          <InvoiceTableHeader columns="1.8fr 1.5fr 1.5fr 1fr 1fr 0.8fr 0.8fr 0.8fr 160px">
+          <InvoiceTableHeader columns="1.6fr 1.3fr 1.2fr 0.9fr 0.9fr 0.7fr 0.8fr 0.8fr minmax(180px, 220px)">
             <span>Invoice</span>
             <span>Customer</span>
             <span>Period</span>
@@ -1970,7 +2016,7 @@ const InvoicesPage: React.FC = () => {
           </InvoiceTableHeader>
 
           {filteredInvoices.map(invoice => (
-            <InvoiceTableRow columns="1.8fr 1.5fr 1.5fr 1fr 1fr 0.8fr 0.8fr 0.8fr 160px" key={invoice.id}>
+            <InvoiceTableRow columns="1.6fr 1.3fr 1.2fr 0.9fr 0.9fr 0.7fr 0.8fr 0.8fr minmax(180px, 220px)" key={invoice.id}>
               <MobileGrid>
                 <MobileValue>
                   <MobileLabel>Invoice</MobileLabel>
@@ -2166,6 +2212,44 @@ const InvoicesPage: React.FC = () => {
             </EmptyState>
           )}
         </Table>
+          </>
+        )}
+
+        {activeTab === 'categories' && (
+          <div style={{ padding: '40px', textAlign: 'center', background: '#F8FAFC', borderRadius: '12px' }}>
+            <h3 style={{ marginBottom: '16px', color: '#0A2540' }}>Invoice Categories</h3>
+            <p style={{ color: '#6B7280', marginBottom: '24px' }}>
+              Manage invoice categories that can be used when creating invoices.
+            </p>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+              gap: '16px',
+              maxWidth: '800px',
+              margin: '0 auto'
+            }}>
+              <div style={{ padding: '16px', background: 'white', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
+                <div style={{ fontWeight: '600', color: '#0A2540' }}>Subscription</div>
+                <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Monthly/Annual plans</div>
+              </div>
+              <div style={{ padding: '16px', background: 'white', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
+                <div style={{ fontWeight: '600', color: '#0A2540' }}>Service</div>
+                <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Professional services</div>
+              </div>
+              <div style={{ padding: '16px', background: 'white', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
+                <div style={{ fontWeight: '600', color: '#0A2540' }}>Consulting</div>
+                <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Consulting fees</div>
+              </div>
+              <div style={{ padding: '16px', background: 'white', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
+                <div style={{ fontWeight: '600', color: '#0A2540' }}>Others</div>
+                <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Custom invoices</div>
+              </div>
+            </div>
+            <p style={{ color: '#9CA3AF', fontSize: '13px', marginTop: '24px' }}>
+              Custom categories can be added in future updates.
+            </p>
+          </div>
+        )}
 
         {/* Create Invoice Modal */}
         {showCreateInvoiceModal && (
@@ -3134,11 +3218,18 @@ const InvoicesPage: React.FC = () => {
                     onChange={(e) => setEmailRecipient(e.target.value)}
                     placeholder="Enter recipient email address"
                     required
+                    style={{ maxWidth: '100%' }}
                   />
                   <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
-                    {emailInvoice.payerType === 'restaurant' ? 'Restaurant' :
-                     emailInvoice.payerType === 'foodcourt_manager' ? 'Foodcourt Manager' :
-                     emailInvoice.payerType === 'brand_manager' ? 'Brand Manager' : 'Customer'} email
+                    {emailRecipient ? (
+                      <>Default email for {emailInvoice.payerType === 'restaurant' ? 'Restaurant' :
+                       emailInvoice.payerType === 'foodcourt_manager' ? 'Foodcourt Manager' :
+                       emailInvoice.payerType === 'brand_manager' ? 'Brand Manager' : 'Customer'}</>
+                    ) : (
+                      <>Enter the {emailInvoice.payerType === 'restaurant' ? 'restaurant' :
+                       emailInvoice.payerType === 'foodcourt_manager' ? 'foodcourt manager' :
+                       emailInvoice.payerType === 'brand_manager' ? 'brand manager' : 'customer'} email address</>
+                    )}
                   </div>
                 </FormGroup>
 
@@ -3150,7 +3241,7 @@ const InvoicesPage: React.FC = () => {
                   marginTop: '16px'
                 }}>
                   <p style={{ margin: 0, fontSize: '13px', color: '#0369A1' }}>
-                    The invoice PDF will be attached to the email automatically.
+                    The invoice will be sent to the recipient email address using the system email settings.
                   </p>
                 </div>
               </ModalBody>

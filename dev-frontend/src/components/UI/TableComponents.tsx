@@ -112,19 +112,21 @@ export const MobileGrid = styled.div`
 // 액션 버튼 그룹
 export const ActionButtons = styled.div`
   display: flex;
-  gap: 6px;
+  gap: 5px;
   flex-wrap: wrap;
   justify-content: flex-end;
-  align-items: center;
-  max-width: 280px;
+  align-items: flex-start;
+  align-content: flex-start;
+  max-width: 220px;
 
   @media (max-width: 1200px) {
-    max-width: 240px;
+    max-width: 200px;
+    gap: 4px;
   }
 
   @media (max-width: 1024px) {
     gap: 4px;
-    max-width: 220px;
+    max-width: 180px;
   }
 
   @media (max-width: 768px) {
