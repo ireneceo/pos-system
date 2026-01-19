@@ -249,7 +249,7 @@ router.get('/', authenticateToken, async (req, res) => {
         as: 'items',
         attributes: ['description', 'calculated_amount', 'tax_amount', 'total_amount']
       }],
-      order: [['createdAt', 'DESC']]
+      order: [['due_date', 'DESC'], ['id', 'DESC']]
     });
 
     // Get all unique payer IDs to fetch manager data

@@ -432,6 +432,7 @@ const SummaryRow = styled.div<{ highlight?: boolean }>`
 `;
 
 // 페이지별 반응형 테이블 헤더 (Invoices 전용)
+// Header columns: Invoice(1), Customer(2), Plan/Item(3), Due Date(4), Status(5), Amount(6), Total(7), Actions(8)
 const InvoiceTableHeader = styled(CommonTableHeader)`
   @media (max-width: 1400px) {
     & > span:nth-child(3),
@@ -450,18 +451,19 @@ const InvoiceTableHeader = styled(CommonTableHeader)`
 `;
 
 // 페이지별 반응형 테이블 행 (Invoices 전용)
+// MobileGrid uses display: contents, so we need to target MobileValue children inside it
 const InvoiceTableRow = styled(CommonTableRow)`
   @media (max-width: 1400px) {
-    & > div:nth-child(3),
-    & > div:nth-child(4) {
+    & > div > div:nth-child(3),
+    & > div > div:nth-child(4) {
       display: none;
     }
   }
 
   @media (max-width: 1024px) {
-    & > div:nth-child(5),
-    & > div:nth-child(6),
-    & > div:nth-child(7) {
+    & > div > div:nth-child(5),
+    & > div > div:nth-child(6),
+    & > div > div:nth-child(7) {
       display: none;
     }
   }
@@ -520,13 +522,18 @@ const InvoicesPage: React.FC = () => {
   // Fetch invoices from API
   const fetchInvoices = async () => {
     try {
-      const response = await fetch('/api/invoices');
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/invoices', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       if (response.ok) {
         const invoicesData = await response.json();
         console.log('Fetched invoices:', invoicesData);
         setInvoices(invoicesData);
       } else {
-        console.error('Failed to fetch invoices');
+        console.error('Failed to fetch invoices:', response.status);
         setInvoices([]);
       }
     } catch (error) {
@@ -1144,6 +1151,11 @@ const InvoicesPage: React.FC = () => {
     }
 
     return matchesSearch && matchesStatus && matchesType && matchesMonth;
+  }).sort((a, b) => {
+    // Sort by issue date descending (newest first)
+    const dateA = new Date(a.issueDate).getTime();
+    const dateB = new Date(b.issueDate).getTime();
+    return dateB - dateA;
   });
 
   const totalInvoices = invoices.length;
@@ -1231,10 +1243,12 @@ const InvoicesPage: React.FC = () => {
 
   const handleGenerateSubscriptionInvoices = async () => {
     try {
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/invoices/generate-for-subscriptions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         }
       });
 
@@ -1310,10 +1324,12 @@ const InvoicesPage: React.FC = () => {
     if (!selectedInvoice) return;
 
     try {
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/invoices/${selectedInvoice.id}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           status: 'pending_payment'
@@ -1339,10 +1355,12 @@ const InvoicesPage: React.FC = () => {
     if (!selectedInvoice || !editInvoice) return;
 
     try {
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/invoices/${selectedInvoice.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           amount: parseFloat(editInvoice.amount),
@@ -1475,10 +1493,12 @@ const InvoicesPage: React.FC = () => {
         total_amount: total
       }];
 
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/invoices', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           invoice_data: invoiceData,
@@ -1510,10 +1530,12 @@ const InvoicesPage: React.FC = () => {
     if (!selectedInvoice) return;
 
     try {
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/invoices/${selectedInvoice.id}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           status: 'paid',
@@ -1558,10 +1580,12 @@ const InvoicesPage: React.FC = () => {
     if (!selectedInvoice) return;
 
     try {
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/invoices/${selectedInvoice.id}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           status: 'cancelled'
@@ -1587,10 +1611,12 @@ const InvoicesPage: React.FC = () => {
     if (!selectedInvoice) return;
 
     try {
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/invoices/${selectedInvoice.id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         }
       });
 
