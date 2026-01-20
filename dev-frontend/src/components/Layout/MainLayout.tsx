@@ -1128,17 +1128,21 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>◐</NavIcon>
                   Company Information
                 </NavItem>
-                <NavItem to="/pos/manager/invoices" active={isActive('/pos/manager/invoices')} onClick={closeSidebar}>
+                <NavItem to="/pos/foodcourt/invoices" active={isActive('/pos/foodcourt/invoices')} onClick={closeSidebar}>
                   <NavIcon>▦</NavIcon>
                   Invoices
                 </NavItem>
-                <NavItem to="/pos/manager/subscriptions" active={isActive('/pos/manager/subscriptions')} onClick={closeSidebar}>
+                <NavItem to="/pos/foodcourt/plans" active={isActive('/pos/foodcourt/plans')} onClick={closeSidebar}>
                   <NavIcon>◈</NavIcon>
-                  Subscriptions
+                  Subscription Plans
                 </NavItem>
-                <NavItem to="/pos/manager/plans" active={isActive('/pos/manager/plans')} onClick={closeSidebar}>
+                <NavItem to="/pos/foodcourt/payment-settings" active={isActive('/pos/foodcourt/payment-settings')} onClick={closeSidebar}>
+                  <NavIcon>$</NavIcon>
+                  Payment Settings
+                </NavItem>
+                <NavItem to="/pos/manager/subscriptions" active={isActive('/pos/manager/subscriptions')} onClick={closeSidebar}>
                   <NavIcon>⊡</NavIcon>
-                  Plans
+                  Subscriptions
                 </NavItem>
               </>
             )}
@@ -1242,17 +1246,21 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>◐</NavIcon>
                   Company Information
                 </NavItem>
-                <NavItem to="/pos/manager/invoices" active={isActive('/pos/manager/invoices')} onClick={closeSidebar}>
+                <NavItem to="/pos/brand/invoices" active={isActive('/pos/brand/invoices')} onClick={closeSidebar}>
                   <NavIcon>▦</NavIcon>
                   Invoices
                 </NavItem>
-                <NavItem to="/pos/manager/subscriptions" active={isActive('/pos/manager/subscriptions')} onClick={closeSidebar}>
+                <NavItem to="/pos/brand/plans" active={isActive('/pos/brand/plans')} onClick={closeSidebar}>
                   <NavIcon>◈</NavIcon>
-                  Subscriptions
+                  Subscription Plans
                 </NavItem>
-                <NavItem to="/pos/manager/plans" active={isActive('/pos/manager/plans')} onClick={closeSidebar}>
+                <NavItem to="/pos/brand/payment-settings" active={isActive('/pos/brand/payment-settings')} onClick={closeSidebar}>
+                  <NavIcon>$</NavIcon>
+                  Payment Settings
+                </NavItem>
+                <NavItem to="/pos/manager/subscriptions" active={isActive('/pos/manager/subscriptions')} onClick={closeSidebar}>
                   <NavIcon>⊡</NavIcon>
-                  Plans
+                  Subscriptions
                 </NavItem>
               </>
             )}
