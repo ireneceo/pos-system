@@ -1001,27 +1001,43 @@ const InvoicesPage: React.FC = () => {
         'Content-Type': 'application/json'
       };
 
-      // Fetch all manager types with single request (backend handles Manager -> all 4 roles)
-      const response = await fetch('/api/users?role=Manager', { headers });
+      // Fetch only General roles (Brand General, Foodcourt General)
+      // Managers (Brand Manager, Foodcourt Manager) are support roles and don't receive invoices
+      const [brandGeneralRes, foodcourtGeneralRes] = await Promise.all([
+        fetch('/api/users?role=Brand General', { headers }),
+        fetch('/api/users?role=Foodcourt General', { headers })
+      ]);
 
-      if (response.ok) {
-        const result = await response.json();
+      let allManagers: Manager[] = [];
+
+      if (brandGeneralRes.ok) {
+        const result = await brandGeneralRes.json();
         const data = result.success ? result.data : result;
-
         const transformed = data.map((user: any) => ({
           id: user.id.toString(),
           fullName: user.full_name || user.username,
           email: user.email,
           role: user.role,
-          companyName: user.company_name || user.role || 'Manager'
+          companyName: user.company_name || 'Brand General'
         }));
-
-        console.log('Fetched managers:', transformed.length);
-        setManagers(transformed);
-      } else {
-        console.error('Failed to fetch managers:', response.status);
-        setManagers([]);
+        allManagers = [...allManagers, ...transformed];
       }
+
+      if (foodcourtGeneralRes.ok) {
+        const result = await foodcourtGeneralRes.json();
+        const data = result.success ? result.data : result;
+        const transformed = data.map((user: any) => ({
+          id: user.id.toString(),
+          fullName: user.full_name || user.username,
+          email: user.email,
+          role: user.role,
+          companyName: user.company_name || 'Foodcourt General'
+        }));
+        allManagers = [...allManagers, ...transformed];
+      }
+
+      console.log('Fetched managers (General only):', allManagers.length);
+      setManagers(allManagers);
     } catch (error) {
       console.error('Error fetching managers:', error);
       setManagers([]);
