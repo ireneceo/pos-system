@@ -1001,52 +1001,27 @@ const InvoicesPage: React.FC = () => {
         'Content-Type': 'application/json'
       };
 
-      // Fetch all manager types: Manager, Foodcourt_Manager, Brand_Manager
-      const [managerRes, foodcourtRes, brandRes] = await Promise.all([
-        fetch('/api/users?role=Manager', { headers }),
-        fetch('/api/users?role=Foodcourt_Manager', { headers }),
-        fetch('/api/users?role=Brand_Manager', { headers })
-      ]);
+      // Fetch all manager types with single request (backend handles Manager -> all 4 roles)
+      const response = await fetch('/api/users?role=Manager', { headers });
 
-      let allManagers: Manager[] = [];
+      if (response.ok) {
+        const result = await response.json();
+        const data = result.success ? result.data : result;
 
-      if (managerRes.ok) {
-        const data = await managerRes.json();
         const transformed = data.map((user: any) => ({
           id: user.id.toString(),
           fullName: user.full_name || user.username,
           email: user.email,
           role: user.role,
-          companyName: user.company_name || 'Restaurant Manager'
+          companyName: user.company_name || user.role || 'Manager'
         }));
-        allManagers = [...allManagers, ...transformed];
-      }
 
-      if (foodcourtRes.ok) {
-        const data = await foodcourtRes.json();
-        const transformed = data.map((user: any) => ({
-          id: user.id.toString(),
-          fullName: user.full_name || user.username,
-          email: user.email,
-          role: user.role,
-          companyName: user.company_name || 'Foodcourt Manager'
-        }));
-        allManagers = [...allManagers, ...transformed];
+        console.log('Fetched managers:', transformed.length);
+        setManagers(transformed);
+      } else {
+        console.error('Failed to fetch managers:', response.status);
+        setManagers([]);
       }
-
-      if (brandRes.ok) {
-        const data = await brandRes.json();
-        const transformed = data.map((user: any) => ({
-          id: user.id.toString(),
-          fullName: user.full_name || user.username,
-          email: user.email,
-          role: user.role,
-          companyName: user.company_name || 'Brand Manager'
-        }));
-        allManagers = [...allManagers, ...transformed];
-      }
-
-      setManagers(allManagers);
     } catch (error) {
       console.error('Error fetching managers:', error);
       setManagers([]);

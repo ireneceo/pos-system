@@ -258,7 +258,55 @@ router.get('/invoice-settings', async (req, res) => {
 // Get all invoices for admin (system-wide overview)
 router.get('/', authenticateToken, async (req, res) => {
   try {
+    const { role, id: userId, brandId, foodcourtId } = req.user;
+
+    // Build where clause based on role
+    let whereClause = {};
+
+    if (role === 'System Admin') {
+      // System Admin sees all invoices
+      whereClause = {};
+    } else if (role === 'Brand General' || role === 'Brand Manager') {
+      // Brand General/Manager: only see invoices they issued (issuer_type = 'brand')
+      const userBrandId = brandId || req.user.brand_id;
+      if (userBrandId) {
+        whereClause = {
+          issuer_type: 'brand',
+          issuer_id: userBrandId
+        };
+      } else {
+        // No brand associated, return empty
+        return res.json([]);
+      }
+    } else if (role === 'Foodcourt General' || role === 'Foodcourt Manager') {
+      // Foodcourt General/Manager: only see invoices they issued (issuer_type = 'foodcourt')
+      const userFoodcourtId = foodcourtId || req.user.foodcourt_id;
+      if (userFoodcourtId) {
+        whereClause = {
+          issuer_type: 'foodcourt',
+          issuer_id: userFoodcourtId
+        };
+      } else {
+        // No foodcourt associated, return empty
+        return res.json([]);
+      }
+    } else if (role === 'Restaurant Admin') {
+      // Restaurant Admin: only see invoices for their restaurant
+      const userRestaurantId = req.user.restaurantId || req.user.restaurant_id;
+      if (userRestaurantId) {
+        whereClause = { restaurant_id: userRestaurantId };
+      } else {
+        return res.json([]);
+      }
+    } else {
+      // Other roles: no access
+      return res.json([]);
+    }
+
+    console.log(`📋 GET /api/invoices - User: ${req.user.email} (${role}), Where:`, whereClause);
+
     const invoices = await Invoice.findAll({
+      where: whereClause,
       include: [{
         model: Restaurant,
         as: 'restaurant',
