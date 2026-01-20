@@ -879,8 +879,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </>
             )}
 
-            {/* Foodcourt General Menu */}
-            {user?.role === 'Foodcourt General' && (
+            {/* Foodcourt General/Manager Menu */}
+            {(user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager') && (
               <>
                 <NavItem to="/pos/foodcourt/general/dashboard" active={isActive('/pos/foodcourt/general/dashboard')} onClick={closeSidebar}>
                   <NavIcon>■</NavIcon>
@@ -889,8 +889,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </>
             )}
 
-            {/* Foodcourt General - Management Section */}
-            {user?.role === 'Foodcourt General' && (
+            {/* Foodcourt General/Manager - Management Section */}
+            {(user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager') && (
               <>
                 <NavTitle>Management</NavTitle>
                 <NavItem to="/pos/foodcourt/general/management" active={isActive('/pos/foodcourt/general/management')} onClick={closeSidebar}>
@@ -916,8 +916,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </>
             )}
 
-            {/* Foodcourt General - Analytics Section */}
-            {user?.role === 'Foodcourt General' && (
+            {/* Foodcourt General/Manager - Analytics Section */}
+            {(user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager') && (
               <>
                 <NavTitle>Analytics</NavTitle>
                 <NavItem to="/pos/foodcourt/general/stats" active={isActive('/pos/foodcourt/general/stats')} onClick={closeSidebar}>
@@ -935,8 +935,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </>
             )}
 
-            {/* Foodcourt General - Administration Section */}
-            {user?.role === 'Foodcourt General' && (
+            {/* Foodcourt General/Manager - Administration Section */}
+            {(user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager') && (
               <>
                 <NavTitle>Administration</NavTitle>
                 <NavItem to="/pos/foodcourt/company-info" active={isActive('/pos/foodcourt/company-info')} onClick={closeSidebar}>
@@ -962,8 +962,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </>
             )}
 
-            {/* Foodcourt General - Support Section */}
-            {user?.role === 'Foodcourt General' && (
+            {/* Foodcourt General/Manager - Support Section */}
+            {(user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager') && (
               <>
                 <NavTitle>Support</NavTitle>
                 <NavItem to="/pos/manager/support" active={isActive('/pos/manager/support')} onClick={closeSidebar}>
@@ -977,8 +977,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </>
             )}
 
-            {/* Brand General Menu */}
-            {user?.role === 'Brand General' && (
+            {/* Brand General/Manager Menu */}
+            {(user?.role === 'Brand General' || user?.role === 'Brand Manager') && (
               <>
                 <NavItem to="/pos/brand/general/dashboard" active={isActive('/pos/brand/general/dashboard')} onClick={closeSidebar}>
                   <NavIcon>■</NavIcon>
@@ -987,8 +987,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </>
             )}
 
-            {/* Brand General - Management Section */}
-            {user?.role === 'Brand General' && (
+            {/* Brand General/Manager - Management Section */}
+            {(user?.role === 'Brand General' || user?.role === 'Brand Manager') && (
               <>
                 <NavTitle>Management</NavTitle>
                 <NavItem to="/pos/brand/general/management" active={isActive('/pos/brand/general/management')} onClick={closeSidebar}>
@@ -1022,8 +1022,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </>
             )}
 
-            {/* Brand General - Analytics Section */}
-            {user?.role === 'Brand General' && (
+            {/* Brand General/Manager - Analytics Section */}
+            {(user?.role === 'Brand General' || user?.role === 'Brand Manager') && (
               <>
                 <NavTitle>Analytics</NavTitle>
                 <NavItem to="/pos/brand/general/performance" active={isActive('/pos/brand/general/performance')} onClick={closeSidebar}>
@@ -1037,8 +1037,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </>
             )}
 
-            {/* Brand General - Administration Section */}
-            {user?.role === 'Brand General' && (
+            {/* Brand General/Manager - Administration Section */}
+            {(user?.role === 'Brand General' || user?.role === 'Brand Manager') && (
               <>
                 <NavTitle>Administration</NavTitle>
                 <NavItem to="/pos/brand/company-info" active={isActive('/pos/brand/company-info')} onClick={closeSidebar}>
@@ -1166,125 +1166,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </>
             )}
 
-            {/* Brand Manager Menu */}
-            {user?.role === 'Brand Manager' && (
-              <>
-                <NavItem to="/pos/brand/dashboard" active={isActive('/pos/brand/dashboard')} onClick={closeSidebar}>
-                  <NavIcon>■</NavIcon>
-                  Dashboard
-                </NavItem>
-              </>
-            )}
-
-            {/* Brand Manager - Management Section */}
-            {user?.role === 'Brand Manager' && (
-              <>
-                <NavTitle>Management</NavTitle>
-                <NavItem to="/pos/manager/restaurants" active={isActive('/pos/manager/restaurants')} onClick={closeSidebar}>
-                  <NavIcon>◐</NavIcon>
-                  Restaurants
-                </NavItem>
-                <NavItem to="/pos/brand-products" active={isActive('/pos/brand-products')} onClick={closeSidebar}>
-                  <NavIcon>◇</NavIcon>
-                  Products
-                </NavItem>
-                <NavItem to="/pos/recipes" active={isActive('/pos/recipes')} onClick={closeSidebar}>
-                  <NavIcon>◈</NavIcon>
-                  Recipes
-                </NavItem>
-                <NavItem to="/pos/brand-product-recipes" active={isActive('/pos/brand-product-recipes')} onClick={closeSidebar}>
-                  <NavIcon>⊕</NavIcon>
-                  Product Recipes
-                </NavItem>
-                <NavItem to="/pos/suppliers" active={isActive('/pos/suppliers')} onClick={closeSidebar}>
-                  <NavIcon>◇</NavIcon>
-                  Suppliers
-                </NavItem>
-                <NavItem to="/pos/brand-inventory" active={isActive('/pos/brand-inventory')} onClick={closeSidebar}>
-                  <NavIcon>▤</NavIcon>
-                  Inventory
-                </NavItem>
-                <NavItem to="/pos/manager/staff" active={isActive('/pos/manager/staff')} onClick={closeSidebar}>
-                  <NavIcon>◆</NavIcon>
-                  Staff
-                </NavItem>
-                <NavItem to="/pos/manager/customers" active={isActive('/pos/manager/customers')} onClick={closeSidebar}>
-                  <NavIcon>○</NavIcon>
-                  Customers
-                </NavItem>
-                <NavItem to="/pos/manager/coupons" active={isActive('/pos/manager/coupons')} onClick={closeSidebar}>
-                  <NavIcon>%</NavIcon>
-                  Coupons
-                </NavItem>
-              </>
-            )}
-
-            {/* Brand Manager - Analytics Section */}
-            {user?.role === 'Brand Manager' && (
-              <>
-                <NavTitle>Analytics</NavTitle>
-                <NavItem to="/pos/brand/reports" active={isActive('/pos/brand/reports')} onClick={closeSidebar}>
-                  <NavIcon>▲</NavIcon>
-                  Brand Reports
-                </NavItem>
-                <NavItem to="/pos/manager/sales" active={isActive('/pos/manager/sales')} onClick={closeSidebar}>
-                  <NavIcon>$</NavIcon>
-                  Sales
-                </NavItem>
-                <NavItem to="/pos/manager/reports" active={isActive('/pos/manager/reports')} onClick={closeSidebar}>
-                  <NavIcon>≡</NavIcon>
-                  Reports
-                </NavItem>
-              </>
-            )}
-
-            {/* Brand Manager - Administration Section */}
-            {user?.role === 'Brand Manager' && (
-              <>
-                <NavTitle>Administration</NavTitle>
-                <NavItem to="/pos/brand/company-info" active={isActive('/pos/brand/company-info')} onClick={closeSidebar}>
-                  <NavIcon>◐</NavIcon>
-                  Company Information
-                </NavItem>
-                <NavItem to="/pos/brand/invoices" active={isActive('/pos/brand/invoices')} onClick={closeSidebar}>
-                  <NavIcon>▦</NavIcon>
-                  Invoices
-                </NavItem>
-                <NavItem to="/pos/brand/plans" active={isActive('/pos/brand/plans')} onClick={closeSidebar}>
-                  <NavIcon>◈</NavIcon>
-                  Subscription Plans
-                </NavItem>
-                <NavItem to="/pos/brand/payment-settings" active={isActive('/pos/brand/payment-settings')} onClick={closeSidebar}>
-                  <NavIcon>$</NavIcon>
-                  Payment Settings
-                </NavItem>
-                <NavItem to="/pos/manager/subscriptions" active={isActive('/pos/manager/subscriptions')} onClick={closeSidebar}>
-                  <NavIcon>⊡</NavIcon>
-                  Subscriptions
-                </NavItem>
-              </>
-            )}
-
-            {/* Brand Manager - Support Section */}
-            {user?.role === 'Brand Manager' && (
-              <>
-                <NavTitle>Support</NavTitle>
-                <NavItem to="/pos/brand/franchise-support" active={isActive('/pos/brand/franchise-support')} onClick={closeSidebar}>
-                  <NavIcon>◎</NavIcon>
-                  Franchise Support
-                </NavItem>
-                <NavItem to="/pos/manager/support" active={isActive('/pos/manager/support')} onClick={closeSidebar}>
-                  <NavIcon>◎</NavIcon>
-                  Support Tickets
-                </NavItem>
-                <NavItem to="/pos/manager/operation-inquiry" active={isActive('/pos/manager/operation-inquiry')} onClick={closeSidebar}>
-                  <NavIcon>▲</NavIcon>
-                  Operation Inquiry
-                </NavItem>
-              </>
-            )}
-
-            
             {/* Restaurant Admin & Staff Common Menu */}
             {(user?.role === 'Restaurant Admin' || user?.role === 'Staff') && (
               <>
