@@ -329,7 +329,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
   // Currency settings (moved from Site Settings)
   const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
   const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>([]);
-  const [defaultCurrency, setDefaultCurrency] = useState<string>('MYR');
+  const [defaultCurrency, setDefaultCurrency] = useState<string>('USD');
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [tempSelectedCurrencies, setTempSelectedCurrencies] = useState<string[]>([]);
 

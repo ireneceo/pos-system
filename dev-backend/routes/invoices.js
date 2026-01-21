@@ -344,7 +344,7 @@ router.get('/', authenticateToken, async (req, res) => {
         // Manager pays (foodcourt or brand manager)
         const payer = payers.find(p => p.id === invoice.payer_id);
         if (payer) {
-          customerName = payer.company_name || payer.full_name || 'Unknown Manager';
+          customerName = payer.full_name || payer.company_name || 'Unknown Manager';
           customerAddress = payer.address || 'No address';
           customerCompany = payer.company_name || payer.full_name || 'Unknown Company';
         } else {
@@ -377,7 +377,7 @@ router.get('/', authenticateToken, async (req, res) => {
         tax: parseFloat(invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0),
         total: parseFloat(invoice.total_amount),
         items: invoice.items?.map(item => ({
-          description: item.description,
+          description: item.description || getCategoryDisplayName(item.item_type || invoice.invoice_category, invoice.custom_description, invoice.restaurant?.plan_type, invoice.restaurant?.billing_cycle),
           quantity: 1,
           unitPrice: parseFloat(item.calculated_amount),
           total: parseFloat(item.total_amount)
@@ -1740,27 +1740,33 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
       // Build OR condition
       let conditions = [];
 
-      // Condition 1: Direct invoices to the brand
+      // Condition 1: Direct invoices to the brand (old format)
       conditions.push({
         payer_type: 'brand',
         payer_id: brand.id
       });
 
-      // Condition 2: Invoices for brand-pay restaurants
+      // Condition 2: Direct invoices with payer_type: 'brand_manager' and payer_id is user id
+      conditions.push({
+        payer_type: 'brand_manager',
+        payer_id: req.user.id
+      });
+
+      // Condition 3: Invoices for brand-pay restaurants
       if (brandPayRestaurantIds.length > 0) {
         conditions.push({
           restaurant_id: { [Op.in]: brandPayRestaurantIds }
         });
       }
 
-      // Condition 3: Invoices directly to this user (as manager)
+      // Condition 4: Invoices directly to this user (as manager - legacy)
       conditions.push({
         payer_type: 'manager',
         payer_id: req.user.id
       });
 
       whereClause = { [Op.or]: conditions };
-      console.log(`  Brand ${brand.id}: Found ${brandPayRestaurantIds.length} brand-pay restaurants`);
+      console.log(`  Brand ${brand.id} (User ${req.user.id}): Found ${brandPayRestaurantIds.length} brand-pay restaurants`);
     }
     // Foodcourt General/Manager sees:
     // 1. Invoices directly issued to them (payer_type: 'foodcourt', payer_id: foodcourt.id)
@@ -1785,13 +1791,19 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
       // Build OR condition
       let conditions = [];
 
-      // Condition 1: Direct invoices to the foodcourt
+      // Condition 1: Direct invoices to the foodcourt (old format)
       conditions.push({
         payer_type: 'foodcourt',
         payer_id: foodcourt.id
       });
 
-      // Condition 2: Invoices for foodcourt-pay restaurants
+      // Condition 2: Direct invoices with payer_type: 'foodcourt_manager' and payer_id is user id
+      conditions.push({
+        payer_type: 'foodcourt_manager',
+        payer_id: req.user.id
+      });
+
+      // Condition 3: Invoices for foodcourt-pay restaurants
       if (foodcourtPayRestaurantIds.length > 0) {
         conditions.push({
           restaurant_id: { [Op.in]: foodcourtPayRestaurantIds }

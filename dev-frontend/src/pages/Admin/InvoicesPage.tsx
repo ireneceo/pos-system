@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { useSearchParams } from 'react-router-dom';
 import MainLayout from '../../components/Layout/MainLayout';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, getCurrencyDecimals } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
 import { BaseButton, StatusBadge as CommonStatusBadge } from '../../components/UI/CommonStyles';
 import ConfirmModal from '../../components/ConfirmModal';
@@ -1080,7 +1080,7 @@ const InvoicesPage: React.FC = () => {
           address: restaurant.address || '',
           phone: restaurant.phone || '',
           email: restaurant.email || '',
-          currency: restaurant.currency || 'MYR'
+          currency: restaurant.currency || 'USD'
         }));
         setRestaurants(transformedRestaurants);
         console.log('Transformed restaurants:', transformedRestaurants);
@@ -1201,7 +1201,7 @@ const InvoicesPage: React.FC = () => {
     setSearchQuery(type === 'manager' ? (data as Manager).fullName : (data as Restaurant).name);
 
     const token = localStorage.getItem('auth_token');
-    let currency = 'MYR'; // Default
+    let currency = 'USD'; // Default fallback if no currency configured
 
     // Auto-populate invoice data
     if (type === 'manager') {
@@ -1216,22 +1216,32 @@ const InvoicesPage: React.FC = () => {
           const userData = await userRes.json();
           const user = userData.success ? userData.data : userData;
 
-          // Get currency from brand or foodcourt
+          // Get currency from brand or foodcourt payment-settings
           if (user.brand_id) {
-            const brandRes = await fetch(`/api/brands/${user.brand_id}`, {
+            const brandRes = await fetch(`/api/brands/${user.brand_id}/payment-settings`, {
               headers: { 'Authorization': `Bearer ${token}` }
             });
             if (brandRes.ok) {
               const brandData = await brandRes.json();
-              currency = brandData.currency || 'MYR';
+              // API returns { success: true, data: { supported_currencies: [...] } }
+              const supported = brandData.data?.supported_currencies || brandData.supported_currencies;
+              if (supported && supported.length > 0) {
+                currency = supported[0];
+              }
+              console.log('Brand currency:', currency, 'from supported_currencies:', supported);
             }
           } else if (user.foodcourt_id) {
-            const foodcourtRes = await fetch(`/api/foodcourts/${user.foodcourt_id}`, {
+            const foodcourtRes = await fetch(`/api/foodcourts/${user.foodcourt_id}/payment-settings`, {
               headers: { 'Authorization': `Bearer ${token}` }
             });
             if (foodcourtRes.ok) {
               const foodcourtData = await foodcourtRes.json();
-              currency = foodcourtData.currency || 'MYR';
+              // API returns { success: true, data: { supported_currencies: [...] } }
+              const supported = foodcourtData.data?.supported_currencies || foodcourtData.supported_currencies;
+              if (supported && supported.length > 0) {
+                currency = supported[0];
+              }
+              console.log('Foodcourt currency:', currency, 'from supported_currencies:', supported);
             }
           }
         }
@@ -1259,7 +1269,7 @@ const InvoicesPage: React.FC = () => {
         });
         if (restRes.ok) {
           const restData = await restRes.json();
-          currency = restData.currency || 'MYR';
+          currency = restData.currency || 'USD';
         }
       } catch (error) {
         console.error('Error fetching restaurant currency:', error);
@@ -2079,23 +2089,34 @@ const InvoicesPage: React.FC = () => {
         customerAddress = addressParts.join('\n');
       }
 
+      // Determine payer_type based on manager's role
+      let payerType = 'restaurant';
+      if (selectedTarget.type === 'manager') {
+        const manager = selectedTarget.data as Manager;
+        // Check if manager is brand_general or foodcourt_general
+        if (manager.role === 'Brand General' || manager.role === 'Brand Manager') {
+          payerType = 'brand_manager';
+        } else if (manager.role === 'Foodcourt General' || manager.role === 'Foodcourt Manager') {
+          payerType = 'foodcourt_manager';
+        }
+      }
+
       const invoiceData = {
         restaurant_id: selectedTarget.type === 'restaurant' ? (selectedTarget.data as Restaurant).id : null,
-        manager_id: selectedTarget.type === 'manager' ? (selectedTarget.data as Manager).id : null,
-        customer_name: customerName,
-        customer_address: customerAddress,
-        company_name: companyName,
-        restaurant_name: restaurantName,
+        payer_type: payerType,
+        payer_id: selectedTarget.type === 'manager' ? (selectedTarget.data as Manager).id : null,
         type: 'manual',
         billing_period_start: billingPeriodStart.toISOString(),
         billing_period_end: billingPeriodEnd.toISOString(),
         due_date: new Date(newInvoice.dueDate).toISOString(),
         total_amount: total,
-        currency: newInvoice.currency || 'MYR',
+        currency: newInvoice.currency || 'USD',
         status: 'draft',
-        notes: description,
+        notes: `${companyName}\n${customerName}\n${customerAddress}\n\n${description}`,
         issued_by: 1, // Current admin user ID
-        issued_at: new Date().toISOString()
+        issued_at: new Date().toISOString(),
+        issuer_type: 'system_admin',
+        invoice_category: newInvoice.invoiceCategory || 'service'
       };
 
       const items = [{
@@ -2412,7 +2433,15 @@ const InvoicesPage: React.FC = () => {
                       {invoice.status === 'draft' && (
                         <>
                           <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
-                          <LocalActionButton onClick={() => handleSendInvoice(invoice)}>Send</LocalActionButton>
+                          <LocalActionButton variant="email" onClick={() => handleSendInvoice(invoice)} title="Send Invoice">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="22" y1="2" x2="11" y2="13"/>
+                              <polygon points="22,2 15,22 11,13 2,9 22,2"/>
+                            </svg>
+                          </LocalActionButton>
+                          <LocalIconButton onClick={() => handleDeleteInvoice(invoice)} title="Delete Invoice">
+                            <IconSymbol>×</IconSymbol>
+                          </LocalIconButton>
                         </>
                       )}
                       {/* 미결제 상태: 편집, 다운로드, 프린트, 이메일발송, 삭제 */}
@@ -2884,10 +2913,10 @@ const InvoicesPage: React.FC = () => {
                 </FormGroup>
                 <FormRow>
                   <FormGroup>
-                    <FormLabel>Amount ({newInvoice.currency || 'MYR'}) *</FormLabel>
+                    <FormLabel>Amount{newInvoice.currency ? ` (${newInvoice.currency})` : ''} *</FormLabel>
                     <FormInput
                       type="number"
-                      step="0.01"
+                      step={newInvoice.currency ? (getCurrencyDecimals(newInvoice.currency) === 0 ? '1' : '0.01') : '0.01'}
                       min="0"
                       value={newInvoice.amount}
                       onChange={(e) => {
@@ -2901,9 +2930,30 @@ const InvoicesPage: React.FC = () => {
                           total: total.toFixed(2)
                         });
                       }}
-                      placeholder="0.00"
+                      onBlur={(e) => {
+                        if (e.target.value && newInvoice.currency) {
+                          const decimals = getCurrencyDecimals(newInvoice.currency);
+                          const amount = parseFloat(e.target.value) || 0;
+                          const formattedAmount = amount.toFixed(decimals);
+                          const tax = amount * 0.06;
+                          const total = amount + tax;
+                          setNewInvoice({
+                            ...newInvoice,
+                            amount: formattedAmount,
+                            tax: tax.toFixed(decimals),
+                            total: total.toFixed(decimals)
+                          });
+                        }
+                      }}
+                      placeholder={newInvoice.currency ? (getCurrencyDecimals(newInvoice.currency) === 0 ? '0' : '0.00') : '0.00'}
                       required
+                      disabled={!selectedTarget}
                     />
+                    {!selectedTarget && (
+                      <span style={{fontSize: '12px', color: '#6B7C93', marginTop: '4px', display: 'block'}}>
+                        Select a manager or restaurant first
+                      </span>
+                    )}
                   </FormGroup>
                   <FormGroup>
                     <FormLabel>Due Date *</FormLabel>
@@ -2963,15 +3013,15 @@ const InvoicesPage: React.FC = () => {
                 <InvoiceSummary>
                   <SummaryRow>
                     <span>Subtotal:</span>
-                    <span>{formatCurrency(parseFloat(newInvoice.amount || '0'), newInvoice.currency || 'MYR')}</span>
+                    <span>{newInvoice.currency ? formatCurrency(parseFloat(newInvoice.amount || '0'), newInvoice.currency) : '-'}</span>
                   </SummaryRow>
                   <SummaryRow>
                     <span>Tax (6%):</span>
-                    <span>{formatCurrency(parseFloat(newInvoice.tax || '0'), newInvoice.currency || 'MYR')}</span>
+                    <span>{newInvoice.currency ? formatCurrency(parseFloat(newInvoice.tax || '0'), newInvoice.currency) : '-'}</span>
                   </SummaryRow>
                   <SummaryRow highlight>
                     <span>Total:</span>
-                    <span><strong>{formatCurrency(parseFloat(newInvoice.total || '0'), newInvoice.currency || 'MYR')}</strong></span>
+                    <span><strong>{newInvoice.currency ? formatCurrency(parseFloat(newInvoice.total || '0'), newInvoice.currency) : '-'}</strong></span>
                   </SummaryRow>
                 </InvoiceSummary>
               </ModalBody>
