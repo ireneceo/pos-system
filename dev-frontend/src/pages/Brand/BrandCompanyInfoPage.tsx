@@ -24,9 +24,6 @@ interface CompanyInfo {
   email: string;
   website: string;
   taxNo: string;
-  bankName: string;
-  bankAccount: string;
-  bankAccountName: string;
   logoUrl: string;
   operationSettings: OperationSettings;
 }
@@ -222,9 +219,6 @@ const BrandCompanyInfoPage: React.FC = () => {
     email: '',
     website: '',
     taxNo: '',
-    bankName: '',
-    bankAccount: '',
-    bankAccountName: '',
     logoUrl: '',
     operationSettings: {
       openingTime: '09:00',
@@ -261,9 +255,6 @@ const BrandCompanyInfoPage: React.FC = () => {
             email: data.email || '',
             website: data.website || '',
             taxNo: data.tax_no || '',
-            bankName: data.bank_name || '',
-            bankAccount: data.bank_account || '',
-            bankAccountName: data.bank_account_name || '',
             logoUrl: data.logo_url || '',
             operationSettings: {
               openingTime: data.operation_settings?.openingTime || '09:00',
@@ -321,9 +312,6 @@ const BrandCompanyInfoPage: React.FC = () => {
           email: companyInfo.email,
           website: companyInfo.website,
           tax_no: companyInfo.taxNo,
-          bank_name: companyInfo.bankName,
-          bank_account: companyInfo.bankAccount,
-          bank_account_name: companyInfo.bankAccountName,
           logo_url: companyInfo.logoUrl,
           operation_settings: companyInfo.operationSettings
         })
@@ -494,41 +482,6 @@ const BrandCompanyInfoPage: React.FC = () => {
                   value={companyInfo.website}
                   onChange={(e) => handleInputChange('website', e.target.value)}
                   placeholder="https://www.example.com"
-                />
-              </FormGroup>
-            </FormGrid>
-          </Section>
-
-          <Section>
-            <SectionTitle>Banking Information</SectionTitle>
-            <FormGrid>
-              <FormGroup>
-                <Label>Bank Name</Label>
-                <Input
-                  type="text"
-                  value={companyInfo.bankName}
-                  onChange={(e) => handleInputChange('bankName', e.target.value)}
-                  placeholder="e.g., Maybank"
-                />
-              </FormGroup>
-
-              <FormGroup>
-                <Label>Account Number</Label>
-                <Input
-                  type="text"
-                  value={companyInfo.bankAccount}
-                  onChange={(e) => handleInputChange('bankAccount', e.target.value)}
-                  placeholder="e.g., 1234567890"
-                />
-              </FormGroup>
-
-              <FormGroup>
-                <Label>Account Name</Label>
-                <Input
-                  type="text"
-                  value={companyInfo.bankAccountName}
-                  onChange={(e) => handleInputChange('bankAccountName', e.target.value)}
-                  placeholder="Account holder name"
                 />
               </FormGroup>
             </FormGrid>

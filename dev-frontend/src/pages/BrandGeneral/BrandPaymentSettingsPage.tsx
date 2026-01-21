@@ -345,6 +345,7 @@ const BrandPaymentSettingsPage: React.FC = () => {
   // Currency settings (brand-specific)
   const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
   const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>([]);
+  const [systemSupportedCurrencies, setSystemSupportedCurrencies] = useState<string[]>([]); // 시스템관리자가 설정한 통화
   const [defaultCurrency, setDefaultCurrency] = useState<string>('USD');
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [tempSelectedCurrencies, setTempSelectedCurrencies] = useState<string[]>([]);
@@ -380,9 +381,10 @@ const BrandPaymentSettingsPage: React.FC = () => {
       const token = localStorage.getItem('auth_token');
       const headers = { 'Authorization': `Bearer ${token}` };
 
-      // Fetch currency config (global) and brand-specific payment settings
-      const [configRes, brandSettingsRes] = await Promise.all([
+      // Fetch currency config (global), system supported currencies, and brand-specific payment settings
+      const [configRes, systemCurrenciesRes, brandSettingsRes] = await Promise.all([
         fetch('/api/currencies/config'),
+        fetch('/api/currencies/supported'),
         fetch(`/api/brands/${brandId}/payment-settings`, { headers })
       ]);
 
@@ -390,6 +392,15 @@ const BrandPaymentSettingsPage: React.FC = () => {
         const data = await configRes.json();
         if (data.success && data.currencies) {
           setCurrencyConfig(data.currencies);
+        }
+      }
+
+      // 시스템관리자가 설정한 통화 목록 가져오기
+      if (systemCurrenciesRes.ok) {
+        const data = await systemCurrenciesRes.json();
+        if (data.success && data.data) {
+          const systemCurrencyCodes = data.data.map((c: { code: string }) => c.code);
+          setSystemSupportedCurrencies(systemCurrencyCodes);
         }
       }
 
@@ -982,47 +993,58 @@ const BrandPaymentSettingsPage: React.FC = () => {
         }
       >
         <p style={{ color: '#6B7280', marginBottom: '16px' }}>
-          Select the currencies you want to support for subscription plans and invoices.
+          Select from the currencies enabled by System Administrator.
         </p>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: '8px',
-          maxHeight: '400px',
-          overflowY: 'auto'
-        }}>
-          {Object.entries(currencyConfig).map(([code, config]) => (
-            <label
-              key={code}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '12px',
-                border: `1px solid ${tempSelectedCurrencies.includes(code) ? '#635BFF' : '#E6EBF1'}`,
-                borderRadius: '8px',
-                cursor: 'pointer',
-                background: tempSelectedCurrencies.includes(code) ? '#F0F0FF' : 'white',
-                transition: 'all 0.2s'
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={tempSelectedCurrencies.includes(code)}
-                onChange={() => toggleCurrencySelection(code)}
-                style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
-              />
-              <div>
-                <div style={{ fontWeight: 500 }}>
-                  {config.symbol} {code}
-                </div>
-                <div style={{ fontSize: '12px', color: '#6B7280' }}>
-                  {config.name}
-                </div>
-              </div>
-            </label>
-          ))}
-        </div>
+        {systemSupportedCurrencies.length === 0 ? (
+          <p style={{ color: '#DC2626', padding: '16px', background: '#FEF2F2', borderRadius: '8px' }}>
+            No currencies have been configured by System Administrator yet.
+          </p>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: '8px',
+            maxHeight: '400px',
+            overflowY: 'auto'
+          }}>
+            {/* 시스템관리자가 설정한 통화만 표시 */}
+            {systemSupportedCurrencies.map(code => {
+              const config = currencyConfig[code];
+              if (!config) return null;
+              return (
+                <label
+                  key={code}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px',
+                    border: `1px solid ${tempSelectedCurrencies.includes(code) ? '#635BFF' : '#E6EBF1'}`,
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    background: tempSelectedCurrencies.includes(code) ? '#F0F0FF' : 'white',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={tempSelectedCurrencies.includes(code)}
+                    onChange={() => toggleCurrencySelection(code)}
+                    style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: 500 }}>
+                      {config.symbol} {code}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#6B7280' }}>
+                      {config.name}
+                    </div>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+        )}
       </Modal>
     </MainLayout>
   );

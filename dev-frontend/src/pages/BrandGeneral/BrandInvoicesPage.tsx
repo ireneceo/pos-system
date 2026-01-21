@@ -649,7 +649,8 @@ const BrandInvoicesPage: React.FC = () => {
   const [paymentData, setPaymentData] = useState({
     paymentMethod: 'bank_transfer',
     transactionId: '',
-    notes: ''
+    notes: '',
+    receiptImage: '' // Base64 encoded receipt image
   });
   const [availablePaymentMethods, setAvailablePaymentMethods] = useState<PaymentMethod[]>([]);
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
@@ -830,10 +831,35 @@ const BrandInvoicesPage: React.FC = () => {
   // Open payment submit modal
   const handlePayInvoice = async (invoice: Invoice) => {
     setSelectedInvoice(invoice);
-    setPaymentData({ paymentMethod: '', transactionId: '', notes: '' });
+    setPaymentData({ paymentMethod: '', transactionId: '', notes: '', receiptImage: '' });
     setShowPaymentSubmitModal(true);
     // Fetch available payment methods for invoice currency
     await fetchPaymentMethods(invoice.currency || 'MYR');
+  };
+
+  // Handle receipt image upload
+  const handleReceiptImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be less than 5MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      setPaymentData(prev => ({ ...prev, receiptImage: result }));
+    };
+    reader.readAsDataURL(file);
   };
 
   // Fetch invoice categories from API
