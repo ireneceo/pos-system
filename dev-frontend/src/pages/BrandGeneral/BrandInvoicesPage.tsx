@@ -610,7 +610,7 @@ const InvoiceTableRow = styled(CommonTableRow)`
   }
 `;
 
-type TabType = 'issued' | 'to_pay';
+type TabType = 'issued' | 'to_pay' | 'categories';
 
 const BrandInvoicesPage: React.FC = () => {
   const { operationSettings } = useStore();
@@ -1343,25 +1343,44 @@ const BrandInvoicesPage: React.FC = () => {
 
   const fetchCompanySettings = async () => {
     try {
+      // Brand General/Manager: 자신의 브랜드 회사정보를 사용
+      const token = localStorage.getItem('auth_token');
+      const brandResponse = await fetch('/api/brands/company-info', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (brandResponse.ok) {
+        const brandData = await brandResponse.json();
+        setCompanySettings({
+          companyName: brandData.company_name || brandData.name || '',
+          address: brandData.address || '',
+          city: brandData.city || '',
+          state: brandData.state || '',
+          postalCode: brandData.postal_code || '',
+          country: brandData.country || '',
+          phone: brandData.phone || '',
+          email: brandData.email || '',
+          website: brandData.website || '',
+          taxNumber: brandData.tax_no || '',
+          registrationNumber: brandData.registration_no || '',
+          companyLogo: brandData.logo_url || '',
+          bankName: brandData.bank_name || '',
+          bankAccount: brandData.bank_account || '',
+          bankAccountName: brandData.bank_account_name || ''
+        });
+        return;
+      }
+
+      // Fallback: 시스템 관리자 설정 사용
       const response = await fetch('/api/admin/settings');
       if (response.ok) {
         const data = await response.json();
         setCompanySettings(data);
       } else {
-        // Try to load from adminSettings localStorage
-        const adminSettings = localStorage.getItem('adminSettings');
-        let companyLogo = '';
-        if (adminSettings) {
-          try {
-            const parsed = JSON.parse(adminSettings);
-            companyLogo = parsed.companyLogo || parsed.logo || '';
-          } catch (e) {
-            console.error('Error parsing adminSettings:', e);
-          }
-        }
-
-        // Use default company settings - should not reach here if API works
-        console.warn('Company settings not found in API response');
+        console.warn('Company settings not found');
         setCompanySettings({
           companyName: '',
           address: '',
@@ -1374,25 +1393,11 @@ const BrandInvoicesPage: React.FC = () => {
           website: '',
           taxNumber: '',
           registrationNumber: '',
-          companyLogo: companyLogo
+          companyLogo: ''
         });
       }
     } catch (error) {
       console.error('Error fetching company settings:', error);
-
-      // Try to load from adminSettings localStorage
-      const adminSettings = localStorage.getItem('adminSettings');
-      let companyLogo = '';
-      if (adminSettings) {
-        try {
-          const parsed = JSON.parse(adminSettings);
-          companyLogo = parsed.companyLogo || parsed.logo || '';
-        } catch (e) {
-          console.error('Error parsing adminSettings:', e);
-        }
-      }
-
-      console.error('Failed to load company settings from API');
       setCompanySettings({
         companyName: '',
         address: '',
@@ -1405,7 +1410,7 @@ const BrandInvoicesPage: React.FC = () => {
         website: '',
         taxNumber: '',
         registrationNumber: '',
-        companyLogo: companyLogo
+        companyLogo: ''
       });
     }
   };
@@ -1830,9 +1835,9 @@ const BrandInvoicesPage: React.FC = () => {
 
     return matchesSearch && matchesStatus && matchesType && matchesMonth;
   }).sort((a, b) => {
-    // Sort by issue date descending (newest first)
-    const dateA = new Date(a.issueDate).getTime();
-    const dateB = new Date(b.issueDate).getTime();
+    // Sort by due date descending (newest first)
+    const dateA = new Date(a.dueDate).getTime();
+    const dateB = new Date(b.dueDate).getTime();
     return dateB - dateA;
   });
 
@@ -2350,6 +2355,9 @@ const BrandInvoicesPage: React.FC = () => {
           <Tab active={activeTab === 'to_pay'} onClick={() => handleTabChange('to_pay')}>
             Invoices to Pay ({invoicesToPay.filter(i => i.status === 'pending_payment' || i.status === 'overdue').length})
           </Tab>
+          <Tab active={activeTab === 'categories'} onClick={() => handleTabChange('categories')}>
+            Categories ({invoiceCategories.length})
+          </Tab>
         </TabContainer>
 
         {activeTab === 'issued' && (
@@ -2668,21 +2676,21 @@ const BrandInvoicesPage: React.FC = () => {
             </StatsGrid>
 
             <Table>
-              <InvoiceTableHeader columns="1.5fr 1.2fr 1fr 0.8fr 0.8fr 0.7fr 0.8fr 0.8fr minmax(120px, 160px)">
-                <span>Invoice</span>
-                <span>Restaurant</span>
-                <span>Period</span>
-                <span>Issued</span>
-                <span>Due</span>
-                <span>Status</span>
-                <span>Amount</span>
-                <span>Total</span>
-                <span>Actions</span>
+              <InvoiceTableHeader columns="1.6fr 1.3fr 1.2fr 0.9fr 0.9fr 0.7fr 0.8fr 0.8fr minmax(180px, 220px)">
+                <span className="col-invoice">Invoice</span>
+                <span className="col-customer">Issuer</span>
+                <span className="col-period">Period</span>
+                <span className="col-issued">Issued</span>
+                <span className="col-due">Due</span>
+                <span className="col-status">Status</span>
+                <span className="col-amount">Amount</span>
+                <span className="col-total">Total</span>
+                <span className="col-actions">Actions</span>
               </InvoiceTableHeader>
 
               {invoicesToPay.length > 0 ? (
                 invoicesToPay.map(invoice => (
-                  <InvoiceTableRow columns="1.5fr 1.2fr 1fr 0.8fr 0.8fr 0.7fr 0.8fr 0.8fr minmax(120px, 160px)" key={invoice.id}>
+                  <InvoiceTableRow columns="1.6fr 1.3fr 1.2fr 0.9fr 0.9fr 0.7fr 0.8fr 0.8fr minmax(180px, 220px)" key={invoice.id}>
                     <MobileGrid>
                       <MobileValue className="col-invoice">
                         <MobileLabel>Invoice</MobileLabel>
@@ -2696,9 +2704,10 @@ const BrandInvoicesPage: React.FC = () => {
                       </MobileValue>
 
                       <MobileValue className="col-customer">
-                        <MobileLabel>Restaurant</MobileLabel>
+                        <MobileLabel>Issuer</MobileLabel>
                         <InvoiceInfo>
-                          <InvoiceNumber>{invoice.restaurantName || invoice.customerName || 'Unknown'}</InvoiceNumber>
+                          <InvoiceNumber>{invoice.issuerName || (invoice.issuerType === 'system_admin' ? 'System Admin' : invoice.issuerType === 'brand' ? 'Brand' : 'Foodcourt')}</InvoiceNumber>
+                          <CompanyName>{invoice.restaurantName && invoice.restaurantName !== 'Unknown' ? `For: ${invoice.restaurantName}` : ''}</CompanyName>
                         </InvoiceInfo>
                       </MobileValue>
 
@@ -2721,19 +2730,21 @@ const BrandInvoicesPage: React.FC = () => {
 
                       <MobileValue className="col-status">
                         <MobileLabel>Status</MobileLabel>
-                        <StatusBadge status={invoice.status}>
-                          {getStatusDisplay(invoice.status)}
-                        </StatusBadge>
+                        <div>
+                          <StatusBadge status={invoice.status}>
+                            {getStatusDisplay(invoice.status)}
+                          </StatusBadge>
+                        </div>
                       </MobileValue>
 
                       <MobileValue className="col-amount">
                         <MobileLabel>Amount</MobileLabel>
-                        <Amount>{formatCurrency(invoice.amount, invoice.currency || 'USD')}</Amount>
+                        <Amount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</Amount>
                       </MobileValue>
 
                       <MobileValue className="col-total">
                         <MobileLabel>Total</MobileLabel>
-                        <Amount highlight>{formatCurrency(invoice.total, invoice.currency || 'USD')}</Amount>
+                        <Amount highlight>{formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount>
                       </MobileValue>
                     </MobileGrid>
 
@@ -2775,6 +2786,66 @@ const BrandInvoicesPage: React.FC = () => {
                 ))
               ) : (
                 <EmptyState>No invoices to pay</EmptyState>
+              )}
+            </Table>
+          </>
+        )}
+
+        {activeTab === 'categories' && (
+          <>
+            <div style={{ marginBottom: '24px' }}>
+              <p style={{ color: '#6B7280', fontSize: '14px', marginBottom: '16px' }}>
+                Manage invoice categories for organizing different types of charges.
+              </p>
+              <Button variant="primary" onClick={() => {
+                setEditingCategory(null);
+                setCategoryFormData({ name: '', code: '', description: '' });
+                setShowCategoryModal(true);
+              }}>
+                + Add Category
+              </Button>
+            </div>
+
+            <Table>
+              <InvoiceTableHeader columns="1fr 1fr 2fr 120px">
+                <span>Name</span>
+                <span>Code</span>
+                <span>Description</span>
+                <span>Actions</span>
+              </InvoiceTableHeader>
+
+              {invoiceCategories.map(category => (
+                <InvoiceTableRow columns="1fr 1fr 2fr 120px" key={category.id}>
+                  <div style={{ fontWeight: '500' }}>{category.name}</div>
+                  <div style={{ fontFamily: 'monospace', fontSize: '13px', color: '#6B7280' }}>{category.code}</div>
+                  <div style={{ color: '#6B7280', fontSize: '13px' }}>{category.description || '-'}</div>
+                  <ActionButtons>
+                    <LocalActionButton onClick={() => {
+                      setEditingCategory(category);
+                      setCategoryFormData({
+                        name: category.name,
+                        code: category.code,
+                        description: category.description || ''
+                      });
+                      setShowCategoryModal(true);
+                    }}>
+                      Edit
+                    </LocalActionButton>
+                    <LocalIconButton onClick={() => {
+                      setCategoryToDelete(category);
+                      setDeleteCategoryModalOpen(true);
+                    }} title="Delete Category">
+                      <IconSymbol>×</IconSymbol>
+                    </LocalIconButton>
+                  </ActionButtons>
+                </InvoiceTableRow>
+              ))}
+
+              {invoiceCategories.length === 0 && (
+                <EmptyState>
+                  <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>No Categories Found</div>
+                  <div style={{ fontSize: '14px' }}>Create your first invoice category to organize charges.</div>
+                </EmptyState>
               )}
             </Table>
           </>

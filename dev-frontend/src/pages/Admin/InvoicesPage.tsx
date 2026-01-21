@@ -1779,9 +1779,9 @@ const InvoicesPage: React.FC = () => {
 
     return matchesSearch && matchesStatus && matchesType && matchesMonth;
   }).sort((a, b) => {
-    // Sort by issue date descending (newest first)
-    const dateA = new Date(a.issueDate).getTime();
-    const dateB = new Date(b.issueDate).getTime();
+    // Sort by due date descending (newest first)
+    const dateA = new Date(a.dueDate).getTime();
+    const dateB = new Date(b.dueDate).getTime();
     return dateB - dateA;
   });
 
@@ -2113,7 +2113,7 @@ const InvoicesPage: React.FC = () => {
         due_date: new Date(newInvoice.dueDate).toISOString(),
         total_amount: total,
         currency: newInvoice.currency || 'USD',
-        status: 'draft',
+        status: 'pending_payment',
         notes: `${companyName}\n${customerName}\n${customerAddress}\n\n${description}`,
         issued_by: 1, // Current admin user ID
         issued_at: new Date().toISOString(),

@@ -898,6 +898,21 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
         issuerName = 'Foodcourt';
       }
 
+      // Convert invoice_category to display name
+      const categoryDisplayNames = {
+        'subscription': 'Subscription',
+        'service': 'Service',
+        'consulting': 'Consulting',
+        'hardware': 'Hardware',
+        'setup': 'Setup Fee',
+        'training': 'Training',
+        'maintenance': 'Maintenance',
+        'support': 'Support',
+        'others': 'Others'
+      };
+      const categoryDisplayName = categoryDisplayNames[invoice.invoice_category] ||
+                                  (invoice.invoice_category ? invoice.invoice_category.charAt(0).toUpperCase() + invoice.invoice_category.slice(1) : 'Service');
+
       return {
         id: invoice.id.toString(),
         invoiceNumber: invoice.invoice_number,
@@ -921,7 +936,8 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
         billingPeriod: billingPeriod,
         planType: invoice.plan_type || '',
         type: invoice.type || 'manual',
-        categoryDisplayName: invoice.invoice_category || 'Service',
+        categoryDisplayName: categoryDisplayName,
+        invoiceCategory: invoice.invoice_category || 'service',
         hasPaymentInfo: !!invoice.payment_submitted_at,
         items: invoice.items?.map(item => ({
           description: item.description,
