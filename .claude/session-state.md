@@ -1,5 +1,5 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-01-21 18:50 UTC
+**마지막 업데이트:** 2026-01-21 21:00 UTC
 **작업 상태:** 완료
 
 ### 진행 중인 작업
@@ -7,47 +7,47 @@
 
 ### 완료된 작업 (이번 세션)
 
-#### 1. BrandCompanyInfoPage 회사정보 저장 문제 해결
-- **문제 원인**: Express 라우트 순서 문제
-  - `/api/brands/company-info`가 `/api/brands/:id` 뒤에 정의되어 있어서 `company-info`가 `:id` 파라미터로 매칭됨
-- **해결 방법**: `/company-info` 라우트들을 `/:id` 라우트 앞으로 이동
-- Brand 찾기 로직 개선: `brand_id`로 먼저 시도, 없으면 `owner_id`로 fallback
+#### Invoice System 개선 및 버그 수정
 
-#### 2. BrandCompanyInfoPage Banking Information 섹션 제거
-- Banking Information 섹션 전체 제거 (UI)
-- CompanyInfo interface에서 bankName, bankAccount, bankAccountName 필드 제거
-- 은행 정보는 Payment Settings에서 관리하도록 분리
+1. **to_pay 탭에서 본인이 발행한 인보이스 제외**
+   - Brand/Foodcourt가 발행한 인보이스가 본인의 to_pay 탭에서 제외
+   - `[Op.not]` 조건 추가로 issuer_type/issuer_id 매칭 제외
 
-#### 3. 인보이스 결제 권한 오류 수정
-- **문제**: "You do not have permission to pay this invoice" 오류
-- **원인**: `checkPaymentPermission` 함수가 `brand_manager`, `foodcourt_manager` payer_type을 처리하지 않음
-- **해결**:
-  - Brand General/Manager: `brand`, `brand_manager`, `manager` payer_type 모두 처리
-  - Foodcourt General/Manager: `foodcourt`, `foodcourt_manager`, `manager` payer_type 모두 처리
+2. **결제 시 영수증 이미지 업로드 기능**
+   - Bank Transfer/QR Payment 시 영수증 이미지 업로드 가능
+   - Base64 인코딩으로 receipt_url에 저장
 
-#### 4. Payment Settings 통화 제한 (Brand)
-- 시스템관리자가 설정한 통화 내에서만 Brand가 선택 가능하도록 수정
-- `/api/currencies/supported` API를 호출하여 시스템 지원 통화 목록 가져옴
-- 통화 선택 모달에서 시스템 지원 통화만 표시
+3. **시스템관리자 결제 컨펌 팝업 개선**
+   - Confirm Payment 클릭 시 고객 결제정보 표시
+   - paymentMethod, transactionId, receiptUrl 표시
+   - 영수증 이미지 클릭 시 새 탭에서 확대
+
+4. **인보이스 생성 시 수신인 통화 자동 적용**
+   - payment_settings.defaultCurrency 우선 적용
+   - supported_currencies[0] fallback
+
+5. **Payment Settings 통화 제한**
+   - Brand/Foodcourt General이 시스템 지원 통화 내에서만 선택 가능
+   - /api/currencies/supported API 연동
+
+6. **Company Info 저장 문제 해결**
+   - Express 라우트 순서 수정 (/company-info가 /:id 앞에 오도록)
+
+7. **결제 권한 체크 수정**
+   - checkPaymentPermission 함수에서 brand_manager, foodcourt_manager, manager payer_type 처리
 
 ### 수정된 파일
-- `/var/www/dev-backend/routes/brands.js` - company-info 라우트 순서 수정
-- `/var/www/dev-backend/routes/invoices.js` - checkPaymentPermission 함수 수정
-- `/var/www/dev-frontend/src/pages/Brand/BrandCompanyInfoPage.tsx` - Banking Information 섹션 제거
-- `/var/www/dev-frontend/src/pages/BrandGeneral/BrandPaymentSettingsPage.tsx` - 시스템 통화 제한 적용
 
-### 확인 필요 사항
-1. https://dev.purplehere.com/pos/brand/company-info - 회사정보 저장 확인
-2. https://dev.purplehere.com/pos/brand/invoices?tab=to_pay - 결제 버튼 클릭 테스트
-3. https://dev.purplehere.com/pos/brand/payment-settings - 통화 선택 시 시스템 설정 통화만 표시 확인
+**Backend:**
+- `routes/invoices.js` - to_pay 필터링, checkPaymentPermission, 인보이스 응답에 payment 정보 추가
+- `routes/brands.js` - company-info 라우트 순서 수정
 
-### 인보이스 발행인/수신인 정리 (참고)
-- **issued 탭** (브랜드가 발행한 인보이스): Customer 컬럼 표시 (수신자/결제자)
-- **to_pay 탭** (브랜드가 받은 인보이스): Issuer 컬럼 표시 (발행자)
-- 시스템관리자 인보이스 페이지: Customer 컬럼만 (발행자 입장)
+**Frontend:**
+- `pages/BrandGeneral/BrandInvoicesPage.tsx` - 영수증 업로드, currency 필드 추가
+- `pages/BrandGeneral/BrandPaymentSettingsPage.tsx` - 시스템 통화 제한 적용
+- `pages/Admin/InvoicesPage.tsx` - 결제 컨펌 팝업에 고객 결제정보 표시, 통화 자동설정
 
 ### 다음 할 일
-- Foodcourt Payment Settings도 동일하게 시스템 통화 제한 적용 (현재는 시스템 설정 직접 수정 가능)
-- 인보이스 PDF: 발행자/수신자에 따른 은행정보 표시 로직 확인/구현
-- Phase 4: Purchase Order System 개발
+- Foodcourt Payment Settings도 동일하게 시스템 통화 제한 적용
 - Stripe/PayPal Integration (결제 연동)
+- Kitchen Display 개선 (Pending 컬럼 아이템별 Done 버튼)

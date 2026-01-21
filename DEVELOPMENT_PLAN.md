@@ -31,6 +31,13 @@
 | Draft 인보이스 제외 | Invoices to Pay에서 draft 상태 제외 | ✅ 완료 |
 | Payment Submit Modal 개선 | 시스템 관리자 결제 방법(QR/Bank) 표시 | ✅ 완료 |
 | Currency Settings 버그 수정 | API 응답 구조 파싱 수정 | ✅ 완료 |
+| to_pay 본인 발행 제외 | Invoices to Pay에서 본인이 발행한 인보이스 제외 | ✅ 완료 |
+| 영수증 이미지 업로드 | Bank Transfer/QR 결제 시 영수증 이미지 첨부 | ✅ 완료 |
+| Admin 결제 컨펌 팝업 | 시스템관리자 결제 확인 시 고객 결제정보 표시 | ✅ 완료 |
+| 인보이스 통화 자동설정 | 수신인의 defaultCurrency 실시간 반영 | ✅ 완료 |
+| Payment Settings 통화제한 | Brand 통화선택 시 시스템 지원 통화만 표시 | ✅ 완료 |
+| Company Info 저장 수정 | Express 라우트 순서 수정 (/company-info 우선) | ✅ 완료 |
+| 결제권한 체크 수정 | brand_manager, foodcourt_manager payer_type 처리 | ✅ 완료 |
 
 ### 핵심 구현 사항
 
