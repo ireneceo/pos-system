@@ -500,9 +500,40 @@ router.post('/cart/validate', async (req, res) => {
   }
 });
 
+// Helper: Find mergeable order for auto-merge (mobile)
+async function findMergeableOrderMobile(restaurantId, tableNumber, orderType, transaction = null) {
+  if (!restaurantId || !tableNumber) return null;
+
+  const queryOptions = {
+    where: {
+      restaurant_id: restaurantId,
+      table_number: tableNumber,
+      order_type: orderType || 'dine_in',
+      payment_status: 'pending',
+      status: {
+        [Op.notIn]: ['served', 'completed', 'cancelled']
+      },
+      [Op.or]: [
+        { is_deleted: false },
+        { is_deleted: null }
+      ]
+    },
+    order: [['createdAt', 'DESC']],
+    limit: 1
+  };
+
+  if (transaction) {
+    queryOptions.lock = transaction.LOCK.UPDATE;
+    queryOptions.transaction = transaction;
+  }
+
+  const existingOrders = await Order.findAll(queryOptions);
+  return existingOrders.length > 0 ? existingOrders[0] : null;
+}
+
 router.post('/order', async (req, res) => {
   try {
-    const { items, paymentMethod, customerInfo, orderType, tableNumber, storeId, scheduledPickupTime } = req.body;
+    const { items, paymentMethod, customerInfo, orderType, tableNumber, storeId, scheduledPickupTime, skipAutoMerge } = req.body;
 
     // Debug logging
     console.log('📝 Mobile order received:');
@@ -519,6 +550,104 @@ router.post('/order', async (req, res) => {
     // Convert storeId to integer, default to 1 if not provided
     const restaurantId = storeId ? parseInt(storeId, 10) : 1;
     console.log('  - restaurantId (parsed):', restaurantId, typeof restaurantId);
+
+    const actualTableNumber = tableNumber || customerInfo?.tableNumber || null;
+    const actualOrderType = orderType || 'dine_in';
+
+    // Auto-merge: Check if there's an existing order to merge into
+    if (!skipAutoMerge && actualTableNumber) {
+      const mergeableOrder = await findMergeableOrderMobile(restaurantId, actualTableNumber, actualOrderType);
+
+      if (mergeableOrder) {
+        console.log(`🔀 [MOBILE AUTO-MERGE] Found mergeable order ${mergeableOrder.id} for table ${actualTableNumber}`);
+
+        const now = new Date().toISOString();
+
+        // Get current items
+        let currentItems = mergeableOrder.order_items || [];
+        if (typeof currentItems === 'string') {
+          currentItems = JSON.parse(currentItems);
+        }
+
+        // Ensure existing items have order_group preserved
+        currentItems = currentItems.map(item => ({
+          ...item,
+          order_group: item.order_group !== undefined ? item.order_group : 0
+        }));
+
+        // Calculate next order_group number
+        const existingGroups = currentItems.map(item => item.order_group || 0);
+        const maxGroup = existingGroups.length > 0 ? Math.max(...existingGroups) : 0;
+        const nextGroup = maxGroup + 1;
+
+        // Add new items with added_at timestamp and order_group
+        const newItemsWithTimestamp = items.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          options: item.options || [],
+          status: 'pending',
+          added_at: now,
+          order_group: nextGroup
+        }));
+
+        const mergedItems = [...currentItems, ...newItemsWithTimestamp];
+
+        // Recalculate total
+        const newTotal = mergedItems.reduce((sum, item) => {
+          const itemPrice = parseFloat(item.price) || 0;
+          const itemQty = parseInt(item.quantity) || 1;
+          return sum + (itemPrice * itemQty);
+        }, 0);
+
+        // Update order - pass array directly, model setter will handle stringify
+        await mergeableOrder.update({
+          order_items: mergedItems,
+          total_amount: newTotal,
+          status: 'pending' // Reset to pending for kitchen
+        });
+        await mergeableOrder.reload();
+
+        console.log(`✅ [MOBILE AUTO-MERGE] Merged ${newItemsWithTimestamp.length} items into order ${mergeableOrder.id} (group: ${nextGroup})`);
+
+        // Emit socket events for real-time update
+        const io = req.app.get('io');
+        if (io) {
+          const room = `restaurant_${restaurantId}`;
+          // Regular order update
+          io.of('/orders').to(room).emit('order-updated', mergeableOrder);
+          // Special event for new items added (for notification sound)
+          io.of('/orders').to(room).emit('order-items-added', {
+            orderId: mergeableOrder.id,
+            orderNumber: mergeableOrder.order_number,
+            tableNumber: mergeableOrder.table_number,
+            orderGroup: nextGroup,
+            addedItems: newItemsWithTimestamp,
+            itemCount: newItemsWithTimestamp.length
+          });
+        }
+
+        const orderResponse = {
+          id: mergeableOrder.id,
+          orderNumber: mergeableOrder.order_number,
+          pickupNumber: mergeableOrder.order_number ? mergeableOrder.order_number.split('-')[1] : '000',
+          items: mergedItems,
+          total: newTotal,
+          status: mergeableOrder.status,
+          createdAt: mergeableOrder.createdAt,
+          estimatedPickupTime: new Date(Date.now() + 20 * 60000),
+          scheduledPickupTime: mergeableOrder.scheduled_pickup_time || null,
+          paymentStatus: mergeableOrder.payment_status,
+          orderType: mergeableOrder.order_type,
+          orderSource: 'mobile',
+          tableNumber: actualTableNumber,
+          merged: true,
+          addedItems: newItemsWithTimestamp
+        };
+
+        return res.json({ success: true, data: orderResponse });
+      }
+    }
 
     // Create order with transaction and retry logic
     let order;
@@ -542,12 +671,12 @@ router.post('/order', async (req, res) => {
           console.log('  - Creating order with data:');
           const orderData = {
             restaurant_id: restaurantId,
-            table_number: tableNumber || customerInfo?.tableNumber || null,
+            table_number: actualTableNumber,
             customer_name: customerInfo?.name || 'Mobile Guest',
             customer_phone: customerInfo?.phone || null,
             total_amount: total,
             status: 'pending',
-            order_type: orderType || 'dine_in',
+            order_type: actualOrderType,
             payment_method: paymentMethod || 'counter',
             payment_status: 'pending',
             order_number: orderNumber,
@@ -600,24 +729,24 @@ router.post('/order', async (req, res) => {
       estimatedPickupTime: new Date(Date.now() + 20 * 60000),
       scheduledPickupTime: scheduledPickupTime || null,
       paymentStatus: 'pending',
-      orderType: orderType || 'dine-in',
+      orderType: actualOrderType,
       orderSource: 'mobile',
-      tableNumber: tableNumber || undefined
+      tableNumber: actualTableNumber || undefined
     };
 
     // Emit Socket.IO event for live orders
     const io = req.app.get('io');
     if (io) {
-      io.of('/orders').emit('order-created', {
+      io.of('/orders').to(`restaurant_${restaurantId}`).emit('order-created', {
         id: order.id,
         restaurant_id: restaurantId,
         order_number: orderNumber,
         customer_name: customerInfo?.name || 'Mobile Guest',
         customer_phone: customerInfo?.phone || null,
-        table_number: tableNumber || null,
+        table_number: actualTableNumber,
         total_amount: total,
         status: 'pending',
-        order_type: orderType || 'dine_in',
+        order_type: actualOrderType,
         payment_method: paymentMethod || 'counter',
         payment_status: 'pending',
         order_date: new Date().toISOString(),

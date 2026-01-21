@@ -11,7 +11,8 @@ Invoice.init({
   },
   restaurant_id: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: true,
+    comment: 'Null when invoice is for brand_manager or foodcourt_manager'
   },
   invoice_number: {
     type: DataTypes.STRING,
@@ -107,6 +108,50 @@ Invoice.init({
     type: DataTypes.TEXT,
     allowNull: true,
     comment: 'Detailed service or consulting description'
+  },
+  // Issuer Information (Who issued this invoice)
+  issuer_type: {
+    type: DataTypes.ENUM('system_admin', 'brand', 'foodcourt'),
+    defaultValue: 'system_admin',
+    comment: 'Who issued this invoice'
+  },
+  issuer_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Brand ID or Foodcourt ID (null for system admin)'
+  },
+  // Payment Gateway Information
+  payment_provider: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    comment: 'stripe, paypal, bank_transfer, qr_payment'
+  },
+  payment_intent_id: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'Stripe PaymentIntent ID or PayPal Order ID'
+  },
+  // Payment Confirmation (by issuer)
+  confirmed_by: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'User ID who confirmed payment'
+  },
+  confirmed_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'When payment was confirmed'
+  },
+  rejection_reason: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Reason for payment rejection'
+  },
+  // Payment Submission Date (when payer submitted receipt)
+  payment_submitted_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'When payment receipt was submitted'
   }
 }, {
   sequelize: database.sequelize,

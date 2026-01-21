@@ -23,10 +23,14 @@ const authenticateToken = async (req, res, next) => {
       console.error('❌ [AUTH] JWT_SECRET environment variable is not set');
       return res.status(500).json({ error: 'Server configuration error' });
     }
+    console.log('🔐 [AUTH] Verifying JWT...');
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('✅ [AUTH] JWT decoded, userId:', decoded.userId);
 
     // Get user information from database
+    console.log('🔍 [AUTH] Looking up user...');
     const user = await User.findByPk(decoded.userId);
+    console.log('✅ [AUTH] User lookup complete:', user ? user.email : 'NOT FOUND');
     if (!user) {
       return res.status(401).json({ error: 'Invalid token - user not found' });
     }
@@ -35,8 +39,12 @@ const authenticateToken = async (req, res, next) => {
       id: user.id,
       email: user.email,
       role: user.role,
-      restaurant_id: user.restaurant_id
+      restaurant_id: user.restaurant_id,
+      brand_id: user.brand_id,
+      foodcourt_id: user.foodcourt_id,
+      manager_id: user.manager_id
     };
+    console.log('✅ [AUTH] req.user set:', JSON.stringify(req.user));
 
     next();
   } catch (error) {
@@ -118,8 +126,53 @@ const checkRestaurantAccess = async (req, res, next) => {
   }
 };
 
+// Optional authentication - allows request to continue even without token
+// Used for endpoints that support both authenticated and guest access
+const optionalAuthenticateToken = async (req, res, next) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+      // No token - continue as guest
+      req.user = null;
+      return next();
+    }
+
+    if (!process.env.JWT_SECRET) {
+      // Server config error but continue as guest
+      req.user = null;
+      return next();
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findByPk(decoded.userId);
+
+    if (user) {
+      req.user = {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        restaurant_id: user.restaurant_id,
+        brand_id: user.brand_id,
+        foodcourt_id: user.foodcourt_id,
+        manager_id: user.manager_id
+      };
+    } else {
+      req.user = null;
+    }
+
+    next();
+  } catch (error) {
+    // Token verification failed - continue as guest
+    req.user = null;
+    next();
+  }
+};
+
 module.exports = {
   authenticateToken,
+  optionalAuthenticateToken,
   requireRole,
   checkRestaurantAccess
 };

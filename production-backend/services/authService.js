@@ -26,12 +26,21 @@ async function login(emailOrUsername, password) {
     throw new Error('Invalid email/username or password');
   }
 
+  // JWT_SECRET 필수 검증
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is required');
+  }
+
   const token = jwt.sign({
     userId: user.id,
     email: user.email,
     role: user.role,
-    username: user.username
-  }, process.env.JWT_SECRET || 'dev-secret-key', { expiresIn: '24h' });
+    username: user.username,
+    brand_id: user.brand_id,
+    foodcourt_id: user.foodcourt_id,
+    restaurant_id: user.restaurant_id,
+    manager_id: user.manager_id
+  }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '24h' });
 
   return {
     token,

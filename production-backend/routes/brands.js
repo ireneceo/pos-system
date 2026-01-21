@@ -3,6 +3,115 @@ const router = express.Router();
 const { Brand, Restaurant, User } = require('../models');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 
+// ============================================
+// Company Info APIs (MUST be before /:id routes)
+// ============================================
+
+// Get company info for brand owner
+router.get('/company-info', authenticateToken, async (req, res) => {
+  try {
+    console.log(`🏢 GET /api/brands/company-info - User: ${req.user.email} (${req.user.role})`);
+
+    // Brand General/Manager는 자신이 소유한 브랜드의 회사정보를 가져옴
+    if (req.user.role !== 'Brand General' && req.user.role !== 'Brand Manager') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Try by brand_id from user first (더 직접적)
+    let brand = null;
+    if (req.user.brand_id) {
+      brand = await Brand.findByPk(req.user.brand_id);
+    }
+
+    // Fallback to owner_id
+    if (!brand) {
+      brand = await Brand.findOne({
+        where: { owner_id: req.user.id }
+      });
+    }
+
+    if (!brand) {
+      return res.status(404).json({ error: 'Brand not found' });
+    }
+
+    res.json({
+      company_name: brand.company_name || brand.name,
+      registration_no: brand.registration_no,
+      trade_name: brand.trade_name,
+      address: brand.address,
+      city: brand.city,
+      state: brand.state,
+      postal_code: brand.postal_code,
+      country: brand.country || 'MY',
+      phone: brand.phone,
+      email: brand.email,
+      website: brand.website,
+      tax_no: brand.tax_no,
+      logo_url: brand.logo_url,
+      operation_settings: brand.operation_settings
+    });
+  } catch (error) {
+    console.error('Error fetching brand company info:', error);
+    res.status(500).json({ error: 'Failed to fetch company info' });
+  }
+});
+
+// Update company info for brand owner
+router.put('/company-info', authenticateToken, async (req, res) => {
+  try {
+    console.log(`🏢 PUT /api/brands/company-info - User: ${req.user.email}`);
+    console.log(`  req.user.id: ${req.user.id}, req.user.brand_id: ${req.user.brand_id}, role: ${req.user.role}`);
+
+    if (req.user.role !== 'Brand General' && req.user.role !== 'Brand Manager') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Try by brand_id from user first (더 직접적)
+    let brand = null;
+    if (req.user.brand_id) {
+      brand = await Brand.findByPk(req.user.brand_id);
+    }
+
+    // Fallback to owner_id
+    if (!brand) {
+      brand = await Brand.findOne({
+        where: { owner_id: req.user.id }
+      });
+    }
+
+    console.log(`  Brand found: ${brand ? brand.name : 'NOT FOUND'}`);
+
+    if (!brand) {
+      return res.status(404).json({ error: 'Brand not found' });
+    }
+
+    const updateData = {
+      company_name: req.body.company_name,
+      registration_no: req.body.registration_no,
+      trade_name: req.body.trade_name,
+      address: req.body.address,
+      city: req.body.city,
+      state: req.body.state,
+      postal_code: req.body.postal_code,
+      country: req.body.country,
+      phone: req.body.phone,
+      email: req.body.email,
+      website: req.body.website,
+      tax_no: req.body.tax_no,
+      logo_url: req.body.logo_url,
+      operation_settings: req.body.operation_settings
+    };
+
+    await brand.update(updateData);
+    console.log(`✅ Brand company info updated: ${brand.name}`);
+
+    res.json({ success: true, message: 'Company info updated successfully' });
+  } catch (error) {
+    console.error('Error updating brand company info:', error);
+    res.status(500).json({ error: 'Failed to update company info' });
+  }
+});
+
 // Get all brands (filtered by owner for Brand General)
 router.get('/', authenticateToken, async (req, res) => {
   try {
@@ -262,93 +371,181 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Get company info for brand owner
-router.get('/company-info', authenticateToken, async (req, res) => {
+// ============================================
+// Payment Settings APIs (B2B Invoice Payment)
+// ============================================
+
+// Get payment settings for a brand
+router.get('/:id/payment-settings', authenticateToken, async (req, res) => {
   try {
-    console.log(`🏢 GET /api/brands/company-info - User: ${req.user.email} (${req.user.role})`);
+    const { id } = req.params;
+    console.log(`💳 GET /api/brands/${id}/payment-settings - User: ${req.user.email}`);
 
-    // Brand General/Manager는 자신이 소유한 브랜드의 회사정보를 가져옴
-    if (req.user.role !== 'Brand General' && req.user.role !== 'Brand Manager') {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-
-    const brand = await Brand.findOne({
-      where: { owner_id: req.user.id }
-    });
-
+    const brand = await Brand.findByPk(id);
     if (!brand) {
       return res.status(404).json({ error: 'Brand not found' });
+    }
+
+    // Check access permissions
+    if (req.user.role !== 'System Admin' && brand.owner_id !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied to this brand' });
     }
 
     res.json({
-      company_name: brand.company_name || brand.name,
-      registration_no: brand.registration_no,
-      trade_name: brand.trade_name,
-      address: brand.address,
-      city: brand.city,
-      state: brand.state,
-      postal_code: brand.postal_code,
-      country: brand.country || 'MY',
-      phone: brand.phone,
-      email: brand.email,
-      website: brand.website,
-      tax_no: brand.tax_no,
-      bank_name: brand.bank_name,
-      bank_account: brand.bank_account,
-      bank_account_name: brand.bank_account_name,
-      logo_url: brand.logo_url,
-      operation_settings: brand.operation_settings
+      success: true,
+      data: {
+        payment_settings: brand.payment_settings,
+        invoice_settings: brand.invoice_settings,
+        supported_currencies: brand.supported_currencies
+      }
     });
   } catch (error) {
-    console.error('Error fetching brand company info:', error);
-    res.status(500).json({ error: 'Failed to fetch company info' });
+    console.error('Error fetching brand payment settings:', error);
+    res.status(500).json({ error: 'Failed to fetch payment settings' });
   }
 });
 
-// Update company info for brand owner
-router.put('/company-info', authenticateToken, async (req, res) => {
+// Update payment settings for a brand
+router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
   try {
-    console.log(`🏢 PUT /api/brands/company-info - User: ${req.user.email}`);
+    const { id } = req.params;
+    console.log(`💳 PUT /api/brands/${id}/payment-settings - User: ${req.user.email}`);
 
-    if (req.user.role !== 'Brand General' && req.user.role !== 'Brand Manager') {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-
-    const brand = await Brand.findOne({
-      where: { owner_id: req.user.id }
-    });
-
+    const brand = await Brand.findByPk(id);
     if (!brand) {
       return res.status(404).json({ error: 'Brand not found' });
     }
 
-    const updateData = {
-      company_name: req.body.company_name,
-      registration_no: req.body.registration_no,
-      trade_name: req.body.trade_name,
-      address: req.body.address,
-      city: req.body.city,
-      state: req.body.state,
-      postal_code: req.body.postal_code,
-      country: req.body.country,
-      phone: req.body.phone,
-      email: req.body.email,
-      website: req.body.website,
-      tax_no: req.body.tax_no,
-      bank_name: req.body.bank_name,
-      bank_account: req.body.bank_account,
-      bank_account_name: req.body.bank_account_name,
-      logo_url: req.body.logo_url,
-      operation_settings: req.body.operation_settings
-    };
+    // Check access permissions (Brand General only or System Admin)
+    if (req.user.role !== 'System Admin' &&
+        (req.user.role !== 'Brand General' || brand.owner_id !== req.user.id)) {
+      return res.status(403).json({ error: 'Access denied. Only Brand General or System Admin can update payment settings.' });
+    }
 
-    await brand.update(updateData);
-    console.log(`✅ Brand company info updated: ${brand.name}`);
+    const { payment_settings, invoice_settings, supported_currencies } = req.body;
 
-    res.json({ success: true, message: 'Company info updated successfully' });
+    // Validate payment_settings structure if provided
+    if (payment_settings) {
+      const validPaymentSettings = {
+        currencies: payment_settings.currencies || ['MYR'],
+        defaultCurrency: payment_settings.defaultCurrency || 'MYR',
+        stripe: payment_settings.stripe || { enabled: false },
+        paypal: payment_settings.paypal || { enabled: false },
+        bankTransfer: payment_settings.bankTransfer || {},
+        qrPayment: payment_settings.qrPayment || {}
+      };
+      brand.payment_settings = validPaymentSettings;
+    }
+
+    // Validate invoice_settings structure if provided
+    if (invoice_settings) {
+      const validInvoiceSettings = {
+        invoicePrefix: invoice_settings.invoicePrefix || 'INV',
+        paymentTerms: invoice_settings.paymentTerms || 30,
+        taxRate: invoice_settings.taxRate || 6,
+        autoGenerate: invoice_settings.autoGenerate || false,
+        autoSendEmail: invoice_settings.autoSendEmail || false,
+        ...invoice_settings
+      };
+      brand.invoice_settings = validInvoiceSettings;
+    }
+
+    // Update supported currencies if provided
+    if (supported_currencies && Array.isArray(supported_currencies)) {
+      brand.supported_currencies = supported_currencies;
+    }
+
+    await brand.save();
+    console.log(`✅ Brand payment settings updated: ${brand.name}`);
+
+    res.json({
+      success: true,
+      message: 'Payment settings updated successfully',
+      data: {
+        payment_settings: brand.payment_settings,
+        invoice_settings: brand.invoice_settings,
+        supported_currencies: brand.supported_currencies
+      }
+    });
   } catch (error) {
-    console.error('Error updating brand company info:', error);
-    res.status(500).json({ error: 'Failed to update company info' });
+    console.error('Error updating brand payment settings:', error);
+    res.status(500).json({ error: 'Failed to update payment settings' });
+  }
+});
+
+// Get subscription info for a brand (System Admin can set, Brand General can view)
+router.get('/:id/subscription', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`📋 GET /api/brands/${id}/subscription - User: ${req.user.email}`);
+
+    const brand = await Brand.findByPk(id);
+    if (!brand) {
+      return res.status(404).json({ error: 'Brand not found' });
+    }
+
+    // Check access permissions
+    if (req.user.role !== 'System Admin' && brand.owner_id !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied to this brand' });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        subscription_status: brand.subscription_status,
+        subscription_start: brand.subscription_start,
+        subscription_end: brand.subscription_end,
+        plan_type: brand.plan_type
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching brand subscription:', error);
+    res.status(500).json({ error: 'Failed to fetch subscription info' });
+  }
+});
+
+// Update subscription info for a brand (System Admin only)
+router.put('/:id/subscription', authenticateToken, requireRole('System Admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`📋 PUT /api/brands/${id}/subscription - User: ${req.user.email}`);
+
+    const brand = await Brand.findByPk(id);
+    if (!brand) {
+      return res.status(404).json({ error: 'Brand not found' });
+    }
+
+    const { subscription_status, subscription_start, subscription_end, plan_type } = req.body;
+
+    if (subscription_status) {
+      brand.subscription_status = subscription_status;
+    }
+    if (subscription_start !== undefined) {
+      brand.subscription_start = subscription_start;
+    }
+    if (subscription_end !== undefined) {
+      brand.subscription_end = subscription_end;
+    }
+    if (plan_type !== undefined) {
+      brand.plan_type = plan_type;
+    }
+
+    await brand.save();
+    console.log(`✅ Brand subscription updated: ${brand.name}`);
+
+    res.json({
+      success: true,
+      message: 'Subscription info updated successfully',
+      data: {
+        subscription_status: brand.subscription_status,
+        subscription_start: brand.subscription_start,
+        subscription_end: brand.subscription_end,
+        plan_type: brand.plan_type
+      }
+    });
+  } catch (error) {
+    console.error('Error updating brand subscription:', error);
+    res.status(500).json({ error: 'Failed to update subscription info' });
   }
 });
 

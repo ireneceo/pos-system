@@ -134,7 +134,9 @@ router.get('/', optionalAuth, async (req, res) => {
         planType: restaurantData.plan_type || 'Basic Plan',
         planAmount: restaurantData.plan_amount ? restaurantData.plan_amount.toString() : '29.00',
         subscriptionStart: restaurantData.subscription_start ? restaurantData.subscription_start.toISOString().split('T')[0] : null,
-        subscriptionEnd: restaurantData.subscription_end ? restaurantData.subscription_end.toISOString().split('T')[0] : null
+        subscriptionEnd: restaurantData.subscription_end ? restaurantData.subscription_end.toISOString().split('T')[0] : null,
+        payment_model: restaurantData.payment_model || 'restaurant',
+        foodcourt_id: restaurantData.foodcourt_id || null
       };
     });
 
@@ -366,6 +368,8 @@ router.post('/', authenticateToken, async (req, res) => {
       subscription_end: req.body.subscriptionEnd ? new Date(req.body.subscriptionEnd) : null,
       subscription_snapshot: planSnapshot,
       brand_id: req.body.brand_id || null,
+      foodcourt_id: req.body.foodcourt_id || null,
+      payment_model: req.body.payment_model || 'restaurant',
       ...planLimits
     };
 
@@ -486,6 +490,18 @@ router.put('/:id', authenticateToken, async (req, res) => {
     if (req.body.brand_id !== undefined) {
       updateData.brand_id = req.body.brand_id ? parseInt(req.body.brand_id) : null;
       console.log(`🏢 Updating brand_id to: ${updateData.brand_id}`);
+    }
+
+    // Foodcourt association
+    if (req.body.foodcourt_id !== undefined) {
+      updateData.foodcourt_id = req.body.foodcourt_id ? parseInt(req.body.foodcourt_id) : null;
+      console.log(`🏢 Updating foodcourt_id to: ${updateData.foodcourt_id}`);
+    }
+
+    // Payment model (who pays invoices)
+    if (req.body.payment_model !== undefined) {
+      updateData.payment_model = req.body.payment_model;
+      console.log(`💰 Updating payment_model to: ${updateData.payment_model}`);
     }
 
     // Cuisine field
@@ -672,10 +688,12 @@ router.get('/subscriptions/manager/:managerId', async (req, res) => {
         endDate: restaurant.subscription_end?.toISOString().split('T')[0] || new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0],
         monthlyFee: fees.monthly,
         annualFee: fees.annual,
-        billingCycle: 'monthly', // Default to monthly
-        paymentModel: 'manager', // Default to manager pays
-        payerId: restaurant.manager_id.toString(),
-        payerName: restaurant.manager_name,
+        billingCycle: restaurant.billing_cycle || 'monthly',
+        // Map payment_model to frontend format: brand_manager -> manager, restaurant -> self
+        paymentModel: restaurant.payment_model === 'brand_manager' ? 'manager' :
+                      restaurant.payment_model === 'restaurant' ? 'self' : 'manager',
+        payerId: restaurant.payment_model === 'restaurant' ? restaurant.id.toString() : restaurant.manager_id?.toString(),
+        payerName: restaurant.payment_model === 'restaurant' ? restaurant.name : restaurant.manager_name,
         orderLimit: orderLimits[restaurant.plan_type] || 1000,
         currentOrders: currentOrders,
         features: [], // Will be filled by frontend based on plan

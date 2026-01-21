@@ -95,6 +95,26 @@ CompanySettings.init({
     type: DataTypes.TEXT('long'),
     allowNull: true,
     comment: 'Base64 encoded Open Graph image'
+  },
+  bank_name: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'Bank name for invoice payments'
+  },
+  bank_account: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: 'Bank account number'
+  },
+  bank_account_name: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'Bank account holder name'
+  },
+  swift_code: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    comment: 'SWIFT/BIC code for international transfers'
   }
 }, {
   sequelize: database.sequelize,

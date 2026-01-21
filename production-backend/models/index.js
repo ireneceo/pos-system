@@ -5,6 +5,7 @@ const Foodcourt = require('./Foodcourt');
 const Invoice = require('./Invoice');
 const InvoiceItem = require('./InvoiceItem');
 const InvoiceSettings = require('./InvoiceSettings');
+const InvoiceCategory = require('./InvoiceCategory');
 const Order = require('./Order');
 const PlanTemplate = require('./PlanTemplate');
 const OperationTicket = require('./OperationTicket');
@@ -374,6 +375,7 @@ module.exports = {
   Invoice,
   InvoiceItem,
   InvoiceSettings,
+  InvoiceCategory,
   Order,
   PlanTemplate,
   OperationTicket,

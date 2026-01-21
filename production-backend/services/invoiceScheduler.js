@@ -1,9 +1,12 @@
 const cron = require('node-cron');
 const Invoice = require('../models/Invoice');
 const InvoiceItem = require('../models/InvoiceItem');
-const InvoiceSettings = require('../models/InvoiceSettings');
-const Order = require('../models/Order');
+const Restaurant = require('../models/Restaurant');
+const PlanPrice = require('../models/PlanPrice');
+const SystemSettings = require('../models/SystemSettings');
 const { Op } = require('sequelize');
+
+const PAYMENT_SETTINGS_KEY = 'payment_settings';
 
 class InvoiceScheduler {
   constructor() {
@@ -11,229 +14,294 @@ class InvoiceScheduler {
   }
 
   start() {
-    // Run on the 1st day of every month at 2 AM to generate subscription invoices
-    cron.schedule('0 2 1 * *', async () => {
-      console.log('Running monthly subscription invoice generation on 1st of month...');
-      await this.generateMonthlyInvoices();
+    // Run daily at 2 AM to check for subscription invoices that need to be generated
+    cron.schedule('0 2 * * *', async () => {
+      console.log('📅 [INVOICE SCHEDULER] Running daily subscription invoice check...');
+      await this.generateSubscriptionInvoices();
     });
 
-    console.log('Invoice scheduler started - will run on 1st of every month at 2 AM');
+    console.log('✅ Invoice scheduler started - runs daily at 2 AM to check subscription renewals');
   }
 
-  async checkAndGenerateInvoices() {
+  /**
+   * Generate subscription invoices for restaurants whose billing cycle is due
+   * Based on subscription_start date - generates invoice on the same day each month/year
+   */
+  async generateSubscriptionInvoices() {
     try {
       const today = new Date();
       const currentDay = today.getDate();
+      const currentMonth = today.getMonth();
+      const currentYear = today.getFullYear();
 
-      // Get all auto-generate enabled settings
-      const settings = await InvoiceSettings.findAll({
+      console.log(`📊 [INVOICE SCHEDULER] Checking subscriptions for day ${currentDay} of month...`);
+
+      // Get all active restaurants with valid subscription
+      const restaurants = await Restaurant.findAll({
         where: {
-          auto_generate: true,
-          generation_day: currentDay
+          status: 'active',
+          subscription_start: { [Op.ne]: null },
+          plan_type: { [Op.ne]: null }
         }
       });
 
-      for (const setting of settings) {
-        await this.generateInvoiceForRestaurant(setting.restaurant_id, setting);
-      }
-    } catch (error) {
-      console.error('Error in checkAndGenerateInvoices:', error);
-    }
-  }
+      console.log(`📊 [INVOICE SCHEDULER] Found ${restaurants.length} active restaurants with subscriptions`);
 
-  async generateMonthlyInvoices() {
-    try {
-      // Get all auto-generate enabled settings for end of month
-      const settings = await InvoiceSettings.findAll({
-        where: {
-          auto_generate: true,
-          generation_day: {
-            [Op.gte]: 29 // For days 29-31, generate on last day
+      let generated = 0;
+      let skipped = 0;
+      let errors = 0;
+
+      for (const restaurant of restaurants) {
+        try {
+          const subscriptionStart = new Date(restaurant.subscription_start);
+          const subscriptionDay = subscriptionStart.getDate();
+          const billingCycle = restaurant.billing_cycle || 'monthly';
+
+          // For days > 28, handle end of month
+          const effectiveDay = subscriptionDay > 28 ? Math.min(subscriptionDay, new Date(currentYear, currentMonth + 1, 0).getDate()) : subscriptionDay;
+
+          // Check if today is the billing day
+          if (currentDay !== effectiveDay) {
+            continue;
           }
-        }
-      });
 
-      for (const setting of settings) {
-        await this.generateInvoiceForRestaurant(setting.restaurant_id, setting);
+          // Calculate billing period
+          let billingStart, billingEnd;
+          if (billingCycle === 'annual') {
+            // Annual billing: check if it's the right month too
+            const subscriptionMonth = subscriptionStart.getMonth();
+            if (currentMonth !== subscriptionMonth) {
+              continue;
+            }
+            billingStart = new Date(currentYear, currentMonth, effectiveDay);
+            billingEnd = new Date(currentYear + 1, currentMonth, effectiveDay - 1);
+          } else {
+            // Monthly billing
+            billingStart = new Date(currentYear, currentMonth, effectiveDay);
+            billingEnd = new Date(currentYear, currentMonth + 1, effectiveDay - 1);
+          }
+
+          // Check if invoice already exists for this period
+          const existingInvoice = await Invoice.findOne({
+            where: {
+              restaurant_id: restaurant.id,
+              billing_period_start: billingStart,
+              type: 'automatic',
+              invoice_category: 'subscription'
+            }
+          });
+
+          if (existingInvoice) {
+            console.log(`⏭️ Invoice already exists for ${restaurant.name} (ID: ${restaurant.id}) for period starting ${billingStart.toISOString().split('T')[0]}`);
+            skipped++;
+            continue;
+          }
+
+          // Generate the invoice
+          await this.createSubscriptionInvoice(restaurant, billingStart, billingEnd, billingCycle);
+          generated++;
+
+        } catch (error) {
+          console.error(`❌ Error processing restaurant ${restaurant.name} (ID: ${restaurant.id}):`, error.message);
+          errors++;
+        }
       }
+
+      console.log(`✅ [INVOICE SCHEDULER] Complete - Generated: ${generated}, Skipped: ${skipped}, Errors: ${errors}`);
+
     } catch (error) {
-      console.error('Error in generateMonthlyInvoices:', error);
+      console.error('❌ [INVOICE SCHEDULER] Error in generateSubscriptionInvoices:', error);
     }
   }
 
-  async generateInvoiceForRestaurant(restaurantId, settings) {
-    try {
-      const now = new Date();
-      const billingStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const billingEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-      const dueDate = new Date(now.getFullYear(), now.getMonth(), settings.payment_terms);
+  /**
+   * Create a subscription invoice for a restaurant
+   */
+  async createSubscriptionInvoice(restaurant, billingStart, billingEnd, billingCycle) {
+    const now = new Date();
+    const taxRate = 0.06; // 6% tax
 
-      // Check if invoice already exists for this period
-      const existingInvoice = await Invoice.findOne({
+    // Get plan price from subscription_snapshot or plan_prices table
+    let planAmount = 0;
+    let currency = 'MYR';
+
+    const snapshot = restaurant.subscription_snapshot;
+    if (snapshot) {
+      planAmount = billingCycle === 'annual'
+        ? parseFloat(snapshot.annual_price || snapshot.monthly_price * 12 || 0)
+        : parseFloat(snapshot.monthly_price || 0);
+      currency = snapshot.currency || 'MYR';
+    }
+
+    // Fallback to plan_prices table via PlanTemplate
+    if (!planAmount && restaurant.plan_type) {
+      const PlanTemplate = require('../models/PlanTemplate');
+
+      // Find the plan template by display_name or name
+      const planTemplate = await PlanTemplate.findOne({
         where: {
-          restaurant_id: restaurantId,
-          billing_period_start: billingStart,
-          billing_period_end: billingEnd,
-          type: 'automatic'
+          [Op.or]: [
+            { display_name: restaurant.plan_type },
+            { name: restaurant.plan_type.toLowerCase().replace(' plan', '') }
+          ]
         }
       });
 
-      if (existingInvoice) {
-        console.log(`Invoice already exists for restaurant ${restaurantId} for period ${billingStart.toISOString().split('T')[0]} to ${billingEnd.toISOString().split('T')[0]}`);
-        return;
+      if (planTemplate) {
+        const planPrice = await PlanPrice.findOne({
+          where: {
+            plan_id: planTemplate.id,
+            currency: currency,
+            is_active: true
+          }
+        });
+
+        if (planPrice) {
+          planAmount = billingCycle === 'annual'
+            ? parseFloat(planPrice.annual_price || planPrice.monthly_price * 12)
+            : parseFloat(planPrice.monthly_price);
+        }
+      }
+    }
+
+    if (!planAmount) {
+      console.log(`⚠️ No price found for ${restaurant.name} (plan: ${restaurant.plan_type})`);
+      return;
+    }
+
+    // Calculate amounts
+    const taxAmount = planAmount * taxRate;
+    const totalAmount = planAmount + taxAmount;
+
+    // Generate invoice number
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const count = await Invoice.count({
+      where: {
+        invoice_number: { [Op.like]: `INV-${year}${month}%` }
+      }
+    });
+    const invoiceNumber = `INV-${year}${month}${String(count + 1).padStart(4, '0')}`;
+
+    // Due date is the billing start date (prepaid)
+    const dueDate = new Date(billingStart);
+
+    // Determine payer based on payment_model
+    let payerType = 'restaurant';
+    let payerId = null;
+
+    if (restaurant.payment_model === 'brand_manager' && restaurant.brand_id) {
+      // Brand pays - find brand owner
+      const Brand = require('../models/Brand');
+      const brand = await Brand.findByPk(restaurant.brand_id);
+      if (brand && brand.owner_id) {
+        payerType = 'brand_manager';
+        payerId = brand.owner_id;
+      }
+    } else if (restaurant.payment_model === 'foodcourt_manager' && restaurant.foodcourt_id) {
+      // Foodcourt pays - find foodcourt owner
+      const Foodcourt = require('../models/Foodcourt');
+      const foodcourt = await Foodcourt.findByPk(restaurant.foodcourt_id);
+      if (foodcourt && foodcourt.owner_id) {
+        payerType = 'foodcourt_manager';
+        payerId = foodcourt.owner_id;
+      }
+    }
+    // Default: restaurant pays (payerId stays null, restaurant_id is used)
+
+    // Create invoice
+    const invoice = await Invoice.create({
+      restaurant_id: restaurant.id,
+      invoice_number: invoiceNumber,
+      type: 'automatic',
+      invoice_category: 'subscription',
+      billing_period_start: billingStart,
+      billing_period_end: billingEnd,
+      due_date: dueDate,
+      total_amount: totalAmount,
+      currency: currency,
+      status: 'pending_payment',
+      notes: `${billingCycle === 'annual' ? 'Annual' : 'Monthly'} subscription invoice for ${restaurant.plan_type}. Auto-generated.`,
+      issued_by: 0,
+      issued_at: now,
+      issuer_type: 'system_admin',
+      payer_type: payerType,
+      payer_id: payerId
+    });
+
+    // Create invoice item
+    const periodText = `${billingStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - ${billingEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+
+    await InvoiceItem.create({
+      invoice_id: invoice.id,
+      item_type: 'subscription',
+      description: `${restaurant.plan_type} - ${billingCycle === 'annual' ? 'Annual' : 'Monthly'} Subscription (${periodText})`,
+      calculation_method: 'fixed',
+      fixed_amount: planAmount,
+      calculated_amount: planAmount,
+      tax_rate: taxRate * 100,
+      tax_amount: taxAmount,
+      total_amount: totalAmount
+    });
+
+    console.log(`✅ Created invoice ${invoiceNumber} for ${restaurant.name} - ${currency} ${totalAmount.toFixed(2)}`);
+  }
+
+  /**
+   * Manual trigger to generate missing invoices for a specific restaurant
+   */
+  async generateMissingInvoices(restaurantId, fromDate) {
+    try {
+      const restaurant = await Restaurant.findByPk(restaurantId);
+      if (!restaurant || !restaurant.subscription_start) {
+        return { success: false, error: 'Restaurant not found or no subscription' };
       }
 
-      // Calculate monthly sales if needed for percentage-based rent
-      let monthlySales = 0;
-      if (settings.rent_enabled && (settings.rent_type === 'percentage' || settings.rent_type === 'combined')) {
-        const orders = await Order.findAll({
+      const subscriptionStart = new Date(restaurant.subscription_start);
+      const startFrom = fromDate ? new Date(fromDate) : subscriptionStart;
+      const today = new Date();
+      const billingCycle = restaurant.billing_cycle || 'monthly';
+
+      let generated = [];
+      let current = new Date(startFrom);
+
+      while (current <= today) {
+        const billingStart = new Date(current);
+        let billingEnd;
+
+        if (billingCycle === 'annual') {
+          billingEnd = new Date(current.getFullYear() + 1, current.getMonth(), current.getDate() - 1);
+          current.setFullYear(current.getFullYear() + 1);
+        } else {
+          billingEnd = new Date(current.getFullYear(), current.getMonth() + 1, current.getDate() - 1);
+          current.setMonth(current.getMonth() + 1);
+        }
+
+        // Check if invoice exists
+        const existing = await Invoice.findOne({
           where: {
             restaurant_id: restaurantId,
-            status: 'completed',
-            createdAt: {
-              [Op.between]: [billingStart, billingEnd]
-            }
+            billing_period_start: billingStart,
+            type: 'automatic',
+            invoice_category: 'subscription'
           }
         });
-        
-        monthlySales = orders.reduce((sum, order) => sum + parseFloat(order.total_amount), 0);
-      }
 
-      // Generate invoice number
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const count = await Invoice.count({
-        where: {
-          invoice_number: {
-            [Op.like]: `${settings.invoice_prefix}-${year}${month}%`
-          }
-        }
-      });
-      
-      const invoiceNumber = `${settings.invoice_prefix}-${year}${month}${String(count + 1).padStart(4, '0')}`;
-
-      // Calculate items and amounts
-      const items = [];
-      let totalAmount = 0;
-
-      // Solution fee
-      if (settings.solution_fee_enabled && settings.solution_fee_amount) {
-        const solutionFee = {
-          item_type: 'solution_fee',
-          description: 'POS System Monthly Subscription',
-          calculation_method: 'fixed',
-          fixed_amount: parseFloat(settings.solution_fee_amount),
-          calculated_amount: parseFloat(settings.solution_fee_amount),
-          tax_rate: parseFloat(settings.tax_rate),
-          tax_amount: parseFloat(settings.solution_fee_amount) * (parseFloat(settings.tax_rate) / 100),
-          total_amount: parseFloat(settings.solution_fee_amount) * (1 + parseFloat(settings.tax_rate) / 100)
-        };
-        items.push(solutionFee);
-        totalAmount += solutionFee.total_amount;
-      }
-
-      // Rent calculation
-      if (settings.rent_enabled) {
-        let rentAmount = 0;
-        let description = '';
-        
-        if (settings.rent_type === 'fixed') {
-          rentAmount = parseFloat(settings.rent_fixed_amount);
-          description = 'Monthly Rent (Fixed)';
-        } else if (settings.rent_type === 'percentage') {
-          rentAmount = monthlySales * (parseFloat(settings.rent_percentage_rate) / 100);
-          description = `Monthly Rent (${settings.rent_percentage_rate}% of $${monthlySales.toFixed(2)} sales)`;
-        } else if (settings.rent_type === 'combined') {
-          const percentageAmount = monthlySales * (parseFloat(settings.rent_percentage_rate) / 100);
-          rentAmount = Math.max(parseFloat(settings.rent_minimum_amount), percentageAmount);
-          const isMinimum = rentAmount === parseFloat(settings.rent_minimum_amount);
-          description = `Monthly Rent (${isMinimum ? 'Minimum' : settings.rent_percentage_rate + '% of sales'}: $${rentAmount.toFixed(2)})`;
-        }
-        
-        if (rentAmount > 0) {
-          const rentItem = {
-            item_type: `rent_${settings.rent_type}`,
-            description,
-            calculation_method: settings.rent_type,
-            fixed_amount: settings.rent_type === 'fixed' ? rentAmount : null,
-            percentage_rate: settings.rent_type !== 'fixed' ? parseFloat(settings.rent_percentage_rate) : null,
-            base_amount: settings.rent_type !== 'fixed' ? monthlySales : null,
-            minimum_amount: settings.rent_type === 'combined' ? parseFloat(settings.rent_minimum_amount) : null,
-            calculated_amount: rentAmount,
-            tax_rate: parseFloat(settings.tax_rate),
-            tax_amount: rentAmount * (parseFloat(settings.tax_rate) / 100),
-            total_amount: rentAmount * (1 + parseFloat(settings.tax_rate) / 100)
-          };
-          items.push(rentItem);
-          totalAmount += rentItem.total_amount;
+        if (!existing) {
+          await this.createSubscriptionInvoice(restaurant, billingStart, billingEnd, billingCycle);
+          generated.push(billingStart.toISOString().split('T')[0]);
         }
       }
 
-      // Additional fees from JSON configuration
-      if (settings.additional_fees && Array.isArray(settings.additional_fees)) {
-        settings.additional_fees.forEach(fee => {
-          const feeAmount = parseFloat(fee.amount);
-          const taxRate = parseFloat(fee.tax_rate || settings.tax_rate);
-          const feeItem = {
-            item_type: fee.type || 'other',
-            description: fee.description,
-            calculation_method: 'fixed',
-            fixed_amount: feeAmount,
-            calculated_amount: feeAmount,
-            tax_rate: taxRate,
-            tax_amount: feeAmount * (taxRate / 100),
-            total_amount: feeAmount * (1 + taxRate / 100)
-          };
-          items.push(feeItem);
-          totalAmount += feeItem.total_amount;
-        });
-      }
+      return { success: true, generated };
 
-      if (items.length === 0) {
-        console.log(`No items to invoice for restaurant ${restaurantId}`);
-        return;
-      }
-
-      // Create invoice
-      const invoice = await Invoice.create({
-        restaurant_id: restaurantId,
-        invoice_number: invoiceNumber,
-        type: 'automatic',
-        billing_period_start: billingStart,
-        billing_period_end: billingEnd,
-        due_date: dueDate,
-        total_amount: totalAmount,
-        status: 'sent',
-        notes: settings.notes_template || 'Automatically generated monthly invoice',
-        issued_by: 0, // System generated
-        issued_at: new Date()
-      });
-
-      // Create invoice items
-      const invoiceItems = items.map(item => ({
-        ...item,
-        invoice_id: invoice.id
-      }));
-      await InvoiceItem.bulkCreate(invoiceItems);
-
-      console.log(`Successfully generated invoice ${invoiceNumber} for restaurant ${restaurantId}`);
-      
-      // Here you could add email notification logic
-      await this.sendInvoiceNotification(invoice, restaurantId);
-      
     } catch (error) {
-      console.error(`Error generating invoice for restaurant ${restaurantId}:`, error);
+      console.error('Error generating missing invoices:', error);
+      return { success: false, error: error.message };
     }
-  }
-
-  async sendInvoiceNotification(invoice, restaurantId) {
-    // TODO: Implement email notification
-    // This would typically use a service like SendGrid, AWS SES, etc.
-    console.log(`Invoice notification would be sent for invoice ${invoice.invoice_number} to restaurant ${restaurantId}`);
   }
 
   stop() {
-    // Stop all cron jobs if needed
     this.jobs.forEach(job => job.stop());
     this.jobs.clear();
     console.log('Invoice scheduler stopped');

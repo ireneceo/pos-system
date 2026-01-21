@@ -65,6 +65,36 @@ process.on('SIGINT', () => {
   });
 });
 
+// ============================================
+// 보안 미들웨어 설정
+// ============================================
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+
+// Helmet - HTTP 헤더 보안 (CSP는 프론트엔드에서 관리하므로 비활성화)
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false
+}));
+
+// Rate Limiting - API 요청 제한 (IP당 15분에 1000회)
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
+  message: { success: false, error: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+app.use('/api/', apiLimiter);
+
+// 로그인 엔드포인트 더 엄격한 제한 (IP당 15분에 20회)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { success: false, error: 'Too many login attempts, please try again later.' }
+});
+app.use('/api/auth/login', authLimiter);
+
 // Express 미들웨어 설정
 // Increase payload size limit to support base64 image uploads
 app.use(express.json({ limit: '10mb' }));
@@ -157,6 +187,8 @@ const brandProductsRouter = require('./routes/brand-products');
 const notificationSettingsRouter = require('./routes/notification-settings');
 const inventoryRouter = require('./routes/inventory');
 const generalStockCategoriesRouter = require('./routes/general-stock-categories');
+const couponsRouter = require('./routes/coupons');
+const adminPaymentSettingsRouter = require('./routes/admin-payment-settings');
 // 헬스 체크 라우터 (가장 먼저, DB 체크 없이)
 app.use('/api/health', healthRouter);
 
@@ -194,17 +226,22 @@ app.use('/api/currencies', currenciesRouter);
 app.use('/api/notification-settings', notificationSettingsRouter);
 app.use('/api', inventoryRouter);  // Inventory routes for general stock management
 app.use('/api', generalStockCategoriesRouter);  // General stock category routes
+app.use('/api/coupons', couponsRouter);  // Coupon management routes
 
-// GitHub Webhook for Auto-Deployment
+// GitHub Webhook for Auto-Deployment (보안: System Admin 인증 필요)
 const { exec } = require('child_process');
-app.post('/api/deploy', (req, res) => {
-  console.log('📥 GitHub Webhook received - Starting deployment...');
+const { authenticateToken, requireRole } = require('./middleware/auth');
+
+// Payment settings routes (System Admin only)
+app.use('/api/admin/payment-settings', authenticateToken, requireRole('System Admin'), adminPaymentSettingsRouter);
+app.post('/api/deploy', authenticateToken, requireRole('System Admin'), (req, res) => {
+  console.log('📥 Deployment request received from:', req.user?.email);
 
   const deployScript = process.env.DEPLOY_SCRIPT || '/var/www/vhosts/orderhere.wor-pro.com/deploy.sh';
 
   exec(deployScript, (error, stdout, stderr) => {
     if (error) {
-      console.error('❌ Deployment failed:', error.message);
+      console.error('Deployment failed:', error.message);
       return res.status(500).json({
         success: false,
         error: error.message,
@@ -212,7 +249,7 @@ app.post('/api/deploy', (req, res) => {
       });
     }
 
-    console.log('✅ Deployment completed successfully');
+    console.log('Deployment completed successfully');
     console.log(stdout);
 
     res.json({
