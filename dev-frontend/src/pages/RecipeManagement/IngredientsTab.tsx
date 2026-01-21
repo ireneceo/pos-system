@@ -1051,7 +1051,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
 
           <UIFormRow>
             <UIFormGroup>
-              <FormLabel>Unit Cost (RM) *</FormLabel>
+              <FormLabel>Unit Cost ({selectedCurrency}) *</FormLabel>
               <FormInput
                 type="number"
                 step="0.01"

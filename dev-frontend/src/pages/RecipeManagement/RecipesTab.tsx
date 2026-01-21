@@ -59,6 +59,7 @@ interface Ingredient {
   name: string;
   category: string;
   unit: string;
+  base_quantity: number;
   unit_cost: number;
   supplier_name: string | null;
   is_active: boolean;
@@ -1346,7 +1347,10 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
     return recipeIngredients.reduce((sum, ri) => {
       const ingredient = ingredients.find(ing => ing.id === ri.ingredient_id);
       if (ingredient && ri.quantity) {
-        return sum + (parseFloat(ri.quantity) * parseFloat(ingredient.unit_cost.toString()));
+        // unit_cost는 base_quantity 기준이므로 단위당 비용 계산
+        const baseQty = ingredient.base_quantity || 1;
+        const costPerUnit = parseFloat(ingredient.unit_cost.toString()) / baseQty;
+        return sum + (parseFloat(ri.quantity) * costPerUnit);
       }
       return sum;
     }, 0);
@@ -1628,12 +1632,14 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                   <tbody>
                     {recipeIngredients.map((ri, idx) => {
                       const ingredient = ingredients.find(ing => ing.id === ri.ingredient_id);
-                      const subtotal = parseFloat(ri.quantity) * (ingredient?.unit_cost || 0);
+                      const baseQty = ingredient?.base_quantity || 1;
+                      const costPerUnit = (ingredient?.unit_cost || 0) / baseQty;
+                      const subtotal = parseFloat(ri.quantity) * costPerUnit;
                       return (
                         <tr key={idx}>
                           <td><strong>{ingredient?.name || `Ingredient #${ri.ingredient_id}`}</strong></td>
                           <td>{ri.quantity} {ri.unit}</td>
-                          <td>{formatCurrency(Number(ingredient?.unit_cost || 0), selectedCurrency)}/{ingredient?.unit}</td>
+                          <td>{formatCurrency(costPerUnit, selectedCurrency)}/{ingredient?.unit}</td>
                           <td>{formatCurrency(subtotal, selectedCurrency)}</td>
                         </tr>
                       );
@@ -1744,7 +1750,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             </UIFormGroup>
 
             <UIFormGroup>
-              <FormLabel>Suggested Price (RM)</FormLabel>
+              <FormLabel>Suggested Price ({selectedCurrency})</FormLabel>
               <FormInput
                 type="number"
                 step="0.01"
@@ -1829,11 +1835,14 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                       required
                     >
                       <option value={0}>Select ingredient...</option>
-                      {ingredients.map(ing => (
-                        <option key={ing.id} value={ing.id}>
-                          {ing.name} ({getCurrencySymbol(selectedCurrency)} {Number(ing.unit_cost).toFixed(2)}/{ing.unit})
-                        </option>
-                      ))}
+                      {ingredients.map(ing => {
+                        const costPerUnit = Number(ing.unit_cost) / (ing.base_quantity || 1);
+                        return (
+                          <option key={ing.id} value={ing.id}>
+                            {ing.name} ({getCurrencySymbol(selectedCurrency)} {costPerUnit.toFixed(2)}/{ing.unit})
+                          </option>
+                        );
+                      })}
                     </FormSelect>
                     <FormInput
                       type="number"

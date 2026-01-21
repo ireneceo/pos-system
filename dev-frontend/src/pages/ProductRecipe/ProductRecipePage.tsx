@@ -51,6 +51,7 @@ interface Ingredient {
   id: number;
   name: string;
   unit: string;
+  base_quantity: number;
   unit_cost: number;
   category: string;
   current_stock: number;
@@ -330,13 +331,16 @@ const ProductRecipePage: React.FC = () => {
     if (!ingredient) return;
 
     const quantity = parseFloat(newQuantity);
+    // unit_cost는 base_quantity 기준이므로 단위당 비용 계산
+    const baseQty = ingredient.base_quantity || 1;
+    const costPerUnit = ingredient.unit_cost / baseQty;
     const newItem: RecipeIngredient = {
       ingredient_id: ingredient.id,
       ingredient_name: ingredient.name,
       quantity,
       unit: newUnit,
-      unit_cost: ingredient.unit_cost,
-      total_cost: ingredient.unit_cost * quantity
+      unit_cost: costPerUnit,
+      total_cost: costPerUnit * quantity
     };
 
     setRecipeIngredients([...recipeIngredients, newItem]);
@@ -611,11 +615,14 @@ const ProductRecipePage: React.FC = () => {
                 }}
               >
                 <option value="">Select Ingredient</option>
-                {ingredients.map(ing => (
-                  <option key={ing.id} value={ing.id}>
-                    {ing.name} ({formatCurrency(ing.unit_cost, selectedCurrency)}/{ing.unit})
-                  </option>
-                ))}
+                {ingredients.map(ing => {
+                  const costPerUnit = ing.unit_cost / (ing.base_quantity || 1);
+                  return (
+                    <option key={ing.id} value={ing.id}>
+                      {ing.name} ({formatCurrency(costPerUnit, selectedCurrency)}/{ing.unit})
+                    </option>
+                  );
+                })}
               </FormSelect>
               <FormInput
                 type="number"

@@ -43,6 +43,7 @@ interface ProductIngredient {
   code: string;
   name: string;
   unit: string;
+  base_quantity: number;
   unit_cost: number;
   category?: { id: number; name: string; emoji?: string };
   is_active: boolean;
@@ -673,7 +674,10 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
     return formIngredients.reduce((sum, fi) => {
       const ing = ingredients.find(i => i.id === fi.ingredient_id);
       if (ing && fi.quantity) {
-        return sum + (ing.unit_cost * parseFloat(fi.quantity));
+        // unit_cost는 base_quantity 기준이므로 단위당 비용 계산
+        const baseQty = ing.base_quantity || 1;
+        const costPerUnit = ing.unit_cost / baseQty;
+        return sum + (costPerUnit * parseFloat(fi.quantity));
       }
       return sum;
     }, 0);
@@ -1028,11 +1032,14 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
                   disabled={viewMode}
                 >
                   <option value="">Select Ingredient</option>
-                  {ingredients.map(ing => (
-                    <option key={ing.id} value={ing.id}>
-                      {ing.name} ({formatCurrency(ing.unit_cost, selectedCurrency)}/{ing.unit})
-                    </option>
-                  ))}
+                  {ingredients.map(ing => {
+                    const costPerUnit = ing.unit_cost / (ing.base_quantity || 1);
+                    return (
+                      <option key={ing.id} value={ing.id}>
+                        {ing.name} ({formatCurrency(costPerUnit, selectedCurrency)}/{ing.unit})
+                      </option>
+                    );
+                  })}
                 </FormSelect>
                 <FormInput
                   type="number"
