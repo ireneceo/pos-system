@@ -394,8 +394,11 @@ const BrandPaymentSettingsPage: React.FC = () => {
       }
 
       if (brandSettingsRes.ok) {
-        const data = await brandSettingsRes.json();
-        console.log('Brand payment settings loaded:', data);
+        const responseData = await brandSettingsRes.json();
+        console.log('Brand payment settings loaded:', responseData);
+
+        // API returns { success: true, data: { payment_settings, supported_currencies } }
+        const data = responseData.data || responseData;
 
         // Set supported currencies from brand settings
         if (data.supported_currencies && Array.isArray(data.supported_currencies)) {

@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import MainLayout from '../../components/Layout/MainLayout';
 import { formatCurrency } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { BaseButton, StatusBadge as CommonStatusBadge } from '../../components/UI/CommonStyles';
 import ConfirmModal from '../../components/ConfirmModal';
 import {
@@ -598,6 +599,7 @@ type TabType = 'issued' | 'to_pay';
 
 const BrandInvoicesPage: React.FC = () => {
   const { operationSettings } = useStore();
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -716,13 +718,16 @@ const BrandInvoicesPage: React.FC = () => {
 
   // Fetch invoices to pay (from system admin)
   const fetchInvoicesToPay = async () => {
+    console.log('[BrandInvoices] fetchInvoicesToPay called');
     try {
       const token = localStorage.getItem('auth_token');
       if (!token) {
+        console.log('[BrandInvoices] No token found');
         setInvoicesToPay([]);
         return;
       }
 
+      console.log('[BrandInvoices] Calling /api/invoices/to-pay...');
       const response = await fetch('/api/invoices/to-pay', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -730,15 +735,18 @@ const BrandInvoicesPage: React.FC = () => {
         }
       });
 
+      console.log('[BrandInvoices] Response status:', response.status);
       if (response.ok) {
         const data = await response.json();
+        console.log('[BrandInvoices] Received invoices to pay:', data.length, data);
         setInvoicesToPay(data);
       } else {
-        console.error('Failed to fetch invoices to pay');
+        const errorText = await response.text();
+        console.error('[BrandInvoices] Failed to fetch invoices to pay:', response.status, errorText);
         setInvoicesToPay([]);
       }
     } catch (error) {
-      console.error('Error fetching invoices to pay:', error);
+      console.error('[BrandInvoices] Error fetching invoices to pay:', error);
       setInvoicesToPay([]);
     }
   };
@@ -1195,23 +1203,18 @@ const BrandInvoicesPage: React.FC = () => {
     }
 
     console.log('Searching with query:', query);
-    console.log('Available managers:', managers);
     console.log('Available restaurants:', restaurants);
 
-    const filteredManagers = managers.filter(manager =>
-      (manager.fullName && manager.fullName.toLowerCase().includes(query.toLowerCase())) ||
-      (manager.companyName && manager.companyName.toLowerCase().includes(query.toLowerCase()))
-    );
-
+    // Brand General/Foodcourt General only search restaurants (not managers)
+    // They can only issue invoices to restaurants under their management
     const filteredRestaurants = restaurants.filter(restaurant =>
       restaurant.name && restaurant.name.toLowerCase().includes(query.toLowerCase())
     );
 
-    console.log('Filtered managers:', filteredManagers);
     console.log('Filtered restaurants:', filteredRestaurants);
 
     setSearchResults({
-      managers: filteredManagers.slice(0, 5),
+      managers: [], // Brand General doesn't search managers
       restaurants: filteredRestaurants.slice(0, 5)
     });
   };
@@ -2101,9 +2104,18 @@ const BrandInvoicesPage: React.FC = () => {
         customerAddress = addressParts.join('\n');
       }
 
+      // Determine payer_type and payer_id based on selected target
+      let payerType = 'restaurant';
+      let payerId: number | null = null;
+
+      if (selectedTarget.type === 'restaurant') {
+        const restaurant = selectedTarget.data as Restaurant;
+        payerType = 'restaurant';
+        payerId = parseInt(restaurant.id);
+      }
+
       const invoiceData = {
         restaurant_id: selectedTarget.type === 'restaurant' ? (selectedTarget.data as Restaurant).id : null,
-        manager_id: selectedTarget.type === 'manager' ? (selectedTarget.data as Manager).id : null,
         customer_name: customerName,
         customer_address: customerAddress,
         company_name: companyName,
@@ -2113,10 +2125,21 @@ const BrandInvoicesPage: React.FC = () => {
         billing_period_end: billingPeriodEnd.toISOString(),
         due_date: new Date(newInvoice.dueDate).toISOString(),
         total_amount: total,
+        currency: newInvoice.currency || 'MYR',
         status: 'draft',
         notes: description,
-        issued_by: 1, // Current admin user ID
-        issued_at: new Date().toISOString()
+        issued_by: user?.id || 1,
+        issued_at: new Date().toISOString(),
+        // Issuer info - Brand General issuing invoice
+        issuer_type: 'brand',
+        issuer_id: user?.brand_id || null,
+        // Payer info - who needs to pay
+        payer_type: payerType,
+        payer_id: payerId,
+        // Invoice category
+        invoice_category: newInvoice.invoiceCategory || 'service',
+        custom_description: newInvoice.invoiceCategory === 'others' ? newInvoice.customDescription : null,
+        service_description: newInvoice.invoiceCategory !== 'others' ? newInvoice.serviceDescription : null
       };
 
       const items = [{
