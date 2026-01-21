@@ -85,6 +85,7 @@ interface Manager {
   email: string;
   role: string;
   companyName?: string;
+  currency?: string;
 }
 
 interface Restaurant {
@@ -95,6 +96,7 @@ interface Restaurant {
   address?: string;
   phone?: string;
   email?: string;
+  currency?: string;
 }
 
 interface Subscription {
@@ -646,6 +648,7 @@ const InvoicesPage: React.FC = () => {
   const [selectedTarget, setSelectedTarget] = useState<{type: 'manager' | 'restaurant', data: Manager | Restaurant} | null>(null);
   const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
   const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
+  const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>([]);
   const [invoiceCategories, setInvoiceCategories] = useState<InvoiceCategory[]>([]);
   const [newInvoice, setNewInvoice] = useState({
     managerId: '',
@@ -662,7 +665,8 @@ const InvoicesPage: React.FC = () => {
     billingCycle: 'monthly',
     invoiceCategory: 'service',
     customDescription: '',
-    serviceDescription: ''
+    serviceDescription: '',
+    currency: ''
   });
 
   // Fetch invoices from API
@@ -981,11 +985,22 @@ const InvoicesPage: React.FC = () => {
 
   const fetchCurrencyConfig = async () => {
     try {
-      const response = await fetch('/api/currencies/config');
-      if (response.ok) {
-        const data = await response.json();
+      // Fetch currency config
+      const configRes = await fetch('/api/currencies/config');
+      if (configRes.ok) {
+        const data = await configRes.json();
         if (data.success && data.currencies) {
           setCurrencyConfig(data.currencies);
+        }
+      }
+
+      // Fetch supported currencies
+      const supportedRes = await fetch('/api/currencies/supported');
+      if (supportedRes.ok) {
+        const data = await supportedRes.json();
+        if (data.success && data.data) {
+          const currencies = data.data.map((c: { code: string }) => c.code);
+          setSupportedCurrencies(currencies);
         }
       }
     } catch (error) {
@@ -1062,7 +1077,10 @@ const InvoicesPage: React.FC = () => {
           name: restaurant.name,
           manager_id: restaurant.manager_id?.toString() || restaurant.managerId?.toString() || '',
           status: restaurant.status,
-          address: restaurant.address || ''
+          address: restaurant.address || '',
+          phone: restaurant.phone || '',
+          email: restaurant.email || '',
+          currency: restaurant.currency || 'MYR'
         }));
         setRestaurants(transformedRestaurants);
         console.log('Transformed restaurants:', transformedRestaurants);
@@ -1177,32 +1195,84 @@ const InvoicesPage: React.FC = () => {
     }
   };
 
-  const selectTarget = (type: 'manager' | 'restaurant', data: Manager | Restaurant) => {
+  const selectTarget = async (type: 'manager' | 'restaurant', data: Manager | Restaurant) => {
     setSelectedTarget({type, data});
     setShowSearchDropdown(false);
     setSearchQuery(type === 'manager' ? (data as Manager).fullName : (data as Restaurant).name);
 
+    const token = localStorage.getItem('auth_token');
+    let currency = 'MYR'; // Default
+
     // Auto-populate invoice data
     if (type === 'manager') {
       const manager = data as Manager;
+
+      // Fetch currency from manager's brand or foodcourt
+      try {
+        const userRes = await fetch(`/api/users/${manager.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          const user = userData.success ? userData.data : userData;
+
+          // Get currency from brand or foodcourt
+          if (user.brand_id) {
+            const brandRes = await fetch(`/api/brands/${user.brand_id}`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (brandRes.ok) {
+              const brandData = await brandRes.json();
+              currency = brandData.currency || 'MYR';
+            }
+          } else if (user.foodcourt_id) {
+            const foodcourtRes = await fetch(`/api/foodcourts/${user.foodcourt_id}`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (foodcourtRes.ok) {
+              const foodcourtData = await foodcourtRes.json();
+              currency = foodcourtData.currency || 'MYR';
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching manager currency:', error);
+      }
+
       setNewInvoice({
         ...newInvoice,
         managerId: manager.id,
         managerName: manager.fullName,
         companyName: manager.companyName || '',
         restaurantId: '',
-        restaurantName: ''
+        restaurantName: '',
+        currency
       });
     } else {
       const restaurant = data as Restaurant;
       const manager = managers.find(m => m.id === restaurant.manager_id);
+
+      // Fetch restaurant details to get currency
+      try {
+        const restRes = await fetch(`/api/restaurants/${restaurant.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (restRes.ok) {
+          const restData = await restRes.json();
+          currency = restData.currency || 'MYR';
+        }
+      } catch (error) {
+        console.error('Error fetching restaurant currency:', error);
+      }
+
       setNewInvoice({
         ...newInvoice,
         restaurantId: restaurant.id,
         restaurantName: restaurant.name,
         managerId: restaurant.manager_id,
         managerName: manager ? manager.fullName : '',
-        companyName: restaurant.name
+        companyName: restaurant.name,
+        currency
       });
     }
   };
@@ -1666,7 +1736,8 @@ const InvoicesPage: React.FC = () => {
       billingCycle: 'monthly',
       invoiceCategory: 'service',
       customDescription: '',
-      serviceDescription: ''
+      serviceDescription: '',
+      currency: ''
     });
     setSelectedTarget(null);
     setSearchQuery('');
@@ -2020,6 +2091,7 @@ const InvoicesPage: React.FC = () => {
         billing_period_end: billingPeriodEnd.toISOString(),
         due_date: new Date(newInvoice.dueDate).toISOString(),
         total_amount: total,
+        currency: newInvoice.currency || 'MYR',
         status: 'draft',
         notes: description,
         issued_by: 1, // Current admin user ID
@@ -2812,7 +2884,7 @@ const InvoicesPage: React.FC = () => {
                 </FormGroup>
                 <FormRow>
                   <FormGroup>
-                    <FormLabel>Amount (RM) *</FormLabel>
+                    <FormLabel>Amount ({newInvoice.currency || 'MYR'}) *</FormLabel>
                     <FormInput
                       type="number"
                       step="0.01"
@@ -2891,15 +2963,15 @@ const InvoicesPage: React.FC = () => {
                 <InvoiceSummary>
                   <SummaryRow>
                     <span>Subtotal:</span>
-                    <span>{formatCurrency(parseFloat(newInvoice.amount || '0'), operationSettings.currency)}</span>
+                    <span>{formatCurrency(parseFloat(newInvoice.amount || '0'), newInvoice.currency || 'MYR')}</span>
                   </SummaryRow>
                   <SummaryRow>
                     <span>Tax (6%):</span>
-                    <span>{formatCurrency(parseFloat(newInvoice.tax || '0'), operationSettings.currency)}</span>
+                    <span>{formatCurrency(parseFloat(newInvoice.tax || '0'), newInvoice.currency || 'MYR')}</span>
                   </SummaryRow>
                   <SummaryRow highlight>
                     <span>Total:</span>
-                    <span><strong>{formatCurrency(parseFloat(newInvoice.total || '0'), operationSettings.currency)}</strong></span>
+                    <span><strong>{formatCurrency(parseFloat(newInvoice.total || '0'), newInvoice.currency || 'MYR')}</strong></span>
                   </SummaryRow>
                 </InvoiceSummary>
               </ModalBody>
@@ -3280,7 +3352,7 @@ const InvoicesPage: React.FC = () => {
 
                 <FormRow>
                   <FormGroup>
-                    <FormLabel>Amount (RM)</FormLabel>
+                    <FormLabel>Amount ({operationSettings.currency || 'RM'})</FormLabel>
                     <FormInput
                       type="number"
                       value={editInvoice.amount}

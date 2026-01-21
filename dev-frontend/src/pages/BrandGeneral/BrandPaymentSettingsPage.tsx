@@ -5,6 +5,7 @@ import PageHeader from '../../components/common/PageHeader';
 import { SaveButtonContainer, SaveButtonGroup, SaveButton, StatusMessage } from '../../components/UI';
 import { Modal, ModalButton } from '../../components/UI/Modal';
 import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface CurrencyConfig {
   [code: string]: {
@@ -326,7 +327,10 @@ const defaultPaymentSettings: PaymentSettings = {
 };
 
 const BrandPaymentSettingsPage: React.FC = () => {
-  // Currency settings (moved from Site Settings)
+  const { user } = useAuth();
+  const brandId = user?.brand_id;
+
+  // Currency settings (brand-specific)
   const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
   const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>([]);
   const [defaultCurrency, setDefaultCurrency] = useState<string>('MYR');
@@ -354,45 +358,49 @@ const BrandPaymentSettingsPage: React.FC = () => {
   }, [supportedCurrencies, selectedCurrency]);
 
   const loadAllSettings = async () => {
+    if (!brandId) {
+      console.error('No brand ID available');
+      setLoading(false);
+      return;
+    }
+
     try {
       const token = localStorage.getItem('auth_token');
       const headers = { 'Authorization': `Bearer ${token}` };
 
-      const [configRes, supportedRes, paymentRes] = await Promise.all([
+      // Fetch currency config (global) and brand-specific payment settings
+      const [configRes, brandSettingsRes] = await Promise.all([
         fetch('/api/currencies/config'),
-        fetch('/api/currencies/supported'),
-        fetch('/api/admin/payment-settings', { headers })
+        fetch(`/api/brands/${brandId}/payment-settings`, { headers })
       ]);
 
       if (configRes.ok) {
         const data = await configRes.json();
         if (data.success && data.currencies) {
           setCurrencyConfig(data.currencies);
-          if (data.defaultCurrency) {
-            setDefaultCurrency(data.defaultCurrency);
-          }
         }
       }
 
-      if (supportedRes.ok) {
-        const data = await supportedRes.json();
-        if (data.success && data.data) {
-          const currencies = data.data.map((c: { code: string }) => c.code);
-          setSupportedCurrencies(currencies);
-          if (currencies.length > 0) {
-            setSelectedCurrency(currencies[0]);
+      if (brandSettingsRes.ok) {
+        const data = await brandSettingsRes.json();
+        console.log('Brand payment settings loaded:', data);
+
+        // Set supported currencies from brand settings
+        if (data.supported_currencies && Array.isArray(data.supported_currencies)) {
+          setSupportedCurrencies(data.supported_currencies);
+          if (data.supported_currencies.length > 0) {
+            setSelectedCurrency(data.supported_currencies[0]);
+            setDefaultCurrency(data.supported_currencies[0]);
           }
         }
-      }
 
-      if (paymentRes.ok) {
-        const data = await paymentRes.json();
-        if (data && Object.keys(data).length > 0) {
+        // Set payment settings
+        if (data.payment_settings && Object.keys(data.payment_settings).length > 0) {
           setPaymentSettings({
             ...defaultPaymentSettings,
-            ...data,
-            bankTransfer: data.bankTransfer || {},
-            qrPayment: data.qrPayment || {}
+            ...data.payment_settings,
+            bankTransfer: data.payment_settings.bankTransfer || {},
+            qrPayment: data.payment_settings.qrPayment || {}
           });
         }
       }
@@ -403,40 +411,25 @@ const BrandPaymentSettingsPage: React.FC = () => {
     }
   };
 
-  // Currency functions
-  const updateDefaultCurrency = async (currency: string) => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/currencies/default', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ defaultCurrency: currency })
-      });
-
-      if (response.ok) {
-        setDefaultCurrency(currency);
-        setSaveStatus({ type: 'success', message: 'Default currency updated' });
-        setTimeout(() => setSaveStatus(null), 3000);
-      }
-    } catch (error) {
-      console.error('Error updating default currency:', error);
-      setSaveStatus({ type: 'error', message: 'Failed to update default currency' });
-    }
+  // Currency functions - using brand-specific API
+  const updateDefaultCurrency = (currency: string) => {
+    setDefaultCurrency(currency);
+    // Default currency will be saved with payment settings
+    setHasChanges(true);
   };
 
   const updateSupportedCurrencies = async () => {
+    if (!brandId) return;
+
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/currencies/supported', {
+      const response = await fetch(`/api/brands/${brandId}/payment-settings`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ currencies: tempSelectedCurrencies })
+        body: JSON.stringify({ supported_currencies: tempSelectedCurrencies })
       });
 
       if (response.ok) {
@@ -446,11 +439,13 @@ const BrandPaymentSettingsPage: React.FC = () => {
         setTimeout(() => setSaveStatus(null), 3000);
 
         if (!tempSelectedCurrencies.includes(defaultCurrency) && tempSelectedCurrencies.length > 0) {
-          await updateDefaultCurrency(tempSelectedCurrencies[0]);
+          setDefaultCurrency(tempSelectedCurrencies[0]);
         }
         if (tempSelectedCurrencies.length > 0 && !tempSelectedCurrencies.includes(selectedCurrency)) {
           setSelectedCurrency(tempSelectedCurrencies[0]);
         }
+      } else {
+        throw new Error('Failed to update currencies');
       }
     } catch (error) {
       console.error('Error updating supported currencies:', error);
@@ -525,8 +520,8 @@ const BrandPaymentSettingsPage: React.FC = () => {
   };
 
   const savePaymentSettings = async () => {
-    if (!hasChanges) {
-      console.log('No changes to save');
+    if (!hasChanges || !brandId) {
+      console.log('No changes to save or no brand ID');
       return;
     }
 
@@ -535,15 +530,15 @@ const BrandPaymentSettingsPage: React.FC = () => {
 
     try {
       const token = localStorage.getItem('auth_token');
-      console.log('Saving payment settings:', JSON.stringify(paymentSettings, null, 2));
+      console.log('Saving brand payment settings:', JSON.stringify(paymentSettings, null, 2));
 
-      const response = await fetch('/api/admin/payment-settings', {
-        method: 'POST',
+      const response = await fetch(`/api/brands/${brandId}/payment-settings`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(paymentSettings)
+        body: JSON.stringify({ payment_settings: paymentSettings })
       });
 
       const responseData = await response.json();

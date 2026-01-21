@@ -370,7 +370,12 @@ const ProfilePage: React.FC = () => {
           console.log('🔄 Fetching user from API, ID:', authUser.id);
 
           // Use exact same pattern as AdminDashboard
-          const userResponse = await fetch(`/api/users/${authUser.id}`);
+          const token = localStorage.getItem('auth_token');
+          const userResponse = await fetch(`/api/users/${authUser.id}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
           if (!userResponse.ok) {
             throw new Error('Failed to fetch user');
           }
@@ -517,10 +522,12 @@ const ProfilePage: React.FC = () => {
         console.log('🔥 Updating database user with ID:', authUser.id);
 
         // Update database
+        const token = localStorage.getItem('auth_token');
         const response = await fetch(`/api/users/${authUser.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
             full_name: formData.name,
@@ -540,7 +547,11 @@ const ProfilePage: React.FC = () => {
         console.log('✅ Database update result:', result);
 
         // Reload fresh data from database
-        const updatedResponse = await fetch(`/api/users/${authUser.id}`);
+        const updatedResponse = await fetch(`/api/users/${authUser.id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         if (updatedResponse.ok) {
           const updatedResult = await updatedResponse.json();
           const updatedUserData = updatedResult.data || updatedResult;
