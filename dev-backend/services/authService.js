@@ -35,7 +35,11 @@ async function login(emailOrUsername, password) {
     userId: user.id,
     email: user.email,
     role: user.role,
-    username: user.username
+    username: user.username,
+    brand_id: user.brand_id,
+    foodcourt_id: user.foodcourt_id,
+    restaurant_id: user.restaurant_id,
+    manager_id: user.manager_id
   }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '24h' });
 
   return {

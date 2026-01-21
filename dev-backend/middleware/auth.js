@@ -39,8 +39,12 @@ const authenticateToken = async (req, res, next) => {
       id: user.id,
       email: user.email,
       role: user.role,
-      restaurant_id: user.restaurant_id
+      restaurant_id: user.restaurant_id,
+      brand_id: user.brand_id,
+      foodcourt_id: user.foodcourt_id,
+      manager_id: user.manager_id
     };
+    console.log('✅ [AUTH] req.user set:', JSON.stringify(req.user));
 
     next();
   } catch (error) {
@@ -149,7 +153,10 @@ const optionalAuthenticateToken = async (req, res, next) => {
         id: user.id,
         email: user.email,
         role: user.role,
-        restaurant_id: user.restaurant_id
+        restaurant_id: user.restaurant_id,
+        brand_id: user.brand_id,
+        foodcourt_id: user.foodcourt_id,
+        manager_id: user.manager_id
       };
     } else {
       req.user = null;

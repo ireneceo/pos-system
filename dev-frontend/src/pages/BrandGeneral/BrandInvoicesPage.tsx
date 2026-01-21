@@ -140,6 +140,19 @@ interface CompanySettings {
   swiftCode?: string;
 }
 
+interface PaymentMethod {
+  id: string;
+  name: string;
+  description: string;
+  bankName?: string;
+  accountNumber?: string;
+  accountName?: string;
+  qrImage?: string;
+  qrDescription?: string;
+  publishableKey?: string;
+  clientId?: string;
+}
+
 // Common components now imported from ../../components/UI
 // Page-specific styled components below
 
@@ -636,6 +649,8 @@ const BrandInvoicesPage: React.FC = () => {
     transactionId: '',
     notes: ''
   });
+  const [availablePaymentMethods, setAvailablePaymentMethods] = useState<PaymentMethod[]>([]);
+  const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
 
   // Category management states
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -787,11 +802,36 @@ const BrandInvoicesPage: React.FC = () => {
     }
   };
 
+  // Fetch available payment methods for a currency
+  const fetchPaymentMethods = async (currency: string) => {
+    setLoadingPaymentMethods(true);
+    try {
+      const response = await fetch(`/api/admin/payment-settings/available/${currency}`);
+      if (response.ok) {
+        const data = await response.json();
+        setAvailablePaymentMethods(data.methods || []);
+        // Set default payment method if available
+        if (data.methods && data.methods.length > 0) {
+          setPaymentData(prev => ({ ...prev, paymentMethod: data.methods[0].id }));
+        }
+      } else {
+        setAvailablePaymentMethods([]);
+      }
+    } catch (error) {
+      console.error('Error fetching payment methods:', error);
+      setAvailablePaymentMethods([]);
+    } finally {
+      setLoadingPaymentMethods(false);
+    }
+  };
+
   // Open payment submit modal
-  const handlePayInvoice = (invoice: Invoice) => {
+  const handlePayInvoice = async (invoice: Invoice) => {
     setSelectedInvoice(invoice);
-    setPaymentData({ paymentMethod: 'bank_transfer', transactionId: '', notes: '' });
+    setPaymentData({ paymentMethod: '', transactionId: '', notes: '' });
     setShowPaymentSubmitModal(true);
+    // Fetch available payment methods for invoice currency
+    await fetchPaymentMethods(invoice.currency || 'MYR');
   };
 
   // Fetch invoice categories from API
@@ -1228,17 +1268,13 @@ const BrandInvoicesPage: React.FC = () => {
       return;
     }
 
-    const filteredManagers = managers.filter(manager =>
-      (manager.fullName && manager.fullName.toLowerCase().includes(query.toLowerCase())) ||
-      (manager.companyName && manager.companyName.toLowerCase().includes(query.toLowerCase()))
-    );
-
+    // Brand General/Foodcourt General only search restaurants (not managers)
     const filteredRestaurants = restaurants.filter(restaurant =>
       restaurant.name && restaurant.name.toLowerCase().includes(query.toLowerCase())
     );
 
     setEditSearchResults({
-      managers: filteredManagers.slice(0, 5),
+      managers: [], // Brand General doesn't search managers
       restaurants: filteredRestaurants.slice(0, 5)
     });
   };
@@ -2745,7 +2781,7 @@ const BrandInvoicesPage: React.FC = () => {
         {/* Payment Submit Modal */}
         {showPaymentSubmitModal && selectedInvoice && (
           <Modal onClick={() => setShowPaymentSubmitModal(false)}>
-            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
               <ModalHeader>
                 <ModalTitle>Submit Payment</ModalTitle>
                 <CloseButton onClick={() => setShowPaymentSubmitModal(false)}>×</CloseButton>
@@ -2758,18 +2794,71 @@ const BrandInvoicesPage: React.FC = () => {
                   </p>
                 </div>
 
-                <FormGroup>
-                  <FormLabel>Payment Method *</FormLabel>
-                  <FormSelect
-                    value={paymentData.paymentMethod}
-                    onChange={(e) => setPaymentData(prev => ({ ...prev, paymentMethod: e.target.value }))}
-                  >
-                    <option value="bank_transfer">Bank Transfer</option>
-                    <option value="credit_card">Credit Card</option>
-                    <option value="paypal">PayPal</option>
-                    <option value="other">Other</option>
-                  </FormSelect>
-                </FormGroup>
+                {loadingPaymentMethods ? (
+                  <div style={{ textAlign: 'center', padding: '20px', color: '#6B7280' }}>Loading payment methods...</div>
+                ) : availablePaymentMethods.length === 0 ? (
+                  <div style={{ padding: '16px', background: '#FEF3C7', borderRadius: '8px', marginBottom: '16px' }}>
+                    <p style={{ margin: 0, color: '#92400E' }}>No payment methods configured for {selectedInvoice.currency}. Please contact the administrator.</p>
+                  </div>
+                ) : (
+                  <>
+                    <FormGroup>
+                      <FormLabel>Payment Method *</FormLabel>
+                      <FormSelect
+                        value={paymentData.paymentMethod}
+                        onChange={(e) => setPaymentData(prev => ({ ...prev, paymentMethod: e.target.value }))}
+                      >
+                        {availablePaymentMethods.map(method => (
+                          <option key={method.id} value={method.id}>{method.name}</option>
+                        ))}
+                      </FormSelect>
+                    </FormGroup>
+
+                    {/* Show payment details based on selected method */}
+                    {(() => {
+                      const selectedMethod = availablePaymentMethods.find(m => m.id === paymentData.paymentMethod);
+                      if (!selectedMethod) return null;
+
+                      return (
+                        <div style={{ padding: '16px', background: '#EFF6FF', borderRadius: '8px', marginBottom: '16px' }}>
+                          {selectedMethod.id === 'bank_transfer' && (
+                            <>
+                              <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#1E40AF' }}>Bank Transfer Details</h4>
+                              <div style={{ fontSize: '14px', lineHeight: '1.8' }}>
+                                <p style={{ margin: '0' }}><strong>Bank:</strong> {selectedMethod.bankName}</p>
+                                <p style={{ margin: '0' }}><strong>Account Number:</strong> {selectedMethod.accountNumber}</p>
+                                <p style={{ margin: '0' }}><strong>Account Name:</strong> {selectedMethod.accountName}</p>
+                              </div>
+                            </>
+                          )}
+                          {selectedMethod.id === 'qr_payment' && (
+                            <>
+                              <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#1E40AF' }}>QR Payment</h4>
+                              {selectedMethod.qrImage && (
+                                <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+                                  <img
+                                    src={selectedMethod.qrImage}
+                                    alt="Payment QR Code"
+                                    style={{ maxWidth: '200px', maxHeight: '200px', border: '1px solid #E5E7EB', borderRadius: '8px' }}
+                                  />
+                                </div>
+                              )}
+                              {selectedMethod.qrDescription && (
+                                <p style={{ margin: 0, fontSize: '13px', color: '#6B7280', textAlign: 'center' }}>{selectedMethod.qrDescription}</p>
+                              )}
+                            </>
+                          )}
+                          {selectedMethod.id === 'stripe' && (
+                            <p style={{ margin: 0, fontSize: '14px', color: '#1E40AF' }}>Pay securely with your credit/debit card via Stripe.</p>
+                          )}
+                          {selectedMethod.id === 'paypal' && (
+                            <p style={{ margin: 0, fontSize: '14px', color: '#1E40AF' }}>Pay with your PayPal account or card.</p>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </>
+                )}
 
                 <FormGroup>
                   <FormLabel>Transaction ID / Reference Number</FormLabel>
@@ -2792,7 +2881,7 @@ const BrandInvoicesPage: React.FC = () => {
               </ModalBody>
               <ModalFooter>
                 <Button variant="secondary" onClick={() => setShowPaymentSubmitModal(false)}>Cancel</Button>
-                <Button variant="primary" onClick={handleSubmitPayment}>Submit Payment</Button>
+                <Button variant="primary" onClick={handleSubmitPayment} disabled={!paymentData.paymentMethod || loadingPaymentMethods}>Submit Payment</Button>
               </ModalFooter>
             </ModalContent>
           </Modal>
@@ -2881,7 +2970,7 @@ const BrandInvoicesPage: React.FC = () => {
               </ModalHeader>
               <ModalBody>
                 <FormGroup>
-                  <FormLabel>Search Manager or Restaurant *</FormLabel>
+                  <FormLabel>Search Restaurant *</FormLabel>
                   <div style={{position: 'relative'}}>
                     <FormInput
                       type="text"
@@ -2889,7 +2978,7 @@ const BrandInvoicesPage: React.FC = () => {
                       onChange={(e) => handleSearch(e.target.value)}
                       onFocus={() => setShowSearchDropdown(true)}
                       onBlur={() => setTimeout(() => setShowSearchDropdown(false), 200)}
-                      placeholder="Type to search for managers or restaurants"
+                      placeholder="Type to search for restaurants"
                       required
                     />
                     {showSearchDropdown && (searchResults.managers.length > 0 || searchResults.restaurants.length > 0) && (
@@ -3347,7 +3436,7 @@ const BrandInvoicesPage: React.FC = () => {
               </ModalHeader>
               <ModalBody>
                 <FormGroup>
-                  <FormLabel>Search Manager or Restaurant *</FormLabel>
+                  <FormLabel>Search Restaurant *</FormLabel>
                   <div style={{position: 'relative'}}>
                     <FormInput
                       type="text"
@@ -3355,7 +3444,7 @@ const BrandInvoicesPage: React.FC = () => {
                       onChange={(e) => handleEditSearch(e.target.value)}
                       onFocus={() => setShowEditSearchDropdown(true)}
                       onBlur={() => setTimeout(() => setShowEditSearchDropdown(false), 200)}
-                      placeholder="Type to search for managers or restaurants"
+                      placeholder="Type to search for restaurants"
                       required
                     />
                     {showEditSearchDropdown && (editSearchResults.managers.length > 0 || editSearchResults.restaurants.length > 0) && (

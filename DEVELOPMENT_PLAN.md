@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-01-19
+> **최종 업데이트:** 2026-01-21
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -16,6 +16,47 @@
 | PayPal Integration | PayPal 결제 연동 | 대기 |
 | Auto Payment System | 자동 결제 시스템 | 대기 |
 | Kitchen Display 개선 | Pending 컬럼 아이템별 Done 버튼 | 대기 |
+
+---
+
+## ✅ 완료: Invoice System 버그 수정 및 개선 (2026-01-21)
+
+### 완료된 기능
+
+| 기능 | 설명 | 상태 |
+|------|------|:----:|
+| JWT 토큰 개선 | brand_id, foodcourt_id 등 JWT 및 req.user에 추가 | ✅ 완료 |
+| Express Router 순서 수정 | /to-pay 라우트가 /:id 앞에 오도록 수정 | ✅ 완료 |
+| Invoice 발행자 정보 저장 | issuer_type, issuer_id가 인보이스에 저장 | ✅ 완료 |
+| Draft 인보이스 제외 | Invoices to Pay에서 draft 상태 제외 | ✅ 완료 |
+| Payment Submit Modal 개선 | 시스템 관리자 결제 방법(QR/Bank) 표시 | ✅ 완료 |
+| Currency Settings 버그 수정 | API 응답 구조 파싱 수정 | ✅ 완료 |
+
+### 핵심 구현 사항
+
+1. **JWT 토큰에 역할별 ID 포함**
+   - `brand_id`, `foodcourt_id`, `restaurant_id`, `manager_id`를 JWT 토큰에 포함
+   - `authenticateToken` 미들웨어에서 `req.user`에 동일 필드 설정
+
+2. **Invoice 발행자 정보**
+   - Brand General이 인보이스 생성 시 `issuer_type: 'brand'`, `issuer_id: brandId` 저장
+   - "Issued Invoices" 탭에서 해당 브랜드가 발행한 인보이스만 표시
+
+3. **Payment Submit Modal 개선**
+   - `/api/admin/payment-settings/available/:currency` API 활용
+   - Bank Transfer: 은행명, 계좌번호, 예금주 표시
+   - QR Payment: QR 이미지 및 설명 표시
+
+### 관련 파일
+
+**Backend:**
+- `services/authService.js` - JWT 토큰에 역할별 ID 추가
+- `middleware/auth.js` - req.user에 brand_id, foodcourt_id 등 추가
+- `routes/invoices.js` - /to-pay 라우터 순서 수정, draft 제외
+
+**Frontend:**
+- `pages/BrandGeneral/BrandInvoicesPage.tsx` - Payment Submit Modal 개선, issuer 정보 저장
+- `pages/BrandGeneral/BrandPaymentSettingsPage.tsx` - API 응답 파싱 수정
 
 ---
 
