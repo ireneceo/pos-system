@@ -413,7 +413,11 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             const uniqueNewItems = newItems.filter((item: MenuItem) => !existingIds.has(item.id));
             return [...prev, ...uniqueNewItems];
           });
-          setLoadedCategories(prev => new Set([...prev, categoryId]));
+          setLoadedCategories(prev => {
+            const newSet = new Set(prev);
+            newSet.add(categoryId);
+            return newSet;
+          });
         }
       }
     } catch (error) {

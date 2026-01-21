@@ -11,7 +11,8 @@ Invoice.init({
   },
   restaurant_id: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: true,
+    comment: 'Null when invoice is for brand_manager or foodcourt_manager'
   },
   invoice_number: {
     type: DataTypes.STRING,

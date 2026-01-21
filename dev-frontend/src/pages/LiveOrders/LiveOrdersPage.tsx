@@ -1101,6 +1101,8 @@ const LiveOrdersPage: React.FC = () => {
   const [addItemsSearchQuery, setAddItemsSearchQuery] = useState('');
   const [showOptionModal, setShowOptionModal] = useState(false);
   const [selectedMenuItemForOption, setSelectedMenuItemForOption] = useState<any>(null);
+  const [optionSelections, setOptionSelections] = useState<Record<string, any>>({});
+  const [optionQuantity, setOptionQuantity] = useState(1);
 
   // Toast notification state
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info'; isVisible: boolean }>({
@@ -3575,6 +3577,7 @@ const LiveOrdersPage: React.FC = () => {
                           date: new Date(selectedOrder.order_date || selectedOrder.createdAt),
                           orderType: selectedOrder.order_type,
                           scheduledPickupTime: selectedOrder.scheduled_pickup_time || null,
+                          currency: operationSettings.currency || 'RM',
                           items: orderItems.map((item: any) => ({
                             menuItem: {
                               name: item.menu_item_name || item.name || (item.menuItem && item.menuItem.name) || 'Unknown Item',

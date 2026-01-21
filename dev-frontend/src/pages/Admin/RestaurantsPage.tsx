@@ -47,6 +47,7 @@ interface Restaurant {
   email?: string;
   phone?: string;
   address?: string;
+  country?: string;
   planType?: string;
   planAmount?: string;
   billingCycle?: 'monthly' | 'annual';
@@ -954,12 +955,18 @@ const RestaurantsPage: React.FC = () => {
       email: '',
       phone: '',
       address: '',
+      city: '',
+      state: '',
+      postalCode: '',
+      country: 'MY',
+      businessRegistration: '',
+      taxId: '',
       cuisine: '',
       planType: firstPlan ? firstPlan.display_name : 'Basic Plan',
       planAmount: firstPlan ? firstPlan.base_price_monthly : '29.00',
-      status: 'active',
-      billingCycle: 'monthly',
-      paymentModel: 'restaurant',
+      status: 'active' as 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled',
+      billingCycle: 'monthly' as 'monthly' | 'annual',
+      paymentModel: 'restaurant' as 'restaurant' | 'brand_manager' | 'foodcourt_manager',
       autoRenew: true,
       subscriptionStart: new Date().toISOString().split('T')[0],
       subscriptionEnd: endDate.toISOString().split('T')[0]

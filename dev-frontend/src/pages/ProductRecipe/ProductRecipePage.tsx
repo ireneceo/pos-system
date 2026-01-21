@@ -225,8 +225,13 @@ const ProductRecipePage: React.FC = () => {
         setProducts(response.data || []);
 
         // Extract unique categories
-        const cats = [...new Set(response.data.map((p: ProductRecipeStatus) => p.category))].filter(Boolean);
-        setCategories(cats as string[]);
+        const uniqueCategories: string[] = [];
+        response.data.forEach((p: ProductRecipeStatus) => {
+          if (p.category && !uniqueCategories.includes(p.category)) {
+            uniqueCategories.push(p.category);
+          }
+        });
+        setCategories(uniqueCategories);
       }
     } catch (error) {
       console.error('Failed to fetch products:', error);

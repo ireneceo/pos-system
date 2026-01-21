@@ -1558,7 +1558,7 @@ const PaymentPage: React.FC = () => {
     try {
       const result = await validateCouponAPI(
         couponCode,
-        currentStore.id,
+        parseInt(currentStore.id as string, 10),
         subtotal,
         orderType
       );
