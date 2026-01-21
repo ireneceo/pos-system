@@ -454,10 +454,28 @@ const ProfilePage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dbUser]);
 
+  // Track if we've initialized from DB
+  const [initializedFromDb, setInitializedFromDb] = useState(false);
+
   useEffect(() => {
-    if (currentUser && formData.name === '') {
-      // Only initialize formData once when currentUser first loads
-      console.log('🔥 Initializing formData from currentUser:', currentUser);
+    // Initialize formData when dbUser loads (primary source)
+    // Or when currentUser first loads and dbUser is not available yet
+    if (dbUser && !initializedFromDb) {
+      console.log('🔥 Initializing formData from dbUser:', dbUser);
+      const newFormData = {
+        name: dbUser.full_name || dbUser.name || '',
+        email: dbUser.email || '',
+        phone: dbUser.phone || '',
+        department: dbUser.department || dbUser.position || '',
+        company_name: dbUser.company_name || '',
+      };
+      console.log('🔥 New formData from DB:', newFormData);
+      setFormData(newFormData);
+      setHasChanges(false);
+      setInitializedFromDb(true);
+    } else if (currentUser && formData.name === '' && !dbUser) {
+      // Fallback: initialize from authUser only if dbUser not loaded yet
+      console.log('🔥 Initializing formData from authUser (fallback):', currentUser);
       const newFormData = {
         name: currentUser.name || '',
         email: currentUser.email || '',
@@ -465,12 +483,11 @@ const ProfilePage: React.FC = () => {
         department: currentUser.department || '',
         company_name: currentUser.company_name || '',
       };
-      console.log('🔥 New formData:', newFormData);
       setFormData(newFormData);
       setHasChanges(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser, formData.name]);
+  }, [dbUser, currentUser, initializedFromDb]);
 
   // 변경사항 감지
   useEffect(() => {

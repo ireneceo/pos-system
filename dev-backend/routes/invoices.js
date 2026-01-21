@@ -875,22 +875,62 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
       order: [['createdAt', 'DESC']]
     });
 
-    // Transform for frontend
-    const transformedInvoices = invoices.map(invoice => ({
-      id: invoice.id.toString(),
-      invoiceNumber: invoice.invoice_number,
-      restaurantId: invoice.restaurant_id?.toString(),
-      restaurantName: invoice.restaurant?.name || 'Unknown',
-      issueDate: invoice.issued_at || invoice.createdAt,
-      dueDate: invoice.due_date,
-      paidDate: invoice.paid_at,
-      status: invoice.status,
-      currency: invoice.currency || 'MYR',
-      total: parseFloat(invoice.total_amount),
-      issuerType: invoice.issuer_type,
-      paymentSubmittedAt: invoice.payment_submitted_at,
-      rejectionReason: invoice.rejection_reason
-    }));
+    // Transform for frontend - include all fields needed by frontend
+    const transformedInvoices = invoices.map(invoice => {
+      // Calculate amount from items or estimate from total
+      const itemsTotal = invoice.items?.reduce((sum, item) => sum + parseFloat(item.calculated_amount || item.fixed_amount || 0), 0) || 0;
+      const taxTotal = invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0;
+      const amount = itemsTotal || (parseFloat(invoice.total_amount) - taxTotal) || parseFloat(invoice.total_amount);
+
+      // Format billing period
+      let billingPeriod = '-';
+      if (invoice.billing_period_start && invoice.billing_period_end) {
+        const start = new Date(invoice.billing_period_start);
+        const end = new Date(invoice.billing_period_end);
+        billingPeriod = `${start.toLocaleDateString('en-MY', { month: 'short', year: 'numeric' })} - ${end.toLocaleDateString('en-MY', { month: 'short', year: 'numeric' })}`;
+      }
+
+      // Get issuer name based on issuer_type
+      let issuerName = 'System Admin';
+      if (invoice.issuer_type === 'brand') {
+        issuerName = 'Brand';
+      } else if (invoice.issuer_type === 'foodcourt') {
+        issuerName = 'Foodcourt';
+      }
+
+      return {
+        id: invoice.id.toString(),
+        invoiceNumber: invoice.invoice_number,
+        restaurantId: invoice.restaurant_id?.toString(),
+        restaurantName: invoice.restaurant?.name || 'Unknown',
+        customerName: invoice.customer_name || invoice.restaurant?.name || 'Unknown',
+        companyName: invoice.company_name || '',
+        managerName: invoice.restaurant?.manager_name || '',
+        issueDate: invoice.issued_at || invoice.createdAt,
+        dueDate: invoice.due_date,
+        paidDate: invoice.paid_at,
+        status: invoice.status,
+        currency: invoice.currency || 'MYR',
+        amount: amount,
+        tax: taxTotal,
+        total: parseFloat(invoice.total_amount),
+        issuerType: invoice.issuer_type,
+        issuerName: issuerName,
+        paymentSubmittedAt: invoice.payment_submitted_at,
+        rejectionReason: invoice.rejection_reason,
+        billingPeriod: billingPeriod,
+        planType: invoice.plan_type || '',
+        type: invoice.type || 'manual',
+        categoryDisplayName: invoice.invoice_category || 'Service',
+        hasPaymentInfo: !!invoice.payment_submitted_at,
+        items: invoice.items?.map(item => ({
+          description: item.description,
+          quantity: item.quantity || 1,
+          unitPrice: parseFloat(item.calculated_amount || item.fixed_amount || 0),
+          total: parseFloat(item.total_amount || 0)
+        })) || []
+      };
+    });
 
     console.log(`  Found ${invoices.length} invoices to pay:`, transformedInvoices.map(i => i.invoiceNumber));
     res.json(transformedInvoices);

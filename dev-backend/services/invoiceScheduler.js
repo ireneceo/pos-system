@@ -133,20 +133,34 @@ class InvoiceScheduler {
       currency = snapshot.currency || 'MYR';
     }
 
-    // Fallback to plan_prices table
+    // Fallback to plan_prices table via PlanTemplate
     if (!planAmount && restaurant.plan_type) {
-      const planPrice = await PlanPrice.findOne({
+      const PlanTemplate = require('../models/PlanTemplate');
+
+      // Find the plan template by display_name or name
+      const planTemplate = await PlanTemplate.findOne({
         where: {
-          plan_type: restaurant.plan_type,
-          currency: currency,
-          is_active: true
+          [Op.or]: [
+            { display_name: restaurant.plan_type },
+            { name: restaurant.plan_type.toLowerCase().replace(' plan', '') }
+          ]
         }
       });
 
-      if (planPrice) {
-        planAmount = billingCycle === 'annual'
-          ? parseFloat(planPrice.annual_price || planPrice.monthly_price * 12)
-          : parseFloat(planPrice.monthly_price);
+      if (planTemplate) {
+        const planPrice = await PlanPrice.findOne({
+          where: {
+            plan_id: planTemplate.id,
+            currency: currency,
+            is_active: true
+          }
+        });
+
+        if (planPrice) {
+          planAmount = billingCycle === 'annual'
+            ? parseFloat(planPrice.annual_price || planPrice.monthly_price * 12)
+            : parseFloat(planPrice.monthly_price);
+        }
       }
     }
 
@@ -172,9 +186,28 @@ class InvoiceScheduler {
     // Due date is the billing start date (prepaid)
     const dueDate = new Date(billingStart);
 
-    // Determine payer
-    const payerType = restaurant.manager_id ? 'restaurant' : 'restaurant';
-    const payerId = restaurant.id;
+    // Determine payer based on payment_model
+    let payerType = 'restaurant';
+    let payerId = null;
+
+    if (restaurant.payment_model === 'brand_manager' && restaurant.brand_id) {
+      // Brand pays - find brand owner
+      const Brand = require('../models/Brand');
+      const brand = await Brand.findByPk(restaurant.brand_id);
+      if (brand && brand.owner_id) {
+        payerType = 'brand_manager';
+        payerId = brand.owner_id;
+      }
+    } else if (restaurant.payment_model === 'foodcourt_manager' && restaurant.foodcourt_id) {
+      // Foodcourt pays - find foodcourt owner
+      const Foodcourt = require('../models/Foodcourt');
+      const foodcourt = await Foodcourt.findByPk(restaurant.foodcourt_id);
+      if (foodcourt && foodcourt.owner_id) {
+        payerType = 'foodcourt_manager';
+        payerId = foodcourt.owner_id;
+      }
+    }
+    // Default: restaurant pays (payerId stays null, restaurant_id is used)
 
     // Create invoice
     const invoice = await Invoice.create({

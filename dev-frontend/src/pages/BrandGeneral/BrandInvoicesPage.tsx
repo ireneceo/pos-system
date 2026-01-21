@@ -63,6 +63,8 @@ interface Invoice {
   customDescription?: string;
   serviceDescription?: string;
   categoryDisplayName?: string;
+  issuerType?: 'system_admin' | 'brand' | 'foodcourt';
+  issuerName?: string;
 }
 
 interface CurrencyConfig {
@@ -3691,14 +3693,14 @@ const BrandInvoicesPage: React.FC = () => {
                     fontWeight: '600',
                     color: '#0A2540',
                     marginBottom: '12px'
-                  }}>Send Invoice to Manager</h3>
-                  <p style={{ 
-                    fontSize: '14px', 
-                    color: '#6B7280', 
+                  }}>Send Invoice</h3>
+                  <p style={{
+                    fontSize: '14px',
+                    color: '#6B7280',
                     marginBottom: '20px',
-                    lineHeight: '1.6' 
+                    lineHeight: '1.6'
                   }}>
-                    Are you sure you want to send invoice <strong>{selectedInvoice.invoiceNumber}</strong> to <strong>{selectedInvoice.managerName}</strong>?
+                    Are you sure you want to send invoice <strong>{selectedInvoice.invoiceNumber}</strong> to <strong>{selectedInvoice.restaurantName || selectedInvoice.customerName}</strong>?
                   </p>
                   <div style={{
                     background: '#F8FAFC',
@@ -3711,8 +3713,8 @@ const BrandInvoicesPage: React.FC = () => {
                       <span style={{ fontWeight: '500' }}>{selectedInvoice.invoiceNumber}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ color: '#6B7280' }}>Manager:</span>
-                      <span style={{ fontWeight: '500' }}>{selectedInvoice.managerName}</span>
+                      <span style={{ color: '#6B7280' }}>Restaurant:</span>
+                      <span style={{ fontWeight: '500' }}>{selectedInvoice.restaurantName || selectedInvoice.customerName}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <span style={{ color: '#6B7280' }}>Company:</span>
@@ -3753,13 +3755,13 @@ const BrandInvoicesPage: React.FC = () => {
                     color: '#0A2540',
                     marginBottom: '12px'
                   }}>Resend Invoice</h3>
-                  <p style={{ 
-                    fontSize: '14px', 
-                    color: '#6B7280', 
+                  <p style={{
+                    fontSize: '14px',
+                    color: '#6B7280',
                     marginBottom: '20px',
-                    lineHeight: '1.6' 
+                    lineHeight: '1.6'
                   }}>
-                    Resend invoice <strong>{selectedInvoice.invoiceNumber}</strong> to <strong>{selectedInvoice.managerName}</strong>?
+                    Resend invoice <strong>{selectedInvoice.invoiceNumber}</strong> to <strong>{selectedInvoice.restaurantName || selectedInvoice.customerName}</strong>?
                   </p>
                   <div style={{
                     background: '#FEF3C7',
@@ -3769,7 +3771,7 @@ const BrandInvoicesPage: React.FC = () => {
                     fontSize: '13px',
                     color: '#92400E'
                   }}>
-                    ℹ️ This will send another copy of the invoice to the manager's email.
+                    This will send another copy of the invoice to the restaurant's email.
                   </div>
                 </div>
               </ModalBody>
