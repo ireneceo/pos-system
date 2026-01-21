@@ -267,7 +267,8 @@ router.get('/', authenticateToken, async (req, res) => {
       // System Admin sees all invoices
       whereClause = {};
     } else if (role === 'Brand General' || role === 'Brand Manager') {
-      // Brand General/Manager: only see invoices they issued (issuer_type = 'brand')
+      // Brand General/Manager: only see invoices they ISSUED (for Issued Invoices tab)
+      // Invoices TO them are shown via /api/invoices/to-pay endpoint
       const userBrandId = brandId || req.user.brand_id;
       if (userBrandId) {
         whereClause = {
@@ -275,11 +276,11 @@ router.get('/', authenticateToken, async (req, res) => {
           issuer_id: userBrandId
         };
       } else {
-        // No brand associated, return empty
         return res.json([]);
       }
     } else if (role === 'Foodcourt General' || role === 'Foodcourt Manager') {
-      // Foodcourt General/Manager: only see invoices they issued (issuer_type = 'foodcourt')
+      // Foodcourt General/Manager: only see invoices they ISSUED (for Issued Invoices tab)
+      // Invoices TO them are shown via /api/invoices/to-pay endpoint
       const userFoodcourtId = foodcourtId || req.user.foodcourt_id;
       if (userFoodcourtId) {
         whereClause = {
@@ -287,7 +288,6 @@ router.get('/', authenticateToken, async (req, res) => {
           issuer_id: userFoodcourtId
         };
       } else {
-        // No foodcourt associated, return empty
         return res.json([]);
       }
     } else if (role === 'Restaurant Admin') {
@@ -376,12 +376,27 @@ router.get('/', authenticateToken, async (req, res) => {
         amount: parseFloat(invoice.total_amount) - parseFloat(invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0),
         tax: parseFloat(invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0),
         total: parseFloat(invoice.total_amount),
-        items: invoice.items?.map(item => ({
-          description: item.description || getCategoryDisplayName(item.item_type || invoice.invoice_category, invoice.custom_description, invoice.restaurant?.plan_type, invoice.restaurant?.billing_cycle),
-          quantity: 1,
-          unitPrice: parseFloat(item.calculated_amount),
-          total: parseFloat(item.total_amount)
-        })) || [],
+        items: invoice.items?.map(item => {
+          // Build description: category name + user description
+          const categoryName = getCategoryDisplayName(item.item_type || invoice.invoice_category, invoice.custom_description, invoice.restaurant?.plan_type, invoice.restaurant?.billing_cycle);
+          const userDescription = item.description?.trim();
+          let fullDescription;
+
+          // For subscription, just use the plan name
+          if ((item.item_type || invoice.invoice_category) === 'subscription') {
+            fullDescription = categoryName;
+          } else {
+            // For others: Category Name + Description (if any)
+            fullDescription = userDescription ? `${categoryName}: ${userDescription}` : categoryName;
+          }
+
+          return {
+            description: fullDescription,
+            quantity: 1,
+            unitPrice: parseFloat(item.calculated_amount),
+            total: parseFloat(item.total_amount)
+          };
+        }) || [],
         billingPeriod: formatBillingPeriod(invoice.billing_period_start, invoice.billing_period_end),
         planType: invoice.restaurant?.plan_type || 'Basic Plan',
         type: invoice.type,

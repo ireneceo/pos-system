@@ -469,6 +469,7 @@ const FormInput = styled.input`
 
 const FormTextarea = styled.textarea`
   width: 100%;
+  max-width: 100%;
   padding: 12px 16px;
   border: 1px solid #E6EBF1;
   border-radius: 8px;
@@ -476,6 +477,7 @@ const FormTextarea = styled.textarea`
   transition: all 0.2s;
   resize: vertical;
   font-family: inherit;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -2989,24 +2991,24 @@ const InvoicesPage: React.FC = () => {
                   </FormSelect>
                 </FormGroup>
 
-                {newInvoice.invoiceCategory === 'others' && (
+                {newInvoice.invoiceCategory === 'others' ? (
                   <FormGroup>
                     <FormLabel>Plan/Item</FormLabel>
                     <FormTextarea
                       value={newInvoice.customDescription || ''}
                       onChange={(e) => setNewInvoice({...newInvoice, customDescription: e.target.value})}
-                      rows={3}
+                      placeholder="Enter custom item description"
+                      rows={2}
                     />
                   </FormGroup>
-                )}
-
-                {((newInvoice.invoiceCategory || 'service') === 'service' || newInvoice.invoiceCategory === 'consulting') && (
+                ) : (newInvoice.invoiceCategory || 'service') !== 'subscription' && (
                   <FormGroup>
                     <FormLabel>Plan/Item</FormLabel>
                     <FormTextarea
                       value={newInvoice.serviceDescription || ''}
                       onChange={(e) => setNewInvoice({...newInvoice, serviceDescription: e.target.value})}
-                      rows={3}
+                      placeholder="Enter item description"
+                      rows={2}
                     />
                   </FormGroup>
                 )}
@@ -3091,8 +3093,11 @@ const InvoicesPage: React.FC = () => {
                     {selectedInvoice.customerAddress && (
                       <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>{selectedInvoice.customerAddress}</div>
                     )}
-                    {selectedInvoice.restaurantName && (
+                    {selectedInvoice.payerType === 'restaurant' && selectedInvoice.restaurantName && selectedInvoice.restaurantName !== 'Unknown Restaurant' && (
                       <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Restaurant: {selectedInvoice.restaurantName}</div>
+                    )}
+                    {selectedInvoice.companyName && selectedInvoice.companyName !== selectedInvoice.customerName && (
+                      <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Company: {selectedInvoice.companyName}</div>
                     )}
                   </div>
                   {/* Dates */}
@@ -3466,24 +3471,24 @@ const InvoicesPage: React.FC = () => {
                 </FormGroup>
 
 
-                {editInvoice.invoiceCategory === 'others' && (
+                {editInvoice.invoiceCategory === 'others' ? (
                   <FormGroup>
                     <FormLabel>Plan/Item</FormLabel>
                     <FormTextarea
                       value={editInvoice.customDescription || ''}
                       onChange={(e) => setEditInvoice({...editInvoice, customDescription: e.target.value})}
-                      rows={3}
+                      placeholder="Enter custom item description"
+                      rows={2}
                     />
                   </FormGroup>
-                )}
-
-                {((editInvoice.invoiceCategory || 'service') === 'service' || editInvoice.invoiceCategory === 'consulting') && (
+                ) : (editInvoice.invoiceCategory || 'service') !== 'subscription' && (
                   <FormGroup>
                     <FormLabel>Plan/Item</FormLabel>
                     <FormTextarea
                       value={editInvoice.serviceDescription || ''}
                       onChange={(e) => setEditInvoice({...editInvoice, serviceDescription: e.target.value})}
-                      rows={3}
+                      placeholder="Enter item description"
+                      rows={2}
                     />
                   </FormGroup>
                 )}
