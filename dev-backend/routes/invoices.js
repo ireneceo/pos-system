@@ -405,7 +405,12 @@ router.get('/', authenticateToken, async (req, res) => {
         invoiceCategory: invoice.invoice_category || 'subscription',
         customDescription: invoice.custom_description,
         serviceDescription: invoice.service_description,
-        categoryDisplayName: getCategoryDisplayName(invoice.invoice_category, invoice.custom_description, invoice.restaurant?.plan_type, invoice.restaurant?.billing_cycle)
+        categoryDisplayName: getCategoryDisplayName(invoice.invoice_category, invoice.custom_description, invoice.restaurant?.plan_type, invoice.restaurant?.billing_cycle),
+        // Payment info for confirmation
+        paymentMethod: invoice.payment_method,
+        transactionId: invoice.transaction_id,
+        receiptUrl: invoice.receipt_url,
+        hasPaymentInfo: !!invoice.payment_method || !!invoice.receipt_url
       };
     });
 

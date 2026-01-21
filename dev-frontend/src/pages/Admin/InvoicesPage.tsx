@@ -1225,12 +1225,16 @@ const InvoicesPage: React.FC = () => {
             });
             if (brandRes.ok) {
               const brandData = await brandRes.json();
-              // API returns { success: true, data: { supported_currencies: [...] } }
-              const supported = brandData.data?.supported_currencies || brandData.supported_currencies;
-              if (supported && supported.length > 0) {
+              const data = brandData.data || brandData;
+              // Use defaultCurrency from payment_settings first, then supported_currencies[0]
+              const defaultCurrency = data.payment_settings?.defaultCurrency;
+              const supported = data.supported_currencies;
+              if (defaultCurrency) {
+                currency = defaultCurrency;
+              } else if (supported && supported.length > 0) {
                 currency = supported[0];
               }
-              console.log('Brand currency:', currency, 'from supported_currencies:', supported);
+              console.log('Brand currency:', currency, 'defaultCurrency:', defaultCurrency, 'supported:', supported);
             }
           } else if (user.foodcourt_id) {
             const foodcourtRes = await fetch(`/api/foodcourts/${user.foodcourt_id}/payment-settings`, {
@@ -1238,12 +1242,16 @@ const InvoicesPage: React.FC = () => {
             });
             if (foodcourtRes.ok) {
               const foodcourtData = await foodcourtRes.json();
-              // API returns { success: true, data: { supported_currencies: [...] } }
-              const supported = foodcourtData.data?.supported_currencies || foodcourtData.supported_currencies;
-              if (supported && supported.length > 0) {
+              const data = foodcourtData.data || foodcourtData;
+              // Use defaultCurrency from payment_settings first, then supported_currencies[0]
+              const defaultCurrency = data.payment_settings?.defaultCurrency;
+              const supported = data.supported_currencies;
+              if (defaultCurrency) {
+                currency = defaultCurrency;
+              } else if (supported && supported.length > 0) {
                 currency = supported[0];
               }
-              console.log('Foodcourt currency:', currency, 'from supported_currencies:', supported);
+              console.log('Foodcourt currency:', currency, 'defaultCurrency:', defaultCurrency, 'supported:', supported);
             }
           }
         }
@@ -3196,18 +3204,18 @@ const InvoicesPage: React.FC = () => {
         {/* Payment Confirmation Modal */}
         {showPaymentConfirmModal && selectedInvoice && (
           <Modal onClick={() => setShowPaymentConfirmModal(false)}>
-            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
               <ModalHeader>
                 <ModalTitle>Confirm Payment - {selectedInvoice.invoiceNumber}</ModalTitle>
                 <CloseButton onClick={() => setShowPaymentConfirmModal(false)}>×</CloseButton>
               </ModalHeader>
               <ModalBody>
                 <FormGroup>
-                  <FormLabel>Payment Confirmation</FormLabel>
+                  <FormLabel>Invoice Summary</FormLabel>
                   <InvoiceSummary>
                     <SummaryRow>
-                      <span>Manager:</span>
-                      <span>{selectedInvoice.managerName}</span>
+                      <span>Customer:</span>
+                      <span>{selectedInvoice.customerName || selectedInvoice.managerName}</span>
                     </SummaryRow>
                     <SummaryRow>
                       <span>Company:</span>
@@ -3227,34 +3235,86 @@ const InvoicesPage: React.FC = () => {
                     </SummaryRow>
                   </InvoiceSummary>
                 </FormGroup>
-                
-                <div style={{ 
-                  background: '#FEF3C7', 
-                  border: '1px solid #F59E0B', 
-                  borderRadius: '8px', 
-                  padding: '16px', 
-                  margin: '16px 0' 
+
+                {/* Customer's Payment Information */}
+                {selectedInvoice.hasPaymentInfo && (
+                  <FormGroup>
+                    <FormLabel>Customer's Payment Information</FormLabel>
+                    <div style={{
+                      background: '#EFF6FF',
+                      border: '1px solid #3B82F6',
+                      borderRadius: '8px',
+                      padding: '16px'
+                    }}>
+                      <div style={{ fontSize: '14px', lineHeight: '1.8' }}>
+                        <p style={{ margin: '0 0 8px 0' }}>
+                          <strong>Payment Method:</strong> {
+                            selectedInvoice.paymentMethod === 'bank_transfer' ? 'Bank Transfer' :
+                            selectedInvoice.paymentMethod === 'qr_payment' ? 'QR Payment' :
+                            selectedInvoice.paymentMethod === 'stripe' ? 'Stripe' :
+                            selectedInvoice.paymentMethod === 'paypal' ? 'PayPal' :
+                            selectedInvoice.paymentMethod || 'Not specified'
+                          }
+                        </p>
+                        {selectedInvoice.transactionId && (
+                          <p style={{ margin: '0 0 8px 0' }}>
+                            <strong>Transaction ID:</strong> {selectedInvoice.transactionId}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Receipt Image */}
+                      {selectedInvoice.receiptUrl && (
+                        <div style={{ marginTop: '12px' }}>
+                          <p style={{ margin: '0 0 8px 0', fontWeight: '600', fontSize: '14px' }}>Payment Receipt:</p>
+                          <div style={{ textAlign: 'center', background: 'white', padding: '12px', borderRadius: '8px' }}>
+                            <img
+                              src={selectedInvoice.receiptUrl}
+                              alt="Payment Receipt"
+                              style={{
+                                maxWidth: '100%',
+                                maxHeight: '300px',
+                                borderRadius: '8px',
+                                cursor: 'pointer'
+                              }}
+                              onClick={() => window.open(selectedInvoice.receiptUrl, '_blank')}
+                            />
+                            <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#6B7280' }}>
+                              Click image to view full size
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </FormGroup>
+                )}
+
+                <div style={{
+                  background: '#FEF3C7',
+                  border: '1px solid #F59E0B',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  margin: '16px 0'
                 }}>
                   <p style={{ margin: 0, color: '#92400E', fontSize: '14px' }}>
-                    <strong>⚠️ Confirm Payment Receipt</strong><br />
-                    Only mark this invoice as paid if you have received and verified the payment from the manager.
-                    This action will update the invoice status to "Paid" and cannot be easily undone.
+                    <strong>Confirm Payment Receipt</strong><br />
+                    Only mark this invoice as paid if you have received and verified the payment.
+                    This action will update the invoice status to "Paid".
                   </p>
                 </div>
-                
+
                 <FormGroup>
-                  <FormLabel>Confirmation Details</FormLabel>
-                  <div style={{ 
-                    fontSize: '14px', 
+                  <FormLabel>Status Change</FormLabel>
+                  <div style={{
+                    fontSize: '14px',
                     lineHeight: '1.6',
                     color: '#374151',
                     background: '#F8FAFC',
                     padding: '12px',
                     borderRadius: '6px'
                   }}>
-                    • Payment Date: {new Date().toLocaleDateString('en-MY')}<br />
-                    • Status Change: {selectedInvoice.status} → Paid<br />
-                    • This will update the invoice status immediately
+                    Payment Submitted → Paid<br />
+                    Paid Date: {new Date().toLocaleDateString('en-MY')}
                   </div>
                 </FormGroup>
               </ModalBody>

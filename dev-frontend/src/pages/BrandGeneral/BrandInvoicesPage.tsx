@@ -693,7 +693,8 @@ const BrandInvoicesPage: React.FC = () => {
     billingCycle: 'monthly',
     invoiceCategory: 'service',
     customDescription: '',
-    serviceDescription: ''
+    serviceDescription: '',
+    currency: 'MYR'
   });
 
   // Fetch invoices from API
@@ -773,6 +774,10 @@ const BrandInvoicesPage: React.FC = () => {
   const handleSubmitPayment = async () => {
     if (!selectedInvoice) return;
 
+    // For bank_transfer and qr_payment, receipt image is recommended
+    const selectedMethod = availablePaymentMethods.find(m => m.id === paymentData.paymentMethod);
+    const requiresReceipt = selectedMethod && (selectedMethod.id === 'bank_transfer' || selectedMethod.id === 'qr_payment');
+
     try {
       const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/invoices/${selectedInvoice.id}/submit-payment`, {
@@ -782,17 +787,18 @@ const BrandInvoicesPage: React.FC = () => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          paymentMethod: paymentData.paymentMethod,
-          transactionId: paymentData.transactionId,
-          notes: paymentData.notes
+          payment_method: paymentData.paymentMethod,
+          transaction_id: paymentData.transactionId,
+          notes: paymentData.notes,
+          receipt_url: paymentData.receiptImage || null // Send receipt image as base64
         })
       });
 
       if (response.ok) {
         setShowPaymentSubmitModal(false);
         setSelectedInvoice(null);
-        setPaymentData({ paymentMethod: 'bank_transfer', transactionId: '', notes: '' });
-        setSuccessMessage('Payment submitted successfully! The system admin will review and confirm your payment.');
+        setPaymentData({ paymentMethod: 'bank_transfer', transactionId: '', notes: '', receiptImage: '' });
+        setSuccessMessage('Payment submitted successfully! The issuer will review and confirm your payment.');
         setShowSuccessModal(true);
         await fetchInvoicesToPay();
       } else {
@@ -1831,7 +1837,8 @@ const BrandInvoicesPage: React.FC = () => {
       billingCycle: 'monthly',
       invoiceCategory: 'service',
       customDescription: '',
-      serviceDescription: ''
+      serviceDescription: '',
+      currency: 'MYR'
     });
     setSelectedTarget(null);
     setSearchQuery('');
@@ -2968,6 +2975,72 @@ const BrandInvoicesPage: React.FC = () => {
                     onChange={(e) => setPaymentData(prev => ({ ...prev, transactionId: e.target.value }))}
                   />
                 </FormGroup>
+
+                {/* Receipt Image Upload for bank_transfer and qr_payment */}
+                {(() => {
+                  const selectedMethod = availablePaymentMethods.find(m => m.id === paymentData.paymentMethod);
+                  if (selectedMethod && (selectedMethod.id === 'bank_transfer' || selectedMethod.id === 'qr_payment')) {
+                    return (
+                      <FormGroup>
+                        <FormLabel>Payment Receipt Image</FormLabel>
+                        <div style={{
+                          border: '2px dashed #E6EBF1',
+                          borderRadius: '8px',
+                          padding: '20px',
+                          textAlign: 'center',
+                          background: paymentData.receiptImage ? '#F0FDF4' : '#FAFBFC',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}>
+                          {paymentData.receiptImage ? (
+                            <div>
+                              <img
+                                src={paymentData.receiptImage}
+                                alt="Payment Receipt"
+                                style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', marginBottom: '12px' }}
+                              />
+                              <div>
+                                <button
+                                  type="button"
+                                  onClick={() => setPaymentData(prev => ({ ...prev, receiptImage: '' }))}
+                                  style={{
+                                    background: '#DC2626',
+                                    color: 'white',
+                                    border: 'none',
+                                    padding: '8px 16px',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '13px'
+                                  }}
+                                >
+                                  Remove Image
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <label style={{ cursor: 'pointer', display: 'block' }}>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleReceiptImageUpload}
+                                style={{ display: 'none' }}
+                              />
+                              <div style={{ color: '#6B7280', fontSize: '14px' }}>
+                                <div style={{ fontSize: '24px', marginBottom: '8px' }}>+</div>
+                                <div>Click to upload payment receipt</div>
+                                <div style={{ fontSize: '12px', marginTop: '4px' }}>Supports JPG, PNG (max 5MB)</div>
+                              </div>
+                            </label>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '8px' }}>
+                          Upload a screenshot or photo of your payment confirmation
+                        </div>
+                      </FormGroup>
+                    );
+                  }
+                  return null;
+                })()}
 
                 <FormGroup>
                   <FormLabel>Notes (Optional)</FormLabel>
