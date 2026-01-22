@@ -320,24 +320,10 @@ export function generateBillContent(orderData, storeInfo) {
   content += CMD.BOLD_OFF;
   content += CMD.LINE_FEED;
 
-  // === PAYMENT INFO ===
-  content += CMD.DASHED_LINE + CMD.LINE_FEED;
-  const paymentMethodDisplay = orderData.paymentMethod ? orderData.paymentMethod.toUpperCase() : 'CASH';
-  content += formatLine('Payment:', paymentMethodDisplay) + CMD.LINE_FEED;
-
-  if (orderData.paymentMethod === 'cash' && orderData.amountReceived > 0) {
-    content += formatLine('Received:', currencySymbol + ' ' + orderData.amountReceived.toFixed(2)) + CMD.LINE_FEED;
-    content += formatLine('Change:', currencySymbol + ' ' + orderData.change.toFixed(2)) + CMD.LINE_FEED;
-  }
-
   // === FOOTER ===
   content += CMD.LINE_FEED;
   content += CMD.ALIGN_CENTER;
-  content += '*** CUSTOMER COPY ***' + CMD.LINE_FEED;
   content += 'Thank you for your purchase!' + CMD.LINE_FEED;
-  content += 'Please keep this receipt' + CMD.LINE_FEED;
-  content += 'for your records' + CMD.LINE_FEED;
-  content += CMD.LINE_FEED;
   content += CMD.LINE_FEED;
   content += CMD.LINE_FEED;
 
@@ -376,14 +362,14 @@ function generateHTMLBill(orderData, storeInfo) {
         <td style="text-align: right;">${currencySymbol} ${total.toFixed(2)}</td>
       </tr>
       <tr>
-        <td style="text-align: left; color: #666; font-size: 11px;">&nbsp;&nbsp;${qty} x ${currencySymbol} ${price.toFixed(2)}</td>
+        <td style="text-align: left; color: #000; font-size: 12px; font-weight: 600;">&nbsp;&nbsp;${qty} x ${currencySymbol} ${price.toFixed(2)}</td>
         <td></td>
       </tr>
     `;
 
     if (item.options && item.options.length > 0) {
       item.options.forEach(option => {
-        itemsHTML += `<tr><td style="text-align: left; color: #666; font-size: 11px;">&nbsp;&nbsp;+ ${option}</td><td></td></tr>`;
+        itemsHTML += `<tr><td style="text-align: left; color: #000; font-size: 12px; font-weight: 600;">&nbsp;&nbsp;+ ${option}</td><td></td></tr>`;
       });
     }
   });
@@ -411,13 +397,6 @@ function generateHTMLBill(orderData, storeInfo) {
   }
   if (orderData.tax && orderData.tax > 0) {
     totalsHTML += `<tr><td>Tax (${orderData.taxRate || 6}%):</td><td style="text-align: right;">${currencySymbol} ${orderData.tax.toFixed(2)}</td></tr>`;
-  }
-
-  // Payment info
-  let paymentHTML = `<tr><td>Payment:</td><td style="text-align: right;">${(orderData.paymentMethod || 'CASH').toUpperCase()}</td></tr>`;
-  if (orderData.paymentMethod === 'cash' && orderData.amountReceived > 0) {
-    paymentHTML += `<tr><td>Received:</td><td style="text-align: right;">${currencySymbol} ${orderData.amountReceived.toFixed(2)}</td></tr>`;
-    paymentHTML += `<tr><td>Change:</td><td style="text-align: right;">${currencySymbol} ${orderData.change.toFixed(2)}</td></tr>`;
   }
 
   // Order type indicator
@@ -505,14 +484,8 @@ function generateHTMLBill(orderData, storeInfo) {
         </tr>
       </table>
 
-      <div class="divider"></div>
-
-      <table>${paymentHTML}</table>
-
       <div class="footer">
-        *** CUSTOMER COPY ***<br>
-        Thank you for your purchase!<br>
-        Please keep this receipt for your records
+        Thank you for your purchase!
       </div>
     </body>
     </html>
@@ -570,9 +543,11 @@ function generateHTMLKitchenTicket(orderData, storeInfo) {
     }
   }
 
-  // Pager or Pickup number
+  // Table, Pager, or Pickup number (priority: Table > Pager > Pickup)
   let pickupHTML = '';
-  if (orderData.pagerNumber) {
+  if (orderData.tableNumber) {
+    pickupHTML = `<div style="font-size: 28px; font-weight: 900; text-align: center; margin: 15px 0;">TABLE ${orderData.tableNumber}</div>`;
+  } else if (orderData.pagerNumber) {
     pickupHTML = `<div style="font-size: 28px; font-weight: 900; text-align: center; margin: 15px 0;">PAGER ${orderData.pagerNumber}</div>`;
   } else {
     const pickupNum = orderData.pickupNumber || (orderData.orderNumber ? orderData.orderNumber.split('-')[1] : '000');
@@ -618,7 +593,6 @@ function generateHTMLKitchenTicket(orderData, storeInfo) {
         <tr><td style="font-weight: 700;">Order:</td><td style="text-align: right; font-weight: 700;">${orderData.orderNumber}</td></tr>
         <tr><td style="font-weight: 700;">Time:</td><td style="text-align: right; font-weight: 700;">${timeStr}</td></tr>
         <tr><td style="font-weight: 700;">Source:</td><td style="text-align: right; font-weight: 700;">${orderSource}</td></tr>
-        ${orderData.tableNumber ? `<tr><td style="font-weight: 900;">TABLE:</td><td style="text-align: right; font-weight: 900;">${orderData.tableNumber}</td></tr>` : ''}
         ${orderData.customerName && orderData.customerName !== 'Walk-in Customer' ? `<tr><td style="font-weight: 700;">Customer:</td><td style="text-align: right; font-weight: 700;">${orderData.customerName}</td></tr>` : ''}
       </table>
 
@@ -899,13 +873,6 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
   const orderSource = orderData.orderSource === 'mobile' ? 'MOBILE ORDER' : 'POS';
   content += formatLine('Source:', orderSource) + CMD.LINE_FEED;
 
-  // Table info
-  if (orderData.tableNumber) {
-    content += CMD.BOLD_ON;
-    content += formatLine('TABLE:', orderData.tableNumber) + CMD.LINE_FEED;
-    content += CMD.BOLD_OFF;
-  }
-
   if (orderData.customerName && orderData.customerName !== 'Walk-in Customer') {
     content += formatLine('Customer:', orderData.customerName) + CMD.LINE_FEED;
   }
@@ -959,11 +926,18 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
     content += CMD.DASHED_LINE + CMD.LINE_FEED;
   }
 
-  // === FOOTER - PAGER/PICKUP NUMBER AND ORDER TYPE (at bottom) ===
+  // === FOOTER - TABLE/PAGER/PICKUP NUMBER AND ORDER TYPE (at bottom) ===
   content += CMD.LINE_FEED;
 
-  // PAGER NUMBER (if exists) OR PICKUP NUMBER - single line format
-  if (orderData.pagerNumber) {
+  // TABLE NUMBER (priority) > PAGER NUMBER > PICKUP NUMBER - single line format
+  if (orderData.tableNumber) {
+    content += CMD.ALIGN_CENTER;
+    content += CMD.TEXT_DOUBLE;
+    content += CMD.BOLD_ON;
+    content += 'TABLE  ' + orderData.tableNumber + CMD.LINE_FEED;
+    content += CMD.TEXT_NORMAL;
+    content += CMD.BOLD_OFF;
+  } else if (orderData.pagerNumber) {
     content += CMD.ALIGN_CENTER;
     content += CMD.TEXT_DOUBLE;
     content += CMD.BOLD_ON;
@@ -971,7 +945,7 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
     content += CMD.TEXT_NORMAL;
     content += CMD.BOLD_OFF;
   } else {
-    // PICKUP NUMBER - single line format (same as PAGER)
+    // PICKUP NUMBER - single line format (same as TABLE/PAGER)
     content += CMD.ALIGN_CENTER;
     content += CMD.TEXT_DOUBLE;
     content += CMD.BOLD_ON;
@@ -1322,10 +1296,6 @@ export function generateKitchenTicketPreview(orderData, storeInfo) {
   const orderSource = orderData.orderSource === 'mobile' ? 'MOBILE ORDER' : 'POS';
   lines.push('Source:                              ' + orderSource);
 
-  if (orderData.tableNumber) {
-    lines.push('TABLE:                               ' + orderData.tableNumber);
-  }
-
   if (orderData.customerName && orderData.customerName !== 'Walk-in Customer') {
     lines.push('Customer:                       ' + orderData.customerName);
   }
@@ -1367,11 +1337,13 @@ export function generateKitchenTicketPreview(orderData, storeInfo) {
     lines.push('------------------------------------------------');
   }
 
-  // === FOOTER - PAGER/PICKUP NUMBER AND ORDER TYPE (at bottom) ===
+  // === FOOTER - TABLE/PAGER/PICKUP NUMBER AND ORDER TYPE (at bottom) ===
   lines.push('');
 
-  // PAGER NUMBER (if exists) OR PICKUP NUMBER - single line format
-  if (orderData.pagerNumber) {
+  // TABLE NUMBER (priority) > PAGER NUMBER > PICKUP NUMBER - single line format
+  if (orderData.tableNumber) {
+    lines.push('              TABLE  ' + orderData.tableNumber);
+  } else if (orderData.pagerNumber) {
     lines.push('              PAGER  ' + orderData.pagerNumber);
   } else {
     const pickupNum = orderData.pickupNumber || (orderData.orderNumber ? orderData.orderNumber.split('-')[1] : '000');

@@ -501,8 +501,15 @@ router.post('/cart/validate', async (req, res) => {
 });
 
 // Helper: Find mergeable order for auto-merge (mobile)
+// Only merges orders from the same day (based on createdAt) with payment_status = 'pending'
 async function findMergeableOrderMobile(restaurantId, tableNumber, orderType, transaction = null) {
   if (!restaurantId || !tableNumber) return null;
+
+  // Get today's date range (00:00:00 ~ 23:59:59)
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
 
   const queryOptions = {
     where: {
@@ -512,6 +519,10 @@ async function findMergeableOrderMobile(restaurantId, tableNumber, orderType, tr
       payment_status: 'pending',
       status: {
         [Op.notIn]: ['served', 'completed', 'cancelled']
+      },
+      // Only merge orders from today (same date condition)
+      createdAt: {
+        [Op.between]: [todayStart, todayEnd]
       },
       [Op.or]: [
         { is_deleted: false },

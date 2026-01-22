@@ -1046,7 +1046,10 @@ const BrandReportsPage: React.FC = () => {
       case 'today': start = new Date(now); break;
       case 'week': start.setDate(start.getDate() - 6); break;
       case 'month': start.setDate(start.getDate() - 29); break;
-      case 'year': start = new Date(now.getFullYear(), 0, 1); break;
+      case 'year':
+        start.setFullYear(start.getFullYear() - 1);
+        start.setDate(start.getDate() + 1); // 오늘 기준 정확히 365일
+        break;
       case 'all': start = new Date(now.getFullYear() - 5, 0, 1); break;
     }
 

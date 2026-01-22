@@ -91,8 +91,15 @@ router.get('/:id', authenticateToken, async (req, res) => {
 });
 
 // Helper: Find mergeable order for auto-merge
+// Only merges orders from the same day (based on order_date) with payment_status = 'pending'
 async function findMergeableOrder(restaurantId, tableNumber, orderType, transaction = null) {
   if (!restaurantId || !tableNumber) return null;
+
+  // Get today's date range (00:00:00 ~ 23:59:59)
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
 
   const queryOptions = {
     where: {
@@ -102,6 +109,10 @@ async function findMergeableOrder(restaurantId, tableNumber, orderType, transact
       payment_status: 'pending',
       status: {
         [Op.notIn]: ['served', 'completed', 'cancelled']
+      },
+      // Only merge orders from today (same date condition)
+      createdAt: {
+        [Op.between]: [todayStart, todayEnd]
       },
       [Op.or]: [
         { is_deleted: false },

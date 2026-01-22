@@ -2014,6 +2014,7 @@ const POSTerminalPage: React.FC = () => {
         ...orderData,
         orderNumber: savedOrder?.order_number || savedOrder?.orderNumber || '',
         pickupNumber: savedOrder?.pickup_number || savedOrder?.pickupNumber || (savedOrder?.order_number ? savedOrder.order_number.split('-')[1] : null),
+        tableNumber: savedOrder?.table_number || tableNumber || undefined,
         pagerNumber: savedOrder?.pager_number || pagerNumber || undefined,
         // Ensure takeawayCharge from backend is used if available
         takeawayCharge: savedOrder?.takeaway_charge || savedOrder?.takeawayCharge || orderData.takeawayCharge,
