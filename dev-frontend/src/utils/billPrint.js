@@ -86,6 +86,24 @@ function formatLine(left, right, width = 48) {
 
 // centerText function removed - not used in current implementation
 
+// ============================================
+// Device Detection
+// ============================================
+
+/**
+ * Check if device is mobile or tablet (for RawBT)
+ * PC/Desktop will use browser print dialog
+ */
+function isMobileOrTablet() {
+  const userAgent = navigator.userAgent.toLowerCase();
+  const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+  const isTablet = /ipad|android(?!.*mobile)|tablet/i.test(userAgent);
+  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  const isSmallScreen = window.innerWidth <= 1024;
+
+  return isMobile || isTablet || (isTouchDevice && isSmallScreen);
+}
+
 // Currency symbol mapping
 const CURRENCY_SYMBOLS = {
   MYR: 'RM',
@@ -330,6 +348,416 @@ export function generateBillContent(orderData, storeInfo) {
 }
 
 // ============================================
+// HTML Generation for PC Print
+// ============================================
+
+/**
+ * Generate HTML Bill for PC browser print
+ */
+function generateHTMLBill(orderData, storeInfo) {
+  const currencySymbol = getCurrencySymbol(orderData.currency);
+  const dateStr = orderData.date.toLocaleDateString('en-MY');
+  const timeStr = orderData.date.toLocaleTimeString('en-MY', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+
+  let itemsHTML = '';
+  orderData.items.forEach(item => {
+    const itemName = item.menuItem.name;
+    const qty = item.quantity;
+    const price = item.menuItem.price;
+    const total = qty * price;
+
+    itemsHTML += `
+      <tr>
+        <td style="text-align: left;">${itemName}</td>
+        <td style="text-align: right;">${currencySymbol} ${total.toFixed(2)}</td>
+      </tr>
+      <tr>
+        <td style="text-align: left; color: #666; font-size: 11px;">&nbsp;&nbsp;${qty} x ${currencySymbol} ${price.toFixed(2)}</td>
+        <td></td>
+      </tr>
+    `;
+
+    if (item.options && item.options.length > 0) {
+      item.options.forEach(option => {
+        itemsHTML += `<tr><td style="text-align: left; color: #666; font-size: 11px;">&nbsp;&nbsp;+ ${option}</td><td></td></tr>`;
+      });
+    }
+  });
+
+  // Build totals section
+  let totalsHTML = `<tr><td>Subtotal:</td><td style="text-align: right;">${currencySymbol} ${orderData.subtotal.toFixed(2)}</td></tr>`;
+
+  if (orderData.takeawayCharge && orderData.takeawayCharge > 0) {
+    totalsHTML += `<tr><td>Takeaway Charge:</td><td style="text-align: right;">${currencySymbol} ${orderData.takeawayCharge.toFixed(2)}</td></tr>`;
+  }
+  if (orderData.discount && orderData.discount > 0) {
+    totalsHTML += `<tr><td>Discount:</td><td style="text-align: right;">- ${currencySymbol} ${orderData.discount.toFixed(2)}</td></tr>`;
+  }
+  if (orderData.discountPolicy && orderData.discountPolicy.amount > 0) {
+    totalsHTML += `<tr><td>Discount (${orderData.discountPolicy.name}):</td><td style="text-align: right;">- ${currencySymbol} ${orderData.discountPolicy.amount.toFixed(2)}</td></tr>`;
+  }
+  if (orderData.coupon && orderData.coupon.discount > 0) {
+    totalsHTML += `<tr><td>Coupon (${orderData.coupon.code}):</td><td style="text-align: right;">- ${currencySymbol} ${orderData.coupon.discount.toFixed(2)}</td></tr>`;
+  }
+  if (orderData.pointDiscount && Number(orderData.pointDiscount) > 0) {
+    totalsHTML += `<tr><td>Points (${(orderData.pointsUsed || 0).toLocaleString()} pts):</td><td style="text-align: right;">- ${currencySymbol} ${Number(orderData.pointDiscount).toFixed(2)}</td></tr>`;
+  }
+  if (orderData.serviceCharge && orderData.serviceCharge > 0) {
+    totalsHTML += `<tr><td>Service Charge (${orderData.serviceChargeRate || 10}%):</td><td style="text-align: right;">${currencySymbol} ${orderData.serviceCharge.toFixed(2)}</td></tr>`;
+  }
+  if (orderData.tax && orderData.tax > 0) {
+    totalsHTML += `<tr><td>Tax (${orderData.taxRate || 6}%):</td><td style="text-align: right;">${currencySymbol} ${orderData.tax.toFixed(2)}</td></tr>`;
+  }
+
+  // Payment info
+  let paymentHTML = `<tr><td>Payment:</td><td style="text-align: right;">${(orderData.paymentMethod || 'CASH').toUpperCase()}</td></tr>`;
+  if (orderData.paymentMethod === 'cash' && orderData.amountReceived > 0) {
+    paymentHTML += `<tr><td>Received:</td><td style="text-align: right;">${currencySymbol} ${orderData.amountReceived.toFixed(2)}</td></tr>`;
+    paymentHTML += `<tr><td>Change:</td><td style="text-align: right;">${currencySymbol} ${orderData.change.toFixed(2)}</td></tr>`;
+  }
+
+  // Order type indicator
+  let orderTypeHTML = '';
+  if (orderData.orderType === 'pickup') {
+    orderTypeHTML = `<div style="font-size: 16px; font-weight: bold; text-align: center; margin: 10px 0;">** PRE-ORDER PICKUP **</div>
+      <div style="text-align: center; font-weight: bold;">Pickup: ${orderData.scheduledPickupTime ? formatPickupTimeRange(orderData.scheduledPickupTime) : 'ASAP'}</div>`;
+  } else if (orderData.takeawayCharge && orderData.takeawayCharge > 0) {
+    orderTypeHTML = `<div style="font-size: 16px; font-weight: bold; text-align: center; margin: 10px 0;">** TAKEAWAY **</div>`;
+  }
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Bill - ${orderData.orderNumber}</title>
+      <style>
+        @page { size: 80mm auto; margin: 0; }
+        @media print {
+          body { margin: 0; padding: 0; }
+          .no-print { display: none; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+        body {
+          font-family: 'Lucida Console', 'Courier New', monospace;
+          font-size: 14px;
+          font-weight: 600;
+          color: #000;
+          width: 80mm;
+          max-width: 80mm;
+          margin: 0 auto;
+          padding: 5mm;
+          box-sizing: border-box;
+          -webkit-font-smoothing: none;
+          letter-spacing: 0.5px;
+        }
+        .header { text-align: center; margin-bottom: 10px; }
+        .store-name { font-size: 20px; font-weight: 900; }
+        .divider { border-top: 2px dashed #000; margin: 8px 0; }
+        table { width: 100%; border-collapse: collapse; }
+        td { padding: 3px 0; font-weight: 600; }
+        .total-row { font-size: 18px; font-weight: 900; }
+        .footer { text-align: center; margin-top: 15px; font-size: 12px; font-weight: 600; }
+      </style>
+    </head>
+    <body>
+      ${orderTypeHTML}
+      <div class="header">
+        <div class="store-name">${storeInfo.name || ''}</div>
+        ${storeInfo.address ? `<div style="font-weight: 600;">${storeInfo.address}</div>` : ''}
+        ${storeInfo.phone ? `<div style="font-weight: 600;">Tel: ${storeInfo.phone}</div>` : ''}
+        ${storeInfo.gstRegNo ? `<div style="font-weight: 600;">Tax No: ${storeInfo.gstRegNo}</div>` : ''}
+      </div>
+
+      <div class="divider"></div>
+
+      <table>
+        <tr><td>Order:</td><td style="text-align: right;">${orderData.orderNumber}</td></tr>
+        ${orderData.tableNumber
+          ? `<tr><td style="font-weight: 900;">Table:</td><td style="text-align: right; font-weight: 900;">${orderData.tableNumber}</td></tr>`
+          : (orderData.pagerNumber
+            ? `<tr><td>Pager #:</td><td style="text-align: right;">${orderData.pagerNumber}</td></tr>`
+            : (orderData.pickupNumber
+              ? `<tr><td>Pickup #:</td><td style="text-align: right;">${orderData.pickupNumber}</td></tr>`
+              : ''))}
+        <tr><td>Date:</td><td style="text-align: right;">${dateStr}</td></tr>
+        <tr><td>Time:</td><td style="text-align: right;">${timeStr}</td></tr>
+      </table>
+
+      <div class="divider"></div>
+
+      <table>${itemsHTML}</table>
+
+      <div class="divider"></div>
+
+      <table>${totalsHTML}</table>
+
+      <div class="divider"></div>
+
+      <table>
+        <tr class="total-row">
+          <td>TOTAL:</td>
+          <td style="text-align: right;">${currencySymbol} ${orderData.total.toFixed(2)}</td>
+        </tr>
+      </table>
+
+      <div class="divider"></div>
+
+      <table>${paymentHTML}</table>
+
+      <div class="footer">
+        *** CUSTOMER COPY ***<br>
+        Thank you for your purchase!<br>
+        Please keep this receipt for your records
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+/**
+ * Generate HTML Kitchen Ticket for PC browser print
+ */
+function generateHTMLKitchenTicket(orderData, storeInfo) {
+  const timeStr = orderData.date.toLocaleTimeString('en-MY', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+  const orderSource = orderData.orderSource === 'mobile' ? 'MOBILE ORDER' : 'POS';
+
+  let itemsHTML = '';
+  orderData.items.forEach((item, index) => {
+    const itemName = item.menuItem?.name || item.name;
+    const qty = item.quantity;
+
+    itemsHTML += `<div style="font-size: 20px; font-weight: 900; margin: 8px 0;">${qty} x ${itemName}</div>`;
+
+    if (item.options && item.options.length > 0) {
+      item.options.forEach(option => {
+        itemsHTML += `<div style="margin-left: 15px; color: #000; font-weight: 700;">\u2605 ${option}</div>`;
+      });
+    }
+  });
+
+  // Group label
+  let groupLabelHTML = '';
+  if (orderData.groupLabel) {
+    groupLabelHTML = `<div style="font-size: 22px; font-weight: 900; text-align: center; margin: 10px 0; background: #000; color: #fff; padding: 5px;">** ${orderData.groupLabel.toUpperCase()} **</div>`;
+  }
+
+  // Order type
+  let orderTypeHTML = '';
+  if (orderData.orderType === 'pickup') {
+    orderTypeHTML = `<div style="font-size: 18px; font-weight: bold; text-align: center; margin: 10px 0;">** PRE-ORDER PICKUP **</div>
+      <div style="text-align: center; font-weight: bold;">Pickup: ${orderData.scheduledPickupTime ? formatPickupTimeRange(orderData.scheduledPickupTime) : 'ASAP'}</div>`;
+  } else if (orderData.orderType === 'takeaway' || orderData.takeawayCharge > 0) {
+    orderTypeHTML = `<div style="font-size: 18px; font-weight: bold; text-align: center; margin: 10px 0;">** TAKEAWAY **</div>`;
+  } else if (orderData.orderType === 'delivery') {
+    orderTypeHTML = `<div style="font-size: 18px; font-weight: bold; text-align: center; margin: 10px 0;">** DELIVERY **</div>`;
+    if (orderData.deliveryInfo) {
+      orderTypeHTML += `<div style="margin: 10px 0; padding: 5px; border: 1px dashed #000;">
+        <div style="font-weight: bold;">DELIVERY ADDRESS:</div>
+        ${orderData.deliveryInfo.address ? `<div>${orderData.deliveryInfo.address}</div>` : ''}
+        ${orderData.deliveryInfo.phone ? `<div>Phone: ${orderData.deliveryInfo.phone}</div>` : ''}
+        ${orderData.deliveryInfo.zoneName ? `<div>Zone: ${orderData.deliveryInfo.zoneName}</div>` : ''}
+        ${orderData.deliveryInfo.notes ? `<div>Notes: ${orderData.deliveryInfo.notes}</div>` : ''}
+      </div>`;
+    }
+  }
+
+  // Pager or Pickup number
+  let pickupHTML = '';
+  if (orderData.pagerNumber) {
+    pickupHTML = `<div style="font-size: 28px; font-weight: 900; text-align: center; margin: 15px 0;">PAGER ${orderData.pagerNumber}</div>`;
+  } else {
+    const pickupNum = orderData.pickupNumber || (orderData.orderNumber ? orderData.orderNumber.split('-')[1] : '000');
+    pickupHTML = `<div style="font-size: 28px; font-weight: 900; text-align: center; margin: 15px 0;">PICKUP ${pickupNum}</div>`;
+  }
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Kitchen Ticket - ${orderData.orderNumber}</title>
+      <style>
+        @page { size: 80mm auto; margin: 0; }
+        @media print {
+          body { margin: 0; padding: 0; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+        body {
+          font-family: 'Lucida Console', 'Courier New', monospace;
+          font-size: 14px;
+          font-weight: 600;
+          color: #000;
+          width: 80mm;
+          max-width: 80mm;
+          margin: 0 auto;
+          padding: 5mm;
+          box-sizing: border-box;
+          -webkit-font-smoothing: none;
+          letter-spacing: 0.5px;
+        }
+        .divider { border-top: 2px dashed #000; margin: 8px 0; }
+        table { width: 100%; border-collapse: collapse; }
+        td { padding: 3px 0; font-weight: 600; }
+      </style>
+    </head>
+    <body>
+      ${groupLabelHTML}
+
+      <div class="divider"></div>
+
+      <table>
+        <tr><td style="font-weight: 700;">Order:</td><td style="text-align: right; font-weight: 700;">${orderData.orderNumber}</td></tr>
+        <tr><td style="font-weight: 700;">Time:</td><td style="text-align: right; font-weight: 700;">${timeStr}</td></tr>
+        <tr><td style="font-weight: 700;">Source:</td><td style="text-align: right; font-weight: 700;">${orderSource}</td></tr>
+        ${orderData.tableNumber ? `<tr><td style="font-weight: 900;">TABLE:</td><td style="text-align: right; font-weight: 900;">${orderData.tableNumber}</td></tr>` : ''}
+        ${orderData.customerName && orderData.customerName !== 'Walk-in Customer' ? `<tr><td style="font-weight: 700;">Customer:</td><td style="text-align: right; font-weight: 700;">${orderData.customerName}</td></tr>` : ''}
+      </table>
+
+      <div class="divider"></div>
+
+      <div style="font-size: 16px; font-weight: 900; margin: 10px 0;">ORDER ITEMS:</div>
+      ${itemsHTML}
+
+      <div class="divider"></div>
+
+      ${orderData.notes && orderData.notes.trim() ? `
+        <div style="font-weight: bold;">** SPECIAL NOTES **</div>
+        <div style="margin: 5px 0;">${orderData.notes}</div>
+        <div class="divider"></div>
+      ` : ''}
+
+      ${pickupHTML}
+      ${orderTypeHTML}
+    </body>
+    </html>
+  `;
+}
+
+/**
+ * Generate HTML Additional Items Ticket for PC browser print
+ */
+function generateHTMLAdditionalItemsTicket(orderData, storeInfo) {
+  const addedItems = orderData.items.filter(item => item.added_at);
+
+  if (addedItems.length === 0) {
+    return null;
+  }
+
+  const timeStr = new Date().toLocaleTimeString('en-MY', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+
+  let itemsHTML = '';
+  addedItems.forEach((item, index) => {
+    const itemName = item.menuItem?.name || item.name;
+    const qty = item.quantity;
+
+    itemsHTML += `<div style="font-size: 20px; font-weight: 900; margin: 8px 0;">${qty} x ${itemName}</div>`;
+
+    if (item.options && item.options.length > 0) {
+      item.options.forEach(option => {
+        itemsHTML += `<div style="margin-left: 15px; color: #000; font-weight: 700;">\u2605 ${option}</div>`;
+      });
+    }
+  });
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Additional Items - ${orderData.orderNumber}</title>
+      <style>
+        @page { size: 80mm auto; margin: 0; }
+        @media print {
+          body { margin: 0; padding: 0; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+        body {
+          font-family: 'Lucida Console', 'Courier New', monospace;
+          font-size: 14px;
+          font-weight: 600;
+          color: #000;
+          width: 80mm;
+          max-width: 80mm;
+          margin: 0 auto;
+          padding: 5mm;
+          box-sizing: border-box;
+          -webkit-font-smoothing: none;
+          letter-spacing: 0.5px;
+        }
+        .divider { border-top: 2px dashed #000; margin: 8px 0; }
+        table { width: 100%; border-collapse: collapse; }
+        td { padding: 3px 0; font-weight: 600; }
+      </style>
+    </head>
+    <body>
+      <div style="font-size: 22px; font-weight: 900; text-align: center; margin: 10px 0; background: #000; color: #fff; padding: 5px;">** ADDITIONAL ORDER **</div>
+
+      <div class="divider"></div>
+
+      <table>
+        <tr><td style="font-weight: 700;">Order:</td><td style="text-align: right; font-weight: 700;">${orderData.orderNumber}</td></tr>
+        <tr><td style="font-weight: 700;">Time:</td><td style="text-align: right; font-weight: 700;">${timeStr}</td></tr>
+        ${orderData.tableNumber ? `<tr><td style="font-weight: 900;">TABLE:</td><td style="text-align: right; font-weight: 900;">${orderData.tableNumber}</td></tr>` : ''}
+      </table>
+
+      <div class="divider"></div>
+
+      <div style="font-size: 16px; font-weight: 900; margin: 10px 0;">ADDED ITEMS:</div>
+      ${itemsHTML}
+
+      <div class="divider"></div>
+
+      <div style="font-size: 14px; font-weight: bold; text-align: center; margin: 15px 0;">ADDED TO EXISTING ORDER</div>
+    </body>
+    </html>
+  `;
+}
+
+/**
+ * Print HTML content via browser print dialog (for PC)
+ */
+function printHTMLContent(htmlContent, title) {
+  const printWindow = window.open('', '_blank', 'width=400,height=600,scrollbars=yes');
+  if (printWindow) {
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+
+    // Wait for content to load then print
+    printWindow.onload = function() {
+      setTimeout(() => {
+        printWindow.print();
+        // Close window after print dialog closes
+        printWindow.onafterprint = function() {
+          printWindow.close();
+        };
+        // Fallback: close after delay if onafterprint not supported
+        setTimeout(() => {
+          if (!printWindow.closed) {
+            printWindow.close();
+          }
+        }, 1000);
+      }, 200);
+    };
+
+    return true;
+  }
+  return false;
+}
+
+// ============================================
 // RawBT Integration
 // ============================================
 
@@ -369,6 +797,16 @@ export async function printBillViaRawBT(orderData, storeInfo, printerName) {
       return true; // Return success but skip printing
     }
 
+    // PC: Use browser print dialog with HTML
+    if (!isMobileOrTablet()) {
+      console.log('🖥️ PC detected - using browser print dialog');
+      const htmlContent = generateHTMLBill(orderData, storeInfo);
+      return printHTMLContent(htmlContent, 'Bill');
+    }
+
+    // Mobile/Tablet: Use RawBT Intent
+    console.log('📱 Mobile/Tablet detected - using RawBT');
+
     // Use provided printerName or get from settings
     const targetPrinter = printerName || settings.billPrinter.name;
 
@@ -403,14 +841,15 @@ export async function printBillViaRawBT(orderData, storeInfo, printerName) {
     return true;
 
   } catch (error) {
-    console.error('❌ RawBT print error:', error);
+    console.error('❌ Print error:', error);
+    const isPC = !isMobileOrTablet();
     alert(
       'Failed to print bill.\n\n' +
-      'Please ensure:\n' +
-      '1. RawBT app is installed\n' +
-      '2. WiFi printer is configured in RawBT\n' +
-      '3. Printer is connected and ready\n\n' +
-      'Error: ' + error.message
+      (isPC
+        ? 'Please check your browser popup settings and try again.'
+        : 'Please ensure:\n1. RawBT app is installed\n2. WiFi printer is configured in RawBT\n3. Printer is connected and ready'
+      ) +
+      '\n\nError: ' + error.message
     );
     return false;
   }
@@ -621,6 +1060,16 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
       return true; // Return success but skip printing
     }
 
+    // PC: Use browser print dialog with HTML
+    if (!isMobileOrTablet()) {
+      console.log('🖥️ PC detected - using browser print dialog for kitchen ticket');
+      const htmlContent = generateHTMLKitchenTicket(orderData, storeInfo);
+      return printHTMLContent(htmlContent, 'Kitchen Ticket');
+    }
+
+    // Mobile/Tablet: Use RawBT Intent
+    console.log('📱 Mobile/Tablet detected - using RawBT for kitchen ticket');
+
     // Use provided printerName or get from settings
     const targetPrinter = printerName || settings.kitchenPrinter.name;
 
@@ -648,13 +1097,14 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
 
   } catch (error) {
     console.error('❌ Kitchen Ticket print error:', error);
+    const isPC = !isMobileOrTablet();
     alert(
       'Failed to print kitchen order ticket.\n\n' +
-      'Please ensure:\n' +
-      '1. RawBT app is installed\n' +
-      '2. WiFi printer is configured in RawBT\n' +
-      '3. Printer is connected and ready\n\n' +
-      'Error: ' + error.message
+      (isPC
+        ? 'Please check your browser popup settings and try again.'
+        : 'Please ensure:\n1. RawBT app is installed\n2. WiFi printer is configured in RawBT\n3. Printer is connected and ready'
+      ) +
+      '\n\nError: ' + error.message
     );
     return false;
   }
@@ -783,6 +1233,20 @@ export async function printAdditionalItemsTicketViaRawBT(orderData, storeInfo, p
       return true; // Return success but skip printing
     }
 
+    // PC: Use browser print dialog with HTML
+    if (!isMobileOrTablet()) {
+      console.log('🖥️ PC detected - using browser print dialog for additional items ticket');
+      const htmlContent = generateHTMLAdditionalItemsTicket(orderData, storeInfo);
+      if (!htmlContent) {
+        console.log('No additional items to print');
+        return true;
+      }
+      return printHTMLContent(htmlContent, 'Additional Items Ticket');
+    }
+
+    // Mobile/Tablet: Use RawBT Intent
+    console.log('📱 Mobile/Tablet detected - using RawBT for additional items ticket');
+
     // Use provided printerName or get from settings
     const targetPrinter = printerName || settings.kitchenPrinter.name;
 
@@ -817,13 +1281,14 @@ export async function printAdditionalItemsTicketViaRawBT(orderData, storeInfo, p
 
   } catch (error) {
     console.error('Additional Items Ticket print error:', error);
+    const isPC = !isMobileOrTablet();
     alert(
       'Failed to print additional items ticket.\n\n' +
-      'Please ensure:\n' +
-      '1. RawBT app is installed\n' +
-      '2. WiFi printer is configured in RawBT\n' +
-      '3. Printer is connected and ready\n\n' +
-      'Error: ' + error.message
+      (isPC
+        ? 'Please check your browser popup settings and try again.'
+        : 'Please ensure:\n1. RawBT app is installed\n2. WiFi printer is configured in RawBT\n3. Printer is connected and ready'
+      ) +
+      '\n\nError: ' + error.message
     );
     return false;
   }
