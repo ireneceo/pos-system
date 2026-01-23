@@ -942,17 +942,7 @@ const ManagerStaffManagementPage: React.FC = () => {
             </FilterSelect>
           </FilterBar>
 
-          <StaffTable>
-            <TableHeader>
-              <span>Staff Member</span>
-              <span>Restaurant & Type</span>
-              <span>Role</span>
-              <span>Department</span>
-              <span>Status</span>
-              <span>Last Active</span>
-              <span>Actions</span>
-            </TableHeader>
-            
+          <StaffTableContainer>
             {filteredStaff.length === 0 ? (
               <EmptyState>
                 <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
@@ -963,80 +953,101 @@ const ManagerStaffManagementPage: React.FC = () => {
                 </div>
               </EmptyState>
             ) : (
-              filteredStaff.map(staff => (
-                <TableRow key={staff.id}>
-                  <StaffInfo>
-                    <StaffAvatar type={staff.type}>
-                      {getInitials(staff.name)}
-                    </StaffAvatar>
-                    <StaffDetails>
-                      <StaffName>{staff.name}</StaffName>
-                      <StaffEmail>{staff.email}</StaffEmail>
-                    </StaffDetails>
-                  </StaffInfo>
-                  
-                  <div>
-                    {staff.restaurantName ? (
-                      <>
-                        <div style={{ fontSize: '14px', fontWeight: '600', color: '#0A2540', marginBottom: '4px' }}>
-                          {staff.restaurantName}
-                        </div>
-                        <TypeBadge type={staff.type}>
-                          {staff.type.replace('_', ' ')}
-                        </TypeBadge>
-                      </>
-                    ) : (
-                      <>
-                        <div style={{ fontSize: '14px', fontWeight: '600', color: '#0A2540', marginBottom: '4px' }}>
-                          Head Office
-                        </div>
-                        <TypeBadge type={staff.type}>
-                          {staff.type.replace('_', ' ')}
-                        </TypeBadge>
-                      </>
-                    )}
-                  </div>
-                  
-                  <div style={{ fontSize: '14px', color: '#374151' }}>
-                    {staff.role}
-                  </div>
-                  
-                  <div style={{ fontSize: '14px', color: '#6B7280' }}>
-                    {staff.department}
-                  </div>
-                  
-                  <StatusBadge status={staff.status}>
-                    {staff.status}
-                  </StatusBadge>
-                  
-                  <div style={{ fontSize: '13px', color: '#6B7280' }}>
-                    {staff.lastActive}
-                  </div>
-                  
-                  <ActionButtons>
-                    <ActionButton onClick={() => handleEditStaff(staff)}>
-                      Edit
-                    </ActionButton>
-                    <ActionButton onClick={() => handleViewPermissions(staff)}>
-                      Permissions
-                    </ActionButton>
-                    {staff.type === 'restaurant_staff' && staff.role === 'Staff' && (
-                      <ActionButton 
-                        onClick={() => handlePromoteToAdmin(staff)}
-                        style={{ 
-                          backgroundColor: '#635BFF', 
-                          color: 'white', 
-                          borderColor: '#635BFF' 
-                        }}
-                      >
-                        Promote to Admin
-                      </ActionButton>
-                    )}
-                  </ActionButtons>
-                </TableRow>
-              ))
+              <StaffTable>
+                <StaffTableHead>
+                  <tr>
+                    <th>Staff Member</th>
+                    <th>Restaurant & Type</th>
+                    <th>Role</th>
+                    <th>Department</th>
+                    <th>Status</th>
+                    <th>Last Active</th>
+                    <th>Actions</th>
+                  </tr>
+                </StaffTableHead>
+                <tbody>
+                  {filteredStaff.map(staff => (
+                    <StaffTableRow key={staff.id}>
+                      <StaffTableCell data-label="Staff Member">
+                        <StaffInfo>
+                          <StaffAvatar type={staff.type}>
+                            {getInitials(staff.name)}
+                          </StaffAvatar>
+                          <StaffDetails>
+                            <StaffName>{staff.name}</StaffName>
+                            <StaffEmail>{staff.email}</StaffEmail>
+                          </StaffDetails>
+                        </StaffInfo>
+                      </StaffTableCell>
+
+                      <StaffTableCell data-label="Restaurant & Type">
+                        {staff.restaurantName ? (
+                          <>
+                            <div style={{ fontSize: '14px', fontWeight: '600', color: '#0A2540', marginBottom: '4px' }}>
+                              {staff.restaurantName}
+                            </div>
+                            <TypeBadge type={staff.type}>
+                              {staff.type.replace('_', ' ')}
+                            </TypeBadge>
+                          </>
+                        ) : (
+                          <>
+                            <div style={{ fontSize: '14px', fontWeight: '600', color: '#0A2540', marginBottom: '4px' }}>
+                              Head Office
+                            </div>
+                            <TypeBadge type={staff.type}>
+                              {staff.type.replace('_', ' ')}
+                            </TypeBadge>
+                          </>
+                        )}
+                      </StaffTableCell>
+
+                      <StaffTableCell data-label="Role">
+                        {staff.role}
+                      </StaffTableCell>
+
+                      <StaffTableCell data-label="Department">
+                        {staff.department}
+                      </StaffTableCell>
+
+                      <StaffTableCell data-label="Status">
+                        <StatusBadge status={staff.status}>
+                          {staff.status}
+                        </StatusBadge>
+                      </StaffTableCell>
+
+                      <StaffTableCell data-label="Last Active">
+                        {staff.lastActive}
+                      </StaffTableCell>
+
+                      <StaffTableCell data-label="">
+                        <ActionButtons>
+                          <ActionButton onClick={() => handleEditStaff(staff)}>
+                            Edit
+                          </ActionButton>
+                          <ActionButton onClick={() => handleViewPermissions(staff)}>
+                            Permissions
+                          </ActionButton>
+                          {staff.type === 'restaurant_staff' && staff.role === 'Staff' && (
+                            <ActionButton
+                              onClick={() => handlePromoteToAdmin(staff)}
+                              style={{
+                                backgroundColor: '#635BFF',
+                                color: 'white',
+                                borderColor: '#635BFF'
+                              }}
+                            >
+                              Promote to Admin
+                            </ActionButton>
+                          )}
+                        </ActionButtons>
+                      </StaffTableCell>
+                    </StaffTableRow>
+                  ))}
+                </tbody>
+              </StaffTable>
             )}
-          </StaffTable>
+          </StaffTableContainer>
         </Content>
         
         <Modal show={showAddModal}>

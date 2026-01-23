@@ -54,6 +54,11 @@ interface Staff {
 
 // 페이지별 반응형 테이블 헤더 (StaffManagement 전용)
 const StaffTableHeader = styled(CommonTableHeader)`
+  /* 정렬 규칙: 상태는 가운데, 금액/액션은 우측 */
+  & > span:nth-child(5) { text-align: center; } /* Status */
+  & > span:nth-child(6) { text-align: right; } /* Salary */
+  & > span:nth-child(7) { text-align: right; } /* Actions */
+
   @media (max-width: 1400px) {
     & > span:nth-child(4),
     & > span:nth-child(5) {
@@ -72,6 +77,9 @@ const StaffTableHeader = styled(CommonTableHeader)`
 
 // 페이지별 반응형 테이블 행 (StaffManagement 전용)
 const StaffTableRow = styled(CommonTableRow)`
+  /* 정렬 규칙: 상태는 가운데, 금액/액션은 우측 */
+  & > div:nth-child(3) { text-align: center; } /* Status (MobileGrid 내부) */
+
   @media (max-width: 1400px) {
     & > div:nth-child(4),
     & > div:nth-child(5) {

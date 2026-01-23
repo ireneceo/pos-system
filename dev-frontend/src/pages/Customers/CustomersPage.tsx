@@ -91,6 +91,13 @@ const TableHeader = styled.div`
   text-transform: uppercase;
   letter-spacing: 0.3px;
 
+  /* 정렬 규칙: Tier 가운데, 숫자는 우측, 액션은 우측 */
+  & > span:nth-child(3) { text-align: center; } /* Tier */
+  & > span:nth-child(4) { text-align: right; } /* Points */
+  & > span:nth-child(5) { text-align: right; } /* Orders */
+  & > span:nth-child(6) { text-align: right; } /* Total Spent */
+  & > span:nth-child(7) { text-align: right; } /* Actions */
+
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
     gap: 8px;
@@ -106,6 +113,13 @@ const TableRow = styled.div<{ clickable?: boolean }>`
   align-items: center;
   transition: all 0.2s;
   cursor: ${props => props.clickable ? 'pointer' : 'default'};
+
+  /* 정렬 규칙: Tier 가운데, 숫자는 우측, 액션은 우측 */
+  & > *:nth-child(3) { text-align: center; justify-self: center; } /* Tier (LoyaltyBadge) */
+  & > *:nth-child(4) { text-align: right; } /* Points */
+  & > *:nth-child(5) { text-align: right; } /* Orders */
+  & > *:nth-child(6) { text-align: right; } /* Total Spent */
+  & > *:nth-child(7) { justify-self: end; } /* Actions */
 
   &:hover {
     background: ${props => props.clickable ? '#F8FAFC' : 'transparent'};

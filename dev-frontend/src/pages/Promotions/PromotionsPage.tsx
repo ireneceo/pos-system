@@ -97,6 +97,14 @@ const TableHeader = styled.th`
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.3px;
+
+  /* 정렬 규칙: 숫자/금액은 우측, 상태는 가운데, 액션은 우측 */
+  &:nth-child(3) { text-align: right; } /* Discount */
+  &:nth-child(4) { text-align: right; } /* Min Order */
+  &:nth-child(5) { text-align: center; } /* Valid Until */
+  &:nth-child(6) { text-align: center; } /* Usage */
+  &:nth-child(7) { text-align: center; } /* Status */
+  &:nth-child(8) { text-align: right; } /* Actions */
 `;
 
 const TableCell = styled.td`
@@ -105,6 +113,14 @@ const TableCell = styled.td`
   border-bottom: 1px solid #F6F9FC;
   font-size: 13px;
   color: #0A2540;
+
+  /* 정렬 규칙: 숫자/금액은 우측, 상태는 가운데, 액션은 우측 */
+  &:nth-child(3) { text-align: right; } /* Discount */
+  &:nth-child(4) { text-align: right; } /* Min Order */
+  &:nth-child(5) { text-align: center; } /* Valid Until */
+  &:nth-child(6) { text-align: center; } /* Usage */
+  &:nth-child(7) { text-align: center; } /* Status */
+  &:nth-child(8) { text-align: right; } /* Actions */
 `;
 
 const StatusBadge = styled.span<{ status: 'active' | 'inactive' | 'expired' }>`

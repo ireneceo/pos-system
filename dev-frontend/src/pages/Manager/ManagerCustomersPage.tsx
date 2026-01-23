@@ -115,12 +115,26 @@ const TableHeaderCell = styled.th`
   color: #6B7280;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+
+  /* 정렬 규칙: 숫자는 우측, 상태/등급은 가운데 */
+  &:nth-child(4) { text-align: right; } /* Orders */
+  &:nth-child(5) { text-align: right; } /* Total Spent */
+  &:nth-child(6) { text-align: center; } /* Status */
+  &:nth-child(7) { text-align: center; } /* Tier */
+  &:nth-child(8) { text-align: right; } /* Points */
 `;
 
 const TableCell = styled.td`
   padding: 16px 12px;
   font-size: 14px;
   color: #374151;
+
+  /* 정렬 규칙: 숫자는 우측, 상태/등급은 가운데 */
+  &:nth-child(4) { text-align: right; } /* Orders */
+  &:nth-child(5) { text-align: right; } /* Total Spent */
+  &:nth-child(6) { text-align: center; } /* Status */
+  &:nth-child(7) { text-align: center; } /* Tier */
+  &:nth-child(8) { text-align: right; } /* Points */
 `;
 
 const StatusBadge = styled.span<{ status: string }>`

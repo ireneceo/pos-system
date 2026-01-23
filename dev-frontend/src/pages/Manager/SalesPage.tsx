@@ -182,42 +182,130 @@ const ChartTitle = styled.h3`
   margin-bottom: 20px;
 `;
 
-const RestaurantTable = styled.div`
+// Sales Table - HTML table 기반 (정렬 규칙 통일)
+const SalesTableContainer = styled.div`
   background: white;
   border-radius: 12px;
   border: 1px solid #E6EBF1;
   overflow: hidden;
+
+  @media (max-width: 768px) {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+  }
 `;
 
-const TableHeader = styled.div`
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 100px;
-  gap: 16px;
-  padding: 16px 24px;
+const SalesTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+
+  @media (max-width: 768px) {
+    display: block;
+  }
+
+  tbody {
+    @media (max-width: 768px) {
+      display: block;
+    }
+  }
+`;
+
+const SalesTableHead = styled.thead`
   background: #F8FAFC;
   border-bottom: 1px solid #E6EBF1;
-  font-size: 12px;
-  font-weight: 600;
-  color: #6B7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+
+  @media (max-width: 768px) {
+    display: none;
+  }
+
+  th {
+    padding: 14px 16px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6B7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* 정렬 규칙: 숫자/금액은 우측, 액션은 우측 */
+  th:nth-child(2), th:nth-child(3), th:nth-child(4), th:nth-child(5), th:nth-child(6) { text-align: right; } /* Sales, Orders, Avg, Week, Month */
+  th:nth-child(7) { text-align: right; } /* Action */
 `;
 
-const TableRow = styled.div`
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 100px;
-  gap: 16px;
-  padding: 20px 24px;
+const SalesTableRow = styled.tr`
   border-bottom: 1px solid #F3F4F6;
-  align-items: center;
-  transition: all 0.2s;
-  
+  transition: background 0.15s;
+
   &:hover {
     background: #F8FAFC;
   }
-  
+
   &:last-child {
     border-bottom: none;
+  }
+
+  @media (max-width: 768px) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px;
+    margin-bottom: 10px;
+    background: white;
+    border-radius: 10px;
+    border: 1px solid #E6EBF1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+    &:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transform: translateY(-1px);
+    }
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+`;
+
+const SalesTableCell = styled.td`
+  padding: 16px;
+  font-size: 14px;
+  color: #0A2540;
+  vertical-align: middle;
+
+  /* 정렬 규칙: 숫자/금액은 우측, 액션은 우측 */
+  &:nth-child(2), &:nth-child(3), &:nth-child(4), &:nth-child(5), &:nth-child(6) { text-align: right; } /* Sales, Orders, Avg, Week, Month */
+  &:nth-child(7) { text-align: right; } /* Action */
+
+  @media (max-width: 768px) {
+    flex: 1 1 calc(50% - 5px);
+    min-width: 140px;
+    padding: 0;
+    text-align: left !important;
+
+    &:before {
+      content: attr(data-label);
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      color: #9CA3AF;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    &:last-child {
+      flex: 1 1 100%;
+      padding-top: 10px;
+      margin-top: 10px;
+      border-top: 1px solid #F3F4F6;
+
+      &:before {
+        display: none;
+      }
+    }
   }
 `;
 
@@ -484,43 +572,62 @@ const ManagerSalesPage: React.FC = () => {
             </div>
           </ChartCard>
 
-          <RestaurantTable style={{ marginTop: '24px' }}>
-            <TableHeader>
-              <span>Restaurant</span>
-              <span>Today's Sales</span>
-              <span>Orders</span>
-              <span>Avg Order</span>
-              <span>Week Total</span>
-              <span>Month Total</span>
-              <span>Action</span>
-            </TableHeader>
-            
-            {restaurantSales.map(restaurant => {
-              const change = restaurant.yesterdaySales > 0
-                ? ((restaurant.todaySales - restaurant.yesterdaySales) / restaurant.yesterdaySales * 100)
-                : 0;
-                
-              return (
-                <TableRow key={restaurant.id}>
-                  <RestaurantInfo>
-                    <RestaurantName>{restaurant.name}</RestaurantName>
-                    <RestaurantLocation>{restaurant.location}</RestaurantLocation>
-                  </RestaurantInfo>
-                  <ValueCell>
-                    {formatCurrency(restaurant.todaySales, selectedCurrency)}
-                    <ChangeCell positive={change > 0}>
-                      {change > 0 ? '↑' : '↓'} {Math.abs(change).toFixed(1)}%
-                    </ChangeCell>
-                  </ValueCell>
-                  <ValueCell>{restaurant.todayOrders}</ValueCell>
-                  <ValueCell>{formatCurrency(restaurant.averageOrderValue, selectedCurrency)}</ValueCell>
-                  <ValueCell>{formatCurrency(restaurant.weekSales, selectedCurrency)}</ValueCell>
-                  <ValueCell>{formatCurrency(restaurant.monthSales, selectedCurrency)}</ValueCell>
-                  <ActionButton>View Details</ActionButton>
-                </TableRow>
-              );
-            })}
-          </RestaurantTable>
+          <SalesTableContainer style={{ marginTop: '24px' }}>
+            <SalesTable>
+              <SalesTableHead>
+                <tr>
+                  <th>Restaurant</th>
+                  <th>Today's Sales</th>
+                  <th>Orders</th>
+                  <th>Avg Order</th>
+                  <th>Week Total</th>
+                  <th>Month Total</th>
+                  <th>Action</th>
+                </tr>
+              </SalesTableHead>
+              <tbody>
+                {restaurantSales.map(restaurant => {
+                  const change = restaurant.yesterdaySales > 0
+                    ? ((restaurant.todaySales - restaurant.yesterdaySales) / restaurant.yesterdaySales * 100)
+                    : 0;
+
+                  return (
+                    <SalesTableRow key={restaurant.id}>
+                      <SalesTableCell data-label="Restaurant">
+                        <RestaurantInfo>
+                          <RestaurantName>{restaurant.name}</RestaurantName>
+                          <RestaurantLocation>{restaurant.location}</RestaurantLocation>
+                        </RestaurantInfo>
+                      </SalesTableCell>
+                      <SalesTableCell data-label="Today's Sales">
+                        <ValueCell>
+                          {formatCurrency(restaurant.todaySales, selectedCurrency)}
+                          <ChangeCell positive={change > 0}>
+                            {change > 0 ? '↑' : '↓'} {Math.abs(change).toFixed(1)}%
+                          </ChangeCell>
+                        </ValueCell>
+                      </SalesTableCell>
+                      <SalesTableCell data-label="Orders">
+                        <ValueCell>{restaurant.todayOrders}</ValueCell>
+                      </SalesTableCell>
+                      <SalesTableCell data-label="Avg Order">
+                        <ValueCell>{formatCurrency(restaurant.averageOrderValue, selectedCurrency)}</ValueCell>
+                      </SalesTableCell>
+                      <SalesTableCell data-label="Week Total">
+                        <ValueCell>{formatCurrency(restaurant.weekSales, selectedCurrency)}</ValueCell>
+                      </SalesTableCell>
+                      <SalesTableCell data-label="Month Total">
+                        <ValueCell>{formatCurrency(restaurant.monthSales, selectedCurrency)}</ValueCell>
+                      </SalesTableCell>
+                      <SalesTableCell data-label="">
+                        <ActionButton>View Details</ActionButton>
+                      </SalesTableCell>
+                    </SalesTableRow>
+                  );
+                })}
+              </tbody>
+            </SalesTable>
+          </SalesTableContainer>
         </Content>
       </Container>
     </MainLayout>
