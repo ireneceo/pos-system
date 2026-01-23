@@ -14,8 +14,9 @@ InvoiceItem.init({
     allowNull: false
   },
   item_type: {
-    type: DataTypes.ENUM('subscription', 'solution_fee', 'rent_fixed', 'rent_percentage', 'rent_combined', 'management_fee', 'utility', 'other'),
-    allowNull: false
+    type: DataTypes.STRING(50),
+    allowNull: false,
+    comment: 'Item type code from invoice_categories table'
   },
   description: {
     type: DataTypes.STRING,

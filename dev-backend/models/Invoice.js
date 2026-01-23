@@ -95,9 +95,9 @@ Invoice.init({
     comment: 'ID of the payer (manager_id if payer_type is manager)'
   },
   invoice_category: {
-    type: DataTypes.ENUM('subscription', 'service', 'consulting', 'others'),
-    defaultValue: 'subscription',
-    comment: 'Invoice category type'
+    type: DataTypes.STRING(50),
+    defaultValue: 'service',
+    comment: 'Invoice category code from invoice_categories table'
   },
   custom_description: {
     type: DataTypes.STRING(255),

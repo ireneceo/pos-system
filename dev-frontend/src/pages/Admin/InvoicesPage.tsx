@@ -101,18 +101,7 @@ interface Restaurant {
   currency?: string;
 }
 
-interface Subscription {
-  id: string;
-  restaurant_id: string;
-  plan_type: 'basic' | 'professional' | 'enterprise';
-  status: 'Active' | 'Trial' | 'Expired' | 'Suspended' | 'Cancelled';
-  billing_cycle: 'monthly' | 'annual';
-  menu_limit: number;
-  monthly_price: number;
-  annual_price: number;
-  start_date: string;
-  end_date?: string;
-}
+// Subscription interface removed - not currently used
 
 interface InvoiceCategory {
   id: number;
@@ -617,7 +606,7 @@ const InvoicesPage: React.FC = () => {
   const [editSelectedTarget, setEditSelectedTarget] = useState<{type: 'manager' | 'restaurant', data: Manager | Restaurant} | null>(null);
   const [managers, setManagers] = useState<Manager[]>([]);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [, setSubscriptions] = useState<Subscription[]>([]);
+  // subscriptions state removed - not currently used in UI
   const [searchResults, setSearchResults] = useState<{managers: Manager[], restaurants: Restaurant[]}>({managers: [], restaurants: []});
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
@@ -626,6 +615,7 @@ const InvoicesPage: React.FC = () => {
   const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
   const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>([]);
   const [invoiceCategories, setInvoiceCategories] = useState<InvoiceCategory[]>([]);
+  const [taxSettings, setTaxSettings] = useState<{ enabled: boolean; rate: number; name: string }>({ enabled: false, rate: 0, name: 'Tax' });
   const [newInvoice, setNewInvoice] = useState({
     managerId: '',
     managerName: '',
@@ -948,15 +938,38 @@ const InvoicesPage: React.FC = () => {
     setInvoices(sampleInvoices);
   };
 
+  // Fetch payment settings (tax rate)
+  const fetchPaymentSettings = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/admin/payment-settings', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.tax) {
+          setTaxSettings({
+            enabled: data.tax.enabled || false,
+            rate: parseFloat(data.tax.rate) || 0,
+            name: data.tax.name || 'Tax'
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching payment settings:', error);
+    }
+  };
+
   // Fetch data on component mount
   useEffect(() => {
     fetchInvoices();
     fetchManagers();
     fetchRestaurants();
-    fetchSubscriptions();
+    // fetchSubscriptions(); // removed - not currently used
     fetchCompanySettings();
     fetchCurrencyConfig();
     fetchInvoiceCategories();
+    fetchPaymentSettings();
   }, []);
 
   const fetchCurrencyConfig = async () => {
@@ -1070,21 +1083,7 @@ const InvoicesPage: React.FC = () => {
     }
   };
 
-  const fetchSubscriptions = async () => {
-    try {
-      const response = await fetch('/api/subscriptions');
-      if (response.ok) {
-        const data = await response.json();
-        setSubscriptions(data);
-      } else {
-        console.warn('Subscription API not available');
-        setSubscriptions([]);
-      }
-    } catch (error) {
-      console.error('Error fetching subscriptions:', error);
-      setSubscriptions([]);
-    }
-  };
+  // fetchSubscriptions removed - not currently used in UI
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -2109,7 +2108,7 @@ const InvoicesPage: React.FC = () => {
         calculation_method: 'fixed',
         fixed_amount: amount,
         calculated_amount: amount,
-        tax_rate: 6,
+        tax_rate: taxSettings.enabled ? taxSettings.rate : 0,
         tax_amount: tax,
         total_amount: total
       }];
@@ -2880,7 +2879,8 @@ const InvoicesPage: React.FC = () => {
                       value={newInvoice.amount}
                       onChange={(e) => {
                         const amount = parseFloat(e.target.value) || 0;
-                        const tax = amount * 0.06;
+                        const taxRate = taxSettings.enabled ? taxSettings.rate / 100 : 0;
+                        const tax = amount * taxRate;
                         const total = amount + tax;
                         setNewInvoice({
                           ...newInvoice,
@@ -2894,7 +2894,8 @@ const InvoicesPage: React.FC = () => {
                           const decimals = getCurrencyDecimals(newInvoice.currency);
                           const amount = parseFloat(e.target.value) || 0;
                           const formattedAmount = amount.toFixed(decimals);
-                          const tax = amount * 0.06;
+                          const taxRate = taxSettings.enabled ? taxSettings.rate / 100 : 0;
+                          const tax = amount * taxRate;
                           const total = amount + tax;
                           setNewInvoice({
                             ...newInvoice,
@@ -3422,7 +3423,8 @@ const InvoicesPage: React.FC = () => {
                       value={editInvoice.amount}
                       onChange={(e) => {
                         const amount = parseFloat(e.target.value) || 0;
-                        const tax = amount * 0.06;
+                        const taxRate = taxSettings.enabled ? taxSettings.rate / 100 : 0;
+                        const tax = amount * taxRate;
                         const total = amount + tax;
                         setEditInvoice({
                           ...editInvoice,

@@ -1088,19 +1088,33 @@ router.post('/', authenticateToken, async (req, res) => {
     // Debug logging
     console.log('Invoice data before creation:', JSON.stringify(invoice_data, null, 2));
 
-    // Generate invoice number with lock to prevent duplicates
+    // Generate invoice number - find max existing number and increment
     const year = new Date().getFullYear();
     const month = String(new Date().getMonth() + 1).padStart(2, '0');
-    const count = await Invoice.count({
+    const prefix = invoice_data.invoice_prefix || 'INV';
+    const pattern = `${prefix}-${year}${month}`;
+
+    // Find the highest existing invoice number with this pattern
+    const lastInvoice = await Invoice.findOne({
       where: {
         invoice_number: {
-          [Op.like]: `${invoice_data.invoice_prefix || 'INV'}-${year}${month}%`
+          [Op.like]: `${pattern}%`
         }
       },
+      order: [['invoice_number', 'DESC']],
       transaction
     });
 
-    invoice_data.invoice_number = `${invoice_data.invoice_prefix || 'INV'}-${year}${month}${String(count + 1).padStart(4, '0')}`;
+    let nextNumber = 1;
+    if (lastInvoice && lastInvoice.invoice_number) {
+      // Extract the number part from the end (e.g., INV-2026010014 -> 14)
+      const match = lastInvoice.invoice_number.match(/(\d+)$/);
+      if (match) {
+        nextNumber = parseInt(match[1], 10) + 1;
+      }
+    }
+
+    invoice_data.invoice_number = `${pattern}${String(nextNumber).padStart(4, '0')}`;
 
     // Create invoice within transaction
     const invoice = await Invoice.create(invoice_data, { transaction });
