@@ -561,7 +561,7 @@ const MobileCardActions = styled.div`
   border-top: 1px solid #F3F4F6;
 `;
 
-type TabType = 'invoices' | 'categories';
+type TabType = 'invoices' | 'payment_submitted' | 'categories';
 
 const InvoicesPage: React.FC = () => {
   const { operationSettings } = useStore();
@@ -616,6 +616,8 @@ const InvoicesPage: React.FC = () => {
   const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>([]);
   const [invoiceCategories, setInvoiceCategories] = useState<InvoiceCategory[]>([]);
   const [taxSettings, setTaxSettings] = useState<{ enabled: boolean; rate: number; name: string }>({ enabled: false, rate: 0, name: 'Tax' });
+  const [sortField, setSortField] = useState<'invoiceNumber' | 'companyName' | 'dueDate' | 'amount' | 'status'>('dueDate');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [newInvoice, setNewInvoice] = useState({
     managerId: '',
     managerName: '',
@@ -1760,11 +1762,47 @@ const InvoicesPage: React.FC = () => {
 
     return matchesSearch && matchesStatus && matchesType && matchesMonth;
   }).sort((a, b) => {
-    // Sort by due date descending (newest first)
-    const dateA = new Date(a.dueDate).getTime();
-    const dateB = new Date(b.dueDate).getTime();
-    return dateB - dateA;
+    // Dynamic sorting based on sortField and sortDirection
+    let comparison = 0;
+    switch (sortField) {
+      case 'invoiceNumber':
+        comparison = a.invoiceNumber.localeCompare(b.invoiceNumber);
+        break;
+      case 'companyName':
+        comparison = a.companyName.localeCompare(b.companyName);
+        break;
+      case 'dueDate':
+        comparison = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        break;
+      case 'amount':
+        comparison = a.total - b.total;
+        break;
+      case 'status':
+        comparison = (a.status || '').localeCompare(b.status || '');
+        break;
+      default:
+        comparison = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+    }
+    return sortDirection === 'desc' ? -comparison : comparison;
   });
+
+  // Handle sort header click
+  const handleSort = (field: 'invoiceNumber' | 'companyName' | 'dueDate' | 'amount' | 'status') => {
+    if (sortField === field) {
+      // Toggle direction if same field
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New field, default to descending for dates/amounts, ascending for text
+      setSortField(field);
+      setSortDirection(field === 'dueDate' || field === 'amount' ? 'desc' : 'asc');
+    }
+  };
+
+  // Get sort indicator for header
+  const getSortIndicator = (field: string) => {
+    if (sortField !== field) return '';
+    return sortDirection === 'asc' ? ' ▲' : ' ▼';
+  };
 
   const totalInvoices = invoices.length;
   const paidInvoices = invoices.filter(i => i.status === 'paid').length;
@@ -2267,6 +2305,14 @@ const InvoicesPage: React.FC = () => {
 
         <TabContainer>
           <Tab active={activeTab === 'invoices'} onClick={() => handleTabChange('invoices')}>Invoices</Tab>
+          <Tab active={activeTab === 'payment_submitted'} onClick={() => handleTabChange('payment_submitted')}>
+            Payment Submitted
+            {invoices.filter(i => i.status === 'payment_submitted').length > 0 && (
+              <span style={{ marginLeft: '6px', background: '#DC2626', color: 'white', borderRadius: '10px', padding: '2px 8px', fontSize: '11px', fontWeight: '600' }}>
+                {invoices.filter(i => i.status === 'payment_submitted').length}
+              </span>
+            )}
+          </Tab>
           <Tab active={activeTab === 'categories'} onClick={() => handleTabChange('categories')}>Invoice Categories</Tab>
         </TabContainer>
 
@@ -2343,13 +2389,13 @@ const InvoicesPage: React.FC = () => {
           <DataTable>
             <DataTableHead>
               <tr>
-                <DataTableHeaderCell align="center">Invoice</DataTableHeaderCell>
-                <DataTableHeaderCell align="center">Customer</DataTableHeaderCell>
+                <DataTableHeaderCell align="center" style={{ cursor: 'pointer' }} onClick={() => handleSort('invoiceNumber')}>Invoice{getSortIndicator('invoiceNumber')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center" style={{ cursor: 'pointer' }} onClick={() => handleSort('companyName')}>Customer{getSortIndicator('companyName')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="center">Period</DataTableHeaderCell>
                 <DataTableHeaderCell align="center">Issued</DataTableHeaderCell>
-                <DataTableHeaderCell align="center">Due</DataTableHeaderCell>
-                <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
-                <DataTableHeaderCell align="right">Amount</DataTableHeaderCell>
+                <DataTableHeaderCell align="center" style={{ cursor: 'pointer' }} onClick={() => handleSort('dueDate')}>Due{getSortIndicator('dueDate')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center" style={{ cursor: 'pointer' }} onClick={() => handleSort('status')}>Status{getSortIndicator('status')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right" style={{ cursor: 'pointer' }} onClick={() => handleSort('amount')}>Amount{getSortIndicator('amount')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="right">Total</DataTableHeaderCell>
                 <DataTableHeaderCell isActions>Actions</DataTableHeaderCell>
               </tr>
@@ -2532,6 +2578,80 @@ const InvoicesPage: React.FC = () => {
             </DataTableEmpty>
           )}
         </DataTableContainer>
+          </>
+        )}
+
+        {activeTab === 'payment_submitted' && (
+          <>
+            <div style={{ marginBottom: '20px' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1F2937', margin: '0 0 8px 0' }}>
+                Payment Confirmation Required
+              </h3>
+              <p style={{ fontSize: '14px', color: '#6B7280', margin: 0 }}>
+                These invoices have payment submitted and are waiting for your confirmation.
+              </p>
+            </div>
+
+            <DataTableContainer>
+              <DataTable>
+                <DataTableHead>
+                  <tr>
+                    <DataTableHeaderCell align="center">Invoice</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">Customer</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">Payment Method</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">Submitted Date</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">Amount</DataTableHeaderCell>
+                    <DataTableHeaderCell isActions>Actions</DataTableHeaderCell>
+                  </tr>
+                </DataTableHead>
+                <tbody>
+                  {invoices.filter(i => i.status === 'payment_submitted').map(invoice => (
+                    <DataTableRow key={invoice.id}>
+                      <DataTableCell data-label="Invoice">
+                        <InvoiceInfo>
+                          <InvoiceNumber>{invoice.invoiceNumber}</InvoiceNumber>
+                          <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
+                        </InvoiceInfo>
+                      </DataTableCell>
+                      <DataTableCell data-label="Customer">
+                        <InvoiceInfo>
+                          <InvoiceNumber>{invoice.customerName || invoice.restaurantName || 'Unknown'}</InvoiceNumber>
+                          <CompanyName>{invoice.companyName}</CompanyName>
+                        </InvoiceInfo>
+                      </DataTableCell>
+                      <DataTableCell data-label="Payment Method" align="center">
+                        {invoice.paymentMethod || '-'}
+                      </DataTableCell>
+                      <DataTableCell data-label="Submitted" align="center">
+                        {invoice.paidDate ? formatDate(invoice.paidDate) : '-'}
+                      </DataTableCell>
+                      <DataTableCell data-label="Amount" align="right">
+                        <DataTableAmount highlight>{formatCurrency(invoice.total, invoice.currency || 'USD')}</DataTableAmount>
+                      </DataTableCell>
+                      <DataTableCell data-label="" mobileFullWidth>
+                        <ActionButtons>
+                          <Button size="small" variant="outline" onClick={() => handleViewClick(invoice)}>View</Button>
+                          <Button size="small" variant="primary" onClick={() => {
+                            setSelectedInvoice(invoice);
+                            setShowPaymentConfirmModal(true);
+                          }}>Confirm Payment</Button>
+                        </ActionButtons>
+                      </DataTableCell>
+                    </DataTableRow>
+                  ))}
+                </tbody>
+              </DataTable>
+              {invoices.filter(i => i.status === 'payment_submitted').length === 0 && (
+                <DataTableEmpty>
+                  <div style={{ fontSize: '18px', fontWeight: '600', color: '#1F2937', marginBottom: '8px' }}>
+                    No Pending Confirmations
+                  </div>
+                  <div style={{ fontSize: '14px', color: '#6B7280' }}>
+                    There are no invoices waiting for payment confirmation.
+                  </div>
+                </DataTableEmpty>
+              )}
+            </DataTableContainer>
           </>
         )}
 

@@ -314,7 +314,7 @@ router.get('/', authenticateToken, async (req, res) => {
       }, {
         model: InvoiceItem,
         as: 'items',
-        attributes: ['description', 'calculated_amount', 'tax_amount', 'total_amount']
+        attributes: ['item_type', 'description', 'calculated_amount', 'tax_amount', 'total_amount']
       }],
       order: [['due_date', 'DESC'], ['id', 'DESC']]
     });
@@ -402,10 +402,10 @@ router.get('/', authenticateToken, async (req, res) => {
         type: invoice.type,
         payerType: invoice.payer_type,
         payerId: invoice.payer_id?.toString(),
-        invoiceCategory: invoice.invoice_category || 'subscription',
+        invoiceCategory: invoice.items?.[0]?.item_type || invoice.invoice_category || 'subscription',
         customDescription: invoice.custom_description,
         serviceDescription: invoice.service_description,
-        categoryDisplayName: getCategoryDisplayName(invoice.invoice_category, invoice.custom_description, invoice.restaurant?.plan_type, invoice.restaurant?.billing_cycle),
+        categoryDisplayName: getCategoryDisplayName(invoice.items?.[0]?.item_type || invoice.invoice_category, invoice.custom_description || invoice.items?.[0]?.description, invoice.restaurant?.plan_type, invoice.restaurant?.billing_cycle),
         // Payment info for confirmation
         paymentMethod: invoice.payment_method,
         transactionId: invoice.transaction_id,
