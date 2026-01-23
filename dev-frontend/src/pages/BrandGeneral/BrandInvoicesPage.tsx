@@ -243,7 +243,7 @@ const Amount = styled.div<{ highlight?: boolean }>`
   color: #374151;
 `;
 
-const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'email' | 'cancel' }>`
+const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'email' | 'cancel' | 'success' }>`
   padding: 6px;
   border-radius: 6px;
   font-size: 14px;
@@ -266,6 +266,16 @@ const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'emai
 
     &:hover {
       background: #5A51E6;
+    }
+  ` : props.variant === 'success' ? `
+    background: #10B981;
+    color: white;
+    border-color: #10B981;
+    padding: 6px 12px;
+    min-width: auto;
+
+    &:hover {
+      background: #059669;
     }
   ` : props.variant === 'danger' ? `
     background: transparent;
@@ -855,6 +865,73 @@ const BrandInvoicesPage: React.FC = () => {
 
   // State for invoices to pay (from system admin)
   const [invoicesToPay, setInvoicesToPay] = useState<Invoice[]>([]);
+
+  // To Pay tab filters (separate from Issued tab)
+  const [toPaySearchTerm, setToPaySearchTerm] = useState('');
+  const [toPayActivePeriod, setToPayActivePeriod] = useState<PeriodType>('month');
+  const [toPayIsCustomDateRange, setToPayIsCustomDateRange] = useState(false);
+  const [toPayDateRange, setToPayDateRange] = useState(() => {
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const formatDate = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    return {
+      start: formatDate(firstDay),
+      end: formatDate(lastDay)
+    };
+  });
+
+  // To Pay period filter handlers
+  const handleToPayPeriodChange = (period: PeriodType) => {
+    setToPayActivePeriod(period);
+    setToPayIsCustomDateRange(false);
+
+    const now = new Date();
+    let start = new Date();
+    let end = new Date();
+
+    const formatDate = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    switch (period) {
+      case 'week':
+        start.setDate(now.getDate() - now.getDay());
+        break;
+      case 'month':
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        break;
+      case 'year':
+        start = new Date(now.getFullYear(), 0, 1);
+        end = new Date(now.getFullYear(), 11, 31);
+        break;
+      case 'all':
+        start = new Date(2000, 0, 1);
+        break;
+    }
+
+    setToPayDateRange({
+      start: formatDate(start),
+      end: formatDate(end)
+    });
+  };
+
+  const handleToPayDateRangeChange = (type: 'start' | 'end', value: string) => {
+    setToPayIsCustomDateRange(true);
+    setToPayDateRange(prev => ({
+      ...prev,
+      [type]: value
+    }));
+  };
 
   // Payment submission states
   const [showPaymentSubmitModal, setShowPaymentSubmitModal] = useState(false);
@@ -2136,6 +2213,39 @@ const BrandInvoicesPage: React.FC = () => {
   const overdueInvoices = invoices.filter(i => i.status === 'overdue').length;
   const totalRevenue = invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + i.total, 0);
 
+  // Filtered invoices to pay with search and date range
+  const filteredInvoicesToPay = invoicesToPay.filter(invoice => {
+    // Universal search
+    const term = toPaySearchTerm.toLowerCase();
+    const statusText = getStatusDisplay(invoice.status).toLowerCase();
+
+    const matchesSearch = !toPaySearchTerm ||
+      invoice.invoiceNumber.toLowerCase().includes(term) ||
+      (invoice.issuerName || '').toLowerCase().includes(term) ||
+      (invoice.restaurantName || '').toLowerCase().includes(term) ||
+      statusText.includes(term) ||
+      (invoice.categoryDisplayName || '').toLowerCase().includes(term) ||
+      (invoice.planType || '').toLowerCase().includes(term);
+
+    // Date range filter
+    let matchesDateRange = true;
+    if (toPayDateRange.start && toPayDateRange.end) {
+      const invoiceDate = new Date(invoice.issueDate);
+      const startDate = new Date(toPayDateRange.start);
+      const endDate = new Date(toPayDateRange.end);
+
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+      matchesDateRange = invoiceDate >= startDate && invoiceDate <= endDate;
+    }
+
+    return matchesSearch && matchesDateRange;
+  }).sort((a, b) => {
+    const dateA = new Date(a.dueDate).getTime();
+    const dateB = new Date(b.dueDate).getTime();
+    return dateB - dateA;
+  });
+
   const handleExportInvoices = () => {
     const exportData = {
       exportDate: new Date().toISOString(),
@@ -2701,79 +2811,51 @@ const BrandInvoicesPage: React.FC = () => {
           </FiltersRight>
         </FilterBarWrapper>
 
-        <Table>
-          <InvoiceTableHeader columns="1.6fr 1.3fr 1.2fr 0.9fr 0.9fr 0.7fr 0.8fr 0.8fr minmax(180px, 220px)">
-            <span className="col-invoice">Invoice</span>
-            <span className="col-customer">Customer</span>
-            <span className="col-period">Period</span>
-            <span className="col-issued">Issued</span>
-            <span className="col-due">Due</span>
-            <span className="col-status">Status</span>
-            <span className="col-amount">Amount</span>
-            <span className="col-total">Total</span>
-            <span className="col-actions">Actions</span>
-          </InvoiceTableHeader>
-
-          {filteredInvoices.map(invoice => (
-            <InvoiceTableRow columns="1.6fr 1.3fr 1.2fr 0.9fr 0.9fr 0.7fr 0.8fr 0.8fr minmax(180px, 220px)" key={invoice.id}>
-              <MobileGrid>
-                <MobileValue className="col-invoice">
-                  <MobileLabel>Invoice</MobileLabel>
-                  <InvoiceInfo>
-                    <InvoiceNumber>
-                      {invoice.invoiceNumber}
-                      {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>AUTO</AutoBadge>}
-                    </InvoiceNumber>
-                    <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
-                  </InvoiceInfo>
-                </MobileValue>
-
-                <MobileValue className="col-customer">
-                  <MobileLabel>Customer</MobileLabel>
-                  <InvoiceInfo>
-                    <InvoiceNumber>{invoice.customerName || invoice.restaurantName || 'Unknown'}</InvoiceNumber>
-                    <CompanyName>{getPayerDisplay(invoice.payerType || 'restaurant')}</CompanyName>
-                  </InvoiceInfo>
-                </MobileValue>
-
-                <MobileValue className="col-period">
-                  <MobileLabel>Period</MobileLabel>
-                  <div style={{ fontSize: '12px' }}>
-                    {invoice.billingPeriod || '-'}
-                  </div>
-                </MobileValue>
-
-                <MobileValue className="col-issued">
-                  <MobileLabel>Issued</MobileLabel>
-                  <div style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</div>
-                </MobileValue>
-
-                <MobileValue className="col-due">
-                  <MobileLabel>Due</MobileLabel>
-                  <div style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</div>
-                </MobileValue>
-
-                <MobileValue className="col-status">
-                  <MobileLabel>Status</MobileLabel>
-                  <div>
+        <DataTableContainer>
+          <DataTable>
+            <DataTableHead>
+              <tr>
+                <DataTableHeaderCell>Invoice</DataTableHeaderCell>
+                <DataTableHeaderCell>Customer</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">Period</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">Issued</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">Due</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">Amount</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">Total</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">Actions</DataTableHeaderCell>
+              </tr>
+            </DataTableHead>
+            <tbody>
+              {filteredInvoices.map(invoice => (
+                <DataTableRow key={invoice.id}>
+                  <DataTableCell data-label="Invoice">
+                    <InvoiceInfo>
+                      <InvoiceNumber>
+                        {invoice.invoiceNumber}
+                        {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>AUTO</AutoBadge>}
+                      </InvoiceNumber>
+                      <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
+                    </InvoiceInfo>
+                  </DataTableCell>
+                  <DataTableCell data-label="Customer">
+                    <InvoiceInfo>
+                      <InvoiceNumber>{invoice.customerName || invoice.restaurantName || 'Unknown'}</InvoiceNumber>
+                      <CompanyName>{getPayerDisplay(invoice.payerType || 'restaurant')}</CompanyName>
+                    </InvoiceInfo>
+                  </DataTableCell>
+                  <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>{invoice.billingPeriod || '-'}</DataTableCell>
+                  <DataTableCell data-label="Issued" align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</DataTableCell>
+                  <DataTableCell data-label="Due" align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</DataTableCell>
+                  <DataTableCell data-label="Status" align="center">
                     <StatusBadge status={invoice.status}>
                       {getStatusDisplay(invoice.status)}
                     </StatusBadge>
-                  </div>
-                </MobileValue>
-
-                <MobileValue className="col-amount">
-                  <MobileLabel>Amount</MobileLabel>
-                  <Amount>{formatCurrency(invoice.amount, invoice.currency || 'USD')}</Amount>
-                </MobileValue>
-
-                <MobileValue className="col-total">
-                  <MobileLabel>Total</MobileLabel>
-                  <Amount highlight>{formatCurrency(invoice.total, invoice.currency || 'USD')}</Amount>
-                </MobileValue>
-              </MobileGrid>
-
-              <ActionButtons className="col-actions">
+                  </DataTableCell>
+                  <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
+                  <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
+                  <DataTableCell data-label="" mobileFullWidth>
+                    <ActionButtons>
                       <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</LocalActionButton>
                       {invoice.status === 'draft' && (
                         <>
@@ -2789,7 +2871,6 @@ const BrandInvoicesPage: React.FC = () => {
                           </LocalIconButton>
                         </>
                       )}
-                      {/* 미결제 상태: 편집, 다운로드, 프린트, 이메일발송, 삭제 */}
                       {(invoice.status === 'pending_payment' || invoice.status === '' || !invoice.status) && (
                         <>
                           <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
@@ -2818,8 +2899,6 @@ const BrandInvoicesPage: React.FC = () => {
                           </LocalIconButton>
                         </>
                       )}
-
-                      {/* 결제정보 확인중 상태: 결제확인, 편집, 다운로드, 프린트, 이메일발송 */}
                       {invoice.status === 'payment_submitted' && (
                         <>
                           {invoice.hasPaymentInfo && (
@@ -2848,8 +2927,6 @@ const BrandInvoicesPage: React.FC = () => {
                           </LocalActionButton>
                         </>
                       )}
-
-                      {/* 연체 상태: 편집, 다운로드, 프린트, 이메일발송, 삭제 */}
                       {invoice.status === 'overdue' && (
                         <>
                           <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
@@ -2896,7 +2973,6 @@ const BrandInvoicesPage: React.FC = () => {
                           </LocalActionButton>
                         </>
                       )}
-                      {/* 취소됨 상태: View만 가능 */}
                       {invoice.status === 'cancelled' && (
                         <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download Invoice">
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2906,137 +2982,171 @@ const BrandInvoicesPage: React.FC = () => {
                           </svg>
                         </LocalActionButton>
                       )}
-              </ActionButtons>
-            </InvoiceTableRow>
-          ))}
+                    </ActionButtons>
+                  </DataTableCell>
+                </DataTableRow>
+              ))}
 
-          {filteredInvoices.length === 0 && (
-            <EmptyState>
-              <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>No Invoices Found</div>
-              <div style={{ fontSize: '14px' }}>
-                {invoices.length === 0 ? 'Create your first invoice to get started' : 'Try adjusting your filters'}
-              </div>
-            </EmptyState>
-          )}
-        </Table>
+              {filteredInvoices.length === 0 && (
+                <DataTableRow>
+                  <DataTableCell colSpan={9}>
+                    <DataTableEmpty>
+                      <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>No Invoices Found</div>
+                      <div style={{ fontSize: '14px' }}>
+                        {invoices.length === 0 ? 'Create your first invoice to get started' : 'Try adjusting your filters'}
+                      </div>
+                    </DataTableEmpty>
+                  </DataTableCell>
+                </DataTableRow>
+              )}
+            </tbody>
+          </DataTable>
+        </DataTableContainer>
           </>
         )}
 
         {activeTab === 'to_pay' && (
           <>
-            <Table>
-              <InvoiceTableHeader columns="1.6fr 1.3fr 1.2fr 0.9fr 0.9fr 0.7fr 0.8fr 0.8fr minmax(180px, 220px)">
-                <span className="col-invoice">Invoice</span>
-                <span className="col-customer">Issuer</span>
-                <span className="col-period">Period</span>
-                <span className="col-issued">Issued</span>
-                <span className="col-due">Due</span>
-                <span className="col-status">Status</span>
-                <span className="col-amount">Amount</span>
-                <span className="col-total">Total</span>
-                <span className="col-actions">Actions</span>
-              </InvoiceTableHeader>
+            <FilterBarWrapper>
+              <FiltersLeft>
+                <SearchInput
+                  placeholder="Search invoice, status, issuer..."
+                  value={toPaySearchTerm}
+                  onChange={(e) => setToPaySearchTerm(e.target.value)}
+                />
 
-              {invoicesToPay.length > 0 ? (
-                invoicesToPay.map(invoice => (
-                  <InvoiceTableRow columns="1.6fr 1.3fr 1.2fr 0.9fr 0.9fr 0.7fr 0.8fr 0.8fr minmax(180px, 220px)" key={invoice.id}>
-                    <MobileGrid>
-                      <MobileValue className="col-invoice">
-                        <MobileLabel>Invoice</MobileLabel>
-                        <InvoiceInfo>
-                          <InvoiceNumber>
-                            {invoice.invoiceNumber}
-                            {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>AUTO</AutoBadge>}
-                          </InvoiceNumber>
-                          <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
-                        </InvoiceInfo>
-                      </MobileValue>
+                <PeriodFilterGroup>
+                  <DateButton
+                    active={toPayActivePeriod === 'week' && !toPayIsCustomDateRange}
+                    onClick={() => handleToPayPeriodChange('week')}
+                  >
+                    Week
+                  </DateButton>
+                  <DateButton
+                    active={toPayActivePeriod === 'month' && !toPayIsCustomDateRange}
+                    onClick={() => handleToPayPeriodChange('month')}
+                  >
+                    Month
+                  </DateButton>
+                  <DateButton
+                    active={toPayActivePeriod === 'year' && !toPayIsCustomDateRange}
+                    onClick={() => handleToPayPeriodChange('year')}
+                  >
+                    Year
+                  </DateButton>
+                  <DateButton
+                    active={toPayActivePeriod === 'all' && !toPayIsCustomDateRange}
+                    onClick={() => handleToPayPeriodChange('all')}
+                  >
+                    All
+                  </DateButton>
 
-                      <MobileValue className="col-customer">
-                        <MobileLabel>Issuer</MobileLabel>
-                        <InvoiceInfo>
-                          <InvoiceNumber>{invoice.issuerName || (invoice.issuerType === 'system_admin' ? 'System Admin' : invoice.issuerType === 'brand' ? 'Brand' : 'Foodcourt')}</InvoiceNumber>
-                          <CompanyName>{invoice.restaurantName && invoice.restaurantName !== 'Unknown' ? `For: ${invoice.restaurantName}` : ''}</CompanyName>
-                        </InvoiceInfo>
-                      </MobileValue>
+                  <DateInput
+                    type="date"
+                    value={toPayDateRange.start}
+                    onChange={(e) => handleToPayDateRangeChange('start', e.target.value)}
+                  />
+                  <DateInput
+                    type="date"
+                    value={toPayDateRange.end}
+                    onChange={(e) => handleToPayDateRangeChange('end', e.target.value)}
+                  />
+                </PeriodFilterGroup>
+              </FiltersLeft>
+            </FilterBarWrapper>
 
-                      <MobileValue className="col-period">
-                        <MobileLabel>Period</MobileLabel>
-                        <div style={{ fontSize: '12px' }}>
-                          {invoice.billingPeriod || '-'}
-                        </div>
-                      </MobileValue>
-
-                      <MobileValue className="col-issued">
-                        <MobileLabel>Issued</MobileLabel>
-                        <div style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</div>
-                      </MobileValue>
-
-                      <MobileValue className="col-due">
-                        <MobileLabel>Due</MobileLabel>
-                        <div style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</div>
-                      </MobileValue>
-
-                      <MobileValue className="col-status">
-                        <MobileLabel>Status</MobileLabel>
-                        <div>
+            <DataTableContainer>
+              <DataTable>
+                <DataTableHead>
+                  <tr>
+                    <DataTableHeaderCell>Invoice</DataTableHeaderCell>
+                    <DataTableHeaderCell>Issuer</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">Period</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">Issued</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">Due</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">Amount</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">Total</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">Actions</DataTableHeaderCell>
+                  </tr>
+                </DataTableHead>
+                <tbody>
+                  {filteredInvoicesToPay.length > 0 ? (
+                    filteredInvoicesToPay.map(invoice => (
+                      <DataTableRow key={invoice.id}>
+                        <DataTableCell data-label="Invoice">
+                          <InvoiceInfo>
+                            <InvoiceNumber>
+                              {invoice.invoiceNumber}
+                              {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>AUTO</AutoBadge>}
+                            </InvoiceNumber>
+                            <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
+                          </InvoiceInfo>
+                        </DataTableCell>
+                        <DataTableCell data-label="Issuer">
+                          <InvoiceInfo>
+                            <InvoiceNumber>{invoice.issuerName || (invoice.issuerType === 'system_admin' ? 'System Admin' : invoice.issuerType === 'brand' ? 'Brand' : 'Foodcourt')}</InvoiceNumber>
+                            <CompanyName>{invoice.restaurantName && invoice.restaurantName !== 'Unknown' ? `For: ${invoice.restaurantName}` : ''}</CompanyName>
+                          </InvoiceInfo>
+                        </DataTableCell>
+                        <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>{invoice.billingPeriod || '-'}</DataTableCell>
+                        <DataTableCell data-label="Issued" align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</DataTableCell>
+                        <DataTableCell data-label="Due" align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</DataTableCell>
+                        <DataTableCell data-label="Status" align="center">
                           <StatusBadge status={invoice.status}>
                             {getStatusDisplay(invoice.status)}
                           </StatusBadge>
-                        </div>
-                      </MobileValue>
+                        </DataTableCell>
+                        <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
+                        <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
+                        <DataTableCell data-label="" mobileFullWidth>
+                          <ActionButtons>
+                            <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</LocalActionButton>
 
-                      <MobileValue className="col-amount">
-                        <MobileLabel>Amount</MobileLabel>
-                        <Amount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</Amount>
-                      </MobileValue>
+                            {/* Pay button for pending/overdue invoices */}
+                            {(invoice.status === 'pending_payment' || invoice.status === 'overdue') && (
+                              <LocalActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>Pay</LocalActionButton>
+                            )}
 
-                      <MobileValue className="col-total">
-                        <MobileLabel>Total</MobileLabel>
-                        <Amount highlight>{formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount>
-                      </MobileValue>
-                    </MobileGrid>
+                            {/* Download PDF */}
+                            <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7,10 12,15 17,10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                              </svg>
+                            </LocalActionButton>
 
-                    <ActionButtons className="col-actions">
-                      <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</LocalActionButton>
+                            {/* Print */}
+                            <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="6,9 6,2 18,2 18,9"/>
+                                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                                <rect x="6" y="14" width="12" height="8"/>
+                              </svg>
+                            </LocalActionButton>
 
-                      {/* Pay button for pending/overdue invoices */}
-                      {(invoice.status === 'pending_payment' || invoice.status === 'overdue') && (
-                        <LocalActionButton variant="primary" onClick={() => handlePayInvoice(invoice)}>Pay</LocalActionButton>
-                      )}
-
-                      {/* Download PDF */}
-                      <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                          <polyline points="7,10 12,15 17,10"/>
-                          <line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg>
-                      </LocalActionButton>
-
-                      {/* Print */}
-                      <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="6,9 6,2 18,2 18,9"/>
-                          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                          <rect x="6" y="14" width="12" height="8"/>
-                        </svg>
-                      </LocalActionButton>
-
-                      {/* Email - for received invoices */}
-                      <LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Email Invoice">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                          <polyline points="22,6 12,13 2,6"/>
-                        </svg>
-                      </LocalActionButton>
-                    </ActionButtons>
-                  </InvoiceTableRow>
-                ))
-              ) : (
-                <EmptyState>No invoices to pay</EmptyState>
-              )}
-            </Table>
+                            {/* Email - for received invoices */}
+                            <LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Email Invoice">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                <polyline points="22,6 12,13 2,6"/>
+                              </svg>
+                            </LocalActionButton>
+                          </ActionButtons>
+                        </DataTableCell>
+                      </DataTableRow>
+                    ))
+                  ) : (
+                    <DataTableRow>
+                      <DataTableCell colSpan={9}>
+                        <DataTableEmpty>No invoices to pay</DataTableEmpty>
+                      </DataTableCell>
+                    </DataTableRow>
+                  )}
+                </tbody>
+              </DataTable>
+            </DataTableContainer>
           </>
         )}
 
