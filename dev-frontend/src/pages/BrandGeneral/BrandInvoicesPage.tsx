@@ -1851,7 +1851,7 @@ const BrandInvoicesPage: React.FC = () => {
         <div class="header">
             <div class="logo-section">
                 ${displayCompany.companyLogo ? `<img src="${displayCompany.companyLogo}" alt="Company Logo" class="company-logo">` : ''}
-                <div class="company-name">${displayCompany.companyName || 'Company Name'}</div>
+                <div class="company-name" style="${displayCompany.companyLogo ? 'font-size: 14px;' : ''}">${displayCompany.companyName || 'Company Name'}</div>
                 <div class="company-details">
                     ${displayCompany.address ? `${displayCompany.address}<br>` : ''}
                     ${[displayCompany.city, displayCompany.state, displayCompany.postalCode].filter(Boolean).join(', ')}${displayCompany.city || displayCompany.state || displayCompany.postalCode ? '<br>' : ''}
@@ -1872,7 +1872,8 @@ const BrandInvoicesPage: React.FC = () => {
                 <div class="section-label">Bill To</div>
                 <div class="customer-name">${invoice.customerName || invoice.managerName || 'Customer'}</div>
                 ${invoice.customerAddress ? `<div class="customer-details">${invoice.customerAddress}</div>` : ''}
-                ${invoice.restaurantName ? `<div class="customer-details">Restaurant: ${invoice.restaurantName}</div>` : ''}
+                ${invoice.payerType === 'restaurant' && invoice.restaurantName && invoice.restaurantName !== 'Unknown' ? `<div class="customer-details">Restaurant: ${invoice.restaurantName}</div>` : ''}
+                ${invoice.companyName && invoice.companyName !== invoice.customerName && !isReceivedInvoice ? `<div class="customer-details">Company: ${invoice.companyName}</div>` : ''}
             </div>
             <div class="dates-section">
                 <div class="date-row">
@@ -2226,10 +2227,14 @@ const BrandInvoicesPage: React.FC = () => {
     return dateB - dateA;
   });
 
-  const totalInvoices = invoices.length;
-  const paidInvoices = invoices.filter(i => i.status === 'paid').length;
-  const overdueInvoices = invoices.filter(i => i.status === 'overdue').length;
-  const totalRevenue = invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + i.total, 0);
+  // Stats based on active tab
+  const currentInvoiceList = activeTab === 'to_pay' ? invoicesToPay : invoices;
+  const totalInvoices = currentInvoiceList.length;
+  const paidInvoices = currentInvoiceList.filter(i => i.status === 'paid').length;
+  const overdueInvoices = currentInvoiceList.filter(i => i.status === 'overdue').length;
+  const pendingInvoices = currentInvoiceList.filter(i => i.status === 'pending_payment' || i.status === 'payment_submitted').length;
+  const totalRevenue = currentInvoiceList.filter(i => i.status === 'paid').reduce((sum, i) => sum + i.total, 0);
+  const totalOutstanding = currentInvoiceList.filter(i => i.status !== 'paid' && i.status !== 'cancelled' && i.status !== 'draft').reduce((sum, i) => sum + i.total, 0);
 
   // Filtered invoices to pay with search and date range
   const filteredInvoicesToPay = invoicesToPay.filter(invoice => {
@@ -2740,29 +2745,44 @@ const BrandInvoicesPage: React.FC = () => {
         </Header>
         <Content>
 
-        {/* Stats - Common display above tabs */}
+        {/* Stats - Based on active tab */}
+        {activeTab !== 'categories' && (
         <StatsGrid>
           <StatCard color="#059669">
             <StatValue>{totalInvoices}</StatValue>
-            <StatLabel>Total Invoices</StatLabel>
-            <StatDescription>All invoice records</StatDescription>
+            <StatLabel>{activeTab === 'to_pay' ? 'Invoices to Pay' : 'Issued Invoices'}</StatLabel>
+            <StatDescription>{activeTab === 'to_pay' ? 'Received from issuers' : 'Sent to recipients'}</StatDescription>
           </StatCard>
           <StatCard color="#2563EB">
             <StatValue>{paidInvoices}</StatValue>
-            <StatLabel>Paid Invoices</StatLabel>
+            <StatLabel>Paid</StatLabel>
             <StatDescription>{totalInvoices > 0 ? Math.round((paidInvoices/totalInvoices)*100) : 0}% completed</StatDescription>
+          </StatCard>
+          <StatCard color="#F59E0B">
+            <StatValue>{pendingInvoices}</StatValue>
+            <StatLabel>Pending</StatLabel>
+            <StatDescription>{activeTab === 'to_pay' ? 'Awaiting your payment' : 'Awaiting payment'}</StatDescription>
           </StatCard>
           <StatCard color="#DC2626">
             <StatValue>{overdueInvoices}</StatValue>
-            <StatLabel>Overdue Invoices</StatLabel>
+            <StatLabel>Overdue</StatLabel>
             <StatDescription>Requires attention</StatDescription>
           </StatCard>
+          {activeTab === 'issued' ? (
           <StatCard color="#7C3AED">
             <StatValue>{formatCurrency(totalRevenue)}</StatValue>
-            <StatLabel>Total Revenue</StatLabel>
+            <StatLabel>Revenue</StatLabel>
             <StatDescription>From paid invoices</StatDescription>
           </StatCard>
+          ) : (
+          <StatCard color="#7C3AED">
+            <StatValue>{formatCurrency(totalOutstanding)}</StatValue>
+            <StatLabel>Outstanding</StatLabel>
+            <StatDescription>Amount to pay</StatDescription>
+          </StatCard>
+          )}
         </StatsGrid>
+        )}
 
         <Tabs>
           <CommonTab active={activeTab === 'issued'} onClick={() => handleTabChange('issued')}>
@@ -3801,13 +3821,12 @@ const BrandInvoicesPage: React.FC = () => {
                 {/* Invoice Header with Company Info */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '24px', borderBottom: '2px solid #E5E7EB' }}>
                   <div>
-                    {displayCompany?.companyLogo ? (
+                    {displayCompany?.companyLogo && (
                       <img src={displayCompany.companyLogo} alt="Company Logo" style={{ maxHeight: '60px', marginBottom: '8px' }} />
-                    ) : (
-                      <div style={{ fontSize: '20px', fontWeight: '700', color: '#0A2540', marginBottom: '8px' }}>
-                        {displayCompany?.companyName || 'Company Name'}
-                      </div>
                     )}
+                    <div style={{ fontSize: displayCompany?.companyLogo ? '14px' : '20px', fontWeight: '700', color: '#0A2540', marginBottom: '8px' }}>
+                      {displayCompany?.companyName || 'Company Name'}
+                    </div>
                     <div style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.6' }}>
                       {displayCompany?.address && <div>{displayCompany.address}</div>}
                       {(displayCompany?.city || displayCompany?.state || displayCompany?.postalCode) && (
@@ -3836,8 +3855,11 @@ const BrandInvoicesPage: React.FC = () => {
                     {selectedInvoice.customerAddress && (
                       <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>{selectedInvoice.customerAddress}</div>
                     )}
-                    {selectedInvoice.restaurantName && (
+                    {selectedInvoice.payerType === 'restaurant' && selectedInvoice.restaurantName && selectedInvoice.restaurantName !== 'Unknown' && (
                       <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Restaurant: {selectedInvoice.restaurantName}</div>
+                    )}
+                    {selectedInvoice.companyName && selectedInvoice.companyName !== selectedInvoice.customerName && !isReceivedInvoice && (
+                      <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Company: {selectedInvoice.companyName}</div>
                     )}
                   </div>
                   {/* Dates */}

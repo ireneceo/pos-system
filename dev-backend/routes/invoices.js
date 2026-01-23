@@ -19,6 +19,63 @@ const PAYMENT_SETTINGS_KEY = 'payment_settings';
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const InvoiceCategory = require('../models/InvoiceCategory');
 
+/**
+ * Generate invoice number in format:
+ * - System Admin: INV-YYMMDDNNN (e.g., INV-260123001)
+ * - Brand: INV-BR{issuer_id}YYMMDDNNN (e.g., INV-BR6260123001)
+ * - Foodcourt: INV-FC{issuer_id}YYMMDDNNN (e.g., INV-FC7260123001)
+ *
+ * @param {string} issuerType - 'system_admin', 'brand', or 'foodcourt'
+ * @param {number} issuerId - The issuer's user ID (for brand/foodcourt)
+ * @param {object} transaction - Sequelize transaction (optional)
+ * @returns {Promise<string>} Generated invoice number
+ */
+async function generateInvoiceNumber(issuerType = 'system_admin', issuerId = null, transaction = null) {
+  const now = new Date();
+  const year = String(now.getFullYear()).slice(-2); // YY format
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const dateStr = `${year}${month}${day}`;
+
+  // Build prefix based on issuer type
+  let prefix = 'INV-';
+  if (issuerType === 'brand' && issuerId) {
+    prefix = `INV-BR${issuerId}`;
+  } else if (issuerType === 'foodcourt' && issuerId) {
+    prefix = `INV-FC${issuerId}`;
+  }
+
+  const searchPattern = `${prefix}${dateStr}%`;
+
+  // Find the highest existing invoice number with this pattern
+  const queryOptions = {
+    where: {
+      invoice_number: {
+        [Op.like]: searchPattern
+      }
+    },
+    order: [['invoice_number', 'DESC']],
+    attributes: ['invoice_number']
+  };
+
+  if (transaction) {
+    queryOptions.transaction = transaction;
+  }
+
+  const lastInvoice = await Invoice.findOne(queryOptions);
+
+  let nextNumber = 1;
+  if (lastInvoice && lastInvoice.invoice_number) {
+    // Extract the last 3 digits (NNN part)
+    const match = lastInvoice.invoice_number.match(/(\d{3})$/);
+    if (match) {
+      nextNumber = parseInt(match[1], 10) + 1;
+    }
+  }
+
+  return `${prefix}${dateStr}${String(nextNumber).padStart(3, '0')}`;
+}
+
 // Helper function to get bank info from Payment Settings based on currency
 async function getBankInfoByCurrency(currency) {
   try {
@@ -940,19 +997,26 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
       const issuerName = issuerInfo?.name || (invoice.issuer_type === 'system_admin' ? 'System Admin' : invoice.issuer_type === 'brand' ? 'Brand' : 'Foodcourt');
 
       // Convert invoice_category to display name
-      const categoryDisplayNames = {
-        'subscription': 'Subscription',
-        'service': 'Service',
-        'consulting': 'Consulting',
-        'hardware': 'Hardware',
-        'setup': 'Setup Fee',
-        'training': 'Training',
-        'maintenance': 'Maintenance',
-        'support': 'Support',
-        'others': 'Others'
-      };
-      const categoryDisplayName = categoryDisplayNames[invoice.invoice_category] ||
-                                  (invoice.invoice_category ? invoice.invoice_category.charAt(0).toUpperCase() + invoice.invoice_category.slice(1) : 'Service');
+      // For subscription invoices, show plan type (e.g., "Subscription - Professional")
+      let categoryDisplayName = '';
+      if (invoice.invoice_category === 'subscription' && invoice.plan_type) {
+        const planTypeFormatted = invoice.plan_type.charAt(0).toUpperCase() + invoice.plan_type.slice(1);
+        categoryDisplayName = `Subscription - ${planTypeFormatted}`;
+      } else {
+        const categoryDisplayNames = {
+          'subscription': 'Subscription',
+          'service': 'Service',
+          'consulting': 'Consulting',
+          'hardware': 'Hardware',
+          'setup': 'Setup Fee',
+          'training': 'Training',
+          'maintenance': 'Maintenance',
+          'support': 'Support',
+          'others': 'Others'
+        };
+        categoryDisplayName = categoryDisplayNames[invoice.invoice_category] ||
+                                    (invoice.invoice_category ? invoice.invoice_category.charAt(0).toUpperCase() + invoice.invoice_category.slice(1) : 'Service');
+      }
 
       return {
         id: invoice.id.toString(),
@@ -1103,33 +1167,11 @@ router.post('/', authenticateToken, async (req, res) => {
     // Debug logging
     console.log('Invoice data before creation:', JSON.stringify(invoice_data, null, 2));
 
-    // Generate invoice number - find max existing number and increment
-    const year = new Date().getFullYear();
-    const month = String(new Date().getMonth() + 1).padStart(2, '0');
-    const prefix = invoice_data.invoice_prefix || 'INV';
-    const pattern = `${prefix}-${year}${month}`;
-
-    // Find the highest existing invoice number with this pattern
-    const lastInvoice = await Invoice.findOne({
-      where: {
-        invoice_number: {
-          [Op.like]: `${pattern}%`
-        }
-      },
-      order: [['invoice_number', 'DESC']],
-      transaction
-    });
-
-    let nextNumber = 1;
-    if (lastInvoice && lastInvoice.invoice_number) {
-      // Extract the number part from the end (e.g., INV-2026010014 -> 14)
-      const match = lastInvoice.invoice_number.match(/(\d+)$/);
-      if (match) {
-        nextNumber = parseInt(match[1], 10) + 1;
-      }
-    }
-
-    invoice_data.invoice_number = `${pattern}${String(nextNumber).padStart(4, '0')}`;
+    // Generate invoice number using standardized format
+    const issuerType = invoice_data.issuer_type || 'system_admin';
+    const issuerId = invoice_data.issuer_id || null;
+    invoice_data.invoice_number = await generateInvoiceNumber(issuerType, issuerId, transaction);
+    console.log('Generated invoice number:', invoice_data.invoice_number);
 
     // Create invoice within transaction
     const invoice = await Invoice.create(invoice_data, { transaction });
@@ -1393,18 +1435,8 @@ router.post('/generate-for-subscriptions', authenticateToken, async (req, res) =
           continue;
         }
 
-        // Generate invoice number
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const count = await Invoice.count({
-          where: {
-            invoice_number: {
-              [Op.like]: `INV-${year}${month}%`
-            }
-          }
-        });
-
-        const invoiceNumber = `INV-${year}${month}${String(count + 1).padStart(4, '0')}`;
+        // Generate invoice number (system_admin issuer for auto-generated invoices)
+        const invoiceNumber = await generateInvoiceNumber('system_admin', null, null);
 
         // Determine restaurant's currency (convert RM to MYR)
         let currency = restaurant.currency || 'MYR';
@@ -1571,18 +1603,8 @@ router.post('/generate-automatic', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Invoice already exists for this period' });
     }
     
-    // Generate invoice number
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const count = await Invoice.count({
-      where: {
-        invoice_number: {
-          [Op.like]: `${settings.invoice_prefix}-${year}${month}%`
-        }
-      }
-    });
-    
-    const invoiceNumber = `${settings.invoice_prefix}-${year}${month}${String(count + 1).padStart(4, '0')}`;
+    // Generate invoice number (system_admin issuer for settings-based auto invoices)
+    const invoiceNumber = await generateInvoiceNumber('system_admin', null, null);
     
     // Calculate items and amounts
     const items = [];
