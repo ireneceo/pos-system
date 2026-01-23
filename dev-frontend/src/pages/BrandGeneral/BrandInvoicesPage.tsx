@@ -5,7 +5,7 @@ import MainLayout from '../../components/Layout/MainLayout';
 import { formatCurrency } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { BaseButton, StatusBadge as CommonStatusBadge } from '../../components/UI/CommonStyles';
+import { BaseButton, StatusBadge as CommonStatusBadge, StatusMessage } from '../../components/UI/CommonStyles';
 import ConfirmModal from '../../components/ConfirmModal';
 import {
   Container,
@@ -67,6 +67,24 @@ interface Invoice {
   categoryDisplayName?: string;
   issuerType?: 'system_admin' | 'brand' | 'foodcourt';
   issuerName?: string;
+  issuerInfo?: {
+    name: string;
+    logoUrl?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    country?: string;
+    phone?: string;
+    email?: string;
+    website?: string;
+    taxId?: string;
+    businessRegistration?: string;
+    bankName?: string;
+    bankAccount?: string;
+    bankAccountName?: string;
+    swiftCode?: string;
+  };
 }
 
 interface CurrencyConfig {
@@ -236,7 +254,12 @@ const AutoBadge = styled.span`
 `;
 
 // StatusBadge 컴포넌트는 CommonStatusBadge로 교체됨
-const StatusBadge = styled(CommonStatusBadge)``;
+const StatusBadge = styled(CommonStatusBadge)`
+  max-width: 100px;
+  white-space: normal;
+  line-height: 1.3;
+  text-align: center;
+`;
 
 const Amount = styled.div<{ highlight?: boolean }>`
   font-weight: ${props => props.highlight ? '700' : '500'};
@@ -889,7 +912,6 @@ const BrandInvoicesPage: React.FC = () => {
   const [editSelectedTarget, setEditSelectedTarget] = useState<{type: 'manager' | 'restaurant', data: Manager | Restaurant} | null>(null);
   const [managers, setManagers] = useState<Manager[]>([]);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [, setSubscriptions] = useState<Subscription[]>([]);
   const [searchResults, setSearchResults] = useState<{managers: Manager[], restaurants: Restaurant[]}>({managers: [], restaurants: []});
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
@@ -1407,7 +1429,6 @@ const BrandInvoicesPage: React.FC = () => {
     fetchInvoicesToPay();
     fetchManagers();
     fetchRestaurants();
-    fetchSubscriptions();
     fetchCompanySettings();
     fetchCurrencyConfig();
     fetchInvoiceCategories();
@@ -1528,21 +1549,6 @@ const BrandInvoicesPage: React.FC = () => {
     }
   };
 
-  const fetchSubscriptions = async () => {
-    try {
-      const response = await fetch('/api/subscriptions');
-      if (response.ok) {
-        const data = await response.json();
-        setSubscriptions(data);
-      } else {
-        console.warn('Subscription API not available');
-        setSubscriptions([]);
-      }
-    } catch (error) {
-      console.error('Error fetching subscriptions:', error);
-      setSubscriptions([]);
-    }
-  };
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -1726,7 +1732,27 @@ const BrandInvoicesPage: React.FC = () => {
 
   // Generate invoice HTML content (shared for PDF, Print, Email)
   const generateInvoiceHTML = (invoice: Invoice) => {
-    if (!companySettings) return '';
+    // For received invoices (to_pay tab), use issuer's company info
+    const isReceivedInvoice = activeTab === 'to_pay' && invoice.issuerInfo;
+    const displayCompany = isReceivedInvoice ? {
+      companyName: invoice.issuerInfo?.name,
+      companyLogo: invoice.issuerInfo?.logoUrl,
+      address: invoice.issuerInfo?.address,
+      city: invoice.issuerInfo?.city,
+      state: invoice.issuerInfo?.state,
+      postalCode: invoice.issuerInfo?.postalCode,
+      country: invoice.issuerInfo?.country,
+      phone: invoice.issuerInfo?.phone,
+      email: invoice.issuerInfo?.email,
+      bankName: invoice.issuerInfo?.bankName,
+      bankAccount: invoice.issuerInfo?.bankAccount,
+      bankAccountName: invoice.issuerInfo?.bankAccountName,
+      swiftCode: invoice.issuerInfo?.swiftCode,
+      taxNumber: invoice.issuerInfo?.taxId,
+      registrationNumber: invoice.issuerInfo?.businessRegistration
+    } : companySettings;
+
+    if (!displayCompany) return '';
 
     const getStatusClass = (status: string) => {
       switch (status) {
@@ -1824,14 +1850,14 @@ const BrandInvoicesPage: React.FC = () => {
     <div class="invoice-container">
         <div class="header">
             <div class="logo-section">
-                ${companySettings.companyLogo ? `<img src="${companySettings.companyLogo}" alt="Company Logo" class="company-logo">` : ''}
-                <div class="company-name">${companySettings.companyName || 'Company Name'}</div>
+                ${displayCompany.companyLogo ? `<img src="${displayCompany.companyLogo}" alt="Company Logo" class="company-logo">` : ''}
+                <div class="company-name">${displayCompany.companyName || 'Company Name'}</div>
                 <div class="company-details">
-                    ${companySettings.address ? `${companySettings.address}<br>` : ''}
-                    ${[companySettings.city, companySettings.state, companySettings.postalCode].filter(Boolean).join(', ')}${companySettings.city || companySettings.state || companySettings.postalCode ? '<br>' : ''}
-                    ${companySettings.country ? `${companySettings.country}<br>` : ''}
-                    ${companySettings.phone ? `Tel: ${companySettings.phone}<br>` : ''}
-                    ${companySettings.email ? `Email: ${companySettings.email}` : ''}
+                    ${displayCompany.address ? `${displayCompany.address}<br>` : ''}
+                    ${[displayCompany.city, displayCompany.state, displayCompany.postalCode].filter(Boolean).join(', ')}${displayCompany.city || displayCompany.state || displayCompany.postalCode ? '<br>' : ''}
+                    ${displayCompany.country ? `${displayCompany.country}<br>` : ''}
+                    ${displayCompany.phone ? `Tel: ${displayCompany.phone}<br>` : ''}
+                    ${displayCompany.email ? `Email: ${displayCompany.email}` : ''}
                 </div>
             </div>
             <div class="invoice-title">
@@ -1911,23 +1937,23 @@ const BrandInvoicesPage: React.FC = () => {
             </div>
         </div>
 
-        ${companySettings.bankName ? `
+        ${displayCompany.bankName ? `
         <div class="bank-section">
             <div class="bank-title">Payment Details</div>
             <div class="bank-details">
-                <strong>Bank:</strong> ${companySettings.bankName}<br>
-                <strong>Account Name:</strong> ${companySettings.bankAccountName || '-'}<br>
-                <strong>Account Number:</strong> ${companySettings.bankAccount || '-'}
-                ${companySettings.swiftCode ? `<br><strong>SWIFT Code:</strong> ${companySettings.swiftCode}` : ''}
+                <strong>Bank:</strong> ${displayCompany.bankName}<br>
+                <strong>Account Name:</strong> ${displayCompany.bankAccountName || '-'}<br>
+                <strong>Account Number:</strong> ${displayCompany.bankAccount || '-'}
+                ${displayCompany.swiftCode ? `<br><strong>SWIFT Code:</strong> ${displayCompany.swiftCode}` : ''}
             </div>
         </div>
         ` : ''}
 
-        ${(companySettings.taxNumber || companySettings.registrationNumber) ? `
+        ${(displayCompany.taxNumber || displayCompany.registrationNumber) ? `
         <div class="registration-info">
-            ${companySettings.registrationNumber ? `Reg No: ${companySettings.registrationNumber}` : ''}
-            ${companySettings.registrationNumber && companySettings.taxNumber ? ' | ' : ''}
-            ${companySettings.taxNumber ? `Tax No: ${companySettings.taxNumber}` : ''}
+            ${displayCompany.registrationNumber ? `Reg No: ${displayCompany.registrationNumber}` : ''}
+            ${displayCompany.registrationNumber && displayCompany.taxNumber ? ' | ' : ''}
+            ${displayCompany.taxNumber ? `Tax No: ${displayCompany.taxNumber}` : ''}
         </div>
         ` : ''}
 
@@ -1942,7 +1968,9 @@ const BrandInvoicesPage: React.FC = () => {
 
   // Download invoice as PDF file
   const generateInvoicePDF = async (invoice: Invoice) => {
-    if (!companySettings) {
+    // For received invoices, use issuerInfo; for issued invoices, use companySettings
+    const hasCompanyInfo = (activeTab === 'to_pay' && invoice.issuerInfo) || companySettings;
+    if (!hasCompanyInfo) {
       setSuccessMessage('Company settings not loaded. Please try again.');
       setShowSuccessModal(true);
       return;
@@ -2010,7 +2038,9 @@ const BrandInvoicesPage: React.FC = () => {
 
   // Print invoice directly
   const handlePrintInvoice = (invoice: Invoice) => {
-    if (!companySettings) {
+    // For received invoices, use issuerInfo; for issued invoices, use companySettings
+    const hasCompanyInfo = (activeTab === 'to_pay' && invoice.issuerInfo) || companySettings;
+    if (!hasCompanyInfo) {
       setSuccessMessage('Company settings not loaded. Please try again.');
       setShowSuccessModal(true);
       return;
@@ -3400,22 +3430,8 @@ const BrandInvoicesPage: React.FC = () => {
                   />
                 </FormGroup>
               </ModalBody>
-              <ModalFooter style={{ flexDirection: 'column', gap: '12px' }}>
-                {paymentSubmitError && (
-                  <div style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    background: '#FEF2F2',
-                    border: '1px solid #FECACA',
-                    borderRadius: '6px',
-                    color: '#DC2626',
-                    fontSize: '13px',
-                    textAlign: 'center'
-                  }}>
-                    {paymentSubmitError}
-                  </div>
-                )}
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', width: '100%' }}>
+              <ModalFooter style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                   <Button variant="secondary" onClick={() => { setShowPaymentSubmitModal(false); setPaymentSubmitError(null); }}>Cancel</Button>
                   <Button
                     variant="primary"
@@ -3425,6 +3441,11 @@ const BrandInvoicesPage: React.FC = () => {
                     {isSubmittingPayment ? 'Submitting...' : 'Submit Payment'}
                   </Button>
                 </div>
+                {paymentSubmitError && (
+                  <StatusMessage type="error" style={{ marginTop: '12px', wordBreak: 'break-word' }}>
+                    {paymentSubmitError}
+                  </StatusMessage>
+                )}
               </ModalFooter>
             </ModalContent>
           </Modal>
@@ -3749,7 +3770,27 @@ const BrandInvoicesPage: React.FC = () => {
         )}
 
         {/* View Invoice Modal */}
-        {showViewModal && selectedInvoice && (
+        {showViewModal && selectedInvoice && (() => {
+          // For to_pay tab, use issuer's company info; for issued tab, use logged-in user's company info
+          const isReceivedInvoice = activeTab === 'to_pay' && selectedInvoice.issuerInfo;
+          const displayCompany = isReceivedInvoice ? {
+            companyName: selectedInvoice.issuerInfo?.name,
+            companyLogo: selectedInvoice.issuerInfo?.logoUrl,
+            address: selectedInvoice.issuerInfo?.address,
+            city: selectedInvoice.issuerInfo?.city,
+            state: selectedInvoice.issuerInfo?.state,
+            postalCode: selectedInvoice.issuerInfo?.postalCode,
+            country: selectedInvoice.issuerInfo?.country,
+            phone: selectedInvoice.issuerInfo?.phone,
+            email: selectedInvoice.issuerInfo?.email,
+            bankName: selectedInvoice.issuerInfo?.bankName,
+            bankAccount: selectedInvoice.issuerInfo?.bankAccount,
+            bankAccountName: selectedInvoice.issuerInfo?.bankAccountName,
+            taxNumber: selectedInvoice.issuerInfo?.taxId,
+            registrationNumber: selectedInvoice.issuerInfo?.businessRegistration
+          } : companySettings;
+
+          return (
           <Modal onClick={() => setShowViewModal(false)}>
             <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
               <ModalHeader>
@@ -3760,21 +3801,21 @@ const BrandInvoicesPage: React.FC = () => {
                 {/* Invoice Header with Company Info */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '24px', borderBottom: '2px solid #E5E7EB' }}>
                   <div>
-                    {companySettings?.companyLogo ? (
-                      <img src={companySettings.companyLogo} alt="Company Logo" style={{ maxHeight: '60px', marginBottom: '8px' }} />
+                    {displayCompany?.companyLogo ? (
+                      <img src={displayCompany.companyLogo} alt="Company Logo" style={{ maxHeight: '60px', marginBottom: '8px' }} />
                     ) : (
                       <div style={{ fontSize: '20px', fontWeight: '700', color: '#0A2540', marginBottom: '8px' }}>
-                        {companySettings?.companyName || 'Company Name'}
+                        {displayCompany?.companyName || 'Company Name'}
                       </div>
                     )}
                     <div style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.6' }}>
-                      {companySettings?.address && <div>{companySettings.address}</div>}
-                      {(companySettings?.city || companySettings?.state || companySettings?.postalCode) && (
-                        <div>{[companySettings?.city, companySettings?.state, companySettings?.postalCode].filter(Boolean).join(', ')}</div>
+                      {displayCompany?.address && <div>{displayCompany.address}</div>}
+                      {(displayCompany?.city || displayCompany?.state || displayCompany?.postalCode) && (
+                        <div>{[displayCompany?.city, displayCompany?.state, displayCompany?.postalCode].filter(Boolean).join(', ')}</div>
                       )}
-                      {companySettings?.country && <div>{companySettings.country}</div>}
-                      {companySettings?.phone && <div>Tel: {companySettings.phone}</div>}
-                      {companySettings?.email && <div>Email: {companySettings.email}</div>}
+                      {displayCompany?.country && <div>{displayCompany.country}</div>}
+                      {displayCompany?.phone && <div>Tel: {displayCompany.phone}</div>}
+                      {displayCompany?.email && <div>Email: {displayCompany.email}</div>}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
@@ -3868,29 +3909,30 @@ const BrandInvoicesPage: React.FC = () => {
                 </div>
 
                 {/* Bank Details (if company has bank info) */}
-                {companySettings?.bankName && (
+                {displayCompany?.bankName && (
                   <div style={{ background: '#F8FAFC', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
                     <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>Payment Details</div>
                     <div style={{ fontSize: '13px', color: '#374151', lineHeight: '1.6' }}>
-                      <div><strong>Bank:</strong> {companySettings.bankName}</div>
-                      <div><strong>Account Name:</strong> {companySettings.bankAccountName}</div>
-                      <div><strong>Account Number:</strong> {companySettings.bankAccount}</div>
+                      <div><strong>Bank:</strong> {displayCompany.bankName}</div>
+                      <div><strong>Account Name:</strong> {displayCompany.bankAccountName}</div>
+                      <div><strong>Account Number:</strong> {displayCompany.bankAccount}</div>
                     </div>
                   </div>
                 )}
 
                 {/* Registration Info */}
-                {(companySettings?.taxNumber || companySettings?.registrationNumber) && (
+                {(displayCompany?.taxNumber || displayCompany?.registrationNumber) && (
                   <div style={{ fontSize: '12px', color: '#9CA3AF', textAlign: 'center', marginTop: '16px' }}>
-                    {companySettings?.registrationNumber && <span>Reg No: {companySettings.registrationNumber}</span>}
-                    {companySettings?.registrationNumber && companySettings?.taxNumber && <span> | </span>}
-                    {companySettings?.taxNumber && <span>Tax No: {companySettings.taxNumber}</span>}
+                    {displayCompany?.registrationNumber && <span>Reg No: {displayCompany.registrationNumber}</span>}
+                    {displayCompany?.registrationNumber && displayCompany?.taxNumber && <span> | </span>}
+                    {displayCompany?.taxNumber && <span>Tax No: {displayCompany.taxNumber}</span>}
                   </div>
                 )}
               </ModalBody>
             </ModalContent>
           </Modal>
-        )}
+          );
+        })()}
 
         {/* Payment Confirmation Modal */}
         {showPaymentConfirmModal && selectedInvoice && (

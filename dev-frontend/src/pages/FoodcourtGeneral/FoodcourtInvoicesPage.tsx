@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import MainLayout from '../../components/Layout/MainLayout';
 import { formatCurrency } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
-import { BaseButton, StatusBadge as CommonStatusBadge } from '../../components/UI/CommonStyles';
+import { BaseButton, StatusBadge as CommonStatusBadge, StatusMessage } from '../../components/UI/CommonStyles';
 import ConfirmModal from '../../components/ConfirmModal';
 import {
   Container,
@@ -218,7 +218,12 @@ const AutoBadge = styled.span`
 `;
 
 // StatusBadge 컴포넌트는 CommonStatusBadge로 교체됨
-const StatusBadge = styled(CommonStatusBadge)``;
+const StatusBadge = styled(CommonStatusBadge)`
+  max-width: 100px;
+  white-space: normal;
+  line-height: 1.3;
+  text-align: center;
+`;
 
 const Amount = styled.div<{ highlight?: boolean }>`
   font-weight: ${props => props.highlight ? '700' : '500'};
@@ -2844,22 +2849,8 @@ const FoodcourtInvoicesPage: React.FC = () => {
                   />
                 </FormGroup>
               </ModalBody>
-              <ModalFooter style={{ flexDirection: 'column', gap: '12px' }}>
-                {paymentSubmitError && (
-                  <div style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    background: '#FEF2F2',
-                    border: '1px solid #FECACA',
-                    borderRadius: '6px',
-                    color: '#DC2626',
-                    fontSize: '13px',
-                    textAlign: 'center'
-                  }}>
-                    {paymentSubmitError}
-                  </div>
-                )}
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', width: '100%' }}>
+              <ModalFooter style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                   <Button variant="secondary" onClick={() => { setShowPaymentSubmitModal(false); setPaymentSubmitError(null); }}>Cancel</Button>
                   <Button
                     variant="primary"
@@ -2869,6 +2860,11 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     {isSubmittingPayment ? 'Submitting...' : 'Submit Payment'}
                   </Button>
                 </div>
+                {paymentSubmitError && (
+                  <StatusMessage type="error" style={{ marginTop: '12px', wordBreak: 'break-word' }}>
+                    {paymentSubmitError}
+                  </StatusMessage>
+                )}
               </ModalFooter>
             </ModalContent>
           </Modal>

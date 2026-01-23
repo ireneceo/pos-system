@@ -921,7 +921,7 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
     });
 
     // Transform for frontend - include all fields needed by frontend
-    const transformedInvoices = invoices.map(invoice => {
+    const transformedInvoices = await Promise.all(invoices.map(async (invoice) => {
       // Calculate amount from items or estimate from total
       const itemsTotal = invoice.items?.reduce((sum, item) => sum + parseFloat(item.calculated_amount || item.fixed_amount || 0), 0) || 0;
       const taxTotal = invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0;
@@ -935,13 +935,9 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
         billingPeriod = `${start.toLocaleDateString('en-MY', { month: 'short', year: 'numeric' })} - ${end.toLocaleDateString('en-MY', { month: 'short', year: 'numeric' })}`;
       }
 
-      // Get issuer name based on issuer_type
-      let issuerName = 'System Admin';
-      if (invoice.issuer_type === 'brand') {
-        issuerName = 'Brand';
-      } else if (invoice.issuer_type === 'foodcourt') {
-        issuerName = 'Foodcourt';
-      }
+      // Get actual issuer company info
+      const issuerInfo = await getIssuerCompanyInfo(invoice.issuer_type, invoice.issuer_id, invoice.currency || 'MYR');
+      const issuerName = issuerInfo?.name || (invoice.issuer_type === 'system_admin' ? 'System Admin' : invoice.issuer_type === 'brand' ? 'Brand' : 'Foodcourt');
 
       // Convert invoice_category to display name
       const categoryDisplayNames = {
@@ -964,7 +960,7 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
         restaurantId: invoice.restaurant_id?.toString(),
         restaurantName: invoice.restaurant?.name || 'Unknown',
         customerName: invoice.customer_name || invoice.restaurant?.name || 'Unknown',
-        companyName: invoice.company_name || '',
+        companyName: issuerInfo?.name || '',
         managerName: invoice.restaurant?.manager_name || '',
         issueDate: invoice.issued_at || invoice.createdAt,
         dueDate: invoice.due_date,
@@ -975,7 +971,9 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
         tax: taxTotal,
         total: parseFloat(invoice.total_amount),
         issuerType: invoice.issuer_type,
+        issuerId: invoice.issuer_id,
         issuerName: issuerName,
+        issuerInfo: issuerInfo,
         paymentSubmittedAt: invoice.payment_submitted_at,
         rejectionReason: invoice.rejection_reason,
         billingPeriod: billingPeriod,
@@ -991,7 +989,7 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
           total: parseFloat(item.total_amount || 0)
         })) || []
       };
-    });
+    }));
 
     console.log(`  Found ${invoices.length} invoices to pay:`, transformedInvoices.map(i => i.invoiceNumber));
     res.json(transformedInvoices);
