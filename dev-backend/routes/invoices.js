@@ -341,8 +341,10 @@ router.get('/', authenticateToken, async (req, res) => {
     let whereClause = {};
 
     if (role === 'System Admin') {
-      // System Admin sees all invoices
-      whereClause = {};
+      // System Admin sees only invoices they issued
+      whereClause = {
+        issuer_type: 'system_admin'
+      };
     } else if (role === 'Brand General' || role === 'Brand Manager') {
       // Brand General/Manager: only see invoices they ISSUED (for Issued Invoices tab)
       // Invoices TO them are shown via /api/invoices/to-pay endpoint
@@ -431,15 +433,20 @@ router.get('/', authenticateToken, async (req, res) => {
         }
       }
 
-      // Get original manager info for reference
-      const managerId = invoice.restaurant?.manager_id;
-      const managerName = invoice.restaurant?.manager_name || 'Unknown Manager';
+      // Get payer name based on payer type
+      let payerName;
+      if (invoice.payer_type === 'restaurant' || !invoice.payer_id) {
+        payerName = invoice.restaurant?.manager_name || invoice.restaurant?.name || 'Unknown Restaurant';
+      } else {
+        const payer = payers.find(p => p.id === invoice.payer_id);
+        payerName = payer?.full_name || payer?.company_name || customerName || 'Unknown Payer';
+      }
 
       return {
         id: invoice.id.toString(),
         invoiceNumber: invoice.invoice_number,
-        managerId: managerId ? managerId.toString() : '',
-        managerName: managerName,
+        managerId: invoice.payer_id ? invoice.payer_id.toString() : (invoice.restaurant?.manager_id?.toString() || ''),
+        managerName: payerName,
         companyName: customerCompany,
         customerName: customerName,
         customerAddress: customerAddress,
@@ -1057,7 +1064,7 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
         restaurantName: invoice.restaurant?.name || 'Unknown',
         customerName: invoice.customer_name || invoice.restaurant?.name || 'Unknown',
         companyName: issuerInfo?.name || '',
-        managerName: invoice.restaurant?.manager_name || '',
+        managerName: payerInfo?.name || invoice.restaurant?.manager_name || 'Unknown',
         issueDate: invoice.issued_at || invoice.createdAt,
         dueDate: invoice.due_date,
         paidDate: invoice.paid_at,
@@ -1237,6 +1244,105 @@ router.post('/', authenticateToken, async (req, res) => {
     await transaction.rollback();
     console.error('Error creating invoice:', error);
     res.status(500).json({ error: 'Failed to create invoice' });
+  }
+});
+
+// Update invoice (full update)
+router.put('/:id', authenticateToken, async (req, res) => {
+  const { sequelize } = require('../config/database');
+  const transaction = await sequelize.transaction();
+
+  try {
+    const invoiceId = req.params.id;
+    const {
+      amount,
+      tax,
+      total,
+      dueDate,
+      status,
+      payerType,
+      payerId,
+      items,
+      invoiceCategory,
+      customDescription,
+      serviceDescription,
+      notes
+    } = req.body;
+
+    // Find existing invoice
+    const invoice = await Invoice.findByPk(invoiceId, { transaction });
+    if (!invoice) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+
+    // Prevent editing automatic subscription invoices
+    if (invoice.type === 'automatic') {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Cannot edit automatic subscription invoices' });
+    }
+
+    // Prevent editing invoices that are paid, cancelled, or have payment submitted
+    if (invoice.status === 'paid' || invoice.status === 'cancelled' || invoice.status === 'payment_submitted') {
+      await transaction.rollback();
+      return res.status(400).json({ error: `Cannot edit invoice with status: ${invoice.status}` });
+    }
+
+    // Update invoice fields
+    const updateData = {};
+    if (amount !== undefined) updateData.total_amount = total || amount;
+    if (dueDate !== undefined) updateData.due_date = dueDate;
+    if (status !== undefined) updateData.status = status;
+    if (payerType !== undefined) updateData.payer_type = payerType;
+    if (payerId !== undefined) updateData.payer_id = payerId;
+    if (invoiceCategory !== undefined) updateData.invoice_category = invoiceCategory;
+    if (customDescription !== undefined) updateData.custom_description = customDescription;
+    if (serviceDescription !== undefined) updateData.service_description = serviceDescription;
+    if (notes !== undefined) updateData.notes = notes;
+
+    await invoice.update(updateData, { transaction });
+
+    // Update items if provided
+    if (items && Array.isArray(items)) {
+      // Delete existing items
+      await InvoiceItem.destroy({
+        where: { invoice_id: invoiceId },
+        transaction
+      });
+
+      // Create new items
+      if (items.length > 0) {
+        const invoiceItems = items.map(item => ({
+          invoice_id: invoiceId,
+          item_type: item.itemType || item.item_type || 'service',
+          description: item.description || '',
+          quantity: item.quantity || 1,
+          unit_price: item.unitPrice || item.unit_price || 0,
+          calculation_method: item.calculationMethod || 'fixed',
+          calculated_amount: item.unitPrice || item.unit_price || item.calculatedAmount || 0,
+          tax_rate: item.taxRate || item.tax_rate || 0,
+          tax_amount: item.taxAmount || item.tax_amount || 0,
+          total_amount: item.total || item.total_amount || 0
+        }));
+        await InvoiceItem.bulkCreate(invoiceItems, { transaction });
+      }
+    }
+
+    await transaction.commit();
+
+    // Fetch updated invoice with items
+    const updatedInvoice = await Invoice.findByPk(invoiceId, {
+      include: [{
+        model: InvoiceItem,
+        as: 'items'
+      }]
+    });
+
+    res.json({ success: true, invoice: updatedInvoice });
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Error updating invoice:', error);
+    res.status(500).json({ error: 'Failed to update invoice' });
   }
 });
 

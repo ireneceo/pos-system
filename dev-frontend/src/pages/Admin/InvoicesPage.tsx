@@ -222,7 +222,7 @@ const Amount = styled.div<{ highlight?: boolean }>`
   color: #374151;
 `;
 
-const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'email' | 'cancel' }>`
+const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'email' | 'cancel' | 'success' }>`
   padding: 5px 8px;
   border-radius: 5px;
   font-size: 12px;
@@ -242,6 +242,14 @@ const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'emai
 
     &:hover {
       background: #5A51E6;
+    }
+  ` : props.variant === 'success' ? `
+    background: #10B981;
+    color: white;
+    border-color: #10B981;
+
+    &:hover {
+      background: #059669;
     }
   ` : props.variant === 'danger' ? `
     background: transparent;
@@ -2670,8 +2678,10 @@ const InvoicesPage: React.FC = () => {
                       <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</LocalActionButton>
                       {invoice.status === 'draft' && (
                         <>
-                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
-                          <LocalActionButton variant="email" onClick={() => handleSendInvoice(invoice)} title="Send Invoice">
+                          {invoice.type !== 'automatic' && (
+                            <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
+                          )}
+                          <LocalActionButton variant="success" onClick={() => handleSendInvoice(invoice)} title="Send Invoice">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <line x1="22" y1="2" x2="11" y2="13"/>
                               <polygon points="22,2 15,22 11,13 2,9 22,2"/>
@@ -2682,10 +2692,12 @@ const InvoicesPage: React.FC = () => {
                           </LocalIconButton>
                         </>
                       )}
-                      {/* 미결제 상태: 편집, 다운로드, 프린트, 이메일발송, 삭제 */}
+                      {/* 미결제 상태: 편집(수동만), 다운로드, 프린트, 이메일발송, 삭제 */}
                       {(invoice.status === 'pending_payment' || invoice.status === '' || !invoice.status) && (
                         <>
-                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
+                          {invoice.type !== 'automatic' && (
+                            <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
+                          )}
                           <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -2712,13 +2724,12 @@ const InvoicesPage: React.FC = () => {
                         </>
                       )}
 
-                      {/* 결제정보 확인중 상태: 결제확인, 편집, 다운로드, 프린트, 이메일발송 */}
+                      {/* 결제정보 확인중 상태: 결제확인, 다운로드, 프린트, 이메일발송 (편집불가) */}
                       {invoice.status === 'payment_submitted' && (
                         <>
                           {invoice.hasPaymentInfo && (
                             <LocalActionButton variant="primary" onClick={() => handleConfirmPayment(invoice)}>Confirm</LocalActionButton>
                           )}
-                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
                           <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -2742,10 +2753,12 @@ const InvoicesPage: React.FC = () => {
                         </>
                       )}
 
-                      {/* 연체 상태: 편집, 다운로드, 프린트, 이메일발송, 삭제 */}
+                      {/* 연체 상태: 편집(수동만), 다운로드, 프린트, 이메일발송, 삭제 */}
                       {invoice.status === 'overdue' && (
                         <>
-                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
+                          {invoice.type !== 'automatic' && (
+                            <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
+                          )}
                           <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -3254,23 +3267,20 @@ const InvoicesPage: React.FC = () => {
                   </FormSelect>
                 </FormGroup>
 
-                {newInvoice.invoiceCategory === 'others' ? (
+                {/* Show item/description input for all non-subscription categories */}
+                {(newInvoice.invoiceCategory || 'service') !== 'subscription' && (
                   <FormGroup>
-                    <FormLabel>Plan/Item</FormLabel>
+                    <FormLabel>Item/Description</FormLabel>
                     <FormTextarea
-                      value={newInvoice.customDescription || ''}
-                      onChange={(e) => setNewInvoice({...newInvoice, customDescription: e.target.value})}
-                      placeholder="Enter custom item description"
-                      rows={2}
-                    />
-                  </FormGroup>
-                ) : (newInvoice.invoiceCategory || 'service') !== 'subscription' && (
-                  <FormGroup>
-                    <FormLabel>Plan/Item</FormLabel>
-                    <FormTextarea
-                      value={newInvoice.serviceDescription || ''}
-                      onChange={(e) => setNewInvoice({...newInvoice, serviceDescription: e.target.value})}
-                      placeholder="Enter item description"
+                      value={newInvoice.invoiceCategory === 'others' ? (newInvoice.customDescription || '') : (newInvoice.serviceDescription || '')}
+                      onChange={(e) => {
+                        if (newInvoice.invoiceCategory === 'others') {
+                          setNewInvoice({...newInvoice, customDescription: e.target.value});
+                        } else {
+                          setNewInvoice({...newInvoice, serviceDescription: e.target.value});
+                        }
+                      }}
+                      placeholder={`Enter ${newInvoice.invoiceCategory || 'service'} description...`}
                       rows={2}
                     />
                   </FormGroup>
@@ -3787,23 +3797,20 @@ const InvoicesPage: React.FC = () => {
                 </FormGroup>
 
 
-                {editInvoice.invoiceCategory === 'others' ? (
+                {/* Show item/description input for all non-subscription categories */}
+                {(editInvoice.invoiceCategory || 'service') !== 'subscription' && (
                   <FormGroup>
-                    <FormLabel>Plan/Item</FormLabel>
+                    <FormLabel>Item/Description</FormLabel>
                     <FormTextarea
-                      value={editInvoice.customDescription || ''}
-                      onChange={(e) => setEditInvoice({...editInvoice, customDescription: e.target.value})}
-                      placeholder="Enter custom item description"
-                      rows={2}
-                    />
-                  </FormGroup>
-                ) : (editInvoice.invoiceCategory || 'service') !== 'subscription' && (
-                  <FormGroup>
-                    <FormLabel>Plan/Item</FormLabel>
-                    <FormTextarea
-                      value={editInvoice.serviceDescription || ''}
-                      onChange={(e) => setEditInvoice({...editInvoice, serviceDescription: e.target.value})}
-                      placeholder="Enter item description"
+                      value={editInvoice.invoiceCategory === 'others' ? (editInvoice.customDescription || '') : (editInvoice.serviceDescription || '')}
+                      onChange={(e) => {
+                        if (editInvoice.invoiceCategory === 'others') {
+                          setEditInvoice({...editInvoice, customDescription: e.target.value});
+                        } else {
+                          setEditInvoice({...editInvoice, serviceDescription: e.target.value});
+                        }
+                      }}
+                      placeholder={`Enter ${editInvoice.invoiceCategory || 'service'} description...`}
                       rows={2}
                     />
                   </FormGroup>
@@ -3812,15 +3819,15 @@ const InvoicesPage: React.FC = () => {
                 <InvoiceSummary>
                   <SummaryRow>
                     <span>Subtotal:</span>
-                    <span>{formatCurrency(parseFloat(editInvoice.amount || '0'), editInvoice.currency || 'USD')}</span>
+                    <span>{editInvoice.currency ? formatCurrency(parseFloat(editInvoice.amount || '0'), editInvoice.currency) : '-'}</span>
                   </SummaryRow>
                   <SummaryRow>
                     <span>Tax (6%):</span>
-                    <span>{formatCurrency(parseFloat(editInvoice.tax || '0'), editInvoice.currency || 'USD')}</span>
+                    <span>{editInvoice.currency ? formatCurrency(parseFloat(editInvoice.tax || '0'), editInvoice.currency) : '-'}</span>
                   </SummaryRow>
                   <SummaryRow highlight>
                     <span>Total:</span>
-                    <span><strong>{formatCurrency(parseFloat(editInvoice.total || '0'), editInvoice.currency || 'USD')}</strong></span>
+                    <span><strong>{editInvoice.currency ? formatCurrency(parseFloat(editInvoice.total || '0'), editInvoice.currency) : '-'}</strong></span>
                   </SummaryRow>
                 </InvoiceSummary>
               </ModalBody>
@@ -3851,14 +3858,14 @@ const InvoicesPage: React.FC = () => {
                     fontWeight: '600',
                     color: '#0A2540',
                     marginBottom: '12px'
-                  }}>Send Invoice to Manager</h3>
-                  <p style={{ 
-                    fontSize: '14px', 
-                    color: '#6B7280', 
+                  }}>Send Invoice</h3>
+                  <p style={{
+                    fontSize: '14px',
+                    color: '#6B7280',
                     marginBottom: '20px',
-                    lineHeight: '1.6' 
+                    lineHeight: '1.6'
                   }}>
-                    Are you sure you want to send invoice <strong>{selectedInvoice.invoiceNumber}</strong> to <strong>{selectedInvoice.managerName}</strong>?
+                    Are you sure you want to send invoice <strong>{selectedInvoice.invoiceNumber}</strong> to <strong>{selectedInvoice.managerName || selectedInvoice.customerName}</strong>?
                   </p>
                   <div style={{
                     background: '#F8FAFC',
@@ -3871,12 +3878,12 @@ const InvoicesPage: React.FC = () => {
                       <span style={{ fontWeight: '500' }}>{selectedInvoice.invoiceNumber}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ color: '#6B7280' }}>Manager:</span>
-                      <span style={{ fontWeight: '500' }}>{selectedInvoice.managerName}</span>
+                      <span style={{ color: '#6B7280' }}>Recipient:</span>
+                      <span style={{ fontWeight: '500' }}>{selectedInvoice.managerName || selectedInvoice.customerName}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <span style={{ color: '#6B7280' }}>Company:</span>
-                      <span style={{ fontWeight: '500' }}>{selectedInvoice.companyName}</span>
+                      <span style={{ fontWeight: '500' }}>{selectedInvoice.customerName}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#6B7280' }}>Amount:</span>
@@ -3889,8 +3896,8 @@ const InvoicesPage: React.FC = () => {
                 <Button variant="secondary" onClick={() => setShowSendConfirmModal(false)}>
                   Cancel
                 </Button>
-                <Button variant="primary" onClick={confirmSendInvoice}>
-                  Send Invoice
+                <Button variant="success" onClick={confirmSendInvoice}>
+                  Confirm
                 </Button>
               </ModalFooter>
             </ModalContent>
