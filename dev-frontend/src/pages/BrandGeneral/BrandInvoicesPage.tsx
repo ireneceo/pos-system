@@ -338,6 +338,133 @@ const IconSymbol = styled.span`
   line-height: 1;
 `;
 
+// Category Card Components (Recipe style)
+const CategoryGrid = styled.div`
+  display: grid;
+  gap: 12px;
+`;
+
+const CategoryCard = styled.div<{ isActive?: boolean }>`
+  background: white;
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  opacity: ${props => props.isActive !== false ? 1 : 0.6};
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+`;
+
+const CategoryIcon = styled.div`
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background: #F3F4F6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: #635BFF;
+  flex-shrink: 0;
+`;
+
+const CategoryInfo = styled.div`
+  flex: 1;
+`;
+
+const CategoryName = styled.div`
+  font-size: 16px;
+  font-weight: 600;
+  color: #1F2937;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const CategoryMeta = styled.div`
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: #6B7280;
+`;
+
+const CategoryActions = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+const CategoryStatusBadge = styled.span<{ active: boolean }>`
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  background: ${props => props.active ? '#D1FAE5' : '#FEE2E2'};
+  color: ${props => props.active ? '#059669' : '#DC2626'};
+`;
+
+const CategoryIconButton = styled.button`
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  border: 1px solid #E6EBF1;
+  background: #F6F9FC;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    border-color: #635BFF;
+    background: #F4F3FF;
+    transform: translateY(-1px);
+
+    svg {
+      color: #635BFF;
+    }
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  svg {
+    width: 18px;
+    height: 18px;
+    color: #6B7280;
+    transition: color 0.15s;
+  }
+`;
+
+const CategoryEmptyState = styled.div`
+  text-align: center;
+  padding: 40px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+`;
+
+const HeaderRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+`;
+
+const SectionTitle = styled.h3`
+  font-size: 18px;
+  font-weight: 600;
+  color: #1F2937;
+  margin: 0;
+`;
+
 const TabContainer = styled.div`
   display: flex;
   gap: 0;
@@ -3053,7 +3180,7 @@ const BrandInvoicesPage: React.FC = () => {
               </ModalBody>
               <ModalFooter>
                 <Button variant="secondary" onClick={() => setShowPaymentSubmitModal(false)}>Cancel</Button>
-                <Button variant="primary" onClick={handleSubmitPayment} disabled={!paymentData.paymentMethod || loadingPaymentMethods}>Submit Payment</Button>
+                <Button variant="primary" onClick={handleSubmitPayment} disabled={!paymentData.paymentMethod || loadingPaymentMethods || (!paymentData.transactionId && !paymentData.receiptImage)}>Submit Payment</Button>
               </ModalFooter>
             </ModalContent>
           </Modal>

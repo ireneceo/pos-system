@@ -1,5 +1,5 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-01-21 21:00 UTC
+**마지막 업데이트:** 2026-01-23 14:30 UTC
 **작업 상태:** 완료
 
 ### 진행 중인 작업
@@ -7,45 +7,44 @@
 
 ### 완료된 작업 (이번 세션)
 
-#### Invoice System 개선 및 버그 수정
+#### InvoicesPage 개선 및 버그 수정
 
-1. **to_pay 탭에서 본인이 발행한 인보이스 제외**
-   - Brand/Foodcourt가 발행한 인보이스가 본인의 to_pay 탭에서 제외
-   - `[Op.not]` 조건 추가로 issuer_type/issuer_id 매칭 제외
+1. **Payment Settings 세율 적용**
+   - 백엔드 admin-payment-settings.js에 tax 필드 저장 추가
+   - 프론트엔드 InvoicesPage.tsx에서 하드코딩된 6% 세율 제거
+   - Payment Settings에서 설정한 세율이 인보이스 생성에 적용되도록 수정
 
-2. **결제 시 영수증 이미지 업로드 기능**
-   - Bank Transfer/QR Payment 시 영수증 이미지 업로드 가능
-   - Base64 인코딩으로 receipt_url에 저장
+2. **Due Date 기본 정렬 (최신순)**
+   - filteredInvoices 정렬 로직 수정
+   - 기본 정렬: Due Date 내림차순 (최신이 먼저)
 
-3. **시스템관리자 결제 컨펌 팝업 개선**
-   - Confirm Payment 클릭 시 고객 결제정보 표시
-   - paymentMethod, transactionId, receiptUrl 표시
-   - 영수증 이미지 클릭 시 새 탭에서 확대
+3. **테이블 헤더 클릭 정렬 기능**
+   - sortField, sortDirection state 추가
+   - 클릭 가능한 헤더: Invoice, Customer, Due, Status, Amount
+   - 정렬 방향 표시 (▲/▼)
 
-4. **인보이스 생성 시 수신인 통화 자동 적용**
-   - payment_settings.defaultCurrency 우선 적용
-   - supported_currencies[0] fallback
+4. **Payment Submitted 탭 추가**
+   - 결제 컨펌 대기 중인 인보이스 전용 탭
+   - 빨간색 뱃지로 대기 건수 표시
+   - 바로 Confirm Payment 버튼 사용 가능
 
-5. **Payment Settings 통화 제한**
-   - Brand/Foodcourt General이 시스템 지원 통화 내에서만 선택 가능
-   - /api/currencies/supported API 연동
-
-6. **Company Info 저장 문제 해결**
-   - Express 라우트 순서 수정 (/company-info가 /:id 앞에 오도록)
-
-7. **결제 권한 체크 수정**
-   - checkPaymentPermission 함수에서 brand_manager, foodcourt_manager, manager payer_type 처리
+5. **Invoice 카테고리/아이템 표시 버그 수정**
+   - InvoiceItem 조회 시 item_type 필드 포함
+   - items가 없는 인보이스도 fallback 아이템 생성
+   - categoryDisplayName에 custom description 또는 notes 사용
 
 ### 수정된 파일
 
 **Backend:**
-- `routes/invoices.js` - to_pay 필터링, checkPaymentPermission, 인보이스 응답에 payment 정보 추가
-- `routes/brands.js` - company-info 라우트 순서 수정
+- `routes/admin-payment-settings.js` - tax 필드 저장/조회 추가
+- `routes/invoices.js` - item_type 포함, fallback items, categoryDisplayName 개선
 
 **Frontend:**
-- `pages/BrandGeneral/BrandInvoicesPage.tsx` - 영수증 업로드, currency 필드 추가
-- `pages/BrandGeneral/BrandPaymentSettingsPage.tsx` - 시스템 통화 제한 적용
-- `pages/Admin/InvoicesPage.tsx` - 결제 컨펌 팝업에 고객 결제정보 표시, 통화 자동설정
+- `pages/Admin/InvoicesPage.tsx`
+  - taxSettings state 및 fetchPaymentSettings 함수 추가
+  - sortField, sortDirection state 및 handleSort 함수 추가
+  - Payment Submitted 탭 UI 추가
+  - 테이블 헤더 클릭 정렬 UI 추가
 
 ### 다음 할 일
 - Foodcourt Payment Settings도 동일하게 시스템 통화 제한 적용

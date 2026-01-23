@@ -2753,7 +2753,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
               </ModalBody>
               <ModalFooter>
                 <Button variant="secondary" onClick={() => setShowPaymentSubmitModal(false)}>Cancel</Button>
-                <Button variant="primary" onClick={handleSubmitPayment}>Submit Payment</Button>
+                <Button variant="primary" onClick={handleSubmitPayment} disabled={!paymentData.paymentMethod || (!paymentData.transactionId && !paymentData.receiptImage)}>Submit Payment</Button>
               </ModalFooter>
             </ModalContent>
           </Modal>

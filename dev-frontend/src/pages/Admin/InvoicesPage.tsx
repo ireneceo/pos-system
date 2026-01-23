@@ -2303,21 +2303,6 @@ const InvoicesPage: React.FC = () => {
         </Header>
         <Content>
 
-        <TabContainer>
-          <Tab active={activeTab === 'invoices'} onClick={() => handleTabChange('invoices')}>Invoices</Tab>
-          <Tab active={activeTab === 'payment_submitted'} onClick={() => handleTabChange('payment_submitted')}>
-            Payment Submitted
-            {invoices.filter(i => i.status === 'payment_submitted').length > 0 && (
-              <span style={{ marginLeft: '6px', background: '#DC2626', color: 'white', borderRadius: '10px', padding: '2px 8px', fontSize: '11px', fontWeight: '600' }}>
-                {invoices.filter(i => i.status === 'payment_submitted').length}
-              </span>
-            )}
-          </Tab>
-          <Tab active={activeTab === 'categories'} onClick={() => handleTabChange('categories')}>Invoice Categories</Tab>
-        </TabContainer>
-
-        {activeTab === 'invoices' && (
-          <>
         <StatsGrid>
           <StatCard color="#059669">
             <StatValue>{totalInvoices}</StatValue>
@@ -2341,6 +2326,21 @@ const InvoicesPage: React.FC = () => {
           </StatCard>
         </StatsGrid>
 
+        <TabContainer>
+          <Tab active={activeTab === 'invoices'} onClick={() => handleTabChange('invoices')}>Invoices</Tab>
+          <Tab active={activeTab === 'payment_submitted'} onClick={() => handleTabChange('payment_submitted')}>
+            Payment Submitted
+            {invoices.filter(i => i.status === 'payment_submitted').length > 0 && (
+              <span style={{ marginLeft: '6px', background: '#DC2626', color: 'white', borderRadius: '10px', padding: '2px 8px', fontSize: '11px', fontWeight: '600' }}>
+                {invoices.filter(i => i.status === 'payment_submitted').length}
+              </span>
+            )}
+          </Tab>
+          <Tab active={activeTab === 'categories'} onClick={() => handleTabChange('categories')}>Invoice Categories</Tab>
+        </TabContainer>
+
+        {activeTab === 'invoices' && (
+          <>
         <FilterBarWrapper>
           <FiltersLeft>
             <SearchInput
@@ -2630,11 +2630,11 @@ const InvoicesPage: React.FC = () => {
                       </DataTableCell>
                       <DataTableCell data-label="" mobileFullWidth>
                         <ActionButtons>
-                          <Button size="small" variant="outline" onClick={() => handleViewClick(invoice)}>View</Button>
-                          <Button size="small" variant="primary" onClick={() => {
+                          <LocalActionButton onClick={() => handleViewInvoice(invoice)}>View</LocalActionButton>
+                          <LocalActionButton variant="primary" onClick={() => {
                             setSelectedInvoice(invoice);
                             setShowPaymentConfirmModal(true);
-                          }}>Confirm Payment</Button>
+                          }}>Confirm Payment</LocalActionButton>
                         </ActionButtons>
                       </DataTableCell>
                     </DataTableRow>

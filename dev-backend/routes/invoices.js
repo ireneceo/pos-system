@@ -382,7 +382,7 @@ router.get('/', authenticateToken, async (req, res) => {
         amount: parseFloat(invoice.total_amount) - parseFloat(invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0),
         tax: parseFloat(invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0),
         total: parseFloat(invoice.total_amount),
-        items: invoice.items?.map(item => {
+        items: (invoice.items && invoice.items.length > 0) ? invoice.items.map(item => {
           // Build description: category name + user description
           const categoryName = getCategoryDisplayName(item.item_type || invoice.invoice_category, invoice.custom_description, invoice.restaurant?.plan_type, invoice.restaurant?.billing_cycle);
           const userDescription = item.description?.trim();
@@ -402,7 +402,13 @@ router.get('/', authenticateToken, async (req, res) => {
             unitPrice: parseFloat(item.calculated_amount),
             total: parseFloat(item.total_amount)
           };
-        }) || [],
+        }) : [{
+          // Fallback for invoices without items: create item from invoice data
+          description: getCategoryDisplayName(invoice.invoice_category, invoice.custom_description || invoice.notes?.split('\n').pop(), invoice.restaurant?.plan_type, invoice.restaurant?.billing_cycle),
+          quantity: 1,
+          unitPrice: parseFloat(invoice.total_amount),
+          total: parseFloat(invoice.total_amount)
+        }],
         billingPeriod: formatBillingPeriod(invoice.billing_period_start, invoice.billing_period_end),
         planType: invoice.restaurant?.plan_type || 'Basic Plan',
         type: invoice.type,
@@ -411,7 +417,12 @@ router.get('/', authenticateToken, async (req, res) => {
         invoiceCategory: invoice.items?.[0]?.item_type || invoice.invoice_category || 'subscription',
         customDescription: invoice.custom_description,
         serviceDescription: invoice.service_description,
-        categoryDisplayName: getCategoryDisplayName(invoice.items?.[0]?.item_type || invoice.invoice_category, invoice.custom_description || invoice.items?.[0]?.description, invoice.restaurant?.plan_type, invoice.restaurant?.billing_cycle),
+        categoryDisplayName: getCategoryDisplayName(
+          invoice.items?.[0]?.item_type || invoice.invoice_category,
+          invoice.custom_description || invoice.items?.[0]?.description || invoice.notes?.split('\n').pop(),
+          invoice.restaurant?.plan_type,
+          invoice.restaurant?.billing_cycle
+        ),
         // Payment info for confirmation
         paymentMethod: invoice.payment_method,
         transactionId: invoice.transaction_id,
