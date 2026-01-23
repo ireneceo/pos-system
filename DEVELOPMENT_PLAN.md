@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-01-21
+> **최종 업데이트:** 2026-01-23
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -16,6 +16,49 @@
 | PayPal Integration | PayPal 결제 연동 | 대기 |
 | Auto Payment System | 자동 결제 시스템 | 대기 |
 | Kitchen Display 개선 | Pending 컬럼 아이템별 Done 버튼 | 대기 |
+
+---
+
+## ✅ 완료: Invoice System UI/UX 개선 (2026-01-23)
+
+### 완료된 기능
+
+| 기능 | 설명 | 상태 |
+|------|------|:----:|
+| Send Invoice 버튼 스타일 | Draft 상태에서 녹색 아이콘 버튼으로 변경 | ✅ 완료 |
+| Confirm 버튼 스타일 | Send Invoice 모달 확인 버튼 녹색으로 변경 | ✅ 완료 |
+| 수신인 정보 수정 | Unknown Manager → 올바른 payer 이름 표시 | ✅ 완료 |
+| 자동 인보이스 수정 제한 | automatic 타입 인보이스 Edit 버튼 숨김 | ✅ 완료 |
+| 상태별 수정 제한 | paid, payment_submitted, cancelled 상태 수정 불가 | ✅ 완료 |
+| 인보이스 번호 형식 수정 | 발행자별 올바른 번호 형식 적용 | ✅ 완료 |
+| category_display_name 추가 | 구독 플랜 이름 표시 (Subscription - Professional) | ✅ 완료 |
+
+### 핵심 구현 사항
+
+1. **Send Invoice 버튼 녹색 스타일**
+   - LocalActionButton에 `success` variant 추가 (#10B981 녹색)
+   - Draft 상태에서 Send Invoice 버튼에 녹색 적용
+   - Brand General: 아이콘만 표시 (텍스트 제거)
+
+2. **수신인 정보 올바르게 표시**
+   - Backend: payer_type에 따라 올바른 payer 이름 조회
+   - Frontend: managerName || customerName 폴백 처리
+   - Send Invoice 모달에서 "Manager" → "Recipient" 표기 변경
+
+3. **인보이스 수정 제한 로직**
+   - Backend: PUT /api/invoices/:id에서 type, status 검증
+   - Frontend: Edit 버튼을 조건부 렌더링
+   - System Admin, Brand General 양쪽 적용
+
+### 관련 파일
+
+**Backend:**
+- `routes/invoices.js` - payer 이름 조회 로직 수정, 수정 제한 검증
+- `models/Invoice.js` - category_display_name 필드 추가
+
+**Frontend:**
+- `pages/Admin/InvoicesPage.tsx` - Send Invoice 버튼/모달 스타일, Edit 제한
+- `pages/BrandGeneral/BrandInvoicesPage.tsx` - Send Invoice 버튼/모달 스타일, Edit 제한
 
 ---
 

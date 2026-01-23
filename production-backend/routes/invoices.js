@@ -19,6 +19,63 @@ const PAYMENT_SETTINGS_KEY = 'payment_settings';
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const InvoiceCategory = require('../models/InvoiceCategory');
 
+/**
+ * Generate invoice number in format:
+ * - System Admin: INV-YYMMDDNNN (e.g., INV-260123001)
+ * - Brand: INV-BR{issuer_id}YYMMDDNNN (e.g., INV-BR6260123001)
+ * - Foodcourt: INV-FC{issuer_id}YYMMDDNNN (e.g., INV-FC7260123001)
+ *
+ * @param {string} issuerType - 'system_admin', 'brand', or 'foodcourt'
+ * @param {number} issuerId - The issuer's user ID (for brand/foodcourt)
+ * @param {object} transaction - Sequelize transaction (optional)
+ * @returns {Promise<string>} Generated invoice number
+ */
+async function generateInvoiceNumber(issuerType = 'system_admin', issuerId = null, transaction = null) {
+  const now = new Date();
+  const year = String(now.getFullYear()).slice(-2); // YY format
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const dateStr = `${year}${month}${day}`;
+
+  // Build prefix based on issuer type
+  let prefix = 'INV-';
+  if (issuerType === 'brand' && issuerId) {
+    prefix = `INV-BR${issuerId}`;
+  } else if (issuerType === 'foodcourt' && issuerId) {
+    prefix = `INV-FC${issuerId}`;
+  }
+
+  const searchPattern = `${prefix}${dateStr}%`;
+
+  // Find the highest existing invoice number with this pattern
+  const queryOptions = {
+    where: {
+      invoice_number: {
+        [Op.like]: searchPattern
+      }
+    },
+    order: [['invoice_number', 'DESC']],
+    attributes: ['invoice_number']
+  };
+
+  if (transaction) {
+    queryOptions.transaction = transaction;
+  }
+
+  const lastInvoice = await Invoice.findOne(queryOptions);
+
+  let nextNumber = 1;
+  if (lastInvoice && lastInvoice.invoice_number) {
+    // Extract the last 3 digits (NNN part)
+    const match = lastInvoice.invoice_number.match(/(\d{3})$/);
+    if (match) {
+      nextNumber = parseInt(match[1], 10) + 1;
+    }
+  }
+
+  return `${prefix}${dateStr}${String(nextNumber).padStart(3, '0')}`;
+}
+
 // Helper function to get bank info from Payment Settings based on currency
 async function getBankInfoByCurrency(currency) {
   try {
@@ -58,7 +115,7 @@ async function getIssuerCompanyInfo(issuerType, issuerId, currency = 'MYR') {
     if (companySettings) {
       return {
         name: companySettings.company_name || 'System Admin',
-        logoUrl: companySettings.logo_url || null,
+        logoUrl: companySettings.company_logo || companySettings.logo_url || null,
         address: companySettings.address || '',
         city: companySettings.city || '',
         state: companySettings.state || '',
@@ -144,25 +201,39 @@ async function getPayerCompanyInfo(payerType, payerId, restaurant) {
       };
     }
   } else if (payerType === 'brand_manager' && payerId) {
-    // Brand manager pays - use brand owner (user) info
-    const user = await User.findByPk(payerId);
-    if (user) {
+    // Brand manager pays - get Brand company info
+    const brand = await Brand.findOne({ where: { owner_id: payerId } });
+    if (brand) {
       return {
-        name: user.company_name || user.full_name || 'Manager',
-        address: user.address || '',
-        phone: user.phone || '',
-        email: user.email || ''
+        name: brand.name || 'Brand',
+        logoUrl: brand.logo_url || null,
+        address: brand.address || '',
+        city: brand.city || '',
+        state: brand.state || '',
+        postalCode: brand.postal_code || '',
+        country: brand.country || 'Malaysia',
+        phone: brand.phone || '',
+        email: brand.email || '',
+        taxId: brand.tax_id || '',
+        businessRegistration: brand.business_registration || ''
       };
     }
   } else if (payerType === 'foodcourt_manager' && payerId) {
-    // Foodcourt manager pays - use foodcourt owner (user) info
-    const user = await User.findByPk(payerId);
-    if (user) {
+    // Foodcourt manager pays - get Foodcourt company info
+    const foodcourt = await Foodcourt.findOne({ where: { owner_id: payerId } });
+    if (foodcourt) {
       return {
-        name: user.company_name || user.full_name || 'Manager',
-        address: user.address || '',
-        phone: user.phone || '',
-        email: user.email || ''
+        name: foodcourt.name || 'Foodcourt',
+        logoUrl: foodcourt.logo_url || null,
+        address: foodcourt.address || '',
+        city: foodcourt.city || '',
+        state: foodcourt.state || '',
+        postalCode: foodcourt.postal_code || '',
+        country: foodcourt.country || 'Malaysia',
+        phone: foodcourt.phone || '',
+        email: foodcourt.email || '',
+        taxId: foodcourt.tax_id || '',
+        businessRegistration: foodcourt.business_registration || ''
       };
     }
   }
@@ -201,13 +272,19 @@ function getCategoryDisplayName(category, customDescription, planType, billingCy
 
       return planDisplay;
     case 'service':
-      return 'Service';
+      return customDescription || 'Service';
     case 'consulting':
-      return 'Consulting';
+      return customDescription || 'Consulting';
     case 'others':
       return customDescription || 'Others';
     default:
-      return planType || 'Subscription Plan';
+      // For custom categories, use description or format the category code
+      if (customDescription) return customDescription;
+      if (category) {
+        // Convert category code like 'hardware' to 'Hardware'
+        return category.charAt(0).toUpperCase() + category.slice(1).replace(/_/g, ' ');
+      }
+      return planType || 'Service';
   }
 }
 
@@ -264,8 +341,10 @@ router.get('/', authenticateToken, async (req, res) => {
     let whereClause = {};
 
     if (role === 'System Admin') {
-      // System Admin sees all invoices
-      whereClause = {};
+      // System Admin sees only invoices they issued
+      whereClause = {
+        issuer_type: 'system_admin'
+      };
     } else if (role === 'Brand General' || role === 'Brand Manager') {
       // Brand General/Manager: only see invoices they ISSUED (for Issued Invoices tab)
       // Invoices TO them are shown via /api/invoices/to-pay endpoint
@@ -314,7 +393,7 @@ router.get('/', authenticateToken, async (req, res) => {
       }, {
         model: InvoiceItem,
         as: 'items',
-        attributes: ['description', 'calculated_amount', 'tax_amount', 'total_amount']
+        attributes: ['item_type', 'description', 'calculated_amount', 'tax_amount', 'total_amount']
       }],
       order: [['due_date', 'DESC'], ['id', 'DESC']]
     });
@@ -354,15 +433,20 @@ router.get('/', authenticateToken, async (req, res) => {
         }
       }
 
-      // Get original manager info for reference
-      const managerId = invoice.restaurant?.manager_id;
-      const managerName = invoice.restaurant?.manager_name || 'Unknown Manager';
+      // Get payer name based on payer type
+      let payerName;
+      if (invoice.payer_type === 'restaurant' || !invoice.payer_id) {
+        payerName = invoice.restaurant?.manager_name || invoice.restaurant?.name || 'Unknown Restaurant';
+      } else {
+        const payer = payers.find(p => p.id === invoice.payer_id);
+        payerName = payer?.full_name || payer?.company_name || customerName || 'Unknown Payer';
+      }
 
       return {
         id: invoice.id.toString(),
         invoiceNumber: invoice.invoice_number,
-        managerId: managerId ? managerId.toString() : '',
-        managerName: managerName,
+        managerId: invoice.payer_id ? invoice.payer_id.toString() : (invoice.restaurant?.manager_id?.toString() || ''),
+        managerName: payerName,
         companyName: customerCompany,
         customerName: customerName,
         customerAddress: customerAddress,
@@ -376,7 +460,7 @@ router.get('/', authenticateToken, async (req, res) => {
         amount: parseFloat(invoice.total_amount) - parseFloat(invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0),
         tax: parseFloat(invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0),
         total: parseFloat(invoice.total_amount),
-        items: invoice.items?.map(item => {
+        items: (invoice.items && invoice.items.length > 0) ? invoice.items.map(item => {
           // Build description: category name + user description
           const categoryName = getCategoryDisplayName(item.item_type || invoice.invoice_category, invoice.custom_description, invoice.restaurant?.plan_type, invoice.restaurant?.billing_cycle);
           const userDescription = item.description?.trim();
@@ -396,16 +480,27 @@ router.get('/', authenticateToken, async (req, res) => {
             unitPrice: parseFloat(item.calculated_amount),
             total: parseFloat(item.total_amount)
           };
-        }) || [],
+        }) : [{
+          // Fallback for invoices without items: create item from invoice data
+          description: getCategoryDisplayName(invoice.invoice_category, invoice.custom_description || invoice.notes?.split('\n').pop(), invoice.restaurant?.plan_type, invoice.restaurant?.billing_cycle),
+          quantity: 1,
+          unitPrice: parseFloat(invoice.total_amount),
+          total: parseFloat(invoice.total_amount)
+        }],
         billingPeriod: formatBillingPeriod(invoice.billing_period_start, invoice.billing_period_end),
         planType: invoice.restaurant?.plan_type || 'Basic Plan',
         type: invoice.type,
         payerType: invoice.payer_type,
         payerId: invoice.payer_id?.toString(),
-        invoiceCategory: invoice.invoice_category || 'subscription',
+        invoiceCategory: invoice.items?.[0]?.item_type || invoice.invoice_category || 'subscription',
         customDescription: invoice.custom_description,
         serviceDescription: invoice.service_description,
-        categoryDisplayName: getCategoryDisplayName(invoice.invoice_category, invoice.custom_description, invoice.restaurant?.plan_type, invoice.restaurant?.billing_cycle),
+        categoryDisplayName: getCategoryDisplayName(
+          invoice.items?.[0]?.item_type || invoice.invoice_category,
+          invoice.custom_description || invoice.items?.[0]?.description || invoice.notes?.split('\n').pop(),
+          invoice.restaurant?.plan_type,
+          invoice.restaurant?.billing_cycle
+        ),
         // Payment info for confirmation
         paymentMethod: invoice.payment_method,
         transactionId: invoice.transaction_id,
@@ -535,6 +630,21 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
         }];
       }
 
+      // Get category display name from various sources
+      let categoryDisplayName = invoice.category_display_name;
+      if (!categoryDisplayName && invoice.items && invoice.items.length > 0) {
+        // Get from first item description (e.g., "Professional - Monthly Subscription (Jan 2026)")
+        const firstItem = invoice.items[0];
+        if (firstItem.description) {
+          // Extract plan name from description like "Professional - Monthly Subscription (Jan 2026)"
+          const match = firstItem.description.match(/^([^-]+)/);
+          categoryDisplayName = match ? `Subscription - ${match[1].trim()}` : firstItem.description;
+        }
+      }
+      if (!categoryDisplayName && invoice.invoice_category === 'subscription') {
+        categoryDisplayName = `Subscription - ${invoice.restaurant?.plan_type || 'Plan'}`;
+      }
+
       return {
         id: invoice.id,
         invoiceNumber: invoice.invoice_number,
@@ -552,9 +662,9 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
         billingPeriod: invoice.billing_period_start
           ? `${invoice.billing_period_start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
           : invoice.billing_period || '',
-        planType: invoice.plan_type || invoice.restaurant?.plan_type || 'Custom',
+        planType: invoice.restaurant?.plan_type || 'Custom',
         type: invoice.type || 'manual',
-        categoryDisplayName: invoice.category_display_name || '',
+        categoryDisplayName: categoryDisplayName || '',
         payerType: invoice.payer_type,
         payerId: invoice.payer_id,
         issuerType: invoice.issuer_type,
@@ -904,7 +1014,7 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
     });
 
     // Transform for frontend - include all fields needed by frontend
-    const transformedInvoices = invoices.map(invoice => {
+    const transformedInvoices = await Promise.all(invoices.map(async (invoice) => {
       // Calculate amount from items or estimate from total
       const itemsTotal = invoice.items?.reduce((sum, item) => sum + parseFloat(item.calculated_amount || item.fixed_amount || 0), 0) || 0;
       const taxTotal = invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0;
@@ -918,28 +1028,34 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
         billingPeriod = `${start.toLocaleDateString('en-MY', { month: 'short', year: 'numeric' })} - ${end.toLocaleDateString('en-MY', { month: 'short', year: 'numeric' })}`;
       }
 
-      // Get issuer name based on issuer_type
-      let issuerName = 'System Admin';
-      if (invoice.issuer_type === 'brand') {
-        issuerName = 'Brand';
-      } else if (invoice.issuer_type === 'foodcourt') {
-        issuerName = 'Foodcourt';
-      }
+      // Get actual issuer company info
+      const issuerInfo = await getIssuerCompanyInfo(invoice.issuer_type, invoice.issuer_id, invoice.currency || 'MYR');
+      const issuerName = issuerInfo?.name || (invoice.issuer_type === 'system_admin' ? 'System Admin' : invoice.issuer_type === 'brand' ? 'Brand' : 'Foodcourt');
+
+      // Get payer company info (Bill To)
+      const payerInfo = await getPayerCompanyInfo(invoice.payer_type, invoice.payer_id, invoice.restaurant);
 
       // Convert invoice_category to display name
-      const categoryDisplayNames = {
-        'subscription': 'Subscription',
-        'service': 'Service',
-        'consulting': 'Consulting',
-        'hardware': 'Hardware',
-        'setup': 'Setup Fee',
-        'training': 'Training',
-        'maintenance': 'Maintenance',
-        'support': 'Support',
-        'others': 'Others'
-      };
-      const categoryDisplayName = categoryDisplayNames[invoice.invoice_category] ||
-                                  (invoice.invoice_category ? invoice.invoice_category.charAt(0).toUpperCase() + invoice.invoice_category.slice(1) : 'Service');
+      // For subscription invoices, show plan type (e.g., "Subscription - Professional")
+      let categoryDisplayName = '';
+      if (invoice.invoice_category === 'subscription' && invoice.plan_type) {
+        const planTypeFormatted = invoice.plan_type.charAt(0).toUpperCase() + invoice.plan_type.slice(1);
+        categoryDisplayName = `Subscription - ${planTypeFormatted}`;
+      } else {
+        const categoryDisplayNames = {
+          'subscription': 'Subscription',
+          'service': 'Service',
+          'consulting': 'Consulting',
+          'hardware': 'Hardware',
+          'setup': 'Setup Fee',
+          'training': 'Training',
+          'maintenance': 'Maintenance',
+          'support': 'Support',
+          'others': 'Others'
+        };
+        categoryDisplayName = categoryDisplayNames[invoice.invoice_category] ||
+                                    (invoice.invoice_category ? invoice.invoice_category.charAt(0).toUpperCase() + invoice.invoice_category.slice(1) : 'Service');
+      }
 
       return {
         id: invoice.id.toString(),
@@ -947,8 +1063,8 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
         restaurantId: invoice.restaurant_id?.toString(),
         restaurantName: invoice.restaurant?.name || 'Unknown',
         customerName: invoice.customer_name || invoice.restaurant?.name || 'Unknown',
-        companyName: invoice.company_name || '',
-        managerName: invoice.restaurant?.manager_name || '',
+        companyName: issuerInfo?.name || '',
+        managerName: payerInfo?.name || invoice.restaurant?.manager_name || 'Unknown',
         issueDate: invoice.issued_at || invoice.createdAt,
         dueDate: invoice.due_date,
         paidDate: invoice.paid_at,
@@ -958,7 +1074,12 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
         tax: taxTotal,
         total: parseFloat(invoice.total_amount),
         issuerType: invoice.issuer_type,
+        issuerId: invoice.issuer_id,
         issuerName: issuerName,
+        issuerInfo: issuerInfo,
+        payerType: invoice.payer_type,
+        payerId: invoice.payer_id,
+        payerInfo: payerInfo,
         paymentSubmittedAt: invoice.payment_submitted_at,
         rejectionReason: invoice.rejection_reason,
         billingPeriod: billingPeriod,
@@ -967,14 +1088,25 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
         categoryDisplayName: categoryDisplayName,
         invoiceCategory: invoice.invoice_category || 'service',
         hasPaymentInfo: !!invoice.payment_submitted_at,
-        items: invoice.items?.map(item => ({
-          description: item.description,
-          quantity: item.quantity || 1,
-          unitPrice: parseFloat(item.calculated_amount || item.fixed_amount || 0),
-          total: parseFloat(item.total_amount || 0)
-        })) || []
+        items: invoice.items?.map(item => {
+          // Use description, or fallback to item_type formatted, or category
+          let desc = item.description;
+          if (!desc || desc.trim() === '') {
+            if (item.item_type) {
+              desc = item.item_type.charAt(0).toUpperCase() + item.item_type.slice(1).replace(/_/g, ' ');
+            } else {
+              desc = categoryDisplayName || 'Service';
+            }
+          }
+          return {
+            description: desc,
+            quantity: item.quantity || 1,
+            unitPrice: parseFloat(item.calculated_amount || item.fixed_amount || 0),
+            total: parseFloat(item.total_amount || 0)
+          };
+        }) || []
       };
-    });
+    }));
 
     console.log(`  Found ${invoices.length} invoices to pay:`, transformedInvoices.map(i => i.invoiceNumber));
     res.json(transformedInvoices);
@@ -1088,19 +1220,11 @@ router.post('/', authenticateToken, async (req, res) => {
     // Debug logging
     console.log('Invoice data before creation:', JSON.stringify(invoice_data, null, 2));
 
-    // Generate invoice number with lock to prevent duplicates
-    const year = new Date().getFullYear();
-    const month = String(new Date().getMonth() + 1).padStart(2, '0');
-    const count = await Invoice.count({
-      where: {
-        invoice_number: {
-          [Op.like]: `${invoice_data.invoice_prefix || 'INV'}-${year}${month}%`
-        }
-      },
-      transaction
-    });
-
-    invoice_data.invoice_number = `${invoice_data.invoice_prefix || 'INV'}-${year}${month}${String(count + 1).padStart(4, '0')}`;
+    // Generate invoice number using standardized format
+    const issuerType = invoice_data.issuer_type || 'system_admin';
+    const issuerId = invoice_data.issuer_id || null;
+    invoice_data.invoice_number = await generateInvoiceNumber(issuerType, issuerId, transaction);
+    console.log('Generated invoice number:', invoice_data.invoice_number);
 
     // Create invoice within transaction
     const invoice = await Invoice.create(invoice_data, { transaction });
@@ -1120,6 +1244,105 @@ router.post('/', authenticateToken, async (req, res) => {
     await transaction.rollback();
     console.error('Error creating invoice:', error);
     res.status(500).json({ error: 'Failed to create invoice' });
+  }
+});
+
+// Update invoice (full update)
+router.put('/:id', authenticateToken, async (req, res) => {
+  const { sequelize } = require('../config/database');
+  const transaction = await sequelize.transaction();
+
+  try {
+    const invoiceId = req.params.id;
+    const {
+      amount,
+      tax,
+      total,
+      dueDate,
+      status,
+      payerType,
+      payerId,
+      items,
+      invoiceCategory,
+      customDescription,
+      serviceDescription,
+      notes
+    } = req.body;
+
+    // Find existing invoice
+    const invoice = await Invoice.findByPk(invoiceId, { transaction });
+    if (!invoice) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+
+    // Prevent editing automatic subscription invoices
+    if (invoice.type === 'automatic') {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Cannot edit automatic subscription invoices' });
+    }
+
+    // Prevent editing invoices that are paid, cancelled, or have payment submitted
+    if (invoice.status === 'paid' || invoice.status === 'cancelled' || invoice.status === 'payment_submitted') {
+      await transaction.rollback();
+      return res.status(400).json({ error: `Cannot edit invoice with status: ${invoice.status}` });
+    }
+
+    // Update invoice fields
+    const updateData = {};
+    if (amount !== undefined) updateData.total_amount = total || amount;
+    if (dueDate !== undefined) updateData.due_date = dueDate;
+    if (status !== undefined) updateData.status = status;
+    if (payerType !== undefined) updateData.payer_type = payerType;
+    if (payerId !== undefined) updateData.payer_id = payerId;
+    if (invoiceCategory !== undefined) updateData.invoice_category = invoiceCategory;
+    if (customDescription !== undefined) updateData.custom_description = customDescription;
+    if (serviceDescription !== undefined) updateData.service_description = serviceDescription;
+    if (notes !== undefined) updateData.notes = notes;
+
+    await invoice.update(updateData, { transaction });
+
+    // Update items if provided
+    if (items && Array.isArray(items)) {
+      // Delete existing items
+      await InvoiceItem.destroy({
+        where: { invoice_id: invoiceId },
+        transaction
+      });
+
+      // Create new items
+      if (items.length > 0) {
+        const invoiceItems = items.map(item => ({
+          invoice_id: invoiceId,
+          item_type: item.itemType || item.item_type || 'service',
+          description: item.description || '',
+          quantity: item.quantity || 1,
+          unit_price: item.unitPrice || item.unit_price || 0,
+          calculation_method: item.calculationMethod || 'fixed',
+          calculated_amount: item.unitPrice || item.unit_price || item.calculatedAmount || 0,
+          tax_rate: item.taxRate || item.tax_rate || 0,
+          tax_amount: item.taxAmount || item.tax_amount || 0,
+          total_amount: item.total || item.total_amount || 0
+        }));
+        await InvoiceItem.bulkCreate(invoiceItems, { transaction });
+      }
+    }
+
+    await transaction.commit();
+
+    // Fetch updated invoice with items
+    const updatedInvoice = await Invoice.findByPk(invoiceId, {
+      include: [{
+        model: InvoiceItem,
+        as: 'items'
+      }]
+    });
+
+    res.json({ success: true, invoice: updatedInvoice });
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Error updating invoice:', error);
+    res.status(500).json({ error: 'Failed to update invoice' });
   }
 });
 
@@ -1364,18 +1587,8 @@ router.post('/generate-for-subscriptions', authenticateToken, async (req, res) =
           continue;
         }
 
-        // Generate invoice number
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const count = await Invoice.count({
-          where: {
-            invoice_number: {
-              [Op.like]: `INV-${year}${month}%`
-            }
-          }
-        });
-
-        const invoiceNumber = `INV-${year}${month}${String(count + 1).padStart(4, '0')}`;
+        // Generate invoice number (system_admin issuer for auto-generated invoices)
+        const invoiceNumber = await generateInvoiceNumber('system_admin', null, null);
 
         // Determine restaurant's currency (convert RM to MYR)
         let currency = restaurant.currency || 'MYR';
@@ -1440,10 +1653,13 @@ router.post('/generate-for-subscriptions', authenticateToken, async (req, res) =
         }
 
         // Create invoice with currency
+        const categoryDisplayName = `Subscription - ${restaurant.plan_type}`;
         const invoice = await Invoice.create({
           restaurant_id: restaurant.id,
           invoice_number: invoiceNumber,
           type: 'automatic',
+          invoice_category: 'subscription',
+          category_display_name: categoryDisplayName,
           billing_period_start: billingStart,
           billing_period_end: billingEnd,
           due_date: dueDate,
@@ -1542,18 +1758,8 @@ router.post('/generate-automatic', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Invoice already exists for this period' });
     }
     
-    // Generate invoice number
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const count = await Invoice.count({
-      where: {
-        invoice_number: {
-          [Op.like]: `${settings.invoice_prefix}-${year}${month}%`
-        }
-      }
-    });
-    
-    const invoiceNumber = `${settings.invoice_prefix}-${year}${month}${String(count + 1).padStart(4, '0')}`;
+    // Generate invoice number (system_admin issuer for settings-based auto invoices)
+    const invoiceNumber = await generateInvoiceNumber('system_admin', null, null);
     
     // Calculate items and amounts
     const items = [];

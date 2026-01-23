@@ -19,7 +19,12 @@ const defaultPaymentSettings = {
     clientSecret: ''
   },
   bankTransfer: {},  // { "MYR": { enabled, bankName, accountNumber, accountName }, "KRW": { ... } }
-  qrPayment: {}      // { "MYR": { enabled, qrImage, qrDescription }, "KRW": { ... } }
+  qrPayment: {},     // { "MYR": { enabled, qrImage, qrDescription }, "KRW": { ... } }
+  tax: {
+    enabled: false,
+    rate: 0,
+    name: 'Tax'
+  }
 };
 
 // GET - 결제 설정 조회
@@ -40,7 +45,8 @@ router.get('/', async (req, res) => {
       stripe: { ...defaultPaymentSettings.stripe, ...savedSettings.stripe },
       paypal: { ...defaultPaymentSettings.paypal, ...savedSettings.paypal },
       bankTransfer: savedSettings.bankTransfer || {},
-      qrPayment: savedSettings.qrPayment || {}
+      qrPayment: savedSettings.qrPayment || {},
+      tax: { ...defaultPaymentSettings.tax, ...savedSettings.tax }
     };
 
     // 시크릿 키 마스킹 (보안)
@@ -87,6 +93,8 @@ router.post('/', async (req, res) => {
       return newValue;
     };
 
+    const { tax } = req.body;
+
     const settingsData = {
       stripe: {
         enabled: stripe?.enabled || false,
@@ -101,7 +109,12 @@ router.post('/', async (req, res) => {
         clientSecret: processSecretField(paypal?.clientSecret, existingData.paypal?.clientSecret)
       },
       bankTransfer: bankTransfer || {},
-      qrPayment: qrPayment || {}
+      qrPayment: qrPayment || {},
+      tax: {
+        enabled: tax?.enabled || false,
+        rate: parseFloat(tax?.rate) || 0,
+        name: tax?.name || 'Tax'
+      }
     };
 
     if (existingSettings) {

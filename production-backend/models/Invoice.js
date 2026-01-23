@@ -81,8 +81,9 @@ Invoice.init({
     allowNull: true
   },
   receipt_url: {
-    type: DataTypes.STRING(500),
-    allowNull: true
+    type: DataTypes.TEXT('long'),
+    allowNull: true,
+    comment: 'Payment receipt image URL or base64 data'
   },
   payer_type: {
     type: DataTypes.ENUM('restaurant', 'foodcourt_manager', 'brand_manager'),
@@ -95,9 +96,14 @@ Invoice.init({
     comment: 'ID of the payer (manager_id if payer_type is manager)'
   },
   invoice_category: {
-    type: DataTypes.ENUM('subscription', 'service', 'consulting', 'others'),
-    defaultValue: 'subscription',
-    comment: 'Invoice category type'
+    type: DataTypes.STRING(50),
+    defaultValue: 'service',
+    comment: 'Invoice category code from invoice_categories table'
+  },
+  category_display_name: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'Display name for the invoice category (e.g., Subscription - Professional)'
   },
   custom_description: {
     type: DataTypes.STRING(255),
