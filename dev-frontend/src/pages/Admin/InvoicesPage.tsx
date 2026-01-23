@@ -29,6 +29,7 @@ import {
   ActionButtons
 } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Common/TabComponents';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -481,29 +482,6 @@ const DateInput = styled.input`
   }
 `;
 
-const TabContainer = styled.div`
-  display: flex;
-  gap: 0;
-  margin-bottom: 24px;
-  border-bottom: 1px solid #E6EBF1;
-`;
-
-const Tab = styled.button<{ active?: boolean }>`
-  padding: 12px 24px;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid ${props => props.active ? '#635BFF' : 'transparent'};
-  color: ${props => props.active ? '#635BFF' : '#6B7280'};
-  font-weight: ${props => props.active ? '600' : '500'};
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    color: #635BFF;
-  }
-`;
-
 const Modal = styled.div`
   position: fixed;
   top: 0;
@@ -738,8 +716,6 @@ const InvoicesPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterType, setFilterType] = useState('all');
   const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [dateRange, setDateRange] = useState(() => {
@@ -1980,28 +1956,64 @@ const InvoicesPage: React.FC = () => {
     setShowSearchDropdown(false);
   };
 
-  // Get unique months from invoices
-  const monthsArray = invoices.map(invoice => {
-    const date = new Date(invoice.issueDate);
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-  });
-  const availableMonths = Array.from(new Set(monthsArray)).sort().reverse();
+  // Helper functions for display (moved before filteredInvoices to avoid reference error)
+  const getStatusDisplay = (status: string) => {
+    switch(status) {
+      case 'draft': return 'Draft';
+      case 'pending_payment': return 'Pending';
+      case 'payment_submitted': return 'Payment Submitted';
+      case 'paid': return 'Paid';
+      case 'overdue': return 'Overdue';
+      case 'cancelled': return 'Cancelled';
+      case '': case null: case undefined: return 'Pending';
+      default: return status;
+    }
+  };
+
+  const getPayerDisplay = (payerType: string) => {
+    switch(payerType) {
+      case 'restaurant': return 'Restaurant Admin';
+      case 'foodcourt_manager': return 'Foodcourt General';
+      case 'brand_manager': return 'Brand General';
+      default: return 'Restaurant Admin';
+    }
+  };
 
   const filteredInvoices = invoices.filter(invoice => {
-    const matchesSearch = invoice.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         invoice.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         invoice.managerName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || invoice.status === filterStatus || (filterStatus === 'pending_payment' && (invoice.status === '' || !invoice.status));
-    const matchesType = filterType === 'all' || invoice.type === filterType;
+    // Universal search - searches all visible fields
+    const term = searchTerm.toLowerCase();
+    const statusText = getStatusDisplay(invoice.status).toLowerCase();
+    const typeText = invoice.type === 'automatic' ? 'auto automatic' : 'manual';
+    const planTypeText = (invoice.planType || '').toLowerCase();
+    const categoryText = (invoice.categoryDisplayName || '').toLowerCase();
+    const customerName = (invoice.customerName || invoice.restaurantName || '').toLowerCase();
+    const payerTypeText = getPayerDisplay(invoice.payerType || 'restaurant').toLowerCase();
 
-    let matchesMonth = true;
-    if (filterMonth !== 'all') {
+    const matchesSearch = !searchTerm ||
+                         invoice.companyName.toLowerCase().includes(term) ||
+                         invoice.invoiceNumber.toLowerCase().includes(term) ||
+                         invoice.managerName.toLowerCase().includes(term) ||
+                         statusText.includes(term) ||
+                         typeText.includes(term) ||
+                         planTypeText.includes(term) ||
+                         categoryText.includes(term) ||
+                         customerName.includes(term) ||
+                         payerTypeText.includes(term) ||
+                         (invoice.billingPeriod || '').toLowerCase().includes(term);
+
+    // Date range filter (based on issue date)
+    let matchesDateRange = true;
+    if (dateRange.start && dateRange.end) {
       const invoiceDate = new Date(invoice.issueDate);
-      const invoiceMonth = `${invoiceDate.getFullYear()}-${String(invoiceDate.getMonth() + 1).padStart(2, '0')}`;
-      matchesMonth = invoiceMonth === filterMonth;
+      const startDate = new Date(dateRange.start);
+      const endDate = new Date(dateRange.end);
+      // Set time to start/end of day for accurate comparison
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+      matchesDateRange = invoiceDate >= startDate && invoiceDate <= endDate;
     }
 
-    return matchesSearch && matchesStatus && matchesType && matchesMonth;
+    return matchesSearch && matchesDateRange;
   }).sort((a, b) => {
     // Dynamic sorting based on sortField and sortDirection
     let comparison = 0;
@@ -2052,28 +2064,6 @@ const InvoicesPage: React.FC = () => {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-MY');
-  };
-
-  const getStatusDisplay = (status: string) => {
-    switch(status) {
-      case 'draft': return 'Draft';
-      case 'pending_payment': return 'Pending';
-      case 'payment_submitted': return 'Payment Submitted';
-      case 'paid': return 'Paid';
-      case 'overdue': return 'Overdue';
-      case 'cancelled': return 'Cancelled';
-      case '': case null: case undefined: return 'Pending';
-      default: return status;
-    }
-  };
-
-  const getPayerDisplay = (payerType: string) => {
-    switch(payerType) {
-      case 'restaurant': return 'Restaurant Admin';
-      case 'foodcourt_manager': return 'Foodcourt General';
-      case 'brand_manager': return 'Brand General';
-      default: return 'Restaurant Admin';
-    }
   };
 
   const handleExportInvoices = () => {
@@ -2567,64 +2557,70 @@ const InvoicesPage: React.FC = () => {
           </StatCard>
         </StatsGrid>
 
-        <TabContainer>
-          <Tab active={activeTab === 'invoices'} onClick={() => handleTabChange('invoices')}>Invoices</Tab>
-          <Tab active={activeTab === 'payment_submitted'} onClick={() => handleTabChange('payment_submitted')}>
+        <Tabs>
+          <CommonTab active={activeTab === 'invoices'} onClick={() => handleTabChange('invoices')}>Invoices</CommonTab>
+          <CommonTab active={activeTab === 'payment_submitted'} onClick={() => handleTabChange('payment_submitted')}>
             Payment Submitted
-            {invoices.filter(i => i.status === 'payment_submitted').length > 0 && (
-              <span style={{ marginLeft: '6px', background: '#DC2626', color: 'white', borderRadius: '10px', padding: '2px 8px', fontSize: '11px', fontWeight: '600' }}>
-                {invoices.filter(i => i.status === 'payment_submitted').length}
-              </span>
-            )}
-          </Tab>
-          <Tab active={activeTab === 'categories'} onClick={() => handleTabChange('categories')}>Invoice Categories</Tab>
-        </TabContainer>
+            <TabBadge count={invoices.filter(i => i.status === 'payment_submitted').length} variant="danger" />
+          </CommonTab>
+          <CommonTab active={activeTab === 'categories'} onClick={() => handleTabChange('categories')}>Invoice Categories</CommonTab>
+        </Tabs>
 
         {activeTab === 'invoices' && (
           <>
-        <FilterBarWrapper>
-          <FiltersLeft>
+        <FilterControls>
+          <FilterRow>
             <SearchInput
-              placeholder="Search by invoice #, company, restaurant..."
+              placeholder="Search invoices... (status, type, customer, etc.)"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ minWidth: '280px', maxWidth: '350px' }}
             />
 
-            <FilterSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-              <option value="all">All Status</option>
-              <option value="draft">Draft</option>
-              <option value="pending_payment">Pending Payment</option>
-              <option value="payment_submitted">Payment Submitted</option>
-              <option value="paid">Paid</option>
-              <option value="overdue">Overdue</option>
-              <option value="cancelled">Cancelled</option>
-            </FilterSelect>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginLeft: '16px' }}>
+              <DateButton
+                active={activePeriod === 'week' && !isCustomDateRange}
+                onClick={() => handlePeriodChange('week')}
+              >
+                Week
+              </DateButton>
+              <DateButton
+                active={activePeriod === 'month' && !isCustomDateRange}
+                onClick={() => handlePeriodChange('month')}
+              >
+                Month
+              </DateButton>
+              <DateButton
+                active={activePeriod === 'year' && !isCustomDateRange}
+                onClick={() => handlePeriodChange('year')}
+              >
+                Year
+              </DateButton>
+              <DateButton
+                active={activePeriod === 'all' && !isCustomDateRange}
+                onClick={() => handlePeriodChange('all')}
+              >
+                All
+              </DateButton>
 
-            <FilterSelect value={filterType} onChange={(e) => setFilterType(e.target.value)}>
-              <option value="all">All Types</option>
-              <option value="automatic">Automatic</option>
-              <option value="manual">Manual</option>
-            </FilterSelect>
+              <DateInput
+                type="date"
+                value={dateRange.start}
+                onChange={(e) => handleDateRangeChange('start', e.target.value)}
+              />
+              <span style={{ color: '#6B7C93' }}>to</span>
+              <DateInput
+                type="date"
+                value={dateRange.end}
+                onChange={(e) => handleDateRangeChange('end', e.target.value)}
+              />
+            </div>
 
-            <FilterSelect value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}>
-              <option value="all">All Months</option>
-              {availableMonths.map(month => {
-                const [year, monthNum] = month.split('-');
-                const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-                                   'July', 'August', 'September', 'October', 'November', 'December'];
-                const monthName = monthNames[parseInt(monthNum) - 1];
-                return (
-                  <option key={month} value={month}>
-                    {monthName} {year}
-                  </option>
-                );
-              })}
-            </FilterSelect>
-          </FiltersLeft>
-          <FiltersRight>
-            <Button variant="primary" onClick={handleCreateInvoice}>Create Invoice</Button>
-          </FiltersRight>
-        </FilterBarWrapper>
+            <div style={{ marginLeft: 'auto' }}>
+              <Button variant="primary" onClick={handleCreateInvoice}>Create Invoice</Button>
+            </div>
+          </FilterRow>
+        </FilterControls>
 
         <DataTableContainer>
           <DataTable>

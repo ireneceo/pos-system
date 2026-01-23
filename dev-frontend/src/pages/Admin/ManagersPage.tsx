@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
+import { useAuth } from '../../contexts/AuthContext';
 import MainLayout from '../../components/Layout/MainLayout';
 import {
   Container,
@@ -310,8 +311,18 @@ const SuccessMessage = styled.p`
   line-height: 1.5;
 `;
 
+// Helper function to get auth headers
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('auth_token');
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  };
+};
+
 const ManagersPage: React.FC = () => {
   const { operationSettings } = useStore();
+  const { user } = useAuth();
   const [managers, setManagers] = useState<Manager[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -361,7 +372,7 @@ const ManagersPage: React.FC = () => {
       console.log('🔄 Fetching managers from API...');
 
       // Fetch managers only (4 roles: Foodcourt General, Foodcourt Manager, Brand General, Brand Manager)
-      const usersResponse = await fetch('/api/users?role=Manager');
+      const usersResponse = await fetch('/api/users?role=Manager', { headers: getAuthHeaders() });
       console.log('📡 Users API response status:', usersResponse.status);
 
       if (usersResponse.ok) {
@@ -369,24 +380,24 @@ const ManagersPage: React.FC = () => {
         console.log('👥 Manager users data from API:', usersData);
 
         // Fetch all restaurants to calculate counts and revenue
-        const restaurantsResponse = await fetch('/api/restaurants');
+        const restaurantsResponse = await fetch('/api/restaurants', { headers: getAuthHeaders() });
         const restaurantsData = restaurantsResponse.ok ? await restaurantsResponse.json() : [];
         console.log('🏪 All restaurants data:', restaurantsData);
 
         // Handle both data array and direct array
         const managerUsers = usersData.data || usersData;
         console.log('👔 Manager users found:', managerUsers);
-        
+
         if (managerUsers.length === 0) {
           console.log('⚠️ No manager users found');
           setManagers([]);
           return;
         }
-        
+
         // Fetch invoices once for all managers
         let invoicesData: any[] = [];
         try {
-          const invoicesResponse = await fetch('/api/invoices');
+          const invoicesResponse = await fetch('/api/invoices', { headers: getAuthHeaders() });
           if (invoicesResponse.ok) {
             const invoices = await invoicesResponse.json();
             invoicesData = invoices.data || invoices;
@@ -479,7 +490,7 @@ const ManagersPage: React.FC = () => {
   // Fetch Brand Generals and Foodcourt Generals for parent manager selection
   const fetchGeneralManagers = async () => {
     try {
-      const response = await fetch('/api/users?role=Manager');
+      const response = await fetch('/api/users?role=Manager', { headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         const users = data.data || data;
@@ -501,7 +512,7 @@ const ManagersPage: React.FC = () => {
 
   const fetchPlans = async () => {
     try {
-      const response = await fetch('/api/plans');
+      const response = await fetch('/api/plans', { headers: getAuthHeaders() });
       if (response.ok) {
         const plans = await response.json();
         // Filter brand and foodcourt plans
@@ -882,15 +893,13 @@ const ManagersPage: React.FC = () => {
       console.log('🔗 Testing connection to /api/users...');
       const testResponse = await fetch('/api/users?role=Manager', {
         method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
+        headers: getAuthHeaders(),
         mode: 'cors'
       });
-      
+
       console.log('🔗 Test response status:', testResponse.status);
       console.log('🔗 Test response ok:', testResponse.ok);
-      
+
       if (testResponse.ok) {
         const testData = await testResponse.json();
         console.log('🔗 Test data received:', Array.isArray(testData) ? `${testData.length} managers` : 'Non-array response');
@@ -965,13 +974,10 @@ const ManagersPage: React.FC = () => {
 
       console.log('🔄 Creating manager user:', managerUserData);
       console.log('📍 API URL:', '/api/users');
-      
+
       const response = await fetch('/api/users', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(managerUserData)
       });
 

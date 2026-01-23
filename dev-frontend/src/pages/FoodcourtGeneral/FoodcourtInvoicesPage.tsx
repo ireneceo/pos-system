@@ -2732,6 +2732,22 @@ const FoodcourtInvoicesPage: React.FC = () => {
                   </FormSelect>
                 </FormGroup>
 
+                {/* Required field notice */}
+                <div style={{
+                  padding: '12px 16px',
+                  background: '#FEF3C7',
+                  borderRadius: '8px',
+                  marginBottom: '16px',
+                  fontSize: '13px',
+                  color: '#92400E',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '8px'
+                }}>
+                  <span style={{ fontWeight: '600', flexShrink: 0 }}>*</span>
+                  <span>Please provide either a <strong>Transaction ID / Reference Number</strong> or upload a <strong>Payment Receipt Image</strong> to submit your payment.</span>
+                </div>
+
                 <FormGroup>
                   <FormLabel>Transaction ID / Reference Number</FormLabel>
                   <FormInput
