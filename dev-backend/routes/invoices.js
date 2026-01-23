@@ -115,7 +115,7 @@ async function getIssuerCompanyInfo(issuerType, issuerId, currency = 'MYR') {
     if (companySettings) {
       return {
         name: companySettings.company_name || 'System Admin',
-        logoUrl: companySettings.logo_url || null,
+        logoUrl: companySettings.company_logo || companySettings.logo_url || null,
         address: companySettings.address || '',
         city: companySettings.city || '',
         state: companySettings.state || '',
@@ -201,25 +201,39 @@ async function getPayerCompanyInfo(payerType, payerId, restaurant) {
       };
     }
   } else if (payerType === 'brand_manager' && payerId) {
-    // Brand manager pays - use brand owner (user) info
-    const user = await User.findByPk(payerId);
-    if (user) {
+    // Brand manager pays - get Brand company info
+    const brand = await Brand.findOne({ where: { owner_id: payerId } });
+    if (brand) {
       return {
-        name: user.company_name || user.full_name || 'Manager',
-        address: user.address || '',
-        phone: user.phone || '',
-        email: user.email || ''
+        name: brand.name || 'Brand',
+        logoUrl: brand.logo_url || null,
+        address: brand.address || '',
+        city: brand.city || '',
+        state: brand.state || '',
+        postalCode: brand.postal_code || '',
+        country: brand.country || 'Malaysia',
+        phone: brand.phone || '',
+        email: brand.email || '',
+        taxId: brand.tax_id || '',
+        businessRegistration: brand.business_registration || ''
       };
     }
   } else if (payerType === 'foodcourt_manager' && payerId) {
-    // Foodcourt manager pays - use foodcourt owner (user) info
-    const user = await User.findByPk(payerId);
-    if (user) {
+    // Foodcourt manager pays - get Foodcourt company info
+    const foodcourt = await Foodcourt.findOne({ where: { owner_id: payerId } });
+    if (foodcourt) {
       return {
-        name: user.company_name || user.full_name || 'Manager',
-        address: user.address || '',
-        phone: user.phone || '',
-        email: user.email || ''
+        name: foodcourt.name || 'Foodcourt',
+        logoUrl: foodcourt.logo_url || null,
+        address: foodcourt.address || '',
+        city: foodcourt.city || '',
+        state: foodcourt.state || '',
+        postalCode: foodcourt.postal_code || '',
+        country: foodcourt.country || 'Malaysia',
+        phone: foodcourt.phone || '',
+        email: foodcourt.email || '',
+        taxId: foodcourt.tax_id || '',
+        businessRegistration: foodcourt.business_registration || ''
       };
     }
   }
@@ -609,6 +623,21 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
         }];
       }
 
+      // Get category display name from various sources
+      let categoryDisplayName = invoice.category_display_name;
+      if (!categoryDisplayName && invoice.items && invoice.items.length > 0) {
+        // Get from first item description (e.g., "Professional - Monthly Subscription (Jan 2026)")
+        const firstItem = invoice.items[0];
+        if (firstItem.description) {
+          // Extract plan name from description like "Professional - Monthly Subscription (Jan 2026)"
+          const match = firstItem.description.match(/^([^-]+)/);
+          categoryDisplayName = match ? `Subscription - ${match[1].trim()}` : firstItem.description;
+        }
+      }
+      if (!categoryDisplayName && invoice.invoice_category === 'subscription') {
+        categoryDisplayName = `Subscription - ${invoice.restaurant?.plan_type || 'Plan'}`;
+      }
+
       return {
         id: invoice.id,
         invoiceNumber: invoice.invoice_number,
@@ -626,9 +655,9 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
         billingPeriod: invoice.billing_period_start
           ? `${invoice.billing_period_start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
           : invoice.billing_period || '',
-        planType: invoice.plan_type || invoice.restaurant?.plan_type || 'Custom',
+        planType: invoice.restaurant?.plan_type || 'Custom',
         type: invoice.type || 'manual',
-        categoryDisplayName: invoice.category_display_name || '',
+        categoryDisplayName: categoryDisplayName || '',
         payerType: invoice.payer_type,
         payerId: invoice.payer_id,
         issuerType: invoice.issuer_type,
@@ -996,6 +1025,9 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
       const issuerInfo = await getIssuerCompanyInfo(invoice.issuer_type, invoice.issuer_id, invoice.currency || 'MYR');
       const issuerName = issuerInfo?.name || (invoice.issuer_type === 'system_admin' ? 'System Admin' : invoice.issuer_type === 'brand' ? 'Brand' : 'Foodcourt');
 
+      // Get payer company info (Bill To)
+      const payerInfo = await getPayerCompanyInfo(invoice.payer_type, invoice.payer_id, invoice.restaurant);
+
       // Convert invoice_category to display name
       // For subscription invoices, show plan type (e.g., "Subscription - Professional")
       let categoryDisplayName = '';
@@ -1038,6 +1070,9 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
         issuerId: invoice.issuer_id,
         issuerName: issuerName,
         issuerInfo: issuerInfo,
+        payerType: invoice.payer_type,
+        payerId: invoice.payer_id,
+        payerInfo: payerInfo,
         paymentSubmittedAt: invoice.payment_submitted_at,
         rejectionReason: invoice.rejection_reason,
         billingPeriod: billingPeriod,
@@ -1046,12 +1081,23 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
         categoryDisplayName: categoryDisplayName,
         invoiceCategory: invoice.invoice_category || 'service',
         hasPaymentInfo: !!invoice.payment_submitted_at,
-        items: invoice.items?.map(item => ({
-          description: item.description,
-          quantity: item.quantity || 1,
-          unitPrice: parseFloat(item.calculated_amount || item.fixed_amount || 0),
-          total: parseFloat(item.total_amount || 0)
-        })) || []
+        items: invoice.items?.map(item => {
+          // Use description, or fallback to item_type formatted, or category
+          let desc = item.description;
+          if (!desc || desc.trim() === '') {
+            if (item.item_type) {
+              desc = item.item_type.charAt(0).toUpperCase() + item.item_type.slice(1).replace(/_/g, ' ');
+            } else {
+              desc = categoryDisplayName || 'Service';
+            }
+          }
+          return {
+            description: desc,
+            quantity: item.quantity || 1,
+            unitPrice: parseFloat(item.calculated_amount || item.fixed_amount || 0),
+            total: parseFloat(item.total_amount || 0)
+          };
+        }) || []
       };
     }));
 
@@ -1501,10 +1547,13 @@ router.post('/generate-for-subscriptions', authenticateToken, async (req, res) =
         }
 
         // Create invoice with currency
+        const categoryDisplayName = `Subscription - ${restaurant.plan_type}`;
         const invoice = await Invoice.create({
           restaurant_id: restaurant.id,
           invoice_number: invoiceNumber,
           type: 'automatic',
+          invoice_category: 'subscription',
+          category_display_name: categoryDisplayName,
           billing_period_start: billingStart,
           billing_period_end: billingEnd,
           due_date: dueDate,

@@ -85,6 +85,19 @@ interface Invoice {
     bankAccountName?: string;
     swiftCode?: string;
   };
+  payerInfo?: {
+    name: string;
+    logoUrl?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    country?: string;
+    phone?: string;
+    email?: string;
+    taxId?: string;
+    businessRegistration?: string;
+  };
 }
 
 interface CurrencyConfig {
@@ -1870,10 +1883,17 @@ const BrandInvoicesPage: React.FC = () => {
         <div class="billing-info">
             <div class="bill-to-section">
                 <div class="section-label">Bill To</div>
+                ${isReceivedInvoice ? `
+                <div class="customer-name">${companySettings?.companyName || 'Your Company'}</div>
+                ${companySettings?.address ? `<div class="customer-details">${companySettings.address}</div>` : ''}
+                ${[companySettings?.city, companySettings?.state, companySettings?.postalCode].filter(Boolean).length > 0 ? `<div class="customer-details">${[companySettings?.city, companySettings?.state, companySettings?.postalCode].filter(Boolean).join(', ')}</div>` : ''}
+                ${companySettings?.country ? `<div class="customer-details">${companySettings.country}</div>` : ''}
+                ${companySettings?.email ? `<div class="customer-details">${companySettings.email}</div>` : ''}
+                ` : `
                 <div class="customer-name">${invoice.customerName || invoice.managerName || 'Customer'}</div>
                 ${invoice.customerAddress ? `<div class="customer-details">${invoice.customerAddress}</div>` : ''}
                 ${invoice.payerType === 'restaurant' && invoice.restaurantName && invoice.restaurantName !== 'Unknown' ? `<div class="customer-details">Restaurant: ${invoice.restaurantName}</div>` : ''}
-                ${invoice.companyName && invoice.companyName !== invoice.customerName && !isReceivedInvoice ? `<div class="customer-details">Company: ${invoice.companyName}</div>` : ''}
+                `}
             </div>
             <div class="dates-section">
                 <div class="date-row">
@@ -2227,14 +2247,13 @@ const BrandInvoicesPage: React.FC = () => {
     return dateB - dateA;
   });
 
-  // Stats based on active tab
-  const currentInvoiceList = activeTab === 'to_pay' ? invoicesToPay : invoices;
-  const totalInvoices = currentInvoiceList.length;
-  const paidInvoices = currentInvoiceList.filter(i => i.status === 'paid').length;
-  const overdueInvoices = currentInvoiceList.filter(i => i.status === 'overdue').length;
-  const pendingInvoices = currentInvoiceList.filter(i => i.status === 'pending_payment' || i.status === 'payment_submitted').length;
-  const totalRevenue = currentInvoiceList.filter(i => i.status === 'paid').reduce((sum, i) => sum + i.total, 0);
-  const totalOutstanding = currentInvoiceList.filter(i => i.status !== 'paid' && i.status !== 'cancelled' && i.status !== 'draft').reduce((sum, i) => sum + i.total, 0);
+  // Stats - Combined totals (issued + to_pay)
+  const allInvoices = [...invoices, ...invoicesToPay];
+  const totalIssuedCount = invoices.length;
+  const totalToPayCount = invoicesToPay.length;
+  const overdueInvoices = allInvoices.filter(i => i.status === 'overdue').length;
+  const pendingInvoices = allInvoices.filter(i => i.status === 'pending_payment' || i.status === 'payment_submitted').length;
+  const totalOutstanding = allInvoices.filter(i => i.status !== 'paid' && i.status !== 'cancelled' && i.status !== 'draft').reduce((sum, i) => sum + i.total, 0);
 
   // Filtered invoices to pay with search and date range
   const filteredInvoicesToPay = invoicesToPay.filter(invoice => {
@@ -2745,44 +2764,29 @@ const BrandInvoicesPage: React.FC = () => {
         </Header>
         <Content>
 
-        {/* Stats - Based on active tab */}
-        {activeTab !== 'categories' && (
+        {/* Stats - Combined totals shown on all tabs */}
         <StatsGrid>
           <StatCard color="#059669">
-            <StatValue>{totalInvoices}</StatValue>
-            <StatLabel>{activeTab === 'to_pay' ? 'Invoices to Pay' : 'Issued Invoices'}</StatLabel>
-            <StatDescription>{activeTab === 'to_pay' ? 'Received from issuers' : 'Sent to recipients'}</StatDescription>
+            <StatValue>{totalIssuedCount}</StatValue>
+            <StatLabel>Issued</StatLabel>
+            <StatDescription>Invoices you sent</StatDescription>
           </StatCard>
           <StatCard color="#2563EB">
-            <StatValue>{paidInvoices}</StatValue>
-            <StatLabel>Paid</StatLabel>
-            <StatDescription>{totalInvoices > 0 ? Math.round((paidInvoices/totalInvoices)*100) : 0}% completed</StatDescription>
+            <StatValue>{totalToPayCount}</StatValue>
+            <StatLabel>To Pay</StatLabel>
+            <StatDescription>Invoices received</StatDescription>
           </StatCard>
           <StatCard color="#F59E0B">
             <StatValue>{pendingInvoices}</StatValue>
             <StatLabel>Pending</StatLabel>
-            <StatDescription>{activeTab === 'to_pay' ? 'Awaiting your payment' : 'Awaiting payment'}</StatDescription>
+            <StatDescription>Awaiting payment</StatDescription>
           </StatCard>
           <StatCard color="#DC2626">
             <StatValue>{overdueInvoices}</StatValue>
             <StatLabel>Overdue</StatLabel>
             <StatDescription>Requires attention</StatDescription>
           </StatCard>
-          {activeTab === 'issued' ? (
-          <StatCard color="#7C3AED">
-            <StatValue>{formatCurrency(totalRevenue)}</StatValue>
-            <StatLabel>Revenue</StatLabel>
-            <StatDescription>From paid invoices</StatDescription>
-          </StatCard>
-          ) : (
-          <StatCard color="#7C3AED">
-            <StatValue>{formatCurrency(totalOutstanding)}</StatValue>
-            <StatLabel>Outstanding</StatLabel>
-            <StatDescription>Amount to pay</StatDescription>
-          </StatCard>
-          )}
         </StatsGrid>
-        )}
 
         <Tabs>
           <CommonTab active={activeTab === 'issued'} onClick={() => handleTabChange('issued')}>
@@ -2898,11 +2902,12 @@ const BrandInvoicesPage: React.FC = () => {
                       {invoice.status === 'draft' && (
                         <>
                           <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
-                          <LocalActionButton variant="email" onClick={() => handleSendInvoice(invoice)} title="Send Invoice">
+                          <LocalActionButton variant="success" onClick={() => handleSendInvoice(invoice)} title="Send Invoice">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <line x1="22" y1="2" x2="11" y2="13"/>
                               <polygon points="22,2 15,22 11,13 2,9 22,2"/>
                             </svg>
+                            Send
                           </LocalActionButton>
                           <LocalIconButton onClick={() => handleDeleteInvoice(invoice)} title="Delete Invoice">
                             <IconSymbol>×</IconSymbol>
@@ -3848,18 +3853,37 @@ const BrandInvoicesPage: React.FC = () => {
 
                 {/* Bill To + Dates Section (Side by Side) */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
-                  {/* Bill To */}
+                  {/* Bill To - For received invoices (to_pay), show logged-in user's company (companySettings) */}
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>Bill To</div>
-                    <div style={{ fontSize: '15px', fontWeight: '600', color: '#0A2540' }}>{selectedInvoice.customerName}</div>
-                    {selectedInvoice.customerAddress && (
-                      <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>{selectedInvoice.customerAddress}</div>
-                    )}
-                    {selectedInvoice.payerType === 'restaurant' && selectedInvoice.restaurantName && selectedInvoice.restaurantName !== 'Unknown' && (
-                      <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Restaurant: {selectedInvoice.restaurantName}</div>
-                    )}
-                    {selectedInvoice.companyName && selectedInvoice.companyName !== selectedInvoice.customerName && !isReceivedInvoice && (
-                      <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Company: {selectedInvoice.companyName}</div>
+                    {isReceivedInvoice ? (
+                      <>
+                        <div style={{ fontSize: '15px', fontWeight: '600', color: '#0A2540' }}>{companySettings?.companyName || 'Your Company'}</div>
+                        {companySettings?.address && (
+                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>{companySettings.address}</div>
+                        )}
+                        {(companySettings?.city || companySettings?.state || companySettings?.postalCode) && (
+                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>
+                            {[companySettings?.city, companySettings?.state, companySettings?.postalCode].filter(Boolean).join(', ')}
+                          </div>
+                        )}
+                        {companySettings?.country && (
+                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>{companySettings.country}</div>
+                        )}
+                        {companySettings?.email && (
+                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>{companySettings.email}</div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div style={{ fontSize: '15px', fontWeight: '600', color: '#0A2540' }}>{selectedInvoice.customerName}</div>
+                        {selectedInvoice.customerAddress && (
+                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>{selectedInvoice.customerAddress}</div>
+                        )}
+                        {selectedInvoice.payerType === 'restaurant' && selectedInvoice.restaurantName && selectedInvoice.restaurantName !== 'Unknown' && (
+                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Restaurant: {selectedInvoice.restaurantName}</div>
+                        )}
+                      </>
                     )}
                   </div>
                   {/* Dates */}

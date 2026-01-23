@@ -100,6 +100,11 @@ Invoice.init({
     defaultValue: 'service',
     comment: 'Invoice category code from invoice_categories table'
   },
+  category_display_name: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'Display name for the invoice category (e.g., Subscription - Professional)'
+  },
   custom_description: {
     type: DataTypes.STRING(255),
     allowNull: true,
