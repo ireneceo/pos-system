@@ -201,13 +201,19 @@ function getCategoryDisplayName(category, customDescription, planType, billingCy
 
       return planDisplay;
     case 'service':
-      return 'Service';
+      return customDescription || 'Service';
     case 'consulting':
-      return 'Consulting';
+      return customDescription || 'Consulting';
     case 'others':
       return customDescription || 'Others';
     default:
-      return planType || 'Subscription Plan';
+      // For custom categories, use description or format the category code
+      if (customDescription) return customDescription;
+      if (category) {
+        // Convert category code like 'hardware' to 'Hardware'
+        return category.charAt(0).toUpperCase() + category.slice(1).replace(/_/g, ' ');
+      }
+      return planType || 'Service';
   }
 }
 
