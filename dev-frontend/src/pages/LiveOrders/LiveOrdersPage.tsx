@@ -2919,12 +2919,12 @@ const LiveOrdersPage: React.FC = () => {
                       />
                     </DataTableHeaderCell>
                   )}
-                  <DataTableHeaderCell>Order</DataTableHeaderCell>
-                  <DataTableHeaderCell>Items</DataTableHeaderCell>
-                  <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
-                  <DataTableHeaderCell align="center">Time</DataTableHeaderCell>
-                  <DataTableHeaderCell align="right">Amount</DataTableHeaderCell>
-                  <DataTableHeaderCell align="right" width="280px">Action</DataTableHeaderCell>
+                  <DataTableHeaderCell align="center" width="15%">Order</DataTableHeaderCell>
+                  <DataTableHeaderCell align="center" width="22%">Items</DataTableHeaderCell>
+                  <DataTableHeaderCell align="center" width="10%">Status</DataTableHeaderCell>
+                  <DataTableHeaderCell align="center" width="12%">Time</DataTableHeaderCell>
+                  <DataTableHeaderCell align="right" width="12%">Amount</DataTableHeaderCell>
+                  <DataTableHeaderCell width="20%">Action</DataTableHeaderCell>
                 </tr>
               </DataTableHead>
               <tbody>
@@ -3021,21 +3021,21 @@ const LiveOrdersPage: React.FC = () => {
                     </DataTableCell>
                     <DataTableCell data-label="AMOUNT" align="right">
                       <div style={{ textAlign: 'right' }}>
-                        <DataTableAmount>
+                        <DataTableAmount highlight>
                           {formatCurrency(Number(order.total_amount), operationSettings.currency)}
-                          {/* Points used display */}
-                          {Number((order as any).points_used) > 0 && (
-                            <span style={{ fontSize: '11px', color: '#10B981', marginLeft: '4px' }}>
-                              (-{Number((order as any).points_used).toLocaleString()}P)
-                            </span>
-                          )}
-                          {/* Coupon discount display */}
-                          {Number((order as any).coupon_discount) > 0 && (
-                            <span style={{ fontSize: '11px', color: '#F59E0B', marginLeft: '4px' }}>
-                              (Coupon)
-                            </span>
-                          )}
                         </DataTableAmount>
+                        {/* Points used display - 별도 줄 */}
+                        {Number((order as any).points_used) > 0 && (
+                          <div style={{ fontSize: '11px', color: '#10B981' }}>
+                            (-{Number((order as any).points_used).toLocaleString()}P)
+                          </div>
+                        )}
+                        {/* Coupon discount display - 별도 줄 */}
+                        {Number((order as any).coupon_discount) > 0 && (
+                          <div style={{ fontSize: '11px', color: '#F59E0B' }}>
+                            (Coupon)
+                          </div>
+                        )}
                         <PaymentMethod
                           isPending={order.payment_status === 'pending'}
                           isVerificationPending={order.payment_status === 'payment_verification_pending'}

@@ -2350,15 +2350,15 @@ const InvoicesPage: React.FC = () => {
           <DataTable>
             <DataTableHead>
               <tr>
-                <DataTableHeaderCell>Invoice</DataTableHeaderCell>
-                <DataTableHeaderCell>Customer</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">Invoice</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">Customer</DataTableHeaderCell>
                 <DataTableHeaderCell align="center">Period</DataTableHeaderCell>
                 <DataTableHeaderCell align="center">Issued</DataTableHeaderCell>
                 <DataTableHeaderCell align="center">Due</DataTableHeaderCell>
                 <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
                 <DataTableHeaderCell align="right">Amount</DataTableHeaderCell>
                 <DataTableHeaderCell align="right">Total</DataTableHeaderCell>
-                <DataTableHeaderCell align="right" width="220px">Actions</DataTableHeaderCell>
+                <DataTableHeaderCell isActions>Actions</DataTableHeaderCell>
               </tr>
             </DataTableHead>
             <tbody>

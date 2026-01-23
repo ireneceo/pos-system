@@ -18,7 +18,8 @@ export const Table = styled.div`
   }
 `;
 
-// 테이블 헤더
+// 테이블 헤더 (CSS Grid 기반)
+// 기본 가운데 정렬, 금액/액션은 개별 클래스로 우측 정렬
 export const TableHeader = styled.div<{ columns: string }>`
   display: grid;
   grid-template-columns: ${props => props.columns};
@@ -31,6 +32,14 @@ export const TableHeader = styled.div<{ columns: string }>`
   color: #6B7280;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  text-align: center;
+
+  /* 금액/액션 열은 우측 정렬 */
+  & > span.col-amount,
+  & > span.col-total,
+  & > span.col-actions {
+    text-align: right;
+  }
 
   @media (max-width: 768px) {
     display: none;

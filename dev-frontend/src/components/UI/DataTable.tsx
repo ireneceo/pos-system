@@ -15,12 +15,14 @@ export const DataTableContainer = styled.div`
   background: white;
   border-radius: 12px;
   border: 1px solid #E6EBF1;
-  overflow: hidden;
+  overflow-x: auto;
+  max-width: 100%;
 
   @media (max-width: 768px) {
     background: transparent;
     border: none;
     border-radius: 0;
+    overflow: visible;
   }
 `;
 
@@ -32,6 +34,7 @@ export const DataTable = styled.table`
 
   @media (max-width: 768px) {
     display: block;
+    table-layout: auto;
   }
 
   tbody {
@@ -48,16 +51,6 @@ export const DataTableHead = styled.thead`
 
   @media (max-width: 768px) {
     display: none;
-  }
-
-  th {
-    padding: 14px 16px;
-    text-align: left;
-    font-size: 12px;
-    font-weight: 600;
-    color: #6B7280;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
   }
 `;
 
@@ -137,31 +130,34 @@ export const DataTableCell = styled.td<{
   }
 `;
 
-// 헤더 셀 - 정렬 속성 지원
+// 헤더 셀 - 정렬 속성 지원 (기본 가운데 정렬)
+// isActions: 액션 열은 min-width로 넓게 유지하되 반응형 허용
 export const DataTableHeaderCell = styled.th<{
   align?: 'left' | 'center' | 'right';
   width?: string;
+  isActions?: boolean;
 }>`
   padding: 14px 16px;
-  text-align: ${props => props.align || 'left'};
+  text-align: ${props => props.align || 'center'};
   font-size: 12px;
   font-weight: 600;
   color: #6B7280;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   ${props => props.width ? `width: ${props.width};` : ''}
+  ${props => props.isActions ? `max-width: 220px;` : ''}
 `;
 
 // 액션 버튼 그룹 (테이블 셀 내부용)
+// 좌측 정렬, 줄바꿈 허용
 export const DataTableActions = styled.div`
   display: flex;
   gap: 5px;
   flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: flex-start;
+  justify-content: flex-start;
+  align-items: center;
 
   @media (max-width: 768px) {
-    justify-content: flex-start;
     gap: 8px;
   }
 `;

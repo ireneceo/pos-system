@@ -17,8 +17,9 @@ export interface CurrencyData {
 }
 
 // Complete currency configurations
-// RM is used as the primary key for Malaysian Ringgit (local convention)
+// Both MYR (ISO code) and RM (local convention) are supported for Malaysian Ringgit
 export const CURRENCY_CONFIG: Record<string, CurrencyConfig> = {
+  MYR: { symbol: 'RM', name: 'Malaysian Ringgit', decimals: 2 },
   RM: { symbol: 'RM', name: 'Malaysian Ringgit', decimals: 2 },
   USD: { symbol: '$', name: 'US Dollar', decimals: 2 },
   KRW: { symbol: '₩', name: 'Korean Won', decimals: 0 },
