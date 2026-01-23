@@ -220,7 +220,10 @@ const AutoBadge = styled.span`
 `;
 
 // StatusBadge 컴포넌트는 CommonStatusBadge로 교체됨
-const StatusBadge = styled(CommonStatusBadge)``;
+const StatusBadge = styled(CommonStatusBadge)`
+  white-space: normal;
+  line-height: 1.3;
+`;
 
 const Amount = styled.div<{ highlight?: boolean }>`
   font-weight: ${props => props.highlight ? '700' : '500'};
@@ -687,10 +690,6 @@ const MobileCardActions = styled.div`
   margin-top: 10px;
   border-top: 1px solid #F3F4F6;
 `;
-
-// 기존 Grid 기반 컴포넌트 (사용하지 않음 - 호환성 유지)
-const InvoiceTableHeader = styled(CommonTableHeader)``;
-const InvoiceTableRow = styled(CommonTableRow)``;
 
 type TabType = 'invoices' | 'categories';
 
@@ -2475,10 +2474,10 @@ const InvoicesPage: React.FC = () => {
                 <th>Actions</th>
               </tr>
             </InvoiceTableHead>
-            <InvoiceTableBody>
+            <tbody>
               {filteredInvoices.map(invoice => (
-                <tr key={invoice.id}>
-                  <td>
+                <InvoiceTableRow key={invoice.id}>
+                  <InvoiceTableCell data-label="Invoice">
                     <InvoiceInfo>
                       <InvoiceNumber>
                         {invoice.invoiceNumber}
@@ -2486,24 +2485,24 @@ const InvoicesPage: React.FC = () => {
                       </InvoiceNumber>
                       <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
                     </InvoiceInfo>
-                  </td>
-                  <td>
+                  </InvoiceTableCell>
+                  <InvoiceTableCell data-label="Customer">
                     <InvoiceInfo>
                       <InvoiceNumber>{invoice.customerName || invoice.restaurantName || 'Unknown'}</InvoiceNumber>
                       <CompanyName>{getPayerDisplay(invoice.payerType || 'restaurant')}</CompanyName>
                     </InvoiceInfo>
-                  </td>
-                  <td style={{ fontSize: '12px' }}>{invoice.billingPeriod || '-'}</td>
-                  <td style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</td>
-                  <td style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</td>
-                  <td>
+                  </InvoiceTableCell>
+                  <InvoiceTableCell data-label="Period" style={{ fontSize: '12px' }}>{invoice.billingPeriod || '-'}</InvoiceTableCell>
+                  <InvoiceTableCell data-label="Issued" style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</InvoiceTableCell>
+                  <InvoiceTableCell data-label="Due" style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</InvoiceTableCell>
+                  <InvoiceTableCell data-label="Status">
                     <StatusBadge status={invoice.status}>
                       {getStatusDisplay(invoice.status)}
                     </StatusBadge>
-                  </td>
-                  <td><Amount>{formatCurrency(invoice.amount, invoice.currency || 'USD')}</Amount></td>
-                  <td><Amount highlight>{formatCurrency(invoice.total, invoice.currency || 'USD')}</Amount></td>
-                  <td>
+                  </InvoiceTableCell>
+                  <InvoiceTableCell data-label="Amount"><Amount>{formatCurrency(invoice.amount, invoice.currency || 'USD')}</Amount></InvoiceTableCell>
+                  <InvoiceTableCell data-label="Total"><Amount highlight>{formatCurrency(invoice.total, invoice.currency || 'USD')}</Amount></InvoiceTableCell>
+                  <InvoiceTableCell data-label="">
                     <ActionButtons>
                       <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</LocalActionButton>
                       {invoice.status === 'draft' && (
@@ -2638,10 +2637,10 @@ const InvoicesPage: React.FC = () => {
                         </LocalActionButton>
                       )}
                     </ActionButtons>
-                  </td>
-                </tr>
+                  </InvoiceTableCell>
+                </InvoiceTableRow>
               ))}
-            </InvoiceTableBody>
+            </tbody>
           </InvoiceTable>
 
           {filteredInvoices.length === 0 && (

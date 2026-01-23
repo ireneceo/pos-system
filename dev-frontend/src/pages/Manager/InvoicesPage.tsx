@@ -283,36 +283,63 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'danger' }>`
   `}
 `;
 
-// Data Table (matching StaffManagementPage)
-const DataTable = styled.div`
+// Data Table - HTML table 기반 (정렬 규칙 통일)
+const InvoiceTableContainer = styled.div`
   background: white;
   border-radius: 12px;
   border: 1px solid #E6EBF1;
   overflow: hidden;
+
+  @media (max-width: 768px) {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+  }
 `;
 
-const TableHeader = styled.div`
-  display: grid;
-  grid-template-columns: 1.5fr 1.5fr 1fr 1fr 1fr 1fr 1fr 200px;
-  gap: 16px;
-  padding: 16px 24px;
+const InvoiceTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+
+  @media (max-width: 768px) {
+    display: block;
+  }
+
+  tbody {
+    @media (max-width: 768px) {
+      display: block;
+    }
+  }
+`;
+
+const InvoiceTableHead = styled.thead`
   background: #F8FAFC;
   border-bottom: 1px solid #E6EBF1;
-  font-size: 12px;
-  font-weight: 600;
-  color: #6B7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+
+  @media (max-width: 768px) {
+    display: none;
+  }
+
+  th {
+    padding: 14px 16px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6B7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* 정렬 규칙: 날짜/상태는 가운데, 금액은 우측 */
+  th:nth-child(3), th:nth-child(4), th:nth-child(5) { text-align: center; } /* Issue Date, Due Date, Status */
+  th:nth-child(6), th:nth-child(7) { text-align: right; } /* Amount, Total */
+  th:nth-child(8) { text-align: right; } /* Actions */
 `;
 
-const TableRow = styled.div`
-  display: grid;
-  grid-template-columns: 1.5fr 1.5fr 1fr 1fr 1fr 1fr 1fr 200px;
-  gap: 16px;
-  padding: 20px 24px;
+const InvoiceTableRow = styled.tr`
   border-bottom: 1px solid #F3F4F6;
-  align-items: center;
-  transition: all 0.2s;
+  transition: background 0.15s;
 
   &:hover {
     background: #F8FAFC;
@@ -320,6 +347,68 @@ const TableRow = styled.div`
 
   &:last-child {
     border-bottom: none;
+  }
+
+  @media (max-width: 768px) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px;
+    margin-bottom: 10px;
+    background: white;
+    border-radius: 10px;
+    border: 1px solid #E6EBF1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+    &:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transform: translateY(-1px);
+    }
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+`;
+
+const InvoiceTableCell = styled.td`
+  padding: 16px;
+  font-size: 14px;
+  color: #0A2540;
+  vertical-align: middle;
+
+  /* 정렬 규칙: 날짜/상태는 가운데, 금액은 우측 */
+  &:nth-child(3), &:nth-child(4), &:nth-child(5) { text-align: center; } /* Issue Date, Due Date, Status */
+  &:nth-child(6), &:nth-child(7) { text-align: right; } /* Amount, Total */
+  &:nth-child(8) { text-align: right; } /* Actions */
+
+  @media (max-width: 768px) {
+    flex: 1 1 calc(50% - 5px);
+    min-width: 140px;
+    padding: 0;
+    text-align: left !important;
+
+    &:before {
+      content: attr(data-label);
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      color: #9CA3AF;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    &:last-child {
+      flex: 1 1 100%;
+      padding-top: 10px;
+      margin-top: 10px;
+      border-top: 1px solid #F3F4F6;
+
+      &:before {
+        display: none;
+      }
+    }
   }
 `;
 
@@ -878,20 +967,9 @@ const ManagerInvoicesPage: React.FC = () => {
           </FilterSelect>
         </FilterBar>
 
-        <DataTable>
-          <TableHeader>
-            <span>Invoice</span>
-            <span>Restaurant</span>
-            <span>Issue Date</span>
-            <span>Due Date</span>
-            <span>Status</span>
-            <span>Amount</span>
-            <span>Total</span>
-            <span>Actions</span>
-          </TableHeader>
-
+        <InvoiceTableContainer>
           {filteredInvoices.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#6B7280' }}>
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#6B7280', background: 'white' }}>
               <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
                 No invoices found
               </div>
@@ -900,59 +978,87 @@ const ManagerInvoicesPage: React.FC = () => {
               </div>
             </div>
           ) : (
-            filteredInvoices.map(invoice => (
-              <TableRow key={invoice.id}>
-                <InvoiceInfo>
-                  <InvoiceNumber>{invoice.invoiceNumber}</InvoiceNumber>
-                  <CompanyName>{invoice.planType}</CompanyName>
-                </InvoiceInfo>
+            <InvoiceTable>
+              <InvoiceTableHead>
+                <tr>
+                  <th>Invoice</th>
+                  <th>Restaurant</th>
+                  <th>Issue Date</th>
+                  <th>Due Date</th>
+                  <th>Status</th>
+                  <th>Amount</th>
+                  <th>Total</th>
+                  <th>Actions</th>
+                </tr>
+              </InvoiceTableHead>
+              <tbody>
+                {filteredInvoices.map(invoice => (
+                  <InvoiceTableRow key={invoice.id}>
+                    <InvoiceTableCell data-label="Invoice">
+                      <InvoiceInfo>
+                        <InvoiceNumber>{invoice.invoiceNumber}</InvoiceNumber>
+                        <CompanyName>{invoice.planType}</CompanyName>
+                      </InvoiceInfo>
+                    </InvoiceTableCell>
 
-                <InvoiceInfo>
-                  <InvoiceNumber>{invoice.restaurantName}</InvoiceNumber>
-                  <CompanyName>{invoice.restaurantManager}</CompanyName>
-                </InvoiceInfo>
+                    <InvoiceTableCell data-label="Restaurant">
+                      <InvoiceInfo>
+                        <InvoiceNumber>{invoice.restaurantName}</InvoiceNumber>
+                        <CompanyName>{invoice.restaurantManager}</CompanyName>
+                      </InvoiceInfo>
+                    </InvoiceTableCell>
 
-                <div style={{ fontSize: '14px', color: '#374151' }}>
-                  {formatDate(invoice.issueDate)}
-                </div>
+                    <InvoiceTableCell data-label="Issue Date">
+                      {formatDate(invoice.issueDate)}
+                    </InvoiceTableCell>
 
-                <div style={{ fontSize: '14px', color: '#374151' }}>
-                  {formatDate(invoice.dueDate)}
-                </div>
+                    <InvoiceTableCell data-label="Due Date">
+                      {formatDate(invoice.dueDate)}
+                    </InvoiceTableCell>
 
-                <StatusBadge status={invoice.status}>
-                  {invoice.status}
-                </StatusBadge>
+                    <InvoiceTableCell data-label="Status">
+                      <StatusBadge status={invoice.status}>
+                        {invoice.status}
+                      </StatusBadge>
+                    </InvoiceTableCell>
 
-                <Amount>{formatCurrency(invoice.amount)}</Amount>
+                    <InvoiceTableCell data-label="Amount">
+                      <Amount>{formatCurrency(invoice.amount)}</Amount>
+                    </InvoiceTableCell>
 
-                <Amount highlight>{formatCurrency(invoice.total)}</Amount>
+                    <InvoiceTableCell data-label="Total">
+                      <Amount highlight>{formatCurrency(invoice.total)}</Amount>
+                    </InvoiceTableCell>
 
-                <ActionButtons>
-                  <ActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</ActionButton>
-                  {invoice.status === 'draft' && (
-                    <>
-                      <ActionButton onClick={() => handleEditInvoice(invoice)}>Edit</ActionButton>
-                      <ActionButton onClick={() => handleSendInvoice(invoice)}>Send</ActionButton>
-                    </>
-                  )}
-                  {invoice.status === 'sent' && (
-                    <>
-                      <ActionButton variant="primary" onClick={() => handlePayInvoice(invoice)}>Pay Now</ActionButton>
-                      <ActionButton onClick={() => handleMarkAsOverdue(invoice)}>Mark Overdue</ActionButton>
-                    </>
-                  )}
-                  {invoice.status === 'overdue' && (
-                    <ActionButton variant="primary" onClick={() => handlePayInvoice(invoice)}>Pay Now</ActionButton>
-                  )}
-                  {invoice.status === 'paid' && (
-                    <ActionButton onClick={() => window.print()}>Print Receipt</ActionButton>
-                  )}
-                </ActionButtons>
-              </TableRow>
-            ))
+                    <InvoiceTableCell data-label="">
+                      <ActionButtons>
+                        <ActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</ActionButton>
+                        {invoice.status === 'draft' && (
+                          <>
+                            <ActionButton onClick={() => handleEditInvoice(invoice)}>Edit</ActionButton>
+                            <ActionButton onClick={() => handleSendInvoice(invoice)}>Send</ActionButton>
+                          </>
+                        )}
+                        {invoice.status === 'sent' && (
+                          <>
+                            <ActionButton variant="primary" onClick={() => handlePayInvoice(invoice)}>Pay Now</ActionButton>
+                            <ActionButton onClick={() => handleMarkAsOverdue(invoice)}>Mark Overdue</ActionButton>
+                          </>
+                        )}
+                        {invoice.status === 'overdue' && (
+                          <ActionButton variant="primary" onClick={() => handlePayInvoice(invoice)}>Pay Now</ActionButton>
+                        )}
+                        {invoice.status === 'paid' && (
+                          <ActionButton onClick={() => window.print()}>Print Receipt</ActionButton>
+                        )}
+                      </ActionButtons>
+                    </InvoiceTableCell>
+                  </InvoiceTableRow>
+                ))}
+              </tbody>
+            </InvoiceTable>
           )}
-        </DataTable>
+        </InvoiceTableContainer>
 
         {/* Create Invoice Modal */}
         {showCreateInvoiceModal && (

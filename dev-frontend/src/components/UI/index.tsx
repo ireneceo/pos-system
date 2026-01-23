@@ -14,7 +14,7 @@ export {
   StatusMessage
 } from './CommonStyles';
 
-// Explicitly export Table components
+// Explicitly export Table components (CSS Grid 기반 - 레거시)
 export {
   Table,
   TableHeader,
@@ -27,6 +27,20 @@ export {
   IconButton,
   EmptyState
 } from './TableComponents';
+
+// Explicitly export DataTable components (HTML table 기반 - 권장)
+export {
+  DataTableContainer,
+  DataTable,
+  DataTableHead,
+  DataTableRow,
+  DataTableCell,
+  DataTableHeaderCell,
+  DataTableActions,
+  DataTableEmpty,
+  DataTableAmount,
+  DataTableStatus
+} from './DataTable';
 
 // Explicitly export Page components
 export {

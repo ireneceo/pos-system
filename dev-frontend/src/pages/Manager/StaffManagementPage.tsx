@@ -111,42 +111,132 @@ const StatSubtext = styled.div`
 `;
 
 
-const StaffTable = styled.div`
+// Staff Table - HTML table 기반 (정렬 규칙 통일)
+const StaffTableContainer = styled.div`
   background: white;
   border-radius: 12px;
   border: 1px solid #E6EBF1;
   overflow: hidden;
+
+  @media (max-width: 768px) {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+  }
 `;
 
-const TableHeader = styled.div`
-  display: grid;
-  grid-template-columns: 2fr 2fr 1fr 1fr 1fr 1fr 150px;
-  gap: 16px;
-  padding: 16px 24px;
+const StaffTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+
+  @media (max-width: 768px) {
+    display: block;
+  }
+
+  tbody {
+    @media (max-width: 768px) {
+      display: block;
+    }
+  }
+`;
+
+const StaffTableHead = styled.thead`
   background: #F8FAFC;
   border-bottom: 1px solid #E6EBF1;
-  font-size: 12px;
-  font-weight: 600;
-  color: #6B7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+
+  @media (max-width: 768px) {
+    display: none;
+  }
+
+  th {
+    padding: 14px 16px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6B7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* 정렬 규칙: 상태는 가운데, 액션은 우측 */
+  th:nth-child(5) { text-align: center; } /* Status */
+  th:nth-child(6) { text-align: center; } /* Last Active */
+  th:nth-child(7) { text-align: right; } /* Actions */
 `;
 
-const TableRow = styled.div`
-  display: grid;
-  grid-template-columns: 2fr 2fr 1fr 1fr 1fr 1fr 150px;
-  gap: 16px;
-  padding: 20px 24px;
+const StaffTableRow = styled.tr`
   border-bottom: 1px solid #F3F4F6;
-  align-items: center;
-  transition: all 0.2s;
-  
+  transition: background 0.15s;
+
   &:hover {
     background: #F8FAFC;
   }
-  
+
   &:last-child {
     border-bottom: none;
+  }
+
+  @media (max-width: 768px) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px;
+    margin-bottom: 10px;
+    background: white;
+    border-radius: 10px;
+    border: 1px solid #E6EBF1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+    &:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transform: translateY(-1px);
+    }
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+`;
+
+const StaffTableCell = styled.td`
+  padding: 16px;
+  font-size: 14px;
+  color: #0A2540;
+  vertical-align: middle;
+
+  /* 정렬 규칙: 상태는 가운데, 액션은 우측 */
+  &:nth-child(5) { text-align: center; } /* Status */
+  &:nth-child(6) { text-align: center; } /* Last Active */
+  &:nth-child(7) { text-align: right; } /* Actions */
+
+  @media (max-width: 768px) {
+    flex: 1 1 calc(50% - 5px);
+    min-width: 140px;
+    padding: 0;
+    text-align: left !important;
+
+    &:before {
+      content: attr(data-label);
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      color: #9CA3AF;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    &:last-child {
+      flex: 1 1 100%;
+      padding-top: 10px;
+      margin-top: 10px;
+      border-top: 1px solid #F3F4F6;
+
+      &:before {
+        display: none;
+      }
+    }
   }
 `;
 
