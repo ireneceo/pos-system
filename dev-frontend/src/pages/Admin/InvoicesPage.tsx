@@ -526,77 +526,171 @@ const SummaryRow = styled.div<{ highlight?: boolean }>`
   ` : ''}
 `;
 
-// 페이지별 반응형 테이블 헤더 (Invoices 전용)
-// Header columns: Invoice(1), Customer(2), Period(3), Issued(4), Due(5), Status(6), Amount(7), Total(8), Actions(9)
-const InvoiceTableHeader = styled(CommonTableHeader)`
-  /* 1400px 이하: Period, Issued 숨김 - 7개 칼럼 */
-  @media (max-width: 1400px) {
-    grid-template-columns: 1.6fr 1.3fr 0.9fr 0.7fr 0.8fr 0.8fr minmax(140px, 180px) !important;
-    & > span.col-period,
-    & > span.col-issued {
-      display: none;
-    }
+// Invoice 테이블 - HTML table (LiveOrdersPage와 동일한 방식)
+const InvoiceTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+
+  @media (max-width: 768px) {
+    display: block;
   }
 
-  /* 1100px 이하: Period, Issued, Amount, Total 숨김 - 5개 칼럼 */
-  @media (max-width: 1100px) {
-    grid-template-columns: 1.5fr 1.2fr 0.8fr 0.8fr minmax(130px, 160px) !important;
-    & > span.col-period,
-    & > span.col-issued,
-    & > span.col-amount,
-    & > span.col-total {
-      display: none;
-    }
-  }
-
-  /* 900px 이하: Period, Issued, Status, Amount, Total 숨김 - 4개 칼럼 */
-  @media (max-width: 900px) {
-    grid-template-columns: 1.4fr 1.2fr 0.8fr minmax(120px, 150px) !important;
-    & > span.col-period,
-    & > span.col-issued,
-    & > span.col-status,
-    & > span.col-amount,
-    & > span.col-total {
-      display: none;
+  tbody {
+    @media (max-width: 768px) {
+      display: block;
     }
   }
 `;
 
-// 페이지별 반응형 테이블 행 (Invoices 전용)
-// 클래스명으로 칼럼을 식별하여 숨김 처리
-const InvoiceTableRow = styled(CommonTableRow)`
-  /* 1400px 이하: Period, Issued 숨김 - 7개 칼럼 */
-  @media (max-width: 1400px) {
-    grid-template-columns: 1.6fr 1.3fr 0.9fr 0.7fr 0.8fr 0.8fr minmax(140px, 180px) !important;
-    .col-period,
-    .col-issued {
-      display: none;
-    }
+const InvoiceTableHead = styled.thead`
+  background: #F8FAFC;
+  border-bottom: 1px solid #E6EBF1;
+
+  @media (max-width: 768px) {
+    display: none;
   }
 
-  /* 1100px 이하: Period, Issued, Amount, Total 숨김 - 5개 칼럼 */
-  @media (max-width: 1100px) {
-    grid-template-columns: 1.5fr 1.2fr 0.8fr 0.8fr minmax(130px, 160px) !important;
-    .col-period,
-    .col-issued,
-    .col-amount,
-    .col-total {
-      display: none;
-    }
+  th {
+    padding: 14px 16px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6B7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 
-  /* 900px 이하: Period, Issued, Status, Amount, Total 숨김 - 4개 칼럼 */
-  @media (max-width: 900px) {
-    grid-template-columns: 1.4fr 1.2fr 0.8fr minmax(120px, 150px) !important;
-    .col-period,
-    .col-issued,
-    .col-status,
-    .col-amount,
-    .col-total {
-      display: none;
+  /* 칼럼 정렬 설정 */
+  th:nth-child(3), th:nth-child(4), th:nth-child(5), th:nth-child(6) { text-align: center; } /* Period, Issued, Due, Status */
+  th:nth-child(7), th:nth-child(8) { text-align: right; } /* Amount, Total */
+`;
+
+const InvoiceTableRow = styled.tr`
+  border-bottom: 1px solid #F3F4F6;
+  transition: background 0.15s;
+
+  &:hover {
+    background: #F8FAFC;
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  @media (max-width: 768px) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px;
+    margin-bottom: 10px;
+    background: white;
+    border-radius: 10px;
+    border: 1px solid #E6EBF1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+    &:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transform: translateY(-1px);
+    }
+
+    &:last-child {
+      margin-bottom: 0;
     }
   }
 `;
+
+const InvoiceTableCell = styled.td`
+  padding: 16px;
+  font-size: 14px;
+  color: #0A2540;
+  vertical-align: middle;
+
+  /* 칼럼 정렬 설정 */
+  &:nth-child(3), &:nth-child(4), &:nth-child(5), &:nth-child(6) { text-align: center; } /* Period, Issued, Due, Status */
+  &:nth-child(7), &:nth-child(8) { text-align: right; } /* Amount, Total */
+
+  @media (max-width: 768px) {
+    flex: 1 1 calc(50% - 5px);
+    min-width: 140px;
+    padding: 0;
+    border-bottom: none;
+    text-align: left !important;
+
+    &:before {
+      content: attr(data-label);
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      color: #9CA3AF;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    &:last-child {
+      flex: 1 1 100%;
+      padding-top: 10px;
+      margin-top: 10px;
+      border-top: 1px solid #F3F4F6;
+
+      &:before {
+        display: none;
+      }
+    }
+  }
+`;
+
+// 사용하지 않는 컴포넌트 (호환성 유지)
+const InvoiceTableBody = styled.tbody``;
+const MobileCardList = styled.div``;
+const MobileCard = styled.div`
+  background: white;
+  border-radius: 10px;
+  border: 1px solid #E6EBF1;
+  padding: 14px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+`;
+
+const MobileCardRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+`;
+
+const MobileCardLabel = styled.span`
+  font-size: 11px;
+  font-weight: 600;
+  color: #9CA3AF;
+  text-transform: uppercase;
+`;
+
+const MobileCardValue = styled.span`
+  font-size: 13px;
+  color: #0A2540;
+`;
+
+const MobileCardActions = styled.div`
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 10px;
+  margin-top: 10px;
+  border-top: 1px solid #F3F4F6;
+`;
+
+// 기존 Grid 기반 컴포넌트 (사용하지 않음 - 호환성 유지)
+const InvoiceTableHeader = styled(CommonTableHeader)``;
+const InvoiceTableRow = styled(CommonTableRow)``;
 
 type TabType = 'invoices' | 'categories';
 
@@ -2367,78 +2461,50 @@ const InvoicesPage: React.FC = () => {
         </FilterBarWrapper>
 
         <Table>
-          <InvoiceTableHeader columns="1.6fr 1.3fr 1.2fr 0.9fr 0.9fr 0.7fr 0.8fr 0.8fr minmax(180px, 220px)">
-            <span className="col-invoice">Invoice</span>
-            <span className="col-customer">Customer</span>
-            <span className="col-period">Period</span>
-            <span className="col-issued">Issued</span>
-            <span className="col-due">Due</span>
-            <span className="col-status">Status</span>
-            <span className="col-amount">Amount</span>
-            <span className="col-total">Total</span>
-            <span className="col-actions">Actions</span>
-          </InvoiceTableHeader>
-
-          {filteredInvoices.map(invoice => (
-            <InvoiceTableRow columns="1.6fr 1.3fr 1.2fr 0.9fr 0.9fr 0.7fr 0.8fr 0.8fr minmax(180px, 220px)" key={invoice.id}>
-              <MobileGrid>
-                <MobileValue className="col-invoice">
-                  <MobileLabel>Invoice</MobileLabel>
-                  <InvoiceInfo>
-                    <InvoiceNumber>
-                      {invoice.invoiceNumber}
-                      {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>AUTO</AutoBadge>}
-                    </InvoiceNumber>
-                    <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
-                  </InvoiceInfo>
-                </MobileValue>
-
-                <MobileValue className="col-customer">
-                  <MobileLabel>Customer</MobileLabel>
-                  <InvoiceInfo>
-                    <InvoiceNumber>{invoice.customerName || invoice.restaurantName || 'Unknown'}</InvoiceNumber>
-                    <CompanyName>{getPayerDisplay(invoice.payerType || 'restaurant')}</CompanyName>
-                  </InvoiceInfo>
-                </MobileValue>
-
-                <MobileValue className="col-period">
-                  <MobileLabel>Period</MobileLabel>
-                  <div style={{ fontSize: '12px' }}>
-                    {invoice.billingPeriod || '-'}
-                  </div>
-                </MobileValue>
-
-                <MobileValue className="col-issued">
-                  <MobileLabel>Issued</MobileLabel>
-                  <div style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</div>
-                </MobileValue>
-
-                <MobileValue className="col-due">
-                  <MobileLabel>Due</MobileLabel>
-                  <div style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</div>
-                </MobileValue>
-
-                <MobileValue className="col-status">
-                  <MobileLabel>Status</MobileLabel>
-                  <div>
+          <InvoiceTable>
+            <InvoiceTableHead>
+              <tr>
+                <th>Invoice</th>
+                <th>Customer</th>
+                <th>Period</th>
+                <th>Issued</th>
+                <th>Due</th>
+                <th>Status</th>
+                <th>Amount</th>
+                <th>Total</th>
+                <th>Actions</th>
+              </tr>
+            </InvoiceTableHead>
+            <InvoiceTableBody>
+              {filteredInvoices.map(invoice => (
+                <tr key={invoice.id}>
+                  <td>
+                    <InvoiceInfo>
+                      <InvoiceNumber>
+                        {invoice.invoiceNumber}
+                        {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>AUTO</AutoBadge>}
+                      </InvoiceNumber>
+                      <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
+                    </InvoiceInfo>
+                  </td>
+                  <td>
+                    <InvoiceInfo>
+                      <InvoiceNumber>{invoice.customerName || invoice.restaurantName || 'Unknown'}</InvoiceNumber>
+                      <CompanyName>{getPayerDisplay(invoice.payerType || 'restaurant')}</CompanyName>
+                    </InvoiceInfo>
+                  </td>
+                  <td style={{ fontSize: '12px' }}>{invoice.billingPeriod || '-'}</td>
+                  <td style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</td>
+                  <td style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</td>
+                  <td>
                     <StatusBadge status={invoice.status}>
                       {getStatusDisplay(invoice.status)}
                     </StatusBadge>
-                  </div>
-                </MobileValue>
-
-                <MobileValue className="col-amount">
-                  <MobileLabel>Amount</MobileLabel>
-                  <Amount>{formatCurrency(invoice.amount, invoice.currency || 'USD')}</Amount>
-                </MobileValue>
-
-                <MobileValue className="col-total">
-                  <MobileLabel>Total</MobileLabel>
-                  <Amount highlight>{formatCurrency(invoice.total, invoice.currency || 'USD')}</Amount>
-                </MobileValue>
-              </MobileGrid>
-
-              <ActionButtons className="col-actions">
+                  </td>
+                  <td><Amount>{formatCurrency(invoice.amount, invoice.currency || 'USD')}</Amount></td>
+                  <td><Amount highlight>{formatCurrency(invoice.total, invoice.currency || 'USD')}</Amount></td>
+                  <td>
+                    <ActionButtons>
                       <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</LocalActionButton>
                       {invoice.status === 'draft' && (
                         <>
@@ -2571,9 +2637,12 @@ const InvoicesPage: React.FC = () => {
                           </svg>
                         </LocalActionButton>
                       )}
-              </ActionButtons>
-            </InvoiceTableRow>
-          ))}
+                    </ActionButtons>
+                  </td>
+                </tr>
+              ))}
+            </InvoiceTableBody>
+          </InvoiceTable>
 
           {filteredInvoices.length === 0 && (
             <EmptyState>
