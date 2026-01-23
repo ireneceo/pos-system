@@ -233,25 +233,22 @@ const Amount = styled.div<{ highlight?: boolean }>`
 `;
 
 const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'email' | 'cancel' }>`
-  padding: 6px;
-  border-radius: 6px;
-  font-size: 14px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
   border: 1px solid;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 32px;
-  height: 32px;
+  white-space: nowrap;
 
   ${props => props.variant === 'primary' ? `
     background: #635BFF;
     color: white;
     border-color: #635BFF;
-    padding: 6px 12px;
-    min-width: auto;
 
     &:hover {
       background: #5A51E6;
@@ -260,8 +257,6 @@ const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'emai
     background: transparent;
     color: #DC2626;
     border-color: #FCA5A5;
-    padding: 6px 12px;
-    min-width: auto;
 
     &:hover {
       background: #FEE2E2;
@@ -270,6 +265,7 @@ const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'emai
     background: #F3F4F6;
     color: #6B7280;
     border-color: #E5E7EB;
+    padding: 5px;
 
     &:hover {
       background: #E5E7EB;
@@ -288,8 +284,6 @@ const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'emai
     background: transparent;
     color: #6B7280;
     border-color: #E6EBF1;
-    padding: 6px 12px;
-    min-width: auto;
 
     &:hover {
       border-color: #635BFF;

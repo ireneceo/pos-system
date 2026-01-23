@@ -364,7 +364,7 @@ const OrdersCard = styled.div`
   border: 1px solid #E6EBF1;
   overflow: visible;
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     background: transparent;
     border: none;
   }
@@ -544,8 +544,10 @@ const ActionButtonsGroup = styled.div`
   align-items: center;
   flex-wrap: wrap;
   gap: 4px;
+  max-width: 180px;
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
+    max-width: none;
     gap: 8px;
   }
 `;
@@ -2919,12 +2921,12 @@ const LiveOrdersPage: React.FC = () => {
                       />
                     </DataTableHeaderCell>
                   )}
-                  <DataTableHeaderCell align="center" width="15%">Order</DataTableHeaderCell>
-                  <DataTableHeaderCell align="center" width="22%">Items</DataTableHeaderCell>
-                  <DataTableHeaderCell align="center" width="10%">Status</DataTableHeaderCell>
-                  <DataTableHeaderCell align="center" width="12%">Time</DataTableHeaderCell>
-                  <DataTableHeaderCell align="right" width="12%">Amount</DataTableHeaderCell>
-                  <DataTableHeaderCell width="20%">Action</DataTableHeaderCell>
+                  <DataTableHeaderCell>Order</DataTableHeaderCell>
+                  <DataTableHeaderCell>Items</DataTableHeaderCell>
+                  <DataTableHeaderCell>Status</DataTableHeaderCell>
+                  <DataTableHeaderCell>Time</DataTableHeaderCell>
+                  <DataTableHeaderCell align="right">Amount</DataTableHeaderCell>
+                  <DataTableHeaderCell>Action</DataTableHeaderCell>
                 </tr>
               </DataTableHead>
               <tbody>

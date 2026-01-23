@@ -12,7 +12,7 @@ export const Table = styled.div`
   border: 1px solid #E6EBF1;
   overflow: hidden;
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     background: transparent;
     border: none;
   }
@@ -41,7 +41,7 @@ export const TableHeader = styled.div<{ columns: string }>`
     text-align: right;
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     display: none;
   }
 `;
@@ -64,7 +64,7 @@ export const TableRow = styled.div<{ columns: string }>`
     border-bottom: none;
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     display: block;
     padding: 14px;
     margin-bottom: 10px;
@@ -94,14 +94,14 @@ export const MobileLabel = styled.div`
   letter-spacing: 0.5px;
   margin-bottom: 4px;
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     display: block;
   }
 `;
 
 // 모바일 값 컨테이너
 export const MobileValue = styled.div`
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     flex: 1 1 calc(50% - 5px);
     min-width: 140px;
   }
@@ -111,7 +111,7 @@ export const MobileValue = styled.div`
 export const MobileGrid = styled.div`
   display: contents;
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
@@ -119,33 +119,17 @@ export const MobileGrid = styled.div`
 `;
 
 // 액션 버튼 그룹
+// 테이블 열이 줄어들 때 버튼들이 자연스럽게 줄바꿈되도록 허용
 export const ActionButtons = styled.div`
   display: flex;
-  gap: 5px;
+  gap: 4px;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
   align-items: flex-start;
   align-content: flex-start;
 
-  @media (max-width: 1400px) {
-    gap: 4px;
-  }
-
-  @media (max-width: 1100px) {
-    gap: 4px;
-  }
-
-  @media (max-width: 900px) {
-    gap: 3px;
-  }
-
-  @media (max-width: 768px) {
-    flex-direction: row;
-    justify-content: flex-start;
+  @media (max-width: 1024px) {
     gap: 8px;
-    padding-top: 10px;
-    margin-top: 10px;
-    border-top: 1px solid #F3F4F6;
   }
 `;
 
@@ -252,7 +236,7 @@ export const EmptyState = styled.div`
   padding: 60px 20px;
   color: #6B7280;
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     padding: 40px 20px;
   }
 `;
@@ -267,12 +251,12 @@ export const DataTable = styled.table`
   width: 100%;
   border-collapse: collapse;
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     display: block;
   }
 
   tbody {
-    @media (max-width: 768px) {
+    @media (max-width: 1024px) {
       display: block;
     }
   }
@@ -283,7 +267,7 @@ export const DataTableHead = styled.thead`
   background: #F8FAFC;
   border-bottom: 1px solid #E6EBF1;
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     display: none;
   }
 `;
@@ -312,7 +296,7 @@ export const DataTableRow = styled.tr`
     border-bottom: none;
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
@@ -343,7 +327,7 @@ export const DataTableCell = styled.td<{ align?: 'left' | 'center' | 'right'; is
   vertical-align: middle;
   text-align: ${props => props.align || 'center'};
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     flex: ${props => props.isActions ? '1 1 100%' : '1 1 calc(50% - 5px)'};
     min-width: ${props => props.isActions ? 'auto' : '140px'};
     padding: 0;
