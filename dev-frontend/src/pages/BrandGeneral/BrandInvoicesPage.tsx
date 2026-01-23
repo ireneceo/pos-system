@@ -2920,11 +2920,10 @@ const BrandInvoicesPage: React.FC = () => {
                             <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
                           )}
                           <LocalActionButton variant="success" onClick={() => handleSendInvoice(invoice)} title="Send Invoice">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <line x1="22" y1="2" x2="11" y2="13"/>
                               <polygon points="22,2 15,22 11,13 2,9 22,2"/>
                             </svg>
-                            Send
                           </LocalActionButton>
                           <LocalIconButton onClick={() => handleDeleteInvoice(invoice)} title="Delete Invoice">
                             <IconSymbol>×</IconSymbol>
@@ -4357,12 +4356,12 @@ const BrandInvoicesPage: React.FC = () => {
                       <span style={{ fontWeight: '500' }}>{selectedInvoice.invoiceNumber}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ color: '#6B7280' }}>Restaurant:</span>
-                      <span style={{ fontWeight: '500' }}>{selectedInvoice.restaurantName || selectedInvoice.customerName}</span>
+                      <span style={{ color: '#6B7280' }}>Recipient:</span>
+                      <span style={{ fontWeight: '500' }}>{selectedInvoice.managerName || selectedInvoice.restaurantName || selectedInvoice.customerName}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <span style={{ color: '#6B7280' }}>Company:</span>
-                      <span style={{ fontWeight: '500' }}>{selectedInvoice.companyName}</span>
+                      <span style={{ fontWeight: '500' }}>{selectedInvoice.customerName || selectedInvoice.restaurantName}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#6B7280' }}>Amount:</span>
@@ -4375,8 +4374,8 @@ const BrandInvoicesPage: React.FC = () => {
                 <Button variant="secondary" onClick={() => setShowSendConfirmModal(false)}>
                   Cancel
                 </Button>
-                <Button variant="primary" onClick={confirmSendInvoice}>
-                  Send Invoice
+                <Button variant="success" onClick={confirmSendInvoice}>
+                  Confirm
                 </Button>
               </ModalFooter>
             </ModalContent>
