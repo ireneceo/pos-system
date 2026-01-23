@@ -107,6 +107,11 @@ export const DataTableCell = styled.td<{
   vertical-align: middle;
   text-align: ${props => props.align || 'left'};
 
+  /* 내부 콘텐츠도 정렬 */
+  > * {
+    text-align: inherit;
+  }
+
   @media (max-width: 768px) {
     flex: ${props => props.mobileFullWidth ? '1 1 100%' : '1 1 calc(50% - 5px)'};
     min-width: ${props => props.mobileFullWidth ? '100%' : '140px'};
@@ -179,7 +184,6 @@ export const DataTableEmpty = styled.div`
 export const DataTableAmount = styled.span<{ highlight?: boolean }>`
   font-weight: ${props => props.highlight ? '600' : '500'};
   color: ${props => props.highlight ? '#0A2540' : '#6B7280'};
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
 `;
 
 // 상태 뱃지 (래핑 허용)

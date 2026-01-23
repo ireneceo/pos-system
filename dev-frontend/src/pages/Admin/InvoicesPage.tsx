@@ -17,14 +17,16 @@ import {
   StatValue,
   StatLabel,
   StatDescription,
-  Table,
-  TableHeader as CommonTableHeader,
-  TableRow as CommonTableRow,
-  MobileLabel,
-  MobileValue,
-  MobileGrid,
-  ActionButtons,
-  EmptyState
+  DataTableContainer,
+  DataTable,
+  DataTableHead,
+  DataTableHeaderCell,
+  DataTableRow,
+  DataTableCell,
+  DataTableActions,
+  DataTableEmpty,
+  DataTableAmount,
+  ActionButtons
 } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import jsPDF from 'jspdf';
@@ -529,122 +531,7 @@ const SummaryRow = styled.div<{ highlight?: boolean }>`
   ` : ''}
 `;
 
-// Invoice 테이블 - HTML table (LiveOrdersPage와 동일한 방식)
-const InvoiceTable = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-
-  @media (max-width: 768px) {
-    display: block;
-  }
-
-  tbody {
-    @media (max-width: 768px) {
-      display: block;
-    }
-  }
-`;
-
-const InvoiceTableHead = styled.thead`
-  background: #F8FAFC;
-  border-bottom: 1px solid #E6EBF1;
-
-  @media (max-width: 768px) {
-    display: none;
-  }
-
-  th {
-    padding: 14px 16px;
-    text-align: left;
-    font-size: 12px;
-    font-weight: 600;
-    color: #6B7280;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  /* 칼럼 정렬 설정 */
-  th:nth-child(3), th:nth-child(4), th:nth-child(5), th:nth-child(6) { text-align: center; } /* Period, Issued, Due, Status */
-  th:nth-child(7), th:nth-child(8) { text-align: right; } /* Amount, Total */
-`;
-
-const InvoiceTableRow = styled.tr`
-  border-bottom: 1px solid #F3F4F6;
-  transition: background 0.15s;
-
-  &:hover {
-    background: #F8FAFC;
-  }
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  @media (max-width: 768px) {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 14px;
-    margin-bottom: 10px;
-    background: white;
-    border-radius: 10px;
-    border: 1px solid #E6EBF1;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-
-    &:hover {
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-      transform: translateY(-1px);
-    }
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
-`;
-
-const InvoiceTableCell = styled.td`
-  padding: 16px;
-  font-size: 14px;
-  color: #0A2540;
-  vertical-align: middle;
-
-  /* 칼럼 정렬 설정 */
-  &:nth-child(3), &:nth-child(4), &:nth-child(5), &:nth-child(6) { text-align: center; } /* Period, Issued, Due, Status */
-  &:nth-child(7), &:nth-child(8) { text-align: right; } /* Amount, Total */
-
-  @media (max-width: 768px) {
-    flex: 1 1 calc(50% - 5px);
-    min-width: 140px;
-    padding: 0;
-    border-bottom: none;
-    text-align: left !important;
-
-    &:before {
-      content: attr(data-label);
-      display: block;
-      font-size: 10px;
-      font-weight: 600;
-      color: #9CA3AF;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 4px;
-    }
-
-    &:last-child {
-      flex: 1 1 100%;
-      padding-top: 10px;
-      margin-top: 10px;
-      border-top: 1px solid #F3F4F6;
-
-      &:before {
-        display: none;
-      }
-    }
-  }
-`;
-
 // 사용하지 않는 컴포넌트 (호환성 유지)
-const InvoiceTableBody = styled.tbody``;
 const MobileCardList = styled.div``;
 const MobileCard = styled.div`
   background: white;
@@ -2459,25 +2346,25 @@ const InvoicesPage: React.FC = () => {
           </FiltersRight>
         </FilterBarWrapper>
 
-        <Table>
-          <InvoiceTable>
-            <InvoiceTableHead>
+        <DataTableContainer>
+          <DataTable>
+            <DataTableHead>
               <tr>
-                <th>Invoice</th>
-                <th>Customer</th>
-                <th>Period</th>
-                <th>Issued</th>
-                <th>Due</th>
-                <th>Status</th>
-                <th>Amount</th>
-                <th>Total</th>
-                <th>Actions</th>
+                <DataTableHeaderCell>Invoice</DataTableHeaderCell>
+                <DataTableHeaderCell>Customer</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">Period</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">Issued</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">Due</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">Amount</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">Total</DataTableHeaderCell>
+                <DataTableHeaderCell align="right" width="220px">Actions</DataTableHeaderCell>
               </tr>
-            </InvoiceTableHead>
+            </DataTableHead>
             <tbody>
               {filteredInvoices.map(invoice => (
-                <InvoiceTableRow key={invoice.id}>
-                  <InvoiceTableCell data-label="Invoice">
+                <DataTableRow key={invoice.id}>
+                  <DataTableCell data-label="Invoice">
                     <InvoiceInfo>
                       <InvoiceNumber>
                         {invoice.invoiceNumber}
@@ -2485,24 +2372,24 @@ const InvoicesPage: React.FC = () => {
                       </InvoiceNumber>
                       <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
                     </InvoiceInfo>
-                  </InvoiceTableCell>
-                  <InvoiceTableCell data-label="Customer">
+                  </DataTableCell>
+                  <DataTableCell data-label="Customer">
                     <InvoiceInfo>
                       <InvoiceNumber>{invoice.customerName || invoice.restaurantName || 'Unknown'}</InvoiceNumber>
                       <CompanyName>{getPayerDisplay(invoice.payerType || 'restaurant')}</CompanyName>
                     </InvoiceInfo>
-                  </InvoiceTableCell>
-                  <InvoiceTableCell data-label="Period" style={{ fontSize: '12px' }}>{invoice.billingPeriod || '-'}</InvoiceTableCell>
-                  <InvoiceTableCell data-label="Issued" style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</InvoiceTableCell>
-                  <InvoiceTableCell data-label="Due" style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</InvoiceTableCell>
-                  <InvoiceTableCell data-label="Status">
+                  </DataTableCell>
+                  <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>{invoice.billingPeriod || '-'}</DataTableCell>
+                  <DataTableCell data-label="Issued" align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</DataTableCell>
+                  <DataTableCell data-label="Due" align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</DataTableCell>
+                  <DataTableCell data-label="Status" align="center">
                     <StatusBadge status={invoice.status}>
                       {getStatusDisplay(invoice.status)}
                     </StatusBadge>
-                  </InvoiceTableCell>
-                  <InvoiceTableCell data-label="Amount"><Amount>{formatCurrency(invoice.amount, invoice.currency || 'USD')}</Amount></InvoiceTableCell>
-                  <InvoiceTableCell data-label="Total"><Amount highlight>{formatCurrency(invoice.total, invoice.currency || 'USD')}</Amount></InvoiceTableCell>
-                  <InvoiceTableCell data-label="">
+                  </DataTableCell>
+                  <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'USD')}</DataTableAmount></DataTableCell>
+                  <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{formatCurrency(invoice.total, invoice.currency || 'USD')}</DataTableAmount></DataTableCell>
+                  <DataTableCell data-label="" mobileFullWidth>
                     <ActionButtons>
                       <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</LocalActionButton>
                       {invoice.status === 'draft' && (
@@ -2637,21 +2524,21 @@ const InvoicesPage: React.FC = () => {
                         </LocalActionButton>
                       )}
                     </ActionButtons>
-                  </InvoiceTableCell>
-                </InvoiceTableRow>
+                  </DataTableCell>
+                </DataTableRow>
               ))}
             </tbody>
-          </InvoiceTable>
+          </DataTable>
 
           {filteredInvoices.length === 0 && (
-            <EmptyState>
+            <DataTableEmpty>
               <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>No Invoices Found</div>
               <div style={{ fontSize: '14px' }}>
                 {invoices.length === 0 ? 'Create your first invoice to get started' : 'Try adjusting your filters'}
               </div>
-            </EmptyState>
+            </DataTableEmpty>
           )}
-        </Table>
+        </DataTableContainer>
           </>
         )}
 

@@ -247,3 +247,118 @@ export const EmptyState = styled.div`
     padding: 40px 20px;
   }
 `;
+
+// ============================================================================
+// HTML Table 기반 공통 컴포넌트
+// 정렬 옵션: left(좌측), center(가운데, 기본), right(우측/금액)
+// ============================================================================
+
+// 테이블 컨테이너 (HTML table용)
+export const DataTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+
+  @media (max-width: 768px) {
+    display: block;
+  }
+
+  tbody {
+    @media (max-width: 768px) {
+      display: block;
+    }
+  }
+`;
+
+// 테이블 헤더 (thead)
+export const DataTableHead = styled.thead`
+  background: #F8FAFC;
+  border-bottom: 1px solid #E6EBF1;
+
+  @media (max-width: 768px) {
+    display: none;
+  }
+`;
+
+// 헤더 셀 (th) - align prop으로 정렬 설정
+export const DataTableTh = styled.th<{ align?: 'left' | 'center' | 'right' }>`
+  padding: 14px 16px;
+  text-align: ${props => props.align || 'center'};
+  font-size: 12px;
+  font-weight: 600;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+// 테이블 행 (tr)
+export const DataTableRow = styled.tr`
+  border-bottom: 1px solid #F3F4F6;
+  transition: background 0.15s;
+
+  &:hover {
+    background: #F8FAFC;
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  @media (max-width: 768px) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px;
+    margin-bottom: 10px;
+    background: white;
+    border-radius: 10px;
+    border: 1px solid #E6EBF1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+    &:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transform: translateY(-1px);
+    }
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+`;
+
+// 데이터 셀 (td) - align prop으로 정렬 설정
+// isActions: 액션 버튼 셀인 경우 (모바일에서 전체 너비)
+export const DataTableCell = styled.td<{ align?: 'left' | 'center' | 'right'; isActions?: boolean }>`
+  padding: 16px;
+  font-size: 14px;
+  color: #0A2540;
+  vertical-align: middle;
+  text-align: ${props => props.align || 'center'};
+
+  @media (max-width: 768px) {
+    flex: ${props => props.isActions ? '1 1 100%' : '1 1 calc(50% - 5px)'};
+    min-width: ${props => props.isActions ? 'auto' : '140px'};
+    padding: 0;
+    border-bottom: none;
+    text-align: left !important;
+
+    &:before {
+      content: attr(data-label);
+      display: ${props => props.isActions ? 'none' : 'block'};
+      font-size: 10px;
+      font-weight: 600;
+      color: #9CA3AF;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    ${props => props.isActions && `
+      padding-top: 10px;
+      margin-top: 10px;
+      border-top: 1px solid #F3F4F6;
+    `}
+  }
+`;
+
+// 테이블 바디 (tbody)
+export const DataTableBody = styled.tbody``;

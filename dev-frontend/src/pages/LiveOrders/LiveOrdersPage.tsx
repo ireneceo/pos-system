@@ -9,6 +9,17 @@ import PaymentModal from '../../components/POSTerminal/PaymentModal';
 import OptionModal from '../../components/POSTerminal/OptionModal';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
+import {
+  DataTableContainer,
+  DataTable,
+  DataTableHead,
+  DataTableHeaderCell,
+  DataTableRow,
+  DataTableCell,
+  DataTableActions,
+  DataTableEmpty,
+  DataTableAmount
+} from '../../components/UI';
 // OLD: import { printBill } from '../../utils/thermalPrinter';
 import { printBillViaRawBT, generateBillContent, printKitchenTicketViaRawBT, generateKitchenTicketPreview } from '../../utils/billPrint';
 import { formatDateTime as formatDateTimeUtil, getTimeElapsed } from '../../utils/timezone';
@@ -359,108 +370,7 @@ const OrdersCard = styled.div`
   }
 `;
 
-const OrdersTable = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-
-  @media (max-width: 768px) {
-    display: block;
-  }
-
-  tbody {
-    @media (max-width: 768px) {
-      display: block;
-    }
-  }
-`;
-
-const TableHeader = styled.thead`
-  background: #F8FAFC;
-  border-bottom: 1px solid #E6EBF1;
-
-  @media (max-width: 768px) {
-    display: none;
-  }
-`;
-
-const TableRow = styled.tr`
-  border-bottom: 1px solid #F3F4F6;
-  transition: background 0.15s;
-
-  &:hover {
-    background: #F8FAFC;
-  }
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  @media (max-width: 768px) {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 14px;
-    margin-bottom: 10px;
-    background: white;
-    border-radius: 10px;
-    border: 1px solid #E6EBF1;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-
-    &:hover {
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-      transform: translateY(-1px);
-    }
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
-`;
-
-const TableHead = styled.th`
-  padding: 16px 24px;
-  text-align: left;
-  font-size: 12px;
-  font-weight: 600;
-  color: #6B7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
-
-const TableCell = styled.td`
-  padding: 20px 24px;
-  font-size: 14px;
-  color: #0A2540;
-
-  @media (max-width: 768px) {
-    flex: 1 1 calc(50% - 5px);
-    min-width: 140px;
-    padding: 0;
-    border-bottom: none;
-
-    &:before {
-      content: attr(data-label);
-      display: block;
-      font-size: 10px;
-      font-weight: 600;
-      color: #9CA3AF;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 4px;
-    }
-
-    &:last-child {
-      flex: 1 1 100%;
-      padding-top: 10px;
-      margin-top: 10px;
-      border-top: 1px solid #F3F4F6;
-
-      &:before {
-        display: none;
-      }
-    }
-  }
-`;
+// Table components imported from ../../components/UI
 
 const OrderNumber = styled.div`
   font-weight: 600;
@@ -2994,11 +2904,11 @@ const LiveOrdersPage: React.FC = () => {
 
           <OrdersCard>
           {getFilteredOrdersByTab().length > 0 ? (
-            <OrdersTable>
-              <TableHeader>
+            <DataTable>
+              <DataTableHead>
                 <tr>
                   {selectMode && (
-                    <TableHead style={{ width: '50px', textAlign: 'center' }}>
+                    <DataTableHeaderCell align="center" width="50px">
                       <input
                         type="checkbox"
                         checked={selectedOrderIds.length > 0 && selectedOrderIds.length === getFilteredOrdersByTab()
@@ -3007,23 +2917,23 @@ const LiveOrdersPage: React.FC = () => {
                         onChange={handleSelectAll}
                         style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                       />
-                    </TableHead>
+                    </DataTableHeaderCell>
                   )}
-                  <TableHead>Order</TableHead>
-                  <TableHead>Items</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Time</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Action</TableHead>
+                  <DataTableHeaderCell>Order</DataTableHeaderCell>
+                  <DataTableHeaderCell>Items</DataTableHeaderCell>
+                  <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
+                  <DataTableHeaderCell align="center">Time</DataTableHeaderCell>
+                  <DataTableHeaderCell align="right">Amount</DataTableHeaderCell>
+                  <DataTableHeaderCell align="right" width="280px">Action</DataTableHeaderCell>
                 </tr>
-              </TableHeader>
+              </DataTableHead>
               <tbody>
                 {getFilteredOrdersByTab()
                   .slice((currentPage - 1) * 50, currentPage * 50)
                   .map(order => (
-                  <TableRow key={order.id} style={selectMode && selectedOrderIds.includes(order.id) ? { backgroundColor: '#EEF2FF' } : {}}>
+                  <DataTableRow key={order.id} style={selectMode && selectedOrderIds.includes(order.id) ? { backgroundColor: '#EEF2FF' } : {}}>
                     {selectMode && (
-                      <TableCell style={{ width: '50px', textAlign: 'center' }}>
+                      <DataTableCell align="center" style={{ width: '50px' }}>
                         {canOrderBeMerged(order) ? (
                           <input
                             type="checkbox"
@@ -3034,9 +2944,9 @@ const LiveOrdersPage: React.FC = () => {
                         ) : (
                           <span style={{ color: '#9CA3AF', fontSize: '12px' }}>-</span>
                         )}
-                      </TableCell>
+                      </DataTableCell>
                     )}
-                    <TableCell data-label="ORDER">
+                    <DataTableCell data-label="ORDER">
                       <OrderNumber onClick={() => handleOrderClick(order)}>
                         {order.order_number}
                         {order.order_type === 'takeaway' && (
@@ -3062,8 +2972,8 @@ const LiveOrdersPage: React.FC = () => {
                           <><br /><span style={{ color: '#8B5CF6', fontWeight: 500 }}>Pickup: {order.scheduled_pickup_time ? formatPickupTimeRange(order.scheduled_pickup_time) : 'ASAP'}</span></>
                         )}
                       </CustomerInfo>
-                    </TableCell>
-                    <TableCell data-label="ITEMS">
+                    </DataTableCell>
+                    <DataTableCell data-label="ITEMS">
                       <ItemsList>
                         {order.order_items && Array.isArray(order.order_items) && order.order_items.map((item: any, index: number) => (
                           <ItemWithOptions key={index}>
@@ -3079,13 +2989,13 @@ const LiveOrdersPage: React.FC = () => {
                           </ItemWithOptions>
                         ))}
                       </ItemsList>
-                    </TableCell>
-                    <TableCell data-label="STATUS">
+                    </DataTableCell>
+                    <DataTableCell data-label="STATUS" align="center">
                       <StatusBadge status={getDisplayStatus(order)}>
                         {formatStatusDisplay(getDisplayStatus(order))}
                       </StatusBadge>
-                    </TableCell>
-                    <TableCell data-label="TIME">
+                    </DataTableCell>
+                    <DataTableCell data-label="TIME" align="center">
                       <TimeInfo>
                         {formatDateTime(order.createdAt || order.order_date)}<br />
                         {/* Show elapsed time only if not served yet */}
@@ -3108,33 +3018,35 @@ const LiveOrdersPage: React.FC = () => {
                           </span>
                         )}
                       </TimeInfo>
-                    </TableCell>
-                    <TableCell data-label="AMOUNT">
-                      <Amount>
-                        {formatCurrency(Number(order.total_amount), operationSettings.currency)}
-                        {/* Points used display */}
-                        {Number((order as any).points_used) > 0 && (
-                          <span style={{ fontSize: '11px', color: '#10B981', marginLeft: '4px' }}>
-                            (-{Number((order as any).points_used).toLocaleString()}P)
-                          </span>
-                        )}
-                        {/* Coupon discount display */}
-                        {Number((order as any).coupon_discount) > 0 && (
-                          <span style={{ fontSize: '11px', color: '#F59E0B', marginLeft: '4px' }}>
-                            (Coupon)
-                          </span>
-                        )}
-                      </Amount>
-                      <PaymentMethod
-                        isPending={order.payment_status === 'pending'}
-                        isVerificationPending={order.payment_status === 'payment_verification_pending'}
-                      >
-                        {order.payment_method || 'N/A'}
-                        {order.payment_status === 'pending' && ' (Pending)'}
-                        {order.payment_status === 'payment_verification_pending' && ' (Verifying)'}
-                      </PaymentMethod>
-                    </TableCell>
-                    <TableCell data-label="ACTION">
+                    </DataTableCell>
+                    <DataTableCell data-label="AMOUNT" align="right">
+                      <div style={{ textAlign: 'right' }}>
+                        <DataTableAmount>
+                          {formatCurrency(Number(order.total_amount), operationSettings.currency)}
+                          {/* Points used display */}
+                          {Number((order as any).points_used) > 0 && (
+                            <span style={{ fontSize: '11px', color: '#10B981', marginLeft: '4px' }}>
+                              (-{Number((order as any).points_used).toLocaleString()}P)
+                            </span>
+                          )}
+                          {/* Coupon discount display */}
+                          {Number((order as any).coupon_discount) > 0 && (
+                            <span style={{ fontSize: '11px', color: '#F59E0B', marginLeft: '4px' }}>
+                              (Coupon)
+                            </span>
+                          )}
+                        </DataTableAmount>
+                        <PaymentMethod
+                          isPending={order.payment_status === 'pending'}
+                          isVerificationPending={order.payment_status === 'payment_verification_pending'}
+                        >
+                          {order.payment_method || 'N/A'}
+                          {order.payment_status === 'pending' && ' (Pending)'}
+                          {order.payment_status === 'payment_verification_pending' && ' (Verifying)'}
+                        </PaymentMethod>
+                      </div>
+                    </DataTableCell>
+                    <DataTableCell data-label="ACTION" mobileFullWidth>
                       <ActionButtonsGroup>
                         {/* Served 상태가 아닌 경우에만 Complete Order/다음 단계 버튼 표시 */}
                         {order.status !== 'completed' && order.status !== 'cancelled' && order.status !== 'served' && (
@@ -3280,15 +3192,15 @@ const LiveOrdersPage: React.FC = () => {
                           <IconSymbol>✕</IconSymbol>
                         </IconButton>
                       </ActionButtonsGroup>
-                    </TableCell>
-                  </TableRow>
+                    </DataTableCell>
+                  </DataTableRow>
                 ))}
               </tbody>
-            </OrdersTable>
+            </DataTable>
           ) : (
-            <EmptyState>
+            <DataTableEmpty>
               No orders found in this category
-            </EmptyState>
+            </DataTableEmpty>
           )}
         </OrdersCard>
 
