@@ -312,6 +312,175 @@ const IconSymbol = styled.span`
   line-height: 1;
 `;
 
+// Category Card Components (Recipe style)
+const CategoryGrid = styled.div`
+  display: grid;
+  gap: 12px;
+`;
+
+const CategoryCard = styled.div<{ isActive?: boolean }>`
+  background: white;
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  opacity: ${props => props.isActive !== false ? 1 : 0.6};
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+`;
+
+const CategoryIcon = styled.div`
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background: #F3F4F6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: #635BFF;
+  flex-shrink: 0;
+`;
+
+const CategoryInfo = styled.div`
+  flex: 1;
+`;
+
+const CategoryName = styled.div`
+  font-size: 16px;
+  font-weight: 600;
+  color: #1F2937;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const CategoryMeta = styled.div`
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: #6B7280;
+`;
+
+const CategoryActions = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+const CategoryStatusBadge = styled.span<{ active: boolean }>`
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  background: ${props => props.active ? '#D1FAE5' : '#FEE2E2'};
+  color: ${props => props.active ? '#059669' : '#DC2626'};
+`;
+
+const CategoryIconButton = styled.button`
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  border: 1px solid #E6EBF1;
+  background: #F6F9FC;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    border-color: #635BFF;
+    background: #F4F3FF;
+    transform: translateY(-1px);
+
+    svg {
+      color: #635BFF;
+    }
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  svg {
+    width: 18px;
+    height: 18px;
+    color: #6B7280;
+    transition: color 0.15s;
+  }
+`;
+
+const CategoryEmptyState = styled.div`
+  text-align: center;
+  padding: 40px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+`;
+
+const HeaderRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+`;
+
+const SectionTitle = styled.h3`
+  font-size: 18px;
+  font-weight: 600;
+  color: #1F2937;
+  margin: 0;
+`;
+
+// Period Filter Components (from LiveOrders)
+const FilterControls = styled.div`
+  margin-bottom: 24px;
+`;
+
+const FilterRow = styled.div`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+`;
+
+const DateButton = styled.button<{ active?: boolean }>`
+  padding: 8px 16px;
+  background: ${props => props.active ? '#635BFF' : '#FFFFFF'};
+  color: ${props => props.active ? '#FFFFFF' : '#6B7C93'};
+  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: ${props => props.active ? '#5A51E6' : '#F8FAFC'};
+    border-color: ${props => props.active ? '#5A51E6' : '#CBD5E1'};
+  }
+`;
+
+const DateInput = styled.input`
+  padding: 8px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #1F2937;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+  }
+`;
+
 const TabContainer = styled.div`
   display: flex;
   gap: 0;
@@ -562,6 +731,7 @@ const MobileCardActions = styled.div`
 `;
 
 type TabType = 'invoices' | 'payment_submitted' | 'categories';
+type PeriodType = 'today' | 'week' | 'month' | 'year' | 'all';
 
 const InvoicesPage: React.FC = () => {
   const { operationSettings } = useStore();
@@ -570,7 +740,24 @@ const InvoicesPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterType, setFilterType] = useState('all');
-  const [filterMonth, setFilterMonth] = useState('all');
+  const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
+  const [isCustomDateRange, setIsCustomDateRange] = useState(false);
+  const [dateRange, setDateRange] = useState(() => {
+    // Default to current month
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const formatDate = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    return {
+      start: formatDate(firstDay),
+      end: formatDate(lastDay)
+    };
+  });
   const [showCreateInvoiceModal, setShowCreateInvoiceModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -636,6 +823,60 @@ const InvoicesPage: React.FC = () => {
     serviceDescription: '',
     currency: ''
   });
+
+  // Period filter handlers
+  const handlePeriodChange = (period: PeriodType) => {
+    setActivePeriod(period);
+    setIsCustomDateRange(false);
+
+    const now = new Date();
+    let start = new Date();
+    let end = new Date();
+
+    const formatDate = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    switch (period) {
+      case 'today':
+        // Today only
+        break;
+      case 'week':
+        // Start of week (Sunday)
+        start.setDate(now.getDate() - now.getDay());
+        break;
+      case 'month':
+        // Start of month
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        break;
+      case 'year':
+        // Start of year
+        start = new Date(now.getFullYear(), 0, 1);
+        end = new Date(now.getFullYear(), 11, 31);
+        break;
+      case 'all':
+        // All time - set very old start date
+        start = new Date(2000, 0, 1);
+        break;
+    }
+
+    setDateRange({
+      start: formatDate(start),
+      end: formatDate(end)
+    });
+  };
+
+  const handleDateRangeChange = (type: 'start' | 'end', value: string) => {
+    setIsCustomDateRange(true);
+    setDateRange(prev => ({
+      ...prev,
+      [type]: value
+    }));
+  };
 
   // Fetch invoices from API
   const fetchInvoices = async () => {
@@ -2657,128 +2898,76 @@ const InvoicesPage: React.FC = () => {
 
         {activeTab === 'categories' && (
           <div style={{ padding: '24px 0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#1F2937' }}>Invoice Categories</h3>
-              <Button variant="primary" onClick={() => handleOpenCategoryModal()}>Add Category</Button>
-            </div>
+            <HeaderRow>
+              <div>
+                <SectionTitle>Invoice Categories</SectionTitle>
+                <p style={{ color: '#6B7280', fontSize: '14px', margin: '8px 0 0 0' }}>
+                  Manage invoice categories for organizing different types of charges.
+                </p>
+              </div>
+              <Button variant="primary" onClick={() => handleOpenCategoryModal()}>+ Add Category</Button>
+            </HeaderRow>
 
             {invoiceCategories.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 20px', background: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <CategoryEmptyState>
                 <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', margin: '0 0 8px 0' }}>No categories yet</h4>
                 <p style={{ fontSize: '14px', color: '#6B7280', margin: '0 0 16px 0' }}>Create your first invoice category to get started.</p>
-                <Button variant="primary" onClick={() => handleOpenCategoryModal()}>Add Category</Button>
-              </div>
+                <Button variant="primary" onClick={() => handleOpenCategoryModal()}>+ Add Category</Button>
+              </CategoryEmptyState>
             ) : (
-              <div style={{ display: 'grid', gap: '12px' }}>
+              <CategoryGrid>
                 {invoiceCategories.map((category) => (
-                  <div
-                    key={category.id}
-                    style={{
-                      background: 'white',
-                      borderRadius: '12px',
-                      padding: '16px 20px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '16px',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                      opacity: category.is_active ? 1 : 0.6
-                    }}
-                  >
-                    <div style={{
-                      width: '48px',
-                      height: '48px',
-                      borderRadius: '8px',
-                      background: '#F3F4F6',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '18px',
-                      fontWeight: '600',
-                      color: '#635BFF',
-                      flexShrink: 0
-                    }}>
+                  <CategoryCard key={category.id} isActive={category.is_active}>
+                    <CategoryIcon>
                       {category.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                        <span style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937' }}>{category.name}</span>
-                        <span style={{
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: '500',
-                          background: category.is_active ? '#D1FAE5' : '#FEE2E2',
-                          color: category.is_active ? '#059669' : '#DC2626'
-                        }}>
+                    </CategoryIcon>
+                    <CategoryInfo>
+                      <CategoryName>
+                        {category.name}
+                        <CategoryStatusBadge active={category.is_active}>
                           {category.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: '#6B7280' }}>
+                        </CategoryStatusBadge>
+                      </CategoryName>
+                      <CategoryMeta>
                         <span>Code: <strong>{category.code}</strong></span>
                         {category.description && <span>{category.description}</span>}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button
+                      </CategoryMeta>
+                    </CategoryInfo>
+                    <CategoryActions>
+                      <CategoryIconButton
                         onClick={() => handleToggleCategoryActive(category)}
-                        style={{
-                          width: '36px',
-                          height: '36px',
-                          borderRadius: '6px',
-                          border: '1px solid #E6EBF1',
-                          background: '#F6F9FC',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer'
-                        }}
                         title={category.is_active ? 'Deactivate' : 'Activate'}
                       >
-                        {category.is_active ? '👁️' : '👁️‍🗨️'}
-                      </button>
-                      <button
-                        onClick={() => handleOpenCategoryModal(category)}
-                        style={{
-                          width: '36px',
-                          height: '36px',
-                          borderRadius: '6px',
-                          border: '1px solid #E6EBF1',
-                          background: '#F6F9FC',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer'
-                        }}
-                        title="Edit"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          {category.is_active ? (
+                            <>
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                              <circle cx="12" cy="12" r="3" />
+                            </>
+                          ) : (
+                            <>
+                              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                              <line x1="1" y1="1" x2="23" y2="23" />
+                            </>
+                          )}
+                        </svg>
+                      </CategoryIconButton>
+                      <CategoryIconButton onClick={() => handleOpenCategoryModal(category)} title="Edit Category">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                         </svg>
-                      </button>
-                      <button
-                          onClick={() => handleDeleteCategoryClick(category)}
-                          style={{
-                            width: '36px',
-                            height: '36px',
-                            borderRadius: '6px',
-                            border: '1px solid #FEE2E2',
-                            background: '#FEF2F2',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer'
-                          }}
-                          title="Delete"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2">
-                            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                          </svg>
-                        </button>
-                    </div>
-                  </div>
+                      </CategoryIconButton>
+                      <CategoryIconButton onClick={() => handleDeleteCategoryClick(category)} title="Delete Category">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3,6 5,6 21,6" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                      </CategoryIconButton>
+                    </CategoryActions>
+                  </CategoryCard>
                 ))}
-              </div>
+              </CategoryGrid>
             )}
           </div>
         )}
