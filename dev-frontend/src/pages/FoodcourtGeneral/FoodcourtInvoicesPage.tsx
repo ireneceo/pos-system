@@ -632,8 +632,11 @@ const FoodcourtInvoicesPage: React.FC = () => {
   const [paymentData, setPaymentData] = useState({
     paymentMethod: 'bank_transfer',
     transactionId: '',
-    notes: ''
+    notes: '',
+    receiptImage: ''
   });
+  const [paymentSubmitError, setPaymentSubmitError] = useState<string | null>(null);
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
 
   // Category management states
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -743,9 +746,78 @@ const FoodcourtInvoicesPage: React.FC = () => {
     }
   };
 
+  // Resize image to reduce base64 size
+  const resizeImage = (file: File, maxWidth: number = 800, maxHeight: number = 800, quality: number = 0.7): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        img.src = e.target?.result as string;
+      };
+
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Failed to get canvas context'));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        const resizedBase64 = canvas.toDataURL('image/jpeg', quality);
+        resolve(resizedBase64);
+      };
+
+      img.onerror = () => reject(new Error('Failed to load image'));
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Handle receipt image upload with auto-resize
+  const handleReceiptImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setPaymentSubmitError('Please upload an image file (JPG, PNG, etc.)');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setPaymentSubmitError('File size must be less than 10MB');
+      return;
+    }
+
+    try {
+      setPaymentSubmitError(null);
+      const resizedImage = await resizeImage(file, 1024, 1024, 0.8);
+      setPaymentData(prev => ({ ...prev, receiptImage: resizedImage }));
+    } catch (error) {
+      console.error('Error processing image:', error);
+      setPaymentSubmitError('Failed to process image. Please try another file.');
+    }
+  };
+
   // Submit payment for an invoice
   const handleSubmitPayment = async () => {
     if (!selectedInvoice) return;
+
+    setPaymentSubmitError(null);
+    setIsSubmittingPayment(true);
 
     try {
       const token = localStorage.getItem('auth_token');
@@ -756,33 +828,38 @@ const FoodcourtInvoicesPage: React.FC = () => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          paymentMethod: paymentData.paymentMethod,
-          transactionId: paymentData.transactionId,
-          notes: paymentData.notes
+          payment_method: paymentData.paymentMethod,
+          transaction_id: paymentData.transactionId,
+          notes: paymentData.notes,
+          receipt_url: paymentData.receiptImage || null
         })
       });
 
       if (response.ok) {
         setShowPaymentSubmitModal(false);
         setSelectedInvoice(null);
-        setPaymentData({ paymentMethod: 'bank_transfer', transactionId: '', notes: '' });
+        setPaymentData({ paymentMethod: 'bank_transfer', transactionId: '', notes: '', receiptImage: '' });
+        setPaymentSubmitError(null);
         setSuccessMessage('Payment submitted successfully! The system admin will review and confirm your payment.');
         setShowSuccessModal(true);
         await fetchInvoicesToPay();
       } else {
         const errorData = await response.json();
-        alert(`Failed to submit payment: ${errorData.error || 'Unknown error'}`);
+        setPaymentSubmitError(errorData.error || errorData.message || 'Failed to submit payment');
       }
     } catch (error) {
       console.error('Error submitting payment:', error);
-      alert('Failed to submit payment. Please try again.');
+      setPaymentSubmitError('Network error. Please check your connection and try again.');
+    } finally {
+      setIsSubmittingPayment(false);
     }
   };
 
   // Open payment submit modal
   const handlePayInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
-    setPaymentData({ paymentMethod: 'bank_transfer', transactionId: '', notes: '' });
+    setPaymentData({ paymentMethod: 'bank_transfer', transactionId: '', notes: '', receiptImage: '' });
+    setPaymentSubmitError(null);
     setShowPaymentSubmitModal(true);
   };
 
@@ -2767,9 +2844,31 @@ const FoodcourtInvoicesPage: React.FC = () => {
                   />
                 </FormGroup>
               </ModalBody>
-              <ModalFooter>
-                <Button variant="secondary" onClick={() => setShowPaymentSubmitModal(false)}>Cancel</Button>
-                <Button variant="primary" onClick={handleSubmitPayment} disabled={!paymentData.paymentMethod || (!paymentData.transactionId && !paymentData.receiptImage)}>Submit Payment</Button>
+              <ModalFooter style={{ flexDirection: 'column', gap: '12px' }}>
+                {paymentSubmitError && (
+                  <div style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    background: '#FEF2F2',
+                    border: '1px solid #FECACA',
+                    borderRadius: '6px',
+                    color: '#DC2626',
+                    fontSize: '13px',
+                    textAlign: 'center'
+                  }}>
+                    {paymentSubmitError}
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', width: '100%' }}>
+                  <Button variant="secondary" onClick={() => { setShowPaymentSubmitModal(false); setPaymentSubmitError(null); }}>Cancel</Button>
+                  <Button
+                    variant="primary"
+                    onClick={handleSubmitPayment}
+                    disabled={!paymentData.paymentMethod || isSubmittingPayment || (!paymentData.transactionId && !paymentData.receiptImage)}
+                  >
+                    {isSubmittingPayment ? 'Submitting...' : 'Submit Payment'}
+                  </Button>
+                </div>
               </ModalFooter>
             </ModalContent>
           </Modal>

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
-import PageHeader from '../../components/common/PageHeader';
+import PageHeader from '../../components/Common/PageHeader';
 import { SaveButtonContainer, SaveButtonGroup, SaveButton, StatusMessage } from '../../components/UI';
 import { Modal, ModalButton } from '../../components/UI/Modal';
-import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
+import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface CurrencyConfig {

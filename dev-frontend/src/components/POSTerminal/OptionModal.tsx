@@ -22,7 +22,7 @@ import {
   ProductDetails,
   ProductName,
   ProductPrice
-} from '../common/Modal';
+} from '../Common/Modal';
 import { formatCurrency } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
 

@@ -11,7 +11,7 @@ import { BaseRestaurant } from '../../interfaces/Restaurant';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import { COUNTRIES } from '../../constants/countries';
-import PhoneInput from '../../components/common/PhoneInput';
+import PhoneInput from '../../components/Common/PhoneInput';
 
 interface Restaurant extends Omit<BaseRestaurant, 'status'> {
   status: 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled';

@@ -692,78 +692,6 @@ const SummaryRow = styled.div<{ highlight?: boolean }>`
   ` : ''}
 `;
 
-// 페이지별 반응형 테이블 헤더 (Invoices 전용)
-// Header columns: Invoice(1), Customer(2), Period(3), Issued(4), Due(5), Status(6), Amount(7), Total(8), Actions(9)
-const InvoiceTableHeader = styled(CommonTableHeader)`
-  /* 1400px 이하: Period, Issued 숨김 - 7개 칼럼 */
-  @media (max-width: 1400px) {
-    grid-template-columns: 1.6fr 1.3fr 0.9fr 0.7fr 0.8fr 0.8fr minmax(140px, 180px) !important;
-    & > span.col-period,
-    & > span.col-issued {
-      display: none;
-    }
-  }
-
-  /* 1100px 이하: Period, Issued, Amount, Total 숨김 - 5개 칼럼 */
-  @media (max-width: 1100px) {
-    grid-template-columns: 1.5fr 1.2fr 0.8fr 0.8fr minmax(130px, 160px) !important;
-    & > span.col-period,
-    & > span.col-issued,
-    & > span.col-amount,
-    & > span.col-total {
-      display: none;
-    }
-  }
-
-  /* 900px 이하: Period, Issued, Status, Amount, Total 숨김 - 4개 칼럼 */
-  @media (max-width: 900px) {
-    grid-template-columns: 1.4fr 1.2fr 0.8fr minmax(120px, 150px) !important;
-    & > span.col-period,
-    & > span.col-issued,
-    & > span.col-status,
-    & > span.col-amount,
-    & > span.col-total {
-      display: none;
-    }
-  }
-`;
-
-// 페이지별 반응형 테이블 행 (Invoices 전용)
-// 클래스명으로 칼럼을 식별하여 숨김 처리
-const InvoiceTableRow = styled(CommonTableRow)`
-  /* 1400px 이하: Period, Issued 숨김 - 7개 칼럼 */
-  @media (max-width: 1400px) {
-    grid-template-columns: 1.6fr 1.3fr 0.9fr 0.7fr 0.8fr 0.8fr minmax(140px, 180px) !important;
-    .col-period,
-    .col-issued {
-      display: none;
-    }
-  }
-
-  /* 1100px 이하: Period, Issued, Amount, Total 숨김 - 5개 칼럼 */
-  @media (max-width: 1100px) {
-    grid-template-columns: 1.5fr 1.2fr 0.8fr 0.8fr minmax(130px, 160px) !important;
-    .col-period,
-    .col-issued,
-    .col-amount,
-    .col-total {
-      display: none;
-    }
-  }
-
-  /* 900px 이하: Period, Issued, Status, Amount, Total 숨김 - 4개 칼럼 */
-  @media (max-width: 900px) {
-    grid-template-columns: 1.4fr 1.2fr 0.8fr minmax(120px, 150px) !important;
-    .col-period,
-    .col-issued,
-    .col-status,
-    .col-amount,
-    .col-total {
-      display: none;
-    }
-  }
-`;
-
 type TabType = 'issued' | 'to_pay' | 'categories';
 
 type PeriodType = 'week' | 'month' | 'year' | 'all';
@@ -943,6 +871,8 @@ const BrandInvoicesPage: React.FC = () => {
   });
   const [availablePaymentMethods, setAvailablePaymentMethods] = useState<PaymentMethod[]>([]);
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
+  const [paymentSubmitError, setPaymentSubmitError] = useState<string | null>(null);
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
 
   // Category management states
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -1063,9 +993,8 @@ const BrandInvoicesPage: React.FC = () => {
   const handleSubmitPayment = async () => {
     if (!selectedInvoice) return;
 
-    // For bank_transfer and qr_payment, receipt image is recommended
-    const selectedMethod = availablePaymentMethods.find(m => m.id === paymentData.paymentMethod);
-    const requiresReceipt = selectedMethod && (selectedMethod.id === 'bank_transfer' || selectedMethod.id === 'qr_payment');
+    setPaymentSubmitError(null);
+    setIsSubmittingPayment(true);
 
     try {
       const token = localStorage.getItem('auth_token');
@@ -1087,16 +1016,19 @@ const BrandInvoicesPage: React.FC = () => {
         setShowPaymentSubmitModal(false);
         setSelectedInvoice(null);
         setPaymentData({ paymentMethod: 'bank_transfer', transactionId: '', notes: '', receiptImage: '' });
+        setPaymentSubmitError(null);
         setSuccessMessage('Payment submitted successfully! The issuer will review and confirm your payment.');
         setShowSuccessModal(true);
         await fetchInvoicesToPay();
       } else {
         const errorData = await response.json();
-        alert(`Failed to submit payment: ${errorData.error || 'Unknown error'}`);
+        setPaymentSubmitError(errorData.error || errorData.message || 'Failed to submit payment');
       }
     } catch (error) {
       console.error('Error submitting payment:', error);
-      alert('Failed to submit payment. Please try again.');
+      setPaymentSubmitError('Network error. Please check your connection and try again.');
+    } finally {
+      setIsSubmittingPayment(false);
     }
   };
 
@@ -1132,29 +1064,76 @@ const BrandInvoicesPage: React.FC = () => {
     await fetchPaymentMethods(invoice.currency || 'MYR');
   };
 
-  // Handle receipt image upload
-  const handleReceiptImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Resize image to reduce base64 size
+  const resizeImage = (file: File, maxWidth: number = 800, maxHeight: number = 800, quality: number = 0.7): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        img.src = e.target?.result as string;
+      };
+
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Calculate new dimensions
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Failed to get canvas context'));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Convert to base64 with compression
+        const resizedBase64 = canvas.toDataURL('image/jpeg', quality);
+        resolve(resizedBase64);
+      };
+
+      img.onerror = () => reject(new Error('Failed to load image'));
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Handle receipt image upload with auto-resize
+  const handleReceiptImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file');
+      setPaymentSubmitError('Please upload an image file (JPG, PNG, etc.)');
       return;
     }
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('File size must be less than 5MB');
+    // Validate file size (max 10MB before resize)
+    if (file.size > 10 * 1024 * 1024) {
+      setPaymentSubmitError('File size must be less than 10MB');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = event.target?.result as string;
-      setPaymentData(prev => ({ ...prev, receiptImage: result }));
-    };
-    reader.readAsDataURL(file);
+    try {
+      setPaymentSubmitError(null);
+      // Resize image to reduce storage size
+      const resizedImage = await resizeImage(file, 1024, 1024, 0.8);
+      setPaymentData(prev => ({ ...prev, receiptImage: resizedImage }));
+    } catch (error) {
+      console.error('Error processing image:', error);
+      setPaymentSubmitError('Failed to process image. Please try another file.');
+    }
   };
 
   // Fetch invoice categories from API
@@ -1466,39 +1445,48 @@ const BrandInvoicesPage: React.FC = () => {
       let allManagers: Manager[] = [];
 
       if (managerRes.ok) {
-        const data = await managerRes.json();
-        const transformed = data.map((user: any) => ({
-          id: user.id.toString(),
-          fullName: user.full_name || user.username,
-          email: user.email,
-          role: user.role,
-          companyName: user.company_name || 'Restaurant Manager'
-        }));
-        allManagers = [...allManagers, ...transformed];
+        const response = await managerRes.json();
+        const users = response.success ? response.data : (Array.isArray(response) ? response : []);
+        if (Array.isArray(users)) {
+          const transformed = users.map((user: any) => ({
+            id: user.id.toString(),
+            fullName: user.full_name || user.username,
+            email: user.email,
+            role: user.role,
+            companyName: user.company_name || 'Restaurant Manager'
+          }));
+          allManagers = [...allManagers, ...transformed];
+        }
       }
 
       if (foodcourtRes.ok) {
-        const data = await foodcourtRes.json();
-        const transformed = data.map((user: any) => ({
-          id: user.id.toString(),
-          fullName: user.full_name || user.username,
-          email: user.email,
-          role: user.role,
-          companyName: user.company_name || 'Foodcourt Manager'
-        }));
-        allManagers = [...allManagers, ...transformed];
+        const response = await foodcourtRes.json();
+        const users = response.success ? response.data : (Array.isArray(response) ? response : []);
+        if (Array.isArray(users)) {
+          const transformed = users.map((user: any) => ({
+            id: user.id.toString(),
+            fullName: user.full_name || user.username,
+            email: user.email,
+            role: user.role,
+            companyName: user.company_name || 'Foodcourt Manager'
+          }));
+          allManagers = [...allManagers, ...transformed];
+        }
       }
 
       if (brandRes.ok) {
-        const data = await brandRes.json();
-        const transformed = data.map((user: any) => ({
-          id: user.id.toString(),
-          fullName: user.full_name || user.username,
-          email: user.email,
-          role: user.role,
-          companyName: user.company_name || 'Brand Manager'
-        }));
-        allManagers = [...allManagers, ...transformed];
+        const response = await brandRes.json();
+        const users = response.success ? response.data : (Array.isArray(response) ? response : []);
+        if (Array.isArray(users)) {
+          const transformed = users.map((user: any) => ({
+            id: user.id.toString(),
+            fullName: user.full_name || user.username,
+            email: user.email,
+            role: user.role,
+            companyName: user.company_name || 'Brand Manager'
+          }));
+          allManagers = [...allManagers, ...transformed];
+        }
       }
 
       setManagers(allManagers);
@@ -3412,9 +3400,31 @@ const BrandInvoicesPage: React.FC = () => {
                   />
                 </FormGroup>
               </ModalBody>
-              <ModalFooter>
-                <Button variant="secondary" onClick={() => setShowPaymentSubmitModal(false)}>Cancel</Button>
-                <Button variant="primary" onClick={handleSubmitPayment} disabled={!paymentData.paymentMethod || loadingPaymentMethods || (!paymentData.transactionId && !paymentData.receiptImage)}>Submit Payment</Button>
+              <ModalFooter style={{ flexDirection: 'column', gap: '12px' }}>
+                {paymentSubmitError && (
+                  <div style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    background: '#FEF2F2',
+                    border: '1px solid #FECACA',
+                    borderRadius: '6px',
+                    color: '#DC2626',
+                    fontSize: '13px',
+                    textAlign: 'center'
+                  }}>
+                    {paymentSubmitError}
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', width: '100%' }}>
+                  <Button variant="secondary" onClick={() => { setShowPaymentSubmitModal(false); setPaymentSubmitError(null); }}>Cancel</Button>
+                  <Button
+                    variant="primary"
+                    onClick={handleSubmitPayment}
+                    disabled={!paymentData.paymentMethod || loadingPaymentMethods || isSubmittingPayment || (!paymentData.transactionId && !paymentData.receiptImage)}
+                  >
+                    {isSubmittingPayment ? 'Submitting...' : 'Submit Payment'}
+                  </Button>
+                </div>
               </ModalFooter>
             </ModalContent>
           </Modal>

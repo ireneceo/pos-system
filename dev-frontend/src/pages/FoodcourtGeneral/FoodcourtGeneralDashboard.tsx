@@ -4,7 +4,7 @@ import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { TabContainer, Tab, DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue, ModalComponent, FormGroup, FormLabel, FormInput, Button } from '../../components/UI';
 import ConfirmModal from '../../components/ConfirmModal';
-import PhoneInput from '../../components/common/PhoneInput';
+import PhoneInput from '../../components/Common/PhoneInput';
 
 interface FoodcourtMetrics {
   totalFoodcourts: number;

@@ -10,7 +10,7 @@ import Modal, { ModalButton } from '../../components/UI/Modal';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import { formatPhoneForDisplay } from '../../utils/phoneUtils';
-import PageHeader from '../../components/common/PageHeader';
+import PageHeader from '../../components/Common/PageHeader';
 
 // 스타일 컴포넌트
 const CustomersContainer = styled.div`

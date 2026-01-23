@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import io, { Socket } from 'socket.io-client';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMenu } from '../../contexts/MenuContext';
-import PageHeader from '../../components/common/PageHeader';
+import PageHeader from '../../components/Common/PageHeader';
 import { formatTime } from '../../utils/timezone';
 
 // Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM")

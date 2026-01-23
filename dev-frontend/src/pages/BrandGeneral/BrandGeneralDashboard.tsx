@@ -6,7 +6,7 @@ import { TabContainer, Tab, DashboardStatsGrid, DashboardStatCard, DashboardStat
 import ConfirmModal from '../../components/ConfirmModal';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
-import PhoneInput from '../../components/common/PhoneInput';
+import PhoneInput from '../../components/Common/PhoneInput';
 
 interface BrandMetrics {
   totalBrands: number;

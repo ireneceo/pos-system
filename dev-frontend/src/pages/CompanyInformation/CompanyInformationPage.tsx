@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
-import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
-import PhoneInput from '../../components/common/PhoneInput';
+import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
+import PhoneInput from '../../components/Common/PhoneInput';
 import { COUNTRIES } from '../../constants/countries';
 
 interface CompanyInfo {

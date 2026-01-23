@@ -20,7 +20,7 @@ import { ModalWarning } from '../../components/UI/Modal';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
 import { formatPhoneForDisplay } from '../../utils/phoneUtils';
-import PhoneInput from '../../components/common/PhoneInput';
+import PhoneInput from '../../components/Common/PhoneInput';
 // API imports removed - using direct fetch like StaffManagementPage and ManagersPage
 
 interface Restaurant {

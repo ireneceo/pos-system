@@ -5,8 +5,8 @@ import { useStaff } from '../../contexts/StaffContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton } from '../../components/UI/Modal';
 import Tabs from '../../components/UI/Tabs';
-import PhoneInput from '../../components/common/PhoneInput';
-import PageHeader from '../../components/common/PageHeader';
+import PhoneInput from '../../components/Common/PhoneInput';
+import PageHeader from '../../components/Common/PageHeader';
 
 // 스타일 컴포넌트
 const ProfileContainer = styled.div`

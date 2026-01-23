@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useStaff, Staff } from '../../contexts/StaffContext';
-import PhoneInput from '../common/PhoneInput';
+import PhoneInput from '../Common/PhoneInput';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   display: ${props => props.isOpen ? 'flex' : 'none'};

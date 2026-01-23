@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useCustomer } from '../../contexts/CustomerContext';
 import { Modal, ModalButton, FormLabel as Label } from '../UI/Modal';
-import PhoneInput from '../common/PhoneInput';
+import PhoneInput from '../Common/PhoneInput';
 
 const TabContainer = styled.div`
   display: flex;

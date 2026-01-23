@@ -28,7 +28,7 @@ import {
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { formatCurrency } from '../../utils/currency';
 import { formatPhoneForDisplay } from '../../utils/phoneUtils';
-import PhoneInput from '../../components/common/PhoneInput';
+import PhoneInput from '../../components/Common/PhoneInput';
 import { useStore } from '../../contexts/StoreContext';
 
 interface Manager {

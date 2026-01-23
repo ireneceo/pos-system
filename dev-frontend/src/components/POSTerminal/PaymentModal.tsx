@@ -7,7 +7,7 @@ import {
   TotalSection,
   TotalLabel,
   TotalPrice
-} from '../common/Modal';
+} from '../Common/Modal';
 import styled from 'styled-components';
 import { formatCurrency } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';

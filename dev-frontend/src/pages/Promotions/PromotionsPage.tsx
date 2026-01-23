@@ -4,7 +4,7 @@ import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
-import PageHeader from '../../components/common/PageHeader';
+import PageHeader from '../../components/Common/PageHeader';
 
 // 스타일 컴포넌트
 const CouponsContainer = styled.div`

@@ -24,7 +24,7 @@ import {
   IconButton
 } from '../../components/UI';
 import ConfirmModal from '../../components/ConfirmModal';
-import PhoneInput from '../../components/common/PhoneInput';
+import PhoneInput from '../../components/Common/PhoneInput';
 
 // Page-specific styled components
 const Subtitle = styled.p`

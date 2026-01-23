@@ -32,7 +32,7 @@ import { formatCurrency } from '../../utils/currency';
 import { fetchAPI } from '../../utils/api';
 import GeneralStockCategoriesTab from '../../pages/RecipeManagement/GeneralStockCategoriesTab';
 import ProductIngredientCategoriesTab from '../../pages/BrandProductRecipe/ProductIngredientCategoriesTab';
-import ImageUploadDropzone from '../common/ImageUploadDropzone';
+import ImageUploadDropzone from '../Common/ImageUploadDropzone';
 
 // Props interface for shared component
 export interface InventoryManagerProps {

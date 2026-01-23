@@ -11,7 +11,7 @@ import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
-import PageHeader from '../../components/common/PageHeader';
+import PageHeader from '../../components/Common/PageHeader';
 
 // 스타일 컴포넌트
 const ReportsContainer = styled.div`

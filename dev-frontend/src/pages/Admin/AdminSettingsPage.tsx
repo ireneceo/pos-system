@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { SaveButtonContainer, SaveButtonGroup, SaveButton, StatusMessage } from '../../components/UI';
 import { COUNTRIES } from '../../constants/countries';
-import PhoneInput from '../../components/common/PhoneInput';
+import PhoneInput from '../../components/Common/PhoneInput';
 
 interface CompanySettings {
   companyName: string;

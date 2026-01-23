@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { useMenu } from '../../contexts/MenuContext';
-import ConfirmDialog from '../../components/common/ConfirmDialog';
+import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import { Modal as UIModal, ModalButton } from '../../components/UI/Modal';
 import { OrderControls } from '../../components/UI';
 

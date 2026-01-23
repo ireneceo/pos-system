@@ -5,7 +5,7 @@ import {
   TotalSection,
   TotalLabel,
   TotalPrice
-} from '../common/Modal';
+} from '../Common/Modal';
 import styled, { createGlobalStyle } from 'styled-components';
 import { useStore } from '../../contexts/StoreContext';
 // OLD: import { printBill } from '../../utils/thermalPrinter';

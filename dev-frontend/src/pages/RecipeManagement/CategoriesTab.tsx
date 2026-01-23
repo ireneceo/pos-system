@@ -4,7 +4,7 @@ import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormTextArea } from '../../components/UI/Modal';
 import { OrderControls } from '../../components/UI';
-import ConfirmDialog from '../../components/common/ConfirmDialog';
+import ConfirmDialog from '../../components/Common/ConfirmDialog';
 
 interface CategoriesTabProps {
   brandId: number | null;

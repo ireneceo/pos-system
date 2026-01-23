@@ -4,9 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { useMenu, MenuItem as MenuItemType, SetMenuItem } from '../../contexts/MenuContext';
-import ConfirmDialog from '../../components/common/ConfirmDialog';
-import NumberInputModal from '../../components/common/NumberInputModal';
-import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
+import ConfirmDialog from '../../components/Common/ConfirmDialog';
+import NumberInputModal from '../../components/Common/NumberInputModal';
+import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 // Common UI components
 import {
   Modal as UIModal,

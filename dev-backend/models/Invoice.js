@@ -81,8 +81,9 @@ Invoice.init({
     allowNull: true
   },
   receipt_url: {
-    type: DataTypes.STRING(500),
-    allowNull: true
+    type: DataTypes.TEXT('long'),
+    allowNull: true,
+    comment: 'Payment receipt image URL or base64 data'
   },
   payer_type: {
     type: DataTypes.ENUM('restaurant', 'foodcourt_manager', 'brand_manager'),
