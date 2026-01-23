@@ -2291,11 +2291,11 @@ const SettingsPage: React.FC = () => {
                     )}
                     {user?.role === 'Restaurant Admin' ? (
                       <ThemedButton onClick={() => alert('Add Brand functionality coming soon')}>
-                        + Add Brand
+                        Add Brand
                       </ThemedButton>
                     ) : (
                       <Button onClick={() => alert('Add Brand functionality coming soon')}>
-                        + Add Brand
+                        Add Brand
                       </Button>
                     )}
                   </div>
@@ -2970,7 +2970,7 @@ const SettingsPage: React.FC = () => {
                     justifyContent: 'center'
                   }}
                 >
-                  + Add Break Time
+                  Add Break Time
                 </button>
               </SettingsCard>
 
@@ -3431,7 +3431,7 @@ const SettingsPage: React.FC = () => {
                         transition: 'all 0.2s'
                       }}
                     >
-                      + Add Delivery Zone
+                      Add Delivery Zone
                     </button>
                   </>
                 )}

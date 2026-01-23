@@ -771,9 +771,7 @@ const ManagersPage: React.FC = () => {
 
       const response = await fetch(`/api/users/${userId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(updateData)
       });
 
@@ -818,9 +816,7 @@ const ManagersPage: React.FC = () => {
         
         const response = await fetch(`/api/users/${userId}`, {
           method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          headers: getAuthHeaders()
         });
 
         console.log('📡 Delete response status:', response.status);
@@ -843,7 +839,7 @@ const ManagersPage: React.FC = () => {
 
         const response = await fetch(`/api/users/${userId}/reset-password`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             newPassword: randomPassword
           })
@@ -861,7 +857,7 @@ const ManagersPage: React.FC = () => {
         // Update status on server
         const response = await fetch(`/api/users/${userId}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
           body: JSON.stringify({ status: newStatus })
         });
 

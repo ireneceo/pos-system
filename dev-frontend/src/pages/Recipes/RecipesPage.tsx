@@ -783,7 +783,7 @@ const RecipesPage: React.FC = () => {
                 variant="primary"
                 onClick={() => handleOpenModal(null)}
               >
-                + New Recipe
+                New Recipe
               </ThemedButton>
             )}
           </ActionSection>
@@ -859,7 +859,7 @@ const RecipesPage: React.FC = () => {
                   variant="primary"
                   onClick={() => handleOpenModal(null)}
                 >
-                  + Create First Recipe
+                  Create First Recipe
                 </ThemedButton>
               )}
             </EmptyState>
@@ -1151,7 +1151,7 @@ const RecipesPage: React.FC = () => {
 
               {!viewMode && (
                 <AddButton type="button" onClick={addIngredient}>
-                  + Add Ingredient
+                  Add Ingredient
                 </AddButton>
               )}
 

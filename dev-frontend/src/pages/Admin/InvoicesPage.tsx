@@ -2901,14 +2901,14 @@ const InvoicesPage: React.FC = () => {
                   Manage invoice categories for organizing different types of charges.
                 </p>
               </div>
-              <Button variant="primary" onClick={() => handleOpenCategoryModal()}>+ Add Category</Button>
+              <Button variant="primary" onClick={() => handleOpenCategoryModal()}>Add Category</Button>
             </HeaderRow>
 
             {invoiceCategories.length === 0 ? (
               <CategoryEmptyState>
                 <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', margin: '0 0 8px 0' }}>No categories yet</h4>
                 <p style={{ fontSize: '14px', color: '#6B7280', margin: '0 0 16px 0' }}>Create your first invoice category to get started.</p>
-                <Button variant="primary" onClick={() => handleOpenCategoryModal()}>+ Add Category</Button>
+                <Button variant="primary" onClick={() => handleOpenCategoryModal()}>Add Category</Button>
               </CategoryEmptyState>
             ) : (
               <CategoryGrid>

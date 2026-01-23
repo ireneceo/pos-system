@@ -907,7 +907,7 @@ const ManagerPromotionsPage: React.FC = () => {
                 Export Data
               </Button>
               <Button variant="primary" onClick={handleAddPromotion}>
-                + Add Promotion
+                Add Promotion
               </Button>
             </Controls>
           </HeaderContent>

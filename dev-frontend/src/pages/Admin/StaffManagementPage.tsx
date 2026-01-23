@@ -31,6 +31,15 @@ import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/Fi
 import { formatCurrency } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
 
+// Auth header helper for API calls
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('auth_token');
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  };
+};
+
 interface Staff {
   id: string;
   username: string;
@@ -481,15 +490,15 @@ const AdminStaffManagementPage: React.FC = () => {
         console.log('👥 [Admin] Fetching all staff across system...');
         
         // Fetch all users in system
-        const usersResponse = await fetch('/api/users');
+        const usersResponse = await fetch('/api/users', { headers: getAuthHeaders() });
         console.log('📡 Users API response status:', usersResponse.status);
-        
+
         if (usersResponse.ok) {
           const usersData = await usersResponse.json();
           console.log('👥 All users data from API:', usersData);
-          
+
           // Fetch all restaurants to map staff to restaurants
-          const restaurantsResponse = await fetch('/api/restaurants');
+          const restaurantsResponse = await fetch('/api/restaurants', { headers: getAuthHeaders() });
           const restaurantsData = restaurantsResponse.ok ? await restaurantsResponse.json() : [];
           console.log('🏪 All restaurants data:', restaurantsData);
 
@@ -755,9 +764,7 @@ const AdminStaffManagementPage: React.FC = () => {
 
       const response = await fetch('/api/users', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(staffUserData)
       });
 
@@ -780,10 +787,10 @@ const AdminStaffManagementPage: React.FC = () => {
       setShowSuccessModal(true);
 
       // Refresh staff list only after successful creation
-      const usersResponse = await fetch('/api/users');
+      const usersResponse = await fetch('/api/users', { headers: getAuthHeaders() });
       if (usersResponse.ok) {
         const usersData = await usersResponse.json();
-        const restaurantsResponse = await fetch('/api/restaurants');
+        const restaurantsResponse = await fetch('/api/restaurants', { headers: getAuthHeaders() });
         const restaurantsData = restaurantsResponse.ok ? await restaurantsResponse.json() : [];
 
         const restaurantMap: Record<number, { name: string; company: string }> = {};
@@ -975,9 +982,7 @@ const AdminStaffManagementPage: React.FC = () => {
 
       const response = await fetch(`/api/users/${viewingPermissions.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           role: viewingPermissions.role
         })
@@ -998,13 +1003,13 @@ const AdminStaffManagementPage: React.FC = () => {
       setViewingPermissions(null);
 
       // Reload fresh data from database to ensure sync
-      const updatedResponse = await fetch(`/api/users/${viewingPermissions.id}`);
+      const updatedResponse = await fetch(`/api/users/${viewingPermissions.id}`, { headers: getAuthHeaders() });
       if (updatedResponse.ok) {
         const updatedResult = await updatedResponse.json();
         const updatedUser = updatedResult.data || updatedResult;
 
         // Fetch restaurants data to recalculate type and company info
-        const restaurantsResponse = await fetch('/api/restaurants');
+        const restaurantsResponse = await fetch('/api/restaurants', { headers: getAuthHeaders() });
         const restaurantsData = restaurantsResponse.ok ? await restaurantsResponse.json() : [];
 
         const restaurantMap: Record<number, { name: string; company: string }> = {};
@@ -1122,9 +1127,7 @@ const AdminStaffManagementPage: React.FC = () => {
 
         const response = await fetch(`/api/users/${selectedStaff.id}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             status: newStatus
           })
@@ -1143,7 +1146,7 @@ const AdminStaffManagementPage: React.FC = () => {
       } else if (confirmAction === 'resetPassword') {
         const response = await fetch(`/api/users/${selectedStaff.id}/reset-password`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
+          headers: getAuthHeaders()
         });
 
         if (response.ok) {
@@ -1175,7 +1178,8 @@ const AdminStaffManagementPage: React.FC = () => {
       console.log(`🔄 [Admin] Deleting staff: ${deletingStaff.name}...`);
       
       const response = await fetch(`/api/users/${deletingStaff.id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: getAuthHeaders()
       });
 
       if (response.ok) {
@@ -1238,9 +1242,7 @@ const AdminStaffManagementPage: React.FC = () => {
 
       const response = await fetch(`/api/users/${editingStaff.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(requestData)
       });
 
@@ -1261,13 +1263,13 @@ const AdminStaffManagementPage: React.FC = () => {
       setEditingStaff(null);
 
       // Reload fresh data from database to ensure sync
-      const updatedResponse = await fetch(`/api/users/${editingStaff.id}`);
+      const updatedResponse = await fetch(`/api/users/${editingStaff.id}`, { headers: getAuthHeaders() });
       if (updatedResponse.ok) {
         const updatedResult = await updatedResponse.json();
         const updatedUser = updatedResult.data || updatedResult;
 
         // Fetch restaurants data to recalculate type and company info
-        const restaurantsResponse = await fetch('/api/restaurants');
+        const restaurantsResponse = await fetch('/api/restaurants', { headers: getAuthHeaders() });
         const restaurantsData = restaurantsResponse.ok ? await restaurantsResponse.json() : [];
 
         const restaurantMap: Record<number, { name: string; company: string }> = {};
@@ -1363,9 +1365,7 @@ const AdminStaffManagementPage: React.FC = () => {
       
       const response = await fetch(`/api/users/${staff.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           role: nextRole
         })
@@ -1383,12 +1383,12 @@ const AdminStaffManagementPage: React.FC = () => {
           result = { success: true };
         }
         console.log('✅ [Admin] Staff promoted successfully:', result);
-        
+
         // Refresh staff list
-        const usersResponse = await fetch('/api/users');
+        const usersResponse = await fetch('/api/users', { headers: getAuthHeaders() });
         if (usersResponse.ok) {
           const usersData = await usersResponse.json();
-          const restaurantsResponse = await fetch('/api/restaurants');
+          const restaurantsResponse = await fetch('/api/restaurants', { headers: getAuthHeaders() });
           const restaurantsData = restaurantsResponse.ok ? await restaurantsResponse.json() : [];
           
           const restaurantMap: Record<number, { name: string; company: string }> = {};

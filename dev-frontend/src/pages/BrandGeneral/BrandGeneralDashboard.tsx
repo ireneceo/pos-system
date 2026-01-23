@@ -666,7 +666,7 @@ const BrandGeneralDashboard: React.FC = () => {
               <ManagersHeader>
                 <h3>Brand Manager Team</h3>
                 <AddButton onClick={handleAddManager}>
-                  + Add Manager
+                  Add Manager
                 </AddButton>
               </ManagersHeader>
               {managers.length === 0 ? (

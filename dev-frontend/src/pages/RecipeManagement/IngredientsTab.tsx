@@ -840,7 +840,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
           onClick={() => handleOpenModal(null)}
           style={{ whiteSpace: 'nowrap' }}
         >
-          + New Ingredient
+          New Ingredient
         </ThemedButton>
       </HeaderSection>
 
@@ -861,7 +861,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
               variant="primary"
               onClick={() => handleOpenModal(null)}
             >
-              + Create First Ingredient
+              Create First Ingredient
             </ThemedButton>
           )}
         </EmptyState>

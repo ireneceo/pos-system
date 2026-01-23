@@ -359,7 +359,7 @@ const FoodcourtManagement: React.FC = () => {
             <SectionHeader>
               <SectionTitle>Foodcourt List</SectionTitle>
               <ThemedButton variant="primary" onClick={handleAddFoodcourt}>
-                + Add New Foodcourt
+                Add New Foodcourt
               </ThemedButton>
             </SectionHeader>
 

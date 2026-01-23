@@ -659,7 +659,7 @@ const InvoiceSettingsPage: React.FC = () => {
         ))}
         
         <AddButton onClick={addManagementFee}>
-          + Add Management Fee
+          Add Management Fee
         </AddButton>
         
         <CalculationExample>

@@ -18,16 +18,18 @@ import {
   StatValue,
   StatLabel,
   StatDescription,
-  Table,
-  TableHeader as CommonTableHeader,
-  TableRow as CommonTableRow,
-  MobileLabel,
-  MobileValue,
-  MobileGrid,
-  ActionButtons,
-  EmptyState
+  DataTableContainer,
+  DataTable,
+  DataTableHead,
+  DataTableHeaderCell,
+  DataTableRow,
+  DataTableCell,
+  DataTableEmpty,
+  DataTableAmount,
+  ActionButtons
 } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Common/TabComponents';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -465,26 +467,41 @@ const SectionTitle = styled.h3`
   margin: 0;
 `;
 
-const TabContainer = styled.div`
+// Period filter components
+const PeriodFilterGroup = styled.div`
   display: flex;
-  gap: 0;
-  margin-bottom: 24px;
-  border-bottom: 1px solid #E6EBF1;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
 `;
 
-const Tab = styled.button<{ active?: boolean }>`
-  padding: 12px 24px;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid ${props => props.active ? '#635BFF' : 'transparent'};
-  color: ${props => props.active ? '#635BFF' : '#6B7280'};
-  font-weight: ${props => props.active ? '600' : '500'};
+const DateButton = styled.button<{ active?: boolean }>`
+  padding: 8px 16px;
+  background: ${props => props.active ? '#635BFF' : '#FFFFFF'};
+  color: ${props => props.active ? '#FFFFFF' : '#6B7C93'};
+  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
+  border-radius: 6px;
   font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
 
   &:hover {
-    color: #635BFF;
+    background: ${props => props.active ? '#5A51E6' : '#F8FAFC'};
+    border-color: ${props => props.active ? '#5A51E6' : '#CBD5E1'};
+  }
+`;
+
+const DateInput = styled.input`
+  padding: 8px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #1F2937;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
   }
 `;
 
@@ -739,15 +756,32 @@ const InvoiceTableRow = styled(CommonTableRow)`
 
 type TabType = 'issued' | 'to_pay' | 'categories';
 
+type PeriodType = 'week' | 'month' | 'year' | 'all';
+
 const BrandInvoicesPage: React.FC = () => {
   const { operationSettings } = useStore();
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterType, setFilterType] = useState('all');
-  const [filterMonth, setFilterMonth] = useState('all');
+  const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
+  const [isCustomDateRange, setIsCustomDateRange] = useState(false);
+  const [dateRange, setDateRange] = useState(() => {
+    // Default to current month
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const formatDate = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    return {
+      start: formatDate(firstDay),
+      end: formatDate(lastDay)
+    };
+  });
   const [showCreateInvoiceModal, setShowCreateInvoiceModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -766,6 +800,57 @@ const BrandInvoicesPage: React.FC = () => {
   const activeTab = (searchParams.get('tab') as TabType) || 'issued';
   const handleTabChange = (tab: TabType) => {
     setSearchParams({ tab });
+  };
+
+  // Period filter handlers
+  const handlePeriodChange = (period: PeriodType) => {
+    setActivePeriod(period);
+    setIsCustomDateRange(false);
+
+    const now = new Date();
+    let start = new Date();
+    let end = new Date();
+
+    const formatDate = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    switch (period) {
+      case 'week':
+        // Start of week (Sunday)
+        start.setDate(now.getDate() - now.getDay());
+        break;
+      case 'month':
+        // Start of month
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        break;
+      case 'year':
+        // Start of year
+        start = new Date(now.getFullYear(), 0, 1);
+        end = new Date(now.getFullYear(), 11, 31);
+        break;
+      case 'all':
+        // All time - set very old start date
+        start = new Date(2000, 0, 1);
+        break;
+    }
+
+    setDateRange({
+      start: formatDate(start),
+      end: formatDate(end)
+    });
+  };
+
+  const handleDateRangeChange = (type: 'start' | 'end', value: string) => {
+    setIsCustomDateRange(true);
+    setDateRange(prev => ({
+      ...prev,
+      [type]: value
+    }));
   };
 
   // State for invoices to pay (from system admin)
@@ -1972,40 +2057,7 @@ const BrandInvoicesPage: React.FC = () => {
     setShowSearchDropdown(false);
   };
 
-  // Get unique months from invoices
-  const monthsArray = invoices.map(invoice => {
-    const date = new Date(invoice.issueDate);
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-  });
-  const availableMonths = Array.from(new Set(monthsArray)).sort().reverse();
-
-  const filteredInvoices = invoices.filter(invoice => {
-    const matchesSearch = invoice.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         invoice.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         invoice.managerName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || invoice.status === filterStatus || (filterStatus === 'pending_payment' && (invoice.status === '' || !invoice.status));
-    const matchesType = filterType === 'all' || invoice.type === filterType;
-
-    let matchesMonth = true;
-    if (filterMonth !== 'all') {
-      const invoiceDate = new Date(invoice.issueDate);
-      const invoiceMonth = `${invoiceDate.getFullYear()}-${String(invoiceDate.getMonth() + 1).padStart(2, '0')}`;
-      matchesMonth = invoiceMonth === filterMonth;
-    }
-
-    return matchesSearch && matchesStatus && matchesType && matchesMonth;
-  }).sort((a, b) => {
-    // Sort by due date descending (newest first)
-    const dateA = new Date(a.dueDate).getTime();
-    const dateB = new Date(b.dueDate).getTime();
-    return dateB - dateA;
-  });
-
-  const totalInvoices = invoices.length;
-  const paidInvoices = invoices.filter(i => i.status === 'paid').length;
-  const overdueInvoices = invoices.filter(i => i.status === 'overdue').length;
-  const totalRevenue = invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + i.total, 0);
-
+  // Helper functions - must be defined before filteredInvoices
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-MY');
   };
@@ -2031,6 +2083,58 @@ const BrandInvoicesPage: React.FC = () => {
       default: return 'Restaurant Admin';
     }
   };
+
+  const getTypeDisplay = (type: string) => {
+    switch(type) {
+      case 'automatic': return 'Automatic';
+      case 'manual': return 'Manual';
+      default: return type || 'Manual';
+    }
+  };
+
+  // Universal search filter with date range
+  const filteredInvoices = invoices.filter(invoice => {
+    // Universal search - search across all visible fields
+    const term = searchTerm.toLowerCase();
+    const statusText = getStatusDisplay(invoice.status).toLowerCase();
+    const typeText = getTypeDisplay(invoice.type || '').toLowerCase();
+    const payerText = getPayerDisplay(invoice.payerType || '').toLowerCase();
+
+    const matchesSearch = !searchTerm ||
+      invoice.companyName.toLowerCase().includes(term) ||
+      invoice.invoiceNumber.toLowerCase().includes(term) ||
+      invoice.managerName.toLowerCase().includes(term) ||
+      (invoice.restaurantName || '').toLowerCase().includes(term) ||
+      statusText.includes(term) ||
+      typeText.includes(term) ||
+      payerText.includes(term) ||
+      (invoice.categoryDisplayName || '').toLowerCase().includes(term) ||
+      (invoice.planType || '').toLowerCase().includes(term);
+
+    // Date range filter
+    let matchesDateRange = true;
+    if (dateRange.start && dateRange.end) {
+      const invoiceDate = new Date(invoice.issueDate);
+      const startDate = new Date(dateRange.start);
+      const endDate = new Date(dateRange.end);
+
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+      matchesDateRange = invoiceDate >= startDate && invoiceDate <= endDate;
+    }
+
+    return matchesSearch && matchesDateRange;
+  }).sort((a, b) => {
+    // Sort by due date descending (newest first)
+    const dateA = new Date(a.dueDate).getTime();
+    const dateB = new Date(b.dueDate).getTime();
+    return dateB - dateA;
+  });
+
+  const totalInvoices = invoices.length;
+  const paidInvoices = invoices.filter(i => i.status === 'paid').length;
+  const overdueInvoices = invoices.filter(i => i.status === 'overdue').length;
+  const totalRevenue = invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + i.total, 0);
 
   const handleExportInvoices = () => {
     const exportData = {
@@ -2508,20 +2612,7 @@ const BrandInvoicesPage: React.FC = () => {
         </Header>
         <Content>
 
-        <TabContainer>
-          <Tab active={activeTab === 'issued'} onClick={() => handleTabChange('issued')}>
-            Issued Invoices ({invoices.length})
-          </Tab>
-          <Tab active={activeTab === 'to_pay'} onClick={() => handleTabChange('to_pay')}>
-            Invoices to Pay ({invoicesToPay.filter(i => i.status === 'pending_payment' || i.status === 'overdue').length})
-          </Tab>
-          <Tab active={activeTab === 'categories'} onClick={() => handleTabChange('categories')}>
-            Categories ({invoiceCategories.length})
-          </Tab>
-        </TabContainer>
-
-        {activeTab === 'issued' && (
-          <>
+        {/* Stats - Common display above tabs */}
         <StatsGrid>
           <StatCard color="#059669">
             <StatValue>{totalInvoices}</StatValue>
@@ -2545,44 +2636,65 @@ const BrandInvoicesPage: React.FC = () => {
           </StatCard>
         </StatsGrid>
 
+        <Tabs>
+          <CommonTab active={activeTab === 'issued'} onClick={() => handleTabChange('issued')}>
+            Issued Invoices<TabBadge count={invoices.length} />
+          </CommonTab>
+          <CommonTab active={activeTab === 'to_pay'} onClick={() => handleTabChange('to_pay')}>
+            Invoices to Pay<TabBadge count={invoicesToPay.filter(i => i.status === 'pending_payment' || i.status === 'overdue').length} variant="warning" />
+          </CommonTab>
+          <CommonTab active={activeTab === 'categories'} onClick={() => handleTabChange('categories')}>
+            Categories<TabBadge count={invoiceCategories.length} />
+          </CommonTab>
+        </Tabs>
+
+        {activeTab === 'issued' && (
+          <>
         <FilterBarWrapper>
           <FiltersLeft>
             <SearchInput
-              placeholder="Search by invoice #, company, restaurant..."
+              placeholder="Search invoice, status, company, type..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
 
-            <FilterSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-              <option value="all">All Status</option>
-              <option value="draft">Draft</option>
-              <option value="pending_payment">Pending Payment</option>
-              <option value="payment_submitted">Payment Submitted</option>
-              <option value="paid">Paid</option>
-              <option value="overdue">Overdue</option>
-              <option value="cancelled">Cancelled</option>
-            </FilterSelect>
+            <PeriodFilterGroup>
+              <DateButton
+                active={activePeriod === 'week' && !isCustomDateRange}
+                onClick={() => handlePeriodChange('week')}
+              >
+                Week
+              </DateButton>
+              <DateButton
+                active={activePeriod === 'month' && !isCustomDateRange}
+                onClick={() => handlePeriodChange('month')}
+              >
+                Month
+              </DateButton>
+              <DateButton
+                active={activePeriod === 'year' && !isCustomDateRange}
+                onClick={() => handlePeriodChange('year')}
+              >
+                Year
+              </DateButton>
+              <DateButton
+                active={activePeriod === 'all' && !isCustomDateRange}
+                onClick={() => handlePeriodChange('all')}
+              >
+                All
+              </DateButton>
 
-            <FilterSelect value={filterType} onChange={(e) => setFilterType(e.target.value)}>
-              <option value="all">All Types</option>
-              <option value="automatic">Automatic</option>
-              <option value="manual">Manual</option>
-            </FilterSelect>
-
-            <FilterSelect value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}>
-              <option value="all">All Months</option>
-              {availableMonths.map(month => {
-                const [year, monthNum] = month.split('-');
-                const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-                                   'July', 'August', 'September', 'October', 'November', 'December'];
-                const monthName = monthNames[parseInt(monthNum) - 1];
-                return (
-                  <option key={month} value={month}>
-                    {monthName} {year}
-                  </option>
-                );
-              })}
-            </FilterSelect>
+              <DateInput
+                type="date"
+                value={dateRange.start}
+                onChange={(e) => handleDateRangeChange('start', e.target.value)}
+              />
+              <DateInput
+                type="date"
+                value={dateRange.end}
+                onChange={(e) => handleDateRangeChange('end', e.target.value)}
+              />
+            </PeriodFilterGroup>
           </FiltersLeft>
           <FiltersRight>
             <Button variant="primary" onClick={handleCreateInvoice}>Create Invoice</Button>
@@ -2812,29 +2924,6 @@ const BrandInvoicesPage: React.FC = () => {
 
         {activeTab === 'to_pay' && (
           <>
-            <StatsGrid>
-              <StatCard color="#D97706">
-                <StatValue>{invoicesToPay.filter(i => i.status === 'pending_payment' || i.status === 'overdue').length}</StatValue>
-                <StatLabel>To Pay</StatLabel>
-                <StatDescription>Pending payment</StatDescription>
-              </StatCard>
-              <StatCard color="#2563EB">
-                <StatValue>{invoicesToPay.filter(i => i.status === 'payment_submitted').length}</StatValue>
-                <StatLabel>Submitted</StatLabel>
-                <StatDescription>Awaiting confirmation</StatDescription>
-              </StatCard>
-              <StatCard color="#059669">
-                <StatValue>{invoicesToPay.filter(i => i.status === 'paid').length}</StatValue>
-                <StatLabel>Paid</StatLabel>
-                <StatDescription>Payment confirmed</StatDescription>
-              </StatCard>
-              <StatCard color="#DC2626">
-                <StatValue>{formatCurrency(invoicesToPay.filter(i => i.status !== 'paid' && i.status !== 'cancelled').reduce((sum, i) => sum + i.total, 0))}</StatValue>
-                <StatLabel>Outstanding</StatLabel>
-                <StatDescription>Total unpaid amount</StatDescription>
-              </StatCard>
-            </StatsGrid>
-
             <Table>
               <InvoiceTableHeader columns="1.6fr 1.3fr 1.2fr 0.9fr 0.9fr 0.7fr 0.8fr 0.8fr minmax(180px, 220px)">
                 <span className="col-invoice">Invoice</span>
@@ -2965,7 +3054,7 @@ const BrandInvoicesPage: React.FC = () => {
                 setCategoryFormData({ name: '', code: '', description: '' });
                 setShowCategoryModal(true);
               }}>
-                + Add Category
+                Add Category
               </Button>
             </HeaderRow>
 
@@ -2977,7 +3066,7 @@ const BrandInvoicesPage: React.FC = () => {
                   setEditingCategory(null);
                   setCategoryFormData({ name: '', code: '', description: '' });
                   setShowCategoryModal(true);
-                }}>+ Add Category</Button>
+                }}>Add Category</Button>
               </CategoryEmptyState>
             ) : (
               <CategoryGrid>

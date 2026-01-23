@@ -1403,7 +1403,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
           onClick={() => handleOpenModal(null)}
           style={{ whiteSpace: 'nowrap' }}
         >
-          + New Recipe
+          New Recipe
         </ThemedButton>
       </HeaderSection>
 
@@ -1424,7 +1424,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               variant="primary"
               onClick={() => handleOpenModal(null)}
             >
-              + Create First Recipe
+              Create First Recipe
             </ThemedButton>
           )}
         </EmptyState>
@@ -1873,7 +1873,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               </IngredientsList>
 
               <AddButton type="button" onClick={addIngredient}>
-                + Add Ingredient
+                Add Ingredient
               </AddButton>
 
               {recipeIngredients.length > 0 && (

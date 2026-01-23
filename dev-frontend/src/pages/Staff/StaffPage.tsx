@@ -625,7 +625,7 @@ const StaffPage: React.FC = () => {
               Export
             </Button>
             <Button variant="primary" onClick={handleAddStaff}>
-              + Add Staff
+              Add Staff
             </Button>
           </HeaderActions>
         </Header>

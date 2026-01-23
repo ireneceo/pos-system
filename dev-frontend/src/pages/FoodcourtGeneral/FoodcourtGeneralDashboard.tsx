@@ -650,7 +650,7 @@ const FoodcourtGeneralDashboard: React.FC = () => {
               <ManagersHeader>
                 <h3>Foodcourt Manager Team</h3>
                 <AddButton onClick={handleAddManager}>
-                  + Add Manager
+                  Add Manager
                 </AddButton>
               </ManagersHeader>
               {managers.length === 0 ? (

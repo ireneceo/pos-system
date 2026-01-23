@@ -1010,7 +1010,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
 
         {!viewMode && (
           <AddButton onClick={addIngredientRow}>
-            + Add Ingredient
+            Add Ingredient
           </AddButton>
         )}
 

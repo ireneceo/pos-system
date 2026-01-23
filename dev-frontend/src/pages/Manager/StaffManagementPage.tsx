@@ -859,7 +859,7 @@ const ManagerStaffManagementPage: React.FC = () => {
           <ActionSection>
             <Button variant="secondary" onClick={handleExportData}>Export Data</Button>
             <Button variant="primary" onClick={handleAddStaff}>
-              + Add Staff
+              Add Staff
             </Button>
           </ActionSection>
         </Header>

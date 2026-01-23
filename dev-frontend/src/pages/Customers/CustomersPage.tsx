@@ -572,7 +572,7 @@ const CustomersPage: React.FC = () => {
       <CustomersContainer>
         <PageHeader title="Customers">
           <Button onClick={handleAddCustomer} variant="primary">
-            + Add Customer
+            Add Customer
           </Button>
         </PageHeader>
 

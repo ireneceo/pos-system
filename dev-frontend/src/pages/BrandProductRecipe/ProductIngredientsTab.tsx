@@ -630,7 +630,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
           onClick={() => handleOpenModal()}
           style={{ whiteSpace: 'nowrap' }}
         >
-          + New Ingredient
+          New Ingredient
         </ThemedButton>
       </HeaderSection>
 
@@ -647,7 +647,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
               variant="primary"
               onClick={() => handleOpenModal()}
             >
-              + Create First Ingredient
+              Create First Ingredient
             </ThemedButton>
           )}
         </EmptyState>

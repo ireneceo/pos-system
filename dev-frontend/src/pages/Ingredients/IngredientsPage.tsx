@@ -385,7 +385,7 @@ const IngredientsPage: React.FC = () => {
               variant="primary"
               onClick={() => handleOpenModal(null)}
             >
-              + New Ingredient
+              New Ingredient
             </ThemedButton>
           </ActionSection>
         </Header>
@@ -456,7 +456,7 @@ const IngredientsPage: React.FC = () => {
                   variant="primary"
                   onClick={() => handleOpenModal(null)}
                 >
-                  + Create First Ingredient
+                  Create First Ingredient
                 </ThemedButton>
               )}
             </EmptyState>
