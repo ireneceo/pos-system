@@ -3741,8 +3741,9 @@ const SettingsPage: React.FC = () => {
                 </div>
               </SettingsCard>
 
+              {printerMode === 'rawbt' && (
               <SettingsGrid>
-                {/* Bill Printer Card */}
+                {/* Bill Printer Card - Only for RawBT mode */}
                 <SettingsCard>
                   <CardTitle>Bill Printer</CardTitle>
                   <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
@@ -3858,6 +3859,7 @@ const SettingsPage: React.FC = () => {
                   )}
                 </SettingsCard>
               </SettingsGrid>
+              )}
 
               <SaveButtonContainer style={{ marginTop: '24px' }}>
                 <SaveButton
