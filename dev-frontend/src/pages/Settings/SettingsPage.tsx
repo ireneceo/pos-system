@@ -972,23 +972,67 @@ const SettingsPage: React.FC = () => {
     }
   }, [activeTab, user?.restaurantId]);
 
-  // Load printer settings from localStorage
+  // Load printer settings from DB
   useEffect(() => {
-    const savedPrinterSettings = localStorage.getItem('printerSettings');
-    if (savedPrinterSettings) {
+    const loadPrinterSettings = async () => {
+      if (!user?.restaurantId) return;
+
       try {
-        const parsed = JSON.parse(savedPrinterSettings);
-        setPrinterSettings(prev => ({
-          billPrinter: { ...prev.billPrinter, ...parsed.billPrinter },
-          kitchenPrinter: { ...prev.kitchenPrinter, ...parsed.kitchenPrinter }
-        }));
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch(`/api/restaurants/${user.restaurantId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const restaurant = await response.json();
+          if (restaurant.printer_settings) {
+            const dbSettings = restaurant.printer_settings;
+            setPrinterModeState(dbSettings.printerMode || 'rawbt');
+            setPrinterMode(dbSettings.printerMode || 'rawbt');
+            setPrinterSettings({
+              billPrinter: {
+                enabled: dbSettings.billPrinter?.enabled ?? true,
+                name: dbSettings.billPrinter?.name || '',
+                autoPrint: dbSettings.billPrinter?.autoPrint ?? false
+              },
+              kitchenPrinter: {
+                enabled: dbSettings.kitchenPrinter?.enabled ?? true,
+                name: dbSettings.kitchenPrinter?.name || '',
+                autoPrint: dbSettings.kitchenPrinter?.autoPrint ?? true
+              }
+            });
+            // Also sync to localStorage for billPrint.js
+            localStorage.setItem('printerMode', dbSettings.printerMode || 'rawbt');
+            localStorage.setItem('printerSettings', JSON.stringify({
+              billPrinter: dbSettings.billPrinter || { enabled: true, name: '', autoPrint: false },
+              kitchenPrinter: dbSettings.kitchenPrinter || { enabled: true, name: '', autoPrint: true }
+            }));
+          }
+        }
       } catch (e) {
-        console.error('Failed to parse printer settings:', e);
+        console.error('Failed to load printer settings from DB:', e);
+        // Fallback to localStorage
+        const savedPrinterSettings = localStorage.getItem('printerSettings');
+        if (savedPrinterSettings) {
+          try {
+            const parsed = JSON.parse(savedPrinterSettings);
+            setPrinterSettings(prev => ({
+              billPrinter: { ...prev.billPrinter, ...parsed.billPrinter },
+              kitchenPrinter: { ...prev.kitchenPrinter, ...parsed.kitchenPrinter }
+            }));
+          } catch (err) {
+            console.error('Failed to parse printer settings:', err);
+          }
+        }
+        setPrinterModeState(getPrinterMode());
       }
-    }
-    // Load printer mode
-    setPrinterModeState(getPrinterMode());
-  }, []);
+    };
+
+    loadPrinterSettings();
+  }, [user?.restaurantId]);
 
   // Load membership settings
   useEffect(() => {
@@ -3863,9 +3907,44 @@ const SettingsPage: React.FC = () => {
 
               <SaveButtonContainer style={{ marginTop: '24px' }}>
                 <SaveButton
-                  onClick={() => {
-                    localStorage.setItem('printerSettings', JSON.stringify(printerSettings));
-                    setSaveStatus({ type: 'success', message: 'Printer settings saved!' });
+                  onClick={async () => {
+                    if (!user?.restaurantId) {
+                      setSaveStatus({ type: 'error', message: 'No restaurant ID found' });
+                      setTimeout(() => setSaveStatus(null), 3000);
+                      return;
+                    }
+
+                    try {
+                      const token = localStorage.getItem('auth_token');
+                      const settingsToSave = {
+                        printerMode: printerMode,
+                        billPrinter: printerSettings.billPrinter,
+                        kitchenPrinter: printerSettings.kitchenPrinter
+                      };
+
+                      const response = await fetch(`/api/restaurants/${user.restaurantId}`, {
+                        method: 'PUT',
+                        headers: {
+                          'Authorization': `Bearer ${token}`,
+                          'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                          printer_settings: settingsToSave
+                        })
+                      });
+
+                      if (response.ok) {
+                        // Also sync to localStorage for billPrint.js
+                        localStorage.setItem('printerMode', printerMode);
+                        localStorage.setItem('printerSettings', JSON.stringify(printerSettings));
+                        setSaveStatus({ type: 'success', message: 'Printer settings saved!' });
+                      } else {
+                        setSaveStatus({ type: 'error', message: 'Failed to save settings' });
+                      }
+                    } catch (error) {
+                      console.error('Failed to save printer settings:', error);
+                      setSaveStatus({ type: 'error', message: 'Failed to save settings' });
+                    }
                     setTimeout(() => setSaveStatus(null), 3000);
                   }}
                 >

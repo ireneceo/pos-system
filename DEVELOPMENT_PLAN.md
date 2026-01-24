@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-01-23
+> **최종 업데이트:** 2026-01-24
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -16,6 +16,40 @@
 | PayPal Integration | PayPal 결제 연동 | 대기 |
 | Auto Payment System | 자동 결제 시스템 | 대기 |
 | Kitchen Display 개선 | Pending 컬럼 아이템별 Done 버튼 | 대기 |
+| Restaurant Invoice 페이지 개선 | 탭 UI로 변경, issuer 정보 표시 | 대기 |
+
+---
+
+## ✅ 완료: Printer Settings DB 저장 (2026-01-24)
+
+### 완료된 기능
+
+| 기능 | 설명 | 상태 |
+|------|------|:----:|
+| printer_settings DB 컬럼 추가 | restaurants 테이블에 프린터 설정 저장 | ✅ 완료 |
+| Backend API 수정 | PUT /api/restaurants/:id에서 printer_settings 저장 | ✅ 완료 |
+| Frontend Settings 연동 | DB에서 로드, DB에 저장 + localStorage 동기화 | ✅ 완료 |
+
+### 핵심 구현 사항
+
+1. **printer_settings 컬럼 추가**
+   - `printerMode`: 'rawbt' | 'browser'
+   - `billPrinter`: { enabled, name, autoPrint }
+   - `kitchenPrinter`: { enabled, name, autoPrint }
+
+2. **Settings 페이지 수정**
+   - 페이지 로드 시 DB에서 printer_settings 조회
+   - 저장 시 DB에 저장 + localStorage 동기화 (billPrint.js 호환)
+   - 어떤 기기/브라우저에서 접속해도 동일한 설정 사용
+
+### 관련 파일
+
+**Backend:**
+- `models/Restaurant.js` - printer_settings 컬럼 추가
+- `routes/restaurants.js` - PUT API에서 printer_settings 처리
+
+**Frontend:**
+- `pages/Settings/SettingsPage.tsx` - DB 로드/저장 로직
 
 ---
 

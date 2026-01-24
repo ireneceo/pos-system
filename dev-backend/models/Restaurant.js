@@ -415,6 +415,44 @@ Restaurant.init({
       this.setDataValue('table_settings', value ? JSON.stringify(value) : null);
     }
   },
+  printer_settings: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'JSON settings for printers (bill printer, kitchen printer, printer mode)',
+    get() {
+      const rawValue = this.getDataValue('printer_settings');
+      const defaultSettings = {
+        printerMode: 'rawbt',
+        billPrinter: {
+          enabled: true,
+          name: '',
+          autoPrint: false
+        },
+        kitchenPrinter: {
+          enabled: true,
+          name: '',
+          autoPrint: true
+        }
+      };
+      if (!rawValue) {
+        return defaultSettings;
+      }
+      try {
+        const parsed = JSON.parse(rawValue);
+        return {
+          ...defaultSettings,
+          ...parsed,
+          billPrinter: { ...defaultSettings.billPrinter, ...(parsed.billPrinter || {}) },
+          kitchenPrinter: { ...defaultSettings.kitchenPrinter, ...(parsed.kitchenPrinter || {}) }
+        };
+      } catch (e) {
+        return defaultSettings;
+      }
+    },
+    set(value) {
+      this.setDataValue('printer_settings', value ? JSON.stringify(value) : null);
+    }
+  },
   currency: {
     type: DataTypes.STRING(10),
     defaultValue: 'RM',
