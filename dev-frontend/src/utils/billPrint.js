@@ -91,17 +91,16 @@ function formatLine(left, right, width = 48) {
 // ============================================
 
 /**
- * Check if device is mobile or tablet (for RawBT)
- * PC/Desktop will use browser print dialog
+ * Check if device should use RawBT
+ * - 터치 기기 (태블릿, 모바일) → RawBT 사용
+ * - PC (마우스만) → 브라우저 프린트
  */
 function isMobileOrTablet() {
-  const userAgent = navigator.userAgent.toLowerCase();
-  const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
-  const isTablet = /ipad|android(?!.*mobile)|tablet/i.test(userAgent);
+  // 터치 지원 여부로 판단 (가장 확실한 방법)
   const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-  const isSmallScreen = window.innerWidth <= 1024;
 
-  return isMobile || isTablet || (isTouchDevice && isSmallScreen);
+  // 터치 기기면 RawBT 사용
+  return isTouchDevice;
 }
 
 // Currency symbol mapping
