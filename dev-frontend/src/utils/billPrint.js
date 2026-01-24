@@ -84,52 +84,32 @@ function formatLine(left, right, width = 48) {
   return left + ' '.repeat(Math.max(spaces, 1)) + right;
 }
 
-// centerText function removed - not used in current implementation
-
 // ============================================
 // Device Detection
 // ============================================
 
 /**
- * Check if device should use RawBT
- * localStorage의 printerMode 설정 사용, 없으면 자동 감지
+ * Check if browser print mode is selected
  */
-function isMobileOrTablet() {
-  // 사용자가 명시적으로 설정한 경우 그 값 사용
-  const printerMode = localStorage.getItem('printerMode');
-  if (printerMode === 'rawbt') {
-    return true;
-  }
-  if (printerMode === 'browser') {
-    return false;
-  }
-
-  // 자동 감지 (기본값): Windows/Mac은 브라우저, 나머지는 RawBT
-  const userAgent = navigator.userAgent.toLowerCase();
-  const isWindows = /windows/i.test(userAgent);
-  const isMac = /macintosh|mac os x/i.test(userAgent);
-
-  return !isWindows && !isMac;
+function shouldUseBrowserPrint() {
+  return localStorage.getItem('printerMode') === 'browser';
 }
 
 /**
  * Set printer mode
- * @param {'rawbt' | 'browser' | 'auto'} mode
+ * @param {'rawbt' | 'browser'} mode
  */
 export function setPrinterMode(mode) {
-  if (mode === 'auto') {
-    localStorage.removeItem('printerMode');
-  } else {
-    localStorage.setItem('printerMode', mode);
-  }
+  localStorage.setItem('printerMode', mode);
 }
 
 /**
  * Get current printer mode
- * @returns {'rawbt' | 'browser' | 'auto'}
+ * @returns {'rawbt' | 'browser'}
  */
 export function getPrinterMode() {
-  return localStorage.getItem('printerMode') || 'auto';
+  const mode = localStorage.getItem('printerMode');
+  return mode === 'browser' ? 'browser' : 'rawbt';
 }
 
 // Currency symbol mapping
@@ -799,15 +779,15 @@ export async function printBillViaRawBT(orderData, storeInfo, printerName) {
       return true; // Return success but skip printing
     }
 
-    // PC: Use browser print dialog with HTML
-    if (!isMobileOrTablet()) {
-      console.log('🖥️ PC detected - using browser print dialog');
+    // Browser print mode selected in Settings
+    if (shouldUseBrowserPrint()) {
+      console.log('🖥️ Browser print mode - using browser print dialog');
       const htmlContent = generateHTMLBill(orderData, storeInfo);
       return printHTMLContent(htmlContent, 'Bill');
     }
 
-    // Mobile/Tablet: Use RawBT Intent
-    console.log('📱 Mobile/Tablet detected - using RawBT');
+    // Default: Use RawBT (원래 동작)
+    console.log('📱 RawBT mode - using RawBT');
 
     // Use provided printerName or get from settings
     const targetPrinter = printerName || settings.billPrinter.name;
@@ -844,7 +824,7 @@ export async function printBillViaRawBT(orderData, storeInfo, printerName) {
 
   } catch (error) {
     console.error('❌ Print error:', error);
-    const isPC = !isMobileOrTablet();
+    const isPC = shouldUseBrowserPrint();
     alert(
       'Failed to print bill.\n\n' +
       (isPC
@@ -1063,7 +1043,7 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
     }
 
     // PC: Use browser print dialog with HTML
-    if (!isMobileOrTablet()) {
+    if (shouldUseBrowserPrint()) {
       console.log('🖥️ PC detected - using browser print dialog for kitchen ticket');
       const htmlContent = generateHTMLKitchenTicket(orderData, storeInfo);
       return printHTMLContent(htmlContent, 'Kitchen Ticket');
@@ -1099,7 +1079,7 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
 
   } catch (error) {
     console.error('❌ Kitchen Ticket print error:', error);
-    const isPC = !isMobileOrTablet();
+    const isPC = shouldUseBrowserPrint();
     alert(
       'Failed to print kitchen order ticket.\n\n' +
       (isPC
@@ -1236,7 +1216,7 @@ export async function printAdditionalItemsTicketViaRawBT(orderData, storeInfo, p
     }
 
     // PC: Use browser print dialog with HTML
-    if (!isMobileOrTablet()) {
+    if (shouldUseBrowserPrint()) {
       console.log('🖥️ PC detected - using browser print dialog for additional items ticket');
       const htmlContent = generateHTMLAdditionalItemsTicket(orderData, storeInfo);
       if (!htmlContent) {
@@ -1283,7 +1263,7 @@ export async function printAdditionalItemsTicketViaRawBT(orderData, storeInfo, p
 
   } catch (error) {
     console.error('Additional Items Ticket print error:', error);
-    const isPC = !isMobileOrTablet();
+    const isPC = shouldUseBrowserPrint();
     alert(
       'Failed to print additional items ticket.\n\n' +
       (isPC

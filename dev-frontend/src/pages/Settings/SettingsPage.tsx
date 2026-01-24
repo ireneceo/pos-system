@@ -582,8 +582,8 @@ const SettingsPage: React.FC = () => {
     }
   });
 
-  // Printer mode state (rawbt, browser, auto)
-  const [printerMode, setPrinterModeState] = useState<'rawbt' | 'browser' | 'auto'>('auto');
+  // Printer mode state (rawbt or browser)
+  const [printerMode, setPrinterModeState] = useState<'rawbt' | 'browser'>('rawbt');
 
   // Load settings from localStorage or use defaults
   const loadSettings = () => {
@@ -987,7 +987,7 @@ const SettingsPage: React.FC = () => {
       }
     }
     // Load printer mode
-    setPrinterModeState(getPrinterMode() as 'rawbt' | 'browser' | 'auto');
+    setPrinterModeState(getPrinterMode());
   }, []);
 
   // Load membership settings
@@ -3736,35 +3736,6 @@ const SettingsPage: React.FC = () => {
                     <div>
                       <div style={{ fontWeight: 500, color: '#1F2937' }}>Browser Print (PC)</div>
                       <div style={{ fontSize: '12px', color: '#6B7C93' }}>For Windows/Mac computers</div>
-                    </div>
-                  </label>
-
-                  <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '12px 16px',
-                    border: printerMode === 'auto' ? '2px solid #635BFF' : '1px solid #E2E8F0',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    background: printerMode === 'auto' ? '#F5F3FF' : '#fff',
-                    flex: '1',
-                    minWidth: '150px'
-                  }}>
-                    <input
-                      type="radio"
-                      name="printerMode"
-                      value="auto"
-                      checked={printerMode === 'auto'}
-                      onChange={() => {
-                        setPrinterModeState('auto');
-                        setPrinterMode('auto');
-                      }}
-                      style={{ accentColor: '#635BFF' }}
-                    />
-                    <div>
-                      <div style={{ fontWeight: 500, color: '#1F2937' }}>Auto Detect</div>
-                      <div style={{ fontSize: '12px', color: '#6B7C93' }}>Automatically detect device type</div>
                     </div>
                   </label>
                 </div>
