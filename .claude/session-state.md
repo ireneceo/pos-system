@@ -1,5 +1,5 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-01-23 14:30 UTC
+**마지막 업데이트:** 2026-01-23 23:26 KST
 **작업 상태:** 완료
 
 ### 진행 중인 작업
@@ -7,46 +7,42 @@
 
 ### 완료된 작업 (이번 세션)
 
-#### InvoicesPage 개선 및 버그 수정
+#### Invoice System UI/UX 개선 (2026-01-23)
 
-1. **Payment Settings 세율 적용**
-   - 백엔드 admin-payment-settings.js에 tax 필드 저장 추가
-   - 프론트엔드 InvoicesPage.tsx에서 하드코딩된 6% 세율 제거
-   - Payment Settings에서 설정한 세율이 인보이스 생성에 적용되도록 수정
+1. **Send Invoice 버튼 스타일 개선**
+   - LocalActionButton에 `success` variant 추가 (#10B981 녹색)
+   - Draft 상태에서 Send Invoice 버튼 녹색으로 변경
+   - Brand General: 아이콘만 표시 (텍스트 제거)
 
-2. **Due Date 기본 정렬 (최신순)**
-   - filteredInvoices 정렬 로직 수정
-   - 기본 정렬: Due Date 내림차순 (최신이 먼저)
+2. **Send Invoice 모달 개선**
+   - Confirm 버튼 녹색으로 변경 (variant="success")
+   - "Manager" → "Recipient"로 표기 변경
+   - 수신인 정보 올바르게 표시 (Unknown Manager 버그 수정)
 
-3. **테이블 헤더 클릭 정렬 기능**
-   - sortField, sortDirection state 추가
-   - 클릭 가능한 헤더: Invoice, Customer, Due, Status, Amount
-   - 정렬 방향 표시 (▲/▼)
+3. **인보이스 수정 제한 로직**
+   - 자동 인보이스(automatic 타입) Edit 버튼 숨김
+   - paid, payment_submitted, cancelled 상태 수정 불가
+   - Backend PUT API에서 검증 로직 추가
 
-4. **Payment Submitted 탭 추가**
-   - 결제 컨펌 대기 중인 인보이스 전용 탭
-   - 빨간색 뱃지로 대기 건수 표시
-   - 바로 Confirm Payment 버튼 사용 가능
+4. **인보이스 수신인 정보 수정**
+   - Backend: payer_type에 따라 올바른 payer 이름 조회
+   - brand_manager, foodcourt_manager 타입도 정확한 이름 표시
 
-5. **Invoice 카테고리/아이템 표시 버그 수정**
-   - InvoiceItem 조회 시 item_type 필드 포함
-   - items가 없는 인보이스도 fallback 아이템 생성
-   - categoryDisplayName에 custom description 또는 notes 사용
+5. **운영서버 배포**
+   - category_display_name 컬럼 운영 DB에 추가
+   - 모든 변경사항 운영서버에 배포 완료
 
 ### 수정된 파일
 
 **Backend:**
-- `routes/admin-payment-settings.js` - tax 필드 저장/조회 추가
-- `routes/invoices.js` - item_type 포함, fallback items, categoryDisplayName 개선
+- `routes/invoices.js` - payer 이름 조회 로직 수정, 수정 제한 검증
+- `models/Invoice.js` - category_display_name 필드 추가
 
 **Frontend:**
-- `pages/Admin/InvoicesPage.tsx`
-  - taxSettings state 및 fetchPaymentSettings 함수 추가
-  - sortField, sortDirection state 및 handleSort 함수 추가
-  - Payment Submitted 탭 UI 추가
-  - 테이블 헤더 클릭 정렬 UI 추가
+- `pages/Admin/InvoicesPage.tsx` - Send Invoice 버튼/모달 스타일, Edit 제한
+- `pages/BrandGeneral/BrandInvoicesPage.tsx` - Send Invoice 버튼/모달 스타일, Edit 제한
 
 ### 다음 할 일
-- Foodcourt Payment Settings도 동일하게 시스템 통화 제한 적용
-- Stripe/PayPal Integration (결제 연동)
+- Payment System Integration (Stripe, PayPal)
+- Auto Payment System
 - Kitchen Display 개선 (Pending 컬럼 아이템별 Done 버튼)
