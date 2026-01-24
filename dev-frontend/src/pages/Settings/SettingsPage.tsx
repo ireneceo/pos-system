@@ -12,7 +12,7 @@ import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import PhoneInput from '../../components/Common/PhoneInput';
 import PageHeader from '../../components/Common/PageHeader';
 import { useTabParam } from '../../hooks/useTabParam';
-import { printTableQR } from '../../utils/billPrint';
+import { printTableQR, getPrinterMode, setPrinterMode } from '../../utils/billPrint';
 import { getCurrencySymbol } from '../../utils/currency';
 
 // 스타일 컴포넌트
@@ -582,6 +582,9 @@ const SettingsPage: React.FC = () => {
     }
   });
 
+  // Printer mode state (rawbt, browser, auto)
+  const [printerMode, setPrinterModeState] = useState<'rawbt' | 'browser' | 'auto'>('auto');
+
   // Load settings from localStorage or use defaults
   const loadSettings = () => {
     const savedSettings = localStorage.getItem('storeSettings');
@@ -983,6 +986,8 @@ const SettingsPage: React.FC = () => {
         console.error('Failed to parse printer settings:', e);
       }
     }
+    // Load printer mode
+    setPrinterModeState(getPrinterMode() as 'rawbt' | 'browser' | 'auto');
   }, []);
 
   // Load membership settings
@@ -3668,6 +3673,103 @@ const SettingsPage: React.FC = () => {
 
           {activeTab === 'printer' && (
             <>
+              {/* Printer Mode Card - Full Width */}
+              <SettingsCard style={{ marginBottom: '24px' }}>
+                <CardTitle>Printer Mode</CardTitle>
+                <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
+                  Select how to connect to your thermal printer
+                </p>
+
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '12px 16px',
+                    border: printerMode === 'rawbt' ? '2px solid #635BFF' : '1px solid #E2E8F0',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    background: printerMode === 'rawbt' ? '#F5F3FF' : '#fff',
+                    flex: '1',
+                    minWidth: '150px'
+                  }}>
+                    <input
+                      type="radio"
+                      name="printerMode"
+                      value="rawbt"
+                      checked={printerMode === 'rawbt'}
+                      onChange={() => {
+                        setPrinterModeState('rawbt');
+                        setPrinterMode('rawbt');
+                      }}
+                      style={{ accentColor: '#635BFF' }}
+                    />
+                    <div>
+                      <div style={{ fontWeight: 500, color: '#1F2937' }}>RawBT (Android)</div>
+                      <div style={{ fontSize: '12px', color: '#6B7C93' }}>For Android tablets with RawBT app</div>
+                    </div>
+                  </label>
+
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '12px 16px',
+                    border: printerMode === 'browser' ? '2px solid #635BFF' : '1px solid #E2E8F0',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    background: printerMode === 'browser' ? '#F5F3FF' : '#fff',
+                    flex: '1',
+                    minWidth: '150px'
+                  }}>
+                    <input
+                      type="radio"
+                      name="printerMode"
+                      value="browser"
+                      checked={printerMode === 'browser'}
+                      onChange={() => {
+                        setPrinterModeState('browser');
+                        setPrinterMode('browser');
+                      }}
+                      style={{ accentColor: '#635BFF' }}
+                    />
+                    <div>
+                      <div style={{ fontWeight: 500, color: '#1F2937' }}>Browser Print (PC)</div>
+                      <div style={{ fontSize: '12px', color: '#6B7C93' }}>For Windows/Mac computers</div>
+                    </div>
+                  </label>
+
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '12px 16px',
+                    border: printerMode === 'auto' ? '2px solid #635BFF' : '1px solid #E2E8F0',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    background: printerMode === 'auto' ? '#F5F3FF' : '#fff',
+                    flex: '1',
+                    minWidth: '150px'
+                  }}>
+                    <input
+                      type="radio"
+                      name="printerMode"
+                      value="auto"
+                      checked={printerMode === 'auto'}
+                      onChange={() => {
+                        setPrinterModeState('auto');
+                        setPrinterMode('auto');
+                      }}
+                      style={{ accentColor: '#635BFF' }}
+                    />
+                    <div>
+                      <div style={{ fontWeight: 500, color: '#1F2937' }}>Auto Detect</div>
+                      <div style={{ fontSize: '12px', color: '#6B7C93' }}>Automatically detect device type</div>
+                    </div>
+                  </label>
+                </div>
+              </SettingsCard>
+
               <SettingsGrid>
                 {/* Bill Printer Card */}
                 <SettingsCard>

@@ -157,7 +157,22 @@ echo -e "${GREEN}   ✅ Backend code synced${NC}"
 
 # .env 복원 (타임스탬프 기반 파일에서)
 mv $ENV_BACKUP_FILE $PROD_BACKEND/.env
-echo -e "${GREEN}   ✅ .env restored${NC}"
+chmod 600 $PROD_BACKEND/.env
+
+# .env 복원 검증
+if grep -q "^DB_HOST=" $PROD_BACKEND/.env && grep -q "^DB_NAME=" $PROD_BACKEND/.env; then
+    echo -e "${GREEN}   ✅ .env restored and verified${NC}"
+else
+    echo -e "${RED}   ❌ .env 복원 실패! 백업에서 복구합니다...${NC}"
+    cp "${BACKUP_DIR}/production-backend.backup/.env" $PROD_BACKEND/.env
+    chmod 600 $PROD_BACKEND/.env
+    if grep -q "^DB_HOST=" $PROD_BACKEND/.env; then
+        echo -e "${GREEN}   ✅ .env 백업에서 복구 완료${NC}"
+    else
+        echo -e "${RED}   ❌ .env 복구 실패! 배포를 중단합니다.${NC}"
+        exit 1
+    fi
+fi
 
 # ==============================================
 # Step 5.5: Check for Duplicate Routes
@@ -391,12 +406,13 @@ echo ""
 echo -e "${YELLOW}Step 11: Restart Backend Server${NC}"
 
 # sudo로 실행된 경우 원래 사용자의 PM2로 실행
+# --update-env: .env 파일 변경사항 반영
 if [ "$SUDO_USER" != "" ]; then
     # sudo로 실행됨 - 원래 사용자(irene)의 PM2 사용
-    su - $SUDO_USER -c "pm2 restart production-backend && pm2 save"
+    su - $SUDO_USER -c "pm2 restart production-backend --update-env && pm2 save"
 else
     # 일반 사용자로 실행됨
-    pm2 restart production-backend && pm2 save
+    pm2 restart production-backend --update-env && pm2 save
 fi
 sleep 3
 echo -e "${GREEN}   ✅ Backend server restarted${NC}"

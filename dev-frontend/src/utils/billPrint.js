@@ -92,15 +92,44 @@ function formatLine(left, right, width = 48) {
 
 /**
  * Check if device should use RawBT
- * - 터치 기기 (태블릿, 모바일) → RawBT 사용
- * - PC (마우스만) → 브라우저 프린트
+ * localStorage의 printerMode 설정 사용, 없으면 자동 감지
  */
 function isMobileOrTablet() {
-  // 터치 지원 여부로 판단 (가장 확실한 방법)
-  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  // 사용자가 명시적으로 설정한 경우 그 값 사용
+  const printerMode = localStorage.getItem('printerMode');
+  if (printerMode === 'rawbt') {
+    return true;
+  }
+  if (printerMode === 'browser') {
+    return false;
+  }
 
-  // 터치 기기면 RawBT 사용
-  return isTouchDevice;
+  // 자동 감지 (기본값): Windows/Mac은 브라우저, 나머지는 RawBT
+  const userAgent = navigator.userAgent.toLowerCase();
+  const isWindows = /windows/i.test(userAgent);
+  const isMac = /macintosh|mac os x/i.test(userAgent);
+
+  return !isWindows && !isMac;
+}
+
+/**
+ * Set printer mode
+ * @param {'rawbt' | 'browser' | 'auto'} mode
+ */
+export function setPrinterMode(mode) {
+  if (mode === 'auto') {
+    localStorage.removeItem('printerMode');
+  } else {
+    localStorage.setItem('printerMode', mode);
+  }
+}
+
+/**
+ * Get current printer mode
+ * @returns {'rawbt' | 'browser' | 'auto'}
+ */
+export function getPrinterMode() {
+  return localStorage.getItem('printerMode') || 'auto';
 }
 
 // Currency symbol mapping
