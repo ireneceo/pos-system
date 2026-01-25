@@ -16,7 +16,47 @@
 | PayPal Integration | PayPal 결제 연동 | 대기 |
 | Auto Payment System | 자동 결제 시스템 | 대기 |
 | Kitchen Display 개선 | Pending 컬럼 아이템별 Done 버튼 | 대기 |
-| Restaurant Invoice 페이지 개선 | 탭 UI로 변경, issuer 정보 표시 | 대기 |
+
+---
+
+## ✅ 완료: Restaurant Admin Invoice 페이지 개선 (2026-01-25)
+
+### 완료된 기능
+
+| 기능 | 설명 | 상태 |
+|------|------|:----:|
+| Restaurant Invoice 페이지 생성 | Brand General의 To Pay 탭 기반으로 신규 생성 | ✅ 완료 |
+| 탭 UI 구현 | All Invoices / Invoices to Pay 탭 | ✅ 완료 |
+| Issuer 정보 표시 | 인보이스 발행자 정보 (issuerInfo) 표시 | ✅ 완료 |
+| 결제 제출 기능 | Payment Submit 모달 및 API 연동 | ✅ 완료 |
+| Company Info API 추가 | /api/restaurants/:id/company-info 엔드포인트 추가 | ✅ 완료 |
+| Restaurant Admin 권한 수정 | to-pay, payment permission 버그 수정 | ✅ 완료 |
+
+### 핵심 구현 사항
+
+1. **Restaurant Invoice 페이지 (InvoicesPage.tsx)**
+   - All Invoices: 모든 인보이스 표시 (draft 포함)
+   - Invoices to Pay: 결제 대기 인보이스 (draft 제외)
+   - View, Pay, PDF Download, Print 기능
+   - Issuer 정보 및 Payer 정보 표시
+
+2. **Backend API 수정**
+   - `/api/invoices/to-pay`: Restaurant Admin용 restaurant_id 조건 수정
+   - `checkPaymentPermission()`: Restaurant Admin 권한 체크 수정
+   - `/api/restaurants/:id/company-info`: 신규 엔드포인트
+
+3. **버그 수정**
+   - Restaurant Admin이 to-pay 인보이스 조회 불가 → restaurant_id로 수정
+   - All Invoices 탭 데이터 미표시 → user.restaurant_id fallback 추가
+
+### 관련 파일
+
+**Backend:**
+- `routes/invoices.js` - to-pay API, payment permission 수정
+- `routes/restaurants.js` - company-info API 추가
+
+**Frontend:**
+- `pages/Restaurant/InvoicesPage.tsx` - 신규 페이지 생성
 
 ---
 

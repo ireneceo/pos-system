@@ -654,9 +654,11 @@ const RestaurantInvoicesPage: React.FC = () => {
   const fetchAllInvoices = async () => {
     try {
       const token = localStorage.getItem('auth_token');
-      if (!token || !restaurantId) return;
+      // Use restaurantId from StoreContext, or fall back to user's restaurant_id for Restaurant Admin
+      const targetRestaurantId = restaurantId || user?.restaurant_id;
+      if (!token || !targetRestaurantId) return;
 
-      const response = await fetch(`/api/invoices/restaurant/${restaurantId}`, {
+      const response = await fetch(`/api/invoices/restaurant/${targetRestaurantId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -855,7 +857,7 @@ const RestaurantInvoicesPage: React.FC = () => {
     fetchInvoicesToPay();
     fetchCompanySettings();
     fetchCurrencyConfig();
-  }, [restaurantId]);
+  }, [restaurantId, user?.restaurant_id]);
 
   // Helper functions
   const formatDate = (dateStr: string) => {
