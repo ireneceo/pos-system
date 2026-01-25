@@ -1,84 +1,66 @@
 # 운영서버 배포 가이드
 
-## 🚀 빠른 사용법
+## 빠른 사용법
 
 ### 운영 서버로 배포
 ```bash
-# 방법 1: 명령어로 실행
-/var/www/deploy-production.sh
-
-# 방법 2: alias 사용 (bashrc 재로드 후)
-운영서버배포
-# 또는
-deploy-prod
+# 반드시 sudo로 실행 (nginx reload 권한 필요)
+echo '7u7LnxNr' | sudo -S /var/www/deploy-production.sh
 ```
 
 ### 롤백 (이전 버전으로 복구)
 ```bash
-# 방법 1: 명령어로 실행
-/var/www/rollback-production.sh [타임스탬프]
-
-# 방법 2: alias 사용
-운영서버롤백 20251112_143000
-# 또는
-rollback-prod 20251112_143000
+sudo /var/www/rollback-production.sh [타임스탬프]
 ```
 
 ---
 
-## 📋 배포 프로세스 상세
-
-### 자동으로 수행되는 작업들:
+## 배포 프로세스 (deploy-production.sh)
 
 1. **Git Pull** - 최신 코드 가져오기
-2. **데이터베이스 백업** - 운영 DB 전체 백업 (압축)
-3. **백엔드 코드 백업** - production-backend 디렉토리 백업
-4. **프론트엔드 빌드 백업** - 현재 운영 중인 빌드 백업
-5. **백엔드 코드 동기화** - dev-backend → production-backend
-6. **백엔드 의존성 설치** - npm install --omit=dev
-7. **데이터베이스 스키마 동기화** - Sequelize alter 모드 실행
-8. **프론트엔드 빌드** - React 앱 새로 빌드
-9. **프론트엔드 배포** - 새 빌드를 운영 디렉토리로 복사
-10. **백엔드 재시작** - PM2로 production-backend 재시작
-11. **Nginx 재시작** - 캐시 클리어 및 리로드
+2. **.env 백업** - 운영 .env 파일 백업 (rsync 전에)
+3. **DB 백업** - 운영 DB 전체 백업 (압축)
+4. **백엔드 코드 동기화** - rsync로 dev → production (.env 제외)
+5. **백엔드 의존성 설치** - npm install --omit=dev
+6. **DB 스키마 동기화** - Sequelize sync (alter: false)
+7. **프론트엔드 빌드** - React 앱 빌드
+8. **프론트엔드 배포** - build 폴더 복사
+9. **PM2 재시작** - production-backend 재시작
+10. **Nginx 리로드** - 캐시 클리어 및 리로드
+11. **Health Check** - API 상태 확인
 
 ---
 
-## 🗂️ 백업 구조
+## 중요 사항
 
-모든 백업은 \`/var/www/backups/[타임스탬프]/\` 디렉토리에 저장됩니다
+### .env 파일 보호
+- 배포 스크립트가 rsync 전에 .env를 백업
+- rsync는 --exclude='.env'로 덮어쓰기 방지
+- 손상 시 백업에서 자동 복원
 
----
+### DB 스키마 동기화
+- `sync-database.js`는 `alter: false`로 실행
+- 기존 데이터와 설정값 유지
+- 새 컬럼 추가 시 수동으로 ALTER TABLE 필요
 
-## ⚠️ 중요 사항
-
-### DB 스키마 변경시
-
-- **Sequelize의 \`alter: true\` 모드를 사용합니다**
-- 기존 데이터를 유지하면서 테이블 구조를 자동으로 업데이트합니다
-- 새 컬럼 추가, 컬럼 타입 변경 등이 자동으로 적용됩니다
-
-### 백업 정책
-
-- **DB 백업**: 매 배포마다 자동 생성
-- **코드 백업**: 매 배포마다 자동 생성
-- **보관 기간**: 수동 관리 (필요시 오래된 백업 삭제)
+### 백업 위치
+- `/var/www/backups/[타임스탬프]/`
+  - `.env.backup` - .env 파일
+  - `db_backup_[타임스탬프].sql.gz` - DB 덤프
 
 ---
 
-## 🔍 배포 후 확인 사항
+## 배포 후 확인
 
-1. ✓ https://purplehere.com 접속 확인
-2. ✓ 브라우저에서 Ctrl+Shift+R (강력 새로고침)
-3. ✓ POS Terminal 기능 테스트
-4. ✓ Takeaway Charge 표시 확인
-5. ✓ 영수증 출력 테스트
+1. https://purplehere.com 접속 확인
+2. PM2 상태 확인: `pm2 list | grep production`
+3. API 테스트: `curl http://localhost:3002/api/health`
+4. 로그 확인: `pm2 logs production-backend --lines 20`
 
 ---
 
-## 📁 관련 파일
+## 관련 파일
 
-- /var/www/deploy-production.sh - 메인 배포 스크립트
-- /var/www/rollback-production.sh - 롤백 스크립트
-- /var/www/production-backend/sync-database.js - DB 스키마 동기화
-
+- `/var/www/deploy-production.sh` - 배포 스크립트
+- `/var/www/rollback-production.sh` - 롤백 스크립트
+- `/var/www/.claude/commands/배포.md` - Claude 배포 명령어 상세
