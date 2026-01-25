@@ -985,12 +985,12 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
     }
     // Restaurant Admin sees invoices for their restaurant
     else if (req.user.role === 'Restaurant Admin') {
-      const restaurant = await Restaurant.findOne({ where: { manager_id: req.user.id } });
-      if (!restaurant) {
+      const userRestaurantId = req.user.restaurantId || req.user.restaurant_id;
+      if (!userRestaurantId) {
         return res.json([]);
       }
       whereClause = {
-        restaurant_id: restaurant.id
+        restaurant_id: userRestaurantId
       };
     }
     else {
@@ -2189,8 +2189,8 @@ async function checkPaymentPermission(user, invoice) {
 
   // Restaurant Admin can pay invoices for their restaurant
   if (user.role === 'Restaurant Admin') {
-    const restaurant = await Restaurant.findOne({ where: { manager_id: user.id } });
-    return restaurant && invoice.restaurant_id === restaurant.id;
+    const userRestaurantId = user.restaurantId || user.restaurant_id;
+    return userRestaurantId && invoice.restaurant_id === userRestaurantId;
   }
 
   // Brand General/Manager can pay invoices where they are the payer

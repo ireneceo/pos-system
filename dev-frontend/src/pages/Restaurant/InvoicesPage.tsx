@@ -1,888 +1,1214 @@
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
+import { useSearchParams } from 'react-router-dom';
 import MainLayout from '../../components/Layout/MainLayout';
-import { FilterBar, FilterSelect } from '../../components/Common/FilterComponents';
-import { useAuth } from '../../contexts/AuthContext';
-import Modal, { ModalButton, FormGroup, FormLabel, FormInput } from '../../components/UI/Modal';
 import { formatCurrency } from '../../utils/currency';
+import { useStore } from '../../contexts/StoreContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { BaseButton, StatusBadge as CommonStatusBadge } from '../../components/UI/CommonStyles';
+import {
+  Container,
+  Header,
+  Title,
+  Content,
+  StatsGrid,
+  StatCard,
+  StatValue,
+  StatLabel,
+  StatDescription,
+  DataTableContainer,
+  DataTable,
+  DataTableHead,
+  DataTableHeaderCell,
+  DataTableRow,
+  DataTableCell,
+  DataTableEmpty,
+  DataTableAmount,
+  ActionButtons
+} from '../../components/UI';
+import { SearchInput } from '../../components/Common/FilterComponents';
+import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Common/TabComponents';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-const Container = styled.div`
-  min-height: 100vh;
+interface Invoice {
+  id: string;
+  invoiceNumber: string;
+  issueDate: string;
+  dueDate: string;
+  paidDate?: string;
+  status: 'draft' | 'pending_payment' | 'payment_submitted' | 'paid' | 'overdue' | 'cancelled' | '';
+  currency?: string;
+  amount: number;
+  tax: number;
+  total: number;
+  items: InvoiceItem[];
+  billingPeriod: string;
+  planType: string;
+  paymentMethod?: string;
+  transactionId?: string;
+  receiptUrl?: string;
+  hasPaymentInfo?: boolean;
+  type?: 'automatic' | 'manual';
+  payerType?: 'restaurant' | 'foodcourt_manager' | 'brand_manager';
+  payerId?: string;
+  invoiceCategory?: 'subscription' | 'service' | 'consulting' | 'others';
+  customDescription?: string;
+  serviceDescription?: string;
+  categoryDisplayName?: string;
+  issuerType?: 'system_admin' | 'brand' | 'foodcourt';
+  issuerName?: string;
+  issuerInfo?: {
+    name: string;
+    logoUrl?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    country?: string;
+    phone?: string;
+    email?: string;
+    website?: string;
+    taxId?: string;
+    businessRegistration?: string;
+    bankName?: string;
+    bankAccount?: string;
+    bankAccountName?: string;
+    swiftCode?: string;
+  };
+  payerInfo?: {
+    name: string;
+    logoUrl?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    country?: string;
+    phone?: string;
+    email?: string;
+    taxId?: string;
+    businessRegistration?: string;
+  };
+}
 
-  @media (max-width: 768px) {
-    padding: 0;
-  }
-`;
+interface InvoiceItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
 
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
-  margin-bottom: 0;
-  height: 56px;
+interface CurrencyConfig {
+  [code: string]: {
+    symbol: string;
+    name: string;
+    decimals: number;
+  };
+}
+
+interface PaymentMethod {
+  id: string;
+  name: string;
+  description: string;
+  bankName?: string;
+  accountNumber?: string;
+  accountName?: string;
+  qrImage?: string;
+  qrDescription?: string;
+}
+
+interface CompanySettings {
+  companyName: string;
+  address: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  phone: string;
+  email: string;
+  website: string;
+  taxNumber: string;
+  registrationNumber: string;
+  companyLogo?: string;
+  bankName?: string;
+  bankAccount?: string;
+  bankAccountName?: string;
+  swiftCode?: string;
+}
+
+// Styled Components
+const FilterBarWrapper = styled.div`
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+  width: 100%;
 
   @media (max-width: 768px) {
-    padding: 16px;
-    height: auto;
-    min-height: 56px;
     flex-direction: column;
-    align-items: flex-start;
     gap: 12px;
   }
 `;
 
-const Content = styled.div`
-  padding: 32px;
-  background: #FAFBFC;
-  min-height: calc(100vh - 120px);
-
-  @media (max-width: 768px) {
-    padding: 20px;
-  }
-`;
-
-const Title = styled.h1`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-  line-height: 1;
-
-  @media (max-width: 768px) {
-    font-size: 20px;
-  }
-`;
-
-const InvoiceGrid = styled.div`
-  display: grid;
-  gap: 20px;
-`;
-
-const InvoiceCard = styled.div`
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  border: 1px solid #E6EBF1;
-  transition: all 0.2s;
-
-  &:hover {
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-    transform: translateY(-2px);
-  }
-`;
-
-const InvoiceHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-`;
-
-const InvoiceNumber = styled.h3`
-  font-size: 18px;
-  font-weight: 600;
-  color: #0A2540;
-`;
-
-const StatusBadge = styled.span<{ status: string }>`
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  background: ${props => {
-    switch(props.status) {
-      case 'pending_payment': return '#FEF3C7';
-      case 'payment_submitted': return '#DBEAFE';
-      case 'paid': return '#ECFDF5';
-      case 'overdue': return '#FEE2E2';
-      case 'cancelled': return '#F3F4F6';
-      default: return '#F3F4F6';
-    }
-  }};
-  color: ${props => {
-    switch(props.status) {
-      case 'pending_payment': return '#D97706';
-      case 'payment_submitted': return '#1E40AF';
-      case 'paid': return '#059669';
-      case 'overdue': return '#DC2626';
-      case 'cancelled': return '#6B7280';
-      default: return '#6B7280';
-    }
-  }};
-`;
-
-const InvoiceDetails = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 20px;
-`;
-
-const DetailItem = styled.div``;
-
-const DetailLabel = styled.div`
-  font-size: 12px;
-  color: #6B7280;
-  margin-bottom: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
-
-const DetailValue = styled.div`
-  font-size: 14px;
-  color: #0A2540;
-  font-weight: 500;
-`;
-
-const AmountSection = styled.div`
-  background: #F8FAFC;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 20px;
-`;
-
-const AmountRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 8px;
-
-  &:last-child {
-    margin-bottom: 0;
-    padding-top: 8px;
-    border-top: 1px solid #E6EBF1;
-    font-weight: 600;
-  }
-`;
-
-const ActionSection = styled.div`
+const FiltersLeft = styled.div`
   display: flex;
   gap: 12px;
-  justify-content: flex-end;
-`;
+  flex-wrap: wrap;
+  align-items: center;
+  flex: 1;
 
-const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
+  @media (max-width: 600px) {
+    flex-direction: column;
+    width: 100%;
 
-  ${props => props.variant === 'danger' ? `
-    background: #DC2626;
-    color: white;
-
-    &:hover {
-      background: #B91C1C;
+    > * {
+      width: 100% !important;
+      min-width: 100% !important;
+      max-width: 100% !important;
     }
-  ` : props.variant === 'primary' ? `
-    background: #635BFF;
-    color: white;
-
-    &:hover {
-      background: #5A51E6;
-    }
-  ` : `
-    background: white;
-    color: #6B7280;
-    border: 1px solid #E6EBF1;
-
-    &:hover {
-      background: #F8FAFC;
-      color: #0A2540;
-      border-color: #CBD5E1;
-    }
-  `}
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
   }
 `;
 
-const DropZone = styled.div<{ isDragging: boolean }>`
-  border: 2px dashed ${props => props.isDragging ? '#635BFF' : '#E6EBF1'};
-  border-radius: 12px;
-  padding: 32px;
-  text-align: center;
-  background: ${props => props.isDragging ? 'rgba(99, 91, 255, 0.05)' : '#F8FAFC'};
+const PeriodFilterGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+`;
+
+const DateButton = styled.button<{ active?: boolean }>`
+  padding: 8px 16px;
+  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
+  background: ${props => props.active ? '#635BFF' : 'white'};
+  color: ${props => props.active ? 'white' : '#0A2540'};
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
 
   &:hover {
     border-color: #635BFF;
-    background: rgba(99, 91, 255, 0.03);
+    background: ${props => props.active ? '#635BFF' : '#F7F7FF'};
   }
 `;
 
-const PaymentMethodTabs = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-  gap: 8px;
-  margin-bottom: 20px;
+const DateInput = styled.input`
+  padding: 8px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #0A2540;
 
-  @media (max-width: 768px) {
-    display: flex;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-
-    &::-webkit-scrollbar {
-      height: 3px;
-    }
-
-    &::-webkit-scrollbar-track {
-      background: #F8FAFC;
-    }
-
-    &::-webkit-scrollbar-thumb {
-      background: #CBD5E1;
-      border-radius: 3px;
-    }
-
-    &::-webkit-scrollbar-thumb:hover {
-      background: #94A3B8;
-    }
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
   }
 `;
 
-const Tab = styled.button<{ active: boolean }>`
-  padding: 12px 16px;
-  min-height: 44px;
-  border-radius: 8px;
-  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
-  background: ${props => props.active ? 'rgba(99, 91, 255, 0.1)' : 'white'};
-  color: ${props => props.active ? '#635BFF' : '#374151'};
+const Button = styled(BaseButton)``;
+
+const InvoiceInfo = styled.div``;
+
+const InvoiceNumber = styled.div`
+  font-weight: 600;
+  color: #0A2540;
+  margin-bottom: 4px;
+`;
+
+const CompanyName = styled.div`
+  font-size: 13px;
+  color: #6B7280;
+`;
+
+const AutoBadge = styled.span`
+  display: inline-block;
+  background: #10B981;
+  color: white;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  vertical-align: middle;
+`;
+
+const StatusBadge = styled(CommonStatusBadge)`
+  max-width: 100px;
+  white-space: normal;
+  line-height: 1.3;
+  text-align: center;
+`;
+
+const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'email' | 'cancel' | 'success' }>`
+  padding: 6px;
+  border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s;
-  text-align: center;
-  white-space: nowrap;
-  flex-shrink: 0;
+  transition: all 0.2s;
+  border: 1px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+
+  ${props => props.variant === 'primary' ? `
+    background: #635BFF;
+    color: white;
+    border-color: #635BFF;
+    padding: 6px 12px;
+
+    &:hover {
+      background: #4B45C6;
+    }
+  ` : props.variant === 'success' ? `
+    background: #10B981;
+    color: white;
+    border-color: #10B981;
+    padding: 6px 12px;
+
+    &:hover {
+      background: #059669;
+    }
+  ` : props.variant === 'danger' ? `
+    background: #EF4444;
+    color: white;
+    border-color: #EF4444;
+    padding: 6px 12px;
+
+    &:hover {
+      background: #DC2626;
+    }
+  ` : props.variant === 'email' ? `
+    background: white;
+    color: #3B82F6;
+    border-color: #3B82F6;
+
+    &:hover {
+      background: #EFF6FF;
+    }
+  ` : `
+    background: white;
+    color: #374151;
+    border-color: #D1D5DB;
+
+    &:hover {
+      background: #F9FAFB;
+      border-color: #9CA3AF;
+    }
+  `}
+`;
+
+// Modal styled components
+const Modal = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+`;
+
+const ModalContent = styled.div`
+  background: white;
+  border-radius: 12px;
+  max-width: 900px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+`;
+
+const ModalHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #E6EBF1;
+`;
+
+const ModalTitle = styled.h2`
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #0A2540;
+`;
+
+const CloseButton = styled.button`
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #6B7280;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
 
   &:hover {
-    border-color: ${props => props.active ? '#635BFF' : '#D1D5DB'};
-    background: ${props => props.active ? 'rgba(99, 91, 255, 0.1)' : '#F9FAFB'};
+    color: #0A2540;
   }
 `;
 
-interface Invoice {
-  id: string;
-  invoiceNumber: string;
-  planType: string;
-  billingPeriod: string;
-  amount: number;
-  tax: number;
-  total: number;
-  currency: string;
-  status: 'pending_payment' | 'payment_submitted' | 'paid' | 'overdue' | 'cancelled';
-  issueDate: string;
-  dueDate: string;
-  paidDate?: string;
-}
+const ModalBody = styled.div`
+  padding: 24px;
+`;
 
-const getStatusLabel = (status: string) => {
-  switch(status) {
-    case 'pending_payment': return 'Pending';
-    case 'payment_submitted': return 'Verifying';
-    case 'paid': return 'Paid';
-    case 'overdue': return 'Overdue';
-    case 'cancelled': return 'Cancelled';
-    default: return status;
+const ModalFooter = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid #E6EBF1;
+  background: #F8FAFC;
+  border-radius: 0 0 12px 12px;
+`;
+
+// Invoice Preview components
+const InvoicePreview = styled.div`
+  background: white;
+  padding: 40px;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+`;
+
+const InvoiceHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 40px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #E6EBF1;
+`;
+
+const CompanyLogo = styled.img`
+  max-width: 180px;
+  max-height: 60px;
+  object-fit: contain;
+`;
+
+const InvoiceTitle = styled.h1`
+  font-size: 32px;
+  font-weight: 700;
+  color: #0A2540;
+  margin: 0;
+  text-align: right;
+`;
+
+const InvoiceMeta = styled.div`
+  text-align: right;
+  margin-top: 8px;
+`;
+
+const MetaItem = styled.p`
+  margin: 4px 0;
+  font-size: 13px;
+  color: #6B7280;
+`;
+
+const InvoiceParties = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  margin-bottom: 40px;
+`;
+
+const PartySection = styled.div``;
+
+const PartyTitle = styled.h3`
+  font-size: 11px;
+  font-weight: 600;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 12px 0;
+`;
+
+const PartyName = styled.p`
+  font-size: 16px;
+  font-weight: 600;
+  color: #0A2540;
+  margin: 0 0 8px 0;
+`;
+
+const PartyDetail = styled.p`
+  font-size: 13px;
+  color: #6B7280;
+  margin: 2px 0;
+`;
+
+const ItemsTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 24px;
+
+  th {
+    background: #F8FAFC;
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: #6B7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #E6EBF1;
   }
-};
+
+  th:last-child,
+  td:last-child {
+    text-align: right;
+  }
+
+  td {
+    padding: 16px;
+    font-size: 14px;
+    color: #0A2540;
+    border-bottom: 1px solid #E6EBF1;
+  }
+`;
+
+const TotalSection = styled.div`
+  display: flex;
+  justify-content: flex-end;
+`;
+
+const TotalBox = styled.div`
+  width: 280px;
+`;
+
+const TotalRow = styled.div<{ highlight?: boolean }>`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+
+  ${props => props.highlight ? `
+    border-top: 1px solid #E6EBF1;
+    margin-top: 8px;
+    padding-top: 16px;
+    font-size: 16px;
+  ` : ''}
+`;
+
+const TotalLabel = styled.span<{ highlight?: boolean }>`
+  font-size: ${props => props.highlight ? '16px' : '14px'};
+  color: ${props => props.highlight ? '#0A2540' : '#6B7280'};
+  font-weight: ${props => props.highlight ? '600' : '400'};
+`;
+
+const TotalValue = styled.span<{ highlight?: boolean }>`
+  font-size: ${props => props.highlight ? '20px' : '14px'};
+  font-weight: ${props => props.highlight ? '700' : '500'};
+  color: #0A2540;
+`;
+
+// Form components
+const FormGroup = styled.div`
+  margin-bottom: 16px;
+`;
+
+const FormLabel = styled.label`
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 6px;
+`;
+
+const FormInput = styled.input`
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #0A2540;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+`;
+
+const FormSelect = styled.select`
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #0A2540;
+  background: white;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+`;
+
+type TabType = 'all' | 'to_pay';
+type PeriodType = 'week' | 'month' | 'year' | 'all';
 
 const RestaurantInvoicesPage: React.FC = () => {
+  const { operationSettings, restaurantId } = useStore();
   const { user } = useAuth();
-  const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [paymentNotes, setPaymentNotes] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [isDragging, setIsDragging] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'receipt' | 'bank'>('receipt');
-  const [bankName, setBankName] = useState('');
-  const [transactionId, setTransactionId] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  // URL 파라미터 또는 user context에서 restaurantId 가져오기
-  const restaurantId = urlRestaurantId || user?.restaurantId;
-
-  useEffect(() => {
-    fetchInvoices();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [restaurantId]);
-
-  const fetchInvoices = async () => {
-    console.log('🔍 fetchInvoices called');
-    console.log('🔍 urlRestaurantId:', urlRestaurantId);
-    console.log('🔍 user.restaurantId:', user?.restaurantId);
-    console.log('🔍 effective restaurantId:', restaurantId);
-
-    if (!restaurantId) {
-      console.error('❌ No restaurantId found. Check URL parameter or user assignment.');
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      console.log('✅ Fetching invoices for restaurant:', restaurantId);
-
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/invoices/restaurant/${restaurantId}`, {
-        headers: {
-          'Authorization': 'Bearer ' + token
-        }
-      });
-      const data = await response.json();
-      console.log('📥 Invoice API response:', {
-        status: response.status,
-        dataLength: Array.isArray(data) ? data.length : 'not array'
-      });
-      console.log('📥 Raw invoice data:', data);
-
-      if (response.ok) {
-        const transformedInvoices = data.map((inv: any, index: number) => {
-          console.log(`📝 Transforming invoice ${index + 1}:`, {
-            id: inv.id,
-            invoice_number: inv.invoice_number,
-            status: inv.status,
-            statusEmpty: inv.status === '',
-            statusNull: inv.status === null,
-            statusUndefined: inv.status === undefined
-          });
-
-          const normalizedStatus =
-            !inv.status || inv.status.trim() === ''
-              ? 'pending_payment'
-              : inv.status.trim();
-
-          return {
-            id: inv.id.toString(),
-            invoiceNumber: inv.invoice_number,
-            planType: inv.plan_type || 'Subscription Plan',
-            billingPeriod: `${new Date(inv.billing_period_start).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`,
-            amount: parseFloat(inv.total_amount) - (parseFloat(inv.total_amount) * 0.06),
-            tax: parseFloat(inv.total_amount) * 0.06,
-            total: parseFloat(inv.total_amount),
-            currency: inv.currency || 'MYR',
-            status: normalizedStatus,
-            issueDate: new Date(inv.issued_at || inv.createdAt).toISOString().split('T')[0],
-            dueDate: new Date(inv.due_date).toISOString().split('T')[0],
-            paidDate: inv.paid_at ? new Date(inv.paid_at).toISOString().split('T')[0] : undefined,
-          };
-        });
-
-        console.log('✅ Transformed invoices:', transformedInvoices);
-        console.log(`✅ Total invoices: ${transformedInvoices.length}`);
-        setInvoices(transformedInvoices);
-      } else {
-        console.error('❌ Failed to fetch invoices:', data);
-      }
-    } catch (error) {
-      console.error('❌ Exception while fetching invoices:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const filteredInvoices = invoices.filter(invoice => {
-    if (filterStatus === 'all') return true;
-    return invoice.status === filterStatus;
+  // States
+  const [allInvoices, setAllInvoices] = useState<Invoice[]>([]);
+  const [invoicesToPay, setInvoicesToPay] = useState<Invoice[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
+  const [isCustomDateRange, setIsCustomDateRange] = useState(false);
+  const [dateRange, setDateRange] = useState(() => {
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const formatDate = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    return {
+      start: formatDate(firstDay),
+      end: formatDate(lastDay)
+    };
   });
 
-  const handlePaymentSubmit = async () => {
-    if (!selectedInvoice) {
-      alert('No invoice selected');
-      return;
+  // Modal states
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [showPaymentSubmitModal, setShowPaymentSubmitModal] = useState(false);
+  const [availablePaymentMethods, setAvailablePaymentMethods] = useState<PaymentMethod[]>([]);
+  const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
+  const [paymentData, setPaymentData] = useState({
+    paymentMethod: '',
+    transactionId: '',
+    receiptImage: ''
+  });
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
+  const [paymentSubmitError, setPaymentSubmitError] = useState('');
+  const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
+  const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
+
+  // URL-based tab management
+  const activeTab = (searchParams.get('tab') as TabType) || 'all';
+  const handleTabChange = (tab: TabType) => {
+    setSearchParams({ tab });
+  };
+
+  // Period filter handlers
+  const handlePeriodChange = (period: PeriodType) => {
+    setActivePeriod(period);
+    setIsCustomDateRange(false);
+
+    const now = new Date();
+    let start = new Date();
+    let end = new Date();
+
+    const formatDate = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    switch (period) {
+      case 'week':
+        start.setDate(now.getDate() - now.getDay());
+        break;
+      case 'month':
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        break;
+      case 'year':
+        start = new Date(now.getFullYear(), 0, 1);
+        end = new Date(now.getFullYear(), 11, 31);
+        break;
+      case 'all':
+        start = new Date(2000, 0, 1);
+        break;
     }
 
-    // Validate based on payment method
-    if (paymentMethod === 'receipt' && !receiptFile) {
-      alert('Please upload a receipt file');
-      return;
-    }
+    setDateRange({
+      start: formatDate(start),
+      end: formatDate(end)
+    });
+  };
 
-    if (paymentMethod === 'bank' && (!bankName || !transactionId)) {
-      alert('Please provide bank name and transaction ID');
-      return;
-    }
+  const handleDateRangeChange = (type: 'start' | 'end', value: string) => {
+    setIsCustomDateRange(true);
+    setDateRange(prev => ({
+      ...prev,
+      [type]: value
+    }));
+  };
 
+  // Fetch all invoices for this restaurant
+  const fetchAllInvoices = async () => {
     try {
-      const paymentData = {
-        payment_method: 'bank_transfer',
-        transaction_id: paymentMethod === 'bank' ? transactionId : `TXN-${Date.now()}`,
-        payment_date: new Date().toISOString(),
-        notes: paymentMethod === 'bank'
-          ? `Bank: ${bankName}\nTransaction ID: ${transactionId}\n${paymentNotes}`
-          : paymentNotes,
-        receipt_url: receiptFile ? `receipt-${selectedInvoice.id}-${Date.now()}.pdf` : null
-      };
-
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/invoices/${selectedInvoice.id}/payment`, {
-        method: 'POST',
+      if (!token || !restaurantId) return;
+
+      const response = await fetch(`/api/invoices/restaurant/${restaurantId}`, {
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + token
-        },
-        body: JSON.stringify(paymentData)
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
 
       if (response.ok) {
-        setShowPaymentModal(false);
-        setReceiptFile(null);
-        setPaymentNotes('');
-        setBankName('');
-        setTransactionId('');
-        setPaymentMethod('receipt');
-        setSelectedInvoice(null);
-        alert('Payment submitted successfully! The invoice issuer will verify your payment within 24 hours.');
-        fetchInvoices();
-      } else {
-        alert('Failed to submit payment. Please try again.');
+        const data = await response.json();
+        // Transform data to match Invoice interface
+        const invoices: Invoice[] = (data.data || data || []).map((inv: any) => ({
+          id: inv.id?.toString() || '',
+          invoiceNumber: inv.invoice_number || '',
+          issueDate: inv.issued_at || inv.issue_date || '',
+          dueDate: inv.due_date || '',
+          paidDate: inv.paid_at || inv.paid_date || '',
+          status: inv.status || '',
+          currency: inv.currency || 'MYR',
+          amount: parseFloat(inv.subtotal || inv.amount || 0),
+          tax: parseFloat(inv.tax_amount || inv.tax || 0),
+          total: parseFloat(inv.total_amount || inv.total || 0),
+          items: inv.items || [],
+          billingPeriod: inv.billing_period_start && inv.billing_period_end
+            ? `${formatDate(inv.billing_period_start)} - ${formatDate(inv.billing_period_end)}`
+            : '',
+          planType: inv.category_display_name || inv.plan_type || 'Service',
+          paymentMethod: inv.payment_method || '',
+          transactionId: inv.transaction_id || '',
+          receiptUrl: inv.receipt_url || '',
+          hasPaymentInfo: !!inv.transaction_id || !!inv.receipt_url,
+          type: inv.type || 'manual',
+          payerType: inv.payer_type || 'restaurant',
+          payerId: inv.payer_id?.toString() || '',
+          invoiceCategory: inv.invoice_category || '',
+          categoryDisplayName: inv.category_display_name || '',
+          issuerType: inv.issuer_type || 'system_admin',
+          issuerName: inv.issuer_name || '',
+          issuerInfo: inv.issuer_info || null,
+          payerInfo: inv.payer_info || null
+        }));
+        setAllInvoices(invoices);
       }
     } catch (error) {
-      console.error('Payment submission error:', error);
-      alert('Failed to submit payment. Please try again.');
+      console.error('Error fetching all invoices:', error);
     }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-
-    const files = e.dataTransfer.files;
-    if (files && files[0]) {
-      const file = files[0];
-      if (file.type.startsWith('image/') || file.type === 'application/pdf') {
-        setReceiptFile(file);
-      } else {
-        alert('Please upload an image or PDF file');
-      }
-    }
-  };
-
-  const handleDownloadPDF = async (invoice: Invoice) => {
+  // Fetch invoices to pay
+  const fetchInvoicesToPay = async () => {
     try {
       const token = localStorage.getItem('auth_token');
-
-      // Fetch full invoice details
-      const response = await fetch(`/api/invoices/${invoice.id}`, {
-        headers: {
-          'Authorization': 'Bearer ' + token
-        }
-      });
-      if (!response.ok) {
-        alert('Failed to load invoice details');
+      if (!token) {
+        setInvoicesToPay([]);
         return;
       }
 
-      // Fetch company settings (invoice issuer info) with currency for bank info
-      const invoiceCurrency = invoice.currency || 'MYR';
-      const settingsResponse = await fetch(`/api/invoices/invoice-settings?currency=${invoiceCurrency}`, {
+      const response = await fetch('/api/invoices/to-pay', {
         headers: {
-          'Authorization': 'Bearer ' + token
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
-      let companySettings = null;
-      if (settingsResponse.ok) {
-        const settingsData = await settingsResponse.json();
-        companySettings = settingsData.data || settingsData;
+
+      if (response.ok) {
+        const data = await response.json();
+        setInvoicesToPay(data);
+      } else {
+        setInvoicesToPay([]);
       }
-
-      // Generate invoice HTML
-      const invoiceHTML = generateInvoiceHTML(invoice, companySettings);
-
-      // Create iframe for PDF generation (prevents layout shifts)
-      const iframe = document.createElement('iframe');
-      iframe.style.position = 'fixed';
-      iframe.style.left = '-10000px';
-      iframe.style.top = '-10000px';
-      iframe.style.width = '800px';
-      iframe.style.height = '1200px';
-      iframe.style.visibility = 'hidden';
-      iframe.style.pointerEvents = 'none';
-      document.body.appendChild(iframe);
-
-      // Write HTML to iframe
-      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-      if (!iframeDoc) {
-        document.body.removeChild(iframe);
-        throw new Error('Could not access iframe document');
-      }
-      iframeDoc.open();
-      iframeDoc.write(invoiceHTML);
-      iframeDoc.close();
-
-      // Wait for content to render
-      await new Promise(resolve => setTimeout(resolve, 150));
-
-      // Convert iframe body to canvas
-      const canvas = await html2canvas(iframeDoc.body, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        windowWidth: 800,
-        windowHeight: 1200
-      });
-
-      // Remove the iframe
-      document.body.removeChild(iframe);
-
-      // Create PDF from canvas
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      const imgWidth = 210; // A4 width in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-      pdf.save(`Invoice-${invoice.invoiceNumber}.pdf`);
     } catch (error) {
-      console.error('Error downloading invoice:', error);
-      alert('Failed to download invoice. Please try again.');
+      console.error('Error fetching invoices to pay:', error);
+      setInvoicesToPay([]);
     }
   };
 
-  const generateInvoiceHTML = (invoice: Invoice, companySettings: any) => {
-    const currentDate = new Date().toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+  // Fetch company settings
+  const fetchCompanySettings = async () => {
+    if (!restaurantId) return;
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/restaurants/${restaurantId}/company-info`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setCompanySettings({
+            companyName: data.data.company_name || '',
+            address: data.data.address || '',
+            city: data.data.city || '',
+            state: data.data.state || '',
+            postalCode: data.data.postal_code || '',
+            country: data.data.country || '',
+            phone: data.data.phone || '',
+            email: data.data.email || '',
+            website: data.data.website || '',
+            taxNumber: data.data.tax_number || '',
+            registrationNumber: data.data.registration_number || '',
+            companyLogo: data.data.logo_url || '',
+            bankName: data.data.bank_name || '',
+            bankAccount: data.data.bank_account || '',
+            bankAccountName: data.data.bank_account_name || '',
+            swiftCode: data.data.swift_code || ''
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching company settings:', error);
+    }
+  };
+
+  // Fetch currency config
+  const fetchCurrencyConfig = async () => {
+    try {
+      const response = await fetch('/api/currencies/config');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.currencies) {
+          setCurrencyConfig(data.currencies);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching currency config:', error);
+    }
+  };
+
+  // Fetch payment methods
+  const fetchPaymentMethods = async (currency: string) => {
+    setLoadingPaymentMethods(true);
+    try {
+      const response = await fetch(`/api/admin/payment-settings/available/${currency}`);
+      if (response.ok) {
+        const data = await response.json();
+        setAvailablePaymentMethods(data.methods || []);
+        if (data.methods && data.methods.length > 0) {
+          setPaymentData(prev => ({ ...prev, paymentMethod: data.methods[0].id }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching payment methods:', error);
+    } finally {
+      setLoadingPaymentMethods(false);
+    }
+  };
+
+  // Submit payment
+  const handleSubmitPayment = async () => {
+    if (!selectedInvoice) return;
+
+    // Validation
+    if (!paymentData.transactionId && !paymentData.receiptImage) {
+      setPaymentSubmitError('Please provide either a Transaction ID or upload a Receipt Image');
+      return;
+    }
+
+    setIsSubmittingPayment(true);
+    setPaymentSubmitError('');
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/invoices/${selectedInvoice.id}/submit-payment`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          paymentMethod: paymentData.paymentMethod,
+          transactionId: paymentData.transactionId,
+          receiptUrl: paymentData.receiptImage
+        })
+      });
+
+      if (response.ok) {
+        setShowPaymentSubmitModal(false);
+        setPaymentData({ paymentMethod: '', transactionId: '', receiptImage: '' });
+        await fetchAllInvoices();
+        await fetchInvoicesToPay();
+      } else {
+        const errorData = await response.json();
+        setPaymentSubmitError(errorData.error || errorData.message || 'Failed to submit payment');
+      }
+    } catch (error) {
+      console.error('Error submitting payment:', error);
+      setPaymentSubmitError('Network error. Please check your connection and try again.');
+    } finally {
+      setIsSubmittingPayment(false);
+    }
+  };
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchAllInvoices();
+    fetchInvoicesToPay();
+    fetchCompanySettings();
+    fetchCurrencyConfig();
+  }, [restaurantId]);
+
+  // Helper functions
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  };
+
+  const getStatusDisplay = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+      'draft': 'Draft',
+      'pending_payment': 'Pending',
+      'payment_submitted': 'Confirming',
+      'paid': 'Paid',
+      'overdue': 'Overdue',
+      'cancelled': 'Cancelled'
+    };
+    return statusMap[status] || status;
+  };
+
+  // Filter invoices based on search and date
+  const filterInvoices = (invoices: Invoice[]) => {
+    return invoices.filter(invoice => {
+      // Search filter
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = !searchTerm ||
+        invoice.invoiceNumber?.toLowerCase().includes(searchLower) ||
+        invoice.issuerName?.toLowerCase().includes(searchLower) ||
+        invoice.status?.toLowerCase().includes(searchLower) ||
+        invoice.categoryDisplayName?.toLowerCase().includes(searchLower);
+
+      // Date filter
+      const invoiceDate = new Date(invoice.issueDate);
+      const startDate = new Date(dateRange.start);
+      const endDate = new Date(dateRange.end);
+      endDate.setHours(23, 59, 59, 999);
+      const matchesDate = invoiceDate >= startDate && invoiceDate <= endDate;
+
+      return matchesSearch && matchesDate;
     });
-
-    return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Invoice ${invoice.invoiceNumber}</title>
-  <style>
-    @media print {
-      @page { margin: 20mm; }
-      body { margin: 0; }
-    }
-    * { box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      line-height: 1.6;
-      color: #0A2540;
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 40px 20px;
-    }
-    .invoice-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: start;
-      margin-bottom: 40px;
-      padding-bottom: 20px;
-      border-bottom: 2px solid #635BFF;
-    }
-    .company-info h1 {
-      margin: 0 0 10px 0;
-      font-size: 28px;
-      color: #635BFF;
-    }
-    .company-info p {
-      margin: 4px 0;
-      font-size: 14px;
-      color: #6B7280;
-    }
-    .invoice-meta {
-      text-align: right;
-    }
-    .invoice-number {
-      font-size: 24px;
-      font-weight: 700;
-      color: #0A2540;
-      margin-bottom: 10px;
-    }
-    .invoice-meta p {
-      margin: 4px 0;
-      font-size: 14px;
-      color: #6B7280;
-    }
-    .billing-info {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 40px;
-    }
-    .bill-to {
-      flex: 1;
-    }
-    .bill-to h3 {
-      margin: 0 0 12px 0;
-      font-size: 14px;
-      font-weight: 600;
-      color: #6B7280;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .bill-to p {
-      margin: 4px 0;
-      font-size: 15px;
-      color: #0A2540;
-    }
-    .bill-to strong {
-      font-size: 16px;
-      font-weight: 600;
-    }
-    .dates-info {
-      text-align: right;
-    }
-    .date-row {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-      margin-bottom: 6px;
-      font-size: 13px;
-    }
-    .date-row .label {
-      color: #6B7280;
-    }
-    .date-row .value {
-      color: #0A2540;
-      font-weight: 500;
-      min-width: 140px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 30px;
-    }
-    thead {
-      background: #F8FAFC;
-    }
-    th {
-      padding: 14px 12px;
-      text-align: left;
-      font-size: 12px;
-      font-weight: 600;
-      color: #6B7280;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      border-bottom: 2px solid #E6EBF1;
-    }
-    th:last-child, td:last-child {
-      text-align: right;
-    }
-    td {
-      padding: 16px 12px;
-      font-size: 14px;
-      color: #374151;
-      border-bottom: 1px solid #F3F4F6;
-    }
-    tbody tr:hover {
-      background: #F9FAFB;
-    }
-    .totals {
-      margin-left: auto;
-      width: 300px;
-      margin-top: 20px;
-    }
-    .totals-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 10px 0;
-      font-size: 14px;
-    }
-    .totals-row.subtotal {
-      color: #6B7280;
-    }
-    .totals-row.tax {
-      color: #6B7280;
-      padding-bottom: 12px;
-      border-bottom: 1px solid #E6EBF1;
-    }
-    .totals-row.total {
-      font-size: 18px;
-      font-weight: 700;
-      color: #0A2540;
-      padding-top: 12px;
-    }
-    .footer {
-      margin-top: 60px;
-      padding-top: 20px;
-      border-top: 1px solid #E6EBF1;
-      text-align: center;
-      font-size: 12px;
-      color: #9CA3AF;
-    }
-    .status-badge {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-    .status-pending {
-      background: #FEF3C7;
-      color: #92400E;
-    }
-    .status-paid {
-      background: #D1FAE5;
-      color: #065F46;
-    }
-    .status-overdue {
-      background: #FEE2E2;
-      color: #991B1B;
-    }
-    @media print {
-      .no-print { display: none; }
-    }
-  </style>
-</head>
-<body>
-  <div class="invoice-header">
-    <div class="company-info">
-      ${companySettings?.companyLogo ? `<img src="${companySettings.companyLogo}" alt="Company Logo" style="max-height: 60px; margin-bottom: 8px;">` : ''}
-      <h1>${companySettings?.companyName || 'Company Name'}</h1>
-      <p>${companySettings?.address || ''}</p>
-      ${companySettings?.city || companySettings?.state || companySettings?.postalCode ? `<p>${[companySettings?.city, companySettings?.state, companySettings?.postalCode].filter(Boolean).join(', ')}</p>` : ''}
-      ${companySettings?.country ? `<p>${companySettings.country}</p>` : ''}
-      ${companySettings?.phone ? `<p>Phone: ${companySettings.phone}</p>` : ''}
-      ${companySettings?.email ? `<p>Email: ${companySettings.email}</p>` : ''}
-      ${companySettings?.taxNumber ? `<p>Tax ID: ${companySettings.taxNumber}</p>` : ''}
-      ${companySettings?.registrationNumber ? `<p>Reg No: ${companySettings.registrationNumber}</p>` : ''}
-    </div>
-    <div class="invoice-meta">
-      <div class="invoice-number">${invoice.invoiceNumber}</div>
-      <p><span class="status-badge status-${invoice.status === 'paid' ? 'paid' : invoice.status === 'overdue' ? 'overdue' : 'pending'}">
-        ${invoice.status === 'pending_payment' ? 'Pending' : invoice.status === 'paid' ? 'Paid' : invoice.status === 'overdue' ? 'Overdue' : invoice.status}
-      </span></p>
-    </div>
-  </div>
-
-  <div class="billing-info">
-    <div class="bill-to">
-      <h3>Bill To</h3>
-      <p><strong>${user?.restaurantName || 'Restaurant'}</strong></p>
-      <p>Plan: ${invoice.planType}</p>
-    </div>
-    <div class="dates-info">
-      <div class="date-row">
-        <span class="label">Billing Period:</span>
-        <span class="value">${invoice.billingPeriod}</span>
-      </div>
-      <div class="date-row">
-        <span class="label">Issue Date:</span>
-        <span class="value">${invoice.issueDate}</span>
-      </div>
-      <div class="date-row">
-        <span class="label">Due Date:</span>
-        <span class="value">${invoice.dueDate}</span>
-      </div>
-      ${invoice.paidDate ? `
-      <div class="date-row">
-        <span class="label">Paid Date:</span>
-        <span class="value">${invoice.paidDate}</span>
-      </div>
-      ` : ''}
-    </div>
-  </div>
-
-  <table>
-    <thead>
-      <tr>
-        <th>Description</th>
-        <th style="width: 100px;">Quantity</th>
-        <th style="width: 120px;">Unit Price</th>
-        <th style="width: 120px;">Amount</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>
-          <strong>${invoice.planType} - Monthly Subscription</strong><br>
-          <span style="font-size: 12px; color: #6B7280;">Billing Period: ${invoice.billingPeriod}</span>
-        </td>
-        <td>1</td>
-        <td>${invoice.currency || 'MYR'} ${invoice.amount.toFixed(2)}</td>
-        <td>${invoice.currency || 'MYR'} ${invoice.amount.toFixed(2)}</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <div class="totals">
-    <div class="totals-row subtotal">
-      <span>Subtotal:</span>
-      <span>${invoice.currency || 'MYR'} ${invoice.amount.toFixed(2)}</span>
-    </div>
-    <div class="totals-row tax">
-      <span>Tax (6%):</span>
-      <span>${invoice.currency || 'MYR'} ${invoice.tax.toFixed(2)}</span>
-    </div>
-    <div class="totals-row total">
-      <span>Total Amount:</span>
-      <span>${invoice.currency || 'MYR'} ${invoice.total.toFixed(2)}</span>
-    </div>
-  </div>
-
-  ${companySettings?.bankName ? `
-  <div style="margin-top: 30px; padding: 15px; background: #F8FAFC; border-radius: 8px;">
-    <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #0A2540;">Payment Details</h3>
-    <p style="margin: 4px 0; font-size: 13px;"><strong>Bank:</strong> ${companySettings.bankName}</p>
-    ${companySettings?.bankAccountName ? `<p style="margin: 4px 0; font-size: 13px;"><strong>Account Name:</strong> ${companySettings.bankAccountName}</p>` : ''}
-    ${companySettings?.bankAccount ? `<p style="margin: 4px 0; font-size: 13px;"><strong>Account Number:</strong> ${companySettings.bankAccount}</p>` : ''}
-  </div>
-  ` : ''}
-
-  <div class="footer">
-    <p>Thank you for your business!</p>
-    <p>This is a computer-generated invoice. Generated on ${currentDate}</p>
-  </div>
-
-  <div class="no-print" style="margin-top: 40px; text-align: center;">
-    <button onclick="window.print()" style="padding: 12px 24px; background: #635BFF; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;">
-      Print Invoice
-    </button>
-    <button onclick="window.close()" style="padding: 12px 24px; background: white; color: #6B7280; border: 1px solid #E6EBF1; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; margin-left: 12px;">
-      Close
-    </button>
-  </div>
-</body>
-</html>
-    `;
   };
 
-  const handleMarkAsPaid = (invoice: Invoice) => {
+  const filteredAllInvoices = filterInvoices(allInvoices);
+  const filteredInvoicesToPay = filterInvoices(invoicesToPay);
+
+  // Calculate stats
+  const stats = {
+    total: allInvoices.length,
+    pending: allInvoices.filter(i => i.status === 'pending_payment' || i.status === 'overdue').length,
+    confirming: allInvoices.filter(i => i.status === 'payment_submitted').length,
+    paid: allInvoices.filter(i => i.status === 'paid').length,
+    totalAmount: allInvoices.reduce((sum, i) => sum + (i.total || 0), 0),
+    pendingAmount: allInvoices.filter(i => i.status === 'pending_payment' || i.status === 'overdue').reduce((sum, i) => sum + (i.total || 0), 0)
+  };
+
+  // Handlers
+  const handleViewInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
-    setShowPaymentModal(true);
+    setShowViewModal(true);
   };
 
-  const pendingCount = invoices.filter(i => i.status === 'pending_payment' || i.status === 'payment_submitted').length;
-  const paidCount = invoices.filter(i => i.status === 'paid').length;
-  const overdueCount = invoices.filter(i => i.status === 'overdue').length;
-  const totalAmount = invoices.filter(i => i.status === 'pending_payment' || i.status === 'overdue').reduce((sum, i) => sum + i.total, 0);
+  const handlePayInvoice = async (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setPaymentSubmitError('');
+    setPaymentData({ paymentMethod: '', transactionId: '', receiptImage: '' });
+    await fetchPaymentMethods(invoice.currency || 'MYR');
+    setShowPaymentSubmitModal(true);
+  };
+
+  // Handle receipt image upload
+  const handleReceiptImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setPaymentSubmitError('Image size must be less than 5MB');
+      return;
+    }
+
+    // Convert to base64
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPaymentData(prev => ({ ...prev, receiptImage: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Generate PDF
+  const generateInvoicePDF = async (invoice: Invoice) => {
+    const previewElement = document.getElementById('invoice-preview-pdf');
+    if (!previewElement) {
+      setSelectedInvoice(invoice);
+      setShowViewModal(true);
+      setTimeout(() => generateInvoicePDF(invoice), 500);
+      return;
+    }
+
+    try {
+      const canvas = await html2canvas(previewElement, { scale: 2 });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`invoice-${invoice.invoiceNumber}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    }
+  };
+
+  // Print invoice
+  const handlePrintInvoice = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setShowViewModal(true);
+    setTimeout(() => {
+      window.print();
+    }, 500);
+  };
+
+  // Render invoice preview
+  const renderInvoicePreview = (invoice: Invoice) => {
+    const issuerInfo = invoice.issuerInfo;
+    const payerInfo = invoice.payerInfo || (companySettings ? {
+      name: companySettings.companyName,
+      address: companySettings.address,
+      city: companySettings.city,
+      state: companySettings.state,
+      postalCode: companySettings.postalCode,
+      country: companySettings.country,
+      phone: companySettings.phone,
+      email: companySettings.email,
+      taxId: companySettings.taxNumber,
+      businessRegistration: companySettings.registrationNumber
+    } : null);
+
+    return (
+      <InvoicePreview id="invoice-preview-pdf">
+        <InvoiceHeader>
+          <div>
+            {issuerInfo?.logoUrl ? (
+              <CompanyLogo src={issuerInfo.logoUrl} alt="Company Logo" />
+            ) : (
+              <PartyName style={{ fontSize: '24px' }}>{issuerInfo?.name || 'Company Name'}</PartyName>
+            )}
+          </div>
+          <div>
+            <InvoiceTitle>INVOICE</InvoiceTitle>
+            <InvoiceMeta>
+              <MetaItem><strong>{invoice.invoiceNumber}</strong></MetaItem>
+              <MetaItem>Issue Date: {formatDate(invoice.issueDate)}</MetaItem>
+              <MetaItem>Due Date: {formatDate(invoice.dueDate)}</MetaItem>
+            </InvoiceMeta>
+          </div>
+        </InvoiceHeader>
+
+        <InvoiceParties>
+          <PartySection>
+            <PartyTitle>From</PartyTitle>
+            <PartyName>{issuerInfo?.name || invoice.issuerName || 'Issuer'}</PartyName>
+            {issuerInfo?.address && <PartyDetail>{issuerInfo.address}</PartyDetail>}
+            {(issuerInfo?.city || issuerInfo?.state || issuerInfo?.postalCode) && (
+              <PartyDetail>
+                {[issuerInfo.city, issuerInfo.state, issuerInfo.postalCode].filter(Boolean).join(', ')}
+              </PartyDetail>
+            )}
+            {issuerInfo?.country && <PartyDetail>{issuerInfo.country}</PartyDetail>}
+            {issuerInfo?.email && <PartyDetail>{issuerInfo.email}</PartyDetail>}
+            {issuerInfo?.phone && <PartyDetail>{issuerInfo.phone}</PartyDetail>}
+            {issuerInfo?.taxId && <PartyDetail>Tax ID: {issuerInfo.taxId}</PartyDetail>}
+          </PartySection>
+
+          <PartySection>
+            <PartyTitle>Bill To</PartyTitle>
+            <PartyName>{payerInfo?.name || companySettings?.companyName || 'Customer'}</PartyName>
+            {(payerInfo?.address || companySettings?.address) && (
+              <PartyDetail>{payerInfo?.address || companySettings?.address}</PartyDetail>
+            )}
+            {(payerInfo?.city || payerInfo?.state || payerInfo?.postalCode || companySettings?.city) && (
+              <PartyDetail>
+                {[
+                  payerInfo?.city || companySettings?.city,
+                  payerInfo?.state || companySettings?.state,
+                  payerInfo?.postalCode || companySettings?.postalCode
+                ].filter(Boolean).join(', ')}
+              </PartyDetail>
+            )}
+            {(payerInfo?.country || companySettings?.country) && (
+              <PartyDetail>{payerInfo?.country || companySettings?.country}</PartyDetail>
+            )}
+            {(payerInfo?.email || companySettings?.email) && (
+              <PartyDetail>{payerInfo?.email || companySettings?.email}</PartyDetail>
+            )}
+            {(payerInfo?.phone || companySettings?.phone) && (
+              <PartyDetail>{payerInfo?.phone || companySettings?.phone}</PartyDetail>
+            )}
+          </PartySection>
+        </InvoiceParties>
+
+        <ItemsTable>
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Qty</th>
+              <th>Unit Price</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {invoice.items && invoice.items.length > 0 ? (
+              invoice.items.map((item, index) => (
+                <tr key={index}>
+                  <td>{item.description}</td>
+                  <td>{item.quantity}</td>
+                  <td>{formatCurrency(item.unitPrice, invoice.currency || 'MYR')}</td>
+                  <td>{formatCurrency(item.total, invoice.currency || 'MYR')}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td>{invoice.categoryDisplayName || invoice.planType || 'Service'}</td>
+                <td>1</td>
+                <td>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</td>
+                <td>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</td>
+              </tr>
+            )}
+          </tbody>
+        </ItemsTable>
+
+        <TotalSection>
+          <TotalBox>
+            <TotalRow>
+              <TotalLabel>Subtotal</TotalLabel>
+              <TotalValue>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</TotalValue>
+            </TotalRow>
+            {invoice.tax > 0 && (
+              <TotalRow>
+                <TotalLabel>Tax</TotalLabel>
+                <TotalValue>{formatCurrency(invoice.tax, invoice.currency || 'MYR')}</TotalValue>
+              </TotalRow>
+            )}
+            <TotalRow highlight>
+              <TotalLabel highlight>Total</TotalLabel>
+              <TotalValue highlight>{formatCurrency(invoice.total, invoice.currency || 'MYR')}</TotalValue>
+            </TotalRow>
+          </TotalBox>
+        </TotalSection>
+      </InvoicePreview>
+    );
+  };
+
+  // Render table
+  const renderInvoiceTable = (invoices: Invoice[], showPayButton: boolean = false) => (
+    <DataTableContainer>
+      <DataTable>
+        <DataTableHead>
+          <tr>
+            <DataTableHeaderCell>Invoice</DataTableHeaderCell>
+            <DataTableHeaderCell>Issuer</DataTableHeaderCell>
+            <DataTableHeaderCell align="center">Period</DataTableHeaderCell>
+            <DataTableHeaderCell align="center">Issued</DataTableHeaderCell>
+            <DataTableHeaderCell align="center">Due</DataTableHeaderCell>
+            <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
+            <DataTableHeaderCell align="right">Amount</DataTableHeaderCell>
+            <DataTableHeaderCell align="right">Total</DataTableHeaderCell>
+            <DataTableHeaderCell align="center">Actions</DataTableHeaderCell>
+          </tr>
+        </DataTableHead>
+        <tbody>
+          {invoices.length > 0 ? (
+            invoices.map(invoice => (
+              <DataTableRow key={invoice.id}>
+                <DataTableCell data-label="Invoice">
+                  <InvoiceInfo>
+                    <InvoiceNumber>
+                      {invoice.invoiceNumber}
+                      {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>AUTO</AutoBadge>}
+                    </InvoiceNumber>
+                    <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
+                  </InvoiceInfo>
+                </DataTableCell>
+                <DataTableCell data-label="Issuer">
+                  <InvoiceInfo>
+                    <InvoiceNumber>
+                      {invoice.issuerName || (invoice.issuerType === 'system_admin' ? 'System Admin' : invoice.issuerType === 'brand' ? 'Brand' : 'Foodcourt')}
+                    </InvoiceNumber>
+                  </InvoiceInfo>
+                </DataTableCell>
+                <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>
+                  {invoice.billingPeriod || '-'}
+                </DataTableCell>
+                <DataTableCell data-label="Issued" align="center" style={{ fontSize: '13px' }}>
+                  {formatDate(invoice.issueDate)}
+                </DataTableCell>
+                <DataTableCell data-label="Due" align="center" style={{ fontSize: '13px' }}>
+                  {formatDate(invoice.dueDate)}
+                </DataTableCell>
+                <DataTableCell data-label="Status" align="center">
+                  <StatusBadge status={invoice.status}>
+                    {getStatusDisplay(invoice.status)}
+                  </StatusBadge>
+                </DataTableCell>
+                <DataTableCell data-label="Amount" align="right">
+                  <DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount>
+                </DataTableCell>
+                <DataTableCell data-label="Total" align="right">
+                  <DataTableAmount highlight>{formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount>
+                </DataTableCell>
+                <DataTableCell data-label="" mobileFullWidth>
+                  <ActionButtons>
+                    <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>
+                      View
+                    </LocalActionButton>
+
+                    {/* Pay button for pending/overdue invoices */}
+                    {showPayButton && (invoice.status === 'pending_payment' || invoice.status === 'overdue') && (
+                      <LocalActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>
+                        Pay
+                      </LocalActionButton>
+                    )}
+
+                    {/* Download PDF */}
+                    <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7,10 12,15 17,10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                      </svg>
+                    </LocalActionButton>
+
+                    {/* Print */}
+                    <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="6,9 6,2 18,2 18,9"/>
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                        <rect x="6" y="14" width="12" height="8"/>
+                      </svg>
+                    </LocalActionButton>
+                  </ActionButtons>
+                </DataTableCell>
+              </DataTableRow>
+            ))
+          ) : (
+            <DataTableRow>
+              <DataTableCell colSpan={9}>
+                <DataTableEmpty>No invoices found</DataTableEmpty>
+              </DataTableCell>
+            </DataTableRow>
+          )}
+        </tbody>
+      </DataTable>
+    </DataTableContainer>
+  );
 
   return (
     <MainLayout>
@@ -892,259 +1218,313 @@ const RestaurantInvoicesPage: React.FC = () => {
         </Header>
 
         <Content>
-          <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '32px'}}>
-            <div style={{background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #E6EBF1', borderLeft: '4px solid #D97706'}}>
-              <div style={{fontSize: '24px', fontWeight: '700', color: '#0A2540'}}>{pendingCount}</div>
-              <div style={{fontSize: '13px', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px'}}>Pending</div>
-            </div>
-            <div style={{background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #E6EBF1', borderLeft: '4px solid #635BFF'}}>
-              <div style={{fontSize: '24px', fontWeight: '700', color: '#0A2540'}}>{paidCount}</div>
-              <div style={{fontSize: '13px', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px'}}>Paid</div>
-            </div>
-            <div style={{background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #E6EBF1', borderLeft: '4px solid #DC2626'}}>
-              <div style={{fontSize: '24px', fontWeight: '700', color: '#0A2540'}}>{overdueCount}</div>
-              <div style={{fontSize: '13px', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px'}}>Overdue</div>
-            </div>
-            <div style={{background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #E6EBF1', borderLeft: '4px solid #8B5CF6'}}>
-              <div style={{fontSize: '24px', fontWeight: '700', color: '#0A2540'}}>{formatCurrency(totalAmount)}</div>
-              <div style={{fontSize: '13px', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px'}}>Outstanding</div>
-            </div>
-          </div>
+          {/* Stats */}
+          <StatsGrid>
+            <StatCard>
+              <StatValue>{stats.total}</StatValue>
+              <StatLabel>Total Invoices</StatLabel>
+            </StatCard>
+            <StatCard variant="warning">
+              <StatValue>{stats.pending}</StatValue>
+              <StatLabel>To Pay</StatLabel>
+              <StatDescription>{formatCurrency(stats.pendingAmount, operationSettings?.defaultCurrency || 'MYR')}</StatDescription>
+            </StatCard>
+            <StatCard variant="info">
+              <StatValue>{stats.confirming}</StatValue>
+              <StatLabel>Confirming</StatLabel>
+            </StatCard>
+            <StatCard variant="success">
+              <StatValue>{stats.paid}</StatValue>
+              <StatLabel>Paid</StatLabel>
+            </StatCard>
+          </StatsGrid>
 
-          <FilterBar>
-          <FilterSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-            <option value="all">All Invoices</option>
-            <option value="pending_payment">Pending</option>
-            <option value="payment_submitted">Verifying</option>
-            <option value="paid">Paid</option>
-            <option value="overdue">Overdue</option>
-          </FilterSelect>
-        </FilterBar>
+          {/* Tabs */}
+          <Tabs>
+            <CommonTab active={activeTab === 'all'} onClick={() => handleTabChange('all')}>
+              All Invoices<TabBadge count={allInvoices.length} />
+            </CommonTab>
+            <CommonTab active={activeTab === 'to_pay'} onClick={() => handleTabChange('to_pay')}>
+              Invoices to Pay<TabBadge count={invoicesToPay.filter(i => i.status === 'pending_payment' || i.status === 'overdue' || i.status === 'payment_submitted').length} variant="warning" />
+            </CommonTab>
+          </Tabs>
 
-        {isLoading && (
-          <div style={{textAlign: 'center', padding: '60px', color: '#6B7280'}}>Loading invoices...</div>
-        )}
-
-        {!isLoading && !user?.restaurantId && (
-          <div style={{textAlign: 'center', padding: '60px'}}>
-            <div style={{fontSize: '18px', fontWeight: '600', color: '#0A2540', marginBottom: '10px'}}>
-              No Restaurant Assigned
-            </div>
-            <div style={{fontSize: '14px', color: '#6B7280'}}>
-              Your account is not assigned to a restaurant. Please contact your system administrator.
-            </div>
-          </div>
-        )}
-
-        {!isLoading && user?.restaurantId && filteredInvoices.length === 0 && (
-          <div style={{textAlign: 'center', padding: '60px'}}>
-            <div style={{fontSize: '18px', fontWeight: '600', color: '#0A2540', marginBottom: '10px'}}>
-              No Invoices Found
-            </div>
-            <div style={{fontSize: '14px', color: '#6B7280'}}>
-              Your restaurant doesn't have any invoices yet.
-            </div>
-          </div>
-        )}
-
-        {!isLoading && filteredInvoices.length > 0 && (
-          <InvoiceGrid>
-            {filteredInvoices.map(invoice => (
-              <InvoiceCard key={invoice.id}>
-                <InvoiceHeader>
-                  <InvoiceNumber>{invoice.invoiceNumber}</InvoiceNumber>
-                  <StatusBadge status={invoice.status}>{getStatusLabel(invoice.status)}</StatusBadge>
-                </InvoiceHeader>
-
-                <InvoiceDetails>
-                  <DetailItem>
-                    <DetailLabel>Plan</DetailLabel>
-                    <DetailValue>{invoice.planType}</DetailValue>
-                  </DetailItem>
-                  <DetailItem>
-                    <DetailLabel>Billing Period</DetailLabel>
-                    <DetailValue>{invoice.billingPeriod}</DetailValue>
-                  </DetailItem>
-                  <DetailItem>
-                    <DetailLabel>Issue Date</DetailLabel>
-                    <DetailValue>{invoice.issueDate}</DetailValue>
-                  </DetailItem>
-                  <DetailItem>
-                    <DetailLabel>Due Date</DetailLabel>
-                    <DetailValue>{invoice.dueDate}</DetailValue>
-                  </DetailItem>
-                  {invoice.paidDate && (
-                    <DetailItem>
-                      <DetailLabel>Paid Date</DetailLabel>
-                      <DetailValue>{invoice.paidDate}</DetailValue>
-                    </DetailItem>
-                  )}
-                </InvoiceDetails>
-
-                <AmountSection>
-                  <AmountRow>
-                    <span>Subtotal:</span>
-                    <span>{formatCurrency(invoice.amount)}</span>
-                  </AmountRow>
-                  <AmountRow>
-                    <span>Tax (6%):</span>
-                    <span>{formatCurrency(invoice.tax)}</span>
-                  </AmountRow>
-                  <AmountRow>
-                    <span>Total:</span>
-                    <span>{formatCurrency(invoice.total)}</span>
-                  </AmountRow>
-                </AmountSection>
-
-                <ActionSection>
-                  <Button variant="secondary" onClick={() => handleDownloadPDF(invoice)}>Invoice</Button>
-                  {(invoice.status === 'pending_payment' || invoice.status === 'overdue') && (
-                    <Button variant={invoice.status === 'overdue' ? 'danger' : 'primary'} onClick={() => handleMarkAsPaid(invoice)}>
-                      {invoice.status === 'overdue' ? 'Pay Now' : 'Mark as Paid'}
-                    </Button>
-                  )}
-                  {invoice.status === 'payment_submitted' && (
-                    <div style={{fontSize: '13px', color: '#635BFF', fontStyle: 'italic', fontWeight: '500'}}>
-                      Payment verification in progress...
-                    </div>
-                  )}
-                </ActionSection>
-              </InvoiceCard>
-            ))}
-          </InvoiceGrid>
-        )}
-
-        {showPaymentModal && selectedInvoice && (
-          <Modal
-            isOpen={showPaymentModal}
-            onClose={() => {
-              setShowPaymentModal(false);
-              setReceiptFile(null);
-              setBankName('');
-              setTransactionId('');
-              setPaymentMethod('receipt');
-            }}
-            title="Submit Payment Proof"
-            size="medium"
-            footer={
-              <>
-                <ModalButton variant="secondary" onClick={() => setShowPaymentModal(false)}>
-                  Cancel
-                </ModalButton>
-                <ModalButton
-                  variant="primary"
-                  onClick={handlePaymentSubmit}
-                  disabled={paymentMethod === 'receipt' ? !receiptFile : (!bankName || !transactionId)}
-                >
-                  Submit Payment
-                </ModalButton>
-              </>
-            }
-          >
-            <div style={{background: 'rgba(99, 91, 255, 0.08)', padding: '16px', borderRadius: '8px', marginBottom: '20px', border: '1px solid rgba(99, 91, 255, 0.2)'}}>
-              <h4 style={{margin: '0 0 8px 0', color: '#635BFF', fontWeight: '600'}}>Invoice: {selectedInvoice.invoiceNumber}</h4>
-              <p style={{margin: '0', fontSize: '14px', color: '#0A2540', fontWeight: '500'}}>
-                Total Amount: {formatCurrency(selectedInvoice.total)}
-              </p>
-            </div>
-
-            <PaymentMethodTabs>
-              <Tab active={paymentMethod === 'receipt'} onClick={() => setPaymentMethod('receipt')}>
-                Upload Receipt
-              </Tab>
-              <Tab active={paymentMethod === 'bank'} onClick={() => setPaymentMethod('bank')}>
-                Bank Transfer Info
-              </Tab>
-            </PaymentMethodTabs>
-
-            {paymentMethod === 'receipt' ? (
-              <>
-                <FormGroup>
-                  <FormLabel>Payment Receipt *</FormLabel>
-                  <DropZone
-                    isDragging={isDragging}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    onClick={() => document.getElementById('file-input')?.click()}
-                  >
-                    {receiptFile ? (
-                      <div>
-                        <div style={{fontSize: '14px', fontWeight: '600', color: '#635BFF', marginBottom: '4px'}}>
-                          {receiptFile.name}
-                        </div>
-                        <div style={{fontSize: '12px', color: '#6B7280'}}>
-                          {(receiptFile.size / 1024).toFixed(2)} KB
-                        </div>
-                        <div style={{fontSize: '12px', color: '#635BFF', marginTop: '8px', cursor: 'pointer'}}>
-                          Click or drag to replace
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <div style={{fontSize: '14px', fontWeight: '600', color: '#0A2540', marginBottom: '4px'}}>
-                          Drag & drop your receipt here
-                        </div>
-                        <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '8px'}}>
-                          or click to browse files
-                        </div>
-                        <div style={{fontSize: '11px', color: '#9CA3AF'}}>
-                          Accepted: JPG, PNG, PDF (Max 5MB)
-                        </div>
-                      </div>
-                    )}
-                  </DropZone>
-                  <input
-                    id="file-input"
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
-                    style={{ display: 'none' }}
-                  />
-                </FormGroup>
-              </>
-            ) : (
-              <>
-                <FormGroup>
-                  <FormLabel>Bank Name *</FormLabel>
-                  <FormInput
-                    type="text"
-                    value={bankName}
-                    onChange={(e) => setBankName(e.target.value)}
-                    placeholder="e.g., Maybank, CIMB, Public Bank..."
-                  />
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel>Transaction ID / Reference Number *</FormLabel>
-                  <FormInput
-                    type="text"
-                    value={transactionId}
-                    onChange={(e) => setTransactionId(e.target.value)}
-                    placeholder="e.g., TXN123456789"
-                  />
-                </FormGroup>
-              </>
-            )}
-
-            <FormGroup>
-              <FormLabel>Additional Notes (optional)</FormLabel>
-              <FormInput
-                as="textarea"
-                value={paymentNotes}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setPaymentNotes(e.target.value)}
-                placeholder="Add any additional payment details..."
-                rows={3}
-                style={{ minHeight: '80px', resize: 'vertical' }}
+          {/* Filters */}
+          <FilterBarWrapper>
+            <FiltersLeft>
+              <SearchInput
+                placeholder="Search invoice, issuer, status..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
-            </FormGroup>
 
-            <div style={{background: 'rgba(99, 91, 255, 0.08)', padding: '12px', borderRadius: '6px', fontSize: '13px', color: '#635BFF', border: '1px solid rgba(99, 91, 255, 0.2)'}}>
-              Info: Your payment will be verified within 24 hours after submission.
-            </div>
+              <PeriodFilterGroup>
+                <DateButton
+                  active={activePeriod === 'week' && !isCustomDateRange}
+                  onClick={() => handlePeriodChange('week')}
+                >
+                  Week
+                </DateButton>
+                <DateButton
+                  active={activePeriod === 'month' && !isCustomDateRange}
+                  onClick={() => handlePeriodChange('month')}
+                >
+                  Month
+                </DateButton>
+                <DateButton
+                  active={activePeriod === 'year' && !isCustomDateRange}
+                  onClick={() => handlePeriodChange('year')}
+                >
+                  Year
+                </DateButton>
+                <DateButton
+                  active={activePeriod === 'all' && !isCustomDateRange}
+                  onClick={() => handlePeriodChange('all')}
+                >
+                  All
+                </DateButton>
+
+                <DateInput
+                  type="date"
+                  value={dateRange.start}
+                  onChange={(e) => handleDateRangeChange('start', e.target.value)}
+                />
+                <DateInput
+                  type="date"
+                  value={dateRange.end}
+                  onChange={(e) => handleDateRangeChange('end', e.target.value)}
+                />
+              </PeriodFilterGroup>
+            </FiltersLeft>
+          </FilterBarWrapper>
+
+          {/* Invoice Table */}
+          {activeTab === 'all' && renderInvoiceTable(filteredAllInvoices, true)}
+          {activeTab === 'to_pay' && renderInvoiceTable(filteredInvoicesToPay, true)}
+        </Content>
+
+        {/* View Invoice Modal */}
+        {showViewModal && selectedInvoice && (
+          <Modal onClick={() => setShowViewModal(false)}>
+            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ maxWidth: '900px' }}>
+              <ModalHeader>
+                <ModalTitle>Invoice {selectedInvoice.invoiceNumber}</ModalTitle>
+                <CloseButton onClick={() => setShowViewModal(false)}>×</CloseButton>
+              </ModalHeader>
+              <ModalBody>
+                {renderInvoicePreview(selectedInvoice)}
+              </ModalBody>
+              <ModalFooter>
+                {(selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && (
+                  <Button variant="success" onClick={() => {
+                    setShowViewModal(false);
+                    handlePayInvoice(selectedInvoice);
+                  }}>
+                    Pay Now
+                  </Button>
+                )}
+                <Button onClick={() => generateInvoicePDF(selectedInvoice)}>
+                  Download PDF
+                </Button>
+                <Button variant="secondary" onClick={() => setShowViewModal(false)}>
+                  Close
+                </Button>
+              </ModalFooter>
+            </ModalContent>
           </Modal>
         )}
-        </Content>
+
+        {/* Payment Submit Modal */}
+        {showPaymentSubmitModal && selectedInvoice && (
+          <Modal onClick={() => setShowPaymentSubmitModal(false)}>
+            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+              <ModalHeader>
+                <ModalTitle>Submit Payment</ModalTitle>
+                <CloseButton onClick={() => setShowPaymentSubmitModal(false)}>×</CloseButton>
+              </ModalHeader>
+              <ModalBody>
+                <div style={{ marginBottom: '20px', padding: '16px', background: '#F8FAFC', borderRadius: '8px' }}>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#6B7280' }}>Invoice: <strong>{selectedInvoice.invoiceNumber}</strong></p>
+                  <p style={{ margin: '0', fontSize: '20px', fontWeight: '700', color: '#0A2540' }}>
+                    {formatCurrency(selectedInvoice.total, selectedInvoice.currency)}
+                  </p>
+                </div>
+
+                {loadingPaymentMethods ? (
+                  <div style={{ textAlign: 'center', padding: '20px', color: '#6B7280' }}>Loading payment methods...</div>
+                ) : availablePaymentMethods.length === 0 ? (
+                  <div style={{ padding: '16px', background: '#FEF3C7', borderRadius: '8px', marginBottom: '16px' }}>
+                    <p style={{ margin: 0, color: '#92400E' }}>No payment methods configured for {selectedInvoice.currency}. Please contact the administrator.</p>
+                  </div>
+                ) : (
+                  <>
+                    <FormGroup>
+                      <FormLabel>Payment Method *</FormLabel>
+                      <FormSelect
+                        value={paymentData.paymentMethod}
+                        onChange={(e) => setPaymentData(prev => ({ ...prev, paymentMethod: e.target.value }))}
+                      >
+                        {availablePaymentMethods.map(method => (
+                          <option key={method.id} value={method.id}>{method.name}</option>
+                        ))}
+                      </FormSelect>
+                    </FormGroup>
+
+                    {/* Show payment details based on selected method */}
+                    {(() => {
+                      const selectedMethod = availablePaymentMethods.find(m => m.id === paymentData.paymentMethod);
+                      if (!selectedMethod) return null;
+
+                      return (
+                        <div style={{ padding: '16px', background: '#EFF6FF', borderRadius: '8px', marginBottom: '16px' }}>
+                          {selectedMethod.id === 'bank_transfer' && (
+                            <>
+                              <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#1E40AF' }}>Bank Transfer Details</h4>
+                              <div style={{ fontSize: '14px', lineHeight: '1.8' }}>
+                                <p style={{ margin: '0' }}><strong>Bank:</strong> {selectedMethod.bankName}</p>
+                                <p style={{ margin: '0' }}><strong>Account Number:</strong> {selectedMethod.accountNumber}</p>
+                                <p style={{ margin: '0' }}><strong>Account Name:</strong> {selectedMethod.accountName}</p>
+                              </div>
+                            </>
+                          )}
+                          {selectedMethod.id === 'qr_payment' && (
+                            <>
+                              <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#1E40AF' }}>QR Payment</h4>
+                              {selectedMethod.qrImage && (
+                                <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+                                  <img
+                                    src={selectedMethod.qrImage}
+                                    alt="Payment QR Code"
+                                    style={{ maxWidth: '200px', maxHeight: '200px', border: '1px solid #E5E7EB', borderRadius: '8px' }}
+                                  />
+                                </div>
+                              )}
+                              {selectedMethod.qrDescription && (
+                                <p style={{ margin: 0, fontSize: '13px', color: '#6B7280', textAlign: 'center' }}>{selectedMethod.qrDescription}</p>
+                              )}
+                            </>
+                          )}
+                          {selectedMethod.id === 'stripe' && (
+                            <p style={{ margin: 0, fontSize: '14px', color: '#1E40AF' }}>Pay securely with your credit/debit card via Stripe.</p>
+                          )}
+                          {selectedMethod.id === 'paypal' && (
+                            <p style={{ margin: 0, fontSize: '14px', color: '#1E40AF' }}>Pay with your PayPal account or card.</p>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </>
+                )}
+
+                {/* Required field notice */}
+                <div style={{
+                  padding: '12px 16px',
+                  background: '#FEF3C7',
+                  borderRadius: '8px',
+                  marginBottom: '16px',
+                  fontSize: '13px',
+                  color: '#92400E',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '8px'
+                }}>
+                  <span style={{ fontWeight: '600', flexShrink: 0 }}>*</span>
+                  <span>Please provide either a <strong>Transaction ID / Reference Number</strong> or upload a <strong>Payment Receipt Image</strong> to submit your payment.</span>
+                </div>
+
+                <FormGroup>
+                  <FormLabel>Transaction ID / Reference Number</FormLabel>
+                  <FormInput
+                    type="text"
+                    placeholder="Enter transaction ID or reference number"
+                    value={paymentData.transactionId}
+                    onChange={(e) => setPaymentData(prev => ({ ...prev, transactionId: e.target.value }))}
+                  />
+                </FormGroup>
+
+                {/* Receipt Image Upload for bank_transfer and qr_payment */}
+                {(() => {
+                  const selectedMethod = availablePaymentMethods.find(m => m.id === paymentData.paymentMethod);
+                  if (selectedMethod && (selectedMethod.id === 'bank_transfer' || selectedMethod.id === 'qr_payment')) {
+                    return (
+                      <FormGroup>
+                        <FormLabel>Payment Receipt Image</FormLabel>
+                        <div style={{
+                          border: '2px dashed #E6EBF1',
+                          borderRadius: '8px',
+                          padding: '20px',
+                          textAlign: 'center',
+                          cursor: 'pointer',
+                          transition: 'border-color 0.2s'
+                        }}>
+                          {paymentData.receiptImage ? (
+                            <div>
+                              <img
+                                src={paymentData.receiptImage}
+                                alt="Receipt"
+                                style={{ maxWidth: '200px', maxHeight: '200px', marginBottom: '8px', borderRadius: '8px' }}
+                              />
+                              <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#6B7280' }}>
+                                Click to change image
+                              </p>
+                            </div>
+                          ) : (
+                            <div>
+                              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 8px' }}>
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <circle cx="8.5" cy="8.5" r="1.5"/>
+                                <polyline points="21,15 16,10 5,21"/>
+                              </svg>
+                              <p style={{ margin: '0', fontSize: '14px', color: '#6B7280' }}>
+                                Click to upload receipt image
+                              </p>
+                              <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#9CA3AF' }}>
+                                Max 5MB, JPG/PNG
+                              </p>
+                            </div>
+                          )}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleReceiptImageUpload}
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              height: '100%',
+                              opacity: 0,
+                              cursor: 'pointer'
+                            }}
+                          />
+                        </div>
+                      </FormGroup>
+                    );
+                  }
+                  return null;
+                })()}
+
+                {paymentSubmitError && (
+                  <div style={{ padding: '12px', background: '#FEE2E2', borderRadius: '6px', marginTop: '16px' }}>
+                    <p style={{ margin: 0, color: '#DC2626', fontSize: '13px' }}>{paymentSubmitError}</p>
+                  </div>
+                )}
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="secondary" onClick={() => setShowPaymentSubmitModal(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="success"
+                  onClick={handleSubmitPayment}
+                  disabled={isSubmittingPayment || availablePaymentMethods.length === 0}
+                >
+                  {isSubmittingPayment ? 'Submitting...' : 'Submit Payment'}
+                </Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
+        )}
       </Container>
     </MainLayout>
   );
