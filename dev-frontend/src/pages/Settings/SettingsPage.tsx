@@ -587,11 +587,8 @@ const SettingsPage: React.FC = () => {
 
   // Load settings from localStorage or use defaults
   const loadSettings = () => {
-    const savedSettings = localStorage.getItem('storeSettings');
-    if (savedSettings) {
-      return JSON.parse(savedSettings);
-    }
-    return {
+    // 기본값 정의
+    const defaultSettings = {
       store: {
         name: 'FOODCOURT CENTRAL',
         businessRegistration: '000123456789',
@@ -667,8 +664,68 @@ const SettingsPage: React.FC = () => {
         breakTimes: []
       }
     };
+
+    // localStorage에서 저장된 설정 로드 후 기본값과 안전하게 머지
+    const savedSettings = localStorage.getItem('storeSettings');
+    if (savedSettings) {
+      try {
+        const parsed = JSON.parse(savedSettings);
+        return {
+          store: { ...defaultSettings.store, ...(parsed.store || {}) },
+          operations: {
+            ...defaultSettings.operations,
+            ...(parsed.operations || {}),
+            pagerSystem: {
+              ...defaultSettings.operations.pagerSystem,
+              ...((parsed.operations && parsed.operations.pagerSystem) || {})
+            },
+            takeawayPricing: {
+              ...defaultSettings.operations.takeawayPricing,
+              ...((parsed.operations && parsed.operations.takeawayPricing) || {}),
+              categoryCharges: {
+                ...defaultSettings.operations.takeawayPricing.categoryCharges,
+                ...((parsed.operations?.takeawayPricing?.categoryCharges) || {})
+              }
+            },
+            deliveryPricing: {
+              ...defaultSettings.operations.deliveryPricing,
+              ...((parsed.operations && parsed.operations.deliveryPricing) || {}),
+              zones: parsed.operations?.deliveryPricing?.zones || defaultSettings.operations.deliveryPricing.zones
+            },
+            loyaltyTiers: {
+              ...defaultSettings.operations.loyaltyTiers,
+              ...((parsed.operations && parsed.operations.loyaltyTiers) || {}),
+              bronze: {
+                ...defaultSettings.operations.loyaltyTiers.bronze,
+                ...((parsed.operations?.loyaltyTiers?.bronze) || {})
+              },
+              silver: {
+                ...defaultSettings.operations.loyaltyTiers.silver,
+                ...((parsed.operations?.loyaltyTiers?.silver) || {})
+              },
+              gold: {
+                ...defaultSettings.operations.loyaltyTiers.gold,
+                ...((parsed.operations?.loyaltyTiers?.gold) || {})
+              },
+              vip: {
+                ...defaultSettings.operations.loyaltyTiers.vip,
+                ...((parsed.operations?.loyaltyTiers?.vip) || {})
+              }
+            },
+            orderTypes: {
+              ...defaultSettings.operations.orderTypes,
+              ...((parsed.operations && parsed.operations.orderTypes) || {})
+            },
+            breakTimes: parsed.operations?.breakTimes || defaultSettings.operations.breakTimes
+          }
+        };
+      } catch (e) {
+        console.error('Failed to parse localStorage storeSettings:', e);
+      }
+    }
+    return defaultSettings;
   };
-  
+
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(loadSettings().store);
   const [operationSettings, setOperationSettings] = useState<OperationSettings>(loadSettings().operations);
   const [brandInfo, setBrandInfo] = useState<{
