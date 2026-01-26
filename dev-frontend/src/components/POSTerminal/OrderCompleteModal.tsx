@@ -226,7 +226,8 @@ interface OrderCompleteModalProps {
   orderData: {
     orderNumber: string;
     pickupNumber?: string;
-    pagerNumber?: string;
+    tableNumber?: string | null;
+    pagerNumber?: string | null;
     date: Date;
     items: Array<{
       id: string;

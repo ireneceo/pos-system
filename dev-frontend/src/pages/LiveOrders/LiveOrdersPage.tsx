@@ -950,7 +950,10 @@ const LiveOrdersPage: React.FC = () => {
   const { user } = useAuth();
   const { getStoreInfo, operationSettings } = useStore();
   const [orders, setOrders] = useState<DbOrder[]>([]); // Paginated orders for display
-  const [allOrders, setAllOrders] = useState<DbOrder[]>([]); // ALL orders for tab counts
+  const [orderCounts, setOrderCounts] = useState<{
+    all: number; outstanding: number; pending: number; preparing: number;
+    ready: number; served: number; completed: number; cancelled: number;
+  }>({ all: 0, outstanding: 0, pending: 0, preparing: 0, ready: 0, served: 0, completed: 0, cancelled: 0 });
   const [, setSocket] = useState<Socket | null>(null);
   const [activeTab, setActiveTab] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState<DbOrder | null>(null);
@@ -1111,13 +1114,26 @@ const LiveOrdersPage: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch orders from database
+  // Fetch orders from database with server-side filtering
   const fetchOrders = useCallback(async (page = 1) => {
     if (!user?.restaurantId) return;
 
     try {
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: '100',
+        includeCompleted: 'true'
+      });
+
+      // Add date filter
+      if (dateRange.start) params.append('startDate', dateRange.start);
+      if (dateRange.end) params.append('endDate', dateRange.end);
+
+      // Add search filter
+      if (searchQuery.trim()) params.append('search', searchQuery.trim());
+
       const response = await fetch(
-        `/api/orders/restaurant/${user.restaurantId}?page=${page}&limit=50&includeCompleted=true`,
+        `/api/orders/restaurant/${user.restaurantId}?${params}`,
         getFetchOptions()
       );
       const result = await response.json();
@@ -1135,28 +1151,30 @@ const LiveOrdersPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.restaurantId]);
+  }, [user?.restaurantId, dateRange.start, dateRange.end, searchQuery]);
 
-  // Fetch ALL orders (not paginated) for tab counts
-  const fetchAllOrders = useCallback(async () => {
-    if (!user?.restaurantId) {
-      return;
-    }
+  // Fetch order counts for tab badges (optimized - no full data fetch)
+  const fetchOrderCounts = useCallback(async () => {
+    if (!user?.restaurantId) return;
 
     try {
+      const params = new URLSearchParams();
+      if (dateRange.start) params.append('startDate', dateRange.start);
+      if (dateRange.end) params.append('endDate', dateRange.end);
+
       const response = await fetch(
-        `/api/orders/restaurant/${user.restaurantId}?page=1&limit=10000&includeCompleted=true`,
+        `/api/orders/restaurant/${user.restaurantId}/counts?${params}`,
         getFetchOptions()
       );
       const result = await response.json();
 
-      if (result.success && result.data) {
-        setAllOrders(result.data);
+      if (result.success && result.data?.counts) {
+        setOrderCounts(result.data.counts);
       }
     } catch (error) {
-      console.error('Failed to fetch all orders:', error);
+      console.error('Failed to fetch order counts:', error);
     }
-  }, [user?.restaurantId]);
+  }, [user?.restaurantId, dateRange.start, dateRange.end]);
 
   // Fetch membership settings
   const fetchMembershipSettings = useCallback(async () => {
@@ -1201,7 +1219,12 @@ const LiveOrdersPage: React.FC = () => {
     newSocket.on('order-created', (order: DbOrder) => {
       console.log('📥 Socket: order-created', order.id);
       setOrders(prev => [order, ...prev]);
-      setAllOrders(prev => [order, ...prev]); // Add to allOrders for tab counts
+      // Update counts optimistically
+      setOrderCounts(prev => ({
+        ...prev,
+        all: prev.all + 1,
+        [order.status]: (prev[order.status as keyof typeof prev] || 0) + 1
+      }));
 
       // Play notification sound for new order (use ref to avoid dependency)
       playNotificationSoundRef.current();
@@ -1209,14 +1232,33 @@ const LiveOrdersPage: React.FC = () => {
 
     newSocket.on('order-updated', (order: DbOrder) => {
       console.log('📥 Socket: order-updated', order.id, order.status);
-      setOrders(prev => prev.map(o => o.id === order.id ? order : o));
-      setAllOrders(prev => prev.map(o => o.id === order.id ? order : o)); // Update in allOrders too
+      setOrders(prev => {
+        const oldOrder = prev.find(o => o.id === order.id);
+        // Update counts if status changed
+        if (oldOrder && oldOrder.status !== order.status) {
+          setOrderCounts(counts => ({
+            ...counts,
+            [oldOrder.status]: Math.max(0, (counts[oldOrder.status as keyof typeof counts] || 0) - 1),
+            [order.status]: (counts[order.status as keyof typeof counts] || 0) + 1
+          }));
+        }
+        return prev.map(o => o.id === order.id ? order : o);
+      });
     });
 
     newSocket.on('order-deleted', ({ id }: { id: number }) => {
       console.log('📥 Socket: order-deleted', id);
-      setOrders(prev => prev.filter(o => o.id !== id));
-      setAllOrders(prev => prev.filter(o => o.id !== id)); // Remove from allOrders too
+      setOrders(prev => {
+        const deletedOrder = prev.find(o => o.id === id);
+        if (deletedOrder) {
+          setOrderCounts(counts => ({
+            ...counts,
+            all: Math.max(0, counts.all - 1),
+            [deletedOrder.status]: Math.max(0, (counts[deletedOrder.status as keyof typeof counts] || 0) - 1)
+          }));
+        }
+        return prev.filter(o => o.id !== id);
+      });
     });
 
     // New items added to existing order (merged order notification)
@@ -1256,10 +1298,10 @@ const LiveOrdersPage: React.FC = () => {
     fetchOrders(currentPage);
   }, [fetchOrders, currentPage]);
 
-  // Fetch all orders for tab counts
+  // Fetch order counts for tab badges
   useEffect(() => {
-    fetchAllOrders();
-  }, [fetchAllOrders]);
+    fetchOrderCounts();
+  }, [fetchOrderCounts]);
 
   // Initialize date filter to 'today' on mount
   useEffect(() => {
@@ -1302,15 +1344,8 @@ const LiveOrdersPage: React.FC = () => {
         start = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
         break;
       case 'all':
-        if (allOrders.length > 0) {
-          const earliestOrder = allOrders.reduce((earliest, order) => {
-            const orderDate = new Date(order.order_date || order.createdAt);
-            return orderDate < earliest ? orderDate : earliest;
-          }, new Date());
-          start = earliestOrder;
-        } else {
-          start = new Date(now.getFullYear() - 5, 0, 1);
-        }
+        // Default to 5 years ago for 'all' period
+        start = new Date(now.getFullYear() - 5, 0, 1);
         break;
     }
 
@@ -1320,66 +1355,10 @@ const LiveOrdersPage: React.FC = () => {
     });
   };
 
-  // Filter orders by date range and search query
+  // Get filtered orders - server-side filtering is now used, this returns the orders directly
   const getFilteredOrders = () => {
-    if (!dateRange.start || !dateRange.end) return allOrders;
-
-    const startDate = new Date(dateRange.start);
-    startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date(dateRange.end);
-    endDate.setHours(23, 59, 59, 999);
-
-    let filtered = allOrders.filter(order => {
-      // Use order_date or createdAt (database columns)
-      const dateValue = order.order_date || order.createdAt;
-      if (!dateValue) {
-        return false;
-      }
-
-      const orderDate = new Date(dateValue);
-
-      // Check if date is valid
-      if (isNaN(orderDate.getTime())) {
-        return false;
-      }
-
-      const isInRange = orderDate >= startDate && orderDate <= endDate;
-      return isInRange;
-    });
-
-    // Apply search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(order => {
-        // Search in order number
-        if (order.order_number?.toLowerCase().includes(query)) return true;
-
-        // Search in customer name
-        if (order.customer_name?.toLowerCase().includes(query)) return true;
-
-        // Search in customer phone
-        if (order.customer_phone?.replace(/\D/g, '').includes(query.replace(/\D/g, ''))) return true;
-
-        // Search in table number
-        if (order.table_number?.toString().includes(query)) return true;
-
-        // Search in order items
-        if (order.order_items && Array.isArray(order.order_items)) {
-          const hasMatchingItem = order.order_items.some((item: any) =>
-            item.menu_item_name?.toLowerCase().includes(query) ||
-            item.name?.toLowerCase().includes(query)
-          );
-          if (hasMatchingItem) return true;
-        }
-
-        // Search in payment method
-        if (order.payment_method?.toLowerCase().includes(query)) return true;
-
-        return false;
-      });
-    }
-
-    return filtered;
+    // Orders are already filtered by date range and search on the server
+    return orders;
   };
 
   // Handle custom date range change
@@ -1616,16 +1595,8 @@ const LiveOrdersPage: React.FC = () => {
   };
 
   const getStatusCount = (status: string) => {
-    const dateFiltered = getFilteredOrders();
-
-    if (status === 'all') {
-      // All 탭 카운트 - 모든 주문 포함 (cancelled 포함)
-      return dateFiltered.length;
-    }
-    if (status === 'outstanding') {
-      return dateFiltered.filter(order => isOutstanding(order)).length;
-    }
-    return dateFiltered.filter(order => order.status === status).length;
+    // Use pre-calculated counts from API for performance
+    return orderCounts[status as keyof typeof orderCounts] || 0;
   };
 
   const handleStatusChange = async (orderId: number, newStatus: DbOrder['status'], setKitchenReady: boolean = false) => {
@@ -2120,6 +2091,8 @@ const LiveOrdersPage: React.FC = () => {
       const orderData = {
         orderNumber: orderToPrint.order_number,
         pickupNumber: orderToPrint.order_number.split('-')[1],
+        tableNumber: orderToPrint.table_number || null,
+        pagerNumber: orderToPrint.pager_number || null,
         date: new Date(orderToPrint.order_date || orderToPrint.createdAt),
         items: orderItems.map((item: any) => {
           // Parse options if it's a JSON string

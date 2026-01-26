@@ -753,7 +753,10 @@ router.get('/restaurant/:restaurantId', authenticateToken, async (req, res) => {
       status,
       page = 1,
       limit = 50,
-      includeCompleted = 'true'
+      includeCompleted = 'true',
+      startDate,
+      endDate,
+      search
     } = req.query;
 
     const pageNum = parseInt(page);
@@ -769,6 +772,17 @@ router.get('/restaurant/:restaurantId', authenticateToken, async (req, res) => {
       ]
     };
 
+    // Filter by date range if provided
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      whereCondition.order_date = {
+        [Op.between]: [start, end]
+      };
+    }
+
     // Filter by status if provided
     if (status) {
       whereCondition.status = status;
@@ -777,6 +791,20 @@ router.get('/restaurant/:restaurantId', authenticateToken, async (req, res) => {
     // By default, exclude completed orders unless explicitly requested
     if (includeCompleted === 'false') {
       whereCondition.status = { [Op.ne]: 'completed' };
+    }
+
+    // Search filter
+    if (search && search.trim()) {
+      const searchTerm = `%${search.trim()}%`;
+      whereCondition[Op.and] = whereCondition[Op.and] || [];
+      whereCondition[Op.and].push({
+        [Op.or]: [
+          { order_number: { [Op.like]: searchTerm } },
+          { customer_name: { [Op.like]: searchTerm } },
+          { customer_phone: { [Op.like]: searchTerm } },
+          { table_number: { [Op.like]: searchTerm } }
+        ]
+      });
     }
 
     // Get total count
@@ -818,6 +846,101 @@ router.get('/restaurant/:restaurantId', authenticateToken, async (req, res) => {
       }
     });
   } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get order counts by status (optimized for tab counts)
+router.get('/restaurant/:restaurantId/counts', authenticateToken, async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const restaurantId = req.params.restaurantId;
+
+    let whereCondition = {
+      restaurant_id: restaurantId,
+      [Op.or]: [
+        { is_deleted: false },
+        { is_deleted: null }
+      ]
+    };
+
+    // Apply date filter if provided
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      whereCondition.order_date = {
+        [Op.between]: [start, end]
+      };
+    }
+
+    // Use raw SQL for efficient counting
+    const [results] = await sequelize.query(`
+      SELECT
+        status,
+        COUNT(*) as count,
+        SUM(CASE WHEN payment_status IN ('pending', 'failed') THEN 1 ELSE 0 END) as unpaid_count,
+        SUM(total_amount) as total_sales
+      FROM orders
+      WHERE restaurant_id = :restaurantId
+        AND (is_deleted = false OR is_deleted IS NULL)
+        ${startDate && endDate ? 'AND order_date BETWEEN :startDate AND :endDate' : ''}
+      GROUP BY status
+    `, {
+      replacements: {
+        restaurantId,
+        startDate: startDate ? new Date(startDate) : null,
+        endDate: endDate ? new Date(endDate + 'T23:59:59.999Z') : null
+      }
+    });
+
+    // Calculate counts by status
+    const counts = {
+      all: 0,
+      outstanding: 0,
+      pending: 0,
+      preparing: 0,
+      ready: 0,
+      served: 0,
+      completed: 0,
+      cancelled: 0
+    };
+
+    let totalSales = 0;
+    let completedSales = 0;
+
+    results.forEach(row => {
+      const count = parseInt(row.count) || 0;
+      const unpaidCount = parseInt(row.unpaid_count) || 0;
+      const sales = parseFloat(row.total_sales) || 0;
+
+      counts.all += count;
+      counts[row.status] = count;
+      totalSales += sales;
+
+      // Outstanding = orders with pending payment (awaiting_payment, outstanding) or unpaid orders
+      if (row.status === 'outstanding' || row.status === 'awaiting_payment') {
+        counts.outstanding += count;
+      } else if (unpaidCount > 0 && row.status !== 'cancelled') {
+        counts.outstanding += unpaidCount;
+      }
+
+      if (row.status === 'completed') {
+        completedSales += sales;
+      }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        counts,
+        totalSales,
+        completedSales
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching order counts:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
