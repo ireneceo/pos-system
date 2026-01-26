@@ -355,8 +355,9 @@ const ItemDetailPage: React.FC = () => {
       // Fetch item details from API
       const response = await api.getItemDetails(itemId);
 
-      if (response.data && response.data.success && response.data.data) {
-        const itemData = response.data.data;
+      // API returns { success: true, data: {...} }
+      if (response && response.success && response.data) {
+        const itemData = response.data;
 
         // Transform API data to match component format
         const transformedItem = {
