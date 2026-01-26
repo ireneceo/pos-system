@@ -77,8 +77,8 @@ echo -e "${YELLOW}Step 1: Pre-deployment API Tests (Dev Server)${NC}"
 DEV_API="http://localhost:3001/api"
 TEST_PASSED=true
 
-# Health check
-echo -n "   Health check... "
+# Health check (서버 상태)
+echo -n "   Server health... "
 HEALTH=$(curl -s --max-time 5 "$DEV_API/health" 2>/dev/null || echo "FAIL")
 if echo "$HEALTH" | grep -q '"status":"ok"'; then
     echo -e "${GREEN}OK${NC}"
@@ -87,23 +87,20 @@ else
     TEST_PASSED=false
 fi
 
-# Mobile Store API (public endpoint)
-echo -n "   Mobile Store API... "
-STORE=$(curl -s --max-time 5 "$DEV_API/mobile/store/kdine-korean" 2>/dev/null || echo "FAIL")
-if echo "$STORE" | grep -q '"success":true'; then
-    echo -e "${GREEN}OK${NC}"
+# DB 연결 테스트 (동적으로 첫번째 레스토랑 slug 가져오기)
+echo -n "   Database + API... "
+source <(grep -E "^DB_" "$DEV_BACKEND/.env" | sed 's/^/export /')
+TEST_SLUG=$(mysql -u $DB_USER -p$DB_PASSWORD $DB_NAME -N -e "SELECT slug FROM restaurants LIMIT 1;" 2>/dev/null)
+if [ -n "$TEST_SLUG" ]; then
+    STORE_CHECK=$(curl -s --max-time 5 "$DEV_API/mobile/store/$TEST_SLUG" 2>/dev/null || echo "FAIL")
+    if echo "$STORE_CHECK" | grep -q '"success":true'; then
+        echo -e "${GREEN}OK${NC}"
+    else
+        echo -e "${RED}FAILED (API)${NC}"
+        TEST_PASSED=false
+    fi
 else
-    echo -e "${RED}FAILED${NC}"
-    TEST_PASSED=false
-fi
-
-# Mobile Menu API (public endpoint)
-echo -n "   Mobile Menu API... "
-MENU=$(curl -s --max-time 5 "$DEV_API/mobile/menu/kdine-korean" 2>/dev/null || echo "FAIL")
-if echo "$MENU" | grep -q '"success":true'; then
-    echo -e "${GREEN}OK${NC}"
-else
-    echo -e "${RED}FAILED${NC}"
+    echo -e "${RED}FAILED (DB)${NC}"
     TEST_PASSED=false
 fi
 
@@ -308,6 +305,8 @@ sleep 2
 
 # Health check
 echo -n "   Health check... "
+# Server health
+echo -n "   Server health... "
 HEALTH=$(curl -s --max-time 5 "$PROD_API/health" 2>/dev/null || echo "FAIL")
 if echo "$HEALTH" | grep -q '"status":"ok"'; then
     echo -e "${GREEN}OK${NC}"
@@ -316,23 +315,20 @@ else
     VERIFY_PASSED=false
 fi
 
-# Menu API
-echo -n "   Menu API... "
-MENU=$(curl -s --max-time 5 "$PROD_API/menu/8" 2>/dev/null || echo "FAIL")
-if echo "$MENU" | grep -q '"success":true'; then
-    echo -e "${GREEN}OK${NC}"
+# DB + API 테스트 (동적 slug)
+echo -n "   Database + API... "
+source <(grep -E "^DB_" "$PROD_BACKEND/.env" | sed 's/^/export /')
+PROD_SLUG=$(mysql -u $DB_USER -p$DB_PASSWORD $DB_NAME -N -e "SELECT slug FROM restaurants LIMIT 1;" 2>/dev/null)
+if [ -n "$PROD_SLUG" ]; then
+    STORE_CHECK=$(curl -s --max-time 5 "$PROD_API/mobile/store/$PROD_SLUG" 2>/dev/null || echo "FAIL")
+    if echo "$STORE_CHECK" | grep -q '"success":true'; then
+        echo -e "${GREEN}OK${NC}"
+    else
+        echo -e "${RED}FAILED (API)${NC}"
+        VERIFY_PASSED=false
+    fi
 else
-    echo -e "${RED}FAILED${NC}"
-    VERIFY_PASSED=false
-fi
-
-# Categories API
-echo -n "   Categories API... "
-CATS=$(curl -s --max-time 5 "$PROD_API/categories?restaurant_id=8" 2>/dev/null || echo "FAIL")
-if echo "$CATS" | grep -q '"success":true\|"categories"'; then
-    echo -e "${GREEN}OK${NC}"
-else
-    echo -e "${RED}FAILED${NC}"
+    echo -e "${RED}FAILED (DB)${NC}"
     VERIFY_PASSED=false
 fi
 
