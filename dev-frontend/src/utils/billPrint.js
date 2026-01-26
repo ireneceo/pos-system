@@ -229,8 +229,10 @@ export function generateBillContent(orderData, storeInfo) {
   content += CMD.ALIGN_LEFT;
   content += formatLine('Order:', orderData.orderNumber) + CMD.LINE_FEED;
 
-  // Show Pager if exists, otherwise show Pickup (same as Order Ticket)
-  if (orderData.pagerNumber) {
+  // Show Table if exists, otherwise show Pager, otherwise show Pickup
+  if (orderData.tableNumber) {
+    content += formatLine('Table:', orderData.tableNumber) + CMD.LINE_FEED;
+  } else if (orderData.pagerNumber) {
     content += formatLine('Pager #:', orderData.pagerNumber) + CMD.LINE_FEED;
   } else if (orderData.pickupNumber) {
     content += formatLine('Pickup #:', orderData.pickupNumber) + CMD.LINE_FEED;

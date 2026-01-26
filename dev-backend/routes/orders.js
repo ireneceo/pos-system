@@ -9,6 +9,7 @@ const { executeQuery, executeTransaction } = require('../utils/queryWrapper');
 const { deductInventoryForOrder } = require('../services/inventoryDeductionService');
 const { earnPointsForOrder, refundPointsForOrder, usePointsForOrder } = require('../services/pointService');
 const { authenticateToken, optionalAuthenticateToken } = require('../middleware/auth');
+const ActivityLog = require('../models/ActivityLog');
 
 // Get all orders
 router.get('/', authenticateToken, async (req, res) => {
@@ -1345,6 +1346,201 @@ router.post('/:id/merge-items', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('❌ [MERGE-ITEMS] Error:', error.message);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /api/orders/:id/items/:itemIndex
+// Remove a specific item from order (only before payment)
+router.delete('/:id/items/:itemIndex', authenticateToken, async (req, res) => {
+  try {
+    const orderId = req.params.id;
+    const itemIndex = parseInt(req.params.itemIndex);
+
+    const order = await Order.findByPk(orderId);
+
+    if (!order) {
+      return res.status(404).json({ success: false, error: 'Order not found' });
+    }
+
+    // Only allow deletion before payment
+    if (order.payment_status === 'completed') {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot remove items from a paid order'
+      });
+    }
+
+    if (['served', 'completed', 'cancelled'].includes(order.status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Cannot remove items from an order with status "${order.status}"`
+      });
+    }
+
+    // Get current items
+    let orderItems = order.order_items || [];
+    if (typeof orderItems === 'string') {
+      orderItems = JSON.parse(orderItems);
+    }
+
+    if (itemIndex < 0 || itemIndex >= orderItems.length) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid item index'
+      });
+    }
+
+    // Cannot delete last item - must cancel order instead
+    if (orderItems.length === 1) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot remove the last item. Please cancel the order instead.'
+      });
+    }
+
+    // Calculate what the new subtotal would be BEFORE removing the item
+    const itemToRemove = orderItems[itemIndex];
+    const itemTotal = itemToRemove.quantity * parseFloat(itemToRemove.price || 0);
+    const currentSubtotal = orderItems.reduce((sum, item) => {
+      return sum + (item.quantity * parseFloat(item.price || 0));
+    }, 0);
+    const newSubtotal = currentSubtotal - itemTotal;
+
+    // Check if discount would exceed new subtotal - reject if so
+    const pointDiscount = parseFloat(order.point_discount || 0);
+    const couponDiscount = parseFloat(order.coupon_discount || 0);
+    const totalDiscount = pointDiscount + couponDiscount;
+
+    if (totalDiscount > newSubtotal) {
+      console.log(`⚠️ [DELETE-ITEM] Rejected: discount (${totalDiscount}) exceeds new subtotal (${newSubtotal})`);
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot remove this item. The applied discount exceeds the new subtotal. Please add other items first, then remove this item.'
+      });
+    }
+
+    // Check coupon min_order requirement if coupon is applied
+    if (order.coupon_code && couponDiscount > 0) {
+      const coupon = await Coupon.findOne({
+        where: {
+          restaurant_id: order.restaurant_id,
+          code: order.coupon_code.toUpperCase()
+        }
+      });
+
+      if (coupon && coupon.min_order && newSubtotal < parseFloat(coupon.min_order)) {
+        console.log(`⚠️ [DELETE-ITEM] Rejected: new subtotal (${newSubtotal}) below coupon min_order (${coupon.min_order})`);
+        return res.status(400).json({
+          success: false,
+          error: `Cannot remove this item. The order total would fall below the coupon's minimum order requirement (${coupon.min_order}). Please add other items first.`
+        });
+      }
+    }
+
+    // Remove the item
+    const removedItem = orderItems.splice(itemIndex, 1)[0];
+    console.log(`🗑️ [DELETE-ITEM] Removing item: ${removedItem.name} from order ${orderId}`);
+
+    // Update subtotal and items
+    order.subtotal = newSubtotal;
+    order.order_items = orderItems;
+
+    // Recalculate service charge if applicable
+    const serviceChargeRate = parseFloat(order.service_charge_rate || 0);
+    if (serviceChargeRate > 0) {
+      order.service_charge = newSubtotal * (serviceChargeRate / 100);
+    }
+
+    // Recalculate tax if applicable
+    const taxRate = parseFloat(order.tax_rate || 0);
+    if (taxRate > 0) {
+      order.tax = newSubtotal * (taxRate / 100);
+    }
+
+    // Calculate final total
+    const takeawayCharge = parseFloat(order.takeaway_charge || 0);
+    const deliveryFee = parseFloat(order.delivery_fee || 0);
+    const serviceCharge = parseFloat(order.service_charge || 0);
+    const tax = parseFloat(order.tax || 0);
+    const discount = parseFloat(order.discount || 0);
+
+    const newTotal = newSubtotal
+      + takeawayCharge
+      + deliveryFee
+      + serviceCharge
+      + tax
+      - discount
+      - pointDiscount
+      - couponDiscount;
+
+    order.total_amount = Math.max(0, newTotal); // Ensure non-negative
+
+    await order.save();
+
+    // Log the deletion for audit trail
+    try {
+      await ActivityLog.createLog({
+        restaurant_id: order.restaurant_id,
+        user_id: req.user.id,
+        username: req.user.username || req.user.email,
+        full_name: req.user.name || req.user.full_name || null,
+        action_type: 'delete',
+        entity_type: 'order_item',
+        entity_id: orderId,
+        entity_name: `${removedItem.name} (Order: ${order.order_number})`,
+        changes: {
+          removed_item: {
+            name: removedItem.name,
+            price: removedItem.price,
+            quantity: removedItem.quantity
+          },
+          previous_total: currentSubtotal + takeawayCharge + deliveryFee + (serviceChargeRate > 0 ? currentSubtotal * serviceChargeRate / 100 : serviceCharge) + (taxRate > 0 ? currentSubtotal * taxRate / 100 : tax) - discount - pointDiscount - couponDiscount,
+          new_total: newTotal
+        },
+        description: `Removed "${removedItem.name}" (qty: ${removedItem.quantity}, price: ${removedItem.price}) from order ${order.order_number}`,
+        ip_address: req.ip || req.socket?.remoteAddress,
+        user_agent: req.get('User-Agent')
+      });
+    } catch (logError) {
+      console.error('⚠️ [DELETE-ITEM] Failed to create audit log:', logError.message);
+      // Don't fail the operation if logging fails
+    }
+
+    console.log(`✅ [DELETE-ITEM] Item removed successfully. New total: ${newTotal}`);
+
+    // Emit socket event for real-time update
+    const io = req.app.get('io');
+    if (io && order.restaurant_id) {
+      const room = `restaurant_${order.restaurant_id}`;
+
+      // Send order update
+      io.of('/orders').to(room).emit('order-updated', order);
+
+      // Send VOID notification for kitchen display
+      io.of('/orders').to(room).emit('item-voided', {
+        orderId: order.id,
+        orderNumber: order.order_number,
+        tableNumber: order.table_number,
+        voidedItem: {
+          name: removedItem.name,
+          quantity: removedItem.quantity,
+          price: removedItem.price
+        },
+        voidedBy: req.user.username || req.user.email,
+        voidedAt: new Date().toISOString()
+      });
+    }
+
+    res.json({
+      success: true,
+      data: order,
+      removedItem,
+      newTotal
+    });
+
+  } catch (error) {
+    console.error('❌ [DELETE-ITEM] Error:', error.message);
     res.status(400).json({ success: false, error: error.message });
   }
 });

@@ -2225,6 +2225,37 @@ const LiveOrdersPage: React.FC = () => {
     }
   };
 
+  // Delete item from order (only before payment)
+  const handleDeleteOrderItem = async (itemIndex: number, itemName: string) => {
+    if (!selectedOrder) return;
+
+    // Confirm deletion
+    if (!window.confirm(`Remove "${itemName}" from this order?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/orders/${selectedOrder.id}/items/${itemIndex}`, {
+        ...getFetchOptions({ method: 'DELETE' })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        showToast(`Item removed: ${itemName}`, 'success');
+        // Update selectedOrder with new data
+        setSelectedOrder(result.data);
+        // Refresh orders list
+        fetchOrders();
+      } else {
+        showToast(result.error || 'Failed to remove item', 'error');
+      }
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      showToast('Failed to remove item', 'error');
+    }
+  };
+
   // Print kitchen ticket for a specific order group (merged orders)
   const handlePrintGroupTicket = async (groupNum: number, groupItems: any[]) => {
     if (!selectedOrder) return;
@@ -3713,9 +3744,11 @@ const LiveOrdersPage: React.FC = () => {
                     <SectionTitle>Order Items</SectionTitle>
                     {(() => {
                       const items = selectedOrder.order_items && Array.isArray(selectedOrder.order_items) ? selectedOrder.order_items : [];
+                      // Add original index to each item for deletion
+                      const itemsWithIndex = items.map((item: any, idx: number) => ({ ...item, _originalIndex: idx }));
                       // Group items by order_group
                       const groupedItems: { [key: number]: any[] } = {};
-                      items.forEach((item: any) => {
+                      itemsWithIndex.forEach((item: any) => {
                         const group = item.order_group || 0;
                         if (!groupedItems[group]) groupedItems[group] = [];
                         groupedItems[group].push(item);
@@ -3766,8 +3799,8 @@ const LiveOrdersPage: React.FC = () => {
                             </div>
                           )}
                           {groupedItems[groupNum].map((item: any, idx: number) => (
-                            <ItemDetail key={`${groupNum}-${idx}`}>
-                              <ItemInfo>
+                            <ItemDetail key={`${groupNum}-${idx}`} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                              <ItemInfo style={{ flex: 1 }}>
                                 <ItemName>{item.name || item.menuItem?.name || 'Item'}</ItemName>
                                 {item.options && item.options.length > 0 && (
                                   <ItemOptions>
@@ -3779,6 +3812,25 @@ const LiveOrdersPage: React.FC = () => {
                                   <span>{formatCurrency(item.quantity * parseFloat(item.price || item.menuItem?.price || 0), operationSettings.currency)}</span>
                                 </ItemPrice>
                               </ItemInfo>
+                              {/* Delete button - only show before payment and if more than 1 item */}
+                              {selectedOrder.payment_status !== 'completed' && items.length > 1 && (
+                                <button
+                                  onClick={() => handleDeleteOrderItem(item._originalIndex, item.name || item.menuItem?.name || 'Item')}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: '#EF4444',
+                                    cursor: 'pointer',
+                                    padding: '4px',
+                                    marginTop: '2px',
+                                    fontSize: '16px',
+                                    lineHeight: 1
+                                  }}
+                                  title="Remove item"
+                                >
+                                  ×
+                                </button>
+                              )}
                             </ItemDetail>
                           ))}
                         </div>
