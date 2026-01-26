@@ -41,7 +41,7 @@ if [ -f "$PROJECT_DIR/.last-deployed-commit" ]; then
 fi
 CURRENT_COMMIT=$(git rev-parse HEAD)
 
-echo -e "${BLUE}   Last deployed: ${LAST_DEPLOYED:0:7:-"never"}${NC}"
+echo -e "${BLUE}   Last deployed: ${LAST_DEPLOYED:0:7}${NC}"
 echo -e "${BLUE}   Current HEAD:  ${CURRENT_COMMIT:0:7}${NC}"
 
 # 변경된 파일 목록
@@ -87,20 +87,20 @@ else
     TEST_PASSED=false
 fi
 
-# Menu API
-echo -n "   Menu API... "
-MENU=$(curl -s --max-time 5 "$DEV_API/menu/5" 2>/dev/null || echo "FAIL")
-if echo "$MENU" | grep -q '"success":true'; then
+# Mobile Store API (public endpoint)
+echo -n "   Mobile Store API... "
+STORE=$(curl -s --max-time 5 "$DEV_API/mobile/store/kdine-korean" 2>/dev/null || echo "FAIL")
+if echo "$STORE" | grep -q '"success":true'; then
     echo -e "${GREEN}OK${NC}"
 else
     echo -e "${RED}FAILED${NC}"
     TEST_PASSED=false
 fi
 
-# Categories API
-echo -n "   Categories API... "
-CATS=$(curl -s --max-time 5 "$DEV_API/categories?restaurant_id=5" 2>/dev/null || echo "FAIL")
-if echo "$CATS" | grep -q '"success":true\|"categories"'; then
+# Mobile Menu API (public endpoint)
+echo -n "   Mobile Menu API... "
+MENU=$(curl -s --max-time 5 "$DEV_API/mobile/menu/kdine-korean" 2>/dev/null || echo "FAIL")
+if echo "$MENU" | grep -q '"success":true'; then
     echo -e "${GREEN}OK${NC}"
 else
     echo -e "${RED}FAILED${NC}"
