@@ -1,21 +1,76 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-01-25
+> **최종 업데이트:** 2026-01-26
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
 ---
 
-## 📋 다음 개발: Payment System Integration
+## 📋 다음 개발: 메뉴 로딩 성능 최적화
 
 ### 남은 작업
 
 | 기능 | 설명 | 상태 |
 |------|------|:----:|
+| 메뉴 이미지 최적화 | Base64 이미지 24MB → 지연 로딩/썸네일 | 분석완료 |
 | Stripe Integration | Stripe 결제 연동 | 대기 |
 | PayPal Integration | PayPal 결제 연동 | 대기 |
 | Auto Payment System | 자동 결제 시스템 | 대기 |
 | Kitchen Display 개선 | Pending 컬럼 아이템별 Done 버튼 | 대기 |
+
+### 메뉴 성능 문제 분석 결과
+
+**문제:** 운영서버에서 메뉴가 많은 레스토랑(withMIN 215개, K-DINE IPC 87개)의 POS/Mobile Order 느림
+
+**원인:** 이미지가 Base64로 DB에 저장되어 withMIN의 경우 24.3MB 데이터 로딩
+
+**해결 방안 (검토 필요):**
+1. 메뉴 목록 API에서 이미지 제외 (가장 빠른 해결책)
+2. 썸네일 사용 (별도 컬럼 추가)
+3. 이미지 지연 로딩 (스크롤 시 로드)
+4. 이미지를 파일로 저장하고 URL 사용 (장기적)
+
+---
+
+## ✅ 완료: Live Orders 성능 최적화 및 버그 수정 (2026-01-26)
+
+### 완료된 기능
+
+| 기능 | 설명 | 상태 |
+|------|------|:----:|
+| Orders Counts API | 탭 카운트 전용 API 추가 (10,000개 fetch 제거) | ✅ 완료 |
+| 서버사이드 필터링 | 날짜/검색 필터를 백엔드에서 처리 | ✅ 완료 |
+| 빌프린트 테이블번호 | Table > Pager > Pickup 우선순위 적용 | ✅ 완료 |
+
+### 핵심 구현 사항
+
+1. **Orders Counts API (`/api/orders/restaurant/:id/counts`)**
+   - SQL 집계로 상태별 카운트만 반환
+   - 날짜 범위 파라미터 지원 (startDate, endDate)
+   - 전체 주문 fetch 없이 빠른 탭 카운트 제공
+
+2. **서버사이드 필터링**
+   - 기존 orders API에 startDate, endDate, search 파라미터 추가
+   - 클라이언트에서 10,000개 필터링 → 서버에서 100개 필터링
+
+3. **프론트엔드 최적화 (LiveOrdersPage.tsx)**
+   - `allOrders` 상태 제거, `orderCounts` 상태로 변경
+   - `fetchOrderCounts` 함수로 카운트만 가져옴
+   - 소켓 이벤트에서 카운트 최적화 업데이트
+
+4. **빌프린트 테이블번호 수정**
+   - POSTerminalPage.tsx: `setCompletedOrderData`에 tableNumber 추가
+   - LiveOrdersPage.tsx: `handlePrintBill`에 tableNumber, pagerNumber 추가
+
+### 관련 파일
+
+**Backend:**
+- `routes/orders.js` - counts API 추가, 날짜/검색 필터 추가
+
+**Frontend:**
+- `pages/LiveOrders/LiveOrdersPage.tsx` - 성능 최적화
+- `pages/POSTerminal/POSTerminalPage.tsx` - tableNumber 추가
+- `components/POSTerminal/OrderCompleteModal.tsx` - tableNumber 인터페이스 추가
 
 ---
 
