@@ -220,6 +220,51 @@ router.get('/slug/:slug', async (req, res) => {
   }
 });
 
+// Get restaurant company info (for invoices) - MUST be before /:id route
+router.get('/:id/company-info', async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findByPk(req.params.id, {
+      attributes: [
+        'id', 'name', 'trade_name', 'email', 'phone', 'address',
+        'city', 'state', 'postal_code', 'country',
+        'business_registration', 'tax_id', 'website',
+        'bank_name', 'bank_account', 'bank_account_name', 'logo_url'
+      ]
+    });
+
+    if (!restaurant) {
+      return res.status(404).json({ error: 'Restaurant not found' });
+    }
+
+    // Format response similar to brand/foodcourt company-info
+    const companyInfo = {
+      id: restaurant.id,
+      name: restaurant.name,
+      trade_name: restaurant.trade_name || restaurant.name,
+      email: restaurant.email || '',
+      phone: restaurant.phone || '',
+      address: restaurant.address || '',
+      city: restaurant.city || '',
+      state: restaurant.state || '',
+      postal_code: restaurant.postal_code || '',
+      country: restaurant.country || 'MY',
+      business_registration: restaurant.business_registration || '',
+      tax_id: restaurant.tax_id || '',
+      website: restaurant.website || '',
+      bank_name: restaurant.bank_name || '',
+      bank_account: restaurant.bank_account || '',
+      bank_account_name: restaurant.bank_account_name || '',
+      logo_url: restaurant.logo_url || ''
+    };
+
+    res.json(companyInfo);
+  } catch (error) {
+    console.error('Error fetching restaurant company info:', error);
+    res.status(500).json({ error: 'Failed to fetch restaurant company info' });
+  }
+});
+
+// Get restaurant details
 router.get('/:id', async (req, res) => {
   try {
     const restaurant = await Restaurant.findByPk(req.params.id, {

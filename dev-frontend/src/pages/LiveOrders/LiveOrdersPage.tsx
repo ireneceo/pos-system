@@ -2059,6 +2059,8 @@ const LiveOrdersPage: React.FC = () => {
       const orderData = {
         orderNumber: selectedOrder.order_number,
         pickupNumber: selectedOrder.order_number.split('-')[1],
+        tableNumber: selectedOrder.table_number || null,
+        pagerNumber: (selectedOrder as any).pager_number || null,
         date: new Date(selectedOrder.order_date || selectedOrder.createdAt),
         items: selectedOrder.order_items.map((item: any) => ({
           menuItem: {
