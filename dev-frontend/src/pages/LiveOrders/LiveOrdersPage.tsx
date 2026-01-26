@@ -23,6 +23,7 @@ import {
 // OLD: import { printBill } from '../../utils/thermalPrinter';
 import { printBillViaRawBT, generateBillContent, printKitchenTicketViaRawBT, generateKitchenTicketPreview } from '../../utils/billPrint';
 import { formatDateTime as formatDateTimeUtil, getTimeElapsed } from '../../utils/timezone';
+import ConfirmModal from '../../components/ConfirmModal';
 
 // Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM")
 const formatPickupTimeRange = (dateString: string): string => {
@@ -958,6 +959,8 @@ const LiveOrdersPage: React.FC = () => {
   const [orderToDelete, setOrderToDelete] = useState<number | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [orderToCancel, setOrderToCancel] = useState<number | null>(null);
+  const [showDeleteItemConfirm, setShowDeleteItemConfirm] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{ index: number; name: string } | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [orderForPayment, setOrderForPayment] = useState<DbOrder | null>(null);
   const [, ] = useState(false);
@@ -2226,23 +2229,25 @@ const LiveOrdersPage: React.FC = () => {
   };
 
   // Delete item from order (only before payment)
-  const handleDeleteOrderItem = async (itemIndex: number, itemName: string) => {
+  const handleDeleteOrderItem = (itemIndex: number, itemName: string) => {
     if (!selectedOrder) return;
+    setItemToDelete({ index: itemIndex, name: itemName });
+    setShowDeleteItemConfirm(true);
+  };
 
-    // Confirm deletion
-    if (!window.confirm(`Remove "${itemName}" from this order?`)) {
-      return;
-    }
+  // Confirm delete item
+  const confirmDeleteItem = async () => {
+    if (!selectedOrder || !itemToDelete) return;
 
     try {
-      const response = await fetch(`/api/orders/${selectedOrder.id}/items/${itemIndex}`, {
+      const response = await fetch(`/api/orders/${selectedOrder.id}/items/${itemToDelete.index}`, {
         ...getFetchOptions({ method: 'DELETE' })
       });
 
       const result = await response.json();
 
       if (result.success) {
-        showToast(`Item removed: ${itemName}`, 'success');
+        showToast(`Item removed: ${itemToDelete.name}`, 'success');
         // Update selectedOrder with new data
         setSelectedOrder(result.data);
         // Refresh orders list
@@ -2253,6 +2258,9 @@ const LiveOrdersPage: React.FC = () => {
     } catch (error) {
       console.error('Error deleting item:', error);
       showToast('Failed to remove item', 'error');
+    } finally {
+      setShowDeleteItemConfirm(false);
+      setItemToDelete(null);
     }
   };
 
@@ -4209,6 +4217,21 @@ const LiveOrdersPage: React.FC = () => {
             </ModalFooter>
           </ModalContent>
         </ModalOverlay>
+
+        {/* Delete Item Confirmation Modal */}
+        <ConfirmModal
+          isOpen={showDeleteItemConfirm}
+          title="Remove Item"
+          message={`Are you sure you want to remove "${itemToDelete?.name || ''}" from this order?`}
+          onConfirm={confirmDeleteItem}
+          onCancel={() => {
+            setShowDeleteItemConfirm(false);
+            setItemToDelete(null);
+          }}
+          confirmText="Remove"
+          cancelText="Cancel"
+          type="danger"
+        />
 
         {/* Payment Modal - POS Terminal과 동일한 모달 사용 */}
         {showPaymentModal && orderForPayment && (

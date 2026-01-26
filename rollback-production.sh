@@ -1,7 +1,7 @@
 #!/bin/bash
-# 운영서버 롤백 스크립트
-# 사용법: ./rollback-production.sh [TIMESTAMP]
-# 예시: ./rollback-production.sh 20251112_143000
+# 운영서버 롤백 스크립트 (v2.0)
+# 사용법: sudo ./rollback-production.sh [TIMESTAMP]
+# 예시: sudo ./rollback-production.sh 20251112_143000
 
 set -e
 
@@ -12,11 +12,25 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 if [ -z "$1" ]; then
-    echo -e "${RED}❌ 에러: 타임스탬프를 지정해주세요.${NC}"
-    echo "사용법: ./rollback-production.sh [TIMESTAMP]"
+    echo -e "${RED}=========================================${NC}"
+    echo -e "${RED}   Production Rollback${NC}"
+    echo -e "${RED}=========================================${NC}"
     echo ""
-    echo -e "${BLUE}📦 사용 가능한 백업:${NC}"
-    ls -lt /var/www/backups/ 2>/dev/null | head -10 || echo "백업이 없습니다."
+    echo -e "${RED}Error: Timestamp required${NC}"
+    echo "Usage: sudo ./rollback-production.sh [TIMESTAMP]"
+    echo ""
+    echo -e "${BLUE}Available backups:${NC}"
+    ls -1t /var/www/backups/ 2>/dev/null | head -10 | while read dir; do
+        if [ -d "/var/www/backups/$dir" ]; then
+            # Show what's in each backup
+            CONTENTS=""
+            [ -f "/var/www/backups/$dir/.env.backup" ] && CONTENTS="$CONTENTS .env"
+            [ -d "/var/www/backups/$dir/production-backend.backup" ] && CONTENTS="$CONTENTS backend"
+            [ -d "/var/www/backups/$dir/production-frontend-build.backup" ] && CONTENTS="$CONTENTS frontend"
+            [ -f "/var/www/backups/$dir/db_backup_${dir}.sql.gz" ] && CONTENTS="$CONTENTS db"
+            echo "   $dir [$CONTENTS ]"
+        fi
+    done
     exit 1
 fi
 
@@ -55,19 +69,40 @@ fi
 # ==============================================
 echo ""
 echo -e "${YELLOW}Step 1: 백엔드 코드 롤백${NC}"
+
+# 대상 사용자 결정
+TARGET_USER="${SUDO_USER:-$(whoami)}"
+
 if [ -d "${BACKUP_DIR}/production-backend.backup" ]; then
     echo -e "${BLUE}   Restoring backend code...${NC}"
+
+    # 현재 .env 보존 (백업에 있는 것 사용)
     rm -rf $PROD_BACKEND
     cp -r "${BACKUP_DIR}/production-backend.backup" $PROD_BACKEND
-    echo -e "${GREEN}   ✅ 백엔드 코드 롤백 완료${NC}"
+
+    # .env 권한 설정
+    if [ -f "$PROD_BACKEND/.env" ]; then
+        chmod 600 "$PROD_BACKEND/.env"
+        chown $TARGET_USER:$TARGET_USER "$PROD_BACKEND/.env"
+    elif [ -f "${BACKUP_DIR}/.env.backup" ]; then
+        cp "${BACKUP_DIR}/.env.backup" "$PROD_BACKEND/.env"
+        chmod 600 "$PROD_BACKEND/.env"
+        chown $TARGET_USER:$TARGET_USER "$PROD_BACKEND/.env"
+    fi
+
+    echo -e "${GREEN}   Backend code restored${NC}"
 
     # PM2 재시작
     echo -e "${BLUE}   Restarting backend...${NC}"
-    pm2 restart production-backend
+    if [ "$SUDO_USER" != "" ]; then
+        su - $SUDO_USER -c "pm2 restart production-backend --update-env && pm2 save"
+    else
+        pm2 restart production-backend --update-env && pm2 save
+    fi
     sleep 3
-    echo -e "${GREEN}   ✅ 백엔드 재시작 완료${NC}"
+    echo -e "${GREEN}   Backend restarted${NC}"
 else
-    echo -e "${YELLOW}   ⚠️  백엔드 백업을 찾을 수 없습니다.${NC}"
+    echo -e "${YELLOW}   Backend backup not found - skipping${NC}"
 fi
 
 # ==============================================
@@ -79,9 +114,15 @@ if [ -d "${BACKUP_DIR}/production-frontend-build.backup" ]; then
     echo -e "${BLUE}   Restoring frontend build...${NC}"
     rm -rf $PROD_FRONTEND/build
     cp -r "${BACKUP_DIR}/production-frontend-build.backup" $PROD_FRONTEND/build
-    echo -e "${GREEN}   ✅ 프론트엔드 빌드 롤백 완료${NC}"
+
+    # 권한 설정
+    if [ -n "$SUDO_USER" ]; then
+        chown -R $SUDO_USER:$SUDO_USER $PROD_FRONTEND/build
+    fi
+
+    echo -e "${GREEN}   Frontend build restored${NC}"
 else
-    echo -e "${YELLOW}   ⚠️  프론트엔드 백업을 찾을 수 없습니다.${NC}"
+    echo -e "${YELLOW}   Frontend backup not found - skipping${NC}"
 fi
 
 # ==============================================
@@ -135,17 +176,38 @@ systemctl reload nginx
 echo -e "${GREEN}   ✅ Nginx 재시작 완료${NC}"
 
 # ==============================================
+# Step 5: Post-rollback Verification
+# ==============================================
+echo ""
+echo -e "${YELLOW}Step 5: Post-rollback Verification${NC}"
+
+PROD_API="http://localhost:3002/api"
+sleep 2
+
+echo -n "   Health check... "
+HEALTH=$(curl -s --max-time 5 "$PROD_API/health" 2>/dev/null || echo "FAIL")
+if echo "$HEALTH" | grep -q '"status":"ok"'; then
+    echo -e "${GREEN}OK${NC}"
+else
+    echo -e "${RED}FAILED - check pm2 logs${NC}"
+fi
+
+# ==============================================
 # 롤백 완료
 # ==============================================
 echo ""
 echo -e "${GREEN}=========================================${NC}"
-echo -e "${GREEN}✅ 롤백 완료!${NC}"
+echo -e "${GREEN}   ROLLBACK COMPLETE${NC}"
 echo -e "${GREEN}=========================================${NC}"
 echo ""
-echo -e "${BLUE}🔍 서비스 상태:${NC}"
+echo -e "${BLUE}Service Status:${NC}"
 pm2 list | grep production
 echo ""
-echo -e "${BLUE}📊 복원된 백업 정보:${NC}"
-echo "   - 타임스탬프: ${TIMESTAMP}"
-echo "   - 백업 위치: ${BACKUP_DIR}"
+echo -e "${BLUE}Restored from:${NC}"
+echo "   Timestamp: ${TIMESTAMP}"
+echo "   Backup:    ${BACKUP_DIR}"
+echo ""
+echo -e "${YELLOW}Manual Verification (recommended):${NC}"
+echo "   1. https://purplehere.com - 사이트 접속"
+echo "   2. POS 터미널 - 주문 생성 테스트"
 echo ""

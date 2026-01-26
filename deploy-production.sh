@@ -1,12 +1,12 @@
 #!/bin/bash
-# 운영서버 배포 스크립트 (최적화 버전)
+# 운영서버 배포 스크립트 (v2.0 - 안정화 버전)
 # 사용법: sudo ./deploy-production.sh
 # 주의: sudo로 실행해야 nginx reload가 동작합니다
 
 set -e  # 에러 발생시 즉시 중단
 
 echo "========================================="
-echo "Starting Production Deployment"
+echo "Production Deployment Script v2.0"
 echo "========================================="
 
 GREEN='\033[0;32m'
@@ -26,47 +26,132 @@ BACKUP_DIR="$PROJECT_DIR/backups/${TIMESTAMP}"
 # 대상 사용자 결정
 TARGET_USER="${SUDO_USER:-$(whoami)}"
 
-# 백업 디렉토리 생성
-echo -e "${BLUE}📦 Creating backup directory...${NC}"
-mkdir -p "${BACKUP_DIR}"
-
 # ==============================================
-# Step 1: Git Pull
+# Step 0: 변경사항 확인 및 배포 승인
 # ==============================================
 echo ""
-echo -e "${YELLOW}Step 1: Git Pull${NC}"
+echo -e "${YELLOW}Step 0: Pre-deployment Check${NC}"
+
 cd $PROJECT_DIR
-git pull origin main || echo "Git pull failed or no changes"
 
-# ==============================================
-# Step 2: Backup .env (가장 먼저, rsync 전에)
-# ==============================================
+# 마지막 배포 커밋 확인
+LAST_DEPLOYED=""
+if [ -f "$PROJECT_DIR/.last-deployed-commit" ]; then
+    LAST_DEPLOYED=$(cat "$PROJECT_DIR/.last-deployed-commit")
+fi
+CURRENT_COMMIT=$(git rev-parse HEAD)
+
+echo -e "${BLUE}   Last deployed: ${LAST_DEPLOYED:0:7:-"never"}${NC}"
+echo -e "${BLUE}   Current HEAD:  ${CURRENT_COMMIT:0:7}${NC}"
+
+# 변경된 파일 목록
+if [ -n "$LAST_DEPLOYED" ]; then
+    echo ""
+    echo -e "${BLUE}   Changed files since last deployment:${NC}"
+    CHANGED_FILES=$(git diff --name-only $LAST_DEPLOYED HEAD 2>/dev/null || echo "Unable to compare")
+    if [ -n "$CHANGED_FILES" ]; then
+        echo "$CHANGED_FILES" | head -20 | while read file; do
+            echo "     - $file"
+        done
+        CHANGED_COUNT=$(echo "$CHANGED_FILES" | wc -l)
+        if [ "$CHANGED_COUNT" -gt 20 ]; then
+            echo "     ... and $((CHANGED_COUNT - 20)) more files"
+        fi
+    fi
+fi
+
 echo ""
-echo -e "${YELLOW}Step 2: Backup .env file${NC}"
-if [ -f "$PROD_BACKEND/.env" ]; then
-    cp "$PROD_BACKEND/.env" "${BACKUP_DIR}/.env.backup"
-    echo -e "${GREEN}   ✅ .env backed up to ${BACKUP_DIR}/.env.backup${NC}"
-else
-    echo -e "${RED}   ❌ .env 파일을 찾을 수 없습니다!${NC}"
-    exit 1
+echo -e "${YELLOW}Continue with deployment? (yes/no)${NC}"
+read -p "> " CONFIRM
+if [ "$CONFIRM" != "yes" ]; then
+    echo -e "${RED}Deployment cancelled.${NC}"
+    exit 0
 fi
 
 # ==============================================
-# Step 3: Backup Database
+# Step 1: Pre-deployment API Tests (Dev Server)
 # ==============================================
 echo ""
-echo -e "${YELLOW}Step 3: Backup Database${NC}"
+echo -e "${YELLOW}Step 1: Pre-deployment API Tests (Dev Server)${NC}"
 
-# .env 파일에서 운영 DB 정보 로드
+DEV_API="http://localhost:3001/api"
+TEST_PASSED=true
+
+# Health check
+echo -n "   Health check... "
+HEALTH=$(curl -s --max-time 5 "$DEV_API/health" 2>/dev/null || echo "FAIL")
+if echo "$HEALTH" | grep -q '"status":"ok"'; then
+    echo -e "${GREEN}OK${NC}"
+else
+    echo -e "${RED}FAILED${NC}"
+    TEST_PASSED=false
+fi
+
+# Menu API
+echo -n "   Menu API... "
+MENU=$(curl -s --max-time 5 "$DEV_API/menu/5" 2>/dev/null || echo "FAIL")
+if echo "$MENU" | grep -q '"success":true'; then
+    echo -e "${GREEN}OK${NC}"
+else
+    echo -e "${RED}FAILED${NC}"
+    TEST_PASSED=false
+fi
+
+# Categories API
+echo -n "   Categories API... "
+CATS=$(curl -s --max-time 5 "$DEV_API/categories?restaurant_id=5" 2>/dev/null || echo "FAIL")
+if echo "$CATS" | grep -q '"success":true\|"categories"'; then
+    echo -e "${GREEN}OK${NC}"
+else
+    echo -e "${RED}FAILED${NC}"
+    TEST_PASSED=false
+fi
+
+if [ "$TEST_PASSED" = false ]; then
+    echo ""
+    echo -e "${RED}   Pre-deployment tests FAILED! Aborting deployment.${NC}"
+    echo -e "${YELLOW}   Please fix issues on dev server first.${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}   All pre-deployment tests passed!${NC}"
+
+# ==============================================
+# Step 2: Create Backup Directory & Backup Code
+# ==============================================
+echo ""
+echo -e "${YELLOW}Step 2: Create Backups${NC}"
+mkdir -p "${BACKUP_DIR}"
+
+# Backup .env
+if [ -f "$PROD_BACKEND/.env" ]; then
+    cp "$PROD_BACKEND/.env" "${BACKUP_DIR}/.env.backup"
+    echo -e "${GREEN}   [1/4] .env backed up${NC}"
+else
+    echo -e "${RED}   .env not found! Aborting.${NC}"
+    exit 1
+fi
+
+# Backup backend code (for rollback)
+echo -e "${BLUE}   [2/4] Backing up backend code...${NC}"
+cp -r "$PROD_BACKEND" "${BACKUP_DIR}/production-backend.backup"
+echo -e "${GREEN}   [2/4] Backend code backed up${NC}"
+
+# Backup frontend build (for rollback)
+if [ -d "$PROD_FRONTEND/build" ]; then
+    echo -e "${BLUE}   [3/4] Backing up frontend build...${NC}"
+    cp -r "$PROD_FRONTEND/build" "${BACKUP_DIR}/production-frontend-build.backup"
+    echo -e "${GREEN}   [3/4] Frontend build backed up${NC}"
+else
+    echo -e "${YELLOW}   [3/4] No frontend build to backup${NC}"
+fi
+
+# Backup database
+echo -e "${BLUE}   [4/4] Backing up database...${NC}"
 source <(grep -E "^DB_" "$PROD_BACKEND/.env" | sed 's/^/export /')
-DB_USER=$DB_USER
-DB_PASS=$DB_PASSWORD
-DB_NAME=$DB_NAME
-
 DB_BACKUP_FILE="${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz"
 
-echo -e "${BLUE}   Backing up ${DB_NAME}...${NC}"
-mysqldump -u $DB_USER -p$DB_PASS \
+mysqldump -u $DB_USER -p$DB_PASSWORD \
   --single-transaction \
   --quick \
   --lock-tables=false \
@@ -77,19 +162,26 @@ mysqldump -u $DB_USER -p$DB_PASS \
 
 if [ $? -eq 0 ]; then
     DB_SIZE=$(du -h $DB_BACKUP_FILE | cut -f1)
-    echo -e "${GREEN}   ✅ Database backup completed: ${DB_SIZE}${NC}"
+    echo -e "${GREEN}   [4/4] Database backed up (${DB_SIZE})${NC}"
 else
-    echo -e "${RED}   ❌ Database backup failed!${NC}"
+    echo -e "${RED}   Database backup failed! Aborting.${NC}"
     exit 1
 fi
 
 # ==============================================
-# Step 4: Sync Backend Code (rsync, .env 제외)
+# Step 3: Git Pull
 # ==============================================
 echo ""
-echo -e "${YELLOW}Step 4: Sync Backend Code (dev -> production)${NC}"
+echo -e "${YELLOW}Step 3: Git Pull${NC}"
+cd $PROJECT_DIR
+git pull origin main || echo "   No changes from remote"
 
-# rsync 실행 (.env는 항상 제외, node_modules도 제외)
+# ==============================================
+# Step 4: Sync Backend Code
+# ==============================================
+echo ""
+echo -e "${YELLOW}Step 4: Sync Backend Code${NC}"
+
 rsync -av --delete \
     --exclude='node_modules' \
     --exclude='.env' \
@@ -97,24 +189,20 @@ rsync -av --delete \
     --exclude='.server.pid' \
     $DEV_BACKEND/ $PROD_BACKEND/
 
-echo -e "${GREEN}   ✅ Backend code synced${NC}"
+echo -e "${GREEN}   Backend code synced${NC}"
 
-# .env 파일 존재 확인 (rsync가 실수로 삭제했을 경우 복원)
+# Restore & verify .env
 if [ ! -f "$PROD_BACKEND/.env" ]; then
-    echo -e "${YELLOW}   ⚠️  .env 파일이 없음 - 백업에서 복원${NC}"
     cp "${BACKUP_DIR}/.env.backup" "$PROD_BACKEND/.env"
 fi
 chmod 600 "$PROD_BACKEND/.env"
 chown $TARGET_USER:$TARGET_USER "$PROD_BACKEND/.env"
 
-# .env 검증
 if grep -q "^DB_HOST=" "$PROD_BACKEND/.env" && grep -q "^DB_NAME=" "$PROD_BACKEND/.env"; then
-    echo -e "${GREEN}   ✅ .env verified${NC}"
+    echo -e "${GREEN}   .env verified${NC}"
 else
-    echo -e "${RED}   ❌ .env 손상됨 - 백업에서 복원${NC}"
+    echo -e "${RED}   .env corrupted! Restoring from backup...${NC}"
     cp "${BACKUP_DIR}/.env.backup" "$PROD_BACKEND/.env"
-    chmod 600 "$PROD_BACKEND/.env"
-    chown $TARGET_USER:$TARGET_USER "$PROD_BACKEND/.env"
 fi
 
 # ==============================================
@@ -124,19 +212,18 @@ echo ""
 echo -e "${YELLOW}Step 5: Install Backend Dependencies${NC}"
 cd $PROD_BACKEND
 npm install --omit=dev 2>/dev/null
-echo -e "${GREEN}   ✅ Dependencies installed${NC}"
+echo -e "${GREEN}   Dependencies installed${NC}"
 
 # ==============================================
-# Step 6: Sync Database Schema (Sequelize)
+# Step 6: Sync Database Schema
 # ==============================================
 echo ""
 echo -e "${YELLOW}Step 6: Sync Database Schema${NC}"
-echo -e "${BLUE}   Running Sequelize sync...${NC}"
 node sync-database.js
 if [ $? -eq 0 ]; then
-    echo -e "${GREEN}   ✅ Database schema synced${NC}"
+    echo -e "${GREEN}   Database schema synced${NC}"
 else
-    echo -e "${RED}   ❌ Database sync failed!${NC}"
+    echo -e "${RED}   Database sync failed! Consider rollback.${NC}"
     exit 1
 fi
 
@@ -146,11 +233,8 @@ fi
 echo ""
 echo -e "${YELLOW}Step 7: Build Frontend${NC}"
 cd $DEV_FRONTEND
-
-# 캐시 클리어
 rm -rf node_modules/.cache 2>/dev/null || true
 
-echo -e "${BLUE}   Building React app...${NC}"
 if [ -n "$SUDO_USER" ]; then
     su - $SUDO_USER -c "cd $DEV_FRONTEND && npm run build"
 else
@@ -158,24 +242,23 @@ else
 fi
 
 if [ ! -f "$DEV_FRONTEND/build/index.html" ]; then
-    echo -e "${RED}   ❌ Frontend build failed! (index.html not found)${NC}"
+    echo -e "${RED}   Frontend build failed!${NC}"
     exit 1
 fi
-echo -e "${GREEN}   ✅ Frontend built successfully${NC}"
+echo -e "${GREEN}   Frontend built successfully${NC}"
 
 # ==============================================
 # Step 8: Deploy Frontend Build
 # ==============================================
 echo ""
 echo -e "${YELLOW}Step 8: Deploy Frontend Build${NC}"
-
 rm -rf $PROD_FRONTEND/build 2>/dev/null || true
 cp -r $DEV_FRONTEND/build $PROD_FRONTEND/
 
 if [ -n "$SUDO_USER" ]; then
     chown -R $SUDO_USER:$SUDO_USER $PROD_FRONTEND/build
 fi
-echo -e "${GREEN}   ✅ Frontend build deployed${NC}"
+echo -e "${GREEN}   Frontend deployed${NC}"
 
 # ==============================================
 # Step 9: Restart Backend Server
@@ -188,8 +271,8 @@ if [ "$SUDO_USER" != "" ]; then
 else
     pm2 restart production-backend --update-env && pm2 save
 fi
-sleep 2
-echo -e "${GREEN}   ✅ Backend server restarted${NC}"
+sleep 3
+echo -e "${GREEN}   Backend restarted${NC}"
 
 # ==============================================
 # Step 10: Reload Nginx
@@ -203,36 +286,67 @@ fi
 
 if [ "$EUID" -eq 0 ]; then
     systemctl reload nginx
-    echo -e "${GREEN}   ✅ Nginx reloaded${NC}"
+    echo -e "${GREEN}   Nginx reloaded${NC}"
 else
     if sudo -n systemctl reload nginx 2>/dev/null; then
-        echo -e "${GREEN}   ✅ Nginx reloaded${NC}"
+        echo -e "${GREEN}   Nginx reloaded${NC}"
     else
-        echo -e "${YELLOW}   ⚠️  Nginx reload skipped (no sudo permission)${NC}"
+        echo -e "${YELLOW}   Nginx reload skipped (no permission)${NC}"
     fi
 fi
 
 # ==============================================
-# Step 11: Verify Deployment
+# Step 11: Post-deployment Verification
 # ==============================================
 echo ""
-echo -e "${YELLOW}Step 11: Verify Deployment${NC}"
+echo -e "${YELLOW}Step 11: Post-deployment Verification${NC}"
+
+PROD_API="http://localhost:3002/api"
+VERIFY_PASSED=true
+
+sleep 2
 
 # Health check
-sleep 2
-HEALTH=$(curl -s http://localhost:3002/api/health 2>/dev/null)
+echo -n "   Health check... "
+HEALTH=$(curl -s --max-time 5 "$PROD_API/health" 2>/dev/null || echo "FAIL")
 if echo "$HEALTH" | grep -q '"status":"ok"'; then
-    echo -e "${GREEN}   ✅ Health check passed${NC}"
+    echo -e "${GREEN}OK${NC}"
 else
-    echo -e "${RED}   ❌ Health check failed!${NC}"
-    echo "   Response: $HEALTH"
-    echo -e "${YELLOW}   Checking logs...${NC}"
-    pm2 logs production-backend --lines 10 --nostream
+    echo -e "${RED}FAILED${NC}"
+    VERIFY_PASSED=false
+fi
+
+# Menu API
+echo -n "   Menu API... "
+MENU=$(curl -s --max-time 5 "$PROD_API/menu/8" 2>/dev/null || echo "FAIL")
+if echo "$MENU" | grep -q '"success":true'; then
+    echo -e "${GREEN}OK${NC}"
+else
+    echo -e "${RED}FAILED${NC}"
+    VERIFY_PASSED=false
+fi
+
+# Categories API
+echo -n "   Categories API... "
+CATS=$(curl -s --max-time 5 "$PROD_API/categories?restaurant_id=8" 2>/dev/null || echo "FAIL")
+if echo "$CATS" | grep -q '"success":true\|"categories"'; then
+    echo -e "${GREEN}OK${NC}"
+else
+    echo -e "${RED}FAILED${NC}"
+    VERIFY_PASSED=false
+fi
+
+if [ "$VERIFY_PASSED" = false ]; then
+    echo ""
+    echo -e "${RED}   POST-DEPLOYMENT VERIFICATION FAILED!${NC}"
+    echo -e "${YELLOW}   Consider rolling back: sudo ./rollback-production.sh ${TIMESTAMP}${NC}"
     exit 1
 fi
 
+echo -e "${GREEN}   All verifications passed!${NC}"
+
 # ==============================================
-# Save Last Deployed Commit
+# Save Deployment Info
 # ==============================================
 cd $PROJECT_DIR
 DEPLOYED_COMMIT=$(git rev-parse HEAD)
@@ -243,15 +357,19 @@ echo "$DEPLOYED_COMMIT" > "$PROJECT_DIR/.last-deployed-commit"
 # ==============================================
 echo ""
 echo -e "${GREEN}=========================================${NC}"
-echo -e "${GREEN}✅ Deployment Complete!${NC}"
+echo -e "${GREEN}   DEPLOYMENT COMPLETE${NC}"
 echo -e "${GREEN}=========================================${NC}"
 echo ""
-echo -e "${BLUE}📊 Deployment Info:${NC}"
-echo "   - Timestamp: ${TIMESTAMP}"
-echo "   - Deployed Commit: ${DEPLOYED_COMMIT:0:7}"
-echo "   - Backup Location: ${BACKUP_DIR}"
-echo "   - Database Backup: ${DB_BACKUP_FILE} (${DB_SIZE})"
+echo -e "${BLUE}Deployment Info:${NC}"
+echo "   Timestamp:   ${TIMESTAMP}"
+echo "   Commit:      ${DEPLOYED_COMMIT:0:7}"
+echo "   Backup:      ${BACKUP_DIR}"
 echo ""
-echo -e "${YELLOW}🔙 Rollback Command:${NC}"
+echo -e "${YELLOW}Rollback Command:${NC}"
 echo "   sudo ./rollback-production.sh ${TIMESTAMP}"
+echo ""
+echo -e "${BLUE}Manual Verification (recommended):${NC}"
+echo "   1. https://purplehere.com - 사이트 접속"
+echo "   2. POS 터미널 - 주문 생성 테스트"
+echo "   3. 모바일 QR - 메뉴 클릭 테스트"
 echo ""
