@@ -583,7 +583,12 @@ const SettingsPage: React.FC = () => {
   });
 
   // Printer mode state (rawbt or browser)
-  const [printerMode, setPrinterModeState] = useState<'rawbt' | 'browser'>('rawbt');
+  // Initialize from localStorage to prevent flicker on page load
+  const [printerMode, setPrinterModeState] = useState<'rawbt' | 'browser'>(() => {
+    const saved = localStorage.getItem('printerMode');
+    return (saved === 'browser' || saved === 'rawbt') ? saved : 'rawbt';
+  });
+  const [printerSettingsLoading, setPrinterSettingsLoading] = useState(true);
 
   // Load settings from localStorage or use defaults
   const loadSettings = () => {
