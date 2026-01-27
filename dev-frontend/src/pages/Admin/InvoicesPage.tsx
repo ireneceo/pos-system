@@ -786,7 +786,11 @@ const InvoicesPage: React.FC = () => {
   const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
   const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>([]);
   const [invoiceCategories, setInvoiceCategories] = useState<InvoiceCategory[]>([]);
-  const [taxSettings, setTaxSettings] = useState<{ enabled: boolean; rate: number; name: string }>({ enabled: false, rate: 0, name: 'Tax' });
+  const [additionalCharges, setAdditionalCharges] = useState<Array<{ enabled: boolean; name: string; rate: number }>>([
+    { enabled: false, name: '', rate: 0 },
+    { enabled: false, name: '', rate: 0 },
+    { enabled: false, name: '', rate: 0 }
+  ]);
   const [sortField, setSortField] = useState<'invoiceNumber' | 'companyName' | 'dueDate' | 'amount' | 'status'>('dueDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [newInvoice, setNewInvoice] = useState({

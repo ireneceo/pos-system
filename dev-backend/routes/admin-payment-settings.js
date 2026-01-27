@@ -20,11 +20,12 @@ const defaultPaymentSettings = {
   },
   bankTransfer: {},  // { "MYR": { enabled, bankName, accountNumber, accountName }, "KRW": { ... } }
   qrPayment: {},     // { "MYR": { enabled, qrImage, qrDescription }, "KRW": { ... } }
-  tax: {
-    enabled: false,
-    rate: 0,
-    name: 'Tax'
-  }
+  // 추가 청구 설정 (3개 항목 - Tax, Service Charge 등)
+  additionalCharges: [
+    { enabled: false, name: '', rate: 0 },
+    { enabled: false, name: '', rate: 0 },
+    { enabled: false, name: '', rate: 0 }
+  ]
 };
 
 // GET - 결제 설정 조회
@@ -46,7 +47,7 @@ router.get('/', async (req, res) => {
       paypal: { ...defaultPaymentSettings.paypal, ...savedSettings.paypal },
       bankTransfer: savedSettings.bankTransfer || {},
       qrPayment: savedSettings.qrPayment || {},
-      tax: { ...defaultPaymentSettings.tax, ...savedSettings.tax }
+      additionalCharges: savedSettings.additionalCharges || defaultPaymentSettings.additionalCharges
     };
 
     // 시크릿 키 마스킹 (보안)
@@ -93,7 +94,18 @@ router.post('/', async (req, res) => {
       return newValue;
     };
 
-    const { tax } = req.body;
+    const { additionalCharges } = req.body;
+
+    // 추가 청구 항목 처리 (3개 항목)
+    const processedCharges = (additionalCharges || []).map((charge, index) => ({
+      enabled: charge?.enabled || false,
+      name: charge?.name || '',
+      rate: parseFloat(charge?.rate) || 0
+    }));
+    // 항상 3개 항목 유지
+    while (processedCharges.length < 3) {
+      processedCharges.push({ enabled: false, name: '', rate: 0 });
+    }
 
     const settingsData = {
       stripe: {
@@ -110,11 +122,7 @@ router.post('/', async (req, res) => {
       },
       bankTransfer: bankTransfer || {},
       qrPayment: qrPayment || {},
-      tax: {
-        enabled: tax?.enabled || false,
-        rate: parseFloat(tax?.rate) || 0,
-        name: tax?.name || 'Tax'
-      }
+      additionalCharges: processedCharges
     };
 
     if (existingSettings) {

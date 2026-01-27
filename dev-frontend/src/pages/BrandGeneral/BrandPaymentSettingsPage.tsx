@@ -42,10 +42,10 @@ interface QRPaymentConfig {
   qrDescription: string;
 }
 
-interface TaxConfig {
+interface AdditionalChargeConfig {
   enabled: boolean;
-  rate: number;
   name: string;
+  rate: number;
 }
 
 interface PaymentSettings {
@@ -53,7 +53,7 @@ interface PaymentSettings {
   paypal: PayPalConfig;
   bankTransfer: { [currency: string]: BankTransferConfig };
   qrPayment: { [currency: string]: QRPaymentConfig };
-  tax?: TaxConfig;
+  additionalCharges?: AdditionalChargeConfig[];
 }
 
 const Container = styled.div`
@@ -602,87 +602,80 @@ const BrandPaymentSettingsPage: React.FC = () => {
       <Container>
         <PageHeader title="Payment Settings" />
         <Content>
-          {/* Tax Settings Section */}
+          {/* Additional Charges Section - 추가 청구 설정 */}
           <Section>
-            <SectionTitle>Tax Settings</SectionTitle>
+            <SectionTitle>Additional Charges</SectionTitle>
             <SectionDescription>
-              Configure tax rate for invoices. This tax will be applied to all invoices you generate.
+              Configure additional charges for invoices. These will be applied to all invoices you generate. You can set up to 3 custom charge items (e.g., Tax, Service Charge, Processing Fee).
             </SectionDescription>
 
-            <PaymentMethodCard>
-              <MethodHeader>
-                <MethodInfo>
-                  <MethodLabel>Enable Tax</MethodLabel>
-                  <MethodDescription>Apply tax to invoices</MethodDescription>
-                </MethodInfo>
-                <ToggleSwitch>
-                  <ToggleInput
-                    type="checkbox"
-                    checked={paymentSettings.tax?.enabled ?? true}
-                    onChange={(e) => {
-                      setPaymentSettings(prev => ({
-                        ...prev,
-                        tax: {
-                          ...prev.tax!,
-                          enabled: e.target.checked
-                        }
-                      }));
-                      setHasChanges(true);
-                    }}
-                  />
-                  <ToggleSlider />
-                </ToggleSwitch>
-              </MethodHeader>
-
-              {paymentSettings.tax?.enabled && (
-                <MethodContent>
-                  <FormRow>
-                    <FormGroup>
-                      <Label>Tax Name</Label>
-                      <Input
-                        type="text"
-                        value={paymentSettings.tax?.name || 'Tax'}
+            {[0, 1, 2].map((index) => {
+              const charge = paymentSettings.additionalCharges?.[index] || { enabled: false, name: '', rate: 0 };
+              return (
+                <PaymentMethodCard key={index} style={{ marginBottom: '16px' }}>
+                  <MethodHeader>
+                    <MethodInfo>
+                      <MethodLabel>Charge Item {index + 1}</MethodLabel>
+                      <MethodDescription>{charge.enabled && charge.name ? `${charge.name} (${charge.rate}%)` : 'Not configured'}</MethodDescription>
+                    </MethodInfo>
+                    <ToggleSwitch>
+                      <ToggleInput
+                        type="checkbox"
+                        checked={charge.enabled}
                         onChange={(e) => {
-                          setPaymentSettings(prev => ({
-                            ...prev,
-                            tax: {
-                              ...prev.tax!,
-                              name: e.target.value
-                            }
-                          }));
+                          const newCharges = [...(paymentSettings.additionalCharges || [{ enabled: false, name: '', rate: 0 }, { enabled: false, name: '', rate: 0 }, { enabled: false, name: '', rate: 0 }])];
+                          newCharges[index] = { ...newCharges[index], enabled: e.target.checked };
+                          setPaymentSettings(prev => ({ ...prev, additionalCharges: newCharges }));
                           setHasChanges(true);
                         }}
-                        placeholder="e.g., VAT, GST, Sales Tax"
                       />
-                      <HelpText>Name displayed on invoices (e.g., VAT, GST, Sales Tax)</HelpText>
-                    </FormGroup>
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                  </MethodHeader>
 
-                    <FormGroup>
-                      <Label>Tax Rate (%)</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        value={paymentSettings.tax?.rate ?? 6}
-                        onChange={(e) => {
-                          setPaymentSettings(prev => ({
-                            ...prev,
-                            tax: {
-                              ...prev.tax!,
-                              rate: parseFloat(e.target.value) || 0
-                            }
-                          }));
-                          setHasChanges(true);
-                        }}
-                        placeholder="6"
-                      />
-                      <HelpText>Percentage to add to subtotal (e.g., 6 for 6%)</HelpText>
-                    </FormGroup>
-                  </FormRow>
-                </MethodContent>
-              )}
-            </PaymentMethodCard>
+                  {charge.enabled && (
+                    <MethodContent>
+                      <FormRow>
+                        <FormGroup>
+                          <Label>Item Name</Label>
+                          <Input
+                            type="text"
+                            value={charge.name}
+                            onChange={(e) => {
+                              const newCharges = [...(paymentSettings.additionalCharges || [{ enabled: false, name: '', rate: 0 }, { enabled: false, name: '', rate: 0 }, { enabled: false, name: '', rate: 0 }])];
+                              newCharges[index] = { ...newCharges[index], name: e.target.value };
+                              setPaymentSettings(prev => ({ ...prev, additionalCharges: newCharges }));
+                              setHasChanges(true);
+                            }}
+                            placeholder="e.g., Tax, Service Charge, Processing Fee"
+                          />
+                          <HelpText>Name displayed on invoices</HelpText>
+                        </FormGroup>
+
+                        <FormGroup>
+                          <Label>Rate (%)</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            value={charge.rate}
+                            onChange={(e) => {
+                              const newCharges = [...(paymentSettings.additionalCharges || [{ enabled: false, name: '', rate: 0 }, { enabled: false, name: '', rate: 0 }, { enabled: false, name: '', rate: 0 }])];
+                              newCharges[index] = { ...newCharges[index], rate: parseFloat(e.target.value) || 0 };
+                              setPaymentSettings(prev => ({ ...prev, additionalCharges: newCharges }));
+                              setHasChanges(true);
+                            }}
+                            placeholder="0"
+                          />
+                          <HelpText>Percentage to add to subtotal</HelpText>
+                        </FormGroup>
+                      </FormRow>
+                    </MethodContent>
+                  )}
+                </PaymentMethodCard>
+              );
+            })}
           </Section>
 
           {/* Section 1: Currency Settings */}

@@ -1264,19 +1264,6 @@ const RestaurantInvoicesPage: React.FC = () => {
     }
   };
 
-  // Email invoice handler
-  const handleEmailInvoice = async (invoice: Invoice) => {
-    // Get issuer email for sending
-    const issuerEmail = invoice.issuerInfo?.email;
-    if (issuerEmail) {
-      const subject = encodeURIComponent(`Regarding Invoice ${invoice.invoiceNumber}`);
-      const body = encodeURIComponent(`Dear ${invoice.issuerInfo?.name || 'Sir/Madam'},\n\nI am writing regarding Invoice ${invoice.invoiceNumber}.\n\nBest regards`);
-      window.open(`mailto:${issuerEmail}?subject=${subject}&body=${body}`, '_blank');
-    } else {
-      alert('No email address available for the issuer.');
-    }
-  };
-
   // Render invoice preview
   const renderInvoicePreview = (invoice: Invoice) => {
     const issuerInfo = invoice.issuerInfo;
@@ -1493,14 +1480,6 @@ const RestaurantInvoicesPage: React.FC = () => {
                         <polyline points="6,9 6,2 18,2 18,9"/>
                         <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
                         <rect x="6" y="14" width="12" height="8"/>
-                      </svg>
-                    </LocalActionButton>
-
-                    {/* Email */}
-                    <LocalActionButton variant="email" onClick={() => handleEmailInvoice(invoice)} title="Email Issuer">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                        <polyline points="22,6 12,13 2,6"/>
                       </svg>
                     </LocalActionButton>
                   </ActionButtons>
