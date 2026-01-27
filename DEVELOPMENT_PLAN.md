@@ -32,6 +32,43 @@
 
 ---
 
+## ✅ 완료: Invoice 시스템 개선 (2026-01-27 오후)
+
+### 완료된 기능
+
+| 기능 | 설명 | 상태 |
+|------|------|:----:|
+| Additional Charges 연동 | Payment Settings 추가비용이 Create Invoice에 반영 | ✅ 완료 |
+| 시스템관리자 Draft 저장 | Create Invoice 시 Draft로 먼저 저장 | ✅ 완료 |
+| Period 자동 입력 제거 | 개별 발행 시 billing_period null | ✅ 완료 |
+| 리스트 정렬 개선 | Due Date → Issue Date 최신순 정렬 | ✅ 완료 |
+| Overdue 표시 | due_date 기반 동적 계산으로 빨간색 표시 | ✅ 완료 |
+
+### 핵심 구현 사항
+
+1. **Additional Charges 연동**
+   - BrandInvoicesPage에서 payment_settings.additionalCharges 로드
+   - Create/Edit Invoice 금액 계산 시 설정된 추가비용 적용
+   - Summary에서 각 항목별 (이름, 비율%) 동적 표시
+
+2. **시스템관리자 Invoice 워크플로우**
+   - Create Invoice → status: 'draft' (기존 pending_payment)
+   - Send 아이콘 클릭 → pending_payment로 변경
+
+3. **Overdue 동적 계산**
+   - `isInvoiceOverdue()`: due_date < 오늘 && status가 paid/cancelled/draft 아님
+   - `getEffectiveStatus()`: overdue 상태 반환
+   - StatusBadge에서 빨간색(overdue) 표시
+
+### 관련 파일
+
+**Frontend:**
+- `pages/Admin/InvoicesPage.tsx` - Draft 저장, Overdue 계산, 정렬 개선
+- `pages/BrandGeneral/BrandInvoicesPage.tsx` - Additional Charges 연동, Overdue 계산
+- `pages/Restaurant/InvoicesPage.tsx` - Overdue 계산 추가
+
+---
+
 ## ✅ 완료: 결제설정 추가비용, 메뉴 관리, 재료/레시피 개선 (2026-01-27)
 
 ### 완료된 기능
