@@ -121,7 +121,9 @@ router.get('/', async (req, res) => {
         set_items: prod.set_items || null,
         set_display_order: prod.set_display_order || 0,
         // 레시피 연결
-        recipe_id: prod.recipe_id || null
+        recipe_id: prod.recipe_id || null,
+        // 활성화 상태
+        is_active: prod.is_active !== false  // 기본값 true
       };
     });
 
@@ -428,6 +430,107 @@ router.put('/product/:id', async (req, res) => {
     res.json({ success: true, data: product });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Copy/Duplicate product
+router.post('/product/:id/copy', async (req, res) => {
+  try {
+    const restaurantId = req.query.restaurantId || req.user.restaurant_id;
+
+    const sourceProduct = await Product.findOne({
+      where: {
+        id: req.params.id,
+        ...(restaurantId && { restaurant_id: restaurantId })
+      }
+    });
+
+    if (!sourceProduct) {
+      return res.status(404).json({ success: false, error: 'Product not found' });
+    }
+
+    // Check menu item limit
+    const restaurant = await Restaurant.findByPk(restaurantId);
+    if (restaurant && restaurant.menu_item_limit && restaurant.menu_item_limit > 0) {
+      const currentItemCount = await Product.count({
+        where: { restaurant_id: restaurantId }
+      });
+
+      if (currentItemCount >= restaurant.menu_item_limit) {
+        return res.status(403).json({
+          success: false,
+          error: `Menu item limit reached. Your plan allows up to ${restaurant.menu_item_limit} menu items.`,
+          limit: restaurant.menu_item_limit,
+          current: currentItemCount
+        });
+      }
+    }
+
+    // Create copy with modified name
+    const copyData = {
+      restaurant_id: sourceProduct.restaurant_id,
+      code: sourceProduct.code ? `${sourceProduct.code}-COPY` : null,
+      name: `${sourceProduct.name} (Copy)`,
+      price: sourceProduct.price,
+      category: sourceProduct.category,
+      description: sourceProduct.description,
+      optionGroups: sourceProduct.optionGroups,
+      image: sourceProduct.image,
+      emoji: sourceProduct.emoji,
+      soldOut: false,
+      is_active: true,
+      track_stock: sourceProduct.track_stock,
+      current_stock: 0,  // Reset stock for copy
+      min_stock: sourceProduct.min_stock,
+      stock_unit: sourceProduct.stock_unit,
+      supplier_id: sourceProduct.supplier_id,
+      unit_cost: sourceProduct.unit_cost,
+      is_set_menu: sourceProduct.is_set_menu,
+      set_items: sourceProduct.set_items,
+      set_display_order: sourceProduct.set_display_order,
+      recipe_id: sourceProduct.recipe_id
+    };
+
+    const newProduct = await Product.create(copyData);
+    res.status(201).json({
+      success: true,
+      data: newProduct,
+      message: 'Menu item copied successfully'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Toggle product active status
+router.put('/product/:id/toggle-active', async (req, res) => {
+  try {
+    const restaurantId = req.query.restaurantId || req.user.restaurant_id;
+
+    const product = await Product.findOne({
+      where: {
+        id: req.params.id,
+        ...(restaurantId && { restaurant_id: restaurantId })
+      }
+    });
+
+    if (!product) {
+      return res.status(404).json({ success: false, error: 'Product not found' });
+    }
+
+    const newActiveState = !product.is_active;
+    await product.update({ is_active: newActiveState });
+
+    res.json({
+      success: true,
+      data: {
+        id: product.id,
+        is_active: newActiveState
+      },
+      message: newActiveState ? 'Menu item activated' : 'Menu item deactivated'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

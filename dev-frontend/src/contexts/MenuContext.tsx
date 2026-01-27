@@ -16,6 +16,7 @@ export interface MenuItem {
   emoji: string;
   description?: string;
   soldOut?: boolean;
+  is_active?: boolean;
   image?: string;
   options?: MenuOption[];
   optionGroups?: string[];

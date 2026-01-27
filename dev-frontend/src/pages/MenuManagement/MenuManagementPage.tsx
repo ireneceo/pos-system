@@ -183,7 +183,7 @@ const MenuGrid = styled.div`
   gap: 24px;
 `;
 
-const MenuCard = styled.div<{ soldOut?: boolean }>`
+const MenuCard = styled.div<{ soldOut?: boolean; inactive?: boolean }>`
   background: white;
   border: 1px solid #E6EBF1;
   border-radius: 12px;
@@ -193,7 +193,26 @@ const MenuCard = styled.div<{ soldOut?: boolean }>`
   display: flex;
   flex-direction: column;
 
-  ${props => props.soldOut && `
+  ${props => props.inactive && `
+    opacity: 0.5;
+    background: #F9FAFB;
+
+    &::before {
+      content: 'INACTIVE';
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: #6B7280;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      z-index: 10;
+    }
+  `}
+
+  ${props => props.soldOut && !props.inactive && `
     opacity: 0.7;
 
     &::after {
@@ -310,24 +329,59 @@ const ActionButton = styled.button<{ danger?: boolean }>`
   cursor: pointer;
   transition: all 0.15s;
   border: 1px solid #E6EBF1;
-  
+
   ${props => props.danger ? `
     background: #FFF4F4;
     color: #FF6B6B;
     border-color: #FFE6E6;
-    
+
     &:hover {
       background: #FFE6E6;
     }
   ` : `
     background: white;
     color: #6B7C93;
-    
+
     &:hover {
       background: #F6F9FC;
       color: #635BFF;
       border-color: #C7D2FE;
     }
+  `}
+`;
+
+const IconButton = styled.button<{ danger?: boolean; warning?: boolean; inactive?: boolean }>`
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid #E6EBF1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  ${props => props.danger ? `
+    background: #FFF4F4;
+    color: #FF6B6B;
+    border-color: #FFE6E6;
+    &:hover { background: #FFE6E6; }
+  ` : props.warning ? `
+    background: #FFFBEB;
+    color: #F59E0B;
+    border-color: #FEF3C7;
+    &:hover { background: #FEF3C7; }
+  ` : props.inactive ? `
+    background: #F3F4F6;
+    color: #6B7280;
+    border-color: #E5E7EB;
+    &:hover { background: #E5E7EB; }
+  ` : `
+    background: white;
+    color: #6B7C93;
+    &:hover { background: #F6F9FC; color: #635BFF; border-color: #C7D2FE; }
   `}
 `;
 
@@ -969,6 +1023,64 @@ const MenuManagementPage: React.FC = () => {
     }
   };
 
+  // Copy menu item
+  const handleCopyItem = async (item: MenuItemType) => {
+    try {
+      const pathParts = window.location.pathname.split('/');
+      const restaurantIndex = pathParts.indexOf('restaurant');
+      const restaurantId = restaurantIndex >= 0 ? pathParts[restaurantIndex + 1] : '';
+
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/menu/product/${item.id}/copy?restaurantId=${restaurantId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        // Reload menu to get the new item
+        window.location.reload();
+      } else {
+        alert(data.error || 'Failed to copy menu item');
+      }
+    } catch (error) {
+      console.error('Error copying menu item:', error);
+      alert('Failed to copy menu item');
+    }
+  };
+
+  // Toggle menu item active status
+  const handleToggleActive = async (item: MenuItemType) => {
+    try {
+      const pathParts = window.location.pathname.split('/');
+      const restaurantIndex = pathParts.indexOf('restaurant');
+      const restaurantId = restaurantIndex >= 0 ? pathParts[restaurantIndex + 1] : '';
+
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/menu/product/${item.id}/toggle-active?restaurantId=${restaurantId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        // Update local state
+        updateMenuItem({ ...item, is_active: data.data.is_active });
+      } else {
+        alert(data.error || 'Failed to toggle menu item status');
+      }
+    } catch (error) {
+      console.error('Error toggling menu item status:', error);
+      alert('Failed to toggle menu item status');
+    }
+  };
+
   const handleSaveNew = () => {
     const newItem: MenuItemType = {
       id: `item-${Date.now()}`,
@@ -1125,7 +1237,7 @@ const MenuManagementPage: React.FC = () => {
           ) : (
             <MenuGrid>
               {(useProgressive ? filteredItems.slice(0, visibleCount) : filteredItems).map(item => (
-              <MenuCard key={item.id} soldOut={item.soldOut}>
+              <MenuCard key={item.id} soldOut={item.soldOut} inactive={item.is_active === false}>
                 <MenuImage>
                   {item.is_set_menu && <SetBadge>SET</SetBadge>}
                   {item.image && item.image.trim() !== '' ? (
@@ -1200,15 +1312,26 @@ const MenuManagementPage: React.FC = () => {
                     <ActionButton onClick={() => handleEditItem(item)}>
                       Edit
                     </ActionButton>
-                    <ActionButton onClick={() => handleQuickPriceEdit(item)}>
-                      Price
-                    </ActionButton>
-                    <ActionButton onClick={() => toggleItemSoldOut(item.id)}>
-                      {item.soldOut ? 'In Stock' : 'Sold Out'}
-                    </ActionButton>
-                    <ActionButton danger onClick={() => handleDeleteItem(item.id)}>
-                      Delete
-                    </ActionButton>
+                    <IconButton onClick={() => handleCopyItem(item)} title="Copy">
+                      📋
+                    </IconButton>
+                    <IconButton
+                      onClick={() => handleToggleActive(item)}
+                      inactive={item.is_active === false}
+                      title={item.is_active === false ? 'Activate' : 'Deactivate'}
+                    >
+                      {item.is_active === false ? '👁️' : '🚫'}
+                    </IconButton>
+                    <IconButton
+                      onClick={() => toggleItemSoldOut(item.id)}
+                      warning={item.soldOut}
+                      title={item.soldOut ? 'Mark In Stock' : 'Mark Sold Out'}
+                    >
+                      {item.soldOut ? '✓' : '✕'}
+                    </IconButton>
+                    <IconButton danger onClick={() => handleDeleteItem(item.id)} title="Delete">
+                      🗑️
+                    </IconButton>
                   </MenuActions>
                 </MenuContent>
               </MenuCard>

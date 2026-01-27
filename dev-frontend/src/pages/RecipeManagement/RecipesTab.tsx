@@ -1638,7 +1638,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                       return (
                         <tr key={idx}>
                           <td><strong>{ingredient?.name || `Ingredient #${ri.ingredient_id}`}</strong></td>
-                          <td>{ri.quantity} {ri.unit}</td>
+                          <td>{Number(ri.quantity).toFixed(2)} {ri.unit}</td>
                           <td>{formatCurrency(costPerUnit, selectedCurrency)}/{ingredient?.unit}</td>
                           <td>{formatCurrency(subtotal, selectedCurrency)}</td>
                         </tr>
