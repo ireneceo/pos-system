@@ -3329,10 +3329,15 @@ const InvoicesPage: React.FC = () => {
                     <span>Subtotal:</span>
                     <span>{newInvoice.currency ? formatCurrency(parseFloat(newInvoice.amount || '0'), newInvoice.currency) : '-'}</span>
                   </SummaryRow>
-                  <SummaryRow>
-                    <span>Tax (6%):</span>
-                    <span>{newInvoice.currency ? formatCurrency(parseFloat(newInvoice.tax || '0'), newInvoice.currency) : '-'}</span>
-                  </SummaryRow>
+                  {additionalCharges.filter(c => c.enabled && c.name && c.rate > 0).map((charge, idx) => {
+                    const chargeAmount = (parseFloat(newInvoice.amount || '0') * charge.rate / 100);
+                    return (
+                      <SummaryRow key={idx}>
+                        <span>{charge.name} ({charge.rate}%):</span>
+                        <span>{newInvoice.currency ? formatCurrency(chargeAmount, newInvoice.currency) : '-'}</span>
+                      </SummaryRow>
+                    );
+                  })}
                   <SummaryRow highlight>
                     <span>Total:</span>
                     <span><strong>{newInvoice.currency ? formatCurrency(parseFloat(newInvoice.total || '0'), newInvoice.currency) : '-'}</strong></span>
@@ -3468,10 +3473,12 @@ const InvoicesPage: React.FC = () => {
                         <span>Subtotal:</span>
                         <span>{formatCurrency(selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</span>
                       </SummaryRow>
-                      <SummaryRow>
-                        <span>Tax (6%):</span>
-                        <span>{formatCurrency(selectedInvoice.tax, selectedInvoice.currency || 'MYR')}</span>
-                      </SummaryRow>
+                      {(selectedInvoice.additionalCharges || []).map((charge, idx) => (
+                        <SummaryRow key={idx}>
+                          <span>{charge.name} ({charge.rate}%):</span>
+                          <span>{formatCurrency(charge.amount, selectedInvoice.currency || 'MYR')}</span>
+                        </SummaryRow>
+                      ))}
                       <SummaryRow highlight>
                         <span>Total:</span>
                         <span><strong>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</strong></span>
@@ -3777,13 +3784,15 @@ const InvoicesPage: React.FC = () => {
                       value={editInvoice.amount}
                       onChange={(e) => {
                         const amount = parseFloat(e.target.value) || 0;
-                        const taxRate = taxSettings.enabled ? taxSettings.rate / 100 : 0;
-                        const tax = amount * taxRate;
-                        const total = amount + tax;
+                        // Calculate total from all enabled additional charges
+                        const chargesTotal = additionalCharges
+                          .filter(c => c.enabled && c.rate > 0)
+                          .reduce((sum, c) => sum + (amount * c.rate / 100), 0);
+                        const total = amount + chargesTotal;
                         setEditInvoice({
                           ...editInvoice,
                           amount: e.target.value,
-                          tax: tax.toFixed(2),
+                          tax: chargesTotal.toFixed(2),
                           total: total.toFixed(2)
                         });
                       }}
@@ -3860,10 +3869,15 @@ const InvoicesPage: React.FC = () => {
                     <span>Subtotal:</span>
                     <span>{editInvoice.currency ? formatCurrency(parseFloat(editInvoice.amount || '0'), editInvoice.currency) : '-'}</span>
                   </SummaryRow>
-                  <SummaryRow>
-                    <span>Tax (6%):</span>
-                    <span>{editInvoice.currency ? formatCurrency(parseFloat(editInvoice.tax || '0'), editInvoice.currency) : '-'}</span>
-                  </SummaryRow>
+                  {additionalCharges.filter(c => c.enabled && c.name && c.rate > 0).map((charge, idx) => {
+                    const chargeAmount = (parseFloat(editInvoice.amount || '0') * charge.rate / 100);
+                    return (
+                      <SummaryRow key={idx}>
+                        <span>{charge.name} ({charge.rate}%):</span>
+                        <span>{editInvoice.currency ? formatCurrency(chargeAmount, editInvoice.currency) : '-'}</span>
+                      </SummaryRow>
+                    );
+                  })}
                   <SummaryRow highlight>
                     <span>Total:</span>
                     <span><strong>{editInvoice.currency ? formatCurrency(parseFloat(editInvoice.total || '0'), editInvoice.currency) : '-'}</strong></span>

@@ -31,6 +31,12 @@ import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Comm
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
+interface AdditionalCharge {
+  name: string;
+  rate: number;
+  amount: number;
+}
+
 interface Invoice {
   id: string;
   invoiceNumber: string;
@@ -89,6 +95,7 @@ interface Invoice {
     taxId?: string;
     businessRegistration?: string;
   };
+  additionalCharges?: AdditionalCharge[];
 }
 
 interface InvoiceItem {
@@ -1149,12 +1156,12 @@ const RestaurantInvoicesPage: React.FC = () => {
                     <span>Subtotal:</span>
                     <span>${formatCurrency(invoice.amount, invoice.currency || 'MYR')}</span>
                 </div>
-                ${invoice.tax > 0 ? `
+                ${(invoice.additionalCharges || []).map(charge => `
                 <div class="summary-row tax">
-                    <span>Tax:</span>
-                    <span>${formatCurrency(invoice.tax, invoice.currency || 'MYR')}</span>
+                    <span>${charge.name} (${charge.rate}%):</span>
+                    <span>${formatCurrency(charge.amount, invoice.currency || 'MYR')}</span>
                 </div>
-                ` : ''}
+                `).join('')}
                 <div class="summary-row total">
                     <span>Total:</span>
                     <span>${formatCurrency(invoice.total, invoice.currency || 'MYR')}</span>
@@ -1512,16 +1519,16 @@ const RestaurantInvoicesPage: React.FC = () => {
               <StatValue>{stats.total}</StatValue>
               <StatLabel>Total Invoices</StatLabel>
             </StatCard>
-            <StatCard variant="warning">
+            <StatCard color="#F59E0B">
               <StatValue>{stats.pending}</StatValue>
               <StatLabel>To Pay</StatLabel>
-              <StatDescription>{formatCurrency(stats.pendingAmount, operationSettings?.defaultCurrency || 'MYR')}</StatDescription>
+              <StatDescription>{formatCurrency(stats.pendingAmount, operationSettings?.currency || 'MYR')}</StatDescription>
             </StatCard>
-            <StatCard variant="info">
+            <StatCard color="#3B82F6">
               <StatValue>{stats.confirming}</StatValue>
               <StatLabel>Confirming</StatLabel>
             </StatCard>
-            <StatCard variant="success">
+            <StatCard color="#10B981">
               <StatValue>{stats.paid}</StatValue>
               <StatLabel>Paid</StatLabel>
             </StatCard>

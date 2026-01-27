@@ -330,11 +330,11 @@ const defaultPaymentSettings: PaymentSettings = {
   },
   bankTransfer: {},
   qrPayment: {},
-  tax: {
-    enabled: true,
-    rate: 6,
-    name: 'Tax'
-  }
+  additionalCharges: [
+    { enabled: false, name: '', rate: 0 },
+    { enabled: false, name: '', rate: 0 },
+    { enabled: false, name: '', rate: 0 }
+  ]
 };
 
 const PaymentSettingsPage: React.FC = () => {
