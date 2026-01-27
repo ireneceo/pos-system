@@ -567,21 +567,20 @@ const RestaurantInvoicesPage: React.FC = () => {
   const [allInvoices, setAllInvoices] = useState<Invoice[]>([]);
   const [invoicesToPay, setInvoicesToPay] = useState<Invoice[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
+  const [activePeriod, setActivePeriod] = useState<PeriodType>('all');
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [dateRange, setDateRange] = useState(() => {
     const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
     const formatDate = (d: Date) => {
       const year = d.getFullYear();
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
     };
+    // Default to 'all' - wide date range
     return {
-      start: formatDate(firstDay),
-      end: formatDate(lastDay)
+      start: '2000-01-01',
+      end: formatDate(today)
     };
   });
 
@@ -699,8 +698,8 @@ const RestaurantInvoicesPage: React.FC = () => {
           categoryDisplayName: inv.category_display_name || '',
           issuerType: inv.issuer_type || 'system_admin',
           issuerName: inv.issuer_name || '',
-          issuerInfo: inv.issuer_info || null,
-          payerInfo: inv.payer_info || null
+          issuerInfo: inv.issuerInfo || inv.issuer_info || null,
+          payerInfo: inv.payerInfo || inv.payer_info || null
         }));
         setAllInvoices(invoices);
       }
@@ -950,36 +949,332 @@ const RestaurantInvoicesPage: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
-  // Generate PDF
-  const generateInvoicePDF = async (invoice: Invoice) => {
-    const previewElement = document.getElementById('invoice-preview-pdf');
-    if (!previewElement) {
-      setSelectedInvoice(invoice);
-      setShowViewModal(true);
-      setTimeout(() => generateInvoicePDF(invoice), 500);
-      return;
-    }
+  // Generate Invoice HTML for PDF/Print (Restaurant Admin is always the receiver)
+  const generateInvoiceHTML = (invoice: Invoice) => {
+    // Restaurant Admin receives invoices, so:
+    // - issuerInfo = who sent the invoice (From)
+    // - payerInfo/companySettings = Restaurant (Bill To)
+    const issuerInfo = invoice.issuerInfo;
+    const payerCompany = invoice.payerInfo || (companySettings ? {
+      name: companySettings.companyName,
+      address: companySettings.address,
+      city: companySettings.city,
+      state: companySettings.state,
+      postalCode: companySettings.postalCode,
+      country: companySettings.country,
+      phone: companySettings.phone,
+      email: companySettings.email,
+      taxId: companySettings.taxNumber,
+      businessRegistration: companySettings.registrationNumber
+    } : null);
 
+    const getStatusClass = (status: string) => {
+      switch (status) {
+        case 'paid': return 'status-paid';
+        case 'pending_payment': return 'status-pending';
+        case 'payment_submitted': return 'status-submitted';
+        case 'overdue': return 'status-overdue';
+        case 'cancelled': return 'status-cancelled';
+        case 'draft': return 'status-draft';
+        default: return 'status-pending';
+      }
+    };
+
+    const getStatusText = (status: string) => {
+      switch (status) {
+        case 'paid': return 'PAID';
+        case 'pending_payment': return 'PENDING PAYMENT';
+        case 'payment_submitted': return 'PAYMENT SUBMITTED';
+        case 'overdue': return 'OVERDUE';
+        case 'cancelled': return 'CANCELLED';
+        case 'draft': return 'DRAFT';
+        default: return 'PENDING';
+      }
+    };
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Invoice ${invoice.invoiceNumber}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; line-height: 1.5; color: #333; background: #fff; }
+        .invoice-container { max-width: 800px; margin: 0 auto; padding: 40px; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; padding-bottom: 24px; border-bottom: 2px solid #E5E7EB; }
+        .logo-section { flex: 1; }
+        .company-logo { max-height: 60px; margin-bottom: 10px; }
+        .company-name { font-size: 20px; font-weight: 700; color: #0A2540; margin-bottom: 8px; }
+        .company-details { font-size: 13px; color: #6B7280; line-height: 1.6; }
+        .invoice-title { text-align: right; }
+        .invoice-label { font-size: 24px; font-weight: 700; color: #635BFF; margin-bottom: 8px; }
+        .invoice-number { font-size: 16px; font-weight: 600; color: #0A2540; margin-bottom: 8px; }
+        .invoice-status { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .status-paid { background: #ECFDF5; color: #059669; }
+        .status-pending { background: #FEF3C7; color: #D97706; }
+        .status-submitted { background: #DBEAFE; color: #1E40AF; }
+        .status-overdue { background: #FEE2E2; color: #DC2626; }
+        .status-cancelled { background: #FEF2F2; color: #DC2626; }
+        .status-draft { background: #F3F4F6; color: #6B7280; }
+
+        .billing-info { display: flex; justify-content: space-between; margin-bottom: 24px; }
+        .bill-to-section { flex: 1; }
+        .section-label { font-size: 12px; font-weight: 600; color: #6B7280; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .customer-name { font-size: 15px; font-weight: 600; color: #0A2540; }
+        .customer-details { font-size: 13px; color: #6B7280; margin-top: 4px; }
+
+        .dates-section { text-align: right; }
+        .date-row { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 6px; font-size: 13px; }
+        .date-label { color: #6B7280; }
+        .date-value { color: #0A2540; font-weight: 500; min-width: 140px; }
+
+        .items-section { margin-bottom: 24px; }
+        .items-table { width: 100%; border-collapse: collapse; }
+        .items-table th { text-align: left; padding: 12px 8px; font-size: 12px; font-weight: 600; color: #6B7280; text-transform: uppercase; border-bottom: 2px solid #E5E7EB; }
+        .items-table th.text-center { text-align: center; }
+        .items-table th.text-right { text-align: right; }
+        .items-table td { padding: 12px 8px; font-size: 14px; color: #374151; border-bottom: 1px solid #F3F4F6; }
+        .items-table td.text-center { text-align: center; }
+        .items-table td.text-right { text-align: right; }
+
+        .summary-section { display: flex; justify-content: flex-end; margin-bottom: 24px; }
+        .summary-box { width: 280px; }
+        .summary-row { display: flex; justify-content: space-between; padding: 8px 12px; font-size: 14px; }
+        .summary-row.subtotal { color: #6B7280; }
+        .summary-row.tax { color: #6B7280; }
+        .summary-row.total { background: #F8FAFC; border-radius: 6px; font-weight: 700; font-size: 16px; color: #0A2540; margin-top: 8px; }
+
+        .bank-section { background: #F8FAFC; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+        .bank-title { font-size: 12px; font-weight: 600; color: #6B7280; margin-bottom: 8px; text-transform: uppercase; }
+        .bank-details { font-size: 13px; color: #374151; line-height: 1.6; }
+
+        .registration-info { font-size: 12px; color: #9CA3AF; text-align: center; margin-top: 16px; }
+
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #E5E7EB; text-align: center; }
+        .footer-text { font-size: 12px; color: #6B7280; margin-bottom: 4px; }
+
+        @media print {
+            body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            .invoice-container { padding: 20px; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="invoice-container">
+        <div class="header">
+            <div class="logo-section">
+                ${issuerInfo?.logoUrl ? `<img src="${issuerInfo.logoUrl}" alt="Company Logo" class="company-logo">` : ''}
+                <div class="company-name" style="${issuerInfo?.logoUrl ? 'font-size: 14px;' : ''}">${issuerInfo?.name || invoice.issuerName || 'Issuer'}</div>
+                <div class="company-details">
+                    ${issuerInfo?.address ? `${issuerInfo.address}<br>` : ''}
+                    ${[issuerInfo?.city, issuerInfo?.state, issuerInfo?.postalCode].filter(Boolean).join(', ')}${issuerInfo?.city || issuerInfo?.state || issuerInfo?.postalCode ? '<br>' : ''}
+                    ${issuerInfo?.country ? `${issuerInfo.country}<br>` : ''}
+                    ${issuerInfo?.phone ? `Tel: ${issuerInfo.phone}<br>` : ''}
+                    ${issuerInfo?.email ? `Email: ${issuerInfo.email}` : ''}
+                </div>
+            </div>
+            <div class="invoice-title">
+                <div class="invoice-label">INVOICE</div>
+                <div class="invoice-number">${invoice.invoiceNumber}</div>
+                <span class="invoice-status ${getStatusClass(invoice.status)}">${getStatusText(invoice.status)}</span>
+            </div>
+        </div>
+
+        <div class="billing-info">
+            <div class="bill-to-section">
+                <div class="section-label">Bill To</div>
+                <div class="customer-name">${payerCompany?.name || companySettings?.companyName || 'Your Company'}</div>
+                ${payerCompany?.address || companySettings?.address ? `<div class="customer-details">${payerCompany?.address || companySettings?.address}</div>` : ''}
+                ${[payerCompany?.city || companySettings?.city, payerCompany?.state || companySettings?.state, payerCompany?.postalCode || companySettings?.postalCode].filter(Boolean).length > 0 ? `<div class="customer-details">${[payerCompany?.city || companySettings?.city, payerCompany?.state || companySettings?.state, payerCompany?.postalCode || companySettings?.postalCode].filter(Boolean).join(', ')}</div>` : ''}
+                ${payerCompany?.country || companySettings?.country ? `<div class="customer-details">${payerCompany?.country || companySettings?.country}</div>` : ''}
+                ${payerCompany?.email || companySettings?.email ? `<div class="customer-details">${payerCompany?.email || companySettings?.email}</div>` : ''}
+            </div>
+            <div class="dates-section">
+                <div class="date-row">
+                    <span class="date-label">Billing Period:</span>
+                    <span class="date-value">${invoice.billingPeriod || '-'}</span>
+                </div>
+                <div class="date-row">
+                    <span class="date-label">Issue Date:</span>
+                    <span class="date-value">${formatDate(invoice.issueDate)}</span>
+                </div>
+                <div class="date-row">
+                    <span class="date-label">Due Date:</span>
+                    <span class="date-value">${formatDate(invoice.dueDate)}</span>
+                </div>
+                ${invoice.paidDate ? `
+                <div class="date-row">
+                    <span class="date-label">Paid Date:</span>
+                    <span class="date-value">${formatDate(invoice.paidDate)}</span>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+
+        <div class="items-section">
+            <div class="section-label">Items</div>
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th class="text-center">Qty</th>
+                        <th class="text-right">Unit Price</th>
+                        <th class="text-right">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${invoice.items && invoice.items.length > 0 ? invoice.items.map(item => `
+                    <tr>
+                        <td>${item.description}</td>
+                        <td class="text-center">${item.quantity}</td>
+                        <td class="text-right">${formatCurrency(item.unitPrice, invoice.currency || 'MYR')}</td>
+                        <td class="text-right">${formatCurrency(item.total, invoice.currency || 'MYR')}</td>
+                    </tr>
+                    `).join('') : `
+                    <tr>
+                        <td>${invoice.categoryDisplayName || invoice.planType || 'Service'}</td>
+                        <td class="text-center">1</td>
+                        <td class="text-right">${formatCurrency(invoice.amount, invoice.currency || 'MYR')}</td>
+                        <td class="text-right">${formatCurrency(invoice.amount, invoice.currency || 'MYR')}</td>
+                    </tr>
+                    `}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="summary-section">
+            <div class="summary-box">
+                <div class="summary-row subtotal">
+                    <span>Subtotal:</span>
+                    <span>${formatCurrency(invoice.amount, invoice.currency || 'MYR')}</span>
+                </div>
+                ${invoice.tax > 0 ? `
+                <div class="summary-row tax">
+                    <span>Tax:</span>
+                    <span>${formatCurrency(invoice.tax, invoice.currency || 'MYR')}</span>
+                </div>
+                ` : ''}
+                <div class="summary-row total">
+                    <span>Total:</span>
+                    <span>${formatCurrency(invoice.total, invoice.currency || 'MYR')}</span>
+                </div>
+            </div>
+        </div>
+
+        ${issuerInfo?.bankName ? `
+        <div class="bank-section">
+            <div class="bank-title">Payment Details</div>
+            <div class="bank-details">
+                <strong>Bank:</strong> ${issuerInfo.bankName}<br>
+                <strong>Account Name:</strong> ${issuerInfo.bankAccountName || '-'}<br>
+                <strong>Account Number:</strong> ${issuerInfo.bankAccount || '-'}
+                ${issuerInfo.swiftCode ? `<br><strong>SWIFT Code:</strong> ${issuerInfo.swiftCode}` : ''}
+            </div>
+        </div>
+        ` : ''}
+
+        ${(issuerInfo?.taxId || issuerInfo?.businessRegistration) ? `
+        <div class="registration-info">
+            ${issuerInfo.businessRegistration ? `Reg No: ${issuerInfo.businessRegistration}` : ''}
+            ${issuerInfo.businessRegistration && issuerInfo.taxId ? ' | ' : ''}
+            ${issuerInfo.taxId ? `Tax No: ${issuerInfo.taxId}` : ''}
+        </div>
+        ` : ''}
+
+        <div class="footer">
+            <div class="footer-text">Thank you for your business!</div>
+            <div class="footer-text">This is a computer-generated invoice and does not require a signature.</div>
+        </div>
+    </div>
+</body>
+</html>`;
+  };
+
+  // Generate PDF - downloads directly without opening modal
+  const generateInvoicePDF = async (invoice: Invoice) => {
     try {
-      const canvas = await html2canvas(previewElement, { scale: 2 });
+      const invoiceHTML = generateInvoiceHTML(invoice);
+
+      // Create iframe for PDF generation (prevents layout shifts)
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.left = '-10000px';
+      iframe.style.top = '-10000px';
+      iframe.style.width = '800px';
+      iframe.style.height = '1200px';
+      iframe.style.visibility = 'hidden';
+      iframe.style.pointerEvents = 'none';
+      document.body.appendChild(iframe);
+
+      // Write HTML to iframe
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!iframeDoc) {
+        document.body.removeChild(iframe);
+        throw new Error('Could not access iframe document');
+      }
+      iframeDoc.open();
+      iframeDoc.write(invoiceHTML);
+      iframeDoc.close();
+
+      // Wait for content to render
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      // Convert iframe body to canvas
+      const canvas = await html2canvas(iframeDoc.body, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        windowWidth: 800,
+        windowHeight: 1200
+      });
+
+      // Remove the iframe
+      document.body.removeChild(iframe);
+
+      // Create PDF from canvas
       const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`invoice-${invoice.invoiceNumber}.pdf`);
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const imgWidth = 210; // A4 width in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      pdf.save(`Invoice-${invoice.invoiceNumber}.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
     }
   };
 
-  // Print invoice
+  // Print invoice - prints directly without opening modal
   const handlePrintInvoice = (invoice: Invoice) => {
-    setSelectedInvoice(invoice);
-    setShowViewModal(true);
-    setTimeout(() => {
-      window.print();
-    }, 500);
+    const invoiceHTML = generateInvoiceHTML(invoice);
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (printWindow) {
+      printWindow.document.write(invoiceHTML);
+      printWindow.document.close();
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
+    }
+  };
+
+  // Email invoice handler
+  const handleEmailInvoice = async (invoice: Invoice) => {
+    // Get issuer email for sending
+    const issuerEmail = invoice.issuerInfo?.email;
+    if (issuerEmail) {
+      const subject = encodeURIComponent(`Regarding Invoice ${invoice.invoiceNumber}`);
+      const body = encodeURIComponent(`Dear ${invoice.issuerInfo?.name || 'Sir/Madam'},\n\nI am writing regarding Invoice ${invoice.invoiceNumber}.\n\nBest regards`);
+      window.open(`mailto:${issuerEmail}?subject=${subject}&body=${body}`, '_blank');
+    } else {
+      alert('No email address available for the issuer.');
+    }
   };
 
   // Render invoice preview
@@ -1200,6 +1495,14 @@ const RestaurantInvoicesPage: React.FC = () => {
                         <rect x="6" y="14" width="12" height="8"/>
                       </svg>
                     </LocalActionButton>
+
+                    {/* Email */}
+                    <LocalActionButton variant="email" onClick={() => handleEmailInvoice(invoice)} title="Email Issuer">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                        <polyline points="22,6 12,13 2,6"/>
+                      </svg>
+                    </LocalActionButton>
                   </ActionButtons>
                 </DataTableCell>
               </DataTableRow>
@@ -1309,16 +1612,176 @@ const RestaurantInvoicesPage: React.FC = () => {
           {activeTab === 'to_pay' && renderInvoiceTable(filteredInvoicesToPay, true)}
         </Content>
 
-        {/* View Invoice Modal */}
-        {showViewModal && selectedInvoice && (
+        {/* View Invoice Modal - BrandGeneral Style */}
+        {showViewModal && selectedInvoice && (() => {
+          // Restaurant Admin always receives invoices, so issuerInfo = From, payerInfo/companySettings = Bill To
+          const issuerInfo = selectedInvoice.issuerInfo;
+          const payerCompany = selectedInvoice.payerInfo || (companySettings ? {
+            name: companySettings.companyName,
+            address: companySettings.address,
+            city: companySettings.city,
+            state: companySettings.state,
+            postalCode: companySettings.postalCode,
+            country: companySettings.country,
+            phone: companySettings.phone,
+            email: companySettings.email,
+            taxId: companySettings.taxNumber,
+            businessRegistration: companySettings.registrationNumber
+          } : null);
+
+          return (
           <Modal onClick={() => setShowViewModal(false)}>
-            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ maxWidth: '900px' }}>
+            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
               <ModalHeader>
-                <ModalTitle>Invoice {selectedInvoice.invoiceNumber}</ModalTitle>
+                <ModalTitle>Invoice Details</ModalTitle>
                 <CloseButton onClick={() => setShowViewModal(false)}>×</CloseButton>
               </ModalHeader>
               <ModalBody>
-                {renderInvoicePreview(selectedInvoice)}
+                {/* Invoice Header with Issuer Info */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '24px', borderBottom: '2px solid #E5E7EB' }}>
+                  <div>
+                    {issuerInfo?.logoUrl && (
+                      <img src={issuerInfo.logoUrl} alt="Company Logo" style={{ maxHeight: '60px', marginBottom: '8px' }} />
+                    )}
+                    <div style={{ fontSize: issuerInfo?.logoUrl ? '14px' : '20px', fontWeight: '700', color: '#0A2540', marginBottom: '8px' }}>
+                      {issuerInfo?.name || selectedInvoice.issuerName || 'Issuer'}
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.6' }}>
+                      {issuerInfo?.address && <div>{issuerInfo.address}</div>}
+                      {(issuerInfo?.city || issuerInfo?.state || issuerInfo?.postalCode) && (
+                        <div>{[issuerInfo?.city, issuerInfo?.state, issuerInfo?.postalCode].filter(Boolean).join(', ')}</div>
+                      )}
+                      {issuerInfo?.country && <div>{issuerInfo.country}</div>}
+                      {issuerInfo?.phone && <div>Tel: {issuerInfo.phone}</div>}
+                      {issuerInfo?.email && <div>Email: {issuerInfo.email}</div>}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '24px', fontWeight: '700', color: '#635BFF', marginBottom: '8px' }}>INVOICE</div>
+                    <div style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540' }}>{selectedInvoice.invoiceNumber}</div>
+                    <StatusBadge status={selectedInvoice.status} style={{ marginTop: '8px' }}>
+                      {getStatusDisplay(selectedInvoice.status)}
+                    </StatusBadge>
+                  </div>
+                </div>
+
+                {/* Bill To + Dates Section */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>Bill To</div>
+                    <div style={{ fontSize: '15px', fontWeight: '600', color: '#0A2540' }}>{payerCompany?.name || companySettings?.companyName || 'Your Company'}</div>
+                    {(payerCompany?.address || companySettings?.address) && (
+                      <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>{payerCompany?.address || companySettings?.address}</div>
+                    )}
+                    {(payerCompany?.city || payerCompany?.state || payerCompany?.postalCode || companySettings?.city) && (
+                      <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>
+                        {[payerCompany?.city || companySettings?.city, payerCompany?.state || companySettings?.state, payerCompany?.postalCode || companySettings?.postalCode].filter(Boolean).join(', ')}
+                      </div>
+                    )}
+                    {(payerCompany?.country || companySettings?.country) && (
+                      <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>{payerCompany?.country || companySettings?.country}</div>
+                    )}
+                    {(payerCompany?.email || companySettings?.email) && (
+                      <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>{payerCompany?.email || companySettings?.email}</div>
+                    )}
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
+                      <span style={{ color: '#6B7280' }}>Billing Period:</span>
+                      <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{selectedInvoice.billingPeriod || '-'}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
+                      <span style={{ color: '#6B7280' }}>Issue Date:</span>
+                      <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{formatDate(selectedInvoice.issueDate)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
+                      <span style={{ color: '#6B7280' }}>Due Date:</span>
+                      <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{formatDate(selectedInvoice.dueDate)}</span>
+                    </div>
+                    {selectedInvoice.paidDate && (
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
+                        <span style={{ color: '#6B7280' }}>Paid Date:</span>
+                        <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{formatDate(selectedInvoice.paidDate)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Items Table */}
+                <div style={{ marginBottom: '24px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '12px', textTransform: 'uppercase' }}>Items</div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid #E5E7EB' }}>
+                        <th style={{ textAlign: 'left', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>Description</th>
+                        <th style={{ textAlign: 'center', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>Qty</th>
+                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>Unit Price</th>
+                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedInvoice.items && selectedInvoice.items.length > 0 ? (
+                        selectedInvoice.items.map((item, index) => (
+                          <tr key={index} style={{ borderBottom: '1px solid #F3F4F6' }}>
+                            <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151' }}>{item.description}</td>
+                            <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'center' }}>{item.quantity}</td>
+                            <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right' }}>{formatCurrency(item.unitPrice, selectedInvoice.currency || 'MYR')}</td>
+                            <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right' }}>{formatCurrency(item.total, selectedInvoice.currency || 'MYR')}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr style={{ borderBottom: '1px solid #F3F4F6' }}>
+                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151' }}>{selectedInvoice.categoryDisplayName || selectedInvoice.planType || 'Service'}</td>
+                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'center' }}>1</td>
+                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right' }}>{formatCurrency(selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</td>
+                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right' }}>{formatCurrency(selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Summary */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
+                  <div style={{ width: '280px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', fontSize: '14px', color: '#6B7280' }}>
+                      <span>Subtotal:</span>
+                      <span>{formatCurrency(selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</span>
+                    </div>
+                    {selectedInvoice.tax > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', fontSize: '14px', color: '#6B7280' }}>
+                        <span>Tax:</span>
+                        <span>{formatCurrency(selectedInvoice.tax, selectedInvoice.currency || 'MYR')}</span>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', fontSize: '16px', fontWeight: '700', color: '#0A2540', background: '#F8FAFC', borderRadius: '6px', marginTop: '8px' }}>
+                      <span>Total:</span>
+                      <span>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bank Details (from issuer) */}
+                {issuerInfo?.bankName && (
+                  <div style={{ background: '#F8FAFC', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>Payment Details</div>
+                    <div style={{ fontSize: '13px', color: '#374151', lineHeight: '1.6' }}>
+                      <div><strong>Bank:</strong> {issuerInfo.bankName}</div>
+                      <div><strong>Account Name:</strong> {issuerInfo.bankAccountName || '-'}</div>
+                      <div><strong>Account Number:</strong> {issuerInfo.bankAccount || '-'}</div>
+                      {issuerInfo.swiftCode && <div><strong>SWIFT Code:</strong> {issuerInfo.swiftCode}</div>}
+                    </div>
+                  </div>
+                )}
+
+                {/* Registration Info */}
+                {(issuerInfo?.taxId || issuerInfo?.businessRegistration) && (
+                  <div style={{ fontSize: '12px', color: '#9CA3AF', textAlign: 'center', marginTop: '16px' }}>
+                    {issuerInfo?.businessRegistration && <span>Reg No: {issuerInfo.businessRegistration}</span>}
+                    {issuerInfo?.businessRegistration && issuerInfo?.taxId && <span> | </span>}
+                    {issuerInfo?.taxId && <span>Tax No: {issuerInfo.taxId}</span>}
+                  </div>
+                )}
               </ModalBody>
               <ModalFooter>
                 {(selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && (
@@ -1332,13 +1795,17 @@ const RestaurantInvoicesPage: React.FC = () => {
                 <Button onClick={() => generateInvoicePDF(selectedInvoice)}>
                   Download PDF
                 </Button>
+                <Button onClick={() => handlePrintInvoice(selectedInvoice)}>
+                  Print
+                </Button>
                 <Button variant="secondary" onClick={() => setShowViewModal(false)}>
                   Close
                 </Button>
               </ModalFooter>
             </ModalContent>
           </Modal>
-        )}
+          );
+        })()}
 
         {/* Payment Submit Modal */}
         {showPaymentSubmitModal && selectedInvoice && (

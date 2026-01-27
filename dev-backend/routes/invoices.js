@@ -524,22 +524,88 @@ router.get('/', authenticateToken, async (req, res) => {
 
 // Get all invoices for a restaurant
 // Returns invoices where restaurant_id matches OR (payer_type='restaurant' AND payer_id matches)
+// Excludes draft invoices (not yet sent to recipient)
 router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
     const invoices = await Invoice.findAll({
       where: {
-        [Op.or]: [
-          { restaurant_id: restaurantId },
+        [Op.and]: [
           {
-            payer_type: 'restaurant',
-            payer_id: restaurantId
+            [Op.or]: [
+              { restaurant_id: restaurantId },
+              {
+                payer_type: 'restaurant',
+                payer_id: restaurantId
+              }
+            ]
+          },
+          {
+            status: { [Op.ne]: 'draft' }  // Exclude draft invoices
           }
         ]
       },
+      include: [{
+        model: Restaurant,
+        as: 'restaurant',
+        attributes: ['id', 'name', 'address', 'city', 'state', 'postal_code', 'country', 'phone', 'email', 'manager_name']
+      }, {
+        model: InvoiceItem,
+        as: 'items'
+      }],
       order: [['createdAt', 'DESC']]
     });
-    res.json(invoices);
+
+    // Transform invoices with issuer/payer company info
+    const transformedInvoices = await Promise.all(invoices.map(async (invoice) => {
+      const issuerInfo = await getIssuerCompanyInfo(invoice.issuer_type, invoice.issuer_id, invoice.currency || 'MYR');
+      const payerInfo = await getPayerCompanyInfo(invoice.payer_type, invoice.payer_id, invoice.restaurant);
+
+      // Calculate amounts from items if available
+      const itemsTotal = invoice.items?.reduce((sum, item) => sum + parseFloat(item.calculated_amount || item.fixed_amount || 0), 0) || 0;
+      const taxTotal = invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0;
+
+      // Transform items to frontend format
+      const transformedItems = (invoice.items || []).map(item => ({
+        id: item.id?.toString(),
+        description: item.description || item.item_name || 'Service',
+        quantity: item.quantity || 1,
+        unitPrice: parseFloat(item.unit_price || item.calculated_amount || item.fixed_amount || 0),
+        taxRate: parseFloat(item.tax_rate || 0),
+        taxAmount: parseFloat(item.tax_amount || 0),
+        total: parseFloat(item.calculated_amount || item.fixed_amount || 0) + parseFloat(item.tax_amount || 0)
+      }));
+
+      return {
+        id: invoice.id?.toString(),
+        invoice_number: invoice.invoice_number,
+        status: invoice.status,
+        currency: invoice.currency || 'MYR',
+        subtotal: itemsTotal || parseFloat(invoice.total_amount) - taxTotal,
+        tax_amount: taxTotal || 0,
+        total_amount: parseFloat(invoice.total_amount),
+        issued_at: invoice.issued_at,
+        due_date: invoice.due_date,
+        paid_at: invoice.paid_at,
+        billing_period_start: invoice.billing_period_start,
+        billing_period_end: invoice.billing_period_end,
+        issuer_type: invoice.issuer_type,
+        issuer_id: invoice.issuer_id,
+        issuer_name: issuerInfo?.name || 'Issuer',
+        payer_type: invoice.payer_type,
+        payer_id: invoice.payer_id,
+        restaurant_id: invoice.restaurant_id,
+        category_display_name: invoice.category_display_name || invoice.invoice_category || 'Service',
+        payment_method: invoice.payment_method,
+        transaction_id: invoice.transaction_id,
+        receipt_url: invoice.receipt_url,
+        items: transformedItems,
+        issuerInfo: issuerInfo,
+        payerInfo: payerInfo
+      };
+    }));
+
+    res.json(transformedInvoices);
   } catch (error) {
     console.error('Error fetching invoices:', error);
     res.status(500).json({ error: 'Failed to fetch invoices' });
