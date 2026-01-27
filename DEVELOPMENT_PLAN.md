@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-01-26
+> **최종 업데이트:** 2026-01-27
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -29,6 +29,55 @@
 2. 썸네일 사용 (별도 컬럼 추가)
 3. 이미지 지연 로딩 (스크롤 시 로드)
 4. 이미지를 파일로 저장하고 URL 사용 (장기적)
+
+---
+
+## ✅ 완료: 결제설정 추가비용, 메뉴 관리, 재료/레시피 개선 (2026-01-27)
+
+### 완료된 기능
+
+| 기능 | 설명 | 상태 |
+|------|------|:----:|
+| Additional Charges 설정 | 결제설정에 추가비용 항목 3개 (Tax, Service Charge 등) | ✅ 완료 |
+| 메뉴 복사 기능 | 기존 메뉴 복제하여 새 메뉴 생성 | ✅ 완료 |
+| 메뉴 비활성화 기능 | 삭제 없이 메뉴 숨김 처리 | ✅ 완료 |
+| 재료 모달 Track Stock 제거 | Add/Edit 모달에서 불필요한 체크박스 제거 | ✅ 완료 |
+| 레시피 소수점 2자리 표시 | 재료 수량 표시를 2자리로 제한 (0.5000 → 0.50) | ✅ 완료 |
+| Invoice 페이지 버그 수정 | StatCard color prop, currency 필드 수정 | ✅ 완료 |
+
+### 핵심 구현 사항
+
+1. **Additional Charges (결제설정 추가비용)**
+   - Invoice 모델에 additional_charges JSON 필드 추가
+   - PaymentSettingsPage (Admin, Brand)에 추가비용 UI 추가
+   - 최대 3개 항목 설정 가능 (enabled, name, rate)
+
+2. **메뉴 복사/비활성화 기능**
+   - Product 모델에 is_active 필드 추가
+   - `/product/:id/copy` API 추가 (메뉴 복제)
+   - `/product/:id/toggle-active` API 추가 (활성화 토글)
+   - MenuManagementPage에 아이콘 버튼 (복사, 비활성화, 품절, 삭제)
+
+3. **재료/레시피 개선**
+   - IngredientsTab.tsx: 모달에서 Track in Inventory 체크박스 제거
+   - ProductIngredientsTab.tsx: 동일하게 체크박스 제거
+   - RecipesTab.tsx: 재료 수량 .toFixed(2)로 2자리 표시
+
+### 관련 파일
+
+**Backend:**
+- `models/Invoice.js` - additional_charges 필드
+- `models/Product.js` - is_active 필드
+- `routes/menu.js` - copy, toggle-active API
+- `routes/admin-payment-settings.js` - additionalCharges 처리
+
+**Frontend:**
+- `pages/Admin/PaymentSettingsPage.tsx` - 추가비용 UI
+- `pages/BrandGeneral/BrandPaymentSettingsPage.tsx` - 추가비용 UI
+- `pages/MenuManagement/MenuManagementPage.tsx` - 아이콘 버튼, 비활성화 상태
+- `pages/RecipeManagement/IngredientsTab.tsx` - 체크박스 제거
+- `pages/BrandProductRecipe/ProductIngredientsTab.tsx` - 체크박스 제거
+- `pages/RecipeManagement/RecipesTab.tsx` - 소수점 2자리
 
 ---
 

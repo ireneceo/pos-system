@@ -1953,7 +1953,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                       return (
                         <RecipeIngredientItem key={idx}>
                           <RecipeIngredientName>{ingredient?.name || `Ingredient #${ri.ingredient_id}`}</RecipeIngredientName>
-                          <RecipeIngredientQty>{ri.quantity} {ri.unit}</RecipeIngredientQty>
+                          <RecipeIngredientQty>{Number(ri.quantity).toFixed(2)} {ri.unit}</RecipeIngredientQty>
                         </RecipeIngredientItem>
                       );
                     })}
