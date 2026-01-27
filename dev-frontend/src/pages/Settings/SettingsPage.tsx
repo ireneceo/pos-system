@@ -1039,6 +1039,7 @@ const SettingsPage: React.FC = () => {
     const loadPrinterSettings = async () => {
       if (!user?.restaurantId) return;
 
+      setPrinterSettingsLoading(true);
       try {
         const token = localStorage.getItem('auth_token');
         const response = await fetch(`/api/restaurants/${user.restaurantId}`, {
@@ -1052,8 +1053,9 @@ const SettingsPage: React.FC = () => {
           const restaurant = await response.json();
           if (restaurant.printer_settings) {
             const dbSettings = restaurant.printer_settings;
-            setPrinterModeState(dbSettings.printerMode || 'rawbt');
-            setPrinterMode(dbSettings.printerMode || 'rawbt');
+            const mode = dbSettings.printerMode || 'rawbt';
+            setPrinterModeState(mode);
+            setPrinterMode(mode);
             setPrinterSettings({
               billPrinter: {
                 enabled: dbSettings.billPrinter?.enabled ?? true,
@@ -1067,7 +1069,7 @@ const SettingsPage: React.FC = () => {
               }
             });
             // Also sync to localStorage for billPrint.js
-            localStorage.setItem('printerMode', dbSettings.printerMode || 'rawbt');
+            localStorage.setItem('printerMode', mode);
             localStorage.setItem('printerSettings', JSON.stringify({
               billPrinter: dbSettings.billPrinter || { enabled: true, name: '', autoPrint: false },
               kitchenPrinter: dbSettings.kitchenPrinter || { enabled: true, name: '', autoPrint: true }
@@ -1090,6 +1092,8 @@ const SettingsPage: React.FC = () => {
           }
         }
         setPrinterModeState(getPrinterMode());
+      } finally {
+        setPrinterSettingsLoading(false);
       }
     };
 
@@ -3786,7 +3790,12 @@ const SettingsPage: React.FC = () => {
                   Select how to connect to your thermal printer
                 </p>
 
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                {printerSettingsLoading ? (
+                  <div style={{ padding: '20px', textAlign: 'center', color: '#6B7C93' }}>
+                    Loading printer settings...
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                   <label style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -3844,10 +3853,11 @@ const SettingsPage: React.FC = () => {
                       <div style={{ fontSize: '12px', color: '#6B7C93' }}>For Windows/Mac computers</div>
                     </div>
                   </label>
-                </div>
+                  </div>
+                )}
               </SettingsCard>
 
-              {printerMode === 'rawbt' && (
+              {printerMode === 'rawbt' && !printerSettingsLoading && (
               <SettingsGrid>
                 {/* Bill Printer Card - Only for RawBT mode */}
                 <SettingsCard>

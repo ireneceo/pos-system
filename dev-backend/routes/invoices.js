@@ -523,11 +523,20 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // Get all invoices for a restaurant
+// Returns invoices where restaurant_id matches OR (payer_type='restaurant' AND payer_id matches)
 router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
     const invoices = await Invoice.findAll({
-      where: { restaurant_id: restaurantId },
+      where: {
+        [Op.or]: [
+          { restaurant_id: restaurantId },
+          {
+            payer_type: 'restaurant',
+            payer_id: restaurantId
+          }
+        ]
+      },
       order: [['createdAt', 'DESC']]
     });
     res.json(invoices);
@@ -984,21 +993,28 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
       console.log(`  Excluding invoices issued by this foodcourt`);
     }
     // Restaurant Admin sees invoices for their restaurant
+    // Includes invoices where restaurant_id matches OR (payer_type='restaurant' AND payer_id matches)
     else if (req.user.role === 'Restaurant Admin') {
       const userRestaurantId = req.user.restaurantId || req.user.restaurant_id;
       if (!userRestaurantId) {
         return res.json([]);
       }
       whereClause = {
-        restaurant_id: userRestaurantId
+        [Op.or]: [
+          { restaurant_id: userRestaurantId },
+          {
+            payer_type: 'restaurant',
+            payer_id: userRestaurantId
+          }
+        ]
       };
     }
     else {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    // Exclude draft invoices - they haven't been sent yet
-    whereClause.status = { [Op.ne]: 'draft' };
+    // Only show invoices that need payment (exclude draft, paid, cancelled)
+    whereClause.status = { [Op.in]: ['pending_payment', 'payment_submitted', 'overdue'] };
 
     const invoices = await Invoice.findAll({
       where: whereClause,

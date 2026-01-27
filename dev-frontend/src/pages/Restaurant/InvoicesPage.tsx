@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useParams } from 'react-router-dom';
 import MainLayout from '../../components/Layout/MainLayout';
 import { formatCurrency } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
@@ -555,9 +555,13 @@ type TabType = 'all' | 'to_pay';
 type PeriodType = 'week' | 'month' | 'year' | 'all';
 
 const RestaurantInvoicesPage: React.FC = () => {
-  const { operationSettings, restaurantId } = useStore();
+  const { operationSettings } = useStore();
   const { user } = useAuth();
+  const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Get restaurantId from URL or user's restaurant_id
+  const restaurantId = urlRestaurantId ? parseInt(urlRestaurantId) : user?.restaurant_id;
 
   // States
   const [allInvoices, setAllInvoices] = useState<Invoice[]>([]);
