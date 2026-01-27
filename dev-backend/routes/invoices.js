@@ -76,6 +76,55 @@ async function generateInvoiceNumber(issuerType = 'system_admin', issuerId = nul
   return `${prefix}${dateStr}${String(nextNumber).padStart(3, '0')}`;
 }
 
+// Helper function to get additional charges from issuer's payment settings
+async function getAdditionalCharges(issuerType, issuerId) {
+  try {
+    let additionalCharges = [];
+
+    if (issuerType === 'system_admin') {
+      // Get from system settings
+      const paymentSettings = await SystemSettings.findOne({
+        where: { setting_key: PAYMENT_SETTINGS_KEY }
+      });
+
+      if (paymentSettings?.setting_value?.additionalCharges) {
+        additionalCharges = paymentSettings.setting_value.additionalCharges;
+      }
+    } else if (issuerType === 'brand' && issuerId) {
+      // Get from brand's payment_settings
+      const brand = await Brand.findByPk(issuerId);
+      if (brand?.payment_settings?.additionalCharges) {
+        additionalCharges = brand.payment_settings.additionalCharges;
+      }
+    } else if (issuerType === 'foodcourt' && issuerId) {
+      // Get from foodcourt's payment_settings
+      const foodcourt = await Foodcourt.findByPk(issuerId);
+      if (foodcourt?.payment_settings?.additionalCharges) {
+        additionalCharges = foodcourt.payment_settings.additionalCharges;
+      }
+    }
+
+    // Filter only enabled charges and return with calculated info
+    return additionalCharges.filter(charge => charge.enabled && charge.name && charge.rate > 0);
+  } catch (error) {
+    console.error('Error fetching additional charges:', error);
+    return [];
+  }
+}
+
+// Helper function to calculate additional charges amounts
+function calculateAdditionalCharges(subtotal, additionalChargesConfig) {
+  if (!additionalChargesConfig || !Array.isArray(additionalChargesConfig)) {
+    return [];
+  }
+
+  return additionalChargesConfig.map(charge => ({
+    name: charge.name,
+    rate: parseFloat(charge.rate) || 0,
+    amount: Math.round(subtotal * (parseFloat(charge.rate) || 0) / 100 * 100) / 100
+  }));
+}
+
 // Helper function to get bank info from Payment Settings based on currency
 async function getBankInfoByCurrency(currency) {
   try {
@@ -505,7 +554,9 @@ router.get('/', authenticateToken, async (req, res) => {
         paymentMethod: invoice.payment_method,
         transactionId: invoice.transaction_id,
         receiptUrl: invoice.receipt_url,
-        hasPaymentInfo: !!invoice.payment_method || !!invoice.receipt_url
+        hasPaymentInfo: !!invoice.payment_method || !!invoice.receipt_url,
+        // Additional charges (Tax, Service Charge, etc.)
+        additionalCharges: invoice.additional_charges || []
       };
     });
 
@@ -601,7 +652,9 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
         receipt_url: invoice.receipt_url,
         items: transformedItems,
         issuerInfo: issuerInfo,
-        payerInfo: payerInfo
+        payerInfo: payerInfo,
+        // Additional charges (Tax, Service Charge, etc.)
+        additional_charges: invoice.additional_charges || []
       };
     }));
 
@@ -1186,7 +1239,9 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
             unitPrice: parseFloat(item.calculated_amount || item.fixed_amount || 0),
             total: parseFloat(item.total_amount || 0)
           };
-        }) || []
+        }) || [],
+        // Additional charges (Tax, Service Charge, etc.)
+        additionalCharges: invoice.additional_charges || []
       };
     }));
 
@@ -1275,7 +1330,9 @@ router.get('/:id', authenticateToken, async (req, res) => {
       receiptUrl: invoice.receipt_url,
       confirmedBy: invoice.confirmed_by?.toString(),
       confirmedAt: invoice.confirmed_at,
-      rejectionReason: invoice.rejection_reason
+      rejectionReason: invoice.rejection_reason,
+      // Additional charges (Tax, Service Charge, etc.)
+      additionalCharges: invoice.additional_charges || []
     };
 
     res.json({ invoice: transformedInvoice, items });

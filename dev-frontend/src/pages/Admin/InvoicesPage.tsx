@@ -33,6 +33,12 @@ import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Comm
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
+interface AdditionalCharge {
+  name: string;
+  rate: number;
+  amount: number;
+}
+
 interface Invoice {
   id: string;
   invoiceNumber: string;
@@ -65,6 +71,7 @@ interface Invoice {
   customDescription?: string;
   serviceDescription?: string;
   categoryDisplayName?: string;
+  additionalCharges?: AdditionalCharge[];
 }
 
 interface CurrencyConfig {
@@ -791,6 +798,11 @@ const InvoicesPage: React.FC = () => {
     { enabled: false, name: '', rate: 0 },
     { enabled: false, name: '', rate: 0 }
   ]);
+  const [taxSettings, setTaxSettings] = useState<{ enabled: boolean; rate: number; name: string }>({
+    enabled: false,
+    rate: 0,
+    name: 'Tax'
+  });
   const [sortField, setSortField] = useState<'invoiceNumber' | 'companyName' | 'dueDate' | 'amount' | 'status'>('dueDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [newInvoice, setNewInvoice] = useState({
@@ -1169,7 +1181,7 @@ const InvoicesPage: React.FC = () => {
     setInvoices(sampleInvoices);
   };
 
-  // Fetch payment settings (tax rate)
+  // Fetch payment settings (additional charges including tax)
   const fetchPaymentSettings = async () => {
     try {
       const token = localStorage.getItem('auth_token');
@@ -1178,12 +1190,18 @@ const InvoicesPage: React.FC = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        if (data.tax) {
-          setTaxSettings({
-            enabled: data.tax.enabled || false,
-            rate: parseFloat(data.tax.rate) || 0,
-            name: data.tax.name || 'Tax'
-          });
+        // Load additional charges (3 items: Tax, Service Charge, etc.)
+        if (data.additionalCharges && Array.isArray(data.additionalCharges)) {
+          setAdditionalCharges(data.additionalCharges);
+          // Set first enabled charge as taxSettings for backward compatibility
+          const firstEnabled = data.additionalCharges.find((c: { enabled: boolean; name: string; rate: number }) => c.enabled);
+          if (firstEnabled) {
+            setTaxSettings({
+              enabled: firstEnabled.enabled,
+              rate: parseFloat(firstEnabled.rate) || 0,
+              name: firstEnabled.name || 'Tax'
+            });
+          }
         }
       }
     } catch (error) {
@@ -1746,10 +1764,12 @@ const InvoicesPage: React.FC = () => {
                     <span>Subtotal:</span>
                     <span>${formatCurrency(invoice.amount, invoice.currency || 'MYR')}</span>
                 </div>
+                ${(invoice.additionalCharges || []).map(charge => `
                 <div class="summary-row tax">
-                    <span>Tax (6%):</span>
-                    <span>${formatCurrency(invoice.tax, invoice.currency || 'MYR')}</span>
+                    <span>${charge.name} (${charge.rate}%):</span>
+                    <span>${formatCurrency(charge.amount, invoice.currency || 'MYR')}</span>
                 </div>
+                `).join('')}
                 <div class="summary-row total">
                     <span>Total:</span>
                     <span>${formatCurrency(invoice.total, invoice.currency || 'MYR')}</span>
@@ -2305,8 +2325,19 @@ const InvoicesPage: React.FC = () => {
 
     try {
       const amount = parseFloat(newInvoice.amount);
-      const tax = parseFloat(newInvoice.tax);
-      const total = parseFloat(newInvoice.total);
+
+      // Calculate additional charges from payment settings
+      const calculatedCharges = additionalCharges
+        .filter(charge => charge.enabled && charge.name && charge.rate > 0)
+        .map(charge => ({
+          name: charge.name,
+          rate: charge.rate,
+          amount: Math.round(amount * charge.rate / 100 * 100) / 100
+        }));
+
+      // Calculate total additional charges amount
+      const totalChargesAmount = calculatedCharges.reduce((sum, c) => sum + c.amount, 0);
+      const total = amount + totalChargesAmount;
 
       // Prepare data for API
       const billingPeriodStart = new Date();
@@ -2380,7 +2411,8 @@ const InvoicesPage: React.FC = () => {
         issued_by: 1, // Current admin user ID
         issued_at: new Date().toISOString(),
         issuer_type: 'system_admin',
-        invoice_category: newInvoice.invoiceCategory || 'service'
+        invoice_category: newInvoice.invoiceCategory || 'service',
+        additional_charges: calculatedCharges
       };
 
       const items = [{
@@ -2389,9 +2421,9 @@ const InvoicesPage: React.FC = () => {
         calculation_method: 'fixed',
         fixed_amount: amount,
         calculated_amount: amount,
-        tax_rate: taxSettings.enabled ? taxSettings.rate : 0,
-        tax_amount: tax,
-        total_amount: total
+        tax_rate: 0,
+        tax_amount: 0,
+        total_amount: amount
       }];
 
       const token = localStorage.getItem('auth_token');
@@ -3201,13 +3233,15 @@ const InvoicesPage: React.FC = () => {
                       value={newInvoice.amount}
                       onChange={(e) => {
                         const amount = parseFloat(e.target.value) || 0;
-                        const taxRate = taxSettings.enabled ? taxSettings.rate / 100 : 0;
-                        const tax = amount * taxRate;
-                        const total = amount + tax;
+                        // Calculate total from all enabled additional charges
+                        const chargesTotal = additionalCharges
+                          .filter(c => c.enabled && c.rate > 0)
+                          .reduce((sum, c) => sum + (amount * c.rate / 100), 0);
+                        const total = amount + chargesTotal;
                         setNewInvoice({
                           ...newInvoice,
                           amount: e.target.value,
-                          tax: tax.toFixed(2),
+                          tax: chargesTotal.toFixed(2),
                           total: total.toFixed(2)
                         });
                       }}
@@ -3216,13 +3250,14 @@ const InvoicesPage: React.FC = () => {
                           const decimals = getCurrencyDecimals(newInvoice.currency);
                           const amount = parseFloat(e.target.value) || 0;
                           const formattedAmount = amount.toFixed(decimals);
-                          const taxRate = taxSettings.enabled ? taxSettings.rate / 100 : 0;
-                          const tax = amount * taxRate;
-                          const total = amount + tax;
+                          const chargesTotal = additionalCharges
+                            .filter(c => c.enabled && c.rate > 0)
+                            .reduce((sum, c) => sum + (amount * c.rate / 100), 0);
+                          const total = amount + chargesTotal;
                           setNewInvoice({
                             ...newInvoice,
                             amount: formattedAmount,
-                            tax: tax.toFixed(decimals),
+                            tax: chargesTotal.toFixed(decimals),
                             total: total.toFixed(decimals)
                           });
                         }

@@ -158,6 +158,13 @@ Invoice.init({
     type: DataTypes.DATE,
     allowNull: true,
     comment: 'When payment receipt was submitted'
+  },
+  // Additional Charges (Tax, Service Charge, etc.)
+  additional_charges: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+    comment: 'Array of additional charges: [{name: "Tax", rate: 6, amount: 6.00}, ...]'
   }
 }, {
   sequelize: database.sequelize,
