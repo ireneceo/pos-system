@@ -175,6 +175,12 @@ interface CompanySettings {
   swiftCode?: string;
 }
 
+interface AdditionalChargeConfig {
+  enabled: boolean;
+  name: string;
+  rate: number;
+}
+
 interface PaymentMethod {
   id: string;
   name: string;
@@ -932,6 +938,7 @@ const BrandInvoicesPage: React.FC = () => {
   const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
   const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
   const [invoiceCategories, setInvoiceCategories] = useState<InvoiceCategory[]>([]);
+  const [additionalCharges, setAdditionalCharges] = useState<AdditionalChargeConfig[]>([]);
   const [newInvoice, setNewInvoice] = useState({
     managerId: '',
     managerName: '',
@@ -1189,6 +1196,27 @@ const BrandInvoicesPage: React.FC = () => {
     }
   }, []);
 
+  // Fetch brand payment settings (for additional charges)
+  const fetchBrandPaymentSettings = useCallback(async () => {
+    if (!user?.brand_id) return;
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/brands/${user.brand_id}/payment-settings`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const responseData = await response.json();
+        const data = responseData.data || responseData;
+        if (data.payment_settings?.additionalCharges) {
+          setAdditionalCharges(data.payment_settings.additionalCharges);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching brand payment settings:', error);
+    }
+  }, [user?.brand_id]);
+
   // Category management functions
   const handleOpenCategoryModal = (category?: InvoiceCategory) => {
     if (category) {
@@ -1445,6 +1473,7 @@ const BrandInvoicesPage: React.FC = () => {
     fetchCompanySettings();
     fetchCurrencyConfig();
     fetchInvoiceCategories();
+    fetchBrandPaymentSettings();
   }, []);
 
   const fetchCurrencyConfig = async () => {
@@ -3711,7 +3740,11 @@ const BrandInvoicesPage: React.FC = () => {
                       value={newInvoice.amount}
                       onChange={(e) => {
                         const amount = parseFloat(e.target.value) || 0;
-                        const tax = amount * 0.06;
+                        // Calculate total charges from enabled additional charges
+                        const totalChargeRate = additionalCharges
+                          .filter(c => c.enabled && c.rate > 0)
+                          .reduce((sum, c) => sum + c.rate, 0);
+                        const tax = amount * (totalChargeRate / 100);
                         const total = amount + tax;
                         setNewInvoice({
                           ...newInvoice,
@@ -3779,10 +3812,21 @@ const BrandInvoicesPage: React.FC = () => {
                     <span>Subtotal:</span>
                     <span>{formatCurrency(parseFloat(newInvoice.amount || '0'), newInvoice.currency || operationSettings.currency)}</span>
                   </SummaryRow>
-                  <SummaryRow>
-                    <span>Tax (6%):</span>
-                    <span>{formatCurrency(parseFloat(newInvoice.tax || '0'), newInvoice.currency || operationSettings.currency)}</span>
-                  </SummaryRow>
+                  {additionalCharges.filter(c => c.enabled && c.rate > 0).map((charge, idx) => {
+                    const chargeAmount = parseFloat(newInvoice.amount || '0') * (charge.rate / 100);
+                    return (
+                      <SummaryRow key={idx}>
+                        <span>{charge.name} ({charge.rate}%):</span>
+                        <span>{formatCurrency(chargeAmount, newInvoice.currency || operationSettings.currency)}</span>
+                      </SummaryRow>
+                    );
+                  })}
+                  {additionalCharges.filter(c => c.enabled && c.rate > 0).length === 0 && (
+                    <SummaryRow>
+                      <span>Additional Charges:</span>
+                      <span>{formatCurrency(0, newInvoice.currency || operationSettings.currency)}</span>
+                    </SummaryRow>
+                  )}
                   <SummaryRow highlight>
                     <span>Total:</span>
                     <span><strong>{formatCurrency(parseFloat(newInvoice.total || '0'), newInvoice.currency || operationSettings.currency)}</strong></span>
@@ -4214,7 +4258,11 @@ const BrandInvoicesPage: React.FC = () => {
                       value={editInvoice.amount}
                       onChange={(e) => {
                         const amount = parseFloat(e.target.value) || 0;
-                        const tax = amount * 0.06;
+                        // Calculate total charges from enabled additional charges
+                        const totalChargeRate = additionalCharges
+                          .filter(c => c.enabled && c.rate > 0)
+                          .reduce((sum, c) => sum + c.rate, 0);
+                        const tax = amount * (totalChargeRate / 100);
                         const total = amount + tax;
                         setEditInvoice({
                           ...editInvoice,
@@ -4299,10 +4347,15 @@ const BrandInvoicesPage: React.FC = () => {
                     <span>Subtotal:</span>
                     <span>{formatCurrency(parseFloat(editInvoice.amount || '0'), editInvoice.currency || 'MYR')}</span>
                   </SummaryRow>
-                  <SummaryRow>
-                    <span>Tax (6%):</span>
-                    <span>{formatCurrency(parseFloat(editInvoice.tax || '0'), editInvoice.currency || 'MYR')}</span>
-                  </SummaryRow>
+                  {additionalCharges.filter(c => c.enabled && c.rate > 0).map((charge, idx) => {
+                    const chargeAmount = parseFloat(editInvoice.amount || '0') * (charge.rate / 100);
+                    return (
+                      <SummaryRow key={idx}>
+                        <span>{charge.name} ({charge.rate}%):</span>
+                        <span>{formatCurrency(chargeAmount, editInvoice.currency || 'MYR')}</span>
+                      </SummaryRow>
+                    );
+                  })}
                   <SummaryRow highlight>
                     <span>Total:</span>
                     <span><strong>{formatCurrency(parseFloat(editInvoice.total || '0'), editInvoice.currency || 'MYR')}</strong></span>

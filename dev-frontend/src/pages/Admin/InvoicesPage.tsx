@@ -2406,7 +2406,7 @@ const InvoicesPage: React.FC = () => {
         due_date: new Date(newInvoice.dueDate).toISOString(),
         total_amount: total,
         currency: newInvoice.currency || 'USD',
-        status: 'pending_payment',
+        status: 'draft',
         notes: `${companyName}\n${customerName}\n${customerAddress}\n\n${description}`,
         issued_by: 1, // Current admin user ID
         issued_at: new Date().toISOString(),
