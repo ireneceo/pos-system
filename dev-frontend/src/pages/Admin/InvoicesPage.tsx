@@ -1989,6 +1989,24 @@ const InvoicesPage: React.FC = () => {
   };
 
   // Helper functions for display (moved before filteredInvoices to avoid reference error)
+  // Check if invoice is overdue based on due_date
+  const isInvoiceOverdue = (invoice: Invoice): boolean => {
+    if (invoice.status === 'paid' || invoice.status === 'cancelled' || invoice.status === 'draft') {
+      return false;
+    }
+    const now = new Date();
+    const dueDate = new Date(invoice.dueDate);
+    return dueDate < now;
+  };
+
+  // Get effective status (considering overdue)
+  const getEffectiveStatus = (invoice: Invoice): string => {
+    if (isInvoiceOverdue(invoice)) {
+      return 'overdue';
+    }
+    return invoice.status;
+  };
+
   const getStatusDisplay = (status: string) => {
     switch(status) {
       case 'draft': return 'Draft';
@@ -2066,7 +2084,8 @@ const InvoicesPage: React.FC = () => {
         comparison = (a.status || '').localeCompare(b.status || '');
         break;
       default:
-        comparison = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        // Default: sort by issue date (newest first)
+        comparison = new Date(a.issueDate).getTime() - new Date(b.issueDate).getTime();
     }
     return sortDirection === 'desc' ? -comparison : comparison;
   });
@@ -2091,7 +2110,7 @@ const InvoicesPage: React.FC = () => {
 
   const totalInvoices = invoices.length;
   const paidInvoices = invoices.filter(i => i.status === 'paid').length;
-  const overdueInvoices = invoices.filter(i => i.status === 'overdue').length;
+  const overdueInvoices = invoices.filter(i => isInvoiceOverdue(i)).length;
   const totalRevenue = invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + i.total, 0);
 
   const formatDate = (dateString: string) => {
@@ -2340,13 +2359,6 @@ const InvoicesPage: React.FC = () => {
       const total = amount + totalChargesAmount;
 
       // Prepare data for API
-      const billingPeriodStart = new Date();
-      billingPeriodStart.setDate(1); // First day of current month
-
-      const billingPeriodEnd = new Date();
-      billingPeriodEnd.setMonth(billingPeriodEnd.getMonth() + 1);
-      billingPeriodEnd.setDate(0); // Last day of current month
-
       let description = '';
       if (newInvoice.invoiceCategory === 'others') {
         description = newInvoice.customDescription || '';
@@ -2401,8 +2413,8 @@ const InvoicesPage: React.FC = () => {
         payer_type: payerType,
         payer_id: selectedTarget.type === 'manager' ? (selectedTarget.data as Manager).id : null,
         type: 'manual',
-        billing_period_start: billingPeriodStart.toISOString(),
-        billing_period_end: billingPeriodEnd.toISOString(),
+        billing_period_start: null,
+        billing_period_end: null,
         due_date: new Date(newInvoice.dueDate).toISOString(),
         total_amount: total,
         currency: newInvoice.currency || 'USD',
@@ -2703,8 +2715,8 @@ const InvoicesPage: React.FC = () => {
                   <DataTableCell data-label="Issued" align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</DataTableCell>
                   <DataTableCell data-label="Due" align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</DataTableCell>
                   <DataTableCell data-label="Status" align="center">
-                    <StatusBadge status={invoice.status}>
-                      {getStatusDisplay(invoice.status)}
+                    <StatusBadge status={getEffectiveStatus(invoice)}>
+                      {getStatusDisplay(getEffectiveStatus(invoice))}
                     </StatusBadge>
                   </DataTableCell>
                   <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'USD')}</DataTableAmount></DataTableCell>

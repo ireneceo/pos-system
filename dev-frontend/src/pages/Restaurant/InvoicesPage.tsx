@@ -876,6 +876,24 @@ const RestaurantInvoicesPage: React.FC = () => {
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
+  // Check if invoice is overdue based on due_date
+  const isInvoiceOverdue = (invoice: Invoice): boolean => {
+    if (invoice.status === 'paid' || invoice.status === 'cancelled' || invoice.status === 'draft') {
+      return false;
+    }
+    const now = new Date();
+    const dueDate = new Date(invoice.dueDate);
+    return dueDate < now;
+  };
+
+  // Get effective status (considering overdue)
+  const getEffectiveStatus = (invoice: Invoice): string => {
+    if (isInvoiceOverdue(invoice)) {
+      return 'overdue';
+    }
+    return invoice.status;
+  };
+
   const getStatusDisplay = (status: string) => {
     const statusMap: { [key: string]: string } = {
       'draft': 'Draft',
@@ -1449,8 +1467,8 @@ const RestaurantInvoicesPage: React.FC = () => {
                   {formatDate(invoice.dueDate)}
                 </DataTableCell>
                 <DataTableCell data-label="Status" align="center">
-                  <StatusBadge status={invoice.status}>
-                    {getStatusDisplay(invoice.status)}
+                  <StatusBadge status={getEffectiveStatus(invoice)}>
+                    {getStatusDisplay(getEffectiveStatus(invoice))}
                   </StatusBadge>
                 </DataTableCell>
                 <DataTableCell data-label="Amount" align="right">
