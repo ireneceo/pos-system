@@ -477,7 +477,7 @@ const OrderButton = styled.button`
 
 const SearchableSelectContainer = styled.div`
   position: relative;
-  z-index: 10;
+  z-index: 100;
 `;
 
 const SearchableSelectInput = styled.input`
@@ -860,8 +860,24 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
           setAlerts(generatedAlerts);
         }
 
-        // Brand mode doesn't use general stock
-        setGeneralStockInventory([]);
+        // Brand mode - fetch general stock
+        try {
+          const generalStockRes = await authFetch(`/api/brands/${brandId}/general-stock`);
+          if (generalStockRes.success) setGeneralStockInventory(generalStockRes.data || []);
+        } catch {
+          setGeneralStockInventory([]);
+        }
+
+        // Brand mode - fetch categories
+        try {
+          const categoriesRes = await authFetch(`/api/brands/${brandId}/general-stock-categories`);
+          if (categoriesRes.success) {
+            setGeneralStockCategories(categoriesRes.data || []);
+          }
+        } catch {
+          setGeneralStockCategories([]);
+        }
+
         setSuggestions([]);
         setExpiringItems([]);
       }
@@ -1534,17 +1550,15 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
           ) : activeTab === 'list' ? (
             <>
               <FilterBar>
-                {mode === 'restaurant' && (
-                  <FilterSelect
-                    value={stockTypeFilter}
-                    onChange={(e) => setStockTypeFilter(e.target.value as 'all' | 'ingredients' | 'general_stock')}
-                    style={{ minWidth: '140px' }}
-                  >
-                    <option value="all">All Items</option>
-                    <option value="ingredients">Ingredients</option>
-                    <option value="general_stock">General Stock</option>
-                  </FilterSelect>
-                )}
+                <FilterSelect
+                  value={stockTypeFilter}
+                  onChange={(e) => setStockTypeFilter(e.target.value as 'all' | 'ingredients' | 'general_stock')}
+                  style={{ minWidth: '140px' }}
+                >
+                  <option value="all">All Items</option>
+                  <option value="ingredients">Ingredients</option>
+                  <option value="general_stock">General Stock</option>
+                </FilterSelect>
                 <SearchInput
                   type="text"
                   placeholder="Search..."
@@ -1560,19 +1574,17 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                   <option value="low_stock">Low Stock</option>
                   <option value="out_of_stock">Out of Stock</option>
                 </FilterSelect>
-                {mode === 'restaurant' && (
-                  <Button
-                    variant="primary"
-                    onClick={() => setShowAddGeneralStockModal(true)}
-                    style={{ marginLeft: 'auto' }}
-                  >
-                    + Add General Stock
-                  </Button>
-                )}
+                <Button
+                  variant="primary"
+                  onClick={() => setShowAddGeneralStockModal(true)}
+                  style={{ marginLeft: 'auto' }}
+                >
+                  + Add General Stock
+                </Button>
               </FilterBar>
 
-              {/* Show General Stock Section (Restaurant mode only) */}
-              {mode === 'restaurant' && (stockTypeFilter === 'all' || stockTypeFilter === 'general_stock') && generalStockInventory.length > 0 && (
+              {/* Show General Stock Section */}
+              {(stockTypeFilter === 'all' || stockTypeFilter === 'general_stock') && generalStockInventory.length > 0 && (
                 <>
                   {stockTypeFilter === 'all' && <SectionTitle>General Stock ({generalStockInventory.filter(item => {
                     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -1747,9 +1759,9 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
               )}
 
               {/* Show Ingredients Section */}
-              {(mode === 'brand' || stockTypeFilter === 'all' || stockTypeFilter === 'ingredients') && (
+              {(stockTypeFilter === 'all' || stockTypeFilter === 'ingredients') && (
                 <>
-                  {mode === 'restaurant' && stockTypeFilter === 'all' && <SectionTitle>Ingredients ({filteredInventory.length})</SectionTitle>}
+                  {stockTypeFilter === 'all' && <SectionTitle>Ingredients ({filteredInventory.length})</SectionTitle>}
                   {filteredInventory.length === 0 ? (
                     <EmptyState>
                       <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
@@ -2213,16 +2225,16 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                 onClick={async () => {
                   if (!generalStockQuantity || parseFloat(generalStockQuantity) <= 0) return;
                   try {
-                    const response = await authFetch(
-                      `/api/restaurants/${restaurantId}/inventory/general-stock/${selectedGeneralStock.id}/receive`,
-                      {
-                        method: 'POST',
-                        body: JSON.stringify({
-                          quantity: parseFloat(generalStockQuantity),
-                          notes: generalStockNotes
-                        })
-                      }
-                    );
+                    const endpoint = mode === 'brand'
+                      ? `/api/brands/${brandId}/general-stock/${selectedGeneralStock.id}/receive`
+                      : `/api/restaurants/${restaurantId}/inventory/general-stock/${selectedGeneralStock.id}/receive`;
+                    const response = await authFetch(endpoint, {
+                      method: 'POST',
+                      body: JSON.stringify({
+                        quantity: parseFloat(generalStockQuantity),
+                        notes: generalStockNotes
+                      })
+                    });
                     if (response.success) {
                       setShowGeneralStockReceiveModal(false);
                       fetchData();
@@ -2589,7 +2601,10 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
               if (!generalStockForm.name.trim()) return;
               try {
                 setSavingGeneralStock(true);
-                const response = await authFetch(`/api/restaurants/${restaurantId}/inventory/general-stock`, {
+                const endpoint = mode === 'brand'
+                  ? `/api/brands/${brandId}/general-stock`
+                  : `/api/restaurants/${restaurantId}/inventory/general-stock`;
+                const response = await authFetch(endpoint, {
                   method: 'POST',
                   body: JSON.stringify({
                     name: generalStockForm.name,
@@ -2799,7 +2814,10 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
               if (!generalStockForm.name.trim() || !editingGeneralStock) return;
               try {
                 setSavingGeneralStock(true);
-                const response = await authFetch(`/api/restaurants/${restaurantId}/inventory/general-stock/${editingGeneralStock.id}`, {
+                const endpoint = mode === 'brand'
+                  ? `/api/brands/${brandId}/general-stock/${editingGeneralStock.id}`
+                  : `/api/restaurants/${restaurantId}/inventory/general-stock/${editingGeneralStock.id}`;
+                const response = await authFetch(endpoint, {
                   method: 'PUT',
                   body: JSON.stringify({
                     name: generalStockForm.name,
@@ -2889,7 +2907,10 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                       }
                     } else {
                       // For general stock, actually delete
-                      const response = await authFetch(`/api/restaurants/${restaurantId}/inventory/general-stock/${deleteTarget.id}`, {
+                      const endpoint = mode === 'brand'
+                        ? `/api/brands/${brandId}/general-stock/${deleteTarget.id}`
+                        : `/api/restaurants/${restaurantId}/inventory/general-stock/${deleteTarget.id}`;
+                      const response = await authFetch(endpoint, {
                         method: 'DELETE'
                       });
                       if (response.success) {

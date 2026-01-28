@@ -178,6 +178,7 @@ const ToggleSlider = styled.span`
   background-color: #E6EBF1;
   transition: 0.3s;
   border-radius: 22px;
+  pointer-events: none;
 
   &:before {
     position: absolute;
@@ -758,11 +759,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
     }
   };
 
-  // Track Stock 토글 핸들러
+  // Track Stock 토글 핸들러 (브랜드 재료도 재고 연동은 가능)
   const handleTrackStockToggle = async (ingredient: Ingredient, newValue: boolean) => {
-    // 브랜드 재료는 수정 불가
-    if (isItemReadOnly(ingredient)) return;
-
     try {
       let url = '';
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
@@ -926,7 +924,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                 )}
               </IngredientInfo>
 
-              {/* Track Stock 토글 - Restaurant Admin만 표시 (Brand General의 Recipe>Ingredients는 재고와 연결 안됨) */}
+              {/* Track Stock 토글 - Restaurant Admin만 표시 (브랜드 재료도 재고 연동은 가능) */}
               {isRestaurantAdmin && (
                 <TrackStockRow>
                   <TrackStockLabel>Track in Inventory</TrackStockLabel>
@@ -936,11 +934,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                       checked={ingredient.track_stock || false}
                       onChange={(e) => {
                         e.stopPropagation();
-                        if (!isItemReadOnly(ingredient)) {
-                          handleTrackStockToggle(ingredient, e.target.checked);
-                        }
+                        handleTrackStockToggle(ingredient, e.target.checked);
                       }}
-                      disabled={isItemReadOnly(ingredient)}
                     />
                     <ToggleSlider />
                   </ToggleSwitch>
