@@ -281,9 +281,10 @@ router.post('/restaurants/:restaurantId/inventory/general-stock/:itemId/receive'
       return res.status(404).json({ success: false, message: 'General stock item not found' });
     }
 
-    const currentStock = parseFloat(item.current_stock) || 0;
-    const addedQty = parseFloat(quantity);
-    const newStock = currentStock + addedQty;
+    // Round to 2 decimal places for consistency
+    const currentStock = Math.round((parseFloat(item.current_stock) || 0) * 100) / 100;
+    const addedQty = Math.round((parseFloat(quantity) || 0) * 100) / 100;
+    const newStock = Math.round((currentStock + addedQty) * 100) / 100;
 
     await item.update({ current_stock: newStock, last_stock_take_at: new Date() });
 
@@ -299,8 +300,8 @@ router.post('/restaurants/:restaurantId/inventory/general-stock/:itemId/receive'
           quantity_change: addedQty,
           unit: item.unit,
           stock_after: newStock,
-          unit_cost: parseFloat(item.unit_cost) || 0,
-          total_cost: addedQty * (parseFloat(item.unit_cost) || 0),
+          unit_cost: Math.round((parseFloat(item.unit_cost) || 0) * 100) / 100,
+          total_cost: Math.round((addedQty * (parseFloat(item.unit_cost) || 0)) * 100) / 100,
           notes: notes || null,
           batch_number: batch_number || null,
           manufacture_date: manufacture_date || null,
@@ -342,8 +343,9 @@ router.post('/restaurants/:restaurantId/inventory/general-stock/:itemId/adjust',
       return res.status(404).json({ success: false, message: 'General stock item not found' });
     }
 
-    const currentStock = parseFloat(item.current_stock) || 0;
-    const newStock = Math.max(0, parseFloat(new_quantity));
+    // Round to 2 decimal places for consistency
+    const currentStock = Math.round((parseFloat(item.current_stock) || 0) * 100) / 100;
+    const newStock = Math.max(0, Math.round((parseFloat(new_quantity) || 0) * 100) / 100);
 
     await item.update({ current_stock: newStock, last_stock_take_at: new Date() });
 
@@ -681,9 +683,10 @@ router.post('/restaurants/:restaurantId/inventory/receive', async (req, res) => 
       return res.status(404).json({ success: false, message: 'Ingredient not found' });
     }
 
-    const addQty = parseFloat(quantity) || 0;
-    const currentStock = parseFloat(ingredient.current_stock) || 0;
-    const newStock = currentStock + addQty;
+    // Round to 2 decimal places for consistency
+    const addQty = Math.round((parseFloat(quantity) || 0) * 100) / 100;
+    const currentStock = Math.round((parseFloat(ingredient.current_stock) || 0) * 100) / 100;
+    const newStock = Math.round((currentStock + addQty) * 100) / 100;
 
     // Update ingredient stock
     await Ingredient.update(
@@ -762,9 +765,10 @@ router.post('/restaurants/:restaurantId/inventory/waste', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Ingredient not found' });
     }
 
-    const wasteQty = parseFloat(quantity) || 0;
-    const currentStock = parseFloat(ingredient.current_stock) || 0;
-    const newStock = Math.max(0, currentStock - wasteQty);
+    // Round to 2 decimal places for consistency
+    const wasteQty = Math.round((parseFloat(quantity) || 0) * 100) / 100;
+    const currentStock = Math.round((parseFloat(ingredient.current_stock) || 0) * 100) / 100;
+    const newStock = Math.max(0, Math.round((currentStock - wasteQty) * 100) / 100);
 
     // Update ingredient stock
     await Ingredient.update(
@@ -811,9 +815,10 @@ router.post('/restaurants/:restaurantId/inventory/adjust', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Ingredient not found' });
     }
 
-    const adjustQty = parseFloat(quantity) || 0; // Can be positive or negative
-    const currentStock = parseFloat(ingredient.current_stock) || 0;
-    const newStock = Math.max(0, currentStock + adjustQty);
+    // Round to 2 decimal places for consistency (can be positive or negative)
+    const adjustQty = Math.round((parseFloat(quantity) || 0) * 100) / 100;
+    const currentStock = Math.round((parseFloat(ingredient.current_stock) || 0) * 100) / 100;
+    const newStock = Math.max(0, Math.round((currentStock + adjustQty) * 100) / 100);
 
     // Update ingredient stock
     await Ingredient.update(
@@ -845,45 +850,117 @@ router.post('/restaurants/:restaurantId/inventory/adjust', async (req, res) => {
   }
 });
 
-// GET /api/restaurants/:restaurantId/inventory/transactions - 거래 내역
+// GET /api/restaurants/:restaurantId/inventory/transactions - 거래 내역 (Ingredients + General Stock)
 router.get('/restaurants/:restaurantId/inventory/transactions', async (req, res) => {
   try {
     const { restaurantId } = req.params;
     const { ingredient_id, type, from_date, to_date, limit = 100, offset = 0 } = req.query;
 
-    const whereClause = { restaurant_id: restaurantId };
+    // 1. Ingredient transactions
+    const ingredientWhereClause = { restaurant_id: restaurantId };
 
     if (ingredient_id) {
-      whereClause.ingredient_id = ingredient_id;
+      ingredientWhereClause.ingredient_id = ingredient_id;
     }
 
     if (type) {
-      whereClause.transaction_type = type;
+      ingredientWhereClause.transaction_type = type;
     }
 
     if (from_date || to_date) {
-      whereClause.created_at = {};
-      if (from_date) whereClause.created_at[Op.gte] = new Date(from_date);
-      if (to_date) whereClause.created_at[Op.lte] = new Date(to_date);
+      ingredientWhereClause.created_at = {};
+      if (from_date) ingredientWhereClause.created_at[Op.gte] = new Date(from_date);
+      if (to_date) ingredientWhereClause.created_at[Op.lte] = new Date(to_date);
     }
 
-    const { count, rows: transactions } = await InventoryTransaction.findAndCountAll({
-      where: whereClause,
+    const ingredientTransactions = await InventoryTransaction.findAll({
+      where: ingredientWhereClause,
       include: [{
         model: Ingredient,
         as: 'ingredient',
         attributes: ['id', 'name', 'unit']
       }],
       order: [['created_at', 'DESC']],
-      limit: parseInt(limit),
-      offset: parseInt(offset)
+      limit: parseInt(limit)
     });
+
+    // 2. General Stock transactions
+    let generalStockTransactions = [];
+    try {
+      const { GeneralStockTransaction } = require('../models');
+      if (GeneralStockTransaction) {
+        const gsWhereClause = { restaurant_id: parseInt(restaurantId) };
+
+        if (type) {
+          // Map transaction types between the two models
+          const typeMap = { 'purchase': 'receive', 'receive': 'receive' };
+          gsWhereClause.transaction_type = typeMap[type] || type;
+        }
+
+        if (from_date || to_date) {
+          gsWhereClause.created_at = {};
+          if (from_date) gsWhereClause.created_at[Op.gte] = new Date(from_date);
+          if (to_date) gsWhereClause.created_at[Op.lte] = new Date(to_date);
+        }
+
+        generalStockTransactions = await GeneralStockTransaction.findAll({
+          where: gsWhereClause,
+          include: [{
+            model: GeneralStock,
+            as: 'generalStock',
+            attributes: ['id', 'name', 'unit']
+          }],
+          order: [['created_at', 'DESC']],
+          limit: parseInt(limit)
+        });
+      }
+    } catch (gsError) {
+      console.error('General stock transactions fetch error (non-critical):', gsError.message);
+    }
+
+    // 3. Combine and format transactions
+    const formattedIngredientTx = ingredientTransactions.map(t => ({
+      id: t.id,
+      source: 'ingredient',
+      transaction_type: t.transaction_type,
+      quantity_change: parseFloat(t.quantity_change),
+      unit: t.unit,
+      stock_after: parseFloat(t.stock_after),
+      notes: t.notes,
+      created_at: t.created_at,
+      ingredient: t.ingredient ? {
+        id: t.ingredient.id,
+        name: t.ingredient.name,
+        unit: t.ingredient.unit
+      } : null
+    }));
+
+    const formattedGsTx = generalStockTransactions.map(t => ({
+      id: `gs-${t.id}`,
+      source: 'general_stock',
+      transaction_type: t.transaction_type === 'receive' ? 'purchase' : t.transaction_type,
+      quantity_change: parseFloat(t.quantity_change),
+      unit: t.unit,
+      stock_after: parseFloat(t.stock_after),
+      notes: t.notes,
+      created_at: t.created_at,
+      ingredient: t.generalStock ? {
+        id: t.generalStock.id,
+        name: `[GS] ${t.generalStock.name}`,
+        unit: t.generalStock.unit
+      } : null
+    }));
+
+    // 4. Merge and sort by date
+    const allTransactions = [...formattedIngredientTx, ...formattedGsTx]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, parseInt(limit));
 
     res.json({
       success: true,
-      data: transactions,
+      data: allTransactions,
       pagination: {
-        total: count,
+        total: allTransactions.length,
         limit: parseInt(limit),
         offset: parseInt(offset)
       }

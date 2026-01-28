@@ -3101,6 +3101,13 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ restaurantId, i
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Format stock quantity to always show 2 decimal places
+  const formatStock = (value: number | string | null | undefined): string => {
+    const num = typeof value === 'string' ? parseFloat(value) : (value ?? 0);
+    if (isNaN(num)) return '0.00';
+    return num.toFixed(2);
+  };
+
   useEffect(() => {
     const fetchTransactions = async () => {
       try {
@@ -3210,13 +3217,13 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ restaurantId, i
                 color: parseFloat(String(t.quantity_change)) >= 0 ? '#059669' : '#DC2626',
                 fontWeight: 600
               }}>
-                {parseFloat(String(t.quantity_change)) >= 0 ? '+' : ''}{t.quantity_change} {t.unit}
+                {parseFloat(String(t.quantity_change)) >= 0 ? '+' : ''}{formatStock(t.quantity_change)} {t.unit}
               </div>
             </MobileValue>
             <MobileValue>
               <MobileLabel>After</MobileLabel>
               <div style={{ color: '#0A2540' }}>
-                {t.stock_after} {t.unit}
+                {formatStock(t.stock_after)} {t.unit}
               </div>
             </MobileValue>
             <MobileValue>

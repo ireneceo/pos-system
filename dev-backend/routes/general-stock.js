@@ -187,9 +187,10 @@ router.post('/general-stock/:itemId/receive', authenticateToken, async (req, res
       return res.status(404).json({ success: false, message: 'General stock item not found' });
     }
 
-    const currentStock = parseFloat(item.current_stock) || 0;
-    const addedQty = parseFloat(quantity);
-    const newStock = currentStock + addedQty;
+    // Round to 2 decimal places for consistency
+    const currentStock = Math.round((parseFloat(item.current_stock) || 0) * 100) / 100;
+    const addedQty = Math.round((parseFloat(quantity) || 0) * 100) / 100;
+    const newStock = Math.round((currentStock + addedQty) * 100) / 100;
 
     await item.update({ current_stock: newStock, last_stock_take_at: new Date() });
 
@@ -202,8 +203,8 @@ router.post('/general-stock/:itemId/receive', authenticateToken, async (req, res
       quantity_change: addedQty,
       unit: item.unit,
       stock_after: newStock,
-      unit_cost: parseFloat(item.unit_cost) || 0,
-      total_cost: addedQty * (parseFloat(item.unit_cost) || 0),
+      unit_cost: Math.round((parseFloat(item.unit_cost) || 0) * 100) / 100,
+      total_cost: Math.round((addedQty * (parseFloat(item.unit_cost) || 0)) * 100) / 100,
       notes: notes || null,
       batch_number: batch_number || null,
       manufacture_date: manufacture_date || null,
@@ -242,9 +243,10 @@ router.post('/general-stock/:itemId/adjust', authenticateToken, async (req, res)
       return res.status(404).json({ success: false, message: 'General stock item not found' });
     }
 
-    const currentStock = parseFloat(item.current_stock) || 0;
-    const newStock = Math.max(0, parseFloat(new_quantity));
-    const quantityChange = newStock - currentStock;
+    // Round to 2 decimal places for consistency
+    const currentStock = Math.round((parseFloat(item.current_stock) || 0) * 100) / 100;
+    const newStock = Math.max(0, Math.round((parseFloat(new_quantity) || 0) * 100) / 100);
+    const quantityChange = Math.round((newStock - currentStock) * 100) / 100;
 
     await item.update({ current_stock: newStock, last_stock_take_at: new Date() });
 
@@ -257,8 +259,8 @@ router.post('/general-stock/:itemId/adjust', authenticateToken, async (req, res)
       quantity_change: quantityChange,
       unit: item.unit,
       stock_after: newStock,
-      unit_cost: parseFloat(item.unit_cost) || 0,
-      total_cost: Math.abs(quantityChange) * (parseFloat(item.unit_cost) || 0),
+      unit_cost: Math.round((parseFloat(item.unit_cost) || 0) * 100) / 100,
+      total_cost: Math.round((Math.abs(quantityChange) * (parseFloat(item.unit_cost) || 0)) * 100) / 100,
       notes: reason || 'adjustment',
       created_by: userId
     });

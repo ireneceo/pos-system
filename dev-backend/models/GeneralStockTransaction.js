@@ -27,7 +27,7 @@ const GeneralStockTransaction = database.sequelize.define('GeneralStockTransacti
     allowNull: false
   },
   quantity_change: {
-    type: DataTypes.DECIMAL(10, 4),
+    type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
     comment: 'Positive for receive, negative for deduct'
   },
