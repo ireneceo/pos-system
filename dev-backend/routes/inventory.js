@@ -271,7 +271,7 @@ router.post('/restaurants/:restaurantId/inventory/general-stock', async (req, re
 router.post('/restaurants/:restaurantId/inventory/general-stock/:itemId/receive', async (req, res) => {
   try {
     const { restaurantId, itemId } = req.params;
-    const { quantity, notes } = req.body;
+    const { quantity, notes, batch_number, manufacture_date, expiry_date } = req.body;
 
     const item = await GeneralStock.findOne({
       where: { id: itemId, restaurant_id: restaurantId, is_active: true }
@@ -282,9 +282,35 @@ router.post('/restaurants/:restaurantId/inventory/general-stock/:itemId/receive'
     }
 
     const currentStock = parseFloat(item.current_stock) || 0;
-    const newStock = currentStock + parseFloat(quantity);
+    const addedQty = parseFloat(quantity);
+    const newStock = currentStock + addedQty;
 
     await item.update({ current_stock: newStock });
+
+    // Record transaction (if GeneralStockTransaction model supports restaurant_id)
+    try {
+      const { GeneralStockTransaction } = require('../models');
+      if (GeneralStockTransaction) {
+        await GeneralStockTransaction.create({
+          owner_id: null,
+          restaurant_id: parseInt(restaurantId),
+          general_stock_id: item.id,
+          transaction_type: 'receive',
+          quantity_change: addedQty,
+          unit: item.unit,
+          stock_after: newStock,
+          unit_cost: parseFloat(item.unit_cost) || 0,
+          total_cost: addedQty * (parseFloat(item.unit_cost) || 0),
+          notes: notes || null,
+          batch_number: batch_number || null,
+          manufacture_date: manufacture_date || null,
+          expiry_date: expiry_date || null,
+          created_by: req.user?.id || null
+        });
+      }
+    } catch (txError) {
+      console.error('Transaction recording failed (non-critical):', txError.message);
+    }
 
     res.json({
       success: true,
@@ -292,7 +318,7 @@ router.post('/restaurants/:restaurantId/inventory/general-stock/:itemId/receive'
         id: item.id,
         name: item.name,
         previous_stock: currentStock,
-        added_quantity: parseFloat(quantity),
+        added_quantity: addedQty,
         current_stock: newStock
       }
     });

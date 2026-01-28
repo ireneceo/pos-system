@@ -177,7 +177,7 @@ router.post('/general-stock/:itemId/receive', authenticateToken, async (req, res
   try {
     const userId = req.user.id;
     const { itemId } = req.params;
-    const { quantity, notes } = req.body;
+    const { quantity, notes, batch_number, manufacture_date, expiry_date } = req.body;
 
     const item = await GeneralStock.findOne({
       where: { id: itemId, owner_id: userId, restaurant_id: null, is_active: true }
@@ -188,9 +188,28 @@ router.post('/general-stock/:itemId/receive', authenticateToken, async (req, res
     }
 
     const currentStock = parseFloat(item.current_stock) || 0;
-    const newStock = currentStock + parseFloat(quantity);
+    const addedQty = parseFloat(quantity);
+    const newStock = currentStock + addedQty;
 
     await item.update({ current_stock: newStock });
+
+    // Record transaction
+    const { GeneralStockTransaction } = require('../models');
+    await GeneralStockTransaction.create({
+      owner_id: userId,
+      general_stock_id: item.id,
+      transaction_type: 'receive',
+      quantity_change: addedQty,
+      unit: item.unit,
+      stock_after: newStock,
+      unit_cost: parseFloat(item.unit_cost) || 0,
+      total_cost: addedQty * (parseFloat(item.unit_cost) || 0),
+      notes: notes || null,
+      batch_number: batch_number || null,
+      manufacture_date: manufacture_date || null,
+      expiry_date: expiry_date || null,
+      created_by: userId
+    });
 
     res.json({
       success: true,
@@ -198,7 +217,7 @@ router.post('/general-stock/:itemId/receive', authenticateToken, async (req, res
         id: item.id,
         name: item.name,
         previous_stock: currentStock,
-        added_quantity: parseFloat(quantity),
+        added_quantity: addedQty,
         current_stock: newStock
       }
     });
@@ -225,8 +244,24 @@ router.post('/general-stock/:itemId/adjust', authenticateToken, async (req, res)
 
     const currentStock = parseFloat(item.current_stock) || 0;
     const newStock = Math.max(0, parseFloat(new_quantity));
+    const quantityChange = newStock - currentStock;
 
     await item.update({ current_stock: newStock });
+
+    // Record transaction
+    const { GeneralStockTransaction } = require('../models');
+    await GeneralStockTransaction.create({
+      owner_id: userId,
+      general_stock_id: item.id,
+      transaction_type: 'adjustment',
+      quantity_change: quantityChange,
+      unit: item.unit,
+      stock_after: newStock,
+      unit_cost: parseFloat(item.unit_cost) || 0,
+      total_cost: Math.abs(quantityChange) * (parseFloat(item.unit_cost) || 0),
+      notes: reason || 'adjustment',
+      created_by: userId
+    });
 
     res.json({
       success: true,
@@ -322,7 +357,7 @@ router.get('/general-stock-categories', authenticateToken, async (req, res) => {
     const categories = await GeneralStockCategory.findAll({
       where: {
         owner_type: 'brand',
-        brand_id: userId,  // owner_id 역할로 사용
+        owner_id: userId,
         is_active: true
       },
       order: [['display_order', 'ASC'], ['name', 'ASC']]
@@ -349,7 +384,7 @@ router.post('/general-stock-categories', authenticateToken, async (req, res) => 
     const existing = await GeneralStockCategory.findOne({
       where: {
         owner_type: 'brand',
-        brand_id: userId,
+        owner_id: userId,
         name: name.trim(),
         is_active: true
       }
@@ -361,7 +396,7 @@ router.post('/general-stock-categories', authenticateToken, async (req, res) => 
 
     const category = await GeneralStockCategory.create({
       owner_type: 'brand',
-      brand_id: userId,  // owner_id 역할로 사용
+      owner_id: userId,
       name: name.trim(),
       description: description || null,
       emoji: emoji || null,
@@ -387,7 +422,7 @@ router.put('/general-stock-categories/:categoryId', authenticateToken, async (re
       where: {
         id: categoryId,
         owner_type: 'brand',
-        brand_id: userId,
+        owner_id: userId,
         is_active: true
       }
     });
@@ -428,7 +463,7 @@ router.put('/general-stock-categories/reorder', authenticateToken, async (req, r
           where: {
             id: item.id,
             owner_type: 'brand',
-            brand_id: userId,
+            owner_id: userId,
             is_active: true
           }
         }
@@ -452,7 +487,7 @@ router.delete('/general-stock-categories/:categoryId', authenticateToken, async 
       where: {
         id: categoryId,
         owner_type: 'brand',
-        brand_id: userId,
+        owner_id: userId,
         is_active: true
       }
     });

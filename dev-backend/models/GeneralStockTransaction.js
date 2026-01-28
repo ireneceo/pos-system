@@ -9,8 +9,13 @@ const GeneralStockTransaction = database.sequelize.define('GeneralStockTransacti
   },
   owner_id: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     comment: 'Brand General User ID - for company-wide transactions'
+  },
+  restaurant_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Restaurant ID - for restaurant-specific transactions'
   },
   general_stock_id: {
     type: DataTypes.INTEGER,
@@ -48,6 +53,21 @@ const GeneralStockTransaction = database.sequelize.define('GeneralStockTransacti
   notes: {
     type: DataTypes.TEXT,
     allowNull: true
+  },
+  batch_number: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    comment: 'Batch/Lot number'
+  },
+  manufacture_date: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+    comment: 'Manufacture date'
+  },
+  expiry_date: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+    comment: 'Expiry date'
   },
   created_by: {
     type: DataTypes.INTEGER,

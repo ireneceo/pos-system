@@ -597,6 +597,10 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   const [showGeneralStockReceiveModal, setShowGeneralStockReceiveModal] = useState(false);
   const [generalStockQuantity, setGeneralStockQuantity] = useState('');
   const [generalStockNotes, setGeneralStockNotes] = useState('');
+  // Batch info for general stock receive modal
+  const [generalStockBatchNumber, setGeneralStockBatchNumber] = useState('');
+  const [generalStockManufactureDate, setGeneralStockManufactureDate] = useState('');
+  const [generalStockExpiryDate, setGeneralStockExpiryDate] = useState('');
 
   // Stock list type filter (ingredients or general_stock)
   const [stockTypeFilter, setStockTypeFilter] = useState<'all' | 'ingredients' | 'general_stock'>('all');
@@ -1725,6 +1729,9 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                               setSelectedGeneralStock(item);
                               setGeneralStockQuantity('');
                               setGeneralStockNotes('');
+                              setGeneralStockBatchNumber('');
+                              setGeneralStockManufactureDate('');
+                              setGeneralStockExpiryDate('');
                               setShowGeneralStockReceiveModal(true);
                             }}
                             style={{ padding: '6px 12px', fontSize: '13px' }}
@@ -2185,19 +2192,24 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
       <Modal
         isOpen={showGeneralStockReceiveModal}
         onClose={() => setShowGeneralStockReceiveModal(false)}
-        title={`Receive Stock: ${selectedGeneralStock?.name || ''}`}
-        size="small"
+        title="Receive Stock"
+        size="medium"
       >
         {selectedGeneralStock && (
           <>
-            <div style={{ marginBottom: '16px', padding: '12px', background: '#F9FAFB', borderRadius: '8px' }}>
-              <div style={{ fontSize: '13px', color: '#6B7280' }}>Current Stock</div>
-              <div style={{ fontSize: '18px', fontWeight: 600, color: '#0A2540' }}>
-                {selectedGeneralStock.current_stock} {selectedGeneralStock.stock_unit}
-              </div>
-            </div>
+            <InfoBox>
+              Enter the quantity received and batch details for inventory tracking.
+            </InfoBox>
             <UIFormGroup>
-              <FormLabel>Quantity to Add *</FormLabel>
+              <FormLabel>Item</FormLabel>
+              <FormInput type="text" value={selectedGeneralStock.name} disabled />
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>Current Stock</FormLabel>
+              <FormInput type="text" value={`${selectedGeneralStock.current_stock} ${selectedGeneralStock.stock_unit}`} disabled />
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>Quantity Received ({selectedGeneralStock.stock_unit}) *</FormLabel>
               <FormInput
                 type="number"
                 min="0"
@@ -2205,14 +2217,53 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                 value={generalStockQuantity}
                 onChange={(e) => setGeneralStockQuantity(e.target.value)}
                 placeholder="Enter quantity"
+                required
               />
             </UIFormGroup>
+
+            <div style={{ borderTop: '1px solid #E5E7EB', margin: '16px 0', paddingTop: '16px' }}>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540', marginBottom: '12px' }}>
+                Batch Details (Optional)
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <UIFormGroup style={{ marginBottom: 0 }}>
+                  <FormLabel>Batch/Lot Number</FormLabel>
+                  <FormInput
+                    type="text"
+                    value={generalStockBatchNumber}
+                    onChange={(e) => setGeneralStockBatchNumber(e.target.value)}
+                    placeholder="e.g., LOT-2024-001"
+                  />
+                </UIFormGroup>
+                <UIFormGroup style={{ marginBottom: 0 }}>
+                  <FormLabel>Manufacture Date</FormLabel>
+                  <FormInput
+                    type="date"
+                    value={generalStockManufactureDate}
+                    onChange={(e) => setGeneralStockManufactureDate(e.target.value)}
+                  />
+                </UIFormGroup>
+              </div>
+              <UIFormGroup style={{ marginTop: '12px' }}>
+                <FormLabel>Expiry Date</FormLabel>
+                <FormInput
+                  type="date"
+                  value={generalStockExpiryDate}
+                  onChange={(e) => setGeneralStockExpiryDate(e.target.value)}
+                />
+                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                  Items with earlier expiry dates will be used first (FIFO)
+                </div>
+              </UIFormGroup>
+            </div>
+
             <UIFormGroup>
               <FormLabel>Notes (Optional)</FormLabel>
               <FormInput
+                type="text"
                 value={generalStockNotes}
                 onChange={(e) => setGeneralStockNotes(e.target.value)}
-                placeholder="Enter notes"
+                placeholder="e.g., PO #12345"
               />
             </UIFormGroup>
             <ButtonGroup>
@@ -2231,11 +2282,19 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                       method: 'POST',
                       body: JSON.stringify({
                         quantity: parseFloat(generalStockQuantity),
-                        notes: generalStockNotes
+                        notes: generalStockNotes,
+                        batch_number: generalStockBatchNumber || null,
+                        manufacture_date: generalStockManufactureDate || null,
+                        expiry_date: generalStockExpiryDate || null
                       })
                     });
                     if (response.success) {
                       setShowGeneralStockReceiveModal(false);
+                      setGeneralStockQuantity('');
+                      setGeneralStockNotes('');
+                      setGeneralStockBatchNumber('');
+                      setGeneralStockManufactureDate('');
+                      setGeneralStockExpiryDate('');
                       fetchData();
                     }
                   } catch (error) {
@@ -2244,7 +2303,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                 }}
                 disabled={!generalStockQuantity || parseFloat(generalStockQuantity) <= 0}
               >
-                Receive
+                Confirm Receive
               </ModalButton>
             </ButtonGroup>
           </>
