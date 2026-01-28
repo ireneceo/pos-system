@@ -56,13 +56,58 @@
 - **Brand General (브랜드제너럴)**: 여러 브랜드를 소유한 **회사** (예: "ABC 외식 그룹")
 - **Brand (브랜드)**: Brand General이 소유한 **개별 브랜드** (예: "스타벅스")
 
+### 역할 계층 구조
+
+```
+시스템 관리자
+├── Brand General (브랜드제너럴)
+│   ├── 여러 브랜드들 관리
+│   ├── 레스토랑 연결
+│   └── Brand Manager 계정 생성 가능
+├── Foodcourt General (푸드코트제너럴)
+│   ├── 여러 지점들 관리
+│   ├── 레스토랑 연결
+│   └── Foodcourt Manager 계정 생성 가능
+└── Restaurant Admin (레스토랑관리자)
+    ├── 하나의 브랜드 연결
+    ├── 여러 Brand General/Manager 연결
+    └── Restaurant Staff 계정 생성 가능
+```
+
 ### 개발 시 주의사항
 
 1. **재고 관리는 회사 단위**: 레시피는 브랜드별이지만, 재고는 회사(Brand General) 단위
 2. **API 엔드포인트 확인**: 역할에 따라 다른 API 사용
 3. **brand_id vs company-wide**: Brand General 기능은 brand_id가 아닌 회사 전체 데이터
+4. **History(트랜잭션) 조회**: 양쪽 역할 모두 Ingredients + General Stock 트랜잭션을 함께 조회
 
 **상세 문서:** `/var/www/docs/ROLES_AND_PERMISSIONS.md` 참고
+
+## 라우터 개발 규칙 (필수!)
+
+### 개발 전 반드시 확인할 것
+
+**같은 엔드포인트를 처리하는 라우터가 여러 파일에 있을 수 있음!**
+
+1. **server.js 라우터 등록 순서 확인**
+   ```bash
+   grep -E "app.use.*Router" /var/www/dev-backend/server.js
+   ```
+2. **동일 경로 라우터 검색**
+   ```bash
+   grep -rn "router.get.*inventory" /var/www/dev-backend/routes/
+   ```
+3. **먼저 등록된 라우터가 우선 실행됨** - 나중에 등록된 라우터 코드는 실행되지 않음
+
+### 현재 중복 라우터 현황 (정리 필요)
+
+| 파일 | 용도 | 비고 |
+|------|------|------|
+| `inventory-routes.js` | Restaurant 기본 재고 API | server.js에서 먼저 등록 |
+| `inventory.js` | Restaurant 고급 재고 API | 중복 엔드포인트 있음 (실행 안됨) |
+| `general-stock.js` | Brand General 재고 API | 회사 전체용 |
+
+**수정 시**: 반드시 실제 실행되는 라우터 파일을 수정할 것!
 
 ## UI 개발 규칙
 

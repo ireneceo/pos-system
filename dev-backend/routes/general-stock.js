@@ -7,7 +7,7 @@
 const express = require('express');
 const router = express.Router();
 const { Op } = require('sequelize');
-const { GeneralStock, GeneralStockCategory, Supplier } = require('../models');
+const { GeneralStock, GeneralStockCategory, Supplier, Ingredient, InventoryTransaction } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 
 // ========== General Stock APIs (Company-wide) ==========
@@ -123,35 +123,77 @@ router.post('/general-stock', authenticateToken, async (req, res) => {
   }
 });
 
-// GET /api/general-stock/transactions - 회사 전체 General Stock 트랜잭션 내역
+// GET /api/general-stock/transactions - 회사 전체 트랜잭션 내역 (Ingredients + General Stock)
 // NOTE: This route must be defined BEFORE routes with :itemId parameter
 router.get('/general-stock/transactions', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
+    const brandId = req.user.brand_id;
     const limit = parseInt(req.query.limit) || 50;
 
-    // 브랜드제너럴의 General Stock 트랜잭션 조회
-    const { GeneralStockTransaction } = require('../models');
-
-    // Check if model exists
-    if (!GeneralStockTransaction) {
-      return res.json({ success: true, data: [] });
+    // 1. Brand General의 Ingredient 트랜잭션 조회
+    // Brand General이 소유한 브랜드의 Ingredients ID 목록 가져오기
+    let ingredientIds = [];
+    if (brandId) {
+      const brandIngredients = await Ingredient.findAll({
+        where: { brand_id: brandId },
+        attributes: ['id']
+      });
+      ingredientIds = brandIngredients.map(i => i.id);
     }
 
-    const transactions = await GeneralStockTransaction.findAll({
-      where: { owner_id: userId },
-      include: [{
-        model: GeneralStock,
-        as: 'generalStock',
-        attributes: ['id', 'name', 'unit']
-      }],
-      order: [['created_at', 'DESC']],
-      limit
-    });
+    let ingredientTransactions = [];
+    if (ingredientIds.length > 0) {
+      ingredientTransactions = await InventoryTransaction.findAll({
+        where: { ingredient_id: { [Op.in]: ingredientIds } },
+        include: [{
+          model: Ingredient,
+          as: 'ingredient',
+          attributes: ['id', 'name', 'unit']
+        }],
+        order: [['created_at', 'DESC']],
+        limit
+      });
+    }
 
-    const formattedTransactions = transactions.map(t => ({
+    // 2. Brand General의 General Stock 트랜잭션 조회
+    const { GeneralStockTransaction } = require('../models');
+    let generalStockTransactions = [];
+
+    if (GeneralStockTransaction) {
+      generalStockTransactions = await GeneralStockTransaction.findAll({
+        where: { owner_id: userId },
+        include: [{
+          model: GeneralStock,
+          as: 'generalStock',
+          attributes: ['id', 'name', 'unit']
+        }],
+        order: [['created_at', 'DESC']],
+        limit
+      });
+    }
+
+    // 3. Combine and format transactions
+    const formattedIngredientTx = ingredientTransactions.map(t => ({
       id: t.id,
+      source: 'ingredient',
       transaction_type: t.transaction_type,
+      quantity_change: parseFloat(t.quantity_change),
+      unit: t.unit,
+      stock_after: parseFloat(t.stock_after),
+      notes: t.notes,
+      created_at: t.created_at,
+      ingredient: t.ingredient ? {
+        id: t.ingredient.id,
+        name: t.ingredient.name,
+        unit: t.ingredient.unit
+      } : null
+    }));
+
+    const formattedGsTx = generalStockTransactions.map(t => ({
+      id: `gs-${t.id}`,
+      source: 'general_stock',
+      transaction_type: t.transaction_type === 'receive' ? 'purchase' : t.transaction_type,
       quantity_change: parseFloat(t.quantity_change),
       unit: t.unit,
       stock_after: parseFloat(t.stock_after),
@@ -159,15 +201,19 @@ router.get('/general-stock/transactions', authenticateToken, async (req, res) =>
       created_at: t.created_at,
       ingredient: t.generalStock ? {
         id: t.generalStock.id,
-        name: t.generalStock.name,
+        name: `[GS] ${t.generalStock.name}`,
         unit: t.generalStock.unit
       } : null
     }));
 
-    res.json({ success: true, data: formattedTransactions });
+    // 4. Merge and sort by date
+    const allTransactions = [...formattedIngredientTx, ...formattedGsTx]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, limit);
+
+    res.json({ success: true, data: allTransactions });
   } catch (error) {
     console.error('Get general stock transactions error:', error);
-    // Return empty array if table doesn't exist yet
     res.json({ success: true, data: [] });
   }
 });
