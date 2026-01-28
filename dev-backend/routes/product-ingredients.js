@@ -157,21 +157,23 @@ router.put('/:id', async (req, res) => {
       });
     }
 
-    const {
-      name, category_id, image_url, unit, base_quantity,
-      unit_cost, supplier_name, supplier_id,
-      min_stock, min_order, current_stock,
-      lead_time_days, safety_stock_percent,
-      manual_daily_usage, track_stock, is_active
-    } = req.body;
+    // 부분 업데이트 지원 - undefined가 아닌 필드만 업데이트
+    const updateFields = [
+      'name', 'category_id', 'image_url', 'unit', 'base_quantity',
+      'unit_cost', 'supplier_name', 'supplier_id',
+      'min_stock', 'min_order', 'current_stock',
+      'lead_time_days', 'safety_stock_percent',
+      'manual_daily_usage', 'track_stock', 'is_active'
+    ];
 
-    await ingredient.update({
-      name, category_id, image_url, unit, base_quantity,
-      unit_cost, supplier_name, supplier_id,
-      min_stock, min_order, current_stock,
-      lead_time_days, safety_stock_percent,
-      manual_daily_usage, track_stock, is_active
-    });
+    const updateData = {};
+    for (const field of updateFields) {
+      if (req.body[field] !== undefined) {
+        updateData[field] = req.body[field];
+      }
+    }
+
+    await ingredient.update(updateData);
 
     const updatedIngredient = await ProductIngredient.findByPk(ingredient.id, {
       include: [{ model: ProductIngredientCategory, as: 'category' }]

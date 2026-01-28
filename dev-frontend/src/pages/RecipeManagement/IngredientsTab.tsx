@@ -158,12 +158,14 @@ const ToggleSwitch = styled.label`
   display: inline-block;
   width: 44px;
   height: 22px;
+  cursor: pointer;
 `;
 
 const ToggleInput = styled.input`
   opacity: 0;
   width: 0;
   height: 0;
+  position: absolute;
 `;
 
 const ToggleSlider = styled.span`
@@ -924,24 +926,26 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                 )}
               </IngredientInfo>
 
-              {/* Track Stock 토글 */}
-              <TrackStockRow>
-                <TrackStockLabel>Track in Inventory</TrackStockLabel>
-                <ToggleSwitch>
-                  <ToggleInput
-                    type="checkbox"
-                    checked={ingredient.track_stock || false}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      if (!isItemReadOnly(ingredient)) {
-                        handleTrackStockToggle(ingredient, e.target.checked);
-                      }
-                    }}
-                    disabled={isItemReadOnly(ingredient)}
-                  />
-                  <ToggleSlider />
-                </ToggleSwitch>
-              </TrackStockRow>
+              {/* Track Stock 토글 - Restaurant Admin만 표시 (Brand General의 Recipe>Ingredients는 재고와 연결 안됨) */}
+              {isRestaurantAdmin && (
+                <TrackStockRow>
+                  <TrackStockLabel>Track in Inventory</TrackStockLabel>
+                  <ToggleSwitch>
+                    <ToggleInput
+                      type="checkbox"
+                      checked={ingredient.track_stock || false}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        if (!isItemReadOnly(ingredient)) {
+                          handleTrackStockToggle(ingredient, e.target.checked);
+                        }
+                      }}
+                      disabled={isItemReadOnly(ingredient)}
+                    />
+                    <ToggleSlider />
+                  </ToggleSwitch>
+                </TrackStockRow>
+              )}
 
               {!isItemReadOnly(ingredient) && (
                 <IngredientActions>

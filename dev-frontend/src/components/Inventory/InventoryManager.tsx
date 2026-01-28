@@ -2873,7 +2873,11 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                   try {
                     if (deleteTarget.type === 'ingredient') {
                       // For ingredients, set track_stock to false to unlink from inventory
-                      const response = await authFetch(`/api/restaurants/${restaurantId}/ingredients/${deleteTarget.id}`, {
+                      // Use different API based on mode
+                      const endpoint = mode === 'brand'
+                        ? `/api/product-ingredients/${deleteTarget.id}`
+                        : `/api/restaurants/${restaurantId}/ingredients/${deleteTarget.id}`;
+                      const response = await authFetch(endpoint, {
                         method: 'PUT',
                         body: JSON.stringify({
                           track_stock: false

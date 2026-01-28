@@ -6,9 +6,26 @@
 
 ---
 
-## 📋 진행 중: 재료/재고/발주 시스템 개발
+## 📋 현재 개발: 재료/재고/발주 시스템 (v3.0)
 
-### Phase 1: Track Stock 토글 및 기본 기능 수정 (2026-01-28)
+### 개발 Phase (8단계)
+
+| Phase | 내용 | 상태 |
+|-------|------|:----:|
+| **Phase 1** | 기반 정비 (Track Stock 토글 등) | ✅ 완료 |
+| **Phase 2** | DB 테이블 생성 (11개 테이블) | ⬜ 진행예정 |
+| **Phase 3** | Supplier 시스템 | ⬜ |
+| **Phase 4** | 거래 관계 | ⬜ |
+| **Phase 5** | Supplier Product → Ingredient 연동 | ⬜ |
+| **Phase 6** | 발주 시스템 | ⬜ |
+| **Phase 7** | 청구/결제 시스템 | ⬜ |
+| **Phase 8** | SOA 월정산 | ⬜ |
+
+> **상세 기획:** 이 문서 하단의 "📋 개발 예정: 재료/재고/발주 시스템 (v3.0)" 섹션 참조
+
+---
+
+### Phase 1 완료 (2026-01-28)
 
 | 작업 | 설명 | 상태 |
 |------|------|:----:|
@@ -16,62 +33,10 @@
 | Recipes 메뉴 접근 버그 | Brand Manager가 Recipes 메뉴 클릭 불가 수정 | ✅ 완료 |
 | 토글 ON/OFF 버그 수정 | 토글이 꺼지지 않던 문제 수정 (관계 객체 제외) | ✅ 완료 |
 
-### 수정된 파일
-
-**Frontend:**
-- `pages/RecipeManagement/IngredientsTab.tsx`
-  - Track Stock 토글 UI 추가
-  - handleTrackStockToggle 함수 추가 (필요한 필드만 전송)
-- `pages/BrandProductRecipe/ProductIngredientsTab.tsx`
-  - Track Stock 토글 UI 추가
-  - handleTrackStockToggle 함수 수정 (관계 객체 제외)
-- `App.tsx`
-  - Recipes 메뉴 requiredRole에 'Brand Manager' 추가
-
-### 다음 단계 (Phase 2)
-
-DB 테이블 생성:
-- trade_relationships (거래관계)
-- supplier_products (공급업체 상품)
-- purchase_orders (발주)
-- purchase_order_items (발주 항목)
-- purchase_invoices (구매 인보이스)
-- purchase_invoice_items (구매 인보이스 항목)
-- statements_of_account (SOA)
-- soa_items (SOA 항목)
-- inventory_transactions (재고 트랜잭션)
-- stock_takes (재고 실사)
-- stock_take_items (재고 실사 항목)
-
-### 전체 개발 계획 참조
-
-자세한 개발 계획은 `/var/www/docs/FEATURE_BASED_SUBSCRIPTION_PLAN.md` 참조
-
----
-
-## 📋 다음 개발: 메뉴 로딩 성능 최적화
-
-### 남은 작업
-
-| 기능 | 설명 | 상태 |
-|------|------|:----:|
-| 메뉴 이미지 최적화 | Base64 이미지 24MB → 지연 로딩/썸네일 | 분석완료 |
-| Stripe Integration | Stripe 결제 연동 | 대기 |
-| PayPal Integration | PayPal 결제 연동 | 대기 |
-| Auto Payment System | 자동 결제 시스템 | 대기 |
-| Kitchen Display 개선 | Pending 컬럼 아이템별 Done 버튼 | 대기 |
-
-### 메뉴 성능 문제 분석 결과
-
-**문제:** 운영서버에서 메뉴가 많은 레스토랑(withMIN 215개, K-DINE IPC 87개)의 POS/Mobile Order 느림
-
-**원인:** 이미지가 Base64로 DB에 저장되어 withMIN의 경우 24.3MB 데이터 로딩
-
-**해결 방안 (검토 필요):**
-1. 메뉴 목록 API에서 이미지 제외 (가장 빠른 해결책)
-2. 썸네일 사용 (별도 컬럼 추가)
-3. 이미지 지연 로딩 (스크롤 시 로드)
-4. 이미지를 파일로 저장하고 URL 사용 (장기적)
+**수정된 파일:**
+- `pages/RecipeManagement/IngredientsTab.tsx` - Track Stock 토글 UI, handleTrackStockToggle 함수
+- `pages/BrandProductRecipe/ProductIngredientsTab.tsx` - Track Stock 토글 UI, 관계 객체 제외 수정
+- `App.tsx` - Recipes 메뉴 requiredRole에 'Brand Manager' 추가
 
 ---
 
