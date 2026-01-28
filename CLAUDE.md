@@ -39,6 +39,31 @@
 - 배포 스크립트: `deploy-production.sh`
 - 롤백 스크립트: `rollback-production.sh`
 
+## 역할별 구조 (필수 숙지!)
+
+### Brand General vs Restaurant Admin 차이
+
+| 구분 | Brand General (브랜드 총괄) | Restaurant Admin (레스토랑 관리자) |
+|------|---------------------------|----------------------------------|
+| **범위** | 회사(브랜드제너럴) 전체 | 해당 레스토랑만 |
+| **재료(Ingredients)** | Product Recipe 재료 (회사 전체) | 레스토랑 재료 (연결된 브랜드) |
+| **일반재고(General Stock)** | 회사 전체 일반재고 | 레스토랑 일반재고 |
+| **공급업체(Suppliers)** | `/api/suppliers` (회사 전체) | `/api/restaurants/:id/suppliers` |
+| **카테고리(Categories)** | 회사 단위 카테고리 | 레스토랑+브랜드 카테고리 |
+
+### Brand vs Brand General 용어 구분
+
+- **Brand General (브랜드제너럴)**: 여러 브랜드를 소유한 **회사** (예: "ABC 외식 그룹")
+- **Brand (브랜드)**: Brand General이 소유한 **개별 브랜드** (예: "스타벅스")
+
+### 개발 시 주의사항
+
+1. **재고 관리는 회사 단위**: 레시피는 브랜드별이지만, 재고는 회사(Brand General) 단위
+2. **API 엔드포인트 확인**: 역할에 따라 다른 API 사용
+3. **brand_id vs company-wide**: Brand General 기능은 brand_id가 아닌 회사 전체 데이터
+
+**상세 문서:** `/var/www/docs/ROLES_AND_PERMISSIONS.md` 참고
+
 ## UI 개발 규칙
 
 ### 이모지/아이콘 사용 금지

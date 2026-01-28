@@ -477,7 +477,6 @@ const OrderButton = styled.button`
 
 const SearchableSelectContainer = styled.div`
   position: relative;
-  z-index: 100;
 `;
 
 const SearchableSelectInput = styled.input`
@@ -496,7 +495,7 @@ const SearchableSelectInput = styled.input`
 
 const SearchableSelectDropdown = styled.div`
   position: absolute;
-  top: 100%;
+  top: calc(100% + 4px);
   left: 0;
   right: 0;
   max-height: 200px;
@@ -505,8 +504,7 @@ const SearchableSelectDropdown = styled.div`
   border: 1px solid #E5E7EB;
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
-  margin-top: 4px;
+  z-index: 9999;
 `;
 
 const SearchableSelectOption = styled.div<{ selected?: boolean }>`
@@ -878,9 +876,9 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
           setGeneralStockCategories([]);
         }
 
-        // Brand mode - fetch suppliers
+        // Brand mode - fetch suppliers (company-wide)
         try {
-          const suppliersRes = await authFetch(`/api/brands/${brandId}/suppliers`);
+          const suppliersRes = await authFetch('/api/suppliers');
           if (suppliersRes.success) setSuppliers(suppliersRes.data || []);
         } catch {
           setSuppliers([]);
@@ -2475,48 +2473,20 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
             maxSize={2}
           />
 
-          {/* Row 3: Unit - standalone row for dropdown */}
-          <UIFormGroup style={{ position: 'relative', zIndex: 1000 }}>
-            <FormLabel>Unit *</FormLabel>
-            <SearchableSelectContainer>
-              <SearchableSelectInput
-                type="text"
-                value={showUnitDropdown ? unitSearchTerm : (unitOptions.find(u => u.value === generalStockForm.stock_unit)?.label || generalStockForm.stock_unit)}
-                onChange={(e) => { setUnitSearchTerm(e.target.value); setShowUnitDropdown(true); }}
-                onFocus={() => { setShowUnitDropdown(true); setUnitSearchTerm(''); }}
-                onBlur={() => setTimeout(() => setShowUnitDropdown(false), 200)}
-                placeholder="Search or select unit..."
-              />
-              {showUnitDropdown && (
-                <SearchableSelectDropdown>
-                  {filteredUnitOptions.map(opt => (
-                    <SearchableSelectOption
-                      key={opt.value}
-                      selected={generalStockForm.stock_unit === opt.value}
-                      onClick={() => {
-                        setGeneralStockForm({ ...generalStockForm, stock_unit: opt.value });
-                        setShowUnitDropdown(false);
-                        setUnitSearchTerm('');
-                      }}
-                    >
-                      {opt.label}
-                    </SearchableSelectOption>
-                  ))}
-                  {filteredUnitOptions.length === 0 && unitSearchTerm && (
-                    <SearchableSelectOption onClick={() => {
-                      setGeneralStockForm({ ...generalStockForm, stock_unit: unitSearchTerm });
-                      setShowUnitDropdown(false);
-                    }}>
-                      Use "{unitSearchTerm}"
-                    </SearchableSelectOption>
-                  )}
-                </SearchableSelectDropdown>
-              )}
-            </SearchableSelectContainer>
-          </UIFormGroup>
-
-          {/* Row 4: Category & Supplier */}
+          {/* Row 3: Unit & Category */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <UIFormGroup>
+              <FormLabel>Unit *</FormLabel>
+              <FilterSelect
+                value={generalStockForm.stock_unit}
+                onChange={(e) => setGeneralStockForm({ ...generalStockForm, stock_unit: e.target.value })}
+                style={{ width: '100%' }}
+              >
+                {unitOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </FilterSelect>
+            </UIFormGroup>
             <UIFormGroup>
               <FormLabel>Category</FormLabel>
               <FilterSelect
@@ -2540,20 +2510,22 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                 )}
               </FilterSelect>
             </UIFormGroup>
-            <UIFormGroup>
-              <FormLabel>Supplier</FormLabel>
-              <FilterSelect
-                value={generalStockForm.supplier_id}
-                onChange={(e) => setGeneralStockForm({ ...generalStockForm, supplier_id: e.target.value })}
-                style={{ width: '100%' }}
-              >
-                <option value="">Select Supplier (Optional)</option>
-                {suppliers.map(s => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </FilterSelect>
-            </UIFormGroup>
           </div>
+
+          {/* Row 4: Supplier - full width */}
+          <UIFormGroup>
+            <FormLabel>Supplier</FormLabel>
+            <FilterSelect
+              value={generalStockForm.supplier_id}
+              onChange={(e) => setGeneralStockForm({ ...generalStockForm, supplier_id: e.target.value })}
+              style={{ width: '100%' }}
+            >
+              <option value="">Select Supplier (Optional)</option>
+              {suppliers.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </FilterSelect>
+          </UIFormGroup>
 
           {/* Row 5: Numbers - 4 columns */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
@@ -2700,48 +2672,20 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
             maxSize={2}
           />
 
-          {/* Row 3: Unit - standalone row for dropdown */}
-          <UIFormGroup style={{ position: 'relative', zIndex: 1000 }}>
-            <FormLabel>Unit *</FormLabel>
-            <SearchableSelectContainer>
-              <SearchableSelectInput
-                type="text"
-                value={showUnitDropdown ? unitSearchTerm : (unitOptions.find(u => u.value === generalStockForm.stock_unit)?.label || generalStockForm.stock_unit)}
-                onChange={(e) => { setUnitSearchTerm(e.target.value); setShowUnitDropdown(true); }}
-                onFocus={() => { setShowUnitDropdown(true); setUnitSearchTerm(''); }}
-                onBlur={() => setTimeout(() => setShowUnitDropdown(false), 200)}
-                placeholder="Search or select unit..."
-              />
-              {showUnitDropdown && (
-                <SearchableSelectDropdown>
-                  {filteredUnitOptions.map(opt => (
-                    <SearchableSelectOption
-                      key={opt.value}
-                      selected={generalStockForm.stock_unit === opt.value}
-                      onClick={() => {
-                        setGeneralStockForm({ ...generalStockForm, stock_unit: opt.value });
-                        setShowUnitDropdown(false);
-                        setUnitSearchTerm('');
-                      }}
-                    >
-                      {opt.label}
-                    </SearchableSelectOption>
-                  ))}
-                  {filteredUnitOptions.length === 0 && unitSearchTerm && (
-                    <SearchableSelectOption onClick={() => {
-                      setGeneralStockForm({ ...generalStockForm, stock_unit: unitSearchTerm });
-                      setShowUnitDropdown(false);
-                    }}>
-                      Use "{unitSearchTerm}"
-                    </SearchableSelectOption>
-                  )}
-                </SearchableSelectDropdown>
-              )}
-            </SearchableSelectContainer>
-          </UIFormGroup>
-
-          {/* Row 4: Category & Supplier */}
+          {/* Row 3: Unit & Category */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <UIFormGroup>
+              <FormLabel>Unit *</FormLabel>
+              <FilterSelect
+                value={generalStockForm.stock_unit}
+                onChange={(e) => setGeneralStockForm({ ...generalStockForm, stock_unit: e.target.value })}
+                style={{ width: '100%' }}
+              >
+                {unitOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </FilterSelect>
+            </UIFormGroup>
             <UIFormGroup>
               <FormLabel>Category</FormLabel>
               <FilterSelect
@@ -2765,20 +2709,22 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                 )}
               </FilterSelect>
             </UIFormGroup>
-            <UIFormGroup>
-              <FormLabel>Supplier</FormLabel>
-              <FilterSelect
-                value={generalStockForm.supplier_id}
-                onChange={(e) => setGeneralStockForm({ ...generalStockForm, supplier_id: e.target.value })}
-                style={{ width: '100%' }}
-              >
-                <option value="">Select Supplier (Optional)</option>
-                {suppliers.map(s => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </FilterSelect>
-            </UIFormGroup>
           </div>
+
+          {/* Row 4: Supplier - full width */}
+          <UIFormGroup>
+            <FormLabel>Supplier</FormLabel>
+            <FilterSelect
+              value={generalStockForm.supplier_id}
+              onChange={(e) => setGeneralStockForm({ ...generalStockForm, supplier_id: e.target.value })}
+              style={{ width: '100%' }}
+            >
+              <option value="">Select Supplier (Optional)</option>
+              {suppliers.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </FilterSelect>
+          </UIFormGroup>
 
           {/* Row 5: Numbers - 4 columns */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>

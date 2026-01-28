@@ -10,12 +10,12 @@ const GeneralStock = database.sequelize.define('GeneralStock', {
   restaurant_id: {
     type: DataTypes.INTEGER,
     allowNull: true,
-    comment: 'Restaurant FK - null for brand-level stock'
+    comment: 'Restaurant FK - for restaurant inventory'
   },
-  brand_id: {
+  owner_id: {
     type: DataTypes.INTEGER,
     allowNull: true,
-    comment: 'Brand FK - for brand-level general stock'
+    comment: 'Brand General User ID - for company-wide inventory'
   },
   name: {
     type: DataTypes.STRING(100),

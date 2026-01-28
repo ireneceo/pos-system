@@ -325,5 +325,60 @@ WHERE foodcourt_id = user.foodcourt_id
 
 ---
 
+## 재고 관리 (Inventory) 역할별 구조
+
+### Brand General (브랜드 총괄) - 재고 관리
+
+**범위:** 회사(브랜드제너럴) 단위 전체 재고 관리
+
+| 기능 | 데이터 범위 | 설명 |
+|------|------------|------|
+| **Ingredients (재료)** | Product Recipe의 재료 | 브랜드와 상관없이 회사 전체 Product Recipe에 등록된 재료 |
+| **General Stock (일반재고)** | 회사 전체 일반재고 | 포장재, 소모품 등 회사 전체에서 관리하는 재고 |
+| **Categories (카테고리)** | 회사 전체 카테고리 | 일반재고 카테고리 (회사 단위) |
+| **Suppliers (공급업체)** | 회사 전체 공급업체 | `/api/suppliers` 사용 (회사 단위) |
+
+**주요 특징:**
+- 브랜드(개별 브랜드)와 상관없이 **브랜드제너럴 회사** 단위로 재고 관리
+- Product Recipe 재료 = 모든 브랜드의 제품 레시피에 사용되는 재료
+- 레시피(Recipes)는 브랜드별로 관리하지만, **재고 관리는 회사 단위**
+
+### Restaurant Admin (레스토랑 관리자) - 재고 관리
+
+**범위:** 해당 레스토랑 단위 재고 관리
+
+| 기능 | 데이터 범위 | 설명 |
+|------|------------|------|
+| **Ingredients (재료)** | 해당 레스토랑 재료 | 레스토랑에 등록된 재료 (연결된 브랜드 레시피 기반) |
+| **General Stock (일반재고)** | 해당 레스토랑 일반재고 | 레스토랑 자체 일반재고 |
+| **Categories (카테고리)** | 레스토랑 + 브랜드 카테고리 | 브랜드 공통 카테고리 + 레스토랑 자체 카테고리 |
+| **Suppliers (공급업체)** | 해당 레스토랑 공급업체 | `/api/restaurants/:id/suppliers` 사용 |
+
+**주요 특징:**
+- **해당 레스토랑에 연결된 브랜드**의 재료/재고만 접근
+- 브랜드 소속 레스토랑: 브랜드 레시피 기반 재료 사용
+- 독립 레스토랑: 자체 재료/재고 관리
+
+### API 엔드포인트 비교
+
+| 역할 | Ingredients API | General Stock API | Categories API | Suppliers API |
+|------|----------------|-------------------|----------------|---------------|
+| **Brand General** | `/api/product-ingredients` | `/api/general-stock` (회사 단위) | `/api/general-stock-categories` (회사 단위) | `/api/suppliers` |
+| **Restaurant Admin** | `/api/restaurants/:id/inventory` | `/api/restaurants/:id/inventory/general-stock` | `/api/restaurants/:id/general-stock-categories` | `/api/restaurants/:id/suppliers` |
+
+### 중요: Brand vs Brand General 구분
+
+| 용어 | 의미 | 예시 |
+|------|------|------|
+| **Brand General (브랜드제너럴)** | 여러 브랜드를 소유한 **회사** | "ABC 외식 그룹" |
+| **Brand (브랜드)** | Brand General이 소유한 **개별 브랜드** | "스타벅스", "투썸플레이스" |
+
+- **레시피 (Recipes):** 브랜드별로 관리 (각 브랜드마다 다른 레시피)
+- **재고 관리 (Inventory):** 회사(Brand General) 단위로 통합 관리
+- **공급업체 (Suppliers):** 회사(Brand General) 단위로 관리
+
+---
+
 ## 업데이트 이력
 - 2025-11-14: 초기 문서 작성
+- 2026-01-28: 재고 관리(Inventory) 역할별 구조 추가
