@@ -524,10 +524,21 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
   // Track Stock 토글 핸들러
   const handleTrackStockToggle = async (ingredient: Ingredient, newValue: boolean) => {
     try {
+      // 필요한 필드만 전송 (category 관계 객체 제외)
       const response = await fetchAPI(`/api/product-ingredients/${ingredient.id}`, {
         method: 'PUT',
         body: JSON.stringify({
-          ...ingredient,
+          name: ingredient.name,
+          category_id: ingredient.category_id,
+          image_url: ingredient.image_url,
+          unit: ingredient.unit,
+          base_quantity: ingredient.base_quantity,
+          unit_cost: ingredient.unit_cost,
+          supplier_name: ingredient.supplier_name,
+          min_stock: ingredient.min_stock,
+          min_order: ingredient.min_order,
+          current_stock: ingredient.current_stock,
+          is_active: ingredient.is_active,
           track_stock: newValue
         })
       });
@@ -667,9 +678,6 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
                 <div>
                   <IngredientName>
                     {ingredient.name}
-                    {ingredient.track_stock && (
-                      <TrackStockBadge>Stock</TrackStockBadge>
-                    )}
                   </IngredientName>
                   <IngredientCategoryBadge>
                     {ingredient.category?.emoji} {ingredient.category?.name || 'Uncategorized'}
@@ -707,6 +715,22 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
                   </InfoRow>
                 )}
               </IngredientInfo>
+
+              {/* Track Stock 토글 */}
+              <TrackStockRow>
+                <TrackStockLabel>Track in Inventory</TrackStockLabel>
+                <ToggleSwitch>
+                  <ToggleInput
+                    type="checkbox"
+                    checked={ingredient.track_stock || false}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      handleTrackStockToggle(ingredient, e.target.checked);
+                    }}
+                  />
+                  <ToggleSlider />
+                </ToggleSwitch>
+              </TrackStockRow>
 
               <IngredientActions>
                 <ActionButton

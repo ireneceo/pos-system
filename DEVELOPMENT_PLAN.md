@@ -1,8 +1,51 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-01-27
+> **최종 업데이트:** 2026-01-28
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
+
+---
+
+## 📋 진행 중: 재료/재고/발주 시스템 개발
+
+### Phase 1: Track Stock 토글 및 기본 기능 수정 (2026-01-28)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Track Stock 토글 복원 | 재료 카드에 Track in Inventory 토글 추가 | ✅ 완료 |
+| Recipes 메뉴 접근 버그 | Brand Manager가 Recipes 메뉴 클릭 불가 수정 | ✅ 완료 |
+| 토글 ON/OFF 버그 수정 | 토글이 꺼지지 않던 문제 수정 (관계 객체 제외) | ✅ 완료 |
+
+### 수정된 파일
+
+**Frontend:**
+- `pages/RecipeManagement/IngredientsTab.tsx`
+  - Track Stock 토글 UI 추가
+  - handleTrackStockToggle 함수 추가 (필요한 필드만 전송)
+- `pages/BrandProductRecipe/ProductIngredientsTab.tsx`
+  - Track Stock 토글 UI 추가
+  - handleTrackStockToggle 함수 수정 (관계 객체 제외)
+- `App.tsx`
+  - Recipes 메뉴 requiredRole에 'Brand Manager' 추가
+
+### 다음 단계 (Phase 2)
+
+DB 테이블 생성:
+- trade_relationships (거래관계)
+- supplier_products (공급업체 상품)
+- purchase_orders (발주)
+- purchase_order_items (발주 항목)
+- purchase_invoices (구매 인보이스)
+- purchase_invoice_items (구매 인보이스 항목)
+- statements_of_account (SOA)
+- soa_items (SOA 항목)
+- inventory_transactions (재고 트랜잭션)
+- stock_takes (재고 실사)
+- stock_take_items (재고 실사 항목)
+
+### 전체 개발 계획 참조
+
+자세한 개발 계획은 `/var/www/docs/FEATURE_BASED_SUBSCRIPTION_PLAN.md` 참조
 
 ---
 

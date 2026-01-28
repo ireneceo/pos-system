@@ -770,6 +770,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
       }
 
       const token = localStorage.getItem('auth_token');
+      // 필요한 필드만 전송 (관계 객체 제외)
       const response = await fetch(url, {
         method: 'PUT',
         headers: {
@@ -777,7 +778,17 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          ...ingredient,
+          code: ingredient.code,
+          name: ingredient.name,
+          image_url: ingredient.image_url,
+          ingredient_category_id: ingredient.ingredient_category_id,
+          unit: ingredient.unit,
+          base_quantity: ingredient.base_quantity,
+          unit_cost: ingredient.unit_cost,
+          supplier_id: ingredient.supplier_id,
+          supplier_name: ingredient.supplier_name,
+          min_stock: ingredient.min_stock,
+          is_active: ingredient.is_active,
           track_stock: newValue
         })
       });

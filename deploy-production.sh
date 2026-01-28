@@ -69,10 +69,51 @@ if [ "$CONFIRM" != "yes" ]; then
 fi
 
 # ==============================================
-# Step 1: Pre-deployment API Tests (Dev Server)
+# Step 1: Database Schema Comparison
 # ==============================================
 echo ""
-echo -e "${YELLOW}Step 1: Pre-deployment API Tests (Dev Server)${NC}"
+echo -e "${YELLOW}Step 1: Database Schema Comparison${NC}"
+
+SCHEMA_DIFF_RESULT=$(node /var/www/scripts/check-schema-diff.js 2>&1)
+SCHEMA_EXIT_CODE=$?
+
+if [ $SCHEMA_EXIT_CODE -ne 0 ]; then
+    echo -e "${RED}   Schema differences detected!${NC}"
+    echo ""
+    echo "$SCHEMA_DIFF_RESULT"
+    echo ""
+    echo -e "${YELLOW}   Do you want to auto-apply missing columns? (yes/no)${NC}"
+    read -p "> " APPLY_SCHEMA
+    if [ "$APPLY_SCHEMA" = "yes" ]; then
+        echo -e "${BLUE}   Applying schema changes...${NC}"
+        # Extract and run ALTER TABLE statements
+        echo "$SCHEMA_DIFF_RESULT" | grep "ALTER TABLE" | while read -r SQL; do
+            SQL_CLEAN=$(echo "$SQL" | sed 's/^[[:space:]]*//')
+            echo "   Running: $SQL_CLEAN"
+            cd $PROD_BACKEND
+            node -e "
+              const { Sequelize } = require('sequelize');
+              require('dotenv').config();
+              const seq = new Sequelize(process.env.DB_NAME, process.env.DB_USER, process.env.DB_PASSWORD,
+                { host: process.env.DB_HOST, dialect: 'mysql', logging: false });
+              seq.query('$SQL_CLEAN').then(() => { console.log('   OK'); process.exit(0); })
+                .catch(e => { console.error('   Error:', e.message); process.exit(1); });
+            "
+        done
+        echo -e "${GREEN}   Schema changes applied${NC}"
+    else
+        echo -e "${RED}   Deployment cancelled. Please fix schema issues manually.${NC}"
+        exit 1
+    fi
+else
+    echo -e "${GREEN}   Schema is in sync!${NC}"
+fi
+
+# ==============================================
+# Step 2: Pre-deployment API Tests (Dev Server)
+# ==============================================
+echo ""
+echo -e "${YELLOW}Step 2: Pre-deployment API Tests (Dev Server)${NC}"
 
 DEV_API="http://localhost:3001/api"
 TEST_PASSED=true
@@ -114,10 +155,10 @@ fi
 echo -e "${GREEN}   All pre-deployment tests passed!${NC}"
 
 # ==============================================
-# Step 2: Create Backup Directory & Backup Code
+# Step 3: Create Backup Directory & Backup Code
 # ==============================================
 echo ""
-echo -e "${YELLOW}Step 2: Create Backups${NC}"
+echo -e "${YELLOW}Step 3: Create Backups${NC}"
 mkdir -p "${BACKUP_DIR}"
 
 # Backup .env
@@ -166,18 +207,18 @@ else
 fi
 
 # ==============================================
-# Step 3: Git Pull
+# Step 4: Git Pull
 # ==============================================
 echo ""
-echo -e "${YELLOW}Step 3: Git Pull${NC}"
+echo -e "${YELLOW}Step 4: Git Pull${NC}"
 cd $PROJECT_DIR
 git pull origin main || echo "   No changes from remote"
 
 # ==============================================
-# Step 4: Sync Backend Code
+# Step 5: Sync Backend Code
 # ==============================================
 echo ""
-echo -e "${YELLOW}Step 4: Sync Backend Code${NC}"
+echo -e "${YELLOW}Step 5: Sync Backend Code${NC}"
 
 rsync -av --delete \
     --exclude='node_modules' \
@@ -203,19 +244,19 @@ else
 fi
 
 # ==============================================
-# Step 5: Install Backend Dependencies
+# Step 6: Install Backend Dependencies
 # ==============================================
 echo ""
-echo -e "${YELLOW}Step 5: Install Backend Dependencies${NC}"
+echo -e "${YELLOW}Step 6: Install Backend Dependencies${NC}"
 cd $PROD_BACKEND
 npm install --omit=dev 2>/dev/null
 echo -e "${GREEN}   Dependencies installed${NC}"
 
 # ==============================================
-# Step 6: Sync Database Schema
+# Step 7: Sync Database Schema
 # ==============================================
 echo ""
-echo -e "${YELLOW}Step 6: Sync Database Schema${NC}"
+echo -e "${YELLOW}Step 7: Sync Database Schema${NC}"
 node sync-database.js
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}   Database schema synced${NC}"
@@ -225,10 +266,10 @@ else
 fi
 
 # ==============================================
-# Step 7: Build Frontend
+# Step 8: Build Frontend
 # ==============================================
 echo ""
-echo -e "${YELLOW}Step 7: Build Frontend${NC}"
+echo -e "${YELLOW}Step 8: Build Frontend${NC}"
 cd $DEV_FRONTEND
 rm -rf node_modules/.cache 2>/dev/null || true
 
@@ -245,10 +286,10 @@ fi
 echo -e "${GREEN}   Frontend built successfully${NC}"
 
 # ==============================================
-# Step 8: Deploy Frontend Build
+# Step 9: Deploy Frontend Build
 # ==============================================
 echo ""
-echo -e "${YELLOW}Step 8: Deploy Frontend Build${NC}"
+echo -e "${YELLOW}Step 9: Deploy Frontend Build${NC}"
 rm -rf $PROD_FRONTEND/build 2>/dev/null || true
 cp -r $DEV_FRONTEND/build $PROD_FRONTEND/
 
@@ -258,10 +299,10 @@ fi
 echo -e "${GREEN}   Frontend deployed${NC}"
 
 # ==============================================
-# Step 9: Restart Backend Server
+# Step 10: Restart Backend Server
 # ==============================================
 echo ""
-echo -e "${YELLOW}Step 9: Restart Backend Server${NC}"
+echo -e "${YELLOW}Step 10: Restart Backend Server${NC}"
 
 if [ "$SUDO_USER" != "" ]; then
     su - $SUDO_USER -c "pm2 restart production-backend --update-env && pm2 save"
@@ -272,10 +313,10 @@ sleep 3
 echo -e "${GREEN}   Backend restarted${NC}"
 
 # ==============================================
-# Step 10: Reload Nginx
+# Step 11: Reload Nginx
 # ==============================================
 echo ""
-echo -e "${YELLOW}Step 10: Reload Nginx${NC}"
+echo -e "${YELLOW}Step 11: Reload Nginx${NC}"
 
 if [ -d "/var/cache/nginx" ]; then
     rm -rf /var/cache/nginx/* 2>/dev/null || true
@@ -293,10 +334,10 @@ else
 fi
 
 # ==============================================
-# Step 11: Post-deployment Verification
+# Step 12: Post-deployment Verification
 # ==============================================
 echo ""
-echo -e "${YELLOW}Step 11: Post-deployment Verification${NC}"
+echo -e "${YELLOW}Step 12: Post-deployment Verification${NC}"
 
 PROD_API="http://localhost:3002/api"
 VERIFY_PASSED=true

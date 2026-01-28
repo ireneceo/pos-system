@@ -472,7 +472,7 @@ function App() {
 
                       {/* Recipe Management for Brand General */}
                       <Route path="/pos/recipes" element={
-                        <ProtectedRoute requiredRole={['Brand General', 'System Admin']}>
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager', 'System Admin']}>
                           <RecipeManagementPage />
                         </ProtectedRoute>
                       } />

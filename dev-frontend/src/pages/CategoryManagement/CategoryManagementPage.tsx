@@ -172,6 +172,62 @@ const IconButton = styled.button`
 
 // Removed: Using standard UI Modal component instead
 
+const ToggleSwitch = styled.label`
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+`;
+
+const ToggleInput = styled.input`
+  opacity: 0;
+  width: 0;
+  height: 0;
+
+  &:checked + span {
+    background-color: #635BFF;
+  }
+
+  &:checked + span:before {
+    transform: translateX(20px);
+  }
+`;
+
+const ToggleSlider = styled.span`
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #E5E7EB;
+  transition: 0.3s;
+  border-radius: 24px;
+
+  &:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+`;
+
+const StatusBadge = styled.span<{ active: boolean }>`
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: ${props => props.active ? '#ECFDF5' : '#FEF2F2'};
+  color: ${props => props.active ? '#059669' : '#DC2626'};
+  margin-left: 8px;
+`;
+
 const FormGroup = styled.div`
   margin-bottom: 20px;
 `;
@@ -266,6 +322,7 @@ interface Category {
   emoji: string;
   order: number;
   itemCount?: number;
+  isActive?: boolean;
 }
 
 const CategoryManagementPage: React.FC = () => {
@@ -400,6 +457,33 @@ const CategoryManagementPage: React.FC = () => {
     reorderCategories(updatedCategories);
   };
 
+  const handleToggleActive = async (category: Category) => {
+    try {
+      const pathParts = window.location.pathname.split('/');
+      const restaurantIndex = pathParts.indexOf('restaurant');
+      const restaurantId = restaurantIndex >= 0 ? pathParts[restaurantIndex + 1] : null;
+
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/categories/id/${category.id}/toggle-active?restaurantId=${restaurantId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          // Update local state via updateCategory
+          await updateCategory(category.id, { ...category, isActive: result.data.isActive });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to toggle category:', error);
+    }
+  };
+
   return (
     <MainLayout>
       <Container>
@@ -441,12 +525,23 @@ const CategoryManagementPage: React.FC = () => {
                 {category.emoji}
               </CategoryIcon>
               <CategoryInfo>
-                <CategoryName>{category.name}</CategoryName>
+                <CategoryName>
+                  {category.name}
+                  {category.isActive === false && <StatusBadge active={false}>Inactive</StatusBadge>}
+                </CategoryName>
                 <CategoryMeta>
                   <span>{category.itemCount || 0} items</span>
                   <span>Position {index + 1}</span>
                 </CategoryMeta>
               </CategoryInfo>
+              <ToggleSwitch title={category.isActive !== false ? 'Click to hide from POS/Mobile' : 'Click to show on POS/Mobile'}>
+                <ToggleInput
+                  type="checkbox"
+                  checked={category.isActive !== false}
+                  onChange={() => handleToggleActive(category)}
+                />
+                <ToggleSlider />
+              </ToggleSwitch>
               <CategoryActions>
                 <IconButton onClick={() => handleOpenModal(category)}>
                   <svg viewBox="0 0 24 24" fill="none">

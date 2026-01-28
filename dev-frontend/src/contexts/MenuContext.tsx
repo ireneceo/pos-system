@@ -51,6 +51,7 @@ export interface MenuCategory {
   name: string;
   emoji: string;
   order: number;
+  isActive?: boolean;
 }
 
 interface MenuContextType {
@@ -204,7 +205,8 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             id: categoryId,
             name: cat.name,
             emoji: cat.emoji || categoryEmojis[idx % categoryEmojis.length],
-            order: cat.displayOrder !== undefined ? cat.displayOrder : idx
+            order: cat.displayOrder !== undefined ? cat.displayOrder : idx,
+            isActive: cat.isActive !== undefined ? cat.isActive : true
           };
         });
 
@@ -450,7 +452,8 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
           id: cat.id ? cat.id.toString() : cat.name.toLowerCase().replace(/\s+/g, '_'),
           name: cat.name,
           emoji: cat.emoji || categoryEmojis[idx % categoryEmojis.length],
-          order: cat.displayOrder !== undefined ? cat.displayOrder : idx
+          order: cat.displayOrder !== undefined ? cat.displayOrder : idx,
+          isActive: cat.isActive !== undefined ? cat.isActive : true
         }));
         setCategories(cats);
         saveCategoriesCache(restaurantId, cats);

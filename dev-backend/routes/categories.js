@@ -334,6 +334,39 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Toggle category active status
+router.put('/id/:categoryId/toggle-active', async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const restaurantId = req.query.restaurantId || req.user.restaurant_id;
+
+    const category = await Category.findOne({
+      where: {
+        id: categoryId,
+        restaurant_id: restaurantId
+      }
+    });
+
+    if (!category) {
+      return res.status(404).json({ success: false, error: 'Category not found' });
+    }
+
+    const newIsActive = !category.isActive;
+    await Category.update(
+      { isActive: newIsActive },
+      { where: { id: categoryId, restaurant_id: restaurantId } }
+    );
+
+    res.json({
+      success: true,
+      data: { id: categoryId, isActive: newIsActive },
+      message: `Category ${newIsActive ? 'activated' : 'deactivated'} successfully`
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Get category statistics
 router.get('/:categoryName/stats', async (req, res) => {
   try {
