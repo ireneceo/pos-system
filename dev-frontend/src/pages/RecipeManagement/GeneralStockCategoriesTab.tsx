@@ -7,7 +7,7 @@ import { OrderControls } from '../../components/UI';
 import ConfirmModal from '../../components/ConfirmModal';
 
 interface GeneralStockCategoriesTabProps {
-  brandId: number | null;
+  isBrandGeneralMode?: boolean;  // Brand General uses company-wide API (authenticated user)
   restaurantId?: number | null;
   onCountChange: (count: number) => void;
   onCategoryChange?: () => void;
@@ -237,7 +237,7 @@ const BrandCategoriesHeader = styled.div`
   font-weight: 500;
 `;
 
-const GeneralStockCategoriesTab: React.FC<GeneralStockCategoriesTabProps> = ({ brandId, restaurantId: propsRestaurantId, onCountChange, onCategoryChange }) => {
+const GeneralStockCategoriesTab: React.FC<GeneralStockCategoriesTabProps> = ({ isBrandGeneralMode, restaurantId: propsRestaurantId, onCountChange, onCategoryChange }) => {
   const { user } = useAuth();
   const effectiveRestaurantId = propsRestaurantId || user?.restaurant_id || (user as any)?.restaurantId;
   const [categories, setCategories] = useState<Category[]>([]);
@@ -280,8 +280,9 @@ const GeneralStockCategoriesTab: React.FC<GeneralStockCategoriesTabProps> = ({ b
       const token = getToken();
 
       try {
-        if (isBrandUser && brandId) {
-          const response = await fetch(`/api/brands/${brandId}/general-stock-categories`, {
+        if (isBrandGeneralMode || isBrandUser) {
+          // Brand General mode - uses company-wide API (authenticated user's ID on backend)
+          const response = await fetch('/api/general-stock-categories', {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           const data = await response.json();
@@ -310,14 +311,15 @@ const GeneralStockCategoriesTab: React.FC<GeneralStockCategoriesTabProps> = ({ b
     };
 
     fetchAllData();
-  }, [brandId, effectiveRestaurantId, isBrandUser, isRestaurantAdmin, getToken, onCountChange]);
+  }, [isBrandGeneralMode, effectiveRestaurantId, isBrandUser, isRestaurantAdmin, getToken, onCountChange]);
 
   const fetchCategories = async () => {
     try {
       const token = getToken();
 
-      if (isBrandUser && brandId) {
-        const response = await fetch(`/api/brands/${brandId}/general-stock-categories`, {
+      if (isBrandGeneralMode || isBrandUser) {
+        // Brand General mode - uses company-wide API
+        const response = await fetch('/api/general-stock-categories', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await response.json();
@@ -377,10 +379,11 @@ const GeneralStockCategoriesTab: React.FC<GeneralStockCategoriesTabProps> = ({ b
       let url = '';
       const method = editingCategory ? 'PUT' : 'POST';
 
-      if (isBrandUser && brandId) {
+      if (isBrandGeneralMode || isBrandUser) {
+        // Brand General mode - uses company-wide API
         url = editingCategory
-          ? `/api/brands/${brandId}/general-stock-categories/${editingCategory.id}`
-          : `/api/brands/${brandId}/general-stock-categories`;
+          ? `/api/general-stock-categories/${editingCategory.id}`
+          : '/api/general-stock-categories';
       } else if (isRestaurantAdmin && effectiveRestaurantId) {
         url = editingCategory
           ? `/api/restaurants/${effectiveRestaurantId}/general-stock-categories/${editingCategory.id}`
@@ -429,8 +432,9 @@ const GeneralStockCategoriesTab: React.FC<GeneralStockCategoriesTabProps> = ({ b
       const token = localStorage.getItem('auth_token');
       let url = '';
 
-      if (isBrandUser && brandId) {
-        url = `/api/brands/${brandId}/general-stock-categories/${categoryToDelete.id}`;
+      if (isBrandGeneralMode || isBrandUser) {
+        // Brand General mode - uses company-wide API
+        url = `/api/general-stock-categories/${categoryToDelete.id}`;
       } else if (isRestaurantAdmin && effectiveRestaurantId) {
         url = `/api/restaurants/${effectiveRestaurantId}/general-stock-categories/${categoryToDelete.id}`;
       }
@@ -475,8 +479,9 @@ const GeneralStockCategoriesTab: React.FC<GeneralStockCategoriesTabProps> = ({ b
       const token = localStorage.getItem('auth_token');
       let url = '';
 
-      if (isBrandUser && brandId) {
-        url = `/api/brands/${brandId}/general-stock-categories/reorder`;
+      if (isBrandGeneralMode || isBrandUser) {
+        // Brand General mode - uses company-wide API
+        url = '/api/general-stock-categories/reorder';
       } else if (isRestaurantAdmin && effectiveRestaurantId) {
         url = `/api/restaurants/${effectiveRestaurantId}/general-stock-categories/reorder`;
       }

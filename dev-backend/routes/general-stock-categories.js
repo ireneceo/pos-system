@@ -228,24 +228,9 @@ router.get('/restaurants/:restaurantId/general-stock-categories', authenticateTo
       };
     }));
 
-    // 브랜드 카테고리 (브랜드 소속인 경우)
-    if (restaurant.brand_id) {
-      const brandCategories = await GeneralStockCategory.findAll({
-        where: { brand_id: restaurant.brand_id },
-        order: [['display_order', 'ASC'], ['name', 'ASC']]
-      });
-
-      result.brand_categories = await Promise.all(brandCategories.map(async cat => {
-        const stockCount = await GeneralStock.count({
-          where: { restaurant_id: restaurantId, category: cat.name }
-        });
-        return {
-          ...cat.toJSON(),
-          stock_count: stockCount,
-          editable: false
-        };
-      }));
-    }
+    // 브랜드제너럴 카테고리는 회사 단위(owner_id 기준)로 관리되므로
+    // 레스토랑 관리자는 자신의 카테고리만 관리함
+    // brand_categories는 빈 배열로 유지
 
     res.json({ success: true, data: result });
   } catch (error) {

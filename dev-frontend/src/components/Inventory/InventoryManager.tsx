@@ -567,8 +567,10 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
 
   // Determine the ID to use based on mode
+  // Restaurant mode: use restaurant ID
+  // Brand mode (Brand General): uses user.id for company-wide inventory (no brandId needed)
   const restaurantId = mode === 'restaurant' ? propRestaurantId : undefined;
-  const brandId = mode === 'brand' ? user?.brand_id : undefined;
+  const isBrandGeneralMode = mode === 'brand';
 
   // Get tab from URL, default to 'dashboard'
   const activeTab = (searchParams.get('tab') as 'dashboard' | 'list' | 'history' | 'categories') || 'dashboard';
@@ -732,7 +734,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   const fetchData = useCallback(async () => {
     // Check for valid ID based on mode
     if (mode === 'restaurant' && !restaurantId) return;
-    if (mode === 'brand' && !brandId) return;
+    // Brand General mode doesn't need an ID - uses authenticated user's ID on backend
 
     try {
       setLoading(true);
@@ -858,17 +860,17 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
           setAlerts(generatedAlerts);
         }
 
-        // Brand mode - fetch general stock
+        // Brand General mode - fetch general stock (company-wide, uses user.id on backend)
         try {
-          const generalStockRes = await authFetch(`/api/brands/${brandId}/general-stock`);
+          const generalStockRes = await authFetch('/api/general-stock');
           if (generalStockRes.success) setGeneralStockInventory(generalStockRes.data || []);
         } catch {
           setGeneralStockInventory([]);
         }
 
-        // Brand mode - fetch categories
+        // Brand General mode - fetch categories (company-wide)
         try {
-          const categoriesRes = await authFetch(`/api/brands/${brandId}/general-stock-categories`);
+          const categoriesRes = await authFetch('/api/general-stock-categories');
           if (categoriesRes.success) {
             setGeneralStockCategories(categoriesRes.data || []);
           }
@@ -876,7 +878,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
           setGeneralStockCategories([]);
         }
 
-        // Brand mode - fetch suppliers (company-wide)
+        // Brand General mode - fetch suppliers (company-wide)
         try {
           const suppliersRes = await authFetch('/api/suppliers');
           if (suppliersRes.success) setSuppliers(suppliersRes.data || []);
@@ -892,7 +894,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
     } finally {
       setLoading(false);
     }
-  }, [mode, restaurantId, brandId, authFetch]);
+  }, [mode, restaurantId, authFetch]);
 
   useEffect(() => {
     fetchData();
@@ -1301,16 +1303,14 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   };
 
   // Check for valid ID based on mode
-  const hasValidId = mode === 'restaurant' ? !!restaurantId : !!brandId;
+  // Brand General mode doesn't need an ID - uses authenticated user's ID on backend
+  const hasValidId = mode === 'restaurant' ? !!restaurantId : true;
 
   if (!hasValidId) {
     return (
       <Container>
         <EmptyState>
-          <p>{mode === 'restaurant'
-            ? 'Restaurant not found. Please log in with a restaurant account.'
-            : 'Brand not found. Please log in with a brand account.'}
-          </p>
+          <p>Restaurant not found. Please log in with a restaurant account.</p>
         </EmptyState>
       </Container>
     );
@@ -1948,7 +1948,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
             </>
           ) : activeTab === 'categories' ? (
             <GeneralStockCategoriesTab
-              brandId={mode === 'brand' ? brandId : null}
+              isBrandGeneralMode={isBrandGeneralMode}
               restaurantId={mode === 'restaurant' && restaurantId ? Number(restaurantId) : null}
               onCountChange={setGeneralStockCategoriesCount}
               onCategoryChange={() => setGeneralStockCategoryRefreshKey(k => k + 1)}
@@ -2224,8 +2224,8 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                 onClick={async () => {
                   if (!generalStockQuantity || parseFloat(generalStockQuantity) <= 0) return;
                   try {
-                    const endpoint = mode === 'brand'
-                      ? `/api/brands/${brandId}/general-stock/${selectedGeneralStock.id}/receive`
+                    const endpoint = isBrandGeneralMode
+                      ? `/api/general-stock/${selectedGeneralStock.id}/receive`
                       : `/api/restaurants/${restaurantId}/inventory/general-stock/${selectedGeneralStock.id}/receive`;
                     const response = await authFetch(endpoint, {
                       method: 'POST',
@@ -2480,7 +2480,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
               <FilterSelect
                 value={generalStockForm.stock_unit}
                 onChange={(e) => setGeneralStockForm({ ...generalStockForm, stock_unit: e.target.value })}
-                style={{ width: '100%' }}
+                style={{ width: '100%', maxWidth: '100%' }}
               >
                 {unitOptions.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -2492,22 +2492,12 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
               <FilterSelect
                 value={generalStockForm.category}
                 onChange={(e) => setGeneralStockForm({ ...generalStockForm, category: e.target.value })}
-                style={{ width: '100%' }}
+                style={{ width: '100%', maxWidth: '100%' }}
               >
                 <option value="">Select Category</option>
-                {generalStockCategories.length > 0 ? (
-                  generalStockCategories.map(cat => (
-                    <option key={cat.id} value={cat.name}>{cat.emoji ? `${cat.emoji} ` : ''}{cat.name}</option>
-                  ))
-                ) : (
-                  <>
-                    <option value="Supplies">Supplies</option>
-                    <option value="Packaging">Packaging</option>
-                    <option value="Cleaning">Cleaning</option>
-                    <option value="Equipment">Equipment</option>
-                    <option value="Other">Other</option>
-                  </>
-                )}
+                {generalStockCategories.map(cat => (
+                  <option key={cat.id} value={cat.name}>{cat.emoji ? `${cat.emoji} ` : ''}{cat.name}</option>
+                ))}
               </FilterSelect>
             </UIFormGroup>
           </div>
@@ -2518,7 +2508,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
             <FilterSelect
               value={generalStockForm.supplier_id}
               onChange={(e) => setGeneralStockForm({ ...generalStockForm, supplier_id: e.target.value })}
-              style={{ width: '100%' }}
+              style={{ width: '100%', maxWidth: '100%' }}
             >
               <option value="">Select Supplier (Optional)</option>
               {suppliers.map(s => (
@@ -2586,8 +2576,8 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
               if (!generalStockForm.name.trim()) return;
               try {
                 setSavingGeneralStock(true);
-                const endpoint = mode === 'brand'
-                  ? `/api/brands/${brandId}/general-stock`
+                const endpoint = isBrandGeneralMode
+                  ? '/api/general-stock'
                   : `/api/restaurants/${restaurantId}/inventory/general-stock`;
                 const response = await authFetch(endpoint, {
                   method: 'POST',
@@ -2679,7 +2669,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
               <FilterSelect
                 value={generalStockForm.stock_unit}
                 onChange={(e) => setGeneralStockForm({ ...generalStockForm, stock_unit: e.target.value })}
-                style={{ width: '100%' }}
+                style={{ width: '100%', maxWidth: '100%' }}
               >
                 {unitOptions.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -2691,22 +2681,12 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
               <FilterSelect
                 value={generalStockForm.category}
                 onChange={(e) => setGeneralStockForm({ ...generalStockForm, category: e.target.value })}
-                style={{ width: '100%' }}
+                style={{ width: '100%', maxWidth: '100%' }}
               >
                 <option value="">Select Category</option>
-                {generalStockCategories.length > 0 ? (
-                  generalStockCategories.map(cat => (
-                    <option key={cat.id} value={cat.name}>{cat.emoji ? `${cat.emoji} ` : ''}{cat.name}</option>
-                  ))
-                ) : (
-                  <>
-                    <option value="Supplies">Supplies</option>
-                    <option value="Packaging">Packaging</option>
-                    <option value="Cleaning">Cleaning</option>
-                    <option value="Equipment">Equipment</option>
-                    <option value="Other">Other</option>
-                  </>
-                )}
+                {generalStockCategories.map(cat => (
+                  <option key={cat.id} value={cat.name}>{cat.emoji ? `${cat.emoji} ` : ''}{cat.name}</option>
+                ))}
               </FilterSelect>
             </UIFormGroup>
           </div>
@@ -2717,7 +2697,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
             <FilterSelect
               value={generalStockForm.supplier_id}
               onChange={(e) => setGeneralStockForm({ ...generalStockForm, supplier_id: e.target.value })}
-              style={{ width: '100%' }}
+              style={{ width: '100%', maxWidth: '100%' }}
             >
               <option value="">Select Supplier (Optional)</option>
               {suppliers.map(s => (
@@ -2785,8 +2765,8 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
               if (!generalStockForm.name.trim() || !editingGeneralStock) return;
               try {
                 setSavingGeneralStock(true);
-                const endpoint = mode === 'brand'
-                  ? `/api/brands/${brandId}/general-stock/${editingGeneralStock.id}`
+                const endpoint = isBrandGeneralMode
+                  ? `/api/general-stock/${editingGeneralStock.id}`
                   : `/api/restaurants/${restaurantId}/inventory/general-stock/${editingGeneralStock.id}`;
                 const response = await authFetch(endpoint, {
                   method: 'PUT',
@@ -2878,8 +2858,8 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                       }
                     } else {
                       // For general stock, actually delete
-                      const endpoint = mode === 'brand'
-                        ? `/api/brands/${brandId}/general-stock/${deleteTarget.id}`
+                      const endpoint = isBrandGeneralMode
+                        ? `/api/general-stock/${deleteTarget.id}`
                         : `/api/restaurants/${restaurantId}/inventory/general-stock/${deleteTarget.id}`;
                       const response = await authFetch(endpoint, {
                         method: 'DELETE'
@@ -2910,7 +2890,8 @@ export default InventoryManager;
 
 // Transaction History Component
 interface TransactionHistoryProps {
-  restaurantId: number;
+  restaurantId?: number;
+  isBrandGeneralMode?: boolean;
   currency: string;
 }
 

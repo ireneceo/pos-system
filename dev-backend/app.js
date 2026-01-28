@@ -187,6 +187,7 @@ const brandProductsRouter = require('./routes/brand-products');
 const notificationSettingsRouter = require('./routes/notification-settings');
 const inventoryRouter = require('./routes/inventory');
 const generalStockCategoriesRouter = require('./routes/general-stock-categories');
+const generalStockRouter = require('./routes/general-stock');
 const couponsRouter = require('./routes/coupons');
 const adminPaymentSettingsRouter = require('./routes/admin-payment-settings');
 // 헬스 체크 라우터 (가장 먼저, DB 체크 없이)
@@ -226,6 +227,7 @@ app.use('/api/currencies', currenciesRouter);
 app.use('/api/notification-settings', notificationSettingsRouter);
 app.use('/api', inventoryRouter);  // Inventory routes for general stock management
 app.use('/api', generalStockCategoriesRouter);  // General stock category routes
+app.use('/api', generalStockRouter);  // Company-wide general stock routes for Brand General
 app.use('/api/coupons', couponsRouter);  // Coupon management routes
 
 // GitHub Webhook for Auto-Deployment (보안: System Admin 인증 필요)
