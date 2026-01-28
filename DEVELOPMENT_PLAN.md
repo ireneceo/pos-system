@@ -1,8 +1,30 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-01-28
+> **최종 업데이트:** 2026-01-28 (21:00 UTC)
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
+
+---
+
+## ✅ 완료: 서버 안정화 및 배포 (2026-01-28 저녁)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| PM2 메모리 설정 수정 | Heap OOM 크래시 방지 (384MB → 768MB) | ✅ 완료 |
+| 운영 DB 스키마 동기화 | general_stock.owner_id, general_stock_categories.owner_id 추가 | ✅ 완료 |
+| /저장 명령어 생성 | 세션 상태 저장 명령어 추가 | ✅ 완료 |
+| 운영서버 배포 완료 | 30b405f 커밋 배포 | ✅ 완료 |
+
+### PM2 설정 변경 (ecosystem.config.js)
+
+| 항목 | 이전 | 변경 후 |
+|------|------|---------|
+| node_args | --max-old-space-size=384 | --max-old-space-size=768 |
+| max_memory_restart | 512M | 800M |
+
+**원인:** production-backend가 538MB 힙 메모리 사용 중 OOM 크래시 발생
 
 ---
 
