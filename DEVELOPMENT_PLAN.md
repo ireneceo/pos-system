@@ -2524,3 +2524,341 @@ const token = localStorage.getItem('auth_token'); // 'token' → 'auth_token'
 **개발 환경:** Development Server
 **데이터베이스:** purple_dev_db (MySQL)
 **마지막 업데이트:** 2026-01-06
+
+---
+
+## 📋 개발 예정: 재료/재고/발주 시스템 (v3.0)
+
+> **기획일:** 2026-01-28
+> **상태:** 검토 중
+
+### 1. 현재 상태 (AS-IS)
+
+| 구성요소 | 현재 상태 | 비고 |
+|---------|----------|------|
+| Supplier | ✅ 구현됨 | Brand/Restaurant별 공급업체 관리 |
+| Ingredient | ✅ 구현됨 | PAR Level, track_stock 지원 |
+| Inventory | ✅ 구현됨 | Transaction, Batch, StockTake |
+| BrandProduct | ✅ 구현됨 | Ingredient 동기화 지원 |
+| PurchaseOrder | ❌ 미구현 | InventoryBatch에 FK만 존재 |
+| PurchaseInvoice | ❌ 미구현 | 기존 Invoice는 SaaS 구독용 |
+| SOA (월정산) | ❌ 미구현 | - |
+| SupplierProduct | ❌ 미구현 | 공급업체 판매 품목 |
+
+### 2. 목표 구조 (TO-BE)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                      SUPPLIER (공급업체)                             │
+│  - SupplierProduct 등록/관리                                        │
+│  - Live Orders로 발주 수신                                          │
+│  - PurchaseInvoice 발행 → SOA 월정산                                │
+└─────────────────────────────────────────────────────────────────────┘
+                                │
+                     (거래 관계 승인)
+                                ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                   BRAND GENERAL (본사)                               │
+│  - Supplier Product → Ingredient로 등록                             │
+│  - BrandProduct 관리 (가맹점에 공급) ← 기존                          │
+│  - 가맹점 발주 Live Orders로 수신                                    │
+│  - 외부 Supplier에게 발주 가능                                       │
+└─────────────────────────────────────────────────────────────────────┘
+                                │
+                     (Brand 소속)
+                                ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                RESTAURANT ADMIN (가맹점/매장)                        │
+│  - BrandProduct 또는 SupplierProduct → Ingredient로 등록            │
+│  - 재고 관리 (track_stock=true인 Ingredient)                        │
+│  - 발주 생성 → Brand 또는 Supplier에게 전송                          │
+│  - PurchaseInvoice 수신 → 결제                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 3. 핵심 개념
+
+#### 3.1 역할별 정의
+
+| 역할 | 정의 | 공급자 역할 | 구매자 역할 |
+|------|------|-----------|-----------|
+| Supplier | 외부 공급업체 | ✅ SupplierProduct 판매 | ❌ |
+| Brand General | 프랜차이즈 본사 | ✅ BrandProduct 공급 | ✅ Supplier에게 발주 |
+| Restaurant Admin | 개별 매장 | ❌ | ✅ Brand/Supplier에게 발주 |
+
+#### 3.2 데이터 계층
+
+```
+[공급층] SupplierProduct / BrandProduct
+              ↓ "검색 → 선택 → 등록"
+[재료층] Ingredient (source_type: manual/supplier_product/brand_product)
+              ↓ track_stock = true
+[재고층] InventoryTransaction / InventoryBatch / StockAlert
+              ↓ "발주 생성"
+[발주층] PurchaseOrder → PurchaseInvoice → SOA
+```
+
+#### 3.3 기존 Invoice vs PurchaseInvoice
+
+| 항목 | Invoice (기존) | PurchaseInvoice (신규) |
+|------|---------------|----------------------|
+| 용도 | SaaS 구독료 | B2B 물품 발주 대금 |
+| 발급자 | System Admin, Brand | Supplier, Brand |
+| 결제자 | Restaurant | Restaurant, Brand |
+| 연결 대상 | PlanTemplate | PurchaseOrder |
+
+### 4. 신규 테이블
+
+| 테이블 | 용도 |
+|--------|------|
+| supplier_products | 공급업체 판매 품목 |
+| supplier_product_categories | 공급업체 상품 카테고리 |
+| trade_relationships | 거래 관계 (구매자↔판매자) |
+| purchase_orders | 발주서 |
+| purchase_order_items | 발주 품목 |
+| purchase_invoices | 발주 청구서 |
+| purchase_invoice_items | 청구 품목 |
+| statements_of_account | SOA 월정산 |
+| soa_payments | SOA 결제 기록 |
+
+### 5. 기존 테이블 수정
+
+| 테이블 | 수정 내용 |
+|--------|----------|
+| ingredients | source_type, supplier_product_id 추가 |
+| suppliers | is_external, linked_brand_id, user_id 추가 |
+| inventory_batches | purchase_order_id FK 연결 |
+
+### 6. 거래 관계 플로우
+
+#### 6.1 거래 관계 규칙
+
+| 관계 | 신청 필요 | 설명 |
+|------|----------|------|
+| Brand ↔ Restaurant | ❌ 자동연결 | Restaurant 생성 시 소속 Brand와 자동 연결, 해제 불가 |
+| Supplier ↔ Restaurant | ✅ 신청/승인 | Restaurant에서 신청 → Supplier에서 승인 |
+| Supplier ↔ Brand | ✅ 신청/승인 | Brand에서 신청 → Supplier에서 승인 |
+
+#### 6.2 거래 상태
+
+| 상태 | Badge 색상 | 가능한 액션 |
+|------|-----------|-----------|
+| 자동연결 (Brand) | 회색 Default | 발주하기 |
+| 승인대기 | 노랑 Pending | 취소 |
+| 승인됨 | 초록 Approved | 발주하기, 연결해제 |
+| 거절됨 | 빨강 Rejected | 재신청 |
+| 중단됨 | 회색 Suspended | - |
+
+#### 6.3 Restaurant > Suppliers 페이지 UI
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Suppliers                                    [+ 거래 신청]     │
+├─────────────────────────────────────────────────────────────────┤
+│  [연결된 공급업체]                                               │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │ Brand HQ (본사)              [자동연결] [발주하기]          │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │ ABC Foods                    [승인됨]   [발주하기]          │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │ Fresh Produce Co.            [승인대기]                    │ │
+│  └────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### 6.4 Supplier > Customers 페이지 UI (거래 신청 관리)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Customers                                                      │
+├─────────────────────────────────────────────────────────────────┤
+│  [Tab: 거래 신청 (2)] [Tab: 연결된 거래처]                       │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │ Restaurant ABC                                              │ │
+│  │ Brand: Purple Cafe | 신청일: 2026-01-28                    │ │
+│  │                                    [Reject]  [Approve]     │ │
+│  └────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### 6.5 승인 시 거래 조건 설정
+
+- 결제 조건: 월정산(Monthly) / 건별 후불(Net 30) / 선결제(COD)
+- 결제 기한: SOA 발행 후 N일
+- 신용 한도: RM (0 = 무제한)
+
+### 7. UI/UX 개발 가이드 (필수 준수)
+
+#### 7.1 재사용할 기존 컴포넌트
+
+| 용도 | 컴포넌트 | 위치 |
+|------|---------|------|
+| 모달 | Modal | components/common/Modal |
+| 버튼 | Button | components/common/Button |
+| 테이블 | Table | components/common/Table |
+| 뱃지 | StatusBadge | components/common/StatusBadge |
+| 카드 | Card | components/common/Card |
+| 검색 | SearchInput | components/common/SearchInput |
+| 탭 | Tabs | components/common/Tabs |
+| 폼 | Input, Select | components/common/Form |
+| 확인창 | ConfirmDialog | components/common/ConfirmDialog |
+
+#### 7.2 참고할 기존 페이지
+
+| 신규 페이지 | 참고할 기존 페이지 |
+|------------|------------------|
+| Suppliers 목록 | SuppliersPage.tsx |
+| 거래 신청 모달 | AddSupplierModal 패턴 |
+| Live Orders | OrdersPage.tsx |
+| Invoices | InvoicesPage.tsx, BrandInvoicesPage.tsx |
+
+#### 7.3 절대 금지
+
+- 새 버튼 스타일 만들기
+- 새 모달 디자인 만들기
+- 새 색상 추가
+- 기존 컴포넌트 복제 후 수정
+- inline style 사용
+
+### 8. 개발 순서 (상세)
+
+> **원칙**: 각 단계별 DB 연동 + API 테스트 + UI 테스트 완료 후 다음 단계 진행
+
+#### Phase 1: 기반 정비
+
+| # | 작업 | 테스트 항목 | 완료 |
+|---|------|-----------|:----:|
+| 1-1 | Track Stock 토글 복구 | Ingredient 카드에서 토글 ON/OFF → DB 반영 확인 | ⬜ |
+| 1-2 | Recipes 메뉴 클릭 버그 | Brand General 좌측 메뉴 정상 작동 확인 | ⬜ |
+| 1-3 | dev 서버 빌드/배포 | 프론트엔드 빌드 성공, 페이지 정상 로드 | ⬜ |
+
+#### Phase 2: DB 테이블 생성
+
+| # | 작업 | 테스트 항목 | 완료 |
+|---|------|-----------|:----:|
+| 2-1 | suppliers 테이블 수정 | is_external, linked_brand_id, user_id 컬럼 추가 확인 | ⬜ |
+| 2-2 | ingredients 테이블 수정 | source_type, supplier_product_id 컬럼 추가 확인 | ⬜ |
+| 2-3 | supplier_product_categories 생성 | 테이블 생성, CRUD 테스트 | ⬜ |
+| 2-4 | supplier_products 생성 | 테이블 생성, FK 연결, CRUD 테스트 | ⬜ |
+| 2-5 | trade_relationships 생성 | 테이블 생성, unique key 테스트 | ⬜ |
+| 2-6 | purchase_orders 생성 | 테이블 생성, 상태 ENUM 확인 | ⬜ |
+| 2-7 | purchase_order_items 생성 | 테이블 생성, FK 연결 | ⬜ |
+| 2-8 | purchase_invoices 생성 | 테이블 생성, 상태 ENUM 확인 | ⬜ |
+| 2-9 | purchase_invoice_items 생성 | 테이블 생성, FK 연결 | ⬜ |
+| 2-10 | statements_of_account 생성 | 테이블 생성, unique key (period) 테스트 | ⬜ |
+| 2-11 | soa_payments 생성 | 테이블 생성, FK 연결 | ⬜ |
+| 2-12 | inventory_batches FK 추가 | purchase_order_id FK 연결 확인 | ⬜ |
+
+#### Phase 3: Supplier 역할 및 Product
+
+| # | 작업 | 테스트 항목 | 완료 |
+|---|------|-----------|:----:|
+| 3-1 | Supplier 역할 추가 | User role_id 추가, 권한 설정 | ⬜ |
+| 3-2 | SupplierProductCategory Model | Sequelize 모델, API CRUD 테스트 | ⬜ |
+| 3-3 | SupplierProduct Model | Sequelize 모델, API CRUD 테스트 | ⬜ |
+| 3-4 | Supplier Products API | GET/POST/PUT/DELETE 전체 테스트 | ⬜ |
+| 3-5 | Supplier Dashboard 페이지 | 페이지 로드, 데이터 표시 확인 | ⬜ |
+| 3-6 | Supplier Products 페이지 | 목록 조회, 생성, 수정, 삭제 전체 테스트 | ⬜ |
+
+#### Phase 4: 거래 관계
+
+| # | 작업 | 테스트 항목 | 완료 |
+|---|------|-----------|:----:|
+| 4-1 | TradeRelationship Model | Sequelize 모델 생성 | ⬜ |
+| 4-2 | Trade API (조회) | GET 거래 관계 목록 | ⬜ |
+| 4-3 | Trade API (신청) | POST 거래 신청 → status='pending' | ⬜ |
+| 4-4 | Trade API (승인/거절) | PUT 승인 → status='approved', 거래조건 저장 | ⬜ |
+| 4-5 | Brand 자동 연결 로직 | Restaurant 생성 시 Brand 자동 연결 확인 | ⬜ |
+| 4-6 | Restaurant Suppliers 페이지 | 연결된 공급업체 목록, 상태별 표시 | ⬜ |
+| 4-7 | 거래 신청 모달 | 공급업체 검색 → 신청 → DB 저장 확인 | ⬜ |
+| 4-8 | Supplier Customers 페이지 | 거래 신청 목록, 승인/거절 버튼 | ⬜ |
+| 4-9 | 거래 승인 모달 | 거래조건 설정 → 승인 → DB 저장 확인 | ⬜ |
+| 4-10 | Brand Suppliers 페이지 | Brand General용 공급업체 관리 | ⬜ |
+
+#### Phase 5: Supplier Product → Ingredient 연동
+
+| # | 작업 | 테스트 항목 | 완료 |
+|---|------|-----------|:----:|
+| 5-1 | Ingredient Model 수정 | source_type, supplier_product_id 필드 추가 | ⬜ |
+| 5-2 | 연결된 공급업체 Product 조회 API | 승인된 거래처의 Product만 조회 | ⬜ |
+| 5-3 | "From Supplier Product" 모달 | 공급업체 선택 → Product 검색 → 선택 | ⬜ |
+| 5-4 | Ingredient 생성 로직 | source_type 자동 설정, track_stock 연동 | ⬜ |
+| 5-5 | Restaurant Ingredients 페이지 확장 | [+ From Supplier/Brand] 버튼 동작 | ⬜ |
+| 5-6 | Brand Ingredients 페이지 확장 | [+ From Supplier Product] 버튼 동작 | ⬜ |
+| 5-7 | Inventory 페이지 확장 | [+ From Supplier/Brand] 버튼 동작 | ⬜ |
+
+#### Phase 6: 발주 시스템
+
+| # | 작업 | 테스트 항목 | 완료 |
+|---|------|-----------|:----:|
+| 6-1 | PurchaseOrder Model | Sequelize 모델 생성 | ⬜ |
+| 6-2 | PurchaseOrderItem Model | Sequelize 모델 생성 | ⬜ |
+| 6-3 | PO API (CRUD) | 생성/조회/수정/삭제 테스트 | ⬜ |
+| 6-4 | PO API (상태변경) | submit/confirm/ship/receive 테스트 | ⬜ |
+| 6-5 | PO 번호 자동생성 | PO-{YYMMDD}{NNN} 포맷 확인 | ⬜ |
+| 6-6 | Restaurant Ordering 페이지 | 발주 목록, 상태별 필터 | ⬜ |
+| 6-7 | 발주 생성 모달 | 공급업체 선택 → 품목 추가 → 저장 | ⬜ |
+| 6-8 | 발주 제출 | Submit → status='submitted' → 알림 | ⬜ |
+| 6-9 | Supplier Live Orders 페이지 | 신규 주문 목록, 상태별 탭 | ⬜ |
+| 6-10 | 주문 확인/처리 | Confirm → Processing → Ship 상태 변경 | ⬜ |
+| 6-11 | Brand Live Orders 페이지 | 가맹점 발주 수신 | ⬜ |
+| 6-12 | 입고 처리 모달 | 품목별 입고수량 입력 → 저장 | ⬜ |
+| 6-13 | InventoryBatch 자동 생성 | 입고 완료 시 Batch 생성 확인 | ⬜ |
+| 6-14 | InventoryTransaction 생성 | type='purchase' 트랜잭션 확인 | ⬜ |
+| 6-15 | current_stock 업데이트 | Ingredient 재고 증가 확인 | ⬜ |
+
+#### Phase 7: 청구/결제 시스템
+
+| # | 작업 | 테스트 항목 | 완료 |
+|---|------|-----------|:----:|
+| 7-1 | PurchaseInvoice Model | Sequelize 모델 생성 | ⬜ |
+| 7-2 | PurchaseInvoiceItem Model | Sequelize 모델 생성 | ⬜ |
+| 7-3 | PI API (CRUD) | 생성/조회/수정 테스트 | ⬜ |
+| 7-4 | PI API (상태변경) | issue/submit-payment/confirm 테스트 | ⬜ |
+| 7-5 | PI 번호 자동생성 | PI-{prefix}{YYMMDD}{NNN} 포맷 확인 | ⬜ |
+| 7-6 | 자동 Invoice 발행 | 입고 완료 → PI 자동 생성 (설정에 따라) | ⬜ |
+| 7-7 | Supplier Invoices 페이지 | 청구서 목록, 발행, 결제확인 | ⬜ |
+| 7-8 | Restaurant Purchase Invoices 탭 | 받은 청구서 목록 | ⬜ |
+| 7-9 | 결제 제출 모달 | 결제방법, 참조번호, 영수증 업로드 | ⬜ |
+| 7-10 | 결제 확인/거절 | Supplier측 확인 → status='paid' | ⬜ |
+
+#### Phase 8: SOA 월정산
+
+| # | 작업 | 테스트 항목 | 완료 |
+|---|------|-----------|:----:|
+| 8-1 | StatementOfAccount Model | Sequelize 모델 생성 | ⬜ |
+| 8-2 | SOAPayment Model | Sequelize 모델 생성 | ⬜ |
+| 8-3 | SOA API (생성) | 수동 SOA 생성 테스트 | ⬜ |
+| 8-4 | SOA API (조회) | 판매자/구매자별 조회 | ⬜ |
+| 8-5 | SOA 자동 생성 로직 | 월정산 거래처 Invoice 묶기 | ⬜ |
+| 8-6 | 이월 잔액 계산 | 전월 미납분 자동 계산 | ⬜ |
+| 8-7 | Cron Job 설정 | 매월 1일 자동 생성 | ⬜ |
+| 8-8 | Supplier SOA 페이지 | SOA 목록, 발행, 결제기록 | ⬜ |
+| 8-9 | Restaurant SOA 페이지 | SOA 조회, 결제 | ⬜ |
+| 8-10 | 부분 결제 처리 | partial_paid 상태 테스트 | ⬜ |
+| 8-11 | 연체 처리 | due_date 경과 → overdue 상태 | ⬜ |
+
+### 9. 결정 필요 사항
+
+1. **Supplier 로그인**: 새 역할 ID vs 별도 Portal
+2. **결제 수단**: 은행 이체만 / 온라인 결제 추가
+3. **신용 한도**: 거래처별 설정 여부
+4. **알림 채널**: 이메일/SMS/인앱
+
+### 10. 시스템 부하 체크리스트
+
+| # | 항목 | 확인 내용 | 상태 |
+|---|------|----------|:----:|
+| 1 | DB 테이블 증가 | 11개 테이블 추가 시 용량/성능 | ⬜ |
+| 2 | 인덱스 설계 | 조회 성능용 인덱스 | ⬜ |
+| 3 | Cron Job 부하 | SOA 월정산 자동 생성 | ⬜ |
+| 4 | 동시 접속 | Supplier Portal 추가 | ⬜ |
+| 5 | API 응답 시간 | 발주/Live Orders 조회 | ⬜ |
+| 6 | 파일 스토리지 | 영수증 이미지 저장 | ⬜ |
+| 7 | 알림 발송 | 대량 발송 시 부하 | ⬜ |
+| 8 | 트랜잭션 처리 | 발주→입고→Invoice 연쇄 | ⬜ |
+| 9 | 권한 체계 | Supplier 역할 추가 영향 | ⬜ |
+| 10 | 데이터 마이그레이션 | 기존 데이터 호환성 | ⬜ |
+

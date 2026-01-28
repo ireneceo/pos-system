@@ -756,6 +756,47 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
     }
   };
 
+  // Track Stock 토글 핸들러
+  const handleTrackStockToggle = async (ingredient: Ingredient, newValue: boolean) => {
+    // 브랜드 재료는 수정 불가
+    if (isItemReadOnly(ingredient)) return;
+
+    try {
+      let url = '';
+      if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
+        url = `/api/brands/${brandId}/ingredients/${ingredient.id}`;
+      } else if (user?.role === 'Restaurant Admin') {
+        url = `/api/restaurants/${effectiveRestaurantId}/ingredients/${ingredient.id}`;
+      }
+
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ...ingredient,
+          track_stock: newValue
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // 로컬 상태 업데이트
+        setIngredients(prev => prev.map(ing =>
+          ing.id === ingredient.id ? { ...ing, track_stock: newValue } : ing
+        ));
+      } else {
+        alert(data.error || 'Failed to update track stock');
+      }
+    } catch (error) {
+      console.error('Failed to toggle track stock:', error);
+    }
+  };
+
   const filteredIngredients = ingredients.filter(ingredient => {
     const matchesSearch = ingredient.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' ||
@@ -842,9 +883,6 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                     {isRestaurantAdmin && ingredient.owner_type === 'brand' && (
                       <BrandBadge>Brand</BrandBadge>
                     )}
-                    {ingredient.track_stock && (
-                      <TrackStockBadge>Stock</TrackStockBadge>
-                    )}
                   </IngredientName>
                   <IngredientCategoryBadge>
                     {ingredient.ingredientCategory?.emoji} {ingredient.ingredientCategory?.name || 'Uncategorized'}
@@ -874,6 +912,25 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                   </InfoRow>
                 )}
               </IngredientInfo>
+
+              {/* Track Stock 토글 */}
+              <TrackStockRow>
+                <TrackStockLabel>Track in Inventory</TrackStockLabel>
+                <ToggleSwitch>
+                  <ToggleInput
+                    type="checkbox"
+                    checked={ingredient.track_stock || false}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      if (!isItemReadOnly(ingredient)) {
+                        handleTrackStockToggle(ingredient, e.target.checked);
+                      }
+                    }}
+                    disabled={isItemReadOnly(ingredient)}
+                  />
+                  <ToggleSlider />
+                </ToggleSwitch>
+              </TrackStockRow>
 
               {!isItemReadOnly(ingredient) && (
                 <IngredientActions>

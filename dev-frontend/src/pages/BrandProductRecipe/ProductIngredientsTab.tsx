@@ -118,6 +118,67 @@ const TrackStockBadge = styled.span`
   margin-left: 8px;
 `;
 
+const TrackStockRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #F6F9FC;
+  border-radius: 8px;
+  margin-top: 12px;
+`;
+
+const TrackStockLabel = styled.span`
+  font-size: 13px;
+  font-weight: 500;
+  color: #0A2540;
+`;
+
+const ToggleSwitch = styled.label`
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 22px;
+`;
+
+const ToggleInput = styled.input`
+  opacity: 0;
+  width: 0;
+  height: 0;
+`;
+
+const ToggleSlider = styled.span`
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #E6EBF1;
+  transition: 0.3s;
+  border-radius: 22px;
+
+  &:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+  }
+
+  ${ToggleInput}:checked + & {
+    background-color: #635BFF;
+  }
+
+  ${ToggleInput}:checked + &:before {
+    transform: translateX(22px);
+  }
+`;
+
 const IngredientInfo = styled.div`
   margin: 12px 0;
 `;
@@ -457,6 +518,30 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
       alert('Failed to save ingredient');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Track Stock 토글 핸들러
+  const handleTrackStockToggle = async (ingredient: Ingredient, newValue: boolean) => {
+    try {
+      const response = await fetchAPI(`/api/product-ingredients/${ingredient.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          ...ingredient,
+          track_stock: newValue
+        })
+      });
+
+      if (response.success) {
+        // 로컬 상태 업데이트
+        setIngredients(prev => prev.map(ing =>
+          ing.id === ingredient.id ? { ...ing, track_stock: newValue } : ing
+        ));
+      } else {
+        alert(response.error || 'Failed to update track stock');
+      }
+    } catch (error) {
+      console.error('Failed to toggle track stock:', error);
     }
   };
 
