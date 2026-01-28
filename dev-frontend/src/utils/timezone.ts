@@ -100,6 +100,50 @@ export const getNow = (operationSettings?: any): Date => {
 };
 
 /**
+ * Get today's date string (YYYY-MM-DD) in restaurant's timezone
+ * This is crucial for date filters to work correctly across timezones
+ */
+export const getTodayInTimezone = (timezone: string = 'Asia/Kuala_Lumpur'): string => {
+  try {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    return formatter.format(now); // Returns YYYY-MM-DD format
+  } catch {
+    // Fallback to local date if timezone is invalid
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  }
+};
+
+/**
+ * Get a date string (YYYY-MM-DD) with offset in restaurant's timezone
+ * @param daysOffset - Number of days to offset (negative for past, positive for future)
+ * @param timezone - Restaurant's timezone
+ */
+export const getDateInTimezone = (daysOffset: number = 0, timezone: string = 'Asia/Kuala_Lumpur'): string => {
+  try {
+    const date = new Date();
+    date.setDate(date.getDate() + daysOffset);
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    return formatter.format(date);
+  } catch {
+    const date = new Date();
+    date.setDate(date.getDate() + daysOffset);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+};
+
+/**
  * Calculate time elapsed (for "X mins ago" displays)
  * Always uses UTC for calculation to avoid timezone issues
  */

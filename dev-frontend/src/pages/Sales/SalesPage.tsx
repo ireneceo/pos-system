@@ -5,6 +5,7 @@ import { useStaff } from '../../contexts/StaffContext';
 import { useOrders } from '../../contexts/OrderContext';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
+import { getTodayInTimezone, getDateInTimezone } from '../../utils/timezone';
 import { TabContainer, Tab } from '../../components/UI';
 
 // 매출 데이터 타입 정의
@@ -955,28 +956,26 @@ const SalesPage: React.FC = () => {
 
   const getFilteredTransactions = () => {
     let filtered = transactions;
-    
-    // 날짜 필터
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-    
+
+    // 날짜 필터 - 레스토랑 타임존 기준
+    const timezone = operationSettings?.timeZone || 'Asia/Kuala_Lumpur';
+    const todayStr = getTodayInTimezone(timezone);
+
     switch (dateFilter) {
       case 'today':
         filtered = filtered.filter(t => t.date === todayStr);
         break;
       case 'yesterday':
-        const yesterday = new Date(today);
-        yesterday.setDate(today.getDate() - 1);
-        filtered = filtered.filter(t => t.date === yesterday.toISOString().split('T')[0]);
+        const yesterdayStr = getDateInTimezone(-1, timezone);
+        filtered = filtered.filter(t => t.date === yesterdayStr);
         break;
       case 'this_week':
-        const weekStart = new Date(today);
-        weekStart.setDate(today.getDate() - today.getDay());
-        filtered = filtered.filter(t => new Date(t.date) >= weekStart);
+        const weekStartStr = getDateInTimezone(-6, timezone);
+        filtered = filtered.filter(t => t.date >= weekStartStr && t.date <= todayStr);
         break;
       case 'this_month':
-        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-        filtered = filtered.filter(t => new Date(t.date) >= monthStart);
+        const monthStartStr = getDateInTimezone(-29, timezone);
+        filtered = filtered.filter(t => t.date >= monthStartStr && t.date <= todayStr);
         break;
       case 'custom':
         if (startDate && endDate) {

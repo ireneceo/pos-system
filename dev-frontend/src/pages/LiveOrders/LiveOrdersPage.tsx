@@ -985,18 +985,32 @@ const LiveOrdersPage: React.FC = () => {
   // Membership settings (used by PaymentModal for membership info display)
   const [membershipSettings, setMembershipSettings] = useState<any>(null);
 
-  // Date filter state (default to 'today')
+  // Helper function to get current date in restaurant's timezone
+  const getDateInTimezone = (timezone: string = 'Asia/Kuala_Lumpur') => {
+    try {
+      const now = new Date();
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      return formatter.format(now); // Returns YYYY-MM-DD format
+    } catch {
+      // Fallback to local date if timezone is invalid
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }
+  };
+
+  // Date filter state (default to 'today' in restaurant's timezone)
   const [activePeriod, setActivePeriod] = useState<PeriodType>('today');
   const [dateRange, setDateRange] = useState(() => {
-    // Get today's date in LOCAL timezone (not UTC)
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const localDate = `${year}-${month}-${day}`;
+    // Initial value will be updated by useEffect when operationSettings loads
+    const today = getDateInTimezone();
     return {
-      start: localDate,
-      end: localDate
+      start: today,
+      end: today
     };
   });
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
@@ -1303,55 +1317,71 @@ const LiveOrdersPage: React.FC = () => {
     fetchOrderCounts();
   }, [fetchOrderCounts]);
 
-  // Initialize date filter to 'today' on mount
+  // Initialize date filter to 'today' when operationSettings loads (uses restaurant's timezone)
   useEffect(() => {
-    handlePeriodChange('today');
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (operationSettings?.timeZone) {
+      handlePeriodChange('today');
+    }
+  }, [operationSettings?.timeZone]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset page to 1 when tab or date filter changes
   useEffect(() => {
     setCurrentPage(1);
   }, [activeTab, dateRange.start, dateRange.end, activePeriod]);
 
-  // Handle period change
+  // Handle period change - uses restaurant's timezone
   const handlePeriodChange = (period: PeriodType) => {
     setActivePeriod(period);
     setIsCustomDateRange(false);
 
-    const now = new Date();
-    let start = new Date();
+    const timezone = operationSettings?.timeZone || 'Asia/Kuala_Lumpur';
 
-    // Helper to format date as YYYY-MM-DD in LOCAL timezone
-    const formatLocalDate = (date: Date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
+    // Helper to get date in restaurant's timezone
+    const getDateInTz = (daysOffset: number = 0) => {
+      try {
+        const date = new Date();
+        date.setDate(date.getDate() + daysOffset);
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+          timeZone: timezone,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        });
+        return formatter.format(date);
+      } catch {
+        const date = new Date();
+        date.setDate(date.getDate() + daysOffset);
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      }
     };
+
+    const todayInTz = getDateInTz(0);
+    let startDate: string;
 
     switch (period) {
       case 'today':
-        start = new Date(now);
-        start.setHours(0, 0, 0, 0);
+        startDate = todayInTz;
         break;
       case 'week':
-        start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        startDate = getDateInTz(-7);
         break;
       case 'month':
-        start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        startDate = getDateInTz(-30);
         break;
       case 'year':
-        start = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        startDate = getDateInTz(-365);
         break;
       case 'all':
-        // Default to 5 years ago for 'all' period
-        start = new Date(now.getFullYear() - 5, 0, 1);
+        // 5 years ago
+        startDate = getDateInTz(-365 * 5);
         break;
+      default:
+        startDate = todayInTz;
     }
 
     setDateRange({
-      start: formatLocalDate(start),
-      end: formatLocalDate(now)
+      start: startDate,
+      end: todayInTz
     });
   };
 
