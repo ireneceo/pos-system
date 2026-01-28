@@ -285,7 +285,7 @@ router.post('/restaurants/:restaurantId/inventory/general-stock/:itemId/receive'
     const addedQty = parseFloat(quantity);
     const newStock = currentStock + addedQty;
 
-    await item.update({ current_stock: newStock });
+    await item.update({ current_stock: newStock, last_stock_take_at: new Date() });
 
     // Record transaction (if GeneralStockTransaction model supports restaurant_id)
     try {
@@ -345,7 +345,7 @@ router.post('/restaurants/:restaurantId/inventory/general-stock/:itemId/adjust',
     const currentStock = parseFloat(item.current_stock) || 0;
     const newStock = Math.max(0, parseFloat(new_quantity));
 
-    await item.update({ current_stock: newStock });
+    await item.update({ current_stock: newStock, last_stock_take_at: new Date() });
 
     res.json({
       success: true,
@@ -687,7 +687,7 @@ router.post('/restaurants/:restaurantId/inventory/receive', async (req, res) => 
 
     // Update ingredient stock
     await Ingredient.update(
-      { current_stock: newStock },
+      { current_stock: newStock, last_stock_take_at: new Date() },
       { where: { id: ingredient_id }, transaction }
     );
 
@@ -768,7 +768,7 @@ router.post('/restaurants/:restaurantId/inventory/waste', async (req, res) => {
 
     // Update ingredient stock
     await Ingredient.update(
-      { current_stock: newStock },
+      { current_stock: newStock, last_stock_take_at: new Date() },
       { where: { id: ingredient_id }, transaction }
     );
 
@@ -817,7 +817,7 @@ router.post('/restaurants/:restaurantId/inventory/adjust', async (req, res) => {
 
     // Update ingredient stock
     await Ingredient.update(
-      { current_stock: newStock },
+      { current_stock: newStock, last_stock_take_at: new Date() },
       { where: { id: ingredient_id }, transaction }
     );
 

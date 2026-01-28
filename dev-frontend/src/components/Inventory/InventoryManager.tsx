@@ -709,6 +709,13 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   const [editingStockValue, setEditingStockValue] = useState('');
   const [editingStockType, setEditingStockType] = useState<'ingredient' | 'general_stock'>('ingredient');
 
+  // Helper to calculate stock status
+  const calculateStockStatus = (currentStock: number, minStock: number): 'normal' | 'low_stock' | 'out_of_stock' => {
+    if (currentStock <= 0) return 'out_of_stock';
+    if (currentStock <= minStock) return 'low_stock';
+    return 'normal';
+  };
+
   // Reorder quantities
   const [orderQuantities, setOrderQuantities] = useState<{[key: number]: string}>({});
 
@@ -947,9 +954,20 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
       });
 
       if (response.success) {
+        // Update local state instead of full refresh
+        const now = new Date().toISOString();
+        setInventory(prev => prev.map(item => {
+          const savedItem = initialStockItems[item.id];
+          if (savedItem && parseFloat(savedItem.quantity) > 0) {
+            const newStock = parseFloat(savedItem.quantity);
+            const newMinStock = parseFloat(savedItem.min_stock) || 0;
+            const newStatus = calculateStockStatus(newStock, newMinStock);
+            return { ...item, current_stock: newStock, min_stock: newMinStock, stock_status: newStatus, last_stock_take_at: now };
+          }
+          return item;
+        }));
         setShowInitialStockModal(false);
         setNeedsInitialSetup(false);
-        fetchData();
       }
     } catch (error) {
       console.error('Failed to save initial stock:', error);
@@ -1002,8 +1020,23 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
       });
 
       if (response.success) {
+        // Update local state instead of full refresh
+        const newMinStock = parseFloat(settingsForm.min_stock) || 0;
+        setInventory(prev => prev.map(item => {
+          if (item.id === settingsIngredient.id) {
+            const newStatus = calculateStockStatus(item.current_stock, newMinStock);
+            return {
+              ...item,
+              lead_time_days: parseInt(settingsForm.lead_time_days) || 1,
+              safety_stock_percent: parseFloat(settingsForm.safety_stock_percent) || 20,
+              manual_daily_usage: settingsForm.manual_daily_usage ? parseFloat(settingsForm.manual_daily_usage) : null,
+              min_stock: newMinStock,
+              stock_status: newStatus
+            };
+          }
+          return item;
+        }));
         setShowSettingsModal(false);
-        fetchData();
       }
     } catch (error) {
       console.error('Failed to save settings:', error);
@@ -1049,6 +1082,16 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
       }
 
       if (response.success) {
+        // Update local state instead of full refresh
+        const newStock = response.data?.current_stock ??
+          (selectedIngredient.current_stock + parseFloat(quantity));
+        const newStatus = calculateStockStatus(newStock, selectedIngredient.min_stock);
+        const now = new Date().toISOString();
+        setInventory(prev => prev.map(item =>
+          item.id === selectedIngredient.id
+            ? { ...item, current_stock: newStock, stock_status: newStatus, last_stock_take_at: now }
+            : item
+        ));
         setShowReceiveModal(false);
         setSelectedIngredient(null);
         setQuantity('');
@@ -1056,7 +1099,6 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
         setBatchNumber('');
         setManufactureDate('');
         setExpiryDate('');
-        fetchData();
       }
     } catch (error) {
       console.error('Failed to receive stock:', error);
@@ -1087,11 +1129,20 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
       }
 
       if (response.success) {
+        // Update local state instead of full refresh
+        const newStock = response.data?.current_stock ??
+          Math.max(0, selectedIngredient.current_stock - parseFloat(quantity));
+        const newStatus = calculateStockStatus(newStock, selectedIngredient.min_stock);
+        const now = new Date().toISOString();
+        setInventory(prev => prev.map(item =>
+          item.id === selectedIngredient.id
+            ? { ...item, current_stock: newStock, stock_status: newStatus, last_stock_take_at: now }
+            : item
+        ));
         setShowWasteModal(false);
         setSelectedIngredient(null);
         setQuantity('');
         setNotes('');
-        fetchData();
       }
     } catch (error) {
       console.error('Failed to record waste:', error);
@@ -1107,7 +1158,8 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
       });
 
       if (response.success) {
-        fetchData();
+        // Update local state - remove the resolved alert
+        setAlerts(prev => prev.filter(alert => alert.id !== alertId));
       }
     } catch (error) {
       console.error('Failed to resolve alert:', error);
@@ -1166,6 +1218,12 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
           method: 'POST',
           body: JSON.stringify(body)
         });
+      } else if (isBrandGeneralMode && editingStockType === 'general_stock') {
+        // Brand General mode - General Stock adjust
+        response = await authFetch(`/api/general-stock/${id}/adjust`, {
+          method: 'POST',
+          body: JSON.stringify({ new_quantity: newValue, reason: 'Stock adjustment' })
+        });
       } else {
         // Brand mode - update ProductIngredient directly
         response = await authFetch(`/api/product-ingredients/${id}`, {
@@ -1176,14 +1234,23 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
 
       if (response.success) {
         // Update local state instead of full refresh to preserve scroll position
+        const now = new Date().toISOString();
         if (editingStockType === 'ingredient') {
-          setInventory(prev => prev.map(item =>
-            item.id === id ? { ...item, current_stock: newValue } : item
-          ));
+          setInventory(prev => prev.map(item => {
+            if (item.id === id) {
+              const newStatus = calculateStockStatus(newValue, item.min_stock);
+              return { ...item, current_stock: newValue, stock_status: newStatus, last_stock_take_at: now };
+            }
+            return item;
+          }));
         } else {
-          setGeneralStockInventory(prev => prev.map(item =>
-            item.id === id ? { ...item, current_stock: newValue } : item
-          ));
+          setGeneralStockInventory(prev => prev.map(item => {
+            if (item.id === id) {
+              const newStatus = calculateStockStatus(newValue, item.min_stock);
+              return { ...item, current_stock: newValue, stock_status: newStatus, last_stock_take_at: now };
+            }
+            return item;
+          }));
         }
       }
     } catch (error) {
@@ -1293,9 +1360,22 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
       : [])
   ];
 
-  const formatDate = (dateString: string | null) => {
+  const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString();
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '-';
+      return date.toLocaleDateString();
+    } catch {
+      return '-';
+    }
+  };
+
+  // Format stock quantity to always show 2 decimal places
+  const formatStock = (value: number | string | null | undefined): string => {
+    const num = typeof value === 'string' ? parseFloat(value) : (value ?? 0);
+    if (isNaN(num)) return '0.00';
+    return num.toFixed(2);
   };
 
   const getStatusLabel = (status: string) => {
@@ -1383,7 +1463,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                         <AlertInfo>
                           <AlertTitle>{alert.ingredient.name}</AlertTitle>
                           <AlertDetail>
-                            Current: {alert.current_stock} {alert.ingredient.unit} / Min: {alert.min_stock} {alert.ingredient.unit}
+                            Current: {formatStock(alert.current_stock)} {alert.ingredient.unit} / Min: {formatStock(alert.min_stock)} {alert.ingredient.unit}
                           </AlertDetail>
                         </AlertInfo>
                         <ActionButtons>
@@ -1473,9 +1553,9 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                     {suggestions.slice(0, 10).map(s => (
                       <TableRow key={s.ingredient.id} columns="2fr 1fr 1fr 1fr 1fr 100px 150px">
                         <div>{s.ingredient.name}</div>
-                        <div>{s.current_stock} {s.ingredient.unit}</div>
+                        <div>{formatStock(s.current_stock)} {s.ingredient.unit}</div>
                         <div>{(parseFloat(String(s.avg_daily_usage)) || 0).toFixed(2)} {s.ingredient.unit}/day</div>
-                        <div style={{ fontWeight: 600 }}>{s.suggested_qty} {s.ingredient.unit}</div>
+                        <div style={{ fontWeight: 600 }}>{formatStock(s.suggested_qty)} {s.ingredient.unit}</div>
                         <div>{formatCurrency(s.estimated_cost, selectedCurrency)}</div>
                         <div>
                           <UrgencyBadge level={s.urgency}>
@@ -1602,13 +1682,14 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                     return matchesSearch && matchesStatus;
                   }).length})</SectionTitle>}
                   <Table style={{ marginBottom: '24px' }}>
-                    <InventoryTableHeader columns="2.5fr 1fr 1fr 1fr 1fr 1fr 150px 120px">
+                    <InventoryTableHeader columns="2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 120px">
                       <span>Item</span>
                       <span>Status</span>
                       <span>Current Stock</span>
                       <span>Min Stock</span>
                       <span>Unit Cost</span>
                       <span>Supplier</span>
+                      <span>Last Stock Take</span>
                       <span>Order</span>
                       <span>Actions</span>
                     </InventoryTableHeader>
@@ -1619,7 +1700,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                         return matchesSearch && matchesStatus;
                       })
                       .map(item => (
-                      <InventoryTableRow key={`general-stock-${item.id}`} columns="2.5fr 1fr 1fr 1fr 1fr 1fr 150px 120px">
+                      <InventoryTableRow key={`general-stock-${item.id}`} columns="2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 120px">
                         <MobileGrid>
                           <MobileValue>
                             <MobileLabel>Item</MobileLabel>
@@ -1661,7 +1742,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                               </div>
                             ) : (
                               <EditableStock onClick={() => startEditingStock(item.id, item.current_stock, 'general_stock')}>
-                                <span style={{ fontWeight: 600, color: '#0A2540' }}>{item.current_stock}</span>
+                                <span style={{ fontWeight: 600, color: '#0A2540' }}>{formatStock(item.current_stock)}</span>
                                 <span style={{ fontSize: '13px', color: '#6B7280' }}>{item.stock_unit}</span>
                               </EditableStock>
                             )}
@@ -1669,7 +1750,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                           <MobileValue>
                             <MobileLabel>Min Stock</MobileLabel>
                             <div style={{ color: '#6B7280' }}>
-                              {item.min_stock} {item.stock_unit}
+                              {formatStock(item.min_stock)} {item.stock_unit}
                             </div>
                           </MobileValue>
                           <MobileValue>
@@ -1682,6 +1763,12 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                             <MobileLabel>Supplier</MobileLabel>
                             <div style={{ color: item.supplier_name ? '#0A2540' : '#9CA3AF', fontSize: '13px' }}>
                               {item.supplier_name || '-'}
+                            </div>
+                          </MobileValue>
+                          <MobileValue>
+                            <MobileLabel>Last Stock Take</MobileLabel>
+                            <div style={{ color: '#6B7280' }}>
+                              {formatDate(item.last_stock_take_at)}
                             </div>
                           </MobileValue>
                         </MobileGrid>
@@ -1854,7 +1941,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                             </div>
                           ) : (
                             <EditableStock onClick={() => startEditingStock(item.id, item.current_stock, 'ingredient')}>
-                              <span style={{ fontWeight: 600, color: '#0A2540' }}>{item.current_stock}</span>
+                              <span style={{ fontWeight: 600, color: '#0A2540' }}>{formatStock(item.current_stock)}</span>
                               <span style={{ fontSize: '13px', color: '#6B7280' }}>{item.unit}</span>
                             </EditableStock>
                           )}
@@ -1862,7 +1949,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                         <MobileValue>
                           <MobileLabel>Min / Prediction</MobileLabel>
                           <div style={{ color: '#6B7280', marginBottom: '4px' }}>
-                            Min: {item.min_stock} {item.unit}
+                            Min: {formatStock(item.min_stock)} {item.unit}
                           </div>
                           <ConfidenceBadge level={item.prediction_confidence || 'none'}>
                             {getConfidenceLabel(item.prediction_confidence || 'none')}
@@ -1987,7 +2074,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
             </UIFormGroup>
             <UIFormGroup>
               <FormLabel>Current Stock</FormLabel>
-              <FormInput type="text" value={`${selectedIngredient.current_stock} ${selectedIngredient.unit}`} disabled />
+              <FormInput type="text" value={`${formatStock(selectedIngredient.current_stock)} ${selectedIngredient.unit}`} disabled />
             </UIFormGroup>
             <UIFormGroup>
               <FormLabel>Quantity Received ({selectedIngredient.unit}) *</FormLabel>
@@ -2076,7 +2163,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
             </UIFormGroup>
             <UIFormGroup>
               <FormLabel>Current Stock</FormLabel>
-              <FormInput type="text" value={`${selectedIngredient.current_stock} ${selectedIngredient.unit}`} disabled />
+              <FormInput type="text" value={`${formatStock(selectedIngredient.current_stock)} ${selectedIngredient.unit}`} disabled />
             </UIFormGroup>
             <UIFormGroup>
               <FormLabel>Waste Quantity ({selectedIngredient.unit}) *</FormLabel>
@@ -2206,7 +2293,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
             </UIFormGroup>
             <UIFormGroup>
               <FormLabel>Current Stock</FormLabel>
-              <FormInput type="text" value={`${selectedGeneralStock.current_stock} ${selectedGeneralStock.stock_unit}`} disabled />
+              <FormInput type="text" value={`${formatStock(selectedGeneralStock.current_stock)} ${selectedGeneralStock.stock_unit}`} disabled />
             </UIFormGroup>
             <UIFormGroup>
               <FormLabel>Quantity Received ({selectedGeneralStock.stock_unit}) *</FormLabel>
@@ -2289,13 +2376,22 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                       })
                     });
                     if (response.success) {
+                      // Update local state instead of full refresh
+                      const newStock = response.data?.current_stock ??
+                        (parseFloat(String(selectedGeneralStock.current_stock)) + parseFloat(generalStockQuantity));
+                      const newStatus = calculateStockStatus(newStock, selectedGeneralStock.min_stock);
+                      const now = new Date().toISOString();
+                      setGeneralStockInventory(prev => prev.map(item =>
+                        item.id === selectedGeneralStock.id
+                          ? { ...item, current_stock: newStock, stock_status: newStatus, last_stock_take_at: now }
+                          : item
+                      ));
                       setShowGeneralStockReceiveModal(false);
                       setGeneralStockQuantity('');
                       setGeneralStockNotes('');
                       setGeneralStockBatchNumber('');
                       setGeneralStockManufactureDate('');
                       setGeneralStockExpiryDate('');
-                      fetchData();
                     }
                   } catch (error) {
                     console.error('Failed to receive general stock:', error);
@@ -2324,19 +2420,19 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                 <div>
                   <div style={{ fontSize: '13px', color: '#6B7280' }}>Current Stock</div>
                   <div style={{ fontSize: '18px', fontWeight: 600, color: '#0A2540' }}>
-                    {orderItem.current_stock} {orderItem.unit}
+                    {formatStock(orderItem.current_stock)} {orderItem.unit}
                   </div>
                 </div>
                 <div>
                   <div style={{ fontSize: '13px', color: '#6B7280' }}>Min Stock</div>
                   <div style={{ fontSize: '18px', fontWeight: 600, color: '#6B7280' }}>
-                    {orderItem.min_stock} {orderItem.unit}
+                    {formatStock(orderItem.min_stock)} {orderItem.unit}
                   </div>
                 </div>
               </div>
               {orderItem.min_order && orderItem.min_order > 0 && (
                 <div style={{ fontSize: '12px', color: '#16A34A', marginTop: '8px' }}>
-                  Minimum order quantity: {orderItem.min_order} {orderItem.unit}
+                  Minimum order quantity: {formatStock(orderItem.min_order)} {orderItem.unit}
                 </div>
               )}
               {orderItem.supplier_name && (
@@ -2653,7 +2749,18 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                     supplier_id: generalStockForm.supplier_id ? parseInt(generalStockForm.supplier_id) : null
                   })
                 });
-                if (response.success) {
+                if (response.success && response.data) {
+                  // Add new item to local state instead of full refresh
+                  const newItem = {
+                    ...response.data,
+                    stock_unit: response.data.stock_unit || response.data.unit || generalStockForm.stock_unit,
+                    stock_status: calculateStockStatus(
+                      parseFloat(generalStockForm.current_stock) || 0,
+                      parseFloat(generalStockForm.min_stock) || 0
+                    ),
+                    last_stock_take_at: new Date().toISOString()
+                  };
+                  setGeneralStockInventory(prev => [...prev, newItem]);
                   setShowAddGeneralStockModal(false);
                   setGeneralStockForm({
                     name: '',
@@ -2667,7 +2774,6 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                     min_order: '',
                     supplier_id: ''
                   });
-                  fetchData();
                 }
               } catch (error) {
                 console.error('Failed to add general stock:', error);
@@ -2842,7 +2948,29 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                     supplier_id: generalStockForm.supplier_id ? parseInt(generalStockForm.supplier_id) : null
                   })
                 });
-                if (response.success) {
+                if (response.success && editingGeneralStock) {
+                  // Update local state instead of full refresh
+                  const newCurrentStock = parseFloat(generalStockForm.current_stock) || 0;
+                  const newMinStock = parseFloat(generalStockForm.min_stock) || 0;
+                  setGeneralStockInventory(prev => prev.map(item => {
+                    if (item.id === editingGeneralStock.id) {
+                      return {
+                        ...item,
+                        name: generalStockForm.name,
+                        code: generalStockForm.code || null,
+                        image_url: generalStockForm.image_url || null,
+                        stock_unit: generalStockForm.stock_unit,
+                        unit_cost: parseFloat(generalStockForm.unit_cost) || 0,
+                        category: generalStockForm.category || 'Other',
+                        current_stock: newCurrentStock,
+                        min_stock: newMinStock,
+                        min_order: parseFloat(generalStockForm.min_order) || 0,
+                        supplier_id: generalStockForm.supplier_id ? parseInt(generalStockForm.supplier_id) : null,
+                        stock_status: calculateStockStatus(newCurrentStock, newMinStock)
+                      };
+                    }
+                    return item;
+                  }));
                   setShowEditGeneralStockModal(false);
                   setEditingGeneralStock(null);
                   setGeneralStockForm({
@@ -2857,7 +2985,6 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                     min_order: '',
                     supplier_id: ''
                   });
-                  fetchData();
                 }
               } catch (error) {
                 console.error('Failed to update general stock:', error);

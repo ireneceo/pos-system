@@ -191,7 +191,7 @@ router.post('/general-stock/:itemId/receive', authenticateToken, async (req, res
     const addedQty = parseFloat(quantity);
     const newStock = currentStock + addedQty;
 
-    await item.update({ current_stock: newStock });
+    await item.update({ current_stock: newStock, last_stock_take_at: new Date() });
 
     // Record transaction
     const { GeneralStockTransaction } = require('../models');
@@ -246,7 +246,7 @@ router.post('/general-stock/:itemId/adjust', authenticateToken, async (req, res)
     const newStock = Math.max(0, parseFloat(new_quantity));
     const quantityChange = newStock - currentStock;
 
-    await item.update({ current_stock: newStock });
+    await item.update({ current_stock: newStock, last_stock_take_at: new Date() });
 
     // Record transaction
     const { GeneralStockTransaction } = require('../models');
