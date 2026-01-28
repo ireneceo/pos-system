@@ -1159,7 +1159,12 @@ const PaymentPage: React.FC = () => {
               customer_name: currentCustomer ? currentCustomer.name : (guestInfo ? guestInfo.name || 'Guest' : 'Guest'),
               customer_phone: currentCustomer ? currentCustomer.phone : (guestInfo ? guestInfo.phone || null : null),
               table_number: selectedTable || null,
+              subtotal: subtotal,
               total_amount: total,
+              tax: tax,
+              tax_rate: operationSettings.taxEnabled ? operationSettings.taxRate : 0,
+              service_charge: serviceCharge,
+              service_charge_rate: operationSettings.serviceChargeEnabled ? operationSettings.serviceChargeRate : 0,
               takeaway_charge: takeawayCharge,
               delivery_fee: deliveryFee,
               points_used: pointsToUse > 0 ? pointsToUse : null,
@@ -1183,15 +1188,27 @@ const PaymentPage: React.FC = () => {
               payment_status: 'pending',
               kitchen_ready: false,
               order_date: new Date(),
-              order_items: cartItems.map(item => ({
-                name: item.menuItem.code ? `${item.menuItem.code} ${item.menuItem.name}` : item.menuItem.name,
-                quantity: item.quantity,
-                price: item.menuItem.price,
-                options: getOptionNames(item),
-                special_instructions: item.specialInstructions || null,
-                is_set_menu: (item.menuItem as any).is_set_menu || false,
-                set_items: (item.menuItem as any).set_items || []
-              }))
+              order_items: cartItems.map(item => {
+                // Calculate unit price including options
+                const unitPriceWithOptions = item.totalPrice / item.quantity;
+                // Get option prices for storage
+                const optionDetails = item.selectedOptionsData?.map(opt => ({
+                  name: opt.name,
+                  price: opt.price
+                })) || [];
+                return {
+                  name: item.menuItem.code ? `${item.menuItem.code} ${item.menuItem.name}` : item.menuItem.name,
+                  quantity: item.quantity,
+                  price: unitPriceWithOptions,  // Unit price including options
+                  basePrice: item.menuItem.price,  // Base menu price
+                  optionPrice: unitPriceWithOptions - item.menuItem.price,  // Total option price per unit
+                  options: getOptionNames(item),
+                  optionDetails: optionDetails,  // Full option data with prices
+                  special_instructions: item.specialInstructions || null,
+                  is_set_menu: (item.menuItem as any).is_set_menu || false,
+                  set_items: (item.menuItem as any).set_items || []
+                };
+              })
             };
 
             console.log('💾 Saving order to DATABASE...');
@@ -1314,7 +1331,12 @@ const PaymentPage: React.FC = () => {
             customer_name: currentCustomer ? currentCustomer.name : (guestInfo ? guestInfo.name || 'Guest' : 'Guest'),
             customer_phone: currentCustomer ? currentCustomer.phone : (guestInfo ? guestInfo.phone || null : null),
             table_number: selectedTable || null,
+            subtotal: subtotal,
             total_amount: total,
+            tax: tax,
+            tax_rate: operationSettings.taxEnabled ? operationSettings.taxRate : 0,
+            service_charge: serviceCharge,
+            service_charge_rate: operationSettings.serviceChargeEnabled ? operationSettings.serviceChargeRate : 0,
             takeaway_charge: takeawayCharge,
             delivery_fee: deliveryFee,
             points_used: pointsToUse > 0 ? pointsToUse : null,
@@ -1335,13 +1357,23 @@ const PaymentPage: React.FC = () => {
             payment_status: 'pending',
             kitchen_ready: false,
             order_date: new Date(),
-            order_items: cartItems.map(item => ({
-              name: item.menuItem.name,
-              quantity: item.quantity,
-              price: item.menuItem.price,
-              options: getOptionNames(item),
-              special_instructions: item.specialInstructions || null
-            })),
+            order_items: cartItems.map(item => {
+              const unitPriceWithOptions = item.totalPrice / item.quantity;
+              const optionDetails = item.selectedOptionsData?.map(opt => ({
+                name: opt.name,
+                price: opt.price
+              })) || [];
+              return {
+                name: item.menuItem.name,
+                quantity: item.quantity,
+                price: unitPriceWithOptions,
+                basePrice: item.menuItem.price,
+                optionPrice: unitPriceWithOptions - item.menuItem.price,
+                options: getOptionNames(item),
+                optionDetails: optionDetails,
+                special_instructions: item.specialInstructions || null
+              };
+            }),
             customer_id: currentCustomer?.id || null
           };
 
@@ -1402,7 +1434,12 @@ const PaymentPage: React.FC = () => {
               customer_name: currentCustomer ? currentCustomer.name : (guestInfo ? guestInfo.name || 'Guest' : 'Guest'),
               customer_phone: currentCustomer ? currentCustomer.phone : (guestInfo ? guestInfo.phone || null : null),
               table_number: selectedTable || null,
+              subtotal: subtotal,
               total_amount: total,
+              tax: tax,
+              tax_rate: operationSettings.taxEnabled ? operationSettings.taxRate : 0,
+              service_charge: serviceCharge,
+              service_charge_rate: operationSettings.serviceChargeEnabled ? operationSettings.serviceChargeRate : 0,
               takeaway_charge: takeawayCharge,
               delivery_fee: deliveryFee,
               points_used: pointsToUse > 0 ? pointsToUse : null,
@@ -1425,15 +1462,25 @@ const PaymentPage: React.FC = () => {
               payment_status: 'completed',
               kitchen_ready: false,
               order_date: new Date(),
-              order_items: cartItems.map(item => ({
-                name: item.menuItem.code ? `${item.menuItem.code} ${item.menuItem.name}` : item.menuItem.name,
-                quantity: item.quantity,
-                price: item.menuItem.price,
-                options: getOptionNames(item),
-                special_instructions: item.specialInstructions || null,
-                is_set_menu: (item.menuItem as any).is_set_menu || false,
-                set_items: (item.menuItem as any).set_items || []
-              }))
+              order_items: cartItems.map(item => {
+                const unitPriceWithOptions = item.totalPrice / item.quantity;
+                const optionDetails = item.selectedOptionsData?.map(opt => ({
+                  name: opt.name,
+                  price: opt.price
+                })) || [];
+                return {
+                  name: item.menuItem.code ? `${item.menuItem.code} ${item.menuItem.name}` : item.menuItem.name,
+                  quantity: item.quantity,
+                  price: unitPriceWithOptions,
+                  basePrice: item.menuItem.price,
+                  optionPrice: unitPriceWithOptions - item.menuItem.price,
+                  options: getOptionNames(item),
+                  optionDetails: optionDetails,
+                  special_instructions: item.specialInstructions || null,
+                  is_set_menu: (item.menuItem as any).is_set_menu || false,
+                  set_items: (item.menuItem as any).set_items || []
+                };
+              })
             };
 
             console.log('💾 Saving card/FPX order to DATABASE...');
