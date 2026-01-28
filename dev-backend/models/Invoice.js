@@ -25,11 +25,13 @@ Invoice.init({
   },
   billing_period_start: {
     type: DataTypes.DATE,
-    allowNull: false
+    allowNull: true,
+    comment: 'Null for manual invoices without billing period'
   },
   billing_period_end: {
     type: DataTypes.DATE,
-    allowNull: false
+    allowNull: true,
+    comment: 'Null for manual invoices without billing period'
   },
   due_date: {
     type: DataTypes.DATE,

@@ -2976,8 +2976,8 @@ const LiveOrdersPage: React.FC = () => {
                         )}
                       </OrderNumber>
                       <CustomerInfo>
-                        {order.customer_name || 'Guest'}<br />
-                        {order.customer_phone || ((order as any).source === 'mobile' ? 'Mobile Order' : 'POS Terminal')}
+                        {order.customer_name || 'Guest'}
+                        {order.customer_phone && <><br />{order.customer_phone}</>}
                         {order.table_number && (
                           <><br /><span style={{ color: '#635BFF', fontWeight: 500 }}>Table: {order.table_number}</span></>
                         )}
@@ -3567,10 +3567,12 @@ const LiveOrdersPage: React.FC = () => {
                       <DetailLabel>Name:</DetailLabel>
                       <DetailValue>{selectedOrder.customer_name || 'Guest'}</DetailValue>
                     </DetailRow>
-                    <DetailRow>
-                      <DetailLabel>Phone:</DetailLabel>
-                      <DetailValue>{selectedOrder.customer_phone || 'N/A'}</DetailValue>
-                    </DetailRow>
+                    {selectedOrder.customer_phone && (
+                      <DetailRow>
+                        <DetailLabel>Phone:</DetailLabel>
+                        <DetailValue>{selectedOrder.customer_phone}</DetailValue>
+                      </DetailRow>
+                    )}
                     <DetailRow>
                       <DetailLabel>Order Type:</DetailLabel>
                       <DetailValue>{selectedOrder.order_type?.replace('_', ' ').toUpperCase()}</DetailValue>
@@ -4010,10 +4012,12 @@ const LiveOrdersPage: React.FC = () => {
                 <strong>Customer:</strong>
                 <span>{selectedOrder.customer_name || 'Guest'}</span>
               </BillRow>
-              <BillRow>
-                <strong>Phone:</strong>
-                <span>{selectedOrder.customer_phone || 'N/A'}</span>
-              </BillRow>
+              {selectedOrder.customer_phone && (
+                <BillRow>
+                  <strong>Phone:</strong>
+                  <span>{selectedOrder.customer_phone}</span>
+                </BillRow>
+              )}
               <BillRow>
                 <strong>Order Type:</strong>
                 <span>{selectedOrder.order_type === 'dine_in' ? 'DINE IN' : selectedOrder.order_type?.toUpperCase()}</span>
@@ -4219,7 +4223,7 @@ const LiveOrdersPage: React.FC = () => {
               }, 100);
             }}
             total={Number(orderForPayment.total_amount)}
-            subtotal={Number((orderForPayment as any).subtotal || 0)}
+            subtotal={Number((orderForPayment as any).subtotal || orderForPayment.total_amount || 0)}
             tax={Number((orderForPayment as any).tax || 0)}
             serviceCharge={Number((orderForPayment as any).service_charge || 0)}
             discountAmount={Number((orderForPayment as any).discount || 0)}

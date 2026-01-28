@@ -432,7 +432,13 @@ router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
         stripe: payment_settings.stripe || { enabled: false },
         paypal: payment_settings.paypal || { enabled: false },
         bankTransfer: payment_settings.bankTransfer || {},
-        qrPayment: payment_settings.qrPayment || {}
+        qrPayment: payment_settings.qrPayment || {},
+        // 추가 청구 설정 (3개 항목)
+        additionalCharges: payment_settings.additionalCharges || [
+          { enabled: false, name: '', rate: 0 },
+          { enabled: false, name: '', rate: 0 },
+          { enabled: false, name: '', rate: 0 }
+        ]
       };
       brand.payment_settings = validPaymentSettings;
     }

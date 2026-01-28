@@ -50,6 +50,11 @@ Product.init({
     type: DataTypes.BOOLEAN,
     defaultValue: false
   },
+  is_active: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+    comment: 'Whether the menu item is active (visible to customers)'
+  },
   // Stock management fields
   track_stock: {
     type: DataTypes.BOOLEAN,

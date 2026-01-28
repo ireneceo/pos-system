@@ -5,7 +5,7 @@ import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/Fi
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI/Modal';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { fetchAPI } from '../../utils/api';
 
 interface ProductRecipesTabProps {
@@ -1036,7 +1036,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
                     const costPerUnit = ing.unit_cost / (ing.base_quantity || 1);
                     return (
                       <option key={ing.id} value={ing.id}>
-                        {ing.name} ({formatCurrency(costPerUnit, selectedCurrency)}/{ing.unit})
+                        {ing.name} ({getCurrencySymbol(selectedCurrency)} {costPerUnit.toFixed(2)}/{ing.unit})
                       </option>
                     );
                   })}

@@ -76,6 +76,55 @@ async function generateInvoiceNumber(issuerType = 'system_admin', issuerId = nul
   return `${prefix}${dateStr}${String(nextNumber).padStart(3, '0')}`;
 }
 
+// Helper function to get additional charges from issuer's payment settings
+async function getAdditionalCharges(issuerType, issuerId) {
+  try {
+    let additionalCharges = [];
+
+    if (issuerType === 'system_admin') {
+      // Get from system settings
+      const paymentSettings = await SystemSettings.findOne({
+        where: { setting_key: PAYMENT_SETTINGS_KEY }
+      });
+
+      if (paymentSettings?.setting_value?.additionalCharges) {
+        additionalCharges = paymentSettings.setting_value.additionalCharges;
+      }
+    } else if (issuerType === 'brand' && issuerId) {
+      // Get from brand's payment_settings
+      const brand = await Brand.findByPk(issuerId);
+      if (brand?.payment_settings?.additionalCharges) {
+        additionalCharges = brand.payment_settings.additionalCharges;
+      }
+    } else if (issuerType === 'foodcourt' && issuerId) {
+      // Get from foodcourt's payment_settings
+      const foodcourt = await Foodcourt.findByPk(issuerId);
+      if (foodcourt?.payment_settings?.additionalCharges) {
+        additionalCharges = foodcourt.payment_settings.additionalCharges;
+      }
+    }
+
+    // Filter only enabled charges and return with calculated info
+    return additionalCharges.filter(charge => charge.enabled && charge.name && charge.rate > 0);
+  } catch (error) {
+    console.error('Error fetching additional charges:', error);
+    return [];
+  }
+}
+
+// Helper function to calculate additional charges amounts
+function calculateAdditionalCharges(subtotal, additionalChargesConfig) {
+  if (!additionalChargesConfig || !Array.isArray(additionalChargesConfig)) {
+    return [];
+  }
+
+  return additionalChargesConfig.map(charge => ({
+    name: charge.name,
+    rate: parseFloat(charge.rate) || 0,
+    amount: Math.round(subtotal * (parseFloat(charge.rate) || 0) / 100 * 100) / 100
+  }));
+}
+
 // Helper function to get bank info from Payment Settings based on currency
 async function getBankInfoByCurrency(currency) {
   try {
@@ -505,7 +554,9 @@ router.get('/', authenticateToken, async (req, res) => {
         paymentMethod: invoice.payment_method,
         transactionId: invoice.transaction_id,
         receiptUrl: invoice.receipt_url,
-        hasPaymentInfo: !!invoice.payment_method || !!invoice.receipt_url
+        hasPaymentInfo: !!invoice.payment_method || !!invoice.receipt_url,
+        // Additional charges (Tax, Service Charge, etc.)
+        additionalCharges: invoice.additional_charges || []
       };
     });
 
@@ -523,14 +574,91 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // Get all invoices for a restaurant
+// Returns invoices where restaurant_id matches OR (payer_type='restaurant' AND payer_id matches)
+// Excludes draft invoices (not yet sent to recipient)
 router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
     const invoices = await Invoice.findAll({
-      where: { restaurant_id: restaurantId },
+      where: {
+        [Op.and]: [
+          {
+            [Op.or]: [
+              { restaurant_id: restaurantId },
+              {
+                payer_type: 'restaurant',
+                payer_id: restaurantId
+              }
+            ]
+          },
+          {
+            status: { [Op.ne]: 'draft' }  // Exclude draft invoices
+          }
+        ]
+      },
+      include: [{
+        model: Restaurant,
+        as: 'restaurant',
+        attributes: ['id', 'name', 'address', 'city', 'state', 'postal_code', 'country', 'phone', 'email', 'manager_name']
+      }, {
+        model: InvoiceItem,
+        as: 'items'
+      }],
       order: [['createdAt', 'DESC']]
     });
-    res.json(invoices);
+
+    // Transform invoices with issuer/payer company info
+    const transformedInvoices = await Promise.all(invoices.map(async (invoice) => {
+      const issuerInfo = await getIssuerCompanyInfo(invoice.issuer_type, invoice.issuer_id, invoice.currency || 'MYR');
+      const payerInfo = await getPayerCompanyInfo(invoice.payer_type, invoice.payer_id, invoice.restaurant);
+
+      // Calculate amounts from items if available
+      const itemsTotal = invoice.items?.reduce((sum, item) => sum + parseFloat(item.calculated_amount || item.fixed_amount || 0), 0) || 0;
+      const taxTotal = invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0;
+
+      // Transform items to frontend format
+      const transformedItems = (invoice.items || []).map(item => ({
+        id: item.id?.toString(),
+        description: item.description || item.item_name || 'Service',
+        quantity: item.quantity || 1,
+        unitPrice: parseFloat(item.unit_price || item.calculated_amount || item.fixed_amount || 0),
+        taxRate: parseFloat(item.tax_rate || 0),
+        taxAmount: parseFloat(item.tax_amount || 0),
+        total: parseFloat(item.calculated_amount || item.fixed_amount || 0) + parseFloat(item.tax_amount || 0)
+      }));
+
+      return {
+        id: invoice.id?.toString(),
+        invoice_number: invoice.invoice_number,
+        status: invoice.status,
+        currency: invoice.currency || 'MYR',
+        subtotal: itemsTotal || parseFloat(invoice.total_amount) - taxTotal,
+        tax_amount: taxTotal || 0,
+        total_amount: parseFloat(invoice.total_amount),
+        issued_at: invoice.issued_at,
+        due_date: invoice.due_date,
+        paid_at: invoice.paid_at,
+        billing_period_start: invoice.billing_period_start,
+        billing_period_end: invoice.billing_period_end,
+        issuer_type: invoice.issuer_type,
+        issuer_id: invoice.issuer_id,
+        issuer_name: issuerInfo?.name || 'Issuer',
+        payer_type: invoice.payer_type,
+        payer_id: invoice.payer_id,
+        restaurant_id: invoice.restaurant_id,
+        category_display_name: invoice.category_display_name || invoice.invoice_category || 'Service',
+        payment_method: invoice.payment_method,
+        transaction_id: invoice.transaction_id,
+        receipt_url: invoice.receipt_url,
+        items: transformedItems,
+        issuerInfo: issuerInfo,
+        payerInfo: payerInfo,
+        // Additional charges (Tax, Service Charge, etc.)
+        additional_charges: invoice.additional_charges || []
+      };
+    }));
+
+    res.json(transformedInvoices);
   } catch (error) {
     console.error('Error fetching invoices:', error);
     res.status(500).json({ error: 'Failed to fetch invoices' });
@@ -984,21 +1112,28 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
       console.log(`  Excluding invoices issued by this foodcourt`);
     }
     // Restaurant Admin sees invoices for their restaurant
+    // Includes invoices where restaurant_id matches OR (payer_type='restaurant' AND payer_id matches)
     else if (req.user.role === 'Restaurant Admin') {
       const userRestaurantId = req.user.restaurantId || req.user.restaurant_id;
       if (!userRestaurantId) {
         return res.json([]);
       }
       whereClause = {
-        restaurant_id: userRestaurantId
+        [Op.or]: [
+          { restaurant_id: userRestaurantId },
+          {
+            payer_type: 'restaurant',
+            payer_id: userRestaurantId
+          }
+        ]
       };
     }
     else {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    // Exclude draft invoices - they haven't been sent yet
-    whereClause.status = { [Op.ne]: 'draft' };
+    // Only show invoices that need payment (exclude draft, paid, cancelled)
+    whereClause.status = { [Op.in]: ['pending_payment', 'payment_submitted', 'overdue'] };
 
     const invoices = await Invoice.findAll({
       where: whereClause,
@@ -1104,7 +1239,9 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
             unitPrice: parseFloat(item.calculated_amount || item.fixed_amount || 0),
             total: parseFloat(item.total_amount || 0)
           };
-        }) || []
+        }) || [],
+        // Additional charges (Tax, Service Charge, etc.)
+        additionalCharges: invoice.additional_charges || []
       };
     }));
 
@@ -1193,7 +1330,9 @@ router.get('/:id', authenticateToken, async (req, res) => {
       receiptUrl: invoice.receipt_url,
       confirmedBy: invoice.confirmed_by?.toString(),
       confirmedAt: invoice.confirmed_at,
-      rejectionReason: invoice.rejection_reason
+      rejectionReason: invoice.rejection_reason,
+      // Additional charges (Tax, Service Charge, etc.)
+      additionalCharges: invoice.additional_charges || []
     };
 
     res.json({ invoice: transformedInvoice, items });
