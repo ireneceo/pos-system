@@ -99,15 +99,25 @@
    ```
 3. **먼저 등록된 라우터가 우선 실행됨** - 나중에 등록된 라우터 코드는 실행되지 않음
 
-### 현재 중복 라우터 현황 (정리 필요)
+### 라우터 파일 구조 (2025-01-28 정리 완료)
 
-| 파일 | 용도 | 비고 |
-|------|------|------|
-| `inventory-routes.js` | Restaurant 기본 재고 API | server.js에서 먼저 등록 |
-| `inventory.js` | Restaurant 고급 재고 API | 중복 엔드포인트 있음 (실행 안됨) |
-| `general-stock.js` | Brand General 재고 API | 회사 전체용 |
+| 기능 | 파일 | 마운트 경로 | 용도 |
+|------|------|-------------|------|
+| **Inventory** | `inventory-routes.js` | `/api/restaurants` | Restaurant 재고 전체 (통합됨) |
+| **General Stock** | `general-stock.js` | `/api` | Brand General 회사 전체 재고 |
+| **GS Categories** | `general-stock-categories.js` | `/api` | Restaurant용 GS 카테고리 |
+| **Product Recipe** | `product-recipe.js` | `/api` | Restaurant 상품-레시피 연결 |
+| **Product Recipes** | `product-recipes.js` | `/api/product-recipes` | Brand General 레시피 CRUD |
 
-**수정 시**: 반드시 실제 실행되는 라우터 파일을 수정할 것!
+### 비슷한 이름 라우터 구분
+
+| 파일쌍 | 차이점 |
+|--------|--------|
+| `product-recipe.js` vs `product-recipes.js` | 전자는 Restaurant용 상품-레시피 연결, 후자는 Brand General용 레시피 CRUD |
+| `general-stock.js` vs `general-stock-categories.js` | 전자는 Brand General 재고, 후자는 Restaurant용 카테고리 |
+| `ingredient-categories.js` vs `product-ingredient-categories.js` | 전자는 레시피용 재료 카테고리, 후자는 상품 재료 카테고리 |
+
+**수정 시**: 반드시 역할(Restaurant vs Brand General)과 마운트 경로를 확인할 것!
 
 ## UI 개발 규칙
 
@@ -115,6 +125,40 @@
 - **페이지 내 안내 메시지에 이모지를 사용하지 않는다**
 - 경고 아이콘, 장식용 이모지 등을 UI에 넣지 않는다
 - 텍스트만으로 명확하게 전달한다
+
+## 백업 정책 (필수!)
+
+### 백업 종류 및 보관 기간
+
+| 백업 유형 | 위치 | 보관 기간 | 생성 시점 |
+|----------|------|----------|----------|
+| **일일 개발 백업** | `/var/www/backups/dev-daily/` | 7일 | `/개발완료` 실행 시 |
+| **운영 배포 백업** | `/var/www/backups/YYYYMMDD_HHMMSS/` | 30일 | `/배포` 실행 시 |
+| **Git** | GitHub | 영구 | 매 커밋 |
+
+### 백업 정리 규칙
+
+```bash
+# 일일 백업: 7일 이상 된 것 삭제
+find /var/www/backups/dev-daily -type d -mtime +7 -exec rm -rf {} +
+
+# 운영 백업: 30일 이상 된 것 삭제 (수동 확인 후)
+find /var/www/backups -maxdepth 1 -type d -name "202*" -mtime +30
+```
+
+### 롤백 방법
+
+**개발 코드 롤백:**
+```bash
+# 백업에서 복원
+tar -xzf /var/www/backups/dev-daily/YYYYMMDD/dev-backend.tar.gz -C /var/www
+pm2 restart purple-dev-backend
+```
+
+**운영 롤백:**
+```bash
+./rollback-production.sh YYYYMMDD_HHMMSS
+```
 
 ## 환경변수 정책
 

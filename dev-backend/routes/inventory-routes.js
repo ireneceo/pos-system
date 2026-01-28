@@ -252,13 +252,23 @@ router.post('/:restaurantId/inventory/initial', async (req, res) => {
   }
 });
 
-// POST /api/restaurants/:restaurantId/inventory/receive - 입고 처리
+// POST /api/restaurants/:restaurantId/inventory/receive - 입고 처리 (배치 정보 포함)
 router.post('/:restaurantId/inventory/receive', async (req, res) => {
   const transaction = await database.sequelize.transaction();
 
   try {
     const { restaurantId } = req.params;
-    const { ingredient_id, quantity, notes } = req.body;
+    const {
+      ingredient_id,
+      quantity,
+      notes,
+      // Batch fields
+      batch_number,
+      manufacture_date,
+      expiry_date,
+      unit_cost,
+      supplier_id
+    } = req.body;
     const userId = req.user.id;
 
     const ingredient = await Ingredient.findByPk(ingredient_id);
@@ -267,15 +277,34 @@ router.post('/:restaurantId/inventory/receive', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Ingredient not found' });
     }
 
-    const addQty = parseFloat(quantity) || 0;
-    const currentStock = parseFloat(ingredient.current_stock) || 0;
-    const newStock = currentStock + addQty;
+    // Round to 2 decimal places for consistency
+    const addQty = Math.round((parseFloat(quantity) || 0) * 100) / 100;
+    const currentStock = Math.round((parseFloat(ingredient.current_stock) || 0) * 100) / 100;
+    const newStock = Math.round((currentStock + addQty) * 100) / 100;
 
     // Update ingredient stock
     await Ingredient.update(
-      { current_stock: newStock },
+      { current_stock: newStock, last_stock_take_at: new Date() },
       { where: { id: ingredient_id }, transaction }
     );
+
+    // Create inventory batch for FIFO tracking
+    const batch = await InventoryBatch.create({
+      restaurant_id: restaurantId,
+      ingredient_id: ingredient_id,
+      batch_number: batch_number || null,
+      initial_quantity: addQty,
+      remaining_quantity: addQty,
+      unit: ingredient.unit,
+      unit_cost: unit_cost || ingredient.unit_cost || 0,
+      manufacture_date: manufacture_date || null,
+      expiry_date: expiry_date || null,
+      received_date: new Date(),
+      status: 'active',
+      supplier_id: supplier_id || ingredient.supplier_id || null,
+      notes: notes || null,
+      created_by: userId
+    }, { transaction });
 
     // Create transaction record
     await InventoryTransaction.create({
@@ -302,7 +331,12 @@ router.post('/:restaurantId/inventory/receive', async (req, res) => {
     );
 
     await transaction.commit();
-    res.json({ success: true, message: 'Stock received successfully', new_stock: newStock });
+    res.json({
+      success: true,
+      message: 'Stock received successfully',
+      new_stock: newStock,
+      batch_id: batch.id
+    });
   } catch (error) {
     await transaction.rollback();
     console.error('Receive stock error:', error);
