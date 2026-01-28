@@ -1954,11 +1954,11 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
               onCategoryChange={() => setGeneralStockCategoryRefreshKey(k => k + 1)}
             />
           ) : (
-            mode === 'restaurant' && restaurantId ? (
-              <TransactionHistory restaurantId={restaurantId} currency={selectedCurrency} />
-            ) : (
-              <EmptyState>Transaction history is not available in brand mode.</EmptyState>
-            )
+            <TransactionHistory
+              restaurantId={mode === 'restaurant' ? restaurantId : undefined}
+              isBrandGeneralMode={isBrandGeneralMode}
+              currency={selectedCurrency}
+            />
           )}
         </Content>
 
@@ -2911,7 +2911,7 @@ interface Transaction {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const TransactionHistory: React.FC<TransactionHistoryProps> = ({ restaurantId, currency }) => {
+const TransactionHistory: React.FC<TransactionHistoryProps> = ({ restaurantId, isBrandGeneralMode, currency }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -2919,12 +2919,16 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ restaurantId, c
     const fetchTransactions = async () => {
       try {
         const token = localStorage.getItem('auth_token');
-        const res = await fetch(`/api/restaurants/${restaurantId}/inventory/transactions?limit=50`, {
+        // Brand General mode uses company-wide API, Restaurant mode uses restaurant API
+        const endpoint = isBrandGeneralMode
+          ? '/api/general-stock/transactions?limit=50'
+          : `/api/restaurants/${restaurantId}/inventory/transactions?limit=50`;
+        const res = await fetch(endpoint, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const response = await res.json();
         if (response.success) {
-          setTransactions(response.data);
+          setTransactions(response.data || []);
         }
       } catch (error) {
         console.error('Failed to fetch transactions:', error);
@@ -2933,8 +2937,10 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ restaurantId, c
       }
     };
 
-    fetchTransactions();
-  }, [restaurantId]);
+    if (restaurantId || isBrandGeneralMode) {
+      fetchTransactions();
+    }
+  }, [restaurantId, isBrandGeneralMode]);
 
   const getTypeLabel = (type: string) => {
     switch (type) {

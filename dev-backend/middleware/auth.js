@@ -25,11 +25,13 @@ const authenticateToken = async (req, res, next) => {
     }
     console.log('🔐 [AUTH] Verifying JWT...');
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('✅ [AUTH] JWT decoded, userId:', decoded.userId);
+    // Support both 'userId' and 'id' in token payload for compatibility
+    const userId = decoded.userId || decoded.id;
+    console.log('✅ [AUTH] JWT decoded, userId:', userId);
 
     // Get user information from database
     console.log('🔍 [AUTH] Looking up user...');
-    const user = await User.findByPk(decoded.userId);
+    const user = await User.findByPk(userId);
     console.log('✅ [AUTH] User lookup complete:', user ? user.email : 'NOT FOUND');
     if (!user) {
       return res.status(401).json({ error: 'Invalid token - user not found' });
@@ -146,7 +148,9 @@ const optionalAuthenticateToken = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findByPk(decoded.userId);
+    // Support both 'userId' and 'id' in token payload for compatibility
+    const userId = decoded.userId || decoded.id;
+    const user = await User.findByPk(userId);
 
     if (user) {
       req.user = {

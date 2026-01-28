@@ -123,6 +123,55 @@ router.post('/general-stock', authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/general-stock/transactions - 회사 전체 General Stock 트랜잭션 내역
+// NOTE: This route must be defined BEFORE routes with :itemId parameter
+router.get('/general-stock/transactions', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const limit = parseInt(req.query.limit) || 50;
+
+    // 브랜드제너럴의 General Stock 트랜잭션 조회
+    const { GeneralStockTransaction } = require('../models');
+
+    // Check if model exists
+    if (!GeneralStockTransaction) {
+      return res.json({ success: true, data: [] });
+    }
+
+    const transactions = await GeneralStockTransaction.findAll({
+      where: { owner_id: userId },
+      include: [{
+        model: GeneralStock,
+        as: 'generalStock',
+        attributes: ['id', 'name', 'unit']
+      }],
+      order: [['created_at', 'DESC']],
+      limit
+    });
+
+    const formattedTransactions = transactions.map(t => ({
+      id: t.id,
+      transaction_type: t.transaction_type,
+      quantity_change: parseFloat(t.quantity_change),
+      unit: t.unit,
+      stock_after: parseFloat(t.stock_after),
+      notes: t.notes,
+      created_at: t.created_at,
+      ingredient: t.generalStock ? {
+        id: t.generalStock.id,
+        name: t.generalStock.name,
+        unit: t.generalStock.unit
+      } : null
+    }));
+
+    res.json({ success: true, data: formattedTransactions });
+  } catch (error) {
+    console.error('Get general stock transactions error:', error);
+    // Return empty array if table doesn't exist yet
+    res.json({ success: true, data: [] });
+  }
+});
+
 // POST /api/general-stock/:itemId/receive - General Stock 입고
 router.post('/general-stock/:itemId/receive', authenticateToken, async (req, res) => {
   try {

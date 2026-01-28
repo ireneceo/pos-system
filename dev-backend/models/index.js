@@ -43,6 +43,7 @@ const StockAlert = require('./StockAlert');
 const InventoryBatch = require('./InventoryBatch');
 const GeneralStock = require('./GeneralStock');
 const GeneralStockCategory = require('./GeneralStockCategory');
+const GeneralStockTransaction = require('./GeneralStockTransaction');
 const ProductRecipe = require('./ProductRecipe');
 const ProductIngredient = require('./ProductIngredient');
 const ProductRecipeCategory = require('./ProductRecipeCategory');
@@ -337,6 +338,10 @@ Brand.hasMany(GeneralStockCategory, { foreignKey: 'brand_id', as: 'generalStockC
 GeneralStockCategory.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
 Restaurant.hasMany(GeneralStockCategory, { foreignKey: 'restaurant_id', as: 'generalStockCategories' });
 
+// GeneralStockTransaction associations
+GeneralStockTransaction.belongsTo(GeneralStock, { foreignKey: 'general_stock_id', as: 'generalStock' });
+GeneralStock.hasMany(GeneralStockTransaction, { foreignKey: 'general_stock_id', as: 'transactions' });
+
 // ProductRecipe associations
 ProductRecipe.belongsTo(ProductRecipeCategory, { foreignKey: 'category_id', as: 'category' });
 ProductRecipeCategory.hasMany(ProductRecipe, { foreignKey: 'category_id', as: 'recipes' });
@@ -413,6 +418,7 @@ module.exports = {
   InventoryBatch,
   GeneralStock,
   GeneralStockCategory,
+  GeneralStockTransaction,
   ProductRecipe,
   ProductIngredient,
   ProductRecipeCategory,
