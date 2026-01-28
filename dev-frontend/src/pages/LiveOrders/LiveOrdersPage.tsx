@@ -94,7 +94,7 @@ interface DbOrder {
   table_number: string | null;
   pager_number: string | null;
   total_amount: number;
-  status: 'outstanding' | 'awaiting_payment' | 'pending' | 'preparing' | 'ready' | 'served' | 'completed' | 'cancelled';
+  status: 'outstanding' | 'pending' | 'preparing' | 'ready' | 'served' | 'completed' | 'cancelled';
   order_type: 'dine_in' | 'takeaway' | 'pickup' | 'delivery';
   scheduled_pickup_time?: string | null;
   payment_method: string | null;
@@ -439,7 +439,7 @@ const StatusBadge = styled.span<{ status: string }>`
   font-weight: 500;
   background: ${props => {
     switch(props.status) {
-      case 'awaiting_payment': return '#FEF3C7';
+      case 'outstanding': return '#FEF3C7';
       case 'pending': return '#FEF3C7';
       case 'preparing': return '#DBEAFE';
       case 'ready': return '#D1FAE5';
@@ -451,7 +451,7 @@ const StatusBadge = styled.span<{ status: string }>`
   }};
   color: ${props => {
     switch(props.status) {
-      case 'awaiting_payment': return '#F59E0B';
+      case 'outstanding': return '#F59E0B';
       case 'pending': return '#92400E';
       case 'preparing': return '#1E40AF';
       case 'ready': return '#065F46';
@@ -1490,24 +1490,18 @@ const LiveOrdersPage: React.FC = () => {
   }, [user?.restaurantId, fetchMembershipSettings]);
 
   // Helper function to determine if order is Outstanding (not yet sent to kitchen)
-  // Mobile order creates orders with status='outstanding', POS creates with status='awaiting_payment'
-  // Only checks status, NOT payment_status - they are independent
   const isOutstanding = (order: DbOrder) => {
-    return order.status === 'outstanding' ||
-           order.status === 'awaiting_payment';
+    return order.status === 'outstanding';
   };
 
   // Helper function to get display status
   const getDisplayStatus = (order: DbOrder): string => {
-    if (isOutstanding(order)) {
-      return 'awaiting_payment';
-    }
     return order.status;
   };
 
   // Format status for display (replace underscores with spaces, capitalize properly)
   const formatStatusDisplay = (status: string): string => {
-    if (status === 'awaiting_payment') {
+    if (status === 'outstanding') {
       return 'Outstanding';
     }
     // Replace underscores with spaces and capitalize each word
@@ -1650,7 +1644,6 @@ const LiveOrdersPage: React.FC = () => {
   const getNextStatus = (currentStatus: DbOrder['status'], paymentStatus?: string): DbOrder['status'] | null => {
     const statusFlow: Record<string, DbOrder['status'] | null> = {
       outstanding: 'pending',
-      awaiting_payment: 'pending',
       pending: 'preparing',
       preparing: 'ready',
       ready: paymentStatus === 'completed' ? 'completed' : 'served',
@@ -1666,7 +1659,6 @@ const LiveOrdersPage: React.FC = () => {
     if (orderType === 'delivery') {
       const deliveryLabels: Record<string, string> = {
         outstanding: 'Proceed Without Payment',
-        awaiting_payment: 'Proceed Without Payment',
         pending: 'Start Preparing',
         preparing: 'Mark Ready',
         ready: 'Out for Delivery',
@@ -1679,7 +1671,6 @@ const LiveOrdersPage: React.FC = () => {
 
     const labels: Record<string, string> = {
       outstanding: 'Proceed Without Payment',
-      awaiting_payment: 'Proceed Without Payment',
       pending: 'Start Cooking',
       preparing: 'Mark Ready',
       ready: 'Served',
@@ -2371,9 +2362,8 @@ const LiveOrdersPage: React.FC = () => {
         throw new Error('Failed to confirm payment');
       }
 
-      // 결제 완료 후 outstanding/awaiting_payment이면 pending으로 변경 (주방에 전송)
-      // payment_verification_pending 상태 (pay at counter)도 동일하게 처리
-      if (selectedOrder.status === 'awaiting_payment' || selectedOrder.status === 'outstanding') {
+      // 결제 완료 후 outstanding이면 pending으로 변경 (주방에 전송)
+      if (selectedOrder.status === 'outstanding') {
         await fetch(`/api/orders/${selectedOrder.id}/status`, getFetchOptions({
           method: 'PATCH',
           body: JSON.stringify({
@@ -2411,8 +2401,8 @@ const LiveOrdersPage: React.FC = () => {
         throw new Error('Failed to confirm payment');
       }
 
-      // 결제 완료 후 outstanding/awaiting_payment이면 pending으로 변경 (주방에 전송)
-      if (order && (order.status === 'awaiting_payment' || order.status === 'outstanding')) {
+      // 결제 완료 후 outstanding이면 pending으로 변경 (주방에 전송)
+      if (order && order.status === 'outstanding') {
         await fetch(`/api/orders/${orderId}/status`, getFetchOptions({
           method: 'PATCH',
           body: JSON.stringify({
@@ -2556,8 +2546,8 @@ const LiveOrdersPage: React.FC = () => {
       }
 
       // 결제 완료 후 상태 변경
-      if (orderForPayment.status === 'awaiting_payment' || orderForPayment.status === 'outstanding') {
-        // awaiting_payment 또는 outstanding이면 pending으로 변경 (주방에 전송)
+      if (orderForPayment.status === 'outstanding') {
+        // outstanding이면 pending으로 변경 (주방에 전송)
         await fetch(`/api/orders/${orderForPayment.id}`, getFetchOptions({
           method: 'PATCH',
           body: JSON.stringify({
@@ -3093,13 +3083,13 @@ const LiveOrdersPage: React.FC = () => {
                             )}
                           </>
                         )}
-                        {order.status !== 'cancelled' && order.status !== 'awaiting_payment' && !isOutstanding(order) && (
+                        {order.status !== 'cancelled' && !isOutstanding(order) && (
                           <ActionButton
                             variant="secondary"
                             onClick={() => {
-                              // Pending 단계에서는 awaiting_payment로 돌아감
+                              // Pending 단계에서는 outstanding으로 돌아감
                               if (order.status === 'pending') {
-                                handleStatusChange(order.id, 'awaiting_payment');
+                                handleStatusChange(order.id, 'outstanding');
                               } else {
                                 const previousStatus = getPreviousStatus(order.status);
                                 if (previousStatus) {

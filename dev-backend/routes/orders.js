@@ -880,7 +880,6 @@ router.get('/restaurant/:restaurantId/counts', authenticateToken, async (req, re
       SELECT
         status,
         COUNT(*) as count,
-        SUM(CASE WHEN payment_status IN ('pending', 'failed') THEN 1 ELSE 0 END) as unpaid_count,
         SUM(total_amount) as total_sales
       FROM orders
       WHERE restaurant_id = :restaurantId
@@ -912,18 +911,15 @@ router.get('/restaurant/:restaurantId/counts', authenticateToken, async (req, re
 
     results.forEach(row => {
       const count = parseInt(row.count) || 0;
-      const unpaidCount = parseInt(row.unpaid_count) || 0;
       const sales = parseFloat(row.total_sales) || 0;
 
       counts.all += count;
       counts[row.status] = count;
       totalSales += sales;
 
-      // Outstanding = orders with pending payment (awaiting_payment, outstanding) or unpaid orders
-      if (row.status === 'outstanding' || row.status === 'awaiting_payment') {
+      // Outstanding = status가 'outstanding'인 주문만
+      if (row.status === 'outstanding') {
         counts.outstanding += count;
-      } else if (unpaidCount > 0 && row.status !== 'cancelled') {
-        counts.outstanding += unpaidCount;
       }
 
       if (row.status === 'completed') {
