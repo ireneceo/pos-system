@@ -27,10 +27,10 @@ router.get('/', async (req, res) => {
     }
 
     // Get categories from categories table
+    // 관리 페이지에서는 모든 카테고리 표시 (비활성화된 것도 포함)
     const dbCategories = await Category.findAll({
       where: {
-        restaurant_id: restaurantId,
-        isActive: true
+        restaurant_id: restaurantId
       },
       order: [['displayOrder', 'ASC'], ['name', 'ASC']]
     });
@@ -57,12 +57,13 @@ router.get('/', async (req, res) => {
 
     const products = await Product.findAll(queryOptions);
 
-    // Transform categories with emoji, id, and displayOrder
+    // Transform categories with emoji, id, displayOrder, and isActive
     const categories = dbCategories.map(cat => ({
       id: cat.id,
       name: cat.name,
       emoji: cat.emoji || '🍽️',
-      displayOrder: cat.displayOrder
+      displayOrder: cat.displayOrder,
+      isActive: cat.isActive
     }));
 
     // Transform products to ensure emoji and optionGroups are included

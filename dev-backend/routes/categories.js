@@ -22,9 +22,9 @@ router.get('/', async (req, res) => {
     }
 
     // Get categories from categories table filtered by restaurant
+    // 관리 페이지에서는 모든 카테고리 표시 (비활성화된 것도 포함)
     const categories = await Category.findAll({
       where: {
-        isActive: true,
         restaurant_id: restaurantId
       },
       order: [['displayOrder', 'ASC'], ['name', 'ASC']]

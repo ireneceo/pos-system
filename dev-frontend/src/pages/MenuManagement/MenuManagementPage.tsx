@@ -1313,24 +1313,50 @@ const MenuManagementPage: React.FC = () => {
                       Edit
                     </ActionButton>
                     <IconButton onClick={() => handleCopyItem(item)} title="Copy">
-                      📋
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="2"/>
+                        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" strokeWidth="2"/>
+                      </svg>
                     </IconButton>
                     <IconButton
                       onClick={() => handleToggleActive(item)}
                       inactive={item.is_active === false}
                       title={item.is_active === false ? 'Activate' : 'Deactivate'}
                     >
-                      {item.is_active === false ? '👁️' : '🚫'}
+                      {item.is_active === false ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" strokeWidth="2"/>
+                          <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/>
+                        </svg>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                          <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                          <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                        </svg>
+                      )}
                     </IconButton>
                     <IconButton
                       onClick={() => toggleItemSoldOut(item.id)}
                       warning={item.soldOut}
                       title={item.soldOut ? 'Mark In Stock' : 'Mark Sold Out'}
                     >
-                      {item.soldOut ? '✓' : '✕'}
+                      {item.soldOut ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                          <polyline points="20 6 9 17 4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                          <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" stroke="currentColor" strokeWidth="2"/>
+                        </svg>
+                      )}
                     </IconButton>
                     <IconButton danger onClick={() => handleDeleteItem(item.id)} title="Delete">
-                      🗑️
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                        <line x1="10" y1="11" x2="10" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                        <line x1="14" y1="11" x2="14" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                      </svg>
                     </IconButton>
                   </MenuActions>
                 </MenuContent>

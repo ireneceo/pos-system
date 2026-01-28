@@ -4,6 +4,7 @@ import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI/Modal';
+import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { fetchAPI } from '../../utils/api';
@@ -22,12 +23,14 @@ interface ProductRecipe {
   category_id: number | null;
   category?: ProductRecipeCategory;
   emoji: string | null;
-  image_url: string | null;
+  image: string | null;
   total_ingredient_cost: number;
   suggested_price: number | null;
   prep_time: number | null;
   cook_time: number | null;
   instructions: string | null;
+  instructions_summary: string | null;
+  instructions_detail: string | null;
   is_active: boolean;
   recipeIngredients?: RecipeIngredient[];
 }
@@ -503,6 +506,151 @@ const ViewIngredientRow = styled.div`
   }
 `;
 
+// Recipe Modal Styles (Cooking-focused popup)
+const RecipeModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+`;
+
+const RecipeModalContent = styled.div`
+  background: white;
+  border-radius: 16px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+`;
+
+const RecipeModalHeader = styled.div`
+  padding: 24px;
+  border-bottom: 1px solid #E6EBF1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+`;
+
+const RecipeModalTitle = styled.h2`
+  font-size: 24px;
+  font-weight: 700;
+  color: #0A2540;
+  margin: 0;
+`;
+
+const RecipeModalClose = styled.button`
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #6B7280;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+
+  &:hover {
+    color: #0A2540;
+  }
+`;
+
+const RecipeModalBody = styled.div`
+  padding: 24px;
+`;
+
+const RecipeTimeRow = styled.div`
+  display: flex;
+  gap: 24px;
+  margin-bottom: 24px;
+  padding: 16px;
+  background: #F8FAFC;
+  border-radius: 12px;
+`;
+
+const RecipeTimeItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const RecipeTimeIcon = styled.span`
+  font-size: 20px;
+`;
+
+const RecipeTimeLabel = styled.span`
+  font-size: 14px;
+  color: #6B7280;
+`;
+
+const RecipeTimeValue = styled.span`
+  font-size: 16px;
+  font-weight: 600;
+  color: #0A2540;
+`;
+
+const RecipeSection = styled.div`
+  margin-bottom: 24px;
+`;
+
+const RecipeSectionTitle = styled.h3`
+  font-size: 16px;
+  font-weight: 600;
+  color: #0A2540;
+  margin: 0 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #E5E7EB;
+`;
+
+const RecipeIngredientList = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: 0;
+`;
+
+const RecipeIngredientItem = styled.li`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #F3F4F6;
+
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const RecipeIngredientName = styled.span`
+  font-size: 15px;
+  color: #0A2540;
+`;
+
+const RecipeIngredientQty = styled.span`
+  font-size: 15px;
+  font-weight: 600;
+  color: #635BFF;
+`;
+
+const RecipeSummaryText = styled.p`
+  font-size: 15px;
+  color: #4B5563;
+  line-height: 1.8;
+  margin: 0;
+  white-space: pre-wrap;
+`;
+
+const RecipeDetailText = styled.div`
+  font-size: 15px;
+  color: #374151;
+  line-height: 1.8;
+  white-space: pre-wrap;
+`;
+
 const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, categoryRefreshKey }) => {
   const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
@@ -519,15 +667,21 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
   const [editingRecipe, setEditingRecipe] = useState<ProductRecipe | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Recipe Modal states
+  const [showRecipeModal, setShowRecipeModal] = useState(false);
+  const [recipeModalData, setRecipeModalData] = useState<ProductRecipe | null>(null);
+
   // Form data
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     category_id: '',
     emoji: '',
+    image: '',
     prep_time: '',
     cook_time: '',
-    instructions: '',
+    instructions_summary: '',
+    instructions_detail: '',
     suggested_price: ''
   });
 
@@ -609,9 +763,11 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
         description: recipe.description || '',
         category_id: recipe.category_id?.toString() || '',
         emoji: recipe.emoji || '',
+        image: recipe.image || '',
         prep_time: recipe.prep_time?.toString() || '',
         cook_time: recipe.cook_time?.toString() || '',
-        instructions: recipe.instructions || '',
+        instructions_summary: recipe.instructions_summary || '',
+        instructions_detail: recipe.instructions_detail || '',
         suggested_price: recipe.suggested_price?.toString() || ''
       });
       // Load recipe ingredients
@@ -632,14 +788,26 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
         description: '',
         category_id: '',
         emoji: '',
+        image: '',
         prep_time: '',
         cook_time: '',
-        instructions: '',
+        instructions_summary: '',
+        instructions_detail: '',
         suggested_price: ''
       });
       setFormIngredients([]);
     }
     setShowModal(true);
+  };
+
+  const handleOpenRecipeModal = (recipe: ProductRecipe) => {
+    setRecipeModalData(recipe);
+    setShowRecipeModal(true);
+  };
+
+  const handleCloseRecipeModal = () => {
+    setShowRecipeModal(false);
+    setRecipeModalData(null);
   };
 
   const addIngredientRow = () => {
@@ -697,9 +865,11 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
         description: formData.description || null,
         category_id: formData.category_id ? parseInt(formData.category_id) : null,
         emoji: formData.emoji || null,
+        image: formData.image || null,
         prep_time: formData.prep_time ? parseInt(formData.prep_time) : null,
         cook_time: formData.cook_time ? parseInt(formData.cook_time) : null,
-        instructions: formData.instructions || null,
+        instructions_summary: formData.instructions_summary || null,
+        instructions_detail: formData.instructions_detail || null,
         suggested_price: formData.suggested_price ? parseFloat(formData.suggested_price) : null,
         ingredients: formIngredients
           .filter(fi => fi.ingredient_id && fi.quantity)
@@ -866,10 +1036,10 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
                 </RecipeMetaInfo>
               )}
 
-              {/* Instructions Preview */}
-              {recipe.instructions && (
+              {/* Recipe Summary Preview */}
+              {recipe.instructions_summary && (
                 <InstructionsPreview>
-                  {recipe.instructions}
+                  {recipe.instructions_summary}
                 </InstructionsPreview>
               )}
 
@@ -892,7 +1062,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
               )}
 
               <RecipeActions onClick={(e) => e.stopPropagation()}>
-                <ActionButton onClick={() => handleOpenModal(recipe, true)}>
+                <ActionButton onClick={() => handleOpenRecipeModal(recipe)}>
                   Recipe
                 </ActionButton>
                 <ActionButton variant="primary" onClick={() => handleOpenModal(recipe)}>
@@ -949,6 +1119,17 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
           </UIFormGroup>
         </div>
 
+        {!viewMode && (
+          <UIFormGroup>
+            <FormLabel>Recipe Image</FormLabel>
+            <ImageUploadDropzone
+              value={formData.image}
+              onChange={(value) => setFormData({ ...formData, image: value })}
+              label="Drop recipe image here or click to upload"
+            />
+          </UIFormGroup>
+        )}
+
         <UIFormGroup>
           <FormLabel>Description</FormLabel>
           <FormTextArea
@@ -995,12 +1176,26 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
         </div>
 
         <UIFormGroup>
-          <FormLabel>Instructions</FormLabel>
+          <FormLabel>Recipe Summary</FormLabel>
           <FormTextArea
-            value={formData.instructions}
-            onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
-            placeholder="Step-by-step cooking instructions"
-            rows={4}
+            value={formData.instructions_summary}
+            onChange={(e) => setFormData({ ...formData, instructions_summary: e.target.value })}
+            placeholder="Brief summary for list display (e.g., Pan-fried chicken with garlic sauce)"
+            rows={2}
+            disabled={viewMode}
+          />
+        </UIFormGroup>
+
+        <UIFormGroup>
+          <FormLabel>Detailed Instructions</FormLabel>
+          <FormTextArea
+            value={formData.instructions_detail}
+            onChange={(e) => setFormData({ ...formData, instructions_detail: e.target.value })}
+            placeholder="Step-by-step cooking instructions...
+1. Prepare ingredients...
+2. Heat the pan...
+3. ..."
+            rows={6}
             disabled={viewMode}
           />
         </UIFormGroup>
@@ -1084,6 +1279,74 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
           )}
         </ButtonGroup>
       </Modal>
+
+      {/* Recipe Modal (Cooking-focused popup) */}
+      {showRecipeModal && recipeModalData && (
+        <RecipeModalOverlay onClick={handleCloseRecipeModal}>
+          <RecipeModalContent onClick={(e) => e.stopPropagation()}>
+            <RecipeModalHeader>
+              <RecipeModalTitle>{recipeModalData.name}</RecipeModalTitle>
+              <RecipeModalClose onClick={handleCloseRecipeModal}>&times;</RecipeModalClose>
+            </RecipeModalHeader>
+            <RecipeModalBody>
+              {/* Time Information */}
+              {(recipeModalData.prep_time || recipeModalData.cook_time) && (
+                <RecipeTimeRow>
+                  {recipeModalData.prep_time && (
+                    <RecipeTimeItem>
+                      <RecipeTimeIcon>⏱</RecipeTimeIcon>
+                      <RecipeTimeLabel>Prep:</RecipeTimeLabel>
+                      <RecipeTimeValue>{recipeModalData.prep_time} min</RecipeTimeValue>
+                    </RecipeTimeItem>
+                  )}
+                  {recipeModalData.cook_time && (
+                    <RecipeTimeItem>
+                      <RecipeTimeIcon>🔥</RecipeTimeIcon>
+                      <RecipeTimeLabel>Cook:</RecipeTimeLabel>
+                      <RecipeTimeValue>{recipeModalData.cook_time} min</RecipeTimeValue>
+                    </RecipeTimeItem>
+                  )}
+                </RecipeTimeRow>
+              )}
+
+              {/* Ingredients with Quantities */}
+              {recipeModalData.recipeIngredients && recipeModalData.recipeIngredients.length > 0 && (
+                <RecipeSection>
+                  <RecipeSectionTitle>Ingredients</RecipeSectionTitle>
+                  <RecipeIngredientList>
+                    {recipeModalData.recipeIngredients.map((ri, idx) => (
+                      <RecipeIngredientItem key={idx}>
+                        <RecipeIngredientName>{ri.ingredient?.name || `Ingredient #${ri.ingredient_id}`}</RecipeIngredientName>
+                        <RecipeIngredientQty>{Number(ri.quantity).toFixed(2)} {ri.unit}</RecipeIngredientQty>
+                      </RecipeIngredientItem>
+                    ))}
+                  </RecipeIngredientList>
+                </RecipeSection>
+              )}
+
+              {/* Recipe Summary */}
+              {recipeModalData.instructions_summary && (
+                <RecipeSection>
+                  <RecipeSectionTitle>Summary</RecipeSectionTitle>
+                  <RecipeSummaryText>
+                    {recipeModalData.instructions_summary}
+                  </RecipeSummaryText>
+                </RecipeSection>
+              )}
+
+              {/* Detailed Instructions */}
+              {recipeModalData.instructions_detail && (
+                <RecipeSection>
+                  <RecipeSectionTitle>Detailed Instructions</RecipeSectionTitle>
+                  <RecipeDetailText>
+                    {recipeModalData.instructions_detail}
+                  </RecipeDetailText>
+                </RecipeSection>
+              )}
+            </RecipeModalBody>
+          </RecipeModalContent>
+        </RecipeModalOverlay>
+      )}
     </>
   );
 };

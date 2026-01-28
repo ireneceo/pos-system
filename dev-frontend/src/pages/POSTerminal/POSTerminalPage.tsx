@@ -1121,7 +1121,10 @@ const POSTerminalPage: React.FC = () => {
   const restaurantId = useRestaurantId();
   const { addOrder } = useOrders();
   const { getTakeawayCharge, operationSettings } = useStore();
-  const { categories, menuItems, getItemsByCategory, loadMenuByCategory, isLoadingMenu } = useMenu();
+  const { categories: allCategories, menuItems, getItemsByCategory, loadMenuByCategory, isLoadingMenu } = useMenu();
+
+  // POS Terminal shows only active categories (customer-facing view)
+  const categories = allCategories.filter(cat => cat.isActive !== false);
   const {
     updateCustomerOrderStats,
     searchCustomers
