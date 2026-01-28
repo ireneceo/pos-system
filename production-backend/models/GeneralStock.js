@@ -9,7 +9,13 @@ const GeneralStock = database.sequelize.define('GeneralStock', {
   },
   restaurant_id: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: true,
+    comment: 'Restaurant FK - for restaurant inventory'
+  },
+  owner_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Brand General User ID - for company-wide inventory'
   },
   name: {
     type: DataTypes.STRING(100),

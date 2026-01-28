@@ -14,6 +14,12 @@ const GeneralStockCategory = sequelize.define('GeneralStockCategory', {
     defaultValue: 'restaurant',
     comment: '소유권 타입: brand(브랜드 공통) 또는 restaurant(지점 전용)'
   },
+  // Brand General User ID for company-wide categories
+  owner_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Brand General User ID for company-wide categories'
+  },
   // 브랜드 또는 레스토랑 소유
   brand_id: {
     type: DataTypes.INTEGER,

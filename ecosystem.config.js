@@ -5,10 +5,11 @@ module.exports = {
       script: './dev-backend/server.js',
       cwd: '/var/www',
       instances: 1,
+      exec_mode: 'cluster',
       autorestart: true,
       watch: false,
-      max_memory_restart: '512M',  // 메모리 제한 축소
-      node_args: '--max-old-space-size=384',  // Node.js 힙 메모리 제한
+      max_memory_restart: '800M',  // 800MB 초과시 자동 재시작
+      node_args: '--max-old-space-size=768',  // Node.js 힙 메모리 768MB
       env: {
         NODE_ENV: 'development',
         PORT: 3001
@@ -22,12 +23,12 @@ module.exports = {
       name: 'production-backend',
       script: './production-backend/server.js',
       cwd: '/var/www',
-      instances: 1,  // 2 -> 1로 축소 (메모리 절약 ~100MB)
-      exec_mode: 'fork',  // cluster -> fork (단일 인스턴스)
+      instances: 1,
+      exec_mode: 'fork',
       autorestart: true,
       watch: false,
-      max_memory_restart: '512M',  // 메모리 제한 축소
-      node_args: '--max-old-space-size=384',  // Node.js 힙 메모리 제한
+      max_memory_restart: '800M',  // 800MB 초과시 자동 재시작
+      node_args: '--max-old-space-size=768',  // Node.js 힙 메모리 768MB
       env: {
         NODE_ENV: 'production',
         PORT: 3002

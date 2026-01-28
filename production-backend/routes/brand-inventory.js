@@ -5,7 +5,10 @@ const {
   Brand,
   Restaurant,
   Ingredient,
-  InventoryBatch
+  InventoryBatch,
+  GeneralStock,
+  GeneralStockCategory,
+  Supplier
 } = require('../models');
 
 // Get brand's restaurants

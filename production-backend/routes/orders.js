@@ -773,13 +773,65 @@ router.get('/restaurant/:restaurantId', authenticateToken, async (req, res) => {
     };
 
     // Filter by date range if provided
+    // Dates from frontend are in restaurant's timezone (e.g., "2026-01-29" in Asia/Kuala_Lumpur)
+    // We need to convert them to UTC for database comparison
     if (startDate && endDate) {
-      const start = new Date(startDate);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
+      // Get restaurant's timezone setting
+      const restaurant = await Restaurant.findByPk(req.params.restaurantId);
+      let timezone = 'Asia/Kuala_Lumpur';
+      if (restaurant?.operation_settings) {
+        try {
+          const opSettings = typeof restaurant.operation_settings === 'string'
+            ? JSON.parse(restaurant.operation_settings)
+            : restaurant.operation_settings;
+          timezone = opSettings?.timeZone || timezone;
+        } catch { /* use default */ }
+      }
+
+      // Convert restaurant local date to UTC range
+      // e.g., "2026-01-29" in Asia/Kuala_Lumpur = "2026-01-28 16:00:00" to "2026-01-29 15:59:59" in UTC
+      const getUTCRange = (dateStr, tz) => {
+        try {
+          // Create date at midnight in the restaurant's timezone
+          const localMidnight = new Date(`${dateStr}T00:00:00`);
+
+          // Get timezone offset in minutes
+          const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: tz,
+            timeZoneName: 'shortOffset'
+          });
+          const parts = formatter.formatToParts(localMidnight);
+          const offsetPart = parts.find(p => p.type === 'timeZoneName')?.value || '+00:00';
+          const offsetMatch = offsetPart.match(/GMT([+-])(\d{1,2}):?(\d{2})?/);
+
+          let offsetMinutes = 0;
+          if (offsetMatch) {
+            const sign = offsetMatch[1] === '+' ? 1 : -1;
+            const hours = parseInt(offsetMatch[2]) || 0;
+            const mins = parseInt(offsetMatch[3]) || 0;
+            offsetMinutes = sign * (hours * 60 + mins);
+          }
+
+          // Create UTC dates by subtracting the offset
+          const startUTC = new Date(`${dateStr}T00:00:00Z`);
+          startUTC.setMinutes(startUTC.getMinutes() - offsetMinutes);
+
+          return startUTC;
+        } catch {
+          // Fallback: treat as local server time
+          const date = new Date(dateStr);
+          date.setHours(0, 0, 0, 0);
+          return date;
+        }
+      };
+
+      const startUTC = getUTCRange(startDate, timezone);
+      const endUTC = getUTCRange(endDate, timezone);
+      endUTC.setDate(endUTC.getDate() + 1); // End of day = start of next day
+      endUTC.setMilliseconds(endUTC.getMilliseconds() - 1); // 23:59:59.999
+
       whereCondition.order_date = {
-        [Op.between]: [start, end]
+        [Op.between]: [startUTC, endUTC]
       };
     }
 
@@ -856,23 +908,56 @@ router.get('/restaurant/:restaurantId/counts', authenticateToken, async (req, re
     const { startDate, endDate } = req.query;
     const restaurantId = req.params.restaurantId;
 
-    let whereCondition = {
-      restaurant_id: restaurantId,
-      [Op.or]: [
-        { is_deleted: false },
-        { is_deleted: null }
-      ]
-    };
+    // Convert dates from restaurant's timezone to UTC
+    let startUTC = null;
+    let endUTC = null;
 
-    // Apply date filter if provided
     if (startDate && endDate) {
-      const start = new Date(startDate);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-      whereCondition.order_date = {
-        [Op.between]: [start, end]
+      // Get restaurant's timezone setting
+      const restaurant = await Restaurant.findByPk(restaurantId);
+      let timezone = 'Asia/Kuala_Lumpur';
+      if (restaurant?.operation_settings) {
+        try {
+          const opSettings = typeof restaurant.operation_settings === 'string'
+            ? JSON.parse(restaurant.operation_settings)
+            : restaurant.operation_settings;
+          timezone = opSettings?.timeZone || timezone;
+        } catch { /* use default */ }
+      }
+
+      // Helper to convert local date to UTC
+      const getUTCFromLocal = (dateStr, tz) => {
+        try {
+          const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: tz,
+            timeZoneName: 'shortOffset'
+          });
+          const parts = formatter.formatToParts(new Date());
+          const offsetPart = parts.find(p => p.type === 'timeZoneName')?.value || '+00:00';
+          const offsetMatch = offsetPart.match(/GMT([+-])(\d{1,2}):?(\d{2})?/);
+
+          let offsetMinutes = 0;
+          if (offsetMatch) {
+            const sign = offsetMatch[1] === '+' ? 1 : -1;
+            const hours = parseInt(offsetMatch[2]) || 0;
+            const mins = parseInt(offsetMatch[3]) || 0;
+            offsetMinutes = sign * (hours * 60 + mins);
+          }
+
+          const utc = new Date(`${dateStr}T00:00:00Z`);
+          utc.setMinutes(utc.getMinutes() - offsetMinutes);
+          return utc;
+        } catch {
+          const date = new Date(dateStr);
+          date.setHours(0, 0, 0, 0);
+          return date;
+        }
       };
+
+      startUTC = getUTCFromLocal(startDate, timezone);
+      endUTC = getUTCFromLocal(endDate, timezone);
+      endUTC.setDate(endUTC.getDate() + 1);
+      endUTC.setMilliseconds(endUTC.getMilliseconds() - 1);
     }
 
     // Use raw SQL for efficient counting
@@ -880,18 +965,17 @@ router.get('/restaurant/:restaurantId/counts', authenticateToken, async (req, re
       SELECT
         status,
         COUNT(*) as count,
-        SUM(CASE WHEN payment_status IN ('pending', 'failed') THEN 1 ELSE 0 END) as unpaid_count,
         SUM(total_amount) as total_sales
       FROM orders
       WHERE restaurant_id = :restaurantId
         AND (is_deleted = false OR is_deleted IS NULL)
-        ${startDate && endDate ? 'AND order_date BETWEEN :startDate AND :endDate' : ''}
+        ${startUTC && endUTC ? 'AND order_date BETWEEN :startDate AND :endDate' : ''}
       GROUP BY status
     `, {
       replacements: {
         restaurantId,
-        startDate: startDate ? new Date(startDate) : null,
-        endDate: endDate ? new Date(endDate + 'T23:59:59.999Z') : null
+        startDate: startUTC,
+        endDate: endUTC
       }
     });
 
@@ -912,18 +996,15 @@ router.get('/restaurant/:restaurantId/counts', authenticateToken, async (req, re
 
     results.forEach(row => {
       const count = parseInt(row.count) || 0;
-      const unpaidCount = parseInt(row.unpaid_count) || 0;
       const sales = parseFloat(row.total_sales) || 0;
 
       counts.all += count;
       counts[row.status] = count;
       totalSales += sales;
 
-      // Outstanding = orders with pending payment (awaiting_payment, outstanding) or unpaid orders
-      if (row.status === 'outstanding' || row.status === 'awaiting_payment') {
+      // Outstanding = status가 'outstanding'인 주문만
+      if (row.status === 'outstanding') {
         counts.outstanding += count;
-      } else if (unpaidCount > 0 && row.status !== 'cancelled') {
-        counts.outstanding += unpaidCount;
       }
 
       if (row.status === 'completed') {

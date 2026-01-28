@@ -22,9 +22,9 @@ router.get('/', async (req, res) => {
     }
 
     // Get categories from categories table filtered by restaurant
+    // 관리 페이지에서는 모든 카테고리 표시 (비활성화된 것도 포함)
     const categories = await Category.findAll({
       where: {
-        isActive: true,
         restaurant_id: restaurantId
       },
       order: [['displayOrder', 'ASC'], ['name', 'ASC']]
@@ -331,6 +331,39 @@ router.post('/', async (req, res) => {
     });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Toggle category active status
+router.put('/id/:categoryId/toggle-active', async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const restaurantId = req.query.restaurantId || req.user.restaurant_id;
+
+    const category = await Category.findOne({
+      where: {
+        id: categoryId,
+        restaurant_id: restaurantId
+      }
+    });
+
+    if (!category) {
+      return res.status(404).json({ success: false, error: 'Category not found' });
+    }
+
+    const newIsActive = !category.isActive;
+    await Category.update(
+      { isActive: newIsActive },
+      { where: { id: categoryId, restaurant_id: restaurantId } }
+    );
+
+    res.json({
+      success: true,
+      data: { id: categoryId, isActive: newIsActive },
+      message: `Category ${newIsActive ? 'activated' : 'deactivated'} successfully`
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
