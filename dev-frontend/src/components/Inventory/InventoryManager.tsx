@@ -878,6 +878,14 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
           setGeneralStockCategories([]);
         }
 
+        // Brand mode - fetch suppliers
+        try {
+          const suppliersRes = await authFetch(`/api/brands/${brandId}/suppliers`);
+          if (suppliersRes.success) setSuppliers(suppliersRes.data || []);
+        } catch {
+          setSuppliers([]);
+        }
+
         setSuggestions([]);
         setExpiringItems([]);
       }
@@ -1941,19 +1949,12 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
               )}
             </>
           ) : activeTab === 'categories' ? (
-            mode === 'restaurant' ? (
-              <GeneralStockCategoriesTab
-                brandId={null}
-                restaurantId={restaurantId ? Number(restaurantId) : null}
-                onCountChange={setGeneralStockCategoriesCount}
-                onCategoryChange={() => setGeneralStockCategoryRefreshKey(k => k + 1)}
-              />
-            ) : (
-              <ProductIngredientCategoriesTab
-                onCountChange={setGeneralStockCategoriesCount}
-                onCategoryChange={() => setGeneralStockCategoryRefreshKey(k => k + 1)}
-              />
-            )
+            <GeneralStockCategoriesTab
+              brandId={mode === 'brand' ? brandId : null}
+              restaurantId={mode === 'restaurant' && restaurantId ? Number(restaurantId) : null}
+              onCountChange={setGeneralStockCategoriesCount}
+              onCategoryChange={() => setGeneralStockCategoryRefreshKey(k => k + 1)}
+            />
           ) : (
             mode === 'restaurant' && restaurantId ? (
               <TransactionHistory restaurantId={restaurantId} currency={selectedCurrency} />
@@ -2442,35 +2443,40 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
         title="Add General Stock"
         size="medium"
       >
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <UIFormGroup>
-            <FormLabel>Item Name *</FormLabel>
-            <FormInput
-              type="text"
-              value={generalStockForm.name}
-              onChange={(e) => setGeneralStockForm({ ...generalStockForm, name: e.target.value })}
-              placeholder="e.g., Takeaway Containers"
-            />
-          </UIFormGroup>
-          <UIFormGroup>
-            <FormLabel>Code (SKU)</FormLabel>
-            <FormInput
-              type="text"
-              value={generalStockForm.code}
-              onChange={(e) => setGeneralStockForm({ ...generalStockForm, code: e.target.value })}
-              placeholder="Auto-generate if empty"
-            />
-          </UIFormGroup>
-        </div>
-        <ImageUploadDropzone
-          value={generalStockForm.image_url}
-          onChange={(base64) => setGeneralStockForm({ ...generalStockForm, image_url: base64 })}
-          label="Image (Optional)"
-          helpText="Drag & drop or click to upload item image"
-          maxSize={2}
-        />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <UIFormGroup>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Row 1: Name & Code */}
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+            <UIFormGroup>
+              <FormLabel>Item Name *</FormLabel>
+              <FormInput
+                type="text"
+                value={generalStockForm.name}
+                onChange={(e) => setGeneralStockForm({ ...generalStockForm, name: e.target.value })}
+                placeholder="e.g., Takeaway Containers"
+              />
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>Code (SKU)</FormLabel>
+              <FormInput
+                type="text"
+                value={generalStockForm.code}
+                onChange={(e) => setGeneralStockForm({ ...generalStockForm, code: e.target.value })}
+                placeholder="Auto-generate"
+              />
+            </UIFormGroup>
+          </div>
+
+          {/* Row 2: Image */}
+          <ImageUploadDropzone
+            value={generalStockForm.image_url}
+            onChange={(base64) => setGeneralStockForm({ ...generalStockForm, image_url: base64 })}
+            label="Image (Optional)"
+            helpText="Drag & drop or click to upload item image"
+            maxSize={2}
+          />
+
+          {/* Row 3: Unit - standalone row for dropdown */}
+          <UIFormGroup style={{ position: 'relative', zIndex: 1000 }}>
             <FormLabel>Unit *</FormLabel>
             <SearchableSelectContainer>
               <SearchableSelectInput
@@ -2479,7 +2485,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                 onChange={(e) => { setUnitSearchTerm(e.target.value); setShowUnitDropdown(true); }}
                 onFocus={() => { setShowUnitDropdown(true); setUnitSearchTerm(''); }}
                 onBlur={() => setTimeout(() => setShowUnitDropdown(false), 200)}
-                placeholder="Search unit..."
+                placeholder="Search or select unit..."
               />
               {showUnitDropdown && (
                 <SearchableSelectDropdown>
@@ -2496,7 +2502,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                       {opt.label}
                     </SearchableSelectOption>
                   ))}
-                  {filteredUnitOptions.length === 0 && (
+                  {filteredUnitOptions.length === 0 && unitSearchTerm && (
                     <SearchableSelectOption onClick={() => {
                       setGeneralStockForm({ ...generalStockForm, stock_unit: unitSearchTerm });
                       setShowUnitDropdown(false);
@@ -2508,90 +2514,97 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
               )}
             </SearchableSelectContainer>
           </UIFormGroup>
-          <UIFormGroup>
-            <FormLabel>Category</FormLabel>
-            <FilterSelect
-              value={generalStockForm.category}
-              onChange={(e) => setGeneralStockForm({ ...generalStockForm, category: e.target.value })}
-              style={{ width: '100%' }}
-            >
-              <option value="">Select Category</option>
-              {generalStockCategories.length > 0 ? (
-                generalStockCategories.map(cat => (
-                  <option key={cat.id} value={cat.name}>{cat.emoji ? `${cat.emoji} ` : ''}{cat.name}</option>
-                ))
-              ) : (
-                <>
-                  <option value="Supplies">Supplies</option>
-                  <option value="Packaging">Packaging</option>
-                  <option value="Cleaning">Cleaning</option>
-                  <option value="Equipment">Equipment</option>
-                  <option value="Other">Other</option>
-                </>
-              )}
-            </FilterSelect>
-          </UIFormGroup>
-          <UIFormGroup>
-            <FormLabel>Supplier</FormLabel>
-            <FilterSelect
-              value={generalStockForm.supplier_id}
-              onChange={(e) => setGeneralStockForm({ ...generalStockForm, supplier_id: e.target.value })}
-              style={{ width: '100%' }}
-            >
-              <option value="">Select Supplier (Optional)</option>
-              {suppliers.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </FilterSelect>
-          </UIFormGroup>
+
+          {/* Row 4: Category & Supplier */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <UIFormGroup>
+              <FormLabel>Category</FormLabel>
+              <FilterSelect
+                value={generalStockForm.category}
+                onChange={(e) => setGeneralStockForm({ ...generalStockForm, category: e.target.value })}
+                style={{ width: '100%' }}
+              >
+                <option value="">Select Category</option>
+                {generalStockCategories.length > 0 ? (
+                  generalStockCategories.map(cat => (
+                    <option key={cat.id} value={cat.name}>{cat.emoji ? `${cat.emoji} ` : ''}{cat.name}</option>
+                  ))
+                ) : (
+                  <>
+                    <option value="Supplies">Supplies</option>
+                    <option value="Packaging">Packaging</option>
+                    <option value="Cleaning">Cleaning</option>
+                    <option value="Equipment">Equipment</option>
+                    <option value="Other">Other</option>
+                  </>
+                )}
+              </FilterSelect>
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>Supplier</FormLabel>
+              <FilterSelect
+                value={generalStockForm.supplier_id}
+                onChange={(e) => setGeneralStockForm({ ...generalStockForm, supplier_id: e.target.value })}
+                style={{ width: '100%' }}
+              >
+                <option value="">Select Supplier (Optional)</option>
+                {suppliers.map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </FilterSelect>
+            </UIFormGroup>
+          </div>
+
+          {/* Row 5: Numbers - 4 columns */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+            <UIFormGroup>
+              <FormLabel>Unit Cost</FormLabel>
+              <FormInput
+                type="number"
+                step="0.01"
+                min="0"
+                value={generalStockForm.unit_cost}
+                onChange={(e) => setGeneralStockForm({ ...generalStockForm, unit_cost: e.target.value })}
+                placeholder="0.00"
+              />
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>Initial Stock</FormLabel>
+              <FormInput
+                type="number"
+                step="0.01"
+                min="0"
+                value={generalStockForm.current_stock}
+                onChange={(e) => setGeneralStockForm({ ...generalStockForm, current_stock: e.target.value })}
+                placeholder="0"
+              />
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>Min Stock</FormLabel>
+              <FormInput
+                type="number"
+                step="0.01"
+                min="0"
+                value={generalStockForm.min_stock}
+                onChange={(e) => setGeneralStockForm({ ...generalStockForm, min_stock: e.target.value })}
+                placeholder="0"
+              />
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>Min Order</FormLabel>
+              <FormInput
+                type="number"
+                step="0.01"
+                min="0"
+                value={generalStockForm.min_order}
+                onChange={(e) => setGeneralStockForm({ ...generalStockForm, min_order: e.target.value })}
+                placeholder="0"
+              />
+            </UIFormGroup>
+          </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px' }}>
-          <UIFormGroup>
-            <FormLabel>Unit Cost</FormLabel>
-            <FormInput
-              type="number"
-              step="0.01"
-              min="0"
-              value={generalStockForm.unit_cost}
-              onChange={(e) => setGeneralStockForm({ ...generalStockForm, unit_cost: e.target.value })}
-              placeholder="0.00"
-            />
-          </UIFormGroup>
-          <UIFormGroup>
-            <FormLabel>Initial Stock</FormLabel>
-            <FormInput
-              type="number"
-              step="0.01"
-              min="0"
-              value={generalStockForm.current_stock}
-              onChange={(e) => setGeneralStockForm({ ...generalStockForm, current_stock: e.target.value })}
-              placeholder="0"
-            />
-          </UIFormGroup>
-          <UIFormGroup>
-            <FormLabel>Min Stock</FormLabel>
-            <FormInput
-              type="number"
-              step="0.01"
-              min="0"
-              value={generalStockForm.min_stock}
-              onChange={(e) => setGeneralStockForm({ ...generalStockForm, min_stock: e.target.value })}
-              placeholder="0"
-            />
-          </UIFormGroup>
-          <UIFormGroup>
-            <FormLabel>Min Order</FormLabel>
-            <FormInput
-              type="number"
-              step="0.01"
-              min="0"
-              value={generalStockForm.min_order}
-              onChange={(e) => setGeneralStockForm({ ...generalStockForm, min_order: e.target.value })}
-              placeholder="0"
-            />
-          </UIFormGroup>
-        </div>
-        <ButtonGroup>
+
+        <ButtonGroup style={{ marginTop: '24px' }}>
           <ModalButton variant="secondary" onClick={() => { setShowAddGeneralStockModal(false); setShowUnitDropdown(false); }}>
             Cancel
           </ModalButton>
@@ -2655,35 +2668,40 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
         title="Edit General Stock"
         size="medium"
       >
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <UIFormGroup>
-            <FormLabel>Item Name *</FormLabel>
-            <FormInput
-              type="text"
-              value={generalStockForm.name}
-              onChange={(e) => setGeneralStockForm({ ...generalStockForm, name: e.target.value })}
-              placeholder="e.g., Takeaway Containers"
-            />
-          </UIFormGroup>
-          <UIFormGroup>
-            <FormLabel>Code (SKU)</FormLabel>
-            <FormInput
-              type="text"
-              value={generalStockForm.code}
-              onChange={(e) => setGeneralStockForm({ ...generalStockForm, code: e.target.value })}
-              placeholder="Auto-generate if empty"
-            />
-          </UIFormGroup>
-        </div>
-        <ImageUploadDropzone
-          value={generalStockForm.image_url}
-          onChange={(base64) => setGeneralStockForm({ ...generalStockForm, image_url: base64 })}
-          label="Image (Optional)"
-          helpText="Drag & drop or click to upload item image"
-          maxSize={2}
-        />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <UIFormGroup>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Row 1: Name & Code */}
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+            <UIFormGroup>
+              <FormLabel>Item Name *</FormLabel>
+              <FormInput
+                type="text"
+                value={generalStockForm.name}
+                onChange={(e) => setGeneralStockForm({ ...generalStockForm, name: e.target.value })}
+                placeholder="e.g., Takeaway Containers"
+              />
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>Code (SKU)</FormLabel>
+              <FormInput
+                type="text"
+                value={generalStockForm.code}
+                onChange={(e) => setGeneralStockForm({ ...generalStockForm, code: e.target.value })}
+                placeholder="Auto-generate"
+              />
+            </UIFormGroup>
+          </div>
+
+          {/* Row 2: Image */}
+          <ImageUploadDropzone
+            value={generalStockForm.image_url}
+            onChange={(base64) => setGeneralStockForm({ ...generalStockForm, image_url: base64 })}
+            label="Image (Optional)"
+            helpText="Drag & drop or click to upload item image"
+            maxSize={2}
+          />
+
+          {/* Row 3: Unit - standalone row for dropdown */}
+          <UIFormGroup style={{ position: 'relative', zIndex: 1000 }}>
             <FormLabel>Unit *</FormLabel>
             <SearchableSelectContainer>
               <SearchableSelectInput
@@ -2692,7 +2710,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                 onChange={(e) => { setUnitSearchTerm(e.target.value); setShowUnitDropdown(true); }}
                 onFocus={() => { setShowUnitDropdown(true); setUnitSearchTerm(''); }}
                 onBlur={() => setTimeout(() => setShowUnitDropdown(false), 200)}
-                placeholder="Search unit..."
+                placeholder="Search or select unit..."
               />
               {showUnitDropdown && (
                 <SearchableSelectDropdown>
@@ -2709,7 +2727,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                       {opt.label}
                     </SearchableSelectOption>
                   ))}
-                  {filteredUnitOptions.length === 0 && (
+                  {filteredUnitOptions.length === 0 && unitSearchTerm && (
                     <SearchableSelectOption onClick={() => {
                       setGeneralStockForm({ ...generalStockForm, stock_unit: unitSearchTerm });
                       setShowUnitDropdown(false);
@@ -2721,90 +2739,97 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
               )}
             </SearchableSelectContainer>
           </UIFormGroup>
-          <UIFormGroup>
-            <FormLabel>Category</FormLabel>
-            <FilterSelect
-              value={generalStockForm.category}
-              onChange={(e) => setGeneralStockForm({ ...generalStockForm, category: e.target.value })}
-              style={{ width: '100%' }}
-            >
-              <option value="">Select Category</option>
-              {generalStockCategories.length > 0 ? (
-                generalStockCategories.map(cat => (
-                  <option key={cat.id} value={cat.name}>{cat.emoji ? `${cat.emoji} ` : ''}{cat.name}</option>
-                ))
-              ) : (
-                <>
-                  <option value="Supplies">Supplies</option>
-                  <option value="Packaging">Packaging</option>
-                  <option value="Cleaning">Cleaning</option>
-                  <option value="Equipment">Equipment</option>
-                  <option value="Other">Other</option>
-                </>
-              )}
-            </FilterSelect>
-          </UIFormGroup>
-          <UIFormGroup>
-            <FormLabel>Supplier</FormLabel>
-            <FilterSelect
-              value={generalStockForm.supplier_id}
-              onChange={(e) => setGeneralStockForm({ ...generalStockForm, supplier_id: e.target.value })}
-              style={{ width: '100%' }}
-            >
-              <option value="">Select Supplier (Optional)</option>
-              {suppliers.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </FilterSelect>
-          </UIFormGroup>
+
+          {/* Row 4: Category & Supplier */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <UIFormGroup>
+              <FormLabel>Category</FormLabel>
+              <FilterSelect
+                value={generalStockForm.category}
+                onChange={(e) => setGeneralStockForm({ ...generalStockForm, category: e.target.value })}
+                style={{ width: '100%' }}
+              >
+                <option value="">Select Category</option>
+                {generalStockCategories.length > 0 ? (
+                  generalStockCategories.map(cat => (
+                    <option key={cat.id} value={cat.name}>{cat.emoji ? `${cat.emoji} ` : ''}{cat.name}</option>
+                  ))
+                ) : (
+                  <>
+                    <option value="Supplies">Supplies</option>
+                    <option value="Packaging">Packaging</option>
+                    <option value="Cleaning">Cleaning</option>
+                    <option value="Equipment">Equipment</option>
+                    <option value="Other">Other</option>
+                  </>
+                )}
+              </FilterSelect>
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>Supplier</FormLabel>
+              <FilterSelect
+                value={generalStockForm.supplier_id}
+                onChange={(e) => setGeneralStockForm({ ...generalStockForm, supplier_id: e.target.value })}
+                style={{ width: '100%' }}
+              >
+                <option value="">Select Supplier (Optional)</option>
+                {suppliers.map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </FilterSelect>
+            </UIFormGroup>
+          </div>
+
+          {/* Row 5: Numbers - 4 columns */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+            <UIFormGroup>
+              <FormLabel>Unit Cost</FormLabel>
+              <FormInput
+                type="number"
+                step="0.01"
+                min="0"
+                value={generalStockForm.unit_cost}
+                onChange={(e) => setGeneralStockForm({ ...generalStockForm, unit_cost: e.target.value })}
+                placeholder="0.00"
+              />
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>Current Stock</FormLabel>
+              <FormInput
+                type="number"
+                step="0.01"
+                min="0"
+                value={generalStockForm.current_stock}
+                onChange={(e) => setGeneralStockForm({ ...generalStockForm, current_stock: e.target.value })}
+                placeholder="0"
+              />
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>Min Stock</FormLabel>
+              <FormInput
+                type="number"
+                step="0.01"
+                min="0"
+                value={generalStockForm.min_stock}
+                onChange={(e) => setGeneralStockForm({ ...generalStockForm, min_stock: e.target.value })}
+                placeholder="0"
+              />
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>Min Order</FormLabel>
+              <FormInput
+                type="number"
+                step="0.01"
+                min="0"
+                value={generalStockForm.min_order}
+                onChange={(e) => setGeneralStockForm({ ...generalStockForm, min_order: e.target.value })}
+                placeholder="0"
+              />
+            </UIFormGroup>
+          </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px' }}>
-          <UIFormGroup>
-            <FormLabel>Unit Cost</FormLabel>
-            <FormInput
-              type="number"
-              step="0.01"
-              min="0"
-              value={generalStockForm.unit_cost}
-              onChange={(e) => setGeneralStockForm({ ...generalStockForm, unit_cost: e.target.value })}
-              placeholder="0.00"
-            />
-          </UIFormGroup>
-          <UIFormGroup>
-            <FormLabel>Current Stock</FormLabel>
-            <FormInput
-              type="number"
-              step="0.01"
-              min="0"
-              value={generalStockForm.current_stock}
-              onChange={(e) => setGeneralStockForm({ ...generalStockForm, current_stock: e.target.value })}
-              placeholder="0"
-            />
-          </UIFormGroup>
-          <UIFormGroup>
-            <FormLabel>Min Stock</FormLabel>
-            <FormInput
-              type="number"
-              step="0.01"
-              min="0"
-              value={generalStockForm.min_stock}
-              onChange={(e) => setGeneralStockForm({ ...generalStockForm, min_stock: e.target.value })}
-              placeholder="0"
-            />
-          </UIFormGroup>
-          <UIFormGroup>
-            <FormLabel>Min Order</FormLabel>
-            <FormInput
-              type="number"
-              step="0.01"
-              min="0"
-              value={generalStockForm.min_order}
-              onChange={(e) => setGeneralStockForm({ ...generalStockForm, min_order: e.target.value })}
-              placeholder="0"
-            />
-          </UIFormGroup>
-        </div>
-        <ButtonGroup>
+
+        <ButtonGroup style={{ marginTop: '24px' }}>
           <ModalButton variant="secondary" onClick={() => { setShowEditGeneralStockModal(false); setEditingGeneralStock(null); }}>
             Cancel
           </ModalButton>
