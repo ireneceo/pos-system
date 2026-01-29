@@ -1139,6 +1139,12 @@ const LiveOrdersPage: React.FC = () => {
         includeCompleted: 'true'
       });
 
+      // Add status filter based on active tab (server-side filtering)
+      // This ensures we get the correct orders even if they're not in the most recent 100
+      if (activeTab !== 'all' && activeTab !== 'outstanding') {
+        params.append('status', activeTab);
+      }
+
       // Add date filter
       if (dateRange.start) params.append('startDate', dateRange.start);
       if (dateRange.end) params.append('endDate', dateRange.end);
@@ -1165,7 +1171,7 @@ const LiveOrdersPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.restaurantId, dateRange.start, dateRange.end, searchQuery]);
+  }, [user?.restaurantId, dateRange.start, dateRange.end, searchQuery, activeTab]);
 
   // Fetch order counts for tab badges (optimized - no full data fetch)
   const fetchOrderCounts = useCallback(async () => {
