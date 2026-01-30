@@ -388,25 +388,55 @@ router.get('/restaurant/:restaurantId/stats', authenticateToken, checkRestaurant
       .filter(order => order.status === 'completed')
       .reduce((sum, order) => sum + parseFloat(order.total_amount), 0);
     
-    // This month's stats
-    const thisMonth = new Date();
-    thisMonth.setDate(1);
-    thisMonth.setHours(0, 0, 0, 0);
-    
+    // Helper to get month/year start in restaurant timezone
+    const getMonthStartInTimezone = (tz) => {
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-CA', { timeZone: tz }); // YYYY-MM-DD
+      const [year, month] = dateStr.split('-');
+      // First day of current month in timezone
+      const monthStartStr = `${year}-${month}-01T00:00:00`;
+      const monthStart = new Date(monthStartStr);
+
+      // Adjust for timezone offset
+      const tzOffset = now.toLocaleString('en-US', { timeZone: tz, timeZoneName: 'shortOffset' });
+      const offsetMatch = tzOffset.match(/GMT([+-]\d+)/);
+      const offsetHours = offsetMatch ? parseInt(offsetMatch[1]) : 8;
+      monthStart.setHours(monthStart.getHours() - offsetHours);
+
+      return monthStart;
+    };
+
+    const getYearStartInTimezone = (tz) => {
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-CA', { timeZone: tz }); // YYYY-MM-DD
+      const year = dateStr.split('-')[0];
+      // First day of current year in timezone
+      const yearStartStr = `${year}-01-01T00:00:00`;
+      const yearStart = new Date(yearStartStr);
+
+      // Adjust for timezone offset
+      const tzOffset = now.toLocaleString('en-US', { timeZone: tz, timeZoneName: 'shortOffset' });
+      const offsetMatch = tzOffset.match(/GMT([+-]\d+)/);
+      const offsetHours = offsetMatch ? parseInt(offsetMatch[1]) : 8;
+      yearStart.setHours(yearStart.getHours() - offsetHours);
+
+      return yearStart;
+    };
+
+    // This month's stats (timezone-aware)
+    const thisMonth = getMonthStartInTimezone(timeZone);
+
     const monthlyOrders = orders.filter(order => {
       const orderDate = new Date(order.order_date);
       return orderDate >= thisMonth;
     });
-    
+
     const monthlyRevenue = monthlyOrders
       .filter(order => order.status === 'completed')
       .reduce((sum, order) => sum + parseFloat(order.total_amount), 0);
 
-    // This year's stats
-    const thisYear = new Date();
-    thisYear.setMonth(0); // January
-    thisYear.setDate(1);
-    thisYear.setHours(0, 0, 0, 0);
+    // This year's stats (timezone-aware)
+    const thisYear = getYearStartInTimezone(timeZone);
 
     const yearlyOrders = orders.filter(order => {
       const orderDate = new Date(order.order_date);
@@ -515,57 +545,96 @@ router.get('/restaurant/:restaurantId/stats', authenticateToken, checkRestaurant
 });
 
 // Get restaurant sales chart data (Optimized - single query instead of N+1)
+// Uses order_date (not createdAt) for consistency with stats API
+// Applies restaurant timezone for accurate date grouping
 router.get('/restaurant/:restaurantId/sales-chart', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
     const { period = 'week' } = req.query; // week, month, year
 
-    // Calculate date range based on period
+    // Get restaurant timezone
+    const restaurant = await Restaurant.findByPk(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ success: false, error: 'Restaurant not found' });
+    }
+    const operationSettings = restaurant.operation_settings || {};
+    const timeZone = operationSettings.timeZone || 'Asia/Kuala_Lumpur';
+
+    // Helper to get timezone offset in hours
+    const getTimezoneOffset = (tz) => {
+      const tzOffset = new Date().toLocaleString('en-US', { timeZone: tz, timeZoneName: 'shortOffset' });
+      const offsetMatch = tzOffset.match(/GMT([+-]\d+)/);
+      return offsetMatch ? parseInt(offsetMatch[1]) : 8;
+    };
+
+    // Helper to get today's date string in timezone
+    const getTodayInTimezone = (tz) => {
+      return new Date().toLocaleDateString('en-CA', { timeZone: tz }); // YYYY-MM-DD
+    };
+
+    // Helper to convert local date to UTC bounds
+    const getUTCBoundsForDate = (dateStr, tz, isEnd = false) => {
+      const offsetHours = getTimezoneOffset(tz);
+      const date = new Date(`${dateStr}T${isEnd ? '23:59:59.999' : '00:00:00'}`);
+      date.setHours(date.getHours() - offsetHours);
+      return date;
+    };
+
+    // Helper to get date string in timezone from UTC date
+    const getDateInTimezone = (utcDate, tz) => {
+      return utcDate.toLocaleDateString('en-CA', { timeZone: tz });
+    };
+
+    // Calculate date range based on period (in restaurant timezone)
+    const todayStr = getTodayInTimezone(timeZone);
     let startDate, endDate;
     const now = new Date();
 
     if (period === 'week') {
-      startDate = new Date(now);
-      startDate.setDate(startDate.getDate() - 6);
-      startDate.setHours(0, 0, 0, 0);
-      endDate = new Date(now);
-      endDate.setHours(23, 59, 59, 999);
+      // Last 7 days including today
+      const startDateObj = new Date(todayStr);
+      startDateObj.setDate(startDateObj.getDate() - 6);
+      const startStr = startDateObj.toISOString().split('T')[0];
+      startDate = getUTCBoundsForDate(startStr, timeZone, false);
+      endDate = getUTCBoundsForDate(todayStr, timeZone, true);
     } else if (period === 'month') {
-      startDate = new Date(now);
-      startDate.setDate(startDate.getDate() - 27); // 4 weeks
-      startDate.setHours(0, 0, 0, 0);
-      endDate = new Date(now);
-      endDate.setHours(23, 59, 59, 999);
+      // Last 28 days (4 weeks)
+      const startDateObj = new Date(todayStr);
+      startDateObj.setDate(startDateObj.getDate() - 27);
+      const startStr = startDateObj.toISOString().split('T')[0];
+      startDate = getUTCBoundsForDate(startStr, timeZone, false);
+      endDate = getUTCBoundsForDate(todayStr, timeZone, true);
     } else if (period === 'year') {
-      startDate = new Date(now);
-      startDate.setMonth(startDate.getMonth() - 11);
-      startDate.setDate(1);
-      startDate.setHours(0, 0, 0, 0);
-      endDate = new Date(now);
-      endDate.setHours(23, 59, 59, 999);
+      // Last 12 months
+      const startDateObj = new Date(todayStr);
+      startDateObj.setMonth(startDateObj.getMonth() - 11);
+      startDateObj.setDate(1);
+      const startStr = startDateObj.toISOString().split('T')[0];
+      startDate = getUTCBoundsForDate(startStr, timeZone, false);
+      endDate = getUTCBoundsForDate(todayStr, timeZone, true);
     }
 
-    // Single query to get all orders in the range
+    // Use order_date instead of createdAt for consistency with stats
     const orders = await Order.findAll({
       where: {
         restaurant_id: restaurantId,
-        createdAt: {
+        order_date: {
           [Op.gte]: startDate,
           [Op.lte]: endDate
         },
         status: 'completed'
       },
-      attributes: ['createdAt', 'total_amount']
+      attributes: ['order_date', 'total_amount']
     });
 
-    // Group orders by the appropriate time unit
+    // Group orders by the appropriate time unit (using restaurant timezone)
     const salesData = [];
 
     if (period === 'week') {
       // Group by day
       const ordersByDate = {};
       orders.forEach(order => {
-        const dateKey = order.createdAt.toISOString().split('T')[0];
+        const dateKey = getDateInTimezone(new Date(order.order_date), timeZone);
         if (!ordersByDate[dateKey]) {
           ordersByDate[dateKey] = { revenue: 0, orders: 0 };
         }
@@ -573,10 +642,11 @@ router.get('/restaurant/:restaurantId/sales-chart', authenticateToken, checkRest
         ordersByDate[dateKey].orders += 1;
       });
 
+      // Generate last 7 days in timezone
       for (let i = 6; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        const dateKey = date.toISOString().split('T')[0];
+        const dateObj = new Date(todayStr);
+        dateObj.setDate(dateObj.getDate() - i);
+        const dateKey = dateObj.toISOString().split('T')[0];
         salesData.push({
           date: dateKey,
           revenue: ordersByDate[dateKey]?.revenue || 0,
@@ -586,8 +656,12 @@ router.get('/restaurant/:restaurantId/sales-chart', authenticateToken, checkRest
     } else if (period === 'month') {
       // Group by week
       const weekData = [{revenue: 0, orders: 0}, {revenue: 0, orders: 0}, {revenue: 0, orders: 0}, {revenue: 0, orders: 0}];
+      const todayDate = new Date(todayStr);
+
       orders.forEach(order => {
-        const daysAgo = Math.floor((now - order.createdAt) / (1000 * 60 * 60 * 24));
+        const orderDateStr = getDateInTimezone(new Date(order.order_date), timeZone);
+        const orderDate = new Date(orderDateStr);
+        const daysAgo = Math.floor((todayDate - orderDate) / (1000 * 60 * 60 * 24));
         const weekIndex = 3 - Math.floor(daysAgo / 7);
         if (weekIndex >= 0 && weekIndex < 4) {
           weekData[weekIndex].revenue += parseFloat(order.total_amount);
@@ -596,7 +670,7 @@ router.get('/restaurant/:restaurantId/sales-chart', authenticateToken, checkRest
       });
 
       for (let i = 0; i < 4; i++) {
-        const weekStart = new Date();
+        const weekStart = new Date(todayStr);
         weekStart.setDate(weekStart.getDate() - ((3 - i) * 7 + 6));
         salesData.push({
           date: weekStart.toISOString().split('T')[0],
@@ -608,7 +682,8 @@ router.get('/restaurant/:restaurantId/sales-chart', authenticateToken, checkRest
       // Group by month
       const ordersByMonth = {};
       orders.forEach(order => {
-        const monthKey = order.createdAt.toISOString().slice(0, 7); // YYYY-MM
+        const dateStr = getDateInTimezone(new Date(order.order_date), timeZone);
+        const monthKey = dateStr.slice(0, 7); // YYYY-MM
         if (!ordersByMonth[monthKey]) {
           ordersByMonth[monthKey] = { revenue: 0, orders: 0 };
         }
@@ -617,7 +692,7 @@ router.get('/restaurant/:restaurantId/sales-chart', authenticateToken, checkRest
       });
 
       for (let i = 11; i >= 0; i--) {
-        const monthStart = new Date();
+        const monthStart = new Date(todayStr);
         monthStart.setMonth(monthStart.getMonth() - i);
         monthStart.setDate(1);
         const monthKey = monthStart.toISOString().slice(0, 7);

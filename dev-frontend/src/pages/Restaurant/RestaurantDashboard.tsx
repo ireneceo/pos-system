@@ -567,74 +567,42 @@ const RestaurantDashboard: React.FC = () => {
 
         <Content>
           <DashboardStatsGrid>
-            <DashboardStatCard
-              color="#F59E0B"
-              style={{ cursor: 'pointer' }}
-              onClick={() => navigate('/pos/sales')}
-            >
+            <DashboardStatCard color="#F59E0B">
               <DashboardStatLabel>Today's Sales</DashboardStatLabel>
               <DashboardStatValue>{formatCurrency(today.revenue || 0, selectedCurrency)}</DashboardStatValue>
             </DashboardStatCard>
 
-            <DashboardStatCard
-              color="#2563EB"
-              style={{ cursor: 'pointer' }}
-              onClick={() => navigate('/pos/live-orders')}
-            >
+            <DashboardStatCard color="#2563EB">
               <DashboardStatLabel>Today's Orders</DashboardStatLabel>
               <DashboardStatValue>{today.orders || 0}</DashboardStatValue>
             </DashboardStatCard>
 
-            <DashboardStatCard
-              color="#10B981"
-              style={{ cursor: 'pointer' }}
-              onClick={() => navigate('/pos/sales')}
-            >
+            <DashboardStatCard color="#10B981">
               <DashboardStatLabel>Monthly Revenue</DashboardStatLabel>
               <DashboardStatValue>{formatCurrency(monthly.revenue || 0, selectedCurrency)}</DashboardStatValue>
             </DashboardStatCard>
 
-            <DashboardStatCard
-              color="#7C3AED"
-              style={{ cursor: 'pointer' }}
-              onClick={() => navigate('/pos/live-orders')}
-            >
+            <DashboardStatCard color="#7C3AED">
               <DashboardStatLabel>Monthly Orders</DashboardStatLabel>
               <DashboardStatValue>{monthly.orders || 0}</DashboardStatValue>
             </DashboardStatCard>
 
-            <DashboardStatCard
-              color="#059669"
-              style={{ cursor: 'pointer' }}
-              onClick={() => navigate('/pos/sales')}
-            >
+            <DashboardStatCard color="#059669">
               <DashboardStatLabel>Annual Revenue</DashboardStatLabel>
               <DashboardStatValue>{formatCurrency(yearly.revenue || 0, selectedCurrency)}</DashboardStatValue>
             </DashboardStatCard>
 
-            <DashboardStatCard
-              color="#6366F1"
-              style={{ cursor: 'pointer' }}
-              onClick={() => navigate('/pos/live-orders')}
-            >
+            <DashboardStatCard color="#6366F1">
               <DashboardStatLabel>Annual Orders</DashboardStatLabel>
               <DashboardStatValue>{yearly.orders || 0}</DashboardStatValue>
             </DashboardStatCard>
 
-            <DashboardStatCard
-              color="#8B5CF6"
-              style={{ cursor: 'pointer' }}
-              onClick={() => navigate('/pos/sales')}
-            >
+            <DashboardStatCard color="#8B5CF6">
               <DashboardStatLabel>Total Revenue</DashboardStatLabel>
               <DashboardStatValue>{formatCurrency(total.revenue || 0, selectedCurrency)}</DashboardStatValue>
             </DashboardStatCard>
 
-            <DashboardStatCard
-              color="#EF4444"
-              style={{ cursor: 'pointer' }}
-              onClick={() => navigate('/pos/live-orders')}
-            >
+            <DashboardStatCard color="#EF4444">
               <DashboardStatLabel>Total Orders</DashboardStatLabel>
               <DashboardStatValue>{total.orders || 0}</DashboardStatValue>
             </DashboardStatCard>

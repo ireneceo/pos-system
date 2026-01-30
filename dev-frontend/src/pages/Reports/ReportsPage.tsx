@@ -366,28 +366,60 @@ const ReportsPage: React.FC = () => {
   }, [orders, dateRange.start, dateRange.end, operationSettings]);
 
   // Calculate sales data from real orders - memoized for performance
+  // All date groupings use restaurant timezone
   const salesData = useMemo(() => {
     if (filteredOrders.length === 0) return [];
 
-    const getOrderDate = (order: any) => new Date(order.order_date || order.createdAt);
+    const timezone = getRestaurantTimezone(operationSettings);
     const getOrderAmount = (order: any) => parseFloat(order.final_price || order.total_amount || order.total_price || 0);
 
+    // Helper to get hour in restaurant timezone
+    const getHourInTimezone = (date: Date | string) => {
+      const d = new Date(date);
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        hour: 'numeric',
+        hour12: false
+      });
+      return parseInt(formatter.format(d));
+    };
+
+    // Helper to get date parts in restaurant timezone
+    const getDatePartsInTimezone = (date: Date | string) => {
+      const d = new Date(date);
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        weekday: 'short'
+      });
+      const parts = formatter.formatToParts(d);
+      return {
+        year: parseInt(parts.find(p => p.type === 'year')?.value || '0'),
+        month: parseInt(parts.find(p => p.type === 'month')?.value || '0'),
+        day: parseInt(parts.find(p => p.type === 'day')?.value || '0'),
+        weekday: parts.find(p => p.type === 'weekday')?.value || ''
+      };
+    };
+
     if (activePeriod === 'today') {
-      // Group by hour
+      // Group by hour (in restaurant timezone)
       const hourlyData: Record<string, number> = {};
       filteredOrders.forEach(order => {
-        const hour = getOrderDate(order).getHours();
-        const hourLabel = hour === 12 ? '12PM' : hour > 12 ? `${hour - 12}PM` : `${hour}AM`;
+        const orderDateValue = order.order_date || order.createdAt;
+        const hour = getHourInTimezone(orderDateValue);
+        const hourLabel = hour === 12 ? '12PM' : hour > 12 ? `${hour - 12}PM` : hour === 0 ? '12AM' : `${hour}AM`;
         hourlyData[hourLabel] = (hourlyData[hourLabel] || 0) + getOrderAmount(order);
       });
 
       return Object.entries(hourlyData).map(([date, sales]) => ({ date, sales: Math.round(sales) }));
     } else if (activePeriod === 'week') {
-      // Group by actual dates in the week range (only days up to today)
+      // Group by actual dates in the week range
       const today = getTodayInRestaurantTZ();
       const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-      // Create array of the last 7 days (today + 6 previous days)
+      // Create array of the last 7 days
       const dates: Date[] = [];
       for (let i = 6; i >= 0; i--) {
         const date = new Date(today);
@@ -395,11 +427,11 @@ const ReportsPage: React.FC = () => {
         dates.push(date);
       }
 
-      // Group orders by date
+      // Group orders by date (in restaurant timezone)
       const dailyData: Record<string, number> = {};
       filteredOrders.forEach(order => {
-        const orderDate = getOrderDate(order);
-        const dateKey = formatDateString(orderDate);
+        const orderDateValue = order.order_date || order.createdAt;
+        const dateKey = getDateStringInTimezone(orderDateValue, timezone);
         dailyData[dateKey] = (dailyData[dateKey] || 0) + getOrderAmount(order);
       });
 
@@ -413,12 +445,12 @@ const ReportsPage: React.FC = () => {
         };
       });
     } else if (activePeriod === 'month') {
-      // Group by full date (MM/DD) for correct 30-day range display
+      // Group by full date (MM/DD) in restaurant timezone
       const dailyData: Record<string, number> = {};
       filteredOrders.forEach(order => {
-        const orderDate = getOrderDate(order);
-        // Use MM/DD format to distinguish dates across months
-        const dateKey = `${(orderDate.getMonth() + 1).toString().padStart(2, '0')}/${orderDate.getDate().toString().padStart(2, '0')}`;
+        const orderDateValue = order.order_date || order.createdAt;
+        const parts = getDatePartsInTimezone(orderDateValue);
+        const dateKey = `${parts.month.toString().padStart(2, '0')}/${parts.day.toString().padStart(2, '0')}`;
         dailyData[dateKey] = (dailyData[dateKey] || 0) + getOrderAmount(order);
       });
 
@@ -427,17 +459,27 @@ const ReportsPage: React.FC = () => {
         .map(([date, sales]) => ({ date, sales: Math.round(sales) }))
         .sort((a, b) => a.date.localeCompare(b.date));
     } else {
-      // Group by month
+      // Group by month (in restaurant timezone)
       const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const monthlyData: Record<string, number> = {};
       filteredOrders.forEach(order => {
-        const month = monthNames[getOrderDate(order).getMonth()];
+        const orderDateValue = order.order_date || order.createdAt;
+        const parts = getDatePartsInTimezone(orderDateValue);
+        const month = monthNames[parts.month - 1];
         monthlyData[month] = (monthlyData[month] || 0) + getOrderAmount(order);
       });
 
       return monthNames.map(month => ({ date: month, sales: Math.round(monthlyData[month] || 0) }));
     }
-  }, [filteredOrders, activePeriod]);
+  }, [filteredOrders, activePeriod, operationSettings]);
+
+  // Calculate exact total revenue from filtered orders (without rounding)
+  const totalRevenue = useMemo(() => {
+    return filteredOrders.reduce((sum, order) => {
+      const amount = parseFloat(order.final_price || order.total_amount || order.total_price || 0);
+      return sum + amount;
+    }, 0);
+  }, [filteredOrders]);
 
   // Calculate category data from real orders - memoized for performance
   // Uses menu items and categories to map order items to their actual menu categories
@@ -709,20 +751,35 @@ const ReportsPage: React.FC = () => {
   }, [filteredOrders]);
 
   // Get drilldown sales data grouped by year -> month -> day - memoized for performance
+  // Uses restaurant timezone for correct date grouping
   const drilldownData = useMemo(() => {
     if (filteredOrders.length === 0) return {};
 
-    const getOrderDate = (order: any) => new Date(order.order_date || order.createdAt);
+    const timezone = getRestaurantTimezone(operationSettings);
     const getOrderAmount = (order: any) => parseFloat(order.final_price || order.total_amount || order.total_price || 0);
+
+    // Helper to get date parts in restaurant timezone
+    const getDatePartsInTimezone = (date: Date | string) => {
+      const d = new Date(date);
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      const dateStr = formatter.format(d); // YYYY-MM-DD
+      const [year, month, day] = dateStr.split('-');
+      return { year, month, day, dateStr };
+    };
 
     const yearData: Record<string, any> = {};
 
     filteredOrders.forEach(order => {
-      const orderDate = getOrderDate(order);
-      const year = orderDate.getFullYear().toString();
-      const monthNum = (orderDate.getMonth() + 1).toString().padStart(2, '0');
-      const month = `${year}-${monthNum}`; // "2025-11"
-      const day = orderDate.toISOString().split('T')[0]; // "2025-11-09"
+      const orderDateValue = order.order_date || order.createdAt;
+      const parts = getDatePartsInTimezone(orderDateValue);
+      const year = parts.year;
+      const month = `${parts.year}-${parts.month}`; // "2025-11"
+      const day = parts.dateStr; // "2025-11-09"
 
       // Initialize year
       if (!yearData[year]) {
@@ -765,7 +822,7 @@ const ReportsPage: React.FC = () => {
     });
 
     return yearData;
-  }, [filteredOrders]);
+  }, [filteredOrders, operationSettings]);
 
   // Calculate date range in days
   const getDateRangeDays = () => {
@@ -896,8 +953,7 @@ const ReportsPage: React.FC = () => {
 
   // 다운로드 기능
   const handleDownloadReport = () => {
-    // Calculate actual data from filtered orders
-    const totalRevenue = salesData.reduce((sum, item) => sum + item.sales, 0);
+    // Use pre-calculated totalRevenue from useMemo
     const totalOrders = filteredOrders.length;
     const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
     const completedOrders = filteredOrders.filter(o => o.status === 'completed').length;
@@ -1143,7 +1199,7 @@ const ReportsPage: React.FC = () => {
                   <StatsRow>
                     <StatCard color="#059669">
                       <StatLabel>Total Revenue</StatLabel>
-                      <StatValue>{formatCurrency(salesData.reduce((sum, item) => sum + item.sales, 0), operationSettings.currency)}</StatValue>
+                      <StatValue>{formatCurrency(totalRevenue, operationSettings.currency)}</StatValue>
                       <StatDescription>{filteredOrders.length} orders in selected period</StatDescription>
                     </StatCard>
                     <StatCard color="#2563EB">
@@ -1153,7 +1209,7 @@ const ReportsPage: React.FC = () => {
                     </StatCard>
                     <StatCard color="#DC2626">
                       <StatLabel>Average Order Value</StatLabel>
-                      <StatValue>{formatCurrency(filteredOrders.length > 0 ? (salesData.reduce((sum, item) => sum + item.sales, 0) / filteredOrders.length) : 0, operationSettings.currency)}</StatValue>
+                      <StatValue>{formatCurrency(filteredOrders.length > 0 ? (totalRevenue / filteredOrders.length) : 0, operationSettings.currency)}</StatValue>
                       <StatDescription>Per order</StatDescription>
                     </StatCard>
                     <StatCard color="#7C3AED">
@@ -1249,7 +1305,7 @@ const ReportsPage: React.FC = () => {
                   <StatsRow>
                     <StatCard color="#059669">
                       <StatLabel>Total Revenue</StatLabel>
-                      <StatValue>{formatCurrency(salesData.reduce((sum, item) => sum + item.sales, 0), operationSettings.currency)}</StatValue>
+                      <StatValue>{formatCurrency(totalRevenue, operationSettings.currency)}</StatValue>
                       <StatDescription>{filteredOrders.length} orders in selected period</StatDescription>
                     </StatCard>
                     <StatCard color="#2563EB">
@@ -1259,7 +1315,7 @@ const ReportsPage: React.FC = () => {
                     </StatCard>
                     <StatCard color="#DC2626">
                       <StatLabel>Average Order Value</StatLabel>
-                      <StatValue>{formatCurrency(filteredOrders.length > 0 ? (salesData.reduce((sum, item) => sum + item.sales, 0) / filteredOrders.length) : 0, operationSettings.currency)}</StatValue>
+                      <StatValue>{formatCurrency(filteredOrders.length > 0 ? (totalRevenue / filteredOrders.length) : 0, operationSettings.currency)}</StatValue>
                       <StatDescription>Per order average</StatDescription>
                     </StatCard>
                     <StatCard color="#7C3AED">
