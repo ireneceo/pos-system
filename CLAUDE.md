@@ -221,3 +221,51 @@ const Model = require('./models/ModelName');
 2. 파일 수정 후
 3. 중요한 마일스톤 달성 시
 4. 오류 발생 시 (다음에 이어서 해결하기 위해)
+
+## 시스템 설정 변경 규칙 (sudo 필요)
+
+### sudo가 필요한 작업
+- `/etc/nginx/` - Nginx 설정 파일 수정
+- `systemctl` - 서비스 재시작
+- `/etc/` 하위 모든 시스템 설정
+
+### Nginx 설정 수정 시 필수 확인
+1. **sites-enabled가 심볼릭 링크인지 확인**
+   ```bash
+   ls -la /etc/nginx/sites-enabled/
+   # 심볼릭 링크가 아니면 sites-available 수정이 적용 안 됨!
+   ```
+2. **심볼릭 링크가 아니면 먼저 수정:**
+   ```bash
+   sudo rm /etc/nginx/sites-enabled/도메인
+   sudo ln -s /etc/nginx/sites-available/도메인 /etc/nginx/sites-enabled/도메인
+   ```
+3. **설정 후 반드시 테스트:**
+   ```bash
+   sudo nginx -t && sudo systemctl reload nginx
+   ```
+
+### sudo 필요 시 처리 방법
+- 스크립트를 만들어 사용자에게 실행 요청
+- **절대로 sudo 비밀번호를 요청하거나 받지 않는다**
+- 터미널에서 직접 실행하도록 명령어 제공
+
+## 프론트엔드 개발 규칙 (필수!)
+
+### 인증 토큰 사용
+- **토큰 키: `auth_token`** (localStorage)
+- 새 컴포넌트에서 인증 필요 시 반드시 `AuthContext.tsx` 확인
+- 절대로 `token`, `jwt`, `accessToken` 등 임의의 키 사용 금지
+
+### 인증 관련 코드 작성 전 확인
+```bash
+grep "localStorage.*token" /var/www/dev-frontend/src/contexts/AuthContext.tsx
+```
+
+### API 호출 시 인증 헤더
+```typescript
+const token = localStorage.getItem('auth_token');
+headers: {
+  'Authorization': `Bearer ${token}`
+}
+```

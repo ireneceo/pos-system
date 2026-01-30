@@ -39,6 +39,7 @@ const LIMIT = limitIndex !== -1 ? parseInt(args[limitIndex + 1]) : null;
 
 /**
  * Base64 이미지를 파일로 저장
+ * 손상된 이미지도 처리 가능하도록 PNG 폴백 추가
  */
 async function saveBase64ToFile(base64Data, productId) {
   const filename = `product_${productId}_${Date.now()}`;
@@ -51,25 +52,47 @@ async function saveBase64ToFile(base64Data, productId) {
 
   const buffer = Buffer.from(matches[2], 'base64');
 
-  // 원본 저장
+  // 원본 저장 (손상된 JPEG는 PNG로 시도)
   const originalPath = path.join(UPLOAD_DIR, `${filename}.jpg`);
-  await sharp(buffer)
-    .resize(IMAGE_SIZES.original.width, IMAGE_SIZES.original.height, {
-      fit: 'inside',
-      withoutEnlargement: true
-    })
-    .jpeg({ quality: IMAGE_SIZES.original.quality })
-    .toFile(originalPath);
+  try {
+    await sharp(buffer, { failOn: 'none' })  // 손상된 이미지도 처리 시도
+      .resize(IMAGE_SIZES.original.width, IMAGE_SIZES.original.height, {
+        fit: 'inside',
+        withoutEnlargement: true
+      })
+      .jpeg({ quality: IMAGE_SIZES.original.quality })
+      .toFile(originalPath);
+  } catch (jpegError) {
+    // JPEG 실패 시 PNG로 시도
+    console.log(`  JPEG failed, trying PNG conversion...`);
+    await sharp(buffer, { failOn: 'none' })
+      .resize(IMAGE_SIZES.original.width, IMAGE_SIZES.original.height, {
+        fit: 'inside',
+        withoutEnlargement: true
+      })
+      .png({ quality: IMAGE_SIZES.original.quality })
+      .toFile(originalPath.replace('.jpg', '.png'));
+  }
 
   // 썸네일 저장
   const thumbnailPath = path.join(THUMBNAIL_DIR, `${filename}.jpg`);
-  await sharp(buffer)
-    .resize(IMAGE_SIZES.thumbnail.width, IMAGE_SIZES.thumbnail.height, {
-      fit: 'cover',
-      position: 'centre'
-    })
-    .jpeg({ quality: IMAGE_SIZES.thumbnail.quality })
-    .toFile(thumbnailPath);
+  try {
+    await sharp(buffer, { failOn: 'none' })
+      .resize(IMAGE_SIZES.thumbnail.width, IMAGE_SIZES.thumbnail.height, {
+        fit: 'cover',
+        position: 'centre'
+      })
+      .jpeg({ quality: IMAGE_SIZES.thumbnail.quality })
+      .toFile(thumbnailPath);
+  } catch (thumbError) {
+    await sharp(buffer, { failOn: 'none' })
+      .resize(IMAGE_SIZES.thumbnail.width, IMAGE_SIZES.thumbnail.height, {
+        fit: 'cover',
+        position: 'centre'
+      })
+      .png({ quality: IMAGE_SIZES.thumbnail.quality })
+      .toFile(thumbnailPath.replace('.jpg', '.png'));
+  }
 
   return {
     original: `/uploads/products/${filename}.jpg`,
@@ -179,17 +202,27 @@ async function migrate() {
         console.log(`[DRY] ID ${product.id} (${product.name}): ${parsed.type}, ${sizeKB}KB`);
         successCount++;
       } else {
-        // 파일 저장
-        const urls = await saveBase64ToFile(base64Data, product.id);
+        try {
+          // 파일 저장
+          const urls = await saveBase64ToFile(base64Data, product.id);
 
-        // DB 업데이트
-        await product.update({
-          image: urls.original,
-          image_thumbnail: urls.thumbnail
-        });
+          // DB 업데이트
+          await product.update({
+            image: urls.original,
+            image_thumbnail: urls.thumbnail
+          });
 
-        console.log(`[OK] ID ${product.id} (${product.name}): ${sizeKB}KB → ${urls.original}`);
-        successCount++;
+          console.log(`[OK] ID ${product.id} (${product.name}): ${sizeKB}KB → ${urls.original}`);
+          successCount++;
+        } catch (saveError) {
+          // 손상된 이미지는 null로 처리 (사용자가 다시 업로드하도록)
+          console.log(`[WARN] ID ${product.id} (${product.name}): 손상된 이미지 - null로 설정`);
+          await product.update({
+            image: null,
+            image_thumbnail: null
+          });
+          skipCount++;
+        }
       }
     } catch (error) {
       console.error(`[ERROR] ID ${product.id}: ${error.message}`);

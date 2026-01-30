@@ -194,7 +194,7 @@ const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
    */
   const uploadImageToServer = async (base64Image: string): Promise<string | null> => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`${getApiBaseUrl()}/api/upload/image`, {
         method: 'POST',
         headers: {

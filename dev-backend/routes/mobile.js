@@ -298,13 +298,18 @@ router.get('/menu/:slug', async (req, res) => {
 
     // Format items for mobile app
     const items = products.map(product => {
-      // Parse optionGroups if it's a string
+      // Parse optionGroups if it's a string (handle double-encoded JSON)
       let productOptionGroupIds = [];
       if (product.optionGroups) {
         try {
-          productOptionGroupIds = typeof product.optionGroups === 'string'
+          let parsed = typeof product.optionGroups === 'string'
             ? JSON.parse(product.optionGroups)
             : product.optionGroups;
+          // Handle double-encoded JSON string
+          if (typeof parsed === 'string') {
+            parsed = JSON.parse(parsed);
+          }
+          productOptionGroupIds = Array.isArray(parsed) ? parsed : [];
         } catch (e) {
           console.error('Failed to parse optionGroups for product', product.id, e);
           productOptionGroupIds = [];
@@ -423,13 +428,18 @@ router.get('/menu/item/:itemId', async (req, res) => {
       ]
     });
 
-    // Parse optionGroups if it's a string
+    // Parse optionGroups if it's a string (handle double-encoded JSON)
     let productOptionGroupIds = [];
     if (product.optionGroups) {
       try {
-        productOptionGroupIds = typeof product.optionGroups === 'string'
+        let parsed = typeof product.optionGroups === 'string'
           ? JSON.parse(product.optionGroups)
           : product.optionGroups;
+        // Handle double-encoded JSON string
+        if (typeof parsed === 'string') {
+          parsed = JSON.parse(parsed);
+        }
+        productOptionGroupIds = Array.isArray(parsed) ? parsed : [];
       } catch (e) {
         console.error('Failed to parse optionGroups:', e);
         productOptionGroupIds = [];
