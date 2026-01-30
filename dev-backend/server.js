@@ -235,6 +235,7 @@ const productIngredientCategoriesRouter = require('./routes/product-ingredient-c
 const generalStockCategoriesRouter = require('./routes/general-stock-categories');
 const generalStockRouter = require('./routes/general-stock');
 const couponsRouter = require('./routes/coupons');
+const uploadRouter = require('./routes/upload');
 
 // Health check endpoint - PM2 모니터링 및 로드밸런서용 (가장 먼저)
 app.get('/api/health', (req, res) => {
@@ -256,6 +257,7 @@ app.use('/', indexRouter);
 // API 라우터들
 // IMPORTANT: coupons must be before /api mounted routers to prevent /:id matching
 app.use('/api/coupons', couponsRouter);
+app.use('/api/upload', uploadRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/menu', menuRouter);
 app.use('/api/mobile', mobileRouter);
