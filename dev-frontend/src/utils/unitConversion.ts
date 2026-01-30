@@ -4,29 +4,29 @@
  * 재료 단위 변환 및 비용 계산을 위한 유틸리티
  */
 
-// 표준 단위 목록
+// Standard units list
 export const STANDARD_UNITS = [
-  // 무게
-  { value: 'kg', label: 'kg (킬로그램)', category: 'weight', baseUnit: 'g', multiplier: 1000 },
-  { value: 'g', label: 'g (그램)', category: 'weight', baseUnit: 'g', multiplier: 1 },
-  { value: 'mg', label: 'mg (밀리그램)', category: 'weight', baseUnit: 'g', multiplier: 0.001 },
-  // 부피
-  { value: 'L', label: 'L (리터)', category: 'volume', baseUnit: 'ml', multiplier: 1000 },
-  { value: 'ml', label: 'ml (밀리리터)', category: 'volume', baseUnit: 'ml', multiplier: 1 },
-  // 개수
-  { value: 'piece', label: 'piece (개)', category: 'count', baseUnit: 'piece', multiplier: 1 },
-  { value: 'pack', label: 'pack (팩)', category: 'count', baseUnit: 'pack', multiplier: 1 },
-  { value: 'box', label: 'box (박스)', category: 'count', baseUnit: 'box', multiplier: 1 },
-  { value: 'can', label: 'can (캔)', category: 'count', baseUnit: 'can', multiplier: 1 },
-  { value: 'bottle', label: 'bottle (병)', category: 'count', baseUnit: 'bottle', multiplier: 1 },
-  { value: 'bag', label: 'bag (봉지)', category: 'count', baseUnit: 'bag', multiplier: 1 },
-  // 요리 단위
-  { value: 'portion', label: 'portion (인분)', category: 'serving', baseUnit: 'portion', multiplier: 1 },
-  { value: 'serving', label: 'serving (서빙)', category: 'serving', baseUnit: 'serving', multiplier: 1 },
-  // 조리 단위
-  { value: 'tbsp', label: 'tbsp (큰술)', category: 'cooking', baseUnit: 'ml', multiplier: 15 },
-  { value: 'tsp', label: 'tsp (작은술)', category: 'cooking', baseUnit: 'ml', multiplier: 5 },
-  { value: 'cup', label: 'cup (컵)', category: 'cooking', baseUnit: 'ml', multiplier: 240 },
+  // Weight
+  { value: 'kg', label: 'kg (kilogram)', category: 'weight', baseUnit: 'g', multiplier: 1000 },
+  { value: 'g', label: 'g (gram)', category: 'weight', baseUnit: 'g', multiplier: 1 },
+  { value: 'mg', label: 'mg (milligram)', category: 'weight', baseUnit: 'g', multiplier: 0.001 },
+  // Volume
+  { value: 'L', label: 'L (liter)', category: 'volume', baseUnit: 'ml', multiplier: 1000 },
+  { value: 'ml', label: 'ml (milliliter)', category: 'volume', baseUnit: 'ml', multiplier: 1 },
+  // Count
+  { value: 'piece', label: 'piece', category: 'count', baseUnit: 'piece', multiplier: 1 },
+  { value: 'pack', label: 'pack', category: 'count', baseUnit: 'pack', multiplier: 1 },
+  { value: 'box', label: 'box', category: 'count', baseUnit: 'box', multiplier: 1 },
+  { value: 'can', label: 'can', category: 'count', baseUnit: 'can', multiplier: 1 },
+  { value: 'bottle', label: 'bottle', category: 'count', baseUnit: 'bottle', multiplier: 1 },
+  { value: 'bag', label: 'bag', category: 'count', baseUnit: 'bag', multiplier: 1 },
+  // Serving
+  { value: 'portion', label: 'portion', category: 'serving', baseUnit: 'portion', multiplier: 1 },
+  { value: 'serving', label: 'serving', category: 'serving', baseUnit: 'serving', multiplier: 1 },
+  // Cooking
+  { value: 'tbsp', label: 'tbsp (tablespoon)', category: 'cooking', baseUnit: 'ml', multiplier: 15 },
+  { value: 'tsp', label: 'tsp (teaspoon)', category: 'cooking', baseUnit: 'ml', multiplier: 5 },
+  { value: 'cup', label: 'cup', category: 'cooking', baseUnit: 'ml', multiplier: 240 },
 ];
 
 // 단위 값만 추출한 배열

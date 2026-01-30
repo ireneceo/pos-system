@@ -880,7 +880,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
     setFormIngredients([...formIngredients, {
       ingredient_id: 0,
       quantity: '',
-      unit: 'g', // 기본 단위
+      unit: '', // Empty until ingredient selected
       notes: ''
     }]);
   };
@@ -1374,15 +1374,11 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
                     onChange={(e) => updateIngredientRow(index, 'quantity', e.target.value)}
                     disabled={viewMode}
                   />
-                  <FormSelect
+                  <FormInput
                     value={fi.unit}
-                    onChange={(e) => updateIngredientRow(index, 'unit', e.target.value)}
-                    disabled={viewMode}
-                  >
-                    {STANDARD_UNITS.map(u => (
-                      <option key={u.value} value={u.value}>{u.value}</option>
-                    ))}
-                  </FormSelect>
+                    disabled
+                    style={{ background: '#F3F4F6', color: '#6B7280' }}
+                  />
                   <FormInput
                     value={fi.notes}
                     onChange={(e) => updateIngredientRow(index, 'notes', e.target.value)}

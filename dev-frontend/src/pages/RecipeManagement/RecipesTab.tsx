@@ -1184,6 +1184,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         category: recipe.category,
         recipe_category_id: recipe.recipe_category_id?.toString() || '',
         image: recipe.image || '',
+        yield_amount: recipe.yield_amount?.toString() || '1',
+        yield_unit: recipe.yield_unit || 'portion',
         prep_time: recipe.prep_time?.toString() || '',
         cook_time: recipe.cook_time?.toString() || '',
         instructions: recipe.instructions || '',
@@ -1207,6 +1209,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         category: '',
         recipe_category_id: '',
         image: '',
+        yield_amount: '1',
+        yield_unit: 'portion',
         prep_time: '',
         cook_time: '',
         instructions: '',
@@ -1231,6 +1235,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
       category: '',
       recipe_category_id: '',
       image: '',
+      yield_amount: '1',
+      yield_unit: 'portion',
       prep_time: '',
       cook_time: '',
       instructions: '',
@@ -1258,7 +1264,12 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
     setFormError(null);
 
     if (!formData.name) {
-      setFormError('레시피 이름은 필수입니다');
+      setFormError('Recipe name is required');
+      return;
+    }
+
+    if (!formData.yield_amount || parseFloat(formData.yield_amount) <= 0) {
+      setFormError('Yield amount must be greater than 0');
       return;
     }
 
@@ -1291,13 +1302,28 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
           ...formData,
           category: tags.length > 0 ? tags.join(', ') : '',
           recipe_category_id: formData.recipe_category_id ? parseInt(formData.recipe_category_id) : null,
+          yield_amount: parseFloat(formData.yield_amount) || 1,
+          yield_unit: formData.yield_unit || 'portion',
           suggested_price: parseFloat(formData.suggested_price) || 0,
-          ingredients: recipeIngredients.map(ri => ({
-            ingredient_id: ri.ingredient_id,
-            quantity: parseFloat(ri.quantity),
-            unit: ri.unit,
-            notes: ri.notes
-          }))
+          ingredients: recipeIngredients.map(ri => {
+            const ingredient = ingredients.find(ing => ing.id === ri.ingredient_id);
+            // 단위 변환을 고려한 비용 계산
+            const cost = ingredient
+              ? calculateIngredientCost(
+                  ingredient.unit_cost / (ingredient.base_quantity || 1),
+                  ingredient.unit,
+                  parseFloat(ri.quantity),
+                  ri.unit
+                ) || 0
+              : 0;
+            return {
+              ingredient_id: ri.ingredient_id,
+              quantity: parseFloat(ri.quantity),
+              unit: ri.unit,
+              cost,
+              notes: ri.notes
+            };
+          })
         })
       });
 
@@ -1307,10 +1333,11 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         handleCloseModal();
         fetchRecipes();
       } else {
-        setFormError(data.error || '레시피 저장에 실패했습니다');
+        setFormError(data.error || 'Failed to save recipe');
       }
     } catch (error) {
       console.error('Failed to save recipe:', error);
+      setFormError('Failed to save recipe');
     }
   };
 
@@ -1318,7 +1345,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
     setRecipeIngredients([...recipeIngredients, {
       ingredient_id: 0,
       quantity: '',
-      unit: '',
+      unit: '', // Empty until ingredient selected
       notes: ''
     }]);
   };
@@ -1820,6 +1847,36 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               />
             </UIFormGroup>
 
+            {/* Yield Section */}
+            <div>
+              <SectionTitle>Yield (Production Amount)</SectionTitle>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <UIFormGroup>
+                  <FormLabel>Yield Amount *</FormLabel>
+                  <FormInput
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={formData.yield_amount}
+                    onChange={(e) => setFormData({ ...formData, yield_amount: e.target.value })}
+                    placeholder="e.g., 10"
+                    required
+                  />
+                </UIFormGroup>
+                <UIFormGroup>
+                  <FormLabel>Yield Unit *</FormLabel>
+                  <FormSelect
+                    value={formData.yield_unit}
+                    onChange={(e) => setFormData({ ...formData, yield_unit: e.target.value })}
+                  >
+                    {STANDARD_UNITS.map(u => (
+                      <option key={u.value} value={u.value}>{u.label}</option>
+                    ))}
+                  </FormSelect>
+                </UIFormGroup>
+              </div>
+            </div>
+
             {/* Ingredients Section */}
             <div>
               <SectionTitle>Ingredients</SectionTitle>
@@ -1835,21 +1892,19 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               <IngredientsList>
                 {recipeIngredients.map((ri, index) => (
                   <IngredientRow key={index}>
-                    <FormSelect
-                      value={ri.ingredient_id}
-                      onChange={(e) => updateIngredient(index, 'ingredient_id', parseInt(e.target.value))}
-                      required
-                    >
-                      <option value={0}>Select ingredient...</option>
-                      {ingredients.map(ing => {
+                    <SearchableSelect
+                      options={ingredients.map(ing => {
                         const costPerUnit = Number(ing.unit_cost) / (ing.base_quantity || 1);
-                        return (
-                          <option key={ing.id} value={ing.id}>
-                            {ing.name} ({getCurrencySymbol(selectedCurrency)} {costPerUnit.toFixed(2)}/{ing.unit})
-                          </option>
-                        );
+                        return {
+                          value: ing.id,
+                          label: ing.name,
+                          subLabel: `${getCurrencySymbol(selectedCurrency)} ${costPerUnit.toFixed(2)}/${ing.unit}`
+                        };
                       })}
-                    </FormSelect>
+                      value={ri.ingredient_id || null}
+                      onChange={(value) => updateIngredient(index, 'ingredient_id', value as number)}
+                      placeholder="Search ingredient..."
+                    />
                     <FormInput
                       type="number"
                       step="0.01"
@@ -1859,11 +1914,9 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                       required
                     />
                     <FormInput
-                      type="text"
                       value={ri.unit}
-                      readOnly
                       disabled
-                      style={{ background: '#F3F4F6', cursor: 'not-allowed' }}
+                      style={{ background: '#F3F4F6', color: '#6B7280' }}
                     />
                     <FormInput
                       type="text"
@@ -1883,10 +1936,25 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               </AddButton>
 
               {recipeIngredients.length > 0 && (
-                <CostSummary>
-                  <CostSummaryLabel>Total Ingredient Cost</CostSummaryLabel>
-                  <CostSummaryValue>{formatCurrency(calculateTotalCost(), selectedCurrency)}</CostSummaryValue>
-                </CostSummary>
+                <>
+                  <CostSummary>
+                    <CostSummaryLabel>Total Ingredient Cost</CostSummaryLabel>
+                    <CostSummaryValue>{formatCurrency(calculateTotalCost(), selectedCurrency)}</CostSummaryValue>
+                  </CostSummary>
+                  <CostSummary style={{ marginTop: '8px' }}>
+                    <CostSummaryLabel>Cost per {formData.yield_unit}</CostSummaryLabel>
+                    <CostSummaryValue>
+                      {formatCurrency(
+                        calculateCostPerUnit(
+                          calculateTotalCost(),
+                          parseFloat(formData.yield_amount) || 1,
+                          formData.yield_unit
+                        ).cost,
+                        selectedCurrency
+                      )}
+                    </CostSummaryValue>
+                  </CostSummary>
+                </>
               )}
             </div>
 

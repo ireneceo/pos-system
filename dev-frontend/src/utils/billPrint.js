@@ -1028,6 +1028,182 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
 }
 
 /**
+ * Generate Single Item Kitchen Ticket Content (per-item print mode)
+ *
+ * @param {Object} orderData - Order information
+ * @param {Object} item - Single item to print
+ * @param {number} itemIndex - Current item index (1-based)
+ * @param {number} totalItems - Total number of items in order
+ * @param {Object} storeInfo - Store information
+ * @returns {string} ESC/POS command string
+ */
+export function generateSingleItemKitchenTicket(orderData, item, itemIndex, totalItems, storeInfo) {
+  let content = '';
+
+  // Initialize printer
+  content += CMD.INIT;
+
+  // === ORDER INFO ===
+  content += CMD.ALIGN_LEFT;
+  content += CMD.DASHED_LINE + CMD.LINE_FEED;
+  content += formatLine('Order:', orderData.orderNumber) + CMD.LINE_FEED;
+
+  const timeStr = orderData.date.toLocaleTimeString('en-MY', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+  content += formatLine('Time:', timeStr) + CMD.LINE_FEED;
+
+  // Order Source (Mobile Order vs POS)
+  const orderSource = orderData.orderSource === 'mobile' ? 'MOBILE ORDER' : 'POS';
+  content += formatLine('Source:', orderSource) + CMD.LINE_FEED;
+
+  if (orderData.customerName && orderData.customerName !== 'Walk-in Customer') {
+    content += formatLine('Customer:', orderData.customerName) + CMD.LINE_FEED;
+  }
+
+  content += CMD.DASHED_LINE + CMD.LINE_FEED;
+
+  // === ITEM NUMBER INDICATOR ===
+  content += CMD.LINE_FEED;
+  content += CMD.ALIGN_CENTER;
+  content += CMD.BOLD_ON;
+  content += `** ITEM ${itemIndex} of ${totalItems} **` + CMD.LINE_FEED;
+  content += CMD.BOLD_OFF;
+  content += CMD.LINE_FEED;
+
+  // === SINGLE ITEM (LARGE) ===
+  content += CMD.ALIGN_LEFT;
+  const itemName = item.menuItem?.name || item.name;
+  const qty = item.quantity;
+
+  // Item: Quantity x Name (LARGE & BOLD)
+  content += CMD.BOLD_ON;
+  content += CMD.TEXT_DOUBLE;
+  content += qty + ' x ' + itemName + CMD.LINE_FEED;
+  content += CMD.TEXT_NORMAL;
+  content += CMD.BOLD_OFF;
+
+  // Options with marker
+  if (item.options && item.options.length > 0) {
+    item.options.forEach(option => {
+      content += '  * ' + option + CMD.LINE_FEED;
+    });
+  }
+
+  content += CMD.LINE_FEED;
+  content += CMD.DASHED_LINE + CMD.LINE_FEED;
+
+  // === SPECIAL NOTES (only on first item or if item has specific note) ===
+  if (itemIndex === 1 && orderData.notes && orderData.notes.trim()) {
+    content += CMD.LINE_FEED;
+    content += CMD.BOLD_ON;
+    content += '** SPECIAL NOTES **' + CMD.LINE_FEED;
+    content += CMD.BOLD_OFF;
+    content += orderData.notes + CMD.LINE_FEED;
+    content += CMD.LINE_FEED;
+    content += CMD.DASHED_LINE + CMD.LINE_FEED;
+  }
+
+  // === FOOTER - TABLE/PAGER/PICKUP NUMBER ===
+  content += CMD.LINE_FEED;
+
+  if (orderData.tableNumber) {
+    content += CMD.ALIGN_CENTER;
+    content += CMD.TEXT_DOUBLE;
+    content += CMD.BOLD_ON;
+    content += 'TABLE  ' + orderData.tableNumber + CMD.LINE_FEED;
+    content += CMD.TEXT_NORMAL;
+    content += CMD.BOLD_OFF;
+  } else if (orderData.pagerNumber) {
+    content += CMD.ALIGN_CENTER;
+    content += CMD.TEXT_DOUBLE;
+    content += CMD.BOLD_ON;
+    content += 'PAGER #' + orderData.pagerNumber + CMD.LINE_FEED;
+    content += CMD.TEXT_NORMAL;
+    content += CMD.BOLD_OFF;
+  } else if (orderData.pickupNumber) {
+    content += CMD.ALIGN_CENTER;
+    content += CMD.TEXT_DOUBLE;
+    content += CMD.BOLD_ON;
+    content += 'PICKUP #' + orderData.pickupNumber + CMD.LINE_FEED;
+    content += CMD.TEXT_NORMAL;
+    content += CMD.BOLD_OFF;
+  }
+
+  content += CMD.LINE_FEED;
+  content += CMD.LINE_FEED;
+
+  // Paper cut
+  content += CMD.CUT_PARTIAL;
+
+  return content;
+}
+
+/**
+ * Generate HTML Single Item Kitchen Ticket (for browser print)
+ */
+function generateHTMLSingleItemKitchenTicket(orderData, item, itemIndex, totalItems, storeInfo) {
+  const itemName = item.menuItem?.name || item.name;
+  const qty = item.quantity;
+  const timeStr = orderData.date.toLocaleTimeString('en-MY', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+
+  let html = `
+    <div style="font-family: 'Courier New', monospace; width: 280px; padding: 10px;">
+      <div style="border-bottom: 1px dashed #000; padding-bottom: 8px; margin-bottom: 8px;">
+        <div>Order: ${orderData.orderNumber}</div>
+        <div>Time: ${timeStr}</div>
+        ${orderData.customerName && orderData.customerName !== 'Walk-in Customer' ? `<div>Customer: ${orderData.customerName}</div>` : ''}
+      </div>
+
+      <div style="text-align: center; font-weight: bold; margin: 12px 0;">
+        ** ITEM ${itemIndex} of ${totalItems} **
+      </div>
+
+      <div style="font-size: 18px; font-weight: bold; margin: 16px 0;">
+        ${qty} x ${itemName}
+      </div>
+
+      ${item.options && item.options.length > 0 ? `
+        <div style="margin-left: 10px; margin-bottom: 8px;">
+          ${item.options.map(opt => `<div>* ${opt}</div>`).join('')}
+        </div>
+      ` : ''}
+
+      ${itemIndex === 1 && orderData.notes ? `
+        <div style="border-top: 1px dashed #000; padding-top: 8px; margin-top: 8px;">
+          <div style="font-weight: bold;">** SPECIAL NOTES **</div>
+          <div>${orderData.notes}</div>
+        </div>
+      ` : ''}
+
+      ${orderData.tableNumber ? `
+        <div style="text-align: center; font-size: 20px; font-weight: bold; margin-top: 16px;">
+          TABLE ${orderData.tableNumber}
+        </div>
+      ` : ''}
+      ${!orderData.tableNumber && orderData.pagerNumber ? `
+        <div style="text-align: center; font-size: 20px; font-weight: bold; margin-top: 16px;">
+          PAGER #${orderData.pagerNumber}
+        </div>
+      ` : ''}
+      ${!orderData.tableNumber && !orderData.pagerNumber && orderData.pickupNumber ? `
+        <div style="text-align: center; font-size: 20px; font-weight: bold; margin-top: 16px;">
+          PICKUP #${orderData.pickupNumber}
+        </div>
+      ` : ''}
+    </div>
+  `;
+
+  return html;
+}
+
+/**
  * Print Kitchen Order Ticket via RawBT
  *
  * @param {Object} orderData - Order data
@@ -1044,7 +1220,57 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
       return true; // Return success but skip printing
     }
 
-    // PC: Use browser print dialog with HTML
+    // Use provided printerName or get from settings
+    const targetPrinter = printerName || settings.kitchenPrinter.name;
+
+    // Check if per-item printing is enabled
+    const printPerItem = settings.kitchenPrinter.printPerItem || false;
+
+    if (printPerItem && orderData.items && orderData.items.length > 0) {
+      // Print separate ticket for each item
+      console.log(`📋 Printing ${orderData.items.length} separate kitchen tickets (per-item mode)`);
+
+      for (let i = 0; i < orderData.items.length; i++) {
+        const item = orderData.items[i];
+        const itemIndex = i + 1;
+        const totalItems = orderData.items.length;
+
+        if (shouldUseBrowserPrint()) {
+          // Browser print mode
+          const htmlContent = generateHTMLSingleItemKitchenTicket(orderData, item, itemIndex, totalItems, storeInfo);
+          await printHTMLContent(htmlContent, `Kitchen Ticket - Item ${itemIndex}`);
+        } else {
+          // RawBT mode
+          const escposContent = generateSingleItemKitchenTicket(orderData, item, itemIndex, totalItems, storeInfo);
+          const base64Content = btoa(unescape(encodeURIComponent(escposContent)));
+
+          let intentScheme = '#Intent;scheme=rawbt;';
+          if (targetPrinter) {
+            intentScheme += 'S.s=' + encodeURIComponent(targetPrinter) + ';';
+          }
+          const intentPackage = 'package=ru.a402d.rawbtprinter;end;';
+          const intentUrl = 'intent:base64,' + base64Content + intentScheme + intentPackage;
+
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = intentUrl;
+          document.body.appendChild(iframe);
+
+          setTimeout(() => {
+            document.body.removeChild(iframe);
+          }, 500);
+        }
+
+        // Delay between prints to prevent printer overload
+        if (i < orderData.items.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 800));
+        }
+      }
+
+      return true;
+    }
+
+    // Default: Print combined ticket (original behavior)
     if (shouldUseBrowserPrint()) {
       console.log('🖥️ PC detected - using browser print dialog for kitchen ticket');
       const htmlContent = generateHTMLKitchenTicket(orderData, storeInfo);
@@ -1053,9 +1279,6 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
 
     // Mobile/Tablet: Use RawBT Intent
     console.log('📱 Mobile/Tablet detected - using RawBT for kitchen ticket');
-
-    // Use provided printerName or get from settings
-    const targetPrinter = printerName || settings.kitchenPrinter.name;
 
     const escposContent = generateKitchenTicketContent(orderData, storeInfo);
     const base64Content = btoa(unescape(encodeURIComponent(escposContent)));

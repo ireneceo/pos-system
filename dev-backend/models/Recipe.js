@@ -89,8 +89,8 @@ Recipe.init({
   },
   // 생산량 정보
   yield_amount: {
-    type: DataTypes.DECIMAL(10, 4),
-    defaultValue: 1.0000,
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 1.00,
     comment: '생산량 (예: 10kg, 5 portion)'
   },
   yield_unit: {

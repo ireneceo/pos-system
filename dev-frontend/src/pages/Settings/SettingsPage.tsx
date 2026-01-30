@@ -578,7 +578,8 @@ const SettingsPage: React.FC = () => {
     kitchenPrinter: {
       enabled: true,
       name: '',
-      autoPrint: true
+      autoPrint: true,
+      printPerItem: false  // Print separate ticket for each item
     }
   });
 
@@ -3975,6 +3976,34 @@ const SettingsPage: React.FC = () => {
                   )}
                 </SettingsCard>
               </SettingsGrid>
+              )}
+
+              {/* Kitchen Ticket Options - Always visible regardless of printer mode */}
+              {!printerSettingsLoading && (
+                <SettingsCard style={{ marginTop: '24px' }}>
+                  <CardTitle>Kitchen Ticket Options</CardTitle>
+                  <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
+                    Configure how kitchen order tickets are printed
+                  </p>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={printerSettings.kitchenPrinter.printPerItem || false}
+                      onChange={(e) => setPrinterSettings(prev => ({
+                        ...prev,
+                        kitchenPrinter: { ...prev.kitchenPrinter, printPerItem: e.target.checked }
+                      }))}
+                      style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
+                    />
+                    <div>
+                      <span style={{ fontSize: '14px', color: '#374151', fontWeight: 500 }}>Print separate ticket for each item</span>
+                      <p style={{ fontSize: '12px', color: '#6B7C93', marginTop: '4px' }}>
+                        When enabled, each menu item will print on a separate ticket instead of one combined ticket per order
+                      </p>
+                    </div>
+                  </label>
+                </SettingsCard>
               )}
 
               <SaveButtonContainer style={{ marginTop: '24px' }}>
