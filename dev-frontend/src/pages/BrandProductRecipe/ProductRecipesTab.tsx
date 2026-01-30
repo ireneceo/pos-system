@@ -3,11 +3,13 @@ import styled from 'styled-components';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useAuth } from '../../contexts/AuthContext';
-import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI/Modal';
+import { Modal, ModalButton, ModalWarning, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI/Modal';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
+import SearchableSelect from '../../components/Common/SearchableSelect';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { fetchAPI } from '../../utils/api';
+import { STANDARD_UNITS, calculateIngredientCost, calculateCostPerUnit } from '../../utils/unitConversion';
 
 interface ProductRecipesTabProps {
   onCountChange?: (count: number) => void;
@@ -24,6 +26,8 @@ interface ProductRecipe {
   category?: ProductRecipeCategory;
   emoji: string | null;
   image: string | null;
+  yield_amount: number;
+  yield_unit: string;
   total_ingredient_cost: number;
   suggested_price: number | null;
   prep_time: number | null;
@@ -506,6 +510,39 @@ const ViewIngredientRow = styled.div`
   }
 `;
 
+// Emoji Picker Styles
+const EmojiPicker = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+  gap: 6px;
+  max-height: 160px;
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  background: #FAFBFC;
+`;
+
+const EmojiOption = styled.button<{ selected?: boolean }>`
+  width: 36px;
+  height: 36px;
+  font-size: 20px;
+  background: ${props => props.selected ? '#635BFF' : 'white'};
+  border: 1px solid ${props => props.selected ? '#635BFF' : '#E6EBF1'};
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+
+  &:hover {
+    background: ${props => props.selected ? '#635BFF' : '#F0F0FF'};
+    border-color: #635BFF;
+    transform: scale(1.1);
+  }
+`;
+
 // Recipe Modal Styles (Cooking-focused popup)
 const RecipeModalOverlay = styled.div`
   position: fixed;
@@ -678,12 +715,17 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
     category_id: '',
     emoji: '',
     image: '',
+    yield_amount: '1',
+    yield_unit: 'portion',
     prep_time: '',
     cook_time: '',
     instructions_summary: '',
     instructions_detail: '',
     suggested_price: ''
   });
+
+  // Form error state
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Recipe ingredients in form
   const [formIngredients, setFormIngredients] = useState<Array<{
@@ -695,6 +737,25 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
 
   // View mode for modal
   const [viewMode, setViewMode] = useState(false);
+
+  // Emoji options for recipe
+  const emojiOptions = [
+    // Food
+    '🍖', '🍲', '🍚', '🥓', '🍜', '🍗', '🥟', '🥘', '🍣', '🍤', '🍔', '🍟', '🍝', '🥗',
+    '🌮', '🌯', '🥙', '🫔', '🥪', '🌭', '🍕', '🍞', '🥐', '🥖', '🥨', '🥯', '🧇', '🥞',
+    '🍳', '🥚', '🧈', '🥩', '🍙', '🍘', '🍥', '🍢', '🍠', '🥠', '🧆',
+    // Beverages
+    '☕', '🍵', '🥤', '🍺', '🍷', '🥛', '🧃', '🧋', '🍹', '🍸', '🍶', '🥃', '🍾', '🧉',
+    '🫖', '🍼', '🧊',
+    // Desserts
+    '🍰', '🍨', '🍡', '🍮', '🍩', '🍪', '🧁', '🍫', '🍬', '🥧', '🍭', '🍯', '🥮',
+    '🍦', '🍧', '🎂', '🥜', '🌰', '🥥',
+    // Fruits & Vegetables
+    '🍓', '🍇', '🍈', '🍉', '🍊', '🍋', '🍌', '🍍', '🥭', '🍎', '🍏', '🍐', '🍑',
+    '🍒', '🥝', '🍅', '🥑', '🌶️', '🥒', '🥬', '🥦', '🧄', '🧅', '🌽', '🥕', '🥔', '🍄',
+    // Default
+    '📋'
+  ];
 
   const brandId = user?.brand_id;
 
@@ -756,6 +817,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
 
   const handleOpenModal = (recipe?: ProductRecipe, isViewMode: boolean = false) => {
     setViewMode(isViewMode);
+    setFormError(null);
     if (recipe) {
       setEditingRecipe(recipe);
       setFormData({
@@ -764,6 +826,8 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
         category_id: recipe.category_id?.toString() || '',
         emoji: recipe.emoji || '',
         image: recipe.image || '',
+        yield_amount: recipe.yield_amount?.toString() || '1',
+        yield_unit: recipe.yield_unit || 'portion',
         prep_time: recipe.prep_time?.toString() || '',
         cook_time: recipe.cook_time?.toString() || '',
         instructions_summary: recipe.instructions_summary || '',
@@ -789,6 +853,8 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
         category_id: '',
         emoji: '',
         image: '',
+        yield_amount: '1',
+        yield_unit: 'portion',
         prep_time: '',
         cook_time: '',
         instructions_summary: '',
@@ -814,7 +880,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
     setFormIngredients([...formIngredients, {
       ingredient_id: 0,
       quantity: '',
-      unit: '',
+      unit: 'g', // 기본 단위
       notes: ''
     }]);
   };
@@ -825,7 +891,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
 
     // Auto-fill unit when ingredient selected
     if (field === 'ingredient_id') {
-      const ing = ingredients.find(i => i.id === parseInt(value));
+      const ing = ingredients.find(i => i.id === value);
       if (ing) {
         updated[index].unit = ing.unit;
       }
@@ -852,8 +918,15 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
   };
 
   const handleSave = async () => {
+    setFormError(null);
+
     if (!formData.name.trim()) {
-      alert('Recipe name is required');
+      setFormError('Recipe name is required');
+      return;
+    }
+
+    if (!formData.yield_amount || parseFloat(formData.yield_amount) <= 0) {
+      setFormError('Yield amount must be greater than 0');
       return;
     }
 
@@ -866,6 +939,8 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
         category_id: formData.category_id ? parseInt(formData.category_id) : null,
         emoji: formData.emoji || null,
         image: formData.image || null,
+        yield_amount: parseFloat(formData.yield_amount) || 1,
+        yield_unit: formData.yield_unit || 'portion',
         prep_time: formData.prep_time ? parseInt(formData.prep_time) : null,
         cook_time: formData.cook_time ? parseInt(formData.cook_time) : null,
         instructions_summary: formData.instructions_summary || null,
@@ -873,12 +948,25 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
         suggested_price: formData.suggested_price ? parseFloat(formData.suggested_price) : null,
         ingredients: formIngredients
           .filter(fi => fi.ingredient_id && fi.quantity)
-          .map(fi => ({
-            ingredient_id: fi.ingredient_id,
-            quantity: parseFloat(fi.quantity),
-            unit: fi.unit,
-            notes: fi.notes || null
-          }))
+          .map(fi => {
+            const ingredient = ingredients.find(ing => ing.id === fi.ingredient_id);
+            // 단위 변환을 고려한 비용 계산
+            const cost = ingredient
+              ? calculateIngredientCost(
+                  ingredient.unit_cost / (ingredient.base_quantity || 1),
+                  ingredient.unit,
+                  parseFloat(fi.quantity),
+                  fi.unit
+                ) || 0
+              : 0;
+            return {
+              ingredient_id: fi.ingredient_id,
+              quantity: parseFloat(fi.quantity),
+              unit: fi.unit,
+              cost,
+              notes: fi.notes || null
+            };
+          })
       };
 
       const url = editingRecipe
@@ -893,20 +981,21 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
 
       if (response.success) {
         setShowModal(false);
+        setFormError(null);
         fetchData();
       } else {
-        alert(response.error || 'Failed to save recipe');
+        setFormError(response.error || 'Failed to save recipe');
       }
     } catch (error) {
       console.error('Failed to save recipe:', error);
-      alert('Failed to save recipe');
+      setFormError('Failed to save recipe');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (recipe: ProductRecipe) => {
-    if (!confirm(`Are you sure you want to delete "${recipe.name}"?`)) return;
+    if (!window.confirm(`Delete "${recipe.name}"? This action cannot be undone.`)) return;
 
     try {
       const response = await fetchAPI(`/api/product-recipes/${recipe.id}`, {
@@ -916,11 +1005,10 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
       if (response.success) {
         fetchData();
       } else {
-        alert(response.error || 'Failed to delete recipe');
+        console.error('Failed to delete recipe:', response.error);
       }
     } catch (error) {
       console.error('Failed to delete recipe:', error);
-      alert('Failed to delete recipe');
     }
   };
 
@@ -1094,30 +1182,37 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
           />
         </UIFormGroup>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <UIFormGroup>
+          <FormLabel>Category</FormLabel>
+          <FormSelect
+            value={formData.category_id}
+            onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+            disabled={viewMode}
+          >
+            <option value="">Select Category</option>
+            {categories.map(cat => (
+              <option key={cat.id} value={cat.id}>{cat.emoji} {cat.name}</option>
+            ))}
+          </FormSelect>
+        </UIFormGroup>
+
+        {!viewMode && (
           <UIFormGroup>
-            <FormLabel>Category</FormLabel>
-            <FormSelect
-              value={formData.category_id}
-              onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-              disabled={viewMode}
-            >
-              <option value="">Select Category</option>
-              {categories.map(cat => (
-                <option key={cat.id} value={cat.id}>{cat.emoji} {cat.name}</option>
+            <FormLabel>Emoji Icon</FormLabel>
+            <EmojiPicker>
+              {emojiOptions.map((emoji) => (
+                <EmojiOption
+                  key={emoji}
+                  type="button"
+                  selected={formData.emoji === emoji}
+                  onClick={() => setFormData({ ...formData, emoji })}
+                >
+                  {emoji}
+                </EmojiOption>
               ))}
-            </FormSelect>
+            </EmojiPicker>
           </UIFormGroup>
-          <UIFormGroup>
-            <FormLabel>Emoji</FormLabel>
-            <FormInput
-              value={formData.emoji}
-              onChange={(e) => setFormData({ ...formData, emoji: e.target.value })}
-              placeholder="e.g., 🍗"
-              disabled={viewMode}
-            />
-          </UIFormGroup>
-        </div>
+        )}
 
         {!viewMode && (
           <UIFormGroup>
@@ -1200,6 +1295,35 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
           />
         </UIFormGroup>
 
+        {/* Yield Section */}
+        <SectionTitle>Yield (Production Amount)</SectionTitle>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+          <UIFormGroup>
+            <FormLabel>Yield Amount *</FormLabel>
+            <FormInput
+              type="number"
+              step="0.01"
+              min="0.01"
+              value={formData.yield_amount}
+              onChange={(e) => setFormData({ ...formData, yield_amount: e.target.value })}
+              placeholder="e.g., 10"
+              disabled={viewMode}
+            />
+          </UIFormGroup>
+          <UIFormGroup>
+            <FormLabel>Yield Unit *</FormLabel>
+            <FormSelect
+              value={formData.yield_unit}
+              onChange={(e) => setFormData({ ...formData, yield_unit: e.target.value })}
+              disabled={viewMode}
+            >
+              {STANDARD_UNITS.map(u => (
+                <option key={u.value} value={u.value}>{u.label}</option>
+              ))}
+            </FormSelect>
+          </UIFormGroup>
+        </div>
+
         {/* Ingredients Section */}
         <SectionTitle>Ingredients</SectionTitle>
 
@@ -1219,47 +1343,56 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
               {!viewMode && <span></span>}
             </IngredientHeaderRow>
 
-            {formIngredients.map((fi, index) => (
-              <IngredientRow key={index} style={viewMode ? { gridTemplateColumns: '3fr 1fr 0.7fr 2fr' } : undefined}>
-                <FormSelect
-                  value={fi.ingredient_id || ''}
-                  onChange={(e) => updateIngredientRow(index, 'ingredient_id', parseInt(e.target.value))}
-                  disabled={viewMode}
-                >
-                  <option value="">Select Ingredient</option>
-                  {ingredients.map(ing => {
-                    const costPerUnit = ing.unit_cost / (ing.base_quantity || 1);
-                    return (
-                      <option key={ing.id} value={ing.id}>
-                        {ing.name} ({getCurrencySymbol(selectedCurrency)} {costPerUnit.toFixed(2)}/{ing.unit})
-                      </option>
-                    );
-                  })}
-                </FormSelect>
-                <FormInput
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="Qty"
-                  value={fi.quantity}
-                  onChange={(e) => updateIngredientRow(index, 'quantity', e.target.value)}
-                  disabled={viewMode}
-                />
-                <FormInput
-                  value={fi.unit}
-                  onChange={(e) => updateIngredientRow(index, 'unit', e.target.value)}
-                  placeholder="Unit"
-                  disabled={viewMode}
-                />
-                <FormInput
-                  value={fi.notes}
-                  onChange={(e) => updateIngredientRow(index, 'notes', e.target.value)}
-                  placeholder="Notes"
-                  disabled={viewMode}
-                />
-                {!viewMode && <RemoveButton onClick={() => removeIngredientRow(index)}>×</RemoveButton>}
-              </IngredientRow>
-            ))}
+            {formIngredients.map((fi, index) => {
+              const selectedIngredient = ingredients.find(ing => ing.id === fi.ingredient_id);
+              return (
+                <IngredientRow key={index} style={viewMode ? { gridTemplateColumns: '3fr 1fr 0.7fr 2fr' } : undefined}>
+                  {viewMode ? (
+                    <FormInput value={selectedIngredient?.name || ''} disabled />
+                  ) : (
+                    <SearchableSelect
+                      options={ingredients.map(ing => {
+                        const costPerUnit = ing.unit_cost / (ing.base_quantity || 1);
+                        return {
+                          value: ing.id,
+                          label: ing.name,
+                          subLabel: `${getCurrencySymbol(selectedCurrency)} ${costPerUnit.toFixed(2)}/${ing.unit}`
+                        };
+                      })}
+                      value={fi.ingredient_id || null}
+                      onChange={(value) => updateIngredientRow(index, 'ingredient_id', value as number)}
+                      placeholder="Search ingredient..."
+                      disabled={viewMode}
+                    />
+                  )}
+                  <FormInput
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Qty"
+                    value={fi.quantity}
+                    onChange={(e) => updateIngredientRow(index, 'quantity', e.target.value)}
+                    disabled={viewMode}
+                  />
+                  <FormSelect
+                    value={fi.unit}
+                    onChange={(e) => updateIngredientRow(index, 'unit', e.target.value)}
+                    disabled={viewMode}
+                  >
+                    {STANDARD_UNITS.map(u => (
+                      <option key={u.value} value={u.value}>{u.value}</option>
+                    ))}
+                  </FormSelect>
+                  <FormInput
+                    value={fi.notes}
+                    onChange={(e) => updateIngredientRow(index, 'notes', e.target.value)}
+                    placeholder="Notes"
+                    disabled={viewMode}
+                  />
+                  {!viewMode && <RemoveButton onClick={() => removeIngredientRow(index)}>×</RemoveButton>}
+                </IngredientRow>
+              );
+            })}
           </IngredientsList>
         )}
 
@@ -1267,6 +1400,21 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
           <CostSummaryLabel>Total Ingredient Cost</CostSummaryLabel>
           <CostSummaryValue>{formatCurrency(calculateTotalCost(), selectedCurrency)}</CostSummaryValue>
         </CostSummary>
+        <CostSummary style={{ marginTop: '8px' }}>
+          <CostSummaryLabel>Cost per {formData.yield_unit}</CostSummaryLabel>
+          <CostSummaryValue>
+            {formatCurrency(
+              calculateCostPerUnit(
+                calculateTotalCost(),
+                parseFloat(formData.yield_amount) || 1,
+                formData.yield_unit
+              ).cost,
+              selectedCurrency
+            )}
+          </CostSummaryValue>
+        </CostSummary>
+
+        {formError && <ModalWarning>{formError}</ModalWarning>}
 
         <ButtonGroup>
           <ModalButton variant="secondary" onClick={() => setShowModal(false)}>

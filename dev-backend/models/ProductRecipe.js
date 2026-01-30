@@ -66,6 +66,17 @@ ProductRecipe.init({
     type: DataTypes.INTEGER,
     defaultValue: 0
   },
+  // 생산량 정보
+  yield_amount: {
+    type: DataTypes.DECIMAL(10, 4),
+    defaultValue: 1.0000,
+    comment: '생산량 (예: 10kg, 5 portion)'
+  },
+  yield_unit: {
+    type: DataTypes.STRING(20),
+    defaultValue: 'portion',
+    comment: '생산 단위 (kg, g, L, ml, portion 등)'
+  },
   // 원가 정보
   total_ingredient_cost: {
     type: DataTypes.DECIMAL(10, 2),

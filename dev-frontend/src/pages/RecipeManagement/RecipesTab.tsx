@@ -3,11 +3,13 @@ import styled from 'styled-components';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useAuth } from '../../contexts/AuthContext';
-import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI/Modal';
+import { Modal, ModalButton, ModalWarning, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI/Modal';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
+import SearchableSelect from '../../components/Common/SearchableSelect';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
+import { STANDARD_UNITS, calculateIngredientCost, calculateCostPerUnit } from '../../utils/unitConversion';
 
 interface RecipesTabProps {
   brandId: number | null;
@@ -29,6 +31,8 @@ interface Recipe {
   recipeCategory?: RecipeCategory;
   emoji: string | null;
   image: string | null;
+  yield_amount: number;
+  yield_unit: string;
   total_ingredient_cost: number;
   suggested_price: number | null;
   prep_time: number | null;
@@ -856,6 +860,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
     category: '',
     recipe_category_id: '',
     image: '',
+    yield_amount: '1',
+    yield_unit: 'portion',
     prep_time: '',
     cook_time: '',
     instructions: '',
