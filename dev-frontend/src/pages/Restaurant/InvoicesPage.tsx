@@ -877,8 +877,10 @@ const RestaurantInvoicesPage: React.FC = () => {
   };
 
   // Check if invoice is overdue based on due_date
+  // Only pending_payment can be overdue (not paid, cancelled, draft, or payment_submitted)
   const isInvoiceOverdue = (invoice: Invoice): boolean => {
-    if (invoice.status === 'paid' || invoice.status === 'cancelled' || invoice.status === 'draft') {
+    // Only pending_payment status can become overdue
+    if (invoice.status !== 'pending_payment') {
       return false;
     }
     const now = new Date();
