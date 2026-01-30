@@ -759,8 +759,8 @@ function getPrinterSettings() {
     console.error('Failed to load printer settings:', e);
   }
   return {
-    billPrinter: { enabled: true, name: '', autoPrint: false },
-    kitchenPrinter: { enabled: true, name: '', autoPrint: true }
+    billPrinter: { enabled: false, name: '', autoPrint: false },
+    kitchenPrinter: { enabled: false, name: '', autoPrint: false, printPerItem: false }
   };
 }
 
@@ -1204,6 +1204,132 @@ function generateHTMLSingleItemKitchenTicket(orderData, item, itemIndex, totalIt
 }
 
 /**
+ * Generate HTML with all items as separate pages (for browser print per-item mode)
+ * Each item gets its own page with page-break
+ */
+function generateHTMLMultiPageKitchenTickets(orderData, storeInfo) {
+  const timeStr = orderData.date.toLocaleTimeString('en-MY', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+  const orderSource = orderData.orderSource === 'mobile' ? 'MOBILE ORDER' : 'POS';
+  const totalItems = orderData.items.length;
+
+  let pagesHTML = '';
+
+  orderData.items.forEach((item, index) => {
+    const itemIndex = index + 1;
+    const itemName = item.menuItem?.name || item.name;
+    const qty = item.quantity;
+
+    let optionsHTML = '';
+    if (item.options && item.options.length > 0) {
+      item.options.forEach(option => {
+        optionsHTML += `<div style="margin-left: 15px; color: #000; font-weight: 700;">\u2605 ${option}</div>`;
+      });
+    }
+
+    // Table/Pager/Pickup
+    let pickupHTML = '';
+    if (orderData.tableNumber) {
+      pickupHTML = `<div style="font-size: 28px; font-weight: 900; text-align: center; margin: 15px 0;">TABLE ${orderData.tableNumber}</div>`;
+    } else if (orderData.pagerNumber) {
+      pickupHTML = `<div style="font-size: 28px; font-weight: 900; text-align: center; margin: 15px 0;">PAGER ${orderData.pagerNumber}</div>`;
+    } else {
+      const pickupNum = orderData.pickupNumber || (orderData.orderNumber ? orderData.orderNumber.split('-')[1] : '000');
+      pickupHTML = `<div style="font-size: 28px; font-weight: 900; text-align: center; margin: 15px 0;">PICKUP ${pickupNum}</div>`;
+    }
+
+    // Order type
+    let orderTypeHTML = '';
+    if (orderData.orderType === 'pickup') {
+      orderTypeHTML = `<div style="font-size: 18px; font-weight: bold; text-align: center; margin: 10px 0;">** PRE-ORDER PICKUP **</div>
+        <div style="text-align: center; font-weight: bold;">Pickup: ${orderData.scheduledPickupTime ? formatPickupTimeRange(orderData.scheduledPickupTime) : 'ASAP'}</div>`;
+    } else if (orderData.orderType === 'takeaway' || orderData.takeawayCharge > 0) {
+      orderTypeHTML = `<div style="font-size: 18px; font-weight: bold; text-align: center; margin: 10px 0;">** TAKEAWAY **</div>`;
+    } else if (orderData.orderType === 'delivery') {
+      orderTypeHTML = `<div style="font-size: 18px; font-weight: bold; text-align: center; margin: 10px 0;">** DELIVERY **</div>`;
+    }
+
+    pagesHTML += `
+      <div class="ticket-page">
+        <div class="divider"></div>
+
+        <table>
+          <tr><td style="font-weight: 700;">Order:</td><td style="text-align: right; font-weight: 700;">${orderData.orderNumber}</td></tr>
+          <tr><td style="font-weight: 700;">Time:</td><td style="text-align: right; font-weight: 700;">${timeStr}</td></tr>
+          <tr><td style="font-weight: 700;">Source:</td><td style="text-align: right; font-weight: 700;">${orderSource}</td></tr>
+          ${orderData.customerName && orderData.customerName !== 'Walk-in Customer' ? `<tr><td style="font-weight: 700;">Customer:</td><td style="text-align: right; font-weight: 700;">${orderData.customerName}</td></tr>` : ''}
+        </table>
+
+        <div class="divider"></div>
+
+        <div style="font-size: 18px; font-weight: 900; text-align: center; margin: 12px 0; background: #000; color: #fff; padding: 8px;">
+          ITEM ${itemIndex} of ${totalItems}
+        </div>
+
+        <div style="font-size: 22px; font-weight: 900; margin: 12px 0;">${qty} x ${itemName}</div>
+        ${optionsHTML}
+
+        <div class="divider"></div>
+
+        ${itemIndex === 1 && orderData.notes && orderData.notes.trim() ? `
+          <div style="font-weight: bold;">** SPECIAL NOTES **</div>
+          <div style="margin: 5px 0;">${orderData.notes}</div>
+          <div class="divider"></div>
+        ` : ''}
+
+        ${pickupHTML}
+        ${orderTypeHTML}
+      </div>
+    `;
+  });
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Kitchen Tickets - ${orderData.orderNumber}</title>
+      <style>
+        @page { size: 80mm auto; margin: 0; }
+        @media print {
+          body { margin: 0; padding: 0; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          .ticket-page { page-break-after: always; }
+          .ticket-page:last-child { page-break-after: avoid; }
+        }
+        body {
+          font-family: 'Lucida Console', 'Courier New', monospace;
+          font-size: 14px;
+          font-weight: 600;
+          color: #000;
+          width: 80mm;
+          max-width: 80mm;
+          margin: 0 auto;
+          padding: 0;
+          box-sizing: border-box;
+          -webkit-font-smoothing: none;
+          letter-spacing: 0.5px;
+        }
+        .ticket-page {
+          padding: 5mm;
+          min-height: 100mm;
+        }
+        .divider { border-top: 2px dashed #000; margin: 8px 0; }
+        table { width: 100%; border-collapse: collapse; }
+        td { padding: 3px 0; font-weight: 600; }
+      </style>
+    </head>
+    <body>
+      ${pagesHTML}
+    </body>
+    </html>
+  `;
+}
+
+/**
  * Print Kitchen Order Ticket via RawBT
  *
  * @param {Object} orderData - Order data
@@ -1230,36 +1356,37 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
       // Print separate ticket for each item
       console.log(`📋 Printing ${orderData.items.length} separate kitchen tickets (per-item mode)`);
 
+      if (shouldUseBrowserPrint()) {
+        // Browser print mode: Generate all items as pages in one document
+        console.log('🖥️ Browser mode - generating multi-page document');
+        const htmlContent = generateHTMLMultiPageKitchenTickets(orderData, storeInfo);
+        return printHTMLContent(htmlContent, `Kitchen Tickets - ${orderData.orderNumber}`);
+      }
+
+      // RawBT mode: Print each item separately with delay
       for (let i = 0; i < orderData.items.length; i++) {
         const item = orderData.items[i];
         const itemIndex = i + 1;
         const totalItems = orderData.items.length;
 
-        if (shouldUseBrowserPrint()) {
-          // Browser print mode
-          const htmlContent = generateHTMLSingleItemKitchenTicket(orderData, item, itemIndex, totalItems, storeInfo);
-          await printHTMLContent(htmlContent, `Kitchen Ticket - Item ${itemIndex}`);
-        } else {
-          // RawBT mode
-          const escposContent = generateSingleItemKitchenTicket(orderData, item, itemIndex, totalItems, storeInfo);
-          const base64Content = btoa(unescape(encodeURIComponent(escposContent)));
+        const escposContent = generateSingleItemKitchenTicket(orderData, item, itemIndex, totalItems, storeInfo);
+        const base64Content = btoa(unescape(encodeURIComponent(escposContent)));
 
-          let intentScheme = '#Intent;scheme=rawbt;';
-          if (targetPrinter) {
-            intentScheme += 'S.s=' + encodeURIComponent(targetPrinter) + ';';
-          }
-          const intentPackage = 'package=ru.a402d.rawbtprinter;end;';
-          const intentUrl = 'intent:base64,' + base64Content + intentScheme + intentPackage;
-
-          const iframe = document.createElement('iframe');
-          iframe.style.display = 'none';
-          iframe.src = intentUrl;
-          document.body.appendChild(iframe);
-
-          setTimeout(() => {
-            document.body.removeChild(iframe);
-          }, 500);
+        let intentScheme = '#Intent;scheme=rawbt;';
+        if (targetPrinter) {
+          intentScheme += 'S.s=' + encodeURIComponent(targetPrinter) + ';';
         }
+        const intentPackage = 'package=ru.a402d.rawbtprinter;end;';
+        const intentUrl = 'intent:base64,' + base64Content + intentScheme + intentPackage;
+
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = intentUrl;
+        document.body.appendChild(iframe);
+
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+        }, 500);
 
         // Delay between prints to prevent printer overload
         if (i < orderData.items.length - 1) {

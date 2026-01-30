@@ -571,14 +571,14 @@ const SettingsPage: React.FC = () => {
   // Printer settings state
   const [printerSettings, setPrinterSettings] = useState({
     billPrinter: {
-      enabled: true,
+      enabled: false,  // Default disabled
       name: '',
       autoPrint: false
     },
     kitchenPrinter: {
-      enabled: true,
+      enabled: false,  // Default disabled
       name: '',
-      autoPrint: true,
+      autoPrint: false,  // Default disabled
       printPerItem: false  // Print separate ticket for each item
     }
   });
@@ -1059,21 +1059,22 @@ const SettingsPage: React.FC = () => {
             setPrinterMode(mode);
             setPrinterSettings({
               billPrinter: {
-                enabled: dbSettings.billPrinter?.enabled ?? true,
+                enabled: dbSettings.billPrinter?.enabled ?? false,
                 name: dbSettings.billPrinter?.name || '',
                 autoPrint: dbSettings.billPrinter?.autoPrint ?? false
               },
               kitchenPrinter: {
-                enabled: dbSettings.kitchenPrinter?.enabled ?? true,
+                enabled: dbSettings.kitchenPrinter?.enabled ?? false,
                 name: dbSettings.kitchenPrinter?.name || '',
-                autoPrint: dbSettings.kitchenPrinter?.autoPrint ?? true
+                autoPrint: dbSettings.kitchenPrinter?.autoPrint ?? false,
+                printPerItem: dbSettings.kitchenPrinter?.printPerItem ?? false
               }
             });
             // Also sync to localStorage for billPrint.js
             localStorage.setItem('printerMode', mode);
             localStorage.setItem('printerSettings', JSON.stringify({
-              billPrinter: dbSettings.billPrinter || { enabled: true, name: '', autoPrint: false },
-              kitchenPrinter: dbSettings.kitchenPrinter || { enabled: true, name: '', autoPrint: true }
+              billPrinter: dbSettings.billPrinter || { enabled: false, name: '', autoPrint: false },
+              kitchenPrinter: dbSettings.kitchenPrinter || { enabled: false, name: '', autoPrint: false, printPerItem: false }
             }));
           }
         }
@@ -3986,23 +3987,25 @@ const SettingsPage: React.FC = () => {
                     Configure how kitchen order tickets are printed
                   </p>
 
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={printerSettings.kitchenPrinter.printPerItem || false}
-                      onChange={(e) => setPrinterSettings(prev => ({
-                        ...prev,
-                        kitchenPrinter: { ...prev.kitchenPrinter, printPerItem: e.target.checked }
-                      }))}
-                      style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
-                    />
-                    <div>
-                      <span style={{ fontSize: '14px', color: '#374151', fontWeight: 500 }}>Print separate ticket for each item</span>
-                      <p style={{ fontSize: '12px', color: '#6B7C93', marginTop: '4px' }}>
+                  <Toggle>
+                    <div style={{ flex: 1 }}>
+                      <ToggleLabel style={{ marginBottom: '4px' }}>Print separate ticket for each item</ToggleLabel>
+                      <p style={{ fontSize: '12px', color: '#6B7C93', margin: 0 }}>
                         When enabled, each menu item will print on a separate ticket instead of one combined ticket per order
                       </p>
                     </div>
-                  </label>
+                    <ToggleSwitch>
+                      <ToggleInput
+                        type="checkbox"
+                        checked={printerSettings.kitchenPrinter.printPerItem || false}
+                        onChange={(e) => setPrinterSettings(prev => ({
+                          ...prev,
+                          kitchenPrinter: { ...prev.kitchenPrinter, printPerItem: e.target.checked }
+                        }))}
+                      />
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                  </Toggle>
                 </SettingsCard>
               )}
 
