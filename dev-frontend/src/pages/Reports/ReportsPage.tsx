@@ -6,7 +6,7 @@ import { TabContainer, Tab, StatsGrid, StatCard, StatValue, StatLabel, StatDescr
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
-import { getRestaurantTimezone, getNow, formatDateTime } from '../../utils/timezone';
+import { getRestaurantTimezone, getNow, formatDateTime, getDateStringInTimezone } from '../../utils/timezone';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -337,15 +337,13 @@ const ReportsPage: React.FC = () => {
   }, [operationSettings?.timeZone]);
 
   // Filter orders by date range - memoized for performance
+  // Uses restaurant timezone for accurate date filtering
   const filteredOrders = useMemo(() => {
     if (!orders || orders.length === 0) {
       return [];
     }
 
-    const startDate = new Date(dateRange.start);
-    startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date(dateRange.end);
-    endDate.setHours(23, 59, 59, 999);
+    const timezone = getRestaurantTimezone(operationSettings);
 
     return orders.filter(order => {
       // Check date fields: order_date or createdAt (database columns)
@@ -353,15 +351,19 @@ const ReportsPage: React.FC = () => {
       if (!orderDateValue) {
         return false;
       }
-      const orderDate = new Date(orderDateValue);
-      const isInRange = orderDate >= startDate && orderDate <= endDate;
+
+      // Convert UTC order date to restaurant timezone date string (YYYY-MM-DD)
+      const orderDateStr = getDateStringInTimezone(orderDateValue, timezone);
+
+      // Compare date strings (YYYY-MM-DD format allows string comparison)
+      const isInRange = orderDateStr >= dateRange.start && orderDateStr <= dateRange.end;
 
       // Only include COMPLETED orders for reports
       const isCompleted = order.status === 'completed';
 
       return isInRange && isCompleted;
     });
-  }, [orders, dateRange.start, dateRange.end]);
+  }, [orders, dateRange.start, dateRange.end, operationSettings]);
 
   // Calculate sales data from real orders - memoized for performance
   const salesData = useMemo(() => {

@@ -545,10 +545,9 @@ const ActionButtonsGroup = styled.div`
   align-items: center;
   flex-wrap: wrap;
   gap: 4px;
-  max-width: 180px;
+  justify-content: flex-start;
 
   @media (max-width: 1024px) {
-    max-width: none;
     gap: 8px;
   }
 `;
@@ -2966,7 +2965,7 @@ const LiveOrdersPage: React.FC = () => {
                   <DataTableHeaderCell>Status</DataTableHeaderCell>
                   <DataTableHeaderCell>Time</DataTableHeaderCell>
                   <DataTableHeaderCell align="right">Amount</DataTableHeaderCell>
-                  <DataTableHeaderCell>Action</DataTableHeaderCell>
+                  <DataTableHeaderCell style={{ width: '20%', minWidth: '180px' }}>Action</DataTableHeaderCell>
                 </tr>
               </DataTableHead>
               <tbody>

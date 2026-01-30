@@ -144,6 +144,33 @@ export const getDateInTimezone = (daysOffset: number = 0, timezone: string = 'As
 };
 
 /**
+ * Convert a UTC date to YYYY-MM-DD string in restaurant's timezone
+ * Essential for filtering orders by date range
+ */
+export const getDateStringInTimezone = (
+  date: Date | string | number | undefined | null,
+  timezone: string = 'Asia/Kuala_Lumpur'
+): string => {
+  if (!date) return '';
+
+  const targetDate = new Date(date);
+  if (isNaN(targetDate.getTime())) return '';
+
+  try {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    return formatter.format(targetDate); // Returns YYYY-MM-DD format
+  } catch {
+    // Fallback
+    return `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+  }
+};
+
+/**
  * Calculate time elapsed (for "X mins ago" displays)
  * Always uses UTC for calculation to avoid timezone issues
  */
