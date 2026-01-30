@@ -98,7 +98,11 @@ show_changes() {
 
     CURRENT=$(git rev-parse HEAD)
 
-    echo "  Last deployed: ${LAST_DEPLOYED:0:7:-"(first deploy)"}"
+    if [ -n "$LAST_DEPLOYED" ]; then
+        echo "  Last deployed: ${LAST_DEPLOYED:0:7}"
+    else
+        echo "  Last deployed: (first deploy)"
+    fi
     echo "  Current:       ${CURRENT:0:7}"
     echo ""
 
