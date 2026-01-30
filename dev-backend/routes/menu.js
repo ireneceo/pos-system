@@ -4,7 +4,7 @@ const Product = require('../models/Product');
 const Restaurant = require('../models/Restaurant');
 const Category = require('../models/Category');
 const { authenticateToken } = require('../middleware/auth');
-const { processImage, getImageUrl } = require('../utils/imageProcessor');
+const { processImage } = require('../utils/imageProcessor');
 
 // Apply authentication to all routes
 router.use(authenticateToken);
@@ -89,16 +89,31 @@ router.get('/', async (req, res) => {
         }
       }
 
-      // Parse image data - support both old format (string) and new format (JSON with sizes)
-      let imageData = null;
+      // Parse image data - support URL format, old JSON format, and legacy base64
+      let imageUrl = null;
+      let thumbnailUrl = null;
+
       if (prod.image) {
-        try {
-          // Try to parse as JSON (new format with multiple sizes)
-          const parsed = JSON.parse(prod.image);
-          imageData = parsed;
-        } catch {
-          // Old format - single image string
-          imageData = { thumbnail: prod.image, medium: prod.image, original: prod.image };
+        // New URL format (starts with /uploads/)
+        if (prod.image.startsWith('/uploads/')) {
+          imageUrl = prod.image;
+          thumbnailUrl = prod.image_thumbnail || prod.image.replace('/products/', '/products/thumbnails/');
+        }
+        // Old JSON format with multiple sizes
+        else if (prod.image.startsWith('{')) {
+          try {
+            const parsed = JSON.parse(prod.image);
+            imageUrl = parsed.medium || parsed.original || null;
+            thumbnailUrl = parsed.thumbnail || imageUrl;
+          } catch {
+            imageUrl = prod.image;
+            thumbnailUrl = prod.image;
+          }
+        }
+        // Legacy base64 format
+        else {
+          imageUrl = prod.image;
+          thumbnailUrl = prod.image_thumbnail || prod.image;
         }
       }
 
@@ -110,10 +125,8 @@ router.get('/', async (req, res) => {
         price: prod.price,
         categoryId: categoryId,  // Use matched category ID
         emoji: prod.emoji || '🍽️',
-        image: imageData?.medium || imageData?.original || null,  // Default to medium for admin
-        imageThumbnail: imageData?.thumbnail || null,
-        imageMedium: imageData?.medium || null,
-        imageOriginal: imageData?.original || null,
+        image: imageUrl,
+        imageThumbnail: thumbnailUrl,
         restaurant_id: prod.restaurant_id,
         soldOut: prod.soldOut || false,
         optionGroups: prod.optionGroups || [],  // Include optionGroups data
@@ -317,18 +330,27 @@ router.post('/product', async (req, res) => {
       restaurant_id: restaurantId
     };
 
-    // Process image if provided (generate thumbnail, medium, original)
-    if (productData.image && productData.image.startsWith('data:image/')) {
-      try {
-        const processedImages = await processImage(productData.image);
-        if (processedImages) {
-          // Store as JSON with multiple sizes
-          productData.image = JSON.stringify(processedImages);
-          console.log('Image processed for new product');
+    // 이미지 처리: URL이면 그대로 저장, base64면 파일로 저장
+    if (productData.image) {
+      // 이미 URL 형식이면 그대로 사용
+      if (productData.image.startsWith('/uploads/')) {
+        // URL 형식 - 썸네일 URL도 설정
+        if (!productData.image_thumbnail) {
+          productData.image_thumbnail = productData.image.replace('/products/', '/products/thumbnails/');
         }
-      } catch (imgError) {
-        console.error('Image processing error:', imgError);
-        // Keep original image if processing fails
+      }
+      // base64 이미지면 파일로 저장 (하위 호환성)
+      else if (productData.image.startsWith('data:image/')) {
+        try {
+          const processedImages = await processImage(productData.image);
+          if (processedImages) {
+            // 임시로 JSON 저장 (마이그레이션 후 URL로 변환됨)
+            productData.image = JSON.stringify(processedImages);
+            console.log('Image processed for new product (legacy base64)');
+          }
+        } catch (imgError) {
+          console.error('Image processing error:', imgError);
+        }
       }
     }
 
@@ -412,19 +434,28 @@ router.put('/product/:id', async (req, res) => {
     const updateData = { ...req.body };
     delete updateData.restaurant_id;
 
-    // Process image if provided and it's a new base64 image
-    if (updateData.image && updateData.image.startsWith('data:image/')) {
-      try {
-        const processedImages = await processImage(updateData.image);
-        if (processedImages) {
-          // Store as JSON with multiple sizes
-          updateData.image = JSON.stringify(processedImages);
-          console.log('Image processed for product update:', req.params.id);
+    // 이미지 처리: URL이면 그대로 저장, base64면 파일로 저장
+    if (updateData.image) {
+      // 이미 URL 형식이면 그대로 사용
+      if (updateData.image.startsWith('/uploads/')) {
+        // URL 형식 - 썸네일 URL도 설정
+        if (!updateData.image_thumbnail) {
+          updateData.image_thumbnail = updateData.image.replace('/products/', '/products/thumbnails/');
         }
-      } catch (imgError) {
-        console.error('Image processing error:', imgError);
-        // Keep original image if processing fails
       }
+      // base64 이미지면 파일로 저장 (하위 호환성)
+      else if (updateData.image.startsWith('data:image/')) {
+        try {
+          const processedImages = await processImage(updateData.image);
+          if (processedImages) {
+            updateData.image = JSON.stringify(processedImages);
+            console.log('Image processed for product update (legacy base64):', req.params.id);
+          }
+        } catch (imgError) {
+          console.error('Image processing error:', imgError);
+        }
+      }
+      // JSON 형식(이전 데이터)이면 그대로 유지
     }
 
     await product.update(updateData);
@@ -477,6 +508,7 @@ router.post('/product/:id/copy', async (req, res) => {
       description: sourceProduct.description,
       optionGroups: sourceProduct.optionGroups,
       image: sourceProduct.image,
+      image_thumbnail: sourceProduct.image_thumbnail,
       emoji: sourceProduct.emoji,
       soldOut: false,
       is_active: true,

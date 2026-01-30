@@ -251,6 +251,9 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// 정적 파일 서빙 (업로드된 이미지)
+app.use('/uploads', express.static('/var/www/uploads'));
+
 // 루트 라우터 연결 (가장 먼저)
 app.use('/', indexRouter);
 

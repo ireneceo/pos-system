@@ -9,16 +9,27 @@ const Option = require('../models/Option');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 
-// Helper function to parse image data (supports old single-image format and new multi-size format)
-function parseImageData(imageStr) {
+// Helper function to parse image data (supports URL format, old JSON format, and legacy base64)
+function parseImageData(imageStr, imageThumbnail = null) {
   if (!imageStr) return null;
-  try {
-    const parsed = JSON.parse(imageStr);
-    return parsed;
-  } catch {
-    // Old format - single image string
-    return { thumbnail: imageStr, medium: imageStr, original: imageStr };
+
+  // New URL format (starts with /uploads/)
+  if (imageStr.startsWith('/uploads/')) {
+    const thumbnail = imageThumbnail || imageStr.replace('/products/', '/products/thumbnails/');
+    return { thumbnail, medium: imageStr, original: imageStr };
   }
+
+  // Old JSON format with multiple sizes
+  if (imageStr.startsWith('{')) {
+    try {
+      return JSON.parse(imageStr);
+    } catch {
+      return { thumbnail: imageStr, medium: imageStr, original: imageStr };
+    }
+  }
+
+  // Legacy base64 or other format
+  return { thumbnail: imageStr, medium: imageStr, original: imageStr };
 }
 
 // Generate order number per restaurant with transaction support
@@ -347,7 +358,7 @@ router.get('/menu/:slug', async (req, res) => {
       }
 
       // Parse image data for multiple sizes (thumbnail for list, medium for detail)
-      const imageData = parseImageData(product.image);
+      const imageData = parseImageData(product.image, product.image_thumbnail);
 
       return {
         id: product.id.toString(),
@@ -447,7 +458,7 @@ router.get('/menu/item/:itemId', async (req, res) => {
       .filter(og => og !== null);
 
     // Parse image data for detail view (use medium size)
-    const imageData = parseImageData(product.image);
+    const imageData = parseImageData(product.image, product.image_thumbnail);
 
     const item = {
       id: product.id.toString(),

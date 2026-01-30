@@ -3,7 +3,7 @@ import styled from 'styled-components';
 
 interface ImageUploadDropzoneProps {
   value: string;
-  onChange: (base64: string) => void;
+  onChange: (imageUrl: string) => void;
   label?: string;
   helpText?: string;
   maxSize?: number; // in MB
@@ -41,7 +41,7 @@ const DropzoneWrapper = styled.div`
   gap: 24px;
 `;
 
-const DropzoneArea = styled.div<{ isDragging: boolean; hasImage: boolean }>`
+const DropzoneArea = styled.div<{ isDragging: boolean; hasImage: boolean; isUploading: boolean }>`
   width: ${props => props.hasImage ? '150px' : '100%'};
   height: 150px;
   border: 2px dashed ${props => props.isDragging ? '#635BFF' : '#CBD5E1'};
@@ -51,10 +51,11 @@ const DropzoneArea = styled.div<{ isDragging: boolean; hasImage: boolean }>`
   align-items: center;
   justify-content: center;
   background: ${props => props.isDragging ? 'rgba(99, 91, 255, 0.05)' : '#F8FAFC'};
-  cursor: pointer;
+  cursor: ${props => props.isUploading ? 'wait' : 'pointer'};
   transition: all 0.2s;
   overflow: hidden;
   position: relative;
+  opacity: ${props => props.isUploading ? 0.7 : 1};
 
   &:hover {
     border-color: ${props => props.hasImage ? '#CBD5E1' : '#635BFF'};
@@ -93,21 +94,22 @@ const ButtonGroup = styled.div`
   gap: 8px;
 `;
 
-const UploadButton = styled.label`
+const UploadButton = styled.label<{ disabled?: boolean }>`
   padding: 8px 16px;
   border: 1px solid #635BFF;
   border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
   color: #635BFF;
-  cursor: pointer;
+  cursor: ${props => props.disabled ? 'wait' : 'pointer'};
   transition: all 0.2s;
   display: inline-block;
   text-align: center;
+  opacity: ${props => props.disabled ? 0.5 : 1};
 
   &:hover {
-    background: #635BFF;
-    color: white;
+    background: ${props => props.disabled ? 'transparent' : '#635BFF'};
+    color: ${props => props.disabled ? '#635BFF' : 'white'};
   }
 
   input {
@@ -136,6 +138,40 @@ const HiddenInput = styled.input`
   display: none;
 `;
 
+const LoadingSpinner = styled.div`
+  width: 24px;
+  height: 24px;
+  border: 3px solid #E5E7EB;
+  border-top-color: #635BFF;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+`;
+
+/**
+ * 이미지 URL인지 확인 (base64가 아닌 URL 형식)
+ */
+const isImageUrl = (str: string): boolean => {
+  return str.startsWith('/uploads/') || str.startsWith('http://') || str.startsWith('https://');
+};
+
+/**
+ * API base URL 가져오기
+ */
+const getApiBaseUrl = (): string => {
+  // 환경에 따라 API URL 결정
+  if (window.location.hostname === 'localhost') {
+    return 'http://localhost:3000';
+  }
+  if (window.location.hostname === 'dev.purplehere.com') {
+    return 'https://dev.purplehere.com';
+  }
+  return 'https://purplehere.com';
+};
+
 const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
   value,
   onChange,
@@ -149,10 +185,39 @@ const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
   imageAltText = 'Uploaded'
 }) => {
   const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropzoneRef = useRef<HTMLDivElement>(null);
 
-  const validateAndProcessFile = (file: File) => {
+  /**
+   * 이미지를 서버에 업로드하고 URL 반환
+   */
+  const uploadImageToServer = async (base64Image: string): Promise<string | null> => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${getApiBaseUrl()}/api/upload/image`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ image: base64Image })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        return data.data.original; // 원본 이미지 URL 반환
+      } else {
+        console.error('Image upload failed:', data.message);
+        return null;
+      }
+    } catch (error) {
+      console.error('Image upload error:', error);
+      return null;
+    }
+  };
+
+  const validateAndProcessFile = async (file: File) => {
     // Validate file type
     if (!file.type.startsWith('image/')) {
       alert('Please upload an image file');
@@ -165,18 +230,23 @@ const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
       return;
     }
 
-    // Compress and resize image before converting to base64
+    setIsUploading(true);
+
+    // Compress and resize image before uploading
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const img = new Image();
-      img.onload = () => {
+      img.onload = async () => {
         // Create canvas for resizing
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        if (!ctx) return;
+        if (!ctx) {
+          setIsUploading(false);
+          return;
+        }
 
-        // Calculate new dimensions (max 800x800 for menu items)
-        const maxDimension = 800;
+        // Calculate new dimensions (max 1200x1200 for uploads)
+        const maxDimension = 1200;
         let width = img.width;
         let height = img.height;
 
@@ -198,7 +268,17 @@ const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
 
         // Convert to base64 with compression (85% quality for JPEG)
         const compressedBase64 = canvas.toDataURL('image/jpeg', 0.85);
-        onChange(compressedBase64);
+
+        // Upload to server and get URL
+        const imageUrl = await uploadImageToServer(compressedBase64);
+
+        setIsUploading(false);
+
+        if (imageUrl) {
+          onChange(imageUrl);
+        } else {
+          alert('Failed to upload image. Please try again.');
+        }
       };
       img.src = event.target?.result as string;
     };
@@ -208,7 +288,9 @@ const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(true);
+    if (!isUploading) {
+      setIsDragging(true);
+    }
   };
 
   const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
@@ -230,6 +312,8 @@ const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
     e.stopPropagation();
     setIsDragging(false);
 
+    if (isUploading) return;
+
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
       validateAndProcessFile(files[0]);
@@ -237,20 +321,35 @@ const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
   };
 
   const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    if (isUploading) return;
+
     const files = e.target.files;
     if (files && files.length > 0) {
       validateAndProcessFile(files[0]);
     }
+    // Reset input value to allow re-selecting the same file
+    e.target.value = '';
   };
 
   const handleDropzoneClick = () => {
-    if (!value) {
+    if (!value && !isUploading) {
       fileInputRef.current?.click();
     }
   };
 
   const handleRemove = () => {
     onChange('');
+  };
+
+  // 이미지 소스 결정 (URL이면 API base URL 추가)
+  const getImageSrc = (imageValue: string): string => {
+    if (!imageValue) return '';
+    if (imageValue.startsWith('http')) return imageValue;
+    if (imageValue.startsWith('/uploads/')) {
+      return `${getApiBaseUrl()}${imageValue}`;
+    }
+    // base64 또는 기타 형식은 그대로 반환
+    return imageValue;
   };
 
   return (
@@ -263,14 +362,20 @@ const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
           ref={dropzoneRef}
           isDragging={isDragging}
           hasImage={!!value}
+          isUploading={isUploading}
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
           onDragOver={handleDragOver}
           onDrop={handleDrop}
           onClick={handleDropzoneClick}
         >
-          {value ? (
-            <img src={value} alt={imageAltText} />
+          {isUploading ? (
+            <DropzoneContent>
+              <LoadingSpinner />
+              <DropzoneText style={{ marginTop: '12px' }}>Uploading...</DropzoneText>
+            </DropzoneContent>
+          ) : value ? (
+            <img src={getImageSrc(value)} alt={imageAltText} />
           ) : (
             <DropzoneContent>
               <DropzoneText>
@@ -283,19 +388,20 @@ const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
           )}
         </DropzoneArea>
 
-        {value && (
+        {value && !isUploading && (
           <ButtonGroup>
-            <UploadButton>
+            <UploadButton disabled={isUploading}>
               {changeButtonText}
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
                 onChange={handleFileSelect}
+                disabled={isUploading}
               />
             </UploadButton>
             {showRemoveButton && (
-              <RemoveButton onClick={handleRemove}>
+              <RemoveButton onClick={handleRemove} disabled={isUploading}>
                 {removeButtonText}
               </RemoveButton>
             )}
@@ -303,7 +409,7 @@ const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
         )}
       </DropzoneWrapper>
 
-      {!value && (
+      {!value && !isUploading && (
         <HiddenInput
           ref={fileInputRef}
           type="file"
