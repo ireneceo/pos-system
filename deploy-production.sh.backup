@@ -62,12 +62,7 @@ fi
 
 echo ""
 echo -e "${YELLOW}Continue with deployment? (yes/no)${NC}"
-if [ -n "$AUTO_YES" ]; then
-    CONFIRM="yes"
-    echo "> yes (auto)"
-else
-    read -p "> " CONFIRM
-fi
+read -p "> " CONFIRM
 if [ "$CONFIRM" != "yes" ]; then
     echo -e "${RED}Deployment cancelled.${NC}"
     exit 0
@@ -88,12 +83,7 @@ if [ $SCHEMA_EXIT_CODE -ne 0 ]; then
     echo "$SCHEMA_DIFF_RESULT"
     echo ""
     echo -e "${YELLOW}   Do you want to auto-apply missing columns? (yes/no)${NC}"
-    if [ -n "$AUTO_YES" ]; then
-        APPLY_SCHEMA="yes"
-        echo "> yes (auto)"
-    else
-        read -p "> " APPLY_SCHEMA
-    fi
+    read -p "> " APPLY_SCHEMA
     if [ "$APPLY_SCHEMA" = "yes" ]; then
         echo -e "${BLUE}   Applying schema changes...${NC}"
         # Extract and run ALTER TABLE statements

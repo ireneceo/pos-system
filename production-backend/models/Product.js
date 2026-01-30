@@ -40,7 +40,13 @@ Product.init({
   },
   image: {
     type: DataTypes.TEXT,
-    allowNull: true
+    allowNull: true,
+    comment: '원본 이미지 URL (/uploads/products/xxx.jpg)'
+  },
+  image_thumbnail: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: '썸네일 이미지 URL (/uploads/products/thumbnails/xxx.jpg)'
   },
   emoji: {
     type: DataTypes.STRING(10),

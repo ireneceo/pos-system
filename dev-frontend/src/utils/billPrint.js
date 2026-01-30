@@ -1297,8 +1297,6 @@ function generateHTMLMultiPageKitchenTickets(orderData, storeInfo) {
         @media print {
           body { margin: 0; padding: 0; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          .ticket-page { page-break-after: always; }
-          .ticket-page:last-child { page-break-after: avoid; }
         }
         body {
           font-family: 'Lucida Console', 'Courier New', monospace;
@@ -1316,6 +1314,16 @@ function generateHTMLMultiPageKitchenTickets(orderData, storeInfo) {
         .ticket-page {
           padding: 5mm;
           min-height: 100mm;
+          page-break-after: always;
+          break-after: page;
+          border-bottom: 3px dashed #999;
+          margin-bottom: 10px;
+        }
+        .ticket-page:last-child {
+          page-break-after: avoid;
+          break-after: avoid;
+          border-bottom: none;
+          margin-bottom: 0;
         }
         .divider { border-top: 2px dashed #000; margin: 8px 0; }
         table { width: 100%; border-collapse: collapse; }

@@ -1,0 +1,355 @@
+"use strict";(self.webpackChunkfrontend=self.webpackChunkfrontend||[]).push([[9640],{4877:(e,t,n)=>{n.d(t,{A:()=>f});var a=n(9950),r=n(4752),i=n(4414);const o=r.Ay.div`
+  margin-bottom: 16px;
+`,s=r.Ay.label`
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7C93;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+`,l=r.Ay.p`
+  font-size: 12px;
+  color: #8898AA;
+  margin-top: 4px;
+  margin-bottom: 16px;
+`,d=r.Ay.div`
+  display: flex;
+  align-items: center;
+  gap: 24px;
+`,c=r.Ay.div`
+  width: ${e=>e.hasImage?"150px":"100%"};
+  height: 150px;
+  border: 2px dashed ${e=>e.isDragging?"#635BFF":"#CBD5E1"};
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: ${e=>e.isDragging?"rgba(99, 91, 255, 0.05)":"#F8FAFC"};
+  cursor: ${e=>e.isUploading?"wait":"pointer"};
+  transition: all 0.2s;
+  overflow: hidden;
+  position: relative;
+  opacity: ${e=>e.isUploading?.7:1};
+
+  &:hover {
+    border-color: ${e=>e.hasImage?"#CBD5E1":"#635BFF"};
+    background: ${e=>e.hasImage?"#F8FAFC":"rgba(99, 91, 255, 0.03)"};
+  }
+
+  img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+`,p=r.Ay.div`
+  text-align: center;
+  padding: 20px;
+  pointer-events: none;
+`,h=r.Ay.p`
+  color: #6B7280;
+  font-size: 14px;
+  margin-bottom: 8px;
+  font-weight: 500;
+`,x=r.Ay.p`
+  color: #9CA3AF;
+  font-size: 12px;
+`,g=r.Ay.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`,u=r.Ay.label`
+  padding: 8px 16px;
+  border: 1px solid #635BFF;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #635BFF;
+  cursor: ${e=>e.disabled?"wait":"pointer"};
+  transition: all 0.2s;
+  display: inline-block;
+  text-align: center;
+  opacity: ${e=>e.disabled?.5:1};
+
+  &:hover {
+    background: ${e=>e.disabled?"transparent":"#635BFF"};
+    color: ${e=>e.disabled?"#635BFF":"white"};
+  }
+
+  input {
+    display: none;
+  }
+`,m=r.Ay.button`
+  padding: 8px 16px;
+  border: 1px solid #DC2626;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #DC2626;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #DC2626;
+    color: white;
+  }
+`,b=r.Ay.input`
+  display: none;
+`,y=r.Ay.div`
+  width: 24px;
+  height: 24px;
+  border: 3px solid #E5E7EB;
+  border-top-color: #635BFF;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+`,j=()=>"localhost"===window.location.hostname?"http://localhost:3000":"dev.purplehere.com"===window.location.hostname?"https://dev.purplehere.com":"https://purplehere.com",f=e=>{let{value:t,onChange:n,label:r="Logo Upload",helpText:f="Upload an image for your logo",maxSize:v=2,previewSize:C=150,showRemoveButton:k=!0,changeButtonText:w="Change Image",removeButtonText:A="Remove Image",imageAltText:F="Uploaded"}=e;const[S,B]=(0,a.useState)(!1),[E,P]=(0,a.useState)(!1),T=(0,a.useRef)(null),D=(0,a.useRef)(null),z=async e=>{if(!e.type.startsWith("image/"))return void alert("Please upload an image file");if(e.size>1024*v*1024)return void alert(`Image size should be less than ${v}MB`);P(!0);const t=new FileReader;t.onload=async e=>{var t;const a=new Image;a.onload=async()=>{const e=document.createElement("canvas"),t=e.getContext("2d");if(!t)return void P(!1);const r=1200;let i=a.width,o=a.height;(i>r||o>r)&&(i>o?(o=o/i*r,i=r):(i=i/o*r,o=r)),e.width=i,e.height=o,t.drawImage(a,0,0,i,o);const s=e.toDataURL("image/jpeg",.85),l=await(async e=>{try{const t=localStorage.getItem("auth_token"),n=await fetch(`${j()}/api/upload/image`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${t}`},body:JSON.stringify({image:e})}),a=await n.json();return a.success?a.data.original:(console.error("Image upload failed:",a.message),null)}catch(t){return console.error("Image upload error:",t),null}})(s);P(!1),l?n(l):alert("Failed to upload image. Please try again.")},a.src=null===(t=e.target)||void 0===t?void 0:t.result},t.readAsDataURL(e)},I=e=>{if(E)return;const t=e.target.files;t&&t.length>0&&z(t[0]),e.target.value=""};return(0,i.jsxs)(o,{children:[r&&(0,i.jsx)(s,{children:r}),f&&(0,i.jsx)(l,{children:f}),(0,i.jsxs)(d,{children:[(0,i.jsx)(c,{ref:D,isDragging:S,hasImage:!!t,isUploading:E,onDragEnter:e=>{e.preventDefault(),e.stopPropagation(),E||B(!0)},onDragLeave:e=>{e.preventDefault(),e.stopPropagation(),e.currentTarget===D.current&&B(!1)},onDragOver:e=>{e.preventDefault(),e.stopPropagation()},onDrop:e=>{if(e.preventDefault(),e.stopPropagation(),B(!1),E)return;const t=e.dataTransfer.files;t&&t.length>0&&z(t[0])},onClick:()=>{var e;t||E||(null===(e=T.current)||void 0===e||e.click())},children:E?(0,i.jsxs)(p,{children:[(0,i.jsx)(y,{}),(0,i.jsx)(h,{style:{marginTop:"12px"},children:"Uploading..."})]}):t?(0,i.jsx)("img",{src:(N=t,N?N.startsWith("http")?N:N.startsWith("/uploads/")?`${j()}${N}`:N:""),alt:F}):(0,i.jsxs)(p,{children:[(0,i.jsx)(h,{children:S?"Drop image here":"Drag & drop or click to upload"}),(0,i.jsxs)(x,{children:["PNG, JPG, GIF up to ",v,"MB"]})]})}),t&&!E&&(0,i.jsxs)(g,{children:[(0,i.jsxs)(u,{disabled:E,children:[w,(0,i.jsx)("input",{ref:T,type:"file",accept:"image/*",onChange:I,disabled:E})]}),k&&(0,i.jsx)(m,{onClick:()=>{n("")},disabled:E,children:A})]})]}),!t&&!E&&(0,i.jsx)(b,{ref:T,type:"file",accept:"image/*",onChange:I})]});var N}},8012:(e,t,n)=>{n.d(t,{Ay:()=>l});n(9950);var a=n(4752),r=n(4414);const i=a.Ay.div`
+  background: white;
+  padding: 16px 32px;
+  border-bottom: 1px solid #E6EBF1;
+  margin-bottom: 0;
+  height: 56px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  @media (max-width: 768px) {
+    padding: 16px;
+    height: auto;
+    min-height: 56px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+`,o=a.Ay.h1`
+  font-size: 24px;
+  font-weight: 600;
+  color: #0A2540;
+  margin: 0;
+
+  @media (max-width: 768px) {
+    font-size: 18px;
+    flex: 1;
+    min-width: 0;
+  }
+`,s=a.Ay.div`
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-shrink: 0;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+`,l=e=>{let{title:t,children:n}=e;return(0,r.jsxs)(i,{children:[(0,r.jsx)(o,{children:t}),n&&(0,r.jsx)(s,{children:n})]})}},9640:(e,t,n)=>{n.r(t),n.d(t,{default:()=>O});var a=n(9950),r=n(4752),i=n(3310),o=n(8012),s=n(2674),l=n(9610),d=n(4877),c=n(4414);const p=r.Ay.div`
+  min-height: 100vh;
+`,h=r.Ay.div`
+  padding: 32px;
+
+  @media (max-width: 768px) {
+    padding: 20px 16px;
+  }
+`,x=r.Ay.div`
+  margin-bottom: 32px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid #E6EBF1;
+
+  &:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+`,g=r.Ay.h2`
+  font-size: 18px;
+  font-weight: 600;
+  color: #0A2540;
+  margin-bottom: 8px;
+`,u=r.Ay.p`
+  color: #6B7C93;
+  font-size: 14px;
+  margin-bottom: 20px;
+`,m=r.Ay.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`,b=r.Ay.div`
+  margin-bottom: 16px;
+`,y=r.Ay.label`
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 8px;
+`,j=r.Ay.select`
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+  }
+`,f=r.Ay.div`
+  padding: 12px 16px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  &:hover {
+    border-color: #635BFF;
+  }
+`,v=r.Ay.span`
+  background: #F3F4F6;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+`,C=r.Ay.span`
+  color: #9CA3AF;
+`,k=r.Ay.div`
+  background: white;
+  border: 1px solid #E6EBF1;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+`,w=r.Ay.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`,A=r.Ay.div``,F=r.Ay.div`
+  font-size: 16px;
+  font-weight: 600;
+  color: #0A2540;
+`,S=r.Ay.div`
+  font-size: 13px;
+  color: #6B7C93;
+  margin-top: 2px;
+`,B=r.Ay.label`
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+`,E=r.Ay.input`
+  opacity: 0;
+  width: 0;
+  height: 0;
+
+  &:checked + span {
+    background-color: #635BFF;
+  }
+
+  &:checked + span:before {
+    transform: translateX(20px);
+  }
+`,P=r.Ay.span`
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #E6EBF1;
+  transition: 0.3s;
+  border-radius: 24px;
+
+  &:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+`,T=r.Ay.div`
+  border-top: 1px solid #E6EBF1;
+  margin-top: 16px;
+  padding-top: 16px;
+`,D=r.Ay.input`
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s;
+  box-sizing: border-box;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+
+  &::placeholder {
+    color: #9CA3AF;
+  }
+`,z=r.Ay.p`
+  font-size: 12px;
+  color: #6B7C93;
+  margin-top: 4px;
+`,I=r.Ay.label`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
+`,N=r.Ay.input`
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+`,$=r.Ay.div`
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #E6EBF1;
+  padding-bottom: 0;
+  overflow-x: auto;
+`,R=r.Ay.button`
+  padding: 10px 16px;
+  border: none;
+  background: none;
+  font-size: 14px;
+  font-weight: 500;
+  color: ${e=>e.active?"#635BFF":"#6B7C93"};
+  cursor: pointer;
+  border-bottom: 2px solid ${e=>e.active?"#635BFF":"transparent"};
+  margin-bottom: -1px;
+  transition: all 0.2s;
+  white-space: nowrap;
+
+  &:hover {
+    color: #635BFF;
+  }
+`,q=r.Ay.div`
+  background: #FEF3C7;
+  border: 1px solid #F59E0B;
+  border-radius: 8px;
+  padding: 16px;
+  color: #92400E;
+`,U={stripe:{enabled:!1,publishableKey:"",secretKey:"",webhookSecret:"",autoCharge:!1},paypal:{enabled:!1,clientId:"",clientSecret:""},bankTransfer:{},qrPayment:{},additionalCharges:[{enabled:!1,name:"",rate:0},{enabled:!1,name:"",rate:0},{enabled:!1,name:"",rate:0}]},O=()=>{const[e,t]=(0,a.useState)({}),[n,r]=(0,a.useState)([]),[O,Q]=(0,a.useState)("USD"),[_,K]=(0,a.useState)(!1),[M,J]=(0,a.useState)([]),[L,W]=(0,a.useState)(U),[G,Y]=(0,a.useState)(""),[H,X]=(0,a.useState)(!0),[V,Z]=(0,a.useState)(!1),[ee,te]=(0,a.useState)(null),[ne,ae]=(0,a.useState)(!1);(0,a.useEffect)(()=>{re()},[]),(0,a.useEffect)(()=>{n.length>0&&!G&&Y(n[0])},[n,G]);const re=async()=>{try{const e={Authorization:`Bearer ${localStorage.getItem("auth_token")}`},[n,a,i]=await Promise.all([fetch("/api/currencies/config"),fetch("/api/currencies/supported"),fetch("/api/admin/payment-settings",{headers:e})]);if(n.ok){const e=await n.json();e.success&&e.currencies&&(t(e.currencies),e.defaultCurrency&&Q(e.defaultCurrency))}if(a.ok){const e=await a.json();if(e.success&&e.data){const t=e.data.map(e=>e.code);r(t),t.length>0&&Y(t[0])}}if(i.ok){const e=await i.json();e&&Object.keys(e).length>0&&W({...U,...e,bankTransfer:e.bankTransfer||{},qrPayment:e.qrPayment||{}})}}catch(e){console.error("Error loading settings:",e)}finally{X(!1)}},ie=async e=>{try{const t=localStorage.getItem("auth_token");(await fetch("/api/currencies/default",{method:"PUT",headers:{"Content-Type":"application/json",Authorization:`Bearer ${t}`},body:JSON.stringify({defaultCurrency:e})})).ok&&(Q(e),te({type:"success",message:"Default currency updated"}),setTimeout(()=>te(null),3e3))}catch(t){console.error("Error updating default currency:",t),te({type:"error",message:"Failed to update default currency"})}},oe=(e,t)=>{W(n=>({...n,stripe:{...n.stripe,[e]:t}})),ae(!0)},se=(e,t)=>{W(n=>({...n,paypal:{...n.paypal,[e]:t}})),ae(!0)},le=(e,t,n)=>{W(a=>({...a,bankTransfer:{...a.bankTransfer,[e]:{enabled:!1,bankName:"",accountNumber:"",accountName:"",...a.bankTransfer[e],[t]:n}}})),ae(!0)},de=(e,t,n)=>{W(a=>({...a,qrPayment:{...a.qrPayment,[e]:{enabled:!1,qrImage:"",qrDescription:"",...a.qrPayment[e],[t]:n}}})),ae(!0)},ce=e=>L.bankTransfer[e]||{enabled:!1,bankName:"",accountNumber:"",accountName:""},pe=e=>L.qrPayment[e]||{enabled:!1,qrImage:"",qrDescription:""};return H?(0,c.jsx)(i.A,{children:(0,c.jsxs)(p,{children:[(0,c.jsx)(o.Ay,{title:"Payment Settings"}),(0,c.jsx)(h,{children:(0,c.jsx)("p",{children:"Loading..."})})]})}):(0,c.jsxs)(i.A,{children:[(0,c.jsxs)(p,{children:[(0,c.jsx)(o.Ay,{title:"Payment Settings"}),(0,c.jsxs)(h,{children:[(0,c.jsxs)(x,{children:[(0,c.jsx)(g,{children:"Additional Charges"}),(0,c.jsx)(u,{children:"Configure additional charges for invoices. These will be applied to all invoices you generate. You can set up to 3 custom charge items (e.g., Tax, Service Charge, Processing Fee)."}),[0,1,2].map(e=>{var t;const n=(null===(t=L.additionalCharges)||void 0===t?void 0:t[e])||{enabled:!1,name:"",rate:0};return(0,c.jsxs)(k,{style:{marginBottom:"16px"},children:[(0,c.jsxs)(w,{children:[(0,c.jsxs)(A,{children:[(0,c.jsxs)(F,{children:["Charge Item ",e+1]}),(0,c.jsx)(S,{children:n.enabled&&n.name?`${n.name} (${n.rate}%)`:"Not configured"})]}),(0,c.jsxs)(B,{children:[(0,c.jsx)(E,{type:"checkbox",checked:n.enabled,onChange:t=>{const n=[...L.additionalCharges||[{enabled:!1,name:"",rate:0},{enabled:!1,name:"",rate:0},{enabled:!1,name:"",rate:0}]];n[e]={...n[e],enabled:t.target.checked},W(e=>({...e,additionalCharges:n})),ae(!0)}}),(0,c.jsx)(P,{})]})]}),n.enabled&&(0,c.jsx)(T,{children:(0,c.jsxs)(m,{children:[(0,c.jsxs)(b,{children:[(0,c.jsx)(y,{children:"Item Name"}),(0,c.jsx)(D,{type:"text",value:n.name,onChange:t=>{const n=[...L.additionalCharges||[{enabled:!1,name:"",rate:0},{enabled:!1,name:"",rate:0},{enabled:!1,name:"",rate:0}]];n[e]={...n[e],name:t.target.value},W(e=>({...e,additionalCharges:n})),ae(!0)},placeholder:"e.g., Tax, Service Charge, Processing Fee"}),(0,c.jsx)(z,{children:"Name displayed on invoices"})]}),(0,c.jsxs)(b,{children:[(0,c.jsx)(y,{children:"Rate (%)"}),(0,c.jsx)(D,{type:"number",min:"0",max:"100",step:"0.01",value:n.rate,onChange:t=>{const n=[...L.additionalCharges||[{enabled:!1,name:"",rate:0},{enabled:!1,name:"",rate:0},{enabled:!1,name:"",rate:0}]];n[e]={...n[e],rate:parseFloat(t.target.value)||0},W(e=>({...e,additionalCharges:n})),ae(!0)},placeholder:"0"}),(0,c.jsx)(z,{children:"Percentage to add to subtotal"})]})]})})]},e)})]}),(0,c.jsxs)(x,{children:[(0,c.jsx)(g,{children:"Currency Settings"}),(0,c.jsx)(u,{children:"Configure supported currencies for subscription plans and invoices."}),(0,c.jsxs)(m,{children:[(0,c.jsxs)(b,{children:[(0,c.jsx)(y,{children:"Default Currency"}),(0,c.jsx)(j,{value:O,onChange:e=>ie(e.target.value),children:n.map(t=>{var n,a;return(0,c.jsxs)("option",{value:t,children:[null===(n=e[t])||void 0===n?void 0:n.symbol," ",t," - ",null===(a=e[t])||void 0===a?void 0:a.name]},t)})}),(0,c.jsx)(z,{children:"Used as default for new subscriptions and invoices"})]}),(0,c.jsxs)(b,{children:[(0,c.jsx)(y,{children:"Supported Currencies"}),(0,c.jsx)(f,{onClick:()=>{J(n),K(!0)},children:n.length>0?n.map(t=>{var n;return(0,c.jsxs)(v,{children:[null===(n=e[t])||void 0===n?void 0:n.symbol," ",t]},t)}):(0,c.jsx)(C,{children:"Click to select currencies"})}),(0,c.jsx)(z,{children:"Currencies available for pricing plans and invoices"})]})]})]}),(0,c.jsxs)(x,{children:[(0,c.jsx)(g,{children:"Online Payment"}),(0,c.jsx)(u,{children:"Configure online payment gateways. These settings apply to all currencies."}),(0,c.jsxs)(k,{children:[(0,c.jsxs)(w,{children:[(0,c.jsxs)(A,{children:[(0,c.jsx)(F,{children:"Stripe"}),(0,c.jsx)(S,{children:"Credit/Debit Card payments"})]}),(0,c.jsxs)(B,{children:[(0,c.jsx)(E,{type:"checkbox",checked:L.stripe.enabled,onChange:e=>oe("enabled",e.target.checked)}),(0,c.jsx)(P,{})]})]}),L.stripe.enabled&&(0,c.jsxs)(T,{children:[(0,c.jsxs)(b,{children:[(0,c.jsx)(y,{children:"Publishable Key"}),(0,c.jsx)(D,{type:"text",placeholder:"pk_live_...",value:L.stripe.publishableKey,onChange:e=>oe("publishableKey",e.target.value)})]}),(0,c.jsxs)(b,{children:[(0,c.jsx)(y,{children:"Secret Key"}),(0,c.jsx)(D,{type:"password",placeholder:"sk_live_...",value:L.stripe.secretKey,onChange:e=>oe("secretKey",e.target.value)})]}),(0,c.jsxs)(b,{children:[(0,c.jsx)(y,{children:"Webhook Secret"}),(0,c.jsx)(D,{type:"password",placeholder:"whsec_...",value:L.stripe.webhookSecret,onChange:e=>oe("webhookSecret",e.target.value)})]}),(0,c.jsx)(b,{children:(0,c.jsxs)(I,{children:[(0,c.jsx)(N,{type:"checkbox",checked:L.stripe.autoCharge,onChange:e=>oe("autoCharge",e.target.checked)}),"Enable auto-charge for subscription renewals"]})})]})]}),(0,c.jsxs)(k,{children:[(0,c.jsxs)(w,{children:[(0,c.jsxs)(A,{children:[(0,c.jsx)(F,{children:"PayPal"}),(0,c.jsx)(S,{children:"PayPal account or card"})]}),(0,c.jsxs)(B,{children:[(0,c.jsx)(E,{type:"checkbox",checked:L.paypal.enabled,onChange:e=>se("enabled",e.target.checked)}),(0,c.jsx)(P,{})]})]}),L.paypal.enabled&&(0,c.jsxs)(T,{children:[(0,c.jsxs)(b,{children:[(0,c.jsx)(y,{children:"Client ID"}),(0,c.jsx)(D,{type:"text",placeholder:"Enter PayPal Client ID",value:L.paypal.clientId,onChange:e=>se("clientId",e.target.value)})]}),(0,c.jsxs)(b,{children:[(0,c.jsx)(y,{children:"Client Secret"}),(0,c.jsx)(D,{type:"password",placeholder:"Enter PayPal Client Secret",value:L.paypal.clientSecret,onChange:e=>se("clientSecret",e.target.value)})]})]})]})]}),(0,c.jsxs)(x,{children:[(0,c.jsx)(g,{children:"Manual Payment"}),(0,c.jsx)(u,{children:"Configure bank transfer and QR payment for each currency. Different currencies require different bank accounts and QR codes."}),0===n.length?(0,c.jsx)(q,{children:"No currencies configured. Please add supported currencies above first."}):(0,c.jsxs)(c.Fragment,{children:[(0,c.jsx)($,{children:n.map(t=>{var n;return(0,c.jsxs)(R,{active:G===t,onClick:()=>Y(t),children:[null===(n=e[t])||void 0===n?void 0:n.symbol," ",t]},t)})}),(0,c.jsxs)(k,{children:[(0,c.jsxs)(w,{children:[(0,c.jsxs)(A,{children:[(0,c.jsxs)(F,{children:["Bank Transfer (",G,")"]}),(0,c.jsx)(S,{children:"Manual transfer with receipt upload"})]}),(0,c.jsxs)(B,{children:[(0,c.jsx)(E,{type:"checkbox",checked:ce(G).enabled,onChange:e=>le(G,"enabled",e.target.checked)}),(0,c.jsx)(P,{})]})]}),ce(G).enabled&&(0,c.jsxs)(T,{children:[(0,c.jsxs)(b,{children:[(0,c.jsx)(y,{children:"Bank Name"}),(0,c.jsx)(D,{type:"text",placeholder:"e.g., Maybank, CIMB, Shinhan Bank",value:ce(G).bankName,onChange:e=>le(G,"bankName",e.target.value)})]}),(0,c.jsxs)(b,{children:[(0,c.jsx)(y,{children:"Account Number"}),(0,c.jsx)(D,{type:"text",placeholder:"Enter bank account number",value:ce(G).accountNumber,onChange:e=>le(G,"accountNumber",e.target.value)})]}),(0,c.jsxs)(b,{children:[(0,c.jsx)(y,{children:"Account Name"}),(0,c.jsx)(D,{type:"text",placeholder:"Enter account holder name",value:ce(G).accountName,onChange:e=>le(G,"accountName",e.target.value)})]})]})]}),(0,c.jsxs)(k,{children:[(0,c.jsxs)(w,{children:[(0,c.jsxs)(A,{children:[(0,c.jsxs)(F,{children:["QR Payment (",G,")"]}),(0,c.jsx)(S,{children:"Scan QR code to pay (DuitNow, KakaoPay, etc.)"})]}),(0,c.jsxs)(B,{children:[(0,c.jsx)(E,{type:"checkbox",checked:pe(G).enabled,onChange:e=>de(G,"enabled",e.target.checked)}),(0,c.jsx)(P,{})]})]}),pe(G).enabled&&(0,c.jsxs)(T,{children:[(0,c.jsx)(d.A,{value:pe(G).qrImage,onChange:e=>de(G,"qrImage",e),label:"QR Code Image",helpText:`Upload QR code for ${G} payments`,changeButtonText:"Change QR Code",removeButtonText:"Remove QR Code",imageAltText:"Payment QR Code"}),(0,c.jsxs)(b,{style:{marginTop:"16px"},children:[(0,c.jsx)(y,{children:"Description"}),(0,c.jsx)(D,{type:"text",placeholder:"e.g., Scan to pay via DuitNow",value:pe(G).qrDescription,onChange:e=>de(G,"qrDescription",e.target.value)}),(0,c.jsx)(z,{children:"Short description shown below the QR code"})]})]})]})]})]}),(0,c.jsx)(s.He,{children:(0,c.jsxs)(s.r6,{children:[ee&&(0,c.jsx)(s.Mo,{type:ee.type,children:ee.message}),(0,c.jsx)(s.yY,{onClick:async()=>{if(ne){Z(!0),te(null);try{const e=localStorage.getItem("auth_token");console.log("Saving payment settings:",JSON.stringify(L,null,2));const t=await fetch("/api/admin/payment-settings",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${e}`},body:JSON.stringify(L)}),n=await t.json();if(console.log("Server response:",t.status,n),!t.ok)throw new Error(n.error||n.details||"Failed to save");te({type:"success",message:"Payment settings saved successfully!"}),ae(!1)}catch(e){console.error("Error saving:",e),te({type:"error",message:`Failed to save payment settings: ${e instanceof Error?e.message:"Unknown error"}`})}finally{Z(!1)}}else console.log("No changes to save")},disabled:V||!ne,children:V?"Saving...":ne?"Save Changes":"Saved"})]})})]})]}),(0,c.jsxs)(l.aF,{isOpen:_,onClose:()=>K(!1),title:"Select Supported Currencies",size:"medium",footer:(0,c.jsxs)(c.Fragment,{children:[(0,c.jsx)(l.yl,{variant:"secondary",onClick:()=>K(!1),children:"Cancel"}),(0,c.jsxs)(l.yl,{variant:"primary",onClick:async()=>{try{const e=localStorage.getItem("auth_token");(await fetch("/api/currencies/supported",{method:"PUT",headers:{"Content-Type":"application/json",Authorization:`Bearer ${e}`},body:JSON.stringify({currencies:M})})).ok&&(r(M),K(!1),te({type:"success",message:"Supported currencies updated"}),setTimeout(()=>te(null),3e3),!M.includes(O)&&M.length>0&&await ie(M[0]),M.length>0&&!M.includes(G)&&Y(M[0]))}catch(e){console.error("Error updating supported currencies:",e),te({type:"error",message:"Failed to update currencies"})}},disabled:0===M.length,children:["Save (",M.length," selected)"]})]}),children:[(0,c.jsx)("p",{style:{color:"#6B7280",marginBottom:"16px"},children:"Select the currencies you want to support for subscription plans and invoices."}),(0,c.jsx)("div",{style:{display:"grid",gridTemplateColumns:"repeat(2, 1fr)",gap:"8px",maxHeight:"400px",overflowY:"auto"},children:Object.entries(e).map(e=>{let[t,n]=e;return(0,c.jsxs)("label",{style:{display:"flex",alignItems:"center",gap:"12px",padding:"12px",border:"1px solid "+(M.includes(t)?"#635BFF":"#E6EBF1"),borderRadius:"8px",cursor:"pointer",background:M.includes(t)?"#F0F0FF":"white",transition:"all 0.2s"},children:[(0,c.jsx)("input",{type:"checkbox",checked:M.includes(t),onChange:()=>(e=>{J(t=>t.includes(e)?t.filter(t=>t!==e):[...t,e])})(t),style:{width:"18px",height:"18px",accentColor:"#635BFF"}}),(0,c.jsxs)("div",{children:[(0,c.jsxs)("div",{style:{fontWeight:500},children:[n.symbol," ",t]}),(0,c.jsx)("div",{style:{fontSize:"12px",color:"#6B7280"},children:n.name})]})]},t)})})]})]})}}}]);

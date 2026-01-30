@@ -49,7 +49,7 @@ router.post('/brands/:brandId/recipes', authenticateToken, isBrandManager, async
   try {
     const { brandId } = req.params;
     const brand_id = brandId; // DB 쿼리용
-    const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, instructions_summary, instructions_detail, suggested_price } = req.body;
+    const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients, yield_amount, yield_unit, prep_time, cook_time, instructions, instructions_summary, instructions_detail, suggested_price } = req.body;
 
     // 필수 필드 검증
     if (!name || !name.trim()) {
@@ -72,6 +72,8 @@ router.post('/brands/:brandId/recipes', authenticateToken, isBrandManager, async
       emoji: emoji || null,
       image: image || null,
       option_groups: option_groups || null,
+      yield_amount: yield_amount || 1,
+      yield_unit: yield_unit || 'portion',
       prep_time: prep_time ? parseInt(prep_time) : null,
       cook_time: cook_time ? parseInt(cook_time) : null,
       instructions: instructions || null,
@@ -85,19 +87,17 @@ router.post('/brands/:brandId/recipes', authenticateToken, isBrandManager, async
     let totalCost = 0;
     if (ingredients && ingredients.length > 0) {
       for (const item of ingredients) {
-        const ingredient = await Ingredient.findByPk(item.ingredient_id);
-        if (ingredient) {
-          const cost = parseFloat(item.quantity) * parseFloat(ingredient.unit_cost);
-          await RecipeIngredient.create({
-            recipe_id: recipe.id,
-            ingredient_id: item.ingredient_id,
-            quantity: item.quantity,
-            unit: item.unit,
-            cost,
-            notes: item.notes || null
-          });
-          totalCost += cost;
-        }
+        // 프론트엔드에서 단위 변환을 고려한 cost가 전달됨
+        const cost = item.cost || 0;
+        await RecipeIngredient.create({
+          recipe_id: recipe.id,
+          ingredient_id: item.ingredient_id,
+          quantity: item.quantity,
+          unit: item.unit,
+          cost,
+          notes: item.notes || null
+        });
+        totalCost += cost;
       }
     }
 
@@ -134,7 +134,7 @@ router.put('/brands/:brandId/recipes/:recipeId', authenticateToken, canEditRecip
   try {
     const { recipeId } = req.params;
     const recipe_id = recipeId; // DB 쿼리용
-    const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, instructions_summary, instructions_detail, suggested_price } = req.body;
+    const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients, yield_amount, yield_unit, prep_time, cook_time, instructions, instructions_summary, instructions_detail, suggested_price } = req.body;
 
     const recipe = await Recipe.findByPk(recipe_id);
     if (!recipe) {
@@ -150,6 +150,8 @@ router.put('/brands/:brandId/recipes/:recipeId', authenticateToken, canEditRecip
     if (emoji !== undefined) updateData.emoji = emoji || null;
     if (image !== undefined) updateData.image = image || null;
     if (option_groups !== undefined) updateData.option_groups = option_groups || null;
+    if (yield_amount !== undefined) updateData.yield_amount = yield_amount || 1;
+    if (yield_unit !== undefined) updateData.yield_unit = yield_unit || 'portion';
     if (prep_time !== undefined) updateData.prep_time = prep_time ? parseInt(prep_time) : null;
     if (cook_time !== undefined) updateData.cook_time = cook_time ? parseInt(cook_time) : null;
     if (instructions !== undefined) updateData.instructions = instructions || null;
@@ -165,19 +167,17 @@ router.put('/brands/:brandId/recipes/:recipeId', authenticateToken, canEditRecip
 
       let totalCost = 0;
       for (const item of ingredients) {
-        const ingredient = await Ingredient.findByPk(item.ingredient_id);
-        if (ingredient) {
-          const cost = parseFloat(item.quantity) * parseFloat(ingredient.unit_cost);
-          await RecipeIngredient.create({
-            recipe_id: recipe.id,
-            ingredient_id: item.ingredient_id,
-            quantity: item.quantity,
-            unit: item.unit,
-            cost,
-            notes: item.notes || null
-          });
-          totalCost += cost;
-        }
+        // 프론트엔드에서 단위 변환을 고려한 cost가 전달됨
+        const cost = item.cost || 0;
+        await RecipeIngredient.create({
+          recipe_id: recipe.id,
+          ingredient_id: item.ingredient_id,
+          quantity: item.quantity,
+          unit: item.unit,
+          cost,
+          notes: item.notes || null
+        });
+        totalCost += cost;
       }
 
       await recipe.update({ total_ingredient_cost: totalCost });
@@ -325,7 +325,7 @@ router.get('/restaurants/:restaurantId/brand-recipes', authenticateToken, checkR
 router.post('/restaurants/:restaurantId/recipes', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
-    const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, instructions_summary, instructions_detail, suggested_price } = req.body;
+    const { name, description, category, recipe_category_id, emoji, image, option_groups, ingredients, yield_amount, yield_unit, prep_time, cook_time, instructions, instructions_summary, instructions_detail, suggested_price } = req.body;
 
     // 필수 필드 검증
     if (!name || !name.trim()) {
@@ -348,6 +348,8 @@ router.post('/restaurants/:restaurantId/recipes', authenticateToken, checkRestau
       emoji: emoji || null,
       image: image || null,
       option_groups: option_groups || null,
+      yield_amount: yield_amount || 1,
+      yield_unit: yield_unit || 'portion',
       prep_time: prep_time ? parseInt(prep_time) : null,
       cook_time: cook_time ? parseInt(cook_time) : null,
       instructions: instructions || null,
@@ -361,19 +363,17 @@ router.post('/restaurants/:restaurantId/recipes', authenticateToken, checkRestau
     let totalCost = 0;
     if (ingredients && ingredients.length > 0) {
       for (const item of ingredients) {
-        const ingredient = await Ingredient.findByPk(item.ingredient_id);
-        if (ingredient) {
-          const cost = parseFloat(item.quantity) * parseFloat(ingredient.unit_cost);
-          await RecipeIngredient.create({
-            recipe_id: recipe.id,
-            ingredient_id: item.ingredient_id,
-            quantity: item.quantity,
-            unit: item.unit,
-            cost,
-            notes: item.notes || null
-          });
-          totalCost += cost;
-        }
+        // 프론트엔드에서 단위 변환을 고려한 cost가 전달됨
+        const cost = item.cost || 0;
+        await RecipeIngredient.create({
+          recipe_id: recipe.id,
+          ingredient_id: item.ingredient_id,
+          quantity: item.quantity,
+          unit: item.unit,
+          cost,
+          notes: item.notes || null
+        });
+        totalCost += cost;
       }
     }
 
@@ -414,7 +414,7 @@ router.put('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken, ch
       return res.status(403).json({ error: 'You can only edit your own restaurant recipes' });
     }
 
-    const { name, description, category, emoji, image, option_groups, ingredients, prep_time, cook_time, instructions, instructions_summary, instructions_detail, suggested_price } = req.body;
+    const { name, description, category, emoji, image, option_groups, ingredients, yield_amount, yield_unit, prep_time, cook_time, instructions, instructions_summary, instructions_detail, suggested_price } = req.body;
 
     // 기본 정보 업데이트
     await recipe.update({
@@ -424,6 +424,8 @@ router.put('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken, ch
       emoji,
       image,
       option_groups,
+      yield_amount: yield_amount || recipe.yield_amount,
+      yield_unit: yield_unit || recipe.yield_unit,
       prep_time,
       cook_time,
       instructions,
@@ -438,19 +440,17 @@ router.put('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken, ch
 
       let totalCost = 0;
       for (const item of ingredients) {
-        const ingredient = await Ingredient.findByPk(item.ingredient_id);
-        if (ingredient) {
-          const cost = parseFloat(item.quantity) * parseFloat(ingredient.unit_cost);
-          await RecipeIngredient.create({
-            recipe_id: recipe.id,
-            ingredient_id: item.ingredient_id,
-            quantity: item.quantity,
-            unit: item.unit,
-            cost,
-            notes: item.notes || null
-          });
-          totalCost += cost;
-        }
+        // 프론트엔드에서 단위 변환을 고려한 cost가 전달됨
+        const cost = item.cost || 0;
+        await RecipeIngredient.create({
+          recipe_id: recipe.id,
+          ingredient_id: item.ingredient_id,
+          quantity: item.quantity,
+          unit: item.unit,
+          cost,
+          notes: item.notes || null
+        });
+        totalCost += cost;
       }
 
       await recipe.update({ total_ingredient_cost: totalCost });

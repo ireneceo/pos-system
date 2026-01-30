@@ -109,6 +109,7 @@ router.post('/', async (req, res) => {
   try {
     const {
       name, description, category_id, image, emoji,
+      yield_amount, yield_unit,
       prep_time, cook_time, instructions, instructions_summary, instructions_detail,
       suggested_price, is_set_menu, set_items, option_groups,
       ingredients
@@ -125,6 +126,8 @@ router.post('/', async (req, res) => {
       category_id,
       image,
       emoji,
+      yield_amount: yield_amount || 1,
+      yield_unit: yield_unit || 'portion',
       prep_time,
       cook_time,
       instructions,
@@ -141,8 +144,8 @@ router.post('/', async (req, res) => {
     if (ingredients && ingredients.length > 0) {
       let totalCost = 0;
       for (const ing of ingredients) {
-        const ingredient = await ProductIngredient.findByPk(ing.ingredient_id);
-        const cost = ingredient ? ingredient.unit_cost * ing.quantity : 0;
+        // 프론트엔드에서 단위 변환을 고려한 cost가 전달됨
+        const cost = ing.cost || 0;
         totalCost += cost;
 
         await ProductRecipeIngredient.create({
@@ -196,6 +199,7 @@ router.put('/:id', async (req, res) => {
 
     const {
       name, description, category_id, image, emoji,
+      yield_amount, yield_unit,
       prep_time, cook_time, instructions, instructions_summary, instructions_detail,
       suggested_price, is_set_menu, set_items, option_groups, is_active,
       ingredients
@@ -203,6 +207,8 @@ router.put('/:id', async (req, res) => {
 
     await recipe.update({
       name, description, category_id, image, emoji,
+      yield_amount: yield_amount || recipe.yield_amount,
+      yield_unit: yield_unit || recipe.yield_unit,
       prep_time, cook_time, instructions, instructions_summary, instructions_detail,
       suggested_price, is_set_menu, set_items, option_groups, is_active
     });
@@ -213,8 +219,8 @@ router.put('/:id', async (req, res) => {
 
       let totalCost = 0;
       for (const ing of ingredients) {
-        const ingredient = await ProductIngredient.findByPk(ing.ingredient_id);
-        const cost = ingredient ? ingredient.unit_cost * ing.quantity : 0;
+        // 프론트엔드에서 단위 변환을 고려한 cost가 전달됨
+        const cost = ing.cost || 0;
         totalCost += cost;
 
         await ProductRecipeIngredient.create({
