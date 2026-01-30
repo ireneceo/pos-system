@@ -129,7 +129,9 @@ router.get('/', async (req, res) => {
         imageThumbnail: thumbnailUrl,
         restaurant_id: prod.restaurant_id,
         soldOut: prod.soldOut || false,
-        optionGroups: prod.optionGroups || [],  // Include optionGroups data
+        optionGroups: typeof prod.optionGroups === 'string'
+          ? JSON.parse(prod.optionGroups)
+          : (prod.optionGroups || []),  // Include optionGroups data
         // 세트 메뉴 관련 필드
         is_set_menu: prod.is_set_menu || false,
         set_items: prod.set_items || null,
