@@ -1,5 +1,5 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-01-28 21:02 UTC
+**마지막 업데이트:** 2026-01-30 UTC
 **작업 상태:** 완료
 
 ### 진행 중인 작업
@@ -7,22 +7,29 @@
 
 ### 완료된 작업 (이번 세션)
 
-#### PM2 메모리 설정 수정 (서버 크래시 방지)
-- **문제:** production-backend가 "JavaScript heap out of memory"로 크래시
-- **원인:** node_args `--max-old-space-size=384` 너무 작음 (538MB 사용 중 죽음)
-- **해결:**
-  - `--max-old-space-size=768` (384MB → 768MB)
-  - `max_memory_restart: '800M'` (512MB → 800MB)
-- **파일:** `/var/www/ecosystem.config.js`
+#### 주방 티켓 개별 출력 기능
+- Settings > Printer Settings에 "Print separate ticket for each item" 토글 추가
+- RawBT(Android): 아이템별로 500ms 간격으로 개별 티켓 출력
+- 브라우저 인쇄: 멀티페이지 HTML로 page-break-after 적용
+- **파일:** `dev-frontend/src/pages/Settings/SettingsPage.tsx`, `dev-frontend/src/utils/billPrint.js`
 
-#### /저장 명령어 생성
-- 세션 상태를 session-state.md에 저장하는 명령어
-- **파일:** `/var/www/.claude/commands/저장.md`
+#### 배포 스크립트 v3.0 개선
+- **문제:** sudo 비밀번호 필요, 배포 10분+ 소요
+- **해결:**
+  - nginx 명령만 NOPASSWD로 sudoers 설정
+  - 불필요한 단계 제거, 병렬 처리
+  - --auto 플래그로 CI/CD 자동화 지원
+- **결과:** 배포 시간 88초로 단축
+- **파일:** `deploy-production-v3.sh`, `/etc/sudoers.d/deploy-permissions`
+
+#### 레시피/상품 이미지 URL 통합
+- yield_amount, yield_unit, image_thumbnail 컬럼 추가
+- nginx /uploads location 설정
+- 운영 DB 스키마 동기화 완료
 
 #### 운영서버 배포 완료
-- 운영 DB에 누락 컬럼 추가: general_stock.owner_id, general_stock_categories.owner_id
-- 배포 커밋: 30b405f
-- 백업: `/var/www/backups/20260128_205647`
+- 배포 커밋: 6b0a156
+- 백업: `/var/www/backups/20260130_*`
 
 ### 다음 할 일
 1. Phase 2: DB 테이블 생성 (11개 테이블)
