@@ -129,9 +129,21 @@ router.get('/', async (req, res) => {
         imageThumbnail: thumbnailUrl,
         restaurant_id: prod.restaurant_id,
         soldOut: prod.soldOut || false,
-        optionGroups: typeof prod.optionGroups === 'string'
-          ? JSON.parse(prod.optionGroups)
-          : (prod.optionGroups || []),  // Include optionGroups data
+        optionGroups: (() => {
+          // Handle double-encoded JSON strings
+          if (!prod.optionGroups) return [];
+          try {
+            let parsed = typeof prod.optionGroups === 'string'
+              ? JSON.parse(prod.optionGroups)
+              : prod.optionGroups;
+            if (typeof parsed === 'string') {
+              parsed = JSON.parse(parsed);
+            }
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        })(),  // Include optionGroups data
         // 세트 메뉴 관련 필드
         is_set_menu: prod.is_set_menu || false,
         set_items: prod.set_items || null,
