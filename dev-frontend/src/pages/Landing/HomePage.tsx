@@ -1,75 +1,21 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
+import { LandingLayout } from '../../components/Landing';
 import { BaseButton } from '../../components/UI';
 
-const Container = styled.div`
-  min-height: 100vh;
+const PageContainer = styled.div`
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  display: flex;
-  flex-direction: column;
-`;
-
-const Header = styled.header`
-  padding: 20px 50px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-
-  @media (max-width: 768px) {
-    padding: 15px 20px;
-  }
-`;
-
-const Logo = styled.div`
-  font-size: 28px;
-  font-weight: bold;
-  color: white;
-
-  @media (max-width: 768px) {
-    font-size: 22px;
-  }
-`;
-
-const Nav = styled.nav`
-  display: flex;
-  gap: 30px;
-
-  @media (max-width: 768px) {
-    gap: 15px;
-  }
-`;
-
-const NavLink = styled.button`
-  background: none;
-  border: none;
-  color: white;
-  font-size: 16px;
-  cursor: pointer;
-  padding: 8px 16px;
-  border-radius: 5px;
-  transition: background 0.3s;
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.2);
-  }
-
-  @media (max-width: 768px) {
-    font-size: 14px;
-    padding: 6px 12px;
-  }
+  min-height: calc(100vh - 80px);
 `;
 
 const Hero = styled.section`
-  flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   text-align: center;
-  padding: 50px 20px;
+  padding: 100px 20px 80px;
   color: white;
 `;
 
@@ -188,76 +134,54 @@ const FeatureDescription = styled.p`
   line-height: 1.6;
 `;
 
-const Footer = styled.footer`
-  background: rgba(0, 0, 0, 0.2);
-  padding: 30px 50px;
-  text-align: center;
-  color: white;
-
-  @media (max-width: 768px) {
-    padding: 20px;
-  }
-`;
-
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <Container>
-      <Header>
-        <Logo>Purple Here</Logo>
-        <Nav>
-          <NavLink onClick={() => navigate('/about')}>About Us</NavLink>
-          <NavLink onClick={() => navigate('/service')}>Services</NavLink>
-          <NavLink onClick={() => navigate('/pos')}>POS System Access</NavLink>
-        </Nav>
-      </Header>
+    <LandingLayout>
+      <PageContainer>
+        <Hero>
+          <Title>Smart Store Management Starts Here</Title>
+          <Subtitle>
+            Efficiently manage your food courts, brands, and restaurants with Purple Here POS System
+          </Subtitle>
+          <ButtonGroup>
+            <PrimaryButton onClick={() => navigate('/demo')}>
+              Try Demo
+            </PrimaryButton>
+            <SecondaryButton onClick={() => navigate('/pricing')}>
+              View Pricing
+            </SecondaryButton>
+          </ButtonGroup>
+        </Hero>
 
-      <Hero>
-        <Title>Smart Store Management Starts Here</Title>
-        <Subtitle>
-          Efficiently manage your food courts, brands, and restaurants with Purple Here POS System
-        </Subtitle>
-        <ButtonGroup>
-          <PrimaryButton onClick={() => navigate('/pos')}>
-            Get Started
-          </PrimaryButton>
-          <SecondaryButton onClick={() => navigate('/service')}>
-            Learn More
-          </SecondaryButton>
-        </ButtonGroup>
-      </Hero>
+        <Features>
+          <FeatureCard>
+            <FeatureIcon>*</FeatureIcon>
+            <FeatureTitle>Food Court Management</FeatureTitle>
+            <FeatureDescription>
+              Efficiently manage multiple stores and monitor them in real-time
+            </FeatureDescription>
+          </FeatureCard>
 
-      <Features>
-        <FeatureCard>
-          <FeatureIcon>🏪</FeatureIcon>
-          <FeatureTitle>Food Court Management</FeatureTitle>
-          <FeatureDescription>
-            Efficiently manage multiple stores and monitor them in real-time
-          </FeatureDescription>
-        </FeatureCard>
+          <FeatureCard>
+            <FeatureIcon>#</FeatureIcon>
+            <FeatureTitle>Brand Integration</FeatureTitle>
+            <FeatureDescription>
+              View data from all branches at a glance and analyze performance
+            </FeatureDescription>
+          </FeatureCard>
 
-        <FeatureCard>
-          <FeatureIcon>📊</FeatureIcon>
-          <FeatureTitle>Brand Integration</FeatureTitle>
-          <FeatureDescription>
-            View data from all branches at a glance and analyze performance
-          </FeatureDescription>
-        </FeatureCard>
-
-        <FeatureCard>
-          <FeatureIcon>💳</FeatureIcon>
-          <FeatureTitle>Easy Order & Payment</FeatureTitle>
-          <FeatureDescription>
-            Handle everything from mobile orders to POS payments conveniently
-          </FeatureDescription>
-        </FeatureCard>
-      </Features>
-
-      <Footer>
-        © 2025 Purple Here. All rights reserved.
-      </Footer>
-    </Container>
+          <FeatureCard>
+            <FeatureIcon>$</FeatureIcon>
+            <FeatureTitle>Easy Order & Payment</FeatureTitle>
+            <FeatureDescription>
+              Handle everything from mobile orders to POS payments conveniently
+            </FeatureDescription>
+          </FeatureCard>
+        </Features>
+      </PageContainer>
+    </LandingLayout>
   );
 };
 

@@ -252,24 +252,36 @@ router.patch('/:id/password', authenticateToken, async (req, res) => {
   }
 });
 
-// Admin password reset endpoint (no current password verification required)
+// What and Why: Admin 패스워드 리셋 - System Admin만 사용 가능
+// - 강력한 임시 비밀번호 생성 (12자, 대소문자+숫자+특수문자)
+// - 응답에 임시 비밀번호 포함하여 관리자가 사용자에게 전달
 router.post('/:id/reset-password', authenticateToken, async (req, res) => {
   try {
+    // System Admin만 패스워드 리셋 가능
+    if (req.user.role !== 'System Admin') {
+      return res.status(403).json({ success: false, error: 'Only System Admin can reset passwords' });
+    }
+
     const user = await User.findByPk(req.params.id);
 
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
 
-    // Reset to default password: 1234
-    const defaultPassword = '1234';
-    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+    // 강력한 임시 비밀번호 생성 (12자)
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+    let tempPassword = '';
+    for (let i = 0; i < 12; i++) {
+      tempPassword += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
     await user.update({ password: hashedPassword });
 
-    // Note: Default password is '1234' - communicate this through secure channel, not API response
     res.json({
       success: true,
-      message: 'Password has been reset to default. Please inform the user through a secure channel.'
+      message: 'Password has been reset successfully',
+      tempPassword: tempPassword
     });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });

@@ -269,7 +269,6 @@ const DemoPage: React.FC = () => {
         setError(data.error || 'Demo account login failed. Please contact support.');
       }
     } catch (err) {
-      console.error('Demo login error:', err);
       setError('Network error. Please try again.');
     } finally {
       setLoading(null);

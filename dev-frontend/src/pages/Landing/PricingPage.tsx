@@ -285,7 +285,7 @@ const PricingPage: React.FC = () => {
         setPlans(data);
       }
     } catch (error) {
-      console.error('Failed to load plans:', error);
+      // Plans loading failed, fallback plans will be used
     } finally {
       setLoading(false);
     }
