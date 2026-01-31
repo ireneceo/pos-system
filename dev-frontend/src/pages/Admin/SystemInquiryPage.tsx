@@ -534,22 +534,18 @@ const SystemInquiryPage: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<any>(null);
 
   useEffect(() => {
-    // API에서 티켓 데이터 불러오기
+    // What and Why: API에서 티켓 데이터 불러오기
+    // - 새 응답 형식 { success: true, data: [...] } 처리
     const fetchTickets = async () => {
       try {
         const response = await fetch('/api/support-tickets');
-        console.log('🔥 Admin fetch response status:', response.status, response.ok);
         if (response.ok) {
-          const data = await response.json();
-          console.log('🔥 Admin page loaded tickets:', data.length);
-          console.log('🔥 Manager tickets:', data.filter(t => t.customerRole === 'manager'));
-          console.log('🔥 All tickets:', data);
-          setTickets(data);
-        } else {
-          console.error('🔥 Admin fetch failed:', response.status);
+          const result = await response.json();
+          const ticketsData = result.data || result;
+          setTickets(ticketsData);
         }
       } catch (error) {
-        console.error('Error fetching support tickets:', error);
+        // 에러 처리
       }
     };
 
@@ -558,15 +554,12 @@ const SystemInquiryPage: React.FC = () => {
       try {
         const response = await fetch('/api/users');
         if (response.ok) {
-          const data = await response.json();
-          const usersArray = data.data || data;
-          console.log('✅ Loaded users for dropdown:', usersArray.length, 'users');
+          const result = await response.json();
+          const usersArray = result.data || result;
           setUsers(usersArray);
-        } else {
-          console.error('❌ Failed to fetch users:', response.status);
         }
       } catch (error) {
-        console.error('❌ Error fetching users:', error);
+        // 에러 처리
       }
     };
 
@@ -589,8 +582,6 @@ const SystemInquiryPage: React.FC = () => {
     const matchesCategory = filterCategory === 'all' || ticket.category === filterCategory;
     return matchesSearch && matchesTab && matchesStatus && matchesPriority && matchesCategory;
   });
-
-  console.log('Admin page - Total tickets:', tickets.length, 'Filtered tickets:', filteredTickets.length);
 
   const totalTickets = tickets.length;
   const openTickets = tickets.filter(t => t.status === 'open').length;
@@ -619,11 +610,11 @@ const SystemInquiryPage: React.FC = () => {
     try {
       const response = await fetch('/api/support-tickets');
       if (response.ok) {
-        const data = await response.json();
-        setTickets(data);
+        const result = await response.json();
+        setTickets(result.data || result);
       }
     } catch (error) {
-      console.error('Error fetching support tickets:', error);
+      // 에러 처리
     }
   };
 
@@ -688,11 +679,8 @@ const SystemInquiryPage: React.FC = () => {
     setUserSearchQuery(query);
     setShowUserDropdown(true);
 
-    console.log('🔍 User search - Query:', query, 'Total users:', users.length);
-
     if (query.length < 1) {
       const initialResults = users.slice(0, 10);
-      console.log('📋 Showing initial', initialResults.length, 'users');
       setUserSearchResults(initialResults);
       return;
     }
@@ -702,7 +690,6 @@ const SystemInquiryPage: React.FC = () => {
       (user.username && user.username.toLowerCase().includes(query.toLowerCase())) ||
       (user.email && user.email.toLowerCase().includes(query.toLowerCase()))
     );
-    console.log('🔍 Filtered results:', filtered.length, 'users');
     setUserSearchResults(filtered.slice(0, 10));
   };
 
@@ -750,15 +737,14 @@ const SystemInquiryPage: React.FC = () => {
       });
 
       if (response.ok) {
-        const createdTicket = await response.json();
+        const result = await response.json();
+        const createdTicket = result.data || result;
         setTickets([createdTicket, ...tickets]);
       } else {
-        console.error('Failed to create ticket');
         alert('Failed to create support ticket. Please try again.');
         return;
       }
     } catch (error) {
-      console.error('Error creating ticket:', error);
       alert('Error creating support ticket. Please try again.');
       return;
     }
@@ -809,17 +795,16 @@ const SystemInquiryPage: React.FC = () => {
       });
 
       if (response.ok) {
-        const updatedTicket = await response.json();
+        const result = await response.json();
+        const updatedTicket = result.data || result;
         setTickets(prev => prev.map(t =>
           t.id === selectedTicket.id ? { ...t, ...updatedTicket } : t
         ));
       } else {
-        console.error('Failed to add note');
         alert('Failed to add note. Please try again.');
         return;
       }
     } catch (error) {
-      console.error('Error adding note:', error);
       alert('Error adding note. Please try again.');
       return;
     }
@@ -881,17 +866,16 @@ const SystemInquiryPage: React.FC = () => {
       });
 
       if (response.ok) {
-        const updatedTicket = await response.json();
+        const result = await response.json();
+        const updatedTicket = result.data || result;
         setTickets(prev => prev.map(t =>
           t.id === selectedTicket.id ? { ...t, ...updatedTicket } : t
         ));
       } else {
-        console.error('Failed to send reply');
         alert('Failed to send reply. Please try again.');
         return;
       }
     } catch (error) {
-      console.error('Error sending reply:', error);
       alert('Error sending reply. Please try again.');
       return;
     }
@@ -915,14 +899,11 @@ const SystemInquiryPage: React.FC = () => {
 
       if (response.ok) {
         setTickets(prev => prev.filter(t => t.id !== selectedTicket.id));
-        console.log('✅ Support ticket deleted:', selectedTicket.ticketNumber);
       } else {
-        console.error('Failed to delete ticket');
         alert('Failed to delete support ticket. Please try again.');
         return;
       }
     } catch (error) {
-      console.error('Error deleting ticket:', error);
       alert('Error deleting support ticket. Please try again.');
       return;
     }

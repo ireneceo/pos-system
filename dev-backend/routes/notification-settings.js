@@ -3,6 +3,7 @@ const router = express.Router();
 const { sequelize } = require('../config/database');
 const { QueryTypes } = require('sequelize');
 const { authenticateToken } = require('../middleware/auth');
+const { encrypt, decrypt } = require('../utils/encryption');
 
 // GET - 알림 설정 조회
 router.get('/:entityType/:entityId', authenticateToken, async (req, res) => {
@@ -114,9 +115,9 @@ router.post('/:entityType/:entityId', authenticateToken, async (req, res) => {
         whatsapp_enabled: whatsapp_enabled || false
       };
 
-      // 비밀번호가 마스킹되지 않았으면 업데이트
+      // 비밀번호가 마스킹되지 않았으면 암호화해서 업데이트
       if (smtp_password && smtp_password !== '********') {
-        replacements.smtp_password = smtp_password;
+        replacements.smtp_password = encrypt(smtp_password);
       }
     } else {
       // 새로 생성
@@ -142,7 +143,7 @@ router.post('/:entityType/:entityId', authenticateToken, async (req, res) => {
         smtp_port: smtp_port || 587,
         smtp_secure: smtp_secure || false,
         smtp_user: smtp_user || '',
-        smtp_password: smtp_password || '',
+        smtp_password: smtp_password ? encrypt(smtp_password) : '',
         from_email: from_email || '',
         from_name: from_name || '',
         reply_to_email: reply_to_email || '',

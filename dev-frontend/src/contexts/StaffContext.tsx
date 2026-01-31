@@ -194,11 +194,10 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setStaffList([]);
       }
     } catch (error) {
-      console.error('Failed to load staff:', error);
+
       setStaffList([]);
     }
   };
-
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
@@ -215,10 +214,9 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return true;
       }
 
-      console.error('Staff login failed:', data.message);
       return false;
     } catch (error) {
-      console.error('Staff login error:', error);
+
       return false;
     }
   };
@@ -237,7 +235,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setCurrentStaff(null);
       setCurrentShift(null);
     } catch (error) {
-      console.error('Logout error:', error);
+
     }
   };
 

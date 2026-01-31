@@ -108,7 +108,7 @@ const loadCachedCategories = (restaurantId: string | null): MenuCategory[] => {
       return JSON.parse(cached);
     }
   } catch (e) {
-    console.warn('Failed to load cached categories:', e);
+
   }
   return [];
 };
@@ -120,7 +120,7 @@ const saveCategoriesCache = (restaurantId: string | null, categories: MenuCatego
   try {
     localStorage.setItem(cacheKey, JSON.stringify(categories));
   } catch (e) {
-    console.warn('Failed to save categories cache:', e);
+
   }
 };
 
@@ -183,13 +183,12 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         return;
       }
 
-
       const response = await fetch(url, {
         ...getFetchOptions()
       });
 
       if (!response.ok) {
-        console.error('Failed to load menu:', response.status);
+
         return;
       }
 
@@ -224,7 +223,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
                 ? JSON.parse(item.optionGroups)
                 : item.optionGroups;
             } catch (e) {
-              console.warn('Failed to parse optionGroups for item:', item.id, e);
+
               parsedOptionGroups = [];
             }
           }
@@ -279,10 +278,10 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
 
         setMenuItems(items);
       } else {
-        console.warn('MenuContext - Invalid API response format');
+
       }
     } catch (error) {
-      console.error('MenuContext - Failed to load menu from API:', error);
+
     }
   }, []); // No dependencies - uses window.location directly
 
@@ -307,7 +306,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
       });
 
       if (!response.ok) {
-        console.error('Failed to load option groups:', response.status);
+
         return;
       }
 
@@ -316,10 +315,10 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
       if (data.success && data.data) {
         setOptionGroups(data.data);
       } else {
-        console.warn('MenuContext - Invalid option groups response:', data);
+
       }
     } catch (error) {
-      console.error('MenuContext - Failed to load option groups from API:', error);
+
     }
   }, []); // No dependencies - uses window.location directly
 
@@ -347,7 +346,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
       const response = await fetch(url, { ...getFetchOptions() });
 
       if (!response.ok) {
-        console.error('Failed to load menu by category:', response.status);
+
         return;
       }
 
@@ -424,7 +423,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         }
       }
     } catch (error) {
-      console.error('Failed to load menu by category:', error);
+
     } finally {
       setIsLoadingMenu(false);
     }
@@ -459,7 +458,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         saveCategoriesCache(restaurantId, cats);
       }
     } catch (error) {
-      console.error('Failed to load categories:', error);
+
     }
   }, []);
 
@@ -524,7 +523,6 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         set_display_order: updatedItem.set_display_order,
         recipe_id: updatedItem.recipe_id || null
       };
-      console.log('🔵 Updating menu item with data:', requestBody);
 
       const url = restaurantId
         ? `/api/menu/product/${updatedItem.id}?restaurantId=${restaurantId}`
@@ -543,7 +541,6 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
       // API 응답에서 실제 저장된 데이터 가져오기
       const responseData = await response.json();
       const savedItem = responseData.data;
-      console.log('🔵 API response savedItem:', savedItem);
 
       // 성공 시 로컬 상태 업데이트
       // API 응답 데이터와 updatedItem을 병합 (image가 누락될 수 있으므로)
@@ -572,7 +569,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
       );
       setMenuItems(newItems);
     } catch (error) {
-      console.error('Failed to update menu item:', error);
+
       throw error;
     }
   };
@@ -600,7 +597,6 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         recipe_id: newItem.recipe_id || null,
         ...(restaurantId && { restaurant_id: restaurantId })
       };
-      console.log('🟢 Creating menu item with data:', requestBody);
 
       const response = await fetch('/api/menu/product', {
         method: 'POST',
@@ -622,7 +618,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
       const newItems = [...menuItems, createdItem];
       setMenuItems(newItems);
     } catch (error) {
-      console.error('Failed to add menu item:', error);
+
       throw error;
     }
   };
@@ -651,9 +647,9 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
       // 성공 시 로컬 상태 업데이트
       const newItems = menuItems.filter(item => item.id !== itemId);
       setMenuItems(newItems);
-      console.log('Menu item deleted:', itemId);
+
     } catch (error) {
-      console.error('Failed to delete menu item:', error);
+
       throw error;
     }
   };
@@ -698,7 +694,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
       );
       setMenuItems(newItems);
     } catch (error) {
-      console.error('Failed to toggle sold out:', error);
+
       throw error;
     }
   };
@@ -727,17 +723,15 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('Failed to add category:', errorData);
+
         throw new Error(errorData.error || 'Failed to add category');
       }
 
-      console.log('Category added on server:', category.name);
-
       // 성공 시 메뉴 전체 다시 로드 (DB와 동기화)
       await loadMenuFromAPI();
-      console.log('Menu reloaded after category addition');
+
     } catch (error) {
-      console.error('Failed to add category:', error);
+
       throw error;
     }
   };
@@ -771,17 +765,15 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('Failed to update category:', errorData);
+
         throw new Error(errorData.error || 'Failed to update category');
       }
 
-      console.log('Category updated on server:', updates);
-
       // 성공 시 메뉴 전체 다시 로드 (DB와 동기화)
       await loadMenuFromAPI();
-      console.log('Menu reloaded after category update');
+
     } catch (error) {
-      console.error('Failed to update category:', error);
+
       throw error;
     }
   };
@@ -803,19 +795,17 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         throw new Error('Failed to delete category');
       }
 
-      console.log('Category deleted on server:', category.name);
-
       // 성공 시 메뉴 전체 다시 로드 (DB와 동기화)
       await loadMenuFromAPI();
-      console.log('Menu reloaded after category deletion');
+
     } catch (error) {
-      console.error('Failed to delete category:', error);
+
       throw error;
     }
   };
 
   const reorderCategories = async (newCategories: MenuCategory[]) => {
-    console.log('🔄 reorderCategories called with:', newCategories);
+
     try {
       // Update local state immediately for responsiveness
       setCategories(newCategories);
@@ -825,22 +815,17 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
       const restaurantIndex = pathParts.indexOf('restaurant');
       const restaurantId = restaurantIndex >= 0 ? pathParts[restaurantIndex + 1] : null;
 
-      console.log('📍 Restaurant ID from URL:', restaurantId);
-
       if (!restaurantId) {
-        console.error('❌ Restaurant ID not found in URL');
+
         return;
       }
 
       const token = localStorage.getItem('auth_token');
-      console.log('🔑 Token exists:', !!token);
 
       const payload = { categories: newCategories };
-      console.log('📦 Sending payload:', JSON.stringify(payload, null, 2));
 
       // Save to backend
       const url = `/api/categories/reorder?restaurantId=${restaurantId}`;
-      console.log('🌐 Calling API:', url);
 
       const response = await fetch(url, {
         method: 'PUT',
@@ -851,18 +836,16 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         body: JSON.stringify(payload)
       });
 
-      console.log('📡 Response status:', response.status);
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Response error:', errorText);
+
         throw new Error(`Failed to reorder categories: ${response.status}`);
       }
 
       const result = await response.json();
-      console.log('✅ Category order saved to backend:', result);
+
     } catch (error) {
-      console.error('❌ Failed to reorder categories:', error);
+
       // Reload to get correct order from backend
       await loadMenuFromAPI();
     }
@@ -889,20 +872,19 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('Failed to create option group:', errorData);
+
         throw new Error(errorData.error || 'Failed to create option group');
       }
 
       const result = await response.json();
       if (result.success && result.data) {
-        console.log('Option group created:', result.data.id);
 
         // 성공 시 옵션 그룹 전체 다시 로드 (DB와 동기화)
         await loadOptionGroupsFromAPI();
-        console.log('Option groups reloaded after creation');
+
       }
     } catch (error) {
-      console.error('Failed to create option group:', error);
+
       throw error;
     }
   };
@@ -929,20 +911,19 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('Failed to update option group:', errorData);
+
         throw new Error(errorData.error || 'Failed to update option group');
       }
 
       const result = await response.json();
       if (result.success && result.data) {
-        console.log('Option group updated:', groupId);
 
         // 성공 시 옵션 그룹 전체 다시 로드 (DB와 동기화)
         await loadOptionGroupsFromAPI();
-        console.log('Option groups reloaded after update');
+
       }
     } catch (error) {
-      console.error('Failed to update option group:', error);
+
       throw error;
     }
   };
@@ -956,17 +937,15 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('Failed to delete option group:', errorData);
+
         throw new Error(errorData.error || 'Failed to delete option group');
       }
 
-      console.log('Option group deleted:', groupId);
-
       // 성공 시 옵션 그룹 전체 다시 로드 (DB와 동기화)
       await loadOptionGroupsFromAPI();
-      console.log('Option groups reloaded after deletion');
+
     } catch (error) {
-      console.error('Failed to delete option group:', error);
+
       throw error;
     }
   };

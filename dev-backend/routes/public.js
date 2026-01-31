@@ -9,6 +9,7 @@ const PlanTemplate = require('../models/PlanTemplate');
 const { authenticateToken } = require('../middleware/auth');
 const nodemailer = require('nodemailer');
 const { Op } = require('sequelize');
+const { decrypt } = require('../utils/encryption');
 
 // ==============================================
 // 이메일 설정 (시스템 설정에서 가져오기)
@@ -28,7 +29,7 @@ async function getEmailTransporter() {
         secure: config.smtp_port === 465,
         auth: {
           user: config.smtp_user,
-          pass: config.smtp_password
+          pass: decrypt(config.smtp_password)
         }
       });
     }

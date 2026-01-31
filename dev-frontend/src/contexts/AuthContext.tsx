@@ -330,11 +330,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         } else {
           // Token invalid or expired
-          console.error('❌ Token validation failed:', response.status);
+
           localStorage.removeItem('auth_token');
         }
       } catch (error) {
-        console.error('❌ Failed to check session:', error);
+
         localStorage.removeItem('auth_token');
       }
       setIsLoading(false);
@@ -344,10 +344,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    console.log('AuthContext login called with:', email, password);
 
     try {
-      console.log('Making API call to /api/auth/login...');
 
       // 실제 API 호출로 인증
       const response = await fetch('/api/auth/login', {
@@ -359,12 +357,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         body: JSON.stringify({ email, password }),
       });
 
-      console.log('API login response received:', response);
-      console.log('API login response status:', response.status);
-
       if (response.ok) {
         const result = await response.json();
-        console.log('API login result:', result);
 
         if (result.success && result.data) {
           const apiUser = result.data.user;
@@ -380,10 +374,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 const restaurantData = await restaurantResponse.json();
                 restaurantStatus = restaurantData.status;
                 restaurantName = restaurantData.name;
-                console.log('Restaurant info fetched:', { status: restaurantStatus, name: restaurantName });
+
               }
             } catch (error) {
-              console.error('Failed to fetch restaurant info:', error);
+
             }
           }
 
@@ -401,25 +395,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             restaurantName: restaurantName
           };
 
-          console.log('Setting user data from API:', userData);
           setUser(userData);
           // JWT 토큰 저장
           localStorage.setItem('auth_token', result.data.token);
-          console.log('Login successful with JWT token');
+
           return true;
         }
       }
 
-      console.log('Login failed - API returned error');
       return false;
     } catch (error) {
-      console.error('Login error:', error);
+
       return false;
     }
   };
 
   const logout = async () => {
-    console.log('Logging out...');
+
     try {
       // 서버에 로그아웃 요청
       await fetch('/api/auth/logout', {
@@ -427,7 +419,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         credentials: 'include'
       });
     } catch (error) {
-      console.error('Logout error:', error);
+
     }
     setUser(null);
     // JWT 토큰 제거

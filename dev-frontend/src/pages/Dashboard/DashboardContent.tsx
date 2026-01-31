@@ -318,7 +318,8 @@ const DashboardContent: React.FC = () => {
 
         // Fetch support tickets from API
         const ticketsResponse = await fetch('/api/support-tickets');
-        const tickets = ticketsResponse.ok ? await ticketsResponse.json() : [];
+        const ticketsResult = ticketsResponse.ok ? await ticketsResponse.json() : { data: [] };
+        const tickets = ticketsResult.data || ticketsResult || [];
 
         // Count only open tickets
         const openTicketsOnly = tickets.filter((t: any) => t.status === 'open').length;

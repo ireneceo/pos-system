@@ -504,17 +504,18 @@ const SupportTicketsPage: React.FC = () => {
   const currentRestaurantName = 'IOI Mall Food Court'; // 실제로는 user context에서 가져올 것
 
   useEffect(() => {
-    // API에서 모든 티켓 불러오기 (시스템관리자에게 모두 표시되어야 함)
+    // What and Why: API에서 모든 티켓 불러오기
+    // - 새 응답 형식 { success: true, data: [...] } 처리
     const fetchTickets = async () => {
       try {
         const response = await fetch('/api/support-tickets');
         if (response.ok) {
-          const allTickets = await response.json();
-          console.log('📡 Restaurant page - All tickets loaded:', allTickets.length);
-          setTickets(allTickets);
+          const result = await response.json();
+          const ticketsData = result.data || result;
+          setTickets(ticketsData);
         }
       } catch (error) {
-        console.error('Error fetching tickets:', error);
+        // 에러 처리
       }
     };
 
@@ -630,22 +631,18 @@ const SupportTicketsPage: React.FC = () => {
       });
 
       if (response.ok) {
-        const createdTicket = await response.json();
-        console.log('✅ Manager ticket created:', createdTicket);
         // 티켓 생성 후 다시 전체 티켓 목록을 가져와서 동기화
         const refreshResponse = await fetch('/api/support-tickets');
         if (refreshResponse.ok) {
-          const allTickets = await refreshResponse.json();
-          console.log('🔄 Manager page - Refreshed all tickets:', allTickets.length);
-          setTickets(allTickets);
+          const result = await refreshResponse.json();
+          const ticketsData = result.data || result;
+          setTickets(ticketsData);
         }
         setShowCreateTicketModal(false);
       } else {
-        console.error('Failed to create ticket');
         alert('Failed to create support ticket. Please try again.');
       }
     } catch (error) {
-      console.error('Error creating ticket:', error);
       alert('Error creating support ticket. Please try again.');
     }
     setNewTicket({

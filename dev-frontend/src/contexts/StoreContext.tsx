@@ -149,26 +149,24 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
           const slugMatch = window.location.pathname.match(/\/mobile\/([^\/]+)/);
           if (slugMatch) {
             const slug = slugMatch[1];
-            console.log('📱 StoreContext: Found mobile slug:', slug);
+
             // Try to get restaurant ID from slug via API
             try {
               const slugResponse = await fetch(`/api/restaurants/slug/${slug}`);
               if (slugResponse.ok) {
                 const slugData = await slugResponse.json();
                 restaurantId = slugData.id || slugData.data?.id;
-                console.log('✅ StoreContext: Got restaurant ID from slug:', restaurantId);
+
               }
             } catch (err) {
-              console.error('❌ StoreContext: Failed to get restaurant from slug:', err);
+
             }
           }
         }
 
-        console.log('🌐 StoreContext: Restaurant ID from URL:', restaurantId);
-
         // If not in URL, get from user info
         if (!restaurantId) {
-          console.log('🔍 StoreContext: Fetching user info from /api/auth/me');
+
           const userInfoResponse = await fetch('/api/auth/me', {
             credentials: 'include',
             headers: {
@@ -177,30 +175,27 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
             }
           });
 
-          console.log('📡 StoreContext: /api/auth/me response status:', userInfoResponse.status);
           if (userInfoResponse.ok) {
             const userInfo = await userInfoResponse.json();
-            console.log('👤 StoreContext: User info:', userInfo);
+
             restaurantId = userInfo.restaurant_id;
           } else {
-            console.error('❌ StoreContext: Failed to get user info');
+
             const errorText = await userInfoResponse.text();
-            console.error('Error details:', errorText);
+
           }
         }
 
         // If no restaurant_id, use default settings
         if (!restaurantId) {
-          console.warn('⚠️ StoreContext: No restaurant_id found, using default settings');
+
           return;
         }
-
-        console.log('🎯 StoreContext: Using restaurant_id:', restaurantId);
 
         // Fetch restaurant settings with restaurantId
         // Add timestamp to prevent caching
         const timestamp = new Date().getTime();
-        console.log('📞 StoreContext: Fetching settings from /api/store/settings?restaurantId=' + restaurantId);
+
         const response = await fetch(`/api/store/settings?restaurantId=${restaurantId}&_t=${timestamp}`, {
           credentials: 'include',
           headers: {
@@ -211,10 +206,9 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
           }
         });
 
-        console.log('📡 StoreContext: /api/store/settings response status:', response.status);
         if (response.ok) {
           const result = await response.json();
-          console.log('🏪 StoreContext: API response:', result);
+
           if (result.success && result.data) {
             // Map restaurant data to store settings format
             const storeData: StoreSettings = {
@@ -229,7 +223,6 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
               gstRegNo: result.data.tax_id || ''
             };
 
-            console.log('🏪 StoreContext: Loaded store data:', storeData);
             setStoreSettings(storeData);
 
             // Set operation settings if available
@@ -257,13 +250,12 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
             }
           }
         } else {
-          console.error('❌ StoreContext: Failed to fetch store settings');
+
           const errorText = await response.text();
-          console.error('Error details:', errorText);
+
         }
       } catch (error) {
-        console.error('❌ StoreContext: Error loading store settings:', error);
-        console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+
       }
     };
 
@@ -282,7 +274,7 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
   };
 
   const getStoreInfo = () => {
-    console.log('🏪 StoreContext: getStoreInfo() called, returning:', storeSettings);
+
     return storeSettings;
   };
 

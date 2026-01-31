@@ -594,20 +594,18 @@ const SupportTicketsPage: React.FC = () => {
   ];
 
   useEffect(() => {
+    // What and Why: API에서 티켓 데이터 불러오기
+    // - 새 응답 형식 { success: true, data: [...] } 처리
     const fetchTickets = async () => {
       try {
         const response = await fetch('/api/support-tickets');
-        console.log('🔥 Manager fetch response status:', response.status, response.ok);
         if (response.ok) {
-          const data = await response.json();
-          console.log('🔥 Manager page loaded tickets:', data.length);
-          console.log('🔥 All tickets:', data);
-          setTickets(data);
-        } else {
-          console.error('🔥 Manager fetch failed:', response.status);
+          const result = await response.json();
+          const ticketsData = result.data || result;
+          setTickets(ticketsData);
         }
       } catch (error) {
-        console.error('Error fetching support tickets:', error);
+        // 에러 처리
       }
     };
 
@@ -729,15 +727,14 @@ const SupportTicketsPage: React.FC = () => {
       });
 
       if (response.ok) {
-        const createdTicket = await response.json();
+        const result = await response.json();
+        const createdTicket = result.data || result;
         setTickets([createdTicket, ...tickets]);
       } else {
-        console.error('Failed to create ticket');
         alert('Failed to create support ticket. Please try again.');
         return;
       }
     } catch (error) {
-      console.error('Error creating ticket:', error);
       alert('Error creating support ticket. Please try again.');
       return;
     }

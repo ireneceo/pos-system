@@ -200,7 +200,7 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setCustomers([]);
       }
     } catch (error) {
-      console.error('Failed to load customers:', error);
+
       // 에러 시 빈 배열 설정
       setCustomers([]);
     }
@@ -223,7 +223,7 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        console.error('Registration failed:', data.message);
+
         // alert 제거, 에러만 throw (모달에서 처리)
         throw new Error(data.message || 'Registration failed');
       }
@@ -253,7 +253,7 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       return newCustomer;
     } catch (error) {
-      console.error('Registration error:', error);
+
       throw error;
     }
   };
@@ -273,7 +273,7 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        console.error('Login failed:', data.message);
+
         // 에러를 throw하지 않고 null 반환 (모달에서 처리)
         return null;
       }
@@ -299,7 +299,7 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setGuestInfo(null);
       return customer;
     } catch (error) {
-      console.error('Login error:', error);
+
       // alert 제거, null 반환
       return null;
     }
@@ -354,7 +354,7 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        console.error('Delete customer failed:', data.message);
+
         return false;
       }
 
@@ -368,7 +368,7 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       return true;
     } catch (error) {
-      console.error('Delete customer error:', error);
+
       return false;
     }
   };

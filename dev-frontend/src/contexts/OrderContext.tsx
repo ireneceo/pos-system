@@ -99,11 +99,11 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
           const apiOrders = result.data || result;
           setOrders(apiOrders);
         } else {
-          console.error('OrderContext - Failed to load orders:', result.error);
+
           setOrders([]);
         }
       } catch (error) {
-        console.error('OrderContext - Error loading orders from API:', error);
+
         setOrders([]);
       }
     };
@@ -156,26 +156,23 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
         }))
       };
 
-
       const response = await fetch('/api/orders', getFetchOptions({
         method: 'POST',
         body: JSON.stringify(backendOrder),
       }));
 
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('OrderContext - HTTP error:', response.status, errorText);
+
         throw new Error(`Failed to create order: ${response.status} ${errorText}`);
       }
 
       const result = await response.json();
 
       if (!result.success) {
-        console.error('OrderContext - Failed to save order to database:', result.error);
+
         throw new Error(result.error || 'Failed to create order');
       }
-
 
       const savedOrder = result.data;
 
@@ -183,7 +180,7 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
       setOrders(prev => {
         const exists = prev.find(existingOrder => existingOrder.id === order.id);
         if (exists) {
-          console.warn('OrderContext - Order already exists, skipping:', order.id);
+
           return prev;
         }
         return [...prev, savedOrder];
@@ -192,7 +189,7 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
       // Return the saved order with backend-generated order number
       return savedOrder;
     } catch (error) {
-      console.error('OrderContext - Error saving order to database:', error);
+
       throw error;
     }
   };
@@ -208,10 +205,9 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
       const result = await response.json();
 
       if (!result.success) {
-        console.error('OrderContext - Failed to update order status:', result.error);
+
         throw new Error(result.error || 'Failed to update order status');
       }
-
 
       // Update local state after successful API update
       setOrders(prev =>
@@ -220,7 +216,7 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
         )
       );
     } catch (error) {
-      console.error('OrderContext - Error updating order status:', error);
+
       throw error;
     }
   };
@@ -235,15 +231,14 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
       const result = await response.json();
 
       if (!result.success) {
-        console.error('OrderContext - Failed to delete order:', result.error);
+
         throw new Error(result.error || 'Failed to delete order');
       }
-
 
       // Update local state after successful API delete
       setOrders(prev => prev.filter(order => order.id !== orderId));
     } catch (error) {
-      console.error('OrderContext - Error deleting order:', error);
+
       throw error;
     }
   };

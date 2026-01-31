@@ -119,6 +119,77 @@
 
 **수정 시**: 반드시 역할(Restaurant vs Brand General)과 마운트 경로를 확인할 것!
 
+## API 응답 형식 표준 (필수!)
+
+### 표준 응답 형식
+
+**모든 API는 아래 형식을 따른다. 예외 없음.**
+
+```javascript
+// 성공 (2xx)
+res.json({
+  success: true,
+  data: { ... },           // 실제 데이터 (필수)
+  message: 'Optional message'  // 선택
+});
+
+// 실패 (4xx, 5xx)
+res.status(400).json({
+  success: false,
+  error: 'Error description'  // 에러 메시지 (필수)
+});
+```
+
+### 잘못된 응답 형식 (사용 금지)
+
+```javascript
+// ❌ 배열만 반환 - 금지
+res.json(categories);
+
+// ❌ success 없이 error만 - 금지
+res.status(500).json({ error: 'Failed' });
+
+// ❌ message와 error 혼용 - 금지
+res.json({ success: false, message: 'Error' });
+```
+
+### 프론트엔드 파싱 표준
+
+```typescript
+const response = await fetch('/api/...');
+const result = await response.json();
+
+if (result.success) {
+  // result.data 사용
+} else {
+  // result.error 표시
+}
+```
+
+## 개발 코드 품질 규칙 (필수!)
+
+### console.log 사용 금지
+
+- **프로덕션 코드에 console.log, console.error, console.warn 금지**
+- 개발 중 디버깅용으로만 사용하고, 커밋 전 반드시 제거
+- 에러 로깅이 필요하면 로깅 서비스 사용 (추후 구현)
+
+### 개발용 코드 금지 목록
+
+```javascript
+// ❌ 금지
+console.log('Debug:', data);
+console.error('Error:', error);
+debugger;
+// TODO: 임시 코드
+
+// ✓ 허용 (주석으로 의도 설명 시)
+// What and Why: 개발 환경에서만 로그 출력
+if (process.env.NODE_ENV === 'development') {
+  console.log('Debug:', data);
+}
+```
+
 ## 코드 주석 규칙 (필수!)
 
 ### What and Why 원칙
