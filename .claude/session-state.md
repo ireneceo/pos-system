@@ -1,57 +1,47 @@
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-01-31
-**작업 상태:** 완료
+**작업 상태:** Phase A-3+ 개발 진행 중
 
 ### 완료된 작업
 - Phase A-1: Reports 페이지 CSV 다운로드 버그 수정 및 체계화
 - Phase A-2: Invoice 페이지 PDF 다운로드 버그 수정
+- Phase A-3+: 최종 기획 문서 작성 완료
 
-### Phase A-2 구현 내용
+### Phase A-3+ 기획 문서
 
-**문제:** PDF 렌더링 타이밍 불안정 (150ms setTimeout이 불충분)
+**파일 위치:** `/var/www/.claude/PLANNING-Phase-A3.md`
 
-**해결:** 폰트/이미지 로딩 완료 후 캡처하도록 수정
-
-**수정된 파일 (4개):**
-- `dev-frontend/src/pages/BrandGeneral/BrandInvoicesPage.tsx`
-- `dev-frontend/src/pages/Admin/InvoicesPage.tsx`
-- `dev-frontend/src/pages/Restaurant/InvoicesPage.tsx`
-- `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtInvoicesPage.tsx`
-
-**변경 내용:**
-```typescript
-// 기존: 고정 대기 (불안정)
-await new Promise(resolve => setTimeout(resolve, 150));
-
-// 변경: 폰트/이미지 로딩 완료 대기 (안정적)
-await new Promise<void>(async (resolve) => {
-  // 1. 폰트 로딩 대기
-  if (iframeDoc.fonts?.ready) await iframeDoc.fonts.ready;
-  // 2. 이미지 로딩 대기
-  const images = iframeDoc.querySelectorAll('img');
-  await Promise.all(Array.from(images).map(...));
-  // 3. 레이아웃 안정화
-  setTimeout(resolve, 100);
-});
-```
+**포함 내용:**
+1. Task 1: Addon Module 5개 비활성화
+2. Task 2: 랜딩 페이지 (Pricing, Contact, Demo)
+3. Task 3: 7일 무료 체험 시스템 (System Admin 전용 옵션)
+4. Task 4: 미결제 서비스 차단 API 구현
+5. Task 5: BrandGeneral/FoodcourtGeneral 구독 플랜 분리 (Phase B)
 
 ### 현재 로드맵
 
 **Phase A: 오픈 필수**
 | 순서 | 작업 | 상태 |
 |:----:|------|:----:|
-| 1 | CSV 다운로드 버그 수정 (Reports) | ✅ 완료 |
-| 2 | PDF 다운로드 버그 수정 (Invoice) | ✅ 완료 |
-| 3 | Pricing 페이지 | ⬜ 진행예정 |
-| 4 | Contact 페이지 | ⬜ |
-| 5 | 랜딩페이지 SEO 최적화 | ⬜ |
+| 1 | Addon Module 5개 비활성화 | 🔄 진행중 |
+| 2 | Pricing 페이지 | ⬜ 대기 |
+| 3 | Contact 페이지 + API | ⬜ 대기 |
+| 4 | Demo 페이지 + 데모 계정 | ⬜ 대기 |
+| 5 | 트라이얼 시스템 | ⬜ 대기 |
+| 6 | 미결제 서비스 차단 API | ⬜ 대기 |
 
-**Phase B: 오픈 직후** - FAQ, 데모 콘텐츠, 이메일 템플릿
+**Phase B: 오픈 직후**
+- BrandGeneral/FoodcourtGeneral 구독 플랜 분리
+- 데모 데이터 자동 리셋 cron job
 
-**Phase C: 고객 피드백 후** - 셀프 회원가입, Stripe/PayPal, 세금계산서
+**Phase C: 고객 피드백 후**
+- 결제 연동 (Stripe/PayPal)
+- 자동 갱신 시스템
+- 세금계산서 발행
 
-### 다음 할 일
-1. Phase A-3: Pricing 페이지
+### 핵심 결정 사항
+- 트라이얼 옵션: System Admin만 사용 가능
+- Brand/Foodcourt General이 추가하는 레스토랑: 트라이얼 없음 (이미 구독 중)
 
 ---
 
