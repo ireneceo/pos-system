@@ -5,9 +5,21 @@ const Restaurant = require('../models/Restaurant');
 const Order = require('../models/Order');
 const User = require('../models/User');
 const PlanTemplate = require('../models/PlanTemplate');
+const { authenticateToken } = require('../middleware/auth');
+
+// What and Why: 모든 admin-analytics API에 인증 필수
+// - 민감한 비즈니스 데이터 보호 (매출, 주문, 구독 통계)
+// - System Admin, Brand General, Foodcourt General만 접근 가능
+const requireManagerRole = (req, res, next) => {
+  const allowedRoles = ['System Admin', 'Brand General', 'Foodcourt General', 'Brand Manager', 'Foodcourt Manager'];
+  if (!allowedRoles.includes(req.user.role)) {
+    return res.status(403).json({ success: false, error: 'Access denied' });
+  }
+  next();
+};
 
 // 시스템 전체 통계 API
-router.get('/system-stats', async (req, res) => {
+router.get('/system-stats', authenticateToken, requireManagerRole, async (req, res) => {
   try {
     const { period = 'month', restaurantId, restaurant_id, manager_id } = req.query;
     // Support both camelCase (new) and snake_case (legacy)
@@ -125,7 +137,7 @@ router.get('/system-stats', async (req, res) => {
 });
 
 // 매출 트렌드 데이터 API
-router.get('/sales-trend', async (req, res) => {
+router.get('/sales-trend', authenticateToken, requireManagerRole, async (req, res) => {
   try {
     const { period = 'month', restaurantId, restaurant_id, manager_id } = req.query;
     // Support both camelCase (new) and snake_case (legacy)
@@ -210,7 +222,7 @@ router.get('/sales-trend', async (req, res) => {
 });
 
 // 구독 통계 API
-router.get('/subscription-stats', async (req, res) => {
+router.get('/subscription-stats', authenticateToken, requireManagerRole, async (req, res) => {
   try {
     const subscriptionStats = await Restaurant.findAll({
       attributes: [
@@ -254,9 +266,8 @@ router.get('/subscription-stats', async (req, res) => {
 });
 
 // 매니저 목록 API
-router.get('/managers', async (req, res) => {
+router.get('/managers', authenticateToken, requireManagerRole, async (req, res) => {
   try {
-    console.log('🔍 Fetching managers from database...');
     const managers = await User.findAll({
       where: {
         role: {
@@ -267,8 +278,6 @@ router.get('/managers', async (req, res) => {
       order: [['full_name', 'ASC']]
     });
 
-    console.log('👥 Found managers:', managers.length);
-    console.log('📋 Managers data:', managers.map(m => ({ id: m.id, full_name: m.full_name, email: m.email, role: m.role })));
 
     res.json({
       success: true,
@@ -286,7 +295,7 @@ router.get('/managers', async (req, res) => {
 });
 
 // 지역별 레스토랑 통계 API
-router.get('/regional-stats', async (req, res) => {
+router.get('/regional-stats', authenticateToken, requireManagerRole, async (req, res) => {
   try {
     const { period = 'month', manager_id } = req.query;
 

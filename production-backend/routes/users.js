@@ -6,8 +6,6 @@ const { authenticateToken } = require('../middleware/auth');
 
 // Get all users
 router.get('/', authenticateToken, async (req, res) => {
-  console.log('🔄 GET /api/users - Request received');
-  console.log('📝 Query params:', req.query);
 
   try {
     const { sequelize } = require('../config/database');
@@ -45,7 +43,6 @@ router.get('/', authenticateToken, async (req, res) => {
       return userWithoutPassword;
     });
 
-    console.log(`✅ Found ${usersWithoutPassword.length} users with role: ${req.query.role || 'all'}`);
     res.json({ success: true, data: usersWithoutPassword });
   } catch (error) {
     console.error('❌ Error fetching users:', error);
@@ -70,8 +67,6 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
 // Create user (admin only)
 router.post('/', authenticateToken, async (req, res) => {
-  console.log('🔄 POST /api/users - Request received');
-  console.log('📝 Request body:', req.body);
 
   try {
     const { username, email, password, role, full_name, first_name, last_name, phone, permissions, restaurantId, restaurant_id, department, company_name, manager_id, monthly_salary } = req.body;
@@ -100,8 +95,6 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
 
-    console.log('📝 Parsed username:', username);
-    console.log('📝 Parsed email:', email);
 
     // Check if user already exists (by email or username)
     const existingUser = await User.findOne({
@@ -156,7 +149,6 @@ router.post('/', authenticateToken, async (req, res) => {
       manager_id: manager_id || null
     });
 
-    console.log('✅ User created successfully:', user.id, user.username);
 
     // Return user without password
     const { password: _, ...userWithoutPassword } = user.toJSON();
@@ -169,18 +161,13 @@ router.post('/', authenticateToken, async (req, res) => {
 
 // Update user
 router.put('/:id', authenticateToken, async (req, res) => {
-  console.log('🔄 PUT /api/users/:id - Request received');
-  console.log('📝 User ID:', req.params.id);
-  console.log('📝 Request body:', req.body);
 
   try {
     const user = await User.findByPk(req.params.id);
     if (!user) {
-      console.log('❌ User not found:', req.params.id);
       return res.status(404).json({ success: false, error: 'User not found' });
     }
 
-    console.log('✅ User found:', user.username, user.email);
 
     const { password, first_name, last_name, ...updateData } = req.body;
 
@@ -196,11 +183,9 @@ router.put('/:id', authenticateToken, async (req, res) => {
         (first_name || last_name);
     }
 
-    console.log('📝 Update data:', updateData);
 
     await user.update(updateData);
 
-    console.log('✅ User updated successfully');
 
     // Return user without password
     const { password: _, ...userWithoutPassword } = user.toJSON();
@@ -252,24 +237,36 @@ router.patch('/:id/password', authenticateToken, async (req, res) => {
   }
 });
 
-// Admin password reset endpoint (no current password verification required)
+// What and Why: Admin 패스워드 리셋 - System Admin만 사용 가능
+// - 강력한 임시 비밀번호 생성 (12자, 대소문자+숫자+특수문자)
+// - 응답에 임시 비밀번호 포함하여 관리자가 사용자에게 전달
 router.post('/:id/reset-password', authenticateToken, async (req, res) => {
   try {
+    // System Admin만 패스워드 리셋 가능
+    if (req.user.role !== 'System Admin') {
+      return res.status(403).json({ success: false, error: 'Only System Admin can reset passwords' });
+    }
+
     const user = await User.findByPk(req.params.id);
 
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
 
-    // Reset to default password: 1234
-    const defaultPassword = '1234';
-    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+    // 강력한 임시 비밀번호 생성 (12자)
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+    let tempPassword = '';
+    for (let i = 0; i < 12; i++) {
+      tempPassword += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
     await user.update({ password: hashedPassword });
 
-    // Note: Default password is '1234' - communicate this through secure channel, not API response
     res.json({
       success: true,
-      message: 'Password has been reset to default. Please inform the user through a secure channel.'
+      message: 'Password has been reset successfully',
+      tempPassword: tempPassword
     });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });

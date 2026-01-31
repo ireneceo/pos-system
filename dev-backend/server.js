@@ -41,6 +41,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const app = express();
+app.set('trust proxy', 1); // Cloudflare/Nginx 프록시 신뢰 (Rate Limiter 정확한 IP 감지)
 const server = http.createServer(app);
 const { syncDatabase } = require('./db');
 const invoiceScheduler = require('./services/invoiceScheduler');
@@ -177,11 +178,6 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
-
-  // 디버깅을 위한 로그 (개발 환경에서만)
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`🌐 CORS: Origin=${origin}, Allowed=${isAllowed}`);
-  }
 
   if (req.method === 'OPTIONS') {
     res.sendStatus(200);

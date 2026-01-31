@@ -43,10 +43,7 @@ const optionalAuth = async (req, res, next) => {
 // Get all restaurants (with role-based filtering)
 router.get('/', optionalAuth, async (req, res) => {
   try {
-    console.log(`🏢 GET /api/restaurants - User: ${req.user ? req.user.email : 'anonymous'} (${req.user ? req.user.role : 'no auth'})`);
-
     const { brand_id } = req.query;
-    console.log(`🔍 Query params - brand_id: ${brand_id}`);
 
     // Build include options for managers
     const managersInclude = {
@@ -62,18 +59,12 @@ router.get('/', optionalAuth, async (req, res) => {
     // Filter by brand_id if provided
     if (brand_id) {
       whereClause.brand_id = brand_id;
-      console.log(`🏢 Filtering by brand_id: ${brand_id}`);
     }
 
     // Filter restaurants based on user role
     if (req.user && (req.user.role === 'Brand General' || req.user.role === 'Brand Manager')) {
-      // Brand General/Manager: Only see assigned restaurants
       managersInclude.where = { id: req.user.id };
       managersInclude.required = true;
-      console.log(`🔐 Filtering restaurants for ${req.user.role}: manager_id = ${req.user.id}`);
-    } else {
-      // System Admin or no auth: See all restaurants
-      console.log(`👑 ${req.user ? req.user.role : 'No auth'}: Returning all restaurants`);
     }
 
     const restaurants = await Restaurant.findAll({
@@ -88,8 +79,6 @@ router.get('/', optionalAuth, async (req, res) => {
       ],
       order: [['createdAt', 'DESC']]
     });
-
-    console.log(`📊 Found ${restaurants.length} restaurants`);
 
     // Transform data to match frontend interface
     const transformedRestaurants = restaurants.map(restaurant => {
@@ -140,7 +129,6 @@ router.get('/', optionalAuth, async (req, res) => {
       };
     });
 
-    console.log('📝 Transformed restaurants:', transformedRestaurants.length);
     res.json(transformedRestaurants);
   } catch (error) {
     console.error('Error fetching restaurants:', error);
@@ -152,11 +140,7 @@ router.get('/', optionalAuth, async (req, res) => {
 router.get('/manager/:managerId', async (req, res) => {
   try {
     const { managerId } = req.params;
-    console.log(`🏢 🔥 UPDATED CODE 🔥 GET /api/restaurants/manager/${managerId} - Request received`);
-    console.log('📋 Request headers:', req.headers);
 
-    // Find restaurants where user is manager through restaurant_managers table
-    console.log('🔍 Executing query with include...');
     const restaurants = await Restaurant.findAll({
       include: [{
         model: User,
@@ -168,12 +152,9 @@ router.get('/manager/:managerId', async (req, res) => {
       order: [['createdAt', 'DESC']]
     });
 
-    console.log(`🏪 Found ${restaurants.length} restaurants for manager ${managerId}`);
-    console.log('📝 Restaurant details:', restaurants.map(r => ({ id: r.id, name: r.name })));
     res.json(restaurants);
   } catch (error) {
-    console.error('❌ ERROR fetching manager restaurants:', error.message);
-    console.error('❌ Full error:', error);
+    console.error('[Restaurants] Error fetching manager restaurants:', error.message);
     res.status(500).json({ error: 'Failed to fetch manager restaurants', details: error.message });
   }
 });
@@ -304,15 +285,6 @@ router.get('/:id', async (req, res) => {
       }))
     };
 
-    // Debug logging for payment_settings
-    console.log(`🔍 GET /restaurants/${req.params.id} - payment_settings included:`, !!response.payment_settings);
-    if (response.payment_settings) {
-      const enabledMethods = Object.entries(response.payment_settings)
-        .filter(([_, config]) => config.enabled)
-        .map(([key, _]) => key);
-      console.log(`   Enabled payment methods: ${enabledMethods.join(', ')}`);
-    }
-
     res.json(response);
   } catch (error) {
     console.error('Error fetching restaurant details:', error);
@@ -346,13 +318,10 @@ const validateBrandPermission = async (brandId, userId, userRole) => {
 // Create new restaurant
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    console.log('📥 Received restaurant creation request:', req.body);
-
     // Validate brand_id permission if provided
     if (req.body.brand_id) {
       const brandCheck = await validateBrandPermission(req.body.brand_id, req.user.id, req.user.role);
       if (!brandCheck.valid) {
-        console.log(`❌ Brand permission denied: ${brandCheck.error}`);
         return res.status(403).json({ error: brandCheck.error });
       }
     }
@@ -426,29 +395,24 @@ router.post('/', authenticateToken, async (req, res) => {
       }
     }
 
-    console.log('📤 Creating restaurant with data:', restaurantData);
-
     const restaurant = await Restaurant.create(restaurantData);
 
     // Handle multiple managers if managerIds array is provided
     if (req.body.managerIds && Array.isArray(req.body.managerIds) && req.body.managerIds.length > 0) {
       const RestaurantManager = require('../models/RestaurantManager');
 
-      // Create restaurant-manager associations
       const managerAssociations = req.body.managerIds.map((managerId, index) => ({
         restaurant_id: restaurant.id,
         manager_id: managerId,
-        is_primary: index === 0 // First manager is primary
+        is_primary: index === 0
       }));
 
       await RestaurantManager.bulkCreate(managerAssociations);
-      console.log(`✅ Created ${managerAssociations.length} manager associations for restaurant ${restaurant.id}`);
     }
 
-    console.log('✅ Restaurant created successfully:', restaurant.toJSON());
     res.status(201).json({ success: true, restaurant });
   } catch (error) {
-    console.error('❌ Error creating restaurant:', error);
+    console.error('[Restaurants] Error creating restaurant:', error.message);
     res.status(500).json({ error: 'Failed to create restaurant', details: error.message });
   }
 });
@@ -456,13 +420,10 @@ router.post('/', authenticateToken, async (req, res) => {
 // Update restaurant
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
-    console.log('🔄 PUT /api/restaurants/:id - Restaurant ID:', req.params.id);
-
     // Validate brand_id permission if being changed
     if (req.body.brand_id !== undefined && req.body.brand_id) {
       const brandCheck = await validateBrandPermission(req.body.brand_id, req.user.id, req.user.role);
       if (!brandCheck.valid) {
-        console.log(`❌ Brand permission denied: ${brandCheck.error}`);
         return res.status(403).json({ error: brandCheck.error });
       }
 
@@ -476,20 +437,15 @@ router.put('/:id', authenticateToken, async (req, res) => {
           }
         });
         if (!isManager) {
-          console.log(`❌ User ${req.user.id} is not a manager of restaurant ${req.params.id}`);
           return res.status(403).json({ error: 'You can only set brand for restaurants you manage' });
         }
       }
     }
-    console.log('📥 Received restaurant update request body:', JSON.stringify(req.body).substring(0, 500));
 
     const restaurant = await Restaurant.findByPk(req.params.id);
     if (!restaurant) {
-      console.log('❌ Restaurant not found:', req.params.id);
       return res.status(404).json({ error: 'Restaurant not found' });
     }
-
-    console.log('✅ Restaurant found, proceeding to update...');
 
     // Map frontend fields to database fields - only include fields that are explicitly provided
     const updateData = {};
@@ -535,19 +491,16 @@ router.put('/:id', authenticateToken, async (req, res) => {
     // Brand association
     if (req.body.brand_id !== undefined) {
       updateData.brand_id = req.body.brand_id ? parseInt(req.body.brand_id) : null;
-      console.log(`🏢 Updating brand_id to: ${updateData.brand_id}`);
     }
 
     // Foodcourt association
     if (req.body.foodcourt_id !== undefined) {
       updateData.foodcourt_id = req.body.foodcourt_id ? parseInt(req.body.foodcourt_id) : null;
-      console.log(`🏢 Updating foodcourt_id to: ${updateData.foodcourt_id}`);
     }
 
     // Payment model (who pays invoices)
     if (req.body.payment_model !== undefined) {
       updateData.payment_model = req.body.payment_model;
-      console.log(`💰 Updating payment_model to: ${updateData.payment_model}`);
     }
 
     // Cuisine field
@@ -559,17 +512,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
       const manager = await User.findByPk(updateData.manager_id);
       if (manager) {
         updateData.manager_name = manager.full_name || manager.username;
-        console.log('✅ Found manager:', manager.username, 'Setting manager_name to:', updateData.manager_name);
-      } else {
-        console.log('❌ Manager not found for ID:', updateData.manager_id);
       }
     } else {
-      // Clear manager if no managerId provided
       updateData.manager_name = null;
-      console.log('🔄 Clearing manager assignment');
     }
-
-    console.log('📤 Updating restaurant with data:', updateData);
 
     await restaurant.update(updateData);
 
@@ -577,29 +523,24 @@ router.put('/:id', authenticateToken, async (req, res) => {
     if (req.body.managerIds && Array.isArray(req.body.managerIds)) {
       const RestaurantManager = require('../models/RestaurantManager');
 
-      // Remove existing manager associations
       await RestaurantManager.destroy({
         where: { restaurant_id: restaurant.id }
       });
-      console.log(`🗑️ Removed existing manager associations for restaurant ${restaurant.id}`);
 
-      // Create new manager associations
       if (req.body.managerIds.length > 0) {
         const managerAssociations = req.body.managerIds.map((managerId, index) => ({
           restaurant_id: restaurant.id,
           manager_id: managerId,
-          is_primary: index === 0 // First manager is primary
+          is_primary: index === 0
         }));
 
         await RestaurantManager.bulkCreate(managerAssociations);
-        console.log(`✅ Created ${managerAssociations.length} new manager associations for restaurant ${restaurant.id}`);
       }
     }
 
-    console.log('✅ Restaurant updated successfully:', restaurant.toJSON());
     res.json({ success: true, restaurant });
   } catch (error) {
-    console.error('❌ Error updating restaurant:', error);
+    console.error('[Restaurants] Error updating restaurant:', error.message);
     res.status(500).json({ error: 'Failed to update restaurant', details: error.message });
   }
 });
@@ -607,21 +548,15 @@ router.put('/:id', authenticateToken, async (req, res) => {
 // Delete restaurant
 router.delete('/:id', async (req, res) => {
   try {
-    console.log('📥 Received restaurant delete request for ID:', req.params.id);
-
     const restaurant = await Restaurant.findByPk(req.params.id);
     if (!restaurant) {
       return res.status(404).json({ error: 'Restaurant not found' });
     }
 
-    console.log('📤 Deleting restaurant:', restaurant.name);
-
     await restaurant.destroy();
-
-    console.log('✅ Restaurant deleted successfully');
     res.json({ success: true, message: 'Restaurant deleted successfully' });
   } catch (error) {
-    console.error('❌ Error deleting restaurant:', error);
+    console.error('[Restaurants] Error deleting restaurant:', error.message);
     res.status(500).json({ error: 'Failed to delete restaurant', details: error.message });
   }
 });
@@ -863,7 +798,6 @@ router.get('/available/:managerId', async (req, res) => {
 router.get('/:id/categories', async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`📂 GET /api/restaurant/${id}/categories - Request received`);
 
     // Verify restaurant exists
     const restaurant = await Restaurant.findByPk(id);
@@ -904,7 +838,6 @@ router.get('/:id/categories', async (req, res) => {
       })
     );
 
-    console.log(`✅ Found ${categoryData.length} categories for restaurant ${id}`);
     res.json({ success: true, data: categoryData });
   } catch (error) {
     console.error('Error fetching restaurant categories:', error);

@@ -6,16 +6,13 @@ const { authenticateToken, requireRole } = require('../middleware/auth');
 // Get all foodcourts (filtered by owner for Foodcourt General)
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    console.log(`🏢 GET /api/foodcourts - User: ${req.user.email} (${req.user.role})`);
 
     const whereClause = {};
 
     // Foodcourt General/Foodcourt Manager only see their own foodcourts
     if (req.user.role === 'Foodcourt General' || req.user.role === 'Foodcourt Manager') {
       whereClause.owner_id = req.user.id;
-      console.log(`🔐 Filtering foodcourts for ${req.user.role}: owner_id = ${req.user.id}`);
     } else if (req.user.role === 'System Admin') {
-      console.log(`👑 System Admin: Returning all foodcourts`);
     } else {
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
@@ -37,7 +34,6 @@ router.get('/', authenticateToken, async (req, res) => {
       order: [['created_at', 'DESC']]
     });
 
-    console.log(`📊 Found ${foodcourts.length} foodcourts`);
     res.json(foodcourts);
   } catch (error) {
     console.error('Error fetching foodcourts:', error);
@@ -49,7 +45,6 @@ router.get('/', authenticateToken, async (req, res) => {
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`🔍 GET /api/foodcourts/${id} - User: ${req.user.email}`);
 
     const foodcourt = await Foodcourt.findByPk(id, {
       include: [
@@ -85,8 +80,6 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // Create new foodcourt
 router.post('/', authenticateToken, requireRole('Foodcourt General', 'System Admin'), async (req, res) => {
   try {
-    console.log(`🆕 POST /api/foodcourts - User: ${req.user.email}`);
-    console.log('📝 Foodcourt data:', req.body);
 
     const { name, code, description, logo_url, email, phone, address, website, status, currency } = req.body;
 
@@ -107,7 +100,6 @@ router.post('/', authenticateToken, requireRole('Foodcourt General', 'System Adm
       status: status || 'active'
     });
 
-    console.log(`✅ Foodcourt created: ${foodcourt.name} (ID: ${foodcourt.id})`);
 
     // Fetch with associations
     const createdFoodcourt = await Foodcourt.findByPk(foodcourt.id, {
@@ -136,7 +128,6 @@ router.post('/', authenticateToken, requireRole('Foodcourt General', 'System Adm
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`📝 PUT /api/foodcourts/${id} - User: ${req.user.email}`);
 
     const foodcourt = await Foodcourt.findByPk(id);
 
@@ -164,7 +155,6 @@ router.put('/:id', authenticateToken, async (req, res) => {
       status: status || foodcourt.status
     });
 
-    console.log(`✅ Foodcourt updated: ${foodcourt.name}`);
 
     // Fetch with associations
     const updatedFoodcourt = await Foodcourt.findByPk(id, {
@@ -198,7 +188,6 @@ router.put('/:id', authenticateToken, async (req, res) => {
 router.get('/:id/restaurants', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`🏪 GET /api/foodcourts/${id}/restaurants - User: ${req.user.email}`);
 
     const foodcourt = await Foodcourt.findByPk(id);
     if (!foodcourt) {
@@ -227,7 +216,6 @@ router.get('/:id/restaurants', authenticateToken, async (req, res) => {
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`🗑️ DELETE /api/foodcourts/${id} - User: ${req.user.email}`);
 
     const foodcourt = await Foodcourt.findByPk(id, {
       include: [{
@@ -253,7 +241,6 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     }
 
     await foodcourt.destroy();
-    console.log(`✅ Foodcourt deleted: ${foodcourt.name}`);
 
     res.json({ message: 'Foodcourt deleted successfully' });
   } catch (error) {
@@ -265,7 +252,6 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 // Get company info for foodcourt owner
 router.get('/company-info', authenticateToken, async (req, res) => {
   try {
-    console.log(`🏢 GET /api/foodcourts/company-info - User: ${req.user.email} (${req.user.role})`);
 
     // Foodcourt General/Manager는 자신이 소유한 푸드코트의 회사정보를 가져옴
     if (req.user.role !== 'Foodcourt General' && req.user.role !== 'Foodcourt Manager') {
@@ -308,7 +294,6 @@ router.get('/company-info', authenticateToken, async (req, res) => {
 // Update company info for foodcourt owner
 router.put('/company-info', authenticateToken, async (req, res) => {
   try {
-    console.log(`🏢 PUT /api/foodcourts/company-info - User: ${req.user.email}`);
 
     if (req.user.role !== 'Foodcourt General' && req.user.role !== 'Foodcourt Manager') {
       return res.status(403).json({ error: 'Access denied' });
@@ -343,7 +328,6 @@ router.put('/company-info', authenticateToken, async (req, res) => {
     };
 
     await foodcourt.update(updateData);
-    console.log(`✅ Foodcourt company info updated: ${foodcourt.name}`);
 
     res.json({ success: true, message: 'Company info updated successfully' });
   } catch (error) {
@@ -360,7 +344,6 @@ router.put('/company-info', authenticateToken, async (req, res) => {
 router.get('/:id/payment-settings', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`💳 GET /api/foodcourts/${id}/payment-settings - User: ${req.user.email}`);
 
     const foodcourt = await Foodcourt.findByPk(id);
     if (!foodcourt) {
@@ -390,7 +373,6 @@ router.get('/:id/payment-settings', authenticateToken, async (req, res) => {
 router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`💳 PUT /api/foodcourts/${id}/payment-settings - User: ${req.user.email}`);
 
     const foodcourt = await Foodcourt.findByPk(id);
     if (!foodcourt) {
@@ -437,7 +419,6 @@ router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
     }
 
     await foodcourt.save();
-    console.log(`✅ Foodcourt payment settings updated: ${foodcourt.name}`);
 
     res.json({
       success: true,
@@ -458,7 +439,6 @@ router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
 router.get('/:id/subscription', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`📋 GET /api/foodcourts/${id}/subscription - User: ${req.user.email}`);
 
     const foodcourt = await Foodcourt.findByPk(id);
     if (!foodcourt) {
@@ -489,7 +469,6 @@ router.get('/:id/subscription', authenticateToken, async (req, res) => {
 router.put('/:id/subscription', authenticateToken, requireRole('System Admin'), async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`📋 PUT /api/foodcourts/${id}/subscription - User: ${req.user.email}`);
 
     const foodcourt = await Foodcourt.findByPk(id);
     if (!foodcourt) {
@@ -512,7 +491,6 @@ router.put('/:id/subscription', authenticateToken, requireRole('System Admin'), 
     }
 
     await foodcourt.save();
-    console.log(`✅ Foodcourt subscription updated: ${foodcourt.name}`);
 
     res.json({
       success: true,

@@ -261,7 +261,6 @@ router.post('/', authenticateToken, async (req, res) => {
       applicable_order_types
     });
 
-    console.log(`✅ [COUPONS] Created coupon ${coupon.code} for restaurant ${finalRestaurantId}`);
     res.status(201).json({ success: true, data: coupon });
   } catch (error) {
     console.error('❌ [COUPONS] Error creating coupon:', error);
@@ -328,7 +327,6 @@ router.put('/:id', authenticateToken, async (req, res) => {
       applicable_order_types: applicable_order_types !== undefined ? applicable_order_types : coupon.applicable_order_types
     });
 
-    console.log(`✅ [COUPONS] Updated coupon ${coupon.code}`);
     res.json({ success: true, data: coupon });
   } catch (error) {
     console.error('❌ [COUPONS] Error updating coupon:', error);
@@ -347,7 +345,6 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
     await coupon.destroy();
 
-    console.log(`✅ [COUPONS] Deleted coupon ${coupon.code}`);
     res.json({ success: true, message: 'Coupon deleted successfully' });
   } catch (error) {
     console.error('❌ [COUPONS] Error deleting coupon:', error);
@@ -369,7 +366,6 @@ router.post('/:id/use', authenticateToken, async (req, res) => {
       usage_count: coupon.usage_count + 1
     });
 
-    console.log(`✅ [COUPONS] Incremented usage count for coupon ${coupon.code} to ${coupon.usage_count}`);
     res.json({ success: true, data: coupon });
   } catch (error) {
     console.error('❌ [COUPONS] Error incrementing usage:', error);

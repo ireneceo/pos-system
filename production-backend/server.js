@@ -41,6 +41,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const app = express();
+app.set('trust proxy', 1); // Cloudflare/Nginx 프록시 신뢰 (Rate Limiter 정확한 IP 감지)
 const server = http.createServer(app);
 const { syncDatabase } = require('./db');
 const invoiceScheduler = require('./services/invoiceScheduler');
@@ -178,11 +179,6 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
 
-  // 디버깅을 위한 로그 (개발 환경에서만)
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`🌐 CORS: Origin=${origin}, Allowed=${isAllowed}`);
-  }
-
   if (req.method === 'OPTIONS') {
     res.sendStatus(200);
   } else {
@@ -236,6 +232,7 @@ const generalStockCategoriesRouter = require('./routes/general-stock-categories'
 const generalStockRouter = require('./routes/general-stock');
 const couponsRouter = require('./routes/coupons');
 const uploadRouter = require('./routes/upload');
+const publicRouter = require('./routes/public');
 
 // Health check endpoint - PM2 모니터링 및 로드밸런서용 (가장 먼저)
 app.get('/api/health', (req, res) => {
@@ -261,6 +258,7 @@ app.use('/', indexRouter);
 // IMPORTANT: coupons must be before /api mounted routers to prevent /:id matching
 app.use('/api/coupons', couponsRouter);
 app.use('/api/upload', uploadRouter);
+app.use('/api/public', publicRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/menu', menuRouter);
 app.use('/api/mobile', mobileRouter);

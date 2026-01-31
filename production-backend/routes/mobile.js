@@ -568,20 +568,12 @@ router.post('/order', async (req, res) => {
     const { items, paymentMethod, customerInfo, orderType, tableNumber, storeId, scheduledPickupTime, skipAutoMerge } = req.body;
 
     // Debug logging
-    console.log('📝 Mobile order received:');
-    console.log('  - storeId (raw):', storeId, typeof storeId);
-    console.log('  - items:', items);
-    console.log('  - orderType:', orderType);
-    console.log('  - paymentMethod:', paymentMethod);
-    console.log('  - customerInfo:', customerInfo);
-    console.log('  - tableNumber:', tableNumber);
 
     // Calculate total
     const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
     // Convert storeId to integer, default to 1 if not provided
     const restaurantId = storeId ? parseInt(storeId, 10) : 1;
-    console.log('  - restaurantId (parsed):', restaurantId, typeof restaurantId);
 
     const actualTableNumber = tableNumber || customerInfo?.tableNumber || null;
     const actualOrderType = orderType || 'dine_in';
@@ -591,7 +583,6 @@ router.post('/order', async (req, res) => {
       const mergeableOrder = await findMergeableOrderMobile(restaurantId, actualTableNumber, actualOrderType);
 
       if (mergeableOrder) {
-        console.log(`🔀 [MOBILE AUTO-MERGE] Found mergeable order ${mergeableOrder.id} for table ${actualTableNumber}`);
 
         const now = new Date().toISOString();
 
@@ -640,7 +631,6 @@ router.post('/order', async (req, res) => {
         });
         await mergeableOrder.reload();
 
-        console.log(`✅ [MOBILE AUTO-MERGE] Merged ${newItemsWithTimestamp.length} items into order ${mergeableOrder.id} (group: ${nextGroup})`);
 
         // Emit socket events for real-time update
         const io = req.app.get('io');
@@ -696,11 +686,8 @@ router.post('/order', async (req, res) => {
           orderNumber = generated.orderNumber;
           pickupNumber = generated.pickupNumber;
 
-          console.log('  - Generated orderNumber:', orderNumber);
-          console.log('  - Generated pickupNumber:', pickupNumber);
 
           // Create order in database
-          console.log('  - Creating order with data:');
           const orderData = {
             restaurant_id: restaurantId,
             table_number: actualTableNumber,
@@ -720,16 +707,10 @@ router.post('/order', async (req, res) => {
               options: item.options || []
             }))
           };
-          console.log('    restaurant_id:', orderData.restaurant_id);
-          console.log('    order_number:', orderData.order_number);
-          console.log('    customer_name:', orderData.customer_name);
-          console.log('    total_amount:', orderData.total_amount);
-          console.log('    order_items:', JSON.stringify(orderData.order_items, null, 2));
 
           return await Order.create(orderData, { transaction: t });
         });
 
-        console.log('✅ Order created successfully:', order.id);
         break; // Success - exit retry loop
 
       } catch (error) {
@@ -740,7 +721,6 @@ router.post('/order', async (req, res) => {
           if (retryCount >= maxRetries) {
             throw new Error(`Failed to generate unique order number after ${maxRetries} attempts`);
           }
-          console.log(`⚠️ Duplicate order number detected, retrying (${retryCount}/${maxRetries})...`);
           // Wait a bit before retrying (exponential backoff)
           await new Promise(resolve => setTimeout(resolve, 50 * retryCount));
           continue;
@@ -795,7 +775,6 @@ router.post('/order', async (req, res) => {
     }
 
     res.json({ success: true, data: orderResponse });
-    console.log('📤 Order response sent to client');
   } catch (error) {
     console.error('❌ Order creation error:', error);
     console.error('   Error stack:', error.stack);

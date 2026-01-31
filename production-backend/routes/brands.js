@@ -10,7 +10,6 @@ const { authenticateToken, requireRole } = require('../middleware/auth');
 // Get company info for brand owner
 router.get('/company-info', authenticateToken, async (req, res) => {
   try {
-    console.log(`🏢 GET /api/brands/company-info - User: ${req.user.email} (${req.user.role})`);
 
     // Brand General/Manager는 자신이 소유한 브랜드의 회사정보를 가져옴
     if (req.user.role !== 'Brand General' && req.user.role !== 'Brand Manager') {
@@ -59,8 +58,6 @@ router.get('/company-info', authenticateToken, async (req, res) => {
 // Update company info for brand owner
 router.put('/company-info', authenticateToken, async (req, res) => {
   try {
-    console.log(`🏢 PUT /api/brands/company-info - User: ${req.user.email}`);
-    console.log(`  req.user.id: ${req.user.id}, req.user.brand_id: ${req.user.brand_id}, role: ${req.user.role}`);
 
     if (req.user.role !== 'Brand General' && req.user.role !== 'Brand Manager') {
       return res.status(403).json({ error: 'Access denied' });
@@ -79,7 +76,6 @@ router.put('/company-info', authenticateToken, async (req, res) => {
       });
     }
 
-    console.log(`  Brand found: ${brand ? brand.name : 'NOT FOUND'}`);
 
     if (!brand) {
       return res.status(404).json({ error: 'Brand not found' });
@@ -103,7 +99,6 @@ router.put('/company-info', authenticateToken, async (req, res) => {
     };
 
     await brand.update(updateData);
-    console.log(`✅ Brand company info updated: ${brand.name}`);
 
     res.json({ success: true, message: 'Company info updated successfully' });
   } catch (error) {
@@ -115,16 +110,13 @@ router.put('/company-info', authenticateToken, async (req, res) => {
 // Get all brands (filtered by owner for Brand General)
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    console.log(`🏢 GET /api/brands - User: ${req.user.email} (${req.user.role})`);
 
     const whereClause = {};
 
     // Brand General/Brand Manager only see their own brands
     if (req.user.role === 'Brand General' || req.user.role === 'Brand Manager') {
       whereClause.owner_id = req.user.id;
-      console.log(`🔐 Filtering brands for ${req.user.role}: owner_id = ${req.user.id}`);
     } else if (req.user.role === 'System Admin') {
-      console.log(`👑 System Admin: Returning all brands`);
     } else {
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
@@ -146,7 +138,6 @@ router.get('/', authenticateToken, async (req, res) => {
       order: [['created_at', 'DESC']]
     });
 
-    console.log(`📊 Found ${brands.length} brands`);
     res.json(brands);
   } catch (error) {
     console.error('Error fetching brands:', error);
@@ -158,7 +149,6 @@ router.get('/', authenticateToken, async (req, res) => {
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`🔍 GET /api/brands/${id} - User: ${req.user.email}`);
 
     const brand = await Brand.findByPk(id, {
       include: [
@@ -194,8 +184,6 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // Create new brand
 router.post('/', authenticateToken, requireRole('Brand General', 'System Admin'), async (req, res) => {
   try {
-    console.log(`🆕 POST /api/brands - User: ${req.user.email}`);
-    console.log('📝 Brand data:', req.body);
 
     const { name, code, description, logo_url, email, phone, address, website, status, currency } = req.body;
 
@@ -216,7 +204,6 @@ router.post('/', authenticateToken, requireRole('Brand General', 'System Admin')
       status: status || 'active'
     });
 
-    console.log(`✅ Brand created: ${brand.name} (ID: ${brand.id})`);
 
     // Fetch with associations
     const createdBrand = await Brand.findByPk(brand.id, {
@@ -245,7 +232,6 @@ router.post('/', authenticateToken, requireRole('Brand General', 'System Admin')
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`📝 PUT /api/brands/${id} - User: ${req.user.email}`);
 
     const brand = await Brand.findByPk(id);
 
@@ -273,7 +259,6 @@ router.put('/:id', authenticateToken, async (req, res) => {
       status: status || brand.status
     });
 
-    console.log(`✅ Brand updated: ${brand.name}`);
 
     // Fetch with associations
     const updatedBrand = await Brand.findByPk(id, {
@@ -307,7 +292,6 @@ router.put('/:id', authenticateToken, async (req, res) => {
 router.get('/:id/restaurants', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`🏪 GET /api/brands/${id}/restaurants - User: ${req.user.email}`);
 
     const brand = await Brand.findByPk(id);
     if (!brand) {
@@ -336,7 +320,6 @@ router.get('/:id/restaurants', authenticateToken, async (req, res) => {
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`🗑️ DELETE /api/brands/${id} - User: ${req.user.email}`);
 
     const brand = await Brand.findByPk(id, {
       include: [{
@@ -362,7 +345,6 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     }
 
     await brand.destroy();
-    console.log(`✅ Brand deleted: ${brand.name}`);
 
     res.json({ message: 'Brand deleted successfully' });
   } catch (error) {
@@ -379,7 +361,6 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 router.get('/:id/payment-settings', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`💳 GET /api/brands/${id}/payment-settings - User: ${req.user.email}`);
 
     const brand = await Brand.findByPk(id);
     if (!brand) {
@@ -409,7 +390,6 @@ router.get('/:id/payment-settings', authenticateToken, async (req, res) => {
 router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`💳 PUT /api/brands/${id}/payment-settings - User: ${req.user.email}`);
 
     const brand = await Brand.findByPk(id);
     if (!brand) {
@@ -462,7 +442,6 @@ router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
     }
 
     await brand.save();
-    console.log(`✅ Brand payment settings updated: ${brand.name}`);
 
     res.json({
       success: true,
@@ -483,7 +462,6 @@ router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
 router.get('/:id/subscription', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`📋 GET /api/brands/${id}/subscription - User: ${req.user.email}`);
 
     const brand = await Brand.findByPk(id);
     if (!brand) {
@@ -514,7 +492,6 @@ router.get('/:id/subscription', authenticateToken, async (req, res) => {
 router.put('/:id/subscription', authenticateToken, requireRole('System Admin'), async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`📋 PUT /api/brands/${id}/subscription - User: ${req.user.email}`);
 
     const brand = await Brand.findByPk(id);
     if (!brand) {
@@ -537,7 +514,6 @@ router.put('/:id/subscription', authenticateToken, requireRole('System Admin'), 
     }
 
     await brand.save();
-    console.log(`✅ Brand subscription updated: ${brand.name}`);
 
     res.json({
       success: true,

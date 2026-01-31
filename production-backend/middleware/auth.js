@@ -4,35 +4,22 @@ const Restaurant = require('../models/Restaurant');
 
 const authenticateToken = async (req, res, next) => {
   try {
-    console.log('🔐 [AUTH] authenticateToken middleware called');
-    console.log('📋 [AUTH] Request URL:', req.method, req.originalUrl);
-    console.log('📋 [AUTH] Request headers:', JSON.stringify(req.headers, null, 2));
-
     const authHeader = req.headers['authorization'];
-    console.log('🔑 [AUTH] Authorization header:', authHeader ? `${authHeader.substring(0, 20)}...` : 'NOT PRESENT');
-
     const token = authHeader && authHeader.split(' ')[1];
-    console.log('🔑 [AUTH] Extracted token:', token ? `${token.substring(0, 20)}...` : 'NONE');
 
     if (!token) {
-      console.error('❌ [AUTH] No token found in request');
       return res.status(401).json({ error: 'Access token required' });
     }
 
     if (!process.env.JWT_SECRET) {
-      console.error('❌ [AUTH] JWT_SECRET environment variable is not set');
+      console.error('[AUTH] JWT_SECRET environment variable is not set');
       return res.status(500).json({ error: 'Server configuration error' });
     }
-    console.log('🔐 [AUTH] Verifying JWT...');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    // Support both 'userId' and 'id' in token payload for compatibility
-    const userId = decoded.userId || decoded.id;
-    console.log('✅ [AUTH] JWT decoded, userId:', userId);
 
-    // Get user information from database
-    console.log('🔍 [AUTH] Looking up user...');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.userId || decoded.id;
+
     const user = await User.findByPk(userId);
-    console.log('✅ [AUTH] User lookup complete:', user ? user.email : 'NOT FOUND');
     if (!user) {
       return res.status(401).json({ error: 'Invalid token - user not found' });
     }
@@ -46,11 +33,10 @@ const authenticateToken = async (req, res, next) => {
       foodcourt_id: user.foodcourt_id,
       manager_id: user.manager_id
     };
-    console.log('✅ [AUTH] req.user set:', JSON.stringify(req.user));
 
     next();
   } catch (error) {
-    console.error('Token verification error:', error);
+    console.error('[AUTH] Token verification error:', error.message);
     return res.status(403).json({ error: 'Invalid token' });
   }
 };
@@ -123,7 +109,7 @@ const checkRestaurantAccess = async (req, res, next) => {
 
     return res.status(403).json({ error: 'Insufficient permissions' });
   } catch (error) {
-    console.error('Restaurant access check error:', error);
+    console.error('[AUTH] Restaurant access check error:', error.message);
     return res.status(500).json({ error: 'Failed to verify access' });
   }
 };
