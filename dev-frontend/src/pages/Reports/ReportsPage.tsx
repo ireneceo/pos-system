@@ -952,166 +952,366 @@ const ReportsPage: React.FC = () => {
     });
   };
 
-  // 다운로드 기능
-  const handleDownloadReport = () => {
-    // Use pre-calculated totalRevenue from useMemo
+  // What and Why: 통화 기호 없이 숫자만 반환 (CSV용)
+  const formatNumber = (value: number, decimals: number = 2): string => {
+    return value.toFixed(decimals);
+  };
+
+  // What and Why: CSV 공통 헤더 생성
+  const generateCSVHeader = useCallback((): string[] => {
+    const timezone = getRestaurantTimezone(operationSettings);
+    const periodLabel = getPeriodLabel(activePeriod, isCustomDateRange, dateRange.start, dateRange.end);
+    const generatedAt = new Date().toLocaleString('en-US', { timeZone: timezone });
+    const currencyCode = operationSettings?.currency || 'MYR';
+
+    return [
+      '═══════════════════════════════════════════════════════════════',
+      'PURPLE POS - ANALYTICS REPORT',
+      '═══════════════════════════════════════════════════════════════',
+      '',
+      `Report Type,${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Report`,
+      `Period,${periodLabel}`,
+      `Date Range,${dateRange.start} to ${dateRange.end}`,
+      `Generated,${generatedAt}`,
+      `Currency,${currencyCode}`,
+      `Restaurant ID,${user?.restaurantId || 'N/A'}`,
+      '',
+    ];
+  }, [operationSettings, activePeriod, isCustomDateRange, dateRange, activeTab, user?.restaurantId]);
+
+  // What and Why: Sales Report 탭 CSV 생성
+  const generateSalesCSV = useCallback((): string => {
+    const header = generateCSVHeader();
     const totalOrders = filteredOrders.length;
     const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
     const completedOrders = filteredOrders.filter(o => o.status === 'completed').length;
-    const repeatCustomers = customers.filter((c: any) => c.total_orders > 1).length;
 
-    const reportData = {
-      period: isCustomDateRange ? `${dateRange.start} to ${dateRange.end}` : activePeriod,
-      generatedAt: new Date().toISOString(),
-      restaurantId: user?.restaurantId,
-      tab: activeTab,
-      data: {
-        sales: {
-          totalRevenue: totalRevenue,
-          totalOrders: totalOrders,
-          completedOrders: completedOrders,
-          averageOrderValue: avgOrderValue,
-          salesData: salesData,
-          categoryData: categoryData,
-          hourlyData: hourlyData
-        },
-        menu: {
-          menuItems: allMenuData,
-          totalItems: allMenuData.length,
-          totalRevenue: allMenuData.reduce((sum, item) => sum + item.revenue, 0),
-          totalOrders: allMenuData.reduce((sum, item) => sum + item.orders, 0)
-        },
-        customers: {
-          totalCustomers: customers.length,
-          repeatCustomers: repeatCustomers,
-          repeatRate: customers.length > 0 ? (repeatCustomers / customers.length * 100).toFixed(1) : '0',
-          customerList: customers,
-          totalRevenue: customers.reduce((sum: number, c: any) => sum + parseFloat(c.total_spent || 0), 0),
-          avgSpent: customers.length > 0 ? customers.reduce((sum: number, c: any) => sum + parseFloat(c.total_spent || 0), 0) / customers.length : 0
-        },
-        operations: {
-          peakTimes: peakTimesData,
-          totalOrders: totalOrders,
-          avgPreparationTime: '15 mins' // This would need to be calculated from actual data
-        },
-        details: {
-          drilldownData: drilldownData
-        }
+    const lines = [
+      ...header,
+      '═══════════════════════════════════════════════════════════════',
+      'SALES SUMMARY',
+      '═══════════════════════════════════════════════════════════════',
+      '',
+      'Metric,Value',
+      `Total Revenue,${formatNumber(totalRevenue)}`,
+      `Total Orders,${totalOrders}`,
+      `Completed Orders,${completedOrders}`,
+      `Completion Rate,${totalOrders > 0 ? formatNumber((completedOrders / totalOrders) * 100, 1) : 0}%`,
+      `Average Order Value,${formatNumber(avgOrderValue)}`,
+      '',
+      '═══════════════════════════════════════════════════════════════',
+      'REVENUE TREND',
+      '═══════════════════════════════════════════════════════════════',
+      '',
+      'Period,Revenue',
+    ];
+
+    // 기간별 매출 데이터
+    salesData.forEach(item => {
+      lines.push(`${escapeCSV(item.date)},${formatNumber(item.sales)}`);
+    });
+
+    // 카테고리별 매출
+    lines.push('');
+    lines.push('═══════════════════════════════════════════════════════════════');
+    lines.push('SALES BY CATEGORY');
+    lines.push('═══════════════════════════════════════════════════════════════');
+    lines.push('');
+    lines.push('Category,Revenue,Percentage');
+
+    categoryData.forEach(item => {
+      lines.push(`${escapeCSV(item.name)},${formatNumber(item.sales || 0)},${item.value}%`);
+    });
+
+    // 시간대별 주문
+    lines.push('');
+    lines.push('═══════════════════════════════════════════════════════════════');
+    lines.push('HOURLY ORDER DISTRIBUTION');
+    lines.push('═══════════════════════════════════════════════════════════════');
+    lines.push('');
+    lines.push('Hour,Orders');
+
+    hourlyData.forEach(item => {
+      lines.push(`${escapeCSV(item.hour)},${item.orders}`);
+    });
+
+    return lines.join('\n');
+  }, [generateCSVHeader, filteredOrders, totalRevenue, salesData, categoryData, hourlyData]);
+
+  // What and Why: Sales Details 탭 CSV 생성 (연/월/일 드릴다운)
+  const generateDetailsCSV = useCallback((): string => {
+    const header = generateCSVHeader();
+    const totalOrders = filteredOrders.length;
+    const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+    const lines = [
+      ...header,
+      '═══════════════════════════════════════════════════════════════',
+      'DETAILED SALES BREAKDOWN',
+      '═══════════════════════════════════════════════════════════════',
+      '',
+      'Summary',
+      `Total Revenue,${formatNumber(totalRevenue)}`,
+      `Total Orders,${totalOrders}`,
+      `Average Order Value,${formatNumber(avgOrderValue)}`,
+      '',
+      '═══════════════════════════════════════════════════════════════',
+      'BREAKDOWN BY PERIOD',
+      '═══════════════════════════════════════════════════════════════',
+      '',
+      'Level,Period,Revenue,Orders,Avg Order Value',
+    ];
+
+    // 연 > 월 > 일 순서로 드릴다운 데이터 출력
+    Object.keys(drilldownData).sort((a, b) => b.localeCompare(a)).forEach(year => {
+      const yearInfo = drilldownData[year];
+      const yearAvg = yearInfo.orders > 0 ? yearInfo.revenue / yearInfo.orders : 0;
+      lines.push(`Year,${year},${formatNumber(yearInfo.revenue)},${yearInfo.orders},${formatNumber(yearAvg)}`);
+
+      Object.keys(yearInfo.months).sort((a, b) => b.localeCompare(a)).forEach(month => {
+        const monthInfo = yearInfo.months[month];
+        const monthAvg = monthInfo.orders > 0 ? monthInfo.revenue / monthInfo.orders : 0;
+        const monthName = new Date(month + '-01').toLocaleString('en-US', { year: 'numeric', month: 'long' });
+        lines.push(`  Month,${monthName},${formatNumber(monthInfo.revenue)},${monthInfo.orders},${formatNumber(monthAvg)}`);
+
+        Object.keys(monthInfo.days).sort((a, b) => b.localeCompare(a)).forEach(day => {
+          const dayInfo = monthInfo.days[day];
+          const dayAvg = dayInfo.orders > 0 ? dayInfo.revenue / dayInfo.orders : 0;
+          const dayName = new Date(day).toLocaleString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+          lines.push(`    Day,${dayName},${formatNumber(dayInfo.revenue)},${dayInfo.orders},${formatNumber(dayAvg)}`);
+        });
+      });
+    });
+
+    return lines.join('\n');
+  }, [generateCSVHeader, filteredOrders, totalRevenue, drilldownData]);
+
+  // What and Why: Menu Analysis 탭 CSV 생성
+  const generateMenuCSV = useCallback((): string => {
+    const header = generateCSVHeader();
+    const totalMenuRevenue = allMenuData.reduce((sum, item) => sum + item.revenue, 0);
+    const totalMenuOrders = allMenuData.reduce((sum, item) => sum + item.orders, 0);
+
+    const lines = [
+      ...header,
+      '═══════════════════════════════════════════════════════════════',
+      'MENU PERFORMANCE ANALYSIS',
+      '═══════════════════════════════════════════════════════════════',
+      '',
+      'Summary',
+      `Total Menu Items Sold,${allMenuData.length}`,
+      `Total Revenue,${formatNumber(totalMenuRevenue)}`,
+      `Total Orders,${totalMenuOrders}`,
+      `Best Seller,${allMenuData[0]?.name || 'N/A'}`,
+      '',
+      '═══════════════════════════════════════════════════════════════',
+      'COMPLETE MENU RANKING',
+      '═══════════════════════════════════════════════════════════════',
+      '',
+      'Rank,Item Name,Category,Unit Price,Quantity Sold,Total Revenue,Performance %',
+    ];
+
+    const maxOrders = allMenuData[0]?.orders || 1;
+    allMenuData.forEach((item, index) => {
+      const performance = Math.round((item.orders / maxOrders) * 100);
+      lines.push(toCSVRow([
+        index + 1,
+        item.name,
+        item.category,
+        formatNumber(item.price),
+        item.orders,
+        formatNumber(item.revenue),
+        `${performance}%`
+      ]));
+    });
+
+    // 카테고리별 집계
+    const categoryStats: Record<string, { orders: number; revenue: number }> = {};
+    allMenuData.forEach(item => {
+      if (!categoryStats[item.category]) {
+        categoryStats[item.category] = { orders: 0, revenue: 0 };
       }
-    };
+      categoryStats[item.category].orders += item.orders;
+      categoryStats[item.category].revenue += item.revenue;
+    });
 
-    // CSV 다운로드
-    const csvContent = generateCSV(reportData);
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `restaurant_${user?.restaurantId}_report_${activeTab}_${dateRange.start}_to_${dateRange.end}.csv`;
-    link.click();
-  };
+    lines.push('');
+    lines.push('═══════════════════════════════════════════════════════════════');
+    lines.push('CATEGORY SUMMARY');
+    lines.push('═══════════════════════════════════════════════════════════════');
+    lines.push('');
+    lines.push('Category,Items,Total Orders,Total Revenue,Avg per Item');
 
-  // CSV 생성 함수
-  const generateCSV = (data: any) => {
-    const timezone = getRestaurantTimezone(operationSettings);
-    let csv = `Restaurant Analytics Report\n`;
-    csv += `Restaurant ID,${data.restaurantId || 'N/A'}\n`;
-    csv += `Generated,${new Date().toLocaleString('en-MY', { timeZone: timezone })}\n`;
-    csv += `Period,${data.period}\n`;
-    csv += `Report Type,${data.tab.toUpperCase()}\n\n`;
-
-    if (activeTab === 'sales') {
-      csv += `SALES SUMMARY\n`;
-      csv += `Total Revenue,${formatCurrency(data.data.sales.totalRevenue, operationSettings.currency)}\n`;
-      csv += `Total Orders,${data.data.sales.totalOrders}\n`;
-      csv += `Completed Orders,${data.data.sales.completedOrders}\n`;
-      csv += `Average Order Value,${formatCurrency(data.data.sales.averageOrderValue, operationSettings.currency)}\n\n`;
-
-      csv += `DAILY SALES TREND\n`;
-      csv += `Date,Revenue (RM),Orders\n`;
-      data.data.sales.salesData.forEach((item: any) => {
-        csv += `${item.date},${item.sales.toFixed(2)},${item.orders || 0}\n`;
+    Object.entries(categoryStats)
+      .sort((a, b) => b[1].revenue - a[1].revenue)
+      .forEach(([category, stats]) => {
+        const itemCount = allMenuData.filter(m => m.category === category).length;
+        const avgPerItem = itemCount > 0 ? stats.revenue / itemCount : 0;
+        lines.push(toCSVRow([category, itemCount, stats.orders, formatNumber(stats.revenue), formatNumber(avgPerItem)]));
       });
 
-      csv += `\nCATEGORY PERFORMANCE\n`;
-      csv += `Category,Percentage,Revenue (RM)\n`;
-      data.data.sales.categoryData.forEach((item: any) => {
-        csv += `${item.name},${item.value}%,${item.sales?.toFixed(2) || '0.00'}\n`;
+    return lines.join('\n');
+  }, [generateCSVHeader, allMenuData]);
+
+  // What and Why: Customer Insights 탭 CSV 생성
+  const generateCustomersCSV = useCallback((): string => {
+    const header = generateCSVHeader();
+    const repeatCustomers = customers.filter((c: any) => c.total_orders > 1).length;
+    const totalCustomerRevenue = customers.reduce((sum: number, c: any) => sum + parseFloat(c.total_spent || 0), 0);
+    const avgSpentPerCustomer = customers.length > 0 ? totalCustomerRevenue / customers.length : 0;
+    const memberCount = customers.filter((c: any) => c.customer?.type === 'member').length;
+    const guestCount = customers.filter((c: any) => c.customer?.type === 'guest').length;
+
+    const lines = [
+      ...header,
+      '═══════════════════════════════════════════════════════════════',
+      'CUSTOMER INSIGHTS',
+      '═══════════════════════════════════════════════════════════════',
+      '',
+      'Summary',
+      `Total Customers,${customers.length}`,
+      `Members,${memberCount}`,
+      `Guests,${guestCount}`,
+      `Repeat Customers,${repeatCustomers}`,
+      `Repeat Rate,${customers.length > 0 ? formatNumber((repeatCustomers / customers.length) * 100, 1) : 0}%`,
+      `Total Revenue from Customers,${formatNumber(totalCustomerRevenue)}`,
+      `Average Spent per Customer,${formatNumber(avgSpentPerCustomer)}`,
+      '',
+      '═══════════════════════════════════════════════════════════════',
+      'TOP CUSTOMERS (by Total Spent)',
+      '═══════════════════════════════════════════════════════════════',
+      '',
+      'Rank,Customer Name,Phone,Type,Total Orders,Total Spent,Points,Tier',
+    ];
+
+    customers
+      .sort((a: any, b: any) => parseFloat(b.total_spent || 0) - parseFloat(a.total_spent || 0))
+      .forEach((customerData: any, index: number) => {
+        lines.push(toCSVRow([
+          index + 1,
+          customerData.customer?.name || 'N/A',
+          customerData.customer?.phone || 'N/A',
+          customerData.customer?.type === 'member' ? 'Member' : 'Guest',
+          customerData.total_orders || 0,
+          formatNumber(parseFloat(customerData.total_spent || 0)),
+          customerData.points || 0,
+          customerData.loyalty_tier || 'Bronze'
+        ]));
       });
 
-      csv += `\nHOURLY ORDER DISTRIBUTION\n`;
-      csv += `Hour,Orders\n`;
-      data.data.sales.hourlyData.forEach((item: any) => {
-        csv += `${item.hour},${item.orders}\n`;
-      });
+    // 티어별 통계
+    const tierStats: Record<string, { count: number; totalSpent: number; totalOrders: number }> = {};
+    customers.forEach((c: any) => {
+      const tier = c.loyalty_tier || 'Bronze';
+      if (!tierStats[tier]) {
+        tierStats[tier] = { count: 0, totalSpent: 0, totalOrders: 0 };
+      }
+      tierStats[tier].count++;
+      tierStats[tier].totalSpent += parseFloat(c.total_spent || 0);
+      tierStats[tier].totalOrders += c.total_orders || 0;
+    });
 
-    } else if (activeTab === 'details') {
-      csv += `DETAILED SALES BREAKDOWN\n`;
-      csv += `Period,Revenue (RM),Orders,Avg Order Value (RM)\n`;
+    lines.push('');
+    lines.push('═══════════════════════════════════════════════════════════════');
+    lines.push('TIER BREAKDOWN');
+    lines.push('═══════════════════════════════════════════════════════════════');
+    lines.push('');
+    lines.push('Tier,Customer Count,Total Spent,Total Orders,Avg Spent');
 
-      // Year level
-      Object.keys(data.data.details.drilldownData).sort((a, b) => b.localeCompare(a)).forEach(year => {
-        const yearInfo = data.data.details.drilldownData[year];
-        csv += `${year},${yearInfo.revenue.toFixed(2)},${yearInfo.orders},${(yearInfo.revenue / yearInfo.orders).toFixed(2)}\n`;
+    ['VIP', 'Gold', 'Silver', 'Bronze'].forEach(tier => {
+      const stats = tierStats[tier];
+      if (stats) {
+        const avgSpent = stats.count > 0 ? stats.totalSpent / stats.count : 0;
+        lines.push(toCSVRow([tier, stats.count, formatNumber(stats.totalSpent), stats.totalOrders, formatNumber(avgSpent)]));
+      }
+    });
 
-        // Month level
-        Object.keys(yearInfo.months).sort((a, b) => b.localeCompare(a)).forEach(month => {
-          const monthInfo = yearInfo.months[month];
-          const monthName = new Date(month + '-01').toLocaleString('en-US', { year: 'numeric', month: 'long' });
-          csv += `  ${monthName},${monthInfo.revenue.toFixed(2)},${monthInfo.orders},${(monthInfo.revenue / monthInfo.orders).toFixed(2)}\n`;
+    return lines.join('\n');
+  }, [generateCSVHeader, customers]);
 
-          // Day level
-          Object.keys(monthInfo.days).sort((a, b) => b.localeCompare(a)).forEach(day => {
-            const dayInfo = monthInfo.days[day];
-            const dayName = new Date(day).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-            csv += `    ${dayName},${dayInfo.revenue.toFixed(2)},${dayInfo.orders},${(dayInfo.revenue / dayInfo.orders).toFixed(2)}\n`;
-          });
-        });
-      });
+  // What and Why: Operations 탭 CSV 생성
+  const generateOperationsCSV = useCallback((): string => {
+    const header = generateCSVHeader();
+    const totalOrders = filteredOrders.length;
 
-    } else if (activeTab === 'menu') {
-      csv += `MENU PERFORMANCE ANALYSIS\n`;
-      csv += `Total Menu Items,${data.data.menu.totalItems}\n`;
-      csv += `Total Revenue,${formatCurrency(data.data.menu.totalRevenue, operationSettings.currency)}\n`;
-      csv += `Total Orders,${data.data.menu.totalOrders}\n\n`;
+    const lines = [
+      ...header,
+      '═══════════════════════════════════════════════════════════════',
+      'OPERATIONS PERFORMANCE',
+      '═══════════════════════════════════════════════════════════════',
+      '',
+      'Summary',
+      `Total Orders in Period,${totalOrders}`,
+      `Peak Time Slots Analyzed,${peakTimesData.length}`,
+      '',
+      '═══════════════════════════════════════════════════════════════',
+      'PEAK HOURS ANALYSIS (Top 5)',
+      '═══════════════════════════════════════════════════════════════',
+      '',
+      'Rank,Time Slot,Orders,Revenue,Efficiency %',
+    ];
 
-      csv += `COMPLETE MENU RANKING\n`;
-      csv += `Rank,Item Name,Category,Price (RM),Orders,Revenue (RM),Performance %\n`;
-      data.data.menu.menuItems.forEach((item: any, index: number) => {
-        const maxOrders = data.data.menu.menuItems[0]?.orders || 1;
-        const performance = Math.round((item.orders / maxOrders) * 100);
-        csv += `${index + 1},${item.name},${item.category},${item.price.toFixed(2)},${item.orders},${item.revenue.toFixed(2)},${performance}\n`;
-      });
+    peakTimesData.forEach((item, index) => {
+      lines.push(toCSVRow([
+        index + 1,
+        item.time,
+        item.orders,
+        formatNumber(item.revenue),
+        `${item.efficiency}%`
+      ]));
+    });
 
-    } else if (activeTab === 'customers') {
-      csv += `CUSTOMER INSIGHTS SUMMARY\n`;
-      csv += `Total Customers,${data.data.customers.totalCustomers}\n`;
-      csv += `Repeat Customers,${data.data.customers.repeatCustomers}\n`;
-      csv += `Repeat Rate,${data.data.customers.repeatRate}%\n`;
-      csv += `Total Revenue,${formatCurrency(data.data.customers.totalRevenue, operationSettings.currency)}\n`;
-      csv += `Average Spent per Customer,${formatCurrency(data.data.customers.avgSpent, operationSettings.currency)}\n\n`;
+    // 전체 시간대별 분석
+    lines.push('');
+    lines.push('═══════════════════════════════════════════════════════════════');
+    lines.push('HOURLY BREAKDOWN (All Hours)');
+    lines.push('═══════════════════════════════════════════════════════════════');
+    lines.push('');
+    lines.push('Hour,Orders');
 
-      csv += `TOP CUSTOMERS\n`;
-      csv += `Rank,Name,Phone,Type,Total Orders,Total Spent (RM),Points,Tier\n`;
-      data.data.customers.customerList
-        .sort((a: any, b: any) => parseFloat(b.total_spent || 0) - parseFloat(a.total_spent || 0))
-        .slice(0, 50) // Top 50 customers
-        .forEach((customerData: any, index: number) => {
-          csv += `${index + 1},${customerData.customer.name},${customerData.customer.phone},${customerData.customer.type},${customerData.total_orders},${parseFloat(customerData.total_spent || 0).toFixed(2)},${customerData.points || 0},${customerData.tier || 'Bronze'}\n`;
-        });
+    hourlyData.forEach(item => {
+      lines.push(`${escapeCSV(item.hour)},${item.orders}`);
+    });
 
-    } else if (activeTab === 'operations') {
-      csv += `OPERATIONS PERFORMANCE\n`;
-      csv += `Total Orders,${data.data.operations.totalOrders}\n`;
-      csv += `Average Preparation Time,${data.data.operations.avgPreparationTime}\n\n`;
+    return lines.join('\n');
+  }, [generateCSVHeader, filteredOrders, peakTimesData, hourlyData]);
 
-      csv += `PEAK TIMES ANALYSIS\n`;
-      csv += `Time Slot,Orders,Revenue (RM),Efficiency %\n`;
-      data.data.operations.peakTimes.forEach((item: any) => {
-        csv += `${item.time},${item.orders},${item.revenue},${item.efficiency}\n`;
-      });
+  // What and Why: 탭별 CSV 생성 및 다운로드 통합 함수
+  const handleDownloadReport = useCallback(() => {
+    let csvContent: string;
+
+    switch (activeTab) {
+      case 'sales':
+        csvContent = generateSalesCSV();
+        break;
+      case 'details':
+        csvContent = generateDetailsCSV();
+        break;
+      case 'menu':
+        csvContent = generateMenuCSV();
+        break;
+      case 'customers':
+        csvContent = generateCustomersCSV();
+        break;
+      case 'operations':
+        csvContent = generateOperationsCSV();
+        break;
+      default:
+        csvContent = generateSalesCSV();
     }
 
-    return csv;
-  };
+    const filename = generateFilename(
+      `purplepos_${user?.restaurantId || 'report'}`,
+      activeTab,
+      activePeriod,
+      isCustomDateRange,
+      dateRange.start,
+      dateRange.end
+    );
+
+    downloadCSV(csvContent, filename);
+  }, [activeTab, activePeriod, isCustomDateRange, dateRange, user?.restaurantId, generateSalesCSV, generateDetailsCSV, generateMenuCSV, generateCustomersCSV, generateOperationsCSV]);
+
 
   // Filter component to be reused in each tab
   const FilterComponent = () => (

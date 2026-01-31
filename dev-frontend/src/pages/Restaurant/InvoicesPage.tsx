@@ -1244,8 +1244,28 @@ const RestaurantInvoicesPage: React.FC = () => {
       iframeDoc.write(invoiceHTML);
       iframeDoc.close();
 
-      // Wait for content to render
-      await new Promise(resolve => setTimeout(resolve, 150));
+      // What and Why: iframe 렌더링 완료 대기
+      // - 150ms는 이미지/폰트 로딩에 불충분
+      // - 폰트 로딩, 이미지 로딩, 레이아웃 완료를 순차적으로 대기
+      await new Promise<void>(async (resolve) => {
+        // 폰트 로딩 대기
+        try {
+          if ((iframeDoc as any).fonts?.ready) {
+            await (iframeDoc as any).fonts.ready;
+          }
+        } catch { /* 폰트 API 미지원 시 무시 */ }
+
+        // 이미지 로딩 대기
+        const images = iframeDoc.querySelectorAll('img');
+        await Promise.all(
+          Array.from(images).map(img =>
+            img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
+          )
+        );
+
+        // 레이아웃 안정화 대기
+        setTimeout(resolve, 100);
+      });
 
       // Convert iframe body to canvas
       const canvas = await html2canvas(iframeDoc.body, {
