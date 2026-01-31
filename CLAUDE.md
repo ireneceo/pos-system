@@ -119,6 +119,53 @@
 
 **수정 시**: 반드시 역할(Restaurant vs Brand General)과 마운트 경로를 확인할 것!
 
+## 코드 주석 규칙 (필수!)
+
+### What and Why 원칙
+
+**모든 주석은 "What and Why" 형식으로 작성한다.**
+
+1. **What**: 이 코드가 무엇을 하는지
+2. **Why**: 왜 이렇게 구현했는지 (배경, 이유, 의도)
+
+### 주석 작성 예시
+
+```javascript
+// What and Why: proxy_pass 방식으로 이미지 서빙
+// - 개발서버와 동일한 방식 유지
+// - alias 방식은 경로 매핑 문제 발생 (2026-01-31 해결)
+location ^~ /uploads {
+    proxy_pass http://localhost:3002;
+}
+```
+
+```typescript
+// What and Why: 토큰을 auth_token 키로 저장
+// - 프로젝트 전체에서 이 키만 사용 (AuthContext.tsx 참고)
+// - token, jwt 등 다른 키 사용 금지
+const token = localStorage.getItem('auth_token');
+```
+
+```javascript
+// What and Why: 썸네일 크기 300x300 고정
+// - 메뉴 리스트에서 일관된 크기 표시
+// - 원본은 1200x1200으로 별도 저장
+const THUMBNAIL_SIZE = { width: 300, height: 300 };
+```
+
+### 주석이 필요한 경우
+
+1. **비즈니스 로직**: 왜 이런 조건/계산이 필요한지
+2. **버그 수정**: 어떤 버그를 해결한 코드인지
+3. **설정값**: 왜 이 값을 선택했는지
+4. **우회 코드**: 왜 일반적이지 않은 방식을 사용했는지
+5. **외부 연동**: API 스펙이나 제약사항
+
+### 주석이 불필요한 경우
+
+- 코드만 봐도 명확한 경우 (self-documenting)
+- 변수명/함수명이 충분히 설명적인 경우
+
 ## UI 개발 규칙
 
 ### 이모지/아이콘 사용 금지
