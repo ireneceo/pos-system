@@ -1,0 +1,355 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import styled from 'styled-components';
+import { LandingLayout } from '../../components/Landing';
+import { useAuth } from '../../contexts/AuthContext';
+
+const PageContainer = styled.div`
+  background: #FAFBFC;
+`;
+
+const HeroSection = styled.section`
+  text-align: center;
+  padding: 60px 20px 40px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+`;
+
+const HeroTitle = styled.h1`
+  font-size: 42px;
+  font-weight: 700;
+  margin-bottom: 16px;
+
+  @media (max-width: 768px) {
+    font-size: 32px;
+  }
+`;
+
+const HeroSubtitle = styled.p`
+  font-size: 18px;
+  opacity: 0.9;
+  max-width: 600px;
+  margin: 0 auto;
+
+  @media (max-width: 768px) {
+    font-size: 16px;
+  }
+`;
+
+const ContentSection = styled.section`
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 60px 20px;
+`;
+
+const DemoGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 32px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const DemoCard = styled.div`
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  border: 1px solid #E6EBF1;
+  transition: all 0.3s;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+  }
+`;
+
+const CardIcon = styled.div`
+  font-size: 48px;
+  margin-bottom: 20px;
+`;
+
+const CardTitle = styled.h3`
+  font-size: 22px;
+  font-weight: 700;
+  color: #0A2540;
+  margin-bottom: 12px;
+`;
+
+const CardDescription = styled.p`
+  font-size: 14px;
+  color: #6B7C93;
+  line-height: 1.6;
+  margin-bottom: 24px;
+`;
+
+const FeatureList = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px 0;
+`;
+
+const FeatureItem = styled.li`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 14px;
+  color: #374151;
+
+  &::before {
+    content: '~';
+    color: #10B981;
+    font-weight: bold;
+  }
+`;
+
+const LoginButton = styled.button`
+  width: 100%;
+  padding: 14px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #635BFF;
+  color: white;
+  border: none;
+
+  &:hover:not(:disabled) {
+    background: #5A51E6;
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    background: #B0BEC5;
+    cursor: not-allowed;
+  }
+`;
+
+const NoticeBox = styled.div`
+  background: #FEF3C7;
+  border: 1px solid #F59E0B;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 40px;
+  text-align: center;
+`;
+
+const NoticeTitle = styled.div`
+  font-size: 14px;
+  font-weight: 600;
+  color: #92400E;
+  margin-bottom: 8px;
+`;
+
+const NoticeText = styled.p`
+  font-size: 14px;
+  color: #78350F;
+  margin: 0;
+`;
+
+const CTASection = styled.section`
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  text-align: center;
+  padding: 60px 20px;
+  color: white;
+`;
+
+const CTATitle = styled.h2`
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 16px;
+`;
+
+const CTASubtitle = styled.p`
+  font-size: 16px;
+  opacity: 0.9;
+  margin-bottom: 24px;
+`;
+
+const CTAButton = styled.button`
+  background: white;
+  color: #635BFF;
+  border: none;
+  padding: 14px 32px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  }
+`;
+
+const ErrorMessage = styled.div`
+  background: #FEE2E2;
+  color: #991B1B;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  text-align: center;
+`;
+
+// Demo account credentials
+const DEMO_ACCOUNTS = {
+  brand_general: {
+    email: 'demo-brand@purplehere.com',
+    password: 'Demo@2024',
+    role: 'Brand General',
+    icon: '#',
+    description: 'Manage multiple brands and restaurants from a single dashboard',
+    features: [
+      'Multi-brand dashboard',
+      'Restaurant management',
+      'Centralized inventory',
+      'Performance reports',
+      'Staff management'
+    ]
+  },
+  restaurant_admin: {
+    email: 'demo-restaurant@purplehere.com',
+    password: 'Demo@2024',
+    role: 'Restaurant Admin',
+    icon: '%',
+    description: 'Full restaurant management experience with all features',
+    features: [
+      'POS Terminal',
+      'Kitchen Display',
+      'Menu Management',
+      'Reports & Analytics',
+      'Customer Management'
+    ]
+  }
+};
+
+const DemoPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { login } = useAuth();
+  const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState('');
+
+  const handleDemoLogin = async (accountType: 'brand_general' | 'restaurant_admin') => {
+    setLoading(accountType);
+    setError('');
+
+    const account = DEMO_ACCOUNTS[accountType];
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: account.email,
+          password: account.password
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.token) {
+        // Store token and user info
+        localStorage.setItem('auth_token', data.token);
+
+        // Call login from AuthContext
+        await login(account.email, account.password);
+
+        // Redirect based on role
+        if (accountType === 'brand_general') {
+          navigate('/pos/brand/general/dashboard');
+        } else {
+          navigate('/restaurant/1/dashboard');
+        }
+      } else {
+        setError(data.error || 'Demo account login failed. Please contact support.');
+      }
+    } catch (err) {
+      console.error('Demo login error:', err);
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  return (
+    <LandingLayout>
+      <PageContainer>
+        <HeroSection>
+          <HeroTitle>Try PurpleHere POS</HeroTitle>
+          <HeroSubtitle>
+            Experience our system with demo accounts. No signup required.
+          </HeroSubtitle>
+        </HeroSection>
+
+        <ContentSection>
+          {error && <ErrorMessage>{error}</ErrorMessage>}
+
+          <DemoGrid>
+            <DemoCard>
+              <CardIcon>{DEMO_ACCOUNTS.brand_general.icon}</CardIcon>
+              <CardTitle>Brand General</CardTitle>
+              <CardDescription>
+                {DEMO_ACCOUNTS.brand_general.description}
+              </CardDescription>
+              <FeatureList>
+                {DEMO_ACCOUNTS.brand_general.features.map((feature, index) => (
+                  <FeatureItem key={index}>{feature}</FeatureItem>
+                ))}
+              </FeatureList>
+              <LoginButton
+                onClick={() => handleDemoLogin('brand_general')}
+                disabled={loading !== null}
+              >
+                {loading === 'brand_general' ? 'Logging in...' : 'Login as Brand General'}
+              </LoginButton>
+            </DemoCard>
+
+            <DemoCard>
+              <CardIcon>{DEMO_ACCOUNTS.restaurant_admin.icon}</CardIcon>
+              <CardTitle>Restaurant Admin</CardTitle>
+              <CardDescription>
+                {DEMO_ACCOUNTS.restaurant_admin.description}
+              </CardDescription>
+              <FeatureList>
+                {DEMO_ACCOUNTS.restaurant_admin.features.map((feature, index) => (
+                  <FeatureItem key={index}>{feature}</FeatureItem>
+                ))}
+              </FeatureList>
+              <LoginButton
+                onClick={() => handleDemoLogin('restaurant_admin')}
+                disabled={loading !== null}
+              >
+                {loading === 'restaurant_admin' ? 'Logging in...' : 'Login as Restaurant'}
+              </LoginButton>
+            </DemoCard>
+          </DemoGrid>
+
+          <NoticeBox>
+            <NoticeTitle>Demo Account Notice</NoticeTitle>
+            <NoticeText>
+              Demo accounts are reset daily at midnight (GMT+8).
+              Your changes will not be saved permanently.
+            </NoticeText>
+          </NoticeBox>
+        </ContentSection>
+
+        <CTASection>
+          <CTATitle>Want your own account?</CTATitle>
+          <CTASubtitle>
+            Contact our sales team to set up your personalized account.
+          </CTASubtitle>
+          <CTAButton onClick={() => navigate('/contact')}>
+            Contact Us
+          </CTAButton>
+        </CTASection>
+      </PageContainer>
+    </LandingLayout>
+  );
+};
+
+export default DemoPage;

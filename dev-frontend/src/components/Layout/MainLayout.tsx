@@ -833,6 +833,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>◎</NavIcon>
                   System Inquiry
                 </NavItem>
+                <NavItem to="/pos/admin/contact-inquiries" active={isActive('/pos/admin/contact-inquiries')} onClick={closeSidebar}>
+                  <NavIcon>@</NavIcon>
+                  Contact Inquiries
+                </NavItem>
               </>
             )}
 

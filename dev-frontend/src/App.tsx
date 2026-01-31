@@ -14,6 +14,9 @@ import ScrollToTop from './components/ScrollToTop';
 import HomePage from './pages/Landing/HomePage';
 import AboutPage from './pages/Landing/AboutPage';
 import ServicePage from './pages/Landing/ServicePage';
+import PricingPage from './pages/Landing/PricingPage';
+import ContactPage from './pages/Landing/ContactPage';
+import DemoPage from './pages/Landing/DemoPage';
 // Login Page (keep static - frequently used)
 import LoginPage from './pages/Login/LoginPage';
 // Mobile App (keep static - separate entry point)
@@ -65,6 +68,7 @@ const PlansPage = React.lazy(() => import('./pages/Admin/PlansPage'));
 const AddonModulesPage = React.lazy(() => import('./pages/Admin/AddonModulesPage'));
 const AnalyticsPage = React.lazy(() => import('./pages/Admin/AnalyticsPage'));
 const SystemInquiryPage = React.lazy(() => import('./pages/Admin/SystemInquiryPage'));
+const ContactInquiriesPage = React.lazy(() => import('./pages/Admin/ContactInquiriesPage'));
 const ManagerSupportTicketsPage = React.lazy(() => import('./pages/Manager/SupportTicketsPage'));
 const RestaurantSupportTicketsPage = React.lazy(() => import('./pages/Restaurant/SupportTicketsPage'));
 const OperationInquiryPage = React.lazy(() => import('./pages/Manager/OperationInquiryPage'));
@@ -270,9 +274,13 @@ function App() {
                       <Route path="/" element={<HomePage />} />
                       <Route path="/about" element={<AboutPage />} />
                       <Route path="/service" element={<ServicePage />} />
+                      <Route path="/pricing" element={<PricingPage />} />
+                      <Route path="/contact" element={<ContactPage />} />
+                      <Route path="/demo" element={<DemoPage />} />
 
                       {/* POS Login */}
                       <Route path="/pos" element={<LoginPage />} />
+                      <Route path="/login" element={<LoginPage />} />
 
                       {/* Mobile Routes (QR Order - Outside POS) */}
                       <Route path="/mobile/*" element={<MobileApp />} />
@@ -326,6 +334,11 @@ function App() {
                       <Route path="/pos/admin/support" element={
                         <ProtectedRoute requiredRole={['System Admin']}>
                           <SystemInquiryPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/admin/contact-inquiries" element={
+                        <ProtectedRoute requiredRole={['System Admin']}>
+                          <ContactInquiriesPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/admin/system-config" element={
