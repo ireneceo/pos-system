@@ -588,12 +588,12 @@ const RestaurantDashboard: React.FC = () => {
             </DashboardStatCard>
 
             <DashboardStatCard color="#059669">
-              <DashboardStatLabel>Annual Revenue</DashboardStatLabel>
+              <DashboardStatLabel>This Year Revenue</DashboardStatLabel>
               <DashboardStatValue>{formatCurrency(yearly.revenue || 0, selectedCurrency)}</DashboardStatValue>
             </DashboardStatCard>
 
             <DashboardStatCard color="#6366F1">
-              <DashboardStatLabel>Annual Orders</DashboardStatLabel>
+              <DashboardStatLabel>This Year Orders</DashboardStatLabel>
               <DashboardStatValue>{yearly.orders || 0}</DashboardStatValue>
             </DashboardStatCard>
 

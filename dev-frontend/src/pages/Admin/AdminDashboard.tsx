@@ -748,7 +748,7 @@ const AdminDashboard: React.FC = () => {
             style={{ cursor: 'pointer' }}
             onClick={() => navigate('/pos/admin/report')}
           >
-            <DashboardStatLabel>Annual Revenue</DashboardStatLabel>
+            <DashboardStatLabel>This Year Revenue</DashboardStatLabel>
             <DashboardStatValue>{formatCurrency(metrics.monthlyRevenue * 12, operationSettings.currency)}</DashboardStatValue>
           </DashboardStatCard>
 
