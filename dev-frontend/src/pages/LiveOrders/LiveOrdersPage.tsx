@@ -953,6 +953,9 @@ const LiveOrdersPage: React.FC = () => {
     all: number; outstanding: number; pending: number; preparing: number;
     ready: number; served: number; completed: number; cancelled: number;
   }>({ all: 0, outstanding: 0, pending: 0, preparing: 0, ready: 0, served: 0, completed: 0, cancelled: 0 });
+  const [serverStats, setServerStats] = useState<{
+    totalSales: number; avgAmount: number; maxAmount: number; orderCount: number;
+  }>({ totalSales: 0, avgAmount: 0, maxAmount: 0, orderCount: 0 });
   const [, setSocket] = useState<Socket | null>(null);
   const [activeTab, setActiveTab] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState<DbOrder | null>(null);
@@ -1190,6 +1193,9 @@ const LiveOrdersPage: React.FC = () => {
       if (result.success && result.data?.counts) {
         setOrderCounts(result.data.counts);
       }
+      if (result.success && result.data?.statistics) {
+        setServerStats(result.data.statistics);
+      }
     } catch (error) {
       console.error('Failed to fetch order counts:', error);
     }
@@ -1368,13 +1374,16 @@ const LiveOrdersPage: React.FC = () => {
         startDate = todayInTz;
         break;
       case 'week':
-        startDate = getDateInTz(-7);
+        // Last 7 days including today (today + 6 previous days)
+        startDate = getDateInTz(-6);
         break;
       case 'month':
-        startDate = getDateInTz(-30);
+        // Last 30 days including today (today + 29 previous days)
+        startDate = getDateInTz(-29);
         break;
       case 'year':
-        startDate = getDateInTz(-365);
+        // Last 365 days including today (today + 364 previous days)
+        startDate = getDateInTz(-364);
         break;
       case 'all':
         // 5 years ago
@@ -1635,6 +1644,9 @@ const LiveOrdersPage: React.FC = () => {
     // Get current timestamp for served_at
     const now = new Date().toISOString();
 
+    // Get old status before update
+    const oldStatus = orders.find(o => o.id === orderId)?.status;
+
     // Optimistically update UI immediately
     setOrders(prev => prev.map(order =>
       order.id === orderId ? {
@@ -1644,6 +1656,15 @@ const LiveOrdersPage: React.FC = () => {
         ...((newStatus === 'served' || newStatus === 'completed') && !order.served_at && { served_at: now })
       } : order
     ));
+
+    // Optimistically update tab counts
+    if (oldStatus && oldStatus !== newStatus) {
+      setOrderCounts(prev => ({
+        ...prev,
+        [oldStatus]: Math.max(0, (prev[oldStatus as keyof typeof prev] || 0) - 1),
+        [newStatus]: (prev[newStatus as keyof typeof prev] || 0) + 1
+      }));
+    }
 
     try {
       const updateData: any = { status: newStatus };
@@ -2928,16 +2949,16 @@ const LiveOrdersPage: React.FC = () => {
 
           <StatisticsBar>
             {(() => {
-              const stats = calculateStatistics();
+              const localStats = calculateStatistics();
               return (
                 <>
-                  <StatItem>Total Sales <strong>RM{stats.totalSales.toFixed(2)}</strong></StatItem>
-                  <StatItem>Avg <strong>RM{stats.avgOrderAmount.toFixed(2)}</strong></StatItem>
-                  <StatItem>Max <strong>RM{stats.maxOrderAmount.toFixed(2)}</strong></StatItem>
-                  <StatItem>≥RM20 <strong>{stats.ordersAbove20Percent.toFixed(1)}%</strong></StatItem>
-                  <StatItem>Avg Serve <strong>{stats.avgServeTime.toFixed(1)}m</strong></StatItem>
-                  <StatItem>Max Serve <strong>{stats.maxServeTime.toFixed(1)}m</strong></StatItem>
-                  <StatItem>Min Serve <strong>{stats.minServeTime.toFixed(1)}m</strong></StatItem>
+                  <StatItem>Total Sales <strong>RM{serverStats.totalSales.toFixed(2)}</strong></StatItem>
+                  <StatItem>Avg <strong>RM{serverStats.avgAmount.toFixed(2)}</strong></StatItem>
+                  <StatItem>Max <strong>RM{serverStats.maxAmount.toFixed(2)}</strong></StatItem>
+                  <StatItem>≥RM20 <strong>{localStats.ordersAbove20Percent.toFixed(1)}%</strong></StatItem>
+                  <StatItem>Avg Serve <strong>{localStats.avgServeTime.toFixed(1)}m</strong></StatItem>
+                  <StatItem>Max Serve <strong>{localStats.maxServeTime.toFixed(1)}m</strong></StatItem>
+                  <StatItem>Min Serve <strong>{localStats.minServeTime.toFixed(1)}m</strong></StatItem>
                 </>
               );
             })()}

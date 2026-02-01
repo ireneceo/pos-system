@@ -960,12 +960,14 @@ router.get('/restaurant/:restaurantId/counts', authenticateToken, async (req, re
       endUTC.setMilliseconds(endUTC.getMilliseconds() - 1);
     }
 
-    // Use raw SQL for efficient counting
+    // Use raw SQL for efficient counting and statistics
     const [results] = await sequelize.query(`
       SELECT
         status,
         COUNT(*) as count,
-        SUM(total_amount) as total_sales
+        SUM(total_amount) as total_sales,
+        AVG(total_amount) as avg_amount,
+        MAX(total_amount) as max_amount
       FROM orders
       WHERE restaurant_id = :restaurantId
         AND (is_deleted = false OR is_deleted IS NULL)
@@ -993,14 +995,26 @@ router.get('/restaurant/:restaurantId/counts', authenticateToken, async (req, re
 
     let totalSales = 0;
     let completedSales = 0;
+    let totalOrderCount = 0;
+    let maxAmount = 0;
 
+    // Calculate counts and statistics
     results.forEach(row => {
       const count = parseInt(row.count) || 0;
       const sales = parseFloat(row.total_sales) || 0;
+      const rowMax = parseFloat(row.max_amount) || 0;
 
       counts.all += count;
       counts[row.status] = count;
       totalSales += sales;
+
+      // Exclude cancelled from statistics (LiveOrders shows all non-cancelled)
+      if (row.status !== 'cancelled') {
+        totalOrderCount += count;
+        if (rowMax > maxAmount) {
+          maxAmount = rowMax;
+        }
+      }
 
       // Outstanding = status가 'outstanding'인 주문만
       if (row.status === 'outstanding') {
@@ -1012,12 +1026,24 @@ router.get('/restaurant/:restaurantId/counts', authenticateToken, async (req, re
       }
     });
 
+    // Calculate average (excluding cancelled orders)
+    const salesExcludingCancelled = results
+      .filter(row => row.status !== 'cancelled')
+      .reduce((sum, row) => sum + (parseFloat(row.total_sales) || 0), 0);
+    const avgAmount = totalOrderCount > 0 ? salesExcludingCancelled / totalOrderCount : 0;
+
     res.json({
       success: true,
       data: {
         counts,
         totalSales,
-        completedSales
+        completedSales,
+        statistics: {
+          totalSales: salesExcludingCancelled,
+          avgAmount,
+          maxAmount,
+          orderCount: totalOrderCount
+        }
       }
     });
   } catch (error) {
