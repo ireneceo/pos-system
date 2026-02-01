@@ -517,8 +517,108 @@ const ReportsPage: React.FC = () => {
       });
   }, [filteredOrders]);
 
-  // Fetch restaurant data from standardized API
-  const fetchRestaurantData = async () => {
+  // Filter customers based on orders in selected date range
+  const filteredCustomers = useMemo(() => {
+    if (customers.length === 0 || filteredOrders.length === 0) {
+      return [];
+    }
+
+    // Get unique customer IDs from filtered orders
+    const customerIdsInPeriod = new Set<number>();
+    const customerOrderStats: Record<number, { orders: number; spent: number }> = {};
+
+    filteredOrders.forEach(order => {
+      const customerId = order.customer_id;
+      if (customerId) {
+        customerIdsInPeriod.add(customerId);
+        if (!customerOrderStats[customerId]) {
+          customerOrderStats[customerId] = { orders: 0, spent: 0 };
+        }
+        customerOrderStats[customerId].orders += 1;
+        customerOrderStats[customerId].spent += parseFloat(order.total_amount || 0);
+      }
+    });
+
+    // Filter customers and add period-specific stats
+    return customers
+      .filter((c: any) => customerIdsInPeriod.has(c.customer?.id))
+      .map((c: any) => ({
+        ...c,
+        period_orders: customerOrderStats[c.customer?.id]?.orders || 0,
+        period_spent: customerOrderStats[c.customer?.id]?.spent || 0
+      }))
+      .sort((a: any, b: any) => b.period_spent - a.period_spent);
+  }, [customers, filteredOrders]);
+
+  // Calculate operations statistics from real data
+  const operationsStats = useMemo(() => {
+    if (filteredOrders.length === 0) {
+      return {
+        completionRate: 0,
+        avgPrepTime: 0,
+        peakHour: 'N/A',
+        peakHourOrders: 0,
+        totalOrdersInPeak: 0
+      };
+    }
+
+    // Completion rate: all filtered orders are already 'completed'
+    const completionRate = 100; // Since we only fetch completed orders
+
+    // Calculate average preparation time (createdAt to served_at)
+    let totalPrepTime = 0;
+    let prepTimeCount = 0;
+    filteredOrders.forEach(order => {
+      if (order.served_at && order.createdAt) {
+        const created = new Date(order.createdAt).getTime();
+        const served = new Date(order.served_at).getTime();
+        const prepTimeMinutes = (served - created) / (1000 * 60);
+        // Only count reasonable prep times (1-120 minutes)
+        if (prepTimeMinutes > 0 && prepTimeMinutes < 120) {
+          totalPrepTime += prepTimeMinutes;
+          prepTimeCount++;
+        }
+      }
+    });
+    const avgPrepTime = prepTimeCount > 0 ? Math.round(totalPrepTime / prepTimeCount) : 0;
+
+    // Find peak hour
+    const hourlyOrders: Record<number, number> = {};
+    filteredOrders.forEach(order => {
+      const hour = new Date(order.order_date || order.createdAt).getHours();
+      hourlyOrders[hour] = (hourlyOrders[hour] || 0) + 1;
+    });
+
+    let peakHour = 12;
+    let maxOrders = 0;
+    Object.entries(hourlyOrders).forEach(([hour, count]) => {
+      if (count > maxOrders) {
+        maxOrders = count;
+        peakHour = parseInt(hour);
+      }
+    });
+
+    const formatHour = (h: number) => {
+      const nextHour = (h + 1) % 24;
+      const formatSingle = (hour: number) => {
+        if (hour === 0) return '12AM';
+        if (hour === 12) return '12PM';
+        return hour > 12 ? `${hour - 12}PM` : `${hour}AM`;
+      };
+      return `${formatSingle(h)}-${formatSingle(nextHour)}`;
+    };
+
+    return {
+      completionRate,
+      avgPrepTime,
+      peakHour: formatHour(peakHour),
+      peakHourOrders: maxOrders,
+      totalOrdersInPeak: maxOrders
+    };
+  }, [filteredOrders]);
+
+  // Fetch static data (stats, customers, menu) - only once on mount
+  const fetchStaticData = useCallback(async () => {
     if (!user?.restaurantId) {
       console.log('❌ No restaurant ID found');
       setLoading(false);
@@ -533,46 +633,22 @@ const ReportsPage: React.FC = () => {
         return;
       }
 
-      // Fetch stats from standardized API
-      const statsResponse = await fetch(`/api/dashboard/restaurant/${user.restaurantId}/stats`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      // Fetch ALL orders for accurate statistics (no limit)
-      const ordersResponse = await fetch(`/api/orders?restaurant_id=${user.restaurantId}&limit=0`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      // Fetch customers data
-      const customersResponse = await fetch(`/api/customers/${user.restaurantId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      // Fetch menu data to get categories
-      const menuResponse = await fetch(`/api/menu?restaurantId=${user.restaurantId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      // Fetch stats, customers, menu in parallel
+      const [statsResponse, customersResponse, menuResponse] = await Promise.all([
+        fetch(`/api/dashboard/restaurant/${user.restaurantId}/stats`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        }),
+        fetch(`/api/customers/${user.restaurantId}`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        }),
+        fetch(`/api/menu?restaurantId=${user.restaurantId}`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        })
+      ]);
 
       if (statsResponse.ok) {
         const statsData = await statsResponse.json();
         setStats(statsData.data || statsData);
-      }
-
-      if (ordersResponse.ok) {
-        const ordersData = await ordersResponse.json();
-        setOrders(ordersData.data || ordersData || []);
       }
 
       if (customersResponse.ok) {
@@ -594,23 +670,62 @@ const ReportsPage: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error('❌ Error fetching restaurant data:', error);
+      console.error('❌ Error fetching static data:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.restaurantId]);
 
+  // Fetch orders with server-side filtering (date range + status=completed)
+  const fetchOrders = useCallback(async () => {
+    if (!user?.restaurantId) return;
+
+    const token = localStorage.getItem('auth_token');
+    if (!token) return;
+
+    setOrdersLoading(true);
+
+    try {
+      // Use the restaurant-specific endpoint with server-side filtering
+      // This endpoint supports: startDate, endDate, status, pagination
+      const params = new URLSearchParams({
+        startDate: dateRange.start,
+        endDate: dateRange.end,
+        status: 'completed',  // Reports only show completed orders
+        limit: '10000',       // High limit to get all orders in range (paginated if needed)
+        includeCompleted: 'true'
+      });
+
+      const ordersResponse = await fetch(
+        `/api/orders/restaurant/${user.restaurantId}?${params.toString()}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (ordersResponse.ok) {
+        const ordersData = await ordersResponse.json();
+        setOrders(ordersData.data || []);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching orders:', error);
+    } finally {
+      setOrdersLoading(false);
+    }
+  }, [user?.restaurantId, dateRange.start, dateRange.end]);
+
+  // Fetch static data on mount (stats, customers, menu)
   useEffect(() => {
-    fetchRestaurantData();
+    fetchStaticData();
+  }, [fetchStaticData]);
 
-    // Auto-refresh every 30 seconds to get latest data
-    const interval = setInterval(() => {
-      fetchRestaurantData();
-    }, 30000);
-
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  // Fetch orders when date range changes (server-side filtered)
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
 
 
   // Calculate peak times from real orders - memoized for performance
@@ -1583,37 +1698,37 @@ const ReportsPage: React.FC = () => {
               <FilterComponent />
               {loading ? (
                 <div style={{ textAlign: 'center', padding: '40px' }}>Loading customer data...</div>
-              ) : customers.length === 0 ? (
+              ) : filteredCustomers.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
-                  No customer data available
+                  No customers with orders in the selected period
                 </div>
               ) : (
                 <div>
                   <StatsRow>
                     <StatCard color="#635BFF">
-                      <StatLabel>Total Customers</StatLabel>
-                      <StatValue>{customers.length.toLocaleString()}</StatValue>
-                      <StatDescription>{customers.filter((c: any) => c.customer.type === 'member').length} members, {customers.filter((c: any) => c.customer.type === 'guest').length} guests</StatDescription>
+                      <StatLabel>Active Customers</StatLabel>
+                      <StatValue>{filteredCustomers.length.toLocaleString()}</StatValue>
+                      <StatDescription>{filteredCustomers.filter((c: any) => c.customer?.type === 'member').length} members, {filteredCustomers.filter((c: any) => c.customer?.type === 'guest').length} guests</StatDescription>
                     </StatCard>
                     <StatCard color="#00D924">
                       <StatLabel>Repeat Customers</StatLabel>
-                      <StatValue>{customers.filter((c: any) => c.total_orders > 1).length}</StatValue>
-                      <StatDescription>{customers.length > 0 ? Math.round((customers.filter((c: any) => c.total_orders > 1).length / customers.length) * 100) : 0}% return rate</StatDescription>
+                      <StatValue>{filteredCustomers.filter((c: any) => c.period_orders > 1).length}</StatValue>
+                      <StatDescription>{filteredCustomers.length > 0 ? Math.round((filteredCustomers.filter((c: any) => c.period_orders > 1).length / filteredCustomers.length) * 100) : 0}% ordered multiple times</StatDescription>
                     </StatCard>
                     <StatCard color="#FFB800">
                       <StatLabel>Average Spent</StatLabel>
-                      <StatValue>{formatCurrency(customers.length > 0 ? (customers.reduce((sum: number, c: any) => sum + parseFloat(c.total_spent || 0), 0) / customers.length) : 0, operationSettings.currency)}</StatValue>
-                      <StatDescription>Per customer</StatDescription>
+                      <StatValue>{formatCurrency(filteredCustomers.length > 0 ? (filteredCustomers.reduce((sum: number, c: any) => sum + (c.period_spent || 0), 0) / filteredCustomers.length) : 0, operationSettings.currency)}</StatValue>
+                      <StatDescription>Per customer in period</StatDescription>
                     </StatCard>
                     <StatCard color="#8B5CF6">
-                      <StatLabel>Total Points</StatLabel>
-                      <StatValue>{customers.reduce((sum: number, c: any) => sum + (c.points || 0), 0).toLocaleString()}</StatValue>
-                      <StatDescription>Across all customers</StatDescription>
+                      <StatLabel>Period Revenue</StatLabel>
+                      <StatValue>{formatCurrency(filteredCustomers.reduce((sum: number, c: any) => sum + (c.period_spent || 0), 0), operationSettings.currency)}</StatValue>
+                      <StatDescription>From {filteredCustomers.length} customers</StatDescription>
                     </StatCard>
                   </StatsRow>
 
                   <TableCard>
-                    <ChartTitle>Top Customers</ChartTitle>
+                    <ChartTitle>Top Customers ({isCustomDateRange ? `${dateRange.start} to ${dateRange.end}` : activePeriod})</ChartTitle>
                     <Table>
                       <thead>
                         <tr>
@@ -1621,18 +1736,17 @@ const ReportsPage: React.FC = () => {
                           <TableHeader>Name</TableHeader>
                           <TableHeader>Phone</TableHeader>
                           <TableHeader>Type</TableHeader>
-                          <TableHeader>Orders</TableHeader>
-                          <TableHeader>Total Spent</TableHeader>
-                          <TableHeader>Points</TableHeader>
+                          <TableHeader>Period Orders</TableHeader>
+                          <TableHeader>Period Spent</TableHeader>
+                          <TableHeader>Total Points</TableHeader>
                           <TableHeader>Tier</TableHeader>
                         </tr>
                       </thead>
                       <tbody>
-                        {customers
-                          .sort((a: any, b: any) => parseFloat(b.total_spent || 0) - parseFloat(a.total_spent || 0))
-                          .slice(0, 10)
+                        {filteredCustomers
+                          .slice(0, 20)
                           .map((customerData: any, index: number) => (
-                            <tr key={customerData.customer.id} style={{
+                            <tr key={customerData.customer?.id || index} style={{
                               backgroundColor: index < 3 ? (index === 0 ? '#FFF9E6' : index === 1 ? '#F0F9FF' : '#F0FDF4') : 'transparent'
                             }}>
                               <TableCell style={{
@@ -1644,21 +1758,21 @@ const ReportsPage: React.FC = () => {
                                 {index === 1 && ' 🥈'}
                                 {index === 2 && ' 🥉'}
                               </TableCell>
-                              <TableCell style={{ fontWeight: 600 }}>{customerData.customer.name}</TableCell>
-                              <TableCell>{customerData.customer.phone}</TableCell>
+                              <TableCell style={{ fontWeight: 600 }}>{customerData.customer?.name || 'Guest'}</TableCell>
+                              <TableCell>{customerData.customer?.phone || '-'}</TableCell>
                               <TableCell>
                                 <span style={{
                                   padding: '2px 6px',
                                   borderRadius: '4px',
                                   fontSize: '11px',
-                                  backgroundColor: customerData.customer.type === 'member' ? '#E0F2FE' : '#F3F4F6',
-                                  color: customerData.customer.type === 'member' ? '#0369A1' : '#6B7280'
+                                  backgroundColor: customerData.customer?.type === 'member' ? '#E0F2FE' : '#F3F4F6',
+                                  color: customerData.customer?.type === 'member' ? '#0369A1' : '#6B7280'
                                 }}>
-                                  {customerData.customer.type === 'member' ? 'Member' : 'Guest'}
+                                  {customerData.customer?.type === 'member' ? 'Member' : 'Guest'}
                                 </span>
                               </TableCell>
-                              <TableCell>{customerData.total_orders || 0}</TableCell>
-                              <TableCell>{formatCurrency(parseFloat(customerData.total_spent || 0), operationSettings.currency)}</TableCell>
+                              <TableCell>{customerData.period_orders || 0}</TableCell>
+                              <TableCell>{formatCurrency(customerData.period_spent || 0, operationSettings.currency)}</TableCell>
                               <TableCell>{customerData.points || 0}</TableCell>
                               <TableCell>
                                 <span style={{
@@ -1683,57 +1797,103 @@ const ReportsPage: React.FC = () => {
           {/* Operations Tab - CSS로 숨기기 (탭 전환 시 state 유지) */}
           <div style={{ display: activeTab === 'operations' ? 'block' : 'none' }}>
               <FilterComponent />
-              <StatsRow>
-                <StatCard color="#10B981">
-                  <StatLabel>Order Fulfillment</StatLabel>
-                  <StatValue>{Math.round(95 * (0.9 + Math.random() * 0.15))}%</StatValue>
-                  <StatDescription>On-time completion</StatDescription>
-                </StatCard>
-                <StatCard color="#F59E0B">
-                  <StatLabel>Avg. Wait Time</StatLabel>
-                  <StatValue>{Math.round(8 * (0.7 + Math.random() * 0.6))} min</StatValue>
-                  <StatDescription>-{Math.round(1 + Math.random() * 4)} min from target</StatDescription>
-                </StatCard>
-                <StatCard color="#EF4444">
-                  <StatLabel>Peak Hour</StatLabel>
-                  <StatValue>12-1 PM</StatValue>
-                  <StatDescription>{Math.round(45 * (activePeriod === 'today' ? 1 : activePeriod === 'week' ? 7 : activePeriod === 'month' ? 30 : 365) * (0.8 + Math.random() * 0.4))} orders/{activePeriod === 'today' ? 'hour' : activePeriod}</StatDescription>
-                </StatCard>
-                <StatCard color="#6366F1">
-                  <StatLabel>Staff Efficiency</StatLabel>
-                  <StatValue>{Math.round(87 * (0.85 + Math.random() * 0.25))}%</StatValue>
-                  <StatDescription>+{(Math.random() * 6).toFixed(1)}% from last {activePeriod === 'today' ? 'day' : activePeriod}</StatDescription>
-                </StatCard>
-              </StatsRow>
-              
-              <TableCard>
-                <ChartTitle>Peak Hours Performance</ChartTitle>
-                <Table>
-                  <thead>
-                    <tr>
-                      <TableHeader>Time Slot</TableHeader>
-                      <TableHeader>Orders</TableHeader>
-                      <TableHeader>Revenue</TableHeader>
-                      <TableHeader>Efficiency</TableHeader>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {peakTimesData.map((item, index) => (
-                      <tr key={index}>
-                        <TableCell style={{ fontWeight: 600 }}>{item.time}</TableCell>
-                        <TableCell>{item.orders}</TableCell>
-                        <TableCell>{formatCurrency(item.revenue, operationSettings.currency)}</TableCell>
-                        <TableCell>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <ProgressBar percentage={item.efficiency} />
-                            <span style={{ fontSize: '12px', color: '#6B7C93' }}>{item.efficiency}%</span>
-                          </div>
-                        </TableCell>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </TableCard>
+              {loading ? (
+                <div style={{ textAlign: 'center', padding: '40px' }}>Loading operations data...</div>
+              ) : filteredOrders.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
+                  No order data available for the selected period
+                </div>
+              ) : (
+                <div>
+                  <StatsRow>
+                    <StatCard color="#10B981">
+                      <StatLabel>Completed Orders</StatLabel>
+                      <StatValue>{filteredOrders.length.toLocaleString()}</StatValue>
+                      <StatDescription>{operationsStats.completionRate}% fulfillment rate</StatDescription>
+                    </StatCard>
+                    <StatCard color="#F59E0B">
+                      <StatLabel>Avg. Prep Time</StatLabel>
+                      <StatValue>{operationsStats.avgPrepTime > 0 ? `${operationsStats.avgPrepTime} min` : 'N/A'}</StatValue>
+                      <StatDescription>{operationsStats.avgPrepTime > 0 ? 'Order to served' : 'No timing data'}</StatDescription>
+                    </StatCard>
+                    <StatCard color="#EF4444">
+                      <StatLabel>Peak Hour</StatLabel>
+                      <StatValue>{operationsStats.peakHour}</StatValue>
+                      <StatDescription>{operationsStats.peakHourOrders} orders in this slot</StatDescription>
+                    </StatCard>
+                    <StatCard color="#6366F1">
+                      <StatLabel>Orders per Day</StatLabel>
+                      <StatValue>{(() => {
+                        const days = Math.max(1, Math.ceil((new Date(dateRange.end).getTime() - new Date(dateRange.start).getTime()) / (1000 * 60 * 60 * 24)) + 1);
+                        return Math.round(filteredOrders.length / days);
+                      })()}</StatValue>
+                      <StatDescription>Average daily orders</StatDescription>
+                    </StatCard>
+                  </StatsRow>
+
+                  <TableCard>
+                    <ChartTitle>Peak Hours Performance ({isCustomDateRange ? `${dateRange.start} to ${dateRange.end}` : activePeriod})</ChartTitle>
+                    <Table>
+                      <thead>
+                        <tr>
+                          <TableHeader>Time Slot</TableHeader>
+                          <TableHeader>Orders</TableHeader>
+                          <TableHeader>Revenue</TableHeader>
+                          <TableHeader>Share</TableHeader>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {peakTimesData.length === 0 ? (
+                          <tr>
+                            <TableCell colSpan={4} style={{ textAlign: 'center', color: '#6B7C93' }}>
+                              No peak hours data available
+                            </TableCell>
+                          </tr>
+                        ) : (
+                          peakTimesData.map((item, index) => (
+                            <tr key={index} style={{
+                              backgroundColor: index === 0 ? '#FEF3C7' : 'transparent'
+                            }}>
+                              <TableCell style={{ fontWeight: 600 }}>
+                                {index === 0 && '🔥 '}{item.time}
+                              </TableCell>
+                              <TableCell>{item.orders}</TableCell>
+                              <TableCell>{formatCurrency(item.revenue, operationSettings.currency)}</TableCell>
+                              <TableCell>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <ProgressBar percentage={filteredOrders.length > 0 ? (item.orders / filteredOrders.length) * 100 : 0} />
+                                  <span style={{ fontSize: '12px', color: '#6B7C93' }}>
+                                    {filteredOrders.length > 0 ? Math.round((item.orders / filteredOrders.length) * 100) : 0}%
+                                  </span>
+                                </div>
+                              </TableCell>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </Table>
+                  </TableCard>
+
+                  <ChartCard style={{ marginTop: '24px' }}>
+                    <ChartTitle>Hourly Order Distribution</ChartTitle>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <BarChart data={hourlyData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#F6F9FC" />
+                        <XAxis dataKey="hour" stroke="#6B7C93" fontSize={12} />
+                        <YAxis stroke="#6B7C93" fontSize={12} width={60} />
+                        <Tooltip
+                          contentStyle={{
+                            background: 'white',
+                            border: '1px solid #E6EBF1',
+                            borderRadius: '6px'
+                          }}
+                        />
+                        <Bar dataKey="orders" fill="#6366F1" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </ChartCard>
+                </div>
+              )}
           </div>
 
         </Content>
