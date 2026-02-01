@@ -13,6 +13,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import PageHeader from '../../components/Common/PageHeader';
+import DateRangeFilter, { PeriodType, DateRange, calculateDateRange, getPeriodLabel as getFilterPeriodLabel } from '../../components/Common/DateRangeFilter';
 
 // 스타일 컴포넌트
 const ReportsContainer = styled.div`
@@ -22,98 +23,7 @@ const ReportsContainer = styled.div`
 `;
 
 
-const DateRangeInput = styled.input`
-  padding: 8px 12px;
-  border: 1px solid #E6EBF1;
-  border-radius: 6px;
-  font-size: 14px;
-  background: white;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
-
-const CustomDateRange = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: 8px;
-`;
-
-const FilterControls = styled.div`
-  background: #FAFBFC;
-  padding: 24px 0;
-  margin-bottom: 24px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 24px;
-  align-items: center;
-
-  @media (max-width: 768px) {
-    gap: 16px;
-    padding: 16px 0;
-  }
-`;
-
-const FilterRow = styled.div`
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-
-  @media (max-width: 768px) {
-    gap: 8px;
-    width: 100%;
-  }
-`;
-
-const DateButton = styled.button<{ active?: boolean }>`
-  padding: 8px 16px;
-  background: ${props => props.active ? '#635BFF' : 'white'};
-  color: ${props => props.active ? 'white' : '#6B7280'};
-  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    background: ${props => props.active ? '#5A51E6' : '#F8FAFC'};
-  }
-`;
-
-
-
-
-const DownloadButton = styled.button`
-  padding: 12px 16px;
-  background: #635BFF;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  
-  &:hover {
-    background: #5A51E6;
-  }
-  
-  svg {
-    width: 16px;
-    height: 16px;
-  }
-`;
+// Note: FilterControls, DateButton, DateRangeInput styles moved to DateRangeFilter component
 
 
 const Content = styled.main`
@@ -238,7 +148,7 @@ const ExpandIcon = styled.span<{ expanded?: boolean }>`
 
 // 타입 정의
 type TabType = 'sales' | 'details' | 'menu' | 'customers' | 'operations';
-type PeriodType = 'today' | 'week' | 'month' | 'year' | 'all';
+// PeriodType imported from DateRangeFilter component
 
 // 차트 색상
 const COLORS = ['#635BFF', '#00D924', '#FF6B6B', '#FFB800', '#0EA5E9', '#8B5CF6'];
@@ -314,6 +224,7 @@ const ReportsPage: React.FC = () => {
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ordersLoading, setOrdersLoading] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [stats, setStats] = useState<any>(null);
   const [customers, setCustomers] = useState<any[]>([]);
@@ -337,34 +248,16 @@ const ReportsPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [operationSettings?.timeZone]);
 
-  // Filter orders by date range - memoized for performance
-  // Uses restaurant timezone for accurate date filtering
+  // Orders are now pre-filtered by the server (completed orders only within date range)
+  // This memo just returns the orders directly since server already filtered them
   const filteredOrders = useMemo(() => {
     if (!orders || orders.length === 0) {
       return [];
     }
-
-    const timezone = getRestaurantTimezone(operationSettings);
-
-    return orders.filter(order => {
-      // Check date fields: order_date or createdAt (database columns)
-      const orderDateValue = order.order_date || order.createdAt;
-      if (!orderDateValue) {
-        return false;
-      }
-
-      // Convert UTC order date to restaurant timezone date string (YYYY-MM-DD)
-      const orderDateStr = getDateStringInTimezone(orderDateValue, timezone);
-
-      // Compare date strings (YYYY-MM-DD format allows string comparison)
-      const isInRange = orderDateStr >= dateRange.start && orderDateStr <= dateRange.end;
-
-      // Only include COMPLETED orders for reports
-      const isCompleted = order.status === 'completed';
-
-      return isInRange && isCompleted;
-    });
-  }, [orders, dateRange.start, dateRange.end, operationSettings]);
+    // Server already filters by: status=completed, startDate, endDate
+    // No additional client-side filtering needed
+    return orders;
+  }, [orders]);
 
   // Calculate sales data from real orders - memoized for performance
   // All date groupings use restaurant timezone
@@ -1313,53 +1206,24 @@ const ReportsPage: React.FC = () => {
   }, [activeTab, activePeriod, isCustomDateRange, dateRange, user?.restaurantId, generateSalesCSV, generateDetailsCSV, generateMenuCSV, generateCustomersCSV, generateOperationsCSV]);
 
 
-  // Filter component to be reused in each tab
-  const FilterComponent = () => (
-    <FilterControls>
-      <FilterRow>
-        <DateButton active={activePeriod === 'today' && !isCustomDateRange} onClick={() => handlePeriodChange('today')}>
-          Today
-        </DateButton>
-        <DateButton active={activePeriod === 'week' && !isCustomDateRange} onClick={() => handlePeriodChange('week')}>
-          Week
-        </DateButton>
-        <DateButton active={activePeriod === 'month' && !isCustomDateRange} onClick={() => handlePeriodChange('month')}>
-          Month
-        </DateButton>
-        <DateButton active={activePeriod === 'year' && !isCustomDateRange} onClick={() => handlePeriodChange('year')}>
-          Year
-        </DateButton>
-        <DateButton active={activePeriod === 'all' && !isCustomDateRange} onClick={() => handlePeriodChange('all')}>
-          All
-        </DateButton>
-        <CustomDateRange>
-          <DateRangeInput
-            type="date"
-            value={dateRange.start}
-            onChange={(e) => {
-              setDateRange({ ...dateRange, start: e.target.value });
-              setIsCustomDateRange(true);
-            }}
-          />
-          <span>to</span>
-          <DateRangeInput
-            type="date"
-            value={dateRange.end}
-            onChange={(e) => {
-              setDateRange({ ...dateRange, end: e.target.value });
-              setIsCustomDateRange(true);
-            }}
-          />
-        </CustomDateRange>
-      </FilterRow>
+  // Handle date range change from filter component
+  const handleDateRangeFieldChange = (field: 'start' | 'end', value: string) => {
+    setDateRange({ ...dateRange, [field]: value });
+    setIsCustomDateRange(true);
+  };
 
-      <DownloadButton onClick={handleDownloadReport}>
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-        Download
-      </DownloadButton>
-    </FilterControls>
+  // Filter component using common DateRangeFilter
+  const FilterComponent = () => (
+    <DateRangeFilter
+      activePeriod={activePeriod}
+      dateRange={dateRange}
+      isCustomDateRange={isCustomDateRange}
+      onPeriodChange={handlePeriodChange}
+      onDateRangeChange={handleDateRangeFieldChange}
+      onDownload={handleDownloadReport}
+      showDownload={true}
+      timezone={operationSettings?.timeZone}
+    />
   );
 
   return (
@@ -1634,17 +1498,17 @@ const ReportsPage: React.FC = () => {
                 <StatCard color="#F59E0B">
                   <StatLabel>Best Seller</StatLabel>
                   <StatValue>{allMenuData[0]?.name || 'N/A'}</StatValue>
-                  <StatDescription>{allMenuData[0]?.orders || 0} orders in {activePeriod === 'today' ? 'today' : `this ${activePeriod}`}</StatDescription>
+                  <StatDescription>{allMenuData[0]?.orders || 0} sold in selected period</StatDescription>
                 </StatCard>
                 <StatCard color="#10B981">
-                  <StatLabel>Total Items Analyzed</StatLabel>
+                  <StatLabel>Menu Items</StatLabel>
                   <StatValue>{allMenuData.length}</StatValue>
-                  <StatDescription>Complete menu analysis</StatDescription>
+                  <StatDescription>Items with sales</StatDescription>
                 </StatCard>
                 <StatCard color="#3B82F6">
-                  <StatLabel>Total Orders</StatLabel>
+                  <StatLabel>Items Sold</StatLabel>
                   <StatValue>{allMenuData.reduce((sum, item) => sum + item.orders, 0).toLocaleString()}</StatValue>
-                  <StatDescription>For selected period</StatDescription>
+                  <StatDescription>Total quantity sold</StatDescription>
                 </StatCard>
                 <StatCard color="#8B5CF6">
                   <StatLabel>Total Revenue</StatLabel>
@@ -1662,7 +1526,7 @@ const ReportsPage: React.FC = () => {
                       <TableHeader>Menu Item</TableHeader>
                       <TableHeader>Category</TableHeader>
                       <TableHeader>Price</TableHeader>
-                      <TableHeader>Orders</TableHeader>
+                      <TableHeader>Qty Sold</TableHeader>
                       <TableHeader>Revenue</TableHeader>
                       <TableHeader>Performance</TableHeader>
                     </tr>

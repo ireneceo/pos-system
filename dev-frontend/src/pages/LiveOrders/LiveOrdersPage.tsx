@@ -24,6 +24,7 @@ import {
 import { printBillViaRawBT, generateBillContent, printKitchenTicketViaRawBT, generateKitchenTicketPreview } from '../../utils/billPrint';
 import { formatDateTime as formatDateTimeUtil, getTimeElapsed } from '../../utils/timezone';
 import ConfirmModal from '../../components/ConfirmModal';
+import DateRangeFilter, { PeriodType, calculateDateRange } from '../../components/Common/DateRangeFilter';
 
 // Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM")
 const formatPickupTimeRange = (dateString: string): string => {
@@ -107,8 +108,7 @@ interface DbOrder {
   updatedAt: string;
 }
 
-// Period type for date filtering
-type PeriodType = 'today' | 'week' | 'month' | 'year' | 'all';
+// PeriodType imported from DateRangeFilter component
 
 const Container = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -192,56 +192,24 @@ const Content = styled.main`
   }
 `;
 
-const FilterControls = styled.div`
-  margin-bottom: 24px;
+// Note: FilterControls, FilterRow, DateButton, DateInput styles moved to DateRangeFilter component
+
+// Search input for Live Orders (kept locally as it's specific to this page)
+const SearchInputContainer = styled.div`
+  position: relative;
+  width: 250px;
+  margin-left: 16px;
 
   @media (max-width: 768px) {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+    width: 100%;
+    margin-left: 0;
+    margin-top: 8px;
   }
 `;
 
-const FilterRow = styled.div`
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-
-  @media (max-width: 768px) {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-
-    &::-webkit-scrollbar {
-      height: 4px;
-    }
-
-    &::-webkit-scrollbar-thumb {
-      background: #E6EBF1;
-      border-radius: 4px;
-    }
-  }
-`;
-
-const DateButton = styled.button<{ active?: boolean }>`
-  padding: 8px 16px;
-  background: ${props => props.active ? '#635BFF' : '#FFFFFF'};
-  color: ${props => props.active ? '#FFFFFF' : '#6B7C93'};
-  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    background: ${props => props.active ? '#5A51E6' : '#F8FAFC'};
-    border-color: ${props => props.active ? '#5A51E6' : '#CBD5E1'};
-  }
-`;
-
-const DateInput = styled.input`
-  padding: 8px 12px;
+const SearchInput = styled.input`
+  width: 100%;
+  padding: 8px 12px 8px 36px;
   border: 1px solid #E6EBF1;
   border-radius: 6px;
   font-size: 14px;
@@ -251,6 +219,19 @@ const DateInput = styled.input`
     outline: none;
     border-color: #635BFF;
   }
+
+  &::placeholder {
+    color: #9CA3AF;
+  }
+`;
+
+const SearchIcon = styled.span`
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  color: #9CA3AF;
 `;
 
 
@@ -2762,80 +2743,25 @@ const LiveOrdersPage: React.FC = () => {
         </PageHeader>
 
         <Content>
-          <FilterControls>
-            <FilterRow>
-              <DateButton
-                active={activePeriod === 'today' && !isCustomDateRange}
-                onClick={() => handlePeriodChange('today')}
-              >
-                Today
-              </DateButton>
-              <DateButton
-                active={activePeriod === 'week' && !isCustomDateRange}
-                onClick={() => handlePeriodChange('week')}
-              >
-                Week
-              </DateButton>
-              <DateButton
-                active={activePeriod === 'month' && !isCustomDateRange}
-                onClick={() => handlePeriodChange('month')}
-              >
-                Month
-              </DateButton>
-              <DateButton
-                active={activePeriod === 'year' && !isCustomDateRange}
-                onClick={() => handlePeriodChange('year')}
-              >
-                Year
-              </DateButton>
-              <DateButton
-                active={activePeriod === 'all' && !isCustomDateRange}
-                onClick={() => handlePeriodChange('all')}
-              >
-                All
-              </DateButton>
-
-              <DateInput
-                type="date"
-                value={dateRange.start}
-                onChange={(e) => handleDateRangeChange('start', e.target.value)}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1 }}>
+              <DateRangeFilter
+                activePeriod={activePeriod}
+                dateRange={dateRange}
+                isCustomDateRange={isCustomDateRange}
+                onPeriodChange={handlePeriodChange}
+                onDateRangeChange={handleDateRangeChange}
+                timezone={operationSettings?.timeZone}
               />
-              <span style={{ color: '#6B7C93' }}>to</span>
-              <DateInput
-                type="date"
-                value={dateRange.end}
-                onChange={(e) => handleDateRangeChange('end', e.target.value)}
-              />
-
-              <div style={{
-                position: 'relative',
-                width: '250px',
-                marginLeft: '16px'
-              }}>
-                <span style={{
-                  position: 'absolute',
-                  left: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  fontSize: '16px',
-                  pointerEvents: 'none',
-                  zIndex: 1
-                }}>🔍</span>
-                <input
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <SearchInputContainer>
+                <SearchIcon>🔍</SearchIcon>
+                <SearchInput
                   type="text"
                   placeholder="Search orders..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 40px 10px 40px',
-                    border: '1px solid #E6EBF1',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    transition: 'all 0.2s',
-                    boxSizing: 'border-box'
-                  }}
                 />
                 {searchQuery && (
                   <button
@@ -2863,8 +2789,7 @@ const LiveOrdersPage: React.FC = () => {
                     ×
                   </button>
                 )}
-              </div>
-
+              </SearchInputContainer>
               <button
                 onClick={handleDownloadCSV}
                 title="Download CSV"
@@ -2877,16 +2802,15 @@ const LiveOrdersPage: React.FC = () => {
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  marginLeft: '8px'
+                  justifyContent: 'center'
                 }}
               >
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '18px', height: '18px' }}>
                   <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </button>
-            </FilterRow>
-          </FilterControls>
+            </div>
+          </div>
 
           <StatusTabs>
             <StatusTab

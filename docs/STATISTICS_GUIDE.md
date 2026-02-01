@@ -5,6 +5,19 @@
 
 ---
 
+## 적용 역할
+
+| 역할 | 적용 여부 | 비고 |
+|------|:--------:|------|
+| **Restaurant Admin** | ✅ 적용 | 현재 가이드 기준 |
+| Brand General | 🔜 예정 | 다중 레스토랑 집계 필요 |
+| Foodcourt General | 🔜 예정 | 다중 레스토랑 집계 필요 |
+| System Admin | 🔜 예정 | 전체 시스템 통계 |
+
+**참고:** 현재 이 가이드의 모든 내용은 Restaurant Admin 페이지 기준입니다. 다른 역할 추가 시 집계 범위(단일 레스토랑 vs 다중 레스토랑)가 달라질 수 있습니다.
+
+---
+
 ## 1. 기본 원칙
 
 ### 1.1 통계 유형별 기준
@@ -339,7 +352,31 @@ const allMenuData = useMemo(() => {
 
 ---
 
-## 7. Dashboard 통계 라벨 규칙
+## 7. Live Orders 통계 가이드
+
+### 7.1 하단 통계바
+
+| 통계 | 계산 | 설명 |
+|------|------|------|
+| Total Sales | `sum(orders.total_amount)` (취소 제외) | 선택 기간 매출 합계 |
+| Avg | `Total Sales / orderCount` | 주문당 평균 금액 |
+| Max | `max(orders.total_amount)` | 최대 주문 금액 |
+| ≥RM20 | 클라이언트 계산 | RM20 이상 주문 비율 |
+| Avg/Max/Min Serve | 클라이언트 계산 | 서빙 시간 통계 |
+
+**Backend API (`/api/orders/restaurant/:id/counts`):**
+```javascript
+// 취소 제외 통계
+const salesExcludingCancelled = results
+  .filter(row => row.status !== 'cancelled')
+  .reduce((sum, row) => sum + parseFloat(row.total_sales || 0), 0);
+
+const avgAmount = totalOrderCount > 0 ? salesExcludingCancelled / totalOrderCount : 0;
+```
+
+---
+
+## 8. Dashboard 통계 라벨 규칙
 
 | 기간 | 라벨 | 예시 |
 |------|------|------|
@@ -352,7 +389,7 @@ const allMenuData = useMemo(() => {
 
 ---
 
-## 7. 체크리스트
+## 9. 체크리스트
 
 새로운 통계 기능 개발 시 확인:
 
@@ -365,10 +402,53 @@ const allMenuData = useMemo(() => {
 
 ---
 
-## 8. 관련 파일
+## 10. 공통 컴포넌트
+
+### DateRangeFilter
+
+**경로:** `src/components/Common/DateRangeFilter.tsx`
+
+**Props:**
+```typescript
+interface DateRangeFilterProps {
+  activePeriod: PeriodType;           // 'today' | 'week' | 'month' | 'year' | 'all'
+  dateRange: { start: string; end: string };
+  isCustomDateRange: boolean;
+  onPeriodChange: (period: PeriodType) => void;
+  onDateRangeChange: (field: 'start' | 'end', value: string) => void;
+  onDownload?: () => void;            // 다운로드 버튼 클릭 핸들러
+  showDownload?: boolean;             // 다운로드 버튼 표시 여부
+  timezone?: string;                  // 레스토랑 타임존
+}
+```
+
+**사용 예시:**
+```tsx
+import DateRangeFilter, { PeriodType, calculateDateRange } from '../../components/Common/DateRangeFilter';
+
+<DateRangeFilter
+  activePeriod={activePeriod}
+  dateRange={dateRange}
+  isCustomDateRange={isCustomDateRange}
+  onPeriodChange={handlePeriodChange}
+  onDateRangeChange={handleDateRangeFieldChange}
+  onDownload={handleDownloadReport}
+  showDownload={true}
+  timezone={operationSettings?.timeZone}
+/>
+```
+
+**헬퍼 함수:**
+- `calculateDateRange(period, timezone)`: 기간별 날짜 범위 계산
+- `getPeriodLabel(period, isCustom, start, end)`: 기간 라벨 문자열 반환
+
+---
+
+## 11. 관련 파일
 
 | 파일 | 역할 |
 |------|------|
+| `components/Common/DateRangeFilter.tsx` | **공통 날짜 필터 컴포넌트** |
 | `pages/Reports/ReportsPage.tsx` | Reports 통계 (참조 구현) |
 | `pages/LiveOrders/LiveOrdersPage.tsx` | Live Orders 통계 (참조 구현) |
 | `pages/Restaurant/RestaurantDashboard.tsx` | 대시보드 통계 |
