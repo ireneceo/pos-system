@@ -194,24 +194,45 @@ const Content = styled.main`
 
 // Note: FilterControls, FilterRow, DateButton, DateInput styles moved to DateRangeFilter component
 
-// Search input for Live Orders (kept locally as it's specific to this page)
+// Filter toolbar for Live Orders - contains DateRangeFilter, Search, Download
+const FilterToolbar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+
+  /* Override DateRangeFilter internal margin */
+  & > div:first-child > div {
+    margin-bottom: 0 !important;
+  }
+
+  @media (max-width: 768px) {
+    gap: 8px;
+  }
+`;
+
+// Search input for Live Orders
 const SearchInputContainer = styled.div`
   position: relative;
-  width: 200px;
-  flex-shrink: 0;
+  width: 220px;
+  height: 38px;
 
   @media (max-width: 768px) {
     width: 100%;
+    order: 10;
   }
 `;
 
 const SearchInput = styled.input`
   width: 100%;
-  padding: 8px 12px 8px 36px;
+  height: 38px;
+  padding: 0 32px 0 36px;
   border: 1px solid #E6EBF1;
   border-radius: 6px;
   font-size: 14px;
   color: #1F2937;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -220,6 +241,53 @@ const SearchInput = styled.input`
 
   &::placeholder {
     color: #9CA3AF;
+  }
+`;
+
+const ClearSearchButton = styled.button`
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #E5E7EB;
+  border: none;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+  color: #6B7280;
+  padding: 0;
+  line-height: 1;
+
+  &:hover {
+    background: #D1D5DB;
+  }
+`;
+
+const DownloadButton = styled.button`
+  height: 38px;
+  width: 38px;
+  background: #F6F9FC;
+  color: #0A2540;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  &:hover {
+    background: #E6EBF1;
   }
 `;
 
@@ -2741,8 +2809,8 @@ const LiveOrdersPage: React.FC = () => {
         </PageHeader>
 
         <Content>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
-            <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+          <FilterToolbar>
+            <div>
               <DateRangeFilter
                 activePeriod={activePeriod}
                 dateRange={dateRange}
@@ -2752,63 +2820,26 @@ const LiveOrdersPage: React.FC = () => {
                 timezone={operationSettings?.timeZone}
               />
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-              <SearchInputContainer>
-                <SearchIcon>🔍</SearchIcon>
-                <SearchInput
-                  type="text"
-                  placeholder="Search orders..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    title="Clear search"
-                    style={{
-                      position: 'absolute',
-                      right: '8px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: '#E5E7EB',
-                      border: 'none',
-                      borderRadius: '50%',
-                      width: '24px',
-                      height: '24px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      fontSize: '18px',
-                      color: '#6B7280',
-                      zIndex: 2
-                    }}
-                  >
-                    ×
-                  </button>
-                )}
-              </SearchInputContainer>
-              <button
-                onClick={handleDownloadCSV}
-                title="Download CSV"
-                style={{
-                  padding: '10px',
-                  background: '#635BFF',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '18px', height: '18px' }}>
-                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-            </div>
-          </div>
+            <SearchInputContainer>
+              <SearchIcon>🔍</SearchIcon>
+              <SearchInput
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <ClearSearchButton onClick={() => setSearchQuery('')} title="Clear search">
+                  ×
+                </ClearSearchButton>
+              )}
+            </SearchInputContainer>
+            <DownloadButton onClick={handleDownloadCSV} title="Download CSV">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </DownloadButton>
+          </FilterToolbar>
 
           <StatusTabs>
             <StatusTab

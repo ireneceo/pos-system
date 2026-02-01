@@ -845,18 +845,15 @@ router.get('/restaurant/:restaurantId', authenticateToken, async (req, res) => {
       whereCondition.status = { [Op.ne]: 'completed' };
     }
 
-    // Search filter
+    // Search filter - search across basic text fields
     if (search && search.trim()) {
       const searchTerm = `%${search.trim()}%`;
-      whereCondition[Op.and] = whereCondition[Op.and] || [];
-      whereCondition[Op.and].push({
-        [Op.or]: [
-          { order_number: { [Op.like]: searchTerm } },
-          { customer_name: { [Op.like]: searchTerm } },
-          { customer_phone: { [Op.like]: searchTerm } },
-          { table_number: { [Op.like]: searchTerm } }
-        ]
-      });
+      whereCondition[Op.or] = [
+        { order_number: { [Op.like]: searchTerm } },
+        { customer_name: { [Op.like]: searchTerm } },
+        { customer_phone: { [Op.like]: searchTerm } },
+        { table_number: { [Op.like]: searchTerm } }
+      ];
     }
 
     // Get total count

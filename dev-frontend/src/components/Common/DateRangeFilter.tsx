@@ -103,9 +103,9 @@ const DownloadButton = styled.button`
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: #0A2540;
-  color: white;
-  border: none;
+  background: #F6F9FC;
+  color: #0A2540;
+  border: 1px solid #E6EBF1;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
@@ -117,7 +117,7 @@ const DownloadButton = styled.button`
   }
 
   &:hover {
-    background: #1a3550;
+    background: #E6EBF1;
   }
 
   @media (max-width: 768px) {

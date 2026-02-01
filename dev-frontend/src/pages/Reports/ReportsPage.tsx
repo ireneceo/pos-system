@@ -964,27 +964,11 @@ const ReportsPage: React.FC = () => {
     return value.toFixed(decimals);
   };
 
-  // What and Why: CSV 공통 헤더 생성
+  // What and Why: CSV 공통 헤더 생성 (간소화 - DB 스타일)
   const generateCSVHeader = useCallback((): string[] => {
-    const timezone = getRestaurantTimezone(operationSettings);
-    const periodLabel = getPeriodLabel(activePeriod, isCustomDateRange, dateRange.start, dateRange.end);
-    const generatedAt = new Date().toLocaleString('en-US', { timeZone: timezone });
-    const currencyCode = operationSettings?.currency || 'MYR';
-
-    return [
-      '═══════════════════════════════════════════════════════════════',
-      'PURPLE POS - ANALYTICS REPORT',
-      '═══════════════════════════════════════════════════════════════',
-      '',
-      `Report Type,${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Report`,
-      `Period,${periodLabel}`,
-      `Date Range,${dateRange.start} to ${dateRange.end}`,
-      `Generated,${generatedAt}`,
-      `Currency,${currencyCode}`,
-      `Restaurant ID,${user?.restaurantId || 'N/A'}`,
-      '',
-    ];
-  }, [operationSettings, activePeriod, isCustomDateRange, dateRange, activeTab, user?.restaurantId]);
+    // 실무용 간단한 형식 - 헤더 없이 바로 데이터 시작
+    return [];
+  }, []);
 
   // What and Why: Sales Report 탭 CSV 생성
   const generateSalesCSV = useCallback((): string => {
