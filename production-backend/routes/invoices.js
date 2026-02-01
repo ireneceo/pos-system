@@ -559,10 +559,6 @@ router.get('/', authenticateToken, async (req, res) => {
       };
     });
 
-      id: inv.id,
-      invoiceNumber: inv.invoiceNumber,
-      status: inv.status
-    })));
     res.json(transformedInvoices);
   } catch (error) {
     console.error('Error fetching all invoices:', error);
@@ -2003,15 +1999,6 @@ router.put('/:invoiceId', authenticateToken, async (req, res) => {
       payerId,
       items
     } = req.body;
-
-      amount,
-      tax,
-      total,
-      dueDate,
-      status,
-      payerType,
-      payerId
-    });
 
     // Find the invoice
     const invoice = await Invoice.findByPk(invoiceId);

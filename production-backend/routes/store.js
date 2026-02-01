@@ -133,9 +133,6 @@ router.put('/settings', authenticateToken, async (req, res) => {
 
     allowedFields.forEach(field => {
       if (req.body[field] !== undefined) {
-          ? `[JSON ${typeof req.body[field]}]`
-          : req.body[field]);
-
         if (field === 'payment_settings' || field === 'operation_settings' || field === 'table_settings') {
           // Model setter will handle JSON.stringify, just pass the object
           restaurant[field] = req.body[field];
@@ -163,10 +160,6 @@ router.put('/settings', authenticateToken, async (req, res) => {
 
       // Update operation_settings with synced values
       restaurant.operation_settings = opSettings;
-        currency: opSettings.currency,
-        cashRounding: opSettings.cashRounding,
-        roundingApplyTo: opSettings.roundingApplyTo
-      });
     }
 
     await restaurant.save();
