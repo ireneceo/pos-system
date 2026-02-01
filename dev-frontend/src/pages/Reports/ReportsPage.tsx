@@ -931,10 +931,8 @@ const ReportsPage: React.FC = () => {
         start.setDate(start.getDate() - 29);
         break;
       case 'year':
-        // Last 12 months including today (today - 365 days)
-        start = new Date(now);
-        start.setFullYear(start.getFullYear() - 1);
-        start.setDate(start.getDate() + 1); // Start from 1 year ago + 1 day to include exactly 365 days
+        // From Jan 1 of current year (consistent with DateRangeFilter)
+        start = new Date(now.getFullYear(), 0, 1); // January 1st of current year
         break;
       case 'all':
         // Get the earliest order date, or default to 5 years ago
@@ -1368,7 +1366,7 @@ const ReportsPage: React.FC = () => {
           {/* Sales Tab - CSS로 숨기기 (탭 전환 시 state 유지) */}
           <div style={{ display: activeTab === 'sales' ? 'block' : 'none' }}>
               <FilterComponent />
-              {loading ? (
+              {loading || ordersLoading ? (
                 <div style={{ textAlign: 'center', padding: '40px' }}>Loading...</div>
               ) : filteredOrders.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
@@ -1474,7 +1472,7 @@ const ReportsPage: React.FC = () => {
           {/* Sales Details Tab - Drilldown by Year/Month/Day */}
           <div style={{ display: activeTab === 'details' ? 'block' : 'none' }}>
               <FilterComponent />
-              {loading ? (
+              {loading || ordersLoading ? (
                 <div style={{ textAlign: 'center', padding: '40px' }}>Loading...</div>
               ) : filteredOrders.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
@@ -1696,7 +1694,7 @@ const ReportsPage: React.FC = () => {
           {/* Customers Tab - CSS로 숨기기 (탭 전환 시 state 유지) */}
           <div style={{ display: activeTab === 'customers' ? 'block' : 'none' }}>
               <FilterComponent />
-              {loading ? (
+              {loading || ordersLoading ? (
                 <div style={{ textAlign: 'center', padding: '40px' }}>Loading customer data...</div>
               ) : filteredCustomers.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
@@ -1797,7 +1795,7 @@ const ReportsPage: React.FC = () => {
           {/* Operations Tab - CSS로 숨기기 (탭 전환 시 state 유지) */}
           <div style={{ display: activeTab === 'operations' ? 'block' : 'none' }}>
               <FilterComponent />
-              {loading ? (
+              {loading || ordersLoading ? (
                 <div style={{ textAlign: 'center', padding: '40px' }}>Loading operations data...</div>
               ) : filteredOrders.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
