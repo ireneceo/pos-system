@@ -74,6 +74,7 @@ router.post('/contact', async (req, res) => {
       status: 'new'
     });
 
+    console.log(`📬 New contact inquiry received: ${name} (${email})`);
 
     res.status(201).json({
       success: true,
@@ -295,7 +296,9 @@ router.post('/admin/inquiries/:id/reply', authenticateToken, async (req, res) =>
             email_sent_at: new Date()
           });
 
+          console.log(`📧 Reply email sent to ${inquiry.email}`);
         } else {
+          console.log('⚠️ Email transporter not configured, skipping email');
         }
       } catch (emailError) {
         console.error('Failed to send reply email:', emailError);

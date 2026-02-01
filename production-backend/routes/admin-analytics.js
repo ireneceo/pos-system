@@ -268,6 +268,7 @@ router.get('/subscription-stats', authenticateToken, requireManagerRole, async (
 // 매니저 목록 API
 router.get('/managers', authenticateToken, requireManagerRole, async (req, res) => {
   try {
+    console.log('🔍 Fetching managers from database...');
     const managers = await User.findAll({
       where: {
         role: {
@@ -278,6 +279,8 @@ router.get('/managers', authenticateToken, requireManagerRole, async (req, res) 
       order: [['full_name', 'ASC']]
     });
 
+    console.log('👥 Found managers:', managers.length);
+    console.log('📋 Managers data:', managers.map(m => ({ id: m.id, full_name: m.full_name, email: m.email, role: m.role })));
 
     res.json({
       success: true,

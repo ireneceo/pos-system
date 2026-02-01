@@ -160,6 +160,9 @@ router.put('/reorder', async (req, res) => {
     const { categories } = req.body;
     const restaurantId = req.user.restaurant_id;
 
+    console.log('🔄 Reorder categories API called');
+    console.log('   Restaurant ID:', restaurantId);
+    console.log('   Categories:', JSON.stringify(categories));
 
     if (!Array.isArray(categories)) {
       return res.status(400).json({ success: false, error: 'Categories array is required' });
@@ -168,6 +171,7 @@ router.put('/reorder', async (req, res) => {
     // Update each category's displayOrder
     await Promise.all(
       categories.map(async (cat) => {
+        console.log(`   Updating category ${cat.id} (${cat.name}) to order ${cat.order}`);
         await Category.update(
           { displayOrder: cat.order },
           {
@@ -180,6 +184,7 @@ router.put('/reorder', async (req, res) => {
       })
     );
 
+    console.log('✅ Category order updated successfully');
 
     res.json({
       success: true,

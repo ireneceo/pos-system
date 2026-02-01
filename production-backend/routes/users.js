@@ -6,6 +6,8 @@ const { authenticateToken } = require('../middleware/auth');
 
 // Get all users
 router.get('/', authenticateToken, async (req, res) => {
+  console.log('🔄 GET /api/users - Request received');
+  console.log('📝 Query params:', req.query);
 
   try {
     const { sequelize } = require('../config/database');
@@ -43,6 +45,7 @@ router.get('/', authenticateToken, async (req, res) => {
       return userWithoutPassword;
     });
 
+    console.log(`✅ Found ${usersWithoutPassword.length} users with role: ${req.query.role || 'all'}`);
     res.json({ success: true, data: usersWithoutPassword });
   } catch (error) {
     console.error('❌ Error fetching users:', error);
@@ -67,6 +70,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
 // Create user (admin only)
 router.post('/', authenticateToken, async (req, res) => {
+  console.log('🔄 POST /api/users - Request received');
+  console.log('📝 Request body:', req.body);
 
   try {
     const { username, email, password, role, full_name, first_name, last_name, phone, permissions, restaurantId, restaurant_id, department, company_name, manager_id, monthly_salary } = req.body;
@@ -95,6 +100,8 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
 
+    console.log('📝 Parsed username:', username);
+    console.log('📝 Parsed email:', email);
 
     // Check if user already exists (by email or username)
     const existingUser = await User.findOne({
@@ -149,6 +156,7 @@ router.post('/', authenticateToken, async (req, res) => {
       manager_id: manager_id || null
     });
 
+    console.log('✅ User created successfully:', user.id, user.username);
 
     // Return user without password
     const { password: _, ...userWithoutPassword } = user.toJSON();
@@ -161,13 +169,18 @@ router.post('/', authenticateToken, async (req, res) => {
 
 // Update user
 router.put('/:id', authenticateToken, async (req, res) => {
+  console.log('🔄 PUT /api/users/:id - Request received');
+  console.log('📝 User ID:', req.params.id);
+  console.log('📝 Request body:', req.body);
 
   try {
     const user = await User.findByPk(req.params.id);
     if (!user) {
+      console.log('❌ User not found:', req.params.id);
       return res.status(404).json({ success: false, error: 'User not found' });
     }
 
+    console.log('✅ User found:', user.username, user.email);
 
     const { password, first_name, last_name, ...updateData } = req.body;
 
@@ -183,9 +196,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
         (first_name || last_name);
     }
 
+    console.log('📝 Update data:', updateData);
 
     await user.update(updateData);
 
+    console.log('✅ User updated successfully');
 
     // Return user without password
     const { password: _, ...userWithoutPassword } = user.toJSON();

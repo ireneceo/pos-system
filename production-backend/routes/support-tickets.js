@@ -1,3 +1,9 @@
+/**
+ * What and Why: Support Ticket 라우터
+ * - 고객 지원 티켓 CRUD 및 상태 관리
+ * - 응답 형식: { success: true/false, data/error: ... }
+ */
+
 const express = require('express');
 const router = express.Router();
 const SupportTicket = require('../models/SupportTicket');
@@ -27,10 +33,9 @@ router.get('/', async (req, res) => {
       order: [['createdAt', 'DESC']]
     });
 
-    res.json(tickets);
+    res.json({ success: true, data: tickets });
   } catch (error) {
-    console.error('Error fetching support tickets:', error);
-    res.status(500).json({ error: 'Failed to fetch support tickets' });
+    res.status(500).json({ success: false, error: 'Failed to fetch support tickets' });
   }
 });
 
@@ -40,20 +45,20 @@ router.get('/:id', async (req, res) => {
     const ticket = await SupportTicket.findByPk(req.params.id);
 
     if (!ticket) {
-      return res.status(404).json({ error: 'Ticket not found' });
+      return res.status(404).json({ success: false, error: 'Ticket not found' });
     }
 
-    res.json(ticket);
+    res.json({ success: true, data: ticket });
   } catch (error) {
-    console.error('Error fetching ticket:', error);
-    res.status(500).json({ error: 'Failed to fetch ticket' });
+    res.status(500).json({ success: false, error: 'Failed to fetch ticket' });
   }
 });
 
 // Create new support ticket
 router.post('/', async (req, res) => {
   try {
-    // Generate unique ticket number using timestamp + random to avoid conflicts
+    // What and Why: timestamp + random으로 유니크 티켓 번호 생성
+    // - 동시 요청 시 충돌 방지
     const timestamp = Date.now();
     const random = Math.floor(Math.random() * 1000);
     const ticketNumber = `SUPP-${new Date().getFullYear()}-${String(timestamp % 10000)}-${String(random).padStart(3, '0')}`;
@@ -64,17 +69,9 @@ router.post('/', async (req, res) => {
       id: `ticket-${timestamp}-${random}`
     });
 
-    console.log('✅ Support ticket created:', {
-      id: ticket.id,
-      ticketNumber: ticket.ticketNumber,
-      customerRole: ticket.customerRole,
-      customerName: ticket.customerName
-    });
-
-    res.status(201).json(ticket);
+    res.status(201).json({ success: true, data: ticket });
   } catch (error) {
-    console.error('Error creating support ticket:', error);
-    res.status(500).json({ error: 'Failed to create support ticket' });
+    res.status(500).json({ success: false, error: 'Failed to create support ticket' });
   }
 });
 
@@ -84,10 +81,11 @@ router.put('/:id', async (req, res) => {
     const ticket = await SupportTicket.findByPk(req.params.id);
 
     if (!ticket) {
-      return res.status(404).json({ error: 'Ticket not found' });
+      return res.status(404).json({ success: false, error: 'Ticket not found' });
     }
 
-    // Update response time if status is changing from 'open' to another status
+    // What and Why: 상태 변경 시 응답/해결 시간 자동 계산
+    // - open에서 다른 상태로 변경 시 responseTime 기록
     if (ticket.status === 'open' && req.body.status && req.body.status !== 'open') {
       const createdTime = new Date(ticket.createdAt).getTime();
       const currentTime = Date.now();
@@ -95,7 +93,7 @@ router.put('/:id', async (req, res) => {
       req.body.responseTime = responseTimeMinutes;
     }
 
-    // Update resolution time if status is changing to 'resolved' or 'closed'
+    // What and Why: resolved/closed로 변경 시 resolutionTime 기록
     if ((req.body.status === 'resolved' || req.body.status === 'closed') &&
         (ticket.status !== 'resolved' && ticket.status !== 'closed')) {
       const createdTime = new Date(ticket.createdAt).getTime();
@@ -107,10 +105,9 @@ router.put('/:id', async (req, res) => {
 
     await ticket.update(req.body);
 
-    res.json(ticket);
+    res.json({ success: true, data: ticket });
   } catch (error) {
-    console.error('Error updating support ticket:', error);
-    res.status(500).json({ error: 'Failed to update support ticket' });
+    res.status(500).json({ success: false, error: 'Failed to update support ticket' });
   }
 });
 
@@ -120,10 +117,10 @@ router.patch('/:id', async (req, res) => {
     const ticket = await SupportTicket.findByPk(req.params.id);
 
     if (!ticket) {
-      return res.status(404).json({ error: 'Ticket not found' });
+      return res.status(404).json({ success: false, error: 'Ticket not found' });
     }
 
-    // Update response time if status is changing from 'open' to another status
+    // What and Why: 상태 변경 시 응답/해결 시간 자동 계산
     if (ticket.status === 'open' && req.body.status && req.body.status !== 'open') {
       const createdTime = new Date(ticket.createdAt).getTime();
       const currentTime = Date.now();
@@ -131,7 +128,6 @@ router.patch('/:id', async (req, res) => {
       req.body.responseTime = responseTimeMinutes;
     }
 
-    // Update resolution time if status is changing to 'resolved' or 'closed'
     if ((req.body.status === 'resolved' || req.body.status === 'closed') &&
         (ticket.status !== 'resolved' && ticket.status !== 'closed')) {
       const createdTime = new Date(ticket.createdAt).getTime();
@@ -143,10 +139,9 @@ router.patch('/:id', async (req, res) => {
 
     await ticket.update(req.body);
 
-    res.json(ticket);
+    res.json({ success: true, data: ticket });
   } catch (error) {
-    console.error('Error patching support ticket:', error);
-    res.status(500).json({ error: 'Failed to patch support ticket' });
+    res.status(500).json({ success: false, error: 'Failed to patch support ticket' });
   }
 });
 
@@ -156,15 +151,14 @@ router.delete('/:id', async (req, res) => {
     const ticket = await SupportTicket.findByPk(req.params.id);
 
     if (!ticket) {
-      return res.status(404).json({ error: 'Ticket not found' });
+      return res.status(404).json({ success: false, error: 'Ticket not found' });
     }
 
     await ticket.destroy();
 
-    res.json({ message: 'Ticket deleted successfully' });
+    res.json({ success: true, message: 'Ticket deleted successfully' });
   } catch (error) {
-    console.error('Error deleting support ticket:', error);
-    res.status(500).json({ error: 'Failed to delete support ticket' });
+    res.status(500).json({ success: false, error: 'Failed to delete support ticket' });
   }
 });
 
@@ -174,7 +168,7 @@ router.post('/initialize', async (req, res) => {
     const count = await SupportTicket.count();
 
     if (count > 0) {
-      return res.json({ message: 'Support tickets already exist' });
+      return res.json({ success: true, message: 'Support tickets already exist' });
     }
 
     const sampleTickets = [
@@ -279,10 +273,9 @@ router.post('/initialize', async (req, res) => {
 
     await SupportTicket.bulkCreate(sampleTickets);
 
-    res.json({ message: 'Sample support tickets created successfully' });
+    res.json({ success: true, message: 'Sample support tickets created successfully' });
   } catch (error) {
-    console.error('Error initializing support tickets:', error);
-    res.status(500).json({ error: 'Failed to initialize support tickets' });
+    res.status(500).json({ success: false, error: 'Failed to initialize support tickets' });
   }
 });
 

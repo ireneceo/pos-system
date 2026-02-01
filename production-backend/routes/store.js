@@ -86,8 +86,13 @@ router.get('/settings', authenticateToken, async (req, res) => {
 // Update store settings
 router.put('/settings', authenticateToken, async (req, res) => {
   try {
+    console.log('🔧 [STORE UPDATE] Starting settings update...');
+    console.log('📋 Request Query:', req.query);
+    console.log('👤 User Info:', { userId: req.user?.id, restaurantId: req.user?.restaurant_id });
+    console.log('📦 Request Body Keys:', Object.keys(req.body));
 
     const restaurantId = req.query.restaurantId || req.user.restaurant_id;
+    console.log('🎯 Target Restaurant ID:', restaurantId);
 
     if (!restaurantId) {
       console.error('❌ No restaurant ID provided');
@@ -110,7 +115,9 @@ router.put('/settings', authenticateToken, async (req, res) => {
         }
       }
     }
+    console.log('✅ Access control passed');
 
+    console.log('🔍 Finding restaurant with ID:', restaurantId);
     const restaurant = await Restaurant.findByPk(restaurantId);
 
     if (!restaurant) {
@@ -121,6 +128,7 @@ router.put('/settings', authenticateToken, async (req, res) => {
       });
     }
 
+    console.log('✅ Restaurant found:', restaurant.name);
 
     // Update allowed fields
     const allowedFields = [
@@ -131,8 +139,13 @@ router.put('/settings', authenticateToken, async (req, res) => {
       'currency', 'cash_rounding', 'rounding_apply_to'
     ];
 
+    console.log('🔄 Updating fields...');
     allowedFields.forEach(field => {
       if (req.body[field] !== undefined) {
+        console.log(`  ✏️  ${field}:`, field === 'payment_settings' || field === 'operation_settings'
+          ? `[JSON ${typeof req.body[field]}]`
+          : req.body[field]);
+
         if (field === 'payment_settings' || field === 'operation_settings' || field === 'table_settings') {
           // Model setter will handle JSON.stringify, just pass the object
           restaurant[field] = req.body[field];
@@ -160,9 +173,16 @@ router.put('/settings', authenticateToken, async (req, res) => {
 
       // Update operation_settings with synced values
       restaurant.operation_settings = opSettings;
+      console.log('✅ Synced currency settings in operation_settings:', {
+        currency: opSettings.currency,
+        cashRounding: opSettings.cashRounding,
+        roundingApplyTo: opSettings.roundingApplyTo
+      });
     }
 
+    console.log('💾 Saving to database...');
     await restaurant.save();
+    console.log('✅ Settings saved successfully!');
 
     res.json({
       success: true,

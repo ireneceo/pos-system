@@ -71,6 +71,9 @@ process.on('SIGINT', () => {
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
+// Trust proxy - Cloudflare/nginx의 X-Forwarded-For 헤더 신뢰
+app.set('trust proxy', 1);
+
 // Helmet - HTTP 헤더 보안 (CSP는 프론트엔드에서 관리하므로 비활성화)
 app.use(helmet({
   contentSecurityPolicy: false,

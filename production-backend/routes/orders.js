@@ -238,11 +238,13 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
       );
 
       if (mergeableOrder) {
+        console.log(`🔀 [AUTO-MERGE] Found mergeable order ${mergeableOrder.id} for table ${orderData.table_number}`);
 
         // Merge items into existing order (support both 'items' and 'order_items')
         const newItems = orderData.order_items || orderData.items || [];
         const mergeResult = await mergeItemsIntoOrder(mergeableOrder, newItems);
 
+        console.log(`✅ [AUTO-MERGE] Merged ${mergeResult.addedItems.length} items into order ${mergeableOrder.id} (group: ${mergeResult.orderGroup})`);
 
         // Emit socket events for real-time update
         const io = req.app.get('io');
@@ -401,8 +403,10 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
 
             // Generate order number
             generatedOrderNumber = `${datePrefix}-${nextCounter.toString().padStart(3, '0')}`;
+            console.log('Generated order_number:', generatedOrderNumber);
           }
 
+          console.log('Creating order with order_number:', generatedOrderNumber);
           // Create order within transaction with generated number
           // Note: We bypass validation because order_number is generated dynamically
 
@@ -462,6 +466,7 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
           order.points_used
         );
         if (pointResult.success) {
+          console.log(`✅ [POINTS] Used ${order.points_used} points for order ${order.id}`);
         } else {
           console.warn(`⚠️ [POINTS] Failed to use points for order ${order.id}:`, pointResult.error);
           // Note: We don't fail the order if points usage fails
@@ -485,6 +490,7 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
           await coupon.update({
             usage_count: coupon.usage_count + 1
           });
+          console.log(`✅ [COUPON] Incremented usage_count for coupon ${coupon.code} to ${coupon.usage_count}`);
         }
       } catch (couponError) {
         console.error(`❌ [COUPON] Error incrementing coupon usage:`, couponError);
@@ -494,7 +500,10 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
     // Emit socket event for real-time update
     const io = req.app.get('io');
     if (io && order.restaurant_id) {
+      console.log(`📡 Emitting order-created event to restaurant_${order.restaurant_id}`);
+      console.log(`   Order ID: ${order.id}, Number: ${order.order_number}`);
       io.of('/orders').to(`restaurant_${order.restaurant_id}`).emit('order-created', order);
+      console.log(`✅ Socket event emitted successfully`);
     } else {
       console.warn('⚠️ Socket.IO not available or restaurant_id missing:', {
         hasIO: !!io,
@@ -603,6 +612,7 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
         if (!deductionResult.success) {
           console.error(`⚠️ [INVENTORY] Deduction failed for order ${order.id}:`, deductionResult.error);
         } else {
+          console.log(`✅ [INVENTORY] Deducted ${deductionResult.deductions.length} ingredients for order ${order.id}`);
           if (deductionResult.warnings.length > 0) {
             console.warn(`⚠️ [INVENTORY] Warnings:`, deductionResult.warnings);
           }
@@ -623,6 +633,7 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
           );
 
           if (pointResult.success && pointResult.earnedPoints > 0) {
+            console.log(`✅ [POINTS] Earned ${pointResult.earnedPoints} points for order ${order.id}`);
           }
         } catch (pointError) {
           // Don't fail the order update if point earning fails
@@ -641,6 +652,7 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
         );
 
         if (refundResult.success && refundResult.refundedPoints > 0) {
+          console.log(`✅ [POINTS] Refunded ${refundResult.refundedPoints} points for order ${order.id}`);
         }
       } catch (pointError) {
         // Don't fail the order update if point refund fails
@@ -651,6 +663,7 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
     // Emit socket event for real-time update
     const io = req.app.get('io');
     if (io && order.restaurant_id) {
+      console.log(`📡 [STATUS] Emitting order-updated for order ${order.id}, status: ${order.status}`);
       io.of('/orders').to(`restaurant_${order.restaurant_id}`).emit('order-updated', order);
     } else {
       console.warn('⚠️ [STATUS] Socket.IO not available or restaurant_id missing');
@@ -685,6 +698,7 @@ router.patch('/:id/items', authenticateToken, async (req, res) => {
         return sum + (itemPrice * itemQty);
       }, 0);
       updateData.total_amount = newTotal;
+      console.log(`📊 [ITEMS] Recalculated total_amount for order ${order.id}: ${newTotal}`);
     }
 
     // Update order items
@@ -831,18 +845,15 @@ router.get('/restaurant/:restaurantId', authenticateToken, async (req, res) => {
       whereCondition.status = { [Op.ne]: 'completed' };
     }
 
-    // Search filter
+    // Search filter - search across basic text fields
     if (search && search.trim()) {
       const searchTerm = `%${search.trim()}%`;
-      whereCondition[Op.and] = whereCondition[Op.and] || [];
-      whereCondition[Op.and].push({
-        [Op.or]: [
-          { order_number: { [Op.like]: searchTerm } },
-          { customer_name: { [Op.like]: searchTerm } },
-          { customer_phone: { [Op.like]: searchTerm } },
-          { table_number: { [Op.like]: searchTerm } }
-        ]
-      });
+      whereCondition[Op.or] = [
+        { order_number: { [Op.like]: searchTerm } },
+        { customer_name: { [Op.like]: searchTerm } },
+        { customer_phone: { [Op.like]: searchTerm } },
+        { table_number: { [Op.like]: searchTerm } }
+      ];
     }
 
     // Get total count
@@ -946,12 +957,14 @@ router.get('/restaurant/:restaurantId/counts', authenticateToken, async (req, re
       endUTC.setMilliseconds(endUTC.getMilliseconds() - 1);
     }
 
-    // Use raw SQL for efficient counting
+    // Use raw SQL for efficient counting and statistics
     const [results] = await sequelize.query(`
       SELECT
         status,
         COUNT(*) as count,
-        SUM(total_amount) as total_sales
+        SUM(total_amount) as total_sales,
+        AVG(total_amount) as avg_amount,
+        MAX(total_amount) as max_amount
       FROM orders
       WHERE restaurant_id = :restaurantId
         AND (is_deleted = false OR is_deleted IS NULL)
@@ -979,14 +992,26 @@ router.get('/restaurant/:restaurantId/counts', authenticateToken, async (req, re
 
     let totalSales = 0;
     let completedSales = 0;
+    let totalOrderCount = 0;
+    let maxAmount = 0;
 
+    // Calculate counts and statistics
     results.forEach(row => {
       const count = parseInt(row.count) || 0;
       const sales = parseFloat(row.total_sales) || 0;
+      const rowMax = parseFloat(row.max_amount) || 0;
 
       counts.all += count;
       counts[row.status] = count;
       totalSales += sales;
+
+      // Exclude cancelled from statistics (LiveOrders shows all non-cancelled)
+      if (row.status !== 'cancelled') {
+        totalOrderCount += count;
+        if (rowMax > maxAmount) {
+          maxAmount = rowMax;
+        }
+      }
 
       // Outstanding = status가 'outstanding'인 주문만
       if (row.status === 'outstanding') {
@@ -998,12 +1023,24 @@ router.get('/restaurant/:restaurantId/counts', authenticateToken, async (req, re
       }
     });
 
+    // Calculate average (excluding cancelled orders)
+    const salesExcludingCancelled = results
+      .filter(row => row.status !== 'cancelled')
+      .reduce((sum, row) => sum + (parseFloat(row.total_sales) || 0), 0);
+    const avgAmount = totalOrderCount > 0 ? salesExcludingCancelled / totalOrderCount : 0;
+
     res.json({
       success: true,
       data: {
         counts,
         totalSales,
-        completedSales
+        completedSales,
+        statistics: {
+          totalSales: salesExcludingCancelled,
+          avgAmount,
+          maxAmount,
+          orderCount: totalOrderCount
+        }
       }
     });
   } catch (error) {
@@ -1320,6 +1357,7 @@ router.post('/merge', authenticateToken, async (req, res) => {
       };
     });
 
+    console.log(`✅ [MERGE] Merged orders ${orderIds.join(', ')} into order ${result.mergedOrder.id}`);
 
     // Emit socket events
     const io = req.app.get('io');
@@ -1441,6 +1479,7 @@ router.post('/:id/add-items', authenticateToken, async (req, res) => {
 
     await order.reload();
 
+    console.log(`✅ [ADD-ITEMS] Added ${newItemsWithTimestamp.length} items to order ${order.id}`);
 
     // Emit socket event
     const io = req.app.get('io');
@@ -1501,6 +1540,7 @@ router.post('/:id/merge-items', authenticateToken, async (req, res) => {
     // Use mergeItemsIntoOrder for consistent order_group handling
     const mergeResult = await mergeItemsIntoOrder(order, items);
 
+    console.log(`✅ [MERGE-ITEMS] Added ${mergeResult.addedItems.length} items to order ${order.id} (group: ${mergeResult.orderGroup}, source: ${source || 'unknown'})`);
 
     // Emit socket events
     const io = req.app.get('io');
@@ -1600,6 +1640,7 @@ router.delete('/:id/items/:itemIndex', authenticateToken, async (req, res) => {
     const totalDiscount = pointDiscount + couponDiscount;
 
     if (totalDiscount > newSubtotal) {
+      console.log(`⚠️ [DELETE-ITEM] Rejected: discount (${totalDiscount}) exceeds new subtotal (${newSubtotal})`);
       return res.status(400).json({
         success: false,
         error: 'Cannot remove this item. The applied discount exceeds the new subtotal. Please add other items first, then remove this item.'
@@ -1616,6 +1657,7 @@ router.delete('/:id/items/:itemIndex', authenticateToken, async (req, res) => {
       });
 
       if (coupon && coupon.min_order && newSubtotal < parseFloat(coupon.min_order)) {
+        console.log(`⚠️ [DELETE-ITEM] Rejected: new subtotal (${newSubtotal}) below coupon min_order (${coupon.min_order})`);
         return res.status(400).json({
           success: false,
           error: `Cannot remove this item. The order total would fall below the coupon's minimum order requirement (${coupon.min_order}). Please add other items first.`
@@ -1625,6 +1667,7 @@ router.delete('/:id/items/:itemIndex', authenticateToken, async (req, res) => {
 
     // Remove the item
     const removedItem = orderItems.splice(itemIndex, 1)[0];
+    console.log(`🗑️ [DELETE-ITEM] Removing item: ${removedItem.name} from order ${orderId}`);
 
     // Update subtotal and items
     order.subtotal = newSubtotal;
@@ -1691,6 +1734,7 @@ router.delete('/:id/items/:itemIndex', authenticateToken, async (req, res) => {
       // Don't fail the operation if logging fails
     }
 
+    console.log(`✅ [DELETE-ITEM] Item removed successfully. New total: ${newTotal}`);
 
     // Emit socket event for real-time update
     const io = req.app.get('io');

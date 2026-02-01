@@ -337,6 +337,50 @@ update_record() {
 }
 
 # ==================================================
+# Show Deployment Summary
+# ==================================================
+show_summary() {
+    echo ""
+    echo -e "${BLUE}=========================================${NC}"
+    echo -e "${BLUE}  Deployment Summary${NC}"
+    echo -e "${BLUE}=========================================${NC}"
+    echo ""
+
+    # Show recent commits
+    echo -e "${YELLOW}Recent Changes:${NC}"
+    cd "$PROJECT_DIR"
+
+    LAST_DEPLOYED=""
+    if [ -f ".last-deployed-commit" ]; then
+        LAST_DEPLOYED=$(cat .last-deployed-commit)
+    fi
+
+    if [ -n "$LAST_DEPLOYED" ]; then
+        git log --oneline "$LAST_DEPLOYED"..HEAD 2>/dev/null | head -10 | while read line; do
+            echo "  - $line"
+        done
+    else
+        git log --oneline -5 | while read line; do
+            echo "  - $line"
+        done
+    fi
+
+    echo ""
+    echo -e "${YELLOW}Pre-Launch Testing Checklist:${NC}"
+    echo "  - Live Orders: Search test (order#, name, phone)"
+    echo "  - POS: Create order, status changes"
+    echo "  - Reports: CSV download, period filter"
+    echo "  - Printer: RawBT connection, receipt print"
+    echo ""
+    echo -e "${YELLOW}운영 전 필수 테스트:${NC}"
+    echo "  - 주문 검색: 주문번호, 고객명, 전화번호"
+    echo "  - POS 주문: 생성, 상태 변경"
+    echo "  - 리포트: CSV 다운로드, 기간 필터"
+    echo "  - 프린터: RawBT 연결, 영수증 출력"
+    echo ""
+}
+
+# ==================================================
 # Main
 # ==================================================
 main() {
@@ -374,6 +418,7 @@ main() {
     restart_server
     reload_nginx
     verify_deployment
+    show_summary
     update_record
 
     END_TIME=$(date +%s)
@@ -387,7 +432,7 @@ main() {
     echo "  Timestamp: $TIMESTAMP"
     echo "  Rollback:  ./rollback-production.sh $TIMESTAMP"
     echo ""
-    echo "  Verify:"
+    echo "  Production URLs:"
     echo "    https://purplehere.com"
     echo "    https://purplehere.com/restaurant/8/pos"
     echo ""

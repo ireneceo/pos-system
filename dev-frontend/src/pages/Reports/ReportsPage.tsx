@@ -6,14 +6,14 @@ import { TabContainer, Tab, StatsGrid, StatCard, StatValue, StatLabel, StatDescr
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
-import { getRestaurantTimezone, getNow, formatDateTime, getDateStringInTimezone } from '../../utils/timezone';
-import { downloadCSV, escapeCSV, toCSVRow, getPeriodLabel, generateFilename } from '../../utils/csvDownload';
+import { getRestaurantTimezone, getDateStringInTimezone } from '../../utils/timezone';
+import { downloadCSV, escapeCSV, toCSVRow, generateFilename } from '../../utils/csvDownload';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import PageHeader from '../../components/Common/PageHeader';
-import DateRangeFilter, { PeriodType, DateRange, calculateDateRange, getPeriodLabel as getFilterPeriodLabel } from '../../components/Common/DateRangeFilter';
+import DateRangeFilter, { PeriodType } from '../../components/Common/DateRangeFilter';
 
 // 스타일 컴포넌트
 const ReportsContainer = styled.div`
@@ -970,31 +970,11 @@ const ReportsPage: React.FC = () => {
     return [];
   }, []);
 
-  // What and Why: Sales Report 탭 CSV 생성
+  // What and Why: Sales Report 탭 CSV 생성 (실무용 간단 형식)
   const generateSalesCSV = useCallback((): string => {
-    const header = generateCSVHeader();
-    const totalOrders = filteredOrders.length;
-    const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-    const completedOrders = filteredOrders.filter(o => o.status === 'completed').length;
-
+    // DB 스타일 - 컬럼 헤더 + 데이터 행
     const lines = [
-      ...header,
-      '═══════════════════════════════════════════════════════════════',
-      'SALES SUMMARY',
-      '═══════════════════════════════════════════════════════════════',
-      '',
-      'Metric,Value',
-      `Total Revenue,${formatNumber(totalRevenue)}`,
-      `Total Orders,${totalOrders}`,
-      `Completed Orders,${completedOrders}`,
-      `Completion Rate,${totalOrders > 0 ? formatNumber((completedOrders / totalOrders) * 100, 1) : 0}%`,
-      `Average Order Value,${formatNumber(avgOrderValue)}`,
-      '',
-      '═══════════════════════════════════════════════════════════════',
-      'REVENUE TREND',
-      '═══════════════════════════════════════════════════════════════',
-      '',
-      'Period,Revenue',
+      'Date,Revenue'
     ];
 
     // 기간별 매출 데이터
@@ -1002,270 +982,95 @@ const ReportsPage: React.FC = () => {
       lines.push(`${escapeCSV(item.date)},${formatNumber(item.sales)}`);
     });
 
-    // 카테고리별 매출
-    lines.push('');
-    lines.push('═══════════════════════════════════════════════════════════════');
-    lines.push('SALES BY CATEGORY');
-    lines.push('═══════════════════════════════════════════════════════════════');
-    lines.push('');
-    lines.push('Category,Revenue,Percentage');
-
-    categoryData.forEach(item => {
-      lines.push(`${escapeCSV(item.name)},${formatNumber(item.sales || 0)},${item.value}%`);
-    });
-
-    // 시간대별 주문
-    lines.push('');
-    lines.push('═══════════════════════════════════════════════════════════════');
-    lines.push('HOURLY ORDER DISTRIBUTION');
-    lines.push('═══════════════════════════════════════════════════════════════');
-    lines.push('');
-    lines.push('Hour,Orders');
-
-    hourlyData.forEach(item => {
-      lines.push(`${escapeCSV(item.hour)},${item.orders}`);
-    });
-
     return lines.join('\n');
-  }, [generateCSVHeader, filteredOrders, totalRevenue, salesData, categoryData, hourlyData]);
+  }, [salesData]);
 
-  // What and Why: Sales Details 탭 CSV 생성 (연/월/일 드릴다운)
+  // What and Why: Sales Details 탭 CSV 생성 (일별 상세)
   const generateDetailsCSV = useCallback((): string => {
-    const header = generateCSVHeader();
-    const totalOrders = filteredOrders.length;
-    const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-
+    // DB 스타일 - 날짜별 상세 데이터
     const lines = [
-      ...header,
-      '═══════════════════════════════════════════════════════════════',
-      'DETAILED SALES BREAKDOWN',
-      '═══════════════════════════════════════════════════════════════',
-      '',
-      'Summary',
-      `Total Revenue,${formatNumber(totalRevenue)}`,
-      `Total Orders,${totalOrders}`,
-      `Average Order Value,${formatNumber(avgOrderValue)}`,
-      '',
-      '═══════════════════════════════════════════════════════════════',
-      'BREAKDOWN BY PERIOD',
-      '═══════════════════════════════════════════════════════════════',
-      '',
-      'Level,Period,Revenue,Orders,Avg Order Value',
+      'Date,Revenue,Orders,Avg_Order_Value'
     ];
 
-    // 연 > 월 > 일 순서로 드릴다운 데이터 출력
+    // 일별 데이터 출력 (최신순)
     Object.keys(drilldownData).sort((a, b) => b.localeCompare(a)).forEach(year => {
       const yearInfo = drilldownData[year];
-      const yearAvg = yearInfo.orders > 0 ? yearInfo.revenue / yearInfo.orders : 0;
-      lines.push(`Year,${year},${formatNumber(yearInfo.revenue)},${yearInfo.orders},${formatNumber(yearAvg)}`);
-
       Object.keys(yearInfo.months).sort((a, b) => b.localeCompare(a)).forEach(month => {
         const monthInfo = yearInfo.months[month];
-        const monthAvg = monthInfo.orders > 0 ? monthInfo.revenue / monthInfo.orders : 0;
-        const monthName = new Date(month + '-01').toLocaleString('en-US', { year: 'numeric', month: 'long' });
-        lines.push(`  Month,${monthName},${formatNumber(monthInfo.revenue)},${monthInfo.orders},${formatNumber(monthAvg)}`);
-
         Object.keys(monthInfo.days).sort((a, b) => b.localeCompare(a)).forEach(day => {
           const dayInfo = monthInfo.days[day];
           const dayAvg = dayInfo.orders > 0 ? dayInfo.revenue / dayInfo.orders : 0;
-          const dayName = new Date(day).toLocaleString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
-          lines.push(`    Day,${dayName},${formatNumber(dayInfo.revenue)},${dayInfo.orders},${formatNumber(dayAvg)}`);
+          lines.push(`${day},${formatNumber(dayInfo.revenue)},${dayInfo.orders},${formatNumber(dayAvg)}`);
         });
       });
     });
 
     return lines.join('\n');
-  }, [generateCSVHeader, filteredOrders, totalRevenue, drilldownData]);
+  }, [drilldownData]);
 
-  // What and Why: Menu Analysis 탭 CSV 생성
+  // What and Why: Menu Analysis 탭 CSV 생성 (실무용 간단 형식)
   const generateMenuCSV = useCallback((): string => {
-    const header = generateCSVHeader();
-    const totalMenuRevenue = allMenuData.reduce((sum, item) => sum + item.revenue, 0);
-    const totalMenuOrders = allMenuData.reduce((sum, item) => sum + item.orders, 0);
-
+    // DB 스타일 - 메뉴 아이템별 판매 데이터
     const lines = [
-      ...header,
-      '═══════════════════════════════════════════════════════════════',
-      'MENU PERFORMANCE ANALYSIS',
-      '═══════════════════════════════════════════════════════════════',
-      '',
-      'Summary',
-      `Total Menu Items Sold,${allMenuData.length}`,
-      `Total Revenue,${formatNumber(totalMenuRevenue)}`,
-      `Total Orders,${totalMenuOrders}`,
-      `Best Seller,${allMenuData[0]?.name || 'N/A'}`,
-      '',
-      '═══════════════════════════════════════════════════════════════',
-      'COMPLETE MENU RANKING',
-      '═══════════════════════════════════════════════════════════════',
-      '',
-      'Rank,Item Name,Category,Unit Price,Quantity Sold,Total Revenue,Performance %',
+      'Rank,Item_Name,Category,Unit_Price,Qty_Sold,Revenue'
     ];
 
-    const maxOrders = allMenuData[0]?.orders || 1;
     allMenuData.forEach((item, index) => {
-      const performance = Math.round((item.orders / maxOrders) * 100);
       lines.push(toCSVRow([
         index + 1,
         item.name,
         item.category,
         formatNumber(item.price),
         item.orders,
-        formatNumber(item.revenue),
-        `${performance}%`
+        formatNumber(item.revenue)
       ]));
     });
 
-    // 카테고리별 집계
-    const categoryStats: Record<string, { orders: number; revenue: number }> = {};
-    allMenuData.forEach(item => {
-      if (!categoryStats[item.category]) {
-        categoryStats[item.category] = { orders: 0, revenue: 0 };
-      }
-      categoryStats[item.category].orders += item.orders;
-      categoryStats[item.category].revenue += item.revenue;
-    });
-
-    lines.push('');
-    lines.push('═══════════════════════════════════════════════════════════════');
-    lines.push('CATEGORY SUMMARY');
-    lines.push('═══════════════════════════════════════════════════════════════');
-    lines.push('');
-    lines.push('Category,Items,Total Orders,Total Revenue,Avg per Item');
-
-    Object.entries(categoryStats)
-      .sort((a, b) => b[1].revenue - a[1].revenue)
-      .forEach(([category, stats]) => {
-        const itemCount = allMenuData.filter(m => m.category === category).length;
-        const avgPerItem = itemCount > 0 ? stats.revenue / itemCount : 0;
-        lines.push(toCSVRow([category, itemCount, stats.orders, formatNumber(stats.revenue), formatNumber(avgPerItem)]));
-      });
-
     return lines.join('\n');
-  }, [generateCSVHeader, allMenuData]);
+  }, [allMenuData]);
 
-  // What and Why: Customer Insights 탭 CSV 생성
+  // What and Why: Customer Insights 탭 CSV 생성 (실무용 간단 형식)
   const generateCustomersCSV = useCallback((): string => {
-    const header = generateCSVHeader();
-    const repeatCustomers = customers.filter((c: any) => c.total_orders > 1).length;
-    const totalCustomerRevenue = customers.reduce((sum: number, c: any) => sum + parseFloat(c.total_spent || 0), 0);
-    const avgSpentPerCustomer = customers.length > 0 ? totalCustomerRevenue / customers.length : 0;
-    const memberCount = customers.filter((c: any) => c.customer?.type === 'member').length;
-    const guestCount = customers.filter((c: any) => c.customer?.type === 'guest').length;
-
+    // DB 스타일 - 고객별 데이터
     const lines = [
-      ...header,
-      '═══════════════════════════════════════════════════════════════',
-      'CUSTOMER INSIGHTS',
-      '═══════════════════════════════════════════════════════════════',
-      '',
-      'Summary',
-      `Total Customers,${customers.length}`,
-      `Members,${memberCount}`,
-      `Guests,${guestCount}`,
-      `Repeat Customers,${repeatCustomers}`,
-      `Repeat Rate,${customers.length > 0 ? formatNumber((repeatCustomers / customers.length) * 100, 1) : 0}%`,
-      `Total Revenue from Customers,${formatNumber(totalCustomerRevenue)}`,
-      `Average Spent per Customer,${formatNumber(avgSpentPerCustomer)}`,
-      '',
-      '═══════════════════════════════════════════════════════════════',
-      'TOP CUSTOMERS (by Total Spent)',
-      '═══════════════════════════════════════════════════════════════',
-      '',
-      'Rank,Customer Name,Phone,Type,Total Orders,Total Spent,Points,Tier',
+      'Rank,Name,Phone,Type,Total_Orders,Total_Spent,Points,Tier'
     ];
 
-    customers
-      .sort((a: any, b: any) => parseFloat(b.total_spent || 0) - parseFloat(a.total_spent || 0))
+    [...filteredCustomers]
+      .sort((a: any, b: any) => (b.period_spent || 0) - (a.period_spent || 0))
       .forEach((customerData: any, index: number) => {
         lines.push(toCSVRow([
           index + 1,
-          customerData.customer?.name || 'N/A',
-          customerData.customer?.phone || 'N/A',
+          customerData.customer?.name || 'Guest',
+          customerData.customer?.phone || '-',
           customerData.customer?.type === 'member' ? 'Member' : 'Guest',
-          customerData.total_orders || 0,
-          formatNumber(parseFloat(customerData.total_spent || 0)),
+          customerData.period_orders || 0,
+          formatNumber(customerData.period_spent || 0),
           customerData.points || 0,
           customerData.loyalty_tier || 'Bronze'
         ]));
       });
 
-    // 티어별 통계
-    const tierStats: Record<string, { count: number; totalSpent: number; totalOrders: number }> = {};
-    customers.forEach((c: any) => {
-      const tier = c.loyalty_tier || 'Bronze';
-      if (!tierStats[tier]) {
-        tierStats[tier] = { count: 0, totalSpent: 0, totalOrders: 0 };
-      }
-      tierStats[tier].count++;
-      tierStats[tier].totalSpent += parseFloat(c.total_spent || 0);
-      tierStats[tier].totalOrders += c.total_orders || 0;
-    });
-
-    lines.push('');
-    lines.push('═══════════════════════════════════════════════════════════════');
-    lines.push('TIER BREAKDOWN');
-    lines.push('═══════════════════════════════════════════════════════════════');
-    lines.push('');
-    lines.push('Tier,Customer Count,Total Spent,Total Orders,Avg Spent');
-
-    ['VIP', 'Gold', 'Silver', 'Bronze'].forEach(tier => {
-      const stats = tierStats[tier];
-      if (stats) {
-        const avgSpent = stats.count > 0 ? stats.totalSpent / stats.count : 0;
-        lines.push(toCSVRow([tier, stats.count, formatNumber(stats.totalSpent), stats.totalOrders, formatNumber(avgSpent)]));
-      }
-    });
-
     return lines.join('\n');
-  }, [generateCSVHeader, customers]);
+  }, [filteredCustomers]);
 
-  // What and Why: Operations 탭 CSV 생성
+  // What and Why: Operations 탭 CSV 생성 (실무용 간단 형식)
   const generateOperationsCSV = useCallback((): string => {
-    const header = generateCSVHeader();
-    const totalOrders = filteredOrders.length;
-
+    // DB 스타일 - 시간대별 주문 데이터
     const lines = [
-      ...header,
-      '═══════════════════════════════════════════════════════════════',
-      'OPERATIONS PERFORMANCE',
-      '═══════════════════════════════════════════════════════════════',
-      '',
-      'Summary',
-      `Total Orders in Period,${totalOrders}`,
-      `Peak Time Slots Analyzed,${peakTimesData.length}`,
-      '',
-      '═══════════════════════════════════════════════════════════════',
-      'PEAK HOURS ANALYSIS (Top 5)',
-      '═══════════════════════════════════════════════════════════════',
-      '',
-      'Rank,Time Slot,Orders,Revenue,Efficiency %',
+      'Time_Slot,Orders,Revenue'
     ];
 
-    peakTimesData.forEach((item, index) => {
+    peakTimesData.forEach(item => {
       lines.push(toCSVRow([
-        index + 1,
         item.time,
         item.orders,
-        formatNumber(item.revenue),
-        `${item.efficiency}%`
+        formatNumber(item.revenue)
       ]));
     });
 
-    // 전체 시간대별 분석
-    lines.push('');
-    lines.push('═══════════════════════════════════════════════════════════════');
-    lines.push('HOURLY BREAKDOWN (All Hours)');
-    lines.push('═══════════════════════════════════════════════════════════════');
-    lines.push('');
-    lines.push('Hour,Orders');
-
-    hourlyData.forEach(item => {
-      lines.push(`${escapeCSV(item.hour)},${item.orders}`);
-    });
-
     return lines.join('\n');
-  }, [generateCSVHeader, filteredOrders, peakTimesData, hourlyData]);
+  }, [peakTimesData]);
 
   // What and Why: 탭별 CSV 생성 및 다운로드 통합 함수
   const handleDownloadReport = useCallback(() => {

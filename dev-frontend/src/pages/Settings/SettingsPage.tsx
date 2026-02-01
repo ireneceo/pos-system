@@ -3894,12 +3894,12 @@ const SettingsPage: React.FC = () => {
                             ...prev,
                             billPrinter: { ...prev.billPrinter, name: e.target.value }
                           }))}
-                          placeholder="192.168.1.100:9100"
+                          placeholder="e.g., PT-210, InnerPrinter"
                         />
                         <p style={{ fontSize: '12px', color: '#6B7C93', marginTop: '4px', lineHeight: '1.5' }}>
-                          WiFi/LAN: Enter IP address with port (e.g., 192.168.1.100:9100)<br />
-                          Bluetooth: Enter device name from RawBT app<br />
-                          Leave empty to use default printer
+                          Enter the printer name as shown in RawBT app<br />
+                          (WiFi/Bluetooth printers must be configured in RawBT first)<br />
+                          Leave empty to use RawBT's default printer
                         </p>
                       </FormGroup>
 
@@ -3952,12 +3952,12 @@ const SettingsPage: React.FC = () => {
                             ...prev,
                             kitchenPrinter: { ...prev.kitchenPrinter, name: e.target.value }
                           }))}
-                          placeholder="192.168.1.101:9100"
+                          placeholder="e.g., Kitchen-Printer, PT-210"
                         />
                         <p style={{ fontSize: '12px', color: '#6B7C93', marginTop: '4px', lineHeight: '1.5' }}>
-                          WiFi/LAN: Enter IP address with port (e.g., 192.168.1.101:9100)<br />
-                          Bluetooth: Enter device name from RawBT app<br />
-                          Leave empty to use default printer
+                          Enter the printer name as shown in RawBT app<br />
+                          (WiFi/Bluetooth printers must be configured in RawBT first)<br />
+                          Leave empty to use RawBT's default printer
                         </p>
                       </FormGroup>
 

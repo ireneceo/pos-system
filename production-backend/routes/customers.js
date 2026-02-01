@@ -954,6 +954,7 @@ router.post('/forgot-password', async (req, res) => {
   try {
     const { email, phone, slug } = req.body;
 
+    console.log('🔑 [FORGOT-PASSWORD] Request:', { email: email || '(none)', phone: phone || '(none)', slug: slug || '(none)' });
 
     if (!email && !phone) {
       return res.status(400).json({
@@ -1051,6 +1052,7 @@ router.post('/forgot-password', async (req, res) => {
         }
       }
 
+      console.log(`📧 Sending password reset email via restaurant ID: ${restaurantId} (slug: ${slug || 'none'})`);
 
       await emailService.sendEmail('restaurant', restaurantId, {
         to: customer.email,
@@ -1070,6 +1072,7 @@ router.post('/forgot-password', async (req, res) => {
           </div>
         `
       });
+      console.log(`✅ Password reset email sent to ${customer.email}`);
     } catch (emailError) {
       console.error('Failed to send password reset email:', emailError);
       // 이메일 발송 실패해도 성공 응답 (보안)
@@ -1145,6 +1148,7 @@ router.post('/reset-password', async (req, res) => {
     // 토큰 삭제 (사용 완료)
     resetTokens.delete(token);
 
+    console.log(`✅ Password reset successful for customer ${customer.id}`);
 
     res.json({
       success: true,

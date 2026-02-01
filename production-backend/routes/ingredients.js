@@ -290,6 +290,7 @@ router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateT
     const { ingredientId } = req.params;
     const { code, name, image_url, ingredient_category_id, unit, base_quantity, unit_cost, supplier_name, supplier_id, min_stock, track_stock } = req.body;
 
+    console.log('[DEBUG] PUT restaurant ingredient - ingredientId:', ingredientId, 'body:', req.body);
 
     const ingredient = await Ingredient.findByPk(ingredientId);
     if (!ingredient) {
@@ -310,7 +311,9 @@ router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateT
     if (min_stock !== undefined) updateData.min_stock = min_stock;
     if (track_stock !== undefined) updateData.track_stock = track_stock;
 
+    console.log('[DEBUG] updateData:', updateData);
     await ingredient.update(updateData);
+    console.log('[DEBUG] After update - track_stock:', ingredient.track_stock);
 
     // Reload with associations for frontend display
     const updatedIngredient = await Ingredient.findByPk(ingredientId, {

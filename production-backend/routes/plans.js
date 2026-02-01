@@ -35,8 +35,11 @@ router.get('/:id', async (req, res) => {
 // Create new plan (Admin only)
 router.post('/', async (req, res) => {
   try {
+    console.log('🔄 POST /api/plans - Request received');
+    console.log('📝 Request body:', req.body);
 
     const plan = await PlanTemplate.create(req.body);
+    console.log('✅ Plan created successfully:', plan);
     res.status(201).json(plan);
   } catch (error) {
     console.error('❌ Error creating plan:', error);
@@ -124,6 +127,7 @@ router.get('/stats/subscriptions', async (req, res) => {
       count: parseInt(stat.count) || 0
     }));
 
+    console.log('📊 Subscription stats:', transformedStats);
     res.json(transformedStats);
   } catch (error) {
     console.error('Error fetching subscription stats:', error);
