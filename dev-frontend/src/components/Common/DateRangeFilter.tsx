@@ -165,9 +165,8 @@ export const calculateDateRange = (
       startDate = getDateInTz(-29); // 30 days including today
       break;
     case 'year':
-      // From Jan 1 of current year
-      const year = todayInTz.split('-')[0];
-      startDate = `${year}-01-01`;
+      // Last 365 days including today (today + 364 previous days)
+      startDate = getDateInTz(-364);
       break;
     case 'all':
       startDate = '2020-01-01'; // Far past date

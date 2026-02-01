@@ -931,8 +931,9 @@ const ReportsPage: React.FC = () => {
         start.setDate(start.getDate() - 29);
         break;
       case 'year':
-        // From Jan 1 of current year (consistent with DateRangeFilter)
-        start = new Date(now.getFullYear(), 0, 1); // January 1st of current year
+        // Last 365 days including today (today + 364 previous days)
+        start = new Date(now);
+        start.setDate(start.getDate() - 364);
         break;
       case 'all':
         // Get the earliest order date, or default to 5 years ago

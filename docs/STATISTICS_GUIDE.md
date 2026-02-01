@@ -133,9 +133,13 @@ const calculateDateRange = (period, timezone) => {
       };
 
     case 'year':
-      // 올해 1월 1일부터 오늘까지
-      const yearStart = `${todayDate.getFullYear()}-01-01`;
-      return { start: yearStart, end: today };
+      // 오늘 포함 365일 (364일 전 ~ 오늘)
+      const yearAgo = new Date(todayDate);
+      yearAgo.setDate(yearAgo.getDate() - 364);
+      return {
+        start: yearAgo.toISOString().split('T')[0],
+        end: today
+      };
 
     default:
       return { start: today, end: today };
@@ -150,7 +154,7 @@ const calculateDateRange = (period, timezone) => {
 | Today | 오늘 00:00 ~ 23:59 | 레스토랑 타임존 기준 |
 | Week | 6일 전 ~ 오늘 | 오늘 포함 7일 |
 | Month | 29일 전 ~ 오늘 | 오늘 포함 30일 |
-| Year | 1월 1일 ~ 오늘 | 올해 (This Year) |
+| Year | 364일 전 ~ 오늘 | 오늘 포함 365일 |
 | All Time | 전체 기간 | 제한 없음 |
 
 ---

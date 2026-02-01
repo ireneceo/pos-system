@@ -197,13 +197,11 @@ const Content = styled.main`
 // Search input for Live Orders (kept locally as it's specific to this page)
 const SearchInputContainer = styled.div`
   position: relative;
-  width: 250px;
-  margin-left: 16px;
+  width: 200px;
+  flex-shrink: 0;
 
   @media (max-width: 768px) {
     width: 100%;
-    margin-left: 0;
-    margin-top: 8px;
   }
 `;
 
@@ -2743,8 +2741,8 @@ const LiveOrdersPage: React.FC = () => {
         </PageHeader>
 
         <Content>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 auto', minWidth: 0 }}>
               <DateRangeFilter
                 activePeriod={activePeriod}
                 dateRange={dateRange}
@@ -2754,7 +2752,7 @@ const LiveOrdersPage: React.FC = () => {
                 timezone={operationSettings?.timeZone}
               />
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
               <SearchInputContainer>
                 <SearchIcon>🔍</SearchIcon>
                 <SearchInput
