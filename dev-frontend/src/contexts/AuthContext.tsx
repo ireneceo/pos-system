@@ -411,7 +411,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = async () => {
-
     try {
       // 서버에 로그아웃 요청
       await fetch('/api/auth/logout', {
@@ -419,12 +418,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         credentials: 'include'
       });
     } catch (error) {
-
+      // Ignore logout errors
     }
+
+    // Check if user was using demo account
+    const isDemoAccount = user?.email?.includes('demo-') || user?.email?.includes('@purplehere.com');
+
     setUser(null);
     // JWT 토큰 제거
     localStorage.removeItem('auth_token');
-    navigate('/pos');
+    localStorage.removeItem('user');
+
+    // Redirect to demo page for demo accounts, login page for others
+    if (isDemoAccount) {
+      navigate('/demo');
+    } else {
+      navigate('/login');
+    }
   };
 
   const updateUser = (userData: Partial<User>) => {

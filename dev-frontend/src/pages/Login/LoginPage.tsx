@@ -3,8 +3,26 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 
-// Real database account information
-const REAL_ACCOUNTS = [
+// Demo accounts (always visible)
+const DEMO_ACCOUNTS = [
+  {
+    role: 'Brand General',
+    email: 'demo-brand@purplehere.com',
+    password: 'Demo@2024',
+    description: 'Manage multiple brands and restaurants from a single dashboard',
+    color: '#059669'
+  },
+  {
+    role: 'Restaurant Admin',
+    email: 'demo-restaurant@purplehere.com',
+    password: 'Demo@2024',
+    description: 'Full restaurant management experience with all features',
+    color: '#0891B2'
+  }
+];
+
+// Test accounts (hidden by default)
+const TEST_ACCOUNTS = [
   {
     role: 'System Admin',
     email: 'irene@irenewp.com',
@@ -23,7 +41,7 @@ const REAL_ACCOUNTS = [
     role: 'Brand General',
     email: 'brand_general@orderhere.center',
     password: 'test123',
-    description: 'Brand General Manager (Overall Brand Management)',
+    description: 'Brand General Manager (Multi-Brand Management)',
     color: '#059669'
   },
   {
@@ -44,7 +62,7 @@ const REAL_ACCOUNTS = [
     role: 'Restaurant Admin',
     email: 'admin@kdine.com',
     password: 'restaurant123',
-    description: 'Test Restaurant Updated - Restaurant Admin (INACTIVE)',
+    description: 'K-DINE Restaurant Admin (300+ orders for testing)',
     color: '#0891B2'
   },
   {
@@ -264,10 +282,95 @@ const QuickLoginHint = styled.div`
   font-size: 13px;
   color: #1E40AF;
   margin-bottom: 20px;
-  
+
   strong {
     font-weight: 600;
   }
+`;
+
+const DemoAccountsSection = styled.div`
+  margin-bottom: 30px;
+`;
+
+const DemoTitle = styled.h3`
+  font-size: 18px;
+  font-weight: 700;
+  color: #059669;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  &::before {
+    content: '🎯';
+    font-size: 20px;
+  }
+`;
+
+const DemoCard = styled.div<{ color: string }>`
+  background: white;
+  border: 2px solid ${props => props.color};
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: ${props => props.color};
+  }
+
+  &:hover {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+  }
+`;
+
+const TestAccountsToggle = styled.button`
+  background: transparent;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  padding: 10px 16px;
+  width: 100%;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7C93;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin: 20px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  &:hover {
+    border-color: #9CA3AF;
+    background: #F9FAFB;
+  }
+
+  span {
+    font-size: 10px;
+    background: #F3F4F6;
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: #6B7280;
+  }
+`;
+
+const TestAccountsSection = styled.div<{ show: boolean }>`
+  max-height: ${props => props.show ? '2000px' : '0'};
+  overflow: hidden;
+  transition: max-height 0.3s ease-in-out;
+  opacity: ${props => props.show ? '1' : '0'};
+  transition: opacity 0.3s ease-in-out, max-height 0.3s ease-in-out;
 `;
 
 const LoginPage: React.FC = () => {
@@ -279,6 +382,7 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [brandLogo, setBrandLogo] = useState<string>('');
+  const [showTestAccounts, setShowTestAccounts] = useState(false);
 
   // Fetch site settings for brand logo
   useEffect(() => {
@@ -353,7 +457,7 @@ const LoginPage: React.FC = () => {
     }
   }, [authLoading, isAuthenticated, user, navigate, location]);
 
-  const handleQuickLogin = (account: typeof REAL_ACCOUNTS[0]) => {
+  const handleQuickLogin = (account: typeof DEMO_ACCOUNTS[0] | typeof TEST_ACCOUNTS[0]) => {
     setEmail(account.email);
     setPassword(account.password);
   };
@@ -436,34 +540,66 @@ const LoginPage: React.FC = () => {
             <strong>Quick Login:</strong> Click any account card below to auto-fill credentials
           </QuickLoginHint>
 
-          {REAL_ACCOUNTS.map((account) => (
-            <TestAccountCard
-              key={account.email}
-              color={account.color}
-              onClick={() => handleQuickLogin(account)}
-            >
-              <AccountRole color={account.color}>
-                {account.role}
-              </AccountRole>
-              <AccountInfo>
-                <AccountCredential>
-                  <strong>Email:</strong> {account.email}
-                </AccountCredential>
-                <AccountCredential>
-                  <strong>Pass:</strong> {account.password}
-                </AccountCredential>
-              </AccountInfo>
-              <AccountDescription>
-                {account.description}
-              </AccountDescription>
-            </TestAccountCard>
-          ))}
-          
+          <DemoAccountsSection>
+            <DemoTitle>Demo Accounts</DemoTitle>
+            {DEMO_ACCOUNTS.map((account) => (
+              <DemoCard
+                key={account.email}
+                color={account.color}
+                onClick={() => handleQuickLogin(account)}
+              >
+                <AccountRole color={account.color}>
+                  {account.role}
+                </AccountRole>
+                <AccountInfo>
+                  <AccountCredential>
+                    <strong>Email:</strong> {account.email}
+                  </AccountCredential>
+                  <AccountCredential>
+                    <strong>Pass:</strong> {account.password}
+                  </AccountCredential>
+                </AccountInfo>
+                <AccountDescription>
+                  {account.description}
+                </AccountDescription>
+              </DemoCard>
+            ))}
+          </DemoAccountsSection>
+
+          <TestAccountsToggle onClick={() => setShowTestAccounts(!showTestAccounts)}>
+            {showTestAccounts ? '▲' : '▼'} <span>TEST</span> Test Accounts
+          </TestAccountsToggle>
+
+          <TestAccountsSection show={showTestAccounts}>
+            {TEST_ACCOUNTS.map((account) => (
+              <TestAccountCard
+                key={account.email}
+                color={account.color}
+                onClick={() => handleQuickLogin(account)}
+              >
+                <AccountRole color={account.color}>
+                  {account.role}
+                </AccountRole>
+                <AccountInfo>
+                  <AccountCredential>
+                    <strong>Email:</strong> {account.email}
+                  </AccountCredential>
+                  <AccountCredential>
+                    <strong>Pass:</strong> {account.password}
+                  </AccountCredential>
+                </AccountInfo>
+                <AccountDescription>
+                  {account.description}
+                </AccountDescription>
+              </TestAccountCard>
+            ))}
+          </TestAccountsSection>
+
           <Divider />
-          
+
           <div style={{ fontSize: '12px', color: '#9CA3AF' }}>
             <p><strong>Note:</strong> Using real database authentication.</p>
-            <p>Enter the correct password for each account.</p>
+            <p>Demo accounts are reset daily at midnight (GMT+8).</p>
           </div>
         </RightSection>
       </LoginBox>

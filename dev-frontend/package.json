@@ -41,9 +41,9 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "CACHE_DIR=node_modules/.cache; if [ -d \"$CACHE_DIR\" ] && [ \"$(stat -c '%U' \"$CACHE_DIR\" 2>/dev/null)\" = 'root' ]; then SUDO_PW=$(grep SUDO_PASSWORD /var/www/dev-backend/.env | cut -d= -f2); echo $SUDO_PW | sudo -S chown -R $(whoami):$(whoami) \"$CACHE_DIR\"; fi; rm -rf build 2>/dev/null || true; NODE_OPTIONS='--max-old-space-size=768' react-scripts build",
+    "build": "CACHE_DIR=node_modules/.cache; if [ -d \"$CACHE_DIR\" ] && [ \"$(stat -c '%U' \"$CACHE_DIR\" 2>/dev/null)\" = 'root' ]; then SUDO_PW=$(grep SUDO_PASSWORD /var/www/dev-backend/.env | cut -d= -f2); echo $SUDO_PW | sudo -S chown -R $(whoami):$(whoami) \"$CACHE_DIR\"; fi; rm -rf build 2>/dev/null || true; NODE_OPTIONS='--max-old-space-size=400' react-scripts --max_old_space_size=400 build",
     "build:dev": "./deploy-dev.sh",
-    "build:prod": "NODE_OPTIONS='--max-old-space-size=768' react-scripts build && ./deploy.sh",
+    "build:prod": "NODE_OPTIONS='--max-old-space-size=400' react-scripts --max_old_space_size=400 build && ./deploy.sh",
     "deploy:dev": "./deploy-dev.sh",
     "deploy": "./deploy.sh",
     "test": "react-scripts test",

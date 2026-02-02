@@ -1,136 +1,138 @@
 #!/bin/bash
-# 개발서버 → 운영서버 단방향 배포 스크립트
-# 절대 반대 방향으로 실행 불가
+#
+# Remote Production Deployment Script
+# 개발서버(87.106.11.184)에서 운영서버(87.106.78.146)로 배포
+#
+# 사용법:
+#   ./deploy-to-production.sh           # 대화형 모드
+#   ./deploy-to-production.sh --auto    # 자동 모드
+#
 
-set -e  # 에러 발생 시 즉시 중단
+set -e
 
-SOURCE_FRONTEND="/var/www/dev-frontend/build"
-SOURCE_BACKEND="/var/www/dev-backend"
-TARGET_FRONTEND="/var/www/production-frontend/build"
-TARGET_BACKEND="/var/www/production-backend"
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
 
-echo "=========================================="
-echo "🚀 운영 서버 배포 스크립트"
-echo "=========================================="
-echo ""
-echo "⚠️  경고: 이 스크립트는 개발 → 운영 단방향만 가능합니다"
-echo ""
-echo "배포 방향:"
-echo "  FROM: /var/www/dev-frontend → TO: /var/www/production-frontend"
-echo "  FROM: /var/www/dev-backend  → TO: /var/www/production-backend"
-echo ""
+# Configuration
+PROD_SERVER="irene@87.106.78.146"
+LOCAL_DEV_BACKEND="/var/www/dev-backend"
+LOCAL_DEV_FRONTEND="/var/www/dev-frontend"
+REMOTE_PROD_BACKEND="/var/www/production-backend"
+REMOTE_PROD_FRONTEND="/var/www/production-frontend"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
-# 안전 확인: 소스 디렉토리가 개발 서버인지 확인
-if [[ ! "$SOURCE_FRONTEND" == *"dev-frontend"* ]]; then
-    echo "❌ 에러: 소스가 개발 서버가 아닙니다!"
-    echo "   이 스크립트는 dev → production 방향만 허용됩니다."
-    exit 1
-fi
+# Flags
+AUTO_MODE=false
 
-if [[ ! "$SOURCE_BACKEND" == *"dev-backend"* ]]; then
-    echo "❌ 에러: 소스가 개발 서버가 아닙니다!"
-    echo "   이 스크립트는 dev → production 방향만 허용됩니다."
-    exit 1
-fi
+for arg in "$@"; do
+    case $arg in
+        --auto) AUTO_MODE=true ;;
+    esac
+done
 
-# 안전 확인: 타겟 디렉토리가 운영 서버인지 확인
-if [[ ! "$TARGET_FRONTEND" == *"production-frontend"* ]]; then
-    echo "❌ 에러: 타겟이 운영 서버가 아닙니다!"
-    exit 1
-fi
-
-if [[ ! "$TARGET_BACKEND" == *"production-backend"* ]]; then
-    echo "❌ 에러: 타겟이 운영 서버가 아닙니다!"
-    exit 1
-fi
-
-# 개발 빌드 파일 존재 확인
-if [ ! -d "$SOURCE_FRONTEND" ]; then
-    echo "❌ 에러: 개발 프론트엔드 빌드가 없습니다."
-    echo "   먼저 'cd /var/www/dev-frontend && npm run build'를 실행하세요."
-    exit 1
-fi
-
-if [ ! -d "$SOURCE_BACKEND" ]; then
-    echo "❌ 에러: 개발 백엔드 디렉토리가 없습니다."
-    exit 1
-fi
-
-echo "✅ 소스 확인 완료"
-echo ""
-
-# 사용자 확인
-read -p "운영 서버에 배포하시겠습니까? (yes/no): " confirm
-if [ "$confirm" != "yes" ]; then
-    echo "❌ 배포 취소됨"
-    exit 0
-fi
+log() { echo -e "${BLUE}[$(date +%H:%M:%S)]${NC} $1"; }
+success() { echo -e "${GREEN}[OK]${NC} $1"; }
+error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
+warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 
 echo ""
-echo "📦 배포 시작..."
+echo "============================================"
+echo "  Production Deployment (Remote)"
+echo "  From: 개발서버 (87.106.11.184)"
+echo "  To:   운영서버 (87.106.78.146)"
+echo "============================================"
 echo ""
 
-# 1. 프론트엔드 백업 및 배포
-BACKUP_DIR="/var/www/production-frontend/build.backup.$(date +%Y%m%d_%H%M%S)"
-echo "1️⃣  프론트엔드 백업 생성: $BACKUP_DIR"
-mkdir -p "$BACKUP_DIR"
-if [ -d "$TARGET_FRONTEND" ] && [ "$(ls -A $TARGET_FRONTEND)" ]; then
-    cp -r "$TARGET_FRONTEND"/* "$BACKUP_DIR/" 2>/dev/null || true
+# 1. Pre-checks
+log "Checking SSH connection to production server..."
+if ! ssh -o ConnectTimeout=5 $PROD_SERVER "echo 'Connected'" > /dev/null 2>&1; then
+    error "Cannot connect to production server"
+fi
+success "SSH connection OK"
+
+# 2. Check local dev server health
+log "Checking local dev server health..."
+if ! curl -s --max-time 3 http://localhost:3001/api/health | grep -q '"status":"ok"'; then
+    error "Local dev server is not healthy"
+fi
+success "Local dev server is healthy"
+
+# 3. Confirmation
+if [ "$AUTO_MODE" = false ]; then
+    echo ""
+    warn "이 작업은 운영서버에 배포합니다."
+    read -p "계속하시겠습니까? (y/N): " confirm
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        echo "Cancelled."
+        exit 0
+    fi
 fi
 
-echo "2️⃣  프론트엔드 배포 중..."
-rm -rf "$TARGET_FRONTEND"/*
-cp -r "$SOURCE_FRONTEND"/* "$TARGET_FRONTEND/"
-echo "   ✅ 프론트엔드 배포 완료"
-echo ""
+# 4. Create backup on production server
+log "Creating backup on production server..."
+ssh $PROD_SERVER "mkdir -p /var/www/backups/${TIMESTAMP}"
+ssh $PROD_SERVER "cp -r $REMOTE_PROD_BACKEND /var/www/backups/${TIMESTAMP}/production-backend" 2>/dev/null || true
+ssh $PROD_SERVER "cp -r $REMOTE_PROD_FRONTEND/build /var/www/backups/${TIMESTAMP}/production-frontend-build" 2>/dev/null || true
+success "Backup created: /var/www/backups/${TIMESTAMP}"
 
-# 2. 백엔드 주요 파일 복사
-echo "3️⃣  백엔드 주요 파일 배포 중..."
+# 5. Build frontend locally
+log "Building frontend..."
+cd $LOCAL_DEV_FRONTEND
+npm run build:dev > /tmp/build.log 2>&1 || {
+    error "Frontend build failed. Check /tmp/build.log"
+}
+success "Frontend built successfully"
 
-# routes 디렉토리
-if [ -d "$SOURCE_BACKEND/routes" ]; then
-    echo "   - routes/ 복사 중..."
-    cp -r "$SOURCE_BACKEND/routes"/* "$TARGET_BACKEND/routes/"
+# 6. Sync backend to production
+log "Syncing backend to production server..."
+rsync -avz --delete \
+    --exclude 'node_modules' \
+    --exclude '.env' \
+    --exclude 'uploads' \
+    --exclude '*.log' \
+    $LOCAL_DEV_BACKEND/ $PROD_SERVER:$REMOTE_PROD_BACKEND/
+success "Backend synced"
+
+# 7. Sync frontend build to production
+log "Syncing frontend build to production server..."
+rsync -avz --delete \
+    $LOCAL_DEV_FRONTEND/build/ $PROD_SERVER:$REMOTE_PROD_FRONTEND/build/
+success "Frontend synced"
+
+# 8. Install dependencies on production (if package.json changed)
+log "Installing dependencies on production server..."
+ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && npm install --production --silent"
+success "Dependencies installed"
+
+# 9. Restart production backend
+log "Restarting production backend..."
+ssh $PROD_SERVER "pm2 restart production-backend"
+success "Backend restarted"
+
+# 10. Wait and verify
+log "Waiting for server to start..."
+sleep 3
+
+log "Verifying production server health..."
+if ssh $PROD_SERVER "curl -s --max-time 5 http://localhost:3002/api/health" | grep -q '"status":"ok"'; then
+    success "Production server is healthy!"
+else
+    warn "Health check failed. Please verify manually."
 fi
 
-# models 디렉토리
-if [ -d "$SOURCE_BACKEND/models" ]; then
-    echo "   - models/ 복사 중..."
-    cp -r "$SOURCE_BACKEND/models"/* "$TARGET_BACKEND/models/"
-fi
+# 11. Reload nginx (if needed)
+log "Reloading nginx..."
+ssh $PROD_SERVER "sudo systemctl reload nginx"
+success "Nginx reloaded"
 
-# utils 디렉토리
-if [ -d "$SOURCE_BACKEND/utils" ]; then
-    echo "   - utils/ 복사 중..."
-    cp -r "$SOURCE_BACKEND/utils"/* "$TARGET_BACKEND/utils/" 2>/dev/null || true
-fi
-
-# middleware 디렉토리
-if [ -d "$SOURCE_BACKEND/middleware" ]; then
-    echo "   - middleware/ 복사 중..."
-    cp -r "$SOURCE_BACKEND/middleware"/* "$TARGET_BACKEND/middleware/" 2>/dev/null || true
-fi
-
-echo "   ✅ 백엔드 배포 완료"
 echo ""
-
-# 3. PM2 재시작
-echo "4️⃣  운영 백엔드 재시작 중..."
-pm2 restart production-backend
-echo "   ✅ 백엔드 재시작 완료"
-echo ""
-
-# 4. 배포 완료
-echo "=========================================="
-echo "✅ 배포 완료!"
-echo "=========================================="
-echo ""
-echo "📋 배포 내역:"
-echo "  - 프론트엔드: $SOURCE_FRONTEND → $TARGET_FRONTEND"
-echo "  - 백엔드: $SOURCE_BACKEND → $TARGET_BACKEND"
-echo "  - 백업: $BACKUP_DIR"
-echo ""
-echo "🔍 확인 사항:"
-echo "  1. 브라우저에서 Ctrl+Shift+R로 강력 새로고침"
-echo "  2. pm2 logs production-backend 로 에러 확인"
+echo "============================================"
+echo "  Deployment Complete!"
+echo "  Backup: /var/www/backups/${TIMESTAMP}"
+echo "  Time: $(date)"
+echo "============================================"
 echo ""

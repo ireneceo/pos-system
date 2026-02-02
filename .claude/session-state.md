@@ -1,17 +1,22 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-02-01
+**마지막 업데이트:** 2026-02-02
 **작업 상태:** 완료
 
 ### 진행 중인 작업
 - 없음
 
 ### 완료된 작업 (이번 세션)
-- 세션 정리 및 개발 완료 처리
+- 데모 계정 데이터 수정 (Restaurant 1 메뉴 및 카테고리 재구성)
+- 테스트 계정 수정 (LoginPage.tsx에서 실제 DB 계정으로 변경)
+- 데모 계정 플랜 업그레이드 (Enterprise Plan, 모든 기능 활성화)
+- 랜딩 페이지 업데이트 (About, Features, Demo 페이지)
+- 운영서버 배포 완료 (백업: /var/www/backups/20260202_211411)
 
 ### 다음 할 일
-- Phase A-3+: Addon Module 5개 비활성화 작업 계속 진행
-- Pricing 페이지 개발
-- Contact 페이지 + API 개발
+- Phase A-1: CSV 다운로드 버그 수정 (Reports 페이지)
+- Phase A-2: PDF 다운로드 버그 수정 (Invoice 페이지)
+- Phase A-3: Pricing 페이지 구현
+- Phase A-4: Contact 페이지 구현
 
 ---
 

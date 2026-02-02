@@ -1,8 +1,57 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-02-01
+> **최종 업데이트:** 2026-02-02
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
+
+---
+
+## ✅ 완료: 데모 계정 설정 및 운영서버 배포 (2026-02-02)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 데모 계정 데이터 수정 | Restaurant 1 메뉴 및 카테고리 재구성 | ✅ 완료 |
+| 테스트 계정 수정 | LoginPage.tsx TEST_ACCOUNTS 업데이트 | ✅ 완료 |
+| 데모 계정 플랜 업그레이드 | Enterprise Plan으로 모든 기능 활성화 | ✅ 완료 |
+| 운영서버 배포 | 개발서버 → 운영서버 배포 완료 | ✅ 완료 |
+
+### 데모 계정 설정 상세
+
+**Restaurant 1 (Seoul BBQ House) 데이터 정비:**
+- 기존 잘못된 카테고리 삭제 ("test 123", "222", "3333")
+- 새 카테고리 4개 생성:
+  - 🥗 Appetizers (3개 메뉴)
+  - 🍽️ Main Dishes (4개 메뉴)
+  - 🥤 Beverages (3개 메뉴)
+  - 🍰 Desserts (2개 메뉴)
+- 총 12개 메뉴 아이템 추가 (코드, 가격, 이모지 포함)
+- 주문 방식 4가지 모두 활성화 (Dine In, Takeaway, Pre-order Pickup, Delivery)
+
+**플랜 업그레이드:**
+- Restaurant 1: Enterprise Plan (주문 무제한, 메뉴 무제한, 스태프 무제한)
+- Brand 1 (K-DINE): Enterprise Plan (10년 구독)
+- demo-brand@purplehere.com → Brand 1에 연결
+- demo-restaurant@purplehere.com → Restaurant 1에 연결
+
+**테스트 계정 수정:**
+- Restaurant Admin 계정을 `admin@kdine.com` (300+ 주문 데이터)로 변경
+- 기존 `restaurant_admin@orderhere.center` 제거 (DB에 없음)
+
+### 수정된 파일
+- `dev-frontend/src/pages/Login/LoginPage.tsx` - 데모/테스트 계정 업데이트
+- `dev-frontend/src/components/Landing/LandingHeader.tsx` - 로고 텍스트 수정
+- `dev-frontend/src/pages/Landing/AboutPage.tsx` - About 페이지 업데이트
+- `dev-frontend/src/pages/Landing/FeaturesPage.tsx` - Features 페이지 업데이트
+- `dev-frontend/src/pages/Landing/DemoPage.tsx` - Demo 페이지 업데이트
+- `dev-frontend/src/pages/Admin/InvoicesPage.tsx` - Invoices 페이지 업데이트
+
+### 운영서버 배포
+- 배포 시간: 2026-02-02 21:15:14 UTC
+- 백업 위치: /var/www/backups/20260202_211411
+- 배포 방식: 개발서버 → 운영서버 (rsync)
+- 헬스체크: ✅ 통과
 
 ---
 

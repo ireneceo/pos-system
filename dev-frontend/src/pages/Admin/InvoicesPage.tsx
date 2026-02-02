@@ -803,7 +803,7 @@ const InvoicesPage: React.FC = () => {
     rate: 0,
     name: 'Tax'
   });
-  const [sortField, setSortField] = useState<'invoiceNumber' | 'companyName' | 'dueDate' | 'amount' | 'status'>('dueDate');
+  const [sortField, setSortField] = useState<'invoiceNumber' | 'companyName' | 'issueDate' | 'dueDate' | 'amount' | 'status'>('issueDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [newInvoice, setNewInvoice] = useState({
     managerId: '',
@@ -2096,6 +2096,9 @@ const InvoicesPage: React.FC = () => {
       case 'companyName':
         comparison = a.companyName.localeCompare(b.companyName);
         break;
+      case 'issueDate':
+        comparison = new Date(a.issueDate).getTime() - new Date(b.issueDate).getTime();
+        break;
       case 'dueDate':
         comparison = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
         break;
@@ -2113,7 +2116,7 @@ const InvoicesPage: React.FC = () => {
   });
 
   // Handle sort header click
-  const handleSort = (field: 'invoiceNumber' | 'companyName' | 'dueDate' | 'amount' | 'status') => {
+  const handleSort = (field: 'invoiceNumber' | 'companyName' | 'issueDate' | 'dueDate' | 'amount' | 'status') => {
     if (sortField === field) {
       // Toggle direction if same field
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');

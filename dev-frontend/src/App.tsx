@@ -13,6 +13,7 @@ import ScrollToTop from './components/ScrollToTop';
 // Landing Pages (keep static - first load)
 import HomePage from './pages/Landing/HomePage';
 import AboutPage from './pages/Landing/AboutPage';
+import FeaturesPage from './pages/Landing/FeaturesPage';
 import ServicePage from './pages/Landing/ServicePage';
 import PricingPage from './pages/Landing/PricingPage';
 import ContactPage from './pages/Landing/ContactPage';
@@ -273,6 +274,7 @@ function App() {
                       {/* Landing Pages (Public) */}
                       <Route path="/" element={<HomePage />} />
                       <Route path="/about" element={<AboutPage />} />
+                      <Route path="/features" element={<FeaturesPage />} />
                       <Route path="/service" element={<ServicePage />} />
                       <Route path="/pricing" element={<PricingPage />} />
                       <Route path="/contact" element={<ContactPage />} />

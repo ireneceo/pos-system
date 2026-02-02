@@ -58,6 +58,9 @@ const DemoCard = styled.div`
   padding: 32px;
   border: 1px solid #E6EBF1;
   transition: all 0.3s;
+  display: flex;
+  flex-direction: column;
+  min-height: 500px;
 
   &:hover {
     transform: translateY(-4px);
@@ -88,6 +91,7 @@ const FeatureList = styled.ul`
   list-style: none;
   padding: 0;
   margin: 0 0 24px 0;
+  flex: 1;
 `;
 
 const FeatureItem = styled.li`
@@ -105,7 +109,7 @@ const FeatureItem = styled.li`
   }
 `;
 
-const LoginButton = styled.button`
+const LoginButton = styled.button<{ isLoading?: boolean }>`
   width: 100%;
   padding: 14px 24px;
   font-size: 16px;
@@ -113,9 +117,11 @@ const LoginButton = styled.button`
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
-  background: #635BFF;
+  background: ${props => props.isLoading ? '#5A51E6' : '#635BFF'};
   color: white;
   border: none;
+  margin-top: auto;
+  position: relative;
 
   &:hover:not(:disabled) {
     background: #5A51E6;
@@ -123,8 +129,9 @@ const LoginButton = styled.button`
   }
 
   &:disabled {
-    background: #B0BEC5;
+    background: #9CA3AF;
     cursor: not-allowed;
+    opacity: 0.6;
   }
 `;
 
@@ -252,9 +259,10 @@ const DemoPage: React.FC = () => {
 
       const data = await response.json();
 
-      if (response.ok && data.token) {
+      if (response.ok && data.success && data.data && data.data.token) {
         // Store token and user info
-        localStorage.setItem('auth_token', data.token);
+        localStorage.setItem('auth_token', data.data.token);
+        localStorage.setItem('user', JSON.stringify(data.data.user));
 
         // Call login from AuthContext
         await login(account.email, account.password);
@@ -266,7 +274,7 @@ const DemoPage: React.FC = () => {
           navigate('/restaurant/1/dashboard');
         }
       } else {
-        setError(data.error || 'Demo account login failed. Please contact support.');
+        setError(data.message || data.error || 'Demo account login failed. Please contact support.');
       }
     } catch (err) {
       setError('Network error. Please try again.');
@@ -303,6 +311,7 @@ const DemoPage: React.FC = () => {
               <LoginButton
                 onClick={() => handleDemoLogin('brand_general')}
                 disabled={loading !== null}
+                isLoading={loading === 'brand_general'}
               >
                 {loading === 'brand_general' ? 'Logging in...' : 'Login as Brand General'}
               </LoginButton>
@@ -322,6 +331,7 @@ const DemoPage: React.FC = () => {
               <LoginButton
                 onClick={() => handleDemoLogin('restaurant_admin')}
                 disabled={loading !== null}
+                isLoading={loading === 'restaurant_admin'}
               >
                 {loading === 'restaurant_admin' ? 'Logging in...' : 'Login as Restaurant'}
               </LoginButton>

@@ -39,13 +39,13 @@ const LogoImage = styled.img`
 `;
 
 const LogoText = styled.span`
-  font-size: 22px;
-  font-weight: 700;
-  color: #0A2540;
-  letter-spacing: -0.5px;
+  font-size: 14px;
+  font-weight: 300;
+  color: #9CA3AF;
+  letter-spacing: -0.3px;
 
   @media (max-width: 768px) {
-    font-size: 18px;
+    font-size: 12px;
   }
 `;
 
@@ -143,24 +143,6 @@ const LoginButton = styled.button`
   }
 `;
 
-const SecondaryButton = styled.button`
-  background: transparent;
-  color: #6B7C93;
-  border: 1px solid #E6EBF1;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 10px 20px;
-  border-radius: 8px;
-  transition: all 0.2s;
-  margin-left: 8px;
-
-  &:hover {
-    color: #0A2540;
-    border-color: #0A2540;
-  }
-`;
-
 const MobileLoginButton = styled.button`
   background: #635BFF;
   color: white;
@@ -179,25 +161,6 @@ const MobileLoginButton = styled.button`
   }
 `;
 
-const MobileSecondaryButton = styled.button`
-  background: transparent;
-  color: #6B7C93;
-  border: 1px solid #E6EBF1;
-  font-size: 16px;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 14px 24px;
-  border-radius: 8px;
-  transition: all 0.2s;
-  text-align: center;
-  margin-top: 8px;
-
-  &:hover {
-    color: #0A2540;
-    border-color: #0A2540;
-  }
-`;
-
 interface LandingHeaderProps {
   logo?: string;
 }
@@ -205,15 +168,9 @@ interface LandingHeaderProps {
 const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [brandLogo, setBrandLogo] = useState<string>('');
-
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-    setMobileMenuOpen(false);
-  };
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -242,12 +199,15 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
       <Header>
         <LogoSection onClick={() => handleNavigate('/')}>
           {(logo || brandLogo) && <LogoImage src={logo || brandLogo} alt="Logo" />}
-          <LogoText>PurpleHere</LogoText>
+          <LogoText>Everything You Need, All</LogoText>
         </LogoSection>
 
         <Nav>
           <NavLink active={isActive('/about')} onClick={() => handleNavigate('/about')}>
             About
+          </NavLink>
+          <NavLink active={isActive('/features')} onClick={() => handleNavigate('/features')}>
+            Features
           </NavLink>
           <NavLink active={isActive('/pricing')} onClick={() => handleNavigate('/pricing')}>
             Pricing
@@ -258,14 +218,9 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
           <NavLink active={isActive('/contact')} onClick={() => handleNavigate('/contact')}>
             Contact
           </NavLink>
-          {user ? (
-            <>
-              <SecondaryButton onClick={handleLogout}>Logout</SecondaryButton>
-              <LoginButton onClick={() => handleNavigate('/pos')}>POS System</LoginButton>
-            </>
-          ) : (
-            <LoginButton onClick={() => handleNavigate('/login')}>Login</LoginButton>
-          )}
+          <LoginButton onClick={() => handleNavigate(user ? '/pos' : '/login')}>
+            POS System
+          </LoginButton>
         </Nav>
 
         <MobileMenuButton onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
@@ -277,6 +232,9 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
         <MobileNavLink active={isActive('/about')} onClick={() => handleNavigate('/about')}>
           About
         </MobileNavLink>
+        <MobileNavLink active={isActive('/features')} onClick={() => handleNavigate('/features')}>
+          Features
+        </MobileNavLink>
         <MobileNavLink active={isActive('/pricing')} onClick={() => handleNavigate('/pricing')}>
           Pricing
         </MobileNavLink>
@@ -286,14 +244,9 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
         <MobileNavLink active={isActive('/contact')} onClick={() => handleNavigate('/contact')}>
           Contact
         </MobileNavLink>
-        {user ? (
-          <>
-            <MobileSecondaryButton onClick={handleLogout}>Logout</MobileSecondaryButton>
-            <MobileLoginButton onClick={() => handleNavigate('/pos')}>POS System</MobileLoginButton>
-          </>
-        ) : (
-          <MobileLoginButton onClick={() => handleNavigate('/login')}>Login</MobileLoginButton>
-        )}
+        <MobileLoginButton onClick={() => handleNavigate(user ? '/pos' : '/login')}>
+          POS System
+        </MobileLoginButton>
       </MobileMenu>
     </>
   );
