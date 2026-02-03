@@ -35,6 +35,7 @@ router.get('/', async (req, res) => {
       postalCode: settings.postal_code,
       country: settings.country,
       phone: settings.phone,
+      whatsapp: settings.whatsapp || '',
       email: settings.email,
       website: settings.website,
       taxNumber: settings.tax_number,
@@ -45,7 +46,8 @@ router.get('/', async (req, res) => {
       bankName: settings.bank_name || '',
       bankAccount: settings.bank_account || '',
       bankAccountName: settings.bank_account_name || '',
-      swiftCode: settings.swift_code || ''
+      swiftCode: settings.swift_code || '',
+      businessHours: settings.business_hours || { weekdays: '9:00 AM - 6:00 PM (GMT+8)', weekend: 'Closed' }
     });
 
   } catch (error) {
@@ -69,6 +71,7 @@ router.post('/', async (req, res) => {
       postalCode,
       country,
       phone,
+      whatsapp,
       email,
       website,
       taxNumber,
@@ -79,7 +82,8 @@ router.post('/', async (req, res) => {
       bankName,
       bankAccount,
       bankAccountName,
-      swiftCode
+      swiftCode,
+      businessHours
     } = req.body;
 
     // 첫 번째 레코드 찾기 또는 생성
@@ -93,6 +97,7 @@ router.post('/', async (req, res) => {
       postal_code: postalCode,
       country,
       phone,
+      whatsapp: whatsapp || '',
       email,
       website,
       tax_number: taxNumber,
@@ -103,7 +108,8 @@ router.post('/', async (req, res) => {
       bank_name: bankName || '',
       bank_account: bankAccount || '',
       bank_account_name: bankAccountName || '',
-      swift_code: swiftCode || ''
+      swift_code: swiftCode || '',
+      business_hours: businessHours || null
     };
 
     if (settings) {
@@ -125,6 +131,7 @@ router.post('/', async (req, res) => {
         postalCode: settings.postal_code,
         country: settings.country,
         phone: settings.phone,
+        whatsapp: settings.whatsapp,
         email: settings.email,
         website: settings.website,
         taxNumber: settings.tax_number,
@@ -135,7 +142,8 @@ router.post('/', async (req, res) => {
         bankName: settings.bank_name,
         bankAccount: settings.bank_account,
         bankAccountName: settings.bank_account_name,
-        swiftCode: settings.swift_code
+        swiftCode: settings.swift_code,
+        businessHours: settings.business_hours
       }
     });
 

@@ -246,7 +246,9 @@ interface ContactFormData {
   email: string;
   phone: string;
   company_name: string;
+  inquiry_type: string;
   interested_plan: string;
+  preferred_username: string;
   message: string;
 }
 
@@ -266,7 +268,9 @@ const ContactPage: React.FC = () => {
     email: '',
     phone: '',
     company_name: '',
+    inquiry_type: '',
     interested_plan: '',
+    preferred_username: '',
     message: ''
   });
   const [submitting, setSubmitting] = useState(false);
@@ -323,7 +327,9 @@ const ContactPage: React.FC = () => {
           email: '',
           phone: '',
           company_name: '',
+          inquiry_type: '',
           interested_plan: '',
+          preferred_username: '',
           message: ''
         });
       } else {
@@ -407,25 +413,86 @@ const ContactPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <Label>Interested Plan</Label>
+                    <Label>Inquiry Type<Required>*</Required></Label>
                     <Select
-                      name="interested_plan"
-                      value={formData.interested_plan}
+                      name="inquiry_type"
+                      value={formData.inquiry_type}
                       onChange={handleChange}
+                      required
                     >
-                      <option value="">Select a plan...</option>
-                      <option value="restaurant_basic">Restaurant - Basic</option>
-                      <option value="restaurant_professional">Restaurant - Professional</option>
-                      <option value="restaurant_enterprise">Restaurant - Enterprise</option>
-                      <option value="brand_basic">Brand - Basic</option>
-                      <option value="brand_professional">Brand - Professional</option>
-                      <option value="brand_enterprise">Brand - Enterprise</option>
-                      <option value="foodcourt_basic">Foodcourt - Basic</option>
-                      <option value="foodcourt_professional">Foodcourt - Professional</option>
-                      <option value="foodcourt_enterprise">Foodcourt - Enterprise</option>
-                      <option value="other">Other / Not sure yet</option>
+                      <option value="">Select inquiry type...</option>
+                      <option value="free_trial">Start Free Trial (7 days free)</option>
+                      <option value="pricing">Pricing Inquiry</option>
+                      <option value="demo">Request Demo</option>
+                      <option value="support">Technical Support</option>
+                      <option value="partnership">Partnership</option>
+                      <option value="other">Other</option>
                     </Select>
                   </FormGroup>
+
+                  {formData.inquiry_type === 'free_trial' && (
+                    <>
+                      <FormGroup>
+                        <Label>Interested Plan<Required>*</Required></Label>
+                        <Select
+                          name="interested_plan"
+                          value={formData.interested_plan}
+                          onChange={handleChange}
+                          required
+                        >
+                          <option value="">Select a plan...</option>
+                          <option value="restaurant_basic">Restaurant - Basic</option>
+                          <option value="restaurant_professional">Restaurant - Professional</option>
+                          <option value="restaurant_enterprise">Restaurant - Enterprise</option>
+                          <option value="brand_basic">Brand - Basic</option>
+                          <option value="brand_professional">Brand - Professional</option>
+                          <option value="brand_enterprise">Brand - Enterprise</option>
+                          <option value="foodcourt_basic">Foodcourt - Basic</option>
+                          <option value="foodcourt_professional">Foodcourt - Professional</option>
+                          <option value="foodcourt_enterprise">Foodcourt - Enterprise</option>
+                        </Select>
+                      </FormGroup>
+
+                      <FormGroup>
+                        <Label>Preferred Username<Required>*</Required></Label>
+                        <Input
+                          type="text"
+                          name="preferred_username"
+                          value={formData.preferred_username}
+                          onChange={handleChange}
+                          required
+                          placeholder="e.g., myrestaurant (letters, numbers, underscore only)"
+                          pattern="^[a-zA-Z0-9_]+$"
+                        />
+                        <small style={{ color: '#6B7C93', fontSize: '12px' }}>
+                          This will be your login ID. Only letters, numbers, and underscores allowed.
+                        </small>
+                      </FormGroup>
+                    </>
+                  )}
+
+                  {formData.inquiry_type && formData.inquiry_type !== 'free_trial' && (
+                    <FormGroup>
+                      <Label>Interested Plan</Label>
+                      <Select
+                        name="interested_plan"
+                        value={formData.interested_plan}
+                        onChange={handleChange}
+                      >
+                        <option value="">Select a plan...</option>
+                        <option value="restaurant_basic">Restaurant - Basic</option>
+                        <option value="restaurant_professional">Restaurant - Professional</option>
+                        <option value="restaurant_enterprise">Restaurant - Enterprise</option>
+                        <option value="brand_basic">Brand - Basic</option>
+                        <option value="brand_professional">Brand - Professional</option>
+                        <option value="brand_enterprise">Brand - Enterprise</option>
+                        <option value="foodcourt_basic">Foodcourt - Basic</option>
+                        <option value="foodcourt_professional">Foodcourt - Professional</option>
+                        <option value="foodcourt_enterprise">Foodcourt - Enterprise</option>
+                        <option value="other">Other / Not sure yet</option>
+                      </Select>
+                    </FormGroup>
+                  )}
 
                   <FormGroup>
                     <Label>Message<Required>*</Required></Label>
@@ -503,6 +570,19 @@ const ContactPage: React.FC = () => {
                     <ContactValue>{companyInfo.business_hours?.weekend || 'N/A'}</ContactValue>
                   </ContactDetails>
                 </ContactItem>
+              </InfoCard>
+
+              <InfoCard>
+                <InfoTitle>Free Trial</InfoTitle>
+                <p style={{ fontSize: '14px', color: '#6B7C93', lineHeight: '1.6', marginBottom: '12px' }}>
+                  Try PurpleHere POS free for <strong style={{ color: '#635BFF' }}>7 days</strong> with full access to all features.
+                  No credit card required.
+                </p>
+                <ul style={{ fontSize: '14px', color: '#6B7C93', lineHeight: '1.8', margin: 0, paddingLeft: '20px' }}>
+                  <li>Full feature access</li>
+                  <li>Dedicated onboarding support</li>
+                  <li>No commitment, cancel anytime</li>
+                </ul>
               </InfoCard>
 
               <InfoCard>

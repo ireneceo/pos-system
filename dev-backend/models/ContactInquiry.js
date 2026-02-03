@@ -25,9 +25,19 @@ ContactInquiry.init({
     type: DataTypes.STRING(255),
     allowNull: true
   },
+  inquiry_type: {
+    type: DataTypes.ENUM('free_trial', 'pricing', 'demo', 'support', 'partnership', 'other'),
+    defaultValue: 'other',
+    comment: 'Type of inquiry: free_trial, pricing, demo, support, partnership, other'
+  },
   interested_plan: {
     type: DataTypes.STRING(100),
     allowNull: true
+  },
+  preferred_username: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    comment: 'Preferred username for free trial signup'
   },
   message: {
     type: DataTypes.TEXT,

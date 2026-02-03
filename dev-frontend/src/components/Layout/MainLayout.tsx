@@ -1334,10 +1334,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>◈</NavIcon>
                   Site Settings
                 </NavItem>
-                <NavItem to="/pos/admin/addon-modules" active={isActive('/pos/admin/addon-modules')} onClick={closeSidebar}>
-                  <NavIcon>⊞</NavIcon>
-                  Addon Modules
-                </NavItem>
                 <NavItem to="/pos/admin/notification-settings" active={isActive('/pos/admin/notification-settings')} onClick={closeSidebar}>
                   <NavIcon>✉</NavIcon>
                   Notifications

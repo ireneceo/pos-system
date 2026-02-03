@@ -6,6 +6,33 @@
 
 ---
 
+## ✅ 완료: Contact Form 개선 및 배포 시스템 수정 (2026-02-03)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Contact Form Free Trial 옵션 | Inquiry Type에 "Start Free Trial (7 days free)" 추가 | ✅ 완료 |
+| Preferred Username 필드 | Free Trial 선택 시 원하는 아이디 입력 필드 표시 | ✅ 완료 |
+| Backend API 수정 | inquiry_type, preferred_username 필드 저장 지원 | ✅ 완료 |
+| Pricing 페이지 통화 수정 | 설정된 통화 가격 없을 시 "Contact Us" 표시 | ✅ 완료 |
+| Plans 관리 페이지 통화 수정 | 설정된 통화 가격 없을 시 "Price Not Set" 표시 | ✅ 완료 |
+| addon-modules 메뉴 삭제 | 불필요한 메뉴 및 라우트 제거 | ✅ 완료 |
+| deploy-dev.sh 수정 | nginx 배포 폴더(/var/www/dev-frontend-build)로 자동 복사 | ✅ 완료 |
+
+### 수정된 파일
+- `dev-frontend/src/pages/Landing/ContactPage.tsx` - Free Trial 옵션, Preferred Username 필드
+- `dev-frontend/src/pages/Landing/PricingPage.tsx` - 통화별 가격 표시 개선
+- `dev-frontend/src/pages/Admin/PlansPage.tsx` - 통화별 가격 표시 개선
+- `dev-backend/models/ContactInquiry.js` - inquiry_type, preferred_username 필드 추가
+- `dev-backend/routes/public.js` - Free Trial 필수 필드 검증 추가
+- `dev-backend/routes/siteSettings.js` - Contact 정보(phone, whatsapp, business_hours) 반환
+- `dev-frontend/src/components/Layout/MainLayout.tsx` - addon-modules 메뉴 제거
+- `dev-frontend/src/App.tsx` - AddonModulesPage 라우트 제거
+- `dev-frontend/deploy-dev.sh` - nginx 배포 폴더 복사 단계 추가
+
+---
+
 ## ✅ 완료: Support Ticket 필터링 및 API 개선 (2026-02-03)
 
 ### 완료된 작업

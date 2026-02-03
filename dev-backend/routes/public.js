@@ -6,6 +6,7 @@ const express = require('express');
 const router = express.Router();
 const ContactInquiry = require('../models/ContactInquiry');
 const PlanTemplate = require('../models/PlanTemplate');
+const PlanPrice = require('../models/PlanPrice');
 const { authenticateToken } = require('../middleware/auth');
 const nodemailer = require('nodemailer');
 const { Op } = require('sequelize');
@@ -46,7 +47,7 @@ async function getEmailTransporter() {
 // POST /api/public/contact - 문의 제출
 router.post('/contact', async (req, res) => {
   try {
-    const { name, email, phone, company_name, interested_plan, message } = req.body;
+    const { name, email, phone, company_name, inquiry_type, interested_plan, preferred_username, message } = req.body;
 
     // 필수 필드 검증
     if (!name || !email || !message) {
@@ -63,18 +64,41 @@ router.post('/contact', async (req, res) => {
       });
     }
 
+    // Free Trial 신청 시 필수 필드 검증
+    if (inquiry_type === 'free_trial') {
+      if (!interested_plan) {
+        return res.status(400).json({
+          error: 'Please select a plan for free trial'
+        });
+      }
+      if (!preferred_username) {
+        return res.status(400).json({
+          error: 'Preferred username is required for free trial'
+        });
+      }
+      // username 형식 검증
+      const usernameRegex = /^[a-zA-Z0-9_]+$/;
+      if (!usernameRegex.test(preferred_username)) {
+        return res.status(400).json({
+          error: 'Username can only contain letters, numbers, and underscores'
+        });
+      }
+    }
+
     // DB 저장
     const inquiry = await ContactInquiry.create({
       name,
       email,
       phone: phone || null,
       company_name: company_name || null,
+      inquiry_type: inquiry_type || 'other',
       interested_plan: interested_plan || null,
+      preferred_username: preferred_username || null,
       message,
       status: 'new'
     });
 
-    console.log(`📬 New contact inquiry received: ${name} (${email})`);
+    console.log(`📬 New contact inquiry received: ${name} (${email}) - Type: ${inquiry_type || 'other'}`);
 
     res.status(201).json({
       success: true,
@@ -95,7 +119,7 @@ router.post('/contact', async (req, res) => {
 // ==============================================
 
 // GET /api/public/plans - 공개 플랜 목록 조회
-router.get('/plans', async (req, res) => {
+router.get('/plans', async (_req, res) => {
   try {
     const plans = await PlanTemplate.findAll({
       where: {
@@ -121,7 +145,29 @@ router.get('/plans', async (req, res) => {
       ]
     });
 
-    res.json(plans);
+    // 각 플랜의 통화별 가격 정보 가져오기
+    const plansWithPrices = await Promise.all(plans.map(async (plan) => {
+      const prices = await PlanPrice.findAll({
+        where: {
+          plan_id: plan.id,
+          is_active: true
+        },
+        attributes: ['currency', 'monthly_price', 'annual_price']
+      });
+
+      return {
+        ...plan.toJSON(),
+        currency_prices: prices.reduce((acc, p) => {
+          acc[p.currency] = {
+            monthly: parseFloat(p.monthly_price),
+            annual: parseFloat(p.annual_price)
+          };
+          return acc;
+        }, {})
+      };
+    }));
+
+    res.json(plansWithPrices);
 
   } catch (error) {
     console.error('Error fetching public plans:', error);

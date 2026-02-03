@@ -13,12 +13,17 @@ interface CompanySettings {
   postalCode: string;
   country: string;
   phone: string;
+  whatsapp: string;
   email: string;
   website: string;
   taxNumber: string;
   registrationNumber: string;
   brandLogo?: string; // Brand logo for site navigation/header
   companyLogo?: string; // Company logo for invoices/documents
+  businessHours?: {
+    weekdays: string;
+    weekend: string;
+  };
 }
 
 
@@ -197,12 +202,17 @@ const AdminSettingsPage: React.FC = () => {
     postalCode: '',
     country: 'MY',
     phone: '',
+    whatsapp: '',
     email: '',
     website: '',
     taxNumber: '',
     registrationNumber: '',
     brandLogo: '',
-    companyLogo: ''
+    companyLogo: '',
+    businessHours: {
+      weekdays: '9:00 AM - 6:00 PM (GMT+8)',
+      weekend: 'Closed'
+    }
   });
 
   useEffect(() => {
@@ -494,6 +504,20 @@ const AdminSettingsPage: React.FC = () => {
                 />
               </FormGroup>
               <FormGroup>
+                <FormLabel>WhatsApp</FormLabel>
+                <PhoneInput
+                  value={settings.whatsapp}
+                  onChange={(value) => handleInputChange('whatsapp', value)}
+                  defaultCountry={settings.country}
+                />
+                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                  For Contact page and customer communication
+                </div>
+              </FormGroup>
+            </FormRow>
+
+            <FormRow>
+              <FormGroup>
                 <FormLabel>Email Address *</FormLabel>
                 <FormInput
                   type="email"
@@ -503,9 +527,6 @@ const AdminSettingsPage: React.FC = () => {
                   required
                 />
               </FormGroup>
-            </FormRow>
-
-            <FormRow>
               <FormGroup>
                 <FormLabel>Website</FormLabel>
                 <FormInput
@@ -515,6 +536,9 @@ const AdminSettingsPage: React.FC = () => {
                   placeholder="www.company.com"
                 />
               </FormGroup>
+            </FormRow>
+
+            <FormRow>
               <FormGroup>
                 <FormLabel>Tax Number</FormLabel>
                 <FormInput
@@ -522,6 +546,33 @@ const AdminSettingsPage: React.FC = () => {
                   value={settings.taxNumber}
                   onChange={(e) => handleInputChange('taxNumber', e.target.value)}
                   placeholder="GST/SST Registration Number"
+                />
+              </FormGroup>
+            </FormRow>
+
+            <FormRow>
+              <FormGroup>
+                <FormLabel>Business Hours (Weekdays)</FormLabel>
+                <FormInput
+                  type="text"
+                  value={settings.businessHours?.weekdays || ''}
+                  onChange={(e) => setSettings(prev => ({
+                    ...prev,
+                    businessHours: { ...prev.businessHours!, weekdays: e.target.value }
+                  }))}
+                  placeholder="e.g., 9:00 AM - 6:00 PM (GMT+8)"
+                />
+              </FormGroup>
+              <FormGroup>
+                <FormLabel>Business Hours (Weekend)</FormLabel>
+                <FormInput
+                  type="text"
+                  value={settings.businessHours?.weekend || ''}
+                  onChange={(e) => setSettings(prev => ({
+                    ...prev,
+                    businessHours: { ...prev.businessHours!, weekend: e.target.value }
+                  }))}
+                  placeholder="e.g., Closed or 10:00 AM - 2:00 PM"
                 />
               </FormGroup>
             </FormRow>

@@ -35,17 +35,35 @@ const HeroSubtitle = styled.p`
   }
 `;
 
+const FreeTrialBadge = styled.div`
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 16px;
+`;
+
 const ContentSection = styled.section`
   max-width: 1200px;
   margin: 0 auto;
   padding: 60px 20px;
 `;
 
-const PlanTabs = styled.div`
+const FilterBar = styled.div`
   display: flex;
   justify-content: center;
-  gap: 8px;
+  align-items: center;
+  gap: 24px;
   margin-bottom: 40px;
+  flex-wrap: wrap;
+`;
+
+const PlanTabs = styled.div`
+  display: flex;
+  gap: 8px;
 `;
 
 const PlanTab = styled.button<{ active: boolean }>`
@@ -65,6 +83,32 @@ const PlanTab = styled.button<{ active: boolean }>`
   }
 `;
 
+const CurrencySelector = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const CurrencyLabel = styled.span`
+  font-size: 14px;
+  color: #6B7C93;
+`;
+
+const CurrencySelect = styled.select`
+  padding: 10px 16px;
+  font-size: 14px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  min-width: 160px;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+  }
+`;
+
 const PlansGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -72,7 +116,7 @@ const PlansGrid = styled.div`
 
   @media (max-width: 1024px) {
     grid-template-columns: 1fr;
-    max-width: 400px;
+    max-width: 450px;
     margin: 0 auto;
   }
 `;
@@ -84,6 +128,8 @@ const PlanCard = styled.div<{ popular?: boolean }>`
   border: 2px solid ${props => props.popular ? '#635BFF' : '#E6EBF1'};
   position: relative;
   transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
 
   ${props => props.popular && `
     box-shadow: 0 8px 24px rgba(99, 91, 255, 0.15);
@@ -109,44 +155,125 @@ const PopularBadge = styled.div`
 `;
 
 const PlanName = styled.h3`
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 700;
   color: #0A2540;
   margin-bottom: 8px;
-`;
-
-const PlanPrice = styled.div`
-  margin-bottom: 24px;
-`;
-
-const Price = styled.span`
-  font-size: 36px;
-  font-weight: 700;
-  color: #0A2540;
-`;
-
-const Currency = styled.span`
-  font-size: 16px;
-  color: #6B7C93;
-  margin-right: 4px;
-`;
-
-const Period = styled.span`
-  font-size: 16px;
-  color: #6B7C93;
+  text-align: center;
 `;
 
 const PlanDescription = styled.p`
   font-size: 14px;
-  color: #6B7C93;
+  color: #6B7280;
   margin-bottom: 24px;
+  text-align: center;
   min-height: 40px;
 `;
 
-const FeatureList = styled.ul`
+const PriceSection = styled.div`
+  text-align: center;
+  padding: 20px;
+  background: #F8FAFC;
+  border-radius: 12px;
+  margin-bottom: 24px;
+`;
+
+const MonthlyPrice = styled.div`
+  font-size: 36px;
+  font-weight: 800;
+  color: #0A2540;
+  margin-bottom: 4px;
+`;
+
+const CurrencySymbol = styled.span`
+  font-size: 20px;
+  font-weight: 600;
+  color: #6B7280;
+  margin-right: 4px;
+`;
+
+const PeriodText = styled.span`
+  font-size: 16px;
+  font-weight: 500;
+  color: #6B7280;
+`;
+
+const AnnualPrice = styled.div`
+  font-size: 14px;
+  color: #059669;
+  font-weight: 600;
+  margin-top: 8px;
+`;
+
+const BillingNote = styled.div`
+  font-size: 12px;
+  color: #6B7280;
+  margin-top: 4px;
+`;
+
+const LimitsSection = styled.div`
+  padding: 16px;
+  background: #F8FAFC;
+  border-radius: 8px;
+  margin-bottom: 16px;
+`;
+
+const LimitItem = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #E6EBF1;
+
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const LimitLabel = styled.span`
+  font-size: 14px;
+  color: #374151;
+`;
+
+const LimitValue = styled.span`
+  font-size: 14px;
+  font-weight: 600;
+  color: #0A2540;
+`;
+
+const ModulesSection = styled.div`
+  margin-bottom: 16px;
+`;
+
+const ModulesTitle = styled.div`
+  font-size: 13px;
+  font-weight: 600;
+  color: #6B7280;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+`;
+
+const ModulesList = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+`;
+
+const ModuleTag = styled.span`
+  display: inline-block;
+  padding: 6px 12px;
+  background: #EEF2FF;
+  border: 1px solid #C7D2FE;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #4338CA;
+`;
+
+const FeaturesList = styled.ul`
   list-style: none;
   padding: 0;
   margin: 0 0 24px 0;
+  flex: 1;
 `;
 
 const FeatureItem = styled.li`
@@ -155,7 +282,7 @@ const FeatureItem = styled.li`
   gap: 10px;
   padding: 8px 0;
   font-size: 14px;
-  color: #0A2540;
+  color: #374151;
 `;
 
 const FeatureCheck = styled.span`
@@ -174,6 +301,7 @@ const ContactButton = styled.button<{ primary?: boolean }>`
   background: ${props => props.primary ? '#635BFF' : 'white'};
   color: ${props => props.primary ? 'white' : '#635BFF'};
   border: 2px solid #635BFF;
+  margin-top: auto;
 
   &:hover {
     background: ${props => props.primary ? '#5A51E6' : '#F0F4FF'};
@@ -257,6 +385,13 @@ const CTAButton = styled.button`
   }
 `;
 
+interface CurrencyPrices {
+  [currency: string]: {
+    monthly: number;
+    annual: number;
+  };
+}
+
 interface Plan {
   id: number;
   name: string;
@@ -265,16 +400,53 @@ interface Plan {
   base_price_annual: number;
   features: string[];
   plan_target: 'restaurant' | 'brand' | 'foodcourt';
+  order_limit: number;
+  menu_item_limit: number;
+  staff_limit: number;
+  included_modules: string[];
+  currency_prices?: CurrencyPrices;
 }
+
+interface CurrencyInfo {
+  code: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+}
+
+// 모듈 코드 -> 표시 이름 매핑
+const MODULE_NAMES: Record<string, string> = {
+  pos_terminal: 'POS Terminal',
+  menu_management: 'Menu Management',
+  customer_management: 'Customer Management',
+  reports_analytics: 'Reports & Analytics',
+  invoice_management: 'Invoice Management',
+  table_management: 'Table Management',
+  kitchen_display: 'Kitchen Display',
+  customer_display: 'Customer Display',
+  staff_management: 'Staff Management',
+  coupons: 'Coupons & Promotions',
+  support_tickets: 'Support Tickets',
+  activity_logs: 'Activity Logs',
+  recipe_management: 'Recipe Management',
+  mobile_ordering: 'Mobile Ordering',
+  advanced_inventory: 'Advanced Inventory',
+  operation_inquiry: 'Operation Inquiry',
+  purchase_order: 'Purchase Order',
+  ai_prediction: 'AI Prediction'
+};
 
 const PricingPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'restaurant' | 'brand' | 'foodcourt'>('restaurant');
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currencies, setCurrencies] = useState<CurrencyInfo[]>([]);
+  const [selectedCurrency, setSelectedCurrency] = useState('USD');
 
   useEffect(() => {
     loadPlans();
+    loadCurrencies();
   }, []);
 
   const loadPlans = async () => {
@@ -285,9 +457,27 @@ const PricingPage: React.FC = () => {
         setPlans(data);
       }
     } catch (error) {
-      // Plans loading failed, fallback plans will be used
+      console.error('Failed to load plans:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCurrencies = async () => {
+    try {
+      const response = await fetch('/api/currencies/supported');
+      if (response.ok) {
+        const data = await response.json();
+        setCurrencies(data.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to load currencies:', error);
+      // 기본 통화 설정
+      setCurrencies([
+        { code: 'USD', symbol: '$', name: 'US Dollar', decimals: 2 },
+        { code: 'MYR', symbol: 'RM', name: 'Malaysian Ringgit', decimals: 2 },
+        { code: 'KRW', symbol: '₩', name: 'Korean Won', decimals: 0 }
+      ]);
     }
   };
 
@@ -297,170 +487,55 @@ const PricingPage: React.FC = () => {
     return planName.toLowerCase().includes('professional');
   };
 
-  const formatPrice = (price: number) => {
+  const getCurrencyInfo = (code: string): CurrencyInfo => {
+    return currencies.find(c => c.code === code) || { code, symbol: code, name: code, decimals: 2 };
+  };
+
+  const formatPrice = (price: number, currencyCode: string) => {
+    const currency = getCurrencyInfo(currencyCode);
     if (price === 0) return 'Contact Us';
-    return price.toLocaleString();
+
+    if (currency.decimals === 0) {
+      return Math.round(price).toLocaleString();
+    }
+    return price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  // Fallback plans if API fails
-  const fallbackPlans: Record<string, Plan[]> = {
-    restaurant: [
-      {
-        id: 1,
-        name: 'basic',
-        display_name: 'Basic',
-        base_price_monthly: 99,
-        base_price_annual: 990,
-        plan_target: 'restaurant',
-        features: [
-          'POS Terminal',
-          'Menu Management',
-          'Kitchen Display (KDS)',
-          'Customer Display',
-          'Staff Management (up to 5)',
-          'Basic Reports',
-          'Email Support'
-        ]
-      },
-      {
-        id: 2,
-        name: 'professional',
-        display_name: 'Professional',
-        base_price_monthly: 199,
-        base_price_annual: 1990,
-        plan_target: 'restaurant',
-        features: [
-          'All Basic features',
-          'Mobile Ordering',
-          'Recipe Management',
-          'Advanced Inventory',
-          'Customer Management',
-          'Coupons & Promotions',
-          'Staff Management (up to 15)',
-          'Advanced Reports & Analytics',
-          'Priority Support'
-        ]
-      },
-      {
-        id: 3,
-        name: 'enterprise',
-        display_name: 'Enterprise',
-        base_price_monthly: 0,
-        base_price_annual: 0,
-        plan_target: 'restaurant',
-        features: [
-          'All Professional features',
-          'Unlimited Staff',
-          'Custom Integrations',
-          'Dedicated Account Manager',
-          'Custom Development',
-          'SLA Guarantee',
-          '24/7 Phone Support'
-        ]
-      }
-    ],
-    brand: [
-      {
-        id: 4,
-        name: 'brand_basic',
-        display_name: 'Brand Basic',
-        base_price_monthly: 299,
-        base_price_annual: 2990,
-        plan_target: 'brand',
-        features: [
-          'Multi-brand Dashboard',
-          'Restaurant Management (up to 5)',
-          'Centralized Menu Management',
-          'Basic Performance Reports',
-          'Email Support'
-        ]
-      },
-      {
-        id: 5,
-        name: 'brand_professional',
-        display_name: 'Brand Professional',
-        base_price_monthly: 599,
-        base_price_annual: 5990,
-        plan_target: 'brand',
-        features: [
-          'All Basic features',
-          'Restaurant Management (up to 20)',
-          'Recipe Management',
-          'Centralized Inventory',
-          'Advanced Analytics',
-          'Invoice Management',
-          'Priority Support'
-        ]
-      },
-      {
-        id: 6,
-        name: 'brand_enterprise',
-        display_name: 'Brand Enterprise',
-        base_price_monthly: 0,
-        base_price_annual: 0,
-        plan_target: 'brand',
-        features: [
-          'All Professional features',
-          'Unlimited Restaurants',
-          'API Access',
-          'Custom Development',
-          'Dedicated Account Manager',
-          '24/7 Support'
-        ]
-      }
-    ],
-    foodcourt: [
-      {
-        id: 7,
-        name: 'foodcourt_basic',
-        display_name: 'Foodcourt Basic',
-        base_price_monthly: 399,
-        base_price_annual: 3990,
-        plan_target: 'foodcourt',
-        features: [
-          'Multi-outlet Dashboard',
-          'Restaurant Management (up to 10)',
-          'Centralized Customer Database',
-          'Basic Statistics',
-          'Email Support'
-        ]
-      },
-      {
-        id: 8,
-        name: 'foodcourt_professional',
-        display_name: 'Foodcourt Professional',
-        base_price_monthly: 799,
-        base_price_annual: 7990,
-        plan_target: 'foodcourt',
-        features: [
-          'All Basic features',
-          'Restaurant Management (up to 30)',
-          'Coupon Management',
-          'Advanced Analytics',
-          'Customer Loyalty Program',
-          'Priority Support'
-        ]
-      },
-      {
-        id: 9,
-        name: 'foodcourt_enterprise',
-        display_name: 'Foodcourt Enterprise',
-        base_price_monthly: 0,
-        base_price_annual: 0,
-        plan_target: 'foodcourt',
-        features: [
-          'All Professional features',
-          'Unlimited Restaurants',
-          'API Access',
-          'Custom Integrations',
-          'Dedicated Account Manager',
-          '24/7 Support'
-        ]
-      }
-    ]
+  const getPlanPrice = (plan: Plan, type: 'monthly' | 'annual'): number => {
+    // 선택된 통화의 가격이 있으면 사용
+    if (plan.currency_prices && plan.currency_prices[selectedCurrency]) {
+      return plan.currency_prices[selectedCurrency][type];
+    }
+    // 없으면 0 반환 (가격 미설정)
+    return 0;
   };
 
-  const displayPlans = filteredPlans.length > 0 ? filteredPlans : (fallbackPlans[activeTab] || []);
+  // 선택된 통화에 가격이 설정되어 있는지 확인
+  const hasCurrencyPrice = (plan: Plan): boolean => {
+    return !!(plan.currency_prices && plan.currency_prices[selectedCurrency] &&
+      (plan.currency_prices[selectedCurrency].monthly > 0 || plan.currency_prices[selectedCurrency].annual > 0));
+  };
+
+  const formatLimit = (limit: number) => {
+    if (limit === -1) return 'Unlimited';
+    return limit.toLocaleString();
+  };
+
+  const getDescription = (planName: string): string => {
+    if (planName.toLowerCase().includes('basic')) {
+      return 'Perfect for small businesses starting their POS journey';
+    }
+    if (planName.toLowerCase().includes('professional')) {
+      return 'Ideal for growing businesses with advanced needs';
+    }
+    if (planName.toLowerCase().includes('enterprise')) {
+      return 'Comprehensive solution for large-scale operations';
+    }
+    return 'Subscription plan for your business';
+  };
+
+  const displayPlans = filteredPlans.length > 0 ? filteredPlans : [];
+  const currencyInfo = getCurrencyInfo(selectedCurrency);
 
   return (
     <LandingLayout>
@@ -468,63 +543,132 @@ const PricingPage: React.FC = () => {
         <HeroSection>
           <HeroTitle>Simple, Transparent Pricing</HeroTitle>
           <HeroSubtitle>
-            Choose the plan that fits your business. All plans include a 7-day free trial.
+            Choose the plan that fits your business. No hidden fees, cancel anytime.
           </HeroSubtitle>
+          <FreeTrialBadge>7 Days Free Trial - No Credit Card Required</FreeTrialBadge>
         </HeroSection>
 
         <ContentSection>
-          <PlanTabs>
-            <PlanTab active={activeTab === 'restaurant'} onClick={() => setActiveTab('restaurant')}>
-              Restaurant
-            </PlanTab>
-            <PlanTab active={activeTab === 'brand'} onClick={() => setActiveTab('brand')}>
-              Brand
-            </PlanTab>
-            <PlanTab active={activeTab === 'foodcourt'} onClick={() => setActiveTab('foodcourt')}>
-              Foodcourt
-            </PlanTab>
-          </PlanTabs>
+          <FilterBar>
+            <PlanTabs>
+              <PlanTab active={activeTab === 'restaurant'} onClick={() => setActiveTab('restaurant')}>
+                Restaurant
+              </PlanTab>
+              <PlanTab active={activeTab === 'brand'} onClick={() => setActiveTab('brand')}>
+                Brand
+              </PlanTab>
+              <PlanTab active={activeTab === 'foodcourt'} onClick={() => setActiveTab('foodcourt')}>
+                Foodcourt
+              </PlanTab>
+            </PlanTabs>
+
+            <CurrencySelector>
+              <CurrencyLabel>Currency:</CurrencyLabel>
+              <CurrencySelect
+                value={selectedCurrency}
+                onChange={(e) => setSelectedCurrency(e.target.value)}
+              >
+                {currencies.map(currency => (
+                  <option key={currency.code} value={currency.code}>
+                    {currency.symbol} {currency.code} - {currency.name}
+                  </option>
+                ))}
+              </CurrencySelect>
+            </CurrencySelector>
+          </FilterBar>
 
           {loading ? (
             <div style={{ textAlign: 'center', padding: '40px' }}>Loading plans...</div>
+          ) : displayPlans.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
+              No plans available for this category yet.
+            </div>
           ) : (
             <PlansGrid>
-              {displayPlans.map((plan) => (
-                <PlanCard key={plan.id} popular={getPopularPlan(plan.name)}>
-                  {getPopularPlan(plan.name) && <PopularBadge>Most Popular</PopularBadge>}
-                  <PlanName>{plan.display_name}</PlanName>
-                  <PlanPrice>
-                    {plan.base_price_monthly === 0 ? (
-                      <Price>Contact Us</Price>
-                    ) : (
-                      <>
-                        <Currency>MYR</Currency>
-                        <Price>{formatPrice(plan.base_price_monthly)}</Price>
-                        <Period>/month</Period>
-                      </>
+              {displayPlans.map((plan) => {
+                const monthlyPrice = getPlanPrice(plan, 'monthly');
+                const annualPrice = getPlanPrice(plan, 'annual');
+                const isPopular = getPopularPlan(plan.name);
+                const annualSavings = monthlyPrice > 0 ? Math.round(((monthlyPrice * 12 - annualPrice) / (monthlyPrice * 12)) * 100) : 0;
+
+                return (
+                  <PlanCard key={plan.id} popular={isPopular}>
+                    {isPopular && <PopularBadge>Most Popular</PopularBadge>}
+                    <PlanName>{plan.display_name}</PlanName>
+                    <PlanDescription>{getDescription(plan.name)}</PlanDescription>
+
+                    <PriceSection>
+                      {monthlyPrice === 0 ? (
+                        <MonthlyPrice>Contact Us</MonthlyPrice>
+                      ) : (
+                        <>
+                          <MonthlyPrice>
+                            <CurrencySymbol>{currencyInfo.symbol}</CurrencySymbol>
+                            {formatPrice(monthlyPrice, selectedCurrency)}
+                            <PeriodText>/month</PeriodText>
+                          </MonthlyPrice>
+                          {annualPrice > 0 && (
+                            <AnnualPrice>
+                              {currencyInfo.symbol} {formatPrice(annualPrice, selectedCurrency)}/year
+                              {annualSavings > 0 && ` (Save ${annualSavings}%)`}
+                            </AnnualPrice>
+                          )}
+                          <BillingNote>Billed monthly or annually</BillingNote>
+                        </>
+                      )}
+                    </PriceSection>
+
+                    <LimitsSection>
+                      <LimitItem>
+                        <LimitLabel>Staff Limit</LimitLabel>
+                        <LimitValue>{formatLimit(plan.staff_limit)}</LimitValue>
+                      </LimitItem>
+                      <LimitItem>
+                        <LimitLabel>Orders/month</LimitLabel>
+                        <LimitValue>{formatLimit(plan.order_limit)}</LimitValue>
+                      </LimitItem>
+                      <LimitItem>
+                        <LimitLabel>Menu Items</LimitLabel>
+                        <LimitValue>{formatLimit(plan.menu_item_limit)}</LimitValue>
+                      </LimitItem>
+                    </LimitsSection>
+
+                    {plan.included_modules && plan.included_modules.length > 0 && (
+                      <ModulesSection>
+                        <ModulesTitle>Included Modules ({plan.included_modules.length})</ModulesTitle>
+                        <ModulesList>
+                          {plan.included_modules.slice(0, 6).map((moduleCode, index) => (
+                            <ModuleTag key={index}>
+                              {MODULE_NAMES[moduleCode] || moduleCode}
+                            </ModuleTag>
+                          ))}
+                          {plan.included_modules.length > 6 && (
+                            <ModuleTag>+{plan.included_modules.length - 6} more</ModuleTag>
+                          )}
+                        </ModulesList>
+                      </ModulesSection>
                     )}
-                  </PlanPrice>
-                  <PlanDescription>
-                    {plan.base_price_monthly === 0
-                      ? 'Custom pricing for enterprise needs'
-                      : `Billed annually: MYR ${formatPrice(plan.base_price_annual)}/year`}
-                  </PlanDescription>
-                  <FeatureList>
-                    {plan.features.map((feature, index) => (
-                      <FeatureItem key={index}>
-                        <FeatureCheck>✓</FeatureCheck>
-                        {feature}
-                      </FeatureItem>
-                    ))}
-                  </FeatureList>
-                  <ContactButton
-                    primary={getPopularPlan(plan.name)}
-                    onClick={() => navigate('/contact')}
-                  >
-                    Contact Us
-                  </ContactButton>
-                </PlanCard>
-              ))}
+
+                    {plan.features && plan.features.length > 0 && plan.features[0] !== '' && (
+                      <FeaturesList>
+                        {plan.features.filter(f => f && f.trim()).map((feature, index) => (
+                          <FeatureItem key={index}>
+                            <FeatureCheck>✓</FeatureCheck>
+                            {feature}
+                          </FeatureItem>
+                        ))}
+                      </FeaturesList>
+                    )}
+
+                    <ContactButton
+                      primary={isPopular}
+                      onClick={() => navigate('/contact')}
+                    >
+                      Start Free Trial
+                    </ContactButton>
+                  </PlanCard>
+                );
+              })}
             </PlansGrid>
           )}
         </ContentSection>
@@ -533,15 +677,16 @@ const PricingPage: React.FC = () => {
           <FAQTitle>Frequently Asked Questions</FAQTitle>
           <FAQList>
             <FAQItem>
-              <FAQQuestion>How do I sign up?</FAQQuestion>
+              <FAQQuestion>How does the 7-day free trial work?</FAQQuestion>
               <FAQAnswer>
-                Contact our sales team through the contact form or email. We'll set up your account personally and guide you through the onboarding process.
+                Sign up through our contact form and get full access to all features for 7 days.
+                No credit card required. After the trial, choose a plan that fits your needs.
               </FAQAnswer>
             </FAQItem>
             <FAQItem>
-              <FAQQuestion>Is there a free trial?</FAQQuestion>
+              <FAQQuestion>How do I sign up?</FAQQuestion>
               <FAQAnswer>
-                Yes! We offer a 7-day free trial for all plans. You'll have full access to all features during the trial period.
+                Contact our sales team through the contact form or email. We'll set up your account personally and guide you through the onboarding process.
               </FAQAnswer>
             </FAQItem>
             <FAQItem>
@@ -568,10 +713,10 @@ const PricingPage: React.FC = () => {
         <CTASection>
           <CTATitle>Ready to get started?</CTATitle>
           <CTASubtitle>
-            Contact our sales team to set up your account and start your free trial today.
+            Start your 7-day free trial today. No credit card required.
           </CTASubtitle>
           <CTAButton onClick={() => navigate('/contact')}>
-            Contact Us
+            Start Free Trial
           </CTAButton>
         </CTASection>
       </PageContainer>

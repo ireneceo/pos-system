@@ -17,6 +17,11 @@ import {
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { formatCurrency } from '../../utils/currency';
 
+interface CurrencyPrice {
+  monthly: number;
+  annual: number;
+}
+
 interface Plan {
   id: string;
   name: string;
@@ -34,6 +39,7 @@ interface Plan {
   isActive: boolean;
   createdAt: string;
   subscriptionCount: number;
+  currencyPrices?: Record<string, CurrencyPrice>;
 }
 
 interface AddonModule {
@@ -563,6 +569,7 @@ const PlansPage: React.FC = () => {
   const [planTargetFilter, setPlanTargetFilter] = useState<'all' | 'restaurant' | 'brand' | 'foodcourt'>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'basic' | 'custom'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [displayCurrency, setDisplayCurrency] = useState<string>('USD');
 
   // Addon modules
   const [availableModules, setAvailableModules] = useState<AddonModule[]>([]);
@@ -755,9 +762,10 @@ const PlansPage: React.FC = () => {
       if (!response.ok) throw new Error('Failed to fetch plans');
 
       const data = await response.json();
+      const token = localStorage.getItem('auth_token');
 
       // Transform API data to match frontend interface
-      const transformedPlans: Plan[] = data.map((plan: any) => {
+      const transformedPlans: Plan[] = await Promise.all(data.map(async (plan: any) => {
         let features: string[] = [];
         try {
           // Parse features if it's a JSON string
@@ -784,6 +792,25 @@ const PlansPage: React.FC = () => {
           includedModules = [];
         }
 
+        // Fetch currency prices for this plan
+        let currencyPrices: Record<string, CurrencyPrice> = {};
+        try {
+          const pricesResponse = await fetch(`/api/currencies/plans/${plan.id}/prices`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (pricesResponse.ok) {
+            const pricesData = await pricesResponse.json();
+            for (const price of (pricesData.data || [])) {
+              currencyPrices[price.currency] = {
+                monthly: parseFloat(price.monthly_price) || 0,
+                annual: parseFloat(price.annual_price) || 0
+              };
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to fetch currency prices for plan:', plan.name, e);
+        }
+
         return {
           id: `plan-${plan.id}`,
           name: plan.name,
@@ -800,9 +827,10 @@ const PlansPage: React.FC = () => {
           isPopular: plan.name === 'professional',
           isActive: plan.is_active,
           createdAt: plan.createdAt ? new Date(plan.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          subscriptionCount: subscriptionStats[plan.display_name] || 0
+          subscriptionCount: subscriptionStats[plan.display_name] || 0,
+          currencyPrices
         };
-      });
+      }));
 
       setPlans(transformedPlans);
     } catch (error) {
@@ -1095,6 +1123,30 @@ const PlansPage: React.FC = () => {
   const monthlyRevenue = plans.reduce((sum, p) => sum + (p.monthlyPrice * p.subscriptionCount), 0);
 
   const formatLimit = (limit: number) => limit === -1 ? 'Unlimited' : limit.toLocaleString();
+
+  // Get price for selected currency
+  const getPlanPrice = (plan: Plan, type: 'monthly' | 'annual'): number => {
+    if (plan.currencyPrices && plan.currencyPrices[displayCurrency]) {
+      return plan.currencyPrices[displayCurrency][type];
+    }
+    // 선택된 통화에 가격이 없으면 0 반환
+    return 0;
+  };
+
+  // 선택된 통화에 가격이 설정되어 있는지 확인
+  const hasCurrencyPrice = (plan: Plan): boolean => {
+    return !!(plan.currencyPrices && plan.currencyPrices[displayCurrency] &&
+      (plan.currencyPrices[displayCurrency].monthly > 0 || plan.currencyPrices[displayCurrency].annual > 0));
+  };
+
+  // Format price with selected currency
+  const formatPlanPrice = (plan: Plan, type: 'monthly' | 'annual'): string => {
+    if (!hasCurrencyPrice(plan)) {
+      return 'Not Set';
+    }
+    const price = getPlanPrice(plan, type);
+    return formatCurrency(price, displayCurrency);
+  };
   
   // Button handlers
   const handleCreatePlan = () => {
@@ -1254,6 +1306,20 @@ const PlansPage: React.FC = () => {
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </FilterSelect>
+          <FilterSelect
+            value={displayCurrency}
+            onChange={(e) => setDisplayCurrency(e.target.value)}
+            style={{ minWidth: '150px' }}
+          >
+            {supportedCurrencies.map(code => {
+              const config = currencyConfig[code];
+              return (
+                <option key={code} value={code}>
+                  {config?.symbol || code} {code}
+                </option>
+              );
+            })}
+          </FilterSelect>
         </FilterBar>
 
         <PlansGrid>
@@ -1273,18 +1339,31 @@ const PlansPage: React.FC = () => {
                 <PlanDescription>{plan.description}</PlanDescription>
 
                 <PlanPricing>
-                  <MonthlyPrice>
-                    {formatCurrency(plan.monthlyPrice)}<span style={{fontSize: '16px', color: '#6B7280'}}>/month</span>
-                  </MonthlyPrice>
-                  {plan.annualPrice > 0 && plan.monthlyPrice > 0 && (
-                    <AnnualPrice>
-                      {formatCurrency(plan.annualPrice)}/year
-                      {plan.monthlyPrice * 12 > plan.annualPrice && (
-                        <span> (Save {Math.round(((plan.monthlyPrice * 12 - plan.annualPrice) / (plan.monthlyPrice * 12)) * 100)}%)</span>
+                  {hasCurrencyPrice(plan) ? (
+                    <>
+                      <MonthlyPrice>
+                        {formatPlanPrice(plan, 'monthly')}<span style={{fontSize: '16px', color: '#6B7280'}}>/month</span>
+                      </MonthlyPrice>
+                      {getPlanPrice(plan, 'annual') > 0 && getPlanPrice(plan, 'monthly') > 0 && (
+                        <AnnualPrice>
+                          {formatPlanPrice(plan, 'annual')}/year
+                          {getPlanPrice(plan, 'monthly') * 12 > getPlanPrice(plan, 'annual') && (
+                            <span> (Save {Math.round(((getPlanPrice(plan, 'monthly') * 12 - getPlanPrice(plan, 'annual')) / (getPlanPrice(plan, 'monthly') * 12)) * 100)}%)</span>
+                          )}
+                        </AnnualPrice>
                       )}
-                    </AnnualPrice>
+                      <PricingNote>Billed monthly or annually</PricingNote>
+                    </>
+                  ) : (
+                    <>
+                      <MonthlyPrice style={{color: '#F59E0B'}}>
+                        Price Not Set
+                      </MonthlyPrice>
+                      <PricingNote style={{color: '#F59E0B'}}>
+                        Set {displayCurrency} price in "Prices" button
+                      </PricingNote>
+                    </>
                   )}
-                  <PricingNote>Billed monthly or annually</PricingNote>
                 </PlanPricing>
               </PlanHeader>
 
@@ -1347,7 +1426,7 @@ const PlansPage: React.FC = () => {
                   <StatDesc>Subscriptions</StatDesc>
                 </StatItem>
                 <StatItem>
-                  <StatNumber>{formatCurrency(plan.monthlyPrice * plan.subscriptionCount)}</StatNumber>
+                  <StatNumber>{formatCurrency(getPlanPrice(plan, 'monthly') * plan.subscriptionCount, displayCurrency)}</StatNumber>
                   <StatDesc>Monthly Revenue</StatDesc>
                 </StatItem>
               </PlanStats>

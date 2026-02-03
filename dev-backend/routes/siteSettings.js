@@ -19,7 +19,18 @@ router.get('/', async (req, res) => {
       });
     }
 
-    res.json(settings);
+    // Return settings with contact info for public pages (Contact, etc.)
+    res.json({
+      ...settings.toJSON(),
+      // Contact information from AdminSettings
+      email: settings.email || 'support@purplehere.com',
+      phone: settings.phone || '',
+      whatsapp: settings.whatsapp || settings.phone || '',
+      business_hours: settings.business_hours || {
+        weekdays: '9:00 AM - 6:00 PM (GMT+8)',
+        weekend: 'Closed'
+      }
+    });
   } catch (error) {
     console.error('Error fetching site settings:', error);
     res.status(500).json({ error: 'Failed to fetch site settings' });

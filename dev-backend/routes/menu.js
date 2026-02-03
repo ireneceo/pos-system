@@ -448,6 +448,14 @@ router.put('/product/:id', async (req, res) => {
     const updateData = { ...req.body };
     delete updateData.restaurant_id;
 
+    // 이미지가 undefined이거나 빈 값이면 기존 값 유지 (덮어쓰기 방지)
+    if (updateData.image === undefined || updateData.image === '' || updateData.image === null) {
+      delete updateData.image;
+    }
+    if (updateData.image_thumbnail === undefined || updateData.image_thumbnail === '' || updateData.image_thumbnail === null) {
+      delete updateData.image_thumbnail;
+    }
+
     // 이미지 처리: URL이면 그대로 저장, base64면 파일로 저장
     if (updateData.image) {
       // 이미 URL 형식이면 그대로 사용

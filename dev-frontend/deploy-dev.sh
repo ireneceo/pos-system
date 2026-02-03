@@ -73,7 +73,19 @@ echo -e "\n${YELLOW}🔐 파일 권한 설정 중...${NC}"
 chmod -R 755 "$BUILD_DIR"
 find "$BUILD_DIR" -type f -exec chmod 644 {} \;
 
+# 5. nginx 서빙 폴더로 복사 (핵심!)
+DEPLOY_DIR="/var/www/dev-frontend-build"
+echo -e "\n${YELLOW}📦 nginx 배포 폴더로 복사 중...${NC}"
+if sudo cp -r "$BUILD_DIR"/* "$DEPLOY_DIR"/; then
+    sudo chown -R root:root "$DEPLOY_DIR"
+    echo -e "${GREEN}✅ $DEPLOY_DIR 로 복사 완료${NC}"
+else
+    echo -e "${RED}❌ 배포 폴더 복사 실패${NC}"
+    exit 1
+fi
+
 echo -e "\n${GREEN}✅ 배포 완료!${NC}"
-echo -e "${BLUE}📂 배포 위치: $BUILD_DIR${NC}"
+echo -e "${BLUE}📂 빌드 위치: $BUILD_DIR${NC}"
+echo -e "${BLUE}📂 배포 위치: $DEPLOY_DIR${NC}"
 echo -e "${BLUE}🌐 웹사이트: https://dev.purplehere.com${NC}"
 echo -e "${YELLOW}💡 브라우저에서 강력 새로고침 (Ctrl+Shift+R)을 사용하세요.${NC}"
