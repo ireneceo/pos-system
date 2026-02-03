@@ -93,7 +93,7 @@ const ListItem = styled.li`
   position: relative;
 
   &:before {
-    content: '~';
+    content: '✓';
     position: absolute;
     left: 0;
     color: #10B981;
@@ -151,78 +151,81 @@ const AboutPage: React.FC = () => {
         <HeroSection>
           <HeroTitle>About PurpleHere</HeroTitle>
           <HeroSubtitle>
-            혁신은 여기, 모든 것이 여기 - Where Innovation Meets Food Business
+            Where Innovation Meets Food Business
           </HeroSubtitle>
         </HeroSection>
 
         <ContentSection>
           <Section>
-            <SectionTitle>💜 Our Story</SectionTitle>
+            <SectionTitle>Our Story</SectionTitle>
             <Paragraph>
-              <strong>보라색 소가 가듯, 창의적 혁신으로 여기에 모이다</strong>
+              <strong>Like a Purple Cow, Standing Out Through Creative Innovation</strong>
             </Paragraph>
             <Paragraph>
-              PurpleHere는 세스 고딘의 '보라색 소가 온다'에서 영감을 받았습니다.
-              평범함을 거부하고 푸드코트와 체인 업계의 고정관념을 깨는 혁신적 솔루션입니다.
+              PurpleHere is inspired by Seth Godin's "Purple Cow" - a remarkable solution that stands out
+              in the foodcourt and chain restaurant industry. We break conventional thinking and deliver
+              innovation that truly matters.
             </Paragraph>
             <Paragraph>
-              <strong>"Here"</strong>는 모든 점포, 모든 데이터, 모든 솔루션이 한 곳에 모이는 통합 플랫폼의 중심을 의미합니다.
-              지금 여기서 바로 시작하는 즉시성과 함께, 모두가 모이는 곳이 되고자 합니다.
-            </Paragraph>
-          </Section>
-
-          <Section>
-            <SectionTitle>🎯 Our Vision</SectionTitle>
-            <Paragraph>
-              <strong>"평범한 POS가 아닌, 창의적 통합 플랫폼"</strong>
-            </Paragraph>
-            <Paragraph>
-              단순 주문 시스템을 넘어, 푸드 비즈니스 전체를 혁신하는 보라색 소 같은 차별화된 솔루션을 제공합니다.
-              우리의 목표는 매장 운영의 모든 측면을 디지털화하여 효율성을 극대화하고
-              데이터 기반 의사 결정을 지원하는 것입니다.
+              <strong>"Here"</strong> represents the central hub where all your outlets, data, and solutions
+              converge into one unified platform. It embodies the immediacy of "start right here, right now"
+              and serves as the place where everything comes together.
             </Paragraph>
           </Section>
 
           <Section>
-            <SectionTitle>✨ Why PurpleHere?</SectionTitle>
+            <SectionTitle>Our Vision</SectionTitle>
+            <Paragraph>
+              <strong>"Not Just Another POS, But a Creative Unified Platform"</strong>
+            </Paragraph>
+            <Paragraph>
+              Beyond simple order processing, we revolutionize the entire food business operation like
+              a purple cow in the field. Our goal is to digitalize every aspect of store management,
+              maximize operational efficiency, and empower data-driven decision making.
+            </Paragraph>
+          </Section>
+
+          <Section>
+            <SectionTitle>Why PurpleHere?</SectionTitle>
             <List>
               <ListItem>
-                <strong>혁신적 사고:</strong> 눈에 띄는, 차별화된, 기억되는 솔루션으로
-                푸드 산업의 고정관념을 깨트립니다
+                <strong>Innovative Thinking:</strong> Stand out with a remarkable, differentiated solution
+                that breaks industry stereotypes
               </ListItem>
               <ListItem>
-                <strong>통합 플랫폼:</strong> 모든 점포, 모든 데이터, 모든 기능이
-                하나의 플랫폼에서 관리됩니다
+                <strong>Unified Platform:</strong> Manage all outlets, data, and features from a single
+                centralized system
               </ListItem>
               <ListItem>
-                <strong>실시간 인사이트:</strong> 모든 매장의 주문, 매출, 재고 데이터를
-                실시간으로 모니터링하고 분석합니다
+                <strong>Real-time Insights:</strong> Monitor and analyze orders, sales, and inventory
+                across all locations in real-time
               </ListItem>
               <ListItem>
-                <strong>모바일 주문:</strong> QR 코드 기반 모바일 주문으로
-                고객 편의성과 매장 운영 효율성을 동시에 향상시킵니다
+                <strong>Mobile Ordering:</strong> QR code-based mobile ordering enhances both customer
+                convenience and operational efficiency
               </ListItem>
               <ListItem>
-                <strong>클라우드 기반:</strong> 언제 어디서나 접속 가능한 클라우드 시스템으로
-                원격 관리가 가능합니다
+                <strong>Cloud-Based:</strong> Access your system anytime, anywhere with cloud technology
+                enabling remote management
               </ListItem>
             </List>
           </Section>
 
           <Section>
-            <SectionTitle>🚀 Our Technology</SectionTitle>
+            <SectionTitle>Our Technology</SectionTitle>
             <Paragraph>
-              최신 웹 기술과 클라우드 인프라를 기반으로 안정적이고 확장 가능한 시스템을 구축했습니다.
-              React 기반의 직관적인 UI와 실시간 Socket.IO 통신으로 빠르고 편리한 사용자 경험을 제공합니다.
+              Built on modern web technologies and cloud infrastructure, we deliver a stable and scalable
+              system. Our React-based intuitive UI and real-time Socket.IO communication provide a fast
+              and seamless user experience.
             </Paragraph>
             <Paragraph>
-              다양한 디바이스에서 원활하게 작동하며, 지속적인 업데이트를 통해
-              최신 기술과 보안 표준을 유지합니다.
+              Works smoothly across various devices, and we continuously maintain the latest technology
+              and security standards through regular updates.
             </Paragraph>
           </Section>
 
           <CTASection>
-            <CTATitle>다르게 생각하는 솔루션, 지금 시작하세요</CTATitle>
+            <CTATitle>Experience the Difference, Start Today</CTATitle>
             <CTAButton onClick={() => navigate('/features')}>
               Explore Features
             </CTAButton>

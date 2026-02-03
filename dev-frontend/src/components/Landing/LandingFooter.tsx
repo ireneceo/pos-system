@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 
@@ -102,6 +102,16 @@ const ContactLabel = styled.span`
   min-width: 60px;
 `;
 
+const ContactLink = styled.a`
+  color: white;
+  text-decoration: none;
+  transition: color 0.2s;
+
+  &:hover {
+    color: #635BFF;
+  }
+`;
+
 const Divider = styled.hr`
   border: none;
   border-top: 1px solid #1E3A5F;
@@ -143,6 +153,25 @@ const LegalLink = styled.button`
 const LandingFooter: React.FC = () => {
   const navigate = useNavigate();
   const currentYear = new Date().getFullYear();
+  const [contactInfo, setContactInfo] = useState({
+    email: 'support@purplehere.com',
+    phone: '+60-XX-XXX-XXXX',
+    hours: 'Mon-Fri 9AM-6PM (GMT+8)'
+  });
+
+  useEffect(() => {
+    fetch('/api/site-settings')
+      .then(res => res.json())
+      .then(data => {
+        const businessHours = data.business_hours?.weekdays || 'Mon-Fri 9AM-6PM (GMT+8)';
+        setContactInfo({
+          email: data.email || 'support@purplehere.com',
+          phone: data.phone || '+60-XX-XXX-XXXX',
+          hours: businessHours
+        });
+      })
+      .catch(err => console.error('Failed to load company settings:', err));
+  }, []);
 
   return (
     <Footer>
@@ -167,9 +196,10 @@ const LandingFooter: React.FC = () => {
           </FooterSection>
 
           <FooterSection>
-            <SectionTitle>Company</SectionTitle>
+            <SectionTitle>Info</SectionTitle>
             <LinkList>
               <li><FooterLink onClick={() => navigate('/about')}>About Us</FooterLink></li>
+              <li><FooterLink onClick={() => navigate('/company')}>Company</FooterLink></li>
               <li><FooterLink onClick={() => navigate('/contact')}>Contact</FooterLink></li>
             </LinkList>
           </FooterSection>
@@ -179,15 +209,19 @@ const LandingFooter: React.FC = () => {
             <ContactInfo>
               <ContactItem>
                 <ContactLabel>Email</ContactLabel>
-                <span>support@purplehere.com</span>
+                <ContactLink href={`mailto:${contactInfo.email}`}>
+                  {contactInfo.email}
+                </ContactLink>
               </ContactItem>
               <ContactItem>
                 <ContactLabel>Phone</ContactLabel>
-                <span>+60-XX-XXX-XXXX</span>
+                <ContactLink href={`tel:${contactInfo.phone.replace(/[^+\d]/g, '')}`}>
+                  {contactInfo.phone}
+                </ContactLink>
               </ContactItem>
               <ContactItem>
                 <ContactLabel>Hours</ContactLabel>
-                <span>Mon-Fri 9AM-6PM (GMT+8)</span>
+                <span>{contactInfo.hours}</span>
               </ContactItem>
             </ContactInfo>
           </FooterSection>

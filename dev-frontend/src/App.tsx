@@ -18,6 +18,7 @@ import ServicePage from './pages/Landing/ServicePage';
 import PricingPage from './pages/Landing/PricingPage';
 import ContactPage from './pages/Landing/ContactPage';
 import DemoPage from './pages/Landing/DemoPage';
+import CompanyPage from './pages/Landing/CompanyPage';
 // Login Page (keep static - frequently used)
 import LoginPage from './pages/Login/LoginPage';
 // Mobile App (keep static - separate entry point)
@@ -136,6 +137,14 @@ const RentManagement = React.lazy(() => import('./pages/Foodcourt/RentManagement
 const TenantSupport = React.lazy(() => import('./pages/Foodcourt/TenantSupport'));
 const FranchiseSupport = React.lazy(() => import('./pages/Brand/FranchiseSupport'));
 const BrandReports = React.lazy(() => import('./pages/Brand/BrandReports'));
+
+// Brand General Inquiry Pages
+const BrandSystemInquiryPage = React.lazy(() => import('./pages/Brand/SystemInquiryPage'));
+const BrandOperationInquiryPage = React.lazy(() => import('./pages/Brand/OperationInquiryPage'));
+
+// Foodcourt General Inquiry Pages
+const FoodcourtSystemInquiryPage = React.lazy(() => import('./pages/Foodcourt/SystemInquiryPage'));
+const FoodcourtOperationInquiryPage = React.lazy(() => import('./pages/Foodcourt/OperationInquiryPage'));
 
 // POS Root redirect component (for authenticated users)
 const PosRootRedirect: React.FC = () => {
@@ -279,6 +288,7 @@ function App() {
                       <Route path="/pricing" element={<PricingPage />} />
                       <Route path="/contact" element={<ContactPage />} />
                       <Route path="/demo" element={<DemoPage />} />
+                      <Route path="/company" element={<CompanyPage />} />
 
                       {/* POS Login */}
                       <Route path="/pos" element={<LoginPage />} />
@@ -417,6 +427,16 @@ function App() {
                           <FoodcourtSubscriptionsPage />
                         </ProtectedRoute>
                       } />
+                      <Route path="/pos/foodcourt/general/system-inquiry" element={
+                        <ProtectedRoute requiredRole={['Foodcourt General']}>
+                          <FoodcourtSystemInquiryPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/foodcourt/general/operation-inquiry" element={
+                        <ProtectedRoute requiredRole={['Foodcourt General']}>
+                          <FoodcourtOperationInquiryPage />
+                        </ProtectedRoute>
+                      } />
                       <Route path="/pos/foodcourt/invoices" element={
                         <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
                           <FoodcourtInvoicesPage />
@@ -457,6 +477,16 @@ function App() {
                       <Route path="/pos/brand/general/subscriptions" element={
                         <ProtectedRoute requiredRole={['Brand General']}>
                           <BrandSubscriptionsPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/brand/general/system-inquiry" element={
+                        <ProtectedRoute requiredRole={['Brand General']}>
+                          <BrandSystemInquiryPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/brand/general/operation-inquiry" element={
+                        <ProtectedRoute requiredRole={['Brand General']}>
+                          <BrandOperationInquiryPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/brand/invoices" element={

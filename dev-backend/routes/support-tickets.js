@@ -12,13 +12,14 @@ const { Op } = require('sequelize');
 // Get all support tickets
 router.get('/', async (req, res) => {
   try {
-    const { status, priority, category, search } = req.query;
+    const { status, priority, category, search, customerId } = req.query;
 
     const where = {};
 
     if (status) where.status = status;
     if (priority) where.priority = priority;
     if (category) where.category = category;
+    if (customerId) where.customerId = customerId;
 
     if (search) {
       where[Op.or] = [

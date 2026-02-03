@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
-import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
+import { StatsGrid, StatValue, StatLabel } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface SupportTicket {
@@ -121,7 +121,62 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
 
 const TicketsGrid = styled.div`
   display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 20px;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const StatCard = styled.div<{ borderColor?: string }>`
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  border-left: 4px solid ${props => props.borderColor || '#635BFF'};
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+  }
+`;
+
+const TabContainer = styled.div`
+  display: flex;
+  gap: 24px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #E6EBF1;
+  overflow-x: auto;
+`;
+
+const Tab = styled.button<{ active?: boolean }>`
+  padding: 12px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: ${props => props.active ? '#635BFF' : '#6B7C93'};
+  background: none;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s;
+  white-space: nowrap;
+
+  &:hover {
+    color: #635BFF;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: ${props => props.active ? '#635BFF' : 'transparent'};
+    transition: all 0.15s;
+  }
 `;
 
 const TicketCard = styled.div`
@@ -485,7 +540,7 @@ const SupportTicketsPage: React.FC = () => {
   const { user } = useAuth();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'open' | 'in-progress' | 'resolved' | 'closed'>('all');
   const [filterPriority, setFilterPriority] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterRole, setFilterRole] = useState('all');
@@ -526,7 +581,7 @@ const SupportTicketsPage: React.FC = () => {
     const matchesSearch = ticket.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          ticket.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          ticket.ticketNumber.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || ticket.status === filterStatus;
+    const matchesStatus = activeTab === 'all' || ticket.status === activeTab;
     const matchesPriority = filterPriority === 'all' || ticket.priority === filterPriority;
     const matchesCategory = filterCategory === 'all' || ticket.category === filterCategory;
     const matchesRole = filterRole === 'all' || ticket.customerRole === filterRole;
@@ -538,7 +593,6 @@ const SupportTicketsPage: React.FC = () => {
   const openTickets = tickets.filter(t => t.status === 'open').length;
   const inProgressTickets = tickets.filter(t => t.status === 'in-progress').length;
   const resolvedTickets = tickets.filter(t => t.status === 'resolved').length;
-  const avgResponseTime = Math.round(tickets.reduce((sum, t) => sum + t.responseTime, 0) / tickets.length);
 
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString('en-MY');
@@ -670,27 +724,41 @@ const SupportTicketsPage: React.FC = () => {
         </Header>
         <Content>
           <StatsGrid>
-            <StatCard>
+            <StatCard borderColor="#635BFF">
               <StatValue>{totalTickets}</StatValue>
               <StatLabel>Total Tickets</StatLabel>
             </StatCard>
-            <StatCard>
+            <StatCard borderColor="#F59E0B">
               <StatValue>{openTickets}</StatValue>
               <StatLabel>Open Tickets</StatLabel>
             </StatCard>
-            <StatCard>
+            <StatCard borderColor="#3B82F6">
               <StatValue>{inProgressTickets}</StatValue>
               <StatLabel>In Progress</StatLabel>
             </StatCard>
-            <StatCard>
+            <StatCard borderColor="#10B981">
               <StatValue>{resolvedTickets}</StatValue>
               <StatLabel>Resolved</StatLabel>
             </StatCard>
-            <StatCard>
-              <StatValue>{formatDuration(avgResponseTime)}</StatValue>
-              <StatLabel>Avg Response Time</StatLabel>
-            </StatCard>
           </StatsGrid>
+
+          <TabContainer>
+            <Tab active={activeTab === 'all'} onClick={() => setActiveTab('all')}>
+              All ({totalTickets})
+            </Tab>
+            <Tab active={activeTab === 'open'} onClick={() => setActiveTab('open')}>
+              Open ({openTickets})
+            </Tab>
+            <Tab active={activeTab === 'in-progress'} onClick={() => setActiveTab('in-progress')}>
+              In Progress ({inProgressTickets})
+            </Tab>
+            <Tab active={activeTab === 'resolved'} onClick={() => setActiveTab('resolved')}>
+              Resolved ({resolvedTickets})
+            </Tab>
+            <Tab active={activeTab === 'closed'} onClick={() => setActiveTab('closed')}>
+              Closed ({tickets.filter(t => t.status === 'closed').length})
+            </Tab>
+          </TabContainer>
 
           <FilterBar>
             <SearchInput
@@ -698,13 +766,6 @@ const SupportTicketsPage: React.FC = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <FilterSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-              <option value="all">All Status</option>
-              <option value="open">Open</option>
-              <option value="in-progress">In Progress</option>
-              <option value="resolved">Resolved</option>
-              <option value="closed">Closed</option>
-            </FilterSelect>
             <FilterSelect value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
               <option value="all">All Priority</option>
               <option value="urgent">Urgent</option>

@@ -389,14 +389,21 @@ const BrandGeneralDashboard: React.FC = () => {
         console.log('🔄 Starting brand data fetch...');
 
         // Fetch brand managers
-        const usersResponse = await fetch('/api/users?role=Brand Manager');
+        const token = localStorage.getItem('auth_token');
+        const usersResponse = await fetch('/api/users?role=Brand Manager', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        let brandManagers: BrandManager[] = [];
+
         if (usersResponse.ok) {
           const usersData = await usersResponse.json();
-          const managerUsers = usersData.data || usersData;
+          const managerUsers = Array.isArray(usersData) ? usersData : (Array.isArray(usersData.data) ? usersData.data : []);
           console.log('👥 Fetched brand managers:', managerUsers?.length || 0);
 
           // Transform to BrandManager format
-          const brandManagers = managerUsers.map((manager: any) => ({
+          brandManagers = managerUsers.map((manager: any) => ({
             id: manager.id.toString(),
             name: manager.name || `${manager.first_name} ${manager.last_name}`.trim(),
             email: manager.email,
@@ -408,38 +415,40 @@ const BrandGeneralDashboard: React.FC = () => {
             performanceScore: Math.floor(Math.random() * 40) + 60,
             riskLevel: Math.random() > 0.7 ? 'high' : Math.random() > 0.4 ? 'medium' : 'low'
           }));
-
-          setManagers(brandManagers);
-
-          // Calculate metrics
-          const newMetrics = {
-            ...metrics,
-            totalManagers: brandManagers.length,
-            totalBrands: brandManagers.length, // 1:1 mapping for now
-            totalStores: brandManagers.reduce((sum: number, m: BrandManager) => sum + m.storeCount, 0),
-            monthlyRevenue: brandManagers.reduce((sum: number, m: BrandManager) => sum + m.monthlyRevenue, 0),
-            marketShare: Math.random() * 15 + 10, // Mock: 10-25%
-            growthRate: Math.random() * 25 + 8, // Mock: 8-33%
-            customerSatisfaction: Math.random() * 1.5 + 3.5, // Mock: 3.5-5.0
-            activePromotions: Math.floor(Math.random() * 12) + 3,
-            newFranchises: Math.floor(Math.random() * 8) + 2
-          };
-
-          newMetrics.averageRevenuePerStore = newMetrics.totalStores > 0
-            ? newMetrics.monthlyRevenue / newMetrics.totalStores
-            : 0;
-
-          setMetrics(newMetrics);
-
-          // Generate revenue data
-          const periods = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-          const revenueArray = periods.map(period => ({
-            period,
-            revenue: Math.floor(Math.random() * 150000) + 80000,
-            storeCount: Math.floor(Math.random() * 10) + 25
-          }));
-          setRevenueData(revenueArray);
+        } else {
+          console.error('Failed to fetch brand managers:', usersResponse.status);
         }
+
+        setManagers(brandManagers);
+
+        // Calculate metrics
+        const newMetrics = {
+          ...metrics,
+          totalManagers: brandManagers.length,
+          totalBrands: brandManagers.length, // 1:1 mapping for now
+          totalStores: brandManagers.reduce((sum: number, m: BrandManager) => sum + m.storeCount, 0),
+          monthlyRevenue: brandManagers.reduce((sum: number, m: BrandManager) => sum + m.monthlyRevenue, 0),
+          marketShare: Math.random() * 15 + 10, // Mock: 10-25%
+          growthRate: Math.random() * 25 + 8, // Mock: 8-33%
+          customerSatisfaction: Math.random() * 1.5 + 3.5, // Mock: 3.5-5.0
+          activePromotions: Math.floor(Math.random() * 12) + 3,
+          newFranchises: Math.floor(Math.random() * 8) + 2
+        };
+
+        newMetrics.averageRevenuePerStore = newMetrics.totalStores > 0
+          ? newMetrics.monthlyRevenue / newMetrics.totalStores
+          : 0;
+
+        setMetrics(newMetrics);
+
+        // Generate revenue data
+        const periods = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+        const revenueArray = periods.map(period => ({
+          period,
+          revenue: Math.floor(Math.random() * 150000) + 80000,
+          storeCount: Math.floor(Math.random() * 10) + 25
+        }));
+        setRevenueData(revenueArray);
       } catch (error) {
         console.error('Error fetching brand data:', error);
       }
@@ -510,10 +519,15 @@ const BrandGeneralDashboard: React.FC = () => {
       if (response.ok) {
         setShowManagerModal(false);
         // Refresh managers list
-        const usersResponse = await fetch('/api/users?role=Brand Manager');
+        const token = localStorage.getItem('auth_token');
+        const usersResponse = await fetch('/api/users?role=Brand Manager', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         if (usersResponse.ok) {
           const usersData = await usersResponse.json();
-          const managerUsers = usersData.data || usersData;
+          const managerUsers = Array.isArray(usersData) ? usersData : (Array.isArray(usersData.data) ? usersData.data : []);
 
           const brandManagers = managerUsers.map((manager: any) => ({
             id: manager.id.toString(),
@@ -531,6 +545,8 @@ const BrandGeneralDashboard: React.FC = () => {
           }));
 
           setManagers(brandManagers);
+        } else {
+          console.error('Failed to refresh managers list:', usersResponse.status);
         }
       } else {
         console.error('Failed to save manager');

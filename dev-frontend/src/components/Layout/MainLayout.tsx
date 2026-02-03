@@ -831,7 +831,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <NavTitle>Support</NavTitle>
                 <NavItem to="/pos/admin/support" active={isActive('/pos/admin/support')} onClick={closeSidebar}>
                   <NavIcon>◎</NavIcon>
-                  System Inquiry
+                  Inquiry Management
                 </NavItem>
                 <NavItem to="/pos/admin/contact-inquiries" active={isActive('/pos/admin/contact-inquiries')} onClick={closeSidebar}>
                   <NavIcon>@</NavIcon>
@@ -925,14 +925,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 </NavItem>
 
                 <NavTitle>Support</NavTitle>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
+                <NavItem to="/pos/brand/general/system-inquiry" active={isActive('/pos/brand/general/system-inquiry')} onClick={closeSidebar}>
+                  <NavIcon>?</NavIcon>
                   System Inquiry
-                </DisabledNavItem>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
-                  Operation Inquiry
-                </DisabledNavItem>
+                </NavItem>
+                <NavItem to="/pos/brand/general/operation-inquiry" active={isActive('/pos/brand/general/operation-inquiry')} onClick={closeSidebar}>
+                  <NavIcon>◎</NavIcon>
+                  Inquiry Management
+                </NavItem>
               </>
             )}
 
@@ -1001,14 +1001,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 </NavItem>
 
                 <NavTitle>Support</NavTitle>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
-                  Support Tickets
-                </DisabledNavItem>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
-                  Operation Inquiry
-                </DisabledNavItem>
+                <NavItem to="/pos/foodcourt/general/system-inquiry" active={isActive('/pos/foodcourt/general/system-inquiry')} onClick={closeSidebar}>
+                  <NavIcon>?</NavIcon>
+                  System Inquiry
+                </NavItem>
+                <NavItem to="/pos/foodcourt/general/operation-inquiry" active={isActive('/pos/foodcourt/general/operation-inquiry')} onClick={closeSidebar}>
+                  <NavIcon>◎</NavIcon>
+                  Inquiry Management
+                </NavItem>
               </>
             )}
 

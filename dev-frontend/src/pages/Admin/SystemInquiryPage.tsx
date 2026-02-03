@@ -55,28 +55,37 @@ interface SupportTicket {
 
 const TabsContainer = styled.div`
   display: flex;
-  gap: 8px;
-  margin-bottom: 20px;
-  border-bottom: 2px solid #E6EBF1;
-  padding-bottom: 0;
+  gap: 24px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #E6EBF1;
+  overflow-x: auto;
 `;
 
 const Tab = styled.button<{ active: boolean }>`
-  padding: 12px 24px;
+  padding: 12px 0;
   font-size: 14px;
   font-weight: 500;
-  background: ${props => props.active ? '#635BFF' : 'transparent'};
-  color: ${props => props.active ? 'white' : '#6B7280'};
+  color: ${props => props.active ? '#635BFF' : '#6B7C93'};
+  background: none;
   border: none;
-  border-bottom: 2px solid ${props => props.active ? '#635BFF' : 'transparent'};
-  margin-bottom: -2px;
   cursor: pointer;
-  transition: all 0.2s;
-  border-radius: 6px 6px 0 0;
+  position: relative;
+  transition: all 0.15s;
+  white-space: nowrap;
 
   &:hover {
-    background: ${props => props.active ? '#5A54E5' : '#F8FAFC'};
-    color: ${props => props.active ? 'white' : '#0A2540'};
+    color: #635BFF;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: ${props => props.active ? '#635BFF' : 'transparent'};
+    transition: all 0.15s;
   }
 `;
 

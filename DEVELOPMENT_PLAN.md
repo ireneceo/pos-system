@@ -1,8 +1,46 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-02-02
+> **최종 업데이트:** 2026-02-03
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
+
+---
+
+## ✅ 완료: Support Ticket 필터링 및 API 개선 (2026-02-03)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Support Ticket customerId 필터링 | Brand/Foodcourt General이 본인 티켓만 보도록 수정 | ✅ 완료 |
+| Backend API 개선 | GET /api/support-tickets에 customerId 파라미터 추가 | ✅ 완료 |
+| Frontend API 호출 수정 | SystemInquiryPage에서 customerId로 필터링 | ✅ 완료 |
+| API 테스트 | curl로 필터링 동작 검증 완료 | ✅ 완료 |
+
+### 작업 상세
+
+**문제:**
+- Brand General과 Foodcourt General이 System Inquiry 페이지에서 모든 사용자의 티켓을 볼 수 있었음
+- 본인이 생성한 티켓만 표시되어야 하는데 전체 티켓이 노출됨
+
+**해결:**
+1. Backend API (`/api/support-tickets`):
+   - `customerId` 쿼리 파라미터 지원 추가
+   - WHERE 절에 customerId 필터 추가
+
+2. Frontend (Brand/Foodcourt SystemInquiryPage):
+   - API 호출 시 `?customerId=${currentUserId}` 파라미터 전달
+   - 기존 `userId`, `userRole` 파라미터 제거
+
+**테스트 결과:**
+- 필터 없이: 5개 티켓 반환
+- `customerId=6` (Brand General): 1개 티켓만 반환
+- 데이터베이스 조회 검증 완료
+
+### 수정된 파일
+- `dev-backend/routes/support-tickets.js` - customerId 필터 추가
+- `dev-frontend/src/pages/Brand/SystemInquiryPage.tsx` - API 호출 수정
+- `dev-frontend/src/pages/Foodcourt/SystemInquiryPage.tsx` - API 호출 수정
 
 ---
 

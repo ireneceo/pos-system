@@ -310,7 +310,7 @@ const DemoPage: React.FC = () => {
               </FeatureList>
               <LoginButton
                 onClick={() => handleDemoLogin('brand_general')}
-                disabled={loading !== null}
+                disabled={loading === 'brand_general'}
                 isLoading={loading === 'brand_general'}
               >
                 {loading === 'brand_general' ? 'Logging in...' : 'Login as Brand General'}
@@ -330,7 +330,7 @@ const DemoPage: React.FC = () => {
               </FeatureList>
               <LoginButton
                 onClick={() => handleDemoLogin('restaurant_admin')}
-                disabled={loading !== null}
+                disabled={loading === 'restaurant_admin'}
                 isLoading={loading === 'restaurant_admin'}
               >
                 {loading === 'restaurant_admin' ? 'Logging in...' : 'Login as Restaurant'}

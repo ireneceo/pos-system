@@ -115,6 +115,16 @@ CompanySettings.init({
     type: DataTypes.STRING(20),
     allowNull: true,
     comment: 'SWIFT/BIC code for international transfers'
+  },
+  whatsapp: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    comment: 'WhatsApp contact number (e.g., +60-XX-XXX-XXXX)'
+  },
+  business_hours: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    comment: 'Business hours in JSON format { weekdays: "9:00 AM - 6:00 PM", weekend: "Closed" }'
   }
 }, {
   sequelize: database.sequelize,

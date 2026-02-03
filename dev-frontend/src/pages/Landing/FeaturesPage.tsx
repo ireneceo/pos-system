@@ -180,7 +180,7 @@ const CTAButton = styled.button`
 
 const BRAND_FEATURES = [
   {
-    icon: '🏢',
+    icon: '■',
     title: 'Multi-Brand Dashboard',
     description: 'Centralized control for all your brands and outlets',
     points: [
@@ -191,7 +191,7 @@ const BRAND_FEATURES = [
     ]
   },
   {
-    icon: '🍽️',
+    icon: '▦',
     title: 'Centralized Menu Management',
     description: 'Manage menus across all outlets from one place',
     points: [
@@ -202,7 +202,7 @@ const BRAND_FEATURES = [
     ]
   },
   {
-    icon: '📊',
+    icon: '▢',
     title: 'Advanced Analytics',
     description: 'Deep insights into brand performance',
     points: [
@@ -213,7 +213,7 @@ const BRAND_FEATURES = [
     ]
   },
   {
-    icon: '📦',
+    icon: '▣',
     title: 'Inventory & Recipe Management',
     description: 'Track ingredients and recipes across locations',
     points: [
@@ -224,7 +224,7 @@ const BRAND_FEATURES = [
     ]
   },
   {
-    icon: '💰',
+    icon: '◼',
     title: 'Invoice & Billing',
     description: 'Automated invoice generation and management',
     points: [
@@ -235,7 +235,7 @@ const BRAND_FEATURES = [
     ]
   },
   {
-    icon: '👥',
+    icon: '▪',
     title: 'Staff Management',
     description: 'Manage staff across all outlets',
     points: [
@@ -249,7 +249,7 @@ const BRAND_FEATURES = [
 
 const RESTAURANT_FEATURES = [
   {
-    icon: '💻',
+    icon: '◆',
     title: 'POS Terminal',
     description: 'Fast and intuitive point-of-sale system',
     points: [
@@ -260,7 +260,7 @@ const RESTAURANT_FEATURES = [
     ]
   },
   {
-    icon: '👨‍🍳',
+    icon: '◇',
     title: 'Kitchen Display System (KDS)',
     description: 'Real-time order management for kitchen',
     points: [
@@ -271,7 +271,7 @@ const RESTAURANT_FEATURES = [
     ]
   },
   {
-    icon: '📱',
+    icon: '◈',
     title: 'Mobile Ordering (QR Code)',
     description: 'Let customers order from their phones',
     points: [
@@ -282,7 +282,7 @@ const RESTAURANT_FEATURES = [
     ]
   },
   {
-    icon: '🎫',
+    icon: '◉',
     title: 'Coupon & Promotions',
     description: 'Create and manage promotional campaigns',
     points: [
@@ -293,7 +293,7 @@ const RESTAURANT_FEATURES = [
     ]
   },
   {
-    icon: '📈',
+    icon: '◐',
     title: 'Sales Reports',
     description: 'Comprehensive sales and performance reports',
     points: [
@@ -304,7 +304,7 @@ const RESTAURANT_FEATURES = [
     ]
   },
   {
-    icon: '👤',
+    icon: '○',
     title: 'Customer Management',
     description: 'Build customer loyalty and track preferences',
     points: [
@@ -333,7 +333,7 @@ const FeaturesPage: React.FC = () => {
         <ContentSection>
           <CategorySection>
             <CategoryTitle>
-              🏢 Brand General Features
+              Brand General Features
             </CategoryTitle>
             <CategorySubtitle>
               Comprehensive tools for managing multiple brands and outlets from a single dashboard
@@ -356,7 +356,7 @@ const FeaturesPage: React.FC = () => {
 
           <CategorySection>
             <CategoryTitle>
-              🍽️ Restaurant Admin Features
+              Restaurant Admin Features
             </CategoryTitle>
             <CategorySubtitle>
               Essential tools for individual restaurant management and daily operations

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
 
@@ -212,6 +212,17 @@ const ContactValue = styled.div`
   color: #0A2540;
 `;
 
+const ClickableLink = styled.a`
+  color: #635BFF;
+  text-decoration: none;
+  transition: color 0.2s;
+
+  &:hover {
+    color: #5A51E6;
+    text-decoration: underline;
+  }
+`;
+
 const SuccessMessage = styled.div`
   background: #ECFDF5;
   border: 1px solid #10B981;
@@ -239,6 +250,16 @@ interface ContactFormData {
   message: string;
 }
 
+interface CompanyInfo {
+  email: string;
+  phone: string;
+  whatsapp: string;
+  business_hours: {
+    weekdays: string;
+    weekend: string;
+  } | null;
+}
+
 const ContactPage: React.FC = () => {
   const [formData, setFormData] = useState<ContactFormData>({
     name: '',
@@ -251,6 +272,32 @@ const ContactPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
+    email: 'support@purplehere.com',
+    phone: '+60-XX-XXX-XXXX',
+    whatsapp: '+60-XX-XXX-XXXX',
+    business_hours: {
+      weekdays: '9:00 AM - 6:00 PM (GMT+8)',
+      weekend: 'Closed'
+    }
+  });
+
+  useEffect(() => {
+    fetch('/api/site-settings')
+      .then(res => res.json())
+      .then(data => {
+        setCompanyInfo({
+          email: data.email || 'support@purplehere.com',
+          phone: data.phone || '+60-XX-XXX-XXXX',
+          whatsapp: data.whatsapp || data.phone || '+60-XX-XXX-XXXX',
+          business_hours: data.business_hours || {
+            weekdays: '9:00 AM - 6:00 PM (GMT+8)',
+            weekend: 'Closed'
+          }
+        });
+      })
+      .catch(err => console.error('Failed to load company settings:', err));
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -405,21 +452,37 @@ const ContactPage: React.FC = () => {
                   <ContactIcon>@</ContactIcon>
                   <ContactDetails>
                     <ContactLabel>Email</ContactLabel>
-                    <ContactValue>support@purplehere.com</ContactValue>
+                    <ContactValue>
+                      <ClickableLink href={`mailto:${companyInfo.email}`}>
+                        {companyInfo.email}
+                      </ClickableLink>
+                    </ContactValue>
                   </ContactDetails>
                 </ContactItem>
                 <ContactItem>
                   <ContactIcon>#</ContactIcon>
                   <ContactDetails>
                     <ContactLabel>Phone</ContactLabel>
-                    <ContactValue>+60-XX-XXX-XXXX</ContactValue>
+                    <ContactValue>
+                      <ClickableLink href={`tel:${companyInfo.phone.replace(/[^+\d]/g, '')}`}>
+                        {companyInfo.phone}
+                      </ClickableLink>
+                    </ContactValue>
                   </ContactDetails>
                 </ContactItem>
                 <ContactItem>
                   <ContactIcon>W</ContactIcon>
                   <ContactDetails>
                     <ContactLabel>WhatsApp</ContactLabel>
-                    <ContactValue>+60-XX-XXX-XXXX</ContactValue>
+                    <ContactValue>
+                      <ClickableLink
+                        href={`https://wa.me/${companyInfo.whatsapp.replace(/[^+\d]/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {companyInfo.whatsapp}
+                      </ClickableLink>
+                    </ContactValue>
                   </ContactDetails>
                 </ContactItem>
               </InfoCard>
@@ -430,14 +493,14 @@ const ContactPage: React.FC = () => {
                   <ContactIcon>~</ContactIcon>
                   <ContactDetails>
                     <ContactLabel>Monday - Friday</ContactLabel>
-                    <ContactValue>9:00 AM - 6:00 PM (GMT+8)</ContactValue>
+                    <ContactValue>{companyInfo.business_hours?.weekdays || 'N/A'}</ContactValue>
                   </ContactDetails>
                 </ContactItem>
                 <ContactItem>
                   <ContactIcon>~</ContactIcon>
                   <ContactDetails>
                     <ContactLabel>Saturday - Sunday</ContactLabel>
-                    <ContactValue>Closed</ContactValue>
+                    <ContactValue>{companyInfo.business_hours?.weekend || 'N/A'}</ContactValue>
                   </ContactDetails>
                 </ContactItem>
               </InfoCard>

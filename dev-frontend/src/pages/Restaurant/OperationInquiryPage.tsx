@@ -118,21 +118,26 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
 
 const StatsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 20px;
   margin-bottom: 32px;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const StatCard = styled.div<{ color?: string }>`
   background: white;
   border-radius: 12px;
-  padding: 20px;
-  border: 1px solid #E6EBF1;
+  padding: 24px;
   border-left: 4px solid ${props => props.color || '#635BFF'};
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   transition: all 0.2s;
 
   &:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
   }
 `;
 
@@ -148,6 +153,42 @@ const StatLabel = styled.div`
   color: #6B7280;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+`;
+
+const TabContainer = styled.div`
+  display: flex;
+  gap: 24px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #E6EBF1;
+  overflow-x: auto;
+`;
+
+const Tab = styled.button<{ active?: boolean }>`
+  padding: 12px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: ${props => props.active ? '#635BFF' : '#6B7C93'};
+  background: none;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s;
+  white-space: nowrap;
+
+  &:hover {
+    color: #635BFF;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: ${props => props.active ? '#635BFF' : 'transparent'};
+    transition: all 0.15s;
+  }
 `;
 
 const TicketsGrid = styled.div`
@@ -408,6 +449,7 @@ const OperationInquiryPage: React.FC = () => {
   const { user } = useAuth();
   const [tickets, setTickets] = useState<OperationTicket[]>([]);
   const [managers, setManagers] = useState<Manager[]>([]);
+  const [activeTab, setActiveTab] = useState<'all' | 'open' | 'in-progress' | 'resolved' | 'closed'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTicket, setNewTicket] = useState({
     subject: '',
@@ -474,7 +516,12 @@ const OperationInquiryPage: React.FC = () => {
 
   const fetchTickets = async () => {
     try {
-      const response = await fetch(`/api/operation-tickets?userId=${currentUserId}&userRole=${currentUserRole}`);
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/operation-tickets?userId=${currentUserId}&userRole=${currentUserRole}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       if (response.ok) {
         const data = await response.json();
         setTickets(data);
@@ -484,10 +531,15 @@ const OperationInquiryPage: React.FC = () => {
     }
   };
 
+  const filteredTickets = tickets.filter(ticket => {
+    return activeTab === 'all' || ticket.status === activeTab;
+  });
+
   const totalTickets = tickets.length;
   const openTickets = tickets.filter(t => t.status === 'open').length;
   const inProgressTickets = tickets.filter(t => t.status === 'in-progress').length;
   const resolvedTickets = tickets.filter(t => t.status === 'resolved').length;
+  const closedTickets = tickets.filter(t => t.status === 'closed').length;
 
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString('en-MY');
@@ -543,9 +595,13 @@ const OperationInquiryPage: React.FC = () => {
         inquiryType: newTicket.inquiryType
       };
 
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/operation-tickets', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(ticketData)
       });
 
@@ -580,26 +636,44 @@ const OperationInquiryPage: React.FC = () => {
         </Header>
         <Content>
           <StatsGrid>
-            <StatCard color="#059669">
+            <StatCard color="#635BFF">
               <StatValue>{totalTickets}</StatValue>
               <StatLabel>Total Inquiries</StatLabel>
             </StatCard>
-            <StatCard color="#D97706">
+            <StatCard color="#F59E0B">
               <StatValue>{openTickets}</StatValue>
               <StatLabel>Open</StatLabel>
             </StatCard>
-            <StatCard color="#2563EB">
+            <StatCard color="#3B82F6">
               <StatValue>{inProgressTickets}</StatValue>
               <StatLabel>In Progress</StatLabel>
             </StatCard>
-            <StatCard color="#7C3AED">
+            <StatCard color="#10B981">
               <StatValue>{resolvedTickets}</StatValue>
               <StatLabel>Resolved</StatLabel>
             </StatCard>
           </StatsGrid>
 
+          <TabContainer>
+            <Tab active={activeTab === 'all'} onClick={() => setActiveTab('all')}>
+              All ({totalTickets})
+            </Tab>
+            <Tab active={activeTab === 'open'} onClick={() => setActiveTab('open')}>
+              Open ({openTickets})
+            </Tab>
+            <Tab active={activeTab === 'in-progress'} onClick={() => setActiveTab('in-progress')}>
+              In Progress ({inProgressTickets})
+            </Tab>
+            <Tab active={activeTab === 'resolved'} onClick={() => setActiveTab('resolved')}>
+              Resolved ({resolvedTickets})
+            </Tab>
+            <Tab active={activeTab === 'closed'} onClick={() => setActiveTab('closed')}>
+              Closed ({closedTickets})
+            </Tab>
+          </TabContainer>
+
           <TicketsGrid>
-            {tickets.map(ticket => (
+            {filteredTickets.map(ticket => (
               <TicketCard key={ticket.id}>
                 <TicketHeader>
                   <TicketInfo>
@@ -651,7 +725,7 @@ const OperationInquiryPage: React.FC = () => {
               </TicketCard>
             ))}
 
-            {tickets.length === 0 && (
+            {filteredTickets.length === 0 && (
               <div style={{
                 textAlign: 'center',
                 padding: '60px 20px',
@@ -673,7 +747,7 @@ const OperationInquiryPage: React.FC = () => {
                 </ModalHeader>
                 <ModalBody>
                   <FormGroup>
-                    <FormLabel>문의대상 *</FormLabel>
+                    <FormLabel>Inquiry Target *</FormLabel>
                     <FormSelect
                       value={newTicket.inquiryType}
                       onChange={(e) => setNewTicket({...newTicket, inquiryType: e.target.value as 'foodcourt' | 'brand'})}
@@ -687,10 +761,10 @@ const OperationInquiryPage: React.FC = () => {
                         {managers.length === 0 ? 'No managers connected' : 'Select Inquiry Target'}
                       </option>
                       {managers.filter(m => m.role === 'Foodcourt General' || m.role === 'Foodcourt Manager').length > 0 && (
-                        <option value="foodcourt">Foodcourt</option>
+                        <option value="foodcourt">Foodcourt General</option>
                       )}
                       {managers.filter(m => m.role === 'Brand General' || m.role === 'Brand Manager').length > 0 && (
-                        <option value="brand">Brand</option>
+                        <option value="brand">Brand General</option>
                       )}
                     </FormSelect>
                     {managers.length === 0 && (
