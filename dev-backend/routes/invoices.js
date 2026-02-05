@@ -14,6 +14,7 @@ const Brand = require('../models/Brand');
 const Foodcourt = require('../models/Foodcourt');
 const { Op } = require('sequelize');
 const invoiceScheduler = require('../services/invoiceScheduler');
+const subscriptionScheduler = require('../services/subscriptionScheduler');
 
 const PAYMENT_SETTINGS_KEY = 'payment_settings';
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
@@ -1489,19 +1490,33 @@ router.put('/:id', authenticateToken, async (req, res) => {
 router.patch('/:id/status', authenticateToken, async (req, res) => {
   try {
     const { status, paid_amount, paid_at } = req.body;
-    
+
     const invoice = await Invoice.findByPk(req.params.id);
     if (!invoice) {
       return res.status(404).json({ error: 'Invoice not found' });
     }
-    
+
     const updateData = { status };
     if (status === 'paid') {
       updateData.paid_amount = paid_amount || invoice.total_amount;
       updateData.paid_at = paid_at || new Date();
     }
-    
+
     await invoice.update(updateData);
+
+    // If subscription invoice is marked as paid, restore subscription to Active
+    if (status === 'paid' && invoice.invoice_category === 'subscription' && invoice.restaurant_id) {
+      try {
+        const result = await subscriptionScheduler.restoreSubscription(invoice.restaurant_id);
+        if (result.success) {
+          console.log(`✅ Subscription restored for restaurant ${invoice.restaurant_id} after payment`);
+        }
+      } catch (subError) {
+        console.error('Error restoring subscription:', subError);
+        // Don't fail the invoice update if subscription restore fails
+      }
+    }
+
     res.json({ success: true, invoice });
   } catch (error) {
     console.error('Error updating invoice status:', error);
@@ -1513,16 +1528,16 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
 router.post('/:id/payment', authenticateToken, async (req, res) => {
   try {
     const { payment_method, transaction_id, payment_date, notes, receipt_url } = req.body;
-    
+
     const invoice = await Invoice.findByPk(req.params.id);
     if (!invoice) {
       return res.status(404).json({ error: 'Invoice not found' });
     }
-    
+
     if (invoice.status === 'paid') {
       return res.status(400).json({ error: 'Invoice is already paid' });
     }
-    
+
     // Update invoice with payment information
     const updateData = {
       status: 'paid',
@@ -1533,8 +1548,22 @@ router.post('/:id/payment', authenticateToken, async (req, res) => {
       payment_notes: notes,
       receipt_url
     };
-    
+
     await invoice.update(updateData);
+
+    // If subscription invoice is paid, restore subscription to Active
+    if (invoice.invoice_category === 'subscription' && invoice.restaurant_id) {
+      try {
+        const result = await subscriptionScheduler.restoreSubscription(invoice.restaurant_id);
+        if (result.success) {
+          console.log(`✅ Subscription restored for restaurant ${invoice.restaurant_id} after payment`);
+        }
+      } catch (subError) {
+        console.error('Error restoring subscription:', subError);
+        // Don't fail the payment recording if subscription restore fails
+      }
+    }
+
     res.json({ success: true, invoice: await Invoice.findByPk(req.params.id) });
   } catch (error) {
     console.error('Error recording payment:', error);

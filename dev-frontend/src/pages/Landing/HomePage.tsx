@@ -53,15 +53,23 @@ const ButtonGroup = styled.div`
   }
 `;
 
-const PrimaryButton = styled(BaseButton)`
+const PrimaryButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: white;
   color: #667eea;
   padding: 15px 40px;
   font-size: 18px;
   font-weight: 600;
   border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
 
   &:hover {
+    background: #635BFF;
+    color: white;
     transform: translateY(-2px);
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   }
@@ -157,15 +165,15 @@ const HomePage: React.FC = () => {
 
         <Features>
           <FeatureCard>
-            <FeatureIcon>*</FeatureIcon>
-            <FeatureTitle>Food Court Management</FeatureTitle>
+            <FeatureIcon>◎</FeatureIcon>
+            <FeatureTitle>Restaurant Management</FeatureTitle>
             <FeatureDescription>
-              Efficiently manage multiple stores and monitor them in real-time
+              Efficiently manage your restaurant and monitor operations in real-time
             </FeatureDescription>
           </FeatureCard>
 
           <FeatureCard>
-            <FeatureIcon>#</FeatureIcon>
+            <FeatureIcon>☰</FeatureIcon>
             <FeatureTitle>Brand Integration</FeatureTitle>
             <FeatureDescription>
               View data from all branches at a glance and analyze performance
@@ -173,7 +181,7 @@ const HomePage: React.FC = () => {
           </FeatureCard>
 
           <FeatureCard>
-            <FeatureIcon>$</FeatureIcon>
+            <FeatureIcon>◈</FeatureIcon>
             <FeatureTitle>Easy Order & Payment</FeatureTitle>
             <FeatureDescription>
               Handle everything from mobile orders to POS payments conveniently

@@ -13,6 +13,7 @@ const invoiceScheduler = require('./services/invoiceScheduler');
 const { errorHandler } = require('./middleware/errorHandler');
 const { initSocketServer } = require('./services/socketService');
 const dbHealthCheck = require('./middleware/dbHealthCheck');
+const { securityHeaders, sqlInjectionProtection } = require('./middleware/security');
 
 // PID 파일 관리 - 단일 프로세스 보장
 const PID_FILE = path.join(__dirname, '.server.pid');
@@ -102,6 +103,15 @@ app.use('/api/auth/login', authLimiter);
 // Increase payload size limit to support base64 image uploads
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// ============================================
+// 추가 보안 미들웨어 (v2.0)
+// ============================================
+// 보안 헤더 설정 (XSS, Clickjacking, Cache 제어)
+app.use(securityHeaders);
+
+// SQL Injection 패턴 감지 (ORM 위 추가 방어층)
+app.use('/api', sqlInjectionProtection);
 
 // DB 헬스 체크 미들웨어 (모든 API 요청 전에 실행)
 app.use('/api', dbHealthCheck);

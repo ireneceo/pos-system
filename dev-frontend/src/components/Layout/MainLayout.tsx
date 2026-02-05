@@ -821,6 +821,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>≡</NavIcon>
                   Subscription Plans
                 </NavItem>
+                <NavItem to="/pos/admin/payment-settings" active={isActive('/pos/admin/payment-settings')} onClick={closeSidebar}>
+                  <NavIcon>$</NavIcon>
+                  Payment Settings
+                </NavItem>
 
                 <NavTitle>Analytics</NavTitle>
                 <DisabledNavItem title="Coming Soon">
@@ -1341,6 +1345,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <NavItem to="/pos/admin/system-config" active={isActive('/pos/admin/system-config')} onClick={closeSidebar}>
                   <NavIcon>⚙</NavIcon>
                   System Config
+                </NavItem>
+                <NavItem to="/pos/admin/content" active={isActive('/pos/admin/content')} onClick={closeSidebar}>
+                  <NavIcon>☰</NavIcon>
+                  Content
                 </NavItem>
                 <DisabledNavItem title="Coming Soon">
                   <DisabledNavIcon>⊘</DisabledNavIcon>

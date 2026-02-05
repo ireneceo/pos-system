@@ -8,30 +8,40 @@ const PageContainer = styled.div`
 `;
 
 const HeroSection = styled.section`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
   text-align: center;
-  padding: 60px 20px 40px;
+  padding: 40px 20px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
+
+  @media (max-width: 768px) {
+    padding: 32px 20px;
+  }
 `;
 
 const HeroTitle = styled.h1`
-  font-size: 42px;
+  font-size: 36px;
   font-weight: 700;
-  margin-bottom: 16px;
+  margin: 0;
+  line-height: 1.2;
 
   @media (max-width: 768px) {
-    font-size: 32px;
+    font-size: 28px;
   }
 `;
 
 const HeroSubtitle = styled.p`
-  font-size: 18px;
+  font-size: 16px;
   opacity: 0.9;
   max-width: 600px;
-  margin: 0 auto;
+  margin: 6px auto 0;
+  line-height: 1.3;
 
   @media (max-width: 768px) {
-    font-size: 16px;
+    font-size: 14px;
   }
 `;
 
@@ -436,6 +446,30 @@ const MODULE_NAMES: Record<string, string> = {
   ai_prediction: 'AI Prediction'
 };
 
+// 국가 코드 → 통화 매핑 (컴포넌트 외부에 정의)
+const countryToCurrency: Record<string, string> = {
+  'KR': 'KRW',  // 한국
+  'MY': 'MYR',  // 말레이시아
+  'SG': 'SGD',  // 싱가포르
+  'JP': 'JPY',  // 일본
+  'CN': 'CNY',  // 중국
+  'TW': 'TWD',  // 대만
+  'TH': 'THB',  // 태국
+  'VN': 'VND',  // 베트남
+  'PH': 'PHP',  // 필리핀
+  'ID': 'IDR',  // 인도네시아
+  'IN': 'INR',  // 인도
+  'AU': 'AUD',  // 호주
+  'GB': 'GBP',  // 영국
+  'DE': 'EUR',  // 독일
+  'FR': 'EUR',  // 프랑스
+  'IT': 'EUR',  // 이탈리아
+  'ES': 'EUR',  // 스페인
+  'NL': 'EUR',  // 네덜란드
+  'US': 'USD',  // 미국
+  'CA': 'CAD',  // 캐나다
+};
+
 const PricingPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'restaurant' | 'brand' | 'foodcourt'>('restaurant');
@@ -443,6 +477,44 @@ const PricingPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [currencies, setCurrencies] = useState<CurrencyInfo[]>([]);
   const [selectedCurrency, setSelectedCurrency] = useState('USD');
+
+  // 브라우저 언어 기반 통화 감지 (fallback용)
+  const detectCurrencyFromBrowserLanguage = (): string => {
+    try {
+      const locale = navigator.language || 'en-US';
+      const regionCode = locale.split('-')[1]?.toUpperCase() || '';
+      return countryToCurrency[regionCode] || 'USD';
+    } catch {
+      return 'USD';
+    }
+  };
+
+  // IP 기반 위치 감지로 통화 결정
+  const detectCurrencyFromIP = async (): Promise<string> => {
+    try {
+      // ip-api.com 무료 API 사용 (HTTPS는 유료이므로 HTTP 사용, 또는 ipapi.co 사용)
+      const response = await fetch('https://ipapi.co/json/', {
+        signal: AbortSignal.timeout(3000) // 3초 타임아웃
+      });
+
+      if (!response.ok) {
+        throw new Error('IP API request failed');
+      }
+
+      const data = await response.json();
+      const countryCode = data.country_code?.toUpperCase();
+
+      if (countryCode && countryToCurrency[countryCode]) {
+        return countryToCurrency[countryCode];
+      }
+
+      // 매핑에 없는 국가는 USD 반환
+      return 'USD';
+    } catch (error) {
+      console.warn('IP-based currency detection failed, using browser language fallback:', error);
+      return detectCurrencyFromBrowserLanguage();
+    }
+  };
 
   useEffect(() => {
     loadPlans();
@@ -468,16 +540,32 @@ const PricingPage: React.FC = () => {
       const response = await fetch('/api/currencies/supported');
       if (response.ok) {
         const data = await response.json();
-        setCurrencies(data.data || []);
+        const loadedCurrencies = data.data || [];
+        setCurrencies(loadedCurrencies);
+
+        // IP 기반 위치 감지로 통화 설정 (비동기)
+        const detectedCurrency = await detectCurrencyFromIP();
+        const isSupported = loadedCurrencies.some((c: CurrencyInfo) => c.code === detectedCurrency);
+        if (isSupported) {
+          setSelectedCurrency(detectedCurrency);
+        }
       }
     } catch (error) {
       console.error('Failed to load currencies:', error);
       // 기본 통화 설정
-      setCurrencies([
+      const defaultCurrencies = [
         { code: 'USD', symbol: '$', name: 'US Dollar', decimals: 2 },
         { code: 'MYR', symbol: 'RM', name: 'Malaysian Ringgit', decimals: 2 },
         { code: 'KRW', symbol: '₩', name: 'Korean Won', decimals: 0 }
-      ]);
+      ];
+      setCurrencies(defaultCurrencies);
+
+      // IP 기반 위치 감지로 통화 설정 (비동기)
+      const detectedCurrency = await detectCurrencyFromIP();
+      const isSupported = defaultCurrencies.some(c => c.code === detectedCurrency);
+      if (isSupported) {
+        setSelectedCurrency(detectedCurrency);
+      }
     }
   };
 

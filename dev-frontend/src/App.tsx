@@ -19,6 +19,11 @@ import PricingPage from './pages/Landing/PricingPage';
 import ContactPage from './pages/Landing/ContactPage';
 import DemoPage from './pages/Landing/DemoPage';
 import CompanyPage from './pages/Landing/CompanyPage';
+import PrivacyPolicyPage from './pages/Landing/PrivacyPolicyPage';
+import TermsOfServicePage from './pages/Landing/TermsOfServicePage';
+import FAQPage from './pages/Landing/FAQPage';
+import BlogPage from './pages/Landing/BlogPage';
+import BlogPostPage from './pages/Landing/BlogPostPage';
 // Login Page (keep static - frequently used)
 import LoginPage from './pages/Login/LoginPage';
 // Mobile App (keep static - separate entry point)
@@ -78,6 +83,7 @@ const SystemConfigPage = React.lazy(() => import('./pages/Admin/SystemConfigPage
 const SecurityPage = React.lazy(() => import('./pages/Admin/SecurityPage'));
 const BackupRestorePage = React.lazy(() => import('./pages/Admin/BackupRestorePage'));
 const SystemLogsPage = React.lazy(() => import('./pages/Admin/SystemLogsPage'));
+const ContentManagementPage = React.lazy(() => import('./pages/Admin/ContentManagementPage'));
 const RestaurantSubscriptionsPage = React.lazy(() => import('./pages/Admin/RestaurantSubscriptionsPage'));
 const ManagerDashboard = React.lazy(() => import('./pages/Manager/ManagerDashboard'));
 const ManagerSubscriptionsPage = React.lazy(() => import('./pages/Manager/SubscriptionsPage'));
@@ -288,6 +294,11 @@ function App() {
                       <Route path="/contact" element={<ContactPage />} />
                       <Route path="/demo" element={<DemoPage />} />
                       <Route path="/company" element={<CompanyPage />} />
+                      <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                      <Route path="/terms" element={<TermsOfServicePage />} />
+                      <Route path="/faq" element={<FAQPage />} />
+                      <Route path="/blog" element={<BlogPage />} />
+                      <Route path="/blog/:slug" element={<BlogPostPage />} />
 
                       {/* POS Login */}
                       <Route path="/pos" element={<LoginPage />} />
@@ -365,6 +376,11 @@ function App() {
                       <Route path="/pos/admin/logs" element={
                         <ProtectedRoute requiredRole={['System Admin']}>
                           <SystemLogsPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/admin/content" element={
+                        <ProtectedRoute requiredRole={['System Admin']}>
+                          <ContentManagementPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/admin/settings" element={

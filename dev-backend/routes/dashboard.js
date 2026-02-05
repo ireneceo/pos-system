@@ -714,4 +714,207 @@ router.get('/restaurant/:restaurantId/sales-chart', authenticateToken, checkRest
   }
 });
 
+/**
+ * Reports Aggregation API
+ * What and Why: 대량 데이터 클라이언트 처리 대신 서버에서 집계하여 성능 최적화
+ * - 10000개 주문 데이터를 프론트엔드로 전송하는 대신 서버에서 집계 후 요약 데이터만 전송
+ * - 카테고리별, 메뉴별, 시간대별, 일별 매출 통계를 한 번의 API 호출로 제공
+ */
+router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ success: false, error: 'startDate and endDate are required' });
+    }
+
+    // Get restaurant timezone
+    const restaurant = await Restaurant.findByPk(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ success: false, error: 'Restaurant not found' });
+    }
+    const operationSettings = restaurant.operation_settings || {};
+    const timeZone = operationSettings.timeZone || 'Asia/Kuala_Lumpur';
+
+    // Helper functions
+    const getTimezoneOffset = (tz) => {
+      const tzOffset = new Date().toLocaleString('en-US', { timeZone: tz, timeZoneName: 'shortOffset' });
+      const offsetMatch = tzOffset.match(/GMT([+-]\d+)/);
+      return offsetMatch ? parseInt(offsetMatch[1]) : 8;
+    };
+
+    const getUTCBoundsForDate = (dateStr, tz, isEnd = false) => {
+      const offsetHours = getTimezoneOffset(tz);
+      const date = new Date(`${dateStr}T${isEnd ? '23:59:59.999' : '00:00:00'}`);
+      date.setHours(date.getHours() - offsetHours);
+      return date;
+    };
+
+    const getDateInTimezone = (utcDate, tz) => {
+      return utcDate.toLocaleDateString('en-CA', { timeZone: tz });
+    };
+
+    const getHourInTimezone = (utcDate, tz) => {
+      return parseInt(utcDate.toLocaleString('en-US', { timeZone: tz, hour: 'numeric', hour12: false }));
+    };
+
+    // Convert dates to UTC bounds
+    const startUTC = getUTCBoundsForDate(startDate, timeZone, false);
+    const endUTC = getUTCBoundsForDate(endDate, timeZone, true);
+
+    // Fetch completed orders with necessary fields
+    const orders = await Order.findAll({
+      where: {
+        restaurant_id: restaurantId,
+        order_date: {
+          [Op.gte]: startUTC,
+          [Op.lte]: endUTC
+        },
+        status: 'completed',
+        [Op.or]: [
+          { is_deleted: false },
+          { is_deleted: null }
+        ]
+      },
+      attributes: ['id', 'order_date', 'total_amount', 'order_items', 'order_type', 'payment_method']
+    });
+
+    // Initialize aggregation containers
+    const dailySales = {};
+    const hourlySales = {};
+    const categorySales = {};
+    const menuSales = {};
+    const orderTypeSales = {};
+    const paymentMethodSales = {};
+
+    let totalRevenue = 0;
+    let totalOrders = orders.length;
+
+    // Process each order
+    orders.forEach(order => {
+      const orderAmount = parseFloat(order.total_amount || 0);
+      totalRevenue += orderAmount;
+
+      // Daily aggregation
+      const dateKey = getDateInTimezone(new Date(order.order_date), timeZone);
+      if (!dailySales[dateKey]) {
+        dailySales[dateKey] = { revenue: 0, orders: 0 };
+      }
+      dailySales[dateKey].revenue += orderAmount;
+      dailySales[dateKey].orders += 1;
+
+      // Hourly aggregation
+      const hour = getHourInTimezone(new Date(order.order_date), timeZone);
+      if (!hourlySales[hour]) {
+        hourlySales[hour] = { revenue: 0, orders: 0 };
+      }
+      hourlySales[hour].revenue += orderAmount;
+      hourlySales[hour].orders += 1;
+
+      // Order type aggregation
+      const orderType = order.order_type || 'unknown';
+      if (!orderTypeSales[orderType]) {
+        orderTypeSales[orderType] = { revenue: 0, orders: 0 };
+      }
+      orderTypeSales[orderType].revenue += orderAmount;
+      orderTypeSales[orderType].orders += 1;
+
+      // Payment method aggregation
+      const paymentMethod = order.payment_method || 'unknown';
+      if (!paymentMethodSales[paymentMethod]) {
+        paymentMethodSales[paymentMethod] = { revenue: 0, orders: 0 };
+      }
+      paymentMethodSales[paymentMethod].revenue += orderAmount;
+      paymentMethodSales[paymentMethod].orders += 1;
+
+      // Category and menu item aggregation
+      if (order.order_items && Array.isArray(order.order_items)) {
+        order.order_items.forEach(item => {
+          const category = item.category || 'Uncategorized';
+          const itemName = item.name || 'Unknown';
+          const quantity = parseInt(item.quantity) || 1;
+          const itemRevenue = parseFloat(item.price) * quantity;
+
+          // Category sales
+          if (!categorySales[category]) {
+            categorySales[category] = { revenue: 0, quantity: 0, orders: 0 };
+          }
+          categorySales[category].revenue += itemRevenue;
+          categorySales[category].quantity += quantity;
+          categorySales[category].orders += 1;
+
+          // Menu item sales
+          const menuKey = `${category}|${itemName}`;
+          if (!menuSales[menuKey]) {
+            menuSales[menuKey] = {
+              name: itemName,
+              category: category,
+              revenue: 0,
+              quantity: 0,
+              orders: 0
+            };
+          }
+          menuSales[menuKey].revenue += itemRevenue;
+          menuSales[menuKey].quantity += quantity;
+          menuSales[menuKey].orders += 1;
+        });
+      }
+    });
+
+    // Convert dailySales object to sorted array
+    const dailySalesArray = Object.entries(dailySales)
+      .map(([date, data]) => ({ date, ...data }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    // Convert hourlySales to array (0-23 hours)
+    const hourlySalesArray = Array.from({ length: 24 }, (_, hour) => ({
+      hour,
+      revenue: hourlySales[hour]?.revenue || 0,
+      orders: hourlySales[hour]?.orders || 0
+    }));
+
+    // Convert categorySales to sorted array (by revenue descending)
+    const categorySalesArray = Object.entries(categorySales)
+      .map(([category, data]) => ({ category, ...data }))
+      .sort((a, b) => b.revenue - a.revenue);
+
+    // Convert menuSales to sorted array (by revenue descending)
+    const menuSalesArray = Object.values(menuSales)
+      .sort((a, b) => b.revenue - a.revenue);
+
+    // Convert orderTypeSales to array
+    const orderTypeSalesArray = Object.entries(orderTypeSales)
+      .map(([type, data]) => ({ type, ...data }))
+      .sort((a, b) => b.revenue - a.revenue);
+
+    // Convert paymentMethodSales to array
+    const paymentMethodSalesArray = Object.entries(paymentMethodSales)
+      .map(([method, data]) => ({ method, ...data }))
+      .sort((a, b) => b.revenue - a.revenue);
+
+    res.json({
+      success: true,
+      data: {
+        summary: {
+          totalRevenue,
+          totalOrders,
+          averageOrderValue: totalOrders > 0 ? totalRevenue / totalOrders : 0,
+          startDate,
+          endDate
+        },
+        dailySales: dailySalesArray,
+        hourlySales: hourlySalesArray,
+        categorySales: categorySalesArray,
+        menuSales: menuSalesArray,
+        orderTypeSales: orderTypeSalesArray,
+        paymentMethodSales: paymentMethodSalesArray
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching reports summary:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;

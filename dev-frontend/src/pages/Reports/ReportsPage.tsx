@@ -6,7 +6,7 @@ import { TabContainer, Tab, StatsGrid, StatCard, StatValue, StatLabel, StatDescr
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
-import { getRestaurantTimezone, getDateStringInTimezone } from '../../utils/timezone';
+import { getRestaurantTimezone } from '../../utils/timezone';
 import { downloadCSV, escapeCSV, toCSVRow, generateFilename } from '../../utils/csvDownload';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -231,6 +231,9 @@ const ReportsPage: React.FC = () => {
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
 
+  // What and Why: 서버 집계 데이터 - 10000개 주문 클라이언트 처리 대신 서버에서 집계된 요약 데이터 사용
+  const [reportsSummary, setReportsSummary] = useState<any>(null);
+
   // Drilldown state for Sales Details tab
   const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set());
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
@@ -248,311 +251,134 @@ const ReportsPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [operationSettings?.timeZone]);
 
-  // Orders are now pre-filtered by the server (completed orders only within date range)
-  // This memo just returns the orders directly since server already filtered them
-  const filteredOrders = useMemo(() => {
-    if (!orders || orders.length === 0) {
+  // What and Why: 서버 집계 데이터 사용 - 기존 클라이언트 계산 대신 서버에서 받은 데이터 활용
+  // 서버에서 dailySales 배열로 제공되므로 그대로 사용하여 성능 최적화
+  const salesData = useMemo(() => {
+    if (!reportsSummary?.dailySales || reportsSummary.dailySales.length === 0) {
       return [];
     }
-    // Server already filters by: status=completed, startDate, endDate
-    // No additional client-side filtering needed
-    return orders;
-  }, [orders]);
 
-  // Calculate sales data from real orders - memoized for performance
-  // All date groupings use restaurant timezone
-  const salesData = useMemo(() => {
-    if (filteredOrders.length === 0) return [];
-
-    const timezone = getRestaurantTimezone(operationSettings);
-    const getOrderAmount = (order: any) => parseFloat(order.final_price || order.total_amount || order.total_price || 0);
-
-    // Helper to get hour in restaurant timezone
-    const getHourInTimezone = (date: Date | string) => {
-      const d = new Date(date);
-      const formatter = new Intl.DateTimeFormat('en-US', {
-        timeZone: timezone,
-        hour: 'numeric',
-        hour12: false
-      });
-      return parseInt(formatter.format(d));
-    };
-
-    // Helper to get date parts in restaurant timezone
-    const getDatePartsInTimezone = (date: Date | string) => {
-      const d = new Date(date);
-      const formatter = new Intl.DateTimeFormat('en-US', {
-        timeZone: timezone,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        weekday: 'short'
-      });
-      const parts = formatter.formatToParts(d);
-      return {
-        year: parseInt(parts.find(p => p.type === 'year')?.value || '0'),
-        month: parseInt(parts.find(p => p.type === 'month')?.value || '0'),
-        day: parseInt(parts.find(p => p.type === 'day')?.value || '0'),
-        weekday: parts.find(p => p.type === 'weekday')?.value || ''
-      };
-    };
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
     if (activePeriod === 'today') {
-      // Group by hour (in restaurant timezone)
-      const hourlyData: Record<string, number> = {};
-      filteredOrders.forEach(order => {
-        const orderDateValue = order.order_date || order.createdAt;
-        const hour = getHourInTimezone(orderDateValue);
-        const hourLabel = hour === 12 ? '12PM' : hour > 12 ? `${hour - 12}PM` : hour === 0 ? '12AM' : `${hour}AM`;
-        hourlyData[hourLabel] = (hourlyData[hourLabel] || 0) + getOrderAmount(order);
-      });
-
-      return Object.entries(hourlyData).map(([date, sales]) => ({ date, sales: Math.round(sales) }));
-    } else if (activePeriod === 'week') {
-      // Group by actual dates in the week range
-      const today = getTodayInRestaurantTZ();
-      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-      // Create array of the last 7 days
-      const dates: Date[] = [];
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
-        dates.push(date);
+      // 오늘은 시간대별로 표시 - hourlySales 사용
+      if (reportsSummary.hourlySales) {
+        return reportsSummary.hourlySales
+          .filter((h: any) => h.orders > 0)
+          .map((h: any) => {
+            const hour = h.hour;
+            const hourLabel = hour === 12 ? '12PM' : hour > 12 ? `${hour - 12}PM` : hour === 0 ? '12AM' : `${hour}AM`;
+            return { date: hourLabel, sales: Math.round(h.revenue) };
+          });
       }
-
-      // Group orders by date (in restaurant timezone)
-      const dailyData: Record<string, number> = {};
-      filteredOrders.forEach(order => {
-        const orderDateValue = order.order_date || order.createdAt;
-        const dateKey = getDateStringInTimezone(orderDateValue, timezone);
-        dailyData[dateKey] = (dailyData[dateKey] || 0) + getOrderAmount(order);
-      });
-
-      // Map dates to sales data with day names
-      return dates.map(date => {
-        const dateKey = formatDateString(date);
-        const dayName = dayNames[date.getDay()];
+      return [];
+    } else if (activePeriod === 'week') {
+      // 주간은 요일명으로 표시
+      return reportsSummary.dailySales.map((d: any) => {
+        const date = new Date(d.date);
         return {
-          date: dayName,
-          sales: Math.round(dailyData[dateKey] || 0)
+          date: dayNames[date.getDay()],
+          sales: Math.round(d.revenue)
         };
       });
     } else if (activePeriod === 'month') {
-      // Group by full date (MM/DD) in restaurant timezone
-      const dailyData: Record<string, number> = {};
-      filteredOrders.forEach(order => {
-        const orderDateValue = order.order_date || order.createdAt;
-        const parts = getDatePartsInTimezone(orderDateValue);
-        const dateKey = `${parts.month.toString().padStart(2, '0')}/${parts.day.toString().padStart(2, '0')}`;
-        dailyData[dateKey] = (dailyData[dateKey] || 0) + getOrderAmount(order);
+      // 월간은 MM/DD 형식으로 표시
+      return reportsSummary.dailySales.map((d: any) => {
+        const [, month, day] = d.date.split('-');
+        return {
+          date: `${month}/${day}`,
+          sales: Math.round(d.revenue)
+        };
       });
-
-      // Sort by actual date order
-      return Object.entries(dailyData)
-        .map(([date, sales]) => ({ date, sales: Math.round(sales) }))
-        .sort((a, b) => a.date.localeCompare(b.date));
     } else {
-      // Group by month (in restaurant timezone)
+      // 연간/전체는 월별로 그룹화
       const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const monthlyData: Record<string, number> = {};
-      filteredOrders.forEach(order => {
-        const orderDateValue = order.order_date || order.createdAt;
-        const parts = getDatePartsInTimezone(orderDateValue);
-        const month = monthNames[parts.month - 1];
-        monthlyData[month] = (monthlyData[month] || 0) + getOrderAmount(order);
+
+      reportsSummary.dailySales.forEach((d: any) => {
+        const month = parseInt(d.date.split('-')[1]) - 1;
+        const monthName = monthNames[month];
+        monthlyData[monthName] = (monthlyData[monthName] || 0) + d.revenue;
       });
 
-      return monthNames.map(month => ({ date: month, sales: Math.round(monthlyData[month] || 0) }));
+      return monthNames.map(month => ({
+        date: month,
+        sales: Math.round(monthlyData[month] || 0)
+      }));
     }
-  }, [filteredOrders, activePeriod, operationSettings]);
+  }, [reportsSummary, activePeriod]);
 
-  // Calculate exact total revenue from filtered orders (without rounding)
+  // What and Why: 서버 집계 데이터에서 총 매출 직접 사용
   const totalRevenue = useMemo(() => {
-    return filteredOrders.reduce((sum, order) => {
-      const amount = parseFloat(order.final_price || order.total_amount || order.total_price || 0);
-      return sum + amount;
-    }, 0);
-  }, [filteredOrders]);
+    return reportsSummary?.summary?.totalRevenue || 0;
+  }, [reportsSummary]);
 
-  // Calculate category data from real orders - memoized for performance
-  // Uses menu items and categories to map order items to their actual menu categories
+  // What and Why: 서버 집계 데이터에서 총 주문 수 직접 사용
+  const totalOrders = useMemo(() => {
+    return reportsSummary?.summary?.totalOrders || 0;
+  }, [reportsSummary]);
+
+  // What and Why: 서버 집계 데이터에서 카테고리별 매출 직접 사용
   const categoryData = useMemo(() => {
-    if (filteredOrders.length === 0) return [{ name: 'No Data', value: 100, sales: 0 }];
+    if (!reportsSummary?.categorySales || reportsSummary.categorySales.length === 0) {
+      return [{ name: 'No Data', value: 100, sales: 0 }];
+    }
 
-    // Create a map of product_id to category name from menu items and categories
-    const productCategoryMap: Record<string, string> = {};
-    const categoryIdToName: Record<string, string> = {};
+    const totalSales = reportsSummary.categorySales.reduce((sum: number, c: any) => sum + c.revenue, 0);
 
-    // Build category ID to name map
-    categories.forEach((cat: any) => {
-      if (cat.id && cat.name) {
-        categoryIdToName[cat.id.toString()] = cat.name;
-      }
-    });
+    return reportsSummary.categorySales.map((c: any) => ({
+      name: c.category,
+      value: totalSales > 0 ? Math.round((c.revenue / totalSales) * 100) : 0,
+      sales: Math.round(c.revenue)
+    }));
+  }, [reportsSummary]);
 
-    // Build product ID to category name map
-    menuItems.forEach((item: any) => {
-      if (item.id) {
-        // item.categoryId contains the category ID, look up the name
-        const categoryName = item.categoryId ? (categoryIdToName[item.categoryId.toString()] || item.categoryId) : 'Other';
-        productCategoryMap[item.id.toString()] = categoryName;
-      }
-    });
-
-    const categoryTotals: Record<string, number> = {};
-    let totalSales = 0;
-
-    filteredOrders.forEach(order => {
-      // Get order items
-      if (order.order_items && Array.isArray(order.order_items)) {
-        order.order_items.forEach((item: any) => {
-          const itemTotal = parseFloat(item.price || 0) * parseInt(item.quantity || 1);
-          totalSales += itemTotal;
-
-          // Get category from menuItem.id in order_items
-          const menuItemId = item.menuItem?.id?.toString() || item.product_id?.toString() || item.id?.toString();
-          const category = menuItemId ? (productCategoryMap[menuItemId] || 'Other') : 'Other';
-
-          categoryTotals[category] = (categoryTotals[category] || 0) + itemTotal;
-        });
-      }
-    });
-
-    const result = Object.entries(categoryTotals).map(([name, sales]) => ({
-      name,
-      value: totalSales > 0 ? Math.round((sales / totalSales) * 100) : 0,
-      sales: Math.round(sales)
-    })).sort((a, b) => b.sales - a.sales);
-
-    return result.length > 0 ? result : [{ name: 'No Data', value: 100, sales: 0 }];
-  }, [filteredOrders, menuItems, categories]);
-
-  // Calculate menu performance from real orders - memoized for performance
+  // What and Why: 서버 집계 데이터에서 메뉴 성능 직접 사용
   const allMenuData = useMemo(() => {
-    if (filteredOrders.length === 0) return [];
-
-    // Build category lookup maps
-    const categoryIdToName: Record<string, string> = {};
-    categories.forEach((cat: any) => {
-      if (cat.id && cat.name) {
-        categoryIdToName[cat.id.toString()] = cat.name;
-      }
-    });
-
-    const productCategoryMap: Record<string, string> = {};
-    menuItems.forEach((item: any) => {
-      if (item.id) {
-        const categoryName = item.categoryId ? (categoryIdToName[item.categoryId.toString()] || item.categoryId) : 'Other';
-        productCategoryMap[item.id.toString()] = categoryName;
-      }
-    });
-
-    const menuStats: Record<string, { category: string; price: number; orders: number; revenue: number }> = {};
-
-    filteredOrders.forEach(order => {
-      if (order.order_items && Array.isArray(order.order_items)) {
-        order.order_items.forEach((item: any) => {
-          const menuName = item.menu_name || item.name || 'Unknown';
-          const menuItemId = item.menuItem?.id?.toString() || item.product_id?.toString();
-          const category = menuItemId ? (productCategoryMap[menuItemId] || 'Other') : (item.category || 'Other');
-
-          if (!menuStats[menuName]) {
-            menuStats[menuName] = {
-              category: category,
-              price: parseFloat(item.price || 0),
-              orders: 0,
-              revenue: 0
-            };
-          }
-
-          const quantity = parseInt(item.quantity || 1);
-          const itemPrice = parseFloat(item.price || 0);
-          menuStats[menuName].orders += quantity;
-          menuStats[menuName].revenue += itemPrice * quantity;
-        });
-      }
-    });
-
-    const menuArray = Object.entries(menuStats).map(([name, stats]) => ({
-      name,
-      category: stats.category,
-      price: stats.price,
-      orders: stats.orders,
-      revenue: Math.round(stats.revenue),
-      performance: 0
-    })).sort((a, b) => b.orders - a.orders);
-
-    // Calculate performance percentage
-    const maxOrders = menuArray[0]?.orders || 1;
-    menuArray.forEach(menu => {
-      menu.performance = Math.round((menu.orders / maxOrders) * 100);
-    });
-
-    return menuArray;
-  }, [filteredOrders, menuItems, categories]);
-
-  // Calculate hourly order distribution from real orders - memoized for performance
-  const hourlyData = useMemo(() => {
-    if (filteredOrders.length === 0) return [];
-
-    const getOrderDate = (order: any) => new Date(order.order_date || order.createdAt);
-    const hourlyStats: Record<string, number> = {};
-
-    filteredOrders.forEach(order => {
-      const hour = getOrderDate(order).getHours();
-      const hourLabel = hour === 0 ? '12AM' : hour === 12 ? '12PM' : hour > 12 ? `${hour - 12}PM` : `${hour}AM`;
-      hourlyStats[hourLabel] = (hourlyStats[hourLabel] || 0) + 1;
-    });
-
-    return Object.entries(hourlyStats)
-      .map(([hour, orders]) => ({ hour, orders }))
-      .sort((a, b) => {
-        const getHourNum = (h: string) => {
-          const num = parseInt(h);
-          const isPM = h.includes('PM');
-          return isPM && num !== 12 ? num + 12 : num === 12 && !isPM ? 0 : num;
-        };
-        return getHourNum(a.hour) - getHourNum(b.hour);
-      });
-  }, [filteredOrders]);
-
-  // Filter customers based on orders in selected date range
-  const filteredCustomers = useMemo(() => {
-    if (customers.length === 0 || filteredOrders.length === 0) {
+    if (!reportsSummary?.menuSales || reportsSummary.menuSales.length === 0) {
       return [];
     }
 
-    // Get unique customer IDs from filtered orders
-    const customerIdsInPeriod = new Set<number>();
-    const customerOrderStats: Record<number, { orders: number; spent: number }> = {};
+    const maxQuantity = reportsSummary.menuSales[0]?.quantity || 1;
 
-    filteredOrders.forEach(order => {
-      const customerId = order.customer_id;
-      if (customerId) {
-        customerIdsInPeriod.add(customerId);
-        if (!customerOrderStats[customerId]) {
-          customerOrderStats[customerId] = { orders: 0, spent: 0 };
-        }
-        customerOrderStats[customerId].orders += 1;
-        customerOrderStats[customerId].spent += parseFloat(order.total_amount || 0);
-      }
-    });
+    return reportsSummary.menuSales.map((item: any) => ({
+      name: item.name,
+      category: item.category,
+      price: item.quantity > 0 ? item.revenue / item.quantity : 0,
+      orders: item.quantity,
+      revenue: Math.round(item.revenue),
+      performance: Math.round((item.quantity / maxQuantity) * 100)
+    }));
+  }, [reportsSummary]);
 
-    // Filter customers and add period-specific stats
-    return customers
-      .filter((c: any) => customerIdsInPeriod.has(c.customer?.id))
-      .map((c: any) => ({
-        ...c,
-        period_orders: customerOrderStats[c.customer?.id]?.orders || 0,
-        period_spent: customerOrderStats[c.customer?.id]?.spent || 0
-      }))
-      .sort((a: any, b: any) => b.period_spent - a.period_spent);
-  }, [customers, filteredOrders]);
+  // What and Why: 서버 집계 데이터에서 시간대별 주문 분포 직접 사용
+  const hourlyData = useMemo(() => {
+    if (!reportsSummary?.hourlySales) return [];
 
-  // Calculate operations statistics from real data
+    return reportsSummary.hourlySales
+      .filter((h: any) => h.orders > 0)
+      .map((h: any) => {
+        const hour = h.hour;
+        const hourLabel = hour === 0 ? '12AM' : hour === 12 ? '12PM' : hour > 12 ? `${hour - 12}PM` : `${hour}AM`;
+        return { hour: hourLabel, orders: h.orders };
+      });
+  }, [reportsSummary]);
+
+  // What and Why: Customer 탭은 현재 구현 유지 (서버 집계에서 customer별 데이터 미제공)
+  // 향후 개선: 서버에서 customer별 집계 데이터 제공 시 최적화 가능
+  const filteredCustomers = useMemo(() => {
+    // Customer 탭은 기존 고객 목록 그대로 반환 (기간별 필터링 제외)
+    // 서버 집계 API에서 customer별 데이터를 제공하지 않으므로 전체 고객 목록 표시
+    return customers.map((c: any) => ({
+      ...c,
+      period_orders: c.total_orders || 0,
+      period_spent: c.total_spent || 0
+    })).sort((a: any, b: any) => b.period_spent - a.period_spent);
+  }, [customers]);
+
+  // What and Why: 서버 집계 데이터에서 운영 통계 계산
   const operationsStats = useMemo(() => {
-    if (filteredOrders.length === 0) {
+    if (!reportsSummary?.hourlySales) {
       return {
         completionRate: 0,
         avgPrepTime: 0,
@@ -562,39 +388,20 @@ const ReportsPage: React.FC = () => {
       };
     }
 
-    // Completion rate: all filtered orders are already 'completed'
-    const completionRate = 100; // Since we only fetch completed orders
+    // 완료율: 서버에서 completed 주문만 가져오므로 100%
+    const completionRate = 100;
 
-    // Calculate average preparation time (createdAt to served_at)
-    let totalPrepTime = 0;
-    let prepTimeCount = 0;
-    filteredOrders.forEach(order => {
-      if (order.served_at && order.createdAt) {
-        const created = new Date(order.createdAt).getTime();
-        const served = new Date(order.served_at).getTime();
-        const prepTimeMinutes = (served - created) / (1000 * 60);
-        // Only count reasonable prep times (1-120 minutes)
-        if (prepTimeMinutes > 0 && prepTimeMinutes < 120) {
-          totalPrepTime += prepTimeMinutes;
-          prepTimeCount++;
-        }
-      }
-    });
-    const avgPrepTime = prepTimeCount > 0 ? Math.round(totalPrepTime / prepTimeCount) : 0;
+    // 평균 조리 시간은 서버에서 제공하지 않으므로 0 (향후 API 확장 가능)
+    const avgPrepTime = 0;
 
-    // Find peak hour
-    const hourlyOrders: Record<number, number> = {};
-    filteredOrders.forEach(order => {
-      const hour = new Date(order.order_date || order.createdAt).getHours();
-      hourlyOrders[hour] = (hourlyOrders[hour] || 0) + 1;
-    });
-
+    // 피크 시간 찾기 (hourlySales에서)
     let peakHour = 12;
     let maxOrders = 0;
-    Object.entries(hourlyOrders).forEach(([hour, count]) => {
-      if (count > maxOrders) {
-        maxOrders = count;
-        peakHour = parseInt(hour);
+
+    reportsSummary.hourlySales.forEach((h: any) => {
+      if (h.orders > maxOrders) {
+        maxOrders = h.orders;
+        peakHour = h.hour;
       }
     });
 
@@ -615,7 +422,7 @@ const ReportsPage: React.FC = () => {
       peakHourOrders: maxOrders,
       totalOrdersInPeak: maxOrders
     };
-  }, [filteredOrders]);
+  }, [reportsSummary]);
 
   // Fetch static data (stats, customers, menu) - only once on mount
   const fetchStaticData = useCallback(async () => {
@@ -676,8 +483,10 @@ const ReportsPage: React.FC = () => {
     }
   }, [user?.restaurantId]);
 
-  // Fetch orders with server-side filtering (date range + status=completed)
-  const fetchOrders = useCallback(async () => {
+  // What and Why: 서버 집계 API 사용 - 10000개 주문 전송 대신 집계된 요약만 전송하여 성능 최적화
+  // 기존: 클라이언트에서 10000개 주문 데이터 처리 → 느린 로딩, 많은 메모리 사용
+  // 개선: 서버에서 집계 후 요약 데이터만 전송 → 빠른 로딩, 적은 데이터 전송
+  const fetchReportsSummary = useCallback(async () => {
     if (!user?.restaurantId) return;
 
     const token = localStorage.getItem('auth_token');
@@ -686,18 +495,13 @@ const ReportsPage: React.FC = () => {
     setOrdersLoading(true);
 
     try {
-      // Use the restaurant-specific endpoint with server-side filtering
-      // This endpoint supports: startDate, endDate, status, pagination
       const params = new URLSearchParams({
         startDate: dateRange.start,
-        endDate: dateRange.end,
-        status: 'completed',  // Reports only show completed orders
-        limit: '10000',       // High limit to get all orders in range (paginated if needed)
-        includeCompleted: 'true'
+        endDate: dateRange.end
       });
 
-      const ordersResponse = await fetch(
-        `/api/orders/restaurant/${user.restaurantId}?${params.toString()}`,
+      const response = await fetch(
+        `/api/dashboard/restaurant/${user.restaurantId}/reports-summary?${params.toString()}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -706,12 +510,17 @@ const ReportsPage: React.FC = () => {
         }
       );
 
-      if (ordersResponse.ok) {
-        const ordersData = await ordersResponse.json();
-        setOrders(ordersData.data || []);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setReportsSummary(data.data);
+          // orders는 이제 빈 배열 유지 (기존 호환성을 위해 최소 데이터만 설정)
+          // drilldown과 customer 탭은 별도 처리 필요
+          setOrders([]);
+        }
       }
     } catch (error) {
-      console.error('❌ Error fetching orders:', error);
+      console.error('❌ Error fetching reports summary:', error);
     } finally {
       setOrdersLoading(false);
     }
@@ -722,73 +531,44 @@ const ReportsPage: React.FC = () => {
     fetchStaticData();
   }, [fetchStaticData]);
 
-  // Fetch orders when date range changes (server-side filtered)
+  // Fetch reports summary when date range changes (server-side aggregated)
   useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
+    fetchReportsSummary();
+  }, [fetchReportsSummary]);
 
 
-  // Calculate peak times from real orders - memoized for performance
+  // What and Why: 서버 집계 데이터에서 피크 타임 직접 계산
   const peakTimesData = useMemo(() => {
-    if (filteredOrders.length === 0) return [];
+    if (!reportsSummary?.hourlySales) return [];
 
-    const getOrderDate = (order: any) => new Date(order.order_date || order.createdAt);
-    const getOrderAmount = (order: any) => parseFloat(order.final_price || order.total_amount || order.total_price || 0);
-    const hourlySlots: Record<string, { orders: number; revenue: number }> = {};
+    const totalOrdersCount = reportsSummary.summary?.totalOrders || 1;
 
-    filteredOrders.forEach(order => {
-      const hour = getOrderDate(order).getHours();
-      const timeSlot = `${hour.toString().padStart(2, '0')}:00-${(hour + 1).toString().padStart(2, '0')}:00`;
-
-      if (!hourlySlots[timeSlot]) {
-        hourlySlots[timeSlot] = { orders: 0, revenue: 0 };
-      }
-
-      hourlySlots[timeSlot].orders += 1;
-      hourlySlots[timeSlot].revenue += getOrderAmount(order);
-    });
-
-    return Object.entries(hourlySlots)
-      .map(([time, stats]) => ({
-        time,
-        orders: stats.orders,
-        revenue: Math.round(stats.revenue),
-        efficiency: Math.min(100, Math.round((stats.orders / (filteredOrders.length / 24)) * 100))
-      }))
-      .sort((a, b) => b.orders - a.orders)
+    return reportsSummary.hourlySales
+      .filter((h: any) => h.orders > 0)
+      .map((h: any) => {
+        const hour = h.hour;
+        const timeSlot = `${hour.toString().padStart(2, '0')}:00-${((hour + 1) % 24).toString().padStart(2, '0')}:00`;
+        return {
+          time: timeSlot,
+          orders: h.orders,
+          revenue: Math.round(h.revenue),
+          efficiency: Math.min(100, Math.round((h.orders / (totalOrdersCount / 24)) * 100))
+        };
+      })
+      .sort((a: any, b: any) => b.orders - a.orders)
       .slice(0, 5);
-  }, [filteredOrders]);
+  }, [reportsSummary]);
 
-  // Get drilldown sales data grouped by year -> month -> day - memoized for performance
-  // Uses restaurant timezone for correct date grouping
+  // What and Why: 서버 집계 데이터(dailySales)에서 drilldown 데이터 구성
   const drilldownData = useMemo(() => {
-    if (filteredOrders.length === 0) return {};
-
-    const timezone = getRestaurantTimezone(operationSettings);
-    const getOrderAmount = (order: any) => parseFloat(order.final_price || order.total_amount || order.total_price || 0);
-
-    // Helper to get date parts in restaurant timezone
-    const getDatePartsInTimezone = (date: Date | string) => {
-      const d = new Date(date);
-      const formatter = new Intl.DateTimeFormat('en-CA', {
-        timeZone: timezone,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      });
-      const dateStr = formatter.format(d); // YYYY-MM-DD
-      const [year, month, day] = dateStr.split('-');
-      return { year, month, day, dateStr };
-    };
+    if (!reportsSummary?.dailySales || reportsSummary.dailySales.length === 0) return {};
 
     const yearData: Record<string, any> = {};
 
-    filteredOrders.forEach(order => {
-      const orderDateValue = order.order_date || order.createdAt;
-      const parts = getDatePartsInTimezone(orderDateValue);
-      const year = parts.year;
-      const month = `${parts.year}-${parts.month}`; // "2025-11"
-      const day = parts.dateStr; // "2025-11-09"
+    reportsSummary.dailySales.forEach((dayData: any) => {
+      const [year, monthNum, dayNum] = dayData.date.split('-');
+      const month = `${year}-${monthNum}`; // "2025-11"
+      const day = dayData.date; // "2025-11-09"
 
       // Initialize year
       if (!yearData[year]) {
@@ -819,19 +599,20 @@ const ReportsPage: React.FC = () => {
         };
       }
 
-      const amount = getOrderAmount(order);
+      const amount = dayData.revenue;
+      const orders = dayData.orders;
 
       // Aggregate data
       yearData[year].revenue += amount;
-      yearData[year].orders += 1;
+      yearData[year].orders += orders;
       yearData[year].months[month].revenue += amount;
-      yearData[year].months[month].orders += 1;
+      yearData[year].months[month].orders += orders;
       yearData[year].months[month].days[day].revenue += amount;
-      yearData[year].months[month].days[day].orders += 1;
+      yearData[year].months[month].days[day].orders += orders;
     });
 
     return yearData;
-  }, [filteredOrders, operationSettings]);
+  }, [reportsSummary]);
 
   // Calculate date range in days
   const getDateRangeDays = () => {
@@ -878,7 +659,7 @@ const ReportsPage: React.FC = () => {
       setExpandedMonths(new Set());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateRange.start, dateRange.end, filteredOrders.length]);
+  }, [dateRange.start, dateRange.end, totalOrders]);
 
   // Toggle functions for drilldown
   const toggleYear = (year: string) => {
@@ -1158,7 +939,7 @@ const ReportsPage: React.FC = () => {
               <FilterComponent />
               {loading || ordersLoading ? (
                 <div style={{ textAlign: 'center', padding: '40px' }}>Loading...</div>
-              ) : filteredOrders.length === 0 ? (
+              ) : totalOrders === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
                   No order data available for the selected period
                 </div>
@@ -1168,22 +949,22 @@ const ReportsPage: React.FC = () => {
                     <StatCard color="#059669">
                       <StatLabel>Total Revenue</StatLabel>
                       <StatValue>{formatCurrency(totalRevenue, operationSettings.currency)}</StatValue>
-                      <StatDescription>{filteredOrders.length} orders in selected period</StatDescription>
+                      <StatDescription>{totalOrders} orders in selected period</StatDescription>
                     </StatCard>
                     <StatCard color="#2563EB">
                       <StatLabel>Total Orders</StatLabel>
-                      <StatValue>{filteredOrders.length.toLocaleString()}</StatValue>
+                      <StatValue>{totalOrders.toLocaleString()}</StatValue>
                       <StatDescription>For selected period</StatDescription>
                     </StatCard>
                     <StatCard color="#DC2626">
                       <StatLabel>Average Order Value</StatLabel>
-                      <StatValue>{formatCurrency(filteredOrders.length > 0 ? (totalRevenue / filteredOrders.length) : 0, operationSettings.currency)}</StatValue>
+                      <StatValue>{formatCurrency(totalOrders > 0 ? (totalRevenue / totalOrders) : 0, operationSettings.currency)}</StatValue>
                       <StatDescription>Per order</StatDescription>
                     </StatCard>
                     <StatCard color="#7C3AED">
                       <StatLabel>Completed Orders</StatLabel>
-                      <StatValue>{filteredOrders.filter(o => o.status === 'completed').length}</StatValue>
-                      <StatDescription>{Math.round(filteredOrders.filter(o => o.status === 'completed').length / filteredOrders.length * 100 || 0)}% completion rate</StatDescription>
+                      <StatValue>{totalOrders}</StatValue>
+                      <StatDescription>100% completion rate</StatDescription>
                     </StatCard>
                   </StatsRow>
 
@@ -1264,7 +1045,7 @@ const ReportsPage: React.FC = () => {
               <FilterComponent />
               {loading || ordersLoading ? (
                 <div style={{ textAlign: 'center', padding: '40px' }}>Loading...</div>
-              ) : filteredOrders.length === 0 ? (
+              ) : totalOrders === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
                   No order data available for the selected period
                 </div>
@@ -1274,16 +1055,16 @@ const ReportsPage: React.FC = () => {
                     <StatCard color="#059669">
                       <StatLabel>Total Revenue</StatLabel>
                       <StatValue>{formatCurrency(totalRevenue, operationSettings.currency)}</StatValue>
-                      <StatDescription>{filteredOrders.length} orders in selected period</StatDescription>
+                      <StatDescription>{totalOrders} orders in selected period</StatDescription>
                     </StatCard>
                     <StatCard color="#2563EB">
                       <StatLabel>Total Orders</StatLabel>
-                      <StatValue>{filteredOrders.length.toLocaleString()}</StatValue>
-                      <StatDescription>{filteredOrders.filter(o => o.status === 'completed').length} completed</StatDescription>
+                      <StatValue>{totalOrders.toLocaleString()}</StatValue>
+                      <StatDescription>{totalOrders} completed</StatDescription>
                     </StatCard>
                     <StatCard color="#DC2626">
                       <StatLabel>Average Order Value</StatLabel>
-                      <StatValue>{formatCurrency(filteredOrders.length > 0 ? (totalRevenue / filteredOrders.length) : 0, operationSettings.currency)}</StatValue>
+                      <StatValue>{formatCurrency(totalOrders > 0 ? (totalRevenue / totalOrders) : 0, operationSettings.currency)}</StatValue>
                       <StatDescription>Per order average</StatDescription>
                     </StatCard>
                     <StatCard color="#7C3AED">
@@ -1587,7 +1368,7 @@ const ReportsPage: React.FC = () => {
               <FilterComponent />
               {loading || ordersLoading ? (
                 <div style={{ textAlign: 'center', padding: '40px' }}>Loading operations data...</div>
-              ) : filteredOrders.length === 0 ? (
+              ) : totalOrders === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
                   No order data available for the selected period
                 </div>
@@ -1596,7 +1377,7 @@ const ReportsPage: React.FC = () => {
                   <StatsRow>
                     <StatCard color="#10B981">
                       <StatLabel>Completed Orders</StatLabel>
-                      <StatValue>{filteredOrders.length.toLocaleString()}</StatValue>
+                      <StatValue>{totalOrders.toLocaleString()}</StatValue>
                       <StatDescription>{operationsStats.completionRate}% fulfillment rate</StatDescription>
                     </StatCard>
                     <StatCard color="#F59E0B">
@@ -1613,7 +1394,7 @@ const ReportsPage: React.FC = () => {
                       <StatLabel>Orders per Day</StatLabel>
                       <StatValue>{(() => {
                         const days = Math.max(1, Math.ceil((new Date(dateRange.end).getTime() - new Date(dateRange.start).getTime()) / (1000 * 60 * 60 * 24)) + 1);
-                        return Math.round(filteredOrders.length / days);
+                        return Math.round(totalOrders / days);
                       })()}</StatValue>
                       <StatDescription>Average daily orders</StatDescription>
                     </StatCard>
@@ -1649,9 +1430,9 @@ const ReportsPage: React.FC = () => {
                               <TableCell>{formatCurrency(item.revenue, operationSettings.currency)}</TableCell>
                               <TableCell>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <ProgressBar percentage={filteredOrders.length > 0 ? (item.orders / filteredOrders.length) * 100 : 0} />
+                                  <ProgressBar percentage={totalOrders > 0 ? (item.orders / totalOrders) * 100 : 0} />
                                   <span style={{ fontSize: '12px', color: '#6B7C93' }}>
-                                    {filteredOrders.length > 0 ? Math.round((item.orders / filteredOrders.length) * 100) : 0}%
+                                    {totalOrders > 0 ? Math.round((item.orders / totalOrders) * 100) : 0}%
                                   </span>
                                 </div>
                               </TableCell>

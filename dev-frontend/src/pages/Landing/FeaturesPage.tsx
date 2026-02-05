@@ -8,30 +8,40 @@ const PageContainer = styled.div`
 `;
 
 const HeroSection = styled.section`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
   text-align: center;
-  padding: 60px 20px 40px;
+  padding: 40px 20px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
+
+  @media (max-width: 768px) {
+    padding: 32px 20px;
+  }
 `;
 
 const HeroTitle = styled.h1`
-  font-size: 42px;
+  font-size: 36px;
   font-weight: 700;
-  margin-bottom: 16px;
+  margin: 0;
+  line-height: 1.2;
 
   @media (max-width: 768px) {
-    font-size: 32px;
+    font-size: 28px;
   }
 `;
 
 const HeroSubtitle = styled.p`
-  font-size: 18px;
+  font-size: 16px;
   opacity: 0.9;
   max-width: 600px;
-  margin: 0 auto;
+  margin: 6px auto 0;
+  line-height: 1.3;
 
   @media (max-width: 768px) {
-    font-size: 16px;
+    font-size: 14px;
   }
 `;
 
@@ -102,6 +112,7 @@ const FeatureCard = styled.div`
 const FeatureIcon = styled.div`
   font-size: 40px;
   margin-bottom: 20px;
+  color: #9CA3AF;
 `;
 
 const FeatureTitle = styled.h3`
@@ -180,7 +191,7 @@ const CTAButton = styled.button`
 
 const BRAND_FEATURES = [
   {
-    icon: '■',
+    icon: '○',
     title: 'Multi-Brand Dashboard',
     description: 'Centralized control for all your brands and outlets',
     points: [
@@ -191,7 +202,7 @@ const BRAND_FEATURES = [
     ]
   },
   {
-    icon: '▦',
+    icon: '○',
     title: 'Centralized Menu Management',
     description: 'Manage menus across all outlets from one place',
     points: [
@@ -202,7 +213,7 @@ const BRAND_FEATURES = [
     ]
   },
   {
-    icon: '▢',
+    icon: '○',
     title: 'Advanced Analytics',
     description: 'Deep insights into brand performance',
     points: [
@@ -213,7 +224,7 @@ const BRAND_FEATURES = [
     ]
   },
   {
-    icon: '▣',
+    icon: '○',
     title: 'Inventory & Recipe Management',
     description: 'Track ingredients and recipes across locations',
     points: [
@@ -224,7 +235,7 @@ const BRAND_FEATURES = [
     ]
   },
   {
-    icon: '◼',
+    icon: '○',
     title: 'Invoice & Billing',
     description: 'Automated invoice generation and management',
     points: [
@@ -235,7 +246,7 @@ const BRAND_FEATURES = [
     ]
   },
   {
-    icon: '▪',
+    icon: '○',
     title: 'Staff Management',
     description: 'Manage staff across all outlets',
     points: [
@@ -249,7 +260,7 @@ const BRAND_FEATURES = [
 
 const RESTAURANT_FEATURES = [
   {
-    icon: '◆',
+    icon: '○',
     title: 'POS Terminal',
     description: 'Fast and intuitive point-of-sale system',
     points: [
@@ -260,7 +271,7 @@ const RESTAURANT_FEATURES = [
     ]
   },
   {
-    icon: '◇',
+    icon: '○',
     title: 'Kitchen Display System (KDS)',
     description: 'Real-time order management for kitchen',
     points: [
@@ -271,7 +282,7 @@ const RESTAURANT_FEATURES = [
     ]
   },
   {
-    icon: '◈',
+    icon: '○',
     title: 'Mobile Ordering (QR Code)',
     description: 'Let customers order from their phones',
     points: [
@@ -282,7 +293,7 @@ const RESTAURANT_FEATURES = [
     ]
   },
   {
-    icon: '◉',
+    icon: '○',
     title: 'Coupon & Promotions',
     description: 'Create and manage promotional campaigns',
     points: [
@@ -293,7 +304,7 @@ const RESTAURANT_FEATURES = [
     ]
   },
   {
-    icon: '◐',
+    icon: '○',
     title: 'Sales Reports',
     description: 'Comprehensive sales and performance reports',
     points: [

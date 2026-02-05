@@ -7,30 +7,40 @@ const PageContainer = styled.div`
 `;
 
 const HeroSection = styled.section`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
   text-align: center;
-  padding: 60px 20px 40px;
+  padding: 40px 20px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
+
+  @media (max-width: 768px) {
+    padding: 32px 20px;
+  }
 `;
 
 const HeroTitle = styled.h1`
-  font-size: 42px;
+  font-size: 36px;
   font-weight: 700;
-  margin-bottom: 16px;
+  margin: 0;
+  line-height: 1.2;
 
   @media (max-width: 768px) {
-    font-size: 32px;
+    font-size: 28px;
   }
 `;
 
 const HeroSubtitle = styled.p`
-  font-size: 18px;
+  font-size: 16px;
   opacity: 0.9;
   max-width: 600px;
-  margin: 0 auto;
+  margin: 6px auto 0;
+  line-height: 1.3;
 
   @media (max-width: 768px) {
-    font-size: 16px;
+    font-size: 14px;
   }
 `;
 

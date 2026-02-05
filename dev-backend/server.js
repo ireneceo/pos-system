@@ -45,6 +45,7 @@ app.set('trust proxy', 1); // Cloudflare/Nginx 프록시 신뢰 (Rate Limiter �
 const server = http.createServer(app);
 const { syncDatabase } = require('./db');
 const invoiceScheduler = require('./services/invoiceScheduler');
+const subscriptionScheduler = require('./services/subscriptionScheduler');
 const { errorHandler } = require('./middleware/errorHandler');
 const { initSocketServer } = require('./services/socketService');
 
@@ -233,6 +234,7 @@ const generalStockRouter = require('./routes/general-stock');
 const couponsRouter = require('./routes/coupons');
 const uploadRouter = require('./routes/upload');
 const publicRouter = require('./routes/public');
+const contentsRouter = require('./routes/contents');
 
 // Health check endpoint - PM2 모니터링 및 로드밸런서용 (가장 먼저)
 app.get('/api/health', (req, res) => {
@@ -259,6 +261,7 @@ app.use('/', indexRouter);
 app.use('/api/coupons', couponsRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/public', publicRouter);
+app.use('/api/contents', contentsRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/menu', menuRouter);
 app.use('/api/mobile', mobileRouter);
@@ -362,11 +365,15 @@ async function startServer() {
     // Start invoice scheduler
     invoiceScheduler.start();
 
+    // Start subscription scheduler (Trial/Unpaid/Suspended transitions)
+    subscriptionScheduler.start();
+
     // 포트 충돌 체크 - PM2 환경에서는 더 유연하게 처리
     server.listen(PORT, '0.0.0.0', () => {
       console.log(`✅ Server is running on port ${PORT}`);
       console.log(`✅ Server bound to 0.0.0.0:${PORT} (accessible from all IPs)`);
       console.log('✅ Invoice scheduler is running');
+      console.log('✅ Subscription scheduler is running');
       console.log('✅ Socket.IO is running on all namespaces');
       console.log(`✅ Health check: http://localhost:${PORT}/api/health`);
     });

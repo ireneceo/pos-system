@@ -105,7 +105,7 @@ Restaurant.init({
     defaultValue: 'monthly'
   },
   status: {
-    type: DataTypes.ENUM('active', 'inactive'),
+    type: DataTypes.ENUM('active', 'inactive', 'trial', 'overdue', 'suspended', 'expired', 'cancelled'),
     defaultValue: 'active'
   },
   subscription_start: {
@@ -115,6 +115,21 @@ Restaurant.init({
   subscription_end: {
     type: DataTypes.DATE,
     allowNull: true
+  },
+  grace_period_start: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'When the grace period started (for overdue status tracking)'
+  },
+  trial_end_date: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'When the trial period ends'
+  },
+  last_payment_date: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Last successful payment date'
   },
   created_by: {
     type: DataTypes.INTEGER,

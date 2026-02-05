@@ -1,8 +1,98 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-02-03
+> **최종 업데이트:** 2026-02-05
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
+
+---
+
+## 🚀 개발 성능 가이드라인 (필독)
+
+### 1. 데이터 처리 원칙
+
+| 원칙 | 잘못된 예 | 올바른 예 |
+|------|----------|----------|
+| **서버 집계 우선** | 10000개 주문 클라이언트 전송 → useMemo 계산 | 서버에서 집계 후 요약 데이터만 전송 |
+| **필요한 데이터만** | `SELECT * FROM orders` | `SELECT id, total_amount FROM orders` |
+| **페이지네이션 필수** | `limit: '10000'` | `limit: '50'` + 페이지네이션 UI |
+| **인덱스 활용** | WHERE 절 미인덱스 컬럼 | 자주 조회되는 컬럼에 인덱스 추가 |
+
+### 2. API 설계 패턴
+
+```javascript
+// ❌ BAD: 대량 데이터를 클라이언트로 전송 후 계산
+const orders = await Order.findAll({ limit: 10000 });
+// 클라이언트에서 reduce, map, filter로 집계
+
+// ✅ GOOD: 서버에서 집계 후 요약만 전송
+router.get('/reports-summary', async (req, res) => {
+  const summary = await Order.findAll({
+    attributes: [
+      [sequelize.fn('SUM', sequelize.col('total_amount')), 'totalRevenue'],
+      [sequelize.fn('COUNT', sequelize.col('id')), 'totalOrders']
+    ],
+    where: { status: 'completed', order_date: { [Op.between]: [startDate, endDate] } }
+  });
+  res.json({ success: true, data: summary });
+});
+```
+
+### 3. 프론트엔드 최적화
+
+```typescript
+// ❌ BAD: 대량 데이터 클라이언트 계산
+const totalRevenue = useMemo(() => {
+  return orders.reduce((sum, order) => sum + order.total_amount, 0);
+}, [orders]); // orders가 10000개면 매 렌더링마다 계산
+
+// ✅ GOOD: 서버 집계 데이터 직접 사용
+const totalRevenue = useMemo(() => {
+  return reportsSummary?.summary?.totalRevenue || 0;
+}, [reportsSummary]); // 이미 계산된 값 사용
+```
+
+### 4. 리포트/대시보드 페이지 개발 시 체크리스트
+
+- [ ] 서버에서 집계 API 먼저 구현 (`/reports-summary`, `/stats` 등)
+- [ ] 클라이언트는 집계된 데이터만 받아서 렌더링
+- [ ] 날짜 범위 필터는 서버로 전달하여 서버에서 필터링
+- [ ] 차트 데이터도 서버에서 그룹화하여 제공
+- [ ] `limit: '10000'` 같은 대량 조회 절대 금지
+
+### 5. 실제 적용 사례 (2026-02-05)
+
+**Reports 페이지 성능 개선:**
+- 기존: `/api/orders?limit=10000` → 클라이언트 useMemo로 모든 통계 계산
+- 개선: `/api/dashboard/restaurant/:id/reports-summary` → 서버에서 일별/카테고리별/메뉴별/시간대별 집계
+- 결과: 데이터 전송량 대폭 감소, 페이지 로딩 속도 향상
+
+---
+
+## ✅ 완료: Blog/FAQ CMS 및 랜딩 페이지 디자인 통일 (2026-02-05)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Content Management 시스템 | Blog/FAQ 콘텐츠 관리 페이지 (4탭 구조: Blog, Blog Categories, FAQ, FAQ Categories) | ✅ 완료 |
+| Public Blog/FAQ 페이지 | 랜딩 사이트용 Blog, FAQ 공개 페이지 및 상세 페이지 | ✅ 완료 |
+| 랜딩 페이지 디자인 통일 | About 페이지 스타일로 FAQ/Blog 페이지 HeroSection 통일 (gradient 배경) | ✅ 완료 |
+| GNB 서브배너 높이 통일 | 모든 랜딩 페이지 HeroSection padding 40px 20px로 통일 | ✅ 완료 |
+| 카테고리 아이콘 제거 | FAQ/Blog 카테고리 탭에서 이모지 아이콘 제거, 텍스트만 표시 | ✅ 완료 |
+| 작성자 표시 개선 | 이메일 대신 full_name 표시, 이메일 형식이면 'PurpleHere Team' 표시 | ✅ 완료 |
+| 홈페이지 버튼 hover 수정 | Try Demo 버튼 hover 시 메인 컬러(#635BFF) 배경 + 흰색 글자 | ✅ 완료 |
+| 홈페이지 Feature 카드 수정 | 첫번째 카드를 Restaurant Management로 변경, 아이콘 크기 통일 | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/models/Content.js` - 콘텐츠 모델
+- `dev-backend/models/ContentCategory.js` - 콘텐츠 카테고리 모델
+- `dev-backend/routes/contents.js` - 콘텐츠 API (공개/관리자)
+- `dev-backend/middleware/auth.js` - full_name 필드 추가
+- `dev-frontend/src/pages/Admin/ContentManagementPage.tsx` - CMS 관리 페이지
+- `dev-frontend/src/pages/Landing/FAQPage.tsx` - 공개 FAQ 페이지 (LandingLayout, gradient hero)
+- `dev-frontend/src/pages/Landing/BlogPage.tsx` - 공개 Blog 페이지 (LandingLayout, gradient hero)
+- `dev-frontend/src/pages/Landing/BlogPostPage.tsx` - Blog 상세 페이지 (Back to Blog 위치 변경)
+- `dev-frontend/src/pages/Landing/HomePage.tsx` - 버튼 hover 색상, Feature 카드 내용 수정
 
 ---
 
@@ -128,20 +218,20 @@
 
 **필요한 3가지 영역:**
 1. 구독/결제 플랜 완성 → ✅ 완료
-2. 고객 회계 서포트 (기존 메뉴 버그 수정) → 90%
-3. 홍보 웹페이지 → 40%
+2. 고객 회계 서포트 (기존 메뉴 버그 수정) → ✅ 완료
+3. 홍보 웹페이지 → ✅ 완료
 
 ---
 
-### Phase A: 오픈 필수 (현재 단계)
+### Phase A: 오픈 필수 ✅ 완료 (2026-02-05)
 
 | 순서 | 작업 | 영역 | 상태 |
 |:----:|------|------|:----:|
-| 1 | CSV 다운로드 버그 수정 | 회계 | ⬜ 진행예정 |
-| 2 | PDF 다운로드 버그 수정 | 회계 | ⬜ |
-| 3 | Pricing 페이지 | 홍보 | ⬜ |
-| 4 | Contact 페이지 | 홍보 | ⬜ |
-| 5 | 랜딩페이지 SEO 최적화 | 홍보 | ⬜ |
+| 1 | CSV 다운로드 버그 수정 | 회계 | ✅ 완료 |
+| 2 | PDF 다운로드 버그 수정 | 회계 | ✅ 완료 |
+| 3 | Pricing 페이지 | 홍보 | ✅ 완료 |
+| 4 | Contact 페이지 | 홍보 | ✅ 완료 |
+| 5 | 랜딩페이지 SEO 최적화 | 홍보 | ✅ 완료 |
 
 ### Phase B: 오픈 직후
 
@@ -161,12 +251,12 @@
 
 ---
 
-### 버그 수정 필요 (Phase A-1, A-2)
+### ✅ 버그 수정 완료 (2026-02-05 확인)
 
 | # | 위치 | 문제 | 상태 |
 |:-:|------|------|:----:|
-| 1 | Reports 페이지 | CSV 다운로드 메모리 누수, Safari 호환성 | ⬜ |
-| 2 | Invoice 페이지 | PDF 렌더링 타이밍 불안정 | ⬜ |
+| 1 | Reports 페이지 | CSV 다운로드 - `csvDownload.ts` 유틸로 Safari 호환 + 메모리 누수 방지 | ✅ 완료 |
+| 2 | Invoice 페이지 | PDF 다운로드 - `jsPDF` + `html2canvas`로 안정적 렌더링 | ✅ 완료 |
 
 ---
 

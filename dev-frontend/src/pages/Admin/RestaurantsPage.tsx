@@ -266,7 +266,16 @@ const ModalActions = styled.div`
 
 const FormGrid = styled.div`
   display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 16px;
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
+
+  & > * {
+    min-width: 0;
+  }
 `;
 
 const FormGroup = styled.div`
@@ -287,13 +296,16 @@ const FormInput = styled.input`
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
-  
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+
   &:focus {
     outline: none;
     border-color: #635BFF;
     box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
   }
-  
+
   &:disabled {
     background: #F8FAFC;
     color: #6B7280;
@@ -308,7 +320,10 @@ const FormSelect = styled.select`
   font-size: 14px;
   background: white;
   transition: all 0.2s;
-  
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+
   &:focus {
     outline: none;
     border-color: #635BFF;
@@ -324,13 +339,16 @@ const FormTextarea = styled.textarea`
   resize: vertical;
   min-height: 80px;
   transition: all 0.2s;
-  
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+
   &:focus {
     outline: none;
     border-color: #635BFF;
     box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
   }
-  
+
   &:disabled {
     background: #F8FAFC;
     color: #6B7280;
@@ -368,6 +386,8 @@ const PageFilterWrapper = styled.div`
   margin-bottom: 24px;
   flex-wrap: wrap;
   align-items: flex-start;
+  position: relative;
+  z-index: 100;
 
   @media (max-width: 600px) {
     flex-direction: column;
@@ -423,12 +443,19 @@ const PageFilterSelect = styled.select`
 const DropdownContainer = styled.div`
   position: relative;
   width: 100%;
+  min-width: 0;
 `;
 
 // Filter용 Dropdown Container (고정 너비)
 const FilterDropdownContainer = styled.div`
   position: relative;
   flex: 0 0 180px;
+  min-width: 0;
+  z-index: 50;
+
+  &:focus-within {
+    z-index: 60;
+  }
 
   @media (max-width: 600px) {
     flex: 1 1 100%;
@@ -438,13 +465,16 @@ const FilterDropdownContainer = styled.div`
 
 const DropdownInput = styled.input`
   padding: 12px 16px;
+  padding-right: 32px;
   border: 1px solid #E6EBF1;
   border-radius: 8px;
   font-size: 14px;
   background: white;
   cursor: pointer;
   width: 100%;
-  min-width: 150px;
+  min-width: 0;
+  box-sizing: border-box;
+  text-overflow: ellipsis;
 
   &:focus {
     outline: none;
@@ -459,16 +489,17 @@ const DropdownInput = styled.input`
 
 const DropdownMenu = styled.div<{ show: boolean }>`
   position: absolute;
-  top: 100%;
+  top: calc(100% + 4px);
   left: 0;
   right: 0;
+  min-width: 250px;
   background: white;
   border: 1px solid #E6EBF1;
   border-radius: 8px;
-  max-height: 200px;
+  max-height: 250px;
   overflow-y: auto;
-  z-index: 1000;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  z-index: 9999;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
   display: ${props => props.show ? 'block' : 'none'};
 `;
 
@@ -661,7 +692,8 @@ const RestaurantsPage: React.FC = () => {
     cuisine: '',
     planType: 'Basic Plan',
     planAmount: '29.00',
-    status: 'active' as 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled',
+    // Trial 체크박스 - 최초 등록 시에만 선택 가능
+    enableTrial: true, // 기본값: 7일 무료 체험
     // Subscription Settings 추가
     billingCycle: 'monthly' as 'monthly' | 'annual',
     paymentModel: 'restaurant' as 'restaurant' | 'brand_manager' | 'foodcourt_manager',
@@ -823,16 +855,19 @@ const RestaurantsPage: React.FC = () => {
     try {
       console.log('🔄 Fetching restaurants from API (using same method as StaffManagementPage)...');
 
+      const token = localStorage.getItem('auth_token');
+      const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
+
       // Use exact same method as StaffManagementPage and ManagersPage - direct fetch
-      const restaurantsResponse = await fetch('/api/restaurants');
+      const restaurantsResponse = await fetch('/api/restaurants', { headers });
       console.log('📡 Restaurants API response status:', restaurantsResponse.status);
 
       if (restaurantsResponse.ok) {
         const restaurantsData = await restaurantsResponse.json();
         console.log('✅ Restaurants API response:', restaurantsData);
 
-        // Fetch managers from API for dropdown
-        const managersResponse = await fetch('/api/users?role=Manager');
+        // Fetch managers from API for dropdown - MUST include auth token
+        const managersResponse = await fetch('/api/users?role=Manager', { headers });
         console.log('📡 Managers API response status:', managersResponse.status);
 
         const managersData = managersResponse.ok ? await managersResponse.json() : [];
@@ -982,16 +1017,18 @@ const RestaurantsPage: React.FC = () => {
     setManagerSearchQuery(query);
     setShowManagerDropdown(true);
 
-    if (query.length < 2) {
-      setFilteredManagers([]);
+    if (query.length < 1) {
+      // Show first 10 managers when no search query
+      setFilteredManagers(availableManagers.slice(0, 10));
       return;
     }
 
     const filtered = availableManagers.filter(manager =>
       (manager.full_name && manager.full_name.toLowerCase().includes(query.toLowerCase())) ||
-      (manager.username && manager.username.toLowerCase().includes(query.toLowerCase()))
+      (manager.username && manager.username.toLowerCase().includes(query.toLowerCase())) ||
+      (manager.email && manager.email.toLowerCase().includes(query.toLowerCase()))
     );
-    setFilteredManagers(filtered.slice(0, 5));
+    setFilteredManagers(filtered.slice(0, 10));
   };
 
   const handleManagerSelect = (manager: any) => {
@@ -1626,7 +1663,7 @@ const RestaurantsPage: React.FC = () => {
               </ModalHeader>
               <ModalBody>
                 <FormGrid>
-                  <FormGroup>
+                  <FormGroup style={{ gridColumn: '1 / -1' }}>
                     <FormLabel>Restaurant Name *</FormLabel>
                     <FormInput
                       type="text"
@@ -1636,19 +1673,17 @@ const RestaurantsPage: React.FC = () => {
                     />
                   </FormGroup>
 
-                  <FormGroup style={{ position: 'relative' }}>
+                  <FormGroup style={{ position: 'relative', gridColumn: '1 / -1', zIndex: 100 }}>
                     <FormLabel>Managers (Multiple selection supported)</FormLabel>
                     <DropdownContainer>
                       <DropdownInput
                         type="text"
-                        placeholder="Type to search and select managers..."
+                        placeholder="Click to search and select managers..."
                         value={managerSearchQuery}
                         onChange={(e) => handleManagerSearch(e.target.value)}
                         onFocus={() => {
                           setShowManagerDropdown(true);
-                          if (managerSearchQuery.length === 0) {
-                            setFilteredManagers(availableManagers.slice(0, 10));
-                          }
+                          setFilteredManagers(availableManagers.slice(0, 10));
                         }}
                         onBlur={() => setTimeout(() => setShowManagerDropdown(false), 200)}
                       />
@@ -1803,18 +1838,57 @@ const RestaurantsPage: React.FC = () => {
                     </FormSelect>
                   </FormGroup>
 
-                  <FormGroup>
-                    <FormLabel>Status *</FormLabel>
-                    <FormSelect
-                      value={newRestaurant.status}
-                      onChange={(e) => setNewRestaurant({...newRestaurant, status: e.target.value as any})}
-                    >
-                      <option value="active">Active</option>
-                      <option value="trial">Trial</option>
-                      <option value="expired">Expired</option>
-                      <option value="suspended">Suspended</option>
-                      <option value="cancelled">Cancelled</option>
-                    </FormSelect>
+                  <FormGroup style={{gridColumn: '1 / -1'}}>
+                    <label style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '16px 20px',
+                      background: newRestaurant.status === 'trial' ? '#F0EFFF' : '#F9FAFB',
+                      borderRadius: '12px',
+                      border: newRestaurant.status === 'trial' ? '2px solid #635BFF' : '2px solid #E5E7EB',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={newRestaurant.status === 'trial'}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            const startDate = new Date();
+                            const endDate = new Date();
+                            endDate.setDate(endDate.getDate() + 7);
+                            setNewRestaurant({
+                              ...newRestaurant,
+                              status: 'trial',
+                              subscriptionStart: startDate.toISOString().split('T')[0],
+                              subscriptionEnd: endDate.toISOString().split('T')[0],
+                              planAmount: '0.00'
+                            });
+                          } else {
+                            setNewRestaurant({
+                              ...newRestaurant,
+                              status: 'active',
+                              planAmount: availablePlans.find(p => p.display_name === newRestaurant.planType)?.base_price_monthly?.toString() || '29.00'
+                            });
+                          }
+                        }}
+                        style={{
+                          width: '20px',
+                          height: '20px',
+                          accentColor: '#635BFF',
+                          cursor: 'pointer'
+                        }}
+                      />
+                      <div>
+                        <div style={{fontWeight: '600', color: '#1F2937', fontSize: '15px'}}>
+                          Apply 7-Day Free Trial
+                        </div>
+                        <div style={{fontSize: '13px', color: '#6B7280', marginTop: '2px'}}>
+                          New restaurant will start with a 7-day free trial period
+                        </div>
+                      </div>
+                    </label>
                   </FormGroup>
 
                   {/* Subscription Settings 섹션 */}

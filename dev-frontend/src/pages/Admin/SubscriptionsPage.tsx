@@ -32,7 +32,7 @@ interface RestaurantSubscription {
   managerId: string;
   managerName: string;
   planType: 'basic' | 'professional' | 'enterprise' | string;
-  status: 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled';
+  status: 'active' | 'trial' | 'overdue' | 'expired' | 'suspended' | 'cancelled';
   startDate: string;
   endDate: string;
   monthlyFee: number;
@@ -122,6 +122,7 @@ const StatusBadge = styled.span<{ status: string }>`
     switch(props.status) {
       case 'active': return '#ECFDF5';
       case 'trial': return '#FEF3C7';
+      case 'overdue': return '#FEF9C3';
       case 'expired': return '#FEE2E2';
       case 'suspended': return '#FEF2F2';
       case 'cancelled': return '#F3F4F6';
@@ -132,6 +133,7 @@ const StatusBadge = styled.span<{ status: string }>`
     switch(props.status) {
       case 'active': return '#059669';
       case 'trial': return '#D97706';
+      case 'overdue': return '#CA8A04';
       case 'expired': return '#DC2626';
       case 'suspended': return '#DC2626';
       case 'cancelled': return '#6B7280';
@@ -297,7 +299,16 @@ const ModalActions = styled.div`
 
 const FormGrid = styled.div`
   display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 20px;
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
+
+  & > * {
+    min-width: 0;
+  }
 `;
 
 const FormGroup = styled.div`
@@ -318,13 +329,16 @@ const FormInput = styled.input`
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
-  
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+
   &:focus {
     outline: none;
     border-color: #635BFF;
     box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
   }
-  
+
   &:disabled {
     background: #F8FAFC;
     color: #6B7280;
@@ -339,7 +353,10 @@ const FormSelect = styled.select`
   font-size: 14px;
   background: white;
   transition: all 0.2s;
-  
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+
   &:focus {
     outline: none;
     border-color: #635BFF;
@@ -562,24 +579,30 @@ const SubscriptionsPage: React.FC = () => {
     setSearchQuery(query);
     setShowSearchDropdown(true);
 
-    if (query.length < 2) {
-      setSearchResults({managers: [], restaurants: []});
+    if (query.length < 1) {
+      // Show first 10 items when no search query
+      setSearchResults({
+        managers: availableManagers.slice(0, 10),
+        restaurants: allRestaurantsData.slice(0, 10)
+      });
       return;
     }
 
     const filteredManagers = availableManagers.filter(manager =>
       (manager.fullName && manager.fullName.toLowerCase().includes(query.toLowerCase())) ||
       (manager.full_name && manager.full_name.toLowerCase().includes(query.toLowerCase())) ||
-      (manager.username && manager.username.toLowerCase().includes(query.toLowerCase()))
+      (manager.username && manager.username.toLowerCase().includes(query.toLowerCase())) ||
+      (manager.email && manager.email.toLowerCase().includes(query.toLowerCase()))
     );
 
     const filteredRestaurants = allRestaurantsData.filter(restaurant =>
-      restaurant.name && restaurant.name.toLowerCase().includes(query.toLowerCase())
+      (restaurant.name && restaurant.name.toLowerCase().includes(query.toLowerCase())) ||
+      (restaurant.address && restaurant.address.toLowerCase().includes(query.toLowerCase()))
     );
 
     setSearchResults({
-      managers: filteredManagers.slice(0, 5),
-      restaurants: filteredRestaurants.slice(0, 5)
+      managers: filteredManagers.slice(0, 10),
+      restaurants: filteredRestaurants.slice(0, 10)
     });
   };
 
@@ -872,23 +895,62 @@ const SubscriptionsPage: React.FC = () => {
     if (!selectedSubscription || !confirmAction) return;
 
     try {
+      const token = localStorage.getItem('auth_token');
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      };
+
       if (confirmAction === 'delete') {
-        // Delete subscription logic
-        console.log('Deleting subscription:', selectedSubscription.id);
+        // Delete subscription - actually deletes the restaurant
+        console.log('Deleting subscription:', selectedSubscription.id, 'restaurantId:', selectedSubscription.restaurantId);
+
+        const response = await fetch(`/api/restaurants/${selectedSubscription.restaurantId}`, {
+          method: 'DELETE',
+          headers
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          throw new Error(errorData.error || 'Failed to delete subscription');
+        }
+
         setSuccessMessage('Subscription deleted successfully');
       } else if (confirmAction === 'suspend') {
-        // Suspend subscription logic
+        // Suspend subscription - set status to inactive
+        const response = await fetch(`/api/restaurants/${selectedSubscription.restaurantId}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({ status: 'inactive' })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          throw new Error(errorData.error || 'Failed to suspend subscription');
+        }
+
         setSuccessMessage('Subscription suspended successfully');
       } else if (confirmAction === 'activate') {
-        // Activate subscription logic
+        // Activate subscription - set status to active
+        const response = await fetch(`/api/restaurants/${selectedSubscription.restaurantId}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({ status: 'active' })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          throw new Error(errorData.error || 'Failed to activate subscription');
+        }
+
         setSuccessMessage('Subscription activated successfully');
       }
 
       setShowSuccessModal(true);
       await fetchSubscriptions();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Action failed:', error);
-      alert(`Action failed: ${error.message}. Please try again.`);
+      alert(`Action failed: ${error.message || 'Unknown error'}. Please try again.`);
     }
 
     setShowConfirmModal(false);
@@ -1175,16 +1237,24 @@ const SubscriptionsPage: React.FC = () => {
                           type="text"
                           value={searchQuery}
                           onChange={(e) => handleSearch(e.target.value)}
-                          onFocus={() => setShowSearchDropdown(true)}
+                          onFocus={() => {
+                            setShowSearchDropdown(true);
+                            // Load initial data on focus
+                            if (searchQuery.length < 1) {
+                              setSearchResults({
+                                managers: availableManagers.slice(0, 10),
+                                restaurants: allRestaurantsData.slice(0, 10)
+                              });
+                            }
+                          }}
                           onBlur={() => setTimeout(() => setShowSearchDropdown(false), 200)}
-                          placeholder={userType === 'restaurant' ? 'Type to search for restaurants' : 'Type to search for managers'}
+                          placeholder={userType === 'restaurant' ? 'Click to search restaurants...' : 'Click to search managers...'}
                           required
-                          style={{width: '100%'}}
                         />
-                        {showSearchDropdown && (searchResults.managers.length > 0 || searchResults.restaurants.length > 0) && (
+                        {showSearchDropdown && (
                           <div style={{
                             position: 'absolute',
-                            top: '100%',
+                            top: 'calc(100% + 4px)',
                             left: 0,
                             right: 0,
                             background: 'white',
@@ -1192,8 +1262,8 @@ const SubscriptionsPage: React.FC = () => {
                             borderRadius: '8px',
                             maxHeight: '300px',
                             overflowY: 'auto',
-                            zIndex: 1000,
-                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
+                            zIndex: 9999,
+                            boxShadow: '0 8px 16px rgba(0, 0, 0, 0.15)'
                           }}>
                             {userType !== 'restaurant' && searchResults.managers.length > 0 && (
                               <div>
@@ -1368,17 +1438,57 @@ const SubscriptionsPage: React.FC = () => {
                       </>
                     )}
 
-                    <FormGroup>
-                      <FormLabel>Status *</FormLabel>
-                      <FormSelect
-                        value={newSubscription.status}
-                        onChange={(e) => setNewSubscription({...newSubscription, status: e.target.value as 'active' | 'expired' | 'suspended' | 'cancelled'})}
-                      >
-                        <option value="active">Active</option>
-                        <option value="suspended">Suspended</option>
-                        <option value="expired">Expired</option>
-                        <option value="cancelled">Cancelled</option>
-                      </FormSelect>
+                    <FormGroup style={{gridColumn: '1 / -1'}}>
+                      <label style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '16px 20px',
+                        background: newSubscription.status === 'trial' ? '#F0EFFF' : '#F9FAFB',
+                        borderRadius: '12px',
+                        border: newSubscription.status === 'trial' ? '2px solid #635BFF' : '2px solid #E5E7EB',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={newSubscription.status === 'trial'}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              const startDate = new Date();
+                              const endDate = new Date();
+                              endDate.setDate(endDate.getDate() + 7);
+                              setNewSubscription({
+                                ...newSubscription,
+                                status: 'trial',
+                                startDate: startDate.toISOString().split('T')[0],
+                                endDate: endDate.toISOString().split('T')[0],
+                                monthlyFee: 0
+                              });
+                            } else {
+                              setNewSubscription({
+                                ...newSubscription,
+                                status: 'active',
+                                monthlyFee: 29
+                              });
+                            }
+                          }}
+                          style={{
+                            width: '20px',
+                            height: '20px',
+                            accentColor: '#635BFF',
+                            cursor: 'pointer'
+                          }}
+                        />
+                        <div>
+                          <div style={{fontWeight: '600', color: '#1F2937', fontSize: '15px'}}>
+                            Apply 7-Day Free Trial
+                          </div>
+                          <div style={{fontSize: '13px', color: '#6B7280', marginTop: '2px'}}>
+                            Subscription will start with a 7-day free trial period
+                          </div>
+                        </div>
+                      </label>
                     </FormGroup>
 
                     {/* Subscription Settings Section */}

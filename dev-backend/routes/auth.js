@@ -2,16 +2,12 @@ const express = require('express');
 const router = express.Router();
 const authService = require('../services/authService');
 const { successResponse, errorResponse } = require('../middleware/errorHandler');
+const { validateLogin, validateRegister } = require('../middleware/validation');
 
-// 로그인
-router.post('/login', async (req, res, next) => {
+// 로그인 (validateLogin 미들웨어로 입력 검증)
+router.post('/login', validateLogin, async (req, res, next) => {
   try {
     const { email, password } = req.body;
-
-    if (!email || !password) {
-      return errorResponse(res, 'Email/Username and password are required', 400, 'MISSING_CREDENTIALS');
-    }
-
     const result = await authService.login(email, password);
     successResponse(res, result, 'Login successful');
   } catch (error) {
@@ -19,15 +15,10 @@ router.post('/login', async (req, res, next) => {
   }
 });
 
-// 회원가입
-router.post('/register', async (req, res, next) => {
+// 회원가입 (validateRegister 미들웨어로 입력 검증 + 강력한 비밀번호 정책)
+router.post('/register', validateRegister, async (req, res, next) => {
   try {
     const userData = req.body;
-
-    if (!userData.email || !userData.password) {
-      return errorResponse(res, 'Email and password are required', 400, 'MISSING_REQUIRED_FIELDS');
-    }
-
     const result = await authService.register(userData);
     successResponse(res, result, 'Registration successful', 201);
   } catch (error) {

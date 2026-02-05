@@ -234,8 +234,8 @@ const LandingFooter: React.FC = () => {
             &copy; {currentYear} PurpleHere. All rights reserved.
           </Copyright>
           <LegalLinks>
-            <LegalLink>Privacy Policy</LegalLink>
-            <LegalLink>Terms of Service</LegalLink>
+            <LegalLink onClick={() => navigate('/privacy')}>Privacy Policy</LegalLink>
+            <LegalLink onClick={() => navigate('/terms')}>Terms of Service</LegalLink>
           </LegalLinks>
         </BottomSection>
       </FooterContent>
