@@ -355,9 +355,14 @@ const AdminDashboard: React.FC = () => {
     const fetchData = async () => {
       try {
         console.log('🔄 Starting data fetch...');
+        const token = localStorage.getItem('auth_token');
+        const headers = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        };
 
         // Fetch managers
-        const usersResponse = await fetch('/api/users?role=Manager');
+        const usersResponse = await fetch('/api/users?role=Manager', { headers });
         if (!usersResponse.ok) {
           throw new Error('Failed to fetch users');
         }
@@ -366,7 +371,7 @@ const AdminDashboard: React.FC = () => {
         console.log('👥 Fetched managers:', managerUsers?.length || 0);
 
         // Fetch restaurants
-        const restaurantsResponse = await fetch('/api/restaurants');
+        const restaurantsResponse = await fetch('/api/restaurants', { headers });
         if (!restaurantsResponse.ok) {
           throw new Error('Failed to fetch restaurants');
         }
@@ -396,7 +401,7 @@ const AdminDashboard: React.FC = () => {
         console.log('📊 Calculating system activities...');
 
         // Fetch invoices for revenue data
-        const invoicesResponse = await fetch('/api/invoices');
+        const invoicesResponse = await fetch('/api/invoices', { headers });
         let currentInvoicesData: any[] = [];
         let revenueDataArray: RevenueData[] = [];
         let totalInvoiceRevenue = 0;
@@ -511,7 +516,7 @@ const AdminDashboard: React.FC = () => {
         // Fetch support tickets for system health
         let supportTicketsCount = 0;
         try {
-          const ticketsResponse = await fetch('/api/support-tickets');
+          const ticketsResponse = await fetch('/api/support-tickets', { headers });
           if (ticketsResponse.ok) {
             const ticketsData = await ticketsResponse.json();
             supportTicketsCount = (ticketsData.data || ticketsData || []).length;

@@ -1724,6 +1724,20 @@ const AdminStaffManagementPage: React.FC = () => {
                 </Select>
               </FormGroup>
 
+              {newStaff.role === 'Restaurant Admin' && (
+                <div style={{
+                  gridColumn: '1 / -1',
+                  padding: '12px 16px',
+                  background: '#FEF3C7',
+                  border: '1px solid #FCD34D',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  color: '#92400E',
+                  lineHeight: '1.5'
+                }}>
+                  <strong>Note:</strong> Restaurant Admin accounts are normally created automatically when registering a new restaurant (Restaurants page &gt; Add Restaurant). Creating one here will require manually assigning a restaurant afterwards.
+                </div>
+              )}
 
               <FormGroup>
                 <Label>Staff ID (Username) *</Label>

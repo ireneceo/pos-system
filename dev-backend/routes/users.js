@@ -53,6 +53,41 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
+// Get available admin candidates (users not assigned to any restaurant)
+router.get('/available-admins', authenticateToken, async (req, res) => {
+  try {
+    const { q } = req.query;
+    const { sequelize } = require('../config/database');
+
+    let searchFilter = '';
+    let replacements = [];
+
+    if (q && q.trim()) {
+      searchFilter = 'AND (u.full_name LIKE ? OR u.email LIKE ? OR u.username LIKE ?)';
+      const searchTerm = `%${q.trim()}%`;
+      replacements = [searchTerm, searchTerm, searchTerm];
+    }
+
+    const users = await sequelize.query(`
+      SELECT u.id, u.username, u.email, u.role, u.full_name, u.phone
+      FROM users u
+      WHERE u.restaurant_id IS NULL
+        AND u.role IN ('Restaurant Admin', 'Staff')
+        ${searchFilter}
+      ORDER BY u.full_name
+      LIMIT 20
+    `, {
+      replacements,
+      type: sequelize.QueryTypes.SELECT
+    });
+
+    res.json({ success: true, data: users });
+  } catch (error) {
+    console.error('Error fetching available admins:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Get single user
 router.get('/:id', authenticateToken, async (req, res) => {
   try {

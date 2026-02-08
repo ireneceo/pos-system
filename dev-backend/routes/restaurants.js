@@ -70,6 +70,11 @@ router.get('/', optionalAuth, async (req, res) => {
     const restaurants = await Restaurant.findAll({
       where: whereClause,
       include: [
+        {
+          model: User,
+          as: 'manager',
+          attributes: ['id', 'full_name', 'username', 'email', 'phone', 'role']
+        },
         managersInclude,
         {
           model: Brand,
@@ -84,15 +89,30 @@ router.get('/', optionalAuth, async (req, res) => {
     const transformedRestaurants = restaurants.map(restaurant => {
       const restaurantData = restaurant.toJSON();
 
-      // Get all managers for this restaurant
-      const managers = restaurantData.managers || [];
+      // Restaurant Admin (Owner) - via manager_id (1:1)
+      const adminData = restaurantData.manager || null;
+
+      // Oversight managers (Brand/Foodcourt) - via RestaurantManager (N:M)
+      const managers = (restaurantData.managers || []).filter(m =>
+        m.role !== 'Restaurant Admin' && m.role !== 'Staff'
+      );
       const primaryManager = managers.find(m => m.RestaurantManager?.is_primary) || managers[0];
 
       return {
         id: restaurantData.id.toString(),
         name: restaurantData.name,
+        // Admin (Owner) 정보
+        admin: adminData ? {
+          id: adminData.id.toString(),
+          name: adminData.full_name || adminData.username,
+          email: adminData.email,
+          phone: adminData.phone || '',
+          role: adminData.role
+        } : null,
+        // 하위 호환: managerId/managerName 유지
         managerId: restaurantData.manager_id ? restaurantData.manager_id.toString() : (primaryManager ? primaryManager.id.toString() : ''),
-        managerName: restaurantData.manager_name || (primaryManager ? primaryManager.full_name || primaryManager.username : 'Unassigned'),
+        managerName: restaurantData.manager_name || (adminData ? adminData.full_name || adminData.username : (primaryManager ? primaryManager.full_name || primaryManager.username : 'Unassigned')),
+        // 감독 매니저 (Brand/Foodcourt만)
         managers: managers.map(m => ({
           id: m.id.toString(),
           name: m.full_name || m.username,
@@ -252,6 +272,11 @@ router.get('/:id', async (req, res) => {
       include: [
         {
           model: User,
+          as: 'manager',
+          attributes: ['id', 'full_name', 'username', 'email', 'role', 'phone']
+        },
+        {
+          model: User,
           as: 'managers',
           attributes: ['id', 'full_name', 'username', 'email', 'role', 'company_name', 'phone'],
           through: { attributes: ['is_primary'] }
@@ -268,13 +293,22 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Restaurant not found' });
     }
 
-    // Transform restaurant data to include managers array
     const restaurantData = restaurant.toJSON();
-    const managers = restaurantData.managers || [];
+    const adminData = restaurantData.manager || null;
+    const oversightManagers = (restaurantData.managers || []).filter(m =>
+      m.role !== 'Restaurant Admin' && m.role !== 'Staff'
+    );
 
     const response = {
       ...restaurantData,
-      managers: managers.map(m => ({
+      admin: adminData ? {
+        id: adminData.id.toString(),
+        name: adminData.full_name || adminData.username,
+        email: adminData.email,
+        phone: adminData.phone || '',
+        role: adminData.role
+      } : null,
+      managers: oversightManagers.map(m => ({
         id: m.id.toString(),
         name: m.full_name || m.username,
         email: m.email,
@@ -315,13 +349,18 @@ const validateBrandPermission = async (brandId, userId, userRole) => {
   return { valid: false, error: 'Unauthorized to set brand' };
 };
 
-// Create new restaurant
+// Create new restaurant (with Restaurant Admin 1:1 coupling)
 router.post('/', authenticateToken, async (req, res) => {
+  const { sequelize } = require('../config/database');
+  const bcrypt = require('bcrypt');
+  const transaction = await sequelize.transaction();
+
   try {
     // Validate brand_id permission if provided
     if (req.body.brand_id) {
       const brandCheck = await validateBrandPermission(req.body.brand_id, req.user.id, req.user.role);
       if (!brandCheck.valid) {
+        await transaction.rollback();
         return res.status(403).json({ error: brandCheck.error });
       }
     }
@@ -335,7 +374,6 @@ router.post('/', authenticateToken, async (req, res) => {
     };
 
     if (req.body.planType) {
-      // Try to find plan template
       const planName = req.body.planType.toLowerCase().replace(' plan', '');
       const planTemplate = await PlanTemplate.findOne({ where: { name: planName } });
 
@@ -362,10 +400,67 @@ router.post('/', authenticateToken, async (req, res) => {
       }
     }
 
+    // === Restaurant Admin (Owner) 처리 ===
+    let adminUser = null;
+    const adminAction = req.body.adminAction; // 'create' | 'assign' | undefined(하위 호환)
+
+    if (adminAction === 'create') {
+      // 새 Restaurant Admin 계정 생성
+      const { adminEmail, adminPassword, adminUsername, adminFullName, adminPhone } = req.body;
+
+      if (!adminEmail || !adminPassword || !adminUsername || !adminFullName) {
+        await transaction.rollback();
+        return res.status(400).json({ error: 'Admin email, password, username, and full name are required' });
+      }
+
+      // 이메일/유저네임 중복 체크
+      const existingEmail = await User.findOne({ where: { email: adminEmail } });
+      if (existingEmail) {
+        await transaction.rollback();
+        return res.status(400).json({ error: 'Admin email is already in use' });
+      }
+      const existingUsername = await User.findOne({ where: { username: adminUsername } });
+      if (existingUsername) {
+        await transaction.rollback();
+        return res.status(400).json({ error: 'Admin username is already in use' });
+      }
+
+      // 비밀번호 해싱 & 유저 생성
+      const hashedPassword = await bcrypt.hash(adminPassword, 10);
+      adminUser = await User.create({
+        username: adminUsername,
+        email: adminEmail,
+        password: hashedPassword,
+        role: 'Restaurant Admin',
+        full_name: adminFullName,
+        phone: adminPhone || null
+      }, { transaction });
+
+    } else if (adminAction === 'assign') {
+      // 기존 유저를 Restaurant Admin으로 배정
+      const { adminUserId } = req.body;
+      if (!adminUserId) {
+        await transaction.rollback();
+        return res.status(400).json({ error: 'adminUserId is required when assigning existing user' });
+      }
+
+      adminUser = await User.findByPk(adminUserId);
+      if (!adminUser) {
+        await transaction.rollback();
+        return res.status(404).json({ error: 'Admin user not found' });
+      }
+      if (adminUser.restaurant_id) {
+        await transaction.rollback();
+        return res.status(400).json({ error: `This user is already assigned to another restaurant (ID: ${adminUser.restaurant_id})` });
+      }
+    }
+    // else: 하위 호환 - adminAction 없으면 기존 managerId 방식 사용
+
     // Map frontend fields to database fields
     const restaurantData = {
       name: req.body.name,
-      manager_id: req.body.managerId,
+      manager_id: adminUser ? adminUser.id : (req.body.managerId || null),
+      manager_name: adminUser ? (adminUser.full_name || adminUser.username) : null,
       email: req.body.email,
       phone: req.body.phone,
       address: req.body.address,
@@ -387,17 +482,25 @@ router.post('/', authenticateToken, async (req, res) => {
       ...planLimits
     };
 
-    // Get manager name for the restaurant if managerId is provided
-    if (restaurantData.manager_id) {
+    // 하위 호환: adminAction 없이 managerId만 전송된 경우 manager_name 조회
+    if (!adminUser && restaurantData.manager_id) {
       const manager = await User.findByPk(restaurantData.manager_id);
       if (manager) {
         restaurantData.manager_name = manager.full_name || manager.username;
       }
     }
 
-    const restaurant = await Restaurant.create(restaurantData);
+    const restaurant = await Restaurant.create(restaurantData, { transaction });
 
-    // Handle multiple managers if managerIds array is provided
+    // Admin User의 restaurant_id를 생성된 레스토랑으로 설정
+    if (adminUser) {
+      await adminUser.update({
+        restaurant_id: restaurant.id,
+        role: 'Restaurant Admin'
+      }, { transaction });
+    }
+
+    // Brand/Foodcourt 감독 매니저 처리 (RestaurantManager N:M 유지)
     if (req.body.managerIds && Array.isArray(req.body.managerIds) && req.body.managerIds.length > 0) {
       const RestaurantManager = require('../models/RestaurantManager');
 
@@ -407,11 +510,24 @@ router.post('/', authenticateToken, async (req, res) => {
         is_primary: index === 0
       }));
 
-      await RestaurantManager.bulkCreate(managerAssociations);
+      await RestaurantManager.bulkCreate(managerAssociations, { transaction });
     }
 
-    res.status(201).json({ success: true, restaurant });
+    await transaction.commit();
+
+    const responseData = { success: true, restaurant };
+    if (adminUser) {
+      responseData.adminUser = {
+        id: adminUser.id,
+        email: adminUser.email,
+        username: adminUser.username,
+        fullName: adminUser.full_name
+      };
+    }
+
+    res.status(201).json(responseData);
   } catch (error) {
+    await transaction.rollback();
     console.error('[Restaurants] Error creating restaurant:', error.message);
     res.status(500).json({ error: 'Failed to create restaurant', details: error.message });
   }
@@ -506,14 +622,109 @@ router.put('/:id', authenticateToken, async (req, res) => {
     // Cuisine field
     if (req.body.cuisine !== undefined) updateData.cuisine = req.body.cuisine;
 
-    // Get manager name if managerId is being updated
+    // === Restaurant Admin (Owner) 변경 처리 ===
+    const adminAction = req.body.adminAction; // 'create' | 'change' | undefined
+
+    if (adminAction === 'create' || adminAction === 'change') {
+      const bcrypt = require('bcrypt');
+      const { sequelize } = require('../config/database');
+      const adminTransaction = await sequelize.transaction();
+
+      try {
+        let newAdminUser = null;
+
+        if (adminAction === 'create') {
+          const { adminEmail, adminPassword, adminUsername, adminFullName, adminPhone } = req.body;
+          if (!adminEmail || !adminPassword || !adminUsername || !adminFullName) {
+            await adminTransaction.rollback();
+            return res.status(400).json({ error: 'Admin email, password, username, and full name are required' });
+          }
+          const existingEmail = await User.findOne({ where: { email: adminEmail } });
+          if (existingEmail) {
+            await adminTransaction.rollback();
+            return res.status(400).json({ error: 'Admin email is already in use' });
+          }
+          const existingUsername = await User.findOne({ where: { username: adminUsername } });
+          if (existingUsername) {
+            await adminTransaction.rollback();
+            return res.status(400).json({ error: 'Admin username is already in use' });
+          }
+          const hashedPassword = await bcrypt.hash(adminPassword, 10);
+          newAdminUser = await User.create({
+            username: adminUsername,
+            email: adminEmail,
+            password: hashedPassword,
+            role: 'Restaurant Admin',
+            full_name: adminFullName,
+            phone: adminPhone || null,
+            restaurant_id: restaurant.id
+          }, { transaction: adminTransaction });
+        } else if (adminAction === 'change') {
+          const { adminUserId } = req.body;
+          if (!adminUserId) {
+            await adminTransaction.rollback();
+            return res.status(400).json({ error: 'adminUserId is required' });
+          }
+          newAdminUser = await User.findByPk(adminUserId);
+          if (!newAdminUser) {
+            await adminTransaction.rollback();
+            return res.status(404).json({ error: 'Admin user not found' });
+          }
+          if (newAdminUser.restaurant_id && newAdminUser.restaurant_id !== restaurant.id) {
+            await adminTransaction.rollback();
+            return res.status(400).json({ error: `This user is already assigned to another restaurant (ID: ${newAdminUser.restaurant_id})` });
+          }
+          await newAdminUser.update({
+            restaurant_id: restaurant.id,
+            role: 'Restaurant Admin'
+          }, { transaction: adminTransaction });
+        }
+
+        // 기존 admin 해제
+        if (restaurant.manager_id && (!newAdminUser || restaurant.manager_id !== newAdminUser.id)) {
+          const oldAdmin = await User.findByPk(restaurant.manager_id);
+          if (oldAdmin && oldAdmin.role === 'Restaurant Admin') {
+            await oldAdmin.update({ restaurant_id: null }, { transaction: adminTransaction });
+          }
+        }
+
+        // Restaurant의 manager_id 갱신
+        if (newAdminUser) {
+          updateData.manager_id = newAdminUser.id;
+          updateData.manager_name = newAdminUser.full_name || newAdminUser.username;
+        }
+
+        await restaurant.update(updateData, { transaction: adminTransaction });
+
+        // Handle oversight managers
+        if (req.body.managerIds && Array.isArray(req.body.managerIds)) {
+          const RestaurantManager = require('../models/RestaurantManager');
+          await RestaurantManager.destroy({ where: { restaurant_id: restaurant.id }, transaction: adminTransaction });
+          if (req.body.managerIds.length > 0) {
+            const managerAssociations = req.body.managerIds.map((managerId, index) => ({
+              restaurant_id: restaurant.id,
+              manager_id: managerId,
+              is_primary: index === 0
+            }));
+            await RestaurantManager.bulkCreate(managerAssociations, { transaction: adminTransaction });
+          }
+        }
+
+        await adminTransaction.commit();
+        return res.json({ success: true, restaurant });
+      } catch (adminError) {
+        await adminTransaction.rollback();
+        throw adminError;
+      }
+    }
+
+    // 기존 방식 (adminAction 없음) - 하위 호환
     if (updateData.manager_id) {
-      const User = require('../models/User');
       const manager = await User.findByPk(updateData.manager_id);
       if (manager) {
         updateData.manager_name = manager.full_name || manager.username;
       }
-    } else {
+    } else if (req.body.managerId !== undefined) {
       updateData.manager_name = null;
     }
 

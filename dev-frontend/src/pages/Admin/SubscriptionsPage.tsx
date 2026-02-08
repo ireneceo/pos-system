@@ -183,10 +183,12 @@ const ModalOverlay = styled.div<{ show: boolean }>`
   background: rgba(0, 0, 0, 0.5);
   display: ${props => props.show ? 'flex' : 'none'};
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
+  padding: 40px 0;
+  overflow-y: auto;
   z-index: 10000;
   pointer-events: ${props => props.show ? 'auto' : 'none'};
-  
+
   @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -199,8 +201,7 @@ const Modal = styled.div`
   padding: 0;
   width: 90%;
   max-width: 600px;
-  max-height: 80vh;
-  overflow-y: auto;
+  flex-shrink: 0;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   animation: slideIn 0.3s ease;
   
@@ -491,26 +492,22 @@ const SubscriptionsPage: React.FC = () => {
 
   const fetchAvailableData = async () => {
     try {
-      const restaurantsResponse = await fetch('/api/restaurants');
-      const usersResponse = await fetch('/api/users');
+      const token = localStorage.getItem('auth_token');
+      const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+      const restaurantsResponse = await fetch('/api/restaurants', { headers });
+      const usersResponse = await fetch('/api/users?role=Manager', { headers });
 
       if (restaurantsResponse.ok && usersResponse.ok) {
-        const restaurants = await restaurantsResponse.json();
-        const users = await usersResponse.json();
+        const restaurantsData = await restaurantsResponse.json();
+        const usersData = await usersResponse.json();
 
-        // Filter only manager roles
-        const managers = Array.isArray(users)
-          ? users.filter((u: any) =>
-              u.role === 'Foodcourt Manager' ||
-              u.role === 'Foodcourt General' ||
-              u.role === 'Brand Manager' ||
-              u.role === 'Brand General'
-            )
-          : [];
+        const restaurants = Array.isArray(restaurantsData) ? restaurantsData : (restaurantsData.data || []);
+        const managers = Array.isArray(usersData) ? usersData : (usersData.data || []);
 
-        setAvailableRestaurants(Array.isArray(restaurants) ? restaurants : []);
+        setAvailableRestaurants(restaurants);
         setAvailableManagers(managers);
-        setAllRestaurantsData(Array.isArray(restaurants) ? restaurants : []);
+        setAllRestaurantsData(restaurants);
       }
     } catch (error) {
       console.error('Error fetching available data:', error);
@@ -579,16 +576,27 @@ const SubscriptionsPage: React.FC = () => {
     setSearchQuery(query);
     setShowSearchDropdown(true);
 
+    // Filter managers by userType
+    const roleFilter = (manager: any) => {
+      if (userType === 'brand') {
+        return manager.role === 'Brand Manager' || manager.role === 'Brand General';
+      } else if (userType === 'foodcourt') {
+        return manager.role === 'Foodcourt Manager' || manager.role === 'Foodcourt General';
+      }
+      return true;
+    };
+
+    const typeFilteredManagers = availableManagers.filter(roleFilter);
+
     if (query.length < 1) {
-      // Show first 10 items when no search query
       setSearchResults({
-        managers: availableManagers.slice(0, 10),
+        managers: typeFilteredManagers.slice(0, 10),
         restaurants: allRestaurantsData.slice(0, 10)
       });
       return;
     }
 
-    const filteredManagers = availableManagers.filter(manager =>
+    const filteredManagers = typeFilteredManagers.filter(manager =>
       (manager.fullName && manager.fullName.toLowerCase().includes(query.toLowerCase())) ||
       (manager.full_name && manager.full_name.toLowerCase().includes(query.toLowerCase())) ||
       (manager.username && manager.username.toLowerCase().includes(query.toLowerCase())) ||
@@ -1199,7 +1207,7 @@ const SubscriptionsPage: React.FC = () => {
                 </ModalHeader>
                 <ModalBody>
                   <FormGrid>
-                    <FormGroup style={{gridColumn: '1 / -1'}}>
+                    <FormGroup>
                       <FormLabel>User Type *</FormLabel>
                       <FilterSelect
                         value={userType}
@@ -1228,7 +1236,7 @@ const SubscriptionsPage: React.FC = () => {
                       </FilterSelect>
                     </FormGroup>
 
-                    <FormGroup style={{gridColumn: '1 / -1'}}>
+                    <FormGroup style={{position: 'relative', zIndex: 100}}>
                       <FormLabel>
                         {userType === 'restaurant' ? 'Search Restaurant *' : 'Search Manager *'}
                       </FormLabel>
@@ -1239,12 +1247,8 @@ const SubscriptionsPage: React.FC = () => {
                           onChange={(e) => handleSearch(e.target.value)}
                           onFocus={() => {
                             setShowSearchDropdown(true);
-                            // Load initial data on focus
                             if (searchQuery.length < 1) {
-                              setSearchResults({
-                                managers: availableManagers.slice(0, 10),
-                                restaurants: allRestaurantsData.slice(0, 10)
-                              });
+                              handleSearch('');
                             }
                           }}
                           onBlur={() => setTimeout(() => setShowSearchDropdown(false), 200)}
@@ -1311,7 +1315,8 @@ const SubscriptionsPage: React.FC = () => {
                                     >
                                       <div style={{fontWeight: '500', color: '#0A2540'}}>{restaurant.name}</div>
                                       <div style={{fontSize: '13px', color: '#6B7280'}}>
-                                        Manager: {manager ? (manager.fullName || manager.full_name || manager.username) : 'Unknown'}
+                                        Admin: {restaurant.admin ? `${restaurant.admin.name} (${restaurant.admin.email})` : 'No Admin'}
+                                        {manager ? ` • Manager: ${manager.fullName || manager.full_name || manager.username}` : ''}
                                       </div>
                                     </div>
                                   );
@@ -1341,7 +1346,7 @@ const SubscriptionsPage: React.FC = () => {
                             <div style={{fontSize: '13px', color: '#6B7280'}}>
                               {selectedTarget.type === 'manager'
                                 ? `Manager`
-                                : `${selectedTarget.data.address || 'No address'} • Restaurant`}
+                                : `${selectedTarget.data.admin ? `Admin: ${selectedTarget.data.admin.name}` : 'No Admin'} • ${selectedTarget.data.address || 'No address'}`}
                             </div>
                           </div>
                           <button

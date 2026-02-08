@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
 import { BaseButton } from '../../components/UI';
+import SEOHead, { generateOrganizationSchema, generateSoftwareSchema } from '../../components/Common/SEOHead';
 
 const PageContainer = styled.div`
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -145,8 +146,21 @@ const FeatureDescription = styled.p`
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
 
+  const jsonLdData = [
+    generateOrganizationSchema(),
+    generateSoftwareSchema()
+  ];
+
   return (
     <LandingLayout>
+      <SEOHead
+        title="Cloud POS System for Restaurants"
+        description="PurpleHere is a subscription-based cloud POS system for restaurants, brands, and food courts. Real-time order management, inventory tracking, multi-location support. Start your 7-day free trial today."
+        keywords="POS system, restaurant POS, cloud POS, food court management, brand management, order management, inventory tracking"
+        ogType="website"
+        canonicalUrl="https://purplehere.com"
+        jsonLd={jsonLdData}
+      />
       <PageContainer>
         <Hero>
           <Title>Smart Store Management Starts Here</Title>

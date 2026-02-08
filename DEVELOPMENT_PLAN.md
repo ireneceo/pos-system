@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-02-05
+> **최종 업데이트:** 2026-02-08
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -207,6 +207,36 @@ const totalRevenue = useMemo(() => {
 - 백업 위치: /var/www/backups/20260202_211411
 - 배포 방식: 개발서버 → 운영서버 (rsync)
 - 헬스체크: ✅ 통과
+
+---
+
+## ✅ 완료: Restaurant-Admin 1:1 매칭 구현 (2026-02-08)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Backend POST /api/restaurants 수정 | adminAction(create/assign)으로 Restaurant Admin 동시 생성 | ✅ 완료 |
+| Backend GET 응답에 admin 필드 추가 | 레스토랑 응답에 admin 객체 포함, managers에서 Admin 제외 | ✅ 완료 |
+| Backend PUT /api/restaurants/:id 수정 | Admin 변경(create/change) 트랜잭션 지원 | ✅ 완료 |
+| GET /api/users/available-admins | 미배정 유저(Restaurant Admin, Staff) 검색 API | ✅ 완료 |
+| validateRestaurantCreation 미들웨어 | adminAction 조건부 검증 규칙 | ✅ 완료 |
+| Admin RestaurantsPage Add Modal | 새 계정 생성/기존 유저 선택 토글, 감독 매니저 분리 | ✅ 완료 |
+| Admin RestaurantsPage Edit/View Modal | Admin 정보 읽기전용 표시, Change Admin, View 분리 표시 | ✅ 완료 |
+| Manager RestaurantsPage 수정 | Add 모달에 Admin 생성 필드, 현재 매니저 자동 감독자 등록 | ✅ 완료 |
+| SubscriptionsPage 소규모 수정 | 레스토랑 선택 시 Admin 정보 표시 | ✅ 완료 |
+| StaffManagementPage 경고 추가 | Restaurant Admin 직접 생성 시 안내 메시지 | ✅ 완료 |
+| 데이터 마이그레이션 스크립트 | Brand/Foodcourt Manager → restaurant_managers 이동 | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/routes/restaurants.js` - POST/GET/PUT Admin 로직
+- `dev-backend/routes/users.js` - available-admins 엔드포인트
+- `dev-backend/middleware/validation.js` - validateRestaurantCreation
+- `dev-backend/scripts/migrate-restaurant-admins.js` - 마이그레이션 스크립트 (신규)
+- `dev-frontend/src/pages/Admin/RestaurantsPage.tsx` - Add/Edit/View 모달 + 카드
+- `dev-frontend/src/pages/Manager/RestaurantsPage.tsx` - Add 모달 Admin 섹션
+- `dev-frontend/src/pages/Admin/SubscriptionsPage.tsx` - Admin 정보 표시
+- `dev-frontend/src/pages/Admin/StaffManagementPage.tsx` - 경고 메시지
 
 ---
 

@@ -1,24 +1,23 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-02-05
+**마지막 업데이트:** 2026-02-08
 **작업 상태:** 완료
 
 ### 진행 중인 작업
 - 없음
 
 ### 완료된 작업 (이번 세션)
-- Blog/FAQ Content Management System 구현 (4탭 구조)
-- 공개 Blog/FAQ 페이지 생성 및 API 연동
-- 랜딩 페이지 디자인 통일 (About 페이지 스타일 HeroSection)
-- GNB 서브배너 높이값 통일 (padding: 40px 20px)
-- 카테고리 아이콘 제거 (텍스트만 표시)
-- 블로그 작성자 표시 개선 (full_name 사용, 이메일이면 'PurpleHere Team')
-- 홈페이지 Try Demo 버튼 hover 색상 수정 (#635BFF 배경 + 흰색 글자)
-- 홈페이지 Feature 카드 내용 수정 (Restaurant Management로 변경)
+- Restaurant-Admin 1:1 매칭 전체 구현 (Backend 5단계 + Frontend 5단계 + 마이그레이션)
+  - Backend: POST/GET/PUT에 adminAction 지원, available-admins API, validation 미들웨어
+  - Frontend: Admin/Manager RestaurantsPage Add/Edit/View 모달 재설계
+  - Frontend: SubscriptionsPage Admin 정보 표시, StaffManagementPage 경고
+  - Data: Brand/Foodcourt Manager → restaurant_managers 테이블 이동 마이그레이션
+- 이전 세션 버그 수정 (RestaurantsPage 모달 오버플로우, SubscriptionsPage 검색/레이아웃)
 
 ### 다음 할 일
-- 추가 콘텐츠 작성 (Blog/FAQ)
-- SEO 최적화
-- 운영서버 배포 준비
+- 기존 11개 레스토랑에 Restaurant Admin 배정 (Edit 모달에서 수동)
+- 데모 콘텐츠 보강
+- 이메일 템플릿 (Welcome, Invoice)
+- Blog 콘텐츠 추가
 
 ---
 

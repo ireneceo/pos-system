@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
+import SEOHead, { generateFAQSchema, generateBreadcrumbSchema } from '../../components/Common/SEOHead';
 
 interface FAQCategory {
   id: number;
@@ -28,11 +29,13 @@ const HeroSection = styled.section`
   align-items: center;
   text-align: center;
   padding: 40px 20px;
+  min-height: 160px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
 
   @media (max-width: 768px) {
     padding: 32px 20px;
+    min-height: 140px;
   }
 `;
 
@@ -159,13 +162,13 @@ const FAQIcon = styled.div<{ isOpen?: boolean }>`
 `;
 
 const FAQAnswer = styled.div<{ isOpen?: boolean }>`
-  max-height: ${props => props.isOpen ? '500px' : '0'};
+  max-height: ${props => props.isOpen ? '800px' : '0'};
   overflow: hidden;
   transition: max-height 0.3s ease-in-out;
 `;
 
 const FAQAnswerContent = styled.div`
-  padding: 0 24px 24px;
+  padding: 0 24px;
   font-size: 15px;
   color: #425466;
   line-height: 1.7;
@@ -176,6 +179,12 @@ const FAQAnswerContent = styled.div`
     &:last-child {
       margin-bottom: 0;
     }
+  }
+
+  &::after {
+    content: '';
+    display: block;
+    height: 24px;
   }
 `;
 
@@ -300,8 +309,31 @@ const FAQPage: React.FC = () => {
     setOpenFAQ(openFAQ === id ? null : id);
   };
 
+  // Generate FAQ Schema for AEO (uses all FAQs for maximum AI visibility)
+  const faqSchemaData = useMemo(() => {
+    if (faqs.length === 0) return null;
+    return generateFAQSchema(
+      faqs.map(faq => ({
+        question: faq.title,
+        answer: faq.content.replace(/<[^>]*>/g, '') // Strip HTML for schema
+      }))
+    );
+  }, [faqs]);
+
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: 'Home', url: 'https://purplehere.com' },
+    { name: 'FAQ', url: 'https://purplehere.com/faq' }
+  ]);
+
   return (
     <LandingLayout>
+      <SEOHead
+        title="FAQ - Frequently Asked Questions"
+        description="Find answers to common questions about PurpleHere POS system. Learn about pricing, features, free trial, setup, and support for restaurants, brands, and food courts."
+        keywords="POS FAQ, restaurant POS questions, PurpleHere help, POS system support, free trial POS"
+        canonicalUrl="https://purplehere.com/faq"
+        jsonLd={faqSchemaData ? [faqSchemaData, breadcrumbSchema] : [breadcrumbSchema]}
+      />
       <PageContainer>
         <HeroSection>
           <HeroTitle>Frequently Asked Questions</HeroTitle>

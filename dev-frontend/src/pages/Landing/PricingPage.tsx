@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
+import SEOHead, { generateBreadcrumbSchema } from '../../components/Common/SEOHead';
 
 const PageContainer = styled.div`
   background: #FAFBFC;
@@ -14,11 +15,13 @@ const HeroSection = styled.section`
   align-items: center;
   text-align: center;
   padding: 40px 20px;
+  min-height: 160px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
 
   @media (max-width: 768px) {
     padding: 32px 20px;
+    min-height: 140px;
   }
 `;
 
@@ -319,46 +322,6 @@ const ContactButton = styled.button<{ primary?: boolean }>`
   }
 `;
 
-const FAQSection = styled.section`
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 60px 20px;
-`;
-
-const FAQTitle = styled.h2`
-  font-size: 28px;
-  font-weight: 700;
-  color: #0A2540;
-  text-align: center;
-  margin-bottom: 40px;
-`;
-
-const FAQList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-`;
-
-const FAQItem = styled.div`
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  border: 1px solid #E6EBF1;
-`;
-
-const FAQQuestion = styled.h4`
-  font-size: 16px;
-  font-weight: 600;
-  color: #0A2540;
-  margin-bottom: 12px;
-`;
-
-const FAQAnswer = styled.p`
-  font-size: 14px;
-  color: #6B7C93;
-  line-height: 1.6;
-`;
-
 const CTASection = styled.section`
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   text-align: center;
@@ -598,12 +561,6 @@ const PricingPage: React.FC = () => {
     return 0;
   };
 
-  // 선택된 통화에 가격이 설정되어 있는지 확인
-  const hasCurrencyPrice = (plan: Plan): boolean => {
-    return !!(plan.currency_prices && plan.currency_prices[selectedCurrency] &&
-      (plan.currency_prices[selectedCurrency].monthly > 0 || plan.currency_prices[selectedCurrency].annual > 0));
-  };
-
   const formatLimit = (limit: number) => {
     if (limit === -1) return 'Unlimited';
     return limit.toLocaleString();
@@ -625,8 +582,20 @@ const PricingPage: React.FC = () => {
   const displayPlans = filteredPlans.length > 0 ? filteredPlans : [];
   const currencyInfo = getCurrencyInfo(selectedCurrency);
 
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: 'Home', url: 'https://purplehere.com' },
+    { name: 'Pricing', url: 'https://purplehere.com/pricing' }
+  ]);
+
   return (
     <LandingLayout>
+      <SEOHead
+        title="Pricing - Subscription Plans"
+        description="Simple, transparent pricing for PurpleHere POS system. Choose from Basic, Professional, or Enterprise plans for restaurants, brands, and food courts. 7-day free trial available."
+        keywords="POS pricing, restaurant POS cost, POS subscription, PurpleHere plans, free trial POS"
+        canonicalUrl="https://purplehere.com/pricing"
+        jsonLd={[breadcrumbSchema]}
+      />
       <PageContainer>
         <HeroSection>
           <HeroTitle>Simple, Transparent Pricing</HeroTitle>
@@ -760,43 +729,6 @@ const PricingPage: React.FC = () => {
             </PlansGrid>
           )}
         </ContentSection>
-
-        <FAQSection>
-          <FAQTitle>Frequently Asked Questions</FAQTitle>
-          <FAQList>
-            <FAQItem>
-              <FAQQuestion>How does the 7-day free trial work?</FAQQuestion>
-              <FAQAnswer>
-                Sign up through our contact form and get full access to all features for 7 days.
-                No credit card required. After the trial, choose a plan that fits your needs.
-              </FAQAnswer>
-            </FAQItem>
-            <FAQItem>
-              <FAQQuestion>How do I sign up?</FAQQuestion>
-              <FAQAnswer>
-                Contact our sales team through the contact form or email. We'll set up your account personally and guide you through the onboarding process.
-              </FAQAnswer>
-            </FAQItem>
-            <FAQItem>
-              <FAQQuestion>What payment methods do you accept?</FAQQuestion>
-              <FAQAnswer>
-                We currently accept bank transfers. Credit card and PayPal payments are coming soon.
-              </FAQAnswer>
-            </FAQItem>
-            <FAQItem>
-              <FAQQuestion>Can I change my plan later?</FAQQuestion>
-              <FAQAnswer>
-                Yes, you can upgrade or downgrade your plan at any time. Changes will be reflected in your next billing cycle.
-              </FAQAnswer>
-            </FAQItem>
-            <FAQItem>
-              <FAQQuestion>Do you offer custom plans?</FAQQuestion>
-              <FAQAnswer>
-                Yes! Our Enterprise plans are fully customizable to meet your specific business needs. Contact us for a custom quote.
-              </FAQAnswer>
-            </FAQItem>
-          </FAQList>
-        </FAQSection>
 
         <CTASection>
           <CTATitle>Ready to get started?</CTATitle>

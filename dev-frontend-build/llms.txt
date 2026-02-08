@@ -1,0 +1,100 @@
+# PurpleHere - Cloud POS System
+> Subscription-based Point of Sale system for restaurants, brands, and food courts
+
+## What is PurpleHere?
+
+PurpleHere is a cloud-based POS (Point of Sale) system designed specifically for the food service industry. It provides real-time order management, inventory tracking, and multi-location support for restaurants, food court operators, and franchise brands.
+
+## Key Facts
+
+- **Product Type**: Cloud-based SaaS POS system
+- **Target Users**: Restaurants, food courts, franchise brands
+- **Pricing Model**: Subscription-based (monthly/annual)
+- **Free Trial**: 7 days, no credit card required
+- **Deployment**: 100% cloud-based, accessible via web browser
+
+## Core Features
+
+### For Restaurants
+- POS Terminal with real-time order processing
+- Menu management with categories, options, and modifiers
+- Kitchen Display System (KDS) for order tracking
+- Customer-facing display for order confirmation
+- Table management and dine-in/takeaway support
+- Staff management with role-based access
+- Reports and analytics dashboard
+
+### For Brands (Franchise)
+- Multi-location management from single dashboard
+- Centralized menu control across all branches
+- Brand-wide inventory tracking
+- Consolidated reporting and analytics
+- Recipe and cost management
+- Supplier management
+
+### For Food Courts
+- Multiple tenant management
+- Centralized payment processing
+- Shared customer display systems
+- Cross-tenant reporting
+
+## Pricing Plans
+
+### Restaurant Plans
+- **Basic**: For small restaurants starting out
+- **Professional**: For growing restaurants (Most Popular)
+- **Enterprise**: For large-scale operations with unlimited usage
+
+### Brand Plans
+- Multi-location management
+- Centralized control
+- Custom pricing based on number of locations
+
+### Food Court Plans
+- Multi-tenant support
+- Custom pricing based on requirements
+
+## Technical Specifications
+
+- **Platform**: Web-based (works on any modern browser)
+- **Mobile Support**: Responsive design for tablets and mobile
+- **API**: RESTful API for integrations
+- **Security**: HTTPS, JWT authentication, role-based access control
+- **Data**: Real-time sync across all devices
+
+## Contact Information
+
+- **Website**: https://purplehere.com
+- **Pricing**: https://purplehere.com/pricing
+- **Free Trial**: https://purplehere.com/contact
+- **FAQ**: https://purplehere.com/faq
+- **Blog**: https://purplehere.com/blog
+
+## Common Questions
+
+Q: How long is the free trial?
+A: 7 days with full access to all features. No credit card required.
+
+Q: What payment methods are accepted?
+A: Bank transfer. Credit card and PayPal coming soon.
+
+Q: Can I change plans later?
+A: Yes, you can upgrade or downgrade at any time.
+
+Q: Is there a setup fee?
+A: No setup fees. You only pay the subscription fee.
+
+Q: Do you offer custom plans?
+A: Yes, Enterprise plans are fully customizable. Contact us for a quote.
+
+Q: What devices are supported?
+A: Any device with a modern web browser - desktops, laptops, tablets, and smartphones.
+
+Q: Is my data secure?
+A: Yes, we use industry-standard security including HTTPS encryption, secure authentication, and regular backups.
+
+Q: Can I integrate with other systems?
+A: We provide API access for integrations. Contact us for specific integration requirements.
+
+---
+Last updated: 2026-02-06

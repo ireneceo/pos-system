@@ -193,6 +193,50 @@ const validateSearchQuery = [
   handleValidationErrors
 ];
 
+// 레스토랑 생성 검증 (Restaurant Admin 1:1 포함)
+const validateRestaurantCreation = [
+  body('name')
+    .trim()
+    .notEmpty()
+    .withMessage('Restaurant name is required')
+    .isLength({ max: 255 })
+    .withMessage('Restaurant name must be less than 255 characters'),
+  body('adminAction')
+    .optional()
+    .isIn(['create', 'assign'])
+    .withMessage('adminAction must be "create" or "assign"'),
+  body('adminEmail')
+    .if(body('adminAction').equals('create'))
+    .isEmail()
+    .withMessage('Valid admin email is required')
+    .normalizeEmail(),
+  body('adminPassword')
+    .if(body('adminAction').equals('create'))
+    .isLength({ min: 8, max: 128 })
+    .withMessage('Admin password must be at least 8 characters')
+    .matches(/[a-z]/)
+    .withMessage('Admin password must contain a lowercase letter')
+    .matches(/[A-Z]/)
+    .withMessage('Admin password must contain an uppercase letter')
+    .matches(/[0-9]/)
+    .withMessage('Admin password must contain a number'),
+  body('adminUsername')
+    .if(body('adminAction').equals('create'))
+    .trim()
+    .notEmpty()
+    .withMessage('Admin username is required'),
+  body('adminFullName')
+    .if(body('adminAction').equals('create'))
+    .trim()
+    .notEmpty()
+    .withMessage('Admin full name is required'),
+  body('adminUserId')
+    .if(body('adminAction').equals('assign'))
+    .isInt({ min: 1 })
+    .withMessage('Valid admin user ID is required'),
+  handleValidationErrors
+];
+
 module.exports = {
   handleValidationErrors,
   sanitizeString,
@@ -212,5 +256,6 @@ module.exports = {
   validateCreateOrder,
   validateMenuItem,
   validateRestaurantId,
-  validateSearchQuery
+  validateSearchQuery,
+  validateRestaurantCreation
 };

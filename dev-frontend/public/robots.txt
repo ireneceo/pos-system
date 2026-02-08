@@ -1,3 +1,57 @@
-# https://www.robotstxt.org/robotstxt.html
+# PurpleHere - Cloud POS System for Restaurants
+# https://purplehere.com
+
+# Allow all search engine crawlers
 User-agent: *
-Disallow:
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /manager/
+Disallow: /staff/
+Disallow: /pos/
+Disallow: /kitchen/
+Disallow: /customer-display/
+
+# AI Crawlers - Welcome!
+# These crawlers help AI assistants provide accurate information about PurpleHere
+
+User-agent: GPTBot
+Allow: /
+Allow: /blog/
+Allow: /faq/
+Allow: /pricing/
+Allow: /about/
+Allow: /features/
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Anthropic-ai
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Cohere-ai
+Allow: /
+
+User-agent: Meta-ExternalAgent
+Allow: /
+
+User-agent: meta-externalfetcher
+Allow: /
+
+# Sitemap
+Sitemap: https://purplehere.com/sitemap.xml
+
+# LLMs.txt for AI assistants
+# See: https://purplehere.com/llms.txt

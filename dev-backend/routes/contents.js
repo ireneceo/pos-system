@@ -386,7 +386,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // POST /api/contents - Create content
 router.post('/', authenticateToken, requireRole('System Admin'), async (req, res) => {
   try {
-    const { type, category_id, title, content, excerpt, thumbnail_url, status } = req.body;
+    const { type, category_id, title, content, excerpt, thumbnail_url, status,
+            seo_title, seo_description, seo_keywords, og_image_url, ai_summary } = req.body;
 
     if (!type || !category_id || !title || !content) {
       return res.status(400).json({ error: 'Type, category, title, and content are required' });
@@ -424,7 +425,13 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
       sort_order: maxOrder + 1,
       author_id: req.user.id,
       author_name: req.user.full_name || req.user.email,
-      published_at: status === 'published' ? new Date() : null
+      published_at: status === 'published' ? new Date() : null,
+      // SEO/AEO fields
+      seo_title,
+      seo_description,
+      seo_keywords,
+      og_image_url,
+      ai_summary
     });
 
     res.status(201).json(newContent);
@@ -438,7 +445,8 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
 router.put('/:id', authenticateToken, requireRole('System Admin'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { category_id, title, content, excerpt, thumbnail_url, status, sort_order } = req.body;
+    const { category_id, title, content, excerpt, thumbnail_url, status, sort_order,
+            seo_title, seo_description, seo_keywords, og_image_url, ai_summary } = req.body;
 
     const existingContent = await Content.findByPk(id);
     if (!existingContent) {
@@ -457,6 +465,13 @@ router.put('/:id', authenticateToken, requireRole('System Admin'), async (req, r
     if (excerpt !== undefined) updates.excerpt = excerpt;
     if (thumbnail_url !== undefined) updates.thumbnail_url = thumbnail_url;
     if (sort_order !== undefined) updates.sort_order = sort_order;
+
+    // SEO/AEO fields
+    if (seo_title !== undefined) updates.seo_title = seo_title;
+    if (seo_description !== undefined) updates.seo_description = seo_description;
+    if (seo_keywords !== undefined) updates.seo_keywords = seo_keywords;
+    if (og_image_url !== undefined) updates.og_image_url = og_image_url;
+    if (ai_summary !== undefined) updates.ai_summary = ai_summary;
 
     if (status !== undefined) {
       updates.status = status;

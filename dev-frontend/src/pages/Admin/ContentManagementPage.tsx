@@ -52,6 +52,12 @@ interface ContentItem {
   created_at: string;
   updated_at: string;
   category?: ContentCategory;
+  // SEO/AEO fields
+  seo_title?: string | null;
+  seo_description?: string | null;
+  seo_keywords?: string | null;
+  og_image_url?: string | null;
+  ai_summary?: string | null;
 }
 
 const StatusBadge = styled.span<{ status: string }>`
@@ -426,7 +432,13 @@ const ContentManagementPage: React.FC = () => {
             content: editingContent.content,
             excerpt: editingContent.excerpt,
             thumbnail_url: editingContent.thumbnail_url,
-            status: editingContent.status || 'draft'
+            status: editingContent.status || 'draft',
+            // SEO/AEO fields
+            seo_title: editingContent.seo_title,
+            seo_description: editingContent.seo_description,
+            seo_keywords: editingContent.seo_keywords,
+            og_image_url: editingContent.og_image_url,
+            ai_summary: editingContent.ai_summary
           })
         }
       );
@@ -583,6 +595,73 @@ const ContentManagementPage: React.FC = () => {
             placeholder={contentType === 'blog' ? 'Write your blog post content...' : 'Write the answer to this question...'}
           />
         </FormGroup>
+
+        {/* SEO/AEO Section */}
+        <div style={{ marginTop: '24px', padding: '20px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+          <h4 style={{ margin: '0 0 16px', fontSize: '14px', fontWeight: 600, color: '#0F172A' }}>
+            SEO & AEO Settings
+          </h4>
+
+          <FormGroup>
+            <FormLabel>AI Summary (for AI citation)</FormLabel>
+            <FormTextArea
+              value={editingContent?.ai_summary || ''}
+              onChange={(e) => setEditingContent({ ...editingContent, ai_summary: e.target.value })}
+              placeholder="2-3 sentence summary that AI assistants will use to cite this content. Be concise and include key facts."
+              rows={3}
+              maxLength={500}
+            />
+            <small style={{ color: '#64748B', fontSize: '12px' }}>{(editingContent?.ai_summary || '').length}/500 characters</small>
+          </FormGroup>
+
+          {contentType === 'blog' && (
+            <>
+              <FormRow>
+                <FormGroup>
+                  <FormLabel>SEO Title (max 70 chars)</FormLabel>
+                  <FormInput
+                    type="text"
+                    value={editingContent?.seo_title || ''}
+                    onChange={(e) => setEditingContent({ ...editingContent, seo_title: e.target.value })}
+                    placeholder="Custom title for search results"
+                    maxLength={70}
+                  />
+                </FormGroup>
+                <FormGroup>
+                  <FormLabel>OG Image URL</FormLabel>
+                  <FormInput
+                    type="text"
+                    value={editingContent?.og_image_url || ''}
+                    onChange={(e) => setEditingContent({ ...editingContent, og_image_url: e.target.value })}
+                    placeholder="Image URL for social sharing"
+                  />
+                </FormGroup>
+              </FormRow>
+
+              <FormGroup>
+                <FormLabel>SEO Description (max 160 chars)</FormLabel>
+                <FormTextArea
+                  value={editingContent?.seo_description || ''}
+                  onChange={(e) => setEditingContent({ ...editingContent, seo_description: e.target.value })}
+                  placeholder="Description for search results"
+                  rows={2}
+                  maxLength={160}
+                />
+                <small style={{ color: '#64748B', fontSize: '12px' }}>{(editingContent?.seo_description || '').length}/160 characters</small>
+              </FormGroup>
+
+              <FormGroup>
+                <FormLabel>SEO Keywords (comma separated)</FormLabel>
+                <FormInput
+                  type="text"
+                  value={editingContent?.seo_keywords || ''}
+                  onChange={(e) => setEditingContent({ ...editingContent, seo_keywords: e.target.value })}
+                  placeholder="keyword1, keyword2, keyword3"
+                />
+              </FormGroup>
+            </>
+          )}
+        </div>
       </EditorForm>
     </EditorWrapper>
   );

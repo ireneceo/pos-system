@@ -8,6 +8,7 @@ import { CustomerProvider } from './contexts/CustomerContext';
 import { StaffProvider } from './contexts/StaffContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { PaymentStatusProvider } from './contexts/PaymentStatusContext';
+import { SiteSettingsProvider } from './contexts/SiteSettingsContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ScrollToTop from './components/ScrollToTop';
 // Landing Pages (keep static - first load)
@@ -274,15 +275,16 @@ function App() {
 
   return (
     <ThemeProvider>
-      <StoreProvider>
-        <CustomerProvider>
-          <OrderProvider>
-            <Router>
-              <AuthProvider>
-                <StaffProvider>
-                  <MenuProvider>
-                    <PaymentStatusProvider>
-                      <ScrollToTop />
+      <SiteSettingsProvider>
+        <StoreProvider>
+          <CustomerProvider>
+            <OrderProvider>
+              <Router>
+                <AuthProvider>
+                  <StaffProvider>
+                    <MenuProvider>
+                      <PaymentStatusProvider>
+                        <ScrollToTop />
                       <Suspense fallback={<PageLoader />}>
                       <Routes>
                       {/* Landing Pages (Public) */}
@@ -835,14 +837,15 @@ function App() {
                       } />
                     </Routes>
                     </Suspense>
-                    </PaymentStatusProvider>
-                  </MenuProvider>
-                </StaffProvider>
-              </AuthProvider>
-            </Router>
-          </OrderProvider>
-        </CustomerProvider>
-      </StoreProvider>
+                      </PaymentStatusProvider>
+                    </MenuProvider>
+                  </StaffProvider>
+                </AuthProvider>
+              </Router>
+            </OrderProvider>
+          </CustomerProvider>
+        </StoreProvider>
+      </SiteSettingsProvider>
     </ThemeProvider>
   );
 }

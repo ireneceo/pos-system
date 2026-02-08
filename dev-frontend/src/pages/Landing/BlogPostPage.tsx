@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
+import SEOHead, { generateArticleSchema, generateBreadcrumbSchema } from '../../components/Common/SEOHead';
 
 interface BlogCategory {
   id: number;
@@ -21,6 +22,12 @@ interface BlogPost {
   view_count: number;
   author_name: string | null;
   category?: BlogCategory;
+  // SEO fields
+  seo_title?: string | null;
+  seo_description?: string | null;
+  seo_keywords?: string | null;
+  og_image_url?: string | null;
+  ai_summary?: string | null;
 }
 
 const PageContainer = styled.div`
@@ -41,6 +48,11 @@ const HeroContent = styled.div`
   max-width: 800px;
   margin: 0 auto;
   text-align: center;
+
+  @media (max-width: 768px) {
+    text-align: left;
+    padding: 0 4px;
+  }
 `;
 
 const BackButton = styled.button`
@@ -77,6 +89,10 @@ const CategoryBadge = styled.span`
   font-size: 13px;
   font-weight: 600;
   margin-bottom: 16px;
+
+  @media (max-width: 768px) {
+    margin-bottom: 12px;
+  }
 `;
 
 const PostTitle = styled.h1`
@@ -87,7 +103,9 @@ const PostTitle = styled.h1`
   line-height: 1.3;
 
   @media (max-width: 768px) {
-    font-size: 24px;
+    font-size: 26px;
+    line-height: 1.4;
+    margin-bottom: 0;
   }
 `;
 
@@ -108,6 +126,27 @@ const PostMeta = styled.div`
   svg {
     width: 16px;
     height: 16px;
+  }
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    margin-top: 20px;
+
+    span {
+      gap: 10px;
+      font-size: 14px;
+    }
+
+    svg {
+      width: 18px;
+      height: 18px;
+      opacity: 0.8;
+    }
   }
 `;
 
@@ -394,8 +433,35 @@ const BlogPostPage: React.FC = () => {
     return authorName;
   };
 
+  const postUrl = `https://purplehere.com/blog/${post.slug}`;
+  const articleSchema = generateArticleSchema({
+    title: post.seo_title || post.title,
+    description: post.seo_description || post.excerpt || post.ai_summary || '',
+    url: postUrl,
+    image: post.og_image_url || post.thumbnail_url || undefined,
+    author: getAuthorDisplayName(post.author_name) || 'PurpleHere',
+    publishedTime: post.published_at || undefined,
+  });
+
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: 'Home', url: 'https://purplehere.com' },
+    { name: 'Blog', url: 'https://purplehere.com/blog' },
+    { name: post.title, url: postUrl }
+  ]);
+
   return (
     <LandingLayout>
+      <SEOHead
+        title={post.seo_title || post.title}
+        description={post.seo_description || post.excerpt || post.ai_summary || `Read ${post.title} on PurpleHere Blog`}
+        keywords={post.seo_keywords || undefined}
+        ogImage={post.og_image_url || post.thumbnail_url || undefined}
+        ogType="article"
+        canonicalUrl={postUrl}
+        author={getAuthorDisplayName(post.author_name) || 'PurpleHere'}
+        publishedTime={post.published_at || undefined}
+        jsonLd={[articleSchema, breadcrumbSchema]}
+      />
       <PageContainer>
         <HeroSection>
           <HeroContent>

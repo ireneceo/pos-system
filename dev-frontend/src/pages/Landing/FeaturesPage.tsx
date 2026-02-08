@@ -14,11 +14,13 @@ const HeroSection = styled.section`
   align-items: center;
   text-align: center;
   padding: 40px 20px;
+  min-height: 160px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
 
   @media (max-width: 768px) {
     padding: 32px 20px;
+    min-height: 140px;
   }
 `;
 
@@ -112,7 +114,7 @@ const FeatureCard = styled.div`
 const FeatureIcon = styled.div`
   font-size: 40px;
   margin-bottom: 20px;
-  color: #9CA3AF;
+  color: #D1D5DB;
 `;
 
 const FeatureTitle = styled.h3`

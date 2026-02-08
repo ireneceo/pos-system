@@ -73,21 +73,77 @@ const MobileMenuButton = styled.button`
   }
 `;
 
+const MobileMenuOverlay = styled.div<{ isOpen: boolean }>`
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9998;
+  opacity: ${props => props.isOpen ? 1 : 0};
+  transition: opacity 0.3s ease;
+
+  @media (max-width: 768px) {
+    display: ${props => props.isOpen ? 'block' : 'none'};
+  }
+`;
+
 const MobileMenu = styled.div<{ isOpen: boolean }>`
   display: none;
   position: fixed;
-  top: 60px;
+  top: 0;
   left: 0;
   right: 0;
+  bottom: 0;
   background: white;
-  padding: 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 9999;
   flex-direction: column;
-  gap: 12px;
+  padding: 0;
+  transform: ${props => props.isOpen ? 'translateX(0)' : 'translateX(100%)'};
+  transition: transform 0.3s ease;
 
   @media (max-width: 768px) {
-    display: ${props => props.isOpen ? 'flex' : 'none'};
+    display: flex;
   }
+`;
+
+const MobileMenuHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #E5E7EB;
+`;
+
+const MobileMenuLogo = styled.span`
+  font-size: 18px;
+  font-weight: 700;
+  color: #0A2540;
+`;
+
+const MobileMenuClose = styled.button`
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: #6B7280;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+
+  &:hover {
+    color: #0A2540;
+  }
+`;
+
+const MobileMenuContent = styled.div`
+  flex: 1;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
 `;
 
 const NavLink = styled.button<{ active?: boolean }>`
@@ -111,11 +167,11 @@ const MobileNavLink = styled.button<{ active?: boolean }>`
   background: ${props => props.active ? '#F0F4FF' : 'transparent'};
   border: none;
   color: ${props => props.active ? '#635BFF' : '#0A2540'};
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 500;
   cursor: pointer;
-  padding: 14px 16px;
-  border-radius: 8px;
+  padding: 16px 12px;
+  border-radius: 12px;
   text-align: left;
   transition: all 0.2s;
 
@@ -147,14 +203,14 @@ const MobileLoginButton = styled.button`
   background: #635BFF;
   color: white;
   border: none;
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 600;
   cursor: pointer;
-  padding: 14px 24px;
-  border-radius: 8px;
+  padding: 16px 24px;
+  border-radius: 12px;
   transition: all 0.2s;
   text-align: center;
-  margin-top: 8px;
+  margin-top: 16px;
 
   &:hover {
     background: #5A51E6;
@@ -234,31 +290,38 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
         </MobileMenuButton>
       </Header>
 
+      <MobileMenuOverlay isOpen={mobileMenuOpen} onClick={() => setMobileMenuOpen(false)} />
       <MobileMenu isOpen={mobileMenuOpen}>
-        <MobileNavLink active={isActive('/about')} onClick={() => handleNavigate('/about')}>
-          About
-        </MobileNavLink>
-        <MobileNavLink active={isActive('/features')} onClick={() => handleNavigate('/features')}>
-          Features
-        </MobileNavLink>
-        <MobileNavLink active={isActive('/pricing')} onClick={() => handleNavigate('/pricing')}>
-          Pricing
-        </MobileNavLink>
-        <MobileNavLink active={isActive('/demo')} onClick={() => handleNavigate('/demo')}>
-          Demo
-        </MobileNavLink>
-        <MobileNavLink active={isActive('/faq')} onClick={() => handleNavigate('/faq')}>
-          FAQ
-        </MobileNavLink>
-        <MobileNavLink active={isActive('/blog')} onClick={() => handleNavigate('/blog')}>
-          Blog
-        </MobileNavLink>
-        <MobileNavLink active={isActive('/contact')} onClick={() => handleNavigate('/contact')}>
-          Contact
-        </MobileNavLink>
-        <MobileLoginButton onClick={() => handleNavigate(user ? '/pos' : '/login')}>
-          POS System
-        </MobileLoginButton>
+        <MobileMenuHeader>
+          <MobileMenuLogo>Menu</MobileMenuLogo>
+          <MobileMenuClose onClick={() => setMobileMenuOpen(false)}>×</MobileMenuClose>
+        </MobileMenuHeader>
+        <MobileMenuContent>
+          <MobileNavLink active={isActive('/about')} onClick={() => handleNavigate('/about')}>
+            About
+          </MobileNavLink>
+          <MobileNavLink active={isActive('/features')} onClick={() => handleNavigate('/features')}>
+            Features
+          </MobileNavLink>
+          <MobileNavLink active={isActive('/pricing')} onClick={() => handleNavigate('/pricing')}>
+            Pricing
+          </MobileNavLink>
+          <MobileNavLink active={isActive('/demo')} onClick={() => handleNavigate('/demo')}>
+            Demo
+          </MobileNavLink>
+          <MobileNavLink active={isActive('/faq')} onClick={() => handleNavigate('/faq')}>
+            FAQ
+          </MobileNavLink>
+          <MobileNavLink active={isActive('/blog')} onClick={() => handleNavigate('/blog')}>
+            Blog
+          </MobileNavLink>
+          <MobileNavLink active={isActive('/contact')} onClick={() => handleNavigate('/contact')}>
+            Contact
+          </MobileNavLink>
+          <MobileLoginButton onClick={() => handleNavigate(user ? '/pos' : '/login')}>
+            POS System
+          </MobileLoginButton>
+        </MobileMenuContent>
       </MobileMenu>
     </>
   );

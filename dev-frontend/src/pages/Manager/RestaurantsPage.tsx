@@ -633,6 +633,13 @@ const ManagerRestaurantsPage: React.FC = () => {
   const [editingRestaurant, setEditingRestaurant] = useState<Restaurant | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [brands, setBrands] = useState<Array<{ id: number; name: string; code: string; currency: string }>>([]);
+  // Restaurant Admin states
+  const [adminAction, setAdminAction] = useState<'create' | 'assign'>('create');
+  const [newAdminData, setNewAdminData] = useState({ fullName: '', email: '', username: '', password: '', phone: '' });
+  const [selectedAdmin, setSelectedAdmin] = useState<any>(null);
+  const [adminCandidates, setAdminCandidates] = useState<any[]>([]);
+  const [adminSearchQuery, setAdminSearchQuery] = useState('');
+  const [showAdminDropdown, setShowAdminDropdown] = useState(false);
   // Delete confirmation modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [restaurantToDelete, setRestaurantToDelete] = useState<Restaurant | null>(null);
@@ -847,15 +854,54 @@ const ManagerRestaurantsPage: React.FC = () => {
     setShowAddModal(true);
   };
 
+  // Admin candidate search
+  const handleAdminSearch = async (query: string) => {
+    setAdminSearchQuery(query);
+    setShowAdminDropdown(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/users/available-admins?q=${encodeURIComponent(query)}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAdminCandidates(data.data || []);
+      }
+    } catch (error) {
+      console.error('Error searching admin candidates:', error);
+    }
+  };
+
+  const handleAdminSelect = (user: any) => {
+    setSelectedAdmin(user);
+    setAdminSearchQuery(user.full_name || user.username);
+    setShowAdminDropdown(false);
+  };
+
   const handleSubmitNewRestaurant = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('🔄 Restaurant submit called with data:', newRestaurant);
     
     try {
+      // Validate admin fields
+      if (adminAction === 'create') {
+        if (!newAdminData.fullName || !newAdminData.email || !newAdminData.username || !newAdminData.password) {
+          alert('Please fill in all required Restaurant Admin fields.');
+          return;
+        }
+        if (newAdminData.password.length < 8) {
+          alert('Admin password must be at least 8 characters.');
+          return;
+        }
+      } else if (adminAction === 'assign' && !selectedAdmin) {
+        alert('Please select an existing user as Restaurant Admin.');
+        return;
+      }
+
       const managerId = user?.managerId || user?.id || '2';
       const managerName = user?.name || 'Manager';
-      
-      const restaurantData = {
+
+      const restaurantData: any = {
         name: newRestaurant.name,
         address: newRestaurant.address,
         city: newRestaurant.city,
@@ -865,8 +911,9 @@ const ManagerRestaurantsPage: React.FC = () => {
         phone: newRestaurant.phone,
         email: newRestaurant.email,
         cuisine: newRestaurant.cuisine,
-        manager_id: managerId,
-        manager_name: managerName,
+        // Current manager as oversight manager
+        managerIds: [parseInt(managerId.toString())],
+        adminAction,
         plan_type: newRestaurant.planType,
         plan_amount: parseFloat(newRestaurant.planAmount),
         status: newRestaurant.status,
@@ -878,13 +925,26 @@ const ManagerRestaurantsPage: React.FC = () => {
         created_by: managerId,
         brand_id: newRestaurant.brandId ? parseInt(newRestaurant.brandId) : null
       };
+
+      // Add admin-specific fields
+      if (adminAction === 'create') {
+        restaurantData.adminEmail = newAdminData.email;
+        restaurantData.adminPassword = newAdminData.password;
+        restaurantData.adminUsername = newAdminData.username;
+        restaurantData.adminFullName = newAdminData.fullName;
+        restaurantData.adminPhone = newAdminData.phone || undefined;
+      } else if (adminAction === 'assign') {
+        restaurantData.adminUserId = parseInt(selectedAdmin.id.toString());
+      }
       
       console.log('🏗️ Creating new restaurant:', restaurantData);
       
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/restaurants', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(restaurantData)
       });
@@ -1338,13 +1398,127 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Manager *</FormLabel>
+                  <FormLabel>Oversight Manager</FormLabel>
                   <FormInput
                     type="text"
-                    value={user?.name || 'K-DINE Chain Manager'}
+                    value={user?.name || 'Manager'}
                     disabled
+                    style={{ backgroundColor: '#F8FAFC', color: '#6B7280' }}
                   />
                 </FormGroup>
+
+                {/* Restaurant Admin (Owner) Section */}
+                <div style={{gridColumn: '1 / -1', marginTop: '8px', marginBottom: '4px'}}>
+                  <h3 style={{margin: 0, fontSize: '16px', fontWeight: '600', color: '#0A2540', borderBottom: '2px solid #635BFF', paddingBottom: '8px'}}>
+                    Restaurant Admin (Owner) *
+                  </h3>
+                  <div style={{display: 'flex', gap: '16px', marginTop: '12px'}}>
+                    <label style={{
+                      display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
+                      padding: '8px 16px', borderRadius: '8px',
+                      background: adminAction === 'create' ? '#F0EFFF' : '#F9FAFB',
+                      border: adminAction === 'create' ? '2px solid #635BFF' : '2px solid #E5E7EB'
+                    }}>
+                      <input type="radio" name="adminActionMgr" checked={adminAction === 'create'}
+                        onChange={() => { setAdminAction('create'); setSelectedAdmin(null); }}
+                        style={{ accentColor: '#635BFF' }} />
+                      <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>Create New Account</span>
+                    </label>
+                    <label style={{
+                      display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
+                      padding: '8px 16px', borderRadius: '8px',
+                      background: adminAction === 'assign' ? '#F0EFFF' : '#F9FAFB',
+                      border: adminAction === 'assign' ? '2px solid #635BFF' : '2px solid #E5E7EB'
+                    }}>
+                      <input type="radio" name="adminActionMgr" checked={adminAction === 'assign'}
+                        onChange={() => { setAdminAction('assign'); setNewAdminData({ fullName: '', email: '', username: '', password: '', phone: '' }); }}
+                        style={{ accentColor: '#635BFF' }} />
+                      <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>Select Existing User</span>
+                    </label>
+                  </div>
+                </div>
+
+                {adminAction === 'create' ? (
+                  <>
+                    <FormGroup>
+                      <FormLabel>Admin Full Name *</FormLabel>
+                      <FormInput type="text" placeholder="e.g., Kim Owner"
+                        value={newAdminData.fullName}
+                        onChange={(e) => setNewAdminData({...newAdminData, fullName: e.target.value})} />
+                    </FormGroup>
+                    <FormGroup>
+                      <FormLabel>Admin Email *</FormLabel>
+                      <FormInput type="email" placeholder="admin@restaurant.com"
+                        value={newAdminData.email}
+                        onChange={(e) => setNewAdminData({...newAdminData, email: e.target.value})} />
+                    </FormGroup>
+                    <FormGroup>
+                      <FormLabel>Admin Username *</FormLabel>
+                      <FormInput type="text" placeholder="e.g., kim_owner"
+                        value={newAdminData.username}
+                        onChange={(e) => setNewAdminData({...newAdminData, username: e.target.value})} />
+                    </FormGroup>
+                    <FormGroup>
+                      <FormLabel>Admin Password *</FormLabel>
+                      <FormInput type="password" placeholder="Min 8 chars, uppercase + lowercase + number"
+                        value={newAdminData.password}
+                        onChange={(e) => setNewAdminData({...newAdminData, password: e.target.value})} />
+                    </FormGroup>
+                    <FormGroup style={{gridColumn: '1 / -1'}}>
+                      <FormLabel>Admin Phone</FormLabel>
+                      <PhoneInput
+                        value={newAdminData.phone}
+                        onChange={(value) => setNewAdminData({...newAdminData, phone: value})}
+                        defaultCountry={newRestaurant.country}
+                      />
+                    </FormGroup>
+                  </>
+                ) : (
+                  <FormGroup style={{ position: 'relative', gridColumn: '1 / -1', zIndex: 100 }}>
+                    <FormLabel>Search and select an existing user</FormLabel>
+                    <DropdownContainer>
+                      <DropdownInput type="text" placeholder="Type to search by name, email, or username..."
+                        value={adminSearchQuery}
+                        onChange={(e) => handleAdminSearch(e.target.value)}
+                        onFocus={() => handleAdminSearch(adminSearchQuery)}
+                        onBlur={() => setTimeout(() => setShowAdminDropdown(false), 200)} />
+                      <DropdownMenu show={showAdminDropdown}>
+                        {adminCandidates.length === 0 ? (
+                          <div style={{padding: '12px 16px', color: '#6B7280', fontSize: '13px'}}>
+                            {adminSearchQuery.length > 0 ? 'No available users found' : 'Type to search users...'}
+                          </div>
+                        ) : (
+                          adminCandidates.map(u => (
+                            <DropdownItem key={u.id} onClick={() => handleAdminSelect(u)}>
+                              <ItemName>{u.full_name || u.username}</ItemName>
+                              <ItemDetails>{u.email} • {u.role}</ItemDetails>
+                            </DropdownItem>
+                          ))
+                        )}
+                      </DropdownMenu>
+                    </DropdownContainer>
+                    {selectedAdmin && (
+                      <div style={{
+                        marginTop: '8px', padding: '12px 16px', background: '#F0EFFF',
+                        borderRadius: '8px', border: '1px solid #D4D0FF',
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                      }}>
+                        <div>
+                          <div style={{fontWeight: '600', color: '#1F2937', fontSize: '14px'}}>
+                            {selectedAdmin.full_name || selectedAdmin.username}
+                          </div>
+                          <div style={{fontSize: '12px', color: '#6B7280'}}>
+                            {selectedAdmin.email} • {selectedAdmin.role}
+                          </div>
+                        </div>
+                        <button onClick={() => { setSelectedAdmin(null); setAdminSearchQuery(''); }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626', fontSize: '18px', fontWeight: '600' }}>
+                          ×
+                        </button>
+                      </div>
+                    )}
+                  </FormGroup>
+                )}
 
                 <FormGroup>
                   <FormLabel>Email Address *</FormLabel>
@@ -1596,11 +1770,12 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Manager *</FormLabel>
+                  <FormLabel>Oversight Manager</FormLabel>
                   <FormInput
                     type="text"
-                    value={user?.name || 'K-DINE Chain Manager'}
+                    value={user?.name || 'Manager'}
                     disabled
+                    style={{ backgroundColor: '#F8FAFC', color: '#6B7280' }}
                   />
                 </FormGroup>
 

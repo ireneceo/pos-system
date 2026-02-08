@@ -72,6 +72,43 @@ Content.init({
     type: DataTypes.DATE,
     allowNull: true
   },
+  // SEO Fields
+  seo_title: {
+    type: DataTypes.STRING(70),
+    allowNull: true,
+    comment: 'Custom title for search results (max 70 chars)'
+  },
+  seo_description: {
+    type: DataTypes.STRING(160),
+    allowNull: true,
+    comment: 'Meta description for search results (max 160 chars)'
+  },
+  seo_keywords: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Comma-separated keywords'
+  },
+  og_image_url: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Open Graph image URL for social sharing'
+  },
+  canonical_url: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Canonical URL to prevent duplicate content'
+  },
+  // AEO Fields (Answer Engine Optimization)
+  ai_summary: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Concise 2-3 sentence summary for AI citation'
+  },
+  faq_schema: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    comment: 'Structured FAQ data for Schema.org markup'
+  },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
