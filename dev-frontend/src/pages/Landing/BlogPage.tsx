@@ -137,7 +137,7 @@ const BlogCard = styled.article`
 const BlogThumbnail = styled.div<{ hasImage?: boolean }>`
   width: 100%;
   height: 200px;
-  background: ${props => props.hasImage ? 'transparent' : 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)'};
+  background: ${props => props.hasImage ? 'transparent' : 'linear-gradient(135deg, #F8F9FA 0%, #E9ECEF 50%, #DEE2E6 100%)'};
   display: flex;
   align-items: center;
   justify-content: center;

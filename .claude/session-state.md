@@ -1,23 +1,24 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-02-08
+**마지막 업데이트:** 2026-02-09
 **작업 상태:** 완료
 
 ### 진행 중인 작업
 - 없음
 
 ### 완료된 작업 (이번 세션)
-- Restaurant-Admin 1:1 매칭 전체 구현 (Backend 5단계 + Frontend 5단계 + 마이그레이션)
-  - Backend: POST/GET/PUT에 adminAction 지원, available-admins API, validation 미들웨어
-  - Frontend: Admin/Manager RestaurantsPage Add/Edit/View 모달 재설계
-  - Frontend: SubscriptionsPage Admin 정보 표시, StaffManagementPage 경고
-  - Data: Brand/Foodcourt Manager → restaurant_managers 테이블 이동 마이그레이션
-- 이전 세션 버그 수정 (RestaurantsPage 모달 오버플로우, SubscriptionsPage 검색/레이아웃)
+- 블로그 카드 썸네일 배경색: 보라색 → 연회색 3단계 그라데이션 (#F8F9FA→#E9ECEF→#DEE2E6)
+- 이메일/인보이스 시스템 현황 전체 분석 (4개 병렬 에이전트)
+- 플랫폼 아키텍처 문서화 (역할 구조, 멀티 연결, 인보이스 발행 주체, SMTP 독립)
+- Brand/Foodcourt 구독 플랜 & 이메일 시스템 5 Phase 개발 계획 수립
+- DEVELOPMENT_PLAN.md에 아키텍처 섹션 + 개발 계획 반영
+- MEMORY.md에 역할 & 엔티티 아키텍처 보강
 
 ### 다음 할 일
-- 기존 11개 레스토랑에 Restaurant Admin 배정 (Edit 모달에서 수동)
-- 데모 콘텐츠 보강
-- 이메일 템플릿 (Welcome, Invoice)
-- Blog 콘텐츠 추가
+- **Phase 1**: entity_plans/entity_plan_restaurants 테이블 생성 + notification_settings ENUM 확장 + emailService 리팩터링
+- **Phase 2**: Brand Plans CRUD API + Brand PlansPage 재개발
+- **Phase 3**: 매출% 계산 엔진 + invoiceScheduler 확장
+- **Phase 4**: 이메일 발송 전체 보강 (발행자별 SMTP)
+- **Phase 5**: Foodcourt 적용 (Brand 완성 후)
 
 ---
 

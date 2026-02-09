@@ -851,6 +851,11 @@ const ManagerRestaurantsPage: React.FC = () => {
       autoRenew: true,
       brandId: ''
     });
+    setAdminAction('create');
+    setNewAdminData({ fullName: '', email: '', username: '', password: '', phone: '' });
+    setSelectedAdmin(null);
+    setAdminCandidates([]);
+    setAdminSearchQuery('');
     setShowAddModal(true);
   };
 
@@ -988,7 +993,6 @@ const ManagerRestaurantsPage: React.FC = () => {
         }
 
         setShowAddModal(false);
-        alert(`Restaurant "${newRestaurant.name}" added successfully with ${newRestaurant.planType}!`);
 
         // Reset form
         setNewRestaurant({
@@ -1012,6 +1016,11 @@ const ManagerRestaurantsPage: React.FC = () => {
           autoRenew: true,
           brandId: ''
         });
+        setAdminAction('create');
+        setNewAdminData({ fullName: '', email: '', username: '', password: '', phone: '' });
+        setSelectedAdmin(null);
+        setAdminCandidates([]);
+        setAdminSearchQuery('');
       } else {
         const errorText = await response.text();
         console.error('Failed to create restaurant:', errorText);

@@ -13,6 +13,7 @@ const AddonModule = require('../models/AddonModule');
 const { Recipe, Ingredient, RecipeIngredient } = require('../models');
 const { Op } = require('sequelize');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
+const { validateRestaurantCreation } = require('../middleware/validation');
 const jwt = require('jsonwebtoken');
 
 // Optional authentication middleware
@@ -350,7 +351,7 @@ const validateBrandPermission = async (brandId, userId, userRole) => {
 };
 
 // Create new restaurant (with Restaurant Admin 1:1 coupling)
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, validateRestaurantCreation, async (req, res) => {
   const { sequelize } = require('../config/database');
   const bcrypt = require('bcrypt');
   const transaction = await sequelize.transaction();
@@ -515,6 +516,32 @@ router.post('/', authenticateToken, async (req, res) => {
 
     await transaction.commit();
 
+    // Send Welcome Email (non-blocking)
+    if (adminUser && (adminAction === 'create' || adminAction === 'assign')) {
+      try {
+        const { sendPlatformEmail } = require('../utils/emailService');
+        const { welcomeEmail } = require('../utils/emailTemplates');
+
+        const siteUrl = process.env.SITE_URL || 'https://purplehere.com';
+        const emailData = {
+          adminName: adminUser.full_name || adminUser.username,
+          restaurantName: restaurant.name,
+          email: adminUser.email,
+          username: adminUser.username,
+          temporaryPassword: adminAction === 'create' ? req.body.adminPassword : null,
+          planType: restaurant.plan_type || 'Basic Plan',
+          dashboardUrl: siteUrl + '/pos/login'
+        };
+
+        const { subject, html, text } = welcomeEmail(emailData);
+        sendPlatformEmail({ to: adminUser.email, subject, html, text })
+          .then(result => console.log(`[Email] Welcome email sent to ${adminUser.email} (${result.messageId})`))
+          .catch(err => console.error('[Email] Welcome email failed:', err.message));
+      } catch (emailError) {
+        console.error('[Email] Welcome email setup failed:', emailError.message);
+      }
+    }
+
     const responseData = { success: true, restaurant };
     if (adminUser) {
       responseData.adminUser = {
@@ -534,7 +561,7 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // Update restaurant
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, validateRestaurantCreation, async (req, res) => {
   try {
     // Validate brand_id permission if being changed
     if (req.body.brand_id !== undefined && req.body.brand_id) {
@@ -952,7 +979,7 @@ router.post('/subscriptions', async (req, res) => {
       billing_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       due_date: dueDate,
       total_amount: billingCycle === 'annual' ? fees.annual * 1.06 : fees.monthly * 1.06, // Including 6% tax
-      status: 'sent',
+      status: 'pending_payment',
       notes: `${planType.charAt(0).toUpperCase() + planType.slice(1)} Plan - ${billingCycle} subscription`,
       issued_by: managerId,
       issued_at: new Date()
@@ -970,6 +997,47 @@ router.post('/subscriptions', async (req, res) => {
       tax_amount: (billingCycle === 'annual' ? fees.annual : fees.monthly) * 0.06,
       total_amount: (billingCycle === 'annual' ? fees.annual : fees.monthly) * 1.06
     });
+
+    // Send Invoice Email (non-blocking)
+    try {
+      const { sendPlatformEmail } = require('../utils/emailService');
+      const { invoiceEmail } = require('../utils/emailTemplates');
+
+      const adminUser = restaurant.manager_id ? await User.findByPk(restaurant.manager_id) : null;
+      if (adminUser && adminUser.email) {
+        const billingAmount = billingCycle === 'annual' ? fees.annual : fees.monthly;
+        const taxRate = 6;
+        const taxAmount = billingAmount * 0.06;
+        const totalAmount = billingAmount * 1.06;
+        const siteUrl = process.env.SITE_URL || 'https://purplehere.com';
+
+        const formatDate = (d) => new Date(d).toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric' });
+
+        const emailData = {
+          adminName: adminUser.full_name || adminUser.username,
+          restaurantName: restaurant.name,
+          invoiceNumber: invoice.invoice_number,
+          planType: planType.charAt(0).toUpperCase() + planType.slice(1) + ' Plan',
+          billingCycle,
+          subtotal: billingAmount,
+          taxRate,
+          taxAmount,
+          totalAmount,
+          currency: restaurant.currency || 'RM',
+          billingPeriodStart: formatDate(invoice.billing_period_start),
+          billingPeriodEnd: formatDate(invoice.billing_period_end),
+          dueDate: formatDate(dueDate),
+          dashboardUrl: siteUrl + '/pos/login'
+        };
+
+        const { subject, html, text } = invoiceEmail(emailData);
+        sendPlatformEmail({ to: adminUser.email, subject, html, text })
+          .then(result => console.log(`[Email] Invoice email sent to ${adminUser.email} for ${invoice.invoice_number} (${result.messageId})`))
+          .catch(err => console.error('[Email] Invoice email failed:', err.message));
+      }
+    } catch (emailError) {
+      console.error('[Email] Invoice email setup failed:', emailError.message);
+    }
 
     res.json({ success: true, message: 'Subscription added successfully' });
   } catch (error) {

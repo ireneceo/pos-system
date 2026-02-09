@@ -1,8 +1,119 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-02-08
+> **최종 업데이트:** 2026-02-09
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
+
+---
+
+## 📐 플랫폼 역할 & 인보이스 아키텍처
+
+### 역할 계층
+```
+System Admin (플랫폼 운영)
+├── 독립 레스토랑 직접 등록/관리
+├── Brand / Foodcourt 생성 및 관리
+└── POS 구독 플랜 관리 → 모든 레스토랑에 POS 구독료 인보이스 발행
+
+Brand General (브랜드 운영, 1:1 매칭)
+├── 브랜드 소속 레스토랑(가맹점) 관리
+├── 자체 구독 플랜 생성 (로얄티, 브랜드비, 매출% 등)
+└── 소속 레스토랑에 브랜드 플랜 인보이스 발행
+
+Foodcourt General (푸드코트 운영, 1:1 매칭)
+├── 푸드코트 입점 레스토랑 관리
+├── 자체 구독 플랜 생성 (임대료, 관리비, 매출% 등)
+└── 입점 레스토랑에 푸드코트 플랜 인보이스 발행
+
+Restaurant Admin (레스토랑 운영, 1:1 매칭)
+└── 자기 레스토랑 POS 운영
+```
+
+### 레스토랑 연결 구조 (멀티)
+한 레스토랑은 Brand와 Foodcourt에 **동시에** 속할 수 있음 (독립적 FK)
+```
+Case 1: 독립 레스토랑        → 인보이스: System Admin만
+Case 2: Brand 소속           → 인보이스: System Admin + Brand GM
+Case 3: Foodcourt 입점       → 인보이스: System Admin + Foodcourt GM
+Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcourt GM
+```
+
+### 인보이스 발행 주체별 분리
+| issuer_type | 발행자 | 대상 | 과금 항목 |
+|-------------|--------|------|-----------|
+| `system_admin` | System Admin | 모든 레스토랑 | POS 구독료 (고정비) |
+| `brand` | Brand General | 소속 레스토랑 | 로얄티, 브랜드비, 매출%, 고정비 등 |
+| `foodcourt` | Foodcourt General | 입점 레스토랑 | 임대료, 관리비, 매출%, 고정비 등 |
+
+### 이메일 SMTP (각 역할 독립)
+- 각 역할이 자기 notification_settings에 SMTP 설정
+- 자기가 발행한 인보이스는 자기 SMTP로 발송
+- System Admin SMTP를 다른 역할이 대신 쓰지 않음
+
+---
+
+## 🔜 다음 개발: Brand/Foodcourt 구독 플랜 & 이메일 시스템 (2026-02-09 기획)
+
+### 개요
+Brand General / Foodcourt General이 각자 구독 플랜을 만들고, 소속 레스토랑에 자동 인보이스를 발행하는 시스템.
+이메일 발송은 각 역할이 자기 SMTP 설정으로 독립 발송.
+
+### Phase 1: DB 스키마 & 이메일 SMTP 확장
+
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1-1 | `entity_plans` 테이블 생성 | 공통 플랜 테이블. entity_type(brand/foodcourt), entity_id, plan_name, subscription_fee(고정비), revenue_percentage(매출%), rent_type(fixed/percentage/combined), rent_fixed/rent_percentage/rent_minimum, billing_cycle, auto_generate, tax_rate, is_active | ⬜ |
+| 1-2 | `entity_plan_restaurants` 테이블 생성 | entity_plan_id ↔ restaurant_id 연결 (어떤 레스토랑이 어떤 플랜 적용) | ⬜ |
+| 1-3 | `notification_settings` ENUM 확장 | entity_type에 `'brand'`, `'foodcourt'` 추가 마이그레이션 | ⬜ |
+| 1-4 | emailService.js 리팩터링 | `sendIssuerEmail(issuerType, issuerId, mailOptions)` — 발행 주체별 SMTP 자동 선택 | ⬜ |
+| 1-5 | NotificationSettingsPage 보강 | Brand/Foodcourt entity_type 정확히 저장되도록 수정 | ⬜ |
+
+### Phase 2: Brand Plans CRUD & 레스토랑 연결 (Brand GM 우선)
+
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 2-1 | Brand Plans API | `GET/POST/PUT/DELETE /api/brands/:id/plans` — Brand GM이 자기 플랜 CRUD | ⬜ |
+| 2-2 | 플랜→레스토랑 연결 API | `POST/DELETE /api/brands/:id/plans/:planId/restaurants` — 플랜에 레스토랑 배정/해제 | ⬜ |
+| 2-3 | Brand PlansPage 재개발 | 하드코딩 제거, Brand GM 전용 플랜 CRUD UI (고정비 + 매출% + 임대료 설정) | ⬜ |
+| 2-4 | 플랜→레스토랑 연결 UI | 플랜 상세에서 소속 레스토랑 배정/해제 인터페이스 | ⬜ |
+
+### Phase 3: 매출 기반 % 계산 & 자동 인보이스
+
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 3-1 | 매출 조회 API | 기간별 레스토랑 orders.total 합산 (Brand 인보이스 계산 근거) | ⬜ |
+| 3-2 | % 계산 엔진 | fixed(고정비) + percentage(매출%) + combined(MAX(최소금액, 매출%)) 계산 로직 | ⬜ |
+| 3-3 | invoiceScheduler 확장 | 기존 system_admin 자동생성 + entity_plans 기반 Brand/Foodcourt 자동 인보이스 병렬 실행 | ⬜ |
+| 3-4 | Brand SubscriptionsPage 보강 | 레스토랑별 플랜 현황, 청구 예상액, 자동발행 상태 표시 | ⬜ |
+
+### Phase 4: 이메일 발송 전체 보강
+
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 4-1 | 인보이스 이메일 트리거 보강 | 자동 생성 + 수동 생성 인보이스 모두 발행자 SMTP로 이메일 발송 | ⬜ |
+| 4-2 | `/api/invoices/:id/send-email` 구현 | placeholder → 실제 구현 (발행자의 SMTP 사용) | ⬜ |
+| 4-3 | Welcome 이메일 발송 주체 변경 | Brand가 레스토랑 만들면 Brand SMTP, System Admin이면 Admin SMTP | ⬜ |
+| 4-4 | 이메일 템플릿 보강 | Brand/Foodcourt 로고, 발신자 정보 반영한 인보이스 이메일 | ⬜ |
+
+### Phase 5: Foodcourt 적용 (Brand 완성 후)
+
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 5-1 | Foodcourt Plans API | Brand와 동일 구조, entity_type='foodcourt'로 재사용 | ⬜ |
+| 5-2 | Foodcourt PlansPage | Brand PlansPage 기반으로 Foodcourt GM 전용 UI | ⬜ |
+| 5-3 | Foodcourt 자동 인보이스 | invoiceScheduler에서 foodcourt entity_plans도 처리 | ⬜ |
+| 5-4 | Foodcourt SubscriptionsPage | 입점 레스토랑별 플랜 현황 UI | ⬜ |
+
+### 핵심 설계 원칙
+- **entity_plans 공통 테이블**: Brand/Foodcourt 공용. entity_type 필드로 구분 (별도 테이블 X)
+- **매출% 계산**: orders 테이블에서 billing_period 기간 내 completed 주문의 total 합산
+- **Combined 방식**: `MAX(고정 최소금액, 매출%계산액)` — 최소 보장 금액 이상만 청구
+- **이메일 독립**: sendPlatformEmail 폐기 → sendIssuerEmail로 통일 (issuer의 SMTP 사용)
+- **Foodcourt 나중에**: Brand에서 먼저 완성도 높인 후 동일 구조로 적용
+
+### 범위 외 (이번 개발에서 제외)
+- 결제 게이트웨이 연동 (수동 결제 확인 방식 유지)
+- 시스템관리자 POS 구독 플랜 변경 (기존 plan_templates 그대로 유지)
 
 ---
 
@@ -237,6 +348,24 @@ const totalRevenue = useMemo(() => {
 - `dev-frontend/src/pages/Manager/RestaurantsPage.tsx` - Add 모달 Admin 섹션
 - `dev-frontend/src/pages/Admin/SubscriptionsPage.tsx` - Admin 정보 표시
 - `dev-frontend/src/pages/Admin/StaffManagementPage.tsx` - 경고 메시지
+
+---
+
+## ✅ 완료: 블로그 UI 개선 & Brand/Foodcourt 구독 플랜 기획 (2026-02-09)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 블로그 썸네일 배경색 변경 | 보라색 그라데이션 → 연회색 3단계 그라데이션 (#F8F9FA→#E9ECEF→#DEE2E6) | ✅ 완료 |
+| 이메일/인보이스 시스템 현황 분석 | Welcome/Invoice 이메일 발송 현황, SMTP 구조, 자동생성 인보이스 이메일 미구현 확인 | ✅ 완료 |
+| 플랫폼 아키텍처 정리 | 역할별 인보이스 발행 구조, 멀티 연결(Brand+Foodcourt), SMTP 독립 구조 문서화 | ✅ 완료 |
+| Brand/Foodcourt 구독 플랜 5 Phase 기획 | DB 스키마, API, 매출% 계산 엔진, 이메일 보강, Foodcourt 적용 계획 수립 | ✅ 완료 |
+| MEMORY.md 아키텍처 보강 | 역할 구조, 레스토랑 연결 4가지 케이스, 인보이스 발행 주체, SMTP 독립 구조 | ✅ 완료 |
+
+### 수정된 파일
+- `dev-frontend/src/pages/Landing/BlogPage.tsx` - 썸네일 배경색 변경
+- `DEVELOPMENT_PLAN.md` - 아키텍처 섹션 + 5 Phase 개발 계획 추가
 
 ---
 

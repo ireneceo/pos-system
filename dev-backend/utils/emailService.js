@@ -1,10 +1,10 @@
 const nodemailer = require('nodemailer');
 const { sequelize } = require('../config/database');
 const { QueryTypes } = require('sequelize');
+const { decrypt } = require('./encryption');
 
 /**
- * Get email settings for a specific entity (restaurant)
- * Each restaurant must configure their own SMTP settings
+ * Get email settings for a specific entity
  */
 async function getEmailSettings(entityType, entityId) {
   try {
@@ -17,14 +17,38 @@ async function getEmailSettings(entityType, entityId) {
       }
     );
 
-    // settings는 배열이므로 첫 번째 항목 사용
     const setting = settings[0];
 
     if (setting && setting.smtp_host && setting.smtp_user && setting.smtp_password) {
       return setting;
     }
 
-    throw new Error('Email notifications are not configured for this restaurant. Please configure SMTP settings in Restaurant Settings > Notifications.');
+    const entityLabel = entityType === 'admin' ? 'the platform' : 'this restaurant';
+    throw new Error(`Email notifications are not configured for ${entityLabel}. Please configure SMTP settings in Notification Settings.`);
+  } catch (error) {
+    throw error;
+  }
+}
+
+/**
+ * Get platform-level email settings (entity_type='admin')
+ */
+async function getPlatformEmailSettings() {
+  try {
+    const settings = await sequelize.query(
+      `SELECT * FROM notification_settings
+       WHERE entity_type = 'admin' AND email_enabled = 1
+       LIMIT 1`,
+      { type: QueryTypes.SELECT }
+    );
+
+    const setting = settings[0];
+
+    if (setting && setting.smtp_host && setting.smtp_user && setting.smtp_password) {
+      return setting;
+    }
+
+    throw new Error('Platform email is not configured. Please configure SMTP settings in Admin > Notification Settings.');
   } catch (error) {
     throw error;
   }
@@ -37,41 +61,35 @@ function createTransporter(settings) {
   return nodemailer.createTransport({
     host: settings.smtp_host,
     port: settings.smtp_port || 587,
-    secure: settings.smtp_secure || false, // true for 465, false for other ports
+    secure: settings.smtp_secure || false,
     auth: {
       user: settings.smtp_user,
-      pass: settings.smtp_password
+      pass: decrypt(settings.smtp_password)
     },
     tls: {
-      rejectUnauthorized: false // Allow self-signed certificates
+      rejectUnauthorized: false
     }
   });
 }
 
 /**
- * Send email
+ * Send email for a specific entity
  */
 async function sendEmail(entityType, entityId, mailOptions) {
   try {
-    // Get email settings
     const settings = await getEmailSettings(entityType, entityId);
-
-    // Create transporter
     const transporter = createTransporter(settings);
 
-    // Set from address if not provided
     if (!mailOptions.from) {
       mailOptions.from = settings.from_name
         ? `"${settings.from_name}" <${settings.from_email}>`
         : settings.from_email;
     }
 
-    // Set reply-to if configured
     if (settings.reply_to_email && !mailOptions.replyTo) {
       mailOptions.replyTo = settings.reply_to_email;
     }
 
-    // Send email
     const info = await transporter.sendMail(mailOptions);
 
     return {
@@ -81,6 +99,38 @@ async function sendEmail(entityType, entityId, mailOptions) {
     };
   } catch (error) {
     console.error('Email sending error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Send platform-level email (Welcome, Invoice, etc.)
+ * Uses notification_settings with entity_type='admin'
+ */
+async function sendPlatformEmail(mailOptions) {
+  try {
+    const settings = await getPlatformEmailSettings();
+    const transporter = createTransporter(settings);
+
+    if (!mailOptions.from) {
+      mailOptions.from = settings.from_name
+        ? `"${settings.from_name}" <${settings.from_email}>`
+        : settings.from_email;
+    }
+
+    if (settings.reply_to_email && !mailOptions.replyTo) {
+      mailOptions.replyTo = settings.reply_to_email;
+    }
+
+    const info = await transporter.sendMail(mailOptions);
+
+    return {
+      success: true,
+      messageId: info.messageId,
+      response: info.response
+    };
+  } catch (error) {
+    console.error('Platform email sending error:', error);
     throw error;
   }
 }
@@ -127,8 +177,10 @@ async function verifyConnection(settings) {
 
 module.exports = {
   getEmailSettings,
+  getPlatformEmailSettings,
   createTransporter,
   sendEmail,
+  sendPlatformEmail,
   sendTestEmail,
   verifyConnection
 };
