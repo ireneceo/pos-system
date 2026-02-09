@@ -62,47 +62,47 @@ Brand General / Foodcourt General이 각자 구독 플랜을 만들고, 소속 �
 
 | # | 작업 | 설명 | 상태 |
 |---|------|------|:----:|
-| 1-1 | `entity_plans` 테이블 생성 | 공통 플랜 테이블. entity_type(brand/foodcourt), entity_id, plan_name, subscription_fee(고정비), revenue_percentage(매출%), rent_type(fixed/percentage/combined), rent_fixed/rent_percentage/rent_minimum, billing_cycle, auto_generate, tax_rate, is_active | ⬜ |
-| 1-2 | `entity_plan_restaurants` 테이블 생성 | entity_plan_id ↔ restaurant_id 연결 (어떤 레스토랑이 어떤 플랜 적용) | ⬜ |
-| 1-3 | `notification_settings` ENUM 확장 | entity_type에 `'brand'`, `'foodcourt'` 추가 마이그레이션 | ⬜ |
-| 1-4 | emailService.js 리팩터링 | `sendIssuerEmail(issuerType, issuerId, mailOptions)` — 발행 주체별 SMTP 자동 선택 | ⬜ |
-| 1-5 | NotificationSettingsPage 보강 | Brand/Foodcourt entity_type 정확히 저장되도록 수정 | ⬜ |
+| 1-1 | `entity_plans` 테이블 생성 | 공통 플랜 테이블. entity_type(brand/foodcourt), entity_id, plan_name, subscription_fee(고정비), revenue_percentage(매출%), rent_type(fixed/percentage/combined), rent_fixed/rent_percentage/rent_minimum, billing_cycle, auto_generate, tax_rate, is_active | ✅ |
+| 1-2 | `entity_plan_restaurants` 테이블 생성 | entity_plan_id ↔ restaurant_id 연결 (어떤 레스토랑이 어떤 플랜 적용) | ✅ |
+| 1-3 | `notification_settings` ENUM 확장 | entity_type에 `'brand'`, `'foodcourt'` 추가 마이그레이션 | ✅ |
+| 1-4 | emailService.js 리팩터링 | `sendIssuerEmail(issuerType, issuerId, mailOptions)` — 발행 주체별 SMTP 자동 선택 | ✅ |
+| 1-5 | NotificationSettingsPage 보강 | Brand/Foodcourt entity_type 정확히 저장되도록 수정 | ✅ |
 
 ### Phase 2: Brand Plans CRUD & 레스토랑 연결 (Brand GM 우선)
 
 | # | 작업 | 설명 | 상태 |
 |---|------|------|:----:|
-| 2-1 | Brand Plans API | `GET/POST/PUT/DELETE /api/brands/:id/plans` — Brand GM이 자기 플랜 CRUD | ⬜ |
-| 2-2 | 플랜→레스토랑 연결 API | `POST/DELETE /api/brands/:id/plans/:planId/restaurants` — 플랜에 레스토랑 배정/해제 | ⬜ |
-| 2-3 | Brand PlansPage 재개발 | 하드코딩 제거, Brand GM 전용 플랜 CRUD UI (고정비 + 매출% + 임대료 설정) | ⬜ |
-| 2-4 | 플랜→레스토랑 연결 UI | 플랜 상세에서 소속 레스토랑 배정/해제 인터페이스 | ⬜ |
+| 2-1 | Brand Plans API | `GET/POST/PUT/DELETE /api/brands/:id/plans` — Brand GM이 자기 플랜 CRUD | ✅ |
+| 2-2 | 플랜→레스토랑 연결 API | `POST/DELETE /api/brands/:id/plans/:planId/restaurants` — 플랜에 레스토랑 배정/해제 | ✅ |
+| 2-3 | Brand PlansPage 재개발 | 하드코딩 제거, Brand GM 전용 플랜 CRUD UI (고정비 + 매출% + 임대료 설정) | ✅ |
+| 2-4 | 플랜→레스토랑 연결 UI | 플랜 상세에서 소속 레스토랑 배정/해제 인터페이스 | ✅ |
 
 ### Phase 3: 매출 기반 % 계산 & 자동 인보이스
 
 | # | 작업 | 설명 | 상태 |
 |---|------|------|:----:|
-| 3-1 | 매출 조회 API | 기간별 레스토랑 orders.total 합산 (Brand 인보이스 계산 근거) | ⬜ |
-| 3-2 | % 계산 엔진 | fixed(고정비) + percentage(매출%) + combined(MAX(최소금액, 매출%)) 계산 로직 | ⬜ |
-| 3-3 | invoiceScheduler 확장 | 기존 system_admin 자동생성 + entity_plans 기반 Brand/Foodcourt 자동 인보이스 병렬 실행 | ⬜ |
-| 3-4 | Brand SubscriptionsPage 보강 | 레스토랑별 플랜 현황, 청구 예상액, 자동발행 상태 표시 | ⬜ |
+| 3-1 | 매출 조회 API | 기간별 레스토랑 orders.total 합산 (Brand 인보이스 계산 근거) | ✅ |
+| 3-2 | % 계산 엔진 | fixed(고정비) + percentage(매출%) + combined(MAX(최소금액, 매출%)) 계산 로직 | ✅ |
+| 3-3 | invoiceScheduler 확장 | 기존 system_admin 자동생성 + entity_plans 기반 Brand/Foodcourt 자동 인보이스 병렬 실행 | ✅ |
+| 3-4 | Brand SubscriptionsPage 보강 | 레스토랑별 플랜 현황, 청구 예상액, 자동발행 상태 표시 | ✅ |
 
 ### Phase 4: 이메일 발송 전체 보강
 
 | # | 작업 | 설명 | 상태 |
 |---|------|------|:----:|
-| 4-1 | 인보이스 이메일 트리거 보강 | 자동 생성 + 수동 생성 인보이스 모두 발행자 SMTP로 이메일 발송 | ⬜ |
-| 4-2 | `/api/invoices/:id/send-email` 구현 | placeholder → 실제 구현 (발행자의 SMTP 사용) | ⬜ |
-| 4-3 | Welcome 이메일 발송 주체 변경 | Brand가 레스토랑 만들면 Brand SMTP, System Admin이면 Admin SMTP | ⬜ |
-| 4-4 | 이메일 템플릿 보강 | Brand/Foodcourt 로고, 발신자 정보 반영한 인보이스 이메일 | ⬜ |
+| 4-1 | 인보이스 이메일 트리거 보강 | 자동 생성 + 수동 생성 인보이스 모두 발행자 SMTP로 이메일 발송 | ✅ |
+| 4-2 | `/api/invoices/:id/send-email` 구현 | placeholder → 실제 구현 (발행자의 SMTP 사용) | ✅ |
+| 4-3 | Welcome 이메일 발송 주체 변경 | Brand가 레스토랑 만들면 Brand SMTP, System Admin이면 Admin SMTP | ✅ |
+| 4-4 | 이메일 템플릿 보강 | Brand/Foodcourt 로고, 발신자 정보 반영한 인보이스 이메일 | ✅ |
 
 ### Phase 5: Foodcourt 적용 (Brand 완성 후)
 
 | # | 작업 | 설명 | 상태 |
 |---|------|------|:----:|
-| 5-1 | Foodcourt Plans API | Brand와 동일 구조, entity_type='foodcourt'로 재사용 | ⬜ |
-| 5-2 | Foodcourt PlansPage | Brand PlansPage 기반으로 Foodcourt GM 전용 UI | ⬜ |
-| 5-3 | Foodcourt 자동 인보이스 | invoiceScheduler에서 foodcourt entity_plans도 처리 | ⬜ |
-| 5-4 | Foodcourt SubscriptionsPage | 입점 레스토랑별 플랜 현황 UI | ⬜ |
+| 5-1 | Foodcourt Plans API | Brand와 동일 구조, entity_type='foodcourt'로 재사용 | ✅ |
+| 5-2 | Foodcourt PlansPage | Brand PlansPage 기반으로 Foodcourt GM 전용 UI | ✅ |
+| 5-3 | Foodcourt 자동 인보이스 | invoiceScheduler에서 foodcourt entity_plans도 처리 (Phase 3에서 이미 구현) | ✅ |
+| 5-4 | Foodcourt SubscriptionsPage | 입점 레스토랑별 플랜 현황 UI | ✅ |
 
 ### 핵심 설계 원칙
 - **entity_plans 공통 테이블**: Brand/Foodcourt 공용. entity_type 필드로 구분 (별도 테이블 X)
@@ -366,6 +366,29 @@ const totalRevenue = useMemo(() => {
 ### 수정된 파일
 - `dev-frontend/src/pages/Landing/BlogPage.tsx` - 썸네일 배경색 변경
 - `DEVELOPMENT_PLAN.md` - 아키텍처 섹션 + 5 Phase 개발 계획 추가
+
+---
+
+## ✅ 완료: UI/UX 버그 수정 및 레스토랑 관리 개선 (2026-02-09)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 레스토랑 생성 에러 메시지 수정 | `[object Object]` 대신 실제 검증 메시지 표시 | ✅ 완료 |
+| 비밀번호 검증 추가 | 프론트엔드에 대소문자+숫자 검증 (백엔드와 동일) | ✅ 완료 |
+| 사이드바 네비게이션 활성화 | Brand/Foodcourt General Plans/Subscriptions 메뉴 활성 링크로 변경 | ✅ 완료 |
+| Manager 모달 스크롤 통일 | Admin 패턴(ModalOverlay 스크롤)으로 통일 | ✅ 완료 |
+| 로그인 에러 코드 수정 | 잘못된 자격증명 시 500→401 반환 | ✅ 완료 |
+| "Restaurant Admin (Owner)" 라벨 수정 | Owner 제거 → "Restaurant Admin"으로 통일 | ✅ 완료 |
+| Edit 모달 관리자 할당 기능 | 관리자 없을 때 "Assign Admin" 버튼 추가 | ✅ 완료 |
+| Restaurant Name 레이아웃 통일 | Add/Edit/View 모달 모두 full-width로 통일 | ✅ 완료 |
+
+### 수정된 파일
+- `dev-frontend/src/pages/Admin/RestaurantsPage.tsx` - 에러 메시지, 비밀번호 검증, 라벨, 레이아웃
+- `dev-frontend/src/pages/Manager/RestaurantsPage.tsx` - 비밀번호 검증, 모달 스크롤, 라벨
+- `dev-frontend/src/components/Layout/MainLayout.tsx` - 사이드바 Plans/Subscriptions 활성화
+- `dev-backend/routes/auth.js` - 로그인 401 에러 코드
 
 ---
 

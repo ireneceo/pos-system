@@ -23,7 +23,8 @@ async function getEmailSettings(entityType, entityId) {
       return setting;
     }
 
-    const entityLabel = entityType === 'admin' ? 'the platform' : 'this restaurant';
+    const labels = { admin: 'the platform', brand: 'this brand', foodcourt: 'this foodcourt', restaurant: 'this restaurant', manager: 'this manager' };
+    const entityLabel = labels[entityType] || entityType;
     throw new Error(`Email notifications are not configured for ${entityLabel}. Please configure SMTP settings in Notification Settings.`);
   } catch (error) {
     throw error;
@@ -162,6 +163,78 @@ async function sendTestEmail(entityType, entityId, testEmail) {
 }
 
 /**
+ * Get email settings for an invoice issuer
+ * Maps issuer_type to the correct notification_settings entity_type
+ * - system_admin → entity_type='admin' (any admin user)
+ * - brand → entity_type='brand', entity_id=brandId
+ * - foodcourt → entity_type='foodcourt', entity_id=foodcourtId
+ */
+async function getIssuerEmailSettings(issuerType, issuerId) {
+  let entityType;
+  let entityId;
+
+  switch (issuerType) {
+    case 'system_admin':
+      entityType = 'admin';
+      entityId = null;
+      break;
+    case 'brand':
+      entityType = 'brand';
+      entityId = issuerId;
+      break;
+    case 'foodcourt':
+      entityType = 'foodcourt';
+      entityId = issuerId;
+      break;
+    default:
+      throw new Error(`Unknown issuer type: ${issuerType}`);
+  }
+
+  // For system_admin, find any admin setting (no specific entity_id)
+  if (entityType === 'admin') {
+    return await getPlatformEmailSettings();
+  }
+
+  return await getEmailSettings(entityType, entityId);
+}
+
+/**
+ * Send email as a specific issuer (system_admin, brand, or foodcourt)
+ * Automatically selects the correct SMTP settings based on issuer type
+ *
+ * @param {string} issuerType - 'system_admin', 'brand', or 'foodcourt'
+ * @param {number|null} issuerId - Brand ID or Foodcourt ID (null for system_admin)
+ * @param {object} mailOptions - nodemailer mail options (to, subject, html, text, etc.)
+ */
+async function sendIssuerEmail(issuerType, issuerId, mailOptions) {
+  try {
+    const settings = await getIssuerEmailSettings(issuerType, issuerId);
+    const transporter = createTransporter(settings);
+
+    if (!mailOptions.from) {
+      mailOptions.from = settings.from_name
+        ? `"${settings.from_name}" <${settings.from_email}>`
+        : settings.from_email;
+    }
+
+    if (settings.reply_to_email && !mailOptions.replyTo) {
+      mailOptions.replyTo = settings.reply_to_email;
+    }
+
+    const info = await transporter.sendMail(mailOptions);
+
+    return {
+      success: true,
+      messageId: info.messageId,
+      response: info.response
+    };
+  } catch (error) {
+    console.error(`Issuer email sending error (${issuerType}/${issuerId}):`, error);
+    throw error;
+  }
+}
+
+/**
  * Verify SMTP connection
  */
 async function verifyConnection(settings) {
@@ -178,9 +251,11 @@ async function verifyConnection(settings) {
 module.exports = {
   getEmailSettings,
   getPlatformEmailSettings,
+  getIssuerEmailSettings,
   createTransporter,
   sendEmail,
   sendPlatformEmail,
+  sendIssuerEmail,
   sendTestEmail,
   verifyConnection
 };

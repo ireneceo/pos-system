@@ -51,6 +51,8 @@ const ProductIngredientCategory = require('./ProductIngredientCategory');
 const ProductRecipeIngredient = require('./ProductRecipeIngredient');
 const MembershipSettings = require('./MembershipSettings');
 const PointTransaction = require('./PointTransaction');
+const EntityPlan = require('./EntityPlan');
+const EntityPlanRestaurant = require('./EntityPlanRestaurant');
 
 // Define associations
 // Brand - Restaurant associations
@@ -372,6 +374,31 @@ Customer.hasMany(PointTransaction, { foreignKey: 'customer_id', as: 'pointTransa
 PointTransaction.belongsTo(Order, { foreignKey: 'order_id', as: 'order' });
 Order.hasMany(PointTransaction, { foreignKey: 'order_id', as: 'pointTransactions' });
 
+// EntityPlan associations
+EntityPlan.belongsTo(Brand, { foreignKey: 'entity_id', constraints: false, as: 'brand' });
+EntityPlan.belongsTo(Foodcourt, { foreignKey: 'entity_id', constraints: false, as: 'foodcourt' });
+EntityPlan.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
+
+// EntityPlan - Restaurant (N:M through EntityPlanRestaurant)
+EntityPlan.belongsToMany(Restaurant, {
+  through: EntityPlanRestaurant,
+  foreignKey: 'entity_plan_id',
+  otherKey: 'restaurant_id',
+  as: 'restaurants'
+});
+Restaurant.belongsToMany(EntityPlan, {
+  through: EntityPlanRestaurant,
+  foreignKey: 'restaurant_id',
+  otherKey: 'entity_plan_id',
+  as: 'entityPlans'
+});
+
+// EntityPlanRestaurant direct associations
+EntityPlanRestaurant.belongsTo(EntityPlan, { foreignKey: 'entity_plan_id', as: 'plan' });
+EntityPlan.hasMany(EntityPlanRestaurant, { foreignKey: 'entity_plan_id', as: 'planRestaurants' });
+EntityPlanRestaurant.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Restaurant.hasMany(EntityPlanRestaurant, { foreignKey: 'restaurant_id', as: 'entityPlanRestaurants' });
+
 module.exports = {
   User,
   Restaurant,
@@ -425,5 +452,7 @@ module.exports = {
   ProductIngredientCategory,
   ProductRecipeIngredient,
   MembershipSettings,
-  PointTransaction
+  PointTransaction,
+  EntityPlan,
+  EntityPlanRestaurant
 };

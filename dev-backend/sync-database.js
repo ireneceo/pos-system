@@ -9,6 +9,8 @@ const Restaurant = require('./models/Restaurant');
 const SupportTicket = require('./models/SupportTicket');
 const OptionGroup = require('./models/OptionGroup');
 const Option = require('./models/Option');
+const EntityPlan = require('./models/EntityPlan');
+const EntityPlanRestaurant = require('./models/EntityPlanRestaurant');
 
 async function syncDatabase() {
   try {
@@ -17,7 +19,7 @@ async function syncDatabase() {
     console.log('✅ Database connection established successfully.');
 
     // Initialize model associations
-    const models = { User, Product, Order, Invoice, InvoiceItem, InvoiceSettings, Restaurant, SupportTicket, OptionGroup, Option };
+    const models = { User, Product, Order, Invoice, InvoiceItem, InvoiceSettings, Restaurant, SupportTicket, OptionGroup, Option, EntityPlan, EntityPlanRestaurant };
     Object.keys(models).forEach(modelName => {
       if (models[modelName].associate) {
         models[modelName].associate(models);

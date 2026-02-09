@@ -2488,7 +2488,7 @@ router.put('/update-payer/:restaurantId', authenticateToken, async (req, res) =>
   }
 });
 
-// Send invoice via email
+// Send invoice via email (uses issuer's SMTP settings)
 router.post('/:id/send-email', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -2498,7 +2498,7 @@ router.post('/:id/send-email', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Valid recipient email is required' });
     }
 
-    // Get the invoice
+    // Get the invoice with items and restaurant
     const invoice = await Invoice.findByPk(id, {
       include: [{
         model: Restaurant,
@@ -2514,27 +2514,113 @@ router.post('/:id/send-email', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Invoice not found' });
     }
 
-    // Get company settings for the invoice
-    const companySettings = await CompanySettings.findOne({ where: { id: 1 } });
-    const bankInfo = await getBankInfoByCurrency(invoice.currency || 'MYR');
+    const { sendIssuerEmail } = require('../utils/emailService');
+    const { invoiceEmail, entityPlanInvoiceEmail } = require('../utils/emailTemplates');
 
-    // For now, return a message that email sending is not configured
-    // This can be implemented later when system-level SMTP is set up
-    // TODO: Implement actual email sending with system SMTP settings
+    const siteUrl = process.env.SITE_URL || 'https://purplehere.com';
+    const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric' }) : '-';
+    const issuerType = invoice.issuer_type || 'system_admin';
+    const issuerId = invoice.issuer_id;
 
-    console.log(`📧 Invoice email request: ${invoice.invoice_number} to ${recipientEmail}`);
+    // Get issuer info for branding
+    let issuerInfo = null;
+    if (issuerType === 'brand' && issuerId) {
+      const brand = await Brand.findByPk(issuerId);
+      if (brand) {
+        issuerInfo = { name: brand.name, logoUrl: brand.logo_url, companyName: brand.company_name, color: '#635BFF' };
+      }
+    } else if (issuerType === 'foodcourt' && issuerId) {
+      const foodcourt = await Foodcourt.findByPk(issuerId);
+      if (foodcourt) {
+        issuerInfo = { name: foodcourt.name, logoUrl: foodcourt.logo_url, companyName: foodcourt.company_name, color: '#059669' };
+      }
+    }
 
-    // Placeholder response - email functionality to be implemented
+    // Get recipient name
+    let recipientName = 'Restaurant Admin';
+    if (invoice.restaurant?.manager_id) {
+      const adminUser = await User.findByPk(invoice.restaurant.manager_id);
+      if (adminUser) recipientName = adminUser.full_name || adminUser.username;
+    }
+
+    // Build email based on invoice type
+    let emailContent;
+    if (issuerType !== 'system_admin' && invoice.items && invoice.items.length > 0) {
+      // Entity plan invoice (brand/foodcourt) — use multi-item template
+      const items = invoice.items.map(item => ({
+        description: item.description,
+        calculated_amount: item.calculated_amount,
+        tax_amount: item.tax_amount,
+        total_amount: item.total_amount
+      }));
+      const subtotal = items.reduce((sum, i) => sum + parseFloat(i.calculated_amount), 0);
+      const taxTotal = items.reduce((sum, i) => sum + parseFloat(i.tax_amount), 0);
+      // Find revenue from base_amount of percentage items
+      const revenueItem = invoice.items.find(i => i.base_amount && parseFloat(i.base_amount) > 0);
+      const revenue = revenueItem ? parseFloat(revenueItem.base_amount) : undefined;
+
+      emailContent = entityPlanInvoiceEmail({
+        recipientName,
+        restaurantName: invoice.restaurant?.name || 'Restaurant',
+        invoiceNumber: invoice.invoice_number,
+        planName: invoice.category_display_name || 'Plan',
+        items,
+        subtotal,
+        taxAmount: taxTotal,
+        totalAmount: parseFloat(invoice.total_amount),
+        currency: invoice.currency || 'MYR',
+        billingPeriodStart: formatDate(invoice.billing_period_start),
+        billingPeriodEnd: formatDate(invoice.billing_period_end),
+        dueDate: formatDate(invoice.due_date),
+        revenue,
+        dashboardUrl: siteUrl + '/pos/login',
+        issuerInfo
+      });
+    } else {
+      // POS subscription invoice (system_admin) — use simple template
+      const subtotal = invoice.items?.reduce((sum, i) => sum + parseFloat(i.calculated_amount || 0), 0) || parseFloat(invoice.total_amount);
+      const taxTotal = invoice.items?.reduce((sum, i) => sum + parseFloat(i.tax_amount || 0), 0) || 0;
+
+      emailContent = invoiceEmail({
+        adminName: recipientName,
+        restaurantName: invoice.restaurant?.name || 'Restaurant',
+        invoiceNumber: invoice.invoice_number,
+        planType: invoice.category_display_name || invoice.restaurant?.plan_type || 'Subscription',
+        billingCycle: 'Monthly',
+        subtotal,
+        taxRate: invoice.items?.[0]?.tax_rate || 6,
+        taxAmount: taxTotal,
+        totalAmount: parseFloat(invoice.total_amount),
+        currency: invoice.currency || 'MYR',
+        billingPeriodStart: formatDate(invoice.billing_period_start),
+        billingPeriodEnd: formatDate(invoice.billing_period_end),
+        dueDate: formatDate(invoice.due_date),
+        dashboardUrl: siteUrl + '/pos/login',
+        issuerInfo
+      });
+    }
+
+    // Send using issuer's SMTP
+    const result = await sendIssuerEmail(issuerType, issuerId, {
+      to: recipientEmail,
+      subject: emailContent.subject,
+      html: emailContent.html,
+      text: emailContent.text
+    });
+
+    console.log(`📧 Invoice email sent: ${invoice.invoice_number} to ${recipientEmail} (${result.messageId})`);
+
     res.json({
       success: true,
-      message: `Invoice ${invoice.invoice_number} email request received for ${recipientEmail}. Email sending will be available once SMTP is configured.`,
+      message: `Invoice ${invoice.invoice_number} sent to ${recipientEmail}`,
       invoiceNumber: invoice.invoice_number,
-      recipient: recipientEmail
+      recipient: recipientEmail,
+      messageId: result.messageId
     });
 
   } catch (error) {
     console.error('Error sending invoice email:', error);
-    res.status(500).json({ error: 'Failed to send invoice email' });
+    res.status(500).json({ error: `Failed to send invoice email: ${error.message}` });
   }
 });
 

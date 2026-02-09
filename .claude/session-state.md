@@ -6,19 +6,26 @@
 - 없음
 
 ### 완료된 작업 (이번 세션)
-- 블로그 카드 썸네일 배경색: 보라색 → 연회색 3단계 그라데이션 (#F8F9FA→#E9ECEF→#DEE2E6)
-- 이메일/인보이스 시스템 현황 전체 분석 (4개 병렬 에이전트)
-- 플랫폼 아키텍처 문서화 (역할 구조, 멀티 연결, 인보이스 발행 주체, SMTP 독립)
-- Brand/Foodcourt 구독 플랜 & 이메일 시스템 5 Phase 개발 계획 수립
-- DEVELOPMENT_PLAN.md에 아키텍처 섹션 + 개발 계획 반영
-- MEMORY.md에 역할 & 엔티티 아키텍처 보강
+
+#### Phase 5 — Foodcourt 적용 (이전 세션에서 이어서 완료)
+- Foodcourt Plans API, FoodcourtPlansPage, FoodcourtSubscriptionsPage 전면 재작성
+- E2E 테스트 33/33 통과
+
+#### UI/UX 버그 수정 및 레스토랑 관리 개선
+- 레스토랑 생성 에러 메시지 `[object Object]` → 실제 검증 메시지 표시
+- 프론트엔드 비밀번호 검증 추가 (대소문자+숫자 필수)
+- Brand/Foodcourt General 사이드바 Plans/Subscriptions 네비게이션 활성화
+- Manager 모달 스크롤 패턴 Admin과 통일
+- 로그인 에러 500→401 수정
+- "Restaurant Admin (Owner)" → "Restaurant Admin" 라벨 통일
+- Edit 모달: 관리자 없을 때 "Assign Admin" 버튼 추가
+- Add/Edit/View 모달 Restaurant Name full-width 레이아웃 통일
 
 ### 다음 할 일
-- **Phase 1**: entity_plans/entity_plan_restaurants 테이블 생성 + notification_settings ENUM 확장 + emailService 리팩터링
-- **Phase 2**: Brand Plans CRUD API + Brand PlansPage 재개발
-- **Phase 3**: 매출% 계산 엔진 + invoiceScheduler 확장
-- **Phase 4**: 이메일 발송 전체 보강 (발행자별 SMTP)
-- **Phase 5**: Foodcourt 적용 (Brand 완성 후)
+- Foodcourt General 유저에 foodcourt_id 연결 + Foodcourt 데이터 생성
+- Foodcourt Plans/Subscriptions 실제 동작 테스트
+- Restaurant Owner 역할 분리 설계
+- 전체 역할별 수동 테스트
 
 ---
 

@@ -915,14 +915,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>▦</NavIcon>
                   Invoices
                 </NavItem>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
+                <NavItem to="/pos/brand/plans" active={isActive('/pos/brand/plans')} onClick={closeSidebar}>
+                  <NavIcon>☰</NavIcon>
                   Subscription Plans
-                </DisabledNavItem>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
+                </NavItem>
+                <NavItem to="/pos/brand/general/subscriptions" active={isActive('/pos/brand/general/subscriptions')} onClick={closeSidebar}>
+                  <NavIcon>◈</NavIcon>
                   Subscriptions
-                </DisabledNavItem>
+                </NavItem>
                 <NavItem to="/pos/brand/payment-settings" active={isActive('/pos/brand/payment-settings')} onClick={closeSidebar}>
                   <NavIcon>$</NavIcon>
                   Payment Settings
@@ -991,14 +991,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>▦</NavIcon>
                   Invoices
                 </NavItem>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
+                <NavItem to="/pos/foodcourt/plans" active={isActive('/pos/foodcourt/plans')} onClick={closeSidebar}>
+                  <NavIcon>☰</NavIcon>
                   Subscription Plans
-                </DisabledNavItem>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
+                </NavItem>
+                <NavItem to="/pos/foodcourt/general/subscriptions" active={isActive('/pos/foodcourt/general/subscriptions')} onClick={closeSidebar}>
+                  <NavIcon>◈</NavIcon>
                   Subscriptions
-                </DisabledNavItem>
+                </NavItem>
                 <NavItem to="/pos/foodcourt/payment-settings" active={isActive('/pos/foodcourt/payment-settings')} onClick={closeSidebar}>
                   <NavIcon>$</NavIcon>
                   Payment Settings

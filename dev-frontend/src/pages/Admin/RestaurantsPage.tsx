@@ -714,7 +714,7 @@ const RestaurantsPage: React.FC = () => {
   const [availablePlans, setAvailablePlans] = useState<any[]>([]);
   const [brands, setBrands] = useState<Array<{ id: number; name: string; code: string; currency: string }>>([]);
 
-  // Restaurant Admin (Owner) states
+  // Restaurant Admin states
   const [adminAction, setAdminAction] = useState<'create' | 'assign'>('create');
   const [newAdminData, setNewAdminData] = useState({ fullName: '', email: '', username: '', password: '', phone: '' });
   const [selectedAdmin, setSelectedAdmin] = useState<any>(null);
@@ -1247,6 +1247,10 @@ const RestaurantsPage: React.FC = () => {
           setAddModalWarning('Admin password must be at least 8 characters.');
           return;
         }
+        if (!/[a-z]/.test(newAdminData.password) || !/[A-Z]/.test(newAdminData.password) || !/[0-9]/.test(newAdminData.password)) {
+          setAddModalWarning('Admin password must contain uppercase, lowercase letters and a number.');
+          return;
+        }
       } else if (adminAction === 'assign') {
         if (!selectedAdmin) {
           setAddModalWarning('Please select an existing user as Restaurant Admin.');
@@ -1318,7 +1322,19 @@ const RestaurantsPage: React.FC = () => {
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error('❌ Failed to create restaurant:', errorData);
-        setAddModalWarning(`Error creating restaurant: ${errorData.error || 'Please try again.'}`);
+        // Handle both { error: 'string' } and { error: { message, details } } formats
+        let errorMsg = 'Please try again.';
+        if (typeof errorData.error === 'string') {
+          errorMsg = errorData.error;
+        } else if (errorData.error?.message) {
+          errorMsg = errorData.error.message;
+          if (errorData.error.details?.length) {
+            errorMsg += ': ' + errorData.error.details.map((d: any) => d.message).join(', ');
+          }
+        } else if (errorData.message) {
+          errorMsg = errorData.message;
+        }
+        setAddModalWarning(errorMsg);
       }
     } catch (error) {
       console.error('❌ Error adding restaurant:', error);
@@ -1444,7 +1460,18 @@ const RestaurantsPage: React.FC = () => {
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error('❌ Failed to update restaurant:', errorData);
-        setEditModalWarning(`Error updating restaurant: ${errorData.error || 'Please try again.'}`);
+        let errorMsg = 'Please try again.';
+        if (typeof errorData.error === 'string') {
+          errorMsg = errorData.error;
+        } else if (errorData.error?.message) {
+          errorMsg = errorData.error.message;
+          if (errorData.error.details?.length) {
+            errorMsg += ': ' + errorData.error.details.map((d: any) => d.message).join(', ');
+          }
+        } else if (errorData.message) {
+          errorMsg = errorData.message;
+        }
+        setEditModalWarning(errorMsg);
       }
     } catch (error) {
       console.error('❌ Error updating restaurant:', error);
@@ -1485,7 +1512,11 @@ const RestaurantsPage: React.FC = () => {
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error('❌ Failed to delete restaurant:', errorData);
-        setEditModalWarning(`Error deleting restaurant: ${errorData.error || 'Please try again.'}`);
+        let errorMsg = 'Please try again.';
+        if (typeof errorData.error === 'string') errorMsg = errorData.error;
+        else if (errorData.error?.message) errorMsg = errorData.error.message;
+        else if (errorData.message) errorMsg = errorData.message;
+        setEditModalWarning(`Error deleting restaurant: ${errorMsg}`);
       }
     } catch (error) {
       console.error('❌ Error deleting restaurant:', error);
@@ -1806,10 +1837,10 @@ const RestaurantsPage: React.FC = () => {
                     />
                   </FormGroup>
 
-                  {/* Restaurant Admin (Owner) Section */}
+                  {/* Restaurant Admin Section */}
                   <div style={{gridColumn: '1 / -1', marginTop: '8px', marginBottom: '4px'}}>
                     <h3 style={{margin: 0, fontSize: '16px', fontWeight: '600', color: '#0A2540', borderBottom: '2px solid #635BFF', paddingBottom: '8px'}}>
-                      Restaurant Admin (Owner) *
+                      Restaurant Admin *
                     </h3>
                     <div style={{display: 'flex', gap: '16px', marginTop: '12px'}}>
                       <label style={{
@@ -2286,7 +2317,7 @@ const RestaurantsPage: React.FC = () => {
               </ModalHeader>
               <ModalBody>
                 <FormGrid>
-                  <FormGroup>
+                  <FormGroup style={{ gridColumn: '1 / -1' }}>
                     <FormLabel>Restaurant Name *</FormLabel>
                     <FormInput
                       type="text"
@@ -2299,7 +2330,7 @@ const RestaurantsPage: React.FC = () => {
                   {/* Current Restaurant Admin */}
                   <div style={{gridColumn: '1 / -1', marginTop: '8px', marginBottom: '4px'}}>
                     <h3 style={{margin: 0, fontSize: '16px', fontWeight: '600', color: '#0A2540', borderBottom: '2px solid #635BFF', paddingBottom: '8px'}}>
-                      Restaurant Admin (Owner)
+                      Restaurant Admin
                     </h3>
                   </div>
 
@@ -2327,7 +2358,18 @@ const RestaurantsPage: React.FC = () => {
                     </div>
                   ) : (
                     <div style={{gridColumn: '1 / -1', padding: '12px 16px', background: '#FEF2F2', borderRadius: '8px', border: '1px solid #FECACA'}}>
-                      <div style={{fontSize: '13px', color: '#DC2626'}}>No Restaurant Admin assigned</div>
+                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                        <div style={{fontSize: '13px', color: '#DC2626'}}>No Restaurant Admin assigned</div>
+                        {editAdminAction === 'keep' && (
+                          <button
+                            onClick={() => setEditAdminAction('create')}
+                            style={{
+                              background: '#635BFF', border: 'none', borderRadius: '6px',
+                              padding: '6px 12px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: '#fff'
+                            }}
+                          >Assign Admin</button>
+                        )}
+                      </div>
                     </div>
                   )}
 
@@ -2673,7 +2715,7 @@ const RestaurantsPage: React.FC = () => {
               </ModalHeader>
               <ModalBody>
                 <FormGrid>
-                  <FormGroup>
+                  <FormGroup style={{ gridColumn: '1 / -1' }}>
                     <FormLabel>Restaurant Name</FormLabel>
                     <FormInput
                       type="text"
@@ -2684,7 +2726,7 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <FormLabel>Restaurant Admin (Owner)</FormLabel>
+                    <FormLabel>Restaurant Admin</FormLabel>
                     {selectedRestaurant.admin ? (
                       <div style={{padding: '10px 12px', background: '#F0EFFF', borderRadius: '8px', border: '1px solid #D4D0FF'}}>
                         <div style={{fontWeight: '600', color: '#1F2937', fontSize: '14px'}}>

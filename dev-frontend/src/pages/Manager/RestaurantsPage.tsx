@@ -292,9 +292,11 @@ const ModalOverlay = styled.div<{ show: boolean }>`
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   display: ${props => props.show ? 'flex' : 'none'};
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   z-index: 10000;
+  overflow-y: auto;
+  padding: 40px 0;
 `;
 
 const Modal = styled.div`
@@ -303,14 +305,12 @@ const Modal = styled.div`
   padding: 0;
   width: 90%;
   max-width: 900px;
-  max-height: 90vh;
-  overflow-y: auto;
+  flex-shrink: 0;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 
   @media (max-width: 768px) {
     width: 95%;
     max-width: none;
-    margin: 20px;
   }
 `;
 
@@ -898,6 +898,10 @@ const ManagerRestaurantsPage: React.FC = () => {
           alert('Admin password must be at least 8 characters.');
           return;
         }
+        if (!/[a-z]/.test(newAdminData.password) || !/[A-Z]/.test(newAdminData.password) || !/[0-9]/.test(newAdminData.password)) {
+          alert('Admin password must contain uppercase, lowercase letters and a number.');
+          return;
+        }
       } else if (adminAction === 'assign' && !selectedAdmin) {
         alert('Please select an existing user as Restaurant Admin.');
         return;
@@ -1022,9 +1026,15 @@ const ManagerRestaurantsPage: React.FC = () => {
         setAdminCandidates([]);
         setAdminSearchQuery('');
       } else {
-        const errorText = await response.text();
-        console.error('Failed to create restaurant:', errorText);
-        alert('Failed to create restaurant. Please try again.');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Failed to create restaurant:', errorData);
+        let errorMsg = 'Please try again.';
+        if (typeof errorData.error === 'string') errorMsg = errorData.error;
+        else if (errorData.error?.message) {
+          errorMsg = errorData.error.message;
+          if (errorData.error.details?.length) errorMsg += ': ' + errorData.error.details.map((d: any) => d.message).join(', ');
+        } else if (errorData.message) errorMsg = errorData.message;
+        alert(`Failed to create restaurant: ${errorMsg}`);
       }
     } catch (error) {
       console.error('Error creating restaurant:', error);
@@ -1416,10 +1426,10 @@ const ManagerRestaurantsPage: React.FC = () => {
                   />
                 </FormGroup>
 
-                {/* Restaurant Admin (Owner) Section */}
+                {/* Restaurant Admin Section */}
                 <div style={{gridColumn: '1 / -1', marginTop: '8px', marginBottom: '4px'}}>
                   <h3 style={{margin: 0, fontSize: '16px', fontWeight: '600', color: '#0A2540', borderBottom: '2px solid #635BFF', paddingBottom: '8px'}}>
-                    Restaurant Admin (Owner) *
+                    Restaurant Admin *
                   </h3>
                   <div style={{display: 'flex', gap: '16px', marginTop: '12px'}}>
                     <label style={{

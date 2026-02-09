@@ -317,7 +317,7 @@ const NotificationSettingsPage: React.FC = () => {
   const [resultMessage, setResultMessage] = useState({ success: false, text: '' });
 
   // 역할에 따라 entityType과 entityId 결정
-  const getEntityInfo = (): { entityType: 'restaurant' | 'manager' | 'admin'; entityId: number } => {
+  const getEntityInfo = (): { entityType: 'restaurant' | 'manager' | 'admin' | 'brand' | 'foodcourt'; entityId: number } => {
     // URL에서 restaurantId가 있으면 우선 사용
     if (urlRestaurantId) {
       return {
@@ -337,10 +337,15 @@ const NotificationSettingsPage: React.FC = () => {
         entityType: 'restaurant' as const,
         entityId: Number(user.restaurantId) || 1
       };
-    } else if (user.role?.includes('Manager') || user.role?.includes('General')) {
+    } else if (user.role === 'Brand General' || user.role === 'Brand Manager') {
       return {
-        entityType: 'manager' as const,
-        entityId: Number(user.id) || 1
+        entityType: 'brand' as const,
+        entityId: Number(user.brand_id) || 1
+      };
+    } else if (user.role === 'Foodcourt General' || user.role === 'Foodcourt Manager') {
+      return {
+        entityType: 'foodcourt' as const,
+        entityId: Number(user.foodcourt_id) || 1
       };
     } else if (user.role === 'System Admin') {
       return {

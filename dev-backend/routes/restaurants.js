@@ -516,11 +516,38 @@ router.post('/', authenticateToken, validateRestaurantCreation, async (req, res)
 
     await transaction.commit();
 
-    // Send Welcome Email (non-blocking)
+    // Send Welcome Email (non-blocking, uses creator's SMTP)
     if (adminUser && (adminAction === 'create' || adminAction === 'assign')) {
       try {
-        const { sendPlatformEmail } = require('../utils/emailService');
+        const { sendIssuerEmail } = require('../utils/emailService');
         const { welcomeEmail } = require('../utils/emailTemplates');
+
+        // Determine issuer based on who created the restaurant
+        let issuerType = 'system_admin';
+        let issuerId = null;
+        let issuerInfo = null;
+
+        if (req.user.role === 'Brand General' || req.user.role === 'Brand Manager') {
+          issuerType = 'brand';
+          issuerId = req.user.brand_id || restaurant.brand_id;
+          if (issuerId) {
+            const Brand = require('../models/Brand');
+            const brand = await Brand.findByPk(issuerId);
+            if (brand) {
+              issuerInfo = { name: brand.name, logoUrl: brand.logo_url, companyName: brand.company_name, color: '#635BFF' };
+            }
+          }
+        } else if (req.user.role === 'Foodcourt General' || req.user.role === 'Foodcourt Manager') {
+          issuerType = 'foodcourt';
+          issuerId = req.user.foodcourt_id || restaurant.foodcourt_id;
+          if (issuerId) {
+            const Foodcourt = require('../models/Foodcourt');
+            const foodcourt = await Foodcourt.findByPk(issuerId);
+            if (foodcourt) {
+              issuerInfo = { name: foodcourt.name, logoUrl: foodcourt.logo_url, companyName: foodcourt.company_name, color: '#059669' };
+            }
+          }
+        }
 
         const siteUrl = process.env.SITE_URL || 'https://purplehere.com';
         const emailData = {
@@ -530,12 +557,13 @@ router.post('/', authenticateToken, validateRestaurantCreation, async (req, res)
           username: adminUser.username,
           temporaryPassword: adminAction === 'create' ? req.body.adminPassword : null,
           planType: restaurant.plan_type || 'Basic Plan',
-          dashboardUrl: siteUrl + '/pos/login'
+          dashboardUrl: siteUrl + '/pos/login',
+          issuerInfo
         };
 
         const { subject, html, text } = welcomeEmail(emailData);
-        sendPlatformEmail({ to: adminUser.email, subject, html, text })
-          .then(result => console.log(`[Email] Welcome email sent to ${adminUser.email} (${result.messageId})`))
+        sendIssuerEmail(issuerType, issuerId, { to: adminUser.email, subject, html, text })
+          .then(result => console.log(`[Email] Welcome email sent to ${adminUser.email} via ${issuerType} SMTP (${result.messageId})`))
           .catch(err => console.error('[Email] Welcome email failed:', err.message));
       } catch (emailError) {
         console.error('[Email] Welcome email setup failed:', emailError.message);
@@ -998,9 +1026,9 @@ router.post('/subscriptions', async (req, res) => {
       total_amount: (billingCycle === 'annual' ? fees.annual : fees.monthly) * 1.06
     });
 
-    // Send Invoice Email (non-blocking)
+    // Send Invoice Email (non-blocking, system_admin SMTP for POS subscriptions)
     try {
-      const { sendPlatformEmail } = require('../utils/emailService');
+      const { sendIssuerEmail } = require('../utils/emailService');
       const { invoiceEmail } = require('../utils/emailTemplates');
 
       const adminUser = restaurant.manager_id ? await User.findByPk(restaurant.manager_id) : null;
@@ -1031,7 +1059,7 @@ router.post('/subscriptions', async (req, res) => {
         };
 
         const { subject, html, text } = invoiceEmail(emailData);
-        sendPlatformEmail({ to: adminUser.email, subject, html, text })
+        sendIssuerEmail('system_admin', null, { to: adminUser.email, subject, html, text })
           .then(result => console.log(`[Email] Invoice email sent to ${adminUser.email} for ${invoice.invoice_number} (${result.messageId})`))
           .catch(err => console.error('[Email] Invoice email failed:', err.message));
       }

@@ -9,7 +9,7 @@ module.exports = {
         autoIncrement: true
       },
       entity_type: {
-        type: Sequelize.ENUM('restaurant', 'manager', 'admin'),
+        type: Sequelize.ENUM('restaurant', 'manager', 'admin', 'brand', 'foodcourt'),
         allowNull: false,
         comment: '설정을 소유한 엔티티 타입'
       },
