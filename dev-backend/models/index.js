@@ -71,9 +71,9 @@ User.hasMany(Foodcourt, { foreignKey: 'owner_id', as: 'foodcourts' });
 Foodcourt.hasMany(Restaurant, { foreignKey: 'foodcourt_id', as: 'restaurants' });
 Restaurant.belongsTo(Foodcourt, { foreignKey: 'foodcourt_id', as: 'foodcourt' });
 
-// Keep old single manager relationship for backward compatibility
-Restaurant.belongsTo(User, { foreignKey: 'manager_id', as: 'manager' });
-User.hasMany(Restaurant, { foreignKey: 'manager_id', as: 'managedRestaurants' });
+// Restaurant Admin (1:1 relationship)
+Restaurant.belongsTo(User, { foreignKey: 'admin_id', as: 'admin' });
+User.hasMany(Restaurant, { foreignKey: 'admin_id', as: 'adminRestaurants' });
 
 // Add many-to-many relationship for multiple managers
 Restaurant.belongsToMany(User, {

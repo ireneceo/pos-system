@@ -26,49 +26,49 @@ const TEST_ACCOUNTS = [
   {
     role: 'System Admin',
     email: 'irene@irenewp.com',
-    password: 'admin123',
+    password: 'Admin1234',
     description: 'System Administrator (All Permissions)',
     color: '#DC2626'
   },
   {
     role: 'Foodcourt General',
     email: 'foodcourt_general@orderhere.center',
-    password: 'test123',
+    password: 'Test1234',
     description: 'Foodcourt General Manager (Overall Foodcourt Management)',
     color: '#7C3AED'
   },
   {
     role: 'Brand General',
     email: 'brand_general@orderhere.center',
-    password: 'test123',
+    password: 'Test1234',
     description: 'Brand General Manager (Multi-Brand Management)',
     color: '#059669'
   },
   {
     role: 'Foodcourt Manager',
     email: 'foodcourt_manager1@orderhere.center',
-    password: 'test123',
+    password: 'Test1234',
     description: 'Foodcourt Manager (Specific Foodcourt Management)',
     color: '#2563EB'
   },
   {
     role: 'Brand Manager',
     email: 'brand_manager1@orderhere.center',
-    password: 'test123',
+    password: 'Test1234',
     description: 'Brand Manager (Specific Brand Management)',
     color: '#EA580C'
   },
   {
     role: 'Restaurant Admin',
     email: 'admin@kdine.com',
-    password: 'restaurant123',
+    password: 'Restaurant1',
     description: 'K-DINE Restaurant Admin (300+ orders for testing)',
     color: '#0891B2'
   },
   {
     role: 'Staff',
     email: 'staff@kdine.com',
-    password: 'staff123',
+    password: 'Staff1234',
     description: 'Test Restaurant Updated - Staff (INACTIVE)',
     color: '#65A30D'
   }

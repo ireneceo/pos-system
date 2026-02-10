@@ -461,8 +461,8 @@ const SubscriptionsPage: React.FC = () => {
           id: `sub-${restaurant.id}`,
           restaurantId: restaurant.id?.toString() || `rest-${index}`,
           restaurantName: restaurant.name || 'Restaurant Name',
-          managerId: (restaurant.managerId || restaurant.manager_id)?.toString() || '',
-          managerName: restaurant.managerName || restaurant.manager_name || 'No Manager Assigned',
+          managerId: (restaurant.managerId || restaurant.admin_id)?.toString() || '',
+          managerName: restaurant.managerName || restaurant.admin_name || 'No Manager Assigned',
           planType: planType as 'basic' | 'professional' | 'enterprise',
           status: subscriptionStatus,
           startDate: restaurant.subscription_start ? new Date(restaurant.subscription_start).toISOString().split('T')[0] : '2024-01-01',
@@ -470,8 +470,8 @@ const SubscriptionsPage: React.FC = () => {
           monthlyFee: parseFloat(restaurant.plan_amount) || 29,
           billingCycle: 'monthly' as 'monthly' | 'annual',
           paymentModel: 'manager' as 'manager' | 'restaurant',
-          payerId: (restaurant.managerId || restaurant.manager_id)?.toString() || '',
-          payerName: restaurant.managerName || restaurant.manager_name || 'No Manager',
+          payerId: (restaurant.managerId || restaurant.admin_id)?.toString() || '',
+          payerName: restaurant.managerName || restaurant.admin_name || 'No Manager',
           menuItemLimit: planLimits[planType] || 50,
           currentMenuItems: Math.floor(Math.random() * (planLimits[planType] > 0 ? planLimits[planType] * 0.7 : 150)) + 10,
           features: [],
@@ -641,12 +641,12 @@ const SubscriptionsPage: React.FC = () => {
       });
     } else {
       const restaurant = data;
-      const manager = availableManagers.find((m: any) => m.id?.toString() === restaurant.manager_id?.toString());
+      const manager = availableManagers.find((m: any) => m.id?.toString() === restaurant.admin_id?.toString());
       setNewSubscription({
         ...newSubscription,
         restaurantId: restaurant.id?.toString() || '',
         restaurantName: restaurant.name || '',
-        managerId: restaurant.manager_id?.toString() || '',
+        managerId: restaurant.admin_id?.toString() || '',
         managerName: manager ? (manager.fullName || manager.full_name || manager.username) : 'No Manager Assigned',
         email: restaurant.email || '',
         phone: restaurant.phone || '',
@@ -671,8 +671,8 @@ const SubscriptionsPage: React.FC = () => {
       setNewSubscription({
         ...newSubscription,
         restaurantId: restaurantId,
-        managerId: selectedRestaurant.manager_id?.toString() || '',
-        managerName: selectedRestaurant.manager_name || selectedRestaurant.managerName || 'No Manager Assigned',
+        managerId: selectedRestaurant.admin_id?.toString() || '',
+        managerName: selectedRestaurant.admin_name || selectedRestaurant.managerName || 'No Manager Assigned',
         email: selectedRestaurant.email || '',
         phone: selectedRestaurant.phone || '',
         address: selectedRestaurant.address || ''
@@ -776,7 +776,7 @@ const SubscriptionsPage: React.FC = () => {
       const invoiceData = {
         restaurantId: selectedTarget.type === 'restaurant' ? selectedTarget.data.id : null,
         restaurantName: restaurantName,
-        managerId: selectedTarget.type === 'manager' ? selectedTarget.data.id : (selectedTarget.data.manager_id || null),
+        managerId: selectedTarget.type === 'manager' ? selectedTarget.data.id : (selectedTarget.data.admin_id || null),
         managerName: selectedTarget.type === 'manager'
           ? (selectedTarget.data.fullName || selectedTarget.data.full_name || selectedTarget.data.username)
           : newSubscription.managerName,
@@ -1299,7 +1299,7 @@ const SubscriptionsPage: React.FC = () => {
                                   RESTAURANTS
                                 </div>
                                 {searchResults.restaurants.map(restaurant => {
-                                  const manager = availableManagers.find((m: any) => m.id?.toString() === restaurant.manager_id?.toString());
+                                  const manager = availableManagers.find((m: any) => m.id?.toString() === restaurant.admin_id?.toString());
                                   return (
                                     <div
                                       key={restaurant.id}

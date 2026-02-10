@@ -13,6 +13,9 @@ interface DashboardData {
     name: string;
     planType: string;
     status: string;
+    subscriptionStart?: string;
+    subscriptionEnd?: string;
+    trialEndDate?: string;
   };
   today: {
     orders: number;
@@ -93,10 +96,31 @@ const Title = styled.h1`
   }
 `;
 
-const Subtitle = styled.p`
+const Subtitle = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
   font-size: 14px;
   color: #6B7280;
   margin: 8px 0 0 16px;
+`;
+
+const SubscriptionBadge = styled.span<{ variant: 'trial' | 'active' | 'expiring' | 'expired' }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  ${({ variant }) => {
+    switch (variant) {
+      case 'trial': return 'background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D;';
+      case 'active': return 'background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0;';
+      case 'expiring': return 'background: #FFF7ED; color: #9A3412; border: 1px solid #FDBA74;';
+      case 'expired': return 'background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA;';
+    }
+  }}
 `;
 
 const MainGrid = styled.div`
@@ -562,7 +586,28 @@ const RestaurantDashboard: React.FC = () => {
       <Container>
         <Header>
           <Title>Restaurant Dashboard</Title>
-          <Subtitle>{restaurant.name} • {restaurant.planType}</Subtitle>
+          <Subtitle>
+            <span>{restaurant.name} • {restaurant.planType}</span>
+            {(() => {
+              const endDate = restaurant.subscriptionEnd ? new Date(restaurant.subscriptionEnd) : null;
+              const now = new Date();
+              if (restaurant.status === 'trial') {
+                const trialEnd = restaurant.trialEndDate ? new Date(restaurant.trialEndDate) : endDate;
+                if (trialEnd) {
+                  const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                  return <SubscriptionBadge variant="trial">Trial • {daysLeft > 0 ? `${daysLeft} days left` : 'Expired'}</SubscriptionBadge>;
+                }
+                return <SubscriptionBadge variant="trial">Trial</SubscriptionBadge>;
+              }
+              if (endDate) {
+                const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                if (daysLeft <= 0) return <SubscriptionBadge variant="expired">Subscription expired</SubscriptionBadge>;
+                if (daysLeft <= 30) return <SubscriptionBadge variant="expiring">{daysLeft} days left</SubscriptionBadge>;
+                return <SubscriptionBadge variant="active">{daysLeft} days left</SubscriptionBadge>;
+              }
+              return null;
+            })()}
+          </Subtitle>
         </Header>
 
         <Content>

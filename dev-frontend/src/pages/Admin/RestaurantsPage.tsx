@@ -63,6 +63,7 @@ interface Restaurant {
   subscriptionStart?: string;
   subscriptionEnd?: string;
   brand_id?: number;
+  foodcourt_id?: number;
 }
 
 // Common components now imported from ../../components/UI
@@ -911,20 +912,26 @@ const RestaurantsPage: React.FC = () => {
           return {
             id: restaurant.id?.toString() || `rest-${index}`,
             name: restaurant.name || 'Restaurant Name',
-            managerId: restaurant.managerId || '', // Use already transformed managerId from backend
-            managerName: restaurant.managerName || 'No Manager Assigned', // Use already transformed managerName from backend
-            managers: restaurant.managers || [], // Include managers array from backend
-            location: restaurant.location || 'Location not specified', // Use location field from backend
-            cuisine: restaurant.cuisine || 'Various', // Use cuisine field from backend
+            admin: restaurant.admin || null,
+            managerId: restaurant.managerId || '',
+            managerName: restaurant.managerName || 'No Manager Assigned',
+            managers: restaurant.managers || [],
+            location: restaurant.location || 'Location not specified',
+            cuisine: restaurant.cuisine || 'Various',
             status: restaurant.status || 'active',
-            todaySales: restaurant.todaySales || 0, // Use actual data from backend
-            todayOrders: restaurant.todayOrders || 0, // Use actual data from backend
-            staffCount: restaurant.staffCount || 0, // Use actual data from backend
-            rating: restaurant.rating || 4.5, // Use actual data from backend
+            todaySales: restaurant.todaySales || 0,
+            todayOrders: restaurant.todayOrders || 0,
+            staffCount: restaurant.staffCount || 0,
+            rating: restaurant.rating || 4.5,
             createdAt: restaurant.createdAt ? new Date(restaurant.createdAt).toISOString().split('T')[0] : '2024-01-01',
-            lastOrder: restaurant.lastOrder || 'Never', // Use actual data from backend
-            brand_id: restaurant.brand_id || null, // Include brand_id from backend
-            paymentModel: restaurant.payment_model || 'restaurant', // payment_model from backend
+            lastOrder: restaurant.lastOrder || 'Never',
+            email: restaurant.email || '',
+            phone: restaurant.phone || '',
+            address: restaurant.address || '',
+            country: restaurant.country || '',
+            brand_id: restaurant.brand_id || null,
+            foodcourt_id: restaurant.foodcourt_id || null,
+            paymentModel: restaurant.payment_model || 'restaurant',
             subscriptionStart: restaurant.subscriptionStart || null,
             subscriptionEnd: restaurant.subscriptionEnd || null,
             planType: restaurant.planType || 'Basic Plan',
@@ -2590,21 +2597,6 @@ const RestaurantsPage: React.FC = () => {
                     </FormSelect>
                   </FormGroup>
 
-                  <FormGroup>
-                    <FormLabel>Status *</FormLabel>
-                    <FormSelect
-                      value={editingRestaurant.status}
-                      onChange={(e) => setEditingRestaurant({...editingRestaurant, status: e.target.value as any})}
-                    >
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                      <option value="trial">Trial</option>
-                      <option value="expired">Expired</option>
-                      <option value="suspended">Suspended</option>
-                      <option value="cancelled">Cancelled</option>
-                    </FormSelect>
-                  </FormGroup>
-
                   {/* Subscription Settings 섹션 */}
                   <div style={{gridColumn: '1 / -1', marginTop: '20px', marginBottom: '10px'}}>
                     <h3 style={{margin: 0, fontSize: '18px', fontWeight: '600', color: '#0A2540', borderBottom: '2px solid #635BFF', paddingBottom: '8px'}}>
@@ -2799,7 +2791,7 @@ const RestaurantsPage: React.FC = () => {
                     <FormLabel>Status</FormLabel>
                     <FormInput
                       type="text"
-                      value={selectedRestaurant.status === 'active' ? 'Active' : 'Inactive'}
+                      value={selectedRestaurant.status ? selectedRestaurant.status.charAt(0).toUpperCase() + selectedRestaurant.status.slice(1) : 'Unknown'}
                       disabled
                       style={{ backgroundColor: '#F8FAFC', color: '#6B7280' }}
                     />

@@ -16,8 +16,8 @@ async function addHistoricalData() {
       {
         id: 5,
         name: 'Thai Delights',
-        manager_id: 2,
-        manager_name: 'Somchai Patel',
+        admin_id: 2,
+        admin_name: 'Somchai Patel',
         email: 'admin@thaidelights.com',
         phone: '+60123456793',
         address: 'Chinatown, Kuala Lumpur',
@@ -31,8 +31,8 @@ async function addHistoricalData() {
       {
         id: 6,
         name: 'Indian Curry House',
-        manager_id: 2,
-        manager_name: 'Raj Patel',
+        admin_id: 2,
+        admin_name: 'Raj Patel',
         email: 'admin@curryhouse.com',
         phone: '+60123456794',
         address: 'Little India, Kuala Lumpur',

@@ -476,17 +476,20 @@ const ManagerStaffManagementPage: React.FC = () => {
       try {
         const managerId = user?.managerId || user?.id || '2';
         console.log('👥 Fetching staff for manager:', managerId);
-        
+
+        const token = localStorage.getItem('auth_token');
+        const headers = { 'Authorization': `Bearer ${token}` };
+
         // Fetch all users/staff
-        const usersResponse = await fetch('/api/users');
+        const usersResponse = await fetch('/api/users', { headers });
         console.log('📡 Users API response status:', usersResponse.status);
-        
+
         if (usersResponse.ok) {
           const usersData = await usersResponse.json();
           console.log('👥 Users data from API:', usersData);
-          
+
           // Also fetch restaurants to get restaurant names for staff
-          const restaurantsResponse = await fetch(`/api/restaurants/manager/${managerId}`);
+          const restaurantsResponse = await fetch(`/api/restaurants/manager/${managerId}`, { headers });
           const restaurantsData = restaurantsResponse.ok ? await restaurantsResponse.json() : [];
           console.log('🏪 Restaurants data for staff mapping:', restaurantsData);
           
@@ -669,10 +672,12 @@ const ManagerStaffManagementPage: React.FC = () => {
 
       console.log('🔄 Creating staff user:', staffUserData);
       
+      const createToken = localStorage.getItem('auth_token');
       const response = await fetch('/api/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${createToken}`
         },
         body: JSON.stringify(staffUserData)
       });
@@ -680,12 +685,16 @@ const ManagerStaffManagementPage: React.FC = () => {
       if (response.ok) {
         const result = await response.json();
         console.log('✅ Staff created successfully:', result);
-        
+
         // Refresh staff list
-        const usersResponse = await fetch('/api/users');
+        const usersResponse = await fetch('/api/users', {
+          headers: { 'Authorization': `Bearer ${createToken}` }
+        });
         if (usersResponse.ok) {
           const usersData = await usersResponse.json();
-          const restaurantsResponse = await fetch(`/api/restaurants/manager/${managerId}`);
+          const restaurantsResponse = await fetch(`/api/restaurants/manager/${managerId}`, {
+            headers: { 'Authorization': `Bearer ${createToken}` }
+          });
           const restaurantsData = restaurantsResponse.ok ? await restaurantsResponse.json() : [];
           
           const restaurantMap: Record<number, string> = {};
@@ -762,10 +771,12 @@ const ManagerStaffManagementPage: React.FC = () => {
     try {
       console.log(`🔄 Promoting ${staff.name} to Restaurant Admin...`);
       
+      const promoteToken = localStorage.getItem('auth_token');
       const response = await fetch(`/api/users/${staff.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${promoteToken}`
         },
         body: JSON.stringify({
           role: 'Restaurant Admin'
@@ -775,13 +786,17 @@ const ManagerStaffManagementPage: React.FC = () => {
       if (response.ok) {
         const result = await response.json();
         console.log('✅ Staff promoted successfully:', result);
-        
+
         // Refresh staff list
         const managerId = user?.managerId || user?.id || '2';
-        const usersResponse = await fetch('/api/users');
+        const usersResponse = await fetch('/api/users', {
+          headers: { 'Authorization': `Bearer ${promoteToken}` }
+        });
         if (usersResponse.ok) {
           const usersData = await usersResponse.json();
-          const restaurantsResponse = await fetch(`/api/restaurants/manager/${managerId}`);
+          const restaurantsResponse = await fetch(`/api/restaurants/manager/${managerId}`, {
+            headers: { 'Authorization': `Bearer ${promoteToken}` }
+          });
           const restaurantsData = restaurantsResponse.ok ? await restaurantsResponse.json() : [];
           
           const restaurantMap: Record<number, string> = {};

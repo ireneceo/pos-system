@@ -87,8 +87,8 @@ async function syncDatabase() {
       // Create sample restaurants
       await Restaurant.create({
         name: 'Seoul BBQ House',
-        manager_id: manager1.id,
-        manager_name: manager1.full_name,
+        admin_id: manager1.id,
+        admin_name: manager1.full_name,
         email: 'seoulbbq@example.com',
         phone: '02-1234-5678',
         address: '789 Gangnam-gu, Seoul',
@@ -99,8 +99,8 @@ async function syncDatabase() {
       
       await Restaurant.create({
         name: 'Downtown Pizza',
-        manager_id: manager1.id,
-        manager_name: manager1.full_name,
+        admin_id: manager1.id,
+        admin_name: manager1.full_name,
         email: 'downtown@example.com',
         phone: '02-2345-6789',
         address: '123 Jung-gu, Seoul',
@@ -111,8 +111,8 @@ async function syncDatabase() {
       
       await Restaurant.create({
         name: 'Sunset Cafe',
-        manager_id: manager2.id,
-        manager_name: manager2.full_name,
+        admin_id: manager2.id,
+        admin_name: manager2.full_name,
         email: 'sunset@example.com',
         phone: '02-3456-7890',
         address: '456 Mapo-gu, Seoul',
@@ -123,8 +123,8 @@ async function syncDatabase() {
       
       await Restaurant.create({
         name: 'Fresh Sushi',
-        manager_id: manager2.id,
-        manager_name: manager2.full_name,
+        admin_id: manager2.id,
+        admin_name: manager2.full_name,
         email: 'sushi@example.com',
         phone: '02-4567-8901',
         address: '789 Songpa-gu, Seoul',

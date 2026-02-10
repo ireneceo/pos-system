@@ -289,35 +289,43 @@ const DashboardContent: React.FC = () => {
   React.useEffect(() => {
     const fetchStats = async () => {
       try {
+        const token = localStorage.getItem('auth_token');
+        const headers = { 'Authorization': `Bearer ${token}` };
+
         // Fetch managers
-        const managersResponse = await fetch('/api/users?role=Manager');
+        const managersResponse = await fetch('/api/users?role=Manager', { headers });
         const managersData = await managersResponse.json();
 
         // Fetch restaurants
-        const restaurantsResponse = await fetch('/api/restaurants');
+        const restaurantsResponse = await fetch('/api/restaurants', { headers });
         const restaurantsData = await restaurantsResponse.json();
 
         // Fetch staff
-        const staffResponse = await fetch('/api/users?role=Staff');
+        const staffResponse = await fetch('/api/users?role=Staff', { headers });
         const staffData = await staffResponse.json();
 
         // Fetch subscriptions
-        const subscriptionsResponse = await fetch('/api/subscriptions');
-        const subscriptionsData = await subscriptionsResponse.json();
-        const subscriptions = subscriptionsData.data || subscriptionsData || [];
+        let subscriptions: any[] = [];
+        try {
+          const subscriptionsResponse = await fetch('/api/subscriptions', { headers });
+          if (subscriptionsResponse.ok) {
+            const subscriptionsData = await subscriptionsResponse.json();
+            subscriptions = subscriptionsData.data || subscriptionsData || [];
+          }
+        } catch { /* graceful fallback */ }
 
         // Fetch invoices
-        const invoicesResponse = await fetch('/api/invoices');
+        const invoicesResponse = await fetch('/api/invoices', { headers });
         const invoicesData = await invoicesResponse.json();
         const invoices = invoicesData.data || invoicesData || [];
 
         // Fetch orders
-        const ordersResponse = await fetch('/api/orders');
+        const ordersResponse = await fetch('/api/orders', { headers });
         const ordersData = await ordersResponse.json();
         const orders = ordersData.data || ordersData;
 
         // Fetch support tickets from API
-        const ticketsResponse = await fetch('/api/support-tickets');
+        const ticketsResponse = await fetch('/api/support-tickets', { headers });
         const ticketsResult = ticketsResponse.ok ? await ticketsResponse.json() : { data: [] };
         const tickets = ticketsResult.data || ticketsResult || [];
 

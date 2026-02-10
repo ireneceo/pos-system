@@ -101,7 +101,7 @@ const checkRestaurantAccess = async (req, res, next) => {
       }
 
       const hasAccess = restaurant.managers && restaurant.managers.length > 0;
-      if (!hasAccess && restaurant.manager_id !== req.user.id) {
+      if (!hasAccess && restaurant.admin_id !== req.user.id) {
         return res.status(403).json({ error: 'Access denied to this restaurant' });
       }
 

@@ -561,7 +561,10 @@ const SystemInquiryPage: React.FC = () => {
     // Fetch all users for user search dropdown
     const fetchUsers = async () => {
       try {
-        const response = await fetch('/api/users');
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch('/api/users', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         if (response.ok) {
           const result = await response.json();
           const usersArray = result.data || result;

@@ -373,7 +373,9 @@ const FoodcourtGeneralDashboard: React.FC = () => {
         console.log('🔄 Starting foodcourt data fetch...');
 
         // Fetch foodcourt managers
-        const usersResponse = await fetch('/api/users?role=Foodcourt Manager');
+        const token = localStorage.getItem('auth_token');
+        const authHeaders = { 'Authorization': `Bearer ${token}` };
+        const usersResponse = await fetch('/api/users?role=Foodcourt Manager', { headers: authHeaders });
         if (usersResponse.ok) {
           const usersData = await usersResponse.json();
           const managerUsers = usersData.data || usersData;
@@ -494,7 +496,10 @@ const FoodcourtGeneralDashboard: React.FC = () => {
       if (response.ok) {
         setShowManagerModal(false);
         // Refresh managers list
-        const usersResponse = await fetch('/api/users?role=Foodcourt Manager');
+        const refreshToken = localStorage.getItem('auth_token');
+        const usersResponse = await fetch('/api/users?role=Foodcourt Manager', {
+          headers: { 'Authorization': `Bearer ${refreshToken}` }
+        });
         if (usersResponse.ok) {
           const usersData = await usersResponse.json();
           const managerUsers = usersData.data || usersData;
@@ -528,8 +533,10 @@ const FoodcourtGeneralDashboard: React.FC = () => {
     if (!selectedManager) return;
 
     try {
+      const deleteToken = localStorage.getItem('auth_token');
       const response = await fetch(`/api/users/${selectedManager.id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${deleteToken}` }
       });
 
       if (response.ok) {

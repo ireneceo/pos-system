@@ -73,7 +73,7 @@ router.get('/', optionalAuth, async (req, res) => {
       include: [
         {
           model: User,
-          as: 'manager',
+          as: 'admin',
           attributes: ['id', 'full_name', 'username', 'email', 'phone', 'role']
         },
         managersInclude,
@@ -90,8 +90,8 @@ router.get('/', optionalAuth, async (req, res) => {
     const transformedRestaurants = restaurants.map(restaurant => {
       const restaurantData = restaurant.toJSON();
 
-      // Restaurant Admin (Owner) - via manager_id (1:1)
-      const adminData = restaurantData.manager || null;
+      // Restaurant Admin (Owner) - via admin_id (1:1)
+      const adminData = restaurantData.admin || null;
 
       // Oversight managers (Brand/Foodcourt) - via RestaurantManager (N:M)
       const managers = (restaurantData.managers || []).filter(m =>
@@ -110,9 +110,9 @@ router.get('/', optionalAuth, async (req, res) => {
           phone: adminData.phone || '',
           role: adminData.role
         } : null,
-        // 하위 호환: managerId/managerName 유지
-        managerId: restaurantData.manager_id ? restaurantData.manager_id.toString() : (primaryManager ? primaryManager.id.toString() : ''),
-        managerName: restaurantData.manager_name || (adminData ? adminData.full_name || adminData.username : (primaryManager ? primaryManager.full_name || primaryManager.username : 'Unassigned')),
+        // 하위 호환: managerId/managerName 유지 (프론트엔드 호환)
+        managerId: restaurantData.admin_id ? restaurantData.admin_id.toString() : (primaryManager ? primaryManager.id.toString() : ''),
+        managerName: restaurantData.admin_name || (adminData ? adminData.full_name || adminData.username : (primaryManager ? primaryManager.full_name || primaryManager.username : 'Unassigned')),
         // 감독 매니저 (Brand/Foodcourt만)
         managers: managers.map(m => ({
           id: m.id.toString(),
@@ -131,7 +131,7 @@ router.get('/', optionalAuth, async (req, res) => {
         } : null,
         location: restaurantData.address || '',
         cuisine: restaurantData.cuisine || 'Various',
-        status: restaurantData.status === 'active' ? 'active' : 'inactive',
+        status: restaurantData.status || 'inactive',
         todaySales: 0, // Would need to calculate from orders
         todayOrders: 0, // Would need to calculate from orders
         staffCount: 0, // Would need to count from user assignments
@@ -273,7 +273,7 @@ router.get('/:id', async (req, res) => {
       include: [
         {
           model: User,
-          as: 'manager',
+          as: 'admin',
           attributes: ['id', 'full_name', 'username', 'email', 'role', 'phone']
         },
         {
@@ -295,7 +295,7 @@ router.get('/:id', async (req, res) => {
     }
 
     const restaurantData = restaurant.toJSON();
-    const adminData = restaurantData.manager || null;
+    const adminData = restaurantData.admin || null;
     const oversightManagers = (restaurantData.managers || []).filter(m =>
       m.role !== 'Restaurant Admin' && m.role !== 'Staff'
     );
@@ -460,8 +460,8 @@ router.post('/', authenticateToken, validateRestaurantCreation, async (req, res)
     // Map frontend fields to database fields
     const restaurantData = {
       name: req.body.name,
-      manager_id: adminUser ? adminUser.id : (req.body.managerId || null),
-      manager_name: adminUser ? (adminUser.full_name || adminUser.username) : null,
+      admin_id: adminUser ? adminUser.id : (req.body.managerId || null),
+      admin_name: adminUser ? (adminUser.full_name || adminUser.username) : null,
       email: req.body.email,
       phone: req.body.phone,
       address: req.body.address,
@@ -473,7 +473,7 @@ router.post('/', authenticateToken, validateRestaurantCreation, async (req, res)
       tax_id: req.body.tax_id || null,
       plan_type: req.body.planType || 'Basic Plan',
       plan_amount: parseFloat(req.body.planAmount) || (planSnapshot ? planSnapshot.base_price_monthly : 29.00),
-      status: req.body.status === 'active' ? 'active' : 'inactive',
+      status: ['active', 'inactive', 'trial', 'overdue', 'suspended', 'expired', 'cancelled'].includes(req.body.status) ? req.body.status : 'active',
       subscription_start: req.body.subscriptionStart ? new Date(req.body.subscriptionStart) : new Date(),
       subscription_end: req.body.subscriptionEnd ? new Date(req.body.subscriptionEnd) : null,
       subscription_snapshot: planSnapshot,
@@ -483,11 +483,11 @@ router.post('/', authenticateToken, validateRestaurantCreation, async (req, res)
       ...planLimits
     };
 
-    // 하위 호환: adminAction 없이 managerId만 전송된 경우 manager_name 조회
-    if (!adminUser && restaurantData.manager_id) {
-      const manager = await User.findByPk(restaurantData.manager_id);
-      if (manager) {
-        restaurantData.manager_name = manager.full_name || manager.username;
+    // 하위 호환: adminAction 없이 managerId만 전송된 경우 admin_name 조회
+    if (!adminUser && restaurantData.admin_id) {
+      const adminLookup = await User.findByPk(restaurantData.admin_id);
+      if (adminLookup) {
+        restaurantData.admin_name = adminLookup.full_name || adminLookup.username;
       }
     }
 
@@ -623,7 +623,7 @@ router.put('/:id', authenticateToken, validateRestaurantCreation, async (req, re
 
     // Basic info fields
     if (req.body.name !== undefined) updateData.name = req.body.name;
-    if (req.body.managerId !== undefined) updateData.manager_id = req.body.managerId ? parseInt(req.body.managerId) : null;
+    if (req.body.managerId !== undefined) updateData.admin_id = req.body.managerId ? parseInt(req.body.managerId) : null;
     if (req.body.email !== undefined) updateData.email = req.body.email;
     if (req.body.phone !== undefined) updateData.phone = req.body.phone;
     if (req.body.location !== undefined || req.body.address !== undefined) {
@@ -736,17 +736,17 @@ router.put('/:id', authenticateToken, validateRestaurantCreation, async (req, re
         }
 
         // 기존 admin 해제
-        if (restaurant.manager_id && (!newAdminUser || restaurant.manager_id !== newAdminUser.id)) {
-          const oldAdmin = await User.findByPk(restaurant.manager_id);
+        if (restaurant.admin_id && (!newAdminUser || restaurant.admin_id !== newAdminUser.id)) {
+          const oldAdmin = await User.findByPk(restaurant.admin_id);
           if (oldAdmin && oldAdmin.role === 'Restaurant Admin') {
             await oldAdmin.update({ restaurant_id: null }, { transaction: adminTransaction });
           }
         }
 
-        // Restaurant의 manager_id 갱신
+        // Restaurant의 admin_id 갱신
         if (newAdminUser) {
-          updateData.manager_id = newAdminUser.id;
-          updateData.manager_name = newAdminUser.full_name || newAdminUser.username;
+          updateData.admin_id = newAdminUser.id;
+          updateData.admin_name = newAdminUser.full_name || newAdminUser.username;
         }
 
         await restaurant.update(updateData, { transaction: adminTransaction });
@@ -774,13 +774,13 @@ router.put('/:id', authenticateToken, validateRestaurantCreation, async (req, re
     }
 
     // 기존 방식 (adminAction 없음) - 하위 호환
-    if (updateData.manager_id) {
-      const manager = await User.findByPk(updateData.manager_id);
-      if (manager) {
-        updateData.manager_name = manager.full_name || manager.username;
+    if (updateData.admin_id) {
+      const adminLookup = await User.findByPk(updateData.admin_id);
+      if (adminLookup) {
+        updateData.admin_name = adminLookup.full_name || adminLookup.username;
       }
     } else if (req.body.managerId !== undefined) {
-      updateData.manager_name = null;
+      updateData.admin_name = null;
     }
 
     await restaurant.update(updateData);
@@ -864,10 +864,23 @@ router.delete('/:id', async (req, res) => {
 router.get('/subscriptions/manager/:managerId', async (req, res) => {
   try {
     const { managerId } = req.params;
-    
-    // Get restaurants managed by this manager with invoice and order data
-    const restaurants = await Restaurant.findAll({
+
+    // Get restaurants managed by this manager via restaurant_managers junction table
+    const RestaurantManager = require('../models/RestaurantManager');
+    const managedLinks = await RestaurantManager.findAll({
       where: { manager_id: managerId },
+      attributes: ['restaurant_id']
+    });
+    const managedRestaurantIds = managedLinks.map(link => link.restaurant_id);
+
+    // Also include restaurants where this user is the admin
+    const restaurants = await Restaurant.findAll({
+      where: {
+        [Op.or]: [
+          { admin_id: managerId },
+          ...(managedRestaurantIds.length > 0 ? [{ id: { [Op.in]: managedRestaurantIds } }] : [])
+        ]
+      },
       include: [
         {
           model: Invoice,
@@ -927,8 +940,8 @@ router.get('/subscriptions/manager/:managerId', async (req, res) => {
         id: `sub-${restaurant.id}`,
         restaurantId: restaurant.id.toString(),
         restaurantName: restaurant.name,
-        managerId: restaurant.manager_id.toString(),
-        managerName: restaurant.manager_name,
+        managerId: (restaurant.admin_id || '').toString(),
+        managerName: restaurant.admin_name || 'Unassigned',
         planType: restaurant.plan_type.toLowerCase().replace(' plan', ''),
         status: restaurant.status,
         startDate: restaurant.subscription_start?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
@@ -939,8 +952,8 @@ router.get('/subscriptions/manager/:managerId', async (req, res) => {
         // Map payment_model to frontend format: brand_manager -> manager, restaurant -> self
         paymentModel: restaurant.payment_model === 'brand_manager' ? 'manager' :
                       restaurant.payment_model === 'restaurant' ? 'self' : 'manager',
-        payerId: restaurant.payment_model === 'restaurant' ? restaurant.id.toString() : restaurant.manager_id?.toString(),
-        payerName: restaurant.payment_model === 'restaurant' ? restaurant.name : restaurant.manager_name,
+        payerId: restaurant.payment_model === 'restaurant' ? restaurant.id.toString() : (restaurant.admin_id?.toString() || ''),
+        payerName: restaurant.payment_model === 'restaurant' ? restaurant.name : (restaurant.admin_name || 'Unassigned'),
         orderLimit: orderLimits[restaurant.plan_type] || 1000,
         currentOrders: currentOrders,
         features: [], // Will be filled by frontend based on plan
@@ -986,8 +999,8 @@ router.post('/subscriptions', async (req, res) => {
 
     // Update restaurant with subscription info
     await restaurant.update({
-      manager_id: managerId,
-      manager_name: manager.full_name || manager.username,
+      admin_id: managerId,
+      admin_name: manager.full_name || manager.username,
       plan_type: `${planType.charAt(0).toUpperCase() + planType.slice(1)} Plan`,
       plan_amount: fees.monthly,
       status: 'active',
@@ -1031,7 +1044,7 @@ router.post('/subscriptions', async (req, res) => {
       const { sendIssuerEmail } = require('../utils/emailService');
       const { invoiceEmail } = require('../utils/emailTemplates');
 
-      const adminUser = restaurant.manager_id ? await User.findByPk(restaurant.manager_id) : null;
+      const adminUser = restaurant.admin_id ? await User.findByPk(restaurant.admin_id) : null;
       if (adminUser && adminUser.email) {
         const billingAmount = billingCycle === 'annual' ? fees.annual : fees.monthly;
         const taxRate = 6;
@@ -1083,7 +1096,7 @@ router.get('/available/:managerId', async (req, res) => {
     const availableRestaurants = await Restaurant.findAll({
       where: {
         [Op.or]: [
-          { manager_id: null },
+          { admin_id: null },
           { status: 'inactive' }
         ]
       },

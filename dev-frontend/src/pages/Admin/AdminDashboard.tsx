@@ -532,7 +532,7 @@ const AdminDashboard: React.FC = () => {
         const managersData: Manager[] = (managerUsers || []).map((user: any) => {
           const managerRestaurants = (allRestaurants || []).filter((restaurant: any) =>
             restaurant.managerId === user.id.toString() ||
-            restaurant.manager_id === parseInt(user.id) ||
+            restaurant.admin_id === parseInt(user.id) ||
             parseInt(restaurant.managerId) === user.id ||
             restaurant.managerId === user.id
           );

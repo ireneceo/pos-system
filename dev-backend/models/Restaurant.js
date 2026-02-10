@@ -19,13 +19,15 @@ Restaurant.init({
     unique: true,
     comment: 'URL-friendly restaurant identifier'
   },
-  manager_id: {
+  admin_id: {
     type: DataTypes.INTEGER,
-    allowNull: true
+    allowNull: true,
+    comment: 'Restaurant Admin user ID (1:1 relationship)'
   },
-  manager_name: {
+  admin_name: {
     type: DataTypes.STRING(255),
-    allowNull: true
+    allowNull: true,
+    comment: 'Restaurant Admin display name'
   },
   email: {
     type: DataTypes.STRING(100),

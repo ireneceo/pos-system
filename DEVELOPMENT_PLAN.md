@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-02-09
+> **최종 업데이트:** 2026-02-10
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -389,6 +389,38 @@ const totalRevenue = useMemo(() => {
 - `dev-frontend/src/pages/Manager/RestaurantsPage.tsx` - 비밀번호 검증, 모달 스크롤, 라벨
 - `dev-frontend/src/components/Layout/MainLayout.tsx` - 사이드바 Plans/Subscriptions 활성화
 - `dev-backend/routes/auth.js` - 로그인 401 에러 코드
+
+---
+
+## ✅ 완료: Restaurant Admin 리네임 + 비밀번호 정책 강화 (2026-02-10)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| DB 컬럼 리네임 | `restaurants.manager_id` → `admin_id`, `manager_name` → `admin_name` | ✅ 완료 |
+| Sequelize 모델/관계 업데이트 | `as: 'manager'` → `as: 'admin'`, Restaurant.js, models/index.js | ✅ 완료 |
+| 백엔드 라우트 전체 반영 | restaurants.js, dashboard.js 등 admin_id/admin_name 사용 | ✅ 완료 |
+| 프론트엔드 Admin 반영 | RestaurantsPage, SubscriptionsPage, StaffManagementPage 등 | ✅ 완료 |
+| API 하위 호환 유지 | GET /api/restaurants 응답에 managerId/managerName camelCase 유지 | ✅ 완료 |
+| admin-analytics 버그 수정 | regional-stats Order alias 누락 (`as: 'orders'`) 수정 | ✅ 완료 |
+| 비밀번호 정책 통일 | 8자+, 소문자+대문자+숫자 필수 (회원가입/변경/생성 모두 동일) | ✅ 완료 |
+| 테스트 계정 비밀번호 정책 준수 | admin123→Admin1234, test123→Test1234 등 전체 변경 | ✅ 완료 |
+| 프로필 비밀번호 변경 UI | Password Requirements 안내 + 프론트/백엔드 이중 검증 | ✅ 완료 |
+| 사용자 생성 비밀번호 자동생성 | 고정 '1234' 제거 → 12자 강력한 비밀번호 자동 생성 | ✅ 완료 |
+| 비밀번호 리셋 UI 수정 | tempPassword 정확히 읽기, '1234' 폴백 제거 | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/models/Restaurant.js` - admin_id, admin_name 컬럼
+- `dev-backend/models/index.js` - Restaurant.belongsTo(User, as: 'admin')
+- `dev-backend/routes/restaurants.js` - admin_id 사용, 하위 호환 유지
+- `dev-backend/routes/dashboard.js` - admin_id 참조
+- `dev-backend/routes/users.js` - 비밀번호 정책 검증, 자동 생성
+- `dev-backend/routes/admin-analytics.js` - Order alias 버그 수정
+- `dev-frontend/src/pages/Login/LoginPage.tsx` - 정책 준수 비밀번호
+- `dev-frontend/src/pages/Admin/RestaurantsPage.tsx` - admin 데이터 반영
+- `dev-frontend/src/pages/Admin/StaffManagementPage.tsx` - 자동 비밀번호 UI
+- `dev-frontend/src/pages/Profile/ProfilePage.tsx` - 비밀번호 정책 안내/검증
 
 ---
 

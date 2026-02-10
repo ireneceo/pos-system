@@ -384,9 +384,12 @@ const StaffPage: React.FC = () => {
         // Get current user's restaurant ID
         const restaurantId = user?.restaurantId;
         console.log('🏪 Current restaurant ID:', restaurantId);
-        
+
+        const token = localStorage.getItem('auth_token');
+        const headers = { 'Authorization': `Bearer ${token}` };
+
         // Fetch all users
-        const usersResponse = await fetch('/api/users');
+        const usersResponse = await fetch('/api/users', { headers });
         console.log('📡 Users API response status:', usersResponse.status);
         
         if (usersResponse.ok) {
@@ -488,10 +491,12 @@ const StaffPage: React.FC = () => {
 
       console.log('🔄 [Restaurant] Creating new staff user:', staffUserData);
       
+      const createToken = localStorage.getItem('auth_token');
       const response = await fetch('/api/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${createToken}`
         },
         body: JSON.stringify(staffUserData)
       });
@@ -499,9 +504,11 @@ const StaffPage: React.FC = () => {
       if (response.ok) {
         const result = await response.json();
         console.log('✅ [Restaurant] Staff created successfully:', result);
-        
+
         // Refresh staff list
-        const usersResponse = await fetch('/api/users');
+        const usersResponse = await fetch('/api/users', {
+          headers: { 'Authorization': `Bearer ${createToken}` }
+        });
         if (usersResponse.ok) {
           const usersData = await usersResponse.json();
           const usersArray = usersData.data || usersData;
@@ -560,10 +567,12 @@ const StaffPage: React.FC = () => {
     try {
       console.log(`🔄 [Restaurant] Promoting ${staff.name} to Restaurant Admin...`);
       
+      const promoteToken = localStorage.getItem('auth_token');
       const response = await fetch(`/api/users/${staff.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${promoteToken}`
         },
         body: JSON.stringify({
           role: 'Restaurant Admin'
@@ -573,7 +582,9 @@ const StaffPage: React.FC = () => {
       if (response.ok) {
         // Refresh staff list
         const restaurantId = user?.restaurantId;
-        const usersResponse = await fetch('/api/users');
+        const usersResponse = await fetch('/api/users', {
+          headers: { 'Authorization': `Bearer ${promoteToken}` }
+        });
         if (usersResponse.ok) {
           const usersData = await usersResponse.json();
           const usersArray = usersData.data || usersData;

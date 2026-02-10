@@ -47,6 +47,95 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
+// Get company info for foodcourt owner (MUST be before /:id to avoid route conflict)
+router.get('/company-info', authenticateToken, async (req, res) => {
+  try {
+    console.log(`🏢 GET /api/foodcourts/company-info - User: ${req.user.email} (${req.user.role})`);
+
+    if (req.user.role !== 'Foodcourt General' && req.user.role !== 'Foodcourt Manager') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const foodcourt = await Foodcourt.findOne({
+      where: { owner_id: req.user.id }
+    });
+
+    if (!foodcourt) {
+      return res.status(404).json({ error: 'Foodcourt not found' });
+    }
+
+    res.json({
+      company_name: foodcourt.company_name || foodcourt.name,
+      registration_no: foodcourt.registration_no,
+      trade_name: foodcourt.trade_name,
+      address: foodcourt.address,
+      city: foodcourt.city,
+      state: foodcourt.state,
+      postal_code: foodcourt.postal_code,
+      country: foodcourt.country || 'MY',
+      phone: foodcourt.phone,
+      email: foodcourt.email,
+      website: foodcourt.website,
+      tax_no: foodcourt.tax_no,
+      bank_name: foodcourt.bank_name,
+      bank_account: foodcourt.bank_account,
+      bank_account_name: foodcourt.bank_account_name,
+      logo_url: foodcourt.logo_url,
+      operation_settings: foodcourt.operation_settings
+    });
+  } catch (error) {
+    console.error('Error fetching foodcourt company info:', error);
+    res.status(500).json({ error: 'Failed to fetch company info' });
+  }
+});
+
+// Update company info for foodcourt owner (MUST be before /:id)
+router.put('/company-info', authenticateToken, async (req, res) => {
+  try {
+    console.log(`🏢 PUT /api/foodcourts/company-info - User: ${req.user.email}`);
+
+    if (req.user.role !== 'Foodcourt General' && req.user.role !== 'Foodcourt Manager') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const foodcourt = await Foodcourt.findOne({
+      where: { owner_id: req.user.id }
+    });
+
+    if (!foodcourt) {
+      return res.status(404).json({ error: 'Foodcourt not found' });
+    }
+
+    const updateData = {
+      company_name: req.body.company_name,
+      registration_no: req.body.registration_no,
+      trade_name: req.body.trade_name,
+      address: req.body.address,
+      city: req.body.city,
+      state: req.body.state,
+      postal_code: req.body.postal_code,
+      country: req.body.country,
+      phone: req.body.phone,
+      email: req.body.email,
+      website: req.body.website,
+      tax_no: req.body.tax_no,
+      bank_name: req.body.bank_name,
+      bank_account: req.body.bank_account,
+      bank_account_name: req.body.bank_account_name,
+      logo_url: req.body.logo_url,
+      operation_settings: req.body.operation_settings
+    };
+
+    await foodcourt.update(updateData);
+    console.log(`✅ Foodcourt company info updated: ${foodcourt.name}`);
+
+    res.json({ success: true, message: 'Company info updated successfully' });
+  } catch (error) {
+    console.error('Error updating foodcourt company info:', error);
+    res.status(500).json({ error: 'Failed to update company info' });
+  }
+});
+
 // Get single foodcourt by ID
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
@@ -261,96 +350,6 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error deleting foodcourt:', error);
     res.status(500).json({ error: 'Failed to delete foodcourt' });
-  }
-});
-
-// Get company info for foodcourt owner
-router.get('/company-info', authenticateToken, async (req, res) => {
-  try {
-    console.log(`🏢 GET /api/foodcourts/company-info - User: ${req.user.email} (${req.user.role})`);
-
-    // Foodcourt General/Manager는 자신이 소유한 푸드코트의 회사정보를 가져옴
-    if (req.user.role !== 'Foodcourt General' && req.user.role !== 'Foodcourt Manager') {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-
-    const foodcourt = await Foodcourt.findOne({
-      where: { owner_id: req.user.id }
-    });
-
-    if (!foodcourt) {
-      return res.status(404).json({ error: 'Foodcourt not found' });
-    }
-
-    res.json({
-      company_name: foodcourt.company_name || foodcourt.name,
-      registration_no: foodcourt.registration_no,
-      trade_name: foodcourt.trade_name,
-      address: foodcourt.address,
-      city: foodcourt.city,
-      state: foodcourt.state,
-      postal_code: foodcourt.postal_code,
-      country: foodcourt.country || 'MY',
-      phone: foodcourt.phone,
-      email: foodcourt.email,
-      website: foodcourt.website,
-      tax_no: foodcourt.tax_no,
-      bank_name: foodcourt.bank_name,
-      bank_account: foodcourt.bank_account,
-      bank_account_name: foodcourt.bank_account_name,
-      logo_url: foodcourt.logo_url,
-      operation_settings: foodcourt.operation_settings
-    });
-  } catch (error) {
-    console.error('Error fetching foodcourt company info:', error);
-    res.status(500).json({ error: 'Failed to fetch company info' });
-  }
-});
-
-// Update company info for foodcourt owner
-router.put('/company-info', authenticateToken, async (req, res) => {
-  try {
-    console.log(`🏢 PUT /api/foodcourts/company-info - User: ${req.user.email}`);
-
-    if (req.user.role !== 'Foodcourt General' && req.user.role !== 'Foodcourt Manager') {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-
-    const foodcourt = await Foodcourt.findOne({
-      where: { owner_id: req.user.id }
-    });
-
-    if (!foodcourt) {
-      return res.status(404).json({ error: 'Foodcourt not found' });
-    }
-
-    const updateData = {
-      company_name: req.body.company_name,
-      registration_no: req.body.registration_no,
-      trade_name: req.body.trade_name,
-      address: req.body.address,
-      city: req.body.city,
-      state: req.body.state,
-      postal_code: req.body.postal_code,
-      country: req.body.country,
-      phone: req.body.phone,
-      email: req.body.email,
-      website: req.body.website,
-      tax_no: req.body.tax_no,
-      bank_name: req.body.bank_name,
-      bank_account: req.body.bank_account,
-      bank_account_name: req.body.bank_account_name,
-      logo_url: req.body.logo_url,
-      operation_settings: req.body.operation_settings
-    };
-
-    await foodcourt.update(updateData);
-    console.log(`✅ Foodcourt company info updated: ${foodcourt.name}`);
-
-    res.json({ success: true, message: 'Company info updated successfully' });
-  } catch (error) {
-    console.error('Error updating foodcourt company info:', error);
-    res.status(500).json({ error: 'Failed to update company info' });
   }
 });
 

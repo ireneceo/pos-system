@@ -1,5 +1,5 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-02-09
+**마지막 업데이트:** 2026-02-10
 **작업 상태:** 완료
 
 ### 진행 중인 작업
@@ -7,25 +7,43 @@
 
 ### 완료된 작업 (이번 세션)
 
-#### Phase 5 — Foodcourt 적용 (이전 세션에서 이어서 완료)
-- Foodcourt Plans API, FoodcourtPlansPage, FoodcourtSubscriptionsPage 전면 재작성
-- E2E 테스트 33/33 통과
+#### 1. Restaurant Admin 리네임 (이전 세션에서 완료, 이번 세션에서 검증)
+- DB 컬럼: `restaurants.manager_id` → `admin_id`, `manager_name` → `admin_name`
+- Sequelize: `as: 'admin'` 관계 업데이트
+- 백엔드/프론트엔드 전체 반영
+- API 21/21 엔드포인트 테스트 PASS
 
-#### UI/UX 버그 수정 및 레스토랑 관리 개선
-- 레스토랑 생성 에러 메시지 `[object Object]` → 실제 검증 메시지 표시
-- 프론트엔드 비밀번호 검증 추가 (대소문자+숫자 필수)
-- Brand/Foodcourt General 사이드바 Plans/Subscriptions 네비게이션 활성화
-- Manager 모달 스크롤 패턴 Admin과 통일
-- 로그인 에러 500→401 수정
-- "Restaurant Admin (Owner)" → "Restaurant Admin" 라벨 통일
-- Edit 모달: 관리자 없을 때 "Assign Admin" 버튼 추가
-- Add/Edit/View 모달 Restaurant Name full-width 레이아웃 통일
+#### 2. admin-analytics 버그 수정
+- `regional-stats` Order alias 누락 (`as: 'orders'`) 수정
+
+#### 3. 비밀번호 정책 강화
+- 정책: 8자+, 소문자+대문자+숫자 필수
+- 테스트 계정 비밀번호 정책 준수로 변경 (admin123→Admin1234, test123→Test1234 등)
+- DB 비밀번호 LoginPage와 완전 동기화 (9/9 PASS)
+
+#### 4. 프로필 비밀번호 변경 UI 개선
+- Password Requirements 안내 박스 추가
+- 프론트엔드 유효성 검사 (8자+, 소문자, 대문자, 숫자)
+- 백엔드 PATCH /api/users/:id/password에 서버사이드 검증 추가
+
+#### 5. 사용자 생성 비밀번호 자동생성
+- 고정 '1234' 제거 → 12자 강력한 비밀번호 백엔드 자동 생성
+- generatedPassword 응답 필드로 반환, 프론트엔드에서 표시
+- 비밀번호 리셋 UI: tempPassword 정확히 읽기, '1234' 폴백 제거
+
+### 현재 비밀번호 매핑
+| 계정 | 이메일 | 비밀번호 |
+|------|--------|----------|
+| Demo | demo-brand/demo-restaurant@purplehere.com | Demo@2024 |
+| System Admin | irene@irenewp.com | Admin1234 |
+| Foodcourt/Brand General/Manager | *@orderhere.center | Test1234 |
+| Restaurant Admin (K-DINE) | admin@kdine.com | Restaurant1 |
+| Staff (K-DINE) | staff@kdine.com | Staff1234 |
 
 ### 다음 할 일
-- Foodcourt General 유저에 foodcourt_id 연결 + Foodcourt 데이터 생성
-- Foodcourt Plans/Subscriptions 실제 동작 테스트
+- 사용자 수동 UI 테스트 (역할별)
 - Restaurant Owner 역할 분리 설계
-- 전체 역할별 수동 테스트
+- 전체 역할별 UI/UX 점검
 
 ---
 

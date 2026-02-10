@@ -18,8 +18,8 @@ async function createRealisticData() {
     console.log('🏪 Creating K-DINE restaurant...');
     const kdineRestaurant = await Restaurant.create({
       name: 'K-DINE Korean BBQ',
-      manager_id: 8, // manager@kdine.com 계정
-      manager_name: 'K-DINE Chain Manager',
+      admin_id: 8, // manager@kdine.com 계정
+      admin_name: 'K-DINE Chain Manager',
       email: 'manager@kdine.com',
       phone: '+60 3-2142 8888',
       address: 'Lot G-23, Ground Floor, Sunway Pyramid Mall, Bandar Sunway, 47500 Subang Jaya, Selangor',
@@ -39,8 +39,8 @@ async function createRealisticData() {
     console.log('🏪 Creating additional restaurants...');
     const nasiLemakRestaurant = await Restaurant.create({
       name: 'Nasi Lemak Wangi',
-      manager_id: 3, // admin@nasilemak.com
-      manager_name: 'Ahmad Rahman',
+      admin_id: 3, // admin@nasilemak.com
+      admin_name: 'Ahmad Rahman',
       email: 'admin@nasilemak.com',
       phone: '+60 3-7956 1234',
       address: 'No. 15, Jalan Alor, Bukit Bintang, 50200 Kuala Lumpur',
@@ -57,8 +57,8 @@ async function createRealisticData() {
 
     const kueyTeowRestaurant = await Restaurant.create({
       name: 'Kuey Teow Kung Fu',
-      manager_id: 4, // admin@kueyteow.com
-      manager_name: 'Sarah Lim',
+      admin_id: 4, // admin@kueyteow.com
+      admin_name: 'Sarah Lim',
       email: 'admin@kueyteow.com',
       phone: '+60 3-4141 5678',
       address: 'Shop 12, Jalan SS15/4D, Ss 15, 47500 Subang Jaya, Selangor',
@@ -75,8 +75,8 @@ async function createRealisticData() {
 
     const koreanBBQRestaurant = await Restaurant.create({
       name: 'Seoul Garden BBQ',
-      manager_id: 5, // admin@koreanbbq.com
-      manager_name: 'David Kim',
+      admin_id: 5, // admin@koreanbbq.com
+      admin_name: 'David Kim',
       email: 'admin@koreanbbq.com',
       phone: '+60 3-2110 9999',
       address: 'Level 4, Pavilion KL, 168 Jalan Bukit Bintang, 55100 Kuala Lumpur',

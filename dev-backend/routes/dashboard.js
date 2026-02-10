@@ -507,7 +507,10 @@ router.get('/restaurant/:restaurantId/stats', authenticateToken, checkRestaurant
           id: restaurant.id,
           name: restaurant.name,
           planType: restaurant.plan_type,
-          status: restaurant.status
+          status: restaurant.status,
+          subscriptionStart: restaurant.subscription_start,
+          subscriptionEnd: restaurant.subscription_end,
+          trialEndDate: restaurant.trial_end_date
         },
         today: {
           orders: todayOrders.length || 0,

@@ -439,7 +439,7 @@ router.get('/', authenticateToken, async (req, res) => {
       include: [{
         model: Restaurant,
         as: 'restaurant',
-        attributes: ['id', 'name', 'manager_id', 'manager_name', 'plan_type', 'phone', 'email', 'subscription_snapshot', 'billing_cycle']
+        attributes: ['id', 'name', 'admin_id', 'admin_name', 'plan_type', 'phone', 'email', 'subscription_snapshot', 'billing_cycle']
       }, {
         model: InvoiceItem,
         as: 'items',
@@ -486,7 +486,7 @@ router.get('/', authenticateToken, async (req, res) => {
       // Get payer name based on payer type
       let payerName;
       if (invoice.payer_type === 'restaurant' || !invoice.payer_id) {
-        payerName = invoice.restaurant?.manager_name || invoice.restaurant?.name || 'Unknown Restaurant';
+        payerName = invoice.restaurant?.admin_name || invoice.restaurant?.name || 'Unknown Restaurant';
       } else {
         const payer = payers.find(p => p.id === invoice.payer_id);
         payerName = payer?.full_name || payer?.company_name || customerName || 'Unknown Payer';
@@ -495,7 +495,7 @@ router.get('/', authenticateToken, async (req, res) => {
       return {
         id: invoice.id.toString(),
         invoiceNumber: invoice.invoice_number,
-        managerId: invoice.payer_id ? invoice.payer_id.toString() : (invoice.restaurant?.manager_id?.toString() || ''),
+        managerId: invoice.payer_id ? invoice.payer_id.toString() : (invoice.restaurant?.admin_id?.toString() || ''),
         managerName: payerName,
         companyName: customerCompany,
         customerName: customerName,
@@ -600,7 +600,7 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
       include: [{
         model: Restaurant,
         as: 'restaurant',
-        attributes: ['id', 'name', 'address', 'city', 'state', 'postal_code', 'country', 'phone', 'email', 'manager_name']
+        attributes: ['id', 'name', 'address', 'city', 'state', 'postal_code', 'country', 'phone', 'email', 'admin_name']
       }, {
         model: InvoiceItem,
         as: 'items'
@@ -674,7 +674,7 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
 
     // Get restaurants managed by this manager
     const restaurants = await Restaurant.findAll({
-      where: { manager_id: managerId }
+      where: { admin_id: managerId }
     });
 
     const restaurantIds = restaurants.map(r => r.id);
@@ -724,7 +724,7 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
         {
           model: Restaurant,
           as: 'restaurant',
-          attributes: ['id', 'name', 'manager_name', 'plan_type'],
+          attributes: ['id', 'name', 'admin_name', 'plan_type'],
           required: false
         },
         {
@@ -779,7 +779,7 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
         invoiceNumber: invoice.invoice_number,
         restaurantId: invoice.restaurant_id,
         restaurantName: invoice.restaurant?.name || invoice.customer_name || 'Unknown',
-        restaurantManager: invoice.restaurant?.manager_name || '',
+        restaurantManager: invoice.restaurant?.admin_name || '',
         issueDate: invoice.issued_at?.toISOString().split('T')[0] || invoice.createdAt.toISOString().split('T')[0],
         dueDate: invoice.due_date?.toISOString().split('T')[0] || '',
         paidDate: invoice.paid_at?.toISOString().split('T')[0] || null,
@@ -1141,7 +1141,7 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
       include: [{
         model: Restaurant,
         as: 'restaurant',
-        attributes: ['id', 'name', 'manager_name']
+        attributes: ['id', 'name', 'admin_name']
       }, {
         model: InvoiceItem,
         as: 'items'
@@ -1200,7 +1200,7 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
         restaurantName: invoice.restaurant?.name || 'Unknown',
         customerName: invoice.customer_name || invoice.restaurant?.name || 'Unknown',
         companyName: issuerInfo?.name || '',
-        managerName: payerInfo?.name || invoice.restaurant?.manager_name || 'Unknown',
+        managerName: payerInfo?.name || invoice.restaurant?.admin_name || 'Unknown',
         issueDate: invoice.issued_at || invoice.createdAt,
         dueDate: invoice.due_date,
         paidDate: invoice.paid_at,
@@ -1263,7 +1263,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
         as: 'restaurant',
         attributes: ['id', 'name', 'address', 'city', 'state', 'postal_code', 'country',
                      'phone', 'email', 'tax_id', 'business_registration', 'logo_url',
-                     'manager_id', 'manager_name', 'plan_type', 'billing_cycle']
+                     'admin_id', 'admin_name', 'plan_type', 'billing_cycle']
       }]
     });
 
@@ -2315,7 +2315,7 @@ router.get('/issued-by/:issuerType/:issuerId', authenticateToken, async (req, re
       include: [{
         model: Restaurant,
         as: 'restaurant',
-        attributes: ['id', 'name', 'manager_name', 'plan_type']
+        attributes: ['id', 'name', 'admin_name', 'plan_type']
       }, {
         model: InvoiceItem,
         as: 'items'
@@ -2503,7 +2503,7 @@ router.post('/:id/send-email', authenticateToken, async (req, res) => {
       include: [{
         model: Restaurant,
         as: 'restaurant',
-        attributes: ['id', 'name', 'manager_id', 'manager_name', 'plan_type', 'email']
+        attributes: ['id', 'name', 'admin_id', 'admin_name', 'plan_type', 'email']
       }, {
         model: InvoiceItem,
         as: 'items'
@@ -2538,8 +2538,8 @@ router.post('/:id/send-email', authenticateToken, async (req, res) => {
 
     // Get recipient name
     let recipientName = 'Restaurant Admin';
-    if (invoice.restaurant?.manager_id) {
-      const adminUser = await User.findByPk(invoice.restaurant.manager_id);
+    if (invoice.restaurant?.admin_id) {
+      const adminUser = await User.findByPk(invoice.restaurant.admin_id);
       if (adminUser) recipientName = adminUser.full_name || adminUser.username;
     }
 

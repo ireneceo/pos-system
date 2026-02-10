@@ -126,7 +126,7 @@ interface Manager {
 interface Restaurant {
   id: string;
   name: string;
-  manager_id: string;
+  admin_id: string;
   status: string;
   address?: string;
   phone?: string;
@@ -1575,7 +1575,7 @@ const BrandInvoicesPage: React.FC = () => {
         const transformedRestaurants = data.map((restaurant: any) => ({
           id: restaurant.id.toString(),
           name: restaurant.name,
-          manager_id: restaurant.manager_id?.toString() || restaurant.managerId?.toString() || '',
+          admin_id: restaurant.admin_id?.toString() || restaurant.managerId?.toString() || '',
           status: restaurant.status,
           address: restaurant.address || ''
         }));
@@ -1656,7 +1656,7 @@ const BrandInvoicesPage: React.FC = () => {
       });
     } else {
       const restaurant = data as Restaurant;
-      const manager = managers.find(m => m.id === restaurant.manager_id);
+      const manager = managers.find(m => m.id === restaurant.admin_id);
       setEditInvoice({
         ...editInvoice,
         managerId: manager?.id || '',
@@ -1686,7 +1686,7 @@ const BrandInvoicesPage: React.FC = () => {
       });
     } else {
       const restaurant = data as Restaurant;
-      const manager = managers.find(m => m.id === restaurant.manager_id);
+      const manager = managers.find(m => m.id === restaurant.admin_id);
       // Get restaurant currency (convert RM to MYR)
       let currency = (restaurant as any).currency || 'MYR';
       if (currency === 'RM') currency = 'MYR';
@@ -1694,7 +1694,7 @@ const BrandInvoicesPage: React.FC = () => {
         ...newInvoice,
         restaurantId: restaurant.id,
         restaurantName: restaurant.name,
-        managerId: restaurant.manager_id,
+        managerId: restaurant.admin_id,
         managerName: manager ? manager.fullName : '',
         companyName: restaurant.name,
         currency: currency
@@ -3696,7 +3696,7 @@ const BrandInvoicesPage: React.FC = () => {
                               RESTAURANTS
                             </div>
                             {searchResults.restaurants.map(restaurant => {
-                              const manager = managers.find(m => m.id === restaurant.manager_id);
+                              const manager = managers.find(m => m.id === restaurant.admin_id);
                               return (
                                 <div
                                   key={restaurant.id}
@@ -4214,7 +4214,7 @@ const BrandInvoicesPage: React.FC = () => {
                               RESTAURANTS
                             </div>
                             {editSearchResults.restaurants.map(restaurant => {
-                              const manager = managers.find(m => m.id === restaurant.manager_id);
+                              const manager = managers.find(m => m.id === restaurant.admin_id);
                               return (
                                 <div
                                   key={restaurant.id}

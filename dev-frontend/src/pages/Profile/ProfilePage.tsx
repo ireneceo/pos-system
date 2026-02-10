@@ -682,8 +682,23 @@ const ProfilePage: React.FC = () => {
       return;
     }
 
-    if (passwordData.newPassword.length < 4) {
-      setPasswordError('New password must be at least 4 characters long');
+    if (passwordData.newPassword.length < 8) {
+      setPasswordError('Password must be at least 8 characters long');
+      return;
+    }
+
+    if (!/[a-z]/.test(passwordData.newPassword)) {
+      setPasswordError('Password must contain at least one lowercase letter');
+      return;
+    }
+
+    if (!/[A-Z]/.test(passwordData.newPassword)) {
+      setPasswordError('Password must contain at least one uppercase letter');
+      return;
+    }
+
+    if (!/[0-9]/.test(passwordData.newPassword)) {
+      setPasswordError('Password must contain at least one number');
       return;
     }
 
@@ -1007,6 +1022,24 @@ const ProfilePage: React.FC = () => {
           {activeTab === 'security' && (
             <ContentCard>
               <div>
+                <div style={{
+                  padding: '12px 16px',
+                  backgroundColor: '#F0F9FF',
+                  border: '1px solid #BAE6FD',
+                  borderRadius: '6px',
+                  color: '#0C4A6E',
+                  fontSize: '13px',
+                  marginBottom: '20px',
+                  lineHeight: '1.5'
+                }}>
+                  <strong>Password Requirements:</strong>
+                  <ul style={{ margin: '6px 0 0 0', paddingLeft: '18px' }}>
+                    <li>At least 8 characters</li>
+                    <li>At least one lowercase letter (a-z)</li>
+                    <li>At least one uppercase letter (A-Z)</li>
+                    <li>At least one number (0-9)</li>
+                  </ul>
+                </div>
                 <FormGrid>
                   <FormGroup>
                     <Label>Current Password</Label>
@@ -1023,7 +1056,7 @@ const ProfilePage: React.FC = () => {
                       type="password"
                       value={passwordData.newPassword}
                       onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                      placeholder="Enter new password (min 4 characters)"
+                      placeholder="Min 8 chars, uppercase + lowercase + number"
                     />
                   </FormGroup>
                   <FormGroup>

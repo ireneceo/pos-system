@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
-import { useAuth } from '../../contexts/AuthContext';
+
 
 interface ContactInquiry {
   id: number;
@@ -9,7 +9,9 @@ interface ContactInquiry {
   email: string;
   phone?: string;
   company_name?: string;
+  inquiry_type?: 'free_trial' | 'pricing' | 'demo' | 'support' | 'partnership' | 'other';
   interested_plan?: string;
+  preferred_username?: string;
   message: string;
   status: 'new' | 'in_progress' | 'resolved' | 'closed';
   notes?: string;
@@ -211,6 +213,43 @@ const PlanBadge = styled.span`
   margin-left: 8px;
 `;
 
+const InquiryTypeBadge = styled.span<{ type?: string }>`
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  margin-left: 8px;
+  background: ${props => {
+    switch(props.type) {
+      case 'free_trial': return '#ECFDF5';
+      case 'pricing': return '#FEF3C7';
+      case 'demo': return '#DBEAFE';
+      case 'support': return '#FEE2E2';
+      case 'partnership': return '#F3E8FF';
+      default: return '#F3F4F6';
+    }
+  }};
+  color: ${props => {
+    switch(props.type) {
+      case 'free_trial': return '#059669';
+      case 'pricing': return '#D97706';
+      case 'demo': return '#1E40AF';
+      case 'support': return '#DC2626';
+      case 'partnership': return '#7C3AED';
+      default: return '#6B7280';
+    }
+  }};
+`;
+
+const DetailRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 13px;
+  color: #6B7280;
+`;
+
 const InquiryMessage = styled.div`
   font-size: 14px;
   color: #374151;
@@ -407,7 +446,6 @@ const EmptyState = styled.div`
 `;
 
 const ContactInquiriesPage: React.FC = () => {
-  const { user } = useAuth();
   const [inquiries, setInquiries] = useState<ContactInquiry[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, new: 0, in_progress: 0, resolved: 0 });
   const [loading, setLoading] = useState(true);
@@ -421,12 +459,9 @@ const ContactInquiriesPage: React.FC = () => {
   const [sendEmail, setSendEmail] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, [searchTerm, statusFilter]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async (silent = false) => {
     try {
+      if (!silent) setLoading(true);
       const token = localStorage.getItem('auth_token');
       const params = new URLSearchParams();
       if (statusFilter !== 'all') params.append('status', statusFilter);
@@ -452,7 +487,17 @@ const ContactInquiriesPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchTerm, statusFilter]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // 10초 polling
+  useEffect(() => {
+    const interval = setInterval(() => loadData(true), 10000);
+    return () => clearInterval(interval);
+  }, [loadData]);
 
   const handleReply = (inquiry: ContactInquiry) => {
     setSelectedInquiry(inquiry);
@@ -541,6 +586,18 @@ const ContactInquiriesPage: React.FC = () => {
     return plan.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
+  const formatInquiryType = (type: string) => {
+    const labels: Record<string, string> = {
+      free_trial: 'Free Trial',
+      pricing: 'Pricing',
+      demo: 'Demo',
+      support: 'Support',
+      partnership: 'Partnership',
+      other: 'Other'
+    };
+    return labels[type] || type;
+  };
+
   return (
     <MainLayout>
       <Container>
@@ -598,6 +655,11 @@ const ContactInquiriesPage: React.FC = () => {
                     <InquiryInfo>
                       <InquiryName>
                         {inquiry.name}
+                        {inquiry.inquiry_type && (
+                          <InquiryTypeBadge type={inquiry.inquiry_type}>
+                            {formatInquiryType(inquiry.inquiry_type)}
+                          </InquiryTypeBadge>
+                        )}
                         {inquiry.interested_plan && (
                           <PlanBadge>{formatPlan(inquiry.interested_plan)}</PlanBadge>
                         )}
@@ -607,7 +669,10 @@ const ContactInquiriesPage: React.FC = () => {
                         <InquiryCompany>{inquiry.company_name}</InquiryCompany>
                       )}
                       {inquiry.phone && (
-                        <InquiryCompany>Phone: {inquiry.phone}</InquiryCompany>
+                        <DetailRow>Phone: {inquiry.phone}</DetailRow>
+                      )}
+                      {inquiry.preferred_username && (
+                        <DetailRow>Preferred Username: <strong>{inquiry.preferred_username}</strong></DetailRow>
                       )}
                     </InquiryInfo>
                     <StatusBadge status={inquiry.status}>

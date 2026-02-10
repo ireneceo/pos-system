@@ -750,7 +750,6 @@ const AdminStaffManagementPage: React.FC = () => {
       const staffUserData = {
         username: newStaff.username.trim(),
         email: newStaff.email.trim(),
-        password: '1234',
         role: newStaff.role,
         full_name: newStaff.name.trim(),
         phone: newStaff.phone ? newStaff.phone.trim() : null,
@@ -782,8 +781,9 @@ const AdminStaffManagementPage: React.FC = () => {
       // Close modal first
       handleCloseModal();
 
-      // Show success message with password
-      setSuccessMessage(`Staff member created successfully!\n\nUsername: ${newStaff.username}\nDefault Password: 1234\n\nPlease save this information and share it securely with the staff member.`);
+      // Show success message with generated password
+      const generatedPw = result.generatedPassword || '(check with admin)';
+      setSuccessMessage(`Staff member created successfully!\n\nUsername: ${newStaff.username}\nPassword: ${generatedPw}\n\nPlease save this information and share it securely with the staff member.`);
       setShowSuccessModal(true);
 
       // Refresh staff list only after successful creation
@@ -1151,10 +1151,10 @@ const AdminStaffManagementPage: React.FC = () => {
 
         if (response.ok) {
           const result = await response.json();
-          const defaultPassword = result.defaultPassword || '1234';
+          const newPassword = result.tempPassword || '(check with admin)';
 
           // Show success message in modal
-          setSuccessMessage(`Password reset successfully!\n\nUsername: ${selectedStaff.username || selectedStaff.email}\nNew Password: ${defaultPassword}\n\nPlease save this information and share it securely with the staff member.`);
+          setSuccessMessage(`Password reset successfully!\n\nUsername: ${selectedStaff.username || selectedStaff.email}\nNew Password: ${newPassword}\n\nPlease save this information and share it securely with the staff member.`);
           setShowSuccessModal(true);
         } else {
           const errorData = await response.json();
@@ -1755,7 +1755,7 @@ const AdminStaffManagementPage: React.FC = () => {
                   background: '#F3F4F6',
                   borderRadius: '4px'
                 }}>
-                  ℹ️ Default password: <strong>1234</strong> (User must change after first login)
+                  ℹ️ A strong password will be auto-generated and shown after creation
                 </div>
               </FormGroup>
 
@@ -2275,7 +2275,7 @@ const AdminStaffManagementPage: React.FC = () => {
                       </div>
                       <div style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.4' }}>
                         {confirmAction === 'toggle' && `This will ${selectedStaff.status === 'active' ? 'deactivate' : 'activate'} ${selectedStaff.name}'s account.`}
-                        {confirmAction === 'resetPassword' && `This will reset ${selectedStaff.name}'s password to the default password: 1234`}
+                        {confirmAction === 'resetPassword' && `This will reset ${selectedStaff.name}'s password. A new strong password will be generated.`}
                       </div>
                     </div>
                   </div>

@@ -53,8 +53,10 @@ export interface Restaurant {
   id: number;
   name: string;
   slug: string;
-  manager_id?: number;
-  manager_name?: string;
+  admin_id?: number;
+  admin_name?: string;
+  manager_id?: number;  // deprecated, use admin_id
+  manager_name?: string;  // deprecated, use admin_name
   email?: string;
   phone?: string;
   address?: string;

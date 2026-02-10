@@ -860,9 +860,9 @@ const AnalyticsPage: React.FC = () => {
       // Selected Manager's Restaurants (if specific manager selected)
       if (selectedManager !== 'all') {
         const managerRestaurants = restaurants.filter(restaurant => {
-          return (restaurant.manager_id && restaurant.manager_id.toString() === selectedManager) ||
+          return (restaurant.admin_id && restaurant.admin_id.toString() === selectedManager) ||
                  (restaurant.managerId && restaurant.managerId.toString() === selectedManager) ||
-                 (restaurant.manager_name && selectedManagerName && restaurant.manager_name.toLowerCase().includes(selectedManagerName.toLowerCase())) ||
+                 (restaurant.admin_name && selectedManagerName && restaurant.admin_name.toLowerCase().includes(selectedManagerName.toLowerCase())) ||
                  (restaurant.managerName && selectedManagerName && restaurant.managerName.toLowerCase().includes(selectedManagerName.toLowerCase()));
         });
 
@@ -890,7 +890,7 @@ const AnalyticsPage: React.FC = () => {
         const selectedRestaurantData = restaurants.find(r => r.id.toString() === selectedRestaurant);
         if (selectedRestaurantData) {
           csv += `SELECTED RESTAURANT: ${selectedRestaurantData.name}\n`;
-          csv += `Manager,${selectedRestaurantData.manager_name || selectedRestaurantData.managerName || 'Unknown'}\n`;
+          csv += `Manager,${selectedRestaurantData.admin_name || selectedRestaurantData.managerName || 'Unknown'}\n`;
           csv += `Location,${selectedRestaurantData.location || selectedRestaurantData.address || 'N/A'}\n\n`;
 
           const baseRevenue = 8000 + (selectedRestaurantData.id * 1500) % 20000;
@@ -957,7 +957,7 @@ const AnalyticsPage: React.FC = () => {
         // Restaurant Rankings when no specific restaurant is selected
         const restaurantRankings = restaurants.map(restaurant => ({
           name: restaurant.name,
-          manager: restaurant.manager_name || restaurant.managerName || 'Unknown',
+          manager: restaurant.admin_name || restaurant.managerName || 'Unknown',
           revenue: Math.round((8000 + (restaurant.id * 1500) % 20000) * (activePeriod === 'today' ? 0.033 : activePeriod === 'week' ? 0.233 : activePeriod === 'month' ? 1 : 12)),
           orders: Math.round((150 + (restaurant.id * 15) % 300) * (activePeriod === 'today' ? 0.033 : activePeriod === 'week' ? 0.233 : activePeriod === 'month' ? 1 : 12))
         })).sort((a, b) => b.revenue - a.revenue);
@@ -976,9 +976,9 @@ const AnalyticsPage: React.FC = () => {
       const filteredRestaurantsForSubscription = selectedManager === 'all'
         ? restaurants
         : restaurants.filter(restaurant => {
-            return (restaurant.manager_id && restaurant.manager_id.toString() === selectedManager) ||
+            return (restaurant.admin_id && restaurant.admin_id.toString() === selectedManager) ||
                    (restaurant.managerId && restaurant.managerId.toString() === selectedManager) ||
-                   (restaurant.manager_name && selectedManagerName && restaurant.manager_name.toLowerCase().includes(selectedManagerName.toLowerCase())) ||
+                   (restaurant.admin_name && selectedManagerName && restaurant.admin_name.toLowerCase().includes(selectedManagerName.toLowerCase())) ||
                    (restaurant.managerName && selectedManagerName && restaurant.managerName.toLowerCase().includes(selectedManagerName.toLowerCase()));
           });
 
@@ -1000,7 +1000,7 @@ const AnalyticsPage: React.FC = () => {
 
       filteredRestaurantsForSubscription.forEach(restaurant => {
         const restaurantName = restaurant.name || 'Unknown Restaurant';
-        const managerName = restaurant.manager_name || restaurant.managerName || 'Unknown Manager';
+        const managerName = restaurant.admin_name || restaurant.managerName || 'Unknown Manager';
         const planType = restaurant.plan_type || restaurant.planType || 'Basic Plan';
         const monthlyFee = (restaurant.plan_amount || restaurant.planAmount || 29.00).toFixed(2);
         const status = restaurant.status || 'active';
@@ -1084,11 +1084,11 @@ const AnalyticsPage: React.FC = () => {
 
       const managerStats: Record<string, { restaurants: number; revenue: number }> = {};
       restaurants.forEach(restaurant => {
-        const managerName = restaurant.manager_name || restaurant.managerName || 'Unknown';
+        const managerName = restaurant.admin_name || restaurant.managerName || 'Unknown';
 
         // Calculate actual revenue from filtered invoices for this manager
         const managerInvoices = data.filteredInvoices?.filter((inv: any) =>
-          inv.managerId?.toString() === restaurant.manager_id?.toString()
+          inv.managerId?.toString() === restaurant.admin_id?.toString()
         ) || [];
         const revenue = managerInvoices.reduce((sum: number, inv: any) => sum + parseFloat(inv.total?.toString() || '0'), 0);
 
@@ -1511,17 +1511,17 @@ const AnalyticsPage: React.FC = () => {
                     {(selectedManager !== 'all' ?
                       // Selected manager's restaurants - filter real restaurants by manager
                       restaurants.filter(restaurant => {
-                        console.log('Filtering restaurant:', restaurant.name, 'manager_id:', restaurant.manager_id, 'managerId:', restaurant.managerId, 'selected:', selectedManager);
-                        // First try exact match with manager_id (underscore format)
-                        if (restaurant.manager_id && restaurant.manager_id.toString() === selectedManager) {
+                        console.log('Filtering restaurant:', restaurant.name, 'admin_id:', restaurant.admin_id, 'managerId:', restaurant.managerId, 'selected:', selectedManager);
+                        // First try exact match with admin_id (underscore format)
+                        if (restaurant.admin_id && restaurant.admin_id.toString() === selectedManager) {
                           return true;
                         }
                         // Try exact match with managerId (camelCase format)
                         if (restaurant.managerId && restaurant.managerId.toString() === selectedManager) {
                           return true;
                         }
-                        // If no manager_id or managerId, try matching by manager name
-                        const managerName = restaurant.manager_name || restaurant.managerName;
+                        // If no admin_id or managerId, try matching by manager name
+                        const managerName = restaurant.admin_name || restaurant.managerName;
                         if (managerName && selectedManagerName &&
                             managerName.toLowerCase().includes(selectedManagerName.toLowerCase())) {
                           return true;
@@ -1539,8 +1539,8 @@ const AnalyticsPage: React.FC = () => {
                       })) :
                       // All restaurants with their assigned managers
                       restaurants.slice(0, 15).map(restaurant => {
-                        const assignedManagerIndex = restaurant.manager_id ?
-                          managers.findIndex(m => m.id === restaurant.manager_id) :
+                        const assignedManagerIndex = restaurant.admin_id ?
+                          managers.findIndex(m => m.id === restaurant.admin_id) :
                           restaurant.id % managers.length;
                         const assignedManager = managers[assignedManagerIndex] || managers[0];
 
@@ -1983,7 +1983,7 @@ const AnalyticsPage: React.FC = () => {
                       {restaurants.map(restaurant => ({
                         id: restaurant.id,
                         name: restaurant.name,
-                        manager: restaurant.manager_name || restaurant.managerName || 'Unknown',
+                        manager: restaurant.admin_name || restaurant.managerName || 'Unknown',
                         revenue: Math.round((8000 + (restaurant.id * 1500) % 20000) * (activePeriod === 'today' ? 0.033 : activePeriod === 'week' ? 0.233 : activePeriod === 'month' ? 1 : 12)),
                         orders: Math.round((150 + (restaurant.id * 15) % 300) * (activePeriod === 'today' ? 0.033 : activePeriod === 'week' ? 0.233 : activePeriod === 'month' ? 1 : 12))
                       })).sort((a, b) => b.revenue - a.revenue).slice(0, 10).map((restaurant, index) => {
@@ -2071,7 +2071,7 @@ const AnalyticsPage: React.FC = () => {
                     // Filter by manager first
                     let filteredRestaurants = selectedManager !== 'all' ?
                       restaurants.filter(restaurant => {
-                        return (restaurant.manager_id && restaurant.manager_id.toString() === selectedManager) ||
+                        return (restaurant.admin_id && restaurant.admin_id.toString() === selectedManager) ||
                                (restaurant.managerId && restaurant.managerId.toString() === selectedManager);
                       }) : restaurants;
 
@@ -2104,7 +2104,7 @@ const AnalyticsPage: React.FC = () => {
                     // Filter by manager and date
                     let filteredRestaurants = selectedManager !== 'all' ?
                       restaurants.filter(restaurant => {
-                        return (restaurant.manager_id && restaurant.manager_id.toString() === selectedManager) ||
+                        return (restaurant.admin_id && restaurant.admin_id.toString() === selectedManager) ||
                                (restaurant.managerId && restaurant.managerId.toString() === selectedManager);
                       }) : restaurants;
 
@@ -2144,7 +2144,7 @@ const AnalyticsPage: React.FC = () => {
                     // Filter by manager first
                     let filteredRestaurants = selectedManager !== 'all' ?
                       restaurants.filter(restaurant => {
-                        return (restaurant.manager_id && restaurant.manager_id.toString() === selectedManager) ||
+                        return (restaurant.admin_id && restaurant.admin_id.toString() === selectedManager) ||
                                (restaurant.managerId && restaurant.managerId.toString() === selectedManager);
                       }) : restaurants;
 
@@ -2192,7 +2192,7 @@ const AnalyticsPage: React.FC = () => {
                     // Filter by manager first
                     let filteredRestaurants = selectedManager !== 'all' ?
                       restaurants.filter(restaurant => {
-                        return (restaurant.manager_id && restaurant.manager_id.toString() === selectedManager) ||
+                        return (restaurant.admin_id && restaurant.admin_id.toString() === selectedManager) ||
                                (restaurant.managerId && restaurant.managerId.toString() === selectedManager);
                       }) : restaurants;
 
@@ -2239,7 +2239,7 @@ const AnalyticsPage: React.FC = () => {
                       // Filter by manager first
                       let filteredRestaurants = selectedManager !== 'all' ?
                         restaurants.filter(restaurant => {
-                          return (restaurant.manager_id && restaurant.manager_id.toString() === selectedManager) ||
+                          return (restaurant.admin_id && restaurant.admin_id.toString() === selectedManager) ||
                                  (restaurant.managerId && restaurant.managerId.toString() === selectedManager);
                         }) : restaurants;
 
@@ -2263,7 +2263,7 @@ const AnalyticsPage: React.FC = () => {
                       return filteredRestaurants.map((restaurant) => (
                         <tr key={restaurant.id}>
                           <TableCell style={{ fontWeight: 600 }}>{restaurant.name}</TableCell>
-                          <TableCell>{restaurant.manager_name || restaurant.managerName || 'Unknown'}</TableCell>
+                          <TableCell>{restaurant.admin_name || restaurant.managerName || 'Unknown'}</TableCell>
                           <TableCell>
                             <span style={{
                               background: restaurant.planType === 'Enterprise Plan' ? '#8B5CF6' :
@@ -2527,7 +2527,7 @@ const AnalyticsPage: React.FC = () => {
                         const managerStats: Record<string, { restaurants: number; subscriptionRevenue: number; invoiceRevenue: number }> = {};
 
                         restaurants.forEach(restaurant => {
-                          const managerName = restaurant.manager_name || restaurant.managerName || 'Unknown Manager';
+                          const managerName = restaurant.admin_name || restaurant.managerName || 'Unknown Manager';
 
                           if (!managerStats[managerName]) {
                             managerStats[managerName] = { restaurants: 0, subscriptionRevenue: 0, invoiceRevenue: 0 };

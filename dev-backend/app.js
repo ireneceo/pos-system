@@ -203,6 +203,11 @@ const generalStockCategoriesRouter = require('./routes/general-stock-categories'
 const generalStockRouter = require('./routes/general-stock');
 const couponsRouter = require('./routes/coupons');
 const adminPaymentSettingsRouter = require('./routes/admin-payment-settings');
+const contentsRouter = require('./routes/contents');
+const foodcourtsRouter = require('./routes/foodcourts');
+const siteSettingsRouter = require('./routes/siteSettings');
+const publicRouter = require('./routes/public');
+const subscriptionsRouter = require('./routes/subscriptions');
 // 헬스 체크 라우터 (가장 먼저, DB 체크 없이)
 app.use('/api/health', healthRouter);
 
@@ -242,6 +247,11 @@ app.use('/api', inventoryRouter);  // Inventory routes for general stock managem
 app.use('/api', generalStockCategoriesRouter);  // General stock category routes
 app.use('/api', generalStockRouter);  // Company-wide general stock routes for Brand General
 app.use('/api/coupons', couponsRouter);  // Coupon management routes
+app.use('/api/contents', contentsRouter);  // Blog/FAQ content management
+app.use('/api/foodcourts', foodcourtsRouter);  // Foodcourt management
+app.use('/api/site-settings', siteSettingsRouter);  // Site settings (public + admin)
+app.use('/api/public', publicRouter);  // Public contact form & plans
+app.use('/api/subscriptions', subscriptionsRouter);  // Subscriptions (dashboard)
 
 // GitHub Webhook for Auto-Deployment (보안: System Admin 인증 필요)
 const { exec } = require('child_process');

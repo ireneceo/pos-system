@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { useParams } from 'react-router-dom';
 import MainLayout from '../../components/Layout/MainLayout';
@@ -359,14 +359,14 @@ const NotificationSettingsPage: React.FC = () => {
     };
   };
 
-  const { entityType, entityId } = getEntityInfo();
+  const { entityType, entityId } = useMemo(() => getEntityInfo(), [user, urlRestaurantId]);
 
   useEffect(() => {
     if (user) {
       loadSettings();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entityType, entityId, user, urlRestaurantId]);
+  }, [entityType, entityId]);
 
   if (!user) {
     return null;

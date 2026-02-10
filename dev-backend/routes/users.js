@@ -121,11 +121,23 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
 
+    // Auto-generate strong password if not provided
+    let generatedPassword = null;
+    let finalPassword = password;
     if (!password) {
-      return res.status(400).json({
-        success: false,
-        error: 'Password is required'
-      });
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+      generatedPassword = '';
+      // Ensure at least one of each required type
+      generatedPassword += 'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random() * 24)];
+      generatedPassword += 'abcdefghjkmnpqrstuvwxyz'[Math.floor(Math.random() * 23)];
+      generatedPassword += '23456789'[Math.floor(Math.random() * 8)];
+      generatedPassword += '!@#$%'[Math.floor(Math.random() * 5)];
+      for (let i = 0; i < 8; i++) {
+        generatedPassword += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      // Shuffle the password
+      generatedPassword = generatedPassword.split('').sort(() => Math.random() - 0.5).join('');
+      finalPassword = generatedPassword;
     }
 
     if (!username) {
@@ -170,7 +182,7 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(finalPassword, 10);
 
     // Generate full_name from first_name and last_name if not provided
     const generatedFullName = full_name ||
@@ -193,9 +205,13 @@ router.post('/', authenticateToken, async (req, res) => {
 
     console.log('✅ User created successfully:', user.id, user.username);
 
-    // Return user without password
+    // Return user without password (include generated password if auto-generated)
     const { password: _, ...userWithoutPassword } = user.toJSON();
-    res.status(201).json({ success: true, data: userWithoutPassword });
+    const response = { success: true, data: userWithoutPassword };
+    if (generatedPassword) {
+      response.generatedPassword = generatedPassword;
+    }
+    res.status(201).json(response);
   } catch (error) {
     console.error('❌ Error creating user:', error);
     res.status(400).json({ success: false, error: error.message });
@@ -275,6 +291,20 @@ router.patch('/:id/password', authenticateToken, async (req, res) => {
     const isValidPassword = await bcrypt.compare(currentPassword, user.password);
     if (!isValidPassword) {
       return res.status(400).json({ success: false, error: 'Current password is incorrect' });
+    }
+
+    // Validate new password strength
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ success: false, error: 'Password must be at least 8 characters long' });
+    }
+    if (!/[a-z]/.test(newPassword)) {
+      return res.status(400).json({ success: false, error: 'Password must contain at least one lowercase letter' });
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      return res.status(400).json({ success: false, error: 'Password must contain at least one uppercase letter' });
+    }
+    if (!/[0-9]/.test(newPassword)) {
+      return res.status(400).json({ success: false, error: 'Password must contain at least one number' });
     }
 
     // Hash and update new password

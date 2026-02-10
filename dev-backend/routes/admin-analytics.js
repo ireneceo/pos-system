@@ -60,7 +60,7 @@ router.get('/system-stats', authenticateToken, requireManagerRole, async (req, r
     // 매니저 필터가 있을 경우 해당 매니저의 레스토랑들만 포함
     if (manager_id && manager_id !== 'all') {
       const managerRestaurants = await Restaurant.findAll({
-        where: { manager_id },
+        where: { admin_id: manager_id },
         attributes: ['id']
       });
       const restaurantIds = managerRestaurants.map(r => r.id);
@@ -80,7 +80,7 @@ router.get('/system-stats', authenticateToken, requireManagerRole, async (req, r
     // 전체 레스토랑 수
     const restaurantWhere = {};
     if (manager_id && manager_id !== 'all') {
-      restaurantWhere.manager_id = manager_id;
+      restaurantWhere.admin_id = manager_id;
     }
 
     const activeRestaurants = await Restaurant.count({
@@ -184,7 +184,7 @@ router.get('/sales-trend', authenticateToken, requireManagerRole, async (req, re
 
     if (manager_id && manager_id !== 'all') {
       const managerRestaurants = await Restaurant.findAll({
-        where: { manager_id },
+        where: { admin_id: manager_id },
         attributes: ['id']
       });
       const restaurantIds = managerRestaurants.map(r => r.id);
@@ -322,7 +322,7 @@ router.get('/regional-stats', authenticateToken, requireManagerRole, async (req,
 
     const restaurantWhere = {};
     if (manager_id && manager_id !== 'all') {
-      restaurantWhere.manager_id = manager_id;
+      restaurantWhere.admin_id = manager_id;
     }
 
     // 지역별 데이터 추출 (주소에서 첫 번째 단어를 지역으로 사용)
@@ -334,9 +334,10 @@ router.get('/regional-stats', authenticateToken, requireManagerRole, async (req,
       ],
       include: [{
         model: Order,
+        as: 'orders',
         attributes: [
-          [require('sequelize').fn('SUM', require('sequelize').col('Orders.total_amount')), 'revenue'],
-          [require('sequelize').fn('COUNT', require('sequelize').col('Orders.id')), 'orders']
+          [require('sequelize').fn('SUM', require('sequelize').col('orders.total_amount')), 'revenue'],
+          [require('sequelize').fn('COUNT', require('sequelize').col('orders.id')), 'orders']
         ],
         where: {
           order_date: {
@@ -352,8 +353,8 @@ router.get('/regional-stats', authenticateToken, requireManagerRole, async (req,
     const processedData = regionalData.map(item => ({
       region: item.region || 'Unknown',
       restaurants: parseInt(item.restaurants),
-      revenue: parseFloat(item['Orders.revenue'] || 0),
-      orders: parseInt(item['Orders.orders'] || 0),
+      revenue: parseFloat(item['orders.revenue'] || 0),
+      orders: parseInt(item['orders.orders'] || 0),
       growth: Math.round((Math.random() * 20) - 5) // 임시 성장률 (실제로는 이전 기간과 비교 필요)
     }));
 

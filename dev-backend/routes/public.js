@@ -8,37 +8,8 @@ const ContactInquiry = require('../models/ContactInquiry');
 const PlanTemplate = require('../models/PlanTemplate');
 const PlanPrice = require('../models/PlanPrice');
 const { authenticateToken } = require('../middleware/auth');
-const nodemailer = require('nodemailer');
 const { Op } = require('sequelize');
-const { decrypt } = require('../utils/encryption');
-
-// ==============================================
-// 이메일 설정 (시스템 설정에서 가져오기)
-// ==============================================
-async function getEmailTransporter() {
-  try {
-    const SystemSettings = require('../models/SystemSettings');
-    const emailSettings = await SystemSettings.findOne({
-      where: { setting_key: 'email_settings' }
-    });
-
-    if (emailSettings && emailSettings.setting_value) {
-      const config = emailSettings.setting_value;
-      return nodemailer.createTransport({
-        host: config.smtp_host,
-        port: config.smtp_port,
-        secure: config.smtp_port === 465,
-        auth: {
-          user: config.smtp_user,
-          pass: decrypt(config.smtp_password)
-        }
-      });
-    }
-  } catch (error) {
-    console.error('Failed to get email settings:', error);
-  }
-  return null;
-}
+const { sendPlatformEmail } = require('../utils/emailService');
 
 // ==============================================
 // Public Contact Form API (인증 불필요)
@@ -301,51 +272,44 @@ router.post('/admin/inquiries/:id/reply', authenticateToken, async (req, res) =>
       status: 'resolved'
     });
 
-    // 이메일 발송
+    // 이메일 발송 (Admin의 notification_settings SMTP 사용)
     if (send_email) {
       try {
-        const transporter = await getEmailTransporter();
+        const CompanySettings = require('../models/CompanySettings');
+        const company = await CompanySettings.findOne({ where: { id: 1 } });
+        const companyName = company?.company_name || 'PurpleHere';
 
-        if (transporter) {
-          const CompanySettings = require('../models/CompanySettings');
-          const company = await CompanySettings.findOne({ where: { id: 1 } });
-          const companyName = company?.company_name || 'PurpleHere';
-
-          await transporter.sendMail({
-            from: `"${companyName} Support" <noreply@purplehere.com>`,
-            to: inquiry.email,
-            subject: `Re: Your inquiry to ${companyName}`,
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #635BFF;">Thank you for contacting us</h2>
-                <p>Dear ${inquiry.name},</p>
-                <p>Thank you for your inquiry. Here is our response:</p>
-                <div style="background: #F8FAFC; padding: 20px; border-left: 4px solid #635BFF; margin: 20px 0;">
-                  ${reply_message.replace(/\n/g, '<br>')}
-                </div>
-                <hr style="border: none; border-top: 1px solid #E6EBF1; margin: 20px 0;">
-                <p style="color: #6B7280; font-size: 14px;">
-                  <strong>Your original message:</strong><br>
-                  ${inquiry.message.replace(/\n/g, '<br>')}
-                </p>
-                <hr style="border: none; border-top: 1px solid #E6EBF1; margin: 20px 0;">
-                <p style="color: #6B7280; font-size: 12px;">
-                  Best regards,<br>
-                  ${companyName} Team
-                </p>
+        await sendPlatformEmail({
+          to: inquiry.email,
+          subject: `Re: Your inquiry to ${companyName}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #635BFF;">Thank you for contacting us</h2>
+              <p>Dear ${inquiry.name},</p>
+              <p>Thank you for your inquiry. Here is our response:</p>
+              <div style="background: #F8FAFC; padding: 20px; border-left: 4px solid #635BFF; margin: 20px 0;">
+                ${reply_message.replace(/\n/g, '<br>')}
               </div>
-            `
-          });
+              <hr style="border: none; border-top: 1px solid #E6EBF1; margin: 20px 0;">
+              <p style="color: #6B7280; font-size: 14px;">
+                <strong>Your original message:</strong><br>
+                ${inquiry.message.replace(/\n/g, '<br>')}
+              </p>
+              <hr style="border: none; border-top: 1px solid #E6EBF1; margin: 20px 0;">
+              <p style="color: #6B7280; font-size: 12px;">
+                Best regards,<br>
+                ${companyName} Team
+              </p>
+            </div>
+          `
+        });
 
-          await inquiry.update({
-            email_sent: true,
-            email_sent_at: new Date()
-          });
+        await inquiry.update({
+          email_sent: true,
+          email_sent_at: new Date()
+        });
 
-          console.log(`📧 Reply email sent to ${inquiry.email}`);
-        } else {
-          console.log('⚠️ Email transporter not configured, skipping email');
-        }
+        console.log(`📧 Reply email sent to ${inquiry.email}`);
       } catch (emailError) {
         console.error('Failed to send reply email:', emailError);
         // 이메일 실패해도 답변은 저장됨

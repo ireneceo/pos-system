@@ -273,9 +273,9 @@ const ManagerDashboard: React.FC = () => {
         }
         const allRestaurants = await restaurantsResponse.json();
         
-        // Filter restaurants for current manager (manager_id = 2 for K-DINE manager)
-        const managerRestaurants = allRestaurants.filter((restaurant: any) => 
-          restaurant.manager_id === 2 // K-DINE manager ID
+        // Filter restaurants for current manager (admin_id = 2 for K-DINE manager)
+        const managerRestaurants = allRestaurants.filter((restaurant: any) =>
+          restaurant.admin_id === 2 // K-DINE manager ID
         );
         
         console.log('🏪 Found manager restaurants:', managerRestaurants);
