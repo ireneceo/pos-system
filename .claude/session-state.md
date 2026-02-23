@@ -10,9 +10,14 @@
 #### 1. 운영서버 전체 배포
 - 개발서버 → 운영서버(87.106.78.146) SSH 배포 실행
 - DB 스키마 동기화 (62개 모델, notification_settings ENUM 확장 반영)
-- 프론트엔드 빌드 + rsync, 백엔드 rsync
-- PM2 production-backend 재시작 + 헬스체크 통과
 - 백업: /var/www/backups/20260223_212557
+
+#### 2. Staff 비밀번호 리셋 기능
+- 백엔드: POST /api/users/:id/reset-password 권한 확장 (Restaurant Admin → 자기 Staff)
+- 프론트엔드: StaffPage에 Reset PW 버튼 + 확인 모달 + 새 비밀번호 표시
+
+#### 3. 배포 명령어 릴리즈노트 템플릿
+- /배포 완료 후 왓츠앱용 한글/영문 릴리즈 노트 자동 생성 형식 추가
 
 ### 현재 비밀번호 매핑
 | 계정 | 이메일 | 비밀번호 |
@@ -35,6 +40,7 @@
 - 백엔드 자동 연결 + Trial 권한 ✅
 - Staff 관리 + PIN 캐셔 전환 + 메뉴 권한 시스템 ✅
 - 배포 안정화 + DB 스키마 동기화 시스템 ✅
+- Staff 비밀번호 리셋 기능 ✅
 - 운영서버 전체 배포 ✅
 
 ### 다음 할 일

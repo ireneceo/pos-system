@@ -179,6 +179,23 @@ const totalRevenue = useMemo(() => {
 
 ---
 
+## ✅ 완료: Staff 비밀번호 리셋 기능 + 배포 명령어 개선 (2026-02-23)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Staff 비밀번호 리셋 API 권한 확장 | System Admin 전용 → Restaurant Admin도 자기 레스토랑 Staff 비밀번호 리셋 가능 | ✅ 완료 |
+| Staff 비밀번호 리셋 UI | StaffPage에 Reset PW 버튼 + 확인 모달 + 새 비밀번호 표시 모달 | ✅ 완료 |
+| 배포 명령어 릴리즈노트 템플릿 | /배포 완료 후 왓츠앱용 한글/영문 릴리즈 노트 자동 생성 형식 추가 | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/routes/users.js` - reset-password API 권한 확장 (Restaurant Admin 추가)
+- `dev-frontend/src/pages/Staff/StaffPage.tsx` - Reset PW 버튼, 확인 모달, 비밀번호 표시 모달
+- `.claude/commands/배포.md` - 릴리즈 노트 출력 섹션 추가
+
+---
+
 ## ✅ 완료: 배포 안정화 + DB 스키마 동기화 시스템 구축 (2026-02-23)
 
 ### 완료된 작업

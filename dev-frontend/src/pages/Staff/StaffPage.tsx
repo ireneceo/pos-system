@@ -328,6 +328,10 @@ const StaffPage: React.FC = () => {
   // Promote confirmation modal
   const [confirmPromoteTarget, setConfirmPromoteTarget] = useState<Staff | null>(null);
 
+  // Reset Password
+  const [resetPasswordTarget, setResetPasswordTarget] = useState<Staff | null>(null);
+  const [resetPasswordResult, setResetPasswordResult] = useState('');
+
   // Form error (shown inside modal)
   const [formError, setFormError] = useState('');
 
@@ -607,6 +611,36 @@ const StaffPage: React.FC = () => {
     }
   };
 
+  // === Reset Password ===
+  const executeResetPassword = async () => {
+    const staff = resetPasswordTarget;
+    if (!staff) return;
+    setResetPasswordTarget(null);
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/users/${staff.id}/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.tempPassword) {
+          setTempPassword(result.tempPassword);
+          setShowPasswordModal(true);
+        }
+      } else {
+        const errorData = await response.json();
+        setErrorMessage(errorData.error || 'Failed to reset password');
+      }
+    } catch (error) {
+      setErrorMessage((error as Error).message);
+    }
+  };
+
   const getInitials = (name: string) => {
     return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2) || '?';
   };
@@ -751,12 +785,17 @@ const StaffPage: React.FC = () => {
                       Edit
                     </ActionButton>
                     {staff.role === 'Staff' && (
-                      <ActionButton
-                        onClick={() => handlePromoteStaff(staff)}
-                        style={{ backgroundColor: '#635BFF', color: 'white', borderColor: '#635BFF' }}
-                      >
-                        Promote
-                      </ActionButton>
+                      <>
+                        <ActionButton onClick={() => setResetPasswordTarget(staff)}>
+                          Reset PW
+                        </ActionButton>
+                        <ActionButton
+                          onClick={() => handlePromoteStaff(staff)}
+                          style={{ backgroundColor: '#635BFF', color: 'white', borderColor: '#635BFF' }}
+                        >
+                          Promote
+                        </ActionButton>
+                      </>
                     )}
                   </div>
                 </StaffItem>
@@ -1018,7 +1057,7 @@ const StaffPage: React.FC = () => {
         <Modal
           isOpen={showPasswordModal}
           onClose={() => setShowPasswordModal(false)}
-          title="Staff Created"
+          title="Password Generated"
           size="small"
           footer={
             <>
@@ -1039,7 +1078,7 @@ const StaffPage: React.FC = () => {
           }
         >
           <div style={{ marginBottom: '20px', fontSize: '14px', color: '#6B7280' }}>
-            The staff account has been created with an auto-generated password. Please share this password with the staff member.
+            Please share this password with the staff member. They should change it after first login.
           </div>
           <div style={{
             background: '#F8FAFC',
@@ -1080,6 +1119,27 @@ const StaffPage: React.FC = () => {
         >
           <div style={{ fontSize: '14px', color: '#374151' }}>
             {errorMessage}
+          </div>
+        </Modal>
+
+        {/* ===== Reset Password Confirmation Modal (Portal) ===== */}
+        <Modal
+          isOpen={!!resetPasswordTarget}
+          onClose={() => setResetPasswordTarget(null)}
+          title="Reset Password"
+          size="small"
+          footer={
+            <>
+              <ModalButton variant="secondary" onClick={() => setResetPasswordTarget(null)}>Cancel</ModalButton>
+              <ModalButton variant="primary" onClick={executeResetPassword}>Reset</ModalButton>
+            </>
+          }
+        >
+          <div style={{ fontSize: '14px', color: '#374151' }}>
+            Reset the password for <strong>{resetPasswordTarget?.name}</strong>?
+          </div>
+          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '8px' }}>
+            A new password will be generated. The current password will no longer work.
           </div>
         </Modal>
 

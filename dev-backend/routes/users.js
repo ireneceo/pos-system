@@ -347,20 +347,29 @@ router.patch('/:id/password', authenticateToken, async (req, res) => {
   }
 });
 
-// What and Why: Admin 패스워드 리셋 - System Admin만 사용 가능
+// What and Why: 패스워드 리셋 - System Admin 또는 Restaurant Admin(자기 스태프만)
 // - 강력한 임시 비밀번호 생성 (12자, 대소문자+숫자+특수문자)
 // - 응답에 임시 비밀번호 포함하여 관리자가 사용자에게 전달
 router.post('/:id/reset-password', authenticateToken, async (req, res) => {
   try {
-    // System Admin만 패스워드 리셋 가능
-    if (req.user.role !== 'System Admin') {
-      return res.status(403).json({ success: false, error: 'Only System Admin can reset passwords' });
-    }
-
     const user = await User.findByPk(req.params.id);
 
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    // 권한 체크: System Admin은 모두 가능, Restaurant Admin은 자기 레스토랑 스태프만
+    if (req.user.role === 'System Admin') {
+      // OK
+    } else if (req.user.role === 'Restaurant Admin') {
+      if (!req.user.restaurant_id || user.restaurant_id?.toString() !== req.user.restaurant_id.toString()) {
+        return res.status(403).json({ success: false, error: 'You can only reset passwords for your own restaurant staff' });
+      }
+      if (user.role !== 'Staff' && user.id !== req.user.id) {
+        return res.status(403).json({ success: false, error: 'You can only reset passwords for Staff members' });
+      }
+    } else {
+      return res.status(403).json({ success: false, error: 'Not authorized to reset passwords' });
     }
 
     // 강력한 임시 비밀번호 생성 (12자)
