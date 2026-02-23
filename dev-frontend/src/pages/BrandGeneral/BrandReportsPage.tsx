@@ -463,10 +463,18 @@ const BrandReportsPage: React.FC = () => {
     return `${year}-${month}-${day}`;
   }
 
-  // Update URL when tab changes
+  // Read restaurantId from URL on initial load
+  const [initialRestaurantId] = useState(() => searchParams.get('restaurantId'));
+  const [initialRestaurantName] = useState(() => searchParams.get('restaurantName'));
+
+  // Update URL when tab changes (preserve other params)
   useEffect(() => {
-    setSearchParams({ tab: activeTab }, { replace: true });
-  }, [activeTab, setSearchParams]);
+    const newParams: Record<string, string> = { tab: activeTab };
+    if (selectedRestaurant !== 'all') {
+      newParams.restaurantId = selectedRestaurant;
+    }
+    setSearchParams(newParams, { replace: true });
+  }, [activeTab, setSearchParams, selectedRestaurant]);
 
   // Fetch brands and restaurants
   useEffect(() => {
@@ -503,6 +511,22 @@ const BrandReportsPage: React.FC = () => {
           }));
           setRestaurants(formattedRestaurants);
           setFilteredRestaurants(formattedRestaurants.slice(0, 10));
+
+          // Pre-select restaurant from URL parameter
+          if (initialRestaurantId) {
+            const match = formattedRestaurants.find((r: any) => r.id === initialRestaurantId);
+            if (match) {
+              setSelectedRestaurant(match.id);
+              setRestaurantSearchQuery(match.name);
+            }
+          } else if (initialRestaurantName) {
+            const decoded = decodeURIComponent(initialRestaurantName);
+            const match = formattedRestaurants.find((r: any) => r.name === decoded);
+            if (match) {
+              setSelectedRestaurant(match.id);
+              setRestaurantSearchQuery(match.name);
+            }
+          }
         }
       } catch (error) {
         console.error('Error fetching brands/restaurants:', error);
@@ -512,7 +536,7 @@ const BrandReportsPage: React.FC = () => {
     if (user) {
       fetchBrandsAndRestaurants();
     }
-  }, [user]);
+  }, [user, initialRestaurantId, initialRestaurantName]);
 
   // Fetch orders data
   useEffect(() => {

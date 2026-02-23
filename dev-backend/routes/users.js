@@ -109,7 +109,7 @@ router.post('/', authenticateToken, async (req, res) => {
   console.log('📝 Request body:', req.body);
 
   try {
-    const { username, email, password, role, full_name, first_name, last_name, phone, permissions, restaurantId, restaurant_id, department, company_name, manager_id, monthly_salary } = req.body;
+    const { username, email, password, role, full_name, first_name, last_name, phone, permissions, restaurantId, restaurant_id, department, company_name, manager_id, monthly_salary, pin_code } = req.body;
     // Support both camelCase (new) and snake_case (legacy) for restaurant ID
     const finalRestaurantId = restaurantId || restaurant_id;
 
@@ -182,6 +182,19 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
 
+    // PIN duplicate check within same restaurant
+    if (pin_code && finalRestaurantId) {
+      const pinExists = await User.findOne({
+        where: { restaurant_id: finalRestaurantId, pin_code }
+      });
+      if (pinExists) {
+        return res.status(400).json({
+          success: false,
+          error: `PIN ${pin_code} is already used by another staff member in this restaurant`
+        });
+      }
+    }
+
     const hashedPassword = await bcrypt.hash(finalPassword, 10);
 
     // Generate full_name from first_name and last_name if not provided
@@ -200,7 +213,8 @@ router.post('/', authenticateToken, async (req, res) => {
       restaurant_id: finalRestaurantId || null,
       department: department || null,
       company_name: company_name || null,
-      manager_id: manager_id || null
+      manager_id: manager_id || null,
+      pin_code: pin_code || null
     });
 
     console.log('✅ User created successfully:', user.id, user.username);
@@ -247,7 +261,23 @@ router.put('/:id', authenticateToken, async (req, res) => {
         (first_name || last_name);
     }
 
-    console.log('📝 Update data:', updateData);
+    // PIN duplicate check within same restaurant (only if pin_code is being changed)
+    if (updateData.pin_code && user.restaurant_id) {
+      const { Op } = require('sequelize');
+      const pinExists = await User.findOne({
+        where: {
+          restaurant_id: user.restaurant_id,
+          pin_code: updateData.pin_code,
+          id: { [Op.ne]: user.id }
+        }
+      });
+      if (pinExists) {
+        return res.status(400).json({
+          success: false,
+          error: `PIN ${updateData.pin_code} is already used by another staff member`
+        });
+      }
+    }
 
     await user.update(updateData);
 

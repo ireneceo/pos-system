@@ -274,6 +274,13 @@ router.post('/product', async (req, res) => {
       });
     }
 
+    if (!req.body.name || !req.body.category) {
+      return res.status(400).json({
+        success: false,
+        error: 'Name and category are required'
+      });
+    }
+
     // Check menu item limit
     const restaurant = await Restaurant.findByPk(restaurantId);
 

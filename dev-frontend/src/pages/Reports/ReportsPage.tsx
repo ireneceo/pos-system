@@ -689,7 +689,7 @@ const ReportsPage: React.FC = () => {
   };
 
   // 날짜 범위 처리 함수
-  const handlePeriodChange = (period: PeriodType) => {
+  const handlePeriodChange = async (period: PeriodType) => {
     setActivePeriod(period);
     setIsCustomDateRange(false);
 
@@ -717,14 +717,20 @@ const ReportsPage: React.FC = () => {
         start.setDate(start.getDate() - 364);
         break;
       case 'all':
-        // Get the earliest order date, or default to 5 years ago
-        if (orders.length > 0) {
-          const earliestOrder = orders.reduce((earliest, order) => {
-            const orderDate = new Date(order.order_date || order.createdAt);
-            return orderDate < earliest ? orderDate : earliest;
-          }, new Date());
-          start = earliestOrder;
-        } else {
+        // Fetch earliest order date from server
+        try {
+          const token = localStorage.getItem('auth_token');
+          const res = await fetch(
+            `/api/dashboard/restaurant/${user?.restaurantId}/earliest-order`,
+            { headers: { 'Authorization': `Bearer ${token}` } }
+          );
+          const data = await res.json();
+          if (data.success && data.data.earliestDate) {
+            start = new Date(data.data.earliestDate);
+          } else {
+            start = new Date(now.getFullYear() - 5, 0, 1);
+          }
+        } catch {
           start = new Date(now.getFullYear() - 5, 0, 1);
         }
         break;

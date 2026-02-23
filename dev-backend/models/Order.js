@@ -85,7 +85,7 @@ Order.init({
     }
   },
   payment_proof: {
-    type: DataTypes.TEXT,
+    type: DataTypes.TEXT('long'),
     allowNull: true,
     get() {
       const value = this.getDataValue('payment_proof');
@@ -197,6 +197,16 @@ Order.init({
     allowNull: true,
     defaultValue: 0,
     comment: 'Discount amount from points usage'
+  },
+  cashier_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Staff who processed this order (POS cashier)'
+  },
+  cashier_name: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'Cashier name snapshot (preserved after staff changes)'
   },
   is_deleted: {
     type: DataTypes.BOOLEAN,

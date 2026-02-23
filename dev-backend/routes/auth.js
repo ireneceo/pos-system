@@ -52,6 +52,18 @@ router.get('/me', async (req, res, next) => {
       return errorResponse(res, 'User not found', 401, 'USER_NOT_FOUND');
     }
 
+    // permissions 파싱 (JSON string → array)
+    let permissions = [];
+    if (user.permissions) {
+      try {
+        permissions = typeof user.permissions === 'string'
+          ? JSON.parse(user.permissions)
+          : user.permissions;
+      } catch (e) {
+        permissions = [];
+      }
+    }
+
     const userData = {
       id: user.id,
       email: user.email,
@@ -60,7 +72,8 @@ router.get('/me', async (req, res, next) => {
       restaurant_id: user.restaurant_id,
       manager_id: user.manager_id,
       brand_id: user.brand_id,
-      foodcourt_id: user.foodcourt_id
+      foodcourt_id: user.foodcourt_id,
+      permissions
     };
 
     successResponse(res, userData, 'User information retrieved');

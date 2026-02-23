@@ -251,6 +251,8 @@ interface OrderCompleteModalProps {
     // Points
     pointsUsed?: number;
     pointDiscount?: number;
+    // Cashier
+    cashierName?: string | null;
   };
   onPrintBill: () => void;
 }
@@ -370,6 +372,12 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
             <DetailLabel>Date & Time</DetailLabel>
             <DetailValue>{formatDateTime(orderData.date)}</DetailValue>
           </DetailRow>
+          {orderData.cashierName && (
+            <DetailRow>
+              <DetailLabel>Cashier</DetailLabel>
+              <DetailValue>{orderData.cashierName}</DetailValue>
+            </DetailRow>
+          )}
           <DetailRow>
             <DetailLabel>Payment Method</DetailLabel>
             <DetailValue>{orderData.paymentMethod}</DetailValue>
@@ -483,7 +491,7 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
           </PrintRow>
           <PrintRow>
             <strong>Cashier:</strong>
-            <span>POS Terminal</span>
+            <span>{orderData.cashierName || 'POS Terminal'}</span>
           </PrintRow>
           <div style={{ fontSize: '20px', fontWeight: 'bold', textAlign: 'center', margin: '10px 0' }}>
             PICKUP #{orderData.pickupNumber || (orderData.orderNumber?.includes('-') ? orderData.orderNumber.split('-')[1] : orderData.orderNumber) || '-'}

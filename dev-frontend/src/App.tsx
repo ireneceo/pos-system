@@ -15,7 +15,6 @@ import ScrollToTop from './components/ScrollToTop';
 import HomePage from './pages/Landing/HomePage';
 import AboutPage from './pages/Landing/AboutPage';
 import FeaturesPage from './pages/Landing/FeaturesPage';
-import ServicePage from './pages/Landing/ServicePage';
 import PricingPage from './pages/Landing/PricingPage';
 import ContactPage from './pages/Landing/ContactPage';
 import DemoPage from './pages/Landing/DemoPage';
@@ -291,7 +290,7 @@ function App() {
                       <Route path="/" element={<HomePage />} />
                       <Route path="/about" element={<AboutPage />} />
                       <Route path="/features" element={<FeaturesPage />} />
-                      <Route path="/service" element={<ServicePage />} />
+                      <Route path="/service" element={<Navigate to="/features" replace />} />
                       <Route path="/pricing" element={<PricingPage />} />
                       <Route path="/contact" element={<ContactPage />} />
                       <Route path="/demo" element={<DemoPage />} />
@@ -680,7 +679,7 @@ function App() {
 
                       {/* Restaurant Admin Routes - NEW STRUCTURE with restaurantId in URL */}
                       <Route path="/restaurant/:restaurantId/dashboard" element={
-                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager']}>
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager']}>
                           <RestaurantDashboard />
                         </ProtectedRoute>
                       } />
@@ -705,32 +704,32 @@ function App() {
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/menu" element={
-                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin', 'Staff']}>
                           <MenuManagementPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/categories" element={
-                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin', 'Staff']}>
                           <CategoryManagementPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/options" element={
-                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin', 'Staff']}>
                           <OptionManagementPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/recipe-management" element={
-                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin', 'Staff']}>
                           <RecipeManagementPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/suppliers" element={
-                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin', 'Staff']}>
                           <SuppliersPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/customers" element={
-                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin', 'Staff']}>
                           <CustomersPage />
                         </ProtectedRoute>
                       } />
@@ -740,17 +739,17 @@ function App() {
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/sales" element={
-                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin', 'Staff']}>
                           <SalesPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/coupons" element={
-                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin', 'Staff']}>
                           <PromotionsPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/reports" element={
-                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin', 'Staff']}>
                           <ReportsPage />
                         </ProtectedRoute>
                       } />
@@ -765,7 +764,7 @@ function App() {
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/settings" element={
-                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin', 'Staff']}>
                           <SettingsPage />
                         </ProtectedRoute>
                       } />
@@ -792,46 +791,46 @@ function App() {
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/invoices" element={
-                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin']}>
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
                           <RestaurantInvoicesPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/history" element={
-                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin']}>
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
                           <ActivityHistoryPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/notification-settings" element={
-                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin']}>
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
                           <NotificationSettingsPage />
                         </ProtectedRoute>
                       } />
 
                       {/* Inventory Management Routes */}
                       <Route path="/restaurant/:restaurantId/inventory" element={
-                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin', 'Staff']}>
                           <InventoryPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/stock-take" element={
-                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin', 'Staff']}>
                           <StockTakePage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurants/:restaurantId/inventory" element={
-                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin', 'Staff']}>
                           <InventoryPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurants/:restaurantId/stock-take" element={
-                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin', 'Staff']}>
                           <StockTakePage />
                         </ProtectedRoute>
                       } />
 
                       {/* Product Recipe Management */}
                       <Route path="/restaurant/:restaurantId/product-recipes" element={
-                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin']}>
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin', 'Staff']}>
                           <ProductRecipePage />
                         </ProtectedRoute>
                       } />

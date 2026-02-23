@@ -104,6 +104,8 @@ interface DbOrder {
   order_date: string;
   order_items: any;
   served_at?: string | null;
+  cashier_id?: number | null;
+  cashier_name?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -2148,7 +2150,8 @@ const LiveOrdersPage: React.FC = () => {
         total: parseFloat((selectedOrder as any).final_price || selectedOrder.total_amount || '0'),
         paymentMethod: selectedOrder.payment_method || 'cash',
         amountReceived: parseFloat((selectedOrder as any).amount_received || '0'),
-        change: parseFloat((selectedOrder as any).change || '0')
+        change: parseFloat((selectedOrder as any).change || '0'),
+        cashierName: (selectedOrder as any).cashier_name || null
       };
 
       // OLD: const success = await printBill(orderData, storeInfo);
@@ -2227,7 +2230,8 @@ const LiveOrdersPage: React.FC = () => {
         total: parseFloat((orderToPrint as any).final_price || orderToPrint.total_amount || '0'),
         paymentMethod: orderToPrint.payment_method || 'cash',
         amountReceived: parseFloat((orderToPrint as any).amount_received || '0'),
-        change: parseFloat((orderToPrint as any).change || '0')
+        change: parseFloat((orderToPrint as any).change || '0'),
+        cashierName: (orderToPrint as any).cashier_name || null
       };
 
       // OLD: const success = await printBill(orderData, storeInfo);
@@ -2985,6 +2989,9 @@ const LiveOrdersPage: React.FC = () => {
                         )}
                         {order.order_type === 'pickup' && (
                           <><br /><span style={{ color: '#8B5CF6', fontWeight: 500 }}>Pickup: {order.scheduled_pickup_time ? formatPickupTimeRange(order.scheduled_pickup_time) : 'ASAP'}</span></>
+                        )}
+                        {order.cashier_name && (
+                          <><br /><span style={{ color: '#8898AA', fontSize: '11px' }}>Cashier: {order.cashier_name}</span></>
                         )}
                       </CustomerInfo>
                     </DataTableCell>

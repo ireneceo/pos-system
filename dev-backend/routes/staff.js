@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { authenticateToken } = require('../middleware/auth');
 
@@ -18,13 +19,12 @@ router.get('/', async (req, res) => {
       });
     }
 
-    // Get staff members for this restaurant
     const staff = await User.findAll({
       where: {
         restaurant_id: restaurantId,
         role: ['Restaurant Admin', 'Staff']
       },
-      attributes: ['id', 'username', 'email', 'full_name', 'role', 'createdAt']
+      attributes: ['id', 'username', 'email', 'full_name', 'role', 'department', 'phone', 'pin_code', 'createdAt']
     });
 
     res.json({
@@ -40,17 +40,84 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Staff login (for POS terminal)
-router.post('/login', async (req, res) => {
+// Verify PIN for POS cashier quick switch (실제 로그인 전환 - JWT 재발급)
+router.post('/verify-pin', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { pin_code } = req.body;
+    const restaurantId = req.body.restaurant_id || req.user.restaurant_id;
 
-    // This is a placeholder - implement actual authentication
-    res.status(501).json({
-      success: false,
-      message: 'Staff login not implemented - use regular auth/login'
+    if (!pin_code || !restaurantId) {
+      return res.status(400).json({
+        success: false,
+        error: 'PIN code and restaurant ID are required'
+      });
+    }
+
+    const staff = await User.findOne({
+      where: {
+        restaurant_id: restaurantId,
+        pin_code: pin_code,
+        role: ['Restaurant Admin', 'Staff']
+      },
+      attributes: ['id', 'full_name', 'role', 'department', 'email', 'username',
+        'brand_id', 'foodcourt_id', 'restaurant_id', 'manager_id', 'permissions']
+    });
+
+    if (!staff) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid PIN'
+      });
+    }
+
+    // JWT 발급 (authService.js와 동일 패턴)
+    const token = jwt.sign({
+      userId: staff.id,
+      email: staff.email,
+      role: staff.role,
+      username: staff.username,
+      brand_id: staff.brand_id,
+      foodcourt_id: staff.foodcourt_id,
+      restaurant_id: staff.restaurant_id,
+      manager_id: staff.manager_id
+    }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '24h' });
+
+    // permissions 파싱 (JSON string → array)
+    let permissions = [];
+    if (staff.permissions) {
+      try {
+        permissions = typeof staff.permissions === 'string'
+          ? JSON.parse(staff.permissions)
+          : staff.permissions;
+      } catch (e) {
+        permissions = [];
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        id: staff.id,
+        name: staff.full_name || staff.email,
+        role: staff.role,
+        department: staff.department
+      },
+      token,
+      user: {
+        id: staff.id,
+        email: staff.email,
+        role: staff.role,
+        username: staff.username,
+        name: staff.full_name || staff.email,
+        restaurant_id: staff.restaurant_id,
+        manager_id: staff.manager_id,
+        brand_id: staff.brand_id,
+        foodcourt_id: staff.foodcourt_id,
+        permissions
+      }
     });
   } catch (error) {
+    console.error('Error verifying PIN:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -58,10 +125,9 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Staff logout
+// Staff logout (placeholder)
 router.post('/logout', async (req, res) => {
   try {
-    // Placeholder for staff logout
     res.json({
       success: true,
       message: 'Logged out'

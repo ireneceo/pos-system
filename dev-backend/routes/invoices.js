@@ -1133,8 +1133,16 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    // Only show invoices that need payment (exclude draft, paid, cancelled)
-    whereClause.status = { [Op.in]: ['pending_payment', 'payment_submitted', 'overdue'] };
+    // Filter by status: default shows unpaid only, ?status=paid for paid, ?status=all for everything
+    const statusFilter = req.query.status;
+    if (statusFilter === 'paid') {
+      whereClause.status = 'paid';
+    } else if (statusFilter === 'all') {
+      whereClause.status = { [Op.notIn]: ['draft', 'cancelled'] };
+    } else {
+      // Default: only show invoices that need payment (exclude draft, paid, cancelled)
+      whereClause.status = { [Op.in]: ['pending_payment', 'payment_submitted', 'overdue'] };
+    }
 
     const invoices = await Invoice.findAll({
       where: whereClause,

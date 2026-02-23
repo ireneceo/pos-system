@@ -190,6 +190,43 @@ const FiltersRight = styled.div`
   }
 `;
 
+const PeriodFilterGroup = styled.div`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+`;
+
+const DateButton = styled.button<{ active?: boolean }>`
+  padding: 8px 16px;
+  background: ${props => props.active ? '#059669' : '#FFFFFF'};
+  color: ${props => props.active ? '#FFFFFF' : '#6B7C93'};
+  border: 1px solid ${props => props.active ? '#059669' : '#E6EBF1'};
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: ${props => props.active ? '#047857' : '#F8FAFC'};
+    border-color: ${props => props.active ? '#047857' : '#CBD5E1'};
+  }
+`;
+
+const DateInput = styled.input`
+  padding: 8px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #1F2937;
+
+  &:focus {
+    outline: none;
+    border-color: #059669;
+  }
+`;
+
 // Button 컴포넌트는 BaseButton으로 교체됨
 const Button = styled(BaseButton)``;
 
@@ -599,7 +636,7 @@ const InvoiceTableRow = styled(CommonTableRow)`
   }
 `;
 
-type TabType = 'issued' | 'to_pay';
+type TabType = 'to_pay' | 'paid' | 'issued';
 
 const FoodcourtInvoicesPage: React.FC = () => {
   const { operationSettings } = useStore();
@@ -624,13 +661,67 @@ const FoodcourtInvoicesPage: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState('');
 
   // URL-based tab management
-  const activeTab = (searchParams.get('tab') as TabType) || 'issued';
+  const activeTab = (searchParams.get('tab') as TabType) || 'to_pay';
   const handleTabChange = (tab: TabType) => {
     setSearchParams({ tab });
   };
 
   // State for invoices to pay (from system admin)
   const [invoicesToPay, setInvoicesToPay] = useState<Invoice[]>([]);
+  const [paidInvoicesList, setPaidInvoicesList] = useState<Invoice[]>([]);
+
+  // Paid tab filters
+  type PeriodType = 'week' | 'month' | 'year' | 'all';
+  const [paidSearchTerm, setPaidSearchTerm] = useState('');
+  const [paidActivePeriod, setPaidActivePeriod] = useState<PeriodType>('all');
+  const [paidIsCustomDateRange, setPaidIsCustomDateRange] = useState(false);
+  const [paidDateRange, setPaidDateRange] = useState({ start: '', end: '' });
+
+  const handlePaidPeriodChange = (period: PeriodType) => {
+    setPaidActivePeriod(period);
+    setPaidIsCustomDateRange(false);
+
+    const now = new Date();
+    let start = new Date();
+    let end = new Date();
+
+    const fmtDate = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    switch (period) {
+      case 'week':
+        start.setDate(now.getDate() - now.getDay());
+        break;
+      case 'month':
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        break;
+      case 'year':
+        start = new Date(now.getFullYear(), 0, 1);
+        end = new Date(now.getFullYear(), 11, 31);
+        break;
+      case 'all':
+        start = new Date(2000, 0, 1);
+        break;
+    }
+
+    setPaidDateRange({
+      start: period === 'all' ? '' : fmtDate(start),
+      end: period === 'all' ? '' : fmtDate(end)
+    });
+  };
+
+  const handlePaidDateRangeChange = (type: 'start' | 'end', value: string) => {
+    setPaidIsCustomDateRange(true);
+    setPaidDateRange(prev => ({
+      ...prev,
+      [type]: value
+    }));
+  };
 
   // Payment submission states
   const [showPaymentSubmitModal, setShowPaymentSubmitModal] = useState(false);
@@ -751,6 +842,30 @@ const FoodcourtInvoicesPage: React.FC = () => {
     }
   };
 
+  const fetchPaidInvoices = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) { setPaidInvoicesList([]); return; }
+
+      const response = await fetch('/api/invoices/to-pay?status=paid', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPaidInvoicesList(data);
+      } else {
+        setPaidInvoicesList([]);
+      }
+    } catch (error) {
+      console.error('Error fetching paid invoices:', error);
+      setPaidInvoicesList([]);
+    }
+  };
+
   // Resize image to reduce base64 size
   const resizeImage = (file: File, maxWidth: number = 800, maxHeight: number = 800, quality: number = 0.7): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -848,6 +963,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
         setSuccessMessage('Payment submitted successfully! The system admin will review and confirm your payment.');
         setShowSuccessModal(true);
         await fetchInvoicesToPay();
+        await fetchPaidInvoices();
       } else {
         const errorData = await response.json();
         setPaymentSubmitError(errorData.error || errorData.message || 'Failed to submit payment');
@@ -1137,6 +1253,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
   useEffect(() => {
     fetchInvoices();
     fetchInvoicesToPay();
+    fetchPaidInvoices();
     fetchManagers();
     fetchRestaurants();
     fetchSubscriptions();
@@ -2388,11 +2505,14 @@ const FoodcourtInvoicesPage: React.FC = () => {
         <Content>
 
         <TabContainer>
-          <Tab active={activeTab === 'issued'} onClick={() => handleTabChange('issued')}>
-            Issued Invoices ({invoices.length})
-          </Tab>
           <Tab active={activeTab === 'to_pay'} onClick={() => handleTabChange('to_pay')}>
             Invoices to Pay ({invoicesToPay.filter(i => i.status === 'pending_payment' || i.status === 'overdue').length})
+          </Tab>
+          <Tab active={activeTab === 'paid'} onClick={() => handleTabChange('paid')}>
+            Paid Invoices ({paidInvoicesList.length})
+          </Tab>
+          <Tab active={activeTab === 'issued'} onClick={() => handleTabChange('issued')}>
+            Issued Invoices ({invoices.length})
           </Tab>
         </TabContainer>
 
@@ -2803,6 +2923,96 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 ))
               ) : (
                 <EmptyState>No invoices to pay</EmptyState>
+              )}
+            </Table>
+          </>
+        )}
+
+        {activeTab === 'paid' && (
+          <>
+            <Table>
+              <InvoiceTableHeader columns="1.5fr 1.2fr 1fr 0.8fr 0.7fr 0.8fr 0.8fr minmax(120px, 140px)">
+                <span>Invoice</span>
+                <span>Restaurant</span>
+                <span>Period</span>
+                <span>Paid Date</span>
+                <span>Status</span>
+                <span>Amount</span>
+                <span>Total</span>
+                <span>Actions</span>
+              </InvoiceTableHeader>
+
+              {paidInvoicesList.length > 0 ? (
+                paidInvoicesList.sort((a, b) => new Date(b.paidDate || b.issueDate).getTime() - new Date(a.paidDate || a.issueDate).getTime()).map(invoice => (
+                  <InvoiceTableRow columns="1.5fr 1.2fr 1fr 0.8fr 0.7fr 0.8fr 0.8fr minmax(120px, 140px)" key={invoice.id}>
+                    <MobileGrid>
+                      <MobileValue className="col-invoice">
+                        <MobileLabel>Invoice</MobileLabel>
+                        <InvoiceInfo>
+                          <InvoiceNumber>
+                            {invoice.invoiceNumber}
+                            {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>AUTO</AutoBadge>}
+                          </InvoiceNumber>
+                          <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
+                        </InvoiceInfo>
+                      </MobileValue>
+
+                      <MobileValue className="col-customer">
+                        <MobileLabel>Restaurant</MobileLabel>
+                        <InvoiceInfo>
+                          <InvoiceNumber>{invoice.restaurantName || invoice.customerName || 'Unknown'}</InvoiceNumber>
+                        </InvoiceInfo>
+                      </MobileValue>
+
+                      <MobileValue className="col-period">
+                        <MobileLabel>Period</MobileLabel>
+                        <div style={{ fontSize: '12px' }}>
+                          {invoice.billingPeriod || '-'}
+                        </div>
+                      </MobileValue>
+
+                      <MobileValue className="col-issued">
+                        <MobileLabel>Paid Date</MobileLabel>
+                        <div style={{ fontSize: '13px' }}>{invoice.paidDate ? formatDate(invoice.paidDate) : formatDate(invoice.issueDate)}</div>
+                      </MobileValue>
+
+                      <MobileValue className="col-status">
+                        <MobileLabel>Status</MobileLabel>
+                        <StatusBadge status="paid">Paid</StatusBadge>
+                      </MobileValue>
+
+                      <MobileValue className="col-amount">
+                        <MobileLabel>Amount</MobileLabel>
+                        <Amount>{formatCurrency(invoice.amount, invoice.currency || 'USD')}</Amount>
+                      </MobileValue>
+
+                      <MobileValue className="col-total">
+                        <MobileLabel>Total</MobileLabel>
+                        <Amount highlight>{formatCurrency(invoice.total, invoice.currency || 'USD')}</Amount>
+                      </MobileValue>
+                    </MobileGrid>
+
+                    <ActionButtons className="col-actions">
+                      <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</LocalActionButton>
+                      <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                          <polyline points="7,10 12,15 17,10"/>
+                          <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                      </LocalActionButton>
+                      <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="6,9 6,2 18,2 18,9"/>
+                          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                          <rect x="6" y="14" width="12" height="8"/>
+                        </svg>
+                      </LocalActionButton>
+                    </ActionButtons>
+                  </InvoiceTableRow>
+                ))
+              ) : (
+                <EmptyState>No paid invoices yet</EmptyState>
               )}
             </Table>
           </>

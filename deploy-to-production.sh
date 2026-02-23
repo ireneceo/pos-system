@@ -15,6 +15,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m'
 
 # Configuration
@@ -47,21 +48,67 @@ echo "  To:   운영서버 (87.106.78.146)"
 echo "============================================"
 echo ""
 
+# ──────────────────────────────────────────
 # 1. Pre-checks
+# ──────────────────────────────────────────
 log "Checking SSH connection to production server..."
 if ! ssh -o ConnectTimeout=5 $PROD_SERVER "echo 'Connected'" > /dev/null 2>&1; then
     error "Cannot connect to production server"
 fi
 success "SSH connection OK"
 
-# 2. Check local dev server health
 log "Checking local dev server health..."
 if ! curl -s --max-time 3 http://localhost:3001/api/health | grep -q '"status":"ok"'; then
     error "Local dev server is not healthy"
 fi
 success "Local dev server is healthy"
 
+# ──────────────────────────────────────────
+# 2. Pre-deploy: DB Schema Comparison (dev vs prod)
+# ──────────────────────────────────────────
+log "Comparing DB schemas (dev vs prod)..."
+
+# Export dev DB schema
+cd $LOCAL_DEV_BACKEND
+node compare-schema.js --export --out /tmp/deploy_dev_schema.json 2>/dev/null
+DEV_TABLES=$(node -e "console.log(Object.keys(JSON.parse(require('fs').readFileSync('/tmp/deploy_dev_schema.json','utf-8'))).length)")
+
+# Export prod DB schema via SSH
+ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node compare-schema.js --export --out /tmp/deploy_prod_schema.json 2>/dev/null" 2>/dev/null || true
+scp -q $PROD_SERVER:/tmp/deploy_prod_schema.json /tmp/deploy_prod_schema.json 2>/dev/null
+
+if [ -f /tmp/deploy_prod_schema.json ] && [ -s /tmp/deploy_prod_schema.json ]; then
+    PROD_TABLES=$(node -e "console.log(Object.keys(JSON.parse(require('fs').readFileSync('/tmp/deploy_prod_schema.json','utf-8'))).length)")
+
+    echo -e "  ${CYAN}Dev: ${DEV_TABLES} tables | Prod: ${PROD_TABLES} tables${NC}"
+
+    # Compare schemas
+    SCHEMA_DIFF=$(cd $LOCAL_DEV_BACKEND && node compare-schema.js --compare /tmp/deploy_dev_schema.json /tmp/deploy_prod_schema.json 2>/dev/null) || true
+
+    if echo "$SCHEMA_DIFF" | grep -q "Schemas are identical"; then
+        success "DB schemas are identical — no migration needed"
+    else
+        warn "DB schema differences detected:"
+        echo ""
+        echo "$SCHEMA_DIFF" | grep -E "^(🆕|⚠️|🔄|🗑️|   |───|Total)" | head -40
+        echo ""
+
+        if [ "$AUTO_MODE" = false ]; then
+            warn "sync-database.js will attempt to apply these changes automatically."
+            read -p "Continue with deployment? (y/N): " schema_confirm
+            if [[ ! "$schema_confirm" =~ ^[Yy]$ ]]; then
+                echo "Cancelled."
+                exit 0
+            fi
+        fi
+    fi
+else
+    warn "Could not export prod schema (compare-schema.js may not exist on prod yet). Will sync after deploy."
+fi
+
+# ──────────────────────────────────────────
 # 3. Confirmation
+# ──────────────────────────────────────────
 if [ "$AUTO_MODE" = false ]; then
     echo ""
     warn "이 작업은 운영서버에 배포합니다."
@@ -72,14 +119,18 @@ if [ "$AUTO_MODE" = false ]; then
     fi
 fi
 
+# ──────────────────────────────────────────
 # 4. Create backup on production server
+# ──────────────────────────────────────────
 log "Creating backup on production server..."
 ssh $PROD_SERVER "mkdir -p /var/www/backups/${TIMESTAMP}"
 ssh $PROD_SERVER "cp -r $REMOTE_PROD_BACKEND /var/www/backups/${TIMESTAMP}/production-backend" 2>/dev/null || true
 ssh $PROD_SERVER "cp -r $REMOTE_PROD_FRONTEND/build /var/www/backups/${TIMESTAMP}/production-frontend-build" 2>/dev/null || true
 success "Backup created: /var/www/backups/${TIMESTAMP}"
 
+# ──────────────────────────────────────────
 # 5. Build frontend locally
+# ──────────────────────────────────────────
 log "Building frontend..."
 cd $LOCAL_DEV_FRONTEND
 npm run build:dev > /tmp/build.log 2>&1 || {
@@ -87,7 +138,9 @@ npm run build:dev > /tmp/build.log 2>&1 || {
 }
 success "Frontend built successfully"
 
+# ──────────────────────────────────────────
 # 6. Sync backend to production
+# ──────────────────────────────────────────
 log "Syncing backend to production server..."
 rsync -avz --delete \
     --exclude 'node_modules' \
@@ -97,23 +150,85 @@ rsync -avz --delete \
     $LOCAL_DEV_BACKEND/ $PROD_SERVER:$REMOTE_PROD_BACKEND/
 success "Backend synced"
 
+# ──────────────────────────────────────────
 # 7. Sync frontend build to production
+# ──────────────────────────────────────────
 log "Syncing frontend build to production server..."
 rsync -avz --delete \
     $LOCAL_DEV_FRONTEND/build/ $PROD_SERVER:$REMOTE_PROD_FRONTEND/build/
 success "Frontend synced"
 
-# 8. Install dependencies on production (if package.json changed)
+# ──────────────────────────────────────────
+# 8. Install dependencies on production
+# ──────────────────────────────────────────
 log "Installing dependencies on production server..."
 ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && npm install --production --silent"
 success "Dependencies installed"
 
-# 9. Restart production backend
+# ──────────────────────────────────────────
+# 9. Sync database schema (ALTER TABLE for new/changed columns)
+# ──────────────────────────────────────────
+log "Syncing database schema on production server..."
+SYNC_OUTPUT=$(ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node sync-database.js 2>&1") || true
+SYNC_EXIT=$?
+
+# Show sync results
+if echo "$SYNC_OUTPUT" | grep -q "models synchronized successfully"; then
+    SYNCED=$(echo "$SYNC_OUTPUT" | grep -oP '\d+ models synchronized' | head -1)
+    success "Database schema synced ($SYNCED)"
+fi
+
+if echo "$SYNC_OUTPUT" | grep -q "⚠️"; then
+    warn "Some models had sync issues:"
+    echo "$SYNC_OUTPUT" | grep "⚠️" | head -10
+fi
+
+if echo "$SYNC_OUTPUT" | grep -q "❌ Unable to sync"; then
+    warn "Database sync failed! Check manually:"
+    echo "$SYNC_OUTPUT" | grep "❌"
+fi
+
+# ──────────────────────────────────────────
+# 10. Post-sync: Verify schema parity
+# ──────────────────────────────────────────
+log "Verifying schema parity after sync..."
+ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node compare-schema.js --export --out /tmp/deploy_prod_schema_after.json 2>/dev/null" 2>/dev/null || true
+scp -q $PROD_SERVER:/tmp/deploy_prod_schema_after.json /tmp/deploy_prod_schema_after.json 2>/dev/null || true
+
+if [ -f /tmp/deploy_prod_schema_after.json ] && [ -s /tmp/deploy_prod_schema_after.json ]; then
+    POST_DIFF=$(cd $LOCAL_DEV_BACKEND && node compare-schema.js --compare /tmp/deploy_dev_schema.json /tmp/deploy_prod_schema_after.json 2>/dev/null) || true
+
+    if echo "$POST_DIFF" | grep -q "Schemas are identical"; then
+        success "Post-sync: schemas are now identical"
+    else
+        # Count remaining new tables and new columns (critical)
+        NEW_TABLES=$(echo "$POST_DIFF" | grep -c "^   + " 2>/dev/null || echo 0)
+        TYPE_CHANGES=$(echo "$POST_DIFF" | grep -c "^   ⚡" 2>/dev/null || echo 0)
+
+        if echo "$POST_DIFF" | grep -qE "^🆕 New (tables|columns)"; then
+            warn "Post-sync: some new tables/columns still missing on prod!"
+            echo "$POST_DIFF" | grep -E "^(🆕|   \+)" | head -10
+        fi
+
+        if [ "$TYPE_CHANGES" -gt 0 ]; then
+            # Type changes (datetime vs timestamp etc) are usually harmless
+            echo -e "  ${CYAN}${TYPE_CHANGES} type differences remain (usually harmless: datetime↔timestamp etc)${NC}"
+        fi
+    fi
+else
+    warn "Could not verify post-sync schema (non-critical)"
+fi
+
+# ──────────────────────────────────────────
+# 11. Restart production backend
+# ──────────────────────────────────────────
 log "Restarting production backend..."
 ssh $PROD_SERVER "pm2 restart production-backend"
 success "Backend restarted"
 
-# 10. Wait and verify
+# ──────────────────────────────────────────
+# 12. Wait and verify health
+# ──────────────────────────────────────────
 log "Waiting for server to start..."
 sleep 3
 
@@ -124,10 +239,17 @@ else
     warn "Health check failed. Please verify manually."
 fi
 
-# 11. Reload nginx (if needed)
+# ──────────────────────────────────────────
+# 13. Reload nginx
+# ──────────────────────────────────────────
 log "Reloading nginx..."
 ssh $PROD_SERVER "sudo systemctl reload nginx"
 success "Nginx reloaded"
+
+# ──────────────────────────────────────────
+# Cleanup temp files
+# ──────────────────────────────────────────
+rm -f /tmp/deploy_dev_schema.json /tmp/deploy_prod_schema.json /tmp/deploy_prod_schema_after.json
 
 echo ""
 echo "============================================"

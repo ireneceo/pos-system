@@ -758,7 +758,7 @@ const MenuManagementPage: React.FC = () => {
   const [formData, setFormData] = useState<Partial<MenuItemType>>({
     name: '',
     price: 0,
-    category: 'korean',
+    category: '',
     emoji: '🍽️',
     description: '',
     image: '',
@@ -902,7 +902,7 @@ const MenuManagementPage: React.FC = () => {
     setFormData({
       name: '',
       price: 0,
-      category: 'korean',
+      category: '',
       emoji: '🍽️',
       description: '',
       image: '',
@@ -921,7 +921,7 @@ const MenuManagementPage: React.FC = () => {
     setFormData({
       name: '',
       price: 0,
-      category: 'korean',
+      category: '',
       emoji: '🍽️',
       description: '',
       image: '',
@@ -1082,12 +1082,13 @@ const MenuManagementPage: React.FC = () => {
   };
 
   const handleSaveNew = () => {
+    if (!formData.category) return;
     const newItem: MenuItemType = {
       id: `item-${Date.now()}`,
       code: formData.code || '',
       name: formData.name || '',
       price: formData.price || 0,
-      category: formData.category || 'korean',
+      category: formData.category,
       emoji: formData.emoji || '🍽️',
       description: formData.description,
       image: formData.image,
@@ -1109,12 +1110,13 @@ const MenuManagementPage: React.FC = () => {
       return;
     }
 
+    if (!formData.category) return;
     const newSetMenu: MenuItemType = {
       id: editingItem?.id || `item-${Date.now()}`,
       code: formData.code || '',
       name: formData.name || '',
       price: formData.price || 0,
-      category: formData.category || 'korean',
+      category: formData.category,
       emoji: formData.emoji || '🍽️',
       description: formData.description,
       image: formData.image,
@@ -1387,7 +1389,7 @@ const MenuManagementPage: React.FC = () => {
               <UIButton variant="secondary" onClick={() => setShowAddModal(false)}>
                 Cancel
               </UIButton>
-              <UIButton variant="primary" onClick={handleSaveNew}>
+              <UIButton variant="primary" onClick={handleSaveNew} disabled={!formData.name || !formData.category}>
                 Add Item
               </UIButton>
             </>
@@ -1435,6 +1437,7 @@ const MenuManagementPage: React.FC = () => {
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
             >
+              <option value="">-- Select Category --</option>
               {categories.map(cat => (
                 <option key={cat.id} value={cat.id}>
                   {cat.emoji} {cat.name}
@@ -1598,6 +1601,7 @@ const MenuManagementPage: React.FC = () => {
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
             >
+              <option value="">-- Select Category --</option>
               {categories.map(cat => (
                 <option key={cat.id} value={cat.id}>
                   {cat.emoji} {cat.name}
@@ -1721,7 +1725,7 @@ const MenuManagementPage: React.FC = () => {
               }}>
                 Cancel
               </UIButton>
-              <UIButton variant="primary" onClick={handleSaveSetMenu}>
+              <UIButton variant="primary" onClick={handleSaveSetMenu} disabled={!formData.name || !formData.category}>
                 {editingItem ? "Save Changes" : "Create Set Menu"}
               </UIButton>
             </>
@@ -1769,6 +1773,7 @@ const MenuManagementPage: React.FC = () => {
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
             >
+              <option value="">-- Select Category --</option>
               {categories.map(cat => (
                 <option key={cat.id} value={cat.id}>
                   {cat.emoji} {cat.name}

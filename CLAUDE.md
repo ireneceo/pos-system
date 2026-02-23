@@ -11,7 +11,8 @@
 ### 2. 배포 규칙 (절대 준수!)
 - **사용자가 명시적으로 "배포" 또는 "/배포" 명령을 하지 않으면 절대 배포하지 않음**
 - 빌드 완료 후 자동 배포 금지
-- 운영 폴더(`/var/www/frontend`, `/var/www/backend`)에 직접 복사 금지
+- **배포 스크립트: `/var/www/deploy-to-production.sh`** (SSH로 원격 운영서버에 배포)
+- 운영서버(87.106.78.146)에 직접 접속하여 코드 수정 금지
 - "안 떠", "메뉴 안 보여" 등의 피드백 = 개발서버 문제 → 운영서버 배포가 아님!
 
 ### 3. 개발 서버 URL
@@ -33,12 +34,15 @@ cp -r /var/www/dev-frontend/build/* /var/www/dev-frontend-build/
 pm2 restart dev-backend
 ```
 
-## 프로젝트 구조
+## 프로젝트 구조 (개발서버: 87.106.11.184)
 - `dev-frontend/`: React 프론트엔드 소스 (개발)
-- `dev-frontend-build/`: 개발서버가 서빙하는 빌드 폴더
-- `dev-backend/`: Node.js/Express 백엔드 (개발)
-- `frontend/`: 운영 프론트엔드 (배포 시에만)
-- `backend/`: 운영 백엔드 (배포 시에만)
+- `dev-frontend-build/`: 개발서버 Nginx가 서빙하는 빌드 폴더
+- `dev-backend/`: Node.js/Express 백엔드 (개발, PM2 dev-backend, port 3001)
+
+## 운영 서버 구조 (원격: 87.106.78.146)
+- `production-backend/`: 운영 백엔드 (PM2 production-backend, port 3002)
+- `production-frontend/`: 운영 프론트엔드 빌드
+- **주의**: 운영 디렉토리는 원격 서버에만 존재. 개발서버에 없음!
 
 ## 보안 가이드라인 (v2.0 - 2026-02-05)
 

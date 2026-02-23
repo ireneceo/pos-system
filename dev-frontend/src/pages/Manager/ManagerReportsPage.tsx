@@ -250,7 +250,7 @@ const ManagerReportsPage: React.FC = () => {
   useEffect(() => {
     // Check if a specific restaurant was selected via URL parameter
     const searchParams = new URLSearchParams(location.search);
-    const restaurantId = searchParams.get('restaurant');
+    const restaurantId = searchParams.get('restaurantId') || searchParams.get('restaurant');
     if (restaurantId) {
       setSelectedRestaurant(restaurantId);
     }

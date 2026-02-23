@@ -4,6 +4,7 @@ require('../models'); // Load associations
 const Restaurant = require('../models/Restaurant');
 const User = require('../models/User');
 const Brand = require('../models/Brand');
+const Foodcourt = require('../models/Foodcourt');
 const Invoice = require('../models/Invoice');
 const Order = require('../models/Order');
 const PlanTemplate = require('../models/PlanTemplate');
@@ -146,7 +147,13 @@ router.get('/', optionalAuth, async (req, res) => {
         subscriptionStart: restaurantData.subscription_start ? restaurantData.subscription_start.toISOString().split('T')[0] : null,
         subscriptionEnd: restaurantData.subscription_end ? restaurantData.subscription_end.toISOString().split('T')[0] : null,
         payment_model: restaurantData.payment_model || 'restaurant',
-        foodcourt_id: restaurantData.foodcourt_id || null
+        foodcourt_id: restaurantData.foodcourt_id || null,
+        city: restaurantData.city || '',
+        state: restaurantData.state || '',
+        postalCode: restaurantData.postal_code || '',
+        country: restaurantData.country || 'MY',
+        businessRegistration: restaurantData.business_registration || '',
+        taxId: restaurantData.tax_id || ''
       };
     });
 
@@ -350,6 +357,19 @@ const validateBrandPermission = async (brandId, userId, userRole) => {
   return { valid: false, error: 'Unauthorized to set brand' };
 };
 
+// Helper function to validate foodcourt_id permission
+const validateFoodcourtPermission = async (foodcourtId, userId, userRole) => {
+  if (!foodcourtId) return { valid: true };
+  if (userRole === 'System Admin') return { valid: true };
+  if (userRole === 'Foodcourt General' || userRole === 'Foodcourt Manager') {
+    const foodcourt = await Foodcourt.findByPk(foodcourtId);
+    if (!foodcourt) return { valid: false, error: 'Foodcourt not found' };
+    if (foodcourt.owner_id !== userId) return { valid: false, error: 'You can only assign restaurants to your own foodcourt' };
+    return { valid: true };
+  }
+  return { valid: false, error: 'Unauthorized to set foodcourt' };
+};
+
 // Create new restaurant (with Restaurant Admin 1:1 coupling)
 router.post('/', authenticateToken, validateRestaurantCreation, async (req, res) => {
   const { sequelize } = require('../config/database');
@@ -357,12 +377,31 @@ router.post('/', authenticateToken, validateRestaurantCreation, async (req, res)
   const transaction = await sequelize.transaction();
 
   try {
+    // Auto-link brand_id/foodcourt_id based on creator's role if not explicitly provided
+    if (!req.body.brand_id && (req.user.role === 'Brand General' || req.user.role === 'Brand Manager')) {
+      const userBrand = await Brand.findOne({ where: { owner_id: req.user.id } });
+      if (userBrand) req.body.brand_id = userBrand.id;
+    }
+    if (!req.body.foodcourt_id && (req.user.role === 'Foodcourt General' || req.user.role === 'Foodcourt Manager')) {
+      const userFoodcourt = await Foodcourt.findOne({ where: { owner_id: req.user.id } });
+      if (userFoodcourt) req.body.foodcourt_id = userFoodcourt.id;
+    }
+
     // Validate brand_id permission if provided
     if (req.body.brand_id) {
       const brandCheck = await validateBrandPermission(req.body.brand_id, req.user.id, req.user.role);
       if (!brandCheck.valid) {
         await transaction.rollback();
         return res.status(403).json({ error: brandCheck.error });
+      }
+    }
+
+    // Validate foodcourt_id permission if provided
+    if (req.body.foodcourt_id) {
+      const foodcourtCheck = await validateFoodcourtPermission(req.body.foodcourt_id, req.user.id, req.user.role);
+      if (!foodcourtCheck.valid) {
+        await transaction.rollback();
+        return res.status(403).json({ error: foodcourtCheck.error });
       }
     }
 
@@ -473,7 +512,14 @@ router.post('/', authenticateToken, validateRestaurantCreation, async (req, res)
       tax_id: req.body.tax_id || null,
       plan_type: req.body.planType || 'Basic Plan',
       plan_amount: parseFloat(req.body.planAmount) || (planSnapshot ? planSnapshot.base_price_monthly : 29.00),
-      status: ['active', 'inactive', 'trial', 'overdue', 'suspended', 'expired', 'cancelled'].includes(req.body.status) ? req.body.status : 'active',
+      status: (() => {
+        const requestedStatus = req.body.status;
+        const validStatuses = ['active', 'inactive', 'trial', 'overdue', 'suspended', 'expired', 'cancelled'];
+        if (!validStatuses.includes(requestedStatus)) return 'active';
+        // Trial status is System Admin only
+        if (requestedStatus === 'trial' && req.user.role !== 'System Admin') return 'active';
+        return requestedStatus;
+      })(),
       subscription_start: req.body.subscriptionStart ? new Date(req.body.subscriptionStart) : new Date(),
       subscription_end: req.body.subscriptionEnd ? new Date(req.body.subscriptionEnd) : null,
       subscription_snapshot: planSnapshot,
@@ -567,6 +613,123 @@ router.post('/', authenticateToken, validateRestaurantCreation, async (req, res)
           .catch(err => console.error('[Email] Welcome email failed:', err.message));
       } catch (emailError) {
         console.error('[Email] Welcome email setup failed:', emailError.message);
+      }
+    }
+
+    // Auto-generate first POS subscription invoice for active restaurants (non-blocking)
+    if (restaurant.status === 'active' && restaurant.subscription_start) {
+      try {
+        const InvoiceItem = require('../models/InvoiceItem');
+        const PlanPrice = require('../models/PlanPrice');
+
+        const subStart = new Date(restaurant.subscription_start);
+        const billingCycle = restaurant.billing_cycle || 'monthly';
+
+        // Calculate billing period
+        let billingEnd;
+        if (billingCycle === 'annual') {
+          billingEnd = new Date(subStart);
+          billingEnd.setFullYear(billingEnd.getFullYear() + 1);
+          billingEnd.setDate(billingEnd.getDate() - 1);
+        } else {
+          billingEnd = new Date(subStart);
+          billingEnd.setMonth(billingEnd.getMonth() + 1);
+          billingEnd.setDate(billingEnd.getDate() - 1);
+        }
+
+        // Due date: 7 days after creation
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 7);
+
+        // Generate invoice number (system_admin format: INV-YYMMDDNNN)
+        const now = new Date();
+        const dateStr = `${String(now.getFullYear()).slice(-2)}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+        const searchPattern = `INV-${dateStr}%`;
+        const lastInv = await Invoice.findOne({
+          where: { invoice_number: { [Op.like]: searchPattern } },
+          order: [['invoice_number', 'DESC']],
+          attributes: ['invoice_number']
+        });
+        let nextNum = 1;
+        if (lastInv && lastInv.invoice_number) {
+          const match = lastInv.invoice_number.match(/(\d{3})$/);
+          if (match) nextNum = parseInt(match[1], 10) + 1;
+        }
+        const invoiceNumber = `INV-${dateStr}${String(nextNum).padStart(3, '0')}`;
+
+        // Get plan amount (currency-aware)
+        let currency = restaurant.currency || 'MYR';
+        if (currency === 'RM') currency = 'MYR';
+        let planAmount = parseFloat(restaurant.plan_amount || 29);
+
+        const planTemplate = await PlanTemplate.findOne({
+          where: { display_name: restaurant.plan_type }
+        });
+        if (planTemplate) {
+          const planPrice = await PlanPrice.findOne({
+            where: { plan_id: planTemplate.id, currency, is_active: true }
+          });
+          if (planPrice) {
+            planAmount = billingCycle === 'annual'
+              ? parseFloat(planPrice.annual_price) / 12
+              : parseFloat(planPrice.monthly_price);
+          }
+        }
+
+        const taxRate = 0.06;
+        const taxAmount = planAmount * taxRate;
+        const totalAmount = planAmount + taxAmount;
+
+        // Determine payer
+        let payerType = 'restaurant';
+        let payerId = null;
+        if (restaurant.payment_model === 'brand_manager' && restaurant.brand_id) {
+          const brand = await Brand.findByPk(restaurant.brand_id);
+          if (brand && brand.owner_id) { payerType = 'brand_manager'; payerId = brand.owner_id; }
+        } else if (restaurant.payment_model === 'foodcourt_manager' && restaurant.foodcourt_id) {
+          const foodcourt = await Foodcourt.findByPk(restaurant.foodcourt_id);
+          if (foodcourt && foodcourt.owner_id) { payerType = 'foodcourt_manager'; payerId = foodcourt.owner_id; }
+        }
+
+        const formatDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const cycleText = billingCycle === 'annual' ? 'Annual' : 'Monthly';
+        const periodText = `${formatDate(subStart)} ~ ${formatDate(billingEnd)}`;
+
+        const invoice = await Invoice.create({
+          restaurant_id: restaurant.id,
+          invoice_number: invoiceNumber,
+          type: 'automatic',
+          invoice_category: 'subscription',
+          category_display_name: `Subscription - ${restaurant.plan_type}`,
+          billing_period_start: subStart,
+          billing_period_end: billingEnd,
+          due_date: dueDate,
+          total_amount: totalAmount,
+          currency,
+          status: 'pending_payment',
+          notes: `${cycleText} subscription invoice for ${restaurant.plan_type}. Service period: ${periodText}. Due within 7 days.`,
+          issued_by: 0,
+          issued_at: now,
+          issuer_type: 'system_admin',
+          payer_type: payerType,
+          payer_id: payerId
+        });
+
+        await InvoiceItem.create({
+          invoice_id: invoice.id,
+          item_type: 'subscription',
+          description: `${restaurant.plan_type} - ${cycleText} Subscription (${periodText})`,
+          calculation_method: 'fixed',
+          fixed_amount: planAmount,
+          calculated_amount: planAmount,
+          tax_rate: taxRate * 100,
+          tax_amount: taxAmount,
+          total_amount: totalAmount
+        });
+
+        console.log(`[Auto-Invoice] Created ${invoiceNumber} for new restaurant "${restaurant.name}" (${totalAmount} ${currency})`);
+      } catch (invoiceError) {
+        console.error('[Auto-Invoice] Failed to generate initial invoice:', invoiceError.message);
       }
     }
 

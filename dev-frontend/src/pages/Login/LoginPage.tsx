@@ -24,10 +24,10 @@ const DEMO_ACCOUNTS = [
 // Test accounts (hidden by default)
 const TEST_ACCOUNTS = [
   {
-    role: 'System Admin',
-    email: 'irene@irenewp.com',
-    password: 'Admin1234',
-    description: 'System Administrator (All Permissions)',
+    role: 'Brand General',
+    email: 'brand_general@orderhere.center',
+    password: 'Test1234',
+    description: 'Brand General Manager (Multi-Brand Management)',
     color: '#DC2626'
   },
   {
@@ -36,27 +36,6 @@ const TEST_ACCOUNTS = [
     password: 'Test1234',
     description: 'Foodcourt General Manager (Overall Foodcourt Management)',
     color: '#7C3AED'
-  },
-  {
-    role: 'Brand General',
-    email: 'brand_general@orderhere.center',
-    password: 'Test1234',
-    description: 'Brand General Manager (Multi-Brand Management)',
-    color: '#059669'
-  },
-  {
-    role: 'Foodcourt Manager',
-    email: 'foodcourt_manager1@orderhere.center',
-    password: 'Test1234',
-    description: 'Foodcourt Manager (Specific Foodcourt Management)',
-    color: '#2563EB'
-  },
-  {
-    role: 'Brand Manager',
-    email: 'brand_manager1@orderhere.center',
-    password: 'Test1234',
-    description: 'Brand Manager (Specific Brand Management)',
-    color: '#EA580C'
   },
   {
     role: 'Restaurant Admin',
@@ -156,11 +135,41 @@ const Input = styled.input`
   border-radius: 10px;
   font-size: 16px;
   transition: all 0.2s;
-  
+  width: 100%;
+
   &:focus {
     outline: none;
     border-color: #635BFF;
     box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+`;
+
+const PasswordWrapper = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+`;
+
+const PasswordToggle = styled.button`
+  position: absolute;
+  right: 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9CA3AF;
+  transition: color 0.2s;
+
+  &:hover {
+    color: #374151;
+  }
+
+  svg {
+    width: 20px;
+    height: 20px;
   }
 `;
 
@@ -382,6 +391,7 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [brandLogo, setBrandLogo] = useState<string>('');
+  const [showPassword, setShowPassword] = useState(false);
   const [showTestAccounts, setShowTestAccounts] = useState(false);
 
   // Fetch site settings for brand logo
@@ -443,9 +453,8 @@ const LoginPage: React.FC = () => {
             }
             break;
           case 'Staff':
-            // Use user's restaurantId for the basic POS URL
             if (user.restaurantId) {
-              navigate(`/restaurant/${user.restaurantId}/pos-terminal`, { replace: true });
+              navigate(`/restaurant/${user.restaurantId}/dashboard`, { replace: true });
             } else {
               navigate('/pos/basic', { replace: true });
             }
@@ -507,13 +516,28 @@ const LoginPage: React.FC = () => {
             
             <InputGroup>
               <Label>Password</Label>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                required
-              />
+              <PasswordWrapper>
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  required
+                />
+                <PasswordToggle type="button" onClick={() => setShowPassword(!showPassword)} tabIndex={-1}>
+                  {showPassword ? (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/>
+                      <line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  )}
+                </PasswordToggle>
+              </PasswordWrapper>
             </InputGroup>
             
             {error && <ErrorMessage>{error}</ErrorMessage>}

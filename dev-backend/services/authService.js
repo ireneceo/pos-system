@@ -42,6 +42,18 @@ async function login(emailOrUsername, password) {
     manager_id: user.manager_id
   }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '24h' });
 
+  // permissions 파싱 (JSON string → array)
+  let permissions = [];
+  if (user.permissions) {
+    try {
+      permissions = typeof user.permissions === 'string'
+        ? JSON.parse(user.permissions)
+        : user.permissions;
+    } catch (e) {
+      permissions = [];
+    }
+  }
+
   return {
     token,
     user: {
@@ -52,7 +64,8 @@ async function login(emailOrUsername, password) {
       restaurant_id: user.restaurant_id,
       manager_id: user.manager_id,
       brand_id: user.brand_id,
-      foodcourt_id: user.foodcourt_id
+      foodcourt_id: user.foodcourt_id,
+      permissions
     }
   };
 }

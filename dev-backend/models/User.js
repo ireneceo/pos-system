@@ -67,6 +67,11 @@ User.init({
     type: DataTypes.INTEGER,
     allowNull: true
   },
+  pin_code: {
+    type: DataTypes.STRING(4),
+    allowNull: true,
+    comment: 'POS cashier PIN (4 digits) for quick switch'
+  },
   permissions: {
     type: DataTypes.TEXT,
     allowNull: true,

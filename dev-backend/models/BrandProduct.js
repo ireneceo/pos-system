@@ -50,7 +50,7 @@ const BrandProduct = sequelize.define('BrandProduct', {
     comment: '최소 주문 수량'
   },
   image_url: {
-    type: DataTypes.STRING(500),
+    type: DataTypes.TEXT('medium'),
     allowNull: true
   },
   is_active: {

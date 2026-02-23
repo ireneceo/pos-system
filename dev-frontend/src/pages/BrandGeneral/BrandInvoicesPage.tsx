@@ -734,7 +734,7 @@ const SummaryRow = styled.div<{ highlight?: boolean }>`
   ` : ''}
 `;
 
-type TabType = 'issued' | 'to_pay' | 'categories';
+type TabType = 'to_pay' | 'paid' | 'issued' | 'categories';
 
 type PeriodType = 'week' | 'month' | 'year' | 'all';
 
@@ -777,7 +777,7 @@ const BrandInvoicesPage: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState('');
 
   // URL-based tab management
-  const activeTab = (searchParams.get('tab') as TabType) || 'issued';
+  const activeTab = (searchParams.get('tab') as TabType) || 'to_pay';
   const handleTabChange = (tab: TabType) => {
     setSearchParams({ tab });
   };
@@ -835,25 +835,15 @@ const BrandInvoicesPage: React.FC = () => {
 
   // State for invoices to pay (from system admin)
   const [invoicesToPay, setInvoicesToPay] = useState<Invoice[]>([]);
+  const [paidInvoicesList, setPaidInvoicesList] = useState<Invoice[]>([]);
 
   // To Pay tab filters (separate from Issued tab)
   const [toPaySearchTerm, setToPaySearchTerm] = useState('');
-  const [toPayActivePeriod, setToPayActivePeriod] = useState<PeriodType>('month');
+  const [toPayActivePeriod, setToPayActivePeriod] = useState<PeriodType>('all');
   const [toPayIsCustomDateRange, setToPayIsCustomDateRange] = useState(false);
-  const [toPayDateRange, setToPayDateRange] = useState(() => {
-    const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    const formatDate = (d: Date) => {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-    return {
-      start: formatDate(firstDay),
-      end: formatDate(lastDay)
-    };
+  const [toPayDateRange, setToPayDateRange] = useState({
+    start: '',
+    end: ''
   });
 
   // To Pay period filter handlers
@@ -898,6 +888,58 @@ const BrandInvoicesPage: React.FC = () => {
   const handleToPayDateRangeChange = (type: 'start' | 'end', value: string) => {
     setToPayIsCustomDateRange(true);
     setToPayDateRange(prev => ({
+      ...prev,
+      [type]: value
+    }));
+  };
+
+  // Paid tab filters
+  const [paidSearchTerm, setPaidSearchTerm] = useState('');
+  const [paidActivePeriod, setPaidActivePeriod] = useState<PeriodType>('all');
+  const [paidIsCustomDateRange, setPaidIsCustomDateRange] = useState(false);
+  const [paidDateRange, setPaidDateRange] = useState({ start: '', end: '' });
+
+  const handlePaidPeriodChange = (period: PeriodType) => {
+    setPaidActivePeriod(period);
+    setPaidIsCustomDateRange(false);
+
+    const now = new Date();
+    let start = new Date();
+    let end = new Date();
+
+    const formatDate = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    switch (period) {
+      case 'week':
+        start.setDate(now.getDate() - now.getDay());
+        break;
+      case 'month':
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        break;
+      case 'year':
+        start = new Date(now.getFullYear(), 0, 1);
+        end = new Date(now.getFullYear(), 11, 31);
+        break;
+      case 'all':
+        start = new Date(2000, 0, 1);
+        break;
+    }
+
+    setPaidDateRange({
+      start: period === 'all' ? '' : formatDate(start),
+      end: period === 'all' ? '' : formatDate(end)
+    });
+  };
+
+  const handlePaidDateRangeChange = (type: 'start' | 'end', value: string) => {
+    setPaidIsCustomDateRange(true);
+    setPaidDateRange(prev => ({
       ...prev,
       [type]: value
     }));
@@ -1031,6 +1073,30 @@ const BrandInvoicesPage: React.FC = () => {
     }
   };
 
+  const fetchPaidInvoices = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) { setPaidInvoicesList([]); return; }
+
+      const response = await fetch('/api/invoices/to-pay?status=paid', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPaidInvoicesList(data);
+      } else {
+        setPaidInvoicesList([]);
+      }
+    } catch (error) {
+      console.error('Error fetching paid invoices:', error);
+      setPaidInvoicesList([]);
+    }
+  };
+
   // Submit payment for an invoice
   const handleSubmitPayment = async () => {
     if (!selectedInvoice) return;
@@ -1062,6 +1128,7 @@ const BrandInvoicesPage: React.FC = () => {
         setSuccessMessage('Payment submitted successfully! The issuer will review and confirm your payment.');
         setShowSuccessModal(true);
         await fetchInvoicesToPay();
+        await fetchPaidInvoices();
       } else {
         const errorData = await response.json();
         setPaymentSubmitError(errorData.error || errorData.message || 'Failed to submit payment');
@@ -1468,6 +1535,7 @@ const BrandInvoicesPage: React.FC = () => {
   useEffect(() => {
     fetchInvoices();
     fetchInvoicesToPay();
+    fetchPaidInvoices();
     fetchManagers();
     fetchRestaurants();
     fetchCompanySettings();
@@ -1779,7 +1847,7 @@ const BrandInvoicesPage: React.FC = () => {
   // Generate invoice HTML content (shared for PDF, Print, Email)
   const generateInvoiceHTML = (invoice: Invoice) => {
     // For received invoices (to_pay tab), use issuer's company info
-    const isReceivedInvoice = activeTab === 'to_pay' && invoice.issuerInfo;
+    const isReceivedInvoice = (activeTab === 'to_pay' || activeTab === 'paid') && invoice.issuerInfo;
     const displayCompany = isReceivedInvoice ? {
       companyName: invoice.issuerInfo?.name,
       companyLogo: invoice.issuerInfo?.logoUrl,
@@ -2023,7 +2091,7 @@ const BrandInvoicesPage: React.FC = () => {
   // Download invoice as PDF file
   const generateInvoicePDF = async (invoice: Invoice) => {
     // For received invoices, use issuerInfo; for issued invoices, use companySettings
-    const hasCompanyInfo = (activeTab === 'to_pay' && invoice.issuerInfo) || companySettings;
+    const hasCompanyInfo = ((activeTab === 'to_pay' || activeTab === 'paid') && invoice.issuerInfo) || companySettings;
     if (!hasCompanyInfo) {
       setSuccessMessage('Company settings not loaded. Please try again.');
       setShowSuccessModal(true);
@@ -2113,7 +2181,7 @@ const BrandInvoicesPage: React.FC = () => {
   // Print invoice directly
   const handlePrintInvoice = (invoice: Invoice) => {
     // For received invoices, use issuerInfo; for issued invoices, use companySettings
-    const hasCompanyInfo = (activeTab === 'to_pay' && invoice.issuerInfo) || companySettings;
+    const hasCompanyInfo = ((activeTab === 'to_pay' || activeTab === 'paid') && invoice.issuerInfo) || companySettings;
     if (!hasCompanyInfo) {
       setSuccessMessage('Company settings not loaded. Please try again.');
       setShowSuccessModal(true);
@@ -2244,7 +2312,7 @@ const BrandInvoicesPage: React.FC = () => {
   };
 
   // Get effective status (considering overdue)
-  const getEffectiveStatus = (invoice: Invoice): string => {
+  const getEffectiveStatus = (invoice: Invoice): 'draft' | 'pending_payment' | 'payment_submitted' | 'paid' | 'overdue' | 'cancelled' | 'active' | 'inactive' | '' => {
     if (isInvoiceOverdue(invoice)) {
       return 'overdue';
     }
@@ -2359,6 +2427,33 @@ const BrandInvoicesPage: React.FC = () => {
     // Sort by issue date descending (newest first)
     const dateA = new Date(a.issueDate).getTime();
     const dateB = new Date(b.issueDate).getTime();
+    return dateB - dateA;
+  });
+
+  // Paid invoices with search and date range filter
+  const filteredPaidInvoices = paidInvoicesList.filter(invoice => {
+    const term = paidSearchTerm.toLowerCase();
+    const matchesSearch = !paidSearchTerm ||
+      invoice.invoiceNumber.toLowerCase().includes(term) ||
+      (invoice.issuerName || '').toLowerCase().includes(term) ||
+      (invoice.restaurantName || '').toLowerCase().includes(term) ||
+      (invoice.categoryDisplayName || '').toLowerCase().includes(term) ||
+      (invoice.planType || '').toLowerCase().includes(term);
+
+    let matchesDateRange = true;
+    if (paidDateRange.start && paidDateRange.end) {
+      const invoiceDate = new Date(invoice.paidDate || invoice.issueDate);
+      const startDate = new Date(paidDateRange.start);
+      const endDate = new Date(paidDateRange.end);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+      matchesDateRange = invoiceDate >= startDate && invoiceDate <= endDate;
+    }
+
+    return matchesSearch && matchesDateRange;
+  }).sort((a, b) => {
+    const dateA = new Date(a.paidDate || a.issueDate).getTime();
+    const dateB = new Date(b.paidDate || b.issueDate).getTime();
     return dateB - dateA;
   });
 
@@ -2867,11 +2962,14 @@ const BrandInvoicesPage: React.FC = () => {
         </StatsGrid>
 
         <Tabs>
-          <CommonTab active={activeTab === 'issued'} onClick={() => handleTabChange('issued')}>
-            Issued Invoices<TabBadge count={invoices.length} />
-          </CommonTab>
           <CommonTab active={activeTab === 'to_pay'} onClick={() => handleTabChange('to_pay')}>
             Invoices to Pay<TabBadge count={invoicesToPay.filter(i => i.status === 'pending_payment' || i.status === 'overdue').length} variant="warning" />
+          </CommonTab>
+          <CommonTab active={activeTab === 'paid'} onClick={() => handleTabChange('paid')}>
+            Paid Invoices<TabBadge count={paidInvoicesList.length} />
+          </CommonTab>
+          <CommonTab active={activeTab === 'issued'} onClick={() => handleTabChange('issued')}>
+            Issued Invoices<TabBadge count={invoices.length} />
           </CommonTab>
           <CommonTab active={activeTab === 'categories'} onClick={() => handleTabChange('categories')}>
             Categories<TabBadge count={invoiceCategories.length} />
@@ -3266,6 +3364,130 @@ const BrandInvoicesPage: React.FC = () => {
                     <DataTableRow>
                       <DataTableCell colSpan={9}>
                         <DataTableEmpty>No invoices to pay</DataTableEmpty>
+                      </DataTableCell>
+                    </DataTableRow>
+                  )}
+                </tbody>
+              </DataTable>
+            </DataTableContainer>
+          </>
+        )}
+
+        {activeTab === 'paid' && (
+          <>
+            <FilterBarWrapper>
+              <FiltersLeft>
+                <SearchInput
+                  placeholder="Search invoice, issuer, restaurant..."
+                  value={paidSearchTerm}
+                  onChange={(e) => setPaidSearchTerm(e.target.value)}
+                />
+
+                <PeriodFilterGroup>
+                  <DateButton
+                    active={paidActivePeriod === 'week' && !paidIsCustomDateRange}
+                    onClick={() => handlePaidPeriodChange('week')}
+                  >
+                    Week
+                  </DateButton>
+                  <DateButton
+                    active={paidActivePeriod === 'month' && !paidIsCustomDateRange}
+                    onClick={() => handlePaidPeriodChange('month')}
+                  >
+                    Month
+                  </DateButton>
+                  <DateButton
+                    active={paidActivePeriod === 'year' && !paidIsCustomDateRange}
+                    onClick={() => handlePaidPeriodChange('year')}
+                  >
+                    Year
+                  </DateButton>
+                  <DateButton
+                    active={paidActivePeriod === 'all' && !paidIsCustomDateRange}
+                    onClick={() => handlePaidPeriodChange('all')}
+                  >
+                    All
+                  </DateButton>
+
+                  <DateInput
+                    type="date"
+                    value={paidDateRange.start}
+                    onChange={(e) => handlePaidDateRangeChange('start', e.target.value)}
+                  />
+                  <DateInput
+                    type="date"
+                    value={paidDateRange.end}
+                    onChange={(e) => handlePaidDateRangeChange('end', e.target.value)}
+                  />
+                </PeriodFilterGroup>
+              </FiltersLeft>
+            </FilterBarWrapper>
+
+            <DataTableContainer>
+              <DataTable>
+                <DataTableHead>
+                  <tr>
+                    <DataTableHeaderCell>Invoice</DataTableHeaderCell>
+                    <DataTableHeaderCell>Issuer</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">Period</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">Paid Date</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">Amount</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">Total</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">Actions</DataTableHeaderCell>
+                  </tr>
+                </DataTableHead>
+                <tbody>
+                  {filteredPaidInvoices.length > 0 ? (
+                    filteredPaidInvoices.map(invoice => (
+                      <DataTableRow key={invoice.id}>
+                        <DataTableCell data-label="Invoice">
+                          <InvoiceInfo>
+                            <InvoiceNumber>
+                              {invoice.invoiceNumber}
+                              {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>AUTO</AutoBadge>}
+                            </InvoiceNumber>
+                            <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
+                          </InvoiceInfo>
+                        </DataTableCell>
+                        <DataTableCell data-label="Issuer">
+                          <InvoiceInfo>
+                            <InvoiceNumber>{invoice.issuerName || (invoice.issuerType === 'system_admin' ? 'System Admin' : invoice.issuerType === 'brand' ? 'Brand' : 'Foodcourt')}</InvoiceNumber>
+                            <CompanyName>{invoice.restaurantName && invoice.restaurantName !== 'Unknown' ? `For: ${invoice.restaurantName}` : ''}</CompanyName>
+                          </InvoiceInfo>
+                        </DataTableCell>
+                        <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>{invoice.billingPeriod || '-'}</DataTableCell>
+                        <DataTableCell data-label="Paid" align="center" style={{ fontSize: '13px' }}>{invoice.paidDate ? formatDate(invoice.paidDate) : formatDate(invoice.issueDate)}</DataTableCell>
+                        <DataTableCell data-label="Status" align="center">
+                          <StatusBadge status="paid">Paid</StatusBadge>
+                        </DataTableCell>
+                        <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
+                        <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
+                        <DataTableCell data-label="" mobileFullWidth>
+                          <ActionButtons>
+                            <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</LocalActionButton>
+                            <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7,10 12,15 17,10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                              </svg>
+                            </LocalActionButton>
+                            <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="6,9 6,2 18,2 18,9"/>
+                                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                                <rect x="6" y="14" width="12" height="8"/>
+                              </svg>
+                            </LocalActionButton>
+                          </ActionButtons>
+                        </DataTableCell>
+                      </DataTableRow>
+                    ))
+                  ) : (
+                    <DataTableRow>
+                      <DataTableCell colSpan={8}>
+                        <DataTableEmpty>No paid invoices yet</DataTableEmpty>
                       </DataTableCell>
                     </DataTableRow>
                   )}
@@ -3889,7 +4111,7 @@ const BrandInvoicesPage: React.FC = () => {
         {/* View Invoice Modal */}
         {showViewModal && selectedInvoice && (() => {
           // For to_pay tab, use issuer's company info; for issued tab, use logged-in user's company info
-          const isReceivedInvoice = activeTab === 'to_pay' && selectedInvoice.issuerInfo;
+          const isReceivedInvoice = (activeTab === 'to_pay' || activeTab === 'paid') && selectedInvoice.issuerInfo;
           const displayCompany = isReceivedInvoice ? {
             companyName: selectedInvoice.issuerInfo?.name,
             companyLogo: selectedInvoice.issuerInfo?.logoUrl,

@@ -3,40 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { TabContainer, Tab, DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
+import { useAuth } from '../../contexts/AuthContext';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { formatCurrency } from '../../utils/currency';
 
-interface BrandMetrics {
-  assignedBrand: string;
-  assignedRegions: string[];
-  totalStores: number;
-  monthlyRevenue: number;
-  cumulativeRevenue: number;
-  averageRevenuePerStore: number;
-  customerSatisfaction: number;
-  marketShare: number;
-  growthRate: number;
-  activePromotions: number;
-  newFranchises: number;
-  totalTransactions: number;
-}
-
-interface RevenueData {
-  period: string;
-  revenue: number;
-  storeCount: number;
-}
-
-interface FranchiseStore {
-  id: string;
+interface RestaurantSummary {
+  id: number;
   name: string;
-  location: string;
-  storeSize: string;
+  status: string;
+  address: string;
+  cuisine: string;
+  planType: string;
+  adminName: string;
+  todayOrders: number;
+  todayRevenue: number;
   monthlyRevenue: number;
-  openDate: string;
-  franchiseeType: 'individual' | 'corporate';
-  status: 'active' | 'underperforming' | 'expanding';
-  manager: string;
-  phone: string;
-  performanceScore: number;
 }
 
 const Container = styled.div`
@@ -90,9 +71,9 @@ const Title = styled.h1`
 `;
 
 const Subtitle = styled.p`
-  font-size: 16px;
+  font-size: 14px;
   color: #6B7280;
-  margin: 8px 0 0;
+  margin: 4px 0 0;
 `;
 
 const MainGrid = styled.div`
@@ -106,21 +87,7 @@ const MainGrid = styled.div`
   }
 `;
 
-const ChartContainer = styled.div`
-  background: white;
-  border-radius: 16px;
-  padding: 24px;
-  border: 1px solid #E6EBF1;
-
-  h3 {
-    margin: 0 0 20px 0;
-    color: #0A2540;
-    font-size: 18px;
-    font-weight: 600;
-  }
-`;
-
-const QuickStatsContainer = styled.div`
+const Card = styled.div`
   background: white;
   border-radius: 16px;
   padding: 24px;
@@ -157,21 +124,7 @@ const QuickStatValue = styled.span`
   color: #0A2540;
 `;
 
-const FranchisesList = styled.div`
-  background: white;
-  border-radius: 16px;
-  padding: 24px;
-  border: 1px solid #E6EBF1;
-
-  h3 {
-    margin: 0 0 20px 0;
-    color: #0A2540;
-    font-size: 18px;
-    font-weight: 600;
-  }
-`;
-
-const FranchiseItem = styled.div`
+const RestaurantItem = styled.div`
   padding: 16px;
   border: 1px solid #F3F4F6;
   border-radius: 8px;
@@ -180,8 +133,8 @@ const FranchiseItem = styled.div`
   transition: all 0.2s;
 
   &:hover {
-    border-color: #DC2626;
-    background: #FEF2F2;
+    border-color: #635BFF;
+    background: #F4F3FF;
   }
 
   &:last-child {
@@ -189,148 +142,216 @@ const FranchiseItem = styled.div`
   }
 `;
 
-const FranchiseHeader = styled.div`
+const RestaurantHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
 `;
 
-const FranchiseName = styled.span`
+const RestaurantName = styled.span`
   font-weight: 600;
   color: #0A2540;
 `;
 
-const FranchiseScore = styled.span<{ score: number }>`
+const StatusBadge = styled.span<{ status: string }>`
   padding: 4px 8px;
   border-radius: 12px;
   font-size: 12px;
   font-weight: 600;
   color: white;
   background: ${props => {
-    if (props.score >= 90) return '#059669';
-    if (props.score >= 75) return '#2563EB';
-    if (props.score >= 60) return '#D97706';
-    return '#DC2626';
+    switch (props.status) {
+      case 'active': return '#059669';
+      case 'trial': return '#2563EB';
+      case 'expired': return '#DC2626';
+      case 'suspended': return '#D97706';
+      default: return '#6B7280';
+    }
   }};
 `;
 
-const FranchiseInfo = styled.div`
+const RestaurantInfo = styled.div`
   font-size: 13px;
   color: #6B7280;
   display: flex;
   justify-content: space-between;
 `;
 
-const PlaceholderChart = styled.div`
-  height: 300px;
+const EmptyState = styled.div`
+  padding: 60px 20px;
+  text-align: center;
+  color: #6B7280;
+  font-size: 14px;
   border: 2px dashed #E6EBF1;
   border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #6B7280;
-  font-style: italic;
 `;
 
-const TimeFilter = styled.select`
-  padding: 8px 12px;
+const QuickActionsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+`;
+
+const QuickAction = styled.div`
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
   border: 1px solid #E6EBF1;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
-  margin-right: 8px;
+  text-align: center;
 
   &:hover {
     border-color: #635BFF;
-    color: #635BFF;
     background: #F4F3FF;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(99, 91, 255, 0.15);
   }
+`;
+
+const QuickActionIcon = styled.div`
+  font-size: 28px;
+  margin-bottom: 8px;
+  color: #635BFF;
+`;
+
+const QuickActionTitle = styled.div`
+  font-size: 14px;
+  font-weight: 600;
+  color: #0A2540;
+  margin-bottom: 4px;
+`;
+
+const QuickActionDesc = styled.div`
+  font-size: 12px;
+  color: #6B7280;
 `;
 
 const BrandManagerDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
-  const [franchises, setFranchises] = useState<FranchiseStore[]>([]);
-  const [, setRevenueData] = useState<RevenueData[]>([]);
-  const [timePeriod, setTimePeriod] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
-  const [metrics, setMetrics] = useState<BrandMetrics>({
-    assignedBrand: '',
-    assignedRegions: [],
-    totalStores: 0,
-    monthlyRevenue: 0,
-    cumulativeRevenue: 0,
-    averageRevenuePerStore: 0,
-    customerSatisfaction: 0,
-    marketShare: 0,
-    growthRate: 0,
-    activePromotions: 0,
-    newFranchises: 0,
-    totalTransactions: 0
-  });
+  const [restaurants, setRestaurants] = useState<RestaurantSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [brandName, setBrandName] = useState('');
+  const { defaultCurrency } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
+
+  useEffect(() => {
+    if (defaultCurrency) setSelectedCurrency(defaultCurrency);
+  }, [defaultCurrency]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // TODO: Implement API call to fetch brand manager data
-        setFranchises([]);
-        setMetrics({
-          assignedBrand: '',
-          assignedRegions: [],
-          totalStores: 0,
-          monthlyRevenue: 0,
-          cumulativeRevenue: 0,
-          averageRevenuePerStore: 0,
-          customerSatisfaction: 0,
-          marketShare: 0,
-          growthRate: 0,
-          activePromotions: 0,
-          newFranchises: 0,
-          totalTransactions: 0
-        });
-        setRevenueData([]);
+        const token = localStorage.getItem('auth_token');
+        const headers = { 'Authorization': `Bearer ${token}` };
+
+        // Fetch brand info
+        const brandRes = await fetch('/api/brands', { headers });
+        if (brandRes.ok) {
+          const brands = await brandRes.json();
+          if (brands.length > 0) {
+            setBrandName(brands[0].name || '');
+          }
+        }
+
+        // Fetch restaurants (API filters by user role automatically)
+        const restRes = await fetch('/api/restaurants', { headers });
+        if (restRes.ok) {
+          const restData = await restRes.json();
+
+          // Fetch orders for today's stats
+          const todayStr = new Date().toISOString().split('T')[0];
+          const ordersRes = await fetch('/api/orders', { headers });
+          const ordersData = ordersRes.ok ? await ordersRes.json() : [];
+          const orders = ordersData.data || ordersData || [];
+
+          const transformed: RestaurantSummary[] = restData.map((r: any) => {
+            const restaurantOrders = orders.filter((o: any) =>
+              o.restaurant_id?.toString() === r.id?.toString()
+            );
+            const todayOrders = restaurantOrders.filter((o: any) =>
+              o.order_date?.startsWith(todayStr)
+            );
+            const todayRevenue = todayOrders.reduce((sum: number, o: any) =>
+              sum + parseFloat(o.total_amount || 0), 0
+            );
+            const monthStart = new Date();
+            monthStart.setDate(1);
+            const monthStr = monthStart.toISOString().split('T')[0];
+            const monthlyOrders = restaurantOrders.filter((o: any) =>
+              o.order_date && o.order_date >= monthStr
+            );
+            const monthlyRevenue = monthlyOrders.reduce((sum: number, o: any) =>
+              sum + parseFloat(o.total_amount || 0), 0
+            );
+
+            return {
+              id: r.id,
+              name: r.name,
+              status: r.status || 'active',
+              address: r.address || 'No address',
+              cuisine: r.cuisine || 'Various',
+              planType: r.plan_type || r.planType || 'Basic Plan',
+              adminName: r.admin_name || r.managerName || '-',
+              todayOrders: todayOrders.length,
+              todayRevenue,
+              monthlyRevenue
+            };
+          });
+
+          setRestaurants(transformed);
+        }
       } catch (error) {
         console.error('Error fetching brand manager data:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchData();
-  }, []);
+    if (user) fetchData();
+  }, [user]);
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'active': return 'Operating';
-      case 'underperforming': return 'Needs Improvement';
-      case 'expanding': return 'Expanding';
-      default: return status;
-    }
-  };
+  const totalRestaurants = restaurants.length;
+  const activeRestaurants = restaurants.filter(r => r.status === 'active').length;
+  const totalTodayRevenue = restaurants.reduce((sum, r) => sum + r.todayRevenue, 0);
+  const totalTodayOrders = restaurants.reduce((sum, r) => sum + r.todayOrders, 0);
+  const totalMonthlyRevenue = restaurants.reduce((sum, r) => sum + r.monthlyRevenue, 0);
+  const avgRevenuePerStore = totalRestaurants > 0 ? totalMonthlyRevenue / totalRestaurants : 0;
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <Container>
+          <Header><Title>Brand Manager Dashboard</Title></Header>
+          <Content>
+            <EmptyState>Loading dashboard data...</EmptyState>
+          </Content>
+        </Container>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
       <Container>
         <Header>
-          <Title>Brand Manager Dashboard</Title>
-          <Subtitle>
-            {metrics.assignedBrand} • {metrics.assignedRegions.join(', ')} Region
-          </Subtitle>
+          <div>
+            <Title>Brand Manager Dashboard</Title>
+            {brandName && <Subtitle>{brandName}</Subtitle>}
+          </div>
         </Header>
 
         <Content>
           <TabContainer>
-            <Tab
-              active={activeTab === 'overview'}
-              onClick={() => setActiveTab('overview')}
-            >
+            <Tab active={activeTab === 'overview'} onClick={() => setActiveTab('overview')}>
               Overview
             </Tab>
-            <Tab
-              active={activeTab === 'franchises'}
-              onClick={() => setActiveTab('franchises')}
-            >
-              Franchises ({metrics.totalStores})
+            <Tab active={activeTab === 'restaurants'} onClick={() => setActiveTab('restaurants')}>
+              Restaurants ({totalRestaurants})
             </Tab>
           </TabContainer>
 
@@ -338,94 +359,126 @@ const BrandManagerDashboard: React.FC = () => {
             <>
               <DashboardStatsGrid>
                 <DashboardStatCard>
-                  <DashboardStatValue>{metrics.totalStores}</DashboardStatValue>
-                  <DashboardStatLabel>Assigned Stores</DashboardStatLabel>
+                  <DashboardStatValue>{totalRestaurants}</DashboardStatValue>
+                  <DashboardStatLabel>Total Restaurants</DashboardStatLabel>
                 </DashboardStatCard>
                 <DashboardStatCard>
-                  <DashboardStatValue>RM {(metrics.monthlyRevenue / 1000).toFixed(0)}K</DashboardStatValue>
-                  <DashboardStatLabel>Monthly Revenue</DashboardStatLabel>
+                  <DashboardStatValue>{activeRestaurants}</DashboardStatValue>
+                  <DashboardStatLabel>Active Restaurants</DashboardStatLabel>
                 </DashboardStatCard>
                 <DashboardStatCard>
-                  <DashboardStatValue>{metrics.customerSatisfaction.toFixed(1)}/5.0</DashboardStatValue>
-                  <DashboardStatLabel>Customer Satisfaction</DashboardStatLabel>
+                  <DashboardStatValue>{formatCurrency(totalTodayRevenue, selectedCurrency)}</DashboardStatValue>
+                  <DashboardStatLabel>Today's Revenue</DashboardStatLabel>
                 </DashboardStatCard>
                 <DashboardStatCard>
-                  <DashboardStatValue>{metrics.marketShare.toFixed(1)}%</DashboardStatValue>
-                  <DashboardStatLabel>Market Share</DashboardStatLabel>
+                  <DashboardStatValue>{totalTodayOrders}</DashboardStatValue>
+                  <DashboardStatLabel>Today's Orders</DashboardStatLabel>
                 </DashboardStatCard>
               </DashboardStatsGrid>
 
-              <MainGrid>
-                <ChartContainer>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <h3>Monthly Franchise Revenue Trend</h3>
-                    <TimeFilter value={timePeriod} onChange={(e) => setTimePeriod(e.target.value as any)}>
-                      <option value="week">This Week</option>
-                      <option value="month">This Month</option>
-                      <option value="quarter">Quarter</option>
-                      <option value="year">This Year</option>
-                    </TimeFilter>
-                  </div>
-                  <PlaceholderChart>
-                    📊 Monthly Franchise Revenue Chart (Coming Soon)
-                  </PlaceholderChart>
-                </ChartContainer>
+              <QuickActionsGrid>
+                <QuickAction onClick={() => navigate('/pos/manager/restaurants')}>
+                  <QuickActionIcon>&#9881;</QuickActionIcon>
+                  <QuickActionTitle>Manage Restaurants</QuickActionTitle>
+                  <QuickActionDesc>Add, edit, view restaurants</QuickActionDesc>
+                </QuickAction>
+                <QuickAction onClick={() => navigate('/pos/brand/reports')}>
+                  <QuickActionIcon>&#9776;</QuickActionIcon>
+                  <QuickActionTitle>Reports</QuickActionTitle>
+                  <QuickActionDesc>Sales and performance reports</QuickActionDesc>
+                </QuickAction>
+                <QuickAction onClick={() => navigate('/pos/brand/franchise-support')}>
+                  <QuickActionIcon>&#9993;</QuickActionIcon>
+                  <QuickActionTitle>Support Tickets</QuickActionTitle>
+                  <QuickActionDesc>Franchise support requests</QuickActionDesc>
+                </QuickAction>
+                <QuickAction onClick={() => navigate('/pos/subscriptions')}>
+                  <QuickActionIcon>&#9733;</QuickActionIcon>
+                  <QuickActionTitle>Subscriptions</QuickActionTitle>
+                  <QuickActionDesc>Manage subscription plans</QuickActionDesc>
+                </QuickAction>
+              </QuickActionsGrid>
 
-                <QuickStatsContainer>
-                  <h3>Brand Status</h3>
+              <MainGrid>
+                <Card>
+                  <h3>Restaurant Performance</h3>
+                  {restaurants.length === 0 ? (
+                    <EmptyState>No restaurants registered yet. Add your first restaurant to see performance data.</EmptyState>
+                  ) : (
+                    restaurants.slice(0, 5).map((restaurant) => (
+                      <RestaurantItem
+                        key={restaurant.id}
+                        onClick={() => navigate(`/pos/manager/restaurants`)}
+                      >
+                        <RestaurantHeader>
+                          <RestaurantName>{restaurant.name}</RestaurantName>
+                          <StatusBadge status={restaurant.status}>
+                            {restaurant.status}
+                          </StatusBadge>
+                        </RestaurantHeader>
+                        <RestaurantInfo>
+                          <span>{restaurant.cuisine} - {restaurant.adminName}</span>
+                          <span>Today: {formatCurrency(restaurant.todayRevenue, selectedCurrency)} ({restaurant.todayOrders} orders)</span>
+                        </RestaurantInfo>
+                      </RestaurantItem>
+                    ))
+                  )}
+                </Card>
+
+                <Card>
+                  <h3>Brand Summary</h3>
                   <QuickStatItem>
-                    <QuickStatLabel>Active Promotions</QuickStatLabel>
-                    <QuickStatValue>{metrics.activePromotions}</QuickStatValue>
+                    <QuickStatLabel>Monthly Revenue</QuickStatLabel>
+                    <QuickStatValue>{formatCurrency(totalMonthlyRevenue, selectedCurrency)}</QuickStatValue>
                   </QuickStatItem>
                   <QuickStatItem>
-                    <QuickStatLabel>New Franchises</QuickStatLabel>
-                    <QuickStatValue>{metrics.newFranchises}</QuickStatValue>
+                    <QuickStatLabel>Avg Revenue / Store</QuickStatLabel>
+                    <QuickStatValue>{formatCurrency(avgRevenuePerStore, selectedCurrency)}</QuickStatValue>
                   </QuickStatItem>
                   <QuickStatItem>
-                    <QuickStatLabel>Avg Store Revenue</QuickStatLabel>
-                    <QuickStatValue>RM {(metrics.averageRevenuePerStore / 1000).toFixed(0)}K</QuickStatValue>
+                    <QuickStatLabel>Active Restaurants</QuickStatLabel>
+                    <QuickStatValue>{activeRestaurants} / {totalRestaurants}</QuickStatValue>
                   </QuickStatItem>
                   <QuickStatItem>
-                    <QuickStatLabel>Growth Rate (MoM)</QuickStatLabel>
-                    <QuickStatValue>+{metrics.growthRate.toFixed(1)}%</QuickStatValue>
+                    <QuickStatLabel>Today's Total Orders</QuickStatLabel>
+                    <QuickStatValue>{totalTodayOrders}</QuickStatValue>
                   </QuickStatItem>
-                  <QuickStatItem>
-                    <QuickStatLabel>Monthly Transactions</QuickStatLabel>
-                    <QuickStatValue>{metrics.totalTransactions}</QuickStatValue>
-                  </QuickStatItem>
-                </QuickStatsContainer>
+                </Card>
               </MainGrid>
             </>
           )}
 
-          {activeTab === 'franchises' && (
-            <FranchisesList>
-              <h3>Franchise Status</h3>
-              {franchises.length === 0 ? (
-                <PlaceholderChart>
-                  🏪 Loading franchise data...
-                </PlaceholderChart>
+          {activeTab === 'restaurants' && (
+            <Card>
+              <h3>All Restaurants</h3>
+              {restaurants.length === 0 ? (
+                <EmptyState>
+                  No restaurants found. Click "Manage Restaurants" to add your first restaurant.
+                </EmptyState>
               ) : (
-                franchises.map((franchise) => (
-                  <FranchiseItem key={franchise.id} onClick={() => navigate(`/brand/franchise/${franchise.id}`)}>
-                    <FranchiseHeader>
-                      <FranchiseName>{franchise.name}</FranchiseName>
-                      <FranchiseScore score={franchise.performanceScore}>
-                        {franchise.performanceScore}pts
-                      </FranchiseScore>
-                    </FranchiseHeader>
-                    <FranchiseInfo>
-                      <span>{franchise.location} • {franchise.storeSize}</span>
-                      <span>RM {(franchise.monthlyRevenue / 1000).toFixed(0)}K/month</span>
-                    </FranchiseInfo>
-                    <FranchiseInfo style={{ marginTop: '4px' }}>
-                      <span>{franchise.manager} • {franchise.phone}</span>
-                      <span>Opened: {franchise.openDate} • {getStatusText(franchise.status)}</span>
-                    </FranchiseInfo>
-                  </FranchiseItem>
+                restaurants.map((restaurant) => (
+                  <RestaurantItem
+                    key={restaurant.id}
+                    onClick={() => navigate(`/pos/brand/reports?restaurantId=${restaurant.id}&restaurantName=${encodeURIComponent(restaurant.name)}`)}
+                  >
+                    <RestaurantHeader>
+                      <RestaurantName>{restaurant.name}</RestaurantName>
+                      <StatusBadge status={restaurant.status}>
+                        {restaurant.status}
+                      </StatusBadge>
+                    </RestaurantHeader>
+                    <RestaurantInfo>
+                      <span>{restaurant.address}</span>
+                      <span>{restaurant.planType}</span>
+                    </RestaurantInfo>
+                    <RestaurantInfo style={{ marginTop: '4px' }}>
+                      <span>Admin: {restaurant.adminName} - {restaurant.cuisine}</span>
+                      <span>Monthly: {formatCurrency(restaurant.monthlyRevenue, selectedCurrency)}</span>
+                    </RestaurantInfo>
+                  </RestaurantItem>
                 ))
               )}
-            </FranchisesList>
+            </Card>
           )}
         </Content>
       </Container>

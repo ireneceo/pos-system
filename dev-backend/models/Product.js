@@ -31,7 +31,7 @@ Product.init({
     allowNull: false
   },
   description: {
-    type: DataTypes.TEXT
+    type: DataTypes.TEXT('medium')
   },
   optionGroups: {
     type: DataTypes.JSON,
@@ -39,7 +39,7 @@ Product.init({
     defaultValue: []
   },
   image: {
-    type: DataTypes.TEXT,
+    type: DataTypes.TEXT('medium'),
     allowNull: true,
     comment: '원본 이미지 URL (/uploads/products/xxx.jpg)'
   },
@@ -114,6 +114,11 @@ Product.init({
     type: DataTypes.INTEGER,
     allowNull: true,
     comment: '연결된 레시피 ID'
+  },
+  product_recipe_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: '연결된 제품 레시피 ID'
   }
 }, {
   sequelize: database.sequelize,

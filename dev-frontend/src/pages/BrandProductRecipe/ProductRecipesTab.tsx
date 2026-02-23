@@ -26,6 +26,7 @@ interface ProductRecipe {
   category?: ProductRecipeCategory;
   emoji: string | null;
   image: string | null;
+  image_url?: string | null;
   yield_amount: number;
   yield_unit: string;
   total_ingredient_cost: number;

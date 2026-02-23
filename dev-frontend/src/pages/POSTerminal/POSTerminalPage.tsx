@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import PaymentModal from '../../components/POSTerminal/PaymentModal';
 import OptionModal from '../../components/POSTerminal/OptionModal';
 import OrderCompleteModal from '../../components/POSTerminal/OrderCompleteModal';
+import CashierPinModal from '../../components/POSTerminal/CashierPinModal';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import AlertDialog from '../../components/Common/AlertDialog';
 import NumberInputModal from '../../components/Common/NumberInputModal';
@@ -98,6 +99,10 @@ const DateTime = styled.div`
   font-size: 14px;
   font-weight: 500;
   color: #6B7C93;
+  font-variant-numeric: tabular-nums;
+  min-width: 200px;
+  text-align: right;
+  white-space: nowrap;
 `;
 
 const MainLayout = styled.div`
@@ -1117,7 +1122,7 @@ interface OrderItemType {
 
 const POSTerminalPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, switchUser, logout: authLogout } = useAuth();
   const restaurantId = useRestaurantId();
   const { addOrder } = useOrders();
   const { getTakeawayCharge, operationSettings } = useStore();
@@ -1156,9 +1161,9 @@ const POSTerminalPage: React.FC = () => {
   const [pagerSearchQuery, setPagerSearchQuery] = useState('');
   const [showPagerDropdown, setShowPagerDropdown] = useState(false);
   const [showCustomAmountModal, setShowCustomAmountModal] = useState(false);
-  // Staff login modal removed - authentication handled by ProtectedRoute
+  // Cashier quick switch (PIN → 실제 로그인 전환)
+  const [showCashierPinModal, setShowCashierPinModal] = useState(false);
   const [showCustomPercentModal, setShowCustomPercentModal] = useState(false);
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [brandLogo, setBrandLogo] = useState<string>('');
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
@@ -1219,8 +1224,7 @@ const POSTerminalPage: React.FC = () => {
     };
   }, []);
 
-  // Staff login is handled by auth system - no need for modal in POS
-  // User must be authenticated to access this page via ProtectedRoute
+  // activeCashier 제거 - PIN 전환 시 AuthContext user가 직접 교체됨
 
   // 초기 카테고리 설정: 첫 번째 카테고리 선택 및 해당 메뉴만 로딩
   useEffect(() => {
@@ -1746,8 +1750,7 @@ const POSTerminalPage: React.FC = () => {
   };
 
   const handleLogout = () => {
-    logout();
-    setShowLogoutConfirm(false);
+    authLogout();
   };
 
   const handleAddOrder = async () => {
@@ -1839,7 +1842,9 @@ const POSTerminalPage: React.FC = () => {
       orderType: orderType,
       orderSource: 'pos' as const,
       tableNumber: orderType === 'dine-in' && tableNumber ? tableNumber : undefined,
-      pagerNumber: pagerNumber || undefined
+      pagerNumber: pagerNumber || undefined,
+      cashier_id: user?.id ? Number(user.id) : null,
+      cashier_name: user?.name || null
     };
 
       console.log('🟡 Calling addOrder with orderNumber:', newOrder.orderNumber);
@@ -1864,7 +1869,8 @@ const POSTerminalPage: React.FC = () => {
         coupon: orderData.coupon,
         pointsUsed: 0,
         pointDiscount: 0,
-        total: savedOrder?.total || orderData.total
+        total: savedOrder?.total || orderData.total,
+        cashierName: user?.name || null
       });
       setShowOrderCompleteModal(true);
 
@@ -1988,7 +1994,9 @@ const POSTerminalPage: React.FC = () => {
       orderType: orderType,
       orderSource: 'pos' as const,
       tableNumber: orderType === 'dine-in' && tableNumber ? tableNumber : undefined,
-      pagerNumber: pagerNumber || undefined
+      pagerNumber: pagerNumber || undefined,
+      cashier_id: user?.id ? Number(user.id) : null,
+      cashier_name: user?.name || null
     };
 
       const savedOrder: any = await addOrder(newOrder, user?.restaurantId ? Number(user.restaurantId) : undefined);
@@ -2030,7 +2038,8 @@ const POSTerminalPage: React.FC = () => {
         coupon: orderData.coupon,
         pointsUsed: orderData.pointsUsed || 0,
         pointDiscount: orderData.pointDiscount || 0,
-        total: savedOrder?.total || orderData.total
+        total: savedOrder?.total || orderData.total,
+        cashierName: user?.name || null
       });
       setShowOrderCompleteModal(true);
       setShowPaymentModal(false);
@@ -2112,14 +2121,18 @@ const POSTerminalPage: React.FC = () => {
   const { subtotal, tax, total, discountAmount, couponDiscount, policyDiscount, takeawayCharge, serviceCharge } = calculateTotal();
 
   const formatDateTime = (date: Date) => {
-    return date.toLocaleString('en-US', {
+    const time = date.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
+      hour12: true
+    });
+    const dateStr = date.toLocaleDateString('en-US', {
       month: 'short',
-      day: 'numeric',
+      day: '2-digit',
       year: 'numeric'
     });
+    return `${dateStr}  ${time}`;
   };
 
   // API-based customer search for real-time results
@@ -2220,7 +2233,7 @@ const POSTerminalPage: React.FC = () => {
             )}
           </Logo>
           <button
-            onClick={() => navigate('/pos/dashboard')}
+            onClick={() => navigate(`/restaurant/${restaurantId}/dashboard`)}
             style={{
               background: 'none',
               border: '1px solid #E6EBF1',
@@ -2234,18 +2247,14 @@ const POSTerminalPage: React.FC = () => {
               gap: '4px'
             }}
           >
-            ← Back
+            ← Dashboard
           </button>
         </div>
         <HeaderInfo>
-          <StaffInfo clickable={false}>
+          <StaffInfo clickable={true} onClick={() => setShowCashierPinModal(true)} title="Click to switch cashier">
             <span style={{ fontSize: '16px' }}>◆</span>
-            <span>
-              {isLoggedIn && currentStaff
-                ? `Staff: ${currentStaff.name} (${currentStaff.role})`
-                : user?.name || 'Staff'
-              }
-            </span>
+            <span>Cashier: {user?.name || 'Staff'}</span>
+            <span style={{ fontSize: '11px', color: '#8898AA', marginLeft: '4px' }}>▼</span>
           </StaffInfo>
           <DateTime>{formatDateTime(currentDateTime)}</DateTime>
         </HeaderInfo>
@@ -2723,6 +2732,7 @@ const POSTerminalPage: React.FC = () => {
         serviceChargeRate={operationSettings.serviceChargeRate}
         taxEnabled={operationSettings.taxEnabled}
         serviceChargeEnabled={operationSettings.serviceChargeEnabled}
+        cashierName={user?.name}
         customerPoints={customerPoints}
         customerTier={customerTier}
         membershipSettings={membershipSettings}
@@ -2810,15 +2820,17 @@ const POSTerminalPage: React.FC = () => {
 
       <CustomerModal />
       
-      <ConfirmDialog
-        isOpen={showLogoutConfirm}
-        onClose={() => setShowLogoutConfirm(false)}
-        onConfirm={handleLogout}
-        title="Logout Confirmation"
-        message="Are you sure you want to logout from the POS system?"
-        confirmText="Logout"
-        cancelText="Cancel"
-        variant="warning"
+      <CashierPinModal
+        show={showCashierPinModal}
+        onClose={() => setShowCashierPinModal(false)}
+        onVerified={(result) => {
+          if (result.token && result.user) {
+            switchUser(result.token, result.user);
+          }
+          setShowCashierPinModal(false);
+        }}
+        onLogout={handleLogout}
+        currentCashierName={user?.name}
       />
     </POSContainer>
   );

@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-02-10
+> **최종 업데이트:** 2026-02-23
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -176,6 +176,83 @@ const totalRevenue = useMemo(() => {
 - 기존: `/api/orders?limit=10000` → 클라이언트 useMemo로 모든 통계 계산
 - 개선: `/api/dashboard/restaurant/:id/reports-summary` → 서버에서 일별/카테고리별/메뉴별/시간대별 집계
 - 결과: 데이터 전송량 대폭 감소, 페이지 로딩 속도 향상
+
+---
+
+## ✅ 완료: 배포 안정화 + DB 스키마 동기화 시스템 구축 (2026-02-23)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 배포 스크립트 혼란 해결 | 미사용 `deploy-production-v3.sh` → `.UNUSED` 리네임, 배포 문서 정리 | ✅ 완료 |
+| 운영 DB 스키마 마이그레이션 | 한 달치 개발 스키마 변경 반영 (users, restaurants, orders, invoices, brands 등 9개 ALTER) | ✅ 완료 |
+| sync-database.js 전면 재작성 | 12개 하드코딩 모델 → 62개 자동 로딩, `alter: true` + 개별 모델별 sync + FK 체크 비활성화 | ✅ 완료 |
+| compare-schema.js 신규 생성 | dev vs prod DB 스키마 비교 도구 (순수 SQL, `--export`/`--compare` 모드) | ✅ 완료 |
+| 배포 스크립트 보강 | Pre-deploy 스키마 비교 → sync 실행 → Post-sync 검증 3단계 DB 안전장치 | ✅ 완료 |
+| 모델-DB 타입 불일치 수정 | BrandProduct/Order/Product의 TEXT 크기 불일치 (STRING→MEDIUMTEXT/LONGTEXT) 수정 | ✅ 완료 |
+| SiteSettings.js require 체인 수정 | `db.js` → `config/database.js`로 변경 (index.js 체인 로딩 방지) | ✅ 완료 |
+| POS 로그아웃 UX 개선 | 헤더 로그아웃 제거, CashierPinModal에 Logout 버튼 추가, AuthContext.logout 사용 | ✅ 완료 |
+| 로그인 리다이렉트 통일 | Staff 포함 모든 역할 → 대시보드로 리다이렉트 (POS 직행 제거) | ✅ 완료 |
+| 운영서버 company_settings 복구 | 누락 컬럼(whatsapp, business_hours, inquiry_type 등) 수동 추가 | ✅ 완료 |
+| 운영서버 전체 배포 | Staff 시스템, POS UX, 스키마 동기화 등 전체 변경사항 운영 반영 (백업: 20260223_212557) | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/sync-database.js` - 전면 재작성 (62개 모델 자동 로딩)
+- `dev-backend/compare-schema.js` - 신규 (DB 스키마 비교 도구)
+- `dev-backend/models/BrandProduct.js` - image_url TEXT('medium')
+- `dev-backend/models/Order.js` - payment_proof TEXT('long')
+- `dev-backend/models/Product.js` - description/image TEXT('medium'), product_recipe_id 추가
+- `dev-backend/models/SiteSettings.js` - require 경로 수정
+- `dev-frontend/src/pages/POSTerminal/POSTerminalPage.tsx` - 로그아웃 UX
+- `dev-frontend/src/components/POSTerminal/CashierPinModal.tsx` - Logout 버튼
+- `dev-frontend/src/pages/Login/LoginPage.tsx` - Staff 리다이렉트 대시보드로
+- `deploy-to-production.sh` - 스키마 비교/검증 3단계 추가
+
+---
+
+## ✅ 완료: Staff 관리 + PIN 캐셔 전환 + 메뉴 권한 시스템 (2026-02-23)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Staff 생성/관리 UI | Restaurant Admin이 Staff 생성 (Username, Name, Email, PIN, Department, 메뉴 권한 토글) | ✅ 완료 |
+| System Admin Staff 관리 | Admin StaffManagementPage에서도 Staff 생성/관리 가능 | ✅ 완료 |
+| PIN 기반 캐셔 전환 | POS 터미널에서 4자리 PIN 입력 → 로그인 계정 전환 (새 JWT 발급) | ✅ 완료 |
+| CashierPinModal 컴포넌트 | 4자리 숫자 키패드, 키보드 입력 지원, 자동 인증 | ✅ 완료 |
+| AuthContext.switchUser() | PIN 인증 시 JWT 토큰 + 유저 상태 즉시 교체 (페이지 리로드 없음) | ✅ 완료 |
+| Menu Visibility 권한 체계 | 6개 메뉴 그룹 토글로 Staff 접근 제어 (User.permissions JSON 배열) | ✅ 완료 |
+| verify-pin API | `POST /api/staff/verify-pin` — PIN으로 유저 조회 후 새 JWT 발급 | ✅ 완료 |
+| PIN 유니크 검증 | 레스토랑 내 PIN 중복 방지 (생성/수정 시 검증) | ✅ 완료 |
+| Staff 승격 기능 | Staff → Restaurant Admin 승격 (permissions 초기화) | ✅ 완료 |
+| 자동 비밀번호 생성 | 12자 강력 비밀번호 자동 생성, 생성 시 1회 표시 | ✅ 완료 |
+| ROLES_AND_PERMISSIONS.md 보강 | Staff 섹션 대폭 보강, 권한 매트릭스 Staff 항목 추가 | ✅ 완료 |
+
+### 메뉴 권한 구조
+
+**항상 접근 가능 (Core):** Dashboard, POS Terminal, Live Orders, Kitchen/Customer Display, Mobile Order, Profile
+
+**토글 가능 (6개 그룹):**
+| 그룹 키 | 포함 메뉴 |
+|---------|----------|
+| `menu_management` | Menu / Categories / Options / Recipe |
+| `inventory` | Suppliers / Inventory |
+| `marketing` | Customers / Coupons |
+| `reports` | Reports / Activity History |
+| `support` | Invoices / Inquiries |
+| `settings` | Store / Company / Notification |
+
+### 수정된 파일
+- `dev-frontend/src/pages/Staff/StaffPage.tsx` - Staff 관리 UI (생성/수정/삭제/승격, 권한 토글)
+- `dev-frontend/src/components/POSTerminal/CashierPinModal.tsx` - PIN 입력 모달 (신규)
+- `dev-frontend/src/pages/POSTerminal/POSTerminalPage.tsx` - 캐셔 전환 연동
+- `dev-frontend/src/contexts/AuthContext.tsx` - switchUser() 메서드, ROLE_PERMISSIONS
+- `dev-backend/routes/staff.js` - verify-pin API, Staff CRUD
+- `dev-backend/routes/users.js` - PIN 유니크 검증, 자동 비밀번호 생성
+- `dev-backend/models/User.js` - pin_code, permissions 필드
+- `dev-frontend/src/pages/Admin/StaffManagementPage.tsx` - System Admin Staff 관리
+- `docs/ROLES_AND_PERMISSIONS.md` - Staff 섹션 보강
 
 ---
 
@@ -447,13 +524,13 @@ const totalRevenue = useMemo(() => {
 | 4 | Contact 페이지 | 홍보 | ✅ 완료 |
 | 5 | 랜딩페이지 SEO 최적화 | 홍보 | ✅ 완료 |
 
-### Phase B: 오픈 직후
+### Phase B: 오픈 직후 ✅ 완료
 
 | 작업 | 설명 | 상태 |
 |------|------|:----:|
-| FAQ 페이지 | 자주 묻는 질문 | ⬜ |
-| 데모 콘텐츠 | 영상/스크린샷 | ⬜ |
-| 이메일 템플릿 | Welcome, Invoice 이메일 | ⬜ |
+| FAQ 페이지 | Blog/FAQ CMS로 구현 (2026-02-05) | ✅ 완료 |
+| 데모 콘텐츠 | 데모 계정 데이터 구성 완료 (2026-02-02) | ✅ 완료 |
+| 이메일 템플릿 | Brand/Foodcourt 이메일 시스템 완성 (Phase 4, 2026-02-09) | ✅ 완료 |
 
 ### Phase C: 고객 피드백 후
 

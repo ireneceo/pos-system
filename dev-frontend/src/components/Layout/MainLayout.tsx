@@ -538,6 +538,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
   const isActive = (path: string) => location.pathname === path;
 
+  // Staff 메뉴 권한 체크: Restaurant Admin은 항상 true, Staff는 permissions 확인
+  const hasMenuPermission = (permissionKey: string): boolean => {
+    if (user?.role === 'Restaurant Admin') return true;
+    if (user?.role !== 'Staff') return false;
+    return user?.permissions?.includes(permissionKey) || false;
+  };
+
   // Helper function to get initials from name
   const getInitials = (name: string) => {
     if (!name) return '?';
@@ -1175,8 +1182,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             </NavSection>
           )}
           
-          {/* Restaurant Admin - Products */}
-          {user?.role === 'Restaurant Admin' && (
+          {/* Restaurant Admin & Staff (with permission) - Products */}
+          {hasMenuPermission('menu_management') && (
             <NavSection>
               <NavTitle>Products</NavTitle>
               {isRouteAllowed(`/restaurant/${restaurantId}/menu`) && (
@@ -1206,8 +1213,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             </NavSection>
           )}
 
-          {/* Restaurant Admin - Stock Management */}
-          {user?.role === 'Restaurant Admin' && (
+          {/* Restaurant Admin & Staff (with permission) - Stock Management */}
+          {hasMenuPermission('inventory') && (
             <NavSection>
               <NavTitle>Stock Management</NavTitle>
               {isRouteAllowed(`/restaurant/${restaurantId}/suppliers`) && (
@@ -1242,8 +1249,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             </NavSection>
           )}
 
-          {/* Restaurant Admin - Marketing */}
-          {user?.role === 'Restaurant Admin' && (
+          {/* Restaurant Admin & Staff (with permission) - Marketing */}
+          {hasMenuPermission('marketing') && (
             <NavSection>
               <NavTitle>Marketing</NavTitle>
               {isRouteAllowed(`/restaurant/${restaurantId}/customers`) && (
@@ -1261,8 +1268,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             </NavSection>
           )}
 
-          {/* Restaurant Admin - Analytics */}
-          {user?.role === 'Restaurant Admin' && (
+          {/* Restaurant Admin & Staff (with permission) - Analytics */}
+          {hasMenuPermission('reports') && (
             <NavSection>
               <NavTitle>Analytics</NavTitle>
               {isRouteAllowed(`/restaurant/${restaurantId}/reports`) && (
@@ -1280,8 +1287,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             </NavSection>
           )}
 
-          {/* Restaurant Admin - Support */}
-          {user?.role === 'Restaurant Admin' && (
+          {/* Restaurant Admin & Staff (with permission) - Support */}
+          {hasMenuPermission('support') && (
             <NavSection>
               <NavTitle>Support</NavTitle>
               {isRouteAllowed(`/restaurant/${restaurantId}/invoices`) && (
@@ -1403,8 +1410,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </>
             )}
 
-            {/* Restaurant Admin & Staff Settings */}
-            {(user?.role === 'Restaurant Admin' || user?.role === 'Staff') && (
+            {/* Restaurant Admin & Staff (with permission) Settings */}
+            {hasMenuPermission('settings') && (
               <>
                 <NavItem to={`/restaurant/${restaurantId}/settings`} active={isActive(`/restaurant/${restaurantId}/settings`)} onClick={closeSidebar}>
                   <NavIcon>⚙</NavIcon>

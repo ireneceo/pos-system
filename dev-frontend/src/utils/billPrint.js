@@ -246,6 +246,9 @@ export function generateBillContent(orderData, storeInfo) {
   });
   content += formatLine('Date:', dateStr) + CMD.LINE_FEED;
   content += formatLine('Time:', timeStr) + CMD.LINE_FEED;
+  if (orderData.cashierName) {
+    content += formatLine('Cashier:', orderData.cashierName) + CMD.LINE_FEED;
+  }
   content += CMD.DASHED_LINE + CMD.LINE_FEED;
 
   // === ITEMS ===
@@ -475,6 +478,7 @@ function generateHTMLBill(orderData, storeInfo) {
               : ''))}
         <tr><td>Date:</td><td style="text-align: right;">${dateStr}</td></tr>
         <tr><td>Time:</td><td style="text-align: right;">${timeStr}</td></tr>
+        ${orderData.cashierName ? `<tr><td>Cashier:</td><td style="text-align: right;">${orderData.cashierName}</td></tr>` : ''}
       </table>
 
       <div class="divider"></div>

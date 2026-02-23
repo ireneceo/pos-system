@@ -5,6 +5,15 @@ import { useAuth } from '../../contexts/AuthContext';
 import { API_BASE_URL } from '../../config/api';
 import { formatCurrency } from '../../utils/currency';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import {
+  Table,
+  TableHeader as CommonTableHeader,
+  TableRow as CommonTableRow,
+  MobileLabel,
+  MobileValue,
+  MobileGrid
+} from '../../components/UI';
 
 // ============================================
 // Styled Components
@@ -395,6 +404,72 @@ const LoadingSpinner = styled.div`
   font-size: 14px;
 `;
 
+const POSTableHeader = styled(CommonTableHeader)`
+  @media (max-width: 1200px) {
+    & > span:nth-child(5), & > span:nth-child(6) { display: none; }
+  }
+  @media (max-width: 900px) {
+    & > span:nth-child(3), & > span:nth-child(4), & > span:nth-child(5), & > span:nth-child(6) { display: none; }
+  }
+`;
+
+const POSTableRow = styled(CommonTableRow)`
+  @media (max-width: 1200px) {
+    & > div:nth-child(5), & > div:nth-child(6) { display: none; }
+  }
+  @media (max-width: 900px) {
+    & > div:nth-child(3), & > div:nth-child(4), & > div:nth-child(5), & > div:nth-child(6) { display: none; }
+  }
+`;
+
+const POSRestaurantName = styled.div`
+  font-weight: 600; color: #0A2540; font-size: 14px;
+`;
+
+const POSRestaurantMeta = styled.div`
+  font-size: 12px; color: #9CA3AF; margin-top: 2px;
+`;
+
+const PlanBadge = styled.span<{ planType: string }>`
+  display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; text-transform: capitalize;
+  ${props => {
+    switch (props.planType) {
+      case 'basic': return 'background: #F3F4F6; color: #374151;';
+      case 'professional': return 'background: #EDE9FE; color: #7C3AED;';
+      case 'enterprise': return 'background: #FEF3C7; color: #92400E;';
+      default: return 'background: #F3F4F6; color: #374151;';
+    }
+  }}
+`;
+
+const StatusBadge2 = styled.span<{ status: string }>`
+  display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;
+  ${props => {
+    switch (props.status) {
+      case 'active': return 'background: #ECFDF5; color: #059669;';
+      case 'trial': return 'background: #DBEAFE; color: #2563EB;';
+      case 'expired': return 'background: #FEE2E2; color: #DC2626;';
+      case 'suspended': return 'background: #FEF3C7; color: #D97706;';
+      case 'cancelled': return 'background: #F3F4F6; color: #6B7280;';
+      default: return 'background: #F3F4F6; color: #6B7280;';
+    }
+  }}
+`;
+
+interface POSSubscription {
+  id: string;
+  restaurantName: string;
+  adminName: string;
+  location: string;
+  planType: string;
+  status: string;
+  monthlyFee: number;
+  paymentModel: string;
+  startDate: string;
+  endDate: string;
+  autoRenew: boolean;
+}
+
 // ============================================
 // Interfaces
 // ============================================
@@ -471,6 +546,12 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [generateResult, setGenerateResult] = useState<GenerateResult | null>(null);
   const [showResultModal, setShowResultModal] = useState(false);
+  const [posSubs, setPosSubs] = useState<POSSubscription[]>([]);
+  const [posLoading, setPosLoading] = useState(false);
+  const [posSearchTerm, setPosSearchTerm] = useState('');
+  const [posFilterStatus, setPosFilterStatus] = useState('all');
+  const [posFilterPayment, setPosFilterPayment] = useState('all');
+  const [generateError, setGenerateError] = useState('');
 
   const token = localStorage.getItem('auth_token');
 
@@ -502,6 +583,49 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
     fetchFoodcourtSubscriptions();
   }, [fetchFoodcourtSubscriptions]);
 
+  const fetchPOSSubscriptions = useCallback(async () => {
+    if (!token) return;
+    setPosLoading(true);
+    try {
+      const response = await fetch('/api/restaurants', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const restaurants = Array.isArray(data) ? data : [];
+        const formatted: POSSubscription[] = restaurants.map((r: any) => {
+          const planType = r.plan_type?.toLowerCase().replace(' plan', '') || 'basic';
+          let status = 'active';
+          if (r.status === 'trial') status = 'trial';
+          else if (r.status === 'inactive' || r.status === 'suspended') status = 'suspended';
+          else if (r.status === 'expired') status = 'expired';
+          else if (r.status === 'cancelled') status = 'cancelled';
+          return {
+            id: r.id?.toString(),
+            restaurantName: r.name || 'Unknown',
+            adminName: r.admin_name || r.managerName || '-',
+            location: r.address || '-',
+            planType, status,
+            monthlyFee: parseFloat(r.plan_amount) || 29,
+            paymentModel: r.payment_model || 'restaurant',
+            startDate: r.subscription_start ? new Date(r.subscription_start).toISOString().split('T')[0] : '-',
+            endDate: r.subscription_end ? new Date(r.subscription_end).toISOString().split('T')[0] : '-',
+            autoRenew: r.status === 'active'
+          };
+        });
+        setPosSubs(formatted);
+      }
+    } catch (error) {
+      console.error('Error fetching POS subscriptions:', error);
+    } finally {
+      setPosLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (activeTab === 'pos_subscriptions') fetchPOSSubscriptions();
+  }, [activeTab, fetchPOSSubscriptions]);
+
   const handleGenerateInvoices = async () => {
     if (!foodcourtId) return;
     setGenerating(true);
@@ -521,12 +645,12 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
         setShowResultModal(true);
         fetchFoodcourtSubscriptions();
       } else {
-        const err = await response.json();
-        alert(`Failed: ${err.message}`);
+        const err = await response.json().catch(() => ({ message: 'Unknown error' }));
+        setGenerateError(`Failed: ${err.message}`);
       }
     } catch (error) {
       console.error('Error generating invoices:', error);
-      alert('Failed to generate invoices');
+      setGenerateError('Failed to generate invoices');
     } finally {
       setGenerating(false);
     }
@@ -550,6 +674,18 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
     }
   };
 
+  const filteredPosSubs = posSubs.filter(sub => {
+    const matchesSearch = sub.restaurantName.toLowerCase().includes(posSearchTerm.toLowerCase()) ||
+                          sub.adminName.toLowerCase().includes(posSearchTerm.toLowerCase());
+    const matchesStatus = posFilterStatus === 'all' || sub.status === posFilterStatus;
+    const matchesPayment = posFilterPayment === 'all' || sub.paymentModel === posFilterPayment;
+    return matchesSearch && matchesStatus && matchesPayment;
+  });
+
+  const posActiveCount = posSubs.filter(s => s.status === 'active').length;
+  const posTrialCount = posSubs.filter(s => s.status === 'trial').length;
+  const posTotalFee = posSubs.filter(s => s.status === 'active' || s.status === 'trial').reduce((sum, s) => sum + s.monthlyFee, 0);
+
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
@@ -559,7 +695,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
     <MainLayout>
       <Container>
         <Header>
-          <Title>Subscriptions & Billing</Title>
+          <Title>Subscriptions</Title>
           <ActionSection>
             {activeTab === 'foodcourt_plans' && (
               <Button variant="success" onClick={() => setShowGenerateModal(true)} disabled={withPlan === 0}>
@@ -716,14 +852,115 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
           )}
 
           {activeTab === 'pos_subscriptions' && (
-            <EmptyState>
-              <EmptyIcon>&#x1F4E6;</EmptyIcon>
-              <EmptyTitle>POS Subscriptions</EmptyTitle>
-              <EmptyDescription>
-                POS subscription plans (Basic, Professional, Enterprise) are managed by System Admin.
-                <br />View your tenants' POS subscription status in the Restaurants page.
-              </EmptyDescription>
-            </EmptyState>
+            <>
+              <StatsGrid>
+                <StatCard color="#059669">
+                  <StatValue>{posSubs.length}</StatValue>
+                  <StatLabel>Total Tenants</StatLabel>
+                  <StatSub>{posActiveCount} active, {posTrialCount} trial</StatSub>
+                </StatCard>
+                <StatCard color="#2563EB">
+                  <StatValue>{posActiveCount}</StatValue>
+                  <StatLabel>Active Subscriptions</StatLabel>
+                </StatCard>
+                <StatCard color="#7C3AED">
+                  <StatValue>{formatCurrency(posTotalFee, currency)}</StatValue>
+                  <StatLabel>Monthly POS Fees</StatLabel>
+                  <StatSub>Active + Trial combined</StatSub>
+                </StatCard>
+                <StatCard color="#D97706">
+                  <StatValue>{posSubs.filter(s => s.paymentModel === 'foodcourt_manager').length}</StatValue>
+                  <StatLabel>Paid by Manager</StatLabel>
+                  <StatSub>{posSubs.filter(s => s.paymentModel === 'restaurant').length} paid by tenant</StatSub>
+                </StatCard>
+              </StatsGrid>
+
+              <FilterBar>
+                <SearchInput placeholder="Search tenants..." value={posSearchTerm} onChange={(e) => setPosSearchTerm(e.target.value)} />
+                <FilterSelect value={posFilterStatus} onChange={(e) => setPosFilterStatus(e.target.value)}>
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="trial">Trial</option>
+                  <option value="expired">Expired</option>
+                  <option value="suspended">Suspended</option>
+                  <option value="cancelled">Cancelled</option>
+                </FilterSelect>
+                <FilterSelect value={posFilterPayment} onChange={(e) => setPosFilterPayment(e.target.value)}>
+                  <option value="all">All Payment</option>
+                  <option value="foodcourt_manager">Paid by Manager</option>
+                  <option value="restaurant">Paid by Tenant</option>
+                </FilterSelect>
+              </FilterBar>
+
+              {posLoading ? (
+                <LoadingSpinner>Loading POS subscription data...</LoadingSpinner>
+              ) : posSubs.length === 0 ? (
+                <EmptyState>
+                  <EmptyIcon>&#x1F4E6;</EmptyIcon>
+                  <EmptyTitle>No POS Subscriptions</EmptyTitle>
+                  <EmptyDescription>No tenants are assigned to this foodcourt yet.</EmptyDescription>
+                </EmptyState>
+              ) : (
+                <Table>
+                  <POSTableHeader columns="2.5fr 1fr 1fr 1fr 1fr 1fr">
+                    <span>Tenant</span>
+                    <span>Plan</span>
+                    <span>Status</span>
+                    <span>Monthly Fee</span>
+                    <span>Paid By</span>
+                    <span>Expires</span>
+                  </POSTableHeader>
+                  {filteredPosSubs.map(sub => (
+                    <POSTableRow columns="2.5fr 1fr 1fr 1fr 1fr 1fr" key={sub.id}>
+                      <MobileGrid>
+                        <MobileValue>
+                          <MobileLabel>Tenant</MobileLabel>
+                          <div>
+                            <POSRestaurantName>{sub.restaurantName}</POSRestaurantName>
+                            <POSRestaurantMeta>{sub.adminName} &middot; {sub.location}</POSRestaurantMeta>
+                          </div>
+                        </MobileValue>
+                        <MobileValue>
+                          <MobileLabel>Plan</MobileLabel>
+                          <PlanBadge planType={sub.planType}>{sub.planType.charAt(0).toUpperCase() + sub.planType.slice(1)}</PlanBadge>
+                        </MobileValue>
+                        <MobileValue>
+                          <MobileLabel>Status</MobileLabel>
+                          <StatusBadge2 status={sub.status}>{sub.status.charAt(0).toUpperCase() + sub.status.slice(1)}</StatusBadge2>
+                        </MobileValue>
+                        <MobileValue>
+                          <MobileLabel>Monthly Fee</MobileLabel>
+                          {formatCurrency(sub.monthlyFee, currency)}
+                        </MobileValue>
+                        <MobileValue>
+                          <MobileLabel>Paid By</MobileLabel>
+                          <span style={{
+                            display: 'inline-flex', padding: '4px 8px', borderRadius: '6px', fontSize: '12px', fontWeight: 500,
+                            background: sub.paymentModel === 'foodcourt_manager' ? '#ECFDF5' : '#F3F4F6',
+                            color: sub.paymentModel === 'foodcourt_manager' ? '#059669' : '#6B7280'
+                          }}>
+                            {sub.paymentModel === 'foodcourt_manager' ? 'Manager' : 'Tenant'}
+                          </span>
+                        </MobileValue>
+                        <MobileValue>
+                          <MobileLabel>Expires</MobileLabel>
+                          {(() => {
+                            if (sub.endDate === '-') return <span style={{color: '#9CA3AF'}}>-</span>;
+                            const today = new Date();
+                            const endDate = new Date(sub.endDate);
+                            const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                            if (diffDays < 0) return <span style={{color: '#DC2626', fontWeight: 500}}>Expired</span>;
+                            if (diffDays <= 7) return <span style={{color: '#F59E0B', fontWeight: 500}}>{diffDays}d</span>;
+                            if (diffDays <= 30) return <span style={{color: '#10B981', fontWeight: 500}}>{diffDays}d</span>;
+                            return <span style={{color: '#6B7280'}}>{diffDays}d</span>;
+                          })()}
+                        </MobileValue>
+                      </MobileGrid>
+                    </POSTableRow>
+                  ))}
+                </Table>
+              )}
+            </>
           )}
         </Content>
       </Container>
@@ -751,9 +988,15 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
             </div>
           </div>
 
+          {generateError && (
+            <div style={{padding: '10px 16px', marginTop: '12px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#DC2626', fontSize: '13px'}}>
+              {generateError}
+            </div>
+          )}
+
           <ModalActions>
-            <Button variant="secondary" onClick={() => setShowGenerateModal(false)}>Cancel</Button>
-            <Button variant="success" onClick={handleGenerateInvoices} disabled={generating}>
+            <Button variant="secondary" onClick={() => { setShowGenerateModal(false); setGenerateError(''); }}>Cancel</Button>
+            <Button variant="success" onClick={() => { setGenerateError(''); handleGenerateInvoices(); }} disabled={generating}>
               {generating ? 'Generating...' : 'Generate Now'}
             </Button>
           </ModalActions>

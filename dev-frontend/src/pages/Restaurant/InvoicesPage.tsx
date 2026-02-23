@@ -889,7 +889,7 @@ const RestaurantInvoicesPage: React.FC = () => {
   };
 
   // Get effective status (considering overdue)
-  const getEffectiveStatus = (invoice: Invoice): string => {
+  const getEffectiveStatus = (invoice: Invoice): 'draft' | 'pending_payment' | 'payment_submitted' | 'paid' | 'overdue' | 'cancelled' | 'active' | 'inactive' | '' => {
     if (isInvoiceOverdue(invoice)) {
       return 'overdue';
     }

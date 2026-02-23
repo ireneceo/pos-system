@@ -237,6 +237,7 @@ interface PaymentModalProps {
   serviceChargeRate?: number;
   taxEnabled?: boolean;
   serviceChargeEnabled?: boolean;
+  cashierName?: string;       // Current cashier name to display
   // Points props - can use customerId/restaurantId OR direct values
   customerId?: number;        // If provided, modal will fetch data internally
   restaurantId?: number;      // Required if customerId is provided
@@ -262,6 +263,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   serviceChargeRate = 10,
   taxEnabled = true,
   serviceChargeEnabled = false,
+  cashierName,
   customerId,
   restaurantId,
   customerPoints: propCustomerPoints = 0,
@@ -476,6 +478,12 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       footer={footer}
     >
       <OrderSummary>
+        {cashierName && (
+          <SummaryRow>
+            <SummaryLabel>Cashier</SummaryLabel>
+            <SummaryValue>{cashierName}</SummaryValue>
+          </SummaryRow>
+        )}
         <SummaryRow>
           <SummaryLabel>Subtotal</SummaryLabel>
           <SummaryValue>{formatCurrency(subtotal, operationSettings.currency)}</SummaryValue>

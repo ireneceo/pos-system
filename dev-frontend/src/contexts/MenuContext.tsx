@@ -256,7 +256,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
           };
         });
 
-        // Sort items: set menus first within each category
+        // Sort items: newest first within each category
         items.sort((a: MenuItem, b: MenuItem) => {
           // Different categories - maintain category order
           if (a.category !== b.category) {
@@ -272,8 +272,8 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             return (a.set_display_order || 0) - (b.set_display_order || 0);
           }
 
-          // Both are regular menus - sort by ID (creation order)
-          return parseInt(a.id) - parseInt(b.id);
+          // Both are regular menus - sort by ID descending (newest first)
+          return parseInt(b.id) - parseInt(a.id);
         });
 
         setMenuItems(items);
@@ -614,8 +614,8 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         ? { ...responseData.data, id: String(responseData.data.id) }
         : { ...newItem, id: String(responseData.data?.id || newItem.id) };
 
-      // 성공 시 로컬 상태 업데이트 (API에서 받은 데이터 사용)
-      const newItems = [...menuItems, createdItem];
+      // 성공 시 로컬 상태 업데이트 (최신 아이템이 맨 앞에 오도록)
+      const newItems = [createdItem, ...menuItems];
       setMenuItems(newItems);
     } catch (error) {
 

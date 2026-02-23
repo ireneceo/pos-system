@@ -30,6 +30,7 @@ System Admin (최고 관리자)
 - 전체 매출/통계 조회
 - 플랜 및 구독 관리
 - 모든 데이터 조회/수정 권한
+- **7-Day Free Trial 부여** (System Admin만 가능)
 
 ### 접근 가능 페이지
 - `/admin/*` (모든 관리자 페이지)
@@ -52,24 +53,26 @@ System Admin (최고 관리자)
 
 ### 주요 기능
 - **브랜드 생성**: 로그인 후 처음으로 브랜드 정보 입력 (이름, 로고, 설명)
-- 가맹점 생성 (자기 브랜드만)
-- Brand Manager 초대 및 가맹점 배정
+- 가맹점(레스토랑) **신규 생성** → 자동으로 자기 브랜드에 연결 (`brand_id` 자동 설정)
+- Brand Manager 초대 및 관리 (Brand Manager는 Brand General과 동일 화면, 권한 분리 예정)
 - 브랜드 표준 메뉴 관리
 - 전체 가맹점 메뉴 동기화
 - 브랜드별 통합 매출 조회
-- 프로모션 관리
+- 구독 플랜 생성 및 소속 레스토랑에 인보이스 발행
 
 ### 접근 가능 페이지
-- `/brand-general/dashboard`
-- `/brand-general/restaurants` (자기 브랜드 가맹점만)
-- `/brand-general/menu-sync`
-- `/brand-general/reports`
-- `/brand-general/managers`
+- `/pos/brand/general/dashboard`
+- `/pos/manager/restaurants` (자기 브랜드 가맹점만)
+- `/pos/brand/general/management` (브랜드 정보 관리)
+- 공유 매니저 라우트 (`/pos/manager/*`)
 
 ### 제한 사항
 - 다른 브랜드 데이터 접근 불가
 - 푸드코트 기능 접근 불가
 - 시스템 설정 변경 불가
+- **기존 레스토랑을 자기 브랜드로 연결 불가** (System Admin만 가능)
+- **Oversight Manager 배정 불가** (System Admin만 가능)
+- **7-Day Trial 부여 불가** (System Admin만 가능)
 
 ---
 
@@ -115,25 +118,27 @@ System Admin (최고 관리자)
 
 ### 주요 기능
 - **푸드코트 생성**: 로그인 후 처음으로 푸드코트 정보 입력 (이름, 위치, 주소)
-- 입점 신청 승인/거부
+- 입점 레스토랑 **신규 생성** → 자동으로 자기 푸드코트에 연결 (`foodcourt_id` 자동 설정)
+- Foodcourt Manager 초대 및 관리 (Foodcourt Manager는 동일 화면, 권한 분리 예정)
 - 공지사항 작성 및 발송
 - 임대료 인보이스 자동 발행
 - 문의 티켓 관리
 - 입점 업체 매출 통계 조회
-- 계약 갱신/해지 관리
+- 구독 플랜 생성 및 입점 레스토랑에 인보이스 발행
 
 ### 접근 가능 페이지
-- `/foodcourt-general/dashboard`
-- `/foodcourt-general/tenants` (입점 업체 목록)
-- `/foodcourt-general/announcements`
-- `/foodcourt-general/invoices`
-- `/foodcourt-general/tickets`
-- `/foodcourt-general/reports` (매출 통계 조회만)
+- `/pos/foodcourt/general/dashboard`
+- `/pos/manager/restaurants` (자기 푸드코트 입점 레스토랑만)
+- `/pos/foodcourt/general/management` (푸드코트 정보 관리)
+- 공유 매니저 라우트 (`/pos/manager/*`)
 
 ### 제한 사항
 - 입점 업체 메뉴/가격 수정 불가
 - 입점 업체 주문 관리 불가
 - 다른 푸드코트 데이터 접근 불가
+- **기존 레스토랑을 자기 푸드코트로 연결 불가** (System Admin만 가능)
+- **Oversight Manager 배정 불가** (System Admin만 가능)
+- **7-Day Trial 부여 불가** (System Admin만 가능)
 
 ---
 
@@ -171,7 +176,7 @@ System Admin (최고 관리자)
 - ✅ **자기 레스토랑 완전 관리**: 모든 설정 및 데이터
 - ✅ **메뉴 관리**: 메뉴/가격 설정 (브랜드 소속 제외)
 - ✅ **주문 관리**: 모든 주문 처리
-- ✅ **직원 관리**: Staff 초대 및 관리
+- ✅ **직원 관리**: Staff 생성/수정/삭제, PIN 설정, 메뉴 권한(permissions) 설정, Staff 승격
 - ✅ **리포트**: 자기 레스토랑 매출/통계
 
 ### 소유권에 따른 차이
@@ -208,21 +213,68 @@ System Admin (최고 관리자)
 
 ## 7. Staff (직원)
 
-### 권한
-- ✅ **주문 처리**: 주문 확인 및 상태 변경
-- ✅ **POS 사용**: 결제 처리
-- ❌ **설정 변경**: 모든 설정 변경 불가
-- ❌ **리포트**: 제한적 조회만
+### 생성 및 관리
+- **생성 가능한 역할**: Restaurant Admin, System Admin
+- **생성 위치**: Restaurant Admin → `/pos/staff`, System Admin → `/admin/staff`
+- **필수 필드**: Username(Staff ID), Full Name, Email, PIN Code(4자리)
+- **선택 필드**: Phone, Department, Company Name
+- **비밀번호**: 자동 생성 (12자 강력 비밀번호), 생성 시 한 번만 표시
+- **PIN 코드**: 4자리 숫자, 레스토랑 내 유니크 (POS 캐셔 전환용)
+
+### 권한 체계 (Menu Visibility 방식)
+
+Staff의 권한은 **메뉴 보이기/숨기기**로 제어됨. Restaurant Admin이 Staff 생성/수정 시 토글로 설정.
+
+**항상 접근 가능 (Core Menus):**
+- Dashboard
+- POS Terminal
+- Live Orders
+- Kitchen Display
+- Customer Display
+- Mobile Order
+- Profile
+
+**선택적 접근 (6개 메뉴 그룹, 토글 방식):**
+
+| 그룹 키 | 표시명 | 포함 메뉴 |
+|---------|--------|----------|
+| `menu_management` | Products | Menu / Categories / Options / Recipe |
+| `inventory` | Stock Management | Suppliers / Inventory |
+| `marketing` | Marketing | Customers / Coupons |
+| `reports` | Analytics | Reports / Activity History |
+| `support` | Support | Invoices / Inquiries |
+| `settings` | Settings | Store / Company / Notifications |
+
+**저장 방식**: `User.permissions` 필드에 JSON 배열 (`["menu_management", "reports"]`)
+
+### PIN 기반 POS 캐셔 전환
+- POS 터미널 상단 "Cashier: [이름] ▼" 클릭 → PIN 입력 모달
+- 4자리 PIN 입력 시 자동 인증 (`POST /api/staff/verify-pin`)
+- **전체 로그인 컨텍스트 전환**: 새 JWT 토큰 발급, AuthContext 유저 교체
+- 페이지 리로드 없이 즉시 전환
+- 전환 후 새 유저의 메뉴 권한이 즉시 적용됨
+- Restaurant Admin도 PIN이 있으면 동일하게 전환 가능
 
 ### 주요 기능
-- 주문 접수 및 처리
+- 주문 접수 및 처리 (POS Terminal)
 - POS 결제
-- 재고 확인 (수정 불가)
+- 라이브 주문 모니터링
+- 권한에 따라 추가 메뉴 접근 (재고, 리포트 등)
 
 ### 접근 가능 페이지
-- `/pos`
-- `/orders` (조회 및 상태 변경만)
-- `/menu` (조회만)
+- `/pos/terminal` (POS Terminal)
+- `/pos/live-orders` (Live Orders)
+- `/pos/kitchen-display` (Kitchen Display)
+- `/pos/customer-display` (Customer Display)
+- `/pos/mobile` (Mobile Order)
+- `/pos/dashboard` (Dashboard)
+- `/pos/profile` (Profile)
+- + 권한 설정에 따른 추가 메뉴들
+
+### Staff 승격 (Promote)
+- Restaurant Admin이 Staff를 Restaurant Admin으로 승격 가능
+- 승격 시 permissions 필드 초기화 (Restaurant Admin은 모든 메뉴 접근)
+- 승격된 유저의 역강은 불가 (Restaurant Admin → Staff 불가)
 
 ---
 
@@ -241,7 +293,11 @@ System Admin (최고 관리자)
 | **티켓 답변** | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
 | **레스토랑 메뉴 수정** | ✅ | ✅ (가맹점) | ❌ | ❌ | ❌ | ✅ (독립만) | ❌ |
 | **주문 관리** | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
-| **매출 조회** | ✅ (전체) | ✅ (브랜드) | ✅ (배정) | ✅ (입점) | 제한적 | ✅ (자기) | 제한적 |
+| **매출 조회** | ✅ (전체) | ✅ (브랜드) | ✅ (배정) | ✅ (입점) | 제한적 | ✅ (자기) | 권한 필요 |
+| **7-Day Trial 부여** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Staff 생성** | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| **PIN 캐셔 전환** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| **Staff 권한 설정** | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 
 ---
 
@@ -379,6 +435,41 @@ WHERE foodcourt_id = user.foodcourt_id
 
 ---
 
+## 레스토랑 관리 역할별 차이
+
+### 페이지 구조
+| 역할 | 페이지 | 비고 |
+|------|--------|------|
+| System Admin | `Admin/RestaurantsPage.tsx` | 기준 페이지 (모든 기능) |
+| Brand General, Brand Manager, Foodcourt General, Foodcourt Manager | `Manager/RestaurantsPage.tsx` | 공유 페이지 (현재 권한 동일, 분리 예정) |
+
+### 레스토랑 등록 시 역할별 차이
+
+| 항목 | System Admin | Brand General, Foodcourt General (+ Manager) |
+|------|:---:|:---:|
+| 레스토랑 신규 생성 | ✅ | ✅ |
+| Brand/Foodcourt 선택 | ✅ (드롭다운) | ❌ (자동 연결) |
+| 기존 레스토랑 검색/연결 | ✅ | ❌ |
+| Restaurant Admin 생성/배정 | ✅ | ✅ |
+| Oversight Manager 배정 | ✅ | ❌ (자동: 자기 자신만) |
+| 7-Day Free Trial | ✅ | ❌ |
+| Status 직접 선택 | ❌ (Trial 체크박스) | ❌ |
+| Business Registration / Tax ID | ✅ | ✅ |
+
+### Brand/Foodcourt General 자동 연결 규칙
+- Brand General이 레스토랑 생성 → `brand_id = 자기 브랜드 ID` 자동 설정
+- Foodcourt General이 레스토랑 생성 → `foodcourt_id = 자기 푸드코트 ID` 자동 설정
+- Brand/Foodcourt Manager도 동일 (General과 같은 화면, 권한 분리는 추후)
+
+### Brand Manager / Foodcourt Manager 현재 상태 (2026-02-11)
+- General과 **동일한 화면/권한** (사이드바, 라우트 모두 공유)
+- 고객에게는 General 아이디만 제공 (Manager 아이디는 미제공)
+- 권한 분리는 추후 개발 예정
+
+---
+
 ## 업데이트 이력
 - 2025-11-14: 초기 문서 작성
 - 2026-01-28: 재고 관리(Inventory) 역할별 구조 추가
+- 2026-02-11: 7-Day Trial 권한 명시, 레스토랑 관리 역할별 차이 추가, Brand/Foodcourt General 제한사항 보강
+- 2026-02-23: Staff 섹션 대폭 보강 (PIN 캐셔 전환, Menu Visibility 권한 체계, 생성/관리/승격), 권한 매트릭스 Staff 항목 추가

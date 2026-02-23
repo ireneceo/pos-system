@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-export type UserRole = 'System Admin' | 'Foodcourt General' | 'Brand General' | 'Foodcourt Manager' | 'Brand Manager' | 'Restaurant Admin' | 'Staff';
+export type UserRole = 'System Admin' | 'Foodcourt General' | 'Brand General' | 'Foodcourt Manager' | 'Brand Manager' | 'Restaurant Admin' | 'Staff' | 'Supplier Admin';
 
 export interface User {
   id?: string;
@@ -28,9 +28,24 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
+  switchUser: (token: string, userData: SwitchUserData) => void;
   updateUser: (userData: Partial<User>) => void;
   hasPermission: (permission: string) => boolean;
   canAccessRoute: (route: string) => boolean;
+}
+
+// PIN 전환 시 서버에서 받는 user 데이터 형태
+export interface SwitchUserData {
+  id: number | string;
+  email: string;
+  role: string;
+  username: string;
+  name: string;
+  restaurant_id?: number | null;
+  manager_id?: number | null;
+  brand_id?: number | null;
+  foodcourt_id?: number | null;
+  permissions?: string[];
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -144,7 +159,8 @@ const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'process_payment',
     'view_kitchen_display',
     'view_customer_display'
-  ]
+  ],
+  'Supplier Admin': []
 };
 
 // 역할별 접근 가능 라우트
@@ -275,16 +291,28 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
     '/restaurant/:restaurantId/*',
     '/restaurant/*',
     '/pos/pos-terminal',
+    '/pos/dashboard',
+    '/pos/basic',
     '/pos/kitchen',
     '/pos/display',
     '/pos/live-orders',
-    '/pos/basic',
+    '/pos/sales',
+    '/pos/menu',
+    '/pos/categories',
+    '/pos/options',
+    '/pos/customers',
+    '/pos/coupons',
+    '/pos/reports',
     '/pos/settings',
     '/pos/company-information',
     '/pos/profile',
+    '/pos/inventory',
     '/pos/support',
-    '/pos/operation-inquiry'
-  ]
+    '/pos/operation-inquiry',
+    '/pos/invoices',
+    '/pos/history'
+  ],
+  'Supplier Admin': []
 };
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
@@ -313,6 +341,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const result = await response.json();
           if (result.success && result.data) {
             const apiUser = result.data;
+            // Staff는 DB에서 받은 메뉴 permissions 사용, 나머지는 ROLE_PERMISSIONS 사용
+            const userPermissions = apiUser.role === 'Staff' && Array.isArray(apiUser.permissions)
+              ? apiUser.permissions
+              : ROLE_PERMISSIONS[apiUser.role as UserRole] || [];
+
             const userData: User = {
               id: apiUser.id?.toString() || '1',
               email: apiUser.email,
@@ -322,7 +355,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               managerId: apiUser.manager_id?.toString() || null,
               brand_id: apiUser.brand_id || null,
               foodcourt_id: apiUser.foodcourt_id || null,
-              permissions: ROLE_PERMISSIONS[apiUser.role as UserRole] || [],
+              permissions: userPermissions,
               restaurantStatus: apiUser.restaurantStatus,
               restaurantName: apiUser.restaurantName
             };
@@ -381,6 +414,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }
           }
 
+          // Staff는 DB에서 받은 메뉴 permissions 사용
+          const loginPermissions = apiUser.role === 'Staff' && Array.isArray(apiUser.permissions)
+            ? apiUser.permissions
+            : ROLE_PERMISSIONS[apiUser.role as UserRole] || [];
+
           const userData: User = {
             id: apiUser.id?.toString() || '1',
             email: apiUser.email,
@@ -390,7 +428,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             managerId: apiUser.manager_id?.toString() || null,
             brand_id: apiUser.brand_id || null,
             foodcourt_id: apiUser.foodcourt_id || null,
-            permissions: ROLE_PERMISSIONS[apiUser.role as UserRole] || [],
+            permissions: loginPermissions,
             restaurantStatus: restaurantStatus,
             restaurantName: restaurantName
           };
@@ -437,6 +475,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // PIN 전환 시 JWT 교체 + user 상태 교체 (리다이렉트 없음)
+  const switchUser = (token: string, userData: SwitchUserData) => {
+    const newUser: User = {
+      id: userData.id?.toString(),
+      email: userData.email,
+      name: userData.name || userData.username || userData.email.split('@')[0],
+      role: userData.role as UserRole,
+      restaurantId: userData.restaurant_id?.toString() || null,
+      restaurant_id: userData.restaurant_id || null,
+      managerId: userData.manager_id?.toString() || null,
+      brand_id: userData.brand_id || null,
+      foodcourt_id: userData.foodcourt_id || null,
+      permissions: userData.permissions || [],
+    };
+
+    localStorage.setItem('auth_token', token);
+    setUser(newUser);
+  };
+
   const updateUser = (userData: Partial<User>) => {
     if (!user) return;
 
@@ -478,6 +535,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading,
     login,
     logout,
+    switchUser,
     updateUser,
     hasPermission,
     canAccessRoute

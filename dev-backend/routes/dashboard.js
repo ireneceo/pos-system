@@ -717,6 +717,25 @@ router.get('/restaurant/:restaurantId/sales-chart', authenticateToken, checkRest
   }
 });
 
+// Get earliest order date for "All" period filter
+router.get('/restaurant/:restaurantId/earliest-order', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const earliest = await Order.findOne({
+      where: { restaurant_id: restaurantId, status: 'completed' },
+      attributes: ['order_date'],
+      order: [['order_date', 'ASC']],
+      raw: true
+    });
+    res.json({
+      success: true,
+      data: { earliestDate: earliest?.order_date || null }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 /**
  * Reports Aggregation API
  * What and Why: 대량 데이터 클라이언트 처리 대신 서버에서 집계하여 성능 최적화

@@ -587,7 +587,7 @@ const ClearButton = styled.button`
 `;
 
 const ManagerRestaurantsPage: React.FC = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -619,16 +619,18 @@ const ManagerRestaurantsPage: React.FC = () => {
     state: '',
     postalCode: '',
     country: 'MY',
+    businessRegistration: '',
+    taxId: '',
     cuisine: '',
     planType: 'Basic Plan',
     planAmount: '29.00',
-    status: 'trial' as 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled',
+    status: 'active' as 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled',
     billingCycle: 'monthly' as 'monthly' | 'annual',
     paymentModel: 'manager' as 'manager' | 'restaurant',
     subscriptionStart: '',
     subscriptionEnd: '',
     autoRenew: true,
-    brandId: ''
+    enableTrial: false
   });
   const [editingRestaurant, setEditingRestaurant] = useState<Restaurant | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -643,6 +645,8 @@ const ManagerRestaurantsPage: React.FC = () => {
   // Delete confirmation modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [restaurantToDelete, setRestaurantToDelete] = useState<Restaurant | null>(null);
+  // Inline error messages (no browser alert!)
+  const [formError, setFormError] = useState('');
 
   // Filter Brand Search Functions
   const handleFilterBrandSearch = (query: string) => {
@@ -677,7 +681,7 @@ const ManagerRestaurantsPage: React.FC = () => {
     navigate('/pos/manager/restaurants', { replace: true });
   };
 
-  // Fetch brands for dropdown
+  // Fetch brands and plans
   useEffect(() => {
     const fetchBrands = async () => {
       try {
@@ -706,25 +710,9 @@ const ManagerRestaurantsPage: React.FC = () => {
   }, [searchParams]);
 
   useEffect(() => {
-    console.log('🚀 useEffect TRIGGERED - RestaurantsPage');
-    console.log(' User state:', user);
-    console.log('⏱️ User loading state:', { user, isAuthenticated });
-
     const fetchRestaurants = async () => {
       try {
-        // Wait for user to be loaded
-        if (!user) {
-          console.log('⏳ User not loaded yet, skipping restaurant fetch');
-          console.log('❌ PROBLEM: User is null/undefined');
-          return;
-        }
-
-        console.log(' Current user object:', user);
-        console.log('🔍 user.id:', user?.id);
-        console.log('🔍 user.role:', user?.role);
-        console.log(' Fetching restaurants (role-based filtering on server)');
-        console.log('🌐 API URL:', `/api/restaurants`);
-        console.log('⚡ MAKING API CALL NOW...');
+        if (!user) return;
 
         const token = localStorage.getItem('auth_token');
         const response = await fetch(`/api/restaurants`, {
@@ -732,15 +720,9 @@ const ManagerRestaurantsPage: React.FC = () => {
             'Authorization': `Bearer ${token}`
           }
         });
-        console.log('📡 Restaurants API response status:', response.status);
-        
+
         if (response.ok) {
           const data = await response.json();
-          console.log('🏪 Restaurant data from API:', data);
-          console.log('🔄 Data length:', data.length);
-          console.log('📋 Raw restaurant names:', data.map(r => r.name));
-          
-          // Transform backend data to match frontend interface
           const transformedRestaurants: Restaurant[] = data.map((restaurant: any) => ({
             id: restaurant.id.toString(),
             name: restaurant.name,
@@ -767,10 +749,6 @@ const ManagerRestaurantsPage: React.FC = () => {
             brand_id: restaurant.brand_id || null,
             payment_model: restaurant.payment_model || 'restaurant'
           }));
-
-          console.log('✅ Transformed restaurants:', transformedRestaurants);
-          console.log('🎯 Setting restaurants state with', transformedRestaurants.length, 'items');
-          console.log(' Restaurant names after transform:', transformedRestaurants.map(r => r.name));
 
           setRestaurants(transformedRestaurants);
         } else {
@@ -807,10 +785,6 @@ const ManagerRestaurantsPage: React.FC = () => {
   const totalOrders = restaurants.reduce((sum, r) => sum + r.todayOrders, 0);
   const totalStaff = restaurants.reduce((sum, r) => sum + r.staffCount, 0);
 
-  // 디버깅: 렌더링 시 레스토랑 상태 출력
-  console.log('🖼️ RENDER: Current restaurants state:', restaurants);
-  console.log(' RENDER: totalRestaurants =', totalRestaurants);
-
   const renderStars = (rating: number) => {
     const stars = [];
     for (let i = 1; i <= 5; i++) {
@@ -840,22 +814,25 @@ const ManagerRestaurantsPage: React.FC = () => {
       state: '',
       postalCode: '',
       country: 'MY',
+      businessRegistration: '',
+      taxId: '',
       cuisine: '',
       planType: 'Basic Plan',
       planAmount: '29.00',
-      status: 'trial',
+      status: 'active',
       billingCycle: 'monthly',
       paymentModel: 'manager',
       subscriptionStart: currentDate,
       subscriptionEnd: endDate.toISOString().split('T')[0],
       autoRenew: true,
-      brandId: ''
+      enableTrial: false
     });
     setAdminAction('create');
     setNewAdminData({ fullName: '', email: '', username: '', password: '', phone: '' });
     setSelectedAdmin(null);
     setAdminCandidates([]);
     setAdminSearchQuery('');
+    setFormError('');
     setShowAddModal(true);
   };
 
@@ -885,30 +862,38 @@ const ManagerRestaurantsPage: React.FC = () => {
 
   const handleSubmitNewRestaurant = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('🔄 Restaurant submit called with data:', newRestaurant);
-    
+    setFormError('');
     try {
       // Validate admin fields
       if (adminAction === 'create') {
         if (!newAdminData.fullName || !newAdminData.email || !newAdminData.username || !newAdminData.password) {
-          alert('Please fill in all required Restaurant Admin fields.');
+          setFormError('Please fill in all required Restaurant Admin fields.');
           return;
         }
         if (newAdminData.password.length < 8) {
-          alert('Admin password must be at least 8 characters.');
+          setFormError('Admin password must be at least 8 characters.');
           return;
         }
         if (!/[a-z]/.test(newAdminData.password) || !/[A-Z]/.test(newAdminData.password) || !/[0-9]/.test(newAdminData.password)) {
-          alert('Admin password must contain uppercase, lowercase letters and a number.');
+          setFormError('Admin password must contain uppercase, lowercase letters and a number.');
           return;
         }
       } else if (adminAction === 'assign' && !selectedAdmin) {
-        alert('Please select an existing user as Restaurant Admin.');
+        setFormError('Please select an existing user as Restaurant Admin.');
         return;
       }
 
       const managerId = user?.managerId || user?.id || '2';
-      const managerName = user?.name || 'Manager';
+
+      // Auto-link brand_id/foodcourt_id based on current user's role
+      let autoBrandId: number | null = null;
+      let autoFoodcourtId: number | null = null;
+      if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
+        autoBrandId = (user as any)?.brand_id || null;
+      }
+      if (user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager') {
+        autoFoodcourtId = (user as any)?.foodcourt_id || null;
+      }
 
       const restaurantData: any = {
         name: newRestaurant.name,
@@ -920,19 +905,24 @@ const ManagerRestaurantsPage: React.FC = () => {
         phone: newRestaurant.phone,
         email: newRestaurant.email,
         cuisine: newRestaurant.cuisine,
-        // Current manager as oversight manager
+        business_registration: newRestaurant.businessRegistration || undefined,
+        tax_id: newRestaurant.taxId || undefined,
+        // Current manager as oversight manager (auto, no UI selection)
         managerIds: [parseInt(managerId.toString())],
         adminAction,
         plan_type: newRestaurant.planType,
         plan_amount: parseFloat(newRestaurant.planAmount),
-        status: newRestaurant.status,
+        status: 'active',
         billing_cycle: newRestaurant.billingCycle,
-        payment_model: newRestaurant.paymentModel,
+        payment_model: newRestaurant.paymentModel === 'manager'
+          ? (user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager' ? 'foodcourt_manager' : 'brand_manager')
+          : 'restaurant',
         subscription_start: new Date(newRestaurant.subscriptionStart),
         subscription_end: new Date(newRestaurant.subscriptionEnd),
         auto_renew: newRestaurant.autoRenew,
         created_by: managerId,
-        brand_id: newRestaurant.brandId ? parseInt(newRestaurant.brandId) : null
+        brand_id: autoBrandId,
+        foodcourt_id: autoFoodcourtId
       };
 
       // Add admin-specific fields
@@ -945,9 +935,7 @@ const ManagerRestaurantsPage: React.FC = () => {
       } else if (adminAction === 'assign') {
         restaurantData.adminUserId = parseInt(selectedAdmin.id.toString());
       }
-      
-      console.log('🏗️ Creating new restaurant:', restaurantData);
-      
+
       const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/restaurants', {
         method: 'POST',
@@ -958,40 +946,41 @@ const ManagerRestaurantsPage: React.FC = () => {
         body: JSON.stringify(restaurantData)
       });
       
-      console.log('📡 Create restaurant response status:', response.status);
-      
       if (response.ok) {
-        const result = await response.json();
-        console.log('✅ Restaurant created successfully:', result);
+        await response.json();
         
-        // Refresh the restaurants list
-        const managerId = user?.managerId || user?.id || '8';
-        const fetchResponse = await fetch(`/api/restaurants/manager/${managerId}`);
+        // Refresh the restaurants list using same API as initial load
+        const token2 = localStorage.getItem('auth_token');
+        const fetchResponse = await fetch(`/api/restaurants`, {
+          headers: { 'Authorization': `Bearer ${token2}` }
+        });
         if (fetchResponse.ok) {
           const data = await fetchResponse.json();
           const transformedRestaurants: Restaurant[] = data.map((restaurant: any) => ({
             id: restaurant.id.toString(),
             name: restaurant.name,
             branchName: restaurant.name,
-            location: restaurant.address || 'No address provided',
-            address: restaurant.address || 'No address provided',
+            location: restaurant.address || restaurant.location || 'No address provided',
+            address: restaurant.address || restaurant.location || 'No address provided',
             phone: restaurant.phone || 'No phone provided',
             email: restaurant.email || 'No email provided',
-            brandId: restaurant.admin_id?.toString() || '1',
-            brandName: restaurant.admin_name || 'Manager Brand',
-            cuisine: 'Various',
+            brandId: restaurant.admin_id?.toString() || '',
+            brandName: restaurant.admin_name || '',
+            cuisine: restaurant.cuisine || 'Various',
             status: restaurant.status,
             plan: (restaurant.planType || restaurant.plan_type)?.toLowerCase().replace(' plan', '') as 'basic' | 'professional' | 'enterprise' || 'basic',
-            todaySales: Math.floor(Math.random() * 5000) + 1000,
-            todayOrders: Math.floor(Math.random() * 100) + 20,
-            staffCount: Math.floor(Math.random() * 10) + 3,
-            rating: Math.round((Math.random() * 2 + 3) * 10) / 10,
+            todaySales: 0,
+            todayOrders: 0,
+            staffCount: 0,
+            rating: 4.5,
             createdAt: new Date(restaurant.createdAt).toISOString().split('T')[0],
-            lastOrder: `${Math.floor(Math.random() * 60)} mins ago`,
+            lastOrder: 'No orders yet',
             monthlyFee: parseFloat(restaurant.planAmount || restaurant.plan_amount) || 29,
             nextPayment: (restaurant.subscriptionEnd || restaurant.subscription_end) ?
               new Date(restaurant.subscriptionEnd || restaurant.subscription_end).toISOString().split('T')[0] :
-              new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0]
+              new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
+            brand_id: restaurant.brand_id || null,
+            payment_model: restaurant.payment_model || 'restaurant'
           }));
           setRestaurants(transformedRestaurants);
         }
@@ -1009,16 +998,18 @@ const ManagerRestaurantsPage: React.FC = () => {
           state: '',
           postalCode: '',
           country: 'MY',
+          businessRegistration: '',
+          taxId: '',
           cuisine: '',
           planType: 'Basic Plan',
           planAmount: '29.00',
-          status: 'trial',
+          status: 'active',
           billingCycle: 'monthly',
           paymentModel: 'manager',
           subscriptionStart: '',
           subscriptionEnd: '',
           autoRenew: true,
-          brandId: ''
+          enableTrial: false
         });
         setAdminAction('create');
         setNewAdminData({ fullName: '', email: '', username: '', password: '', phone: '' });
@@ -1034,11 +1025,11 @@ const ManagerRestaurantsPage: React.FC = () => {
           errorMsg = errorData.error.message;
           if (errorData.error.details?.length) errorMsg += ': ' + errorData.error.details.map((d: any) => d.message).join(', ');
         } else if (errorData.message) errorMsg = errorData.message;
-        alert(`Failed to create restaurant: ${errorMsg}`);
+        setFormError(`Failed to create restaurant: ${errorMsg}`);
       }
     } catch (error) {
       console.error('Error creating restaurant:', error);
-      alert('Error creating restaurant. Please try again.');
+      setFormError('Error creating restaurant. Please try again.');
     }
   };
 
@@ -1084,18 +1075,16 @@ const ManagerRestaurantsPage: React.FC = () => {
 
   const handleEditRestaurant = (e: React.MouseEvent, restaurant: Restaurant) => {
     e.stopPropagation();
+    setFormError('');
     setEditingRestaurant(restaurant);
 
-    // payment_model 매핑: brand_manager -> manager, restaurant -> restaurant
     const paymentModelValue = (restaurant as any).payment_model;
-    console.log('🔍 Edit Restaurant - payment_model from data:', paymentModelValue);
     const mappedPaymentModel = paymentModelValue === 'brand_manager' ? 'manager' :
                                paymentModelValue === 'restaurant' ? 'restaurant' : 'manager';
-    console.log('🔍 Edit Restaurant - mapped paymentModel:', mappedPaymentModel);
 
     setNewRestaurant({
       name: restaurant.name,
-      managerId: restaurant.brandId || '',
+      managerId: '',
       email: restaurant.email,
       phone: restaurant.phone,
       address: restaurant.address,
@@ -1103,6 +1092,8 @@ const ManagerRestaurantsPage: React.FC = () => {
       state: (restaurant as any).state || '',
       postalCode: (restaurant as any).postalCode || '',
       country: (restaurant as any).country || 'MY',
+      businessRegistration: (restaurant as any).businessRegistration || '',
+      taxId: (restaurant as any).taxId || '',
       cuisine: restaurant.cuisine,
       planType: restaurant.plan === 'basic' ? 'Basic Plan' : restaurant.plan === 'professional' ? 'Professional Plan' : 'Enterprise Plan',
       planAmount: restaurant.monthlyFee?.toString() || '29.00',
@@ -1112,30 +1103,35 @@ const ManagerRestaurantsPage: React.FC = () => {
       subscriptionStart: '',
       subscriptionEnd: '',
       autoRenew: true,
-      brandId: restaurant.brand_id?.toString() || ''
+      enableTrial: false
     });
     setShowEditModal(true);
   };
 
   const handleUpdateRestaurant = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError('');
     if (editingRestaurant) {
       try {
         const token = localStorage.getItem('auth_token');
-        const updateData = {
+        const updateData: any = {
           name: newRestaurant.name,
           email: newRestaurant.email,
           phone: newRestaurant.phone,
           address: newRestaurant.address,
+          city: newRestaurant.city,
+          state: newRestaurant.state,
+          postal_code: newRestaurant.postalCode,
+          country: newRestaurant.country,
+          business_registration: newRestaurant.businessRegistration || undefined,
+          tax_id: newRestaurant.taxId || undefined,
           cuisine: newRestaurant.cuisine,
-          status: newRestaurant.status,
           plan_type: newRestaurant.planType,
           plan_amount: parseFloat(newRestaurant.planAmount),
-          brand_id: newRestaurant.brandId ? parseInt(newRestaurant.brandId) : null,
-          payment_model: newRestaurant.paymentModel === 'manager' ? 'brand_manager' : 'restaurant'
+          payment_model: newRestaurant.paymentModel === 'manager'
+            ? (user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager' ? 'foodcourt_manager' : 'brand_manager')
+            : 'restaurant'
         };
-
-        console.log('🔄 Updating restaurant:', editingRestaurant.id, updateData);
 
         const response = await fetch(`/api/restaurants/${editingRestaurant.id}`, {
           method: 'PUT',
@@ -1161,8 +1157,9 @@ const ManagerRestaurantsPage: React.FC = () => {
                   status: newRestaurant.status as 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled',
                   plan: newRestaurant.planType.toLowerCase().replace(' plan', '') as 'basic' | 'professional' | 'enterprise',
                   monthlyFee: parseFloat(newRestaurant.planAmount),
-                  brand_id: newRestaurant.brandId ? parseInt(newRestaurant.brandId) : undefined,
-                  payment_model: newRestaurant.paymentModel === 'manager' ? 'brand_manager' : 'restaurant'
+                  payment_model: newRestaurant.paymentModel === 'manager'
+                    ? (user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager' ? 'foodcourt_manager' : 'brand_manager')
+                    : 'restaurant'
                 }
               : rest
           );
@@ -1179,26 +1176,27 @@ const ManagerRestaurantsPage: React.FC = () => {
             state: '',
             postalCode: '',
             country: 'MY',
+            businessRegistration: '',
+            taxId: '',
             cuisine: '',
             planType: 'Basic Plan',
             planAmount: '29.00',
-            status: 'trial',
+            status: 'active',
             billingCycle: 'monthly',
             paymentModel: 'manager',
             subscriptionStart: '',
             subscriptionEnd: '',
             autoRenew: true,
-            brandId: ''
+            enableTrial: false
           });
-          console.log('✅ Restaurant updated successfully');
         } else {
           const errorText = await response.text();
           console.error('Failed to update restaurant:', errorText);
-          alert('Failed to update restaurant. Please try again.');
+          setFormError('Failed to update restaurant. Please try again.');
         }
       } catch (error) {
         console.error('Error updating restaurant:', error);
-        alert('Error updating restaurant. Please try again.');
+        setFormError('Error updating restaurant. Please try again.');
       }
     }
   };
@@ -1406,23 +1404,13 @@ const ManagerRestaurantsPage: React.FC = () => {
             </ModalHeader>
             <ModalBody>
               <FormGrid>
-                <FormGroup>
+                <FormGroup style={{gridColumn: '1 / -1'}}>
                   <FormLabel>Restaurant Name *</FormLabel>
                   <FormInput
                     type="text"
                     placeholder="Enter restaurant name"
                     value={newRestaurant.name}
                     onChange={(e) => setNewRestaurant({...newRestaurant, name: e.target.value})}
-                  />
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel>Oversight Manager</FormLabel>
-                  <FormInput
-                    type="text"
-                    value={user?.name || 'Manager'}
-                    disabled
-                    style={{ backgroundColor: '#F8FAFC', color: '#6B7280' }}
                   />
                 </FormGroup>
 
@@ -1592,7 +1580,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>State</FormLabel>
+                  <FormLabel>State / Province</FormLabel>
                   <FormInput
                     type="text"
                     placeholder="e.g., Wilayah Persekutuan"
@@ -1622,19 +1610,31 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Brand (Franchise)</FormLabel>
-                  <FormSelect
-                    value={newRestaurant.brandId}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, brandId: e.target.value})}
-                  >
-                    <option value="">-- Independent (No Brand) --</option>
-                    {brands.map(brand => (
-                      <option key={brand.id} value={brand.id}>
-                        {brand.name} ({brand.code}) - {brand.currency}
-                      </option>
-                    ))}
-                  </FormSelect>
+                  <FormLabel>Business Registration No.</FormLabel>
+                  <FormInput
+                    type="text"
+                    placeholder="e.g., 202401012345"
+                    value={newRestaurant.businessRegistration}
+                    onChange={(e) => setNewRestaurant({...newRestaurant, businessRegistration: e.target.value})}
+                  />
                 </FormGroup>
+
+                <FormGroup>
+                  <FormLabel>Tax ID / GST No.</FormLabel>
+                  <FormInput
+                    type="text"
+                    placeholder="e.g., MY1234567890"
+                    value={newRestaurant.taxId}
+                    onChange={(e) => setNewRestaurant({...newRestaurant, taxId: e.target.value})}
+                  />
+                </FormGroup>
+
+                {/* Subscription Settings */}
+                <div style={{gridColumn: '1 / -1', marginTop: '20px', marginBottom: '10px'}}>
+                  <h3 style={{margin: 0, fontSize: '18px', fontWeight: '600', color: '#0A2540', borderBottom: '2px solid #635BFF', paddingBottom: '8px'}}>
+                    Subscription Settings
+                  </h3>
+                </div>
 
                 <FormGroup>
                   <FormLabel>Plan Type *</FormLabel>
@@ -1660,33 +1660,12 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Status *</FormLabel>
-                  <FormSelect
-                    value={newRestaurant.status}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, status: e.target.value as 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled'})}
-                  >
-                    <option value="active">Active</option>
-                    <option value="trial">Trial</option>
-                    <option value="expired">Expired</option>
-                    <option value="suspended">Suspended</option>
-                    <option value="cancelled">Cancelled</option>
-                  </FormSelect>
-                </FormGroup>
-
-                {/* Subscription Settings */}
-                <div style={{gridColumn: '1 / -1', marginTop: '20px', marginBottom: '10px'}}>
-                  <h3 style={{margin: 0, fontSize: '18px', fontWeight: '600', color: '#0A2540', borderBottom: '2px solid #635BFF', paddingBottom: '8px'}}>
-                    Subscription Settings
-                  </h3>
-                </div>
-
-                <FormGroup>
                   <FormLabel>Billing Cycle *</FormLabel>
                   <FormSelect
                     value={newRestaurant.billingCycle}
                     onChange={(e) => {
                       const cycle = e.target.value as 'monthly' | 'annual';
-                      const planAmounts = {
+                      const planAmounts: Record<string, Record<string, string>> = {
                         'Basic Plan': { monthly: '29.00', annual: '290.00' },
                         'Professional Plan': { monthly: '99.00', annual: '990.00' },
                         'Enterprise Plan': { monthly: '199.00', annual: '2190.00' }
@@ -1761,7 +1740,12 @@ const ManagerRestaurantsPage: React.FC = () => {
               </FormGrid>
             </ModalBody>
             <ModalActions>
-              <ThemedButton variant="cancel" onClick={() => setShowAddModal(false)}>Cancel</ThemedButton>
+              {formError && (
+                <div style={{width: '100%', padding: '10px 16px', marginBottom: '8px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#DC2626', fontSize: '13px', lineHeight: '1.5'}}>
+                  {formError}
+                </div>
+              )}
+              <ThemedButton variant="cancel" onClick={() => { setShowAddModal(false); setFormError(''); }}>Cancel</ThemedButton>
               <ThemedButton variant="primary" onClick={handleSubmitNewRestaurant}>Add Restaurant</ThemedButton>
             </ModalActions>
           </Modal>
@@ -1778,23 +1762,13 @@ const ManagerRestaurantsPage: React.FC = () => {
             </ModalHeader>
             <ModalBody>
               <FormGrid>
-                <FormGroup>
+                <FormGroup style={{gridColumn: '1 / -1'}}>
                   <FormLabel>Restaurant Name *</FormLabel>
                   <FormInput
                     type="text"
                     placeholder="Enter restaurant name"
                     value={newRestaurant.name}
                     onChange={(e) => setNewRestaurant({...newRestaurant, name: e.target.value})}
-                  />
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel>Oversight Manager</FormLabel>
-                  <FormInput
-                    type="text"
-                    value={user?.name || 'Manager'}
-                    disabled
-                    style={{ backgroundColor: '#F8FAFC', color: '#6B7280' }}
                   />
                 </FormGroup>
 
@@ -1851,7 +1825,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>State</FormLabel>
+                  <FormLabel>State / Province</FormLabel>
                   <FormInput
                     type="text"
                     placeholder="e.g., Wilayah Persekutuan"
@@ -1881,19 +1855,31 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Brand (Franchise)</FormLabel>
-                  <FormSelect
-                    value={newRestaurant.brandId}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, brandId: e.target.value})}
-                  >
-                    <option value="">-- Independent (No Brand) --</option>
-                    {brands.map(brand => (
-                      <option key={brand.id} value={brand.id}>
-                        {brand.name} ({brand.code}) - {brand.currency}
-                      </option>
-                    ))}
-                  </FormSelect>
+                  <FormLabel>Business Registration No.</FormLabel>
+                  <FormInput
+                    type="text"
+                    placeholder="e.g., 202401012345"
+                    value={newRestaurant.businessRegistration}
+                    onChange={(e) => setNewRestaurant({...newRestaurant, businessRegistration: e.target.value})}
+                  />
                 </FormGroup>
+
+                <FormGroup>
+                  <FormLabel>Tax ID / GST No.</FormLabel>
+                  <FormInput
+                    type="text"
+                    placeholder="e.g., MY1234567890"
+                    value={newRestaurant.taxId}
+                    onChange={(e) => setNewRestaurant({...newRestaurant, taxId: e.target.value})}
+                  />
+                </FormGroup>
+
+                {/* Subscription Settings */}
+                <div style={{gridColumn: '1 / -1', marginTop: '20px', marginBottom: '10px'}}>
+                  <h3 style={{margin: 0, fontSize: '18px', fontWeight: '600', color: '#0A2540', borderBottom: '2px solid #635BFF', paddingBottom: '8px'}}>
+                    Subscription Settings
+                  </h3>
+                </div>
 
                 <FormGroup>
                   <FormLabel>Plan Type *</FormLabel>
@@ -1919,33 +1905,12 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Status *</FormLabel>
-                  <FormSelect
-                    value={newRestaurant.status}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, status: e.target.value as 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled'})}
-                  >
-                    <option value="active">Active</option>
-                    <option value="trial">Trial</option>
-                    <option value="expired">Expired</option>
-                    <option value="suspended">Suspended</option>
-                    <option value="cancelled">Cancelled</option>
-                  </FormSelect>
-                </FormGroup>
-
-                {/* Subscription Settings */}
-                <div style={{gridColumn: '1 / -1', marginTop: '20px', marginBottom: '10px'}}>
-                  <h3 style={{margin: 0, fontSize: '18px', fontWeight: '600', color: '#0A2540', borderBottom: '2px solid #635BFF', paddingBottom: '8px'}}>
-                    Subscription Settings
-                  </h3>
-                </div>
-
-                <FormGroup>
                   <FormLabel>Billing Cycle *</FormLabel>
                   <FormSelect
                     value={newRestaurant.billingCycle}
                     onChange={(e) => {
                       const cycle = e.target.value as 'monthly' | 'annual';
-                      const planAmounts = {
+                      const planAmounts: Record<string, Record<string, string>> = {
                         'Basic Plan': { monthly: '29.00', annual: '290.00' },
                         'Professional Plan': { monthly: '99.00', annual: '990.00' },
                         'Enterprise Plan': { monthly: '199.00', annual: '2190.00' }
@@ -2020,7 +1985,12 @@ const ManagerRestaurantsPage: React.FC = () => {
               </FormGrid>
             </ModalBody>
             <ModalActions>
-              <ThemedButton variant="cancel" onClick={() => setShowEditModal(false)}>Cancel</ThemedButton>
+              {formError && (
+                <div style={{width: '100%', padding: '10px 16px', marginBottom: '8px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#DC2626', fontSize: '13px', lineHeight: '1.5'}}>
+                  {formError}
+                </div>
+              )}
+              <ThemedButton variant="cancel" onClick={() => { setShowEditModal(false); setFormError(''); }}>Cancel</ThemedButton>
               <ThemedButton variant="primary" onClick={handleUpdateRestaurant}>Update Restaurant</ThemedButton>
             </ModalActions>
           </Modal>

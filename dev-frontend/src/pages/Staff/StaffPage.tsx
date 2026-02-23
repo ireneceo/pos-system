@@ -1,23 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
+import { Modal, ModalButton, ModalWarning, FormRow, FormGroup, FormLabel, FormInput, FormSelect } from '../../components/UI/Modal';
+import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import PhoneInput from '../../components/Common/PhoneInput';
 
 interface Staff {
   id: string;
+  username: string;
   name: string;
   email: string;
   phone: string;
   role: string;
   department: string;
+  pin_code?: string | null;
+  company_name?: string;
   restaurantId?: string;
   restaurantName?: string;
   status: 'active' | 'inactive';
   joinDate: string;
-  lastActive: string;
   permissions: string[];
 }
+
+// Staff 권한 토글용 메뉴 그룹 (hasMenuPermission으로 체크하는 항목만)
+// Dashboard, POS Terminal, Live Orders, Kitchen/Customer Display, Mobile Order, Profile은
+// MainLayout에서 항상 표시되므로 여기에 포함하지 않음
+const MENU_GROUPS = [
+  { key: 'menu_management', label: 'Products (Menu / Categories / Options / Recipe)', alwaysOn: false },
+  { key: 'inventory', label: 'Stock Management (Suppliers / Inventory)', alwaysOn: false },
+  { key: 'marketing', label: 'Marketing (Customers / Coupons)', alwaysOn: false },
+  { key: 'reports', label: 'Analytics (Reports / Activity History)', alwaysOn: false },
+  { key: 'support', label: 'Support (Invoices / Inquiries)', alwaysOn: false },
+  { key: 'settings', label: 'Settings (Store / Company / Notifications)', alwaysOn: false },
+];
 
 const StaffContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -67,7 +84,7 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
   border: ${props => props.variant === 'primary' ? 'none' : '1px solid #E6EBF1'};
   background: ${props => props.variant === 'primary' ? '#635BFF' : 'white'};
   color: ${props => props.variant === 'primary' ? 'white' : '#6B7C93'};
-  
+
   &:hover {
     background: ${props => props.variant === 'primary' ? '#5A51E6' : '#F6F9FC'};
     transform: translateY(-1px);
@@ -82,29 +99,6 @@ const Content = styled.div`
   }
 `;
 
-
-const FilterBar = styled.div`
-  display: flex;
-  gap: 16px;
-  margin-bottom: 24px;
-  flex-wrap: wrap;
-`;
-
-const SearchInput = styled.input`
-  flex: 1;
-  min-width: 300px;
-  padding: 12px 16px;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  font-size: 14px;
-  
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
-
 const StaffList = styled.div`
   background: white;
   border-radius: 12px;
@@ -114,7 +108,7 @@ const StaffList = styled.div`
 
 const StaffHeader = styled.div`
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 150px;
+  grid-template-columns: 2fr 1fr 1fr 80px 1fr 150px;
   gap: 16px;
   padding: 16px 20px;
   background: #F8FAFC;
@@ -124,22 +118,25 @@ const StaffHeader = styled.div`
   color: #6B7280;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+
+  @media (max-width: 768px) {
+    display: none;
+  }
 `;
 
-const StaffItem = styled.div<{ clickable?: boolean }>`
+const StaffItem = styled.div`
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 150px;
+  grid-template-columns: 2fr 1fr 1fr 80px 1fr 150px;
   gap: 16px;
   padding: 16px 20px;
   border-bottom: 1px solid #F6F9FC;
   align-items: center;
   transition: all 0.2s;
-  cursor: ${props => props.clickable ? 'pointer' : 'default'};
-  
+
   &:hover {
-    background: ${props => props.clickable ? '#F8FAFC' : 'transparent'};
+    background: #F8FAFC;
   }
-  
+
   &:last-child {
     border-bottom: none;
   }
@@ -167,13 +164,11 @@ const StaffAvatar = styled.div<{ role: string }>`
   font-weight: 600;
   font-size: 16px;
   color: white;
+  flex-shrink: 0;
   background: ${props => {
     switch(props.role.toLowerCase()) {
       case 'restaurant admin': return '#DC2626';
-      case 'manager': return '#7C3AED';
       case 'staff': return '#059669';
-      case 'cashier': return '#2563EB';
-      case 'kitchen': return '#059669';
       default: return '#6B7280';
     }
   }};
@@ -181,6 +176,7 @@ const StaffAvatar = styled.div<{ role: string }>`
 
 const StaffDetails = styled.div`
   flex: 1;
+  min-width: 0;
 `;
 
 const StaffName = styled.div`
@@ -201,23 +197,18 @@ const RoleBadge = styled.span<{ role: string }>`
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
+  display: inline-block;
   background: ${props => {
     switch(props.role.toLowerCase()) {
       case 'restaurant admin': return '#FEE2E2';
-      case 'manager': return '#EDE9FE';
       case 'staff': return '#ECFDF5';
-      case 'cashier': return '#DBEAFE';
-      case 'kitchen': return '#ECFDF5';
       default: return '#F3F4F6';
     }
   }};
   color: ${props => {
     switch(props.role.toLowerCase()) {
       case 'restaurant admin': return '#DC2626';
-      case 'manager': return '#7C3AED';
       case 'staff': return '#059669';
-      case 'cashier': return '#1E40AF';
-      case 'kitchen': return '#059669';
       default: return '#6B7280';
     }
   }};
@@ -244,13 +235,13 @@ const ActionButton = styled.button`
   cursor: pointer;
   transition: all 0.2s;
   margin-right: 8px;
-  
+
   &:hover {
     border-color: #635BFF;
     color: #635BFF;
     background: #F4F3FF;
   }
-  
+
   &:last-child {
     margin-right: 0;
   }
@@ -262,188 +253,145 @@ const EmptyState = styled.div`
   color: #6B7280;
 `;
 
-const Modal = styled.div<{ show: boolean }>`
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  display: ${props => props.show ? 'flex' : 'none'};
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  border-radius: 12px;
-  padding: 32px;
-  width: 90%;
-  max-width: 500px;
-  max-height: 80vh;
-  overflow-y: auto;
-`;
-
-const ModalHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: #6B7280;
-  cursor: pointer;
-  padding: 4px;
-  
-  &:hover {
-    color: #0A2540;
-  }
-`;
-
-const FormGrid = styled.div`
+// Menu Access 체크박스 스타일
+const PermissionGrid = styled.div`
   display: grid;
-  gap: 20px;
-  margin-bottom: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
 `;
 
-const FormGroup = styled.div`
+const PermissionLabel = styled.label<{ alwaysOn?: boolean }>`
   display: flex;
-  flex-direction: column;
-`;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: ${props => props.alwaysOn ? '#F0FDF4' : 'white'};
+  border: 1px solid ${props => props.alwaysOn ? '#BBF7D0' : '#E6EBF1'};
+  cursor: ${props => props.alwaysOn ? 'default' : 'pointer'};
+  font-size: 13px;
+  color: ${props => props.alwaysOn ? '#166534' : '#374151'};
+  opacity: ${props => props.alwaysOn ? 0.8 : 1};
+  transition: all 0.15s;
 
-const Label = styled.label`
-  font-size: 14px;
-  font-weight: 600;
-  color: #0A2540;
-  margin-bottom: 8px;
-`;
-
-const Input = styled.input`
-  padding: 12px 16px;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  font-size: 14px;
-  
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  &:hover {
+    border-color: ${props => props.alwaysOn ? '#BBF7D0' : '#635BFF'};
   }
 `;
 
-const Select = styled.select`
-  padding: 12px 16px;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  font-size: 14px;
-  background: white;
-  
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
-
-const ModalActions = styled.div`
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
+const AlwaysOnBadge = styled.span`
+  font-size: 11px;
+  color: #16A34A;
 `;
 
 const StaffPage: React.FC = () => {
   const { user } = useAuth();
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+
+  // Add Modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [newStaff, setNewStaff] = useState({
+    username: '',
     name: '',
     email: '',
     phone: '',
     role: 'Staff',
-    department: 'Operations'
+    department: '',
+    company_name: '',
+    pin_code: '',
+    permissions: [] as string[]
   });
 
-  useEffect(() => {
-    const fetchStaff = async () => {
-      try {
-        console.log('👥 [Restaurant] Fetching staff for restaurant...');
-        
-        // Get current user's restaurant ID
-        const restaurantId = user?.restaurantId;
-        console.log('🏪 Current restaurant ID:', restaurantId);
+  // Edit Modal
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    department: '',
+    company_name: '',
+    pin_code: '',
+    permissions: [] as string[]
+  });
 
-        const token = localStorage.getItem('auth_token');
-        const headers = { 'Authorization': `Bearer ${token}` };
+  // Password display modal
+  const [tempPassword, setTempPassword] = useState('');
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordCopied, setPasswordCopied] = useState(false);
 
-        // Fetch all users
-        const usersResponse = await fetch('/api/users', { headers });
-        console.log('📡 Users API response status:', usersResponse.status);
-        
-        if (usersResponse.ok) {
-          const usersData = await usersResponse.json();
-          console.log('👥 All users data from API:', usersData);
-          
-          // Handle both data array and direct array response
-          const usersArray = usersData.data || usersData;
-          
-          // Filter staff for current restaurant
-          const restaurantStaff = usersArray.filter((user: any) => {
-            // Show staff from current restaurant
-            return user.restaurant_id === restaurantId || user.restaurant_id?.toString() === restaurantId?.toString();
-          });
-          
-          console.log('🏪 Filtered restaurant staff:', restaurantStaff);
-          
-          // Transform to staff format
-          const transformedStaff: Staff[] = restaurantStaff.map((user: any) => ({
-            id: user.id.toString(),
-            name: user.full_name || user.username || 'Unknown',
-            email: user.email,
-            phone: user.phone || '+60 12-345-6789',
-            role: user.role,
-            department: user.department || 'Operations',
-            restaurantId: user.restaurant_id?.toString(),
-            status: 'active' as const,
-            joinDate: user.createdAt ? new Date(user.createdAt).toISOString().split('T')[0] : '2024-01-01',
-            lastActive: 'Active',
-            permissions: user.role === 'Restaurant Admin' ? ['pos', 'inventory', 'reports'] : ['pos']
-          }));
-          
-          console.log('✅ [Restaurant] Transformed staff data:', transformedStaff);
-          setStaffList(transformedStaff);
-        } else {
-          console.error('Failed to fetch users data');
-        }
-      } catch (error) {
-        console.error('Error fetching staff data:', error);
+  // Error/Notice modal
+  const [errorMessage, setErrorMessage] = useState('');
+
+  // Promote confirmation modal
+  const [confirmPromoteTarget, setConfirmPromoteTarget] = useState<Staff | null>(null);
+
+  // Form error (shown inside modal)
+  const [formError, setFormError] = useState('');
+
+  const fetchStaff = useCallback(async () => {
+    try {
+      const restaurantId = user?.restaurantId;
+      const token = localStorage.getItem('auth_token');
+      const headers = { 'Authorization': `Bearer ${token}` };
+
+      const usersResponse = await fetch('/api/users', { headers });
+
+      if (usersResponse.ok) {
+        const usersData = await usersResponse.json();
+        const usersArray = usersData.data || usersData;
+
+        const restaurantStaff = usersArray.filter((u: any) => {
+          return u.restaurant_id === restaurantId || u.restaurant_id?.toString() === restaurantId?.toString();
+        });
+
+        const transformedStaff: Staff[] = restaurantStaff.map((u: any) => ({
+          id: u.id.toString(),
+          username: u.username || '',
+          name: u.full_name || u.username || 'Unknown',
+          email: u.email,
+          phone: u.phone || '',
+          role: u.role,
+          department: u.department || '',
+          pin_code: u.pin_code || null,
+          company_name: u.company_name || '',
+          restaurantId: u.restaurant_id?.toString(),
+          status: 'active' as const,
+          joinDate: u.createdAt ? new Date(u.createdAt).toISOString().split('T')[0] : '',
+          permissions: (() => {
+            if (Array.isArray(u.permissions)) return u.permissions;
+            if (typeof u.permissions === 'string') {
+              try { return JSON.parse(u.permissions); } catch { return []; }
+            }
+            return [];
+          })()
+        }));
+
+        setStaffList(transformedStaff);
       }
-    };
+    } catch (_) { /* silently fail */ }
+  }, [user]);
 
+  useEffect(() => {
     if (user) {
       fetchStaff();
     } else {
       setStaffList([]);
     }
-  }, [user]);
+  }, [user, fetchStaff]);
 
   const filteredStaff = staffList.filter(staff => {
-    if (searchQuery && !staff.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        !staff.email.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!staff.name.toLowerCase().includes(q) &&
+          !staff.email.toLowerCase().includes(q) &&
+          !staff.department.toLowerCase().includes(q)) {
+        return false;
+      }
     }
+    if (roleFilter && staff.role !== roleFilter) return false;
     return true;
   });
 
@@ -454,177 +402,251 @@ const StaffPage: React.FC = () => {
     staff: staffList.filter(s => s.role === 'Staff').length,
   };
 
-  const handleAddStaff = () => {
-    setShowAddModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowAddModal(false);
+  // === Add Modal ===
+  const handleOpenAddModal = () => {
     setNewStaff({
+      username: '',
       name: '',
       email: '',
       phone: '',
       role: 'Staff',
-      department: 'Operations'
+      department: '',
+      company_name: '',
+      pin_code: '',
+      permissions: []
     });
+    setFormError('');
+    setShowAddModal(true);
+  };
+
+  const handleCloseAddModal = () => {
+    setShowAddModal(false);
+    setFormError('');
+  };
+
+  const handleAddInputChange = (field: string, value: string) => {
+    setNewStaff(prev => ({ ...prev, [field]: value }));
+    if (formError) setFormError('');
   };
 
   const handleSubmitStaff = async () => {
-    if (!newStaff.name || !newStaff.email) {
-      alert('Please fill in all required fields');
+    if (!newStaff.username || newStaff.username.trim() === '') {
+      setFormError('Staff ID (Username) is required.');
+      return;
+    }
+    if (!newStaff.name || newStaff.name.trim() === '') {
+      setFormError('Full Name is required.');
+      return;
+    }
+    if (!newStaff.email || newStaff.email.trim() === '') {
+      setFormError('Email is required.');
+      return;
+    }
+    if (!newStaff.pin_code || newStaff.pin_code.length !== 4) {
+      setFormError('A 4-digit PIN code is required for POS cashier switch.');
       return;
     }
 
     try {
       const restaurantId = user?.restaurantId;
-      
-      const staffUserData = {
-        username: newStaff.email.split('@')[0],
-        email: newStaff.email,
-        password: 'staff123',
+      const staffUserData: Record<string, any> = {
+        username: newStaff.username.trim(),
+        email: newStaff.email.trim(),
         role: newStaff.role,
-        full_name: newStaff.name,
+        full_name: newStaff.name.trim(),
         restaurant_id: parseInt(restaurantId?.toString() || '0'),
-        phone: newStaff.phone,
-        department: newStaff.department
+        phone: newStaff.phone ? newStaff.phone.trim() : null,
+        department: newStaff.department ? newStaff.department.trim() : null,
+        company_name: newStaff.company_name ? newStaff.company_name.trim() : null,
+        pin_code: newStaff.pin_code,
+        permissions: newStaff.role === 'Staff' ? JSON.stringify(newStaff.permissions) : '[]'
       };
 
-      console.log('🔄 [Restaurant] Creating new staff user:', staffUserData);
-      
-      const createToken = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${createToken}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(staffUserData)
       });
 
       if (response.ok) {
         const result = await response.json();
-        console.log('✅ [Restaurant] Staff created successfully:', result);
+        await fetchStaff();
 
-        // Refresh staff list
-        const usersResponse = await fetch('/api/users', {
-          headers: { 'Authorization': `Bearer ${createToken}` }
-        });
-        if (usersResponse.ok) {
-          const usersData = await usersResponse.json();
-          const usersArray = usersData.data || usersData;
-          
-          const restaurantStaff = usersArray.filter((user: any) => {
-            return user.restaurant_id === restaurantId || user.restaurant_id?.toString() === restaurantId?.toString();
-          });
-          
-          const transformedStaff: Staff[] = restaurantStaff.map((user: any) => ({
-            id: user.id.toString(),
-            name: user.full_name || user.username || 'Unknown',
-            email: user.email,
-            phone: user.phone || newStaff.phone || '+60 12-345-6789',
-            role: user.role,
-            department: user.department || 'Operations',
-            restaurantId: user.restaurant_id?.toString(),
-            status: 'active' as const,
-            joinDate: user.createdAt ? new Date(user.createdAt).toISOString().split('T')[0] : '2024-01-01',
-            lastActive: 'Active',
-            permissions: user.role === 'Restaurant Admin' ? ['pos', 'inventory', 'reports'] : ['pos']
-          }));
-          
-          setStaffList(transformedStaff);
+        const generatedPw = result.generatedPassword;
+        handleCloseAddModal();
+        if (generatedPw) {
+          setTempPassword(generatedPw);
+          setShowPasswordModal(true);
         }
-        
-        handleCloseModal();
-        alert('Staff member added successfully! Default password: staff123');
       } else {
         const errorData = await response.json();
-        console.error('Failed to create staff:', errorData);
-        alert('Failed to create staff: ' + (errorData.error || 'Unknown error'));
+        setFormError(errorData.error || 'Failed to create staff');
       }
     } catch (error) {
-      console.error('Error creating staff:', error);
-      alert('Error creating staff: ' + (error as Error).message);
+      setFormError((error as Error).message);
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
-    setNewStaff(prev => ({ ...prev, [field]: value }));
+  // === Edit Modal ===
+  const handleOpenEditModal = (staff: Staff) => {
+    setEditingStaff(staff);
+    setEditForm({
+      name: staff.name,
+      email: staff.email,
+      phone: staff.phone,
+      department: staff.department,
+      company_name: staff.company_name || '',
+      pin_code: staff.pin_code || '',
+      permissions: [...staff.permissions]
+    });
+    setFormError('');
+    setShowEditModal(true);
   };
 
-  const handleEditStaff = (staff: Staff) => {
-    alert(`Edit ${staff.name} functionality will be implemented`);
+  const handleCloseEditModal = () => {
+    setShowEditModal(false);
+    setEditingStaff(null);
+    setFormError('');
   };
 
-  const handlePromoteStaff = async (staff: Staff) => {
-    if (staff.role === 'Restaurant Admin') {
-      alert(`${staff.name} is already a Restaurant Admin`);
+  const handleEditInputChange = (field: string, value: string) => {
+    setEditForm(prev => ({ ...prev, [field]: value }));
+    if (formError) setFormError('');
+  };
+
+  const handleUpdateStaff = async () => {
+    if (!editingStaff) return;
+
+    if (!editForm.name || editForm.name.trim() === '') {
+      setFormError('Full Name is required.');
+      return;
+    }
+    if (!editForm.email || editForm.email.trim() === '') {
+      setFormError('Email is required.');
+      return;
+    }
+    if (editForm.pin_code && editForm.pin_code.length !== 4) {
+      setFormError('PIN code must be exactly 4 digits.');
       return;
     }
 
-    const confirmPromote = confirm(`Promote ${staff.name} to Restaurant Admin?`);
-    if (!confirmPromote) return;
+    try {
+      const updateData: Record<string, any> = {
+        full_name: editForm.name.trim(),
+        email: editForm.email.trim(),
+        phone: editForm.phone ? editForm.phone.trim() : null,
+        department: editForm.department ? editForm.department.trim() : null,
+        company_name: editForm.company_name ? editForm.company_name.trim() : null,
+      };
+
+      if (editForm.pin_code) {
+        updateData.pin_code = editForm.pin_code;
+      }
+
+      // Staff 역할이면 permissions 업데이트
+      if (editingStaff.role === 'Staff') {
+        updateData.permissions = JSON.stringify(editForm.permissions);
+      }
+
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/users/${editingStaff.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(updateData)
+      });
+
+      if (response.ok) {
+        await fetchStaff();
+        handleCloseEditModal();
+      } else {
+        const errorData = await response.json();
+        setFormError(errorData.error || 'Failed to update staff');
+      }
+    } catch (error) {
+      setFormError((error as Error).message);
+    }
+  };
+
+  // === Promote ===
+  const handlePromoteStaff = (staff: Staff) => {
+    if (staff.role === 'Restaurant Admin') return;
+    setConfirmPromoteTarget(staff);
+  };
+
+  const executePromotion = async () => {
+    const staff = confirmPromoteTarget;
+    if (!staff) return;
+    setConfirmPromoteTarget(null);
 
     try {
-      console.log(`🔄 [Restaurant] Promoting ${staff.name} to Restaurant Admin...`);
-      
-      const promoteToken = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/users/${staff.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${promoteToken}`
+          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          role: 'Restaurant Admin'
-        })
+        body: JSON.stringify({ role: 'Restaurant Admin' })
       });
 
       if (response.ok) {
-        // Refresh staff list
-        const restaurantId = user?.restaurantId;
-        const usersResponse = await fetch('/api/users', {
-          headers: { 'Authorization': `Bearer ${promoteToken}` }
-        });
-        if (usersResponse.ok) {
-          const usersData = await usersResponse.json();
-          const usersArray = usersData.data || usersData;
-          
-          const restaurantStaff = usersArray.filter((user: any) => {
-            return user.restaurant_id === restaurantId || user.restaurant_id?.toString() === restaurantId?.toString();
-          });
-          
-          const transformedStaff: Staff[] = restaurantStaff.map((user: any) => ({
-            id: user.id.toString(),
-            name: user.full_name || user.username || 'Unknown',
-            email: user.email,
-            phone: user.phone || '+60 12-345-6789',
-            role: user.role,
-            department: user.department || 'Operations',
-            restaurantId: user.restaurant_id?.toString(),
-            status: 'active' as const,
-            joinDate: user.createdAt ? new Date(user.createdAt).toISOString().split('T')[0] : '2024-01-01',
-            lastActive: 'Active',
-            permissions: user.role === 'Restaurant Admin' ? ['pos', 'inventory', 'reports'] : ['pos']
-          }));
-          
-          setStaffList(transformedStaff);
-        }
-        
-        alert(`${staff.name} has been promoted to Restaurant Admin successfully!`);
+        await fetchStaff();
       } else {
         const errorData = await response.json();
-        console.error('Failed to promote staff:', errorData);
-        alert('Failed to promote staff: ' + (errorData.error || 'Unknown error'));
+        setErrorMessage(errorData.error || 'Failed to promote staff');
       }
     } catch (error) {
-      console.error('Error promoting staff:', error);
-      alert('Error promoting staff: ' + (error as Error).message);
+      setErrorMessage((error as Error).message);
     }
   };
 
   const getInitials = (name: string) => {
-    return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
+    return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2) || '?';
   };
+
+  // Permission toggle helper
+  const renderPermissionCheckboxes = (
+    permissions: string[],
+    onChange: (updated: string[]) => void
+  ) => (
+    <div style={{ marginTop: '20px', padding: '16px', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
+      <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540', marginBottom: '4px' }}>Menu Access</div>
+      <div style={{ fontSize: '12px', color: '#6B7C93', marginBottom: '4px' }}>
+        Core menus are always visible: Dashboard, POS Terminal, Live Orders, Kitchen Display, Customer Display, Mobile Order, Profile.
+      </div>
+      <div style={{ fontSize: '12px', color: '#6B7C93', marginBottom: '12px' }}>
+        Toggle additional menu sections below:
+      </div>
+      <PermissionGrid>
+        {MENU_GROUPS.map(group => (
+          <PermissionLabel key={group.key} alwaysOn={group.alwaysOn}>
+            <input
+              type="checkbox"
+              checked={group.alwaysOn || permissions.includes(group.key)}
+              disabled={group.alwaysOn}
+              onChange={(e) => {
+                if (group.alwaysOn) return;
+                const updated = e.target.checked
+                  ? [...permissions, group.key]
+                  : permissions.filter(p => p !== group.key);
+                onChange(updated);
+              }}
+              style={{ accentColor: '#635BFF' }}
+            />
+            {group.label}
+            {group.alwaysOn && <AlwaysOnBadge>(Always ON)</AlwaysOnBadge>}
+          </PermissionLabel>
+        ))}
+      </PermissionGrid>
+    </div>
+  );
 
   return (
     <MainLayout>
@@ -632,10 +654,7 @@ const StaffPage: React.FC = () => {
         <Header>
           <HeaderTitle>Restaurant Staff</HeaderTitle>
           <HeaderActions>
-            <Button variant="secondary" onClick={() => alert('Export functionality will be implemented')}>
-              Export
-            </Button>
-            <Button variant="primary" onClick={handleAddStaff}>
+            <Button variant="primary" onClick={handleOpenAddModal}>
               Add Staff
             </Button>
           </HeaderActions>
@@ -664,10 +683,19 @@ const StaffPage: React.FC = () => {
           <FilterBar>
             <SearchInput
               type="text"
-              placeholder="Search staff by name or email..."
+              placeholder="Search by name, email, department..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              autoComplete="off"
             />
+            <FilterSelect
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+            >
+              <option value="">All Roles</option>
+              <option value="Restaurant Admin">Restaurant Admin</option>
+              <option value="Staff">Staff</option>
+            </FilterSelect>
           </FilterBar>
 
           <StaffList>
@@ -675,10 +703,11 @@ const StaffPage: React.FC = () => {
               <span>Staff Member</span>
               <span>Role</span>
               <span>Department</span>
+              <span>PIN</span>
               <span>Status</span>
               <span>Actions</span>
             </StaffHeader>
-            
+
             {filteredStaff.length === 0 ? (
               <EmptyState>
                 <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
@@ -700,31 +729,31 @@ const StaffPage: React.FC = () => {
                       <StaffMeta>{staff.email}</StaffMeta>
                     </StaffDetails>
                   </StaffInfo>
-                  
+
                   <RoleBadge role={staff.role}>
                     {staff.role}
                   </RoleBadge>
-                  
+
                   <div style={{ fontSize: '14px', color: '#6B7280' }}>
-                    {staff.department}
+                    {staff.department || '—'}
                   </div>
-                  
+
+                  <div style={{ fontSize: '14px', color: '#6B7280', fontFamily: 'monospace', letterSpacing: '2px' }}>
+                    {staff.pin_code ? '****' : '—'}
+                  </div>
+
                   <StatusBadge active={staff.status === 'active'}>
                     {staff.status}
                   </StatusBadge>
-                  
+
                   <div>
-                    <ActionButton onClick={() => handleEditStaff(staff)}>
+                    <ActionButton onClick={() => handleOpenEditModal(staff)}>
                       Edit
                     </ActionButton>
                     {staff.role === 'Staff' && (
-                      <ActionButton 
+                      <ActionButton
                         onClick={() => handlePromoteStaff(staff)}
-                        style={{ 
-                          backgroundColor: '#635BFF', 
-                          color: 'white', 
-                          borderColor: '#635BFF' 
-                        }}
+                        style={{ backgroundColor: '#635BFF', color: 'white', borderColor: '#635BFF' }}
                       >
                         Promote
                       </ActionButton>
@@ -735,79 +764,341 @@ const StaffPage: React.FC = () => {
             )}
           </StaffList>
         </Content>
-        
-        <Modal show={showAddModal}>
-          <ModalContent>
-            <ModalHeader>
-              <ModalTitle>Add New Staff Member</ModalTitle>
-              <CloseButton onClick={handleCloseModal}>&times;</CloseButton>
-            </ModalHeader>
-            
-            <FormGrid>
-              <FormGroup>
-                <Label>Full Name</Label>
-                <Input
-                  type="text"
-                  value={newStaff.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
-                  placeholder="Enter full name"
-                />
-              </FormGroup>
-              
-              <FormGroup>
-                <Label>Email</Label>
-                <Input
-                  type="email"
-                  value={newStaff.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  placeholder="Enter email address"
-                />
-              </FormGroup>
-              
-              <FormGroup>
-                <Label>Phone</Label>
-                <Input
-                  type="text"
-                  value={newStaff.phone}
-                  onChange={(e) => handleInputChange('phone', e.target.value)}
-                  placeholder="Enter phone number"
-                />
-              </FormGroup>
-              
-              <FormGroup>
-                <Label>Role</Label>
-                <Select
-                  value={newStaff.role}
-                  onChange={(e) => handleInputChange('role', e.target.value)}
-                >
-                  <option value="Staff">Staff</option>
-                  <option value="Restaurant Admin">Restaurant Admin</option>
-                </Select>
-              </FormGroup>
-              
-              <FormGroup>
-                <Label>Department</Label>
-                <Select
-                  value={newStaff.department}
-                  onChange={(e) => handleInputChange('department', e.target.value)}
-                >
-                  <option value="Operations">Operations</option>
-                  <option value="Kitchen">Kitchen</option>
-                  <option value="Service">Service</option>
-                  <option value="Management">Management</option>
-                </Select>
-              </FormGroup>
-            </FormGrid>
-            
-            <ModalActions>
-              <Button variant="secondary" onClick={handleCloseModal}>
-                Cancel
-              </Button>
-              <Button variant="primary" onClick={handleSubmitStaff}>
-                Add Staff
-              </Button>
-            </ModalActions>
-          </ModalContent>
+
+        {/* ===== Add Staff Modal (Portal) ===== */}
+        <Modal
+          isOpen={showAddModal}
+          onClose={handleCloseAddModal}
+          title="Add New Staff Member"
+          size="large"
+          footer={
+            <>
+              <ModalButton variant="secondary" onClick={handleCloseAddModal}>Cancel</ModalButton>
+              <ModalButton variant="primary" onClick={handleSubmitStaff}>Add Staff</ModalButton>
+            </>
+          }
+        >
+          <FormRow>
+            <FormGroup>
+              <FormLabel>Staff ID (Username) *</FormLabel>
+              <FormInput
+                type="text"
+                value={newStaff.username}
+                onChange={(e) => handleAddInputChange('username', e.target.value)}
+                placeholder="Enter unique staff ID"
+                autoComplete="off"
+              />
+              <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                A strong password will be auto-generated
+              </div>
+            </FormGroup>
+            <FormGroup>
+              <FormLabel>Full Name *</FormLabel>
+              <FormInput
+                type="text"
+                value={newStaff.name}
+                onChange={(e) => handleAddInputChange('name', e.target.value)}
+                placeholder="Enter full name"
+                autoComplete="off"
+              />
+            </FormGroup>
+          </FormRow>
+
+          <FormRow>
+            <FormGroup>
+              <FormLabel>Email *</FormLabel>
+              <FormInput
+                type="email"
+                value={newStaff.email}
+                onChange={(e) => handleAddInputChange('email', e.target.value)}
+                placeholder="Enter email address"
+                autoComplete="off"
+              />
+            </FormGroup>
+            <FormGroup>
+              <FormLabel>Phone</FormLabel>
+              <PhoneInput
+                value={newStaff.phone}
+                onChange={(value) => handleAddInputChange('phone', value)}
+              />
+            </FormGroup>
+          </FormRow>
+
+          <FormRow>
+            <FormGroup>
+              <FormLabel>Role</FormLabel>
+              <FormSelect
+                value={newStaff.role}
+                onChange={(e) => handleAddInputChange('role', e.target.value)}
+              >
+                <option value="Staff">Staff</option>
+                <option value="Restaurant Admin">Restaurant Admin</option>
+              </FormSelect>
+            </FormGroup>
+            <FormGroup>
+              <FormLabel>Department</FormLabel>
+              <FormInput
+                type="text"
+                value={newStaff.department}
+                onChange={(e) => handleAddInputChange('department', e.target.value)}
+                placeholder="e.g. Operations, Kitchen, Service"
+                autoComplete="off"
+              />
+            </FormGroup>
+          </FormRow>
+
+          <FormRow>
+            <FormGroup>
+              <FormLabel>Company Name</FormLabel>
+              <FormInput
+                type="text"
+                value={newStaff.company_name}
+                onChange={(e) => handleAddInputChange('company_name', e.target.value)}
+                placeholder="Enter company name"
+                autoComplete="off"
+              />
+            </FormGroup>
+            <FormGroup>
+              <FormLabel>PIN Code (4 digits) *</FormLabel>
+              <FormInput
+                type="text"
+                inputMode="numeric"
+                maxLength={4}
+                value={newStaff.pin_code}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9]/g, '');
+                  handleAddInputChange('pin_code', val);
+                }}
+                placeholder="e.g. 1234"
+                style={{ letterSpacing: '8px', fontSize: '18px', textAlign: 'center', fontFamily: 'monospace' }}
+                autoComplete="off"
+              />
+              <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                Used for quick cashier switch at POS terminal
+              </div>
+            </FormGroup>
+          </FormRow>
+
+          {/* Menu Access - Staff 역할일 때만 표시 */}
+          {newStaff.role === 'Staff' && renderPermissionCheckboxes(
+            newStaff.permissions,
+            (updated) => setNewStaff(prev => ({ ...prev, permissions: updated }))
+          )}
+
+          {formError && showAddModal && (
+            <ModalWarning>{formError}</ModalWarning>
+          )}
+        </Modal>
+
+        {/* ===== Edit Staff Modal (Portal) ===== */}
+        <Modal
+          isOpen={showEditModal}
+          onClose={handleCloseEditModal}
+          title={`Edit Staff: ${editingStaff?.name || ''}`}
+          size="large"
+          footer={
+            <>
+              <ModalButton variant="secondary" onClick={handleCloseEditModal}>Cancel</ModalButton>
+              <ModalButton variant="primary" onClick={handleUpdateStaff}>Update Staff</ModalButton>
+            </>
+          }
+        >
+          {editingStaff && (
+            <>
+              <FormRow>
+                <FormGroup>
+                  <FormLabel>Staff ID (Username)</FormLabel>
+                  <FormInput
+                    type="text"
+                    value={editingStaff.username}
+                    disabled
+                    style={{ backgroundColor: '#F8FAFC', color: '#6B7280' }}
+                  />
+                </FormGroup>
+                <FormGroup>
+                  <FormLabel>Role</FormLabel>
+                  <FormInput
+                    type="text"
+                    value={editingStaff.role}
+                    disabled
+                    style={{ backgroundColor: '#F8FAFC', color: '#6B7280' }}
+                  />
+                </FormGroup>
+              </FormRow>
+
+              <FormRow>
+                <FormGroup>
+                  <FormLabel>Full Name *</FormLabel>
+                  <FormInput
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => handleEditInputChange('name', e.target.value)}
+                    placeholder="Enter full name"
+                    autoComplete="off"
+                  />
+                </FormGroup>
+                <FormGroup>
+                  <FormLabel>Email *</FormLabel>
+                  <FormInput
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) => handleEditInputChange('email', e.target.value)}
+                    placeholder="Enter email address"
+                    autoComplete="off"
+                  />
+                </FormGroup>
+              </FormRow>
+
+              <FormRow>
+                <FormGroup>
+                  <FormLabel>Phone</FormLabel>
+                  <PhoneInput
+                    value={editForm.phone}
+                    onChange={(value) => handleEditInputChange('phone', value)}
+                  />
+                </FormGroup>
+                <FormGroup>
+                  <FormLabel>Department</FormLabel>
+                  <FormInput
+                    type="text"
+                    value={editForm.department}
+                    onChange={(e) => handleEditInputChange('department', e.target.value)}
+                    placeholder="e.g. Operations, Kitchen, Service"
+                    autoComplete="off"
+                  />
+                </FormGroup>
+              </FormRow>
+
+              <FormRow>
+                <FormGroup>
+                  <FormLabel>Company Name</FormLabel>
+                  <FormInput
+                    type="text"
+                    value={editForm.company_name}
+                    onChange={(e) => handleEditInputChange('company_name', e.target.value)}
+                    placeholder="Enter company name"
+                    autoComplete="off"
+                  />
+                </FormGroup>
+                <FormGroup>
+                  <FormLabel>PIN Code (4 digits)</FormLabel>
+                  <FormInput
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={editForm.pin_code}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9]/g, '');
+                      handleEditInputChange('pin_code', val);
+                    }}
+                    placeholder={editingStaff.pin_code ? '****' : 'Enter new PIN'}
+                    style={{ letterSpacing: '8px', fontSize: '18px', textAlign: 'center', fontFamily: 'monospace' }}
+                    autoComplete="off"
+                  />
+                  <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                    Leave empty to keep current PIN
+                  </div>
+                </FormGroup>
+              </FormRow>
+
+              {/* Menu Access - Staff 역할일 때만 표시 */}
+              {editingStaff.role === 'Staff' && renderPermissionCheckboxes(
+                editForm.permissions,
+                (updated) => setEditForm(prev => ({ ...prev, permissions: updated }))
+              )}
+
+              {formError && showEditModal && (
+                <ModalWarning>{formError}</ModalWarning>
+              )}
+            </>
+          )}
+        </Modal>
+
+        {/* ===== Generated Password Modal (Portal) ===== */}
+        <Modal
+          isOpen={showPasswordModal}
+          onClose={() => setShowPasswordModal(false)}
+          title="Staff Created"
+          size="small"
+          footer={
+            <>
+              <ModalButton
+                variant="secondary"
+                onClick={() => {
+                  navigator.clipboard.writeText(tempPassword);
+                  setPasswordCopied(true);
+                  setTimeout(() => setPasswordCopied(false), 2000);
+                }}
+              >
+                {passwordCopied ? 'Copied!' : 'Copy Password'}
+              </ModalButton>
+              <ModalButton variant="primary" onClick={() => setShowPasswordModal(false)}>
+                Done
+              </ModalButton>
+            </>
+          }
+        >
+          <div style={{ marginBottom: '20px', fontSize: '14px', color: '#6B7280' }}>
+            The staff account has been created with an auto-generated password. Please share this password with the staff member.
+          </div>
+          <div style={{
+            background: '#F8FAFC',
+            border: '1px solid #E6EBF1',
+            borderRadius: '8px',
+            padding: '16px',
+            textAlign: 'center',
+            marginBottom: '16px'
+          }}>
+            <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600 }}>
+              Temporary Password
+            </div>
+            <div style={{
+              fontSize: '18px',
+              fontWeight: 700,
+              color: '#0A2540',
+              fontFamily: 'monospace',
+              letterSpacing: '1px',
+              userSelect: 'all' as const
+            }}>
+              {tempPassword}
+            </div>
+          </div>
+          <div style={{ fontSize: '12px', color: '#DC2626' }}>
+            This password will not be shown again. Please copy it now.
+          </div>
+        </Modal>
+
+        {/* ===== Error/Notice Modal (Portal) ===== */}
+        <Modal
+          isOpen={!!errorMessage}
+          onClose={() => setErrorMessage('')}
+          title="Notice"
+          size="small"
+          footer={
+            <ModalButton variant="primary" onClick={() => setErrorMessage('')}>OK</ModalButton>
+          }
+        >
+          <div style={{ fontSize: '14px', color: '#374151' }}>
+            {errorMessage}
+          </div>
+        </Modal>
+
+        {/* ===== Promote Confirmation Modal (Portal) ===== */}
+        <Modal
+          isOpen={!!confirmPromoteTarget}
+          onClose={() => setConfirmPromoteTarget(null)}
+          title="Promote Staff"
+          size="small"
+          footer={
+            <>
+              <ModalButton variant="secondary" onClick={() => setConfirmPromoteTarget(null)}>Cancel</ModalButton>
+              <ModalButton variant="primary" onClick={executePromotion}>Promote</ModalButton>
+            </>
+          }
+        >
+          <div style={{ fontSize: '14px', color: '#374151' }}>
+            Promote <strong>{confirmPromoteTarget?.name}</strong> to Restaurant Admin?
+          </div>
         </Modal>
       </StaffContainer>
     </MainLayout>

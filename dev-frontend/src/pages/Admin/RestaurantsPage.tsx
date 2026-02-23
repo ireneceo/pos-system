@@ -21,6 +21,7 @@ import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
 import { formatPhoneForDisplay } from '../../utils/phoneUtils';
 import PhoneInput from '../../components/Common/PhoneInput';
+import { COUNTRIES } from '../../constants/countries';
 // API imports removed - using direct fetch like StaffManagementPage and ManagersPage
 
 interface Restaurant {
@@ -55,6 +56,11 @@ interface Restaurant {
   phone?: string;
   address?: string;
   country?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  businessRegistration?: string;
+  taxId?: string;
   planType?: string;
   planAmount?: string;
   billingCycle?: 'monthly' | 'annual';
@@ -1416,6 +1422,12 @@ const RestaurantsPage: React.FC = () => {
         phone: editingRestaurant.phone || '',
         address: editingRestaurant.address || editingRestaurant.location || '',
         location: editingRestaurant.address || editingRestaurant.location || '',
+        city: editingRestaurant.city || '',
+        state: editingRestaurant.state || '',
+        postal_code: editingRestaurant.postalCode || '',
+        country: editingRestaurant.country || 'MY',
+        business_registration: editingRestaurant.businessRegistration || '',
+        tax_id: editingRestaurant.taxId || '',
         cuisine: editingRestaurant.cuisine || 'Various',
         status: editingRestaurant.status,
         planType: editingRestaurant.planType || 'Basic Plan',
@@ -2101,13 +2113,11 @@ const RestaurantsPage: React.FC = () => {
                       value={newRestaurant.country}
                       onChange={(e) => setNewRestaurant({...newRestaurant, country: e.target.value})}
                     >
-                      <option value="MY">Malaysia</option>
-                      <option value="SG">Singapore</option>
-                      <option value="TH">Thailand</option>
-                      <option value="KR">South Korea</option>
-                      <option value="ID">Indonesia</option>
-                      <option value="PH">Philippines</option>
-                      <option value="VN">Vietnam</option>
+                      {COUNTRIES.map(country => (
+                        <option key={country.code} value={country.code}>
+                          {country.name}
+                        </option>
+                      ))}
                     </FormSelect>
                   </FormGroup>
 
@@ -2563,6 +2573,70 @@ const RestaurantsPage: React.FC = () => {
                       placeholder="Enter restaurant address"
                       value={editingRestaurant.address || editingRestaurant.location}
                       onChange={(e) => setEditingRestaurant({...editingRestaurant, address: e.target.value, location: e.target.value})}
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>City</FormLabel>
+                    <FormInput
+                      type="text"
+                      placeholder="e.g., Kuala Lumpur"
+                      value={editingRestaurant.city || ''}
+                      onChange={(e) => setEditingRestaurant({...editingRestaurant, city: e.target.value})}
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>State / Province</FormLabel>
+                    <FormInput
+                      type="text"
+                      placeholder="e.g., Selangor"
+                      value={editingRestaurant.state || ''}
+                      onChange={(e) => setEditingRestaurant({...editingRestaurant, state: e.target.value})}
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>Postal Code</FormLabel>
+                    <FormInput
+                      type="text"
+                      placeholder="e.g., 50000"
+                      value={editingRestaurant.postalCode || ''}
+                      onChange={(e) => setEditingRestaurant({...editingRestaurant, postalCode: e.target.value})}
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>Country</FormLabel>
+                    <FormSelect
+                      value={editingRestaurant.country || 'MY'}
+                      onChange={(e) => setEditingRestaurant({...editingRestaurant, country: e.target.value})}
+                    >
+                      {COUNTRIES.map(country => (
+                        <option key={country.code} value={country.code}>
+                          {country.name}
+                        </option>
+                      ))}
+                    </FormSelect>
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>Business Registration No.</FormLabel>
+                    <FormInput
+                      type="text"
+                      placeholder="e.g., 123456-A"
+                      value={editingRestaurant.businessRegistration || ''}
+                      onChange={(e) => setEditingRestaurant({...editingRestaurant, businessRegistration: e.target.value})}
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>Tax ID / GST No.</FormLabel>
+                    <FormInput
+                      type="text"
+                      placeholder="e.g., 000123456789"
+                      value={editingRestaurant.taxId || ''}
+                      onChange={(e) => setEditingRestaurant({...editingRestaurant, taxId: e.target.value})}
                     />
                   </FormGroup>
 

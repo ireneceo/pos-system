@@ -30,6 +30,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { formatCurrency } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
+import PhoneInput from '../../components/Common/PhoneInput';
 
 // Auth header helper for API calls
 const getAuthHeaders = () => {
@@ -48,6 +49,7 @@ interface Staff {
   phone: string;
   role: string;
   department: string;
+  pin_code?: string | null;
   restaurantId?: string;
   restaurantName?: string;
   companyName?: string;
@@ -478,7 +480,8 @@ const AdminStaffManagementPage: React.FC = () => {
     department: '',
     restaurantId: '',
     companyName: '',
-    salary: ''
+    salary: '',
+    pin_code: ''
   });
   const [formError, setFormError] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -558,21 +561,22 @@ const AdminStaffManagementPage: React.FC = () => {
                 role: user.role,
                 department: user.restaurant_id ? 'Restaurant Operations' :
                            user.role === 'System Admin' ? 'Administration' : 'Operations',
+                pin_code: user.pin_code || null,
                 restaurantId: user.restaurant_id?.toString(),
                 restaurantName,
                 companyName,
                 status: 'active' as const,
                 joinDate: user.createdAt ? new Date(user.createdAt).toISOString().split('T')[0] : '2024-01-01',
                 lastActive: 'Active',
-                salary: 
+                salary:
                        user.role === 'System Admin' ? 12000 :
                        user.role === 'Restaurant Admin' ? 5000 : 3000,
-                permissions: user.role === 'System Admin' ? ['all'] : 
+                permissions: user.role === 'System Admin' ? ['all'] :
                             user.role === 'Restaurant Admin' ? ['pos', 'inventory', 'reports'] :
                             ['pos']
               };
             });
-          
+
           console.log('✅ [Admin] Transformed all staff data:', transformedStaff);
           setStaffList(transformedStaff);
         } else {
@@ -703,7 +707,8 @@ const AdminStaffManagementPage: React.FC = () => {
       department: '',
       restaurantId: '',
       companyName: '',
-      salary: ''
+      salary: '',
+      pin_code: ''
     });
   };
 
@@ -747,7 +752,7 @@ const AdminStaffManagementPage: React.FC = () => {
 
     try {
       // Create new staff/user in database
-      const staffUserData = {
+      const staffUserData: Record<string, any> = {
         username: newStaff.username.trim(),
         email: newStaff.email.trim(),
         role: newStaff.role,
@@ -758,6 +763,9 @@ const AdminStaffManagementPage: React.FC = () => {
         restaurant_id: newStaff.restaurantId ? parseInt(newStaff.restaurantId) : null,
         manager_id: null
       };
+      if (newStaff.pin_code && newStaff.pin_code.length === 4) {
+        staffUserData.pin_code = newStaff.pin_code;
+      }
 
       console.log('🔄 [Admin] Creating new staff user:', staffUserData);
 
@@ -849,6 +857,7 @@ const AdminStaffManagementPage: React.FC = () => {
               type,
               role: user.role,
               department: user.department || '',
+              pin_code: user.pin_code || null,
               restaurantId: user.restaurant_id?.toString(),
               restaurantName,
               companyName,
@@ -1230,13 +1239,16 @@ const AdminStaffManagementPage: React.FC = () => {
     try {
       console.log('🔄 [Admin] Updating staff:', editingStaff);
 
-      const requestData = {
+      const requestData: Record<string, any> = {
         full_name: editingStaff.name.trim(),
         email: editingStaff.email.trim(),
         role: editingStaff.role,
         department: editingStaff.department ? editingStaff.department.trim() : null,
         phone: editingStaff.phone ? editingStaff.phone.trim() : null
       };
+      if (editingStaff.pin_code && editingStaff.pin_code.length === 4) {
+        requestData.pin_code = editingStaff.pin_code;
+      }
 
       console.log('📝 [Admin] Request data:', requestData);
 
@@ -1319,6 +1331,7 @@ const AdminStaffManagementPage: React.FC = () => {
                   role: updatedUser.role,
                   department: updatedUser.department,
                   phone: updatedUser.phone,
+                  pin_code: updatedUser.pin_code || null,
                   type,
                   companyName,
                   restaurantName
@@ -1440,24 +1453,25 @@ const AdminStaffManagementPage: React.FC = () => {
                 role: user.role,
                 department: user.restaurant_id ? 'Restaurant Operations' :
                            user.role === 'System Admin' ? 'Administration' : 'Operations',
+                pin_code: user.pin_code || null,
                 restaurantId: user.restaurant_id?.toString(),
                 restaurantName,
                 companyName,
                 status: 'active' as const,
                 joinDate: user.createdAt ? new Date(user.createdAt).toISOString().split('T')[0] : '2024-01-01',
                 lastActive: 'Active',
-                salary: 
+                salary:
                        user.role === 'System Admin' ? 12000 :
                        user.role === 'Restaurant Admin' ? 5000 : 3000,
-                permissions: user.role === 'System Admin' ? ['all'] : 
+                permissions: user.role === 'System Admin' ? ['all'] :
                             user.role === 'Restaurant Admin' ? ['pos', 'inventory', 'reports'] :
                             ['pos']
               };
             });
-          
+
           setStaffList(transformedStaff);
         }
-        
+
         alert(`${staff.name} has been successfully promoted to ${nextRole}!`);
       } else {
         console.error('Failed to promote staff. Status:', response.status);
@@ -1782,14 +1796,12 @@ const AdminStaffManagementPage: React.FC = () => {
 
               <FormGroup>
                 <Label>Phone</Label>
-                <Input
-                  type="text"
+                <PhoneInput
                   value={newStaff.phone}
-                  onChange={(e) => handleInputChange('phone', e.target.value)}
-                  placeholder="Enter phone number"
+                  onChange={(value) => handleInputChange('phone', value)}
                 />
               </FormGroup>
-              
+
               {/* Manager Role - Company Name */}
               {(newStaff.role === 'foodcourt_manager' ||
                 newStaff.role === 'foodcourt_general' ||
@@ -1868,6 +1880,29 @@ const AdminStaffManagementPage: React.FC = () => {
                   placeholder="e.g. Operations, Service, Kitchen, Management"
                 />
               </FormGroup>
+
+              {/* PIN Code - only for Restaurant Admin & Staff */}
+              {(newStaff.role === 'Restaurant Admin' || newStaff.role === 'Staff') && (
+                <FormGroup>
+                  <Label>PIN Code (4 digits)</Label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={newStaff.pin_code}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9]/g, '');
+                      handleInputChange('pin_code', val);
+                    }}
+                    placeholder="e.g. 1234"
+                    autoComplete="off"
+                    style={{ letterSpacing: '8px', fontSize: '18px', textAlign: 'center', fontFamily: 'monospace' }}
+                  />
+                  <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                    Used for quick cashier switch at POS terminal
+                  </div>
+                </FormGroup>
+              )}
 
               <FormGroup>
                 <Label>Monthly Salary (RM)</Label>
@@ -1957,11 +1992,9 @@ const AdminStaffManagementPage: React.FC = () => {
 
                   <FormGroup>
                     <Label>Phone</Label>
-                    <Input
-                      type="text"
+                    <PhoneInput
                       value={editingStaff.phone}
-                      onChange={(e) => setEditingStaff({...editingStaff, phone: e.target.value})}
-                      placeholder="Enter phone number"
+                      onChange={(value) => setEditingStaff({...editingStaff, phone: value})}
                     />
                   </FormGroup>
 
@@ -2041,6 +2074,29 @@ const AdminStaffManagementPage: React.FC = () => {
                     />
                   </FormGroup>
 
+                  {/* PIN Code - only for Restaurant Admin & Staff */}
+                  {(editingStaff.role === 'Restaurant Admin' || editingStaff.role === 'Staff') && (
+                    <FormGroup>
+                      <Label>PIN Code (4 digits)</Label>
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={4}
+                        value={editingStaff.pin_code || ''}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          setEditingStaff({...editingStaff, pin_code: val});
+                        }}
+                        placeholder={editingStaff.pin_code ? '****' : 'Enter PIN'}
+                        autoComplete="off"
+                        style={{ letterSpacing: '8px', fontSize: '18px', textAlign: 'center', fontFamily: 'monospace' }}
+                      />
+                      <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                        Leave empty to keep current PIN
+                      </div>
+                    </FormGroup>
+                  )}
+
                   <FormGroup>
                     <Label>Monthly Salary (RM)</Label>
                     <Input
@@ -2051,7 +2107,7 @@ const AdminStaffManagementPage: React.FC = () => {
                     />
                   </FormGroup>
                 </FormGrid>
-                
+
                 <ModalActions>
                   <Button variant="secondary" onClick={handleCloseEditModal}>
                     Cancel

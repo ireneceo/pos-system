@@ -3,38 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { TabContainer, Tab, DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
+import { useAuth } from '../../contexts/AuthContext';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { formatCurrency } from '../../utils/currency';
 
-interface FoodcourtMetrics {
-  assignedFoodcourt: string;
-  totalStores: number;
-  monthlyRentRevenue: number;
-  cumulativeRevenue: number;
-  averageRevenuePerStore: number;
-  occupancyRate: number;
-  growthRate: number;
-  maintenanceRequests: number;
-  activeLeases: number;
-  pendingApplications: number;
-  totalTransactions: number;
-}
-
-interface RevenueData {
-  period: string;
-  revenue: number;
-  storeCount: number;
-}
-
-interface TenantStore {
-  id: string;
+interface TenantSummary {
+  id: number;
   name: string;
-  category: string;
-  storeSize: string;
-  monthlyRent: number;
-  leaseStart: string;
-  leaseEnd: string;
-  status: 'active' | 'expired' | 'pending';
-  contactPerson: string;
-  phone: string;
+  status: string;
+  address: string;
+  cuisine: string;
+  planType: string;
+  adminName: string;
+  todayOrders: number;
+  todayRevenue: number;
+  monthlyRevenue: number;
 }
 
 const Container = styled.div`
@@ -88,9 +71,9 @@ const Title = styled.h1`
 `;
 
 const Subtitle = styled.p`
-  font-size: 16px;
+  font-size: 14px;
   color: #6B7280;
-  margin: 8px 0 0;
+  margin: 4px 0 0;
 `;
 
 const MainGrid = styled.div`
@@ -104,21 +87,7 @@ const MainGrid = styled.div`
   }
 `;
 
-const ChartContainer = styled.div`
-  background: white;
-  border-radius: 16px;
-  padding: 24px;
-  border: 1px solid #E6EBF1;
-
-  h3 {
-    margin: 0 0 20px 0;
-    color: #0A2540;
-    font-size: 18px;
-    font-weight: 600;
-  }
-`;
-
-const QuickStatsContainer = styled.div`
+const Card = styled.div`
   background: white;
   border-radius: 16px;
   padding: 24px;
@@ -155,20 +124,6 @@ const QuickStatValue = styled.span`
   color: #0A2540;
 `;
 
-const TenantsList = styled.div`
-  background: white;
-  border-radius: 16px;
-  padding: 24px;
-  border: 1px solid #E6EBF1;
-
-  h3 {
-    margin: 0 0 20px 0;
-    color: #0A2540;
-    font-size: 18px;
-    font-weight: 600;
-  }
-`;
-
 const TenantItem = styled.div`
   padding: 16px;
   border: 1px solid #F3F4F6;
@@ -178,8 +133,8 @@ const TenantItem = styled.div`
   transition: all 0.2s;
 
   &:hover {
-    border-color: #2563EB;
-    background: #F0F4FF;
+    border-color: #059669;
+    background: #ECFDF5;
   }
 
   &:last-child {
@@ -199,7 +154,7 @@ const TenantName = styled.span`
   color: #0A2540;
 `;
 
-const TenantStatus = styled.span<{ status: string }>`
+const StatusBadge = styled.span<{ status: string }>`
   padding: 4px 8px;
   border-radius: 12px;
   font-size: 12px;
@@ -208,8 +163,9 @@ const TenantStatus = styled.span<{ status: string }>`
   background: ${props => {
     switch (props.status) {
       case 'active': return '#059669';
+      case 'trial': return '#2563EB';
       case 'expired': return '#DC2626';
-      case 'pending': return '#D97706';
+      case 'suspended': return '#D97706';
       default: return '#6B7280';
     }
   }};
@@ -222,111 +178,181 @@ const TenantInfo = styled.div`
   justify-content: space-between;
 `;
 
-const PlaceholderChart = styled.div`
-  height: 300px;
+const EmptyState = styled.div`
+  padding: 60px 20px;
+  text-align: center;
+  color: #6B7280;
+  font-size: 14px;
   border: 2px dashed #E6EBF1;
   border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #6B7280;
-  font-style: italic;
 `;
 
-const TimeFilter = styled.select`
-  padding: 8px 12px;
+const QuickActionsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+`;
+
+const QuickAction = styled.div`
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
   border: 1px solid #E6EBF1;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
-  margin-right: 8px;
+  text-align: center;
 
   &:hover {
-    border-color: #635BFF;
-    color: #635BFF;
-    background: #F4F3FF;
+    border-color: #059669;
+    background: #ECFDF5;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.15);
   }
+`;
+
+const QuickActionIcon = styled.div`
+  font-size: 28px;
+  margin-bottom: 8px;
+  color: #059669;
+`;
+
+const QuickActionTitle = styled.div`
+  font-size: 14px;
+  font-weight: 600;
+  color: #0A2540;
+  margin-bottom: 4px;
+`;
+
+const QuickActionDesc = styled.div`
+  font-size: 12px;
+  color: #6B7280;
 `;
 
 const FoodcourtManagerDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
-  const [tenants, setTenants] = useState<TenantStore[]>([]);
-  const [, setRevenueData] = useState<RevenueData[]>([]);
-  const [timePeriod, setTimePeriod] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
-  const [metrics, setMetrics] = useState<FoodcourtMetrics>({
-    assignedFoodcourt: '',
-    totalStores: 0,
-    monthlyRentRevenue: 0,
-    cumulativeRevenue: 0,
-    averageRevenuePerStore: 0,
-    occupancyRate: 0,
-    growthRate: 0,
-    maintenanceRequests: 0,
-    activeLeases: 0,
-    pendingApplications: 0,
-    totalTransactions: 0
-  });
+  const [tenants, setTenants] = useState<TenantSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [foodcourtName, setFoodcourtName] = useState('');
+  const { defaultCurrency } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
+
+  useEffect(() => {
+    if (defaultCurrency) setSelectedCurrency(defaultCurrency);
+  }, [defaultCurrency]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // TODO: Implement API call to fetch foodcourt manager data
-        setTenants([]);
-        setMetrics({
-          assignedFoodcourt: '',
-          totalStores: 0,
-          monthlyRentRevenue: 0,
-          cumulativeRevenue: 0,
-          averageRevenuePerStore: 0,
-          occupancyRate: 0,
-          growthRate: 0,
-          activeLeases: 0,
-          pendingApplications: 0,
-          maintenanceRequests: 0,
-          totalTransactions: 0
-        });
-        setRevenueData([]);
+        const token = localStorage.getItem('auth_token');
+        const headers = { 'Authorization': `Bearer ${token}` };
+
+        // Fetch foodcourt info
+        const fcRes = await fetch('/api/foodcourts', { headers });
+        if (fcRes.ok) {
+          const foodcourts = await fcRes.json();
+          const fcData = Array.isArray(foodcourts) ? foodcourts : (foodcourts.data || []);
+          if (fcData.length > 0) {
+            setFoodcourtName(fcData[0].name || '');
+          }
+        }
+
+        // Fetch restaurants (API filters by user role automatically)
+        const restRes = await fetch('/api/restaurants', { headers });
+        if (restRes.ok) {
+          const restData = await restRes.json();
+
+          // Fetch orders for today's stats
+          const todayStr = new Date().toISOString().split('T')[0];
+          const ordersRes = await fetch('/api/orders', { headers });
+          const ordersData = ordersRes.ok ? await ordersRes.json() : [];
+          const orders = ordersData.data || ordersData || [];
+
+          const transformed: TenantSummary[] = restData.map((r: any) => {
+            const restaurantOrders = orders.filter((o: any) =>
+              o.restaurant_id?.toString() === r.id?.toString()
+            );
+            const todayOrders = restaurantOrders.filter((o: any) =>
+              o.order_date?.startsWith(todayStr)
+            );
+            const todayRevenue = todayOrders.reduce((sum: number, o: any) =>
+              sum + parseFloat(o.total_amount || 0), 0
+            );
+            const monthStart = new Date();
+            monthStart.setDate(1);
+            const monthStr = monthStart.toISOString().split('T')[0];
+            const monthlyOrders = restaurantOrders.filter((o: any) =>
+              o.order_date && o.order_date >= monthStr
+            );
+            const monthlyRevenue = monthlyOrders.reduce((sum: number, o: any) =>
+              sum + parseFloat(o.total_amount || 0), 0
+            );
+
+            return {
+              id: r.id,
+              name: r.name,
+              status: r.status || 'active',
+              address: r.address || 'No address',
+              cuisine: r.cuisine || 'Various',
+              planType: r.plan_type || r.planType || 'Basic Plan',
+              adminName: r.admin_name || r.managerName || '-',
+              todayOrders: todayOrders.length,
+              todayRevenue,
+              monthlyRevenue
+            };
+          });
+
+          setTenants(transformed);
+        }
       } catch (error) {
         console.error('Error fetching foodcourt manager data:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchData();
-  }, []);
+    if (user) fetchData();
+  }, [user]);
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'active': return 'Operating';
-      case 'expired': return 'Contract Expired';
-      case 'pending': return 'Pending Contract';
-      default: return status;
-    }
-  };
+  const totalTenants = tenants.length;
+  const activeTenants = tenants.filter(r => r.status === 'active').length;
+  const totalTodayRevenue = tenants.reduce((sum, r) => sum + r.todayRevenue, 0);
+  const totalTodayOrders = tenants.reduce((sum, r) => sum + r.todayOrders, 0);
+  const totalMonthlyRevenue = tenants.reduce((sum, r) => sum + r.monthlyRevenue, 0);
+  const occupancyRate = totalTenants > 0 ? Math.round((activeTenants / totalTenants) * 100) : 0;
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <Container>
+          <Header><Title>Foodcourt Manager Dashboard</Title></Header>
+          <Content>
+            <EmptyState>Loading dashboard data...</EmptyState>
+          </Content>
+        </Container>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
       <Container>
         <Header>
-          <Title>Foodcourt Manager Dashboard</Title>
-          <Subtitle>{metrics.assignedFoodcourt} Operations Status</Subtitle>
+          <div>
+            <Title>Foodcourt Manager Dashboard</Title>
+            {foodcourtName && <Subtitle>{foodcourtName}</Subtitle>}
+          </div>
         </Header>
 
         <Content>
           <TabContainer>
-            <Tab
-              active={activeTab === 'overview'}
-              onClick={() => setActiveTab('overview')}
-            >
+            <Tab active={activeTab === 'overview'} onClick={() => setActiveTab('overview')}>
               Overview
             </Tab>
-            <Tab
-              active={activeTab === 'tenants'}
-              onClick={() => setActiveTab('tenants')}
-            >
-              Tenants ({metrics.totalStores})
+            <Tab active={activeTab === 'tenants'} onClick={() => setActiveTab('tenants')}>
+              Tenants ({totalTenants})
             </Tab>
           </TabContainer>
 
@@ -334,94 +360,126 @@ const FoodcourtManagerDashboard: React.FC = () => {
             <>
               <DashboardStatsGrid>
                 <DashboardStatCard>
-                  <DashboardStatValue>{metrics.totalStores}</DashboardStatValue>
-                  <DashboardStatLabel>Operating Stores</DashboardStatLabel>
+                  <DashboardStatValue>{totalTenants}</DashboardStatValue>
+                  <DashboardStatLabel>Total Tenants</DashboardStatLabel>
                 </DashboardStatCard>
                 <DashboardStatCard>
-                  <DashboardStatValue>RM {(metrics.monthlyRentRevenue / 1000).toFixed(1)}K</DashboardStatValue>
-                  <DashboardStatLabel>Monthly Rental Revenue</DashboardStatLabel>
+                  <DashboardStatValue>{activeTenants}</DashboardStatValue>
+                  <DashboardStatLabel>Active Tenants</DashboardStatLabel>
                 </DashboardStatCard>
                 <DashboardStatCard>
-                  <DashboardStatValue>{metrics.occupancyRate.toFixed(1)}%</DashboardStatValue>
+                  <DashboardStatValue>{formatCurrency(totalTodayRevenue, selectedCurrency)}</DashboardStatValue>
+                  <DashboardStatLabel>Today's Revenue</DashboardStatLabel>
+                </DashboardStatCard>
+                <DashboardStatCard>
+                  <DashboardStatValue>{occupancyRate}%</DashboardStatValue>
                   <DashboardStatLabel>Occupancy Rate</DashboardStatLabel>
-                </DashboardStatCard>
-                <DashboardStatCard>
-                  <DashboardStatValue>RM {(metrics.averageRevenuePerStore / 1000).toFixed(1)}K</DashboardStatValue>
-                  <DashboardStatLabel>Average Rental</DashboardStatLabel>
                 </DashboardStatCard>
               </DashboardStatsGrid>
 
-              <MainGrid>
-                <ChartContainer>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <h3>Monthly Rental Revenue Trend</h3>
-                    <TimeFilter value={timePeriod} onChange={(e) => setTimePeriod(e.target.value as any)}>
-                      <option value="week">This Week</option>
-                      <option value="month">This Month</option>
-                      <option value="quarter">Quarter</option>
-                      <option value="year">This Year</option>
-                    </TimeFilter>
-                  </div>
-                  <PlaceholderChart>
-                    📊 Monthly Rental Revenue Chart (Coming Soon)
-                  </PlaceholderChart>
-                </ChartContainer>
+              <QuickActionsGrid>
+                <QuickAction onClick={() => navigate('/pos/manager/restaurants')}>
+                  <QuickActionIcon>&#9881;</QuickActionIcon>
+                  <QuickActionTitle>Manage Tenants</QuickActionTitle>
+                  <QuickActionDesc>Add, edit, view tenant restaurants</QuickActionDesc>
+                </QuickAction>
+                <QuickAction onClick={() => navigate('/pos/foodcourt/rent-management')}>
+                  <QuickActionIcon>&#9776;</QuickActionIcon>
+                  <QuickActionTitle>Rent Management</QuickActionTitle>
+                  <QuickActionDesc>Rental billing and tracking</QuickActionDesc>
+                </QuickAction>
+                <QuickAction onClick={() => navigate('/pos/foodcourt/tenant-support')}>
+                  <QuickActionIcon>&#9993;</QuickActionIcon>
+                  <QuickActionTitle>Support Tickets</QuickActionTitle>
+                  <QuickActionDesc>Tenant support requests</QuickActionDesc>
+                </QuickAction>
+                <QuickAction onClick={() => navigate('/pos/subscriptions')}>
+                  <QuickActionIcon>&#9733;</QuickActionIcon>
+                  <QuickActionTitle>Subscriptions</QuickActionTitle>
+                  <QuickActionDesc>Manage subscription plans</QuickActionDesc>
+                </QuickAction>
+              </QuickActionsGrid>
 
-                <QuickStatsContainer>
-                  <h3>Operations Status</h3>
+              <MainGrid>
+                <Card>
+                  <h3>Tenant Performance</h3>
+                  {tenants.length === 0 ? (
+                    <EmptyState>No tenants registered yet. Add your first tenant restaurant to see performance data.</EmptyState>
+                  ) : (
+                    tenants.slice(0, 5).map((tenant) => (
+                      <TenantItem
+                        key={tenant.id}
+                        onClick={() => navigate(`/pos/manager/restaurants`)}
+                      >
+                        <TenantHeader>
+                          <TenantName>{tenant.name}</TenantName>
+                          <StatusBadge status={tenant.status}>
+                            {tenant.status}
+                          </StatusBadge>
+                        </TenantHeader>
+                        <TenantInfo>
+                          <span>{tenant.cuisine} - {tenant.adminName}</span>
+                          <span>Today: {formatCurrency(tenant.todayRevenue, selectedCurrency)} ({tenant.todayOrders} orders)</span>
+                        </TenantInfo>
+                      </TenantItem>
+                    ))
+                  )}
+                </Card>
+
+                <Card>
+                  <h3>Foodcourt Summary</h3>
                   <QuickStatItem>
-                    <QuickStatLabel>Active Contracts</QuickStatLabel>
-                    <QuickStatValue>{metrics.activeLeases}</QuickStatValue>
+                    <QuickStatLabel>Monthly Revenue</QuickStatLabel>
+                    <QuickStatValue>{formatCurrency(totalMonthlyRevenue, selectedCurrency)}</QuickStatValue>
                   </QuickStatItem>
                   <QuickStatItem>
-                    <QuickStatLabel>Pending Contracts</QuickStatLabel>
-                    <QuickStatValue>{metrics.pendingApplications}</QuickStatValue>
+                    <QuickStatLabel>Occupancy Rate</QuickStatLabel>
+                    <QuickStatValue>{occupancyRate}%</QuickStatValue>
                   </QuickStatItem>
                   <QuickStatItem>
-                    <QuickStatLabel>Maintenance Requests</QuickStatLabel>
-                    <QuickStatValue>{metrics.maintenanceRequests}</QuickStatValue>
+                    <QuickStatLabel>Active Tenants</QuickStatLabel>
+                    <QuickStatValue>{activeTenants} / {totalTenants}</QuickStatValue>
                   </QuickStatItem>
                   <QuickStatItem>
-                    <QuickStatLabel>Growth Rate (vs Last Month)</QuickStatLabel>
-                    <QuickStatValue>+{metrics.growthRate.toFixed(1)}%</QuickStatValue>
+                    <QuickStatLabel>Today's Total Orders</QuickStatLabel>
+                    <QuickStatValue>{totalTodayOrders}</QuickStatValue>
                   </QuickStatItem>
-                  <QuickStatItem>
-                    <QuickStatLabel>Monthly Transactions</QuickStatLabel>
-                    <QuickStatValue>{metrics.totalTransactions}</QuickStatValue>
-                  </QuickStatItem>
-                </QuickStatsContainer>
+                </Card>
               </MainGrid>
             </>
           )}
 
           {activeTab === 'tenants' && (
-            <TenantsList>
-              <h3>Tenant Status</h3>
+            <Card>
+              <h3>All Tenants</h3>
               {tenants.length === 0 ? (
-                <PlaceholderChart>
-                  🏪 Loading tenant data...
-                </PlaceholderChart>
+                <EmptyState>
+                  No tenants found. Click "Manage Tenants" to add your first tenant restaurant.
+                </EmptyState>
               ) : (
                 tenants.map((tenant) => (
-                  <TenantItem key={tenant.id} onClick={() => navigate(`/foodcourt/tenant/${tenant.id}`)}>
+                  <TenantItem
+                    key={tenant.id}
+                    onClick={() => navigate(`/pos/manager/reports?tab=sales&restaurantId=${tenant.id}&restaurantName=${encodeURIComponent(tenant.name)}`)}
+                  >
                     <TenantHeader>
                       <TenantName>{tenant.name}</TenantName>
-                      <TenantStatus status={tenant.status}>
-                        {getStatusText(tenant.status)}
-                      </TenantStatus>
+                      <StatusBadge status={tenant.status}>
+                        {tenant.status}
+                      </StatusBadge>
                     </TenantHeader>
                     <TenantInfo>
-                      <span>{tenant.category} • {tenant.storeSize}</span>
-                      <span>RM {tenant.monthlyRent.toLocaleString()}/month</span>
+                      <span>{tenant.address}</span>
+                      <span>{tenant.planType}</span>
                     </TenantInfo>
                     <TenantInfo style={{ marginTop: '4px' }}>
-                      <span>{tenant.contactPerson} • {tenant.phone}</span>
-                      <span>Contract: {tenant.leaseStart} ~ {tenant.leaseEnd}</span>
+                      <span>Admin: {tenant.adminName} - {tenant.cuisine}</span>
+                      <span>Monthly: {formatCurrency(tenant.monthlyRevenue, selectedCurrency)}</span>
                     </TenantInfo>
                   </TenantItem>
                 ))
               )}
-            </TenantsList>
+            </Card>
           )}
         </Content>
       </Container>

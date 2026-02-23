@@ -189,9 +189,9 @@ const LandingFooter: React.FC = () => {
           <FooterSection>
             <SectionTitle>Product</SectionTitle>
             <LinkList>
+              <li><FooterLink onClick={() => navigate('/features')}>Features</FooterLink></li>
               <li><FooterLink onClick={() => navigate('/pricing')}>Pricing</FooterLink></li>
               <li><FooterLink onClick={() => navigate('/demo')}>Demo</FooterLink></li>
-              <li><FooterLink onClick={() => navigate('/service')}>Features</FooterLink></li>
             </LinkList>
           </FooterSection>
 
@@ -199,7 +199,8 @@ const LandingFooter: React.FC = () => {
             <SectionTitle>Info</SectionTitle>
             <LinkList>
               <li><FooterLink onClick={() => navigate('/about')}>About Us</FooterLink></li>
-              <li><FooterLink onClick={() => navigate('/company')}>Company</FooterLink></li>
+              <li><FooterLink onClick={() => navigate('/faq')}>FAQ</FooterLink></li>
+              <li><FooterLink onClick={() => navigate('/blog')}>Blog</FooterLink></li>
               <li><FooterLink onClick={() => navigate('/contact')}>Contact</FooterLink></li>
             </LinkList>
           </FooterSection>
