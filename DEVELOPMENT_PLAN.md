@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-02-24
+> **최종 업데이트:** 2026-02-25
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -628,6 +628,38 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 - `dev-frontend/src/pages/Admin/RestaurantsPage.tsx` - admin 데이터 반영
 - `dev-frontend/src/pages/Admin/StaffManagementPage.tsx` - 자동 비밀번호 UI
 - `dev-frontend/src/pages/Profile/ProfilePage.tsx` - 비밀번호 정책 안내/검증
+
+---
+
+## ✅ 완료: EntityPlan 1플랜=1과금항목 구조 + 인보이스 issuer 체계 + 배포 스모크 테스트 (2026-02-25)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| EntityPlan 구조 변경 | EntityPlanCharge 롤백, charge_type/percentage_value/revenue_base/billing_day 추가 | ✅ 완료 |
+| Brand Plans/Subscriptions/Invoices | BrandPlansPage, BrandSubscriptionsPage, BrandInvoicesPage 전면 리팩토링 | ✅ 완료 |
+| Foodcourt Plans/Subscriptions/Invoices | FoodcourtPlansPage, FoodcourtSubscriptionsPage, FoodcourtInvoicesPage 전면 리팩토링 | ✅ 완료 |
+| Brand/Foodcourt Dashboard | 인보이스 issuer 구분 반영, 통계 개선 | ✅ 완료 |
+| 인보이스 issuer 체계 | system_admin/brand/foodcourt 발행 주체 구분 | ✅ 완료 |
+| 레시피/재고 다중통화 | 원재료 원가 통화별 관리, RestaurantIngredientCost 모델 | ✅ 완료 |
+| 배포 스모크 테스트 | deploy-to-production.sh에 POS 주문→빌 자동 검증 추가 | ✅ 완료 |
+| 운영서버 배포 | 스모크 테스트 6/6 통과 확인 | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/models/EntityPlan.js` - charge_type, percentage_value, revenue_base, billing_day 추가
+- `dev-backend/models/index.js` - EntityPlanCharge 제거
+- `dev-backend/routes/brands.js` - 플랜 CRUD + 다중 플랜 할당 버그 수정
+- `dev-backend/routes/foodcourts.js` - 플랜 CRUD 동일 수정
+- `dev-backend/routes/invoices.js` - issuer 구분 로직
+- `dev-backend/routes/ingredients.js` - 다중통화 원가 관리
+- `dev-frontend/src/pages/BrandGeneral/BrandPlansPage.tsx` - Charge Type UI 전면 재작성
+- `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtPlansPage.tsx` - 동일
+- `dev-frontend/src/pages/BrandGeneral/BrandSubscriptionsPage.tsx` - issuer 반영
+- `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtSubscriptionsPage.tsx` - 동일
+- `dev-frontend/src/pages/BrandGeneral/BrandInvoicesPage.tsx` - issuer 반영
+- `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtInvoicesPage.tsx` - 동일
+- `deploy-to-production.sh` - POS 주문→빌 스모크 테스트
 
 ---
 

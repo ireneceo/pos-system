@@ -1,5 +1,5 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-02-23
+**마지막 업데이트:** 2026-02-25
 **작업 상태:** 완료
 
 ### 진행 중인 작업
@@ -7,17 +7,34 @@
 
 ### 완료된 작업 (이번 세션)
 
-#### 1. 운영서버 전체 배포
-- 개발서버 → 운영서버(87.106.78.146) SSH 배포 실행
-- DB 스키마 동기화 (62개 모델, notification_settings ENUM 확장 반영)
-- 백업: /var/www/backups/20260223_212557
+#### EntityPlan 1플랜=1과금항목 + 인보이스 issuer 체계 (2026-02-25)
 
-#### 2. Staff 비밀번호 리셋 기능
-- 백엔드: POST /api/users/:id/reset-password 권한 확장 (Restaurant Admin → 자기 Staff)
-- 프론트엔드: StaffPage에 Reset PW 버튼 + 확인 모달 + 새 비밀번호 표시
+##### 1. EntityPlan 구조 변경
+- EntityPlanCharge 모델/테이블 롤백 (삭제)
+- EntityPlan에 charge_type, percentage_value, revenue_base, billing_day 추가
+- 1플랜 = 1과금항목 (로열티, 임대료, 관리비 등 각각 별도 플랜)
 
-#### 3. 배포 명령어 릴리즈노트 템플릿
-- /배포 완료 후 왓츠앱용 한글/영문 릴리즈 노트 자동 생성 형식 추가
+##### 2. Brand/Foodcourt 페이지 전면 리팩토링
+- BrandPlansPage: Charge Type UI (Fixed/Percentage), 다중통화 가격, billing_day
+- FoodcourtPlansPage: 동일 구조
+- BrandSubscriptionsPage, FoodcourtSubscriptionsPage: issuer 구분 반영
+- BrandInvoicesPage, FoodcourtInvoicesPage: issuer 구분 반영
+- BrandGeneralDashboard, FoodcourtGeneralDashboard: 통계 개선
+
+##### 3. 인보이스 issuer 체계
+- system_admin / brand / foodcourt 발행 주체 구분
+- 각 주체별 독립 인보이스 발행
+
+##### 4. 레시피/재고 다중통화
+- RestaurantIngredientCost 모델 추가
+- 원재료 원가 통화별 관리
+
+##### 5. 배포 스모크 테스트
+- deploy-to-production.sh에 POS 핵심 흐름 자동 검증 추가
+- Health → Login → Menu → POST Order → GET Bill Data → Frontend (6개)
+
+##### 6. 운영서버 배포
+- 스모크 테스트 6/6 통과
 
 ### 현재 비밀번호 매핑
 | 계정 | 이메일 | 비밀번호 |
@@ -25,6 +42,7 @@
 | Demo | demo-brand/demo-restaurant@purplehere.com | Demo@2024 |
 | System Admin | irene@irenewp.com | Admin1234 |
 | Foodcourt/Brand General/Manager | *@orderhere.center | Test1234 |
+| Restaurant Owner | owner@purplehere.com | Owner1234 |
 | Restaurant Admin (K-DINE) | admin@kdine.com | Restaurant1 |
 | Staff (K-DINE) | staff@kdine.com | Staff1234 |
 
@@ -41,11 +59,16 @@
 - Staff 관리 + PIN 캐셔 전환 + 메뉴 권한 시스템 ✅
 - 배포 안정화 + DB 스키마 동기화 시스템 ✅
 - Staff 비밀번호 리셋 기능 ✅
-- 운영서버 전체 배포 ✅
+- Restaurant Owner 역할 전체 구현 ✅
+- **EntityPlan 1플랜=1과금항목 구조 + 인보이스 issuer 체계 ✅**
+- **레시피/재고 다중통화 지원 ✅**
+- **배포 스모크 테스트 (POS 주문→빌) ✅**
+- 운영서버 배포 ✅
 
 ### 다음 할 일
-- 재료/재고/발주 시스템 (v3.0) Phase 2: DB 테이블 생성 (10개 테이블)
-- Phase C는 고객 피드백 후 진행 (셀프 회원가입, 결제 연동, 세금계산서)
+- 인보이스 자동 발행 (billing_day 14일 전)
+- 결제 시스템 연동 (Stripe/PayPal)
+- Phase C: 셀프 회원가입, 결제 연동, 세금계산서
 
 ---
 
