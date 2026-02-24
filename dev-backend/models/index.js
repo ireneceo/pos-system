@@ -53,6 +53,8 @@ const MembershipSettings = require('./MembershipSettings');
 const PointTransaction = require('./PointTransaction');
 const EntityPlan = require('./EntityPlan');
 const EntityPlanRestaurant = require('./EntityPlanRestaurant');
+const EntityPlanPrice = require('./EntityPlanPrice');
+const RestaurantIngredientCost = require('./RestaurantIngredientCost');
 
 // Define associations
 // Brand - Restaurant associations
@@ -399,6 +401,17 @@ EntityPlan.hasMany(EntityPlanRestaurant, { foreignKey: 'entity_plan_id', as: 'pl
 EntityPlanRestaurant.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
 Restaurant.hasMany(EntityPlanRestaurant, { foreignKey: 'restaurant_id', as: 'entityPlanRestaurants' });
 
+// EntityPlanPrice associations (multi-currency pricing for entity plans)
+EntityPlanPrice.belongsTo(EntityPlan, { foreignKey: 'entity_plan_id', as: 'entityPlan' });
+EntityPlan.hasMany(EntityPlanPrice, { foreignKey: 'entity_plan_id', as: 'prices' });
+
+// RestaurantIngredientCost associations (restaurant-level cost override for brand ingredients)
+RestaurantIngredientCost.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Restaurant.hasMany(RestaurantIngredientCost, { foreignKey: 'restaurant_id', as: 'ingredientCosts' });
+RestaurantIngredientCost.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as: 'ingredient' });
+Ingredient.hasMany(RestaurantIngredientCost, { foreignKey: 'ingredient_id', as: 'restaurantCosts' });
+RestaurantIngredientCost.belongsTo(User, { foreignKey: 'updated_by', as: 'updater' });
+
 module.exports = {
   User,
   Restaurant,
@@ -454,5 +467,7 @@ module.exports = {
   MembershipSettings,
   PointTransaction,
   EntityPlan,
-  EntityPlanRestaurant
+  EntityPlanRestaurant,
+  EntityPlanPrice,
+  RestaurantIngredientCost
 };

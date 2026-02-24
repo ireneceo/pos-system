@@ -18,9 +18,9 @@ router.get('/', authenticateToken, async (req, res) => {
 
     if (req.query.role) {
       if (req.query.role === 'Manager') {
-        // Map 'Manager' to all 4 manager roles
-        roleFilter = 'WHERE u.role IN (?, ?, ?, ?)';
-        replacements = ['Foodcourt General', 'Foodcourt Manager', 'Brand General', 'Brand Manager'];
+        // Map 'Manager' to all manager-level roles (including Restaurant Owner)
+        roleFilter = 'WHERE u.role IN (?, ?, ?, ?, ?)';
+        replacements = ['Foodcourt General', 'Foodcourt Manager', 'Brand General', 'Brand Manager', 'Restaurant Owner'];
       } else {
         // Use specific role
         roleFilter = 'WHERE u.role = ?';

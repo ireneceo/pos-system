@@ -530,12 +530,14 @@ async function getReorderSuggestions(restaurantId) {
                           - parseFloat(ing.current_stock)
                           + (ing.avg_daily_usage * 7);
 
+      // effective_cost: restaurant override가 있으면 My Cost, 없으면 Brand Cost
+      const effectiveCost = getEffectiveCost(ing, costMap);
       suggestions.push({
         ingredient: ing,
         current_stock: ing.current_stock,
         reorder_point: reorderPoint,
         suggested_qty: Math.ceil(suggestedQty),
-        estimated_cost: suggestedQty * parseFloat(ing.unit_cost)
+        estimated_cost: suggestedQty * effectiveCost
       });
     }
   }
@@ -650,6 +652,7 @@ async function updateAvgDailyUsage(ingredientId) {
 | 날짜 | 버전 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
 | 2025-12-19 | 1.0 | 초안 작성 | Claude |
+| 2026-02-24 | 1.1 | 레스토랑 코스트 오버라이드(effective_cost) 반영 - 입고/실사/발주제안에 적용 | Claude |
 
 ---
 

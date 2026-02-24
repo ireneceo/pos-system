@@ -60,12 +60,12 @@ if (recipe.owner_type === 'brand') {
 
 ### 권한 매트릭스
 
-| 사용자 | 브랜드 레시피 | 레스토랑 레시피 |
-|--------|-------------|---------------|
-| Brand General | CRUD | 접근 불가 |
-| Brand Manager | CRUD | 접근 불가 |
-| Restaurant Admin (브랜드 소속) | 조회만 | CRUD |
-| Restaurant Admin (독립) | 해당 없음 | CRUD |
+| 사용자 | 브랜드 레시피 | 브랜드 재료 코스트 오버라이드 | 레스토랑 레시피 |
+|--------|-------------|--------------------------|---------------|
+| Brand General | CRUD | 해당 없음 (본인이 설정) | 접근 불가 |
+| Brand Manager | CRUD | 해당 없음 (본인이 설정) | 접근 불가 |
+| Restaurant Admin (브랜드 소속) | 조회만 | **My Cost 설정/수정/삭제** | CRUD |
+| Restaurant Admin (독립) | 해당 없음 | 해당 없음 | CRUD |
 
 ---
 
@@ -178,6 +178,31 @@ CREATE TABLE recipe_ingredients (
 );
 ```
 
+### restaurant_ingredient_costs 테이블 (레스토랑별 코스트 오버라이드)
+
+```sql
+CREATE TABLE restaurant_ingredient_costs (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  restaurant_id INT NOT NULL,
+  ingredient_id INT NOT NULL,
+
+  unit_cost DECIMAL(10, 4) NOT NULL COMMENT '레스토랑이 설정한 My Cost',
+  notes VARCHAR(500) COMMENT '메모',
+  updated_by INT COMMENT '마지막 수정자',
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE,
+  FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE CASCADE,
+  FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL,
+
+  UNIQUE KEY uq_restaurant_ingredient_cost (restaurant_id, ingredient_id)
+);
+```
+
+**설계 원칙:** Brand가 등록한 재료의 unit_cost(Brand Cost)를 직접 수정하지 않고, 레스토랑별로 별도 테이블에 오버라이드 값(My Cost)을 저장한다. 조회 시 `effective_cost = restaurant_cost ?? brand_cost` 로직으로 재료별 독립 폴백 적용.
+
 ### recipe_categories / ingredient_categories 테이블
 
 ```sql
@@ -257,6 +282,14 @@ CREATE TABLE ingredient_categories (
 | PUT | `/api/restaurants/:restaurantId/ingredients/:ingredientId` | 재료 수정 |
 | DELETE | `/api/restaurants/:restaurantId/ingredients/:ingredientId` | 재료 삭제 |
 
+#### 코스트 오버라이드 (Brand 재료에 대한 레스토랑별 My Cost)
+| Method | 엔드포인트 | 설명 |
+|--------|-----------|------|
+| GET | `/api/restaurants/:restaurantId/ingredient-costs` | 레스토랑 코스트 오버라이드 목록 |
+| PUT | `/api/restaurants/:restaurantId/ingredient-costs/bulk` | 일괄 코스트 오버라이드 설정 |
+| PUT | `/api/restaurants/:restaurantId/ingredient-costs/:ingredientId` | 개별 코스트 오버라이드 설정 (upsert) |
+| DELETE | `/api/restaurants/:restaurantId/ingredient-costs/:ingredientId` | 코스트 오버라이드 삭제 (Brand Cost로 복원) |
+
 #### 메뉴 등록
 | Method | 엔드포인트 | 설명 |
 |--------|-----------|------|
@@ -322,7 +355,16 @@ CREATE TABLE ingredient_categories (
 4. 가격 설정 후 등록
 5. 메뉴 관리에서 확인
 
-### 시나리오 3: 독립 레스토랑이 자체 레시피 관리
+### 시나리오 3: Restaurant Admin이 Brand 재료에 My Cost 설정
+
+1. `/recipe-management` 페이지 접속 (RecipeManagementPage)
+2. Ingredients 탭에서 Brand 재료 목록 확인
+3. 재료 카드의 "Set Cost" 클릭 → My Cost 입력
+4. 저장 → 해당 재료가 포함된 모든 레시피 원가 자동 재계산
+5. Recipes 탭에서 Brand Cost / My Cost 비교 확인
+6. My Cost 삭제 시 Brand Cost로 자동 복원
+
+### 시나리오 4: 독립 레스토랑이 자체 레시피 관리
 
 1. `/recipes` 페이지 접속
 2. "+ New Recipe" 클릭
@@ -333,6 +375,8 @@ CREATE TABLE ingredient_categories (
 ---
 
 ## 원가 계산 로직
+
+### 기본 원가 계산
 
 ```javascript
 // recipe_ingredients 저장 시
@@ -345,16 +389,35 @@ CREATE TABLE ingredient_categories (
 5. recipes.total_ingredient_cost 업데이트
 ```
 
+### 레스토랑 코스트 오버라이드 (My Cost)
+
+```javascript
+// Restaurant Admin이 Brand 레시피를 조회할 때
+1. restaurant_ingredient_costs 테이블에서 해당 레스토랑의 오버라이드 맵 조회
+2. 각 재료별로:
+   effective_cost = restaurant_cost ?? brand_cost  // 재료별 독립 폴백
+3. 레시피 원가 재계산:
+   effective_ingredient_cost = SUM(effective_cost * quantity)
+```
+
+**적용 범위:** brand-ingredients, brand-recipes, product-recipe, inventory(입고/실사/발주제안) 모든 API에 일괄 적용
+
 ### 예시
 
 ```
-Recipe: 토마토 수프
+Recipe: 토마토 수프 (Brand Cost 기준)
 ├─ 토마토: 0.5kg × RM 5.00/kg = RM 2.50
 ├─ 양파: 0.2kg × RM 3.00/kg = RM 0.60
 └─ 소금: 0.01kg × RM 10.00/kg = RM 0.10
 ────────────────────────────────────────
-총 원가: RM 3.20
-권장가 (300% 마진): RM 9.60
+총 Brand Cost: RM 3.20
+
+Recipe: 토마토 수프 (Restaurant My Cost 적용)
+├─ 토마토: 0.5kg × RM 6.50/kg = RM 3.25  ← My Cost 설정됨
+├─ 양파: 0.2kg × RM 3.00/kg = RM 0.60    ← Brand Cost 유지
+└─ 소금: 0.01kg × RM 10.00/kg = RM 0.10  ← Brand Cost 유지
+────────────────────────────────────────
+총 My Cost: RM 3.95  (effective_ingredient_cost)
 ```
 
 ---
@@ -362,8 +425,8 @@ Recipe: 토마토 수프
 ## 파일 위치
 
 ### Backend
-- 모델: `/var/www/dev-backend/models/Recipe.js`, `Ingredient.js`, `RecipeIngredient.js`
-- 라우트: `/var/www/dev-backend/routes/recipes.js`, `ingredients.js`
+- 모델: `/var/www/dev-backend/models/Recipe.js`, `Ingredient.js`, `RecipeIngredient.js`, `RestaurantIngredientCost.js`
+- 라우트: `/var/www/dev-backend/routes/recipes.js`, `ingredients.js`, `product-recipe.js`, `inventory-routes.js`
 - 카테고리: `/var/www/dev-backend/routes/recipe-categories.js`, `ingredient-categories.js`
 
 ### Frontend
@@ -385,6 +448,7 @@ Recipe: 토마토 수프
 | 2025-11-20 | 1.0 | 초안 작성 | Claude |
 | 2025-11-30 | 2.0 | 권한 구조 설계 (recipe_manager_type 방식) | Claude |
 | 2025-12-10 | 3.0 | 구현 완료 반영 - owner_type 기반 권한, UI 기능 추가 | Claude |
+| 2026-02-24 | 4.0 | 레스토랑별 코스트 오버라이드 시스템 추가 - restaurant_ingredient_costs 테이블, effective_cost 로직, My Cost UI | Claude |
 
 ---
 

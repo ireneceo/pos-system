@@ -463,31 +463,38 @@ POST /api/subscriptions/:id/update-payment-method # 결제수단 변경
 - [x] Currency Settings를 Payment Settings로 통합
 - [x] Stripe/PayPal 글로벌 + Bank/QR 통화별 UI 구조
 
-### Phase 2: Invoice 결제 기능
-- [ ] Invoice 결제 페이지 생성 (InvoicePaymentPage.tsx)
-- [ ] Bank Transfer/QR 결제 프로세스 (영수증 업로드 → 확인)
-- [ ] Invoice 상태 업데이트 로직
-- [ ] 이메일 결제 링크 발송
+### Phase 2: Invoice 결제 기능 ✓ (2026-02-24 완료)
+- [x] Invoice 결제 모달 (각 인보이스 페이지 내장)
+- [x] Bank Transfer/QR 결제 프로세스 (영수증 업로드 → 확인/거절)
+- [x] Invoice 상태 업데이트 로직 (submit → confirm/reject)
+- [x] 발행자별 결제방법 분기 조회 (issuerType/issuerId 기반)
+- [x] 발행 시 결제방법 존재 검증 (통화별)
+- [x] 통화 범위 검증 (Brand/Foodcourt ⊆ System Admin)
+- [ ] 이메일 결제 링크 발송 (미구현)
 
-### Phase 3: Stripe 연동
+### Phase 3: Stripe 연동 (미구현)
 - [ ] Stripe Checkout 연동 (일회성 결제)
 - [ ] Stripe Customer/PaymentMethod 저장 (구독 자동결제용)
 - [ ] Stripe Webhook 처리
 
-### Phase 4: PayPal 연동
+### Phase 4: PayPal 연동 (미구현)
 - [ ] PayPal Checkout 연동
 - [ ] PayPal Webhook 처리
 
-### Phase 5: 자동 결제 (구독)
+### Phase 5: 자동 결제 (구독) (미구현)
 - [ ] Subscription에 결제 정보 저장
 - [ ] 갱신일 자동 결제 처리
 - [ ] 실패 시 이메일 알림 및 수동 결제 유도
 
-### Phase 6: Brand/Foodcourt 확장
-- [ ] Brand Payment Settings (System Admin과 동일 UI 재사용)
-- [ ] Foodcourt Payment Settings (System Admin과 동일 UI 재사용)
-- [ ] brands/foodcourts 테이블에 payment_settings 필드 추가
-- [ ] Restaurant → Brand/Foodcourt 결제 흐름
+### Phase 6: Brand/Foodcourt 확장 ✓ (2026-02-24 완료)
+- [x] Brand Payment Settings (System Admin과 동일 UI 재사용)
+- [x] Foodcourt Payment Settings (System Admin과 동일 UI 재사용)
+- [x] brands/foodcourts 테이블에 payment_settings JSON 필드 추가
+- [x] Restaurant → Brand/Foodcourt 결제 흐름 (발행자별 결제방법 분기)
+- [x] Brand/Foodcourt 구독 플랜 시스템 (entity_plans 테이블)
+- [x] 자동 인보이스 생성 (cron + 수동 트리거)
+
+> **참고**: 인보이스 시스템 전체 기술 문서는 `/var/www/docs/INVOICE_SYSTEM.md` 참조
 
 ## 10. 보안 고려사항
 

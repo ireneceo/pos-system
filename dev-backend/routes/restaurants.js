@@ -12,6 +12,7 @@ const Category = require('../models/Category');
 const Product = require('../models/Product');
 const AddonModule = require('../models/AddonModule');
 const { Recipe, Ingredient, RecipeIngredient } = require('../models');
+const CompanySettings = require('../models/CompanySettings');
 const { Op } = require('sequelize');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { validateRestaurantCreation } = require('../middleware/validation');
@@ -146,6 +147,11 @@ router.get('/', optionalAuth, async (req, res) => {
         planAmount: restaurantData.plan_amount ? restaurantData.plan_amount.toString() : '29.00',
         subscriptionStart: restaurantData.subscription_start ? restaurantData.subscription_start.toISOString().split('T')[0] : null,
         subscriptionEnd: restaurantData.subscription_end ? restaurantData.subscription_end.toISOString().split('T')[0] : null,
+        billing_cycle: restaurantData.billing_cycle || 'monthly',
+        auto_renew: restaurantData.auto_renew !== undefined && restaurantData.auto_renew !== null ? restaurantData.auto_renew : true,
+        menu_item_limit: restaurantData.menu_item_limit || 50,
+        order_limit: restaurantData.order_limit || 1000,
+        staff_limit: restaurantData.staff_limit || 5,
         payment_model: restaurantData.payment_model || 'restaurant',
         foodcourt_id: restaurantData.foodcourt_id || null,
         city: restaurantData.city || '',
@@ -694,13 +700,15 @@ router.post('/', authenticateToken, validateRestaurantCreation, async (req, res)
         const formatDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const cycleText = billingCycle === 'annual' ? 'Annual' : 'Monthly';
         const periodText = `${formatDate(subStart)} ~ ${formatDate(billingEnd)}`;
+        const companyInfo = await CompanySettings.findOne({ where: { id: 1 }, attributes: ['site_name'] });
+        const siteName = companyInfo?.site_name || 'POS';
 
         const invoice = await Invoice.create({
           restaurant_id: restaurant.id,
           invoice_number: invoiceNumber,
           type: 'automatic',
           invoice_category: 'subscription',
-          category_display_name: `Subscription - ${restaurant.plan_type}`,
+          category_display_name: `${siteName} - ${restaurant.plan_type} (${cycleText})`,
           billing_period_start: subStart,
           billing_period_end: billingEnd,
           due_date: dueDate,
@@ -806,14 +814,36 @@ router.put('/:id', authenticateToken, validateRestaurantCreation, async (req, re
     if (req.body.logo_url !== undefined) updateData.logo_url = req.body.logo_url;
 
     // Subscription fields - only update if explicitly provided (prevents accidental overwrites)
-    if (req.body.planType !== undefined) updateData.plan_type = req.body.planType;
-    if (req.body.planAmount !== undefined) updateData.plan_amount = parseFloat(req.body.planAmount);
+    // Accept both camelCase and snake_case for plan_type and plan_amount
+    if (req.body.planType !== undefined || req.body.plan_type !== undefined) {
+      updateData.plan_type = req.body.planType || req.body.plan_type;
+    }
+    if (req.body.planAmount !== undefined || req.body.plan_amount !== undefined) {
+      updateData.plan_amount = parseFloat(req.body.planAmount || req.body.plan_amount);
+    }
     if (req.body.status !== undefined) updateData.status = req.body.status;
     if (req.body.subscriptionStart !== undefined) {
       updateData.subscription_start = req.body.subscriptionStart ? new Date(req.body.subscriptionStart) : null;
     }
     if (req.body.subscriptionEnd !== undefined) {
       updateData.subscription_end = req.body.subscriptionEnd ? new Date(req.body.subscriptionEnd) : null;
+    }
+    if (req.body.billingCycle !== undefined || req.body.billing_cycle !== undefined) {
+      updateData.billing_cycle = req.body.billingCycle || req.body.billing_cycle;
+    }
+    if (req.body.autoRenew !== undefined || req.body.auto_renew !== undefined) {
+      updateData.auto_renew = req.body.autoRenew !== undefined ? req.body.autoRenew : req.body.auto_renew;
+    }
+
+    // Limit fields
+    if (req.body.menuItemLimit !== undefined || req.body.menu_item_limit !== undefined) {
+      updateData.menu_item_limit = req.body.menuItemLimit || req.body.menu_item_limit;
+    }
+    if (req.body.orderLimit !== undefined || req.body.order_limit !== undefined) {
+      updateData.order_limit = req.body.orderLimit || req.body.order_limit;
+    }
+    if (req.body.staffLimit !== undefined || req.body.staff_limit !== undefined) {
+      updateData.staff_limit = req.body.staffLimit || req.body.staff_limit;
     }
 
     // Settings objects
@@ -1122,7 +1152,7 @@ router.get('/subscriptions/manager/:managerId', async (req, res) => {
         features: [], // Will be filled by frontend based on plan
         lastPayment: lastPaidInvoice ? lastPaidInvoice.paid_at.toISOString().split('T')[0] : '-',
         nextPayment: nextInvoice ? nextInvoice.due_date.toISOString().split('T')[0] : new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
-        autoRenew: restaurant.status === 'active',
+        autoRenew: restaurant.auto_renew !== undefined && restaurant.auto_renew !== null ? restaurant.auto_renew : restaurant.status === 'active',
         location: restaurant.address || 'No address provided'
       };
     });

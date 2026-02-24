@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-02-23
+> **최종 업데이트:** 2026-02-24
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -24,6 +24,12 @@ Foodcourt General (푸드코트 운영, 1:1 매칭)
 ├── 푸드코트 입점 레스토랑 관리
 ├── 자체 구독 플랜 생성 (임대료, 관리비, 매출% 등)
 └── 입점 레스토랑에 푸드코트 플랜 인보이스 발행
+
+Restaurant Owner (레스토랑 소유자, N개 레스토랑)  ← NEW
+├── 여러 레스토랑 소유 (재무/통계 관리)
+├── 소유 레스토랑 매출 통계/비교 조회
+├── 인보이스 조회 및 결제 (payment_model='restaurant_owner')
+└── 메뉴/주문/직원 관리 불가 (Restaurant Admin 영역)
 
 Restaurant Admin (레스토랑 운영, 1:1 매칭)
 └── 자기 레스토랑 POS 운영
@@ -52,7 +58,7 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 
 ---
 
-## 🔜 다음 개발: Brand/Foodcourt 구독 플랜 & 이메일 시스템 (2026-02-09 기획)
+## ✅ 완료: Brand/Foodcourt 구독 플랜 & 이메일 시스템 (2026-02-09 기획, 2026-02-24 완료)
 
 ### 개요
 Brand General / Foodcourt General이 각자 구독 플랜을 만들고, 소속 레스토랑에 자동 인보이스를 발행하는 시스템.
@@ -176,6 +182,113 @@ const totalRevenue = useMemo(() => {
 - 기존: `/api/orders?limit=10000` → 클라이언트 useMemo로 모든 통계 계산
 - 개선: `/api/dashboard/restaurant/:id/reports-summary` → 서버에서 일별/카테고리별/메뉴별/시간대별 집계
 - 결과: 데이터 전송량 대폭 감소, 페이지 로딩 속도 향상
+
+---
+
+## ✅ 완료: 인보이스 결제방법 매칭 시스템 수정 (2026-02-24)
+
+### 개요
+인보이스 발행 주체(System Admin, Brand, Foodcourt)별로 독립적인 결제설정을 사용하는 구조인데, 수신자 결제 시 항상 System Admin 결제설정만 조회하던 버그를 수정. 발행 시 결제방법 존재 검증 + 수신자 결제 시 발행자별 결제방법 분기 표시.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| paymentSettingsHelper.js 공통 유틸리티 | getAvailablePaymentMethods / hasPaymentMethodForCurrency 추출 | ✅ 완료 |
+| Brand/Foodcourt available API | GET /brands/:id/payment-settings/available/:currency | ✅ 완료 |
+| 수동 인보이스 발행 검증 | 발행자 결제설정에 인보이스 통화 결제방법 존재 확인 | ✅ 완료 |
+| Brand generate-invoices 검증 | 플랜 통화별 결제방법 미존재 시 skip | ✅ 완료 |
+| Foodcourt generate-invoices 검증 | 동일 구조 | ✅ 완료 |
+| System Admin 자동구독 검증 | 레스토랑 통화별 결제방법 확인, 미존재 시 skip | ✅ 완료 |
+| 통화 범위 검증 | Brand/Foodcourt 결제설정/플랜 통화가 System Admin 범위 내인지 | ✅ 완료 |
+| 프론트엔드 4페이지 결제방법 분기 | issuerType/issuerId 기반 fetchPaymentMethods 분기 | ✅ 완료 |
+| 결제방법 없을 때 안내 메시지 | 발행자명 + 상황별 가이드 + 설정페이지 이동 버튼 | ✅ 완료 |
+| INVOICE_SYSTEM.md 종합 문서 작성 | 전체 발행루트, 검증, 결제흐름, API, DB스키마 총정리 | ✅ 완료 |
+
+### 관련 문서
+- `/var/www/docs/INVOICE_SYSTEM.md` — 인보이스 시스템 전체 기술 문서
+
+---
+
+## ✅ 완료: Restaurant Owner 역할 추가 (2026-02-24)
+
+### 개요
+여러 레스토랑을 소유한 사업주를 위한 새 역할. Brand General/Foodcourt General과 동급이며, 재무/통계 조회에 특화. 메뉴/주문/직원 관리는 Restaurant Admin 영역.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| User.js role ENUM 확장 | 'Restaurant Owner' 추가 | ✅ 완료 |
+| RestaurantManager.js 컬럼 추가 | relationship_type ENUM('oversight', 'ownership') | ✅ 완료 |
+| Restaurant.js payment_model 확장 | 'restaurant_owner' 추가 | ✅ 완료 |
+| Invoice.js payer_type 확장 | 'restaurant_owner' 추가 | ✅ 완료 |
+| auth.js 미들웨어 | checkRestaurantAccess에 Owner 분기 (ownership 관계 체크) | ✅ 완료 |
+| owner.js 라우트 (신규) | 대시보드/레스토랑/통계비교/주문/인보이스/연결CRUD 8개 API | ✅ 완료 |
+| server.js 등록 | `/api/owner` 라우트 등록 | ✅ 완료 |
+| users.js Manager 필터 확장 | Restaurant Owner 포함 | ✅ 완료 |
+| AuthContext.tsx | UserRole/ROLE_PERMISSIONS/ROLE_ROUTES에 Owner 추가 | ✅ 완료 |
+| App.tsx 라우팅 | PosRootRedirect + Owner 6개 라우트 등록 | ✅ 완료 |
+| MainLayout.tsx 사이드바 | Owner 전용 메뉴 (Dashboard/Restaurants/Statistics/Orders/Reports/Invoices) | ✅ 완료 |
+| Owner 6개 페이지 | OwnerDashboard/Restaurants/Statistics/Orders/Reports/Invoices | ✅ 완료 |
+| Admin ManagersPage | Owner 역할 추가 (Add 모달 + API 필터) | ✅ 완료 |
+
+### API 엔드포인트
+| Method | Path | 설명 | 접근 |
+|--------|------|------|------|
+| GET | /api/owner/dashboard | 통합 대시보드 (매출/주문/레스토랑 요약) | Owner |
+| GET | /api/owner/restaurants | 소유 레스토랑 목록 | Owner |
+| GET | /api/owner/restaurants/:id/stats | 레스토랑별 상세 통계 | Owner |
+| GET | /api/owner/restaurants/:id/orders | 레스토랑별 주문 내역 (읽기 전용) | Owner |
+| GET | /api/owner/statistics/compare | 레스토랑 간 비교 통계 | Owner |
+| GET | /api/owner/invoices | 소유 레스토랑 인보이스 | Owner |
+| POST | /api/owner/restaurants/:id/link | Owner에 레스토랑 연결 | System Admin |
+| DELETE | /api/owner/restaurants/:id/unlink | Owner에서 레스토랑 연결 해제 | System Admin |
+| GET | /api/owner/available | Restaurant Owner 목록 | System Admin |
+
+---
+
+## ✅ 완료: 레스토랑별 코스트 오버라이드 시스템 (2026-02-24)
+
+### 개요
+Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에 대해, Restaurant Admin이 자기 레스토랑의 실제 운영 코스트(My Cost)를 별도로 설정할 수 있는 시스템. 재료별 독립 오버라이드 방식으로, My Cost가 설정된 재료는 My Cost를 사용하고, 설정되지 않은 재료는 Brand Cost를 그대로 사용한다 (크로스 사용).
+
+### 핵심 설계 원칙
+- **effective_cost = restaurant_cost ?? brand_cost** (재료별 독립 폴백)
+- 브랜드 원본 데이터는 절대 수정하지 않음 (별도 테이블로 오버라이드)
+- SAP/Oracle ERP의 plant-level price override 패턴과 동일한 업계 표준 방식
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| RestaurantIngredientCost 모델 생성 | 레스토랑별 재료 코스트 오버라이드 테이블 (restaurant_id + ingredient_id UNIQUE) | ✅ 완료 |
+| 코스트 오버라이드 CRUD API | 조회/단건 설정/벌크 설정/삭제 (4개 엔드포인트) | ✅ 완료 |
+| brand-ingredients API 확장 | 응답에 restaurant_cost, effective_cost, cost_notes 필드 추가 | ✅ 완료 |
+| brand-recipes API 확장 | 레시피별 effective_ingredient_cost, 재료별 brand_cost/effective_cost 추가 | ✅ 완료 |
+| product-recipe API 전체 반영 | 6개 엔드포인트 모두 effective cost 기반 원가/이익률 계산으로 변경 | ✅ 완료 |
+| inventory-routes API 반영 | 재고입고/실사/발주제안에 effective cost 반영 | ✅ 완료 |
+| IngredientsTab My Cost UI | Brand 재료에 인라인 My Cost 편집/리셋, Brand Cost/My Cost/Applied 3단 표시 | ✅ 완료 |
+| RecipesTab 코스트 비교 UI | 카드에 Brand Cost(취소선)/My Cost(파란색) 비교, 뷰 모달 재료 테이블에 My Cost 컬럼 | ✅ 완료 |
+
+### 신규 API 엔드포인트
+
+| Method | URL | 설명 |
+|--------|-----|------|
+| GET | `/api/restaurants/:id/ingredient-costs` | 레스토랑 코스트 오버라이드 목록 |
+| PUT | `/api/restaurants/:id/ingredient-costs/bulk` | 일괄 오버라이드 설정 |
+| PUT | `/api/restaurants/:id/ingredient-costs/:ingredientId` | 개별 오버라이드 설정 (upsert) |
+| DELETE | `/api/restaurants/:id/ingredient-costs/:ingredientId` | 오버라이드 삭제 (brand cost로 복원) |
+
+### 수정된 파일
+- `dev-backend/models/RestaurantIngredientCost.js` - 신규 모델
+- `dev-backend/models/index.js` - 어소시에이션 추가
+- `dev-backend/routes/ingredients.js` - brand-ingredients 확장 + 코스트 CRUD API 4개
+- `dev-backend/routes/recipes.js` - brand-recipes effective cost 재계산
+- `dev-backend/routes/product-recipe.js` - getRestaurantCostMap/getEffectiveCost 헬퍼 + 6개 엔드포인트
+- `dev-backend/routes/inventory-routes.js` - 재고입고/실사/발주제안 effective cost
+- `dev-frontend/src/pages/RecipeManagement/IngredientsTab.tsx` - My Cost 인라인 편집 UI
+- `dev-frontend/src/pages/RecipeManagement/RecipesTab.tsx` - 카드/뷰모달 코스트 비교 UI
 
 ---
 

@@ -236,6 +236,7 @@ const uploadRouter = require('./routes/upload');
 const publicRouter = require('./routes/public');
 const contentsRouter = require('./routes/contents');
 const subscriptionsRouter = require('./routes/subscriptions');
+const ownerRouter = require('./routes/owner');
 
 // Health check endpoint - PM2 모니터링 및 로드밸런서용 (가장 먼저)
 app.get('/api/health', (req, res) => {
@@ -307,6 +308,7 @@ app.use('/api', generalStockCategoriesRouter);
 app.use('/api', generalStockRouter);  // Company-wide general stock routes for Brand General
 app.use('/api/product-ingredient-categories', productIngredientCategoriesRouter);
 app.use('/api/subscriptions', subscriptionsRouter);  // Subscriptions (dashboard)
+app.use('/api/owner', ownerRouter);  // Restaurant Owner routes
 
 // GitHub Webhook for Auto-Deployment (보안: System Admin 인증 필요)
 const { exec } = require('child_process');

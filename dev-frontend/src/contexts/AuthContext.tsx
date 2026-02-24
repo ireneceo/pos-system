@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-export type UserRole = 'System Admin' | 'Foodcourt General' | 'Brand General' | 'Foodcourt Manager' | 'Brand Manager' | 'Restaurant Admin' | 'Staff' | 'Supplier Admin';
+export type UserRole = 'System Admin' | 'Foodcourt General' | 'Brand General' | 'Foodcourt Manager' | 'Brand Manager' | 'Restaurant Owner' | 'Restaurant Admin' | 'Staff' | 'Supplier Admin';
 
 export interface User {
   id?: string;
@@ -143,6 +143,15 @@ const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'communicate_with_franchises',
     'view_brand_reports'
   ],
+  'Restaurant Owner': [
+    'view_own_restaurants',
+    'view_restaurant_stats',
+    'view_restaurant_orders',
+    'view_invoices',
+    'pay_invoices',
+    'view_reports',
+    'view_comparison_stats'
+  ],
   'Restaurant Admin': [
     'view_restaurant',
     'edit_restaurant_settings',
@@ -258,6 +267,10 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
     '/pos/coupons',
     '/pos/reports',
     '/pos/settings',
+    '/pos/profile'
+  ],
+  'Restaurant Owner': [
+    '/pos/owner/*',
     '/pos/profile'
   ],
   'Restaurant Admin': [

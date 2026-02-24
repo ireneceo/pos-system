@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Recipe, Ingredient, RecipeIngredient, Restaurant, Product, RecipeCategory, Category } = require('../models');
+const { Recipe, Ingredient, RecipeIngredient, Restaurant, Product, RecipeCategory, Category, RestaurantIngredientCost } = require('../models');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { canEditRecipe, isBrandManager } = require('../middleware/recipeAuth');
 const { generateRecipeCode } = require('../utils/codeGenerator');
@@ -311,7 +311,51 @@ router.get('/restaurants/:restaurantId/brand-recipes', authenticateToken, checkR
       order: [['created_at', 'DESC']]
     });
 
-    res.json({ success: true, data: brandRecipes });
+    // 레스토랑 코스트 오버라이드 조회
+    const restaurantCosts = await RestaurantIngredientCost.findAll({
+      where: { restaurant_id: restaurantId }
+    });
+    const costMap = {};
+    restaurantCosts.forEach(rc => {
+      costMap[rc.ingredient_id] = parseFloat(rc.unit_cost);
+    });
+
+    // 각 레시피에 restaurant 기준 원가 계산
+    const enrichedRecipes = brandRecipes.map(recipe => {
+      const plain = recipe.toJSON();
+      let restaurantTotalCost = 0;
+      let hasAnyOverride = false;
+
+      if (plain.recipeIngredients) {
+        plain.recipeIngredients = plain.recipeIngredients.map(ri => {
+          const brandUnitCost = ri.ingredient ? parseFloat(ri.ingredient.unit_cost) : 0;
+          const baseQty = ri.ingredient ? parseFloat(ri.ingredient.base_quantity) || 1 : 1;
+          const override = costMap[ri.ingredient_id];
+          const effectiveUnitCost = override !== undefined ? override : brandUnitCost;
+          const effectiveCostPerBase = effectiveUnitCost / baseQty;
+          const qty = parseFloat(ri.quantity) || 0;
+          const effectiveCost = qty * effectiveCostPerBase;
+          const brandCost = qty * (brandUnitCost / baseQty);
+
+          if (override !== undefined) hasAnyOverride = true;
+          restaurantTotalCost += effectiveCost;
+
+          ri.brand_cost = brandCost;
+          ri.effective_cost = effectiveCost;
+          if (ri.ingredient) {
+            ri.ingredient.restaurant_cost = override !== undefined ? override : null;
+            ri.ingredient.effective_cost = effectiveUnitCost;
+          }
+          return ri;
+        });
+      }
+
+      plain.restaurant_ingredient_cost = hasAnyOverride ? restaurantTotalCost : null;
+      plain.effective_ingredient_cost = restaurantTotalCost;
+      return plain;
+    });
+
+    res.json({ success: true, data: enrichedRecipes });
   } catch (error) {
     console.error('Get brand recipes for restaurant error:', error);
     res.status(500).json({ error: 'Failed to fetch brand recipes' });

@@ -136,6 +136,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         return <Navigate to="/pos/brand/dashboard" replace />;
       case 'Restaurant Admin':
         return <Navigate to={`/restaurant/${user.restaurantId || '1'}/dashboard`} replace />;
+      case 'Restaurant Owner':
+        return <Navigate to="/pos/owner/dashboard" replace />;
       case 'Staff':
         return <Navigate to={`/restaurant/${user.restaurantId || '1'}/basic`} replace />;
       default:
@@ -199,6 +201,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       '/pos/foodcourt/dashboard',
       '/pos/foodcourt/rent-management',
       '/pos/foodcourt/tenant-support',
+      '/pos/owner/dashboard',
+      '/pos/owner/restaurants',
+      '/pos/owner/reports',
+      '/pos/owner/invoices',
       '/pos/profile'
     ];
     const isBrandLevelRoute = brandLevelRoutes.some(route => location.pathname.startsWith(route));
@@ -208,7 +214,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
                                   user &&
                                   (user.role === 'Brand General' || user.role === 'Brand Manager' ||
                                    user.role === 'Foodcourt General' || user.role === 'Foodcourt Manager' ||
-                                   user.role === 'System Admin');
+                                   user.role === 'Restaurant Owner' || user.role === 'System Admin');
 
     // requiredRole이 지정된 경우만 엄격하게 체크 (단, brand-level route는 제외)
     if (!shouldSkipRouteCheck && !canAccessRoute(location.pathname)) {
@@ -226,6 +232,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           return <Navigate to="/pos/brand/dashboard" replace />;
         case 'Restaurant Admin':
           return <Navigate to={`/restaurant/${user.restaurantId || '1'}/dashboard`} replace />;
+        case 'Restaurant Owner':
+          return <Navigate to="/pos/owner/dashboard" replace />;
         case 'Staff':
           return <Navigate to={`/restaurant/${user.restaurantId || '1'}/basic`} replace />;
         default:

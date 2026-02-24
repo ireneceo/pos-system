@@ -369,6 +369,7 @@ const StaffAvatar = styled.div<{ role: string }>`
       case 'Brand General': return '#DC2626';
       case 'Foodcourt Manager': return '#F59E0B';
       case 'Brand Manager': return '#EF4444';
+      case 'Restaurant Owner': return '#7C3AED';
       case 'Restaurant Admin': return '#059669';
       case 'Staff': return '#D97706';
       default: return '#6B7280';
@@ -463,6 +464,7 @@ const UserAvatar = styled.div<{ role: string }>`
       case 'Brand General': return '#DC2626';
       case 'Foodcourt Manager': return '#F59E0B';
       case 'Brand Manager': return '#EF4444';
+      case 'Restaurant Owner': return '#7C3AED';
       case 'Restaurant Admin': return '#059669';
       case 'Staff': return '#D97706';
       default: return '#6B7280';
@@ -1019,6 +1021,38 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <NavItem to="/pos/foodcourt/general/operation-inquiry" active={isActive('/pos/foodcourt/general/operation-inquiry')} onClick={closeSidebar}>
                   <NavIcon>◎</NavIcon>
                   Inquiry Management
+                </NavItem>
+              </>
+            )}
+
+            {/* ========== RESTAURANT OWNER ========== */}
+            {user?.role === 'Restaurant Owner' && (
+              <>
+                <NavItem to="/pos/owner/dashboard" active={isActive('/pos/owner/dashboard')} onClick={closeSidebar}>
+                  <NavIcon>■</NavIcon>
+                  Dashboard
+                </NavItem>
+
+                <NavTitle>Management</NavTitle>
+                <NavItem to="/pos/owner/restaurants" active={isActive('/pos/owner/restaurants')} onClick={closeSidebar}>
+                  <NavIcon>◐</NavIcon>
+                  Restaurants
+                </NavItem>
+
+                <NavTitle>Analytics</NavTitle>
+                <NavItem to="/pos/owner/performance" active={isActive('/pos/owner/performance')} onClick={closeSidebar}>
+                  <NavIcon>◈</NavIcon>
+                  Performance
+                </NavItem>
+                <NavItem to="/pos/owner/reports" active={isActive('/pos/owner/reports')} onClick={closeSidebar}>
+                  <NavIcon>☰</NavIcon>
+                  Reports
+                </NavItem>
+
+                <NavTitle>Billing</NavTitle>
+                <NavItem to="/pos/owner/invoices" active={isActive('/pos/owner/invoices')} onClick={closeSidebar}>
+                  <NavIcon>▦</NavIcon>
+                  Invoices
                 </NavItem>
               </>
             )}

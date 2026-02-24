@@ -2,71 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
-import { TabContainer, Tab, DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue, ModalComponent, FormGroup, FormLabel, FormInput, Button } from '../../components/UI';
-import ConfirmModal from '../../components/ConfirmModal';
+import { StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI/StatCard';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
-import PhoneInput from '../../components/Common/PhoneInput';
+import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useAuth } from '../../contexts/AuthContext';
 
-interface BrandMetrics {
-  totalBrands: number;
-  totalStores: number;
-  totalManagers: number;
-  monthlyRevenue: number;
-  cumulativeRevenue: number;
-  averageRevenuePerStore: number;
-  marketShare: number;
-  growthRate: number;
-  customerSatisfaction: number;
-  activePromotions: number;
-  newFranchises: number;
-  totalTransactions: number;
-}
-
-interface RevenueData {
-  period: string;
-  revenue: number;
-  storeCount: number;
-}
-
-interface BrandManager {
-  id: string;
-  name: string;
-  email: string;
-  assignedBrand: string;
-  storeCount: number;
-  monthlyRevenue: number;
-  createdAt: string;
-  lastActive: string;
-  performanceScore: number;
-  riskLevel: 'low' | 'medium' | 'high';
-  permissions?: string[];
-  phone?: string;
-  password?: string;
-}
-
-interface ManagerFormData {
-  name: string;
-  email: string;
-  phone: string;
-  assignedBrand: string;
-  password: string;
-  permissions: string[];
-}
+// ============================================================================
+// Styled Components
+// ============================================================================
 
 const Container = styled.div`
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #FAFBFC;
   min-height: 100vh;
-
-  @media (max-width: 768px) {
-    padding: 0;
-  }
 `;
 
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
   border-bottom: 1px solid #E6EBF1;
-  margin-bottom: 0;
   height: 56px;
   display: flex;
   justify-content: space-between;
@@ -82,739 +37,594 @@ const Header = styled.div`
   }
 `;
 
-const Content = styled.div`
-  padding: 32px;
-  background: #FAFBFC;
-  min-height: calc(100vh - 120px);
-
-  @media (max-width: 768px) {
-    padding: 20px;
-  }
-`;
-
-const Title = styled.h1`
+const HeaderTitle = styled.h1`
   font-size: 24px;
-  font-weight: 700;
+  font-weight: 600;
   color: #0A2540;
-  margin: 0;
-  line-height: 1;
+  @media (max-width: 768px) { font-size: 20px; }
+`;
 
-  @media (max-width: 768px) {
-    font-size: 20px;
+const Content = styled.main`
+  padding: 32px;
+  @media (max-width: 768px) { padding: 20px; }
+`;
+
+const SectionTitle = styled.h2`
+  font-size: 16px;
+  font-weight: 600;
+  color: #0A2540;
+  margin-bottom: 16px;
+`;
+
+// Alerts
+const AlertBox = styled.div<{ type: 'warning' | 'info' | 'success' }>`
+  background: ${props =>
+    props.type === 'warning' ? '#FEF2F2' :
+    props.type === 'success' ? '#ECFDF5' : '#EFF6FF'
+  };
+  border-left: 4px solid ${props =>
+    props.type === 'warning' ? '#DC2626' :
+    props.type === 'success' ? '#059669' : '#2563EB'
+  };
+  color: ${props =>
+    props.type === 'warning' ? '#991B1B' :
+    props.type === 'success' ? '#064E3B' : '#1E3A8A'
+  };
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const AlertIcon = styled.span`
+  font-size: 14px;
+  flex-shrink: 0;
+`;
+
+// Quick Access
+const QuickAccess = styled.div`
+  margin-bottom: 32px;
+`;
+
+const QuickButtons = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+`;
+
+const QuickBtnDiv = styled.div`
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  color: #0A2540;
+  transition: all 0.15s;
+  border: 1px solid #E6EBF1;
+  cursor: pointer;
+
+  &:hover {
+    border-color: #FCA5A5;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   }
 `;
 
-const MainGrid = styled.div`
+const QuickBtnIcon = styled.div`
+  color: #DC2626;
+  font-size: 20px;
+  margin-bottom: 12px;
+`;
+
+const QuickBtnTitle = styled.div`
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #0A2540;
+`;
+
+const QuickBtnDesc = styled.div`
+  font-size: 12px;
+  color: #6B7C93;
+`;
+
+// Charts
+const ChartGrid = styled.div`
   display: grid;
   grid-template-columns: 2fr 1fr;
-  gap: 32px;
+  gap: 24px;
   margin-bottom: 32px;
 
-  @media (max-width: 1200px) {
+  @media (max-width: 1024px) {
     grid-template-columns: 1fr;
   }
 `;
 
-const ChartContainer = styled.div`
+const ChartCard = styled.div`
   background: white;
-  border-radius: 16px;
-  padding: 24px;
-  border: 1px solid #E6EBF1;
-
-  h3 {
-    margin: 0 0 20px 0;
-    color: #0A2540;
-    font-size: 18px;
-    font-weight: 600;
-  }
-`;
-
-const QuickStatsContainer = styled.div`
-  background: white;
-  border-radius: 16px;
-  padding: 24px;
-  border: 1px solid #E6EBF1;
-
-  h3 {
-    margin: 0 0 20px 0;
-    color: #0A2540;
-    font-size: 18px;
-    font-weight: 600;
-  }
-`;
-
-const QuickStatItem = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 0;
-  border-bottom: 1px solid #F3F4F6;
-
-  &:last-child {
-    border-bottom: none;
-  }
-`;
-
-const QuickStatLabel = styled.span`
-  font-size: 14px;
-  color: #6B7280;
-`;
-
-const QuickStatValue = styled.span`
-  font-size: 16px;
-  font-weight: 600;
-  color: #0A2540;
-`;
-
-const ManagersList = styled.div`
-  background: white;
-  border-radius: 16px;
-  padding: 24px;
-  border: 1px solid #E6EBF1;
-
-  h3 {
-    margin: 0 0 20px 0;
-    color: #0A2540;
-    font-size: 18px;
-    font-weight: 600;
-  }
-`;
-
-const ManagerItem = styled.div`
-  padding: 16px;
-  border: 1px solid #F3F4F6;
-  border-radius: 8px;
-  margin-bottom: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    border-color: #DC2626;
-    background: #FEF2F2;
-  }
-
-  &:last-child {
-    margin-bottom: 0;
-  }
-`;
-
-const ManagerHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-`;
-
-const ManagerName = styled.span`
-  font-weight: 600;
-  color: #0A2540;
-`;
-
-const ManagerScore = styled.span<{ score: number }>`
-  padding: 4px 8px;
   border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: white;
-  background: ${props => {
-    if (props.score >= 90) return '#059669';
-    if (props.score >= 70) return '#2563EB';
-    if (props.score >= 50) return '#D97706';
-    return '#DC2626';
-  }};
-`;
-
-const ManagerInfo = styled.div`
-  font-size: 13px;
-  color: #6B7280;
-  display: flex;
-  justify-content: space-between;
-`;
-
-const PlaceholderChart = styled.div`
-  height: 300px;
-  border: 2px dashed #E6EBF1;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #6B7280;
-  font-style: italic;
-`;
-
-const TimeFilter = styled.select`
-  padding: 8px 12px;
+  padding: 24px;
   border: 1px solid #E6EBF1;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-right: 8px;
-
-  &:hover {
-    border-color: #635BFF;
-    color: #635BFF;
-    background: #F4F3FF;
-  }
 `;
 
-const ManagersHeader = styled.div`
+const ChartHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
 `;
 
-const AddButton = styled(Button)`
-  background: #DC2626;
-  color: white;
-  border: none;
-
-  &:hover {
-    background: #B91C1C;
-  }
+const ChartTitle = styled.h3`
+  font-size: 15px;
+  font-weight: 600;
+  color: #0A2540;
 `;
 
-const ActionButtons = styled.div`
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-`;
-
-const ActionButton = styled.button<{ variant: 'edit' | 'delete' }>`
+const PeriodSelect = styled.select`
   padding: 6px 12px;
+  border: 1px solid #E6EBF1;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 13px;
+  color: #374151;
+  background: white;
+  cursor: pointer;
+  &:focus { outline: none; border-color: #DC2626; }
+`;
+
+// Table
+const TableCard = styled.div`
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid #E6EBF1;
+  margin-bottom: 32px;
+  overflow-x: auto;
+`;
+
+const Table = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 700px;
+`;
+
+const Th = styled.th`
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid #F6F9FC;
+  font-size: 11px;
+  color: #6B7C93;
   font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid;
-
-  ${props => props.variant === 'edit' ? `
-    background: #EBF8FF;
-    border-color: #2563EB;
-    color: #2563EB;
-
-    &:hover {
-      background: #DBEAFE;
-    }
-  ` : `
-    background: #FEF2F2;
-    border-color: #DC2626;
-    color: #DC2626;
-
-    &:hover {
-      background: #FECACA;
-    }
-  `}
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 `;
 
-const PermissionsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-top: 16px;
+const Td = styled.td`
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid #F6F9FC;
+  font-size: 13px;
+  color: #0A2540;
 `;
 
-const PermissionItem = styled.label`
+const StatusBadge = styled.span<{ status: string }>`
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  ${props => {
+    switch (props.status) {
+      case 'paid': return 'background: #D1FAE5; color: #065F46;';
+      case 'pending_payment': return 'background: #FEF3C7; color: #92400E;';
+      case 'overdue': return 'background: #FEE2E2; color: #991B1B;';
+      case 'sent': return 'background: #DBEAFE; color: #1E40AF;';
+      default: return 'background: #F3F4F6; color: #374151;';
+    }
+  }}
+`;
+
+const LoadingContainer = styled.div`
   display: flex;
+  justify-content: center;
   align-items: center;
-  gap: 8px;
-  cursor: pointer;
+  min-height: 300px;
+  color: #6B7C93;
   font-size: 14px;
-
-  input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
-    accent-color: #DC2626;
-  }
 `;
+
+const PIE_COLORS = ['#DC2626', '#EF4444', '#F87171', '#FCA5A5', '#FECACA', '#FEE2E2', '#FFF5F5'];
+
+// ============================================================================
+// Component
+// ============================================================================
 
 const BrandGeneralDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
-  const [managers, setManagers] = useState<BrandManager[]>([]);
-  const [, setRevenueData] = useState<RevenueData[]>([]);
-  const [timePeriod, setTimePeriod] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
-  const [showManagerModal, setShowManagerModal] = useState(false);
+  const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
-  const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
+  const [currency, setCurrency] = useState('RM');
+  const [loading, setLoading] = useState(true);
+  const [brandId, setBrandId] = useState<number | null>(null);
+  const [chartPeriod, setChartPeriod] = useState('month');
 
-  useEffect(() => {
-    if (defaultCurrency) {
-      setSelectedCurrency(defaultCurrency);
-    }
-  }, [defaultCurrency]);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [selectedManager, setSelectedManager] = useState<BrandManager | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState<ManagerFormData>({
-    name: '',
-    email: '',
-    phone: '',
-    assignedBrand: '',
-    password: '',
-    permissions: []
-  });
-  const [metrics, setMetrics] = useState<BrandMetrics>({
-    totalBrands: 0,
-    totalStores: 0,
-    totalManagers: 0,
+  // Dashboard data
+  const [stats, setStats] = useState({
+    totalRestaurants: 0,
     monthlyRevenue: 0,
-    cumulativeRevenue: 0,
-    averageRevenuePerStore: 0,
-    marketShare: 0,
-    growthRate: 0,
-    customerSatisfaction: 0,
-    activePromotions: 0,
-    newFranchises: 0,
-    totalTransactions: 0
+    monthlyOrders: 0,
+    avgRevenuePerRestaurant: 0,
+    pendingInvoices: 0,
+    overdueInvoices: 0,
+    activePlans: 0,
+    totalManagers: 0,
   });
 
-  const availablePermissions = [
-    'Franchise Management',
-    'Brand Marketing',
-    'Sales Management',
-    'Customer Management',
-    'Promotion Management',
-    'Report Generation',
-    'New Franchise',
-    'Quality Management'
-  ];
+  const [restaurants, setRestaurants] = useState<any[]>([]);
+  const [trendData, setTrendData] = useState<any[]>([]);
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [alerts, setAlerts] = useState<Array<{ type: 'warning' | 'info' | 'success'; message: string }>>([]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        console.log('🔄 Starting brand data fetch...');
+    if (defaultCurrency) setCurrency(defaultCurrency);
+  }, [defaultCurrency]);
 
-        // Fetch brand managers
-        const token = localStorage.getItem('auth_token');
-        const usersResponse = await fetch('/api/users?role=Brand Manager', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        let brandManagers: BrandManager[] = [];
-
-        if (usersResponse.ok) {
-          const usersData = await usersResponse.json();
-          const managerUsers = Array.isArray(usersData) ? usersData : (Array.isArray(usersData.data) ? usersData.data : []);
-          console.log('👥 Fetched brand managers:', managerUsers?.length || 0);
-
-          // Transform to BrandManager format
-          brandManagers = managerUsers.map((manager: any) => ({
-            id: manager.id.toString(),
-            name: manager.name || `${manager.first_name} ${manager.last_name}`.trim(),
-            email: manager.email,
-            assignedBrand: `Brand ${manager.id}`,
-            storeCount: Math.floor(Math.random() * 15) + 3, // Mock data
-            monthlyRevenue: Math.floor(Math.random() * 80000) + 20000,
-            createdAt: manager.created_at || manager.createdAt,
-            lastActive: new Date().toISOString(),
-            performanceScore: Math.floor(Math.random() * 40) + 60,
-            riskLevel: Math.random() > 0.7 ? 'high' : Math.random() > 0.4 ? 'medium' : 'low'
-          }));
-        } else {
-          console.error('Failed to fetch brand managers:', usersResponse.status);
-        }
-
-        setManagers(brandManagers);
-
-        // Calculate metrics
-        const newMetrics = {
-          ...metrics,
-          totalManagers: brandManagers.length,
-          totalBrands: brandManagers.length, // 1:1 mapping for now
-          totalStores: brandManagers.reduce((sum: number, m: BrandManager) => sum + m.storeCount, 0),
-          monthlyRevenue: brandManagers.reduce((sum: number, m: BrandManager) => sum + m.monthlyRevenue, 0),
-          marketShare: Math.random() * 15 + 10, // Mock: 10-25%
-          growthRate: Math.random() * 25 + 8, // Mock: 8-33%
-          customerSatisfaction: Math.random() * 1.5 + 3.5, // Mock: 3.5-5.0
-          activePromotions: Math.floor(Math.random() * 12) + 3,
-          newFranchises: Math.floor(Math.random() * 8) + 2
-        };
-
-        newMetrics.averageRevenuePerStore = newMetrics.totalStores > 0
-          ? newMetrics.monthlyRevenue / newMetrics.totalStores
-          : 0;
-
-        setMetrics(newMetrics);
-
-        // Generate revenue data
-        const periods = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-        const revenueArray = periods.map(period => ({
-          period,
-          revenue: Math.floor(Math.random() * 150000) + 80000,
-          storeCount: Math.floor(Math.random() * 10) + 25
-        }));
-        setRevenueData(revenueArray);
-      } catch (error) {
-        console.error('Error fetching brand data:', error);
-      }
-    };
-
-    fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Fetch all dashboard data
+  useEffect(() => {
+    fetchDashboardData();
   }, []);
 
-  const handleAddManager = () => {
-    setIsEditing(false);
-    setSelectedManager(null);
-    setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      assignedBrand: '',
-      password: '',
-      permissions: []
-    });
-    setShowManagerModal(true);
-  };
+  // Fetch chart data when period changes
+  useEffect(() => {
+    if (brandId) fetchTrendData(brandId);
+  }, [chartPeriod, brandId]);
 
-  const handleEditManager = (manager: BrandManager) => {
-    setIsEditing(true);
-    setSelectedManager(manager);
-    setFormData({
-      name: manager.name,
-      email: manager.email,
-      phone: manager.phone || '',
-      assignedBrand: manager.assignedBrand,
-      password: '',
-      permissions: manager.permissions || []
-    });
-    setShowManagerModal(true);
-  };
+  const getHeaders = () => ({
+    'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+    'Content-Type': 'application/json'
+  });
 
-  const handleDeleteManager = (manager: BrandManager) => {
-    setSelectedManager(manager);
-    setShowDeleteModal(true);
-  };
-
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const fetchDashboardData = async () => {
     try {
-      const url = isEditing && selectedManager
-        ? `/api/users/${selectedManager.id}`
-        : '/api/users';
+      setLoading(true);
+      const headers = getHeaders();
 
-      const method = isEditing ? 'PUT' : 'POST';
+      // 1. Get brand ID
+      const brandsRes = await fetch('/api/brands', { headers });
+      const brandsData = await brandsRes.json();
+      const brands = brandsData.data || brandsData || [];
+      const brand = brands[0];
+      if (!brand) { setLoading(false); return; }
+      setBrandId(brand.id);
 
-      const payload = {
-        ...formData,
-        role: 'Brand Manager',
-        first_name: formData.name.split(' ')[0],
-        last_name: formData.name.split(' ').slice(1).join(' ') || '',
-        ...(formData.password && { password: formData.password })
-      };
+      // Determine currency from brand restaurants
+      if (brand.restaurants && brand.restaurants.length > 0 && brand.restaurants[0].currency) {
+        setCurrency(brand.restaurants[0].currency);
+      }
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
+      // 2. Fetch all data in parallel
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const today = now.toISOString().split('T')[0];
+
+      const [revenueRes, plansRes, invoicesRes, managersRes, subsRes] = await Promise.all([
+        fetch(`/api/brands/${brand.id}/revenue?start_date=${monthStart}&end_date=${today}`, { headers }),
+        fetch(`/api/brands/${brand.id}/plans`, { headers }),
+        fetch('/api/invoices', { headers }),
+        fetch('/api/users?role=Brand Manager', { headers }),
+        fetch(`/api/brands/${brand.id}/subscriptions`, { headers }),
+      ]);
+
+      const [revenueData, plansData, invoicesData, managersData, subsData] = await Promise.all([
+        revenueRes.json(),
+        plansRes.json(),
+        invoicesRes.json(),
+        managersRes.json(),
+        subsRes.json(),
+      ]);
+
+      // Process revenue
+      const revenue = revenueData.data || revenueData;
+      const totalRevenue = parseFloat(revenue.total_revenue || 0);
+      const restaurantRevenues = revenue.restaurants || [];
+      const totalOrders = restaurantRevenues.reduce((sum: number, r: any) => sum + (r.order_count || 0), 0);
+      setRestaurants(restaurantRevenues);
+
+      // Process plans
+      const plans = plansData.data || plansData || [];
+      const activePlans = plans.filter((p: any) => p.is_active !== false).length;
+
+      // Process invoices
+      const invoices = invoicesData.data || invoicesData || [];
+      const pendingInvoices = invoices.filter((inv: any) =>
+        inv.status === 'pending_payment' || inv.status === 'sent'
+      ).length;
+      const overdueInvoices = invoices.filter((inv: any) => inv.status === 'overdue').length;
+
+      // Process managers
+      const managers = Array.isArray(managersData) ? managersData : (managersData.data || []);
+
+      // Process subscriptions
+      const subs = subsData.data || subsData || [];
+      setSubscriptions(subs);
+
+      // Set stats
+      setStats({
+        totalRestaurants: restaurantRevenues.length,
+        monthlyRevenue: totalRevenue,
+        monthlyOrders: totalOrders,
+        avgRevenuePerRestaurant: restaurantRevenues.length > 0 ? totalRevenue / restaurantRevenues.length : 0,
+        pendingInvoices,
+        overdueInvoices,
+        activePlans,
+        totalManagers: managers.length,
       });
 
-      if (response.ok) {
-        setShowManagerModal(false);
-        // Refresh managers list
-        const token = localStorage.getItem('auth_token');
-        const usersResponse = await fetch('/api/users?role=Brand Manager', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        if (usersResponse.ok) {
-          const usersData = await usersResponse.json();
-          const managerUsers = Array.isArray(usersData) ? usersData : (Array.isArray(usersData.data) ? usersData.data : []);
-
-          const brandManagers = managerUsers.map((manager: any) => ({
-            id: manager.id.toString(),
-            name: manager.name || `${manager.first_name} ${manager.last_name}`.trim(),
-            email: manager.email,
-            phone: manager.phone || '',
-            assignedBrand: `Brand ${manager.id}`,
-            storeCount: Math.floor(Math.random() * 15) + 3,
-            monthlyRevenue: Math.floor(Math.random() * 80000) + 20000,
-            createdAt: manager.created_at || manager.createdAt,
-            lastActive: new Date().toISOString(),
-            performanceScore: Math.floor(Math.random() * 40) + 60,
-            riskLevel: Math.random() > 0.7 ? 'high' : Math.random() > 0.4 ? 'medium' : 'low',
-            permissions: manager.permissions || []
-          }));
-
-          setManagers(brandManagers);
-        } else {
-          console.error('Failed to refresh managers list:', usersResponse.status);
-        }
-      } else {
-        console.error('Failed to save manager');
+      // Generate alerts
+      const alertList: Array<{ type: 'warning' | 'info' | 'success'; message: string }> = [];
+      if (overdueInvoices > 0) {
+        alertList.push({ type: 'warning', message: `${overdueInvoices} overdue invoice${overdueInvoices > 1 ? 's' : ''} need attention` });
       }
+      if (pendingInvoices > 0) {
+        alertList.push({ type: 'info', message: `${pendingInvoices} invoice${pendingInvoices > 1 ? 's' : ''} pending payment` });
+      }
+      const noOrderRestaurants = restaurantRevenues.filter((r: any) => (r.order_count || 0) === 0);
+      if (noOrderRestaurants.length > 0) {
+        alertList.push({ type: 'info', message: `${noOrderRestaurants.length} restaurant${noOrderRestaurants.length > 1 ? 's' : ''} with no orders this month` });
+      }
+      if (alertList.length === 0) {
+        alertList.push({ type: 'success', message: 'All systems running smoothly. No issues detected.' });
+      }
+      setAlerts(alertList);
+
+      // Fetch trend data
+      fetchTrendData(brand.id);
+
     } catch (error) {
-      console.error('Error saving manager:', error);
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const confirmDeleteManager = async () => {
-    if (!selectedManager) return;
-
+  const fetchTrendData = async (bId: number) => {
     try {
-      const response = await fetch(`/api/users/${selectedManager.id}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        setManagers(managers.filter(m => m.id !== selectedManager.id));
-        setShowDeleteModal(false);
-        setSelectedManager(null);
-      } else {
-        console.error('Failed to delete manager');
-      }
+      const headers = getHeaders();
+      const res = await fetch(`/api/brands/${bId}/sales-trend?period=${chartPeriod}`, { headers });
+      const data = await res.json();
+      setTrendData(data.data || []);
     } catch (error) {
-      console.error('Error deleting manager:', error);
+      console.error('Error fetching trend data:', error);
     }
   };
 
-  const handlePermissionChange = (permission: string, checked: boolean) => {
-    if (checked) {
-      setFormData(prev => ({
-        ...prev,
-        permissions: [...prev.permissions, permission]
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        permissions: prev.permissions.filter(p => p !== permission)
-      }));
-    }
-  };
+  // Pie chart data
+  const pieData = restaurants
+    .filter((r: any) => parseFloat(r.revenue || 0) > 0)
+    .map((r: any) => ({
+      name: r.restaurant_name || r.name || 'Unknown',
+      value: parseFloat(r.revenue || 0)
+    }))
+    .sort((a: any, b: any) => b.value - a.value)
+    .slice(0, 7);
+
+  // Top 5 subscriptions for table
+  const topSubscriptions = [...subscriptions]
+    .sort((a: any, b: any) => (b.current_month?.revenue || 0) - (a.current_month?.revenue || 0))
+    .slice(0, 5);
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <Container>
+          <Header>
+            <HeaderTitle>Brand Dashboard</HeaderTitle>
+          </Header>
+          <LoadingContainer>Loading dashboard data...</LoadingContainer>
+        </Container>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
       <Container>
         <Header>
-          <Title>Brand General Dashboard</Title>
+          <HeaderTitle>Brand Dashboard</HeaderTitle>
         </Header>
 
         <Content>
-          <TabContainer>
-            <Tab
-              active={activeTab === 'overview'}
-              onClick={() => setActiveTab('overview')}
-            >
-              Overview
-            </Tab>
-            <Tab
-              active={activeTab === 'managers'}
-              onClick={() => setActiveTab('managers')}
-            >
-              Brand Managers ({metrics.totalManagers})
-            </Tab>
-          </TabContainer>
+          {/* KPI Cards */}
+          <StatsGrid>
+            <StatCard color="#DC2626">
+              <StatValue>{stats.totalRestaurants}</StatValue>
+              <StatLabel>Franchise Restaurants</StatLabel>
+            </StatCard>
+            <StatCard color="#059669">
+              <StatValue>{formatCurrency(stats.monthlyRevenue, currency)}</StatValue>
+              <StatLabel>Monthly Revenue</StatLabel>
+            </StatCard>
+            <StatCard color="#2563EB">
+              <StatValue>{stats.monthlyOrders.toLocaleString()}</StatValue>
+              <StatLabel>Monthly Orders</StatLabel>
+            </StatCard>
+            <StatCard color="#7C3AED">
+              <StatValue>{formatCurrency(stats.avgRevenuePerRestaurant, currency)}</StatValue>
+              <StatLabel>Avg Revenue / Restaurant</StatLabel>
+            </StatCard>
+            <StatCard color="#F59E0B">
+              <StatValue>{stats.pendingInvoices}</StatValue>
+              <StatLabel>Pending Invoices</StatLabel>
+            </StatCard>
+            <StatCard color={stats.overdueInvoices > 0 ? '#EF4444' : '#059669'}>
+              <StatValue>{stats.overdueInvoices}</StatValue>
+              <StatLabel>Overdue Invoices</StatLabel>
+            </StatCard>
+            <StatCard color="#10B981">
+              <StatValue>{stats.activePlans}</StatValue>
+              <StatLabel>Active Plans</StatLabel>
+            </StatCard>
+            <StatCard color="#6366F1">
+              <StatValue>{stats.totalManagers}</StatValue>
+              <StatLabel>Brand Managers</StatLabel>
+            </StatCard>
+          </StatsGrid>
 
-          {activeTab === 'overview' && (
-            <>
-              <DashboardStatsGrid>
-                <DashboardStatCard>
-                  <DashboardStatValue>{metrics.totalBrands}</DashboardStatValue>
-                  <DashboardStatLabel>Managed Brands</DashboardStatLabel>
-                </DashboardStatCard>
-                <DashboardStatCard>
-                  <DashboardStatValue>{metrics.totalStores}</DashboardStatValue>
-                  <DashboardStatLabel>Total Franchises</DashboardStatLabel>
-                </DashboardStatCard>
-                <DashboardStatCard>
-                  <DashboardStatValue>{formatCurrency(metrics.monthlyRevenue, selectedCurrency)}</DashboardStatValue>
-                  <DashboardStatLabel>Monthly Revenue</DashboardStatLabel>
-                </DashboardStatCard>
-                <DashboardStatCard>
-                  <DashboardStatValue>{metrics.marketShare.toFixed(1)}%</DashboardStatValue>
-                  <DashboardStatLabel>Market Share</DashboardStatLabel>
-                </DashboardStatCard>
-              </DashboardStatsGrid>
+          {/* System Alerts */}
+          <QuickAccess>
+            <SectionTitle>System Alerts</SectionTitle>
+            {alerts.map((alert, idx) => (
+              <AlertBox key={idx} type={alert.type}>
+                <AlertIcon>
+                  {alert.type === 'warning' ? '⚠️' : alert.type === 'success' ? '✓' : 'ℹ'}
+                </AlertIcon>
+                {alert.message}
+              </AlertBox>
+            ))}
+          </QuickAccess>
 
-              <MainGrid>
-                <ChartContainer>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <h3>Monthly Brand Revenue Trend</h3>
-                    <TimeFilter value={timePeriod} onChange={(e) => setTimePeriod(e.target.value as any)}>
-                      <option value="week">This Week</option>
-                      <option value="month">This Month</option>
-                      <option value="quarter">Quarter</option>
-                      <option value="year">This Year</option>
-                    </TimeFilter>
-                  </div>
-                  <PlaceholderChart>
-                    Monthly Brand Revenue Chart (Coming Soon)
-                  </PlaceholderChart>
-                </ChartContainer>
+          {/* Quick Access */}
+          <QuickAccess>
+            <SectionTitle>Quick Access</SectionTitle>
+            <QuickButtons>
+              <QuickBtnDiv onClick={() => navigate('/pos/brand-general/restaurants')}>
+                <QuickBtnIcon>◫</QuickBtnIcon>
+                <QuickBtnTitle>Manage Restaurants</QuickBtnTitle>
+                <QuickBtnDesc>Franchise management</QuickBtnDesc>
+              </QuickBtnDiv>
+              <QuickBtnDiv onClick={() => navigate('/pos/brand-general/invoices')}>
+                <QuickBtnIcon>◧</QuickBtnIcon>
+                <QuickBtnTitle>Invoices</QuickBtnTitle>
+                <QuickBtnDesc>Invoice management</QuickBtnDesc>
+              </QuickBtnDiv>
+              <QuickBtnDiv onClick={() => navigate('/pos/brand-general/plans')}>
+                <QuickBtnIcon>◨</QuickBtnIcon>
+                <QuickBtnTitle>Subscription Plans</QuickBtnTitle>
+                <QuickBtnDesc>Plan configuration</QuickBtnDesc>
+              </QuickBtnDiv>
+              <QuickBtnDiv onClick={() => navigate('/pos/brand-general/reports')}>
+                <QuickBtnIcon>◩</QuickBtnIcon>
+                <QuickBtnTitle>Reports</QuickBtnTitle>
+                <QuickBtnDesc>Performance analytics</QuickBtnDesc>
+              </QuickBtnDiv>
+            </QuickButtons>
+          </QuickAccess>
 
-                <QuickStatsContainer>
-                  <h3>Brand Status</h3>
-                  <QuickStatItem>
-                    <QuickStatLabel>Customer Satisfaction</QuickStatLabel>
-                    <QuickStatValue>{metrics.customerSatisfaction.toFixed(1)}/5.0</QuickStatValue>
-                  </QuickStatItem>
-                  <QuickStatItem>
-                    <QuickStatLabel>Active Promotions</QuickStatLabel>
-                    <QuickStatValue>{metrics.activePromotions}</QuickStatValue>
-                  </QuickStatItem>
-                  <QuickStatItem>
-                    <QuickStatLabel>New Franchises</QuickStatLabel>
-                    <QuickStatValue>{metrics.newFranchises}</QuickStatValue>
-                  </QuickStatItem>
-                  <QuickStatItem>
-                    <QuickStatLabel>Average Revenue per Store</QuickStatLabel>
-                    <QuickStatValue>{formatCurrency(metrics.averageRevenuePerStore, selectedCurrency)}</QuickStatValue>
-                  </QuickStatItem>
-                  <QuickStatItem>
-                    <QuickStatLabel>Growth Rate (vs Last Month)</QuickStatLabel>
-                    <QuickStatValue>+{metrics.growthRate.toFixed(1)}%</QuickStatValue>
-                  </QuickStatItem>
-                </QuickStatsContainer>
-              </MainGrid>
-            </>
-          )}
-
-          {activeTab === 'managers' && (
-            <ManagersList>
-              <ManagersHeader>
-                <h3>Brand Manager Team</h3>
-                <AddButton onClick={handleAddManager}>
-                  Add Manager
-                </AddButton>
-              </ManagersHeader>
-              {managers.length === 0 ? (
-                <PlaceholderChart>
-                  👥 Loading brand manager data...
-                </PlaceholderChart>
+          {/* Charts */}
+          <ChartGrid>
+            {/* Revenue Trend Line Chart */}
+            <ChartCard>
+              <ChartHeader>
+                <ChartTitle>Revenue Trend</ChartTitle>
+                <PeriodSelect value={chartPeriod} onChange={e => setChartPeriod(e.target.value)}>
+                  <option value="week">This Week</option>
+                  <option value="month">This Month</option>
+                  <option value="year">This Year</option>
+                </PeriodSelect>
+              </ChartHeader>
+              {trendData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={trendData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+                    <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#6B7C93' }} />
+                    <YAxis tick={{ fontSize: 12, fill: '#6B7C93' }} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
+                    <Tooltip
+                      formatter={(value: any) => [formatCurrency(value, currency), 'Revenue']}
+                      labelStyle={{ color: '#0A2540', fontWeight: 600 }}
+                      contentStyle={{ borderRadius: 8, border: '1px solid #E6EBF1' }}
+                    />
+                    <Line type="monotone" dataKey="sales" stroke="#DC2626" strokeWidth={2} dot={{ r: 4, fill: '#DC2626' }} activeDot={{ r: 6 }} />
+                  </LineChart>
+                </ResponsiveContainer>
               ) : (
-                managers.map((manager) => (
-                  <ManagerItem key={manager.id}>
-                    <div onClick={() => navigate(`/manager/profile/${manager.id}`)}>
-                      <ManagerHeader>
-                        <ManagerName>{manager.name}</ManagerName>
-                        <ManagerScore score={manager.performanceScore}>
-                          {manager.performanceScore} pts
-                        </ManagerScore>
-                      </ManagerHeader>
-                      <ManagerInfo>
-                        <span>{manager.assignedBrand} • {manager.storeCount} stores</span>
-                        <span>{formatCurrency(manager.monthlyRevenue, selectedCurrency)}/month</span>
-                      </ManagerInfo>
-                      <ManagerInfo style={{ marginTop: '4px' }}>
-                        <span>{manager.email}</span>
-                        <span>Permissions: {manager.permissions?.length || 0}</span>
-                      </ManagerInfo>
-                    </div>
-                    <ActionButtons>
-                      <ActionButton variant="edit" onClick={() => handleEditManager(manager)}>
-                        Edit
-                      </ActionButton>
-                      <ActionButton variant="delete" onClick={() => handleDeleteManager(manager)}>
-                        Delete
-                      </ActionButton>
-                    </ActionButtons>
-                  </ManagerItem>
-                ))
+                <LoadingContainer>No sales data for this period</LoadingContainer>
               )}
-            </ManagersList>
-          )}
+            </ChartCard>
 
-          {/* Manager Form Modal */}
-          <ModalComponent
-            isOpen={showManagerModal}
-            onClose={() => setShowManagerModal(false)}
-            title={isEditing ? 'Edit Manager Information' : 'Add New Manager'}
-          >
-            <form onSubmit={handleFormSubmit}>
-              <FormGroup>
-                <FormLabel>Name</FormLabel>
-                <FormInput
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  required
-                />
-              </FormGroup>
-
-              <FormGroup>
-                <FormLabel>Email</FormLabel>
-                <FormInput
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  required
-                />
-              </FormGroup>
-
-              <FormGroup>
-                <FormLabel>Phone Number</FormLabel>
-                <PhoneInput
-                  value={formData.phone}
-                  onChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
-                />
-              </FormGroup>
-
-              <FormGroup>
-                <FormLabel>Assigned Brand</FormLabel>
-                <FormInput
-                  type="text"
-                  value={formData.assignedBrand}
-                  onChange={(e) => setFormData(prev => ({ ...prev, assignedBrand: e.target.value }))}
-                  required
-                />
-              </FormGroup>
-
-              <FormGroup>
-                <FormLabel>{isEditing ? 'New Password (only when changing)' : 'Password'}</FormLabel>
-                <FormInput
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                  required={!isEditing}
-                />
-              </FormGroup>
-
-              <FormGroup>
-                <FormLabel>Permission Settings</FormLabel>
-                <PermissionsGrid>
-                  {availablePermissions.map(permission => (
-                    <PermissionItem key={permission}>
-                      <input
-                        type="checkbox"
-                        checked={formData.permissions.includes(permission)}
-                        onChange={(e) => handlePermissionChange(permission, e.target.checked)}
-                      />
-                      {permission}
-                    </PermissionItem>
-                  ))}
-                </PermissionsGrid>
-              </FormGroup>
-
-              <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-                <Button type="button" variant="secondary" onClick={() => setShowManagerModal(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">
-                  {isEditing ? 'Update' : 'Add'}
-                </Button>
+            {/* Revenue Distribution Pie Chart */}
+            <ChartCard>
+              <ChartHeader>
+                <ChartTitle>Revenue Distribution</ChartTitle>
+              </ChartHeader>
+              {pieData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {pieData.map((_: any, index: number) => (
+                        <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: any) => formatCurrency(value, currency)} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <LoadingContainer>No revenue data available</LoadingContainer>
+              )}
+              {/* Legend */}
+              <div style={{ marginTop: 8 }}>
+                {pieData.map((item: any, idx: number) => (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, fontSize: 12, color: '#374151' }}>
+                    <div style={{ width: 10, height: 10, borderRadius: 2, background: PIE_COLORS[idx % PIE_COLORS.length], flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
+                  </div>
+                ))}
               </div>
-            </form>
-          </ModalComponent>
+            </ChartCard>
+          </ChartGrid>
 
-          {/* Delete Confirmation Modal */}
-          <ConfirmModal
-            isOpen={showDeleteModal}
-            title="Delete Manager"
-            message={`Are you sure you want to delete manager '${selectedManager?.name}'? This action cannot be undone.`}
-            onConfirm={confirmDeleteManager}
-            onCancel={() => { setShowDeleteModal(false); setSelectedManager(null); }}
-            confirmText="Delete"
-            cancelText="Cancel"
-            type="danger"
-          />
+          {/* Restaurant Performance Table */}
+          <TableCard>
+            <ChartHeader>
+              <SectionTitle style={{ margin: 0 }}>Restaurant Performance</SectionTitle>
+              <span style={{ fontSize: 12, color: '#6B7C93', cursor: 'pointer' }} onClick={() => navigate('/pos/brand-general/restaurants')}>
+                View All →
+              </span>
+            </ChartHeader>
+            <Table>
+              <thead>
+                <tr>
+                  <Th>Restaurant</Th>
+                  <Th>Plan</Th>
+                  <Th>Monthly Revenue</Th>
+                  <Th>Orders</Th>
+                  <Th>Estimated Charges</Th>
+                  <Th>Invoice Status</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {topSubscriptions.length > 0 ? (
+                  topSubscriptions.map((sub: any, idx: number) => (
+                    <tr key={idx}>
+                      <Td style={{ fontWeight: 600 }}>{sub.restaurant_name || '-'}</Td>
+                      <Td>{sub.plan?.name || 'No Plan'}</Td>
+                      <Td>{formatCurrency(sub.current_month?.revenue || 0, currency)}</Td>
+                      <Td>{sub.current_month?.order_count || 0}</Td>
+                      <Td>{formatCurrency(sub.current_month?.estimated_charges || 0, currency)}</Td>
+                      <Td>
+                        <StatusBadge status={sub.latest_invoice?.status || 'none'}>
+                          {(sub.latest_invoice?.status || 'N/A').replace(/_/g, ' ')}
+                        </StatusBadge>
+                      </Td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <Td colSpan={6} style={{ textAlign: 'center', color: '#6B7280' }}>
+                      No restaurant data available
+                    </Td>
+                  </tr>
+                )}
+              </tbody>
+            </Table>
+          </TableCard>
         </Content>
       </Container>
     </MainLayout>

@@ -12,6 +12,7 @@ const PlanPrice = require('../models/PlanPrice');
 const PlanTemplate = require('../models/PlanTemplate');
 const Brand = require('../models/Brand');
 const Foodcourt = require('../models/Foodcourt');
+const RestaurantManager = require('../models/RestaurantManager');
 const { Op } = require('sequelize');
 const invoiceScheduler = require('../services/invoiceScheduler');
 const subscriptionScheduler = require('../services/subscriptionScheduler');
@@ -512,11 +513,11 @@ router.get('/', authenticateToken, async (req, res) => {
         total: parseFloat(invoice.total_amount),
         items: (invoice.items && invoice.items.length > 0) ? invoice.items.map(item => {
           // Build description: category name + user description
-          const categoryName = getCategoryDisplayName(item.item_type || invoice.invoice_category, invoice.custom_description, invoice.restaurant?.plan_type, invoice.restaurant?.billing_cycle);
+          const categoryName = invoice.category_display_name || getCategoryDisplayName(item.item_type || invoice.invoice_category, invoice.custom_description, invoice.restaurant?.plan_type, invoice.restaurant?.billing_cycle);
           const userDescription = item.description?.trim();
           let fullDescription;
 
-          // For subscription, just use the plan name
+          // For subscription, just use the stored display name or plan name
           if ((item.item_type || invoice.invoice_category) === 'subscription') {
             fullDescription = categoryName;
           } else {
@@ -545,7 +546,7 @@ router.get('/', authenticateToken, async (req, res) => {
         invoiceCategory: invoice.items?.[0]?.item_type || invoice.invoice_category || 'subscription',
         customDescription: invoice.custom_description,
         serviceDescription: invoice.service_description,
-        categoryDisplayName: getCategoryDisplayName(
+        categoryDisplayName: invoice.category_display_name || getCategoryDisplayName(
           invoice.items?.[0]?.item_type || invoice.invoice_category,
           invoice.custom_description || invoice.items?.[0]?.description || invoice.notes?.split('\n').pop(),
           invoice.restaurant?.plan_type,
@@ -1224,14 +1225,18 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
         payerType: invoice.payer_type,
         payerId: invoice.payer_id,
         payerInfo: payerInfo,
+        paymentMethod: invoice.payment_method,
+        transactionId: invoice.transaction_id,
+        receiptUrl: invoice.receipt_url,
+        paymentNotes: invoice.payment_notes,
         paymentSubmittedAt: invoice.payment_submitted_at,
         rejectionReason: invoice.rejection_reason,
+        hasPaymentInfo: !!invoice.payment_method || !!invoice.receipt_url || !!invoice.payment_submitted_at,
         billingPeriod: billingPeriod,
         planType: invoice.plan_type || '',
         type: invoice.type || 'manual',
         categoryDisplayName: categoryDisplayName,
         invoiceCategory: invoice.invoice_category || 'service',
-        hasPaymentInfo: !!invoice.payment_submitted_at,
         items: invoice.items?.map(item => {
           // Use description, or fallback to item_type formatted, or category
           let desc = item.description;
@@ -1365,12 +1370,44 @@ router.post('/', authenticateToken, async (req, res) => {
       invoice_data.total_amount = items.reduce((sum, item) => sum + (parseFloat(item.total_amount) || 0), 0);
     }
 
+    // Auto-fill issued_by from authenticated user if not provided
+    if (!invoice_data.issued_by) {
+      invoice_data.issued_by = req.user.id;
+    }
+    if (!invoice_data.issued_at) {
+      invoice_data.issued_at = new Date();
+    }
+
+    // Validate: issuer has payment methods for invoice currency
+    const { hasPaymentMethodForCurrency } = require('../utils/paymentSettingsHelper');
+    const issuerType = invoice_data.issuer_type || 'system_admin';
+    const issuerId = invoice_data.issuer_id || null;
+    const invoiceCurrency = invoice_data.currency || 'MYR';
+
+    let issuerPaymentSettings = null;
+    if (issuerType === 'system_admin') {
+      const sysSettings = await SystemSettings.findOne({ where: { setting_key: 'payment_settings' } });
+      issuerPaymentSettings = sysSettings?.setting_value || {};
+    } else if (issuerType === 'brand' && issuerId) {
+      const brand = await Brand.findByPk(issuerId);
+      issuerPaymentSettings = brand?.payment_settings || {};
+    } else if (issuerType === 'foodcourt' && issuerId) {
+      const foodcourt = await Foodcourt.findByPk(issuerId);
+      issuerPaymentSettings = foodcourt?.payment_settings || {};
+    }
+
+    if (!hasPaymentMethodForCurrency(issuerPaymentSettings, invoiceCurrency)) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        error: `No payment methods configured for currency ${invoiceCurrency}. Please configure payment settings first.`
+      });
+    }
+
     // Debug logging
     console.log('Invoice data before creation:', JSON.stringify(invoice_data, null, 2));
 
     // Generate invoice number using standardized format
-    const issuerType = invoice_data.issuer_type || 'system_admin';
-    const issuerId = invoice_data.issuer_id || null;
     invoice_data.invoice_number = await generateInvoiceNumber(issuerType, issuerId, transaction);
     console.log('Generated invoice number:', invoice_data.invoice_number);
 
@@ -1770,6 +1807,15 @@ router.post('/generate-for-subscriptions', authenticateToken, async (req, res) =
         let currency = restaurant.currency || 'MYR';
         if (currency === 'RM') currency = 'MYR';
 
+        // Validate: System Admin has payment methods for this currency
+        const { hasPaymentMethodForCurrency: hasMethod } = require('../utils/paymentSettingsHelper');
+        const sysPaySettings = await SystemSettings.findOne({ where: { setting_key: 'payment_settings' } });
+        if (!hasMethod(sysPaySettings?.setting_value || {}, currency)) {
+          console.log(`⚠️ Skipping ${restaurant.name}: No payment methods for ${currency}`);
+          errors.push({ restaurant: restaurant.name, error: `No payment methods configured for ${currency}` });
+          continue;
+        }
+
         // Get plan price from plan_prices table based on restaurant's currency
         let planAmount = parseFloat(restaurant.plan_amount || 29);
         // billingCycle already defined above for anniversary billing calculation
@@ -1828,8 +1874,10 @@ router.post('/generate-for-subscriptions', authenticateToken, async (req, res) =
           }
         }
 
-        // Create invoice with currency
-        const categoryDisplayName = `Subscription - ${restaurant.plan_type}`;
+        // Create invoice with currency - include site name for clarity
+        const companyInfo = await CompanySettings.findOne({ where: { id: 1 }, attributes: ['site_name'] });
+        const siteName = companyInfo?.site_name || 'POS';
+        const categoryDisplayName = `${siteName} - ${restaurant.plan_type} (${cycleText})`;
         const invoice = await Invoice.create({
           restaurant_id: restaurant.id,
           invoice_number: invoiceNumber,
@@ -2124,15 +2172,16 @@ router.put('/:invoiceId', authenticateToken, async (req, res) => {
 router.post('/:id/submit-payment', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const {
-      payment_method,
-      payment_provider,
-      payment_intent_id,
-      receipt_url,
-      notes
-    } = req.body;
+    // Support both camelCase (frontend) and snake_case field names
+    const payment_method = req.body.payment_method || req.body.paymentMethod;
+    const payment_provider = req.body.payment_provider || req.body.paymentProvider;
+    const payment_intent_id = req.body.payment_intent_id || req.body.paymentIntentId;
+    const receipt_url = req.body.receipt_url || req.body.receiptUrl;
+    const transaction_id = req.body.transaction_id || req.body.transactionId;
+    const notes = req.body.notes || req.body.payment_notes;
 
     console.log(`💸 POST /api/invoices/${id}/submit-payment - User: ${req.user.email}`);
+    console.log(`  payment_method: ${payment_method}, transaction_id: ${transaction_id}, receipt_url length: ${receipt_url ? receipt_url.length : 'NULL'}`);
 
     const invoice = await Invoice.findByPk(id, {
       include: [{
@@ -2162,6 +2211,7 @@ router.post('/:id/submit-payment', authenticateToken, async (req, res) => {
     await invoice.update({
       status: 'payment_submitted',
       payment_method: payment_method || 'bank_transfer',
+      transaction_id: transaction_id || null,
       payment_provider: payment_provider || null,
       payment_intent_id: payment_intent_id || null,
       receipt_url: receipt_url || null,
@@ -2367,6 +2417,16 @@ async function checkPaymentPermission(user, invoice) {
   if (user.role === 'Restaurant Admin') {
     const userRestaurantId = user.restaurantId || user.restaurant_id;
     return userRestaurantId && invoice.restaurant_id === userRestaurantId;
+  }
+
+  // Restaurant Owner can pay invoices for any of their owned restaurants
+  if (user.role === 'Restaurant Owner') {
+    const ownerships = await RestaurantManager.findAll({
+      where: { manager_id: user.id, relationship_type: 'ownership' },
+      attributes: ['restaurant_id']
+    });
+    const ownedIds = ownerships.map(o => o.restaurant_id);
+    return ownedIds.includes(invoice.restaurant_id);
   }
 
   // Brand General/Manager can pay invoices where they are the payer
@@ -2671,3 +2731,5 @@ router.post('/trigger-daily-generation', authenticateToken, async (req, res) => 
 });
 
 module.exports = router;
+module.exports.getIssuerCompanyInfo = getIssuerCompanyInfo;
+module.exports.getPayerCompanyInfo = getPayerCompanyInfo;

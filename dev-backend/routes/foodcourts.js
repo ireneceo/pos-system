@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Foodcourt, Restaurant, User, EntityPlan, EntityPlanRestaurant, Order, Invoice, InvoiceItem } = require('../models');
+const { Foodcourt, Restaurant, User, EntityPlan, EntityPlanRestaurant, EntityPlanPrice, Order, Invoice, InvoiceItem } = require('../models');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
@@ -432,8 +432,15 @@ router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
       foodcourt.invoice_settings = validInvoiceSettings;
     }
 
-    // Update supported currencies if provided
+    // Update supported currencies if provided (validate against system currencies)
     if (supported_currencies && Array.isArray(supported_currencies)) {
+      const SystemSettings = require('../models/SystemSettings');
+      const sysCurrSetting = await SystemSettings.findOne({ where: { setting_key: 'supported_currencies' } });
+      const systemCurrencies = sysCurrSetting?.setting_value || ['USD', 'MYR', 'KRW'];
+      const invalid = supported_currencies.filter(c => !systemCurrencies.includes(c));
+      if (invalid.length > 0) {
+        return res.status(400).json({ error: `Currencies not supported by system: ${invalid.join(', ')}` });
+      }
       foodcourt.supported_currencies = supported_currencies;
     }
 
@@ -452,6 +459,25 @@ router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error updating foodcourt payment settings:', error);
     res.status(500).json({ error: 'Failed to update payment settings' });
+  }
+});
+
+// Get available payment methods for a foodcourt (used by invoice payers)
+router.get('/:id/payment-settings/available/:currency', authenticateToken, async (req, res) => {
+  try {
+    const { id, currency } = req.params;
+    const { getAvailablePaymentMethods } = require('../utils/paymentSettingsHelper');
+
+    const foodcourt = await Foodcourt.findByPk(id);
+    if (!foodcourt) {
+      return res.status(404).json({ error: 'Foodcourt not found' });
+    }
+
+    const result = getAvailablePaymentMethods(foodcourt.payment_settings || {}, currency);
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching foodcourt available payment methods:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch payment methods' });
   }
 });
 
@@ -548,89 +574,55 @@ async function verifyFoodcourtAccess(req, foodcourtId) {
 }
 
 /**
- * Calculate charges based on entity plan and revenue (shared with brands)
+ * Calculate charges for a single plan (1 plan = 1 charge item)
  */
-function calculatePlanCharges(plan, revenue) {
+function calculatePlanCharges(plan, revenue, taxRate = 0, currency = null) {
   const items = [];
   let subtotal = 0;
-  const taxRate = parseFloat(plan.tax_rate || 0) / 100;
+  const taxRateDecimal = parseFloat(taxRate) / 100;
+  const planCurrency = currency || plan.currency || 'MYR';
 
-  if (parseFloat(plan.subscription_fee) > 0) {
-    const fee = parseFloat(plan.subscription_fee);
-    const tax = fee * taxRate;
-    items.push({
-      item_type: 'subscription_fee',
-      description: `${plan.name} - Management Fee`,
-      calculation_method: 'fixed',
-      fixed_amount: fee,
-      calculated_amount: fee,
-      tax_rate: parseFloat(plan.tax_rate || 0),
-      tax_amount: Math.round(tax * 100) / 100,
-      total_amount: Math.round((fee + tax) * 100) / 100
-    });
-    subtotal += fee;
-  }
-
-  if (parseFloat(plan.revenue_percentage) > 0) {
-    const rate = parseFloat(plan.revenue_percentage);
-    const amount = Math.round(revenue * rate / 100 * 100) / 100;
-    const tax = amount * taxRate;
-    items.push({
-      item_type: 'revenue_percentage',
-      description: `${plan.name} - Revenue Share (${rate}% of ${plan.currency} ${revenue.toLocaleString()})`,
-      calculation_method: 'percentage',
-      percentage_rate: rate,
-      base_amount: revenue,
-      calculated_amount: amount,
-      tax_rate: parseFloat(plan.tax_rate || 0),
-      tax_amount: Math.round(tax * 100) / 100,
-      total_amount: Math.round((amount + tax) * 100) / 100
-    });
-    subtotal += amount;
-  }
-
-  if (plan.rent_type !== 'none') {
-    let rentAmount = 0;
-    let description = '';
-    let calcMethod = 'fixed';
-
-    if (plan.rent_type === 'fixed') {
-      rentAmount = parseFloat(plan.rent_fixed || 0);
-      description = `${plan.name} - Rent (Fixed)`;
-    } else if (plan.rent_type === 'percentage') {
-      const rate = parseFloat(plan.rent_percentage || 0);
-      rentAmount = Math.round(revenue * rate / 100 * 100) / 100;
-      description = `${plan.name} - Rent (${rate}% of ${plan.currency} ${revenue.toLocaleString()})`;
-      calcMethod = 'percentage';
-    } else if (plan.rent_type === 'combined') {
-      const fixedMin = parseFloat(plan.rent_fixed || 0);
-      const rate = parseFloat(plan.rent_percentage || 0);
-      const percentageAmount = Math.round(revenue * rate / 100 * 100) / 100;
-      rentAmount = Math.max(fixedMin, percentageAmount);
-      description = `${plan.name} - Rent (MAX: Fixed ${plan.currency} ${fixedMin.toLocaleString()} vs ${rate}% of ${plan.currency} ${revenue.toLocaleString()})`;
-      calcMethod = 'combined';
-    }
-
-    if (rentAmount > 0) {
-      const tax = rentAmount * taxRate;
+  if (plan.charge_type === 'fixed') {
+    const priceRecord = (plan.prices || []).find(p => p.currency === planCurrency);
+    const amount = parseFloat(priceRecord?.monthly_price || 0);
+    if (amount > 0) {
+      const tax = Math.round(amount * taxRateDecimal * 100) / 100;
       items.push({
-        item_type: 'rent',
-        description,
-        calculation_method: calcMethod,
-        fixed_amount: plan.rent_type === 'fixed' || plan.rent_type === 'combined' ? parseFloat(plan.rent_fixed || 0) : null,
-        percentage_rate: plan.rent_type === 'percentage' || plan.rent_type === 'combined' ? parseFloat(plan.rent_percentage || 0) : null,
-        base_amount: revenue,
-        minimum_amount: plan.rent_type === 'combined' ? parseFloat(plan.rent_fixed || 0) : null,
-        calculated_amount: rentAmount,
-        tax_rate: parseFloat(plan.tax_rate || 0),
-        tax_amount: Math.round(tax * 100) / 100,
-        total_amount: Math.round((rentAmount + tax) * 100) / 100
+        item_type: 'fixed_charge',
+        description: plan.name,
+        calculation_method: 'fixed',
+        fixed_amount: amount,
+        percentage_rate: null,
+        base_amount: null,
+        calculated_amount: amount,
+        tax_rate: parseFloat(taxRate),
+        tax_amount: tax,
+        total_amount: Math.round((amount + tax) * 100) / 100
       });
-      subtotal += rentAmount;
+      subtotal += amount;
+    }
+  } else if (plan.charge_type === 'percentage') {
+    const rate = parseFloat(plan.percentage_value || 0);
+    const amount = Math.round(revenue * rate / 100 * 100) / 100;
+    if (amount > 0) {
+      const tax = Math.round(amount * taxRateDecimal * 100) / 100;
+      items.push({
+        item_type: 'percentage_charge',
+        description: `${plan.name} (${rate}% of ${planCurrency} ${revenue.toLocaleString()})`,
+        calculation_method: 'percentage',
+        fixed_amount: null,
+        percentage_rate: rate,
+        base_amount: revenue,
+        calculated_amount: amount,
+        tax_rate: parseFloat(taxRate),
+        tax_amount: tax,
+        total_amount: Math.round((amount + tax) * 100) / 100
+      });
+      subtotal += amount;
     }
   }
 
-  const taxAmount = Math.round(subtotal * taxRate * 100) / 100;
+  const taxAmount = Math.round(subtotal * taxRateDecimal * 100) / 100;
   const totalAmount = Math.round((subtotal + taxAmount) * 100) / 100;
   return { items, subtotal, taxAmount, totalAmount };
 }
@@ -646,7 +638,10 @@ router.get('/:id/plans', authenticateToken, async (req, res) => {
 
     const plans = await EntityPlan.findAll({
       where: { entity_type: 'foodcourt', entity_id: id },
-      include: [{ model: EntityPlanRestaurant, as: 'planRestaurants', required: false }],
+      include: [
+        { model: EntityPlanRestaurant, as: 'planRestaurants', required: false },
+        { model: EntityPlanPrice, as: 'prices' }
+      ],
       order: [['createdAt', 'DESC']]
     });
 
@@ -669,6 +664,8 @@ router.get('/:id/plans/:planId', authenticateToken, async (req, res) => {
       include: [{
         model: EntityPlanRestaurant, as: 'planRestaurants',
         include: [{ model: Restaurant, as: 'restaurant', attributes: ['id', 'name', 'status', 'email'] }]
+      }, {
+        model: EntityPlanPrice, as: 'prices'
       }]
     });
 
@@ -687,25 +684,61 @@ router.post('/:id/plans', authenticateToken, async (req, res) => {
     const access = await verifyFoodcourtAccess(req, id);
     if (access.error) return res.status(access.status).json({ success: false, message: access.error });
 
+    // Validate plan currency against system supported currencies
+    const planCurrency = req.body.currency || access.foodcourt.currency || 'MYR';
+    const SystemSettings = require('../models/SystemSettings');
+    const sysCurrSetting = await SystemSettings.findOne({ where: { setting_key: 'supported_currencies' } });
+    const systemCurrencies = sysCurrSetting?.setting_value || ['USD', 'MYR', 'KRW'];
+    if (!systemCurrencies.includes(planCurrency)) {
+      return res.status(400).json({ success: false, message: `Currency ${planCurrency} is not supported by the system` });
+    }
+
     const plan = await EntityPlan.create({
       entity_type: 'foodcourt',
       entity_id: id,
       name: req.body.name,
       description: req.body.description,
-      subscription_fee: req.body.subscription_fee || 0,
-      revenue_percentage: req.body.revenue_percentage || 0,
-      rent_type: req.body.rent_type || 'none',
-      rent_fixed: req.body.rent_fixed || 0,
-      rent_percentage: req.body.rent_percentage || 0,
-      billing_cycle: req.body.billing_cycle || 'monthly',
+      charge_type: req.body.charge_type || 'fixed',
+      percentage_value: req.body.charge_type === 'percentage' ? (req.body.percentage_value || 0) : 0,
+      revenue_base: req.body.charge_type === 'percentage' ? (req.body.revenue_base || 'previous_month') : 'previous_month',
+      billing_day: req.body.billing_day || null,
       auto_generate: req.body.auto_generate !== false,
-      tax_rate: req.body.tax_rate || 0,
-      currency: req.body.currency || 'MYR',
+      currency: planCurrency,
       is_active: true,
+      category: req.body.category || 'custom',
+      is_popular: req.body.is_popular || false,
+      features: req.body.features || [],
+      included_modules: req.body.included_modules || [],
+      menu_item_limit: req.body.menu_item_limit !== undefined ? req.body.menu_item_limit : -1,
+      order_limit: req.body.order_limit !== undefined ? req.body.order_limit : -1,
+      staff_limit: req.body.staff_limit !== undefined ? req.body.staff_limit : -1,
       created_by: req.user.id
     });
 
-    res.status(201).json({ success: true, data: plan });
+    // Save multi-currency prices if provided
+    if (req.body.currency_prices && typeof req.body.currency_prices === 'object') {
+      for (const [currCode, prices] of Object.entries(req.body.currency_prices)) {
+        if (prices.monthly_price > 0 || prices.annual_price > 0) {
+          await EntityPlanPrice.create({
+            entity_plan_id: plan.id,
+            currency: currCode,
+            monthly_price: prices.monthly_price || 0,
+            annual_price: prices.annual_price || 0,
+            is_active: true
+          });
+        }
+      }
+    }
+
+    // Fetch with associations for response
+    const created = await EntityPlan.findByPk(plan.id, {
+      include: [
+        { model: EntityPlanRestaurant, as: 'planRestaurants', required: false },
+        { model: EntityPlanPrice, as: 'prices' }
+      ]
+    });
+
+    res.status(201).json({ success: true, data: created });
   } catch (error) {
     console.error('Error creating foodcourt plan:', error);
     res.status(500).json({ success: false, message: 'Failed to create plan' });
@@ -725,19 +758,30 @@ router.put('/:id/plans/:planId', authenticateToken, async (req, res) => {
     await plan.update({
       name: req.body.name ?? plan.name,
       description: req.body.description ?? plan.description,
-      subscription_fee: req.body.subscription_fee ?? plan.subscription_fee,
-      revenue_percentage: req.body.revenue_percentage ?? plan.revenue_percentage,
-      rent_type: req.body.rent_type ?? plan.rent_type,
-      rent_fixed: req.body.rent_fixed ?? plan.rent_fixed,
-      rent_percentage: req.body.rent_percentage ?? plan.rent_percentage,
-      billing_cycle: req.body.billing_cycle ?? plan.billing_cycle,
+      charge_type: req.body.charge_type ?? plan.charge_type,
+      percentage_value: req.body.percentage_value ?? plan.percentage_value,
+      revenue_base: req.body.revenue_base ?? plan.revenue_base,
+      billing_day: req.body.billing_day !== undefined ? req.body.billing_day : plan.billing_day,
       auto_generate: req.body.auto_generate ?? plan.auto_generate,
-      tax_rate: req.body.tax_rate ?? plan.tax_rate,
       currency: req.body.currency ?? plan.currency,
-      is_active: req.body.is_active ?? plan.is_active
+      is_active: req.body.is_active ?? plan.is_active,
+      category: req.body.category ?? plan.category,
+      is_popular: req.body.is_popular ?? plan.is_popular,
+      features: req.body.features !== undefined ? req.body.features : plan.features,
+      included_modules: req.body.included_modules !== undefined ? req.body.included_modules : plan.included_modules,
+      menu_item_limit: req.body.menu_item_limit ?? plan.menu_item_limit,
+      order_limit: req.body.order_limit ?? plan.order_limit,
+      staff_limit: req.body.staff_limit ?? plan.staff_limit
     });
 
-    res.json({ success: true, data: plan });
+    const updated = await EntityPlan.findByPk(planId, {
+      include: [
+        { model: EntityPlanRestaurant, as: 'planRestaurants', required: false },
+        { model: EntityPlanPrice, as: 'prices' }
+      ]
+    });
+
+    res.json({ success: true, data: updated });
   } catch (error) {
     console.error('Error updating foodcourt plan:', error);
     res.status(500).json({ success: false, message: 'Failed to update plan' });
@@ -761,6 +805,7 @@ router.delete('/:id/plans/:planId', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, message: `Cannot delete plan with ${plan.planRestaurants.length} active restaurant(s). Unassign them first.` });
     }
 
+    await EntityPlanPrice.destroy({ where: { entity_plan_id: planId } });
     await plan.destroy();
     res.json({ success: true, message: 'Plan deleted successfully' });
   } catch (error) {
@@ -845,6 +890,66 @@ router.delete('/:id/plans/:planId/restaurants/:restaurantId', authenticateToken,
   }
 });
 
+// GET /api/foodcourts/:id/plans/:planId/prices - Get multi-currency prices for a plan
+router.get('/:id/plans/:planId/prices', authenticateToken, async (req, res) => {
+  try {
+    const { id, planId } = req.params;
+    const access = await verifyFoodcourtAccess(req, id);
+    if (access.error) return res.status(access.status).json({ success: false, message: access.error });
+
+    const prices = await EntityPlanPrice.findAll({
+      where: { entity_plan_id: planId },
+      order: [['currency', 'ASC']]
+    });
+
+    res.json({ success: true, data: prices });
+  } catch (error) {
+    console.error('Error fetching plan prices:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch plan prices' });
+  }
+});
+
+// PUT /api/foodcourts/:id/plans/:planId/prices - Update multi-currency prices for a plan
+router.put('/:id/plans/:planId/prices', authenticateToken, async (req, res) => {
+  try {
+    const { id, planId } = req.params;
+    const access = await verifyFoodcourtAccess(req, id);
+    if (access.error) return res.status(access.status).json({ success: false, message: access.error });
+
+    const plan = await EntityPlan.findOne({
+      where: { id: planId, entity_type: 'foodcourt', entity_id: id }
+    });
+    if (!plan) return res.status(404).json({ success: false, message: 'Plan not found' });
+
+    const { prices } = req.body;
+    if (!prices || typeof prices !== 'object') {
+      return res.status(400).json({ success: false, message: 'prices object is required' });
+    }
+
+    const results = [];
+    for (const [currCode, priceData] of Object.entries(prices)) {
+      const monthlyPrice = parseFloat(priceData.monthly_price) || 0;
+      const annualPrice = parseFloat(priceData.annual_price) || 0;
+
+      const [priceRecord, created] = await EntityPlanPrice.findOrCreate({
+        where: { entity_plan_id: planId, currency: currCode },
+        defaults: { monthly_price: monthlyPrice, annual_price: annualPrice, is_active: true }
+      });
+
+      if (!created) {
+        await priceRecord.update({ monthly_price: monthlyPrice, annual_price: annualPrice });
+      }
+
+      results.push({ currency: currCode, monthly_price: monthlyPrice, annual_price: annualPrice, created });
+    }
+
+    res.json({ success: true, data: results });
+  } catch (error) {
+    console.error('Error updating plan prices:', error);
+    res.status(500).json({ success: false, message: 'Failed to update plan prices' });
+  }
+});
+
 // --- Revenue & Invoice APIs ---
 
 // GET /api/foodcourts/:id/revenue - Revenue summary for foodcourt restaurants
@@ -911,7 +1016,10 @@ router.get('/:id/invoice-preview', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, message: 'plan_id and restaurant_id are required' });
     }
 
-    const plan = await EntityPlan.findOne({ where: { id: plan_id, entity_type: 'foodcourt', entity_id: id } });
+    const plan = await EntityPlan.findOne({
+      where: { id: plan_id, entity_type: 'foodcourt', entity_id: id },
+      include: [{ model: EntityPlanPrice, as: 'prices' }]
+    });
     if (!plan) return res.status(404).json({ success: false, message: 'Plan not found' });
 
     const now = new Date();
@@ -951,6 +1059,8 @@ router.post('/:id/generate-invoices', authenticateToken, async (req, res) => {
       include: [{
         model: EntityPlanRestaurant, as: 'planRestaurants', where: { is_active: true },
         include: [{ model: Restaurant, as: 'restaurant', attributes: ['id', 'name', 'email'] }]
+      }, {
+        model: EntityPlanPrice, as: 'prices'
       }]
     });
 
@@ -966,7 +1076,24 @@ router.post('/:id/generate-invoices', authenticateToken, async (req, res) => {
     let generated = 0, skipped = 0;
     const results = [];
 
+    // Validate payment methods exist for each plan's currency
+    const { hasPaymentMethodForCurrency } = require('../utils/paymentSettingsHelper');
+    const foodcourtPaymentSettings = access.foodcourt.payment_settings || {};
+
     for (const plan of plans) {
+      const planCurrency = plan.currency || 'MYR';
+      if (!hasPaymentMethodForCurrency(foodcourtPaymentSettings, planCurrency)) {
+        for (const pr of plan.planRestaurants) {
+          skipped++;
+          results.push({
+            restaurant: pr.restaurant?.name || 'Unknown',
+            status: 'skipped',
+            reason: `No payment methods configured for ${planCurrency}. Please set up payment settings first.`
+          });
+        }
+        continue;
+      }
+
       for (const pr of plan.planRestaurants) {
         const restaurant = pr.restaurant;
         if (!restaurant) continue;
@@ -1025,7 +1152,10 @@ router.get('/:id/subscriptions', authenticateToken, async (req, res) => {
       attributes: ['id', 'name', 'email', 'status', 'phone', 'address'],
       include: [{
         model: EntityPlanRestaurant, as: 'entityPlanRestaurants', required: false,
-        include: [{ model: EntityPlan, as: 'plan', where: { entity_type: 'foodcourt', entity_id: id }, required: false }]
+        include: [{
+          model: EntityPlan, as: 'plan', where: { entity_type: 'foodcourt', entity_id: id }, required: false,
+          include: [{ model: EntityPlanPrice, as: 'prices' }]
+        }]
       }]
     });
 
@@ -1070,8 +1200,10 @@ router.get('/:id/subscriptions', authenticateToken, async (req, res) => {
         restaurant_id: r.id, restaurant_name: r.name, restaurant_email: r.email, restaurant_status: r.status,
         plan: activePlan ? {
           id: activePlan.plan.id, name: activePlan.plan.name,
-          subscription_fee: activePlan.plan.subscription_fee, revenue_percentage: activePlan.plan.revenue_percentage,
-          rent_type: activePlan.plan.rent_type, billing_cycle: activePlan.plan.billing_cycle,
+          charge_type: activePlan.plan.charge_type,
+          percentage_value: activePlan.plan.percentage_value,
+          revenue_base: activePlan.plan.revenue_base,
+          billing_day: activePlan.plan.billing_day,
           auto_generate: activePlan.plan.auto_generate, activation_date: activePlan.activation_date
         } : null,
         latest_invoice: latestInvoice ? {
@@ -1087,6 +1219,85 @@ router.get('/:id/subscriptions', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error fetching foodcourt subscriptions:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch subscriptions' });
+  }
+});
+
+// Foodcourt Sales Trend API - 대시보드 차트용
+router.get('/:id/sales-trend', authenticateToken, requireRole('Foodcourt General', 'Foodcourt Manager', 'System Admin'), async (req, res) => {
+  try {
+    const foodcourtId = req.params.id;
+    const { period = 'month' } = req.query;
+
+    // 푸드코트 접근 권한 확인
+    const foodcourt = await Foodcourt.findByPk(foodcourtId);
+    if (!foodcourt) return res.status(404).json({ success: false, message: 'Foodcourt not found' });
+    if (req.user.role === 'Foodcourt General' && foodcourt.owner_id !== req.user.id && req.user.foodcourt_id !== foodcourt.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    // 푸드코트 소속 레스토랑 ID 조회
+    const restaurants = await Restaurant.findAll({
+      where: { foodcourt_id: foodcourtId },
+      attributes: ['id']
+    });
+    const restaurantIds = restaurants.map(r => r.id);
+
+    if (restaurantIds.length === 0) {
+      return res.json({ success: true, data: [] });
+    }
+
+    // 기간 계산
+    const now = new Date();
+    let startDate = new Date();
+    let groupBy = '';
+    let dateFormat = '';
+
+    switch (period) {
+      case 'week':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        groupBy = 'DATE(order_date)';
+        dateFormat = 'DATE_FORMAT(order_date, "%m/%d")';
+        break;
+      case 'year':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        groupBy = 'MONTH(order_date)';
+        dateFormat = 'DATE_FORMAT(order_date, "%Y-%m")';
+        break;
+      case 'month':
+      default:
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        groupBy = 'DATE(order_date)';
+        dateFormat = 'DATE_FORMAT(order_date, "%m/%d")';
+        break;
+    }
+
+    const sequelize = require('sequelize');
+    const trendData = await Order.findAll({
+      where: {
+        restaurant_id: restaurantIds,
+        order_date: { [Op.between]: [startDate, now] },
+        status: { [Op.notIn]: ['cancelled', 'refunded'] }
+      },
+      attributes: [
+        [sequelize.fn('SUM', sequelize.col('total_amount')), 'sales'],
+        [sequelize.fn('COUNT', sequelize.col('*')), 'orders'],
+        [sequelize.literal(dateFormat), 'date']
+      ],
+      group: [sequelize.literal(dateFormat)],
+      order: [sequelize.literal(dateFormat)]
+    });
+
+    res.json({
+      success: true,
+      data: trendData.map(item => ({
+        date: item.dataValues.date,
+        sales: parseFloat(item.dataValues.sales || 0),
+        orders: parseInt(item.dataValues.orders || 0)
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching foodcourt sales trend:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch sales trend' });
   }
 });
 

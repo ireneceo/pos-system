@@ -51,10 +51,10 @@ PlanTemplate.init({
     comment: 'Plan category: basic for standard plans, custom for custom plans'
   },
   plan_target: {
-    type: DataTypes.ENUM('restaurant', 'brand', 'foodcourt'),
+    type: DataTypes.ENUM('restaurant', 'brand', 'foodcourt', 'owner'),
     allowNull: false,
     defaultValue: 'restaurant',
-    comment: 'Target user type: restaurant for restaurant owners, brand for brand managers, foodcourt for foodcourt managers'
+    comment: 'Target user type: restaurant for restaurant admins, brand for brand managers, foodcourt for foodcourt managers, owner for restaurant owners'
   },
   features: {
     type: DataTypes.TEXT,

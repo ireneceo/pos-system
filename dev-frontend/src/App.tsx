@@ -124,6 +124,13 @@ const BrandProductRecipePage = React.lazy(() => import('./pages/BrandProductReci
 // Brand Product Management
 const BrandProductManagementPage = React.lazy(() => import('./pages/BrandProductManagement/BrandProductManagementPage'));
 
+// Restaurant Owner Pages
+const OwnerDashboardPage = React.lazy(() => import('./pages/Owner/OwnerDashboardPage'));
+const OwnerRestaurantsPage = React.lazy(() => import('./pages/Owner/OwnerRestaurantsPage'));
+const OwnerPerformancePage = React.lazy(() => import('./pages/Owner/OwnerPerformance'));
+const OwnerReportsPage = React.lazy(() => import('./pages/Owner/OwnerReportsPage'));
+const OwnerInvoicesPage = React.lazy(() => import('./pages/Owner/OwnerInvoicesPage'));
+
 // Manager Role Specific Pages
 const FoodcourtManagement = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtManagement'));
 const FoodcourtStats = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtStats'));
@@ -175,6 +182,8 @@ const PosRootRedirect: React.FC = () => {
       return <Navigate to="/pos/foodcourt/dashboard" replace />;
     case 'Brand Manager':
       return <Navigate to="/pos/brand/dashboard" replace />;
+    case 'Restaurant Owner':
+      return <Navigate to="/pos/owner/dashboard" replace />;
     case 'Restaurant Admin':
     case 'Staff': {
       // For Restaurant Admin and Staff, include restaurantId in URL
@@ -414,6 +423,33 @@ function App() {
                       <Route path="/pos/profile" element={
                         <ProtectedRoute>
                           <ProfilePage />
+                        </ProtectedRoute>
+                      } />
+
+                      {/* Restaurant Owner Routes */}
+                      <Route path="/pos/owner/dashboard" element={
+                        <ProtectedRoute requiredRole={['Restaurant Owner']}>
+                          <OwnerDashboardPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/owner/restaurants" element={
+                        <ProtectedRoute requiredRole={['Restaurant Owner']}>
+                          <OwnerRestaurantsPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/owner/performance" element={
+                        <ProtectedRoute requiredRole={['Restaurant Owner']}>
+                          <OwnerPerformancePage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/owner/reports" element={
+                        <ProtectedRoute requiredRole={['Restaurant Owner']}>
+                          <OwnerReportsPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/owner/invoices" element={
+                        <ProtectedRoute requiredRole={['Restaurant Owner']}>
+                          <OwnerInvoicesPage />
                         </ProtectedRoute>
                       } />
 

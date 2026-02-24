@@ -8,6 +8,7 @@ System Admin (최고 관리자)
 │   └── Brand Manager (브랜드 매니저)
 ├── Foodcourt General (푸드코트 총괄)
 │   └── Foodcourt Manager (푸드코트 매니저)
+├── Restaurant Owner (레스토랑 소유자) ← NEW (재무/통계, N개 레스토랑)
 └── Restaurant Admin (레스토랑 관리자)
     └── Staff (직원)
 ```
@@ -170,7 +171,44 @@ System Admin (최고 관리자)
 
 ---
 
-## 6. Restaurant Admin (레스토랑 관리자)
+## 6. Restaurant Owner (레스토랑 소유자) - NEW
+
+### 권한
+- ✅ **소유 레스토랑 통합 대시보드**: 여러 레스토랑의 매출/주문 통합 조회
+- ✅ **레스토랑별 상세 통계**: 일/주/월/년 매출, 주문유형별, 결제수단별 분석
+- ✅ **레스토랑 간 비교 통계**: 매출/주문수/평균 주문가 비교
+- ✅ **주문 내역 조회**: 읽기 전용 (처리 불가)
+- ✅ **인보이스 조회**: 모든 issuer의 인보이스 확인
+- ✅ **인보이스 결제**: payment_model='restaurant_owner'일 때 결제 제출
+- ❌ **메뉴 관리**: Restaurant Admin 영역
+- ❌ **주문 처리**: Restaurant Admin/Staff 영역
+- ❌ **직원 관리**: Restaurant Admin 영역
+- ❌ **POS 터미널**: Restaurant Admin/Staff 영역
+- ❌ **레스토랑 설정 변경**: Restaurant Admin 영역
+
+### 주요 기능
+- Owner는 여러 레스토랑을 소유 (N:M via restaurant_managers.relationship_type='ownership')
+- Brand/Foodcourt 소속 여부와 독립적 (동시 존재 가능)
+- System Admin만 Owner 계정 생성 및 레스토랑 연결 가능
+- 재무/통계 전문 역할 (현장 운영은 Restaurant Admin 담당)
+
+### 접근 가능 페이지
+- `/pos/owner/dashboard` (통합 대시보드)
+- `/pos/owner/restaurants` (소유 레스토랑 목록)
+- `/pos/owner/statistics` (비교 통계)
+- `/pos/owner/orders` (주문 내역 - 읽기 전용)
+- `/pos/owner/reports` (리포트)
+- `/pos/owner/invoices` (인보이스)
+- `/pos/profile` (프로필)
+
+### 제한 사항
+- 레스토랑 현장 운영 기능 전무 (메뉴, 주문처리, POS, 직원관리 없음)
+- System Admin만 Owner에 레스토랑 연결/해제 가능
+- Owner가 있다고 Brand/Foodcourt General의 감독 권한이 변하지 않음
+
+---
+
+## 7. Restaurant Admin (레스토랑 관리자)
 
 ### 권한
 - ✅ **자기 레스토랑 완전 관리**: 모든 설정 및 데이터
@@ -178,6 +216,7 @@ System Admin (최고 관리자)
 - ✅ **주문 관리**: 모든 주문 처리
 - ✅ **직원 관리**: Staff 생성/수정/삭제, PIN 설정, 메뉴 권한(permissions) 설정, Staff 승격
 - ✅ **리포트**: 자기 레스토랑 매출/통계
+- ✅ **코스트 오버라이드**: Brand 재료에 대한 My Cost 설정/수정/삭제 (원본 Brand Cost는 변경 불가)
 
 ### 소유권에 따른 차이
 #### A. 독립 레스토랑 (ownership_type: 'independent')
@@ -188,6 +227,7 @@ System Admin (최고 관리자)
 - ❌ 메뉴/가격: 브랜드 본사에서 관리
 - ✅ 운영 설정: 영업시간 등만 가능
 - ✅ 주문 관리: 가능
+- ✅ **코스트 오버라이드**: Brand 재료에 My Cost 설정 가능 (레시피/제품 원가에 자동 반영)
 
 #### C. 푸드코트 입점 (ownership_type: 'foodcourt')
 - ✅ 메뉴/가격: 자유
@@ -211,7 +251,7 @@ System Admin (최고 관리자)
 
 ---
 
-## 7. Staff (직원)
+## 8. Staff (직원)
 
 ### 생성 및 관리
 - **생성 가능한 역할**: Restaurant Admin, System Admin

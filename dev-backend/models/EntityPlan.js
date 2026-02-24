@@ -28,48 +28,10 @@ EntityPlan.init({
     type: DataTypes.TEXT,
     allowNull: true
   },
-  // Fixed fee (subscription fee)
-  subscription_fee: {
-    type: DataTypes.DECIMAL(10, 2),
-    defaultValue: 0,
-    comment: 'Monthly fixed subscription fee'
-  },
-  // Revenue percentage (royalty)
-  revenue_percentage: {
-    type: DataTypes.DECIMAL(5, 2),
-    defaultValue: 0,
-    comment: 'Revenue percentage (e.g., 5.00 = 5%)'
-  },
-  // Rent configuration
-  rent_type: {
-    type: DataTypes.ENUM('none', 'fixed', 'percentage', 'combined'),
-    defaultValue: 'none',
-    comment: 'none=no rent, fixed=fixed amount, percentage=revenue%, combined=MAX(fixed,percentage)'
-  },
-  rent_fixed: {
-    type: DataTypes.DECIMAL(10, 2),
-    defaultValue: 0,
-    comment: 'Fixed rent amount (for fixed/combined)'
-  },
-  rent_percentage: {
-    type: DataTypes.DECIMAL(5, 2),
-    defaultValue: 0,
-    comment: 'Rent as revenue percentage (for percentage/combined)'
-  },
-  // Billing
-  billing_cycle: {
-    type: DataTypes.ENUM('monthly', 'annual'),
-    defaultValue: 'monthly'
-  },
   auto_generate: {
     type: DataTypes.BOOLEAN,
     defaultValue: true,
     comment: 'Auto-generate invoices on billing cycle'
-  },
-  tax_rate: {
-    type: DataTypes.DECIMAL(5, 2),
-    defaultValue: 0,
-    comment: 'Tax rate percentage (e.g., 6.00 = SST 6%)'
   },
   currency: {
     type: DataTypes.STRING(10),
@@ -78,6 +40,80 @@ EntityPlan.init({
   is_active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  category: {
+    type: DataTypes.ENUM('basic', 'custom'),
+    defaultValue: 'custom',
+    comment: 'Plan category: basic (with limits/modules) or custom'
+  },
+  is_popular: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    comment: 'Mark as most popular plan'
+  },
+  features: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'JSON array of feature strings',
+    get() {
+      const v = this.getDataValue('features');
+      if (!v) return [];
+      try { return JSON.parse(v); } catch { return []; }
+    },
+    set(v) {
+      this.setDataValue('features', v ? JSON.stringify(v) : null);
+    }
+  },
+  included_modules: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'JSON array of module codes',
+    get() {
+      const v = this.getDataValue('included_modules');
+      if (!v) return [];
+      try { return JSON.parse(v); } catch { return []; }
+    },
+    set(v) {
+      this.setDataValue('included_modules', v ? JSON.stringify(v) : null);
+    }
+  },
+  menu_item_limit: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: -1,
+    comment: 'Menu item limit (-1 for unlimited)'
+  },
+  order_limit: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: -1,
+    comment: 'Monthly order limit (-1 for unlimited)'
+  },
+  staff_limit: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: -1,
+    comment: 'Staff account limit (-1 for unlimited)'
+  },
+  charge_type: {
+    type: DataTypes.ENUM('fixed', 'percentage'),
+    defaultValue: 'fixed',
+    comment: 'fixed=multi-currency pricing (EntityPlanPrice), percentage=% of revenue'
+  },
+  percentage_value: {
+    type: DataTypes.DECIMAL(5, 2),
+    defaultValue: 0,
+    comment: 'Revenue percentage rate (only when charge_type=percentage)'
+  },
+  revenue_base: {
+    type: DataTypes.ENUM('previous_month', 'previous_year', 'up_to_billing_day'),
+    defaultValue: 'previous_month',
+    comment: 'Revenue calculation period for percentage type'
+  },
+  billing_day: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Monthly billing day (1-28). NULL = subscription start date based'
   },
   created_by: {
     type: DataTypes.INTEGER,

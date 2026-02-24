@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Restaurant = require('../models/Restaurant');
+const RestaurantManager = require('../models/RestaurantManager');
 
 const authenticateToken = async (req, res, next) => {
   try {
@@ -79,6 +80,23 @@ const checkRestaurantAccess = async (req, res, next) => {
       }
 
       if (parseInt(req.user.restaurant_id) !== parseInt(targetRestaurantId)) {
+        return res.status(403).json({ error: 'Access denied to this restaurant' });
+      }
+
+      return next();
+    }
+
+    // Restaurant Owner can access owned restaurants (via restaurant_managers with relationship_type='ownership')
+    if (req.user.role === 'Restaurant Owner') {
+      const ownership = await RestaurantManager.findOne({
+        where: {
+          restaurant_id: targetRestaurantId,
+          manager_id: req.user.id,
+          relationship_type: 'ownership'
+        }
+      });
+
+      if (!ownership) {
         return res.status(403).json({ error: 'Access denied to this restaurant' });
       }
 

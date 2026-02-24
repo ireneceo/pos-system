@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Ingredient, IngredientCategory, Restaurant, Supplier } = require('../models');
+const { Ingredient, IngredientCategory, Restaurant, Supplier, RestaurantIngredientCost } = require('../models');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
 const { generateIngredientCode } = require('../utils/codeGenerator');
@@ -236,7 +236,30 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
       ]
     });
 
-    res.json({ success: true, data: brandIngredients });
+    // 레스토랑 코스트 오버라이드 조회
+    const restaurantCosts = await RestaurantIngredientCost.findAll({
+      where: { restaurant_id: restaurantId }
+    });
+    const costMap = {};
+    restaurantCosts.forEach(rc => {
+      costMap[rc.ingredient_id] = {
+        unit_cost: parseFloat(rc.unit_cost),
+        notes: rc.notes
+      };
+    });
+
+    // 각 재료에 restaurant_cost, effective_cost 추가
+    const enrichedIngredients = brandIngredients.map(ing => {
+      const plain = ing.toJSON();
+      const override = costMap[plain.id];
+      const brandCost = parseFloat(plain.unit_cost);
+      plain.restaurant_cost = override ? override.unit_cost : null;
+      plain.cost_notes = override ? override.notes : null;
+      plain.effective_cost = override ? override.unit_cost : brandCost;
+      return plain;
+    });
+
+    res.json({ success: true, data: enrichedIngredients });
   } catch (error) {
     console.error('Get brand ingredients for restaurant error:', error);
     res.status(500).json({ error: 'Failed to fetch brand ingredients' });
@@ -357,6 +380,133 @@ router.delete('/restaurants/:restaurantId/ingredients/:ingredientId', authentica
   } catch (error) {
     console.error('Delete restaurant ingredient error:', error);
     res.status(500).json({ error: '재료 삭제 실패' });
+  }
+});
+
+// ============================================
+// Restaurant Ingredient Cost Override
+// ============================================
+
+/**
+ * GET /api/restaurants/:restaurantId/ingredient-costs
+ * 레스토랑 코스트 오버라이드 전체 목록
+ */
+router.get('/restaurants/:restaurantId/ingredient-costs', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+
+    const costs = await RestaurantIngredientCost.findAll({
+      where: { restaurant_id: restaurantId },
+      include: [{
+        model: Ingredient,
+        as: 'ingredient',
+        attributes: ['id', 'name', 'unit', 'base_quantity', 'unit_cost']
+      }]
+    });
+
+    res.json({ success: true, data: costs });
+  } catch (error) {
+    console.error('Get restaurant ingredient costs error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch ingredient costs' });
+  }
+});
+
+/**
+ * PUT /api/restaurants/:restaurantId/ingredient-costs/bulk
+ * 레스토랑 코스트 일괄 설정
+ * NOTE: /bulk must come BEFORE /:ingredientId to avoid route conflict
+ */
+router.put('/restaurants/:restaurantId/ingredient-costs/bulk', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const { costs } = req.body; // [{ ingredient_id, unit_cost, notes }]
+
+    if (!Array.isArray(costs) || costs.length === 0) {
+      return res.status(400).json({ success: false, message: 'costs array is required' });
+    }
+
+    const results = [];
+    for (const item of costs) {
+      const [cost] = await RestaurantIngredientCost.upsert({
+        restaurant_id: restaurantId,
+        ingredient_id: item.ingredient_id,
+        unit_cost: parseFloat(item.unit_cost),
+        notes: item.notes || null,
+        updated_by: req.user.id
+      });
+      results.push(cost);
+    }
+
+    res.json({ success: true, data: results });
+  } catch (error) {
+    console.error('Bulk set restaurant ingredient costs error:', error);
+    res.status(500).json({ success: false, message: 'Failed to bulk set ingredient costs' });
+  }
+});
+
+/**
+ * PUT /api/restaurants/:restaurantId/ingredient-costs/:ingredientId
+ * 레스토랑 코스트 설정/수정 (upsert)
+ */
+router.put('/restaurants/:restaurantId/ingredient-costs/:ingredientId', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId, ingredientId } = req.params;
+    const { unit_cost, notes } = req.body;
+
+    if (unit_cost === undefined || unit_cost === null) {
+      return res.status(400).json({ success: false, message: 'unit_cost is required' });
+    }
+
+    // 해당 재료가 브랜드 재료인지 확인
+    const ingredient = await Ingredient.findByPk(ingredientId);
+    if (!ingredient || ingredient.owner_type !== 'brand') {
+      return res.status(400).json({ success: false, message: 'Can only set cost override for brand ingredients' });
+    }
+
+    const [cost, created] = await RestaurantIngredientCost.upsert({
+      restaurant_id: restaurantId,
+      ingredient_id: ingredientId,
+      unit_cost: parseFloat(unit_cost),
+      notes: notes || null,
+      updated_by: req.user.id
+    }, {
+      returning: true
+    });
+
+    res.json({
+      success: true,
+      data: cost,
+      created
+    });
+  } catch (error) {
+    console.error('Set restaurant ingredient cost error:', error);
+    res.status(500).json({ success: false, message: 'Failed to set ingredient cost' });
+  }
+});
+
+/**
+ * DELETE /api/restaurants/:restaurantId/ingredient-costs/:ingredientId
+ * 레스토랑 코스트 삭제 (브랜드 코스트로 복귀)
+ */
+router.delete('/restaurants/:restaurantId/ingredient-costs/:ingredientId', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId, ingredientId } = req.params;
+
+    const deleted = await RestaurantIngredientCost.destroy({
+      where: {
+        restaurant_id: restaurantId,
+        ingredient_id: ingredientId
+      }
+    });
+
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: 'Cost override not found' });
+    }
+
+    res.json({ success: true, message: 'Cost override removed, reverted to brand cost' });
+  } catch (error) {
+    console.error('Delete restaurant ingredient cost error:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete ingredient cost' });
   }
 });
 

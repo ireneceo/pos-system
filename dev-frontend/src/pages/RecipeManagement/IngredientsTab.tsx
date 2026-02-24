@@ -54,6 +54,9 @@ interface Ingredient {
   unit: string;
   base_quantity: number;
   unit_cost: number;
+  restaurant_cost: number | null;
+  cost_notes: string | null;
+  effective_cost: number;
   supplier_name: string | null;
   supplier_id: number | null;
   supplier?: Supplier;
@@ -124,6 +127,112 @@ const BrandBadge = styled.span`
   font-size: 11px;
   font-weight: 600;
   margin-left: 8px;
+`;
+
+const CostOverrideSection = styled.div`
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: #F0F7FF;
+  border-radius: 8px;
+  border: 1px solid #DBEAFE;
+`;
+
+const CostRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 0;
+`;
+
+const CostLabel = styled.span<{ type?: 'brand' | 'my' | 'applied' }>`
+  font-size: 12px;
+  color: ${props => props.type === 'brand' ? '#6B7280' : props.type === 'my' ? '#2563EB' : '#059669'};
+  font-weight: ${props => props.type === 'applied' ? 600 : 400};
+`;
+
+const CostValue = styled.span<{ type?: 'brand' | 'my' | 'applied' }>`
+  font-size: 13px;
+  font-weight: ${props => props.type === 'applied' ? 700 : props.type === 'my' ? 600 : 400};
+  color: ${props => props.type === 'brand' ? '#9CA3AF' : props.type === 'my' ? '#2563EB' : '#059669'};
+  text-decoration: ${props => props.type === 'brand' && props.children !== props.children ? 'line-through' : 'none'};
+`;
+
+const SetCostButton = styled.button`
+  padding: 4px 10px;
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  border-radius: 4px;
+  color: #2563EB;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #DBEAFE;
+  }
+`;
+
+const CostEditInline = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+`;
+
+const CostInput = styled.input`
+  width: 100px;
+  padding: 4px 8px;
+  border: 1px solid #BFDBFE;
+  border-radius: 4px;
+  font-size: 13px;
+  text-align: right;
+
+  &:focus {
+    outline: none;
+    border-color: #2563EB;
+  }
+`;
+
+const CostSaveButton = styled.button`
+  padding: 4px 8px;
+  background: #2563EB;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+
+  &:hover {
+    background: #1D4ED8;
+  }
+`;
+
+const CostCancelButton = styled.button`
+  padding: 4px 8px;
+  background: #F3F4F6;
+  color: #6B7280;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+
+  &:hover {
+    background: #E5E7EB;
+  }
+`;
+
+const ResetButton = styled.button`
+  padding: 2px 6px;
+  background: none;
+  border: none;
+  color: #9CA3AF;
+  font-size: 11px;
+  cursor: pointer;
+  text-decoration: underline;
+
+  &:hover {
+    color: #EF4444;
+  }
 `;
 
 const TrackStockBadge = styled.span`
@@ -411,6 +520,12 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
     ingredientName: ''
   });
 
+  // My Cost inline editing state
+  const [editingCostId, setEditingCostId] = useState<number | null>(null);
+  const [editingCostValue, setEditingCostValue] = useState('');
+  const [editingCostNotes, setEditingCostNotes] = useState('');
+  const [savingCost, setSavingCost] = useState(false);
+
   const isRestaurantAdmin = user?.role === 'Restaurant Admin';
   // Restaurant Admin은 자신의 재료만 수정/삭제 가능 (브랜드 재료는 읽기전용)
   const isItemReadOnly = (item: Ingredient) => isRestaurantAdmin && item.owner_type === 'brand';
@@ -549,6 +664,62 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
       }
     } catch (error) {
       console.error('Failed to fetch ingredient categories:', error);
+    }
+  };
+
+  // My Cost 저장
+  const handleSaveMyCost = async (ingredientId: number) => {
+    if (!effectiveRestaurantId || !editingCostValue) return;
+    setSavingCost(true);
+    try {
+      const token = getToken();
+      const response = await fetch(`/api/restaurants/${effectiveRestaurantId}/ingredient-costs/${ingredientId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          unit_cost: parseFloat(editingCostValue),
+          notes: editingCostNotes || null
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        // 로컬 state 업데이트
+        setIngredients(prev => prev.map(ing =>
+          ing.id === ingredientId
+            ? { ...ing, restaurant_cost: parseFloat(editingCostValue), effective_cost: parseFloat(editingCostValue), cost_notes: editingCostNotes || null }
+            : ing
+        ));
+        setEditingCostId(null);
+      }
+    } catch (error) {
+      console.error('Failed to save my cost:', error);
+    } finally {
+      setSavingCost(false);
+    }
+  };
+
+  // My Cost 삭제 (브랜드 코스트로 복귀)
+  const handleResetMyCost = async (ingredient: Ingredient) => {
+    if (!effectiveRestaurantId) return;
+    try {
+      const token = getToken();
+      const response = await fetch(`/api/restaurants/${effectiveRestaurantId}/ingredient-costs/${ingredient.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setIngredients(prev => prev.map(ing =>
+          ing.id === ingredient.id
+            ? { ...ing, restaurant_cost: null, effective_cost: ing.unit_cost, cost_notes: null }
+            : ing
+        ));
+      }
+    } catch (error) {
+      console.error('Failed to reset my cost:', error);
     }
   };
 
@@ -902,10 +1073,99 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
               </IngredientHeader>
 
               <IngredientInfo>
-                <InfoRow>
-                  <InfoLabel>Unit Cost</InfoLabel>
-                  <InfoValue>{formatCurrency(Number(ingredient.unit_cost), selectedCurrency)}</InfoValue>
-                </InfoRow>
+                {/* 브랜드 재료 + Restaurant Admin: My Cost 오버라이드 UI */}
+                {isRestaurantAdmin && ingredient.owner_type === 'brand' ? (
+                  <>
+                    <CostOverrideSection>
+                      <CostRow>
+                        <CostLabel type="brand">Brand Cost</CostLabel>
+                        <CostValue type="brand">{formatCurrency(Number(ingredient.unit_cost), selectedCurrency)}/{ingredient.unit}</CostValue>
+                      </CostRow>
+
+                      {editingCostId === ingredient.id ? (
+                        /* 인라인 편집 모드 */
+                        <div style={{ marginTop: 6 }}>
+                          <CostRow>
+                            <CostLabel type="my">My Cost</CostLabel>
+                            <CostEditInline>
+                              <CostInput
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={editingCostValue}
+                                onChange={(e) => setEditingCostValue(e.target.value)}
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSaveMyCost(ingredient.id);
+                                  if (e.key === 'Escape') setEditingCostId(null);
+                                }}
+                              />
+                              <CostSaveButton onClick={() => handleSaveMyCost(ingredient.id)} disabled={savingCost}>
+                                {savingCost ? '...' : 'Save'}
+                              </CostSaveButton>
+                              <CostCancelButton onClick={() => setEditingCostId(null)}>
+                                ✕
+                              </CostCancelButton>
+                            </CostEditInline>
+                          </CostRow>
+                        </div>
+                      ) : ingredient.restaurant_cost !== null && ingredient.restaurant_cost !== undefined ? (
+                        /* My Cost 설정됨 */
+                        <CostRow style={{ marginTop: 4 }}>
+                          <CostLabel type="my">
+                            My Cost
+                            <SetCostButton
+                              style={{ marginLeft: 6, padding: '2px 6px', fontSize: '10px' }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingCostId(ingredient.id);
+                                setEditingCostValue(String(ingredient.restaurant_cost));
+                                setEditingCostNotes(ingredient.cost_notes || '');
+                              }}
+                            >
+                              Edit
+                            </SetCostButton>
+                            <ResetButton onClick={(e) => { e.stopPropagation(); handleResetMyCost(ingredient); }}>
+                              Reset
+                            </ResetButton>
+                          </CostLabel>
+                          <CostValue type="my">{formatCurrency(Number(ingredient.restaurant_cost), selectedCurrency)}/{ingredient.unit}</CostValue>
+                        </CostRow>
+                      ) : (
+                        /* My Cost 미설정 */
+                        <CostRow style={{ marginTop: 4 }}>
+                          <CostLabel type="my">My Cost</CostLabel>
+                          <SetCostButton onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingCostId(ingredient.id);
+                            setEditingCostValue('');
+                            setEditingCostNotes('');
+                          }}>
+                            Set Cost
+                          </SetCostButton>
+                        </CostRow>
+                      )}
+
+                      <CostRow style={{ marginTop: 6, borderTop: '1px solid #DBEAFE', paddingTop: 6 }}>
+                        <CostLabel type="applied">Applied</CostLabel>
+                        <CostValue type="applied">
+                          {formatCurrency(Number(ingredient.effective_cost ?? ingredient.unit_cost), selectedCurrency)}/{ingredient.unit} {ingredient.restaurant_cost !== null && ingredient.restaurant_cost !== undefined ? '✓' : ''}
+                        </CostValue>
+                      </CostRow>
+                    </CostOverrideSection>
+                    {ingredient.cost_notes && (
+                      <InfoRow>
+                        <InfoLabel style={{ fontSize: '11px', color: '#9CA3AF', fontStyle: 'italic' }}>{ingredient.cost_notes}</InfoLabel>
+                      </InfoRow>
+                    )}
+                  </>
+                ) : (
+                  /* 브랜드 관리자 or 레스토랑 자체 재료: 기존 방식 */
+                  <InfoRow>
+                    <InfoLabel>Unit Cost</InfoLabel>
+                    <InfoValue>{formatCurrency(Number(ingredient.unit_cost), selectedCurrency)}</InfoValue>
+                  </InfoRow>
+                )}
                 <InfoRow>
                   <InfoLabel>Base Qty / Unit</InfoLabel>
                   <InfoValue>{Number(ingredient.base_quantity || 1)} {ingredient.unit}</InfoValue>

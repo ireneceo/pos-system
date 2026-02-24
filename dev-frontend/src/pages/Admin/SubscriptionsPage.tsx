@@ -388,7 +388,7 @@ const SubscriptionsPage: React.FC = () => {
     customPlanName: '',
     status: 'trial' as 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled',
     billingCycle: 'monthly' as 'monthly' | 'annual',
-    paymentModel: 'restaurant' as 'restaurant' | 'foodcourt_manager' | 'brand_manager',
+    paymentModel: 'restaurant' as 'restaurant' | 'foodcourt_manager' | 'brand_manager' | 'restaurant_owner',
     autoRenew: false,
     email: '',
     phone: '',
@@ -407,7 +407,7 @@ const SubscriptionsPage: React.FC = () => {
   const [allRestaurantsData, setAllRestaurantsData] = useState<any[]>([]);
   const [customPlans, setCustomPlans] = useState<any[]>([]);
   const [availablePlans, setAvailablePlans] = useState<any[]>([]);
-  const [userType, setUserType] = useState<'restaurant' | 'brand' | 'foodcourt'>('restaurant');
+  const [userType, setUserType] = useState<'restaurant' | 'brand' | 'foodcourt' | 'owner'>('restaurant');
 
   useEffect(() => {
     fetchSubscriptions();
@@ -477,7 +477,7 @@ const SubscriptionsPage: React.FC = () => {
           features: [],
           lastPayment: restaurant.subscription_start ? new Date(restaurant.subscription_start).toISOString().split('T')[0] : '-',
           nextPayment: restaurant.subscription_end ? new Date(restaurant.subscription_end).toISOString().split('T')[0] : new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
-          autoRenew: subscriptionStatus === 'active',
+          autoRenew: restaurant.auto_renew !== undefined ? restaurant.auto_renew : subscriptionStatus === 'active',
           location: restaurant.address || 'Location not specified'
         };
       });
@@ -556,7 +556,7 @@ const SubscriptionsPage: React.FC = () => {
       customPlanName: '',
       status: 'trial',
       billingCycle: 'monthly',
-      paymentModel: userType === 'restaurant' ? 'restaurant' : (userType === 'brand' ? 'brand_manager' : 'foodcourt_manager'),
+      paymentModel: userType === 'restaurant' ? 'restaurant' : userType === 'owner' ? 'restaurant_owner' : (userType === 'brand' ? 'brand_manager' : 'foodcourt_manager'),
       autoRenew: false,
       email: '',
       phone: '',
@@ -582,6 +582,8 @@ const SubscriptionsPage: React.FC = () => {
         return manager.role === 'Brand Manager' || manager.role === 'Brand General';
       } else if (userType === 'foodcourt') {
         return manager.role === 'Foodcourt Manager' || manager.role === 'Foodcourt General';
+      } else if (userType === 'owner') {
+        return manager.role === 'Restaurant Owner';
       }
       return true;
     };
@@ -620,10 +622,12 @@ const SubscriptionsPage: React.FC = () => {
     setSearchQuery(type === 'manager' ? (data.fullName || data.full_name || data.username) : data.name);
 
     // Auto-determine payment model based on target type
-    let paymentModel: 'restaurant' | 'foodcourt_manager' | 'brand_manager' = 'restaurant';
+    let paymentModel: 'restaurant' | 'foodcourt_manager' | 'brand_manager' | 'restaurant_owner' = 'restaurant';
     if (type === 'manager') {
       // Check manager role
-      if (data.role === 'Foodcourt Manager' || data.role === 'Foodcourt General') {
+      if (data.role === 'Restaurant Owner') {
+        paymentModel = 'restaurant_owner';
+      } else if (data.role === 'Foodcourt Manager' || data.role === 'Foodcourt General') {
         paymentModel = 'foodcourt_manager';
       } else if (data.role === 'Brand Manager' || data.role === 'Brand General') {
         paymentModel = 'brand_manager';
@@ -773,27 +777,41 @@ const SubscriptionsPage: React.FC = () => {
         customerAddress = addressParts.join('\n');
       }
 
-      const invoiceData = {
-        restaurantId: selectedTarget.type === 'restaurant' ? selectedTarget.data.id : null,
-        restaurantName: restaurantName,
-        managerId: selectedTarget.type === 'manager' ? selectedTarget.data.id : (selectedTarget.data.admin_id || null),
-        managerName: selectedTarget.type === 'manager'
-          ? (selectedTarget.data.fullName || selectedTarget.data.full_name || selectedTarget.data.username)
-          : newSubscription.managerName,
-        customerName: customerName,
-        customerAddress: customerAddress,
-        companyName: companyName,
-        planName: newSubscription.customPlanName || 'Custom Plan',
-        amount: newSubscription.monthlyFee,
-        billingCycle: newSubscription.billingCycle,
-        issueDate: newSubscription.startDate,
-        dueDate: new Date(new Date(newSubscription.startDate).getTime() + 14*24*60*60*1000).toISOString().split('T')[0],
-        paidBy: selectedTarget.type === 'restaurant' ? 'Restaurant Admin' :
-                selectedTarget.data.role === 'Foodcourt Manager' ? 'Foodcourt Manager' :
-                selectedTarget.data.role === 'Foodcourt General' ? 'Foodcourt General Manager' :
-                selectedTarget.data.role === 'Brand Manager' ? 'Brand Manager' :
-                selectedTarget.data.role === 'Brand General' ? 'Brand General Manager' : 'Manager',
-        status: 'pending'
+      const planName = newSubscription.customPlanName || 'Custom Plan';
+      const dueDate = new Date(new Date(newSubscription.startDate).getTime() + 14*24*60*60*1000).toISOString().split('T')[0];
+      const payerType = selectedTarget.type === 'restaurant' ? 'restaurant' :
+                selectedTarget.data.role === 'Restaurant Owner' ? 'restaurant_owner' :
+                selectedTarget.data.role?.includes('Foodcourt') ? 'foodcourt_manager' :
+                selectedTarget.data.role?.includes('Brand') ? 'brand_manager' : 'restaurant';
+
+      const invoicePayload = {
+        invoice_data: {
+          restaurant_id: selectedTarget.type === 'restaurant' ? selectedTarget.data.id : null,
+          due_date: dueDate,
+          total_amount: newSubscription.monthlyFee,
+          currency: 'MYR',
+          status: 'pending_payment',
+          type: 'manual',
+          issuer_type: 'system_admin',
+          issuer_id: null,
+          payer_type: payerType,
+          payer_id: selectedTarget.type === 'manager' ? selectedTarget.data.id : (selectedTarget.data.admin_id || null),
+          invoice_category: 'subscription',
+          category_display_name: `Subscription - ${planName}`,
+          billing_period_start: newSubscription.startDate,
+          billing_period_end: newSubscription.endDate || dueDate,
+          notes: `POS Subscription: ${planName} (${newSubscription.billingCycle})`
+        },
+        items: [{
+          item_type: 'subscription',
+          description: `${planName} - ${newSubscription.billingCycle === 'annual' ? 'Annual' : 'Monthly'} Subscription`,
+          calculation_method: 'fixed',
+          fixed_amount: newSubscription.monthlyFee,
+          calculated_amount: newSubscription.monthlyFee,
+          tax_rate: 0,
+          tax_amount: 0,
+          total_amount: newSubscription.monthlyFee
+        }]
       };
 
       // Update restaurant subscription data if restaurant is selected
@@ -804,12 +822,17 @@ const SubscriptionsPage: React.FC = () => {
           billing_cycle: newSubscription.billingCycle,
           subscription_start: newSubscription.startDate,
           subscription_end: newSubscription.endDate,
-          status: newSubscription.status
+          status: newSubscription.status,
+          auto_renew: newSubscription.autoRenew
         };
 
+        const authToken = localStorage.getItem('auth_token');
         const restaurantResponse = await fetch(`/api/restaurants/${selectedTarget.data.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
+          },
           body: JSON.stringify(restaurantUpdateData)
         });
 
@@ -819,17 +842,22 @@ const SubscriptionsPage: React.FC = () => {
       }
 
       // Create invoice via API
+      const token = localStorage.getItem('auth_token');
       const invoiceResponse = await fetch('/api/invoices', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(invoiceData)
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(invoicePayload)
       });
 
       if (!invoiceResponse.ok) {
-        throw new Error('Failed to create invoice');
+        const errData = await invoiceResponse.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errData.error || 'Failed to create invoice');
       }
 
-      console.log('✅ Subscription and invoice created:', subscriptionData, invoiceData);
+      console.log('Subscription and invoice created:', subscriptionData);
 
       setShowAddModal(false);
       setSuccessMessage('Subscription added and invoice generated successfully!');
@@ -1177,9 +1205,7 @@ const SubscriptionsPage: React.FC = () => {
                     setViewingSubscription(subscription);
                     setShowViewModal(true);
                   }}>View</CommonActionButton>
-                  {subscription.planType !== 'basic' && subscription.planType !== 'professional' && subscription.planType !== 'enterprise' && (
-                    <CommonActionButton onClick={() => handleEditSubscription(subscription)}>Edit</CommonActionButton>
-                  )}
+                  <CommonActionButton onClick={() => handleEditSubscription(subscription)}>Edit</CommonActionButton>
                   <CommonIconButton
                     onClick={() => handleToggleStatus(subscription)}
                     title={subscription.status === 'active' ? 'Suspend Subscription' : 'Activate Subscription'}
@@ -1212,7 +1238,7 @@ const SubscriptionsPage: React.FC = () => {
                       <FilterSelect
                         value={userType}
                         onChange={(e) => {
-                          const newType = e.target.value as 'restaurant' | 'brand' | 'foodcourt';
+                          const newType = e.target.value as 'restaurant' | 'brand' | 'foodcourt' | 'owner';
                           setUserType(newType);
                           setSelectedTarget(null);
                           setSearchQuery('');
@@ -1225,12 +1251,13 @@ const SubscriptionsPage: React.FC = () => {
                               ...prev,
                               planType: firstPlan.display_name,
                               monthlyFee: parseFloat(firstPlan.base_price_monthly),
-                              paymentModel: newType === 'restaurant' ? 'restaurant' : (newType === 'brand' ? 'brand_manager' : 'foodcourt_manager')
+                              paymentModel: newType === 'restaurant' ? 'restaurant' : newType === 'owner' ? 'restaurant_owner' : (newType === 'brand' ? 'brand_manager' : 'foodcourt_manager')
                             }));
                           }
                         }}
                       >
                         <option value="restaurant">Restaurant</option>
+                        <option value="owner">Restaurant Owner</option>
                         <option value="brand">Brand Manager</option>
                         <option value="foodcourt">Foodcourt Manager</option>
                       </FilterSelect>
@@ -1238,7 +1265,7 @@ const SubscriptionsPage: React.FC = () => {
 
                     <FormGroup style={{position: 'relative', zIndex: 100}}>
                       <FormLabel>
-                        {userType === 'restaurant' ? 'Search Restaurant *' : 'Search Manager *'}
+                        {userType === 'restaurant' ? 'Search Restaurant *' : userType === 'owner' ? 'Search Owner *' : 'Search Manager *'}
                       </FormLabel>
                       <div style={{position: 'relative', width: '100%'}}>
                         <FormInput
@@ -1252,7 +1279,7 @@ const SubscriptionsPage: React.FC = () => {
                             }
                           }}
                           onBlur={() => setTimeout(() => setShowSearchDropdown(false), 200)}
-                          placeholder={userType === 'restaurant' ? 'Click to search restaurants...' : 'Click to search managers...'}
+                          placeholder={userType === 'restaurant' ? 'Click to search restaurants...' : userType === 'owner' ? 'Click to search owners...' : 'Click to search managers...'}
                           required
                         />
                         {showSearchDropdown && (
@@ -1272,7 +1299,7 @@ const SubscriptionsPage: React.FC = () => {
                             {userType !== 'restaurant' && searchResults.managers.length > 0 && (
                               <div>
                                 <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>
-                                  MANAGERS
+                                  {userType === 'owner' ? 'OWNERS' : 'MANAGERS'}
                                 </div>
                                 {searchResults.managers.map(manager => (
                                   <div

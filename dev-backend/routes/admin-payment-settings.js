@@ -155,6 +155,7 @@ router.post('/', async (req, res) => {
 router.get('/available/:currency', async (req, res) => {
   try {
     const { currency } = req.params;
+    const { getAvailablePaymentMethods } = require('../utils/paymentSettingsHelper');
 
     const settings = await SystemSettings.findOne({
       where: { setting_key: PAYMENT_SETTINGS_KEY }
@@ -164,55 +165,8 @@ router.get('/available/:currency', async (req, res) => {
       return res.json({ methods: [] });
     }
 
-    const paymentSettings = settings.setting_value;
-    const availableMethods = [];
-
-    // Stripe (글로벌)
-    if (paymentSettings.stripe?.enabled) {
-      availableMethods.push({
-        id: 'stripe',
-        name: 'Credit/Debit Card',
-        description: 'Secure payment via Stripe',
-        publishableKey: paymentSettings.stripe.publishableKey
-      });
-    }
-
-    // PayPal (글로벌)
-    if (paymentSettings.paypal?.enabled) {
-      availableMethods.push({
-        id: 'paypal',
-        name: 'PayPal',
-        description: 'Pay with PayPal account or card',
-        clientId: paymentSettings.paypal.clientId
-      });
-    }
-
-    // Bank Transfer (통화별)
-    const bankConfig = paymentSettings.bankTransfer?.[currency];
-    if (bankConfig?.enabled) {
-      availableMethods.push({
-        id: 'bank_transfer',
-        name: 'Bank Transfer',
-        description: 'Manual transfer with receipt upload',
-        bankName: bankConfig.bankName,
-        accountNumber: bankConfig.accountNumber,
-        accountName: bankConfig.accountName
-      });
-    }
-
-    // QR Payment (통화별)
-    const qrConfig = paymentSettings.qrPayment?.[currency];
-    if (qrConfig?.enabled) {
-      availableMethods.push({
-        id: 'qr_payment',
-        name: 'QR Payment',
-        description: qrConfig.qrDescription || 'Scan QR code to pay',
-        qrImage: qrConfig.qrImage,
-        qrDescription: qrConfig.qrDescription
-      });
-    }
-
-    res.json({ methods: availableMethods });
+    const result = getAvailablePaymentMethods(settings.setting_value, currency);
+    res.json(result);
   } catch (error) {
     console.error('Error fetching available payment methods:', error);
     res.status(500).json({

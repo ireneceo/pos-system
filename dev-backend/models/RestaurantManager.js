@@ -30,6 +30,11 @@ RestaurantManager.init({
     defaultValue: false,
     comment: 'Indicates if this is the primary manager for backward compatibility'
   },
+  relationship_type: {
+    type: DataTypes.ENUM('oversight', 'ownership'),
+    defaultValue: 'oversight',
+    comment: 'oversight: Brand/Foodcourt 감독 관계, ownership: Restaurant Owner 소유 관계'
+  },
   assigned_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW

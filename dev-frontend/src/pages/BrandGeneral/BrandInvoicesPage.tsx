@@ -66,6 +66,7 @@ interface Invoice {
   serviceDescription?: string;
   categoryDisplayName?: string;
   issuerType?: 'system_admin' | 'brand' | 'foodcourt';
+  issuerId?: number | string;
   issuerName?: string;
   issuerInfo?: {
     name: string;
@@ -1141,11 +1142,17 @@ const BrandInvoicesPage: React.FC = () => {
     }
   };
 
-  // Fetch available payment methods for a currency
-  const fetchPaymentMethods = async (currency: string) => {
+  // Fetch available payment methods based on invoice issuer
+  const fetchPaymentMethods = async (currency: string, issuerType?: string, issuerId?: number | string) => {
     setLoadingPaymentMethods(true);
     try {
-      const response = await fetch(`/api/admin/payment-settings/available/${currency}`);
+      let url = `/api/admin/payment-settings/available/${currency}`;
+      if (issuerType === 'brand' && issuerId) {
+        url = `/api/brands/${issuerId}/payment-settings/available/${currency}`;
+      } else if (issuerType === 'foodcourt' && issuerId) {
+        url = `/api/foodcourts/${issuerId}/payment-settings/available/${currency}`;
+      }
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         setAvailablePaymentMethods(data.methods || []);
@@ -1169,8 +1176,8 @@ const BrandInvoicesPage: React.FC = () => {
     setSelectedInvoice(invoice);
     setPaymentData({ paymentMethod: '', transactionId: '', notes: '', receiptImage: '' });
     setShowPaymentSubmitModal(true);
-    // Fetch available payment methods for invoice currency
-    await fetchPaymentMethods(invoice.currency || 'MYR');
+    // Fetch available payment methods for invoice currency from invoice issuer
+    await fetchPaymentMethods(invoice.currency || 'MYR', invoice.issuerType, invoice.issuerId);
   };
 
   // Resize image to reduce base64 size
@@ -1902,7 +1909,7 @@ const BrandInvoicesPage: React.FC = () => {
         body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; line-height: 1.5; color: #333; background: #fff; }
         .invoice-container { max-width: 800px; margin: 0 auto; padding: 40px; }
         .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; padding-bottom: 24px; border-bottom: 2px solid #E5E7EB; }
-        .logo-section { flex: 1; }
+        .logo-section { flex: 1; max-width: 400px; }
         .company-logo { max-height: 60px; margin-bottom: 10px; }
         .company-name { font-size: 20px; font-weight: 700; color: #0A2540; margin-bottom: 8px; }
         .company-details { font-size: 13px; color: #6B7280; line-height: 1.6; }
@@ -3595,8 +3602,27 @@ const BrandInvoicesPage: React.FC = () => {
                 {loadingPaymentMethods ? (
                   <div style={{ textAlign: 'center', padding: '20px', color: '#6B7280' }}>Loading payment methods...</div>
                 ) : availablePaymentMethods.length === 0 ? (
-                  <div style={{ padding: '16px', background: '#FEF3C7', borderRadius: '8px', marginBottom: '16px' }}>
-                    <p style={{ margin: 0, color: '#92400E' }}>No payment methods configured for {selectedInvoice.currency}. Please contact the administrator.</p>
+                  <div style={{ padding: '20px', background: '#FEF3C7', borderRadius: '8px', marginBottom: '16px' }}>
+                    <p style={{ margin: '0 0 8px 0', fontWeight: '600', color: '#92400E', fontSize: '15px' }}>
+                      Payment Not Available
+                    </p>
+                    {selectedInvoice.issuerType === 'system_admin' ? (
+                      <p style={{ margin: 0, color: '#92400E', fontSize: '14px', lineHeight: '1.5' }}>
+                        <strong>System Admin</strong> has not configured payment methods for <strong>{selectedInvoice.currency || 'MYR'}</strong> yet. Please contact the system administrator.
+                      </p>
+                    ) : (
+                      <>
+                        <p style={{ margin: '0 0 12px 0', color: '#92400E', fontSize: '14px', lineHeight: '1.5' }}>
+                          No payment methods configured for <strong>{selectedInvoice.currency || 'MYR'}</strong>. Please set up your payment settings first.
+                        </p>
+                        <button
+                          onClick={() => { setShowPaymentSubmitModal(false); window.location.href = '/pos/brand/payment-settings'; }}
+                          style={{ padding: '8px 16px', background: '#DC2626', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
+                        >
+                          Go to Payment Settings
+                        </button>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <>
@@ -4139,11 +4165,11 @@ const BrandInvoicesPage: React.FC = () => {
               <ModalBody>
                 {/* Invoice Header with Company Info */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '24px', borderBottom: '2px solid #E5E7EB' }}>
-                  <div>
+                  <div style={{ flex: '0 0 55%' }}>
                     {displayCompany?.companyLogo && (
                       <img src={displayCompany.companyLogo} alt="Company Logo" style={{ maxHeight: '60px', marginBottom: '8px' }} />
                     )}
-                    <div style={{ fontSize: displayCompany?.companyLogo ? '14px' : '20px', fontWeight: '700', color: '#0A2540', marginBottom: '8px' }}>
+                    <div style={{ fontSize: displayCompany?.companyLogo ? '16px' : '20px', fontWeight: '700', color: '#0A2540', marginBottom: '8px' }}>
                       {displayCompany?.companyName || 'Company Name'}
                     </div>
                     <div style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.6' }}>
@@ -4328,34 +4354,79 @@ const BrandInvoicesPage: React.FC = () => {
                     </SummaryRow>
                   </InvoiceSummary>
                 </FormGroup>
-                
-                <div style={{ 
-                  background: '#FEF3C7', 
-                  border: '1px solid #F59E0B', 
-                  borderRadius: '8px', 
-                  padding: '16px', 
-                  margin: '16px 0' 
+
+                {/* Customer's Payment Information */}
+                {(selectedInvoice.paymentMethod || selectedInvoice.receiptUrl || selectedInvoice.transactionId) && (
+                  <FormGroup>
+                    <FormLabel>Customer's Payment Information</FormLabel>
+                    <div style={{
+                      background: '#EFF6FF',
+                      border: '1px solid #3B82F6',
+                      borderRadius: '8px',
+                      padding: '16px'
+                    }}>
+                      <div style={{ fontSize: '14px', lineHeight: '1.8' }}>
+                        {selectedInvoice.paymentMethod && (
+                          <p style={{ margin: '0 0 8px 0' }}>
+                            <strong>Payment Method:</strong> {
+                              selectedInvoice.paymentMethod === 'bank_transfer' ? 'Bank Transfer' :
+                              selectedInvoice.paymentMethod === 'qr_payment' ? 'QR Payment' :
+                              selectedInvoice.paymentMethod === 'stripe' ? 'Stripe' :
+                              selectedInvoice.paymentMethod === 'paypal' ? 'PayPal' :
+                              selectedInvoice.paymentMethod
+                            }
+                          </p>
+                        )}
+                        {selectedInvoice.transactionId && (
+                          <p style={{ margin: '0 0 8px 0' }}>
+                            <strong>Transaction ID:</strong> {selectedInvoice.transactionId}
+                          </p>
+                        )}
+                      </div>
+                      {selectedInvoice.receiptUrl && (
+                        <div style={{ marginTop: '12px' }}>
+                          <p style={{ margin: '0 0 8px 0', fontWeight: '600', fontSize: '14px' }}>Payment Receipt:</p>
+                          <div style={{ textAlign: 'center', background: 'white', padding: '12px', borderRadius: '8px' }}>
+                            <img
+                              src={selectedInvoice.receiptUrl}
+                              alt="Payment Receipt"
+                              style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', cursor: 'pointer' }}
+                              onClick={() => window.open(selectedInvoice.receiptUrl, '_blank')}
+                            />
+                            <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#6B7280' }}>Click image to view full size</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </FormGroup>
+                )}
+
+                <div style={{
+                  background: '#FEF3C7',
+                  border: '1px solid #F59E0B',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  margin: '16px 0'
                 }}>
                   <p style={{ margin: 0, color: '#92400E', fontSize: '14px' }}>
-                    <strong>⚠️ Confirm Payment Receipt</strong><br />
-                    Only mark this invoice as paid if you have received and verified the payment from the manager.
-                    This action will update the invoice status to "Paid" and cannot be easily undone.
+                    <strong>Confirm Payment Receipt</strong><br />
+                    Only mark this invoice as paid if you have received and verified the payment.
+                    This action will update the invoice status to "Paid".
                   </p>
                 </div>
-                
+
                 <FormGroup>
-                  <FormLabel>Confirmation Details</FormLabel>
-                  <div style={{ 
-                    fontSize: '14px', 
+                  <FormLabel>Status Change</FormLabel>
+                  <div style={{
+                    fontSize: '14px',
                     lineHeight: '1.6',
                     color: '#374151',
                     background: '#F8FAFC',
                     padding: '12px',
                     borderRadius: '6px'
                   }}>
-                    • Payment Date: {new Date().toLocaleDateString('en-MY')}<br />
-                    • Status Change: {selectedInvoice.status} → Paid<br />
-                    • This will update the invoice status immediately
+                    Payment Submitted → Paid<br />
+                    Paid Date: {new Date().toLocaleDateString('en-MY')}
                   </div>
                 </FormGroup>
               </ModalBody>

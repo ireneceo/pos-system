@@ -2,334 +2,334 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
-import { API_BASE_URL } from '../../config/api';
 import { formatCurrency } from '../../utils/currency';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import {
+  Container,
+  Header,
+  Title,
+  ActionSection,
+  Content,
+  StatsGrid,
+  StatCard,
+  StatValue,
+  StatLabel,
+  StatDescription,
   Table,
   TableHeader as CommonTableHeader,
   TableRow as CommonTableRow,
   MobileLabel,
   MobileValue,
-  MobileGrid
+  MobileGrid,
+  ActionButtons,
+  ActionButton as CommonActionButton,
+  IconButton as CommonIconButton
 } from '../../components/UI';
+
+// ============================================
+// Interfaces
+// ============================================
+
+interface BrandSubscription {
+  restaurant_id: number;
+  restaurant_name: string;
+  restaurant_email: string;
+  restaurant_status: string;
+  plan: {
+    id: number;
+    name: string;
+    subscription_fee: string;
+    revenue_percentage: string;
+    rent_type: string;
+    rent_fixed?: string;
+    rent_percentage?: string;
+    billing_cycle: string;
+    auto_generate: boolean;
+    activation_date: string;
+  } | null;
+  latest_invoice: {
+    id: number;
+    invoice_number: string;
+    total_amount: string;
+    status: string;
+    billing_period_start: string;
+    billing_period_end: string;
+    due_date: string;
+  } | null;
+  current_month: {
+    revenue: number;
+    order_count: number;
+    estimated_charges: {
+      items: any[];
+      subtotal: number;
+      taxAmount: number;
+      totalAmount: number;
+    } | null;
+  };
+}
+
+interface EntityPlan {
+  id: number;
+  name: string;
+  subscription_fee: string;
+  revenue_percentage: string;
+  rent_type: string;
+  billing_cycle: string;
+  is_active: boolean;
+}
 
 // ============================================
 // Styled Components
 // ============================================
 
-const Container = styled.div`
-  min-height: 100vh;
-  background: #FAFBFC;
-`;
+const SubscriptionTableHeader = styled(CommonTableHeader)`
+  @media (max-width: 1400px) {
+    & > span:nth-child(5),
+    & > span:nth-child(6),
+    & > span:nth-child(7) {
+      display: none;
+    }
+  }
 
-const Content = styled.div`
-  padding: 32px;
-  @media (max-width: 768px) { padding: 20px; }
-`;
-
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
-  height: 56px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  @media (max-width: 768px) {
-    padding: 16px;
-    height: auto;
-    min-height: 56px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
+  @media (max-width: 1024px) {
+    & > span:nth-child(3),
+    & > span:nth-child(4),
+    & > span:nth-child(5),
+    & > span:nth-child(6),
+    & > span:nth-child(7) {
+      display: none;
+    }
   }
 `;
 
-const Title = styled.h1`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-  line-height: 1;
-  @media (max-width: 768px) { font-size: 20px; }
-`;
+const SubscriptionTableRow = styled(CommonTableRow)`
+  @media (max-width: 1400px) {
+    & > div:nth-child(5),
+    & > div:nth-child(6),
+    & > div:nth-child(7) {
+      display: none;
+    }
+  }
 
-const ActionSection = styled.div`
-  display: flex;
-  gap: 12px;
-`;
-
-const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'success' }>`
-  padding: 10px 18px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-  ${props => props.variant === 'primary' ? `
-    background: #635BFF; color: white;
-    &:hover { background: #5A51E6; transform: translateY(-1px); }
-  ` : props.variant === 'success' ? `
-    background: #059669; color: white;
-    &:hover { background: #047857; transform: translateY(-1px); }
-  ` : `
-    background: white; color: #374151; border: 1px solid #E6EBF1;
-    &:hover { background: #F8FAFC; border-color: #635BFF; }
-  `}
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
+  @media (max-width: 1024px) {
+    & > div:nth-child(3),
+    & > div:nth-child(4),
+    & > div:nth-child(5),
+    & > div:nth-child(6),
+    & > div:nth-child(7) {
+      display: none;
+    }
   }
 `;
 
-const TabContainer = styled.div`
-  display: flex;
-  gap: 0;
-  margin-bottom: 24px;
-  border-bottom: 2px solid #E6EBF1;
-`;
+const RestaurantInfo = styled.div``;
 
-const Tab = styled.button<{ active: boolean }>`
-  padding: 12px 24px;
-  font-size: 14px;
+const RestaurantName = styled.div`
   font-weight: 600;
-  color: ${props => props.active ? '#635BFF' : '#6B7280'};
-  background: none;
-  border: none;
-  border-bottom: 2px solid ${props => props.active ? '#635BFF' : 'transparent'};
-  margin-bottom: -2px;
-  cursor: pointer;
-  transition: all 0.2s;
-  &:hover { color: #635BFF; }
-`;
-
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-  margin-bottom: 32px;
-`;
-
-const StatCard = styled.div<{ color?: string }>`
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  border: 1px solid #E6EBF1;
-  border-left: 4px solid ${props => props.color || '#635BFF'};
-  transition: all 0.2s;
-  &:hover { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); transform: translateY(-2px); }
-`;
-
-const StatValue = styled.div`
-  font-size: 24px;
-  font-weight: 700;
   color: #0A2540;
   margin-bottom: 4px;
 `;
 
-const StatLabel = styled.div`
-  font-size: 13px;
-  color: #6B7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
-
-const StatSub = styled.div`
-  font-size: 12px;
-  color: #9CA3AF;
-  margin-top: 4px;
-`;
-
-const SubscriptionGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
-  gap: 24px;
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const Card = styled.div`
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  border: 1px solid #E6EBF1;
-  transition: all 0.2s;
-  &:hover { box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1); transform: translateY(-2px); border-color: #635BFF; }
-`;
-
-const CardHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 16px;
-`;
-
-const RestaurantName = styled.h3`
-  font-size: 18px;
-  font-weight: 600;
-  color: #0A2540;
-  margin: 0 0 4px 0;
-`;
-
-const RestaurantEmail = styled.div`
+const RestaurantMeta = styled.div`
   font-size: 13px;
   color: #6B7280;
 `;
 
-const Badge = styled.span<{ variant: 'green' | 'yellow' | 'red' | 'gray' | 'blue' | 'purple' }>`
-  padding: 5px 10px;
+const StatusBadge = styled.span<{ status: string }>`
+  display: inline-block;
+  padding: 4px 12px;
   border-radius: 6px;
   font-size: 11px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  ${props => {
-    switch (props.variant) {
-      case 'green': return 'background: #ECFDF5; color: #059669;';
-      case 'yellow': return 'background: #FEF3C7; color: #D97706;';
-      case 'red': return 'background: #FEE2E2; color: #DC2626;';
-      case 'blue': return 'background: #DBEAFE; color: #2563EB;';
-      case 'purple': return 'background: #EDE9FE; color: #7C3AED;';
-      default: return 'background: #F3F4F6; color: #6B7280;';
+  white-space: nowrap;
+  background: ${props => {
+    switch(props.status) {
+      case 'active': return '#ECFDF5';
+      case 'trial': return '#FEF3C7';
+      case 'overdue': return '#FEF9C3';
+      case 'paid': return '#ECFDF5';
+      case 'pending_payment': return '#FEF3C7';
+      case 'expired': return '#FEE2E2';
+      case 'suspended': return '#FEF2F2';
+      case 'cancelled': return '#F3F4F6';
+      default: return '#F3F4F6';
     }
-  }}
+  }};
+  color: ${props => {
+    switch(props.status) {
+      case 'active': return '#059669';
+      case 'trial': return '#D97706';
+      case 'overdue': return '#CA8A04';
+      case 'paid': return '#059669';
+      case 'pending_payment': return '#D97706';
+      case 'expired': return '#DC2626';
+      case 'suspended': return '#DC2626';
+      case 'cancelled': return '#6B7280';
+      default: return '#6B7280';
+    }
+  }};
 `;
 
-const PlanSection = styled.div`
-  padding: 16px;
-  background: #F8FAFC;
-  border-radius: 8px;
-  margin-bottom: 16px;
+const IconSymbol = styled.span`
+  font-size: 14px;
+  font-family: 'Lucida Console', 'Courier New', monospace;
+  color: #6B7C93;
+  display: inline-block;
+  line-height: 1;
 `;
 
-const PlanName = styled.div`
-  font-size: 16px;
-  font-weight: 600;
-  color: #0A2540;
-  margin-bottom: 8px;
+// Modal Components
+const ModalOverlay = styled.div<{ show: boolean }>`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: ${props => props.show ? 'flex' : 'none'};
+  justify-content: center;
+  align-items: flex-start;
+  padding: 40px 0;
+  overflow-y: auto;
+  z-index: 10000;
+  pointer-events: ${props => props.show ? 'auto' : 'none'};
 `;
 
-const PlanDetail = styled.div`
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-  color: #6B7280;
-  padding: 4px 0;
-  & + & { border-top: 1px solid #E6EBF1; }
-`;
-
-const PlanDetailLabel = styled.span`
-  color: #6B7280;
-`;
-
-const PlanDetailValue = styled.span`
-  font-weight: 600;
-  color: #0A2540;
-`;
-
-const RevenueSection = styled.div`
-  padding: 16px;
-  background: #F0FDF4;
-  border-radius: 8px;
-  border: 1px solid #BBF7D0;
-  margin-bottom: 16px;
-`;
-
-const RevenueTitle = styled.div`
-  font-size: 12px;
-  font-weight: 600;
-  color: #059669;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 8px;
-`;
-
-const RevenueAmount = styled.div`
-  font-size: 22px;
-  font-weight: 700;
-  color: #059669;
-`;
-
-const RevenueSub = styled.div`
-  font-size: 12px;
-  color: #6B7280;
-  margin-top: 4px;
-`;
-
-const ChargesSection = styled.div`
-  padding: 16px;
-  background: #FFF7ED;
-  border-radius: 8px;
-  border: 1px solid #FED7AA;
-  margin-bottom: 16px;
-`;
-
-const ChargesTitle = styled.div`
-  font-size: 12px;
-  font-weight: 600;
-  color: #C2410C;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 8px;
-`;
-
-const ChargesItem = styled.div`
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-  padding: 4px 0;
-  color: #6B7280;
-`;
-
-const ChargesTotalRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  font-size: 15px;
-  font-weight: 700;
-  padding-top: 8px;
-  margin-top: 8px;
-  border-top: 2px solid #FDBA74;
-  color: #C2410C;
-`;
-
-const InvoiceSection = styled.div`
-  padding: 12px 16px;
+const Modal = styled.div`
   background: white;
-  border-radius: 8px;
-  border: 1px solid #E6EBF1;
-  margin-bottom: 16px;
+  border-radius: 12px;
+  padding: 0;
+  width: 90%;
+  max-width: 600px;
+  flex-shrink: 0;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  animation: slideIn 0.3s ease;
+
+  @keyframes slideIn {
+    from {
+      transform: translateY(-50px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+`;
+
+const ModalHeader = styled.div`
+  padding: 24px;
+  border-bottom: 1px solid #E6EBF1;
   display: flex;
   justify-content: space-between;
   align-items: center;
 `;
 
-const InvoiceInfo = styled.div``;
-
-const InvoiceNumber = styled.div`
-  font-size: 13px;
-  font-weight: 600;
+const ModalTitle = styled.h2`
+  font-size: 24px;
+  font-weight: 700;
   color: #0A2540;
+  margin: 0;
 `;
 
-const InvoiceDate = styled.div`
-  font-size: 12px;
+const CloseButton = styled.button`
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
   color: #6B7280;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: #F3F4F6;
+    color: #374151;
+  }
 `;
 
-const NoPlanTag = styled.div`
-  padding: 12px 16px;
-  background: #F9FAFB;
-  border: 1px dashed #D1D5DB;
-  border-radius: 8px;
-  text-align: center;
-  color: #9CA3AF;
+const ModalBody = styled.div`
+  padding: 24px;
+`;
+
+const ModalActions = styled.div`
+  padding: 24px;
+  border-top: 1px solid #E6EBF1;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+`;
+
+const FormGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
+
+  & > * {
+    min-width: 0;
+  }
+`;
+
+const FormGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const FormLabel = styled.label`
   font-size: 14px;
-  margin-bottom: 16px;
+  font-weight: 600;
+  color: #374151;
+`;
+
+const FormInput = styled.input`
+  padding: 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+
+  &:disabled {
+    background: #F8FAFC;
+    color: #6B7280;
+    cursor: not-allowed;
+  }
+`;
+
+const FormSelect = styled.select`
+  padding: 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  transition: all 0.2s;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
 `;
 
 const EmptyState = styled.div`
@@ -355,212 +355,12 @@ const EmptyDescription = styled.div`
   color: #9CA3AF;
 `;
 
-// Modal styles
-const ModalOverlay = styled.div<{ show: boolean }>`
-  display: ${props => props.show ? 'flex' : 'none'};
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 1000;
-  align-items: flex-start;
-  justify-content: center;
-  overflow-y: auto;
-  padding: 40px 0;
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  border-radius: 12px;
-  padding: 32px;
-  max-width: 560px;
-  width: 90%;
-  flex-shrink: 0;
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 22px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0 0 8px 0;
-`;
-
-const ModalSubtitle = styled.p`
-  font-size: 14px;
-  color: #6B7280;
-  margin: 0 0 24px 0;
-`;
-
-const ModalActions = styled.div`
-  display: flex;
-  gap: 12px;
-  margin-top: 24px;
-`;
-
 const LoadingSpinner = styled.div`
   text-align: center;
   padding: 40px;
   color: #6B7280;
   font-size: 14px;
 `;
-
-// POS Subscriptions table styles
-const POSTableHeader = styled(CommonTableHeader)`
-  @media (max-width: 1200px) {
-    & > span:nth-child(5),
-    & > span:nth-child(6) {
-      display: none;
-    }
-  }
-  @media (max-width: 900px) {
-    & > span:nth-child(3),
-    & > span:nth-child(4),
-    & > span:nth-child(5),
-    & > span:nth-child(6) {
-      display: none;
-    }
-  }
-`;
-
-const POSTableRow = styled(CommonTableRow)`
-  @media (max-width: 1200px) {
-    & > div:nth-child(5),
-    & > div:nth-child(6) {
-      display: none;
-    }
-  }
-  @media (max-width: 900px) {
-    & > div:nth-child(3),
-    & > div:nth-child(4),
-    & > div:nth-child(5),
-    & > div:nth-child(6) {
-      display: none;
-    }
-  }
-`;
-
-const POSRestaurantName = styled.div`
-  font-weight: 600;
-  color: #0A2540;
-  font-size: 14px;
-`;
-
-const POSRestaurantMeta = styled.div`
-  font-size: 12px;
-  color: #9CA3AF;
-  margin-top: 2px;
-`;
-
-const PlanBadge = styled.span<{ planType: string }>`
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: capitalize;
-  ${props => {
-    switch (props.planType) {
-      case 'basic': return 'background: #F3F4F6; color: #374151;';
-      case 'professional': return 'background: #EDE9FE; color: #7C3AED;';
-      case 'enterprise': return 'background: #FEF3C7; color: #92400E;';
-      default: return 'background: #F3F4F6; color: #374151;';
-    }
-  }}
-`;
-
-const StatusBadge2 = styled.span<{ status: string }>`
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  ${props => {
-    switch (props.status) {
-      case 'active': return 'background: #ECFDF5; color: #059669;';
-      case 'trial': return 'background: #DBEAFE; color: #2563EB;';
-      case 'expired': return 'background: #FEE2E2; color: #DC2626;';
-      case 'suspended': return 'background: #FEF3C7; color: #D97706;';
-      case 'cancelled': return 'background: #F3F4F6; color: #6B7280;';
-      default: return 'background: #F3F4F6; color: #6B7280;';
-    }
-  }}
-`;
-
-interface POSSubscription {
-  id: string;
-  restaurantName: string;
-  adminName: string;
-  location: string;
-  planType: string;
-  status: string;
-  monthlyFee: number;
-  paymentModel: string;
-  startDate: string;
-  endDate: string;
-  autoRenew: boolean;
-}
-
-// ============================================
-// Interfaces
-// ============================================
-
-interface BrandPlanSubscription {
-  restaurant_id: number;
-  restaurant_name: string;
-  restaurant_email: string;
-  restaurant_status: string;
-  plan: {
-    id: number;
-    name: string;
-    subscription_fee: string;
-    revenue_percentage: string;
-    rent_type: string;
-    billing_cycle: string;
-    auto_generate: boolean;
-    activation_date: string;
-  } | null;
-  latest_invoice: {
-    id: number;
-    invoice_number: string;
-    total_amount: string;
-    status: string;
-    billing_period_start: string;
-    billing_period_end: string;
-    due_date: string;
-  } | null;
-  current_month: {
-    revenue: number;
-    order_count: number;
-    estimated_charges: {
-      items: Array<{
-        item_type: string;
-        description: string;
-        calculated_amount: number;
-        tax_amount: number;
-        total_amount: number;
-      }>;
-      subtotal: number;
-      taxAmount: number;
-      totalAmount: number;
-    } | null;
-  };
-}
-
-interface GenerateResult {
-  generated: number;
-  skipped: number;
-  total: number;
-  period: { start: string; end: string };
-  results: Array<{
-    restaurant: string;
-    status: string;
-    reason?: string;
-    invoice_number?: string;
-    amount?: number;
-    revenue?: number;
-  }>;
-}
 
 // ============================================
 // Component
@@ -569,166 +369,207 @@ interface GenerateResult {
 const BrandSubscriptionsPage: React.FC = () => {
   const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
-  const [brandId, setBrandId] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<'brand_plans' | 'pos_subscriptions'>('brand_plans');
-  const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [brandSubs, setBrandSubs] = useState<BrandPlanSubscription[]>([]);
-  const [showGenerateModal, setShowGenerateModal] = useState(false);
-  const [generateResult, setGenerateResult] = useState<GenerateResult | null>(null);
-  const [showResultModal, setShowResultModal] = useState(false);
-  // POS Subscriptions state
-  const [posSubs, setPosSubs] = useState<POSSubscription[]>([]);
-  const [posLoading, setPosLoading] = useState(false);
-  const [posSearchTerm, setPosSearchTerm] = useState('');
-  const [posFilterStatus, setPosFilterStatus] = useState('all');
-  const [posFilterPayment, setPosFilterPayment] = useState('all');
-  const [generateError, setGenerateError] = useState('');
-
+  const currency = defaultCurrency || 'MYR';
   const token = localStorage.getItem('auth_token');
+  const brandId = user?.brand_id || null;
 
-  useEffect(() => {
-    if (user?.brand_id) {
-      setBrandId(Number(user.brand_id));
-    }
-  }, [user]);
+  const [subscriptions, setSubscriptions] = useState<BrandSubscription[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
 
-  const fetchBrandSubscriptions = useCallback(async () => {
+  // Brand plans for assign modal
+  const [brandPlans, setBrandPlans] = useState<EntityPlan[]>([]);
+
+  // Assign Plan Modal
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assignTarget, setAssignTarget] = useState<BrandSubscription | null>(null);
+  const [selectedPlanId, setSelectedPlanId] = useState<number | ''>('');
+
+  // View Modal
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewingSub, setViewingSub] = useState<BrandSubscription | null>(null);
+
+  // Confirm Modal
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<BrandSubscription | null>(null);
+  const [confirmAction, setConfirmAction] = useState<'unassign' | null>(null);
+
+  // ============================================
+  // Data Fetching
+  // ============================================
+
+  const fetchSubscriptions = useCallback(async () => {
     if (!brandId) return;
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/brands/${brandId}/subscriptions`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
+      const response = await fetch(`/api/brands/${brandId}/subscriptions`, { headers });
       if (response.ok) {
         const data = await response.json();
-        setBrandSubs(data.data || []);
+        setSubscriptions(data.success ? data.data : (Array.isArray(data) ? data : []));
       }
     } catch (error) {
-      console.error('Error fetching brand subscriptions:', error);
+      console.error('Error fetching subscriptions:', error);
+      setSubscriptions([]);
     } finally {
       setLoading(false);
     }
   }, [brandId, token]);
 
-  useEffect(() => {
-    fetchBrandSubscriptions();
-  }, [fetchBrandSubscriptions]);
-
-  // Fetch POS subscriptions (restaurants data)
-  const fetchPOSSubscriptions = useCallback(async () => {
-    if (!token) return;
-    setPosLoading(true);
-    try {
-      const response = await fetch('/api/restaurants', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const restaurants = Array.isArray(data) ? data : [];
-        const formatted: POSSubscription[] = restaurants.map((r: any) => {
-          const planType = r.plan_type?.toLowerCase().replace(' plan', '') || 'basic';
-          let status = 'active';
-          if (r.status === 'trial') status = 'trial';
-          else if (r.status === 'inactive' || r.status === 'suspended') status = 'suspended';
-          else if (r.status === 'expired') status = 'expired';
-          else if (r.status === 'cancelled') status = 'cancelled';
-
-          return {
-            id: r.id?.toString(),
-            restaurantName: r.name || 'Unknown',
-            adminName: r.admin_name || r.managerName || '-',
-            location: r.address || '-',
-            planType,
-            status,
-            monthlyFee: parseFloat(r.plan_amount) || 29,
-            paymentModel: r.payment_model || 'restaurant',
-            startDate: r.subscription_start ? new Date(r.subscription_start).toISOString().split('T')[0] : '-',
-            endDate: r.subscription_end ? new Date(r.subscription_end).toISOString().split('T')[0] : '-',
-            autoRenew: r.status === 'active'
-          };
-        });
-        setPosSubs(formatted);
-      }
-    } catch (error) {
-      console.error('Error fetching POS subscriptions:', error);
-    } finally {
-      setPosLoading(false);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    if (activeTab === 'pos_subscriptions') {
-      fetchPOSSubscriptions();
-    }
-  }, [activeTab, fetchPOSSubscriptions]);
-
-  const handleGenerateInvoices = async () => {
+  const fetchBrandPlans = useCallback(async () => {
     if (!brandId) return;
-    setGenerating(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/brands/${brandId}/generate-invoices`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({})
-      });
+      const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
+      const response = await fetch(`/api/brands/${brandId}/plans`, { headers });
       if (response.ok) {
         const data = await response.json();
-        setGenerateResult(data.data);
-        setShowGenerateModal(false);
-        setShowResultModal(true);
-        fetchBrandSubscriptions();
-      } else {
-        const err = await response.json().catch(() => ({ message: 'Unknown error' }));
-        setGenerateError(`Failed: ${err.message}`);
+        const plans = data.success ? data.data : (Array.isArray(data) ? data : []);
+        setBrandPlans(plans.filter((p: EntityPlan) => p.is_active));
       }
     } catch (error) {
-      console.error('Error generating invoices:', error);
-      setGenerateError('Failed to generate invoices');
-    } finally {
-      setGenerating(false);
+      console.error('Error fetching brand plans:', error);
     }
-  };
+  }, [brandId, token]);
 
-  // Stats
-  const totalRestaurants = brandSubs.length;
-  const withPlan = brandSubs.filter(s => s.plan !== null).length;
-  const totalMonthRevenue = brandSubs.reduce((sum, s) => sum + (s.current_month?.revenue || 0), 0);
-  const totalEstimatedCharges = brandSubs.reduce((sum, s) => sum + (s.current_month?.estimated_charges?.totalAmount || 0), 0);
-  const currency = defaultCurrency || 'MYR';
+  useEffect(() => {
+    fetchSubscriptions();
+    fetchBrandPlans();
+  }, [fetchSubscriptions, fetchBrandPlans]);
 
-  const getInvoiceStatusBadge = (status: string): 'green' | 'yellow' | 'red' | 'gray' | 'blue' | 'purple' => {
-    switch (status) {
-      case 'paid': return 'green';
-      case 'pending_payment': return 'yellow';
-      case 'payment_submitted': return 'blue';
-      case 'overdue': return 'red';
-      case 'cancelled': return 'gray';
-      default: return 'gray';
-    }
-  };
+  // ============================================
+  // Filters & Stats
+  // ============================================
 
-  // POS Subscriptions filtering
-  const filteredPosSubs = posSubs.filter(sub => {
-    const matchesSearch = sub.restaurantName.toLowerCase().includes(posSearchTerm.toLowerCase()) ||
-                          sub.adminName.toLowerCase().includes(posSearchTerm.toLowerCase()) ||
-                          sub.location.toLowerCase().includes(posSearchTerm.toLowerCase());
-    const matchesStatus = posFilterStatus === 'all' || sub.status === posFilterStatus;
-    const matchesPayment = posFilterPayment === 'all' || sub.paymentModel === posFilterPayment;
-    return matchesSearch && matchesStatus && matchesPayment;
+  const filteredSubscriptions = subscriptions.filter(sub => {
+    const matchesSearch = sub.restaurant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         sub.restaurant_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (sub.plan?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+    if (filterStatus === 'all') return matchesSearch;
+    if (filterStatus === 'assigned') return matchesSearch && sub.plan !== null;
+    if (filterStatus === 'unassigned') return matchesSearch && sub.plan === null;
+    if (filterStatus === 'active') return matchesSearch && sub.restaurant_status === 'active';
+    if (filterStatus === 'overdue') return matchesSearch && sub.restaurant_status === 'overdue';
+    return matchesSearch;
   });
 
-  const posActiveCount = posSubs.filter(s => s.status === 'active').length;
-  const posTrialCount = posSubs.filter(s => s.status === 'trial').length;
-  const posTotalFee = posSubs.filter(s => s.status === 'active' || s.status === 'trial').reduce((sum, s) => sum + s.monthlyFee, 0);
+  const totalRestaurants = subscriptions.length;
+  const assignedCount = subscriptions.filter(s => s.plan !== null).length;
+  const unassignedCount = subscriptions.filter(s => s.plan === null).length;
+  const totalMonthlyCharges = subscriptions.reduce((sum, s) => {
+    return sum + (s.current_month?.estimated_charges?.totalAmount || 0);
+  }, 0);
 
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  // ============================================
+  // Actions
+  // ============================================
+
+  const handleAssignPlan = (sub: BrandSubscription) => {
+    setAssignTarget(sub);
+    setSelectedPlanId(sub.plan?.id || '');
+    setShowAssignModal(true);
   };
+
+  const handleSubmitAssign = async () => {
+    if (!brandId || !assignTarget || !selectedPlanId) return;
+    try {
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      };
+
+      const response = await fetch(`/api/brands/${brandId}/plans/${selectedPlanId}/restaurants`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ restaurant_id: assignTarget.restaurant_id })
+      });
+
+      if (response.ok) {
+        setShowAssignModal(false);
+        setAssignTarget(null);
+        setSelectedPlanId('');
+        fetchSubscriptions();
+      } else {
+        const error = await response.json();
+        console.error('Failed to assign plan:', error);
+      }
+    } catch (error) {
+      console.error('Error assigning plan:', error);
+    }
+  };
+
+  const handleUnassignPlan = (sub: BrandSubscription) => {
+    setConfirmTarget(sub);
+    setConfirmAction('unassign');
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmAction = async () => {
+    if (!brandId || !confirmTarget || !confirmAction) return;
+
+    try {
+      const headers: HeadersInit = {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      };
+
+      if (confirmAction === 'unassign' && confirmTarget.plan) {
+        const response = await fetch(
+          `/api/brands/${brandId}/plans/${confirmTarget.plan.id}/restaurants/${confirmTarget.restaurant_id}`,
+          { method: 'DELETE', headers }
+        );
+        if (!response.ok) {
+          const error = await response.json();
+          console.error('Failed to unassign:', error);
+        }
+      }
+
+      setShowConfirmModal(false);
+      setConfirmTarget(null);
+      setConfirmAction(null);
+      fetchSubscriptions();
+    } catch (error) {
+      console.error('Action failed:', error);
+    }
+  };
+
+  const handleViewDetails = (sub: BrandSubscription) => {
+    setViewingSub(sub);
+    setShowViewModal(true);
+  };
+
+  // CSV Export
+  const handleExportData = () => {
+    const csvRows = [
+      ['Restaurant', 'Email', 'Status', 'Plan', 'Subscription Fee', 'Revenue %', 'Billing Cycle', 'Latest Invoice', 'Invoice Status', 'Est. Monthly Charges'].join(',')
+    ];
+    subscriptions.forEach(sub => {
+      csvRows.push([
+        `"${sub.restaurant_name}"`,
+        `"${sub.restaurant_email}"`,
+        sub.restaurant_status,
+        `"${sub.plan?.name || 'Not Assigned'}"`,
+        sub.plan?.subscription_fee || '0',
+        sub.plan?.revenue_percentage || '0',
+        sub.plan?.billing_cycle || '-',
+        sub.latest_invoice?.invoice_number || '-',
+        sub.latest_invoice?.status || '-',
+        sub.current_month?.estimated_charges?.totalAmount?.toString() || '0'
+      ].join(','));
+    });
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `brand-subscriptions-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  };
+
+  // ============================================
+  // Render
+  // ============================================
 
   return (
     <MainLayout>
@@ -736,392 +577,423 @@ const BrandSubscriptionsPage: React.FC = () => {
         <Header>
           <Title>Subscriptions</Title>
           <ActionSection>
-            {activeTab === 'brand_plans' && (
-              <Button variant="success" onClick={() => setShowGenerateModal(true)} disabled={withPlan === 0}>
-                Generate Invoices
-              </Button>
-            )}
+            <ThemedButton variant="outline" onClick={handleExportData}>Export</ThemedButton>
           </ActionSection>
         </Header>
 
         <Content>
-          <TabContainer>
-            <Tab active={activeTab === 'brand_plans'} onClick={() => setActiveTab('brand_plans')}>
-              Brand Plans ({withPlan})
-            </Tab>
-            <Tab active={activeTab === 'pos_subscriptions'} onClick={() => setActiveTab('pos_subscriptions')}>
-              POS Subscriptions ({totalRestaurants})
-            </Tab>
-          </TabContainer>
+          <StatsGrid>
+            <StatCard color="#059669">
+              <StatValue>{totalRestaurants}</StatValue>
+              <StatLabel>Total Restaurants</StatLabel>
+              <StatDescription>In your brand</StatDescription>
+            </StatCard>
+            <StatCard color="#2563EB">
+              <StatValue>{assignedCount}</StatValue>
+              <StatLabel>Plan Assigned</StatLabel>
+              <StatDescription>{totalRestaurants > 0 ? Math.round((assignedCount/totalRestaurants)*100) : 0}% covered</StatDescription>
+            </StatCard>
+            <StatCard color="#7C3AED">
+              <StatValue>{unassignedCount}</StatValue>
+              <StatLabel>No Plan</StatLabel>
+              <StatDescription>Need plan assignment</StatDescription>
+            </StatCard>
+            <StatCard color="#D97706">
+              <StatValue>{formatCurrency(totalMonthlyCharges, currency)}</StatValue>
+              <StatLabel>Est. Monthly Charges</StatLabel>
+              <StatDescription>From all restaurants</StatDescription>
+            </StatCard>
+          </StatsGrid>
 
-          {activeTab === 'brand_plans' && (
-            <>
-              <StatsGrid>
-                <StatCard color="#059669">
-                  <StatValue>{totalRestaurants}</StatValue>
-                  <StatLabel>Brand Restaurants</StatLabel>
-                  <StatSub>{withPlan} with plans assigned</StatSub>
-                </StatCard>
-                <StatCard color="#2563EB">
-                  <StatValue>{formatCurrency(totalMonthRevenue, currency)}</StatValue>
-                  <StatLabel>This Month Revenue</StatLabel>
-                  <StatSub>All brand restaurants combined</StatSub>
-                </StatCard>
-                <StatCard color="#7C3AED">
-                  <StatValue>{formatCurrency(totalEstimatedCharges, currency)}</StatValue>
-                  <StatLabel>Estimated Charges</StatLabel>
-                  <StatSub>Based on current month revenue</StatSub>
-                </StatCard>
-                <StatCard color="#D97706">
-                  <StatValue>{brandSubs.filter(s => s.latest_invoice?.status === 'pending_payment').length}</StatValue>
-                  <StatLabel>Pending Invoices</StatLabel>
-                  <StatSub>Awaiting payment</StatSub>
-                </StatCard>
-              </StatsGrid>
+          <FilterBar>
+            <SearchInput
+              placeholder="Search restaurants or plans..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <FilterSelect
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="all">All Restaurants</option>
+              <option value="assigned">Plan Assigned</option>
+              <option value="unassigned">No Plan</option>
+              <option value="active">Active</option>
+              <option value="overdue">Overdue</option>
+            </FilterSelect>
+          </FilterBar>
 
-              {loading ? (
-                <LoadingSpinner>Loading subscription data...</LoadingSpinner>
-              ) : brandSubs.length === 0 ? (
-                <EmptyState>
-                  <EmptyIcon>&#x1F4CB;</EmptyIcon>
-                  <EmptyTitle>No Restaurants</EmptyTitle>
-                  <EmptyDescription>No restaurants are assigned to this brand yet.</EmptyDescription>
-                </EmptyState>
-              ) : (
-                <SubscriptionGrid>
-                  {brandSubs.map(sub => (
-                    <Card key={sub.restaurant_id}>
-                      <CardHeader>
-                        <div>
-                          <RestaurantName>{sub.restaurant_name}</RestaurantName>
-                          <RestaurantEmail>{sub.restaurant_email || 'No email'}</RestaurantEmail>
-                        </div>
-                        <Badge variant={sub.restaurant_status === 'active' ? 'green' : 'gray'}>
-                          {sub.restaurant_status}
-                        </Badge>
-                      </CardHeader>
+          {loading ? (
+            <LoadingSpinner>Loading subscription data...</LoadingSpinner>
+          ) : filteredSubscriptions.length === 0 ? (
+            <EmptyState>
+              <EmptyIcon>&#x1F4CB;</EmptyIcon>
+              <EmptyTitle>{subscriptions.length === 0 ? 'No Restaurants' : 'No Results'}</EmptyTitle>
+              <EmptyDescription>{subscriptions.length === 0 ? 'No restaurants are assigned to this brand yet.' : 'No restaurants match your search criteria.'}</EmptyDescription>
+            </EmptyState>
+          ) : (
+            <Table>
+              <SubscriptionTableHeader columns="2fr 1.5fr 1fr 1fr 1fr 1fr 180px">
+                <span>Restaurant</span>
+                <span>Plan</span>
+                <span>Status</span>
+                <span>Est. Charges</span>
+                <span>Latest Invoice</span>
+                <span>Revenue (MTD)</span>
+                <span>Actions</span>
+              </SubscriptionTableHeader>
 
+              {filteredSubscriptions.map(sub => (
+                <SubscriptionTableRow columns="2fr 1.5fr 1fr 1fr 1fr 1fr 180px" key={sub.restaurant_id}>
+                  <MobileGrid>
+                    <MobileValue>
+                      <MobileLabel>Restaurant</MobileLabel>
+                      <RestaurantInfo>
+                        <RestaurantName>{sub.restaurant_name}</RestaurantName>
+                        <RestaurantMeta>{sub.restaurant_email}</RestaurantMeta>
+                      </RestaurantInfo>
+                    </MobileValue>
+
+                    <MobileValue>
+                      <MobileLabel>Plan</MobileLabel>
                       {sub.plan ? (
-                        <>
-                          <PlanSection>
-                            <PlanName>{sub.plan.name}</PlanName>
-                            {parseFloat(sub.plan.subscription_fee) > 0 && (
-                              <PlanDetail>
-                                <PlanDetailLabel>Subscription Fee</PlanDetailLabel>
-                                <PlanDetailValue>{formatCurrency(parseFloat(sub.plan.subscription_fee), currency)}/mo</PlanDetailValue>
-                              </PlanDetail>
-                            )}
-                            {parseFloat(sub.plan.revenue_percentage) > 0 && (
-                              <PlanDetail>
-                                <PlanDetailLabel>Revenue Royalty</PlanDetailLabel>
-                                <PlanDetailValue>{sub.plan.revenue_percentage}%</PlanDetailValue>
-                              </PlanDetail>
-                            )}
-                            {sub.plan.rent_type !== 'none' && (
-                              <PlanDetail>
-                                <PlanDetailLabel>Rent Type</PlanDetailLabel>
-                                <PlanDetailValue style={{ textTransform: 'capitalize' }}>{sub.plan.rent_type}</PlanDetailValue>
-                              </PlanDetail>
-                            )}
-                            <PlanDetail>
-                              <PlanDetailLabel>Billing</PlanDetailLabel>
-                              <PlanDetailValue style={{ textTransform: 'capitalize' }}>{sub.plan.billing_cycle} {sub.plan.auto_generate ? '(Auto)' : '(Manual)'}</PlanDetailValue>
-                            </PlanDetail>
-                            <PlanDetail>
-                              <PlanDetailLabel>Active Since</PlanDetailLabel>
-                              <PlanDetailValue>{formatDate(sub.plan.activation_date)}</PlanDetailValue>
-                            </PlanDetail>
-                          </PlanSection>
-
-                          <RevenueSection>
-                            <RevenueTitle>Current Month Revenue</RevenueTitle>
-                            <RevenueAmount>{formatCurrency(sub.current_month.revenue, currency)}</RevenueAmount>
-                            <RevenueSub>{sub.current_month.order_count} completed orders</RevenueSub>
-                          </RevenueSection>
-
-                          {sub.current_month.estimated_charges && sub.current_month.estimated_charges.items.length > 0 && (
-                            <ChargesSection>
-                              <ChargesTitle>Estimated Charges (This Month)</ChargesTitle>
-                              {sub.current_month.estimated_charges.items.map((item, idx) => (
-                                <ChargesItem key={idx}>
-                                  <span>{item.item_type === 'subscription_fee' ? 'Subscription Fee' : item.item_type === 'revenue_percentage' ? 'Revenue Royalty' : 'Rent'}</span>
-                                  <span>{formatCurrency(item.calculated_amount, currency)}</span>
-                                </ChargesItem>
-                              ))}
-                              {sub.current_month.estimated_charges.taxAmount > 0 && (
-                                <ChargesItem>
-                                  <span>Tax</span>
-                                  <span>{formatCurrency(sub.current_month.estimated_charges.taxAmount, currency)}</span>
-                                </ChargesItem>
-                              )}
-                              <ChargesTotalRow>
-                                <span>Total</span>
-                                <span>{formatCurrency(sub.current_month.estimated_charges.totalAmount, currency)}</span>
-                              </ChargesTotalRow>
-                            </ChargesSection>
-                          )}
-                        </>
+                        <div>
+                          <div style={{fontWeight: 600, color: '#0A2540', fontSize: '13px'}}>{sub.plan.name}</div>
+                          <div style={{fontSize: '12px', color: '#6B7280'}}>
+                            {formatCurrency(parseFloat(sub.plan.subscription_fee) || 0, currency)}/mo
+                            {parseFloat(sub.plan.revenue_percentage) > 0 && ` + ${sub.plan.revenue_percentage}%`}
+                          </div>
+                        </div>
                       ) : (
-                        <NoPlanTag>No brand plan assigned - Go to Plans page to assign</NoPlanTag>
+                        <span style={{
+                          padding: '4px 10px', background: '#FEF3C7', color: '#92400E',
+                          borderRadius: '6px', fontSize: '12px', fontWeight: 600
+                        }}>
+                          Not Assigned
+                        </span>
                       )}
+                    </MobileValue>
 
-                      {sub.latest_invoice && (
-                        <InvoiceSection>
-                          <InvoiceInfo>
-                            <InvoiceNumber>{sub.latest_invoice.invoice_number}</InvoiceNumber>
-                            <InvoiceDate>
-                              {formatDate(sub.latest_invoice.billing_period_start)} ~ {formatDate(sub.latest_invoice.billing_period_end)}
-                            </InvoiceDate>
-                          </InvoiceInfo>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <span style={{ fontWeight: 600, color: '#0A2540' }}>
-                              {formatCurrency(parseFloat(sub.latest_invoice.total_amount), currency)}
-                            </span>
-                            <Badge variant={getInvoiceStatusBadge(sub.latest_invoice.status)}>
-                              {sub.latest_invoice.status.replace(/_/g, ' ')}
-                            </Badge>
-                          </div>
-                        </InvoiceSection>
+                    <MobileValue>
+                      <MobileLabel>Status</MobileLabel>
+                      <StatusBadge status={sub.restaurant_status}>
+                        {sub.restaurant_status.charAt(0).toUpperCase() + sub.restaurant_status.slice(1)}
+                      </StatusBadge>
+                    </MobileValue>
+
+                    <MobileValue>
+                      <MobileLabel>Est. Charges</MobileLabel>
+                      {sub.current_month?.estimated_charges ? (
+                        <span style={{fontWeight: 500, color: '#0A2540'}}>
+                          {formatCurrency(sub.current_month.estimated_charges.totalAmount, currency)}
+                        </span>
+                      ) : (
+                        <span style={{color: '#9CA3AF'}}>-</span>
                       )}
-                    </Card>
-                  ))}
-                </SubscriptionGrid>
-              )}
-            </>
+                    </MobileValue>
+
+                    <MobileValue>
+                      <MobileLabel>Latest Invoice</MobileLabel>
+                      {sub.latest_invoice ? (
+                        <div>
+                          <div style={{fontSize: '13px', fontWeight: 500, color: '#0A2540'}}>{sub.latest_invoice.invoice_number}</div>
+                          <StatusBadge status={sub.latest_invoice.status}>
+                            {sub.latest_invoice.status.replace('_', ' ')}
+                          </StatusBadge>
+                        </div>
+                      ) : (
+                        <span style={{color: '#9CA3AF'}}>No invoice</span>
+                      )}
+                    </MobileValue>
+
+                    <MobileValue>
+                      <MobileLabel>Revenue (MTD)</MobileLabel>
+                      <div>
+                        <div style={{fontWeight: 500, color: '#0A2540'}}>
+                          {formatCurrency(sub.current_month?.revenue || 0, currency)}
+                        </div>
+                        <div style={{fontSize: '12px', color: '#6B7280'}}>
+                          {sub.current_month?.order_count || 0} orders
+                        </div>
+                      </div>
+                    </MobileValue>
+                  </MobileGrid>
+
+                  <ActionButtons>
+                    <CommonActionButton onClick={() => handleViewDetails(sub)}>View</CommonActionButton>
+                    <CommonActionButton onClick={() => handleAssignPlan(sub)}>
+                      {sub.plan ? 'Change' : 'Assign'}
+                    </CommonActionButton>
+                    {sub.plan && (
+                      <CommonIconButton
+                        onClick={() => handleUnassignPlan(sub)}
+                        title="Remove plan assignment"
+                      >
+                        <IconSymbol>✕</IconSymbol>
+                      </CommonIconButton>
+                    )}
+                  </ActionButtons>
+                </SubscriptionTableRow>
+              ))}
+            </Table>
           )}
 
-          {activeTab === 'pos_subscriptions' && (
-            <>
-              <StatsGrid>
-                <StatCard color="#635BFF">
-                  <StatValue>{posSubs.length}</StatValue>
-                  <StatLabel>Total Restaurants</StatLabel>
-                  <StatSub>{posActiveCount} active, {posTrialCount} trial</StatSub>
-                </StatCard>
-                <StatCard color="#059669">
-                  <StatValue>{posActiveCount}</StatValue>
-                  <StatLabel>Active Subscriptions</StatLabel>
-                </StatCard>
-                <StatCard color="#2563EB">
-                  <StatValue>{formatCurrency(posTotalFee, currency)}</StatValue>
-                  <StatLabel>Monthly POS Fees</StatLabel>
-                  <StatSub>Active + Trial combined</StatSub>
-                </StatCard>
-                <StatCard color="#D97706">
-                  <StatValue>{posSubs.filter(s => s.paymentModel === 'brand_manager').length}</StatValue>
-                  <StatLabel>Paid by Manager</StatLabel>
-                  <StatSub>{posSubs.filter(s => s.paymentModel === 'restaurant').length} paid by restaurant</StatSub>
-                </StatCard>
-              </StatsGrid>
+          {/* Assign Plan Modal */}
+          {showAssignModal && assignTarget && (
+            <ModalOverlay show={showAssignModal} onClick={() => setShowAssignModal(false)}>
+              <Modal onClick={(e) => e.stopPropagation()}>
+                <ModalHeader>
+                  <ModalTitle>{assignTarget.plan ? 'Change Plan' : 'Assign Plan'}</ModalTitle>
+                  <CloseButton onClick={() => setShowAssignModal(false)}>×</CloseButton>
+                </ModalHeader>
+                <ModalBody>
+                  <FormGrid>
+                    <FormGroup style={{gridColumn: '1 / -1'}}>
+                      <FormLabel>Restaurant</FormLabel>
+                      <FormInput
+                        type="text"
+                        value={assignTarget.restaurant_name}
+                        disabled
+                      />
+                    </FormGroup>
 
-              <FilterBar>
-                <SearchInput
-                  placeholder="Search restaurants..."
-                  value={posSearchTerm}
-                  onChange={(e) => setPosSearchTerm(e.target.value)}
-                />
-                <FilterSelect
-                  value={posFilterStatus}
-                  onChange={(e) => setPosFilterStatus(e.target.value)}
-                >
-                  <option value="all">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="trial">Trial</option>
-                  <option value="expired">Expired</option>
-                  <option value="suspended">Suspended</option>
-                  <option value="cancelled">Cancelled</option>
-                </FilterSelect>
-                <FilterSelect
-                  value={posFilterPayment}
-                  onChange={(e) => setPosFilterPayment(e.target.value)}
-                >
-                  <option value="all">All Payment</option>
-                  <option value="brand_manager">Paid by Manager</option>
-                  <option value="restaurant">Paid by Restaurant</option>
-                </FilterSelect>
-              </FilterBar>
+                    {assignTarget.plan && (
+                      <FormGroup style={{gridColumn: '1 / -1'}}>
+                        <FormLabel>Current Plan</FormLabel>
+                        <div style={{
+                          padding: '12px', background: '#F0F7FF', border: '1px solid #B3D9FF',
+                          borderRadius: '8px', fontSize: '14px', color: '#0A2540'
+                        }}>
+                          {assignTarget.plan.name} — {formatCurrency(parseFloat(assignTarget.plan.subscription_fee) || 0, currency)}/mo
+                          {parseFloat(assignTarget.plan.revenue_percentage) > 0 && ` + ${assignTarget.plan.revenue_percentage}% revenue`}
+                        </div>
+                      </FormGroup>
+                    )}
 
-              {posLoading ? (
-                <LoadingSpinner>Loading POS subscription data...</LoadingSpinner>
-              ) : posSubs.length === 0 ? (
-                <EmptyState>
-                  <EmptyIcon>&#x1F4E6;</EmptyIcon>
-                  <EmptyTitle>No POS Subscriptions</EmptyTitle>
-                  <EmptyDescription>No restaurants are assigned to this brand yet.</EmptyDescription>
-                </EmptyState>
-              ) : (
-                <Table>
-                  <POSTableHeader columns="2.5fr 1fr 1fr 1fr 1fr 1fr">
-                    <span>Restaurant</span>
-                    <span>Plan</span>
-                    <span>Status</span>
-                    <span>Monthly Fee</span>
-                    <span>Paid By</span>
-                    <span>Expires</span>
-                  </POSTableHeader>
+                    <FormGroup style={{gridColumn: '1 / -1'}}>
+                      <FormLabel>Select Plan *</FormLabel>
+                      <FormSelect
+                        value={selectedPlanId}
+                        onChange={(e) => setSelectedPlanId(e.target.value ? parseInt(e.target.value) : '')}
+                      >
+                        <option value="">Select a plan...</option>
+                        {brandPlans.map(plan => (
+                          <option key={plan.id} value={plan.id}>
+                            {plan.name} — {formatCurrency(parseFloat(plan.subscription_fee) || 0, currency)}/mo
+                            {parseFloat(plan.revenue_percentage) > 0 && ` + ${plan.revenue_percentage}%`}
+                          </option>
+                        ))}
+                      </FormSelect>
+                      {brandPlans.length === 0 && (
+                        <div style={{marginTop: '8px', padding: '12px', background: '#FEF3C7', borderRadius: '8px', fontSize: '13px', color: '#92400E'}}>
+                          No active plans found. Create a plan in the "Plans" page first.
+                        </div>
+                      )}
+                    </FormGroup>
 
-                  {filteredPosSubs.map(sub => (
-                    <POSTableRow columns="2.5fr 1fr 1fr 1fr 1fr 1fr" key={sub.id}>
-                      <MobileGrid>
-                        <MobileValue>
-                          <MobileLabel>Restaurant</MobileLabel>
+                    {selectedPlanId && (() => {
+                      const plan = brandPlans.find(p => p.id === selectedPlanId);
+                      if (!plan) return null;
+                      return (
+                        <div style={{
+                          gridColumn: '1 / -1', padding: '16px', background: '#F3F4F6',
+                          borderRadius: '8px', marginTop: '10px'
+                        }}>
+                          <div style={{fontSize: '14px', color: '#6B7280', marginBottom: '8px'}}><strong>Plan Summary:</strong></div>
+                          <div style={{fontSize: '15px', fontWeight: 600, color: '#0A2540', marginBottom: '4px'}}>
+                            {plan.name}
+                          </div>
+                          <div style={{fontSize: '13px', color: '#374151'}}>
+                            Subscription Fee: {formatCurrency(parseFloat(plan.subscription_fee) || 0, currency)}/mo
+                            {parseFloat(plan.revenue_percentage) > 0 && ` | Revenue Share: ${plan.revenue_percentage}%`}
+                            {plan.rent_type !== 'none' && ` | Rent: ${plan.rent_type}`}
+                            {` | Billing: ${plan.billing_cycle}`}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </FormGrid>
+                </ModalBody>
+                <ModalActions>
+                  <ThemedButton variant="cancel" onClick={() => setShowAssignModal(false)}>Cancel</ThemedButton>
+                  <ThemedButton
+                    variant="primary"
+                    onClick={handleSubmitAssign}
+                    disabled={!selectedPlanId || brandPlans.length === 0}
+                  >
+                    {assignTarget.plan ? 'Change Plan' : 'Assign Plan'}
+                  </ThemedButton>
+                </ModalActions>
+              </Modal>
+            </ModalOverlay>
+          )}
+
+          {/* View Details Modal */}
+          {showViewModal && viewingSub && (
+            <ModalOverlay show={showViewModal} onClick={() => setShowViewModal(false)}>
+              <Modal onClick={(e) => e.stopPropagation()}>
+                <ModalHeader>
+                  <ModalTitle>Subscription Details</ModalTitle>
+                  <CloseButton onClick={() => setShowViewModal(false)}>×</CloseButton>
+                </ModalHeader>
+                <ModalBody>
+                  <div style={{display: 'grid', gap: '20px'}}>
+                    {/* Restaurant Info */}
+                    <div>
+                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>Restaurant</div>
+                      <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1'}}>
+                        <div style={{marginBottom: '12px'}}>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Name</div>
+                          <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.restaurant_name}</div>
+                        </div>
+                        <div style={{marginBottom: '12px'}}>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Email</div>
+                          <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.restaurant_email}</div>
+                        </div>
+                        <div>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Status</div>
+                          <StatusBadge status={viewingSub.restaurant_status}>
+                            {viewingSub.restaurant_status.charAt(0).toUpperCase() + viewingSub.restaurant_status.slice(1)}
+                          </StatusBadge>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Plan Info */}
+                    <div>
+                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>Plan</div>
+                      <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1'}}>
+                        {viewingSub.plan ? (
+                          <>
+                            <div style={{marginBottom: '12px'}}>
+                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Plan Name</div>
+                              <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.plan.name}</div>
+                            </div>
+                            <div style={{marginBottom: '12px'}}>
+                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Subscription Fee</div>
+                              <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{formatCurrency(parseFloat(viewingSub.plan.subscription_fee) || 0, currency)}/mo</div>
+                            </div>
+                            {parseFloat(viewingSub.plan.revenue_percentage) > 0 && (
+                              <div style={{marginBottom: '12px'}}>
+                                <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Revenue Share</div>
+                                <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.plan.revenue_percentage}%</div>
+                              </div>
+                            )}
+                            {viewingSub.plan.rent_type !== 'none' && (
+                              <div style={{marginBottom: '12px'}}>
+                                <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Rent</div>
+                                <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>
+                                  {viewingSub.plan.rent_type === 'fixed' ? formatCurrency(parseFloat(viewingSub.plan.rent_fixed || '0'), currency) :
+                                   viewingSub.plan.rent_type === 'percentage' ? `${viewingSub.plan.rent_percentage}%` :
+                                   `MAX(${formatCurrency(parseFloat(viewingSub.plan.rent_fixed || '0'), currency)}, ${viewingSub.plan.rent_percentage}%)`}
+                                </div>
+                              </div>
+                            )}
+                            <div style={{marginBottom: '12px'}}>
+                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Billing Cycle</div>
+                              <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.plan.billing_cycle}</div>
+                            </div>
+                            <div>
+                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Activation Date</div>
+                              <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{new Date(viewingSub.plan.activation_date).toLocaleDateString()}</div>
+                            </div>
+                          </>
+                        ) : (
+                          <div style={{color: '#92400E', fontSize: '14px'}}>No plan assigned to this restaurant.</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Current Month */}
+                    <div>
+                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>Current Month</div>
+                      <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1'}}>
+                        <div style={{marginBottom: '12px'}}>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Revenue</div>
+                          <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{formatCurrency(viewingSub.current_month?.revenue || 0, currency)}</div>
+                        </div>
+                        <div style={{marginBottom: '12px'}}>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Orders</div>
+                          <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.current_month?.order_count || 0}</div>
+                        </div>
+                        {viewingSub.current_month?.estimated_charges && (
+                          <>
+                            <div style={{borderTop: '1px solid #E6EBF1', paddingTop: '12px', marginTop: '8px'}}>
+                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600}}>Estimated Charges Breakdown</div>
+                              {viewingSub.current_month.estimated_charges.items.map((item: any, index: number) => (
+                                <div key={index} style={{display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '13px'}}>
+                                  <span style={{color: '#374151'}}>{item.description}</span>
+                                  <span style={{fontWeight: 500, color: '#0A2540'}}>{formatCurrency(item.total_amount, currency)}</span>
+                                </div>
+                              ))}
+                              <div style={{display: 'flex', justifyContent: 'space-between', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #E6EBF1', fontWeight: 600}}>
+                                <span style={{color: '#0A2540'}}>Total</span>
+                                <span style={{color: '#0A2540'}}>{formatCurrency(viewingSub.current_month.estimated_charges.totalAmount, currency)}</span>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Latest Invoice */}
+                    {viewingSub.latest_invoice && (
+                      <div>
+                        <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>Latest Invoice</div>
+                        <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1'}}>
+                          <div style={{marginBottom: '12px'}}>
+                            <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Invoice Number</div>
+                            <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.latest_invoice.invoice_number}</div>
+                          </div>
+                          <div style={{marginBottom: '12px'}}>
+                            <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Amount</div>
+                            <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{formatCurrency(parseFloat(viewingSub.latest_invoice.total_amount) || 0, currency)}</div>
+                          </div>
+                          <div style={{marginBottom: '12px'}}>
+                            <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Status</div>
+                            <StatusBadge status={viewingSub.latest_invoice.status}>
+                              {viewingSub.latest_invoice.status.replace('_', ' ')}
+                            </StatusBadge>
+                          </div>
                           <div>
-                            <POSRestaurantName>{sub.restaurantName}</POSRestaurantName>
-                            <POSRestaurantMeta>{sub.adminName} &middot; {sub.location}</POSRestaurantMeta>
+                            <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Due Date</div>
+                            <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{new Date(viewingSub.latest_invoice.due_date).toLocaleDateString()}</div>
                           </div>
-                        </MobileValue>
-
-                        <MobileValue>
-                          <MobileLabel>Plan</MobileLabel>
-                          <PlanBadge planType={sub.planType}>
-                            {sub.planType.charAt(0).toUpperCase() + sub.planType.slice(1)}
-                          </PlanBadge>
-                        </MobileValue>
-
-                        <MobileValue>
-                          <MobileLabel>Status</MobileLabel>
-                          <StatusBadge2 status={sub.status}>
-                            {sub.status.charAt(0).toUpperCase() + sub.status.slice(1)}
-                          </StatusBadge2>
-                        </MobileValue>
-
-                        <MobileValue>
-                          <MobileLabel>Monthly Fee</MobileLabel>
-                          {formatCurrency(sub.monthlyFee, currency)}
-                        </MobileValue>
-
-                        <MobileValue>
-                          <MobileLabel>Paid By</MobileLabel>
-                          <span style={{
-                            display: 'inline-flex',
-                            padding: '4px 8px',
-                            borderRadius: '6px',
-                            fontSize: '12px',
-                            fontWeight: 500,
-                            background: sub.paymentModel === 'brand_manager' ? '#EDE9FE' : '#F3F4F6',
-                            color: sub.paymentModel === 'brand_manager' ? '#7C3AED' : '#6B7280'
-                          }}>
-                            {sub.paymentModel === 'brand_manager' ? 'Manager' : 'Restaurant'}
-                          </span>
-                        </MobileValue>
-
-                        <MobileValue>
-                          <MobileLabel>Expires</MobileLabel>
-                          {(() => {
-                            if (sub.endDate === '-') return <span style={{color: '#9CA3AF'}}>-</span>;
-                            const today = new Date();
-                            const endDate = new Date(sub.endDate);
-                            const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                            if (diffDays < 0) return <span style={{color: '#DC2626', fontWeight: 500}}>Expired</span>;
-                            if (diffDays <= 7) return <span style={{color: '#F59E0B', fontWeight: 500}}>{diffDays}d</span>;
-                            if (diffDays <= 30) return <span style={{color: '#10B981', fontWeight: 500}}>{diffDays}d</span>;
-                            return <span style={{color: '#6B7280'}}>{diffDays}d</span>;
-                          })()}
-                        </MobileValue>
-                      </MobileGrid>
-                    </POSTableRow>
-                  ))}
-                </Table>
-              )}
-            </>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </ModalBody>
+                <ModalActions>
+                  <ThemedButton variant="primary" onClick={() => setShowViewModal(false)}>Close</ThemedButton>
+                </ModalActions>
+              </Modal>
+            </ModalOverlay>
           )}
+
+          {/* Confirm Action Modal */}
+          {showConfirmModal && confirmTarget && (
+            <ModalOverlay show={showConfirmModal} onClick={() => setShowConfirmModal(false)}>
+              <Modal onClick={(e) => e.stopPropagation()}>
+                <ModalHeader>
+                  <ModalTitle>Confirm Action</ModalTitle>
+                  <CloseButton onClick={() => setShowConfirmModal(false)}>×</CloseButton>
+                </ModalHeader>
+                <ModalBody>
+                  <p>
+                    {confirmAction === 'unassign' && `Are you sure you want to remove the plan "${confirmTarget.plan?.name}" from ${confirmTarget.restaurant_name}?`}
+                  </p>
+                </ModalBody>
+                <ModalActions>
+                  <ThemedButton variant="cancel" onClick={() => setShowConfirmModal(false)}>Cancel</ThemedButton>
+                  <ThemedButton variant="danger" onClick={handleConfirmAction}>Remove Plan</ThemedButton>
+                </ModalActions>
+              </Modal>
+            </ModalOverlay>
+          )}
+
         </Content>
       </Container>
-
-      {/* Generate Invoices Confirmation Modal */}
-      <ModalOverlay show={showGenerateModal}>
-        <ModalContent>
-          <ModalTitle>Generate Brand Invoices</ModalTitle>
-          <ModalSubtitle>
-            This will generate invoices for the previous month based on each restaurant's assigned plan and actual revenue.
-          </ModalSubtitle>
-
-          <div style={{ padding: '16px', background: '#F0FDF4', borderRadius: '8px', marginBottom: '16px' }}>
-            <div style={{ fontSize: '13px', color: '#059669', fontWeight: 600, marginBottom: '8px' }}>Summary</div>
-            <div style={{ fontSize: '14px', color: '#374151' }}>
-              <div>{withPlan} restaurant(s) with active brand plans</div>
-              <div>Invoices for auto-generate plans will be created</div>
-              <div>Duplicate invoices will be automatically skipped</div>
-            </div>
-          </div>
-
-          <div style={{ padding: '12px 16px', background: '#FEF3C7', borderRadius: '8px' }}>
-            <div style={{ fontSize: '13px', color: '#92400E' }}>
-              Revenue-based charges (royalty %, rent %) are calculated from completed orders in the billing period.
-            </div>
-          </div>
-
-          {generateError && (
-            <div style={{padding: '10px 16px', marginTop: '12px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#DC2626', fontSize: '13px'}}>
-              {generateError}
-            </div>
-          )}
-
-          <ModalActions>
-            <Button variant="secondary" onClick={() => { setShowGenerateModal(false); setGenerateError(''); }}>Cancel</Button>
-            <Button variant="success" onClick={() => { setGenerateError(''); handleGenerateInvoices(); }} disabled={generating}>
-              {generating ? 'Generating...' : 'Generate Now'}
-            </Button>
-          </ModalActions>
-        </ModalContent>
-      </ModalOverlay>
-
-      {/* Generation Result Modal */}
-      <ModalOverlay show={showResultModal}>
-        <ModalContent>
-          <ModalTitle>Invoice Generation Complete</ModalTitle>
-          {generateResult && (
-            <>
-              <ModalSubtitle>
-                Period: {generateResult.period.start} ~ {generateResult.period.end}
-              </ModalSubtitle>
-
-              <StatsGrid style={{ marginBottom: '16px' }}>
-                <StatCard color="#059669">
-                  <StatValue>{generateResult.generated}</StatValue>
-                  <StatLabel>Generated</StatLabel>
-                </StatCard>
-                <StatCard color="#D97706">
-                  <StatValue>{generateResult.skipped}</StatValue>
-                  <StatLabel>Skipped</StatLabel>
-                </StatCard>
-              </StatsGrid>
-
-              <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                {generateResult.results.map((r, i) => (
-                  <div key={i} style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '10px 0',
-                    borderBottom: '1px solid #F3F4F6',
-                    fontSize: '13px'
-                  }}>
-                    <div>
-                      <div style={{ fontWeight: 600, color: '#0A2540' }}>{r.restaurant}</div>
-                      {r.invoice_number && (
-                        <div style={{ color: '#6B7280', fontSize: '12px' }}>
-                          {r.invoice_number} - {formatCurrency(r.amount || 0, currency)}
-                        </div>
-                      )}
-                      {r.reason && <div style={{ color: '#9CA3AF', fontSize: '12px' }}>{r.reason}</div>}
-                    </div>
-                    <Badge variant={r.status === 'generated' ? 'green' : 'yellow'}>
-                      {r.status}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          <ModalActions>
-            <Button variant="primary" onClick={() => setShowResultModal(false)} style={{ flex: 1 }}>
-              Close
-            </Button>
-          </ModalActions>
-        </ModalContent>
-      </ModalOverlay>
     </MainLayout>
   );
 };

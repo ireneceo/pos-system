@@ -34,6 +34,8 @@ interface Recipe {
   yield_amount: number;
   yield_unit: string;
   total_ingredient_cost: number;
+  restaurant_ingredient_cost: number | null;
+  effective_ingredient_cost: number;
   suggested_price: number | null;
   prep_time: number | null;
   cook_time: number | null;
@@ -65,6 +67,8 @@ interface Ingredient {
   unit: string;
   base_quantity: number;
   unit_cost: number;
+  restaurant_cost: number | null;
+  effective_cost: number;
   supplier_name: string | null;
   is_active: boolean;
 }
@@ -76,6 +80,8 @@ interface RecipeIngredient {
   quantity: number;
   unit: string;
   cost: number;
+  brand_cost: number;
+  effective_cost: number;
   notes: string | null;
   ingredient?: Ingredient;
 }
@@ -890,6 +896,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
   const isRestaurantAdmin = user?.role === 'Restaurant Admin';
   // Restaurant Admin은 자신의 레시피만 수정/삭제 가능 (브랜드 레시피는 읽기전용)
   const isItemReadOnly = (item: Recipe) => isRestaurantAdmin && item.owner_type === 'brand';
+  // 뷰 모달에서 브랜드 레시피 코스트 비교 표시 여부
+  const isBrandRecipeView = isRestaurantAdmin && selectedRecipe?.owner_type === 'brand';
 
   // Helper to get auth token
   const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
@@ -1380,9 +1388,10 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
     return recipeIngredients.reduce((sum, ri) => {
       const ingredient = ingredients.find(ing => ing.id === ri.ingredient_id);
       if (ingredient && ri.quantity) {
-        // unit_cost는 base_quantity 기준이므로 단위당 비용 계산
+        // effective_cost(restaurant override or brand cost) 사용, fallback to unit_cost
+        const unitCost = ingredient.effective_cost ?? ingredient.unit_cost;
         const baseQty = ingredient.base_quantity || 1;
-        const costPerUnit = parseFloat(ingredient.unit_cost.toString()) / baseQty;
+        const costPerUnit = parseFloat(unitCost.toString()) / baseQty;
         return sum + (parseFloat(ri.quantity) * costPerUnit);
       }
       return sum;
@@ -1508,10 +1517,33 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               )}
 
               <RecipeCosts>
-                <CostItem>
-                  <CostLabel>Cost</CostLabel>
-                  <CostValue>{formatCurrency(Number(recipe.total_ingredient_cost || 0), selectedCurrency)}</CostValue>
-                </CostItem>
+                {isRestaurantAdmin && recipe.owner_type === 'brand' && recipe.restaurant_ingredient_cost !== null ? (
+                  <>
+                    <CostItem>
+                      <CostLabel style={{ color: '#6B7280' }}>Brand Cost</CostLabel>
+                      <CostValue style={{ color: '#6B7280', textDecoration: 'line-through', fontSize: '13px' }}>
+                        {formatCurrency(Number(recipe.total_ingredient_cost || 0), selectedCurrency)}
+                      </CostValue>
+                    </CostItem>
+                    <CostItem>
+                      <CostLabel style={{ color: '#2563EB' }}>My Cost</CostLabel>
+                      <CostValue style={{ color: '#2563EB', fontWeight: 700 }}>
+                        {formatCurrency(Number(recipe.effective_ingredient_cost || 0), selectedCurrency)}
+                      </CostValue>
+                    </CostItem>
+                  </>
+                ) : (
+                  <CostItem>
+                    <CostLabel>Cost</CostLabel>
+                    <CostValue>
+                      {formatCurrency(Number(
+                        isRestaurantAdmin && recipe.owner_type === 'brand'
+                          ? (recipe.effective_ingredient_cost || recipe.total_ingredient_cost || 0)
+                          : (recipe.total_ingredient_cost || 0)
+                      ), selectedCurrency)}
+                    </CostValue>
+                  </CostItem>
+                )}
                 <CostItem>
                   <CostLabel>Suggested</CostLabel>
                   <CostValue>{formatCurrency(Number(recipe.suggested_price || 0), selectedCurrency)}</CostValue>
@@ -1626,10 +1658,31 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             <ViewSection>
               <ViewSectionTitle>Cost & Time</ViewSectionTitle>
               <ViewGrid>
-                <ViewGridItem>
-                  <ViewGridLabel>Ingredient Cost</ViewGridLabel>
-                  <ViewGridValue>{formatCurrency(Number(selectedRecipe.total_ingredient_cost || 0), selectedCurrency)}</ViewGridValue>
-                </ViewGridItem>
+                {isRestaurantAdmin && selectedRecipe.owner_type === 'brand' && selectedRecipe.restaurant_ingredient_cost !== null ? (
+                  <>
+                    <ViewGridItem>
+                      <ViewGridLabel style={{ color: '#6B7280' }}>Brand Cost</ViewGridLabel>
+                      <ViewGridValue style={{ color: '#6B7280', textDecoration: 'line-through', fontSize: '14px' }}>
+                        {formatCurrency(Number(selectedRecipe.total_ingredient_cost || 0), selectedCurrency)}
+                      </ViewGridValue>
+                    </ViewGridItem>
+                    <ViewGridItem>
+                      <ViewGridLabel style={{ color: '#2563EB' }}>My Cost</ViewGridLabel>
+                      <ViewGridValue style={{ color: '#2563EB', fontWeight: 700 }}>
+                        {formatCurrency(Number(selectedRecipe.effective_ingredient_cost || 0), selectedCurrency)}
+                      </ViewGridValue>
+                    </ViewGridItem>
+                  </>
+                ) : (
+                  <ViewGridItem>
+                    <ViewGridLabel>Ingredient Cost</ViewGridLabel>
+                    <ViewGridValue>{formatCurrency(Number(
+                      isRestaurantAdmin && selectedRecipe.owner_type === 'brand'
+                        ? (selectedRecipe.effective_ingredient_cost || selectedRecipe.total_ingredient_cost || 0)
+                        : (selectedRecipe.total_ingredient_cost || 0)
+                    ), selectedCurrency)}</ViewGridValue>
+                  </ViewGridItem>
+                )}
                 <ViewGridItem>
                   <ViewGridLabel>Suggested Price</ViewGridLabel>
                   <ViewGridValue>{formatCurrency(Number(formData.suggested_price || 0), selectedCurrency)}</ViewGridValue>
@@ -1659,6 +1712,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                       <th>Ingredient</th>
                       <th>Quantity</th>
                       <th>Unit Cost</th>
+                      {isBrandRecipeView && <th>My Cost</th>}
                       <th>Subtotal</th>
                     </tr>
                   </thead>
@@ -1666,13 +1720,26 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                     {recipeIngredients.map((ri, idx) => {
                       const ingredient = ingredients.find(ing => ing.id === ri.ingredient_id);
                       const baseQty = ingredient?.base_quantity || 1;
-                      const costPerUnit = (ingredient?.unit_cost || 0) / baseQty;
-                      const subtotal = parseFloat(ri.quantity) * costPerUnit;
+                      const brandCostPerUnit = (ingredient?.unit_cost || 0) / baseQty;
+                      const effectiveUnitCost = ingredient?.effective_cost ?? ingredient?.unit_cost ?? 0;
+                      const effectiveCostPerUnit = effectiveUnitCost / baseQty;
+                      const subtotal = parseFloat(ri.quantity) * effectiveCostPerUnit;
+                      const hasOverride = ingredient?.restaurant_cost !== null && ingredient?.restaurant_cost !== undefined;
                       return (
                         <tr key={idx}>
                           <td><strong>{ingredient?.name || `Ingredient #${ri.ingredient_id}`}</strong></td>
                           <td>{Number(ri.quantity).toFixed(2)} {ri.unit}</td>
-                          <td>{getCurrencySymbol(selectedCurrency)} {costPerUnit.toFixed(2)}/{ingredient?.unit}</td>
+                          <td style={isBrandRecipeView && hasOverride ? { color: '#6B7280', textDecoration: 'line-through' } : {}}>
+                            {getCurrencySymbol(selectedCurrency)} {brandCostPerUnit.toFixed(2)}/{ingredient?.unit}
+                          </td>
+                          {isBrandRecipeView && (
+                            <td style={hasOverride ? { color: '#2563EB', fontWeight: 600 } : { color: '#9CA3AF' }}>
+                              {hasOverride
+                                ? `${getCurrencySymbol(selectedCurrency)} ${effectiveCostPerUnit.toFixed(2)}/${ingredient?.unit}`
+                                : '-'
+                              }
+                            </td>
+                          )}
                           <td>{formatCurrency(subtotal, selectedCurrency)}</td>
                         </tr>
                       );

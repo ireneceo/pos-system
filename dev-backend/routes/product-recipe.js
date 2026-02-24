@@ -7,8 +7,26 @@ const {
   Recipe,
   RecipeIngredient,
   Ingredient,
-  Restaurant
+  Restaurant,
+  RestaurantIngredientCost
 } = require('../models');
+
+// 레스토랑의 코스트 오버라이드 맵 조회 헬퍼
+async function getRestaurantCostMap(restaurantId) {
+  const costs = await RestaurantIngredientCost.findAll({
+    where: { restaurant_id: restaurantId }
+  });
+  const map = {};
+  costs.forEach(c => { map[c.ingredient_id] = parseFloat(c.unit_cost); });
+  return map;
+}
+
+// ingredient의 effective unit_cost 반환 (restaurant override > brand cost)
+function getEffectiveCost(ingredient, costMap) {
+  if (!ingredient) return 0;
+  const override = costMap[ingredient.id];
+  return override !== undefined ? override : parseFloat(ingredient.unit_cost);
+}
 
 // Get product with recipe details
 router.get('/restaurants/:restaurantId/products/:productId/recipe', async (req, res) => {
@@ -39,12 +57,16 @@ router.get('/restaurants/:restaurantId/products/:productId/recipe', async (req, 
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
-    // Calculate total ingredient cost if recipe exists
+    // 레스토랑 코스트 오버라이드 맵 조회
+    const costMap = await getRestaurantCostMap(restaurantId);
+
+    // Calculate total ingredient cost if recipe exists (with effective cost)
     let totalCost = 0;
     if (product.recipe && product.recipe.recipeIngredients) {
       product.recipe.recipeIngredients.forEach(ri => {
         if (ri.ingredient) {
-          const ingredientCost = parseFloat(ri.ingredient.unit_cost) * parseFloat(ri.quantity);
+          const effectiveUnitCost = getEffectiveCost(ri.ingredient, costMap);
+          const ingredientCost = effectiveUnitCost * parseFloat(ri.quantity);
           totalCost += ingredientCost;
         }
       });
@@ -69,17 +91,21 @@ router.get('/restaurants/:restaurantId/products/:productId/recipe', async (req, 
           instructions_summary: product.recipe.instructions_summary,
           instructions_detail: product.recipe.instructions_detail,
           total_ingredient_cost: totalCost,
-          ingredients: product.recipe.recipeIngredients?.map(ri => ({
-            id: ri.id,
-            ingredient_id: ri.ingredient_id,
-            ingredient_name: ri.ingredient?.name,
-            quantity: parseFloat(ri.quantity),
-            unit: ri.unit,
-            unit_cost: parseFloat(ri.ingredient?.unit_cost || 0),
-            total_cost: parseFloat(ri.ingredient?.unit_cost || 0) * parseFloat(ri.quantity),
-            current_stock: parseFloat(ri.ingredient?.current_stock || 0),
-            notes: ri.notes
-          })) || []
+          ingredients: product.recipe.recipeIngredients?.map(ri => {
+            const effectiveUnitCost = getEffectiveCost(ri.ingredient, costMap);
+            return {
+              id: ri.id,
+              ingredient_id: ri.ingredient_id,
+              ingredient_name: ri.ingredient?.name,
+              quantity: parseFloat(ri.quantity),
+              unit: ri.unit,
+              unit_cost: effectiveUnitCost,
+              brand_cost: parseFloat(ri.ingredient?.unit_cost || 0),
+              total_cost: effectiveUnitCost * parseFloat(ri.quantity),
+              current_stock: parseFloat(ri.ingredient?.current_stock || 0),
+              notes: ri.notes
+            };
+          }) || []
         } : null
       }
     });
@@ -99,25 +125,48 @@ router.get('/restaurants/:restaurantId/products/recipe-status', async (req, res)
       include: [{
         model: Recipe,
         as: 'recipe',
-        attributes: ['id', 'name', 'total_ingredient_cost'],
-        required: false
+        attributes: ['id', 'name', 'total_ingredient_cost', 'owner_type'],
+        required: false,
+        include: [{
+          model: RecipeIngredient,
+          as: 'recipeIngredients',
+          include: [{ model: Ingredient, as: 'ingredient', attributes: ['id', 'unit_cost'] }]
+        }]
       }],
       order: [['category', 'ASC'], ['name', 'ASC']]
     });
 
-    const data = products.map(p => ({
-      id: p.id,
-      name: p.name,
-      code: p.code,
-      price: parseFloat(p.price),
-      category: p.category,
-      has_recipe: !!p.recipe_id,
-      recipe_id: p.recipe_id,
-      recipe_name: p.recipe?.name || null,
-      ingredient_cost: parseFloat(p.recipe?.total_ingredient_cost || 0),
-      profit_margin: p.recipe ?
-        ((parseFloat(p.price) - parseFloat(p.recipe.total_ingredient_cost || 0)) / parseFloat(p.price) * 100).toFixed(1) : null
-    }));
+    // 레스토랑 코스트 오버라이드 맵 조회
+    const costMap = await getRestaurantCostMap(restaurantId);
+
+    const data = products.map(p => {
+      let ingredientCost = parseFloat(p.recipe?.total_ingredient_cost || 0);
+
+      // 브랜드 레시피인 경우 effective_cost로 재계산
+      if (p.recipe && p.recipe.owner_type === 'brand' && p.recipe.recipeIngredients) {
+        let recalculated = 0;
+        p.recipe.recipeIngredients.forEach(ri => {
+          if (ri.ingredient) {
+            recalculated += getEffectiveCost(ri.ingredient, costMap) * parseFloat(ri.quantity);
+          }
+        });
+        ingredientCost = recalculated;
+      }
+
+      const price = parseFloat(p.price);
+      return {
+        id: p.id,
+        name: p.name,
+        code: p.code,
+        price,
+        category: p.category,
+        has_recipe: !!p.recipe_id,
+        recipe_id: p.recipe_id,
+        recipe_name: p.recipe?.name || null,
+        ingredient_cost: ingredientCost,
+        profit_margin: p.recipe ? ((price - ingredientCost) / price * 100).toFixed(1) : null
+      };
+    });
 
     res.json({ success: true, data });
   } catch (error) {
@@ -208,13 +257,14 @@ router.post('/restaurants/:restaurantId/products/:productId/recipe', async (req,
       is_active: true
     }, { transaction });
 
-    // Add ingredients if provided
+    // Add ingredients if provided (with effective cost)
     let totalCost = 0;
+    const costMap = await getRestaurantCostMap(restaurantId);
     if (ingredients && ingredients.length > 0) {
       for (const ing of ingredients) {
-        // Get ingredient unit cost
         const ingredient = await Ingredient.findByPk(ing.ingredient_id);
-        const cost = ingredient ? parseFloat(ingredient.unit_cost) * parseFloat(ing.quantity) : 0;
+        const effectiveUnitCost = getEffectiveCost(ingredient, costMap);
+        const cost = effectiveUnitCost * parseFloat(ing.quantity);
         totalCost += cost;
 
         await RecipeIngredient.create({
@@ -281,12 +331,14 @@ router.put('/restaurants/:restaurantId/products/:productId/recipe/ingredients', 
       transaction
     });
 
-    // Add new ingredients
+    // Add new ingredients (with effective cost)
     let totalCost = 0;
+    const costMap = await getRestaurantCostMap(restaurantId);
     if (ingredients && ingredients.length > 0) {
       for (const ing of ingredients) {
         const ingredient = await Ingredient.findByPk(ing.ingredient_id);
-        const cost = ingredient ? parseFloat(ingredient.unit_cost) * parseFloat(ing.quantity) : 0;
+        const effectiveUnitCost = getEffectiveCost(ingredient, costMap);
+        const cost = effectiveUnitCost * parseFloat(ing.quantity);
         totalCost += cost;
 
         await RecipeIngredient.create({
@@ -338,15 +390,39 @@ router.get('/restaurants/:restaurantId/recipes/available', async (req, res) => {
       where: {
         [Op.or]: [
           { restaurant_id: restaurantId },
-          { brand_id: brandId, owner_type: 'brand' }
+          ...(brandId ? [{ brand_id: brandId, owner_type: 'brand' }] : [])
         ],
         is_active: true
       },
       attributes: ['id', 'name', 'description', 'category', 'total_ingredient_cost', 'owner_type'],
+      include: [{
+        model: RecipeIngredient,
+        as: 'recipeIngredients',
+        include: [{ model: Ingredient, as: 'ingredient', attributes: ['id', 'unit_cost'] }]
+      }],
       order: [['name', 'ASC']]
     });
 
-    res.json({ success: true, data: recipes });
+    // 브랜드 레시피에 대해 effective_cost 재계산
+    const costMap = await getRestaurantCostMap(restaurantId);
+    const enriched = recipes.map(r => {
+      const plain = r.toJSON();
+      if (plain.owner_type === 'brand' && plain.recipeIngredients) {
+        let effectiveTotal = 0;
+        plain.recipeIngredients.forEach(ri => {
+          if (ri.ingredient) {
+            effectiveTotal += getEffectiveCost(ri.ingredient, costMap) * parseFloat(ri.quantity);
+          }
+        });
+        plain.effective_ingredient_cost = effectiveTotal;
+      } else {
+        plain.effective_ingredient_cost = parseFloat(plain.total_ingredient_cost || 0);
+      }
+      delete plain.recipeIngredients; // 응답에서 재료 상세 제외
+      return plain;
+    });
+
+    res.json({ success: true, data: enriched });
   } catch (error) {
     console.error('Error fetching available recipes:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch recipes' });
@@ -396,20 +472,24 @@ router.get('/restaurants/:restaurantId/products/:productId/ingredient-cost', asy
       });
     }
 
+    // 레스토랑 코스트 오버라이드 적용
+    const costMap = await getRestaurantCostMap(restaurantId);
+
     let totalCost = 0;
     const ingredientBreakdown = [];
 
     product.recipe.recipeIngredients?.forEach(ri => {
-      const unitCost = parseFloat(ri.ingredient?.unit_cost || 0);
+      const effectiveUnitCost = getEffectiveCost(ri.ingredient, costMap);
       const quantity = parseFloat(ri.quantity);
-      const cost = unitCost * quantity;
+      const cost = effectiveUnitCost * quantity;
       totalCost += cost;
 
       ingredientBreakdown.push({
         ingredient_name: ri.ingredient?.name,
         quantity,
         unit: ri.unit,
-        unit_cost: unitCost,
+        unit_cost: effectiveUnitCost,
+        brand_cost: parseFloat(ri.ingredient?.unit_cost || 0),
         total_cost: cost
       });
     });

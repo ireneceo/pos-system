@@ -247,6 +247,100 @@ ssh $PROD_SERVER "sudo systemctl reload nginx"
 success "Nginx reloaded"
 
 # ──────────────────────────────────────────
+# 14. Smoke Test — 핵심 기능 검증
+# ──────────────────────────────────────────
+log "Running smoke tests on production server..."
+echo ""
+
+SMOKE_PASS=0
+SMOKE_FAIL=0
+SMOKE_TOTAL=0
+
+smoke_test() {
+    local label="$1"
+    local cmd="$2"
+    local expect="$3"
+    SMOKE_TOTAL=$((SMOKE_TOTAL + 1))
+
+    RESULT=$(ssh $PROD_SERVER "$cmd" 2>/dev/null) || RESULT=""
+    if echo "$RESULT" | grep -q "$expect"; then
+        echo -e "  ${GREEN}✓${NC} $label"
+        SMOKE_PASS=$((SMOKE_PASS + 1))
+    else
+        echo -e "  ${RED}✗${NC} $label"
+        SMOKE_FAIL=$((SMOKE_FAIL + 1))
+    fi
+}
+
+# --- 14a. Server & Login ---
+smoke_test "Health check" \
+    "curl -s --max-time 5 http://localhost:3002/api/health" \
+    '"status":"ok"'
+
+ADMIN_TOKEN=$(ssh $PROD_SERVER "curl -s --max-time 5 -X POST http://localhost:3002/api/auth/login \
+    -H 'Content-Type: application/json' \
+    -d '{\"email\":\"admin@pos-system.com\",\"password\":\"admin123\"}'" 2>/dev/null \
+    | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4)
+
+if [ -n "$ADMIN_TOKEN" ] && [ "$ADMIN_TOKEN" != "null" ]; then
+    echo -e "  ${GREEN}✓${NC} Admin login"
+    SMOKE_PASS=$((SMOKE_PASS + 1))
+else
+    echo -e "  ${RED}✗${NC} Admin login"
+    SMOKE_FAIL=$((SMOKE_FAIL + 1))
+    ADMIN_TOKEN=""
+fi
+SMOKE_TOTAL=$((SMOKE_TOTAL + 1))
+
+# --- 14b. POS 핵심 흐름: 메뉴 → 주문 → 빌 ---
+if [ -n "$ADMIN_TOKEN" ]; then
+    smoke_test "GET menu" \
+        "curl -s --max-time 5 http://localhost:3002/api/menu?restaurantId=1 \
+            -H 'Authorization: Bearer $ADMIN_TOKEN'" \
+        '"success"'
+
+    SMOKE_TOTAL=$((SMOKE_TOTAL + 1))
+    ORDER_RESPONSE=$(ssh $PROD_SERVER "curl -s --max-time 10 -X POST http://localhost:3002/api/orders \
+        -H 'Content-Type: application/json' \
+        -H 'Authorization: Bearer $ADMIN_TOKEN' \
+        -d '{\"restaurant_id\":1,\"order_type\":\"dine_in\",\"table_number\":\"SMOKE99\",\"skipAutoMerge\":true,\"order_items\":[{\"name\":\"Smoke Test Item\",\"price\":1.00,\"quantity\":1}]}'" 2>/dev/null) || ORDER_RESPONSE=""
+
+    SMOKE_ORDER_ID=$(echo "$ORDER_RESPONSE" | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
+
+    if [ -n "$SMOKE_ORDER_ID" ] && echo "$ORDER_RESPONSE" | grep -q '"success":true'; then
+        echo -e "  ${GREEN}✓${NC} POST order (#$SMOKE_ORDER_ID)"
+        SMOKE_PASS=$((SMOKE_PASS + 1))
+
+        smoke_test "GET bill data" \
+            "curl -s --max-time 5 http://localhost:3002/api/orders/$SMOKE_ORDER_ID \
+                -H 'Authorization: Bearer $ADMIN_TOKEN'" \
+            '"order_items"'
+
+        # Cleanup
+        ssh $PROD_SERVER "curl -s --max-time 5 -X PATCH http://localhost:3002/api/orders/$SMOKE_ORDER_ID/status \
+            -H 'Content-Type: application/json' \
+            -H 'Authorization: Bearer $ADMIN_TOKEN' \
+            -d '{\"status\":\"cancelled\"}'" > /dev/null 2>&1 || true
+    else
+        echo -e "  ${RED}✗${NC} POST order"
+        SMOKE_FAIL=$((SMOKE_FAIL + 1))
+    fi
+fi
+
+# --- 14c. Frontend ---
+smoke_test "Frontend" \
+    "curl -s --max-time 5 -o /dev/null -w '%{http_code}' https://purplehere.com/" \
+    "200"
+
+# --- Summary ---
+echo ""
+if [ $SMOKE_FAIL -eq 0 ]; then
+    success "Smoke tests: ${SMOKE_PASS}/${SMOKE_TOTAL} passed — all OK"
+else
+    warn "Smoke tests: ${SMOKE_PASS}/${SMOKE_TOTAL} passed, ${SMOKE_FAIL} FAILED"
+fi
+
+# ──────────────────────────────────────────
 # Cleanup temp files
 # ──────────────────────────────────────────
 rm -f /tmp/deploy_dev_schema.json /tmp/deploy_prod_schema.json /tmp/deploy_prod_schema_after.json
@@ -255,6 +349,7 @@ echo ""
 echo "============================================"
 echo "  Deployment Complete!"
 echo "  Backup: /var/www/backups/${TIMESTAMP}"
+echo "  Smoke:  ${SMOKE_PASS}/${SMOKE_TOTAL} passed"
 echo "  Time: $(date)"
 echo "============================================"
 echo ""

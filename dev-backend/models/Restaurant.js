@@ -95,8 +95,9 @@ Restaurant.init({
     comment: 'URL or base64 encoded logo image'
   },
   plan_type: {
-    type: DataTypes.ENUM('Basic Plan', 'Professional Plan', 'Enterprise Plan'),
-    defaultValue: 'Basic Plan'
+    type: DataTypes.STRING(100),
+    defaultValue: 'Basic Plan',
+    comment: 'Subscription plan name (Basic Plan, Professional Plan, Enterprise Plan, or custom)'
   },
   plan_amount: {
     type: DataTypes.DECIMAL(10, 2),
@@ -117,6 +118,11 @@ Restaurant.init({
   subscription_end: {
     type: DataTypes.DATE,
     allowNull: true
+  },
+  auto_renew: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+    comment: 'Whether subscription auto-renews at expiry'
   },
   grace_period_start: {
     type: DataTypes.DATE,
@@ -492,10 +498,10 @@ Restaurant.init({
     comment: 'Brand ID if restaurant belongs to a franchise brand'
   },
   payment_model: {
-    type: DataTypes.ENUM('restaurant', 'brand_manager', 'foodcourt_manager'),
+    type: DataTypes.ENUM('restaurant', 'brand_manager', 'foodcourt_manager', 'restaurant_owner'),
     defaultValue: 'restaurant',
     allowNull: false,
-    comment: 'Who pays invoices: restaurant (Restaurant Admin), brand_manager (Brand General), foodcourt_manager (Foodcourt General)'
+    comment: 'Who pays invoices: restaurant (Restaurant Admin), brand_manager (Brand General), foodcourt_manager (Foodcourt General), restaurant_owner (Restaurant Owner)'
   },
   foodcourt_id: {
     type: DataTypes.INTEGER,

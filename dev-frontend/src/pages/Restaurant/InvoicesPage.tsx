@@ -63,6 +63,7 @@ interface Invoice {
   serviceDescription?: string;
   categoryDisplayName?: string;
   issuerType?: 'system_admin' | 'brand' | 'foodcourt';
+  issuerId?: number | string;
   issuerName?: string;
   issuerInfo?: {
     name: string;
@@ -703,8 +704,9 @@ const RestaurantInvoicesPage: React.FC = () => {
           payerId: inv.payer_id?.toString() || '',
           invoiceCategory: inv.invoice_category || '',
           categoryDisplayName: inv.category_display_name || '',
-          issuerType: inv.issuer_type || 'system_admin',
-          issuerName: inv.issuer_name || '',
+          issuerType: inv.issuer_type || inv.issuerType || 'system_admin',
+          issuerId: inv.issuer_id || inv.issuerId || null,
+          issuerName: inv.issuer_name || inv.issuerName || '',
           issuerInfo: inv.issuerInfo || inv.issuer_info || null,
           payerInfo: inv.payerInfo || inv.payer_info || null
         }));
@@ -797,11 +799,17 @@ const RestaurantInvoicesPage: React.FC = () => {
     }
   };
 
-  // Fetch payment methods
-  const fetchPaymentMethods = async (currency: string) => {
+  // Fetch payment methods based on invoice issuer
+  const fetchPaymentMethods = async (currency: string, issuerType?: string, issuerId?: number | string) => {
     setLoadingPaymentMethods(true);
     try {
-      const response = await fetch(`/api/admin/payment-settings/available/${currency}`);
+      let url = `/api/admin/payment-settings/available/${currency}`;
+      if (issuerType === 'brand' && issuerId) {
+        url = `/api/brands/${issuerId}/payment-settings/available/${currency}`;
+      } else if (issuerType === 'foodcourt' && issuerId) {
+        url = `/api/foodcourts/${issuerId}/payment-settings/available/${currency}`;
+      }
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         setAvailablePaymentMethods(data.methods || []);
@@ -838,9 +846,9 @@ const RestaurantInvoicesPage: React.FC = () => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          paymentMethod: paymentData.paymentMethod,
-          transactionId: paymentData.transactionId,
-          receiptUrl: paymentData.receiptImage
+          payment_method: paymentData.paymentMethod,
+          transaction_id: paymentData.transactionId,
+          receipt_url: paymentData.receiptImage || null
         })
       });
 
@@ -953,7 +961,7 @@ const RestaurantInvoicesPage: React.FC = () => {
     setSelectedInvoice(invoice);
     setPaymentSubmitError('');
     setPaymentData({ paymentMethod: '', transactionId: '', receiptImage: '' });
-    await fetchPaymentMethods(invoice.currency || 'MYR');
+    await fetchPaymentMethods(invoice.currency || 'MYR', invoice.issuerType, invoice.issuerId);
     setShowPaymentSubmitModal(true);
   };
 
@@ -1029,7 +1037,7 @@ const RestaurantInvoicesPage: React.FC = () => {
         body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; line-height: 1.5; color: #333; background: #fff; }
         .invoice-container { max-width: 800px; margin: 0 auto; padding: 40px; }
         .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; padding-bottom: 24px; border-bottom: 2px solid #E5E7EB; }
-        .logo-section { flex: 1; }
+        .logo-section { flex: 1; max-width: 400px; }
         .company-logo { max-height: 60px; margin-bottom: 10px; }
         .company-name { font-size: 20px; font-weight: 700; color: #0A2540; margin-bottom: 8px; }
         .company-details { font-size: 13px; color: #6B7280; line-height: 1.6; }
@@ -1331,11 +1339,10 @@ const RestaurantInvoicesPage: React.FC = () => {
       <InvoicePreview id="invoice-preview-pdf">
         <InvoiceHeader>
           <div>
-            {issuerInfo?.logoUrl ? (
+            {issuerInfo?.logoUrl && (
               <CompanyLogo src={issuerInfo.logoUrl} alt="Company Logo" />
-            ) : (
-              <PartyName style={{ fontSize: '24px' }}>{issuerInfo?.name || 'Company Name'}</PartyName>
             )}
+            <PartyName style={{ fontSize: issuerInfo?.logoUrl ? '16px' : '24px' }}>{issuerInfo?.name || 'Company Name'}</PartyName>
           </div>
           <div>
             <InvoiceTitle>INVOICE</InvoiceTitle>
@@ -1665,11 +1672,11 @@ const RestaurantInvoicesPage: React.FC = () => {
               <ModalBody>
                 {/* Invoice Header with Issuer Info */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '24px', borderBottom: '2px solid #E5E7EB' }}>
-                  <div>
+                  <div style={{ flex: '0 0 55%' }}>
                     {issuerInfo?.logoUrl && (
                       <img src={issuerInfo.logoUrl} alt="Company Logo" style={{ maxHeight: '60px', marginBottom: '8px' }} />
                     )}
-                    <div style={{ fontSize: issuerInfo?.logoUrl ? '14px' : '20px', fontWeight: '700', color: '#0A2540', marginBottom: '8px' }}>
+                    <div style={{ fontSize: issuerInfo?.logoUrl ? '16px' : '20px', fontWeight: '700', color: '#0A2540', marginBottom: '8px' }}>
                       {issuerInfo?.name || selectedInvoice.issuerName || 'Issuer'}
                     </div>
                     <div style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.6' }}>
@@ -1852,8 +1859,13 @@ const RestaurantInvoicesPage: React.FC = () => {
                 {loadingPaymentMethods ? (
                   <div style={{ textAlign: 'center', padding: '20px', color: '#6B7280' }}>Loading payment methods...</div>
                 ) : availablePaymentMethods.length === 0 ? (
-                  <div style={{ padding: '16px', background: '#FEF3C7', borderRadius: '8px', marginBottom: '16px' }}>
-                    <p style={{ margin: 0, color: '#92400E' }}>No payment methods configured for {selectedInvoice.currency}. Please contact the administrator.</p>
+                  <div style={{ padding: '20px', background: '#FEF3C7', borderRadius: '8px', marginBottom: '16px' }}>
+                    <p style={{ margin: '0 0 8px 0', fontWeight: '600', color: '#92400E', fontSize: '15px' }}>
+                      Payment Not Available
+                    </p>
+                    <p style={{ margin: 0, color: '#92400E', fontSize: '14px', lineHeight: '1.5' }}>
+                      <strong>{selectedInvoice.issuerName || (selectedInvoice.issuerType === 'brand' ? 'Brand' : selectedInvoice.issuerType === 'foodcourt' ? 'Foodcourt' : 'System Admin')}</strong> has not configured payment methods for <strong>{selectedInvoice.currency || 'MYR'}</strong> yet. Please contact the invoice issuer to set up payment options.
+                    </p>
                   </div>
                 ) : (
                   <>
@@ -1915,6 +1927,8 @@ const RestaurantInvoicesPage: React.FC = () => {
                   </>
                 )}
 
+                {availablePaymentMethods.length > 0 && (
+                  <>
                 {/* Required field notice */}
                 <div style={{
                   padding: '12px 16px',
@@ -2002,6 +2016,8 @@ const RestaurantInvoicesPage: React.FC = () => {
                   }
                   return null;
                 })()}
+                  </>
+                )}
 
                 {paymentSubmitError && (
                   <div style={{ padding: '12px', background: '#FEE2E2', borderRadius: '6px', marginTop: '16px' }}>

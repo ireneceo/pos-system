@@ -2,7 +2,17 @@ const express = require('express');
 const router = express.Router();
 const { Op } = require('sequelize');
 const database = require('../config/database');
-const { Ingredient, InventoryTransaction, StockTake, StockTakeItem, StockAlert, Restaurant, InventoryBatch, GeneralStock, GeneralStockTransaction, Supplier } = require('../models');
+const { Ingredient, InventoryTransaction, StockTake, StockTakeItem, StockAlert, Restaurant, InventoryBatch, GeneralStock, GeneralStockTransaction, Supplier, RestaurantIngredientCost } = require('../models');
+
+// 레스토랑의 코스트 오버라이드 맵 조회 헬퍼
+async function getRestaurantCostMap(restaurantId) {
+  const costs = await RestaurantIngredientCost.findAll({
+    where: { restaurant_id: restaurantId }
+  });
+  const map = {};
+  costs.forEach(c => { map[c.ingredient_id] = parseFloat(c.unit_cost); });
+  return map;
+}
 const { authenticateToken } = require('../middleware/auth');
 
 // Apply auth middleware to all routes
@@ -296,7 +306,7 @@ router.post('/:restaurantId/inventory/receive', async (req, res) => {
       initial_quantity: addQty,
       remaining_quantity: addQty,
       unit: ingredient.unit,
-      unit_cost: unit_cost || ingredient.unit_cost || 0,
+      unit_cost: unit_cost || (await getRestaurantCostMap(restaurantId))[ingredient_id] || ingredient.unit_cost || 0,
       manufacture_date: manufacture_date || null,
       expiry_date: expiry_date || null,
       received_date: new Date(),
@@ -633,12 +643,16 @@ router.post('/:restaurantId/stock-takes', async (req, res) => {
       where: { restaurant_id: restaurantId, is_active: true }
     });
 
+    // 레스토랑 코스트 오버라이드 맵 조회
+    const costMap = await getRestaurantCostMap(restaurantId);
+
     for (const ing of ingredients) {
+      const effectiveCost = costMap[ing.id] !== undefined ? costMap[ing.id] : (parseFloat(ing.unit_cost) || 0);
       await StockTakeItem.create({
         stock_take_id: stockTake.id,
         ingredient_id: ing.id,
         theoretical_stock: parseFloat(ing.current_stock) || 0,
-        unit_cost: parseFloat(ing.unit_cost) || 0
+        unit_cost: effectiveCost
       }, { transaction });
     }
 
@@ -890,6 +904,9 @@ router.get('/:restaurantId/inventory/reorder-suggestions', async (req, res) => {
       where: { restaurant_id: restaurantId, is_active: true }
     });
 
+    // 레스토랑 코스트 오버라이드 맵 조회
+    const costMap = await getRestaurantCostMap(restaurantId);
+
     const suggestions = [];
 
     for (const ing of ingredients) {
@@ -897,6 +914,7 @@ router.get('/:restaurantId/inventory/reorder-suggestions', async (req, res) => {
       const minStock = parseFloat(ing.min_stock) || 0;
       const avgDailyUsage = parseFloat(ing.avg_daily_usage) || 0;
       const leadTimeDays = ing.lead_time_days || 2;
+      const effectiveCost = costMap[ing.id] !== undefined ? costMap[ing.id] : parseFloat(ing.unit_cost);
 
       // 발주점 = (일평균 사용량 × 리드타임) + 안전재고
       const reorderPoint = (avgDailyUsage * leadTimeDays) + minStock;
@@ -913,7 +931,7 @@ router.get('/:restaurantId/inventory/reorder-suggestions', async (req, res) => {
               id: ing.id,
               name: ing.name,
               unit: ing.unit,
-              unit_cost: ing.unit_cost,
+              unit_cost: effectiveCost,
               category: ing.category
             },
             current_stock: currentStock,
@@ -922,7 +940,7 @@ router.get('/:restaurantId/inventory/reorder-suggestions', async (req, res) => {
             lead_time_days: leadTimeDays,
             reorder_point: reorderPoint,
             suggested_qty: roundedQty,
-            estimated_cost: roundedQty * parseFloat(ing.unit_cost),
+            estimated_cost: roundedQty * effectiveCost,
             urgency: currentStock <= 0 ? 'critical' : currentStock <= minStock ? 'high' : 'normal'
           });
         }

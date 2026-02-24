@@ -1626,7 +1626,7 @@ const InvoicesPage: React.FC = () => {
         body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; line-height: 1.5; color: #333; background: #fff; }
         .invoice-container { max-width: 800px; margin: 0 auto; padding: 40px; }
         .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; padding-bottom: 24px; border-bottom: 2px solid #E5E7EB; }
-        .logo-section { flex: 1; }
+        .logo-section { flex: 1; max-width: 400px; }
         .company-logo { max-height: 60px; margin-bottom: 10px; }
         .company-name { font-size: 20px; font-weight: 700; color: #0A2540; margin-bottom: 8px; }
         .company-details { font-size: 13px; color: #6B7280; line-height: 1.6; }
@@ -3411,14 +3411,13 @@ const InvoicesPage: React.FC = () => {
               <ModalBody>
                 {/* Invoice Header with Company Info */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '24px', borderBottom: '2px solid #E5E7EB' }}>
-                  <div>
-                    {companySettings?.companyLogo ? (
+                  <div style={{ flex: '0 0 55%' }}>
+                    {companySettings?.companyLogo && (
                       <img src={companySettings.companyLogo} alt="Company Logo" style={{ maxHeight: '60px', marginBottom: '8px' }} />
-                    ) : (
-                      <div style={{ fontSize: '20px', fontWeight: '700', color: '#0A2540', marginBottom: '8px' }}>
-                        {companySettings?.companyName || 'Company Name'}
-                      </div>
                     )}
+                    <div style={{ fontSize: companySettings?.companyLogo ? '16px' : '20px', fontWeight: '700', color: '#0A2540', marginBottom: '8px' }}>
+                      {companySettings?.companyName || 'Company Name'}
+                    </div>
                     <div style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.6' }}>
                       {companySettings?.address && <div>{companySettings.address}</div>}
                       {(companySettings?.city || companySettings?.state || companySettings?.postalCode) && (

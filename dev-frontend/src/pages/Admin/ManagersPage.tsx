@@ -344,7 +344,7 @@ const ManagersPage: React.FC = () => {
     department: '',
     phone: '',
     address: '',
-    role: 'Foodcourt General' as 'Foodcourt General' | 'Foodcourt Manager' | 'Brand General' | 'Brand Manager',
+    role: 'Foodcourt General' as 'Foodcourt General' | 'Foodcourt Manager' | 'Brand General' | 'Brand Manager' | 'Restaurant Owner',
     parentManagerId: '' as string, // For Brand Manager - links to Brand General
     // Subscription fields
     planType: '',
@@ -1241,13 +1241,13 @@ const ManagersPage: React.FC = () => {
                   <FilterSelect
                     value={newManager.role}
                     onChange={(e) => {
-                      const newRole = e.target.value as 'Foodcourt General' | 'Foodcourt Manager' | 'Brand General' | 'Brand Manager';
+                      const newRole = e.target.value as 'Foodcourt General' | 'Foodcourt Manager' | 'Brand General' | 'Brand Manager' | 'Restaurant Owner';
                       handleInputChange('role', newRole);
 
                       // Update plan and payment model based on role
                       const filteredPlans = getFilteredPlans(newRole);
                       const firstPlan = filteredPlans.length > 0 ? filteredPlans[0] : null;
-                      const paymentModel = (newRole === 'Brand General' || newRole === 'Brand Manager') ? 'brand_manager' : 'foodcourt_manager';
+                      const paymentModel = newRole === 'Restaurant Owner' ? 'restaurant_owner' : (newRole === 'Brand General' || newRole === 'Brand Manager') ? 'brand_manager' : 'foodcourt_manager';
 
                       setNewManager(prev => ({
                         ...prev,
@@ -1263,6 +1263,7 @@ const ManagersPage: React.FC = () => {
                     <option value="Foodcourt Manager">Foodcourt Manager</option>
                     <option value="Brand General">Brand General</option>
                     <option value="Brand Manager">Brand Manager</option>
+                    <option value="Restaurant Owner">Restaurant Owner</option>
                   </FilterSelect>
                 </FormGroup>
 

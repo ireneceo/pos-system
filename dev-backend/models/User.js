@@ -24,7 +24,7 @@ User.init({
     allowNull: false
   },
   role: {
-    type: DataTypes.ENUM('System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin', 'Staff'),
+    type: DataTypes.ENUM('System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Owner', 'Restaurant Admin', 'Staff'),
     defaultValue: 'Staff'
   },
   full_name: {

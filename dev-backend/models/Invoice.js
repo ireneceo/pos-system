@@ -88,7 +88,7 @@ Invoice.init({
     comment: 'Payment receipt image URL or base64 data'
   },
   payer_type: {
-    type: DataTypes.ENUM('restaurant', 'foodcourt_manager', 'brand_manager'),
+    type: DataTypes.ENUM('restaurant', 'foodcourt_manager', 'brand_manager', 'restaurant_owner'),
     defaultValue: 'restaurant',
     comment: 'Who is responsible for payment'
   },

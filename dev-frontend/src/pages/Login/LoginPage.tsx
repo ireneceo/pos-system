@@ -35,6 +35,13 @@ const TEST_ACCOUNTS = [
     email: 'foodcourt_general@orderhere.center',
     password: 'Test1234',
     description: 'Foodcourt General Manager (Overall Foodcourt Management)',
+    color: '#EA580C'
+  },
+  {
+    role: 'Restaurant Owner',
+    email: 'owner@purplehere.com',
+    password: 'Owner1234',
+    description: 'Restaurant Owner (Multi-Restaurant Financial Dashboard)',
     color: '#7C3AED'
   },
   {
