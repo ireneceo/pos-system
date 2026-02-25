@@ -836,10 +836,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 </NavItem>
 
                 <NavTitle>Analytics</NavTitle>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
+                <NavItem to="/pos/admin/report" active={isActive('/pos/admin/report')} onClick={closeSidebar}>
+                  <NavIcon>◈</NavIcon>
                   Report
-                </DisabledNavItem>
+                </NavItem>
 
                 <NavTitle>Support</NavTitle>
                 <NavItem to="/pos/admin/support" active={isActive('/pos/admin/support')} onClick={closeSidebar}>

@@ -56,6 +56,7 @@ interface OperationSettings {
 interface StoreContextType {
   storeSettings: StoreSettings;
   operationSettings: OperationSettings;
+  siteTimezone: string;
   updateSettings: (settings: Partial<{ store: StoreSettings; operations: OperationSettings }>) => void;
   getStoreInfo: () => StoreSettings;
   getTakeawayCharge: (category?: string) => number;
@@ -127,6 +128,25 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
   // localStorage 제거 - 기본 설정 사용 또는 DB에서 로드
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(defaultStoreSettings);
   const [operationSettings, setOperationSettings] = useState<OperationSettings>(defaultOperationSettings);
+  const [siteTimezone, setSiteTimezone] = useState<string>('Asia/Kuala_Lumpur');
+
+  // Load site timezone from CompanySettings (for admin pages)
+  useEffect(() => {
+    const loadSiteTimezone = async () => {
+      try {
+        const response = await fetch('/api/site-settings');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.timezone) {
+            setSiteTimezone(data.timezone);
+          }
+        }
+      } catch (e) {
+        // Keep default
+      }
+    };
+    loadSiteTimezone();
+  }, []);
 
   // DB에서 설정 로드
   useEffect(() => {
@@ -300,11 +320,12 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
   };
 
   return (
-    <StoreContext.Provider 
-      value={{ 
-        storeSettings, 
-        operationSettings, 
-        updateSettings, 
+    <StoreContext.Provider
+      value={{
+        storeSettings,
+        operationSettings,
+        siteTimezone,
+        updateSettings,
         getStoreInfo,
         getTakeawayCharge
       }}

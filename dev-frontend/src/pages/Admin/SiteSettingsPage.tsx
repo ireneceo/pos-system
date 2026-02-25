@@ -153,7 +153,31 @@ interface SiteSettings {
   seo_description: string;
   seo_keywords: string;
   og_image_url: string;
+  timezone: string;
 }
+
+const TIMEZONE_OPTIONS = [
+  { label: 'Malaysia (UTC+8)', value: 'Asia/Kuala_Lumpur' },
+  { label: 'Singapore (UTC+8)', value: 'Asia/Singapore' },
+  { label: 'South Korea (UTC+9)', value: 'Asia/Seoul' },
+  { label: 'Japan (UTC+9)', value: 'Asia/Tokyo' },
+  { label: 'China (UTC+8)', value: 'Asia/Shanghai' },
+  { label: 'Thailand (UTC+7)', value: 'Asia/Bangkok' },
+  { label: 'Vietnam (UTC+7)', value: 'Asia/Ho_Chi_Minh' },
+  { label: 'Philippines (UTC+8)', value: 'Asia/Manila' },
+  { label: 'Indonesia - Jakarta (UTC+7)', value: 'Asia/Jakarta' },
+  { label: 'India (UTC+5:30)', value: 'Asia/Kolkata' },
+  { label: 'Australia - Sydney (UTC+10/+11)', value: 'Australia/Sydney' },
+  { label: 'United States - New York (UTC-5/-4)', value: 'America/New_York' },
+  { label: 'United States - Los Angeles (UTC-8/-7)', value: 'America/Los_Angeles' },
+  { label: 'United States - Chicago (UTC-6/-5)', value: 'America/Chicago' },
+  { label: 'United Kingdom (UTC+0/+1)', value: 'Europe/London' },
+  { label: 'Germany (UTC+1/+2)', value: 'Europe/Berlin' },
+  { label: 'France (UTC+1/+2)', value: 'Europe/Paris' },
+  { label: 'Dubai (UTC+4)', value: 'Asia/Dubai' },
+  { label: 'Hong Kong (UTC+8)', value: 'Asia/Hong_Kong' },
+  { label: 'Taiwan (UTC+8)', value: 'Asia/Taipei' },
+];
 
 const SiteSettingsPage: React.FC = () => {
   const [settings, setSettings] = useState<SiteSettings>({
@@ -163,7 +187,8 @@ const SiteSettingsPage: React.FC = () => {
     seo_title: '',
     seo_description: '',
     seo_keywords: '',
-    og_image_url: ''
+    og_image_url: '',
+    timezone: 'Asia/Kuala_Lumpur'
   });
   const [initialSettings, setInitialSettings] = useState<SiteSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -303,7 +328,8 @@ const SiteSettingsPage: React.FC = () => {
           seo_title: data.seo_title || '',
           seo_description: data.seo_description || '',
           seo_keywords: data.seo_keywords || '',
-          og_image_url: data.og_image_url || ''
+          og_image_url: data.og_image_url || '',
+          timezone: data.timezone || 'Asia/Kuala_Lumpur'
         };
         setSettings(loadedSettings);
         setInitialSettings(loadedSettings);
@@ -541,6 +567,40 @@ const SiteSettingsPage: React.FC = () => {
                     onChange={(e) => handleImageUpload(e, 'brand_logo')}
                   />
                   <HelpText>Will appear in sidebar and login page</HelpText>
+                </FormGroup>
+              </FormRow>
+            </Section>
+
+            {/* System Timezone */}
+            <Section>
+              <SectionTitle>System Timezone</SectionTitle>
+
+              <FormRow>
+                <FormGroup>
+                  <Label htmlFor="timezone">Timezone</Label>
+                  <select
+                    id="timezone"
+                    value={settings.timezone}
+                    onChange={(e) => setSettings(prev => ({ ...prev, timezone: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      border: '1px solid #E6EBF1',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      background: 'white',
+                      cursor: 'pointer',
+                      boxSizing: 'border-box' as const
+                    }}
+                  >
+                    {TIMEZONE_OPTIONS.map(tz => (
+                      <option key={tz.value} value={tz.value}>{tz.label}</option>
+                    ))}
+                  </select>
+                  <HelpText>
+                    All system dates/times (dashboards, reports, invoices) will use this timezone.
+                    Current time: {new Date().toLocaleString('en-US', { timeZone: settings.timezone, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, year: 'numeric', month: 'short', day: 'numeric' })}
+                  </HelpText>
                 </FormGroup>
               </FormRow>
             </Section>

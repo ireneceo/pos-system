@@ -7,6 +7,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 import { formatCurrency } from '../../utils/currency';
+import { useStore } from '../../contexts/StoreContext';
 
 // Styled Components (AnalyticsPage 패턴)
 const ReportsContainer = styled.div`
@@ -229,7 +230,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 type TabType = 'revenue' | 'payment' | 'customer' | 'subscription';
-type PeriodType = 'month' | '3months' | '6months' | 'year' | 'custom';
+type PeriodType = 'all' | 'month' | '3months' | '6months' | 'year' | 'custom';
 
 interface RevenueSummary {
   totalRevenue: number;
@@ -279,12 +280,51 @@ interface SubscriptionData {
 }
 
 const ReportsPage: React.FC = () => {
+  const { operationSettings, siteTimezone } = useStore();
+  const defaultCurrency = operationSettings?.currency || 'MYR';
   const [activeTab, setActiveTab] = useState<TabType>('revenue');
   const [period, setPeriod] = useState<PeriodType>('month');
-  const [currency, setCurrency] = useState('all');
+  const [currency, setCurrency] = useState('');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
   const [loading, setLoading] = useState(false);
+  const [currencyLoaded, setCurrencyLoaded] = useState(false);
+  const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>([]);
+
+  // Fetch supported currencies and set default to highest-revenue
+  useEffect(() => {
+    const init = async () => {
+      const token = localStorage.getItem('auth_token');
+      const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+      // Fetch supported currencies
+      let supported: string[] = [];
+      try {
+        const res = await fetch('/api/currencies/supported', { headers });
+        if (res.ok) {
+          const data = await res.json();
+          supported = (data.data || data || []).map((c: any) => typeof c === 'string' ? c : c.code);
+        }
+      } catch {}
+      if (supported.length === 0) supported = [defaultCurrency];
+      setSupportedCurrencies(supported);
+
+      // Fetch the most-used currency and use it as default
+      try {
+        const res = await fetch('/api/admin-reports/default-currency', { headers });
+        const data = await res.json();
+        if (data.success && data.data?.currency && supported.includes(data.data.currency)) {
+          setCurrency(data.data.currency);
+        } else {
+          setCurrency(supported[0]);
+        }
+      } catch {
+        setCurrency(supported[0]);
+      }
+      setCurrencyLoaded(true);
+    };
+    init();
+  }, [defaultCurrency]);
 
   // Data states
   const [revenueSummary, setRevenueSummary] = useState<RevenueSummary | null>(null);
@@ -296,39 +336,47 @@ const ReportsPage: React.FC = () => {
   const [subscriptionData, setSubscriptionData] = useState<SubscriptionData | null>(null);
 
   const getDateParams = useCallback(() => {
-    const now = new Date();
+    // Use site timezone for date calculations
+    const tz = siteTimezone || 'Asia/Kuala_Lumpur';
+    const nowStr = new Date().toLocaleDateString('en-CA', { timeZone: tz }); // YYYY-MM-DD
+    const [yearStr, monthStr] = nowStr.split('-');
+    const year = parseInt(yearStr);
+    const month = parseInt(monthStr) - 1; // 0-based
+
     let start: Date, end: Date;
     switch (period) {
+      case 'all':
+        return 'period=all'; // No date filter = all time
       case '3months':
-        start = new Date(now.getFullYear(), now.getMonth() - 2, 1);
-        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        start = new Date(year, month - 2, 1);
+        end = new Date(year, month + 1, 0);
         break;
       case '6months':
-        start = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        start = new Date(year, month - 5, 1);
+        end = new Date(year, month + 1, 0);
         break;
       case 'year':
-        start = new Date(now.getFullYear(), 0, 1);
-        end = new Date(now.getFullYear(), 11, 31);
+        start = new Date(year, 0, 1);
+        end = new Date(year, 11, 31);
         break;
       case 'custom':
         if (customStart && customEnd) {
           return `start_date=${customStart}&end_date=${customEnd}`;
         }
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        start = new Date(year, month, 1);
+        end = new Date(year, month + 1, 0);
         break;
       default: // month
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        start = new Date(year, month, 1);
+        end = new Date(year, month + 1, 0);
     }
     return `start_date=${start.toISOString().split('T')[0]}&end_date=${end.toISOString().split('T')[0]}`;
-  }, [period, customStart, customEnd]);
+  }, [period, customStart, customEnd, siteTimezone]);
 
   const fetchApi = useCallback(async (endpoint: string, params = '') => {
     const token = localStorage.getItem('auth_token');
     const sep = params ? '?' + params : '';
-    const currParam = currency !== 'all' ? (sep ? `&currency=${currency}` : `?currency=${currency}`) : '';
+    const currParam = currency ? (sep ? `&currency=${currency}` : `?currency=${currency}`) : '';
     const response = await fetch(`/api/admin-reports/${endpoint}${sep}${currParam}`, {
       headers: token ? { 'Authorization': `Bearer ${token}` } : {}
     });
@@ -399,13 +447,14 @@ const ReportsPage: React.FC = () => {
   }, [fetchApi]);
 
   useEffect(() => {
+    if (!currencyLoaded || !currency) return;
     switch (activeTab) {
       case 'revenue': fetchRevenue(); break;
       case 'payment': fetchPayment(); break;
       case 'customer': fetchCustomer(); break;
       case 'subscription': fetchSubscription(); break;
     }
-  }, [activeTab, period, currency, customStart, customEnd]);
+  }, [activeTab, period, currency, customStart, customEnd, currencyLoaded]);
 
   // CSV Export
   const handleExport = () => {
@@ -458,25 +507,23 @@ const ReportsPage: React.FC = () => {
     return (
       <>
         <StatsGrid>
-          <StatCard>
-            <StatValue>{formatCurrency(revenueSummary.totalRevenue)}</StatValue>
+          <StatCard color="#059669">
+            <StatValue>{formatCurrency(revenueSummary.totalRevenue, currency)}</StatValue>
             <StatLabel>Total Revenue</StatLabel>
             <StatDescription>Collected payments</StatDescription>
           </StatCard>
-          <StatCard>
-            <StatValue style={{ color: '#D97706' }}>{formatCurrency(revenueSummary.pendingAmount)}</StatValue>
+          <StatCard color="#D97706">
+            <StatValue>{formatCurrency(revenueSummary.pendingAmount, currency)}</StatValue>
             <StatLabel>Pending Amount</StatLabel>
             <StatDescription>Awaiting payment</StatDescription>
           </StatCard>
-          <StatCard>
+          <StatCard color="#635BFF">
             <StatValue>{revenueSummary.paidInvoices} / {revenueSummary.totalInvoices}</StatValue>
             <StatLabel>Paid Invoices</StatLabel>
             <StatDescription>Completed / Total</StatDescription>
           </StatCard>
-          <StatCard>
-            <StatValue style={{ color: revenueSummary.collectionRate >= 80 ? '#059669' : '#DC2626' }}>
-              {revenueSummary.collectionRate}%
-            </StatValue>
+          <StatCard color="#2563EB">
+            <StatValue>{revenueSummary.collectionRate}%</StatValue>
             <StatLabel>Collection Rate</StatLabel>
             <StatDescription>Payment success rate</StatDescription>
           </StatCard>
@@ -491,7 +538,7 @@ const ReportsPage: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" stroke="#E6EBF1" />
                   <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                   <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Tooltip formatter={(value: number) => formatCurrency(value, currency)} />
                   <Legend />
                   <Line type="monotone" dataKey="billed" stroke="#635BFF" strokeWidth={2} name="Billed" dot={{ r: 3 }} />
                   <Line type="monotone" dataKey="collected" stroke="#059669" strokeWidth={2} name="Collected" dot={{ r: 3 }} />
@@ -515,7 +562,7 @@ const ReportsPage: React.FC = () => {
                   >
                     {revenueByCategory.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Tooltip formatter={(value: number) => formatCurrency(value, currency)} />
                 </PieChart>
               </ResponsiveContainer>
             ) : <NoDataMessage>No category data</NoDataMessage>}
@@ -538,7 +585,7 @@ const ReportsPage: React.FC = () => {
                 <tr key={i}>
                   <Td>{CATEGORY_LABELS[r.category] || r.category}</Td>
                   <Td style={{ textAlign: 'right' }}>{r.count}</Td>
-                  <Td style={{ textAlign: 'right' }}>{formatCurrency(r.total)}</Td>
+                  <Td style={{ textAlign: 'right' }}>{formatCurrency(r.total, currency)}</Td>
                   <Td style={{ textAlign: 'right' }}>{totalGrand > 0 ? ((r.total / totalGrand) * 100).toFixed(1) : 0}%</Td>
                 </tr>
               ))}
@@ -557,23 +604,23 @@ const ReportsPage: React.FC = () => {
     return (
       <>
         <StatsGrid>
-          <StatCard>
-            <StatValue style={{ color: '#DC2626' }}>{paymentAnalysis.overdueCount}</StatValue>
+          <StatCard color="#DC2626">
+            <StatValue>{paymentAnalysis.overdueCount}</StatValue>
             <StatLabel>Overdue Invoices</StatLabel>
-            <StatDescription>{formatCurrency(paymentAnalysis.overdueAmount)}</StatDescription>
+            <StatDescription>{formatCurrency(paymentAnalysis.overdueAmount, currency)}</StatDescription>
           </StatCard>
-          <StatCard>
+          <StatCard color="#635BFF">
             <StatValue>{paymentAnalysis.avgPaymentDays} days</StatValue>
             <StatLabel>Avg Payment Time</StatLabel>
             <StatDescription>Issue to payment</StatDescription>
           </StatCard>
-          <StatCard>
-            <StatValue style={{ color: '#2563EB' }}>{paymentAnalysis.awaitingCount}</StatValue>
+          <StatCard color="#2563EB">
+            <StatValue>{paymentAnalysis.awaitingCount}</StatValue>
             <StatLabel>Awaiting Confirmation</StatLabel>
             <StatDescription>Payment submitted</StatDescription>
           </StatCard>
-          <StatCard>
-            <StatValue style={{ color: '#059669' }}>{formatCurrency(paymentAnalysis.thisMonthCollected)}</StatValue>
+          <StatCard color="#059669">
+            <StatValue>{formatCurrency(paymentAnalysis.thisMonthCollected, currency)}</StatValue>
             <StatLabel>This Month Collected</StatLabel>
             <StatDescription>Current month</StatDescription>
           </StatCard>
@@ -595,7 +642,7 @@ const ReportsPage: React.FC = () => {
                   <tr key={i}>
                     <Td><StatusBadge status={s.status}>{STATUS_LABELS[s.status] || s.status}</StatusBadge></Td>
                     <Td style={{ textAlign: 'right' }}>{s.count}</Td>
-                    <Td style={{ textAlign: 'right' }}>{formatCurrency(s.total)}</Td>
+                    <Td style={{ textAlign: 'right' }}>{formatCurrency(s.total, currency)}</Td>
                   </tr>
                 ))}
               </tbody>
@@ -643,7 +690,7 @@ const ReportsPage: React.FC = () => {
                     <Td style={{ fontWeight: 500 }}>{inv.invoiceNumber}</Td>
                     <Td>{inv.restaurantName}</Td>
                     <Td style={{ textAlign: 'right' }}>{formatCurrency(inv.amount, inv.currency)}</Td>
-                    <Td>{new Date(inv.dueDate).toLocaleDateString()}</Td>
+                    <Td>{new Date(inv.dueDate).toLocaleDateString('en-GB', { timeZone: siteTimezone || 'Asia/Kuala_Lumpur' })}</Td>
                     <Td style={{ textAlign: 'right', color: inv.daysOverdue > 30 ? '#DC2626' : '#D97706', fontWeight: 600 }}>
                       {inv.daysOverdue}
                     </Td>
@@ -665,23 +712,23 @@ const ReportsPage: React.FC = () => {
     return (
       <>
         <StatsGrid>
-          <StatCard>
+          <StatCard color="#6366F1">
             <StatValue>{customerData.totalRestaurants}</StatValue>
             <StatLabel>Total Restaurants</StatLabel>
             <StatDescription>All registered</StatDescription>
           </StatCard>
-          <StatCard>
-            <StatValue style={{ color: '#059669' }}>{customerData.activeRestaurants}</StatValue>
+          <StatCard color="#059669">
+            <StatValue>{customerData.activeRestaurants}</StatValue>
             <StatLabel>Active Restaurants</StatLabel>
             <StatDescription>With invoices (3 months)</StatDescription>
           </StatCard>
-          <StatCard>
-            <StatValue style={{ color: '#2563EB' }}>{customerData.newThisMonth}</StatValue>
+          <StatCard color="#2563EB">
+            <StatValue>{customerData.newThisMonth}</StatValue>
             <StatLabel>New This Month</StatLabel>
             <StatDescription>Recently registered</StatDescription>
           </StatCard>
-          <StatCard>
-            <StatValue>{formatCurrency(customerData.arpu)}</StatValue>
+          <StatCard color="#F59E0B">
+            <StatValue>{formatCurrency(customerData.arpu, currency)}</StatValue>
             <StatLabel>ARPU</StatLabel>
             <StatDescription>Avg revenue per restaurant</StatDescription>
           </StatCard>
@@ -718,7 +765,7 @@ const ReportsPage: React.FC = () => {
                   >
                     {customerData.payerDistribution.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Tooltip formatter={(value: number) => formatCurrency(value, currency)} />
                 </PieChart>
               </ResponsiveContainer>
             ) : <NoDataMessage>No payer data</NoDataMessage>}
@@ -742,7 +789,7 @@ const ReportsPage: React.FC = () => {
                 <tr key={i}>
                   <Td style={{ fontWeight: 600, color: i < 3 ? '#635BFF' : '#6B7280' }}>{i + 1}</Td>
                   <Td style={{ fontWeight: 500 }}>{r.restaurantName}</Td>
-                  <Td style={{ textAlign: 'right' }}>{formatCurrency(r.totalRevenue)}</Td>
+                  <Td style={{ textAlign: 'right' }}>{formatCurrency(r.totalRevenue, currency)}</Td>
                   <Td style={{ textAlign: 'right' }}>{r.invoiceCount}</Td>
                   <Td style={{ textAlign: 'right', color: r.overdueCount > 0 ? '#DC2626' : '#059669' }}>
                     {r.overdueCount}
@@ -766,23 +813,23 @@ const ReportsPage: React.FC = () => {
     return (
       <>
         <StatsGrid>
-          <StatCard>
+          <StatCard color="#7C3AED">
             <StatValue>{subscriptionData.activePlans}</StatValue>
             <StatLabel>Active Plans</StatLabel>
             <StatDescription>Currently available</StatDescription>
           </StatCard>
-          <StatCard>
-            <StatValue style={{ color: '#059669' }}>{formatCurrency(subscriptionData.mrr)}</StatValue>
+          <StatCard color="#059669">
+            <StatValue>{formatCurrency(subscriptionData.mrr, currency)}</StatValue>
             <StatLabel>MRR</StatLabel>
             <StatDescription>Monthly Recurring Revenue</StatDescription>
           </StatCard>
-          <StatCard>
-            <StatValue>{formatCurrency(subscriptionData.arpu)}</StatValue>
+          <StatCard color="#F59E0B">
+            <StatValue>{formatCurrency(subscriptionData.arpu, currency)}</StatValue>
             <StatLabel>ARPU</StatLabel>
             <StatDescription>Avg per subscriber</StatDescription>
           </StatCard>
-          <StatCard>
-            <StatValue style={{ color: '#635BFF' }}>{subscriptionData.mostPopularPlan}</StatValue>
+          <StatCard color="#635BFF">
+            <StatValue style={{ fontSize: '16px' }}>{subscriptionData.mostPopularPlan}</StatValue>
             <StatLabel>Most Popular</StatLabel>
             <StatDescription>{subscriptionData.activeSubscribers} subscribers</StatDescription>
           </StatCard>
@@ -805,7 +852,7 @@ const ReportsPage: React.FC = () => {
                   <tr key={i}>
                     <Td style={{ fontWeight: 500 }}>{p.planName}</Td>
                     <Td style={{ textAlign: 'right' }}>{p.subscriberCount}</Td>
-                    <Td style={{ textAlign: 'right' }}>{formatCurrency(p.monthlyRevenue)}</Td>
+                    <Td style={{ textAlign: 'right' }}>{formatCurrency(p.monthlyRevenue, currency)}</Td>
                     <Td style={{ textAlign: 'right' }}>
                       {totalRevenue > 0 ? ((p.monthlyRevenue / totalRevenue) * 100).toFixed(1) : 0}%
                     </Td>
@@ -862,6 +909,7 @@ const ReportsPage: React.FC = () => {
           </TabContainer>
 
           <FilterControls>
+            <DateButton active={period === 'all'} onClick={() => setPeriod('all')}>All</DateButton>
             <DateButton active={period === 'month'} onClick={() => setPeriod('month')}>This Month</DateButton>
             <DateButton active={period === '3months'} onClick={() => setPeriod('3months')}>3 Months</DateButton>
             <DateButton active={period === '6months'} onClick={() => setPeriod('6months')}>6 Months</DateButton>
@@ -875,10 +923,9 @@ const ReportsPage: React.FC = () => {
               </>
             )}
             <CurrencySelect value={currency} onChange={e => setCurrency(e.target.value)}>
-              <option value="all">All Currencies</option>
-              <option value="MYR">MYR</option>
-              <option value="USD">USD</option>
-              <option value="KRW">KRW</option>
+              {supportedCurrencies.map(cur => (
+                <option key={cur} value={cur}>{cur}</option>
+              ))}
             </CurrencySelect>
           </FilterControls>
 

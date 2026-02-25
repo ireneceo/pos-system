@@ -5,6 +5,7 @@ const { sequelize } = require('../config/database');
 const systemLogger = require('../utils/systemLogger');
 const { sendIssuerEmail } = require('../utils/emailService');
 const { generateInvoiceNotificationEmail } = require('../utils/invoiceEmailTemplate');
+const { getSiteTimezone, getLocalDate } = require('../utils/dateTimeHelper');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://dev.purplehere.com';
 const ADVANCE_DAYS = 14; // Generate invoices 14 days before billing day
@@ -47,7 +48,8 @@ class InvoiceScheduler {
   async generateSubscriptionInvoices() {
     const result = { generated: 0, skipped: 0, errors: 0 };
     try {
-      const today = new Date();
+      const siteTimezone = await getSiteTimezone();
+      const today = getLocalDate(siteTimezone);
       const currentMonth = today.getMonth();
       const currentYear = today.getFullYear();
 
@@ -327,7 +329,8 @@ class InvoiceScheduler {
   async generateEntityPlanInvoices() {
     const result = { generated: 0, skipped: 0, errors: 0 };
     try {
-      const today = new Date();
+      const siteTimezone = await getSiteTimezone();
+      const today = getLocalDate(siteTimezone);
 
       console.log(`📊 [ENTITY PLAN SCHEDULER] Checking entity plan invoices (${ADVANCE_DAYS}-day advance)...`);
 

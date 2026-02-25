@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-02-25
+> **최종 업데이트:** 2026-02-26
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -777,6 +777,39 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 - `dev-frontend/src/pages/BrandGeneral/BrandInvoicesPage.tsx` - issuer 반영
 - `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtInvoicesPage.tsx` - 동일
 - `deploy-to-production.sh` - POS 주문→빌 스모크 테스트
+
+---
+
+## ✅ 완료: 사이트 설정 + 대시보드/리포트 통화 개선 + 시스템 로그 가이드 (2026-02-25)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 사이트 타임존 설정 | Admin > Site Settings에서 타임존 설정. 대시보드/리포트/인보이스 전체 적용 | ✅ 완료 |
+| 대시보드 통화 필터 개선 | 결제 설정 기반 통화만 표시, 인보이스 건수 기준 기본 통화 | ✅ 완료 |
+| 리포트 기간 필터 개선 | "All" 전체 기간 추가, 백엔드 period=all 지원 | ✅ 완료 |
+| 서버 헬스 로깅 최적화 | 정상 상태 로깅 제거, 오탐 경고 수정 | ✅ 완료 |
+| SystemLogsPage Auto-scroll | useRef + useEffect 기반 자동 스크롤 구현 | ✅ 완료 |
+| 시스템 로그 대응 가이드 | 서비스별 Action Guide 매핑 + UI 패널 | ✅ 완료 |
+| 대시보드 시스템 알림 | 24h critical/error 알림 + alerts-summary API | ✅ 완료 |
+| 이메일 자동 알림 | error/critical 발생 시 이메일 발송, 1시간 중복 방지 | ✅ 완료 |
+
+### 수정된 파일
+- `dev-frontend/src/utils/logActionGuides.ts` (NEW)
+- `dev-frontend/src/pages/Admin/AdminDashboard.tsx`
+- `dev-frontend/src/pages/Admin/ReportsPage.tsx`
+- `dev-frontend/src/pages/Admin/SystemLogsPage.tsx`
+- `dev-frontend/src/pages/Admin/SiteSettingsPage.tsx`
+- `dev-frontend/src/contexts/StoreContext.tsx`
+- `dev-backend/routes/admin-reports.js`
+- `dev-backend/routes/system-logs.js`
+- `dev-backend/routes/siteSettings.js`
+- `dev-backend/utils/systemLogger.js`
+- `dev-backend/utils/dateTimeHelper.js`
+- `dev-backend/services/serverHealthMonitor.js`
+- `dev-backend/services/invoiceScheduler.js`
+- `dev-backend/models/CompanySettings.js`
 
 ---
 

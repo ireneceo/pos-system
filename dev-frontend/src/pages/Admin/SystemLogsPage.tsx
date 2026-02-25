@@ -7,6 +7,7 @@ import { BaseButton } from '../../components/UI/CommonStyles';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/StatCard';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { Modal, ModalButton } from '../../components/UI/Modal';
+import { getActionGuide } from '../../utils/logActionGuides';
 
 interface SystemLog {
   id: string;
@@ -253,6 +254,45 @@ const LogDetails = styled.pre`
   color: #374151;
   overflow-x: auto;
   white-space: pre-wrap;
+`;
+
+const ActionGuidePanel = styled.div`
+  background: #F0F9FF;
+  border: 1px solid #BAE6FD;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-top: 10px;
+`;
+
+const GuideTitle = styled.div`
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #0369A1;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+`;
+
+const GuideWhatHappened = styled.div`
+  font-size: 13px;
+  color: #1E3A5F;
+  margin-bottom: 10px;
+  line-height: 1.5;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+`;
+
+const GuideStepList = styled.ol`
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13px;
+  color: #1E3A5F;
+  line-height: 1.7;
+  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+
+  li {
+    margin-bottom: 2px;
+  }
 `;
 
 // Modal now imported from common/Modal
@@ -582,6 +622,7 @@ const SystemLogsPage: React.FC = () => {
   const [stats, setStats] = useState({ total24h: 0, errors: 0, warnings: 0, recent1h: 0 });
   const [loading, setLoading] = useState(false);
   const liveIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const logsListRef = useRef<HTMLDivElement | null>(null);
 
   // Server Health state
   const [healthData, setHealthData] = useState<HealthData | null>(null);
@@ -682,6 +723,13 @@ const SystemLogsPage: React.FC = () => {
       if (liveIntervalRef.current) clearInterval(liveIntervalRef.current);
     };
   }, [liveMode, fetchLogs]);
+
+  // Auto-scroll to bottom when new logs arrive
+  useEffect(() => {
+    if (autoScroll && logsListRef.current) {
+      logsListRef.current.scrollTop = logsListRef.current.scrollHeight;
+    }
+  }, [logs, autoScroll]);
 
   const filteredLogs = logs;
 
@@ -1088,7 +1136,7 @@ const SystemLogsPage: React.FC = () => {
               <BaseButton variant="secondary" onClick={handleRefresh}>🔄 Refresh</BaseButton>
             </LogsActions>
           </LogsHeader>
-          <LogsList>
+          <LogsList ref={logsListRef}>
             {filteredLogs.map(log => (
               <LogItem key={log.id} level={log.level}>
                 <LogHeader>
@@ -1122,6 +1170,20 @@ const SystemLogsPage: React.FC = () => {
                 {expandedLogs.has(log.id) && log.details && (
                   <LogDetails>{JSON.stringify(log.details, null, 2)}</LogDetails>
                 )}
+                {expandedLogs.has(log.id) && ['warning', 'error', 'critical'].includes(log.level) && (() => {
+                  const guide = getActionGuide(log.service, log.level);
+                  if (!guide) return null;
+                  return (
+                    <ActionGuidePanel>
+                      <GuideTitle>Action Guide</GuideTitle>
+                      <GuideWhatHappened>{guide.whatHappened}</GuideWhatHappened>
+                      <GuideTitle style={{ fontSize: '11px', marginBottom: '6px' }}>What to do</GuideTitle>
+                      <GuideStepList>
+                        {guide.whatToDo.map((step, i) => <li key={i}>{step}</li>)}
+                      </GuideStepList>
+                    </ActionGuidePanel>
+                  );
+                })()}
               </LogItem>
             ))}
             {filteredLogs.length === 0 && (

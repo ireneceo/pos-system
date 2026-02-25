@@ -98,6 +98,26 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+// GET /alerts-summary - 24h critical/error summary for dashboard
+router.get('/alerts-summary', async (req, res) => {
+  try {
+    const h24 = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const [criticalCount, errorCount] = await Promise.all([
+      SystemLog.count({ where: { timestamp: { [Op.gte]: h24 }, level: 'critical' } }),
+      SystemLog.count({ where: { timestamp: { [Op.gte]: h24 }, level: 'error' } })
+    ]);
+
+    res.json({
+      success: true,
+      data: { criticalCount, errorCount, total: criticalCount + errorCount }
+    });
+  } catch (error) {
+    console.error('Error fetching alerts summary:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch alerts summary' });
+  }
+});
+
 // GET /server-health - Latest production server health data
 router.get('/server-health', async (req, res) => {
   try {

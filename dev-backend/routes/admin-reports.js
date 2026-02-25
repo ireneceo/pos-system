@@ -6,34 +6,74 @@ const Invoice = require('../models/Invoice');
 const Restaurant = require('../models/Restaurant');
 const EntityPlan = require('../models/EntityPlan');
 const { authenticateToken, requireRole } = require('../middleware/auth');
+const { getLocalDate, getSiteTimezone } = require('../utils/dateTimeHelper');
 
 // All endpoints require System Admin
 router.use(authenticateToken, requireRole('System Admin'));
 
-// Helper: date range from query params
-function getDateRange(query) {
-  const { start_date, end_date } = query;
-  if (start_date && end_date) {
-    return { start: new Date(start_date), end: new Date(end_date) };
+// Load site timezone for all admin-reports endpoints
+router.use(async (req, res, next) => {
+  try {
+    req.siteTimezone = await getSiteTimezone();
+  } catch (e) {
+    req.siteTimezone = 'Asia/Kuala_Lumpur';
   }
-  // Default: this month
-  const now = new Date();
+  next();
+});
+
+// Helper: round to 2 decimal places
+function round2(num) {
+  return Math.round((parseFloat(num) || 0) * 100) / 100;
+}
+
+// Helper: date range from query params (timezone-aware)
+// Returns null if no dates provided (= all time)
+function getDateRange(query, siteTimezone) {
+  const { start_date, end_date, period } = query;
+  if (period === 'all') return null; // All time - no date filter
+  if (start_date && end_date) {
+    return { start: new Date(start_date), end: new Date(end_date + 'T23:59:59') };
+  }
+  // Default: this month in site timezone
+  const now = siteTimezone ? getLocalDate(siteTimezone) : new Date();
   return {
     start: new Date(now.getFullYear(), now.getMonth(), 1),
     end: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
   };
 }
 
+// GET /default-currency - returns the most frequently used currency
+router.get('/default-currency', async (req, res) => {
+  try {
+    const results = await Invoice.findAll({
+      where: { status: { [Op.notIn]: ['draft', 'cancelled'] } },
+      attributes: [
+        'currency',
+        [fn('COUNT', col('id')), 'cnt']
+      ],
+      group: ['currency'],
+      order: [[literal('cnt'), 'DESC']],
+      limit: 1
+    });
+
+    const defaultCurrency = results.length > 0 ? results[0].currency : 'MYR';
+    res.json({ success: true, data: { currency: defaultCurrency } });
+  } catch (error) {
+    console.error('Error fetching default currency:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch default currency' });
+  }
+});
+
 // GET /revenue-summary
 router.get('/revenue-summary', async (req, res) => {
   try {
-    const { start, end } = getDateRange(req.query);
+    const dateRange = getDateRange(req.query, req.siteTimezone);
     const currencyFilter = req.query.currency && req.query.currency !== 'all'
       ? { currency: req.query.currency } : {};
 
     const baseWhere = {
       status: { [Op.notIn]: ['draft', 'cancelled'] },
-      issued_at: { [Op.between]: [start, end] },
+      ...(dateRange ? { issued_at: { [Op.between]: [dateRange.start, dateRange.end] } } : {}),
       ...currencyFilter
     };
 
@@ -58,8 +98,8 @@ router.get('/revenue-summary', async (req, res) => {
     res.json({
       success: true,
       data: {
-        totalRevenue: totalCollected,
-        pendingAmount,
+        totalRevenue: round2(totalCollected),
+        pendingAmount: round2(pendingAmount),
         paidInvoices: paidCount,
         totalInvoices: allInvoices.length,
         collectionRate: totalBilled > 0 ? Math.round((totalCollected / totalBilled) * 100) : 0
@@ -78,7 +118,7 @@ router.get('/revenue-trend', async (req, res) => {
     const currencyFilter = req.query.currency && req.query.currency !== 'all'
       ? { currency: req.query.currency } : {};
 
-    const now = new Date();
+    const now = req.siteTimezone ? getLocalDate(req.siteTimezone) : new Date();
     const startDate = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
 
     const invoices = await Invoice.findAll({
@@ -111,10 +151,10 @@ router.get('/revenue-trend', async (req, res) => {
       }
     });
 
-    res.json({
-      success: true,
-      data: Object.values(monthlyData)
-    });
+    const data = Object.values(monthlyData).map(d => ({
+      ...d, billed: round2(d.billed), collected: round2(d.collected)
+    }));
+    res.json({ success: true, data });
   } catch (error) {
     console.error('Error fetching revenue trend:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch revenue trend' });
@@ -124,12 +164,15 @@ router.get('/revenue-trend', async (req, res) => {
 // GET /revenue-by-category
 router.get('/revenue-by-category', async (req, res) => {
   try {
-    const { start, end } = getDateRange(req.query);
+    const dateRange = getDateRange(req.query, req.siteTimezone);
+    const currencyFilter = req.query.currency && req.query.currency !== 'all'
+      ? { currency: req.query.currency } : {};
 
     const results = await Invoice.findAll({
       where: {
         status: 'paid',
-        issued_at: { [Op.between]: [start, end] }
+        ...(dateRange ? { issued_at: { [Op.between]: [dateRange.start, dateRange.end] } } : {}),
+        ...currencyFilter
       },
       attributes: [
         'invoice_category',
@@ -142,7 +185,7 @@ router.get('/revenue-by-category', async (req, res) => {
     const data = results.map(r => ({
       category: r.invoice_category || 'others',
       count: parseInt(r.getDataValue('count')) || 0,
-      total: parseFloat(r.getDataValue('total')) || 0
+      total: round2(r.getDataValue('total'))
     }));
 
     res.json({ success: true, data });
@@ -155,10 +198,14 @@ router.get('/revenue-by-category', async (req, res) => {
 // GET /payment-analysis
 router.get('/payment-analysis', async (req, res) => {
   try {
-    const { start, end } = getDateRange(req.query);
+    const dateRange = getDateRange(req.query, req.siteTimezone);
+    const currencyFilter = req.query.currency && req.query.currency !== 'all'
+      ? { currency: req.query.currency } : {};
+    const dateFilter = dateRange ? { issued_at: { [Op.between]: [dateRange.start, dateRange.end] } } : {};
     const baseWhere = {
       status: { [Op.notIn]: ['draft', 'cancelled'] },
-      issued_at: { [Op.between]: [start, end] }
+      ...dateFilter,
+      ...currencyFilter
     };
 
     // Status breakdown
@@ -175,12 +222,12 @@ router.get('/payment-analysis', async (req, res) => {
     const statusBreakdown = statusResults.map(r => ({
       status: r.status,
       count: parseInt(r.getDataValue('count')) || 0,
-      total: parseFloat(r.getDataValue('total')) || 0
+      total: round2(r.getDataValue('total'))
     }));
 
     // Payment method distribution (paid invoices only)
     const methodResults = await Invoice.findAll({
-      where: { status: 'paid', issued_at: { [Op.between]: [start, end] } },
+      where: { status: 'paid', ...dateFilter },
       attributes: [
         'payment_provider',
         [fn('COUNT', col('id')), 'count'],
@@ -192,12 +239,12 @@ router.get('/payment-analysis', async (req, res) => {
     const paymentMethods = methodResults.map(r => ({
       method: r.payment_provider || 'bank_transfer',
       count: parseInt(r.getDataValue('count')) || 0,
-      total: parseFloat(r.getDataValue('total')) || 0
+      total: round2(r.getDataValue('total'))
     }));
 
     // Average payment days
     const paidInvoices = await Invoice.findAll({
-      where: { status: 'paid', issued_at: { [Op.between]: [start, end] }, paid_at: { [Op.ne]: null } },
+      where: { status: 'paid', ...dateFilter, paid_at: { [Op.ne]: null } },
       attributes: ['issued_at', 'paid_at']
     });
 
@@ -210,16 +257,17 @@ router.get('/payment-analysis', async (req, res) => {
     const avgPaymentDays = paidInvoices.length > 0 ? Math.round(totalDays / paidInvoices.length) : 0;
 
     // Overdue count
-    const overdueCount = await Invoice.count({ where: { status: 'overdue' } });
-    const overdueAmount = await Invoice.sum('total_amount', { where: { status: 'overdue' } });
+    const overdueCount = await Invoice.count({ where: { status: 'overdue', ...currencyFilter } });
+    const overdueAmount = await Invoice.sum('total_amount', { where: { status: 'overdue', ...currencyFilter } });
 
     // Awaiting confirmation
-    const awaitingCount = await Invoice.count({ where: { status: 'payment_submitted' } });
+    const awaitingCount = await Invoice.count({ where: { status: 'payment_submitted', ...currencyFilter } });
 
-    // This month collected
-    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    // This month collected (timezone-aware)
+    const nowLocal = req.siteTimezone ? getLocalDate(req.siteTimezone) : new Date();
+    const monthStart = new Date(nowLocal.getFullYear(), nowLocal.getMonth(), 1);
     const thisMonthCollected = await Invoice.sum('paid_amount', {
-      where: { status: 'paid', paid_at: { [Op.gte]: monthStart } }
+      where: { status: 'paid', paid_at: { [Op.gte]: monthStart }, ...currencyFilter }
     });
 
     res.json({
@@ -229,9 +277,9 @@ router.get('/payment-analysis', async (req, res) => {
         paymentMethods,
         avgPaymentDays,
         overdueCount: overdueCount || 0,
-        overdueAmount: parseFloat(overdueAmount) || 0,
+        overdueAmount: round2(overdueAmount),
         awaitingCount: awaitingCount || 0,
-        thisMonthCollected: parseFloat(thisMonthCollected) || 0
+        thisMonthCollected: round2(thisMonthCollected)
       }
     });
   } catch (error) {
@@ -254,7 +302,8 @@ router.get('/overdue-invoices', async (req, res) => {
     });
 
     const data = invoices.map(inv => {
-      const daysOverdue = Math.round((new Date() - new Date(inv.due_date)) / (1000 * 60 * 60 * 24));
+      const nowTz = req.siteTimezone ? getLocalDate(req.siteTimezone) : new Date();
+      const daysOverdue = Math.round((nowTz - new Date(inv.due_date)) / (1000 * 60 * 60 * 24));
       return {
         id: inv.id,
         invoiceNumber: inv.invoice_number,
@@ -278,26 +327,27 @@ router.get('/overdue-invoices', async (req, res) => {
 // GET /customer-analysis
 router.get('/customer-analysis', async (req, res) => {
   try {
-    const { start, end } = getDateRange(req.query);
+    const dateRange = getDateRange(req.query, req.siteTimezone);
 
     // Total restaurants
     const totalRestaurants = await Restaurant.count();
 
     // Active restaurants (with invoices in last 3 months)
-    const threeMonthsAgo = new Date();
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const threeMonthsAgoDate = req.siteTimezone ? getLocalDate(req.siteTimezone) : new Date();
+    threeMonthsAgoDate.setMonth(threeMonthsAgoDate.getMonth() - 3);
     const activeRestaurants = await Invoice.count({
       where: {
         status: { [Op.notIn]: ['draft', 'cancelled'] },
-        issued_at: { [Op.gte]: threeMonthsAgo },
+        issued_at: { [Op.gte]: threeMonthsAgoDate },
         restaurant_id: { [Op.ne]: null }
       },
       distinct: true,
       col: 'restaurant_id'
     });
 
-    // New this month
-    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    // New this month (timezone-aware)
+    const nowForMonth = req.siteTimezone ? getLocalDate(req.siteTimezone) : new Date();
+    const monthStart = new Date(nowForMonth.getFullYear(), nowForMonth.getMonth(), 1);
     const newThisMonth = await Restaurant.count({
       where: { createdAt: { [Op.gte]: monthStart } }
     });
@@ -331,7 +381,7 @@ router.get('/customer-analysis', async (req, res) => {
       });
       topData.push({
         restaurantName: r.restaurant?.name || 'N/A',
-        totalRevenue: parseFloat(r.getDataValue('totalRevenue')) || 0,
+        totalRevenue: round2(r.getDataValue('totalRevenue')),
         invoiceCount: parseInt(r.getDataValue('invoiceCount')) || 0,
         overdueCount
       });
@@ -341,7 +391,7 @@ router.get('/customer-analysis', async (req, res) => {
     const payerResults = await Invoice.findAll({
       where: {
         status: 'paid',
-        issued_at: { [Op.between]: [start, end] }
+        ...(dateRange ? { issued_at: { [Op.between]: [dateRange.start, dateRange.end] } } : {})
       },
       attributes: [
         'payer_type',
@@ -354,11 +404,11 @@ router.get('/customer-analysis', async (req, res) => {
     const payerDistribution = payerResults.map(r => ({
       payerType: r.payer_type || 'restaurant',
       count: parseInt(r.getDataValue('count')) || 0,
-      total: parseFloat(r.getDataValue('total')) || 0
+      total: round2(r.getDataValue('total'))
     }));
 
-    // Monthly registration trend (last 12 months)
-    const twelveMonthsAgo = new Date();
+    // Monthly registration trend (last 12 months, timezone-aware)
+    const twelveMonthsAgo = req.siteTimezone ? getLocalDate(req.siteTimezone) : new Date();
     twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 11);
     twelveMonthsAgo.setDate(1);
 
@@ -368,7 +418,7 @@ router.get('/customer-analysis', async (req, res) => {
     });
 
     const regTrend = {};
-    const now = new Date();
+    const now = req.siteTimezone ? getLocalDate(req.siteTimezone) : new Date();
     for (let i = 0; i < 12; i++) {
       const d = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -382,7 +432,7 @@ router.get('/customer-analysis', async (req, res) => {
 
     // ARPU
     const totalPaid = await Invoice.sum('total_amount', { where: { status: 'paid' } });
-    const arpu = activeRestaurants > 0 ? (parseFloat(totalPaid) || 0) / activeRestaurants : 0;
+    const arpu = activeRestaurants > 0 ? round2((parseFloat(totalPaid) || 0) / activeRestaurants) : 0;
 
     res.json({
       success: true,
@@ -408,9 +458,10 @@ router.get('/subscription-stats', async (req, res) => {
     // Active plans count
     const activePlans = await EntityPlan.count({ where: { is_active: true } });
 
-    // MRR from automatic invoices (last month)
-    const lastMonthStart = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
-    const lastMonthEnd = new Date(new Date().getFullYear(), new Date().getMonth(), 0, 23, 59, 59);
+    // MRR from automatic invoices (last month, timezone-aware)
+    const nowSub = req.siteTimezone ? getLocalDate(req.siteTimezone) : new Date();
+    const lastMonthStart = new Date(nowSub.getFullYear(), nowSub.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(nowSub.getFullYear(), nowSub.getMonth(), 0, 23, 59, 59);
     const mrrResult = await Invoice.sum('total_amount', {
       where: {
         type: 'automatic',
@@ -418,7 +469,7 @@ router.get('/subscription-stats', async (req, res) => {
         issued_at: { [Op.between]: [lastMonthStart, lastMonthEnd] }
       }
     });
-    const mrr = parseFloat(mrrResult) || 0;
+    const mrr = round2(mrrResult);
 
     // Active subscribers (restaurants with automatic invoices)
     const activeSubscribers = await Invoice.count({
@@ -432,7 +483,7 @@ router.get('/subscription-stats', async (req, res) => {
       col: 'restaurant_id'
     });
 
-    const arpu = activeSubscribers > 0 ? mrr / activeSubscribers : 0;
+    const arpu = activeSubscribers > 0 ? round2(mrr / activeSubscribers) : 0;
 
     // Plan distribution - from invoice categories
     const planDistribution = await Invoice.findAll({
@@ -453,7 +504,7 @@ router.get('/subscription-stats', async (req, res) => {
     const plans = planDistribution.map(p => ({
       planName: p.category_display_name || p.invoice_category || 'Unknown',
       subscriberCount: parseInt(p.getDataValue('subscriberCount')) || 0,
-      monthlyRevenue: parseFloat(p.getDataValue('monthlyRevenue')) || 0
+      monthlyRevenue: round2(p.getDataValue('monthlyRevenue'))
     }));
 
     // Most popular plan

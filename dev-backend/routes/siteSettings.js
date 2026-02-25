@@ -47,7 +47,8 @@ router.put('/', authenticateToken, requireRole('System Admin'), async (req, res)
       seo_title,
       seo_description,
       seo_keywords,
-      og_image_url
+      og_image_url,
+      timezone
     } = req.body;
 
     let settings = await CompanySettings.findOne();
@@ -62,11 +63,12 @@ router.put('/', authenticateToken, requireRole('System Admin'), async (req, res)
         seo_title,
         seo_description,
         seo_keywords,
-        og_image_url
+        og_image_url,
+        timezone: timezone || 'Asia/Kuala_Lumpur'
       });
     } else {
       // Update existing
-      await settings.update({
+      const updateData = {
         site_name,
         favicon_url,
         brand_logo,
@@ -74,7 +76,11 @@ router.put('/', authenticateToken, requireRole('System Admin'), async (req, res)
         seo_description,
         seo_keywords,
         og_image_url
-      });
+      };
+      if (timezone !== undefined) {
+        updateData.timezone = timezone;
+      }
+      await settings.update(updateData);
     }
 
     res.json({

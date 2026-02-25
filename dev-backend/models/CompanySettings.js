@@ -116,6 +116,12 @@ CompanySettings.init({
     allowNull: true,
     comment: 'SWIFT/BIC code for international transfers'
   },
+  timezone: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    defaultValue: 'Asia/Kuala_Lumpur',
+    comment: 'System timezone (IANA format, e.g., Asia/Kuala_Lumpur, Asia/Seoul)'
+  },
   whatsapp: {
     type: DataTypes.STRING(50),
     allowNull: true,

@@ -64,9 +64,12 @@ class ServerHealthMonitor {
       const level = this.determineAlertLevel(healthData);
       const message = this.buildMessage(healthData, level);
 
-      await systemLogger[level](CATEGORY, SERVICE, message, healthData, {
-        duration: Date.now() - startTime
-      });
+      // Only log when there's an actual issue (not info = healthy)
+      if (level !== 'info') {
+        await systemLogger[level](CATEGORY, SERVICE, message, healthData, {
+          duration: Date.now() - startTime
+        });
+      }
 
       return healthData;
     } catch (error) {
@@ -209,7 +212,6 @@ apt list --upgradable 2>/dev/null | grep -c upgradable || echo 0
     if (data.disk?.usagePercent >= THRESHOLDS.disk.warning) return 'warn';
     if (data.memory?.usagePercent >= THRESHOLDS.memory.warning) return 'warn';
     if (data.cpu?.usage >= THRESHOLDS.cpu.warning) return 'warn';
-    if (data.securityUpdates > 10) return 'warn';
 
     return 'info';
   }

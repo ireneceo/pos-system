@@ -151,6 +151,20 @@ function getRestaurantTimezone(restaurant) {
   }
 }
 
+/**
+ * Get the system (site) timezone from CompanySettings
+ * @returns {Promise<string>} Timezone string
+ */
+async function getSiteTimezone() {
+  try {
+    const CompanySettings = require('../models/CompanySettings');
+    const settings = await CompanySettings.findOne({ attributes: ['timezone'] });
+    return settings?.timezone || 'Asia/Kuala_Lumpur';
+  } catch (e) {
+    return 'Asia/Kuala_Lumpur';
+  }
+}
+
 module.exports = {
   getLocalDate,
   getTodayBounds,
@@ -162,5 +176,6 @@ module.exports = {
   getDateRange,
   formatDateISO,
   formatMonthKey,
-  getRestaurantTimezone
+  getRestaurantTimezone,
+  getSiteTimezone
 };
