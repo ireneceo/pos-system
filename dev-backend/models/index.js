@@ -55,6 +55,7 @@ const EntityPlan = require('./EntityPlan');
 const EntityPlanRestaurant = require('./EntityPlanRestaurant');
 const EntityPlanPrice = require('./EntityPlanPrice');
 const RestaurantIngredientCost = require('./RestaurantIngredientCost');
+const SystemLog = require('./SystemLog');
 
 // Define associations
 // Brand - Restaurant associations
@@ -469,5 +470,6 @@ module.exports = {
   EntityPlan,
   EntityPlanRestaurant,
   EntityPlanPrice,
-  RestaurantIngredientCost
+  RestaurantIngredientCost,
+  SystemLog
 };

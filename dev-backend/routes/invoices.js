@@ -2168,6 +2168,200 @@ router.put('/:invoiceId', authenticateToken, async (req, res) => {
 // Payment Flow APIs (Submit, Confirm, Reject)
 // ============================================
 
+// Create Stripe PaymentIntent for an invoice
+router.post('/:id/create-payment-intent', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const systemLogger = require('../utils/systemLogger');
+    const { getStripeForIssuer, getPublishableKeyForIssuer } = require('../utils/stripeService');
+
+    const invoice = await Invoice.findByPk(id, {
+      include: [{ model: Restaurant, as: 'restaurant' }]
+    });
+
+    if (!invoice) return res.status(404).json({ success: false, error: 'Invoice not found' });
+    if (invoice.status !== 'pending_payment' && invoice.status !== 'rejected') {
+      return res.status(400).json({ success: false, error: `Cannot pay invoice with status: ${invoice.status}` });
+    }
+
+    // Check payment permission
+    const canPay = await checkPaymentPermission(req.user, invoice);
+    if (!canPay) return res.status(403).json({ success: false, error: 'Permission denied' });
+
+    // Get Stripe for the correct issuer
+    const stripe = await getStripeForIssuer(invoice.issuer_type, invoice.issuer_id);
+
+    // Convert amount to smallest currency unit
+    const ZERO_DECIMAL = ['JPY', 'KRW', 'VND'];
+    const multiplier = ZERO_DECIMAL.includes(invoice.currency?.toUpperCase()) ? 1 : 100;
+    const amountInSmallestUnit = Math.round(parseFloat(invoice.total_amount) * multiplier);
+
+    // Create PaymentIntent
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amountInSmallestUnit,
+      currency: (invoice.currency || 'MYR').toLowerCase(),
+      metadata: {
+        invoice_id: String(invoice.id),
+        invoice_number: invoice.invoice_number,
+        restaurant_id: String(invoice.restaurant_id || ''),
+        issuer_type: invoice.issuer_type,
+        issuer_id: String(invoice.issuer_id || '')
+      },
+      description: `Invoice ${invoice.invoice_number} - ${invoice.restaurant?.name || 'N/A'}`
+    });
+
+    // Store payment_intent_id on invoice
+    await invoice.update({
+      payment_intent_id: paymentIntent.id,
+      payment_provider: 'stripe',
+      payment_method: 'stripe'
+    });
+
+    const publishableKey = await getPublishableKeyForIssuer(invoice.issuer_type, invoice.issuer_id);
+
+    await systemLogger.info('payment', 'stripe', `PaymentIntent created: ${invoice.invoice_number}`, {
+      paymentIntentId: paymentIntent.id, amount: amountInSmallestUnit, currency: invoice.currency
+    });
+
+    res.json({
+      success: true,
+      clientSecret: paymentIntent.client_secret,
+      publishableKey,
+      paymentIntentId: paymentIntent.id
+    });
+  } catch (error) {
+    console.error('Error creating PaymentIntent:', error);
+    const systemLogger = require('../utils/systemLogger');
+    await systemLogger.error('payment', 'stripe', 'PaymentIntent creation failed', { error: error.message, invoiceId: req.params.id });
+    res.status(500).json({ success: false, error: 'Failed to create payment intent', details: error.message });
+  }
+});
+
+// Create PayPal order for an invoice (mirrors create-payment-intent)
+router.post('/:id/create-paypal-order', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const systemLogger = require('../utils/systemLogger');
+    const { createPayPalClient, getClientIdForIssuer } = require('../utils/paypalService');
+    const paypal = require('@paypal/checkout-server-sdk');
+
+    const invoice = await Invoice.findByPk(id, {
+      include: [{ model: Restaurant, as: 'restaurant' }]
+    });
+
+    if (!invoice) return res.status(404).json({ success: false, error: 'Invoice not found' });
+    if (invoice.status !== 'pending_payment' && invoice.status !== 'rejected') {
+      return res.status(400).json({ success: false, error: `Cannot pay invoice with status: ${invoice.status}` });
+    }
+
+    const canPay = await checkPaymentPermission(req.user, invoice);
+    if (!canPay) return res.status(403).json({ success: false, error: 'Permission denied' });
+
+    const { client } = await createPayPalClient(invoice.issuer_type, invoice.issuer_id);
+
+    const request = new paypal.orders.OrdersCreateRequest();
+    request.prefer('return=representation');
+    request.requestBody({
+      intent: 'CAPTURE',
+      purchase_units: [{
+        reference_id: String(invoice.id),
+        description: `Invoice ${invoice.invoice_number} - ${invoice.restaurant?.name || 'N/A'}`,
+        custom_id: String(invoice.id),
+        amount: {
+          currency_code: (invoice.currency || 'MYR').toUpperCase(),
+          value: parseFloat(invoice.total_amount).toFixed(2)
+        }
+      }]
+    });
+
+    const order = await client.execute(request);
+
+    await invoice.update({
+      payment_intent_id: order.result.id,
+      payment_provider: 'paypal',
+      payment_method: 'paypal'
+    });
+
+    const clientId = await getClientIdForIssuer(invoice.issuer_type, invoice.issuer_id);
+
+    await systemLogger.info('payment', 'paypal', `PayPal order created: ${invoice.invoice_number}`, {
+      orderId: order.result.id, amount: invoice.total_amount, currency: invoice.currency
+    });
+
+    res.json({
+      success: true,
+      orderId: order.result.id,
+      clientId,
+      status: order.result.status
+    });
+  } catch (error) {
+    console.error('Error creating PayPal order:', error);
+    const systemLogger = require('../utils/systemLogger');
+    await systemLogger.error('payment', 'paypal', 'PayPal order creation failed', { error: error.message, invoiceId: req.params.id });
+    res.status(500).json({ success: false, error: 'Failed to create PayPal order', details: error.message });
+  }
+});
+
+// Capture PayPal order after user approval
+router.post('/:id/capture-paypal-order', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { orderId } = req.body;
+    const systemLogger = require('../utils/systemLogger');
+    const { createPayPalClient } = require('../utils/paypalService');
+    const paypal = require('@paypal/checkout-server-sdk');
+
+    const invoice = await Invoice.findByPk(id, {
+      include: [{ model: Restaurant, as: 'restaurant' }]
+    });
+
+    if (!invoice) return res.status(404).json({ success: false, error: 'Invoice not found' });
+
+    const canPay = await checkPaymentPermission(req.user, invoice);
+    if (!canPay) return res.status(403).json({ success: false, error: 'Permission denied' });
+
+    if (invoice.payment_intent_id !== orderId) {
+      return res.status(400).json({ success: false, error: 'Order ID mismatch' });
+    }
+
+    const { client } = await createPayPalClient(invoice.issuer_type, invoice.issuer_id);
+
+    const request = new paypal.orders.OrdersCaptureRequest(orderId);
+    request.requestBody({});
+    const capture = await client.execute(request);
+
+    if (capture.result.status === 'COMPLETED') {
+      const captureId = capture.result.purchase_units?.[0]?.payments?.captures?.[0]?.id;
+      await invoice.update({
+        status: 'paid',
+        paid_at: new Date(),
+        paid_amount: invoice.total_amount,
+        payment_method: 'paypal',
+        payment_provider: 'paypal',
+        transaction_id: captureId || orderId,
+        confirmed_at: new Date(),
+        confirmed_by: 0
+      });
+
+      await systemLogger.info('payment', 'paypal', `Invoice ${invoice.invoice_number} paid via PayPal`, {
+        orderId, captureId, amount: invoice.total_amount
+      });
+
+      res.json({ success: true, status: 'COMPLETED', captureId });
+    } else {
+      await systemLogger.warn('payment', 'paypal', `PayPal capture not completed: ${capture.result.status}`, {
+        orderId, status: capture.result.status
+      });
+      res.json({ success: true, status: capture.result.status });
+    }
+  } catch (error) {
+    console.error('Error capturing PayPal order:', error);
+    const systemLogger = require('../utils/systemLogger');
+    await systemLogger.error('payment', 'paypal', 'PayPal capture failed', { error: error.message, invoiceId: req.params.id });
+    res.status(500).json({ success: false, error: 'Failed to capture PayPal payment', details: error.message });
+  }
+});
+
 // Submit payment for an invoice (by payer - restaurant, brand manager, foodcourt manager)
 router.post('/:id/submit-payment', authenticateToken, async (req, res) => {
   try {

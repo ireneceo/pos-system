@@ -1399,10 +1399,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <DisabledNavIcon>⊘</DisabledNavIcon>
                   Backup & Restore
                 </DisabledNavItem>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
+                <NavItem to="/pos/admin/logs" active={isActive('/pos/admin/logs')} onClick={closeSidebar}>
+                  <NavIcon>☰</NavIcon>
                   System Logs
-                </DisabledNavItem>
+                </NavItem>
               </>
             )}
 

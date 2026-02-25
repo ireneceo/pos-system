@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { Invoice, PaymentSettings, PaymentSubmitData, CURRENCY_CONFIG } from './types';
 import InvoiceStatusBadge from './InvoiceStatusBadge';
+import StripePaymentForm from './StripePaymentForm';
+import PayPalPaymentForm from './PayPalPaymentForm';
 
 interface Props {
   isOpen: boolean;
@@ -392,6 +394,42 @@ const InvoicePaymentModal: React.FC<Props> = ({
             </PaymentMethodGrid>
           </Section>
 
+          {paymentMethod === 'stripe' && stripeEnabled && invoice && (
+            <Section>
+              <SectionTitle>Card Payment</SectionTitle>
+              <StripePaymentForm
+                invoiceId={invoice.id}
+                onSuccess={() => {
+                  setPaymentMethod('bank_transfer');
+                  setReceiptUrl('');
+                  setNotes('');
+                  onClose();
+                }}
+                onError={(error) => {
+                  console.error('Stripe payment error:', error);
+                }}
+              />
+            </Section>
+          )}
+
+          {paymentMethod === 'paypal' && paypalEnabled && invoice && (
+            <Section>
+              <SectionTitle>PayPal Payment</SectionTitle>
+              <PayPalPaymentForm
+                invoiceId={invoice.id}
+                onSuccess={() => {
+                  setPaymentMethod('bank_transfer');
+                  setReceiptUrl('');
+                  setNotes('');
+                  onClose();
+                }}
+                onError={(error) => {
+                  console.error('PayPal payment error:', error);
+                }}
+              />
+            </Section>
+          )}
+
           {paymentMethod === 'bank_transfer' && paymentSettings?.bankTransfer && (
             <BankDetails>
               <p><strong>Bank Name:</strong> {paymentSettings.bankTransfer.bankName || 'N/A'}</p>
@@ -403,35 +441,39 @@ const InvoicePaymentModal: React.FC<Props> = ({
             </BankDetails>
           )}
 
-          <Section>
-            <FormGroup>
-              <FormLabel>Receipt URL (optional)</FormLabel>
-              <FormInput
-                type="url"
-                placeholder="https://example.com/receipt.pdf"
-                value={receiptUrl}
-                onChange={e => setReceiptUrl(e.target.value)}
-              />
-            </FormGroup>
+          {paymentMethod !== 'stripe' && paymentMethod !== 'paypal' && (
+            <Section>
+              <FormGroup>
+                <FormLabel>Receipt URL (optional)</FormLabel>
+                <FormInput
+                  type="url"
+                  placeholder="https://example.com/receipt.pdf"
+                  value={receiptUrl}
+                  onChange={e => setReceiptUrl(e.target.value)}
+                />
+              </FormGroup>
 
-            <FormGroup>
-              <FormLabel>Notes (optional)</FormLabel>
-              <FormTextarea
-                placeholder="Add any payment notes or reference numbers..."
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-              />
-            </FormGroup>
-          </Section>
+              <FormGroup>
+                <FormLabel>Notes (optional)</FormLabel>
+                <FormTextarea
+                  placeholder="Add any payment notes or reference numbers..."
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                />
+              </FormGroup>
+            </Section>
+          )}
         </Content>
 
         <Footer>
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={loading}>
-            {loading ? 'Submitting...' : 'Submit Payment'}
-          </Button>
+          {paymentMethod !== 'stripe' && paymentMethod !== 'paypal' && (
+            <Button variant="primary" onClick={handleSubmit} disabled={loading}>
+              {loading ? 'Submitting...' : 'Submit Payment'}
+            </Button>
+          )}
         </Footer>
       </Modal>
     </Overlay>

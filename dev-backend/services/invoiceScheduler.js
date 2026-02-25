@@ -1,16 +1,13 @@
 const cron = require('node-cron');
-const Invoice = require('../models/Invoice');
-const InvoiceItem = require('../models/InvoiceItem');
-const Restaurant = require('../models/Restaurant');
-const PlanPrice = require('../models/PlanPrice');
-const SystemSettings = require('../models/SystemSettings');
-const EntityPlan = require('../models/EntityPlan');
-const EntityPlanRestaurant = require('../models/EntityPlanRestaurant');
-const Order = require('../models/Order');
+const { Invoice, InvoiceItem, Restaurant, PlanPrice, EntityPlan, EntityPlanRestaurant, Order, Brand, Foodcourt } = require('../models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
+const systemLogger = require('../utils/systemLogger');
+const { sendIssuerEmail } = require('../utils/emailService');
+const { generateInvoiceNotificationEmail } = require('../utils/invoiceEmailTemplate');
 
-const PAYMENT_SETTINGS_KEY = 'payment_settings';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://dev.purplehere.com';
+const ADVANCE_DAYS = 14; // Generate invoices 14 days before billing day
 
 class InvoiceScheduler {
   constructor() {
@@ -21,27 +18,41 @@ class InvoiceScheduler {
     // Run daily at 2 AM to check for subscription invoices that need to be generated
     cron.schedule('0 2 * * *', async () => {
       console.log('📅 [INVOICE SCHEDULER] Running daily invoice check...');
-      await this.generateSubscriptionInvoices();
-      await this.generateEntityPlanInvoices();
+      await systemLogger.info('payment', 'invoice-scheduler', 'Daily invoice scheduler run started');
+
+      const subResult = await this.generateSubscriptionInvoices();
+      const entityResult = await this.generateEntityPlanInvoices();
+
+      const summary = {
+        subscription: subResult || { generated: 0, skipped: 0, errors: 0 },
+        entityPlan: entityResult || { generated: 0, skipped: 0, errors: 0 }
+      };
+      const totalErrors = (subResult?.errors || 0) + (entityResult?.errors || 0);
+
+      if (totalErrors > 0) {
+        await systemLogger.error('payment', 'invoice-scheduler', `Daily run completed with ${totalErrors} error(s)`, summary);
+      } else {
+        await systemLogger.info('payment', 'invoice-scheduler', 'Daily run completed successfully', summary);
+      }
     });
 
     console.log('✅ Invoice scheduler started - runs daily at 2 AM (POS subscriptions + entity plan invoices)');
   }
 
   /**
-   * Generate subscription invoices for restaurants whose billing cycle is due
-   * Based on subscription_start date - generates invoice on the same day each month/year
+   * Generate subscription invoices for restaurants.
+   * Generates ADVANCE_DAYS (14) days before the billing day.
+   * Based on subscription_start date.
    */
   async generateSubscriptionInvoices() {
+    const result = { generated: 0, skipped: 0, errors: 0 };
     try {
       const today = new Date();
-      const currentDay = today.getDate();
       const currentMonth = today.getMonth();
       const currentYear = today.getFullYear();
 
-      console.log(`📊 [INVOICE SCHEDULER] Checking subscriptions for day ${currentDay} of month...`);
+      console.log(`📊 [INVOICE SCHEDULER] Checking subscription invoices (${ADVANCE_DAYS}-day advance)...`);
 
-      // Get all active restaurants with valid subscription
       const restaurants = await Restaurant.findAll({
         where: {
           status: 'active',
@@ -52,10 +63,6 @@ class InvoiceScheduler {
 
       console.log(`📊 [INVOICE SCHEDULER] Found ${restaurants.length} active restaurants with subscriptions`);
 
-      let generated = 0;
-      let skipped = 0;
-      let errors = 0;
-
       for (const restaurant of restaurants) {
         try {
           const subscriptionStart = new Date(restaurant.subscription_start);
@@ -63,27 +70,28 @@ class InvoiceScheduler {
           const billingCycle = restaurant.billing_cycle || 'monthly';
 
           // For days > 28, handle end of month
-          const effectiveDay = subscriptionDay > 28 ? Math.min(subscriptionDay, new Date(currentYear, currentMonth + 1, 0).getDate()) : subscriptionDay;
+          const lastDay = new Date(currentYear, currentMonth + 1, 0).getDate();
+          const effectiveDay = subscriptionDay > 28 ? Math.min(subscriptionDay, lastDay) : subscriptionDay;
 
-          // Check if today is the billing day
-          if (currentDay !== effectiveDay) {
+          // Check if today is ADVANCE_DAYS before the billing day
+          if (!this.isTodayAdvanceOf(effectiveDay, today)) {
             continue;
           }
 
-          // Calculate billing period
+          // Calculate billing period (based on actual billing day, not generation day)
           let billingStart, billingEnd;
+          const { targetMonth, targetYear } = this.getTargetBillingMonth(effectiveDay, today);
+
           if (billingCycle === 'annual') {
-            // Annual billing: check if it's the right month too
             const subscriptionMonth = subscriptionStart.getMonth();
-            if (currentMonth !== subscriptionMonth) {
+            if (targetMonth !== subscriptionMonth) {
               continue;
             }
-            billingStart = new Date(currentYear, currentMonth, effectiveDay);
-            billingEnd = new Date(currentYear + 1, currentMonth, effectiveDay - 1);
+            billingStart = new Date(targetYear, targetMonth, effectiveDay);
+            billingEnd = new Date(targetYear + 1, targetMonth, effectiveDay - 1);
           } else {
-            // Monthly billing
-            billingStart = new Date(currentYear, currentMonth, effectiveDay);
-            billingEnd = new Date(currentYear, currentMonth + 1, effectiveDay - 1);
+            billingStart = new Date(targetYear, targetMonth, effectiveDay);
+            billingEnd = new Date(targetYear, targetMonth + 1, effectiveDay - 1);
           }
 
           // Check if invoice already exists for this period
@@ -98,24 +106,27 @@ class InvoiceScheduler {
 
           if (existingInvoice) {
             console.log(`⏭️ Invoice already exists for ${restaurant.name} (ID: ${restaurant.id}) for period starting ${billingStart.toISOString().split('T')[0]}`);
-            skipped++;
+            result.skipped++;
             continue;
           }
 
-          // Generate the invoice
           await this.createSubscriptionInvoice(restaurant, billingStart, billingEnd, billingCycle);
-          generated++;
+          result.generated++;
 
         } catch (error) {
           console.error(`❌ Error processing restaurant ${restaurant.name} (ID: ${restaurant.id}):`, error.message);
-          errors++;
+          await systemLogger.error('payment', 'invoice-scheduler', `Subscription invoice error: ${restaurant.name}`, { restaurantId: restaurant.id, error: error.message });
+          result.errors++;
         }
       }
 
-      console.log(`✅ [INVOICE SCHEDULER] Complete - Generated: ${generated}, Skipped: ${skipped}, Errors: ${errors}`);
+      console.log(`✅ [INVOICE SCHEDULER] Subscription - Generated: ${result.generated}, Skipped: ${result.skipped}, Errors: ${result.errors}`);
+      return result;
 
     } catch (error) {
       console.error('❌ [INVOICE SCHEDULER] Error in generateSubscriptionInvoices:', error);
+      await systemLogger.critical('payment', 'invoice-scheduler', 'Subscription invoice generation failed', { error: error.message });
+      return result;
     }
   }
 
@@ -197,7 +208,6 @@ class InvoiceScheduler {
 
     if (restaurant.payment_model === 'brand_manager' && restaurant.brand_id) {
       // Brand pays - find brand owner
-      const Brand = require('../models/Brand');
       const brand = await Brand.findByPk(restaurant.brand_id);
       if (brand && brand.owner_id) {
         payerType = 'brand_manager';
@@ -205,7 +215,6 @@ class InvoiceScheduler {
       }
     } else if (restaurant.payment_model === 'foodcourt_manager' && restaurant.foodcourt_id) {
       // Foodcourt pays - find foodcourt owner
-      const Foodcourt = require('../models/Foodcourt');
       const foodcourt = await Foodcourt.findByPk(restaurant.foodcourt_id);
       if (foodcourt && foodcourt.owner_id) {
         payerType = 'foodcourt_manager';
@@ -250,6 +259,9 @@ class InvoiceScheduler {
     });
 
     console.log(`✅ Created invoice ${invoiceNumber} for ${restaurant.name} - ${currency} ${totalAmount.toFixed(2)}`);
+
+    // Send email notification (non-blocking)
+    this.sendInvoiceEmail(invoice, restaurant, 'system_admin', null, invoiceNumber);
   }
 
   /**
@@ -308,27 +320,18 @@ class InvoiceScheduler {
 
   /**
    * Generate invoices for entity plans (Brand/Foodcourt).
-   * Runs on the 1st of each month for monthly plans, generating for the previous month's revenue.
+   * Uses plan.billing_day (1-28) if set, otherwise defaults to 1.
+   * Generates ADVANCE_DAYS (14) days before the billing day.
+   * Billing period: billing_day of prev month to (billing_day - 1) of current month.
    */
   async generateEntityPlanInvoices() {
+    const result = { generated: 0, skipped: 0, errors: 0 };
     try {
       const today = new Date();
-      const currentDay = today.getDate();
 
-      // Entity plan invoices are generated on the 1st of each month for the previous month
-      if (currentDay !== 1) {
-        console.log(`📊 [ENTITY PLAN SCHEDULER] Not the 1st, skipping entity plan invoice generation`);
-        return;
-      }
+      console.log(`📊 [ENTITY PLAN SCHEDULER] Checking entity plan invoices (${ADVANCE_DAYS}-day advance)...`);
 
-      console.log(`📊 [ENTITY PLAN SCHEDULER] Generating entity plan invoices...`);
-
-      // Previous month billing period
-      const periodEnd = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59); // last day of prev month
-      const periodStart = new Date(periodEnd.getFullYear(), periodEnd.getMonth(), 1); // 1st of prev month
-      const dueDate = new Date(today.getFullYear(), today.getMonth(), 15); // Due on 15th
-
-      // Get all active entity plans with auto_generate enabled and active restaurant assignments
+      // Get all active entity plans with auto_generate enabled
       const plans = await EntityPlan.findAll({
         where: { is_active: true, auto_generate: true },
         include: [{
@@ -346,11 +349,18 @@ class InvoiceScheduler {
 
       console.log(`📊 [ENTITY PLAN SCHEDULER] Found ${plans.length} active auto-generate plans`);
 
-      let generated = 0;
-      let skipped = 0;
-      let errors = 0;
-
       for (const plan of plans) {
+        // Determine effective billing day for this plan
+        const effectiveBillingDay = plan.billing_day || 1;
+
+        // Check if today is ADVANCE_DAYS before this plan's billing day
+        if (!this.isTodayAdvanceOf(effectiveBillingDay, today)) {
+          continue;
+        }
+
+        // Calculate billing period based on billing_day
+        const { periodStart, periodEnd, dueDate } = this.calculateEntityBillingPeriod(effectiveBillingDay, today);
+
         for (const pr of plan.planRestaurants) {
           try {
             const restaurant = pr.restaurant;
@@ -369,9 +379,12 @@ class InvoiceScheduler {
             });
 
             if (existing) {
-              skipped++;
+              result.skipped++;
               continue;
             }
+
+            // Determine revenue period based on revenue_base
+            const { revenueStart, revenueEnd } = this.getRevenuePeriod(plan, periodStart, periodEnd);
 
             // Get revenue for billing period
             const revenueResult = await Order.findOne({
@@ -379,7 +392,7 @@ class InvoiceScheduler {
               where: {
                 restaurant_id: restaurant.id,
                 status: 'completed',
-                order_date: { [Op.between]: [periodStart, periodEnd] },
+                order_date: { [Op.between]: [revenueStart, revenueEnd] },
                 is_deleted: false
               },
               raw: true
@@ -390,7 +403,7 @@ class InvoiceScheduler {
             const charges = this.calculatePlanCharges(plan, revenue);
 
             if (charges.totalAmount <= 0) {
-              skipped++;
+              result.skipped++;
               continue;
             }
 
@@ -426,19 +439,26 @@ class InvoiceScheduler {
             }));
             await InvoiceItem.bulkCreate(invoiceItems);
 
-            generated++;
-            console.log(`✅ [ENTITY PLAN] ${invoiceNumber} for ${restaurant.name} - ${plan.currency} ${charges.totalAmount.toFixed(2)}`);
+            result.generated++;
+            console.log(`✅ [ENTITY PLAN] ${invoiceNumber} for ${restaurant.name} - ${plan.currency} ${charges.totalAmount.toFixed(2)} (billing_day: ${effectiveBillingDay})`);
+
+            // Send email notification (non-blocking)
+            this.sendInvoiceEmail(invoice, restaurant, plan.entity_type, plan.entity_id, invoiceNumber);
 
           } catch (error) {
             console.error(`❌ [ENTITY PLAN] Error for restaurant ${pr.restaurant?.name}:`, error.message);
-            errors++;
+            await systemLogger.error('payment', 'invoice-scheduler', `Entity plan invoice error: ${pr.restaurant?.name}`, { restaurantId: pr.restaurant?.id, planId: plan.id, error: error.message });
+            result.errors++;
           }
         }
       }
 
-      console.log(`✅ [ENTITY PLAN SCHEDULER] Complete - Generated: ${generated}, Skipped: ${skipped}, Errors: ${errors}`);
+      console.log(`✅ [ENTITY PLAN SCHEDULER] Complete - Generated: ${result.generated}, Skipped: ${result.skipped}, Errors: ${result.errors}`);
+      return result;
     } catch (error) {
       console.error('❌ [ENTITY PLAN SCHEDULER] Error:', error);
+      await systemLogger.critical('payment', 'invoice-scheduler', 'Entity plan invoice generation failed', { error: error.message });
+      return result;
     }
   }
 
@@ -557,6 +577,137 @@ class InvoiceScheduler {
     }
 
     return `${prefix}${year}${month}${day}${String(nextNumber).padStart(3, '0')}`;
+  }
+
+  /**
+   * Check if today is exactly ADVANCE_DAYS before a given billing day.
+   * Handles month boundary wrapping.
+   * @param {number} billingDay - Day of month (1-28)
+   * @param {Date} today - Current date
+   * @returns {boolean}
+   */
+  isTodayAdvanceOf(billingDay, today) {
+    const currentDay = today.getDate();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+
+    // Calculate the next upcoming billing date, clamping to month's last day
+    let billingDate;
+    const lastDayThisMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const effectiveThisMonth = Math.min(billingDay, lastDayThisMonth);
+
+    if (currentDay < effectiveThisMonth) {
+      // Billing day is still ahead this month
+      billingDate = new Date(currentYear, currentMonth, effectiveThisMonth);
+    } else {
+      // Billing day passed or is today -> next month
+      const nextMonth = currentMonth + 1;
+      const lastDayNextMonth = new Date(currentYear, nextMonth + 1, 0).getDate();
+      const effectiveNextMonth = Math.min(billingDay, lastDayNextMonth);
+      billingDate = new Date(currentYear, nextMonth, effectiveNextMonth);
+    }
+
+    // The generation date is ADVANCE_DAYS before billing date
+    const generationDate = new Date(billingDate);
+    generationDate.setDate(generationDate.getDate() - ADVANCE_DAYS);
+
+    // Compare dates (year, month, day only)
+    return generationDate.getFullYear() === today.getFullYear() &&
+           generationDate.getMonth() === today.getMonth() &&
+           generationDate.getDate() === today.getDate();
+  }
+
+  /**
+   * Get the target billing month/year for a given billing day.
+   * Since we generate in advance, the billing day is in the future.
+   * @param {number} billingDay - Day of month
+   * @param {Date} today - Current date
+   * @returns {{ targetMonth: number, targetYear: number }}
+   */
+  getTargetBillingMonth(billingDay, today) {
+    const currentDay = today.getDate();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+
+    if (currentDay < billingDay) {
+      return { targetMonth: currentMonth, targetYear: currentYear };
+    } else {
+      const nextMonth = currentMonth + 1;
+      return {
+        targetMonth: nextMonth > 11 ? 0 : nextMonth,
+        targetYear: nextMonth > 11 ? currentYear + 1 : currentYear
+      };
+    }
+  }
+
+  /**
+   * Calculate billing period for entity plans based on billing_day.
+   * Period: billing_day of previous cycle to (billing_day - 1) of current cycle.
+   * Due date: the billing_day itself.
+   * @param {number} billingDay - Day of month (1-28)
+   * @param {Date} today - Current date
+   */
+  calculateEntityBillingPeriod(billingDay, today) {
+    const { targetMonth, targetYear } = this.getTargetBillingMonth(billingDay, today);
+
+    // Period end: (billingDay - 1) of the target billing month
+    const periodEnd = new Date(targetYear, targetMonth, billingDay - 1, 23, 59, 59);
+
+    // Period start: billingDay of the month before
+    const prevMonth = targetMonth === 0 ? 11 : targetMonth - 1;
+    const prevYear = targetMonth === 0 ? targetYear - 1 : targetYear;
+    const periodStart = new Date(prevYear, prevMonth, billingDay);
+
+    // Due date: billing day itself
+    const dueDate = new Date(targetYear, targetMonth, billingDay);
+
+    return { periodStart, periodEnd, dueDate };
+  }
+
+  /**
+   * Determine revenue calculation period based on plan.revenue_base.
+   */
+  getRevenuePeriod(plan, periodStart, periodEnd) {
+    switch (plan.revenue_base) {
+      case 'previous_year': {
+        const year = periodEnd.getFullYear() - 1;
+        return {
+          revenueStart: new Date(year, 0, 1),
+          revenueEnd: new Date(year, 11, 31, 23, 59, 59)
+        };
+      }
+      case 'previous_month': {
+        const month = periodEnd.getMonth();
+        const year = periodEnd.getFullYear();
+        return {
+          revenueStart: new Date(year, month, 1),
+          revenueEnd: new Date(year, month + 1, 0, 23, 59, 59)
+        };
+      }
+      case 'up_to_billing_day':
+      default:
+        return { revenueStart: periodStart, revenueEnd: periodEnd };
+    }
+  }
+
+  /**
+   * Send invoice notification email. Never blocks or throws.
+   */
+  async sendInvoiceEmail(invoice, restaurant, issuerType, issuerId, invoiceNumber) {
+    try {
+      const recipientEmail = restaurant.email;
+      if (!recipientEmail) return;
+
+      const emailContent = generateInvoiceNotificationEmail(invoice, restaurant, FRONTEND_URL);
+      await sendIssuerEmail(issuerType, issuerId, {
+        to: recipientEmail,
+        ...emailContent
+      });
+      await systemLogger.info('payment', 'invoice-scheduler', `Invoice email sent: ${invoiceNumber}`, { recipientEmail, issuerType });
+    } catch (emailError) {
+      // Don't fail invoice creation if email fails
+      await systemLogger.warn('payment', 'invoice-scheduler', `Invoice email failed: ${invoiceNumber}`, { error: emailError.message, issuerType });
+    }
   }
 
   stop() {

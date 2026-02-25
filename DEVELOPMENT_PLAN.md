@@ -58,6 +58,123 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 
 ---
 
+## ✅ 완료: DB 백업 체계 + 파일 정리 + PayPal 결제 + 서버 모니터링 + Reports 페이지 (2026-02-25)
+
+### 1. DB 백업 체계 구축
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 운영서버 백업 수정 | .env 경로 오류 수정 (dev-backend → production-backend) | ✅ |
+| 개발서버 백업 스크립트 | scripts/backup-database.sh 신규 생성 + cron 매일 04:00 | ✅ |
+| 크로스 백업 | 운영→개발, 개발→운영 상호 백업 (scp 전송) | ✅ |
+| 백업 가이드 문서 | docs/SERVER_BACKUP_GUIDE.md 생성 | ✅ |
+
+### 2. 프로젝트 파일 정리
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 불필요 파일 삭제 | 15개 파일 삭제 (백업, 테스트, 미사용 모델/페이지/라우트) | ✅ |
+| 중복 라우트 정리 | health.js, invoiceCategories.js (server.js 인라인과 중복) | ✅ |
+
+### 3. PayPal 결제 연동
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| paypalService.js | issuer별 PayPal 클라이언트, sandbox/live 환경 전환 | ✅ |
+| create-paypal-order API | POST /invoices/:id/create-paypal-order | ✅ |
+| capture-paypal-order API | POST /invoices/:id/capture-paypal-order | ✅ |
+| PayPal Webhook | CAPTURE.COMPLETED/DENIED 처리 | ✅ |
+| PayPalPaymentForm.tsx | PayPal 버튼 + 캡처 + 에러 처리 | ✅ |
+
+### 4. 운영서버 Health 모니터링
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| serverHealthMonitor.js | SSH로 운영서버 CPU/메모리/디스크/PM2 수집 (30분 주기) | ✅ |
+| System Logs 통합 | 모니터링 결과 SystemLog에 기록 | ✅ |
+| Server Health UI | SystemLogsPage에 서버 상태 탭 추가 | ✅ |
+
+### 5. errorHandler.js 보안 개선
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| sanitizeBody() | req.body 로깅 시 비밀번호/토큰 필터링 | ✅ |
+
+### 6. System Admin Reports 페이지 (진행 중)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| admin-reports.js API | 7개 엔드포인트 (revenue/payment/customer/subscription) | ✅ |
+| server.js 라우트 등록 | /api/admin-reports 등록 | ✅ |
+| ReportsPage.tsx | 4탭 리포트 페이지 (Revenue/Payment/Customer/Subscription) | ✅ |
+| App.tsx 라우트 | ReportsPage import + /pos/admin/report 라우트 | ✅ |
+| MainLayout 메뉴 활성화 | DisabledNavItem → NavItem 변경 | ⏳ 다음 세션 |
+| 빌드 + 테스트 | 프론트엔드 빌드 + 개발서버 확인 | ⏳ 다음 세션 |
+
+### 수정된 파일
+- `dev-backend/routes/admin-reports.js` (신규), `dev-backend/utils/paypalService.js` (신규)
+- `dev-backend/services/serverHealthMonitor.js` (신규), `scripts/backup-database.sh` (신규)
+- `docs/SERVER_BACKUP_GUIDE.md` (신규)
+- `dev-backend/middleware/errorHandler.js`, `dev-backend/server.js`
+- `dev-frontend/src/pages/Admin/ReportsPage.tsx` (신규)
+- `dev-frontend/src/components/Invoice/PayPalPaymentForm.tsx` (신규)
+- `dev-frontend/src/App.tsx`, `dev-frontend/src/components/Layout/MainLayout.tsx`
+- 삭제: 15개 파일 (불필요/중복)
+
+---
+
+## ✅ 완료: 시스템 로그 + 인보이스 14일 전 발행 + Stripe 결제 연동 (2026-02-25)
+
+### 1. 시스템 관리자 시스템 로그 메뉴
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| SystemLog 모델 | level(5단계)/category(7종)/service 기반 구조화 로그 DB 테이블 | ✅ |
+| systemLogger 유틸리티 | info/warn/error/critical/debug 헬퍼 (절대 throw 안 함) | ✅ |
+| system-logs API | GET /(페이지네이션+필터), GET /stats(24h통계), DELETE /(로그 삭제) | ✅ |
+| server.js 등록 | System Admin 전용 인증 미들웨어 적용 | ✅ |
+| SystemLogsPage | 24h 통계카드, 필터(level/category/service/날짜/검색), Live Mode(5초), Export(CSV/JSON/TXT), Clear | ✅ |
+| 사이드바 메뉴 활성화 | MainLayout.tsx DisabledNavItem → NavItem 변경 | ✅ |
+| 빌드/테스트 | 프론트엔드 빌드 + 개발서버 확인 | ✅ |
+
+### 2. 인보이스 자동 발행 14일 전 발행 통일
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| invoiceScheduler 리팩토링 | ADVANCE_DAYS=14, 기존 구독일 기준도 14일 전 발행으로 변경 | ✅ |
+| isTodayAdvanceOf 헬퍼 | 오늘이 billing_day의 14일 전인지 판단 (월말 처리 포함) | ✅ |
+| getTargetBillingMonth 헬퍼 | 14일 뒤의 대상 청구 월/년 계산 | ✅ |
+| Entity Plan 14일 전 생성 | Brand/Foodcourt 플랜도 billing_day 14일 전 인보이스 자동 생성 | ✅ |
+| systemLogger 연동 | 스케줄러 실행 결과 DB 기록 (성공/에러 분류) | ✅ |
+| invoiceEmailTemplate | 인보이스 알림 이메일 HTML 템플릿 | ✅ |
+| association 버그 수정 | models/index.js import로 변경 (EntityPlanRestaurant 연관 에러 해결) | ✅ |
+| 스케줄러 수동 테스트 | subscription + entity plan 양쪽 수동 실행 통과 | ✅ |
+
+### 3. Stripe 결제 연동
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| stripeService.js | issuer별(system_admin/brand/foodcourt) Stripe 인스턴스 관리 | ✅ |
+| create-payment-intent API | POST /invoices/:id/create-payment-intent - PaymentIntent 생성, 다중통화 처리 | ✅ |
+| Stripe Webhook | /api/webhooks/stripe - payment_intent.succeeded → 자동 paid, failed → 에러 기록 | ✅ |
+| StripePaymentForm.tsx | Stripe Elements 기반 결제 폼 (PaymentElement + confirmPayment) | ✅ |
+| InvoicePaymentModal 통합 | Stripe 선택 시 카드 결제 폼 표시, 비-Stripe 시 기존 흐름 유지 | ✅ |
+| npm 의존성 | stripe, @stripe/stripe-js, @stripe/react-stripe-js | ✅ |
+| Stripe 키 설정 UI | 3개 역할 모두 구현 완료 (Admin/Brand/Foodcourt PaymentSettingsPage) | ✅ |
+| 빌드/테스트 | 프론트엔드 빌드 + 개발서버 배포 | ✅ |
+
+### 수정된 파일
+- `dev-backend/models/SystemLog.js` (신규), `dev-backend/utils/systemLogger.js` (신규)
+- `dev-backend/routes/system-logs.js` (신규), `dev-backend/utils/stripeService.js` (신규)
+- `dev-backend/utils/invoiceEmailTemplate.js` (신규)
+- `dev-backend/services/invoiceScheduler.js`, `dev-backend/routes/invoices.js`, `dev-backend/server.js`
+- `dev-backend/models/index.js`, `dev-backend/package.json`
+- `dev-frontend/src/components/Invoice/StripePaymentForm.tsx` (신규)
+- `dev-frontend/src/components/Invoice/InvoicePaymentModal.tsx`, `dev-frontend/src/components/Invoice/index.ts`
+- `dev-frontend/src/pages/Admin/SystemLogsPage.tsx`, `dev-frontend/package.json`
+
+---
+
 ## ✅ 완료: Brand/Foodcourt 구독 플랜 & 이메일 시스템 (2026-02-09 기획, 2026-02-24 완료)
 
 ### 개요

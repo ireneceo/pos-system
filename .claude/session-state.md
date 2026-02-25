@@ -1,74 +1,41 @@
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-02-25
-**작업 상태:** 완료
+**작업 상태:** 진행 중 (Reports 페이지 마무리 필요)
 
 ### 진행 중인 작업
-- 없음
+- **System Admin Reports 페이지 마무리** (남은 작업 3개)
+  1. MainLayout.tsx 메뉴 활성화 (lines 839-842: DisabledNavItem → NavItem, `/pos/admin/report` 링크)
+  2. 프론트엔드 빌드 (`cd /var/www/dev-frontend && npm run build`)
+  3. 개발서버 배포 (`sudo cp -r /var/www/dev-frontend/build/* /var/www/dev-frontend-build/`)
 
 ### 완료된 작업 (이번 세션)
 
-#### EntityPlan 1플랜=1과금항목 + 인보이스 issuer 체계 (2026-02-25)
+#### 이전 세션 (세션1)
+- 시스템 로그 메뉴 개발 (SystemLog 모델 + API + SystemLogsPage)
+- 인보이스 자동 발행 14일 전 발행 통일 (invoiceScheduler 리팩토링)
+- Stripe 결제 연동 (stripeService + PaymentIntent + Webhook + UI)
+- PayPal 결제 연동 (paypalService + Orders API + Capture + Webhook + UI)
+- 운영서버 Health 모니터링 (SSH 수집 + SystemLog 통합 + UI)
 
-##### 1. EntityPlan 구조 변경
-- EntityPlanCharge 모델/테이블 롤백 (삭제)
-- EntityPlan에 charge_type, percentage_value, revenue_base, billing_day 추가
-- 1플랜 = 1과금항목 (로열티, 임대료, 관리비 등 각각 별도 플랜)
+#### 이번 세션 (세션2)
+- errorHandler.js 보안 개선 (sanitizeBody - 비밀번호 로깅 필터)
+- DB 백업 체계 구축 (운영 .env 수정 + 개발 스크립트 + 크로스 백업)
+- SERVER_BACKUP_GUIDE.md 문서 생성
+- 프로젝트 파일 정리 (15개 불필요 파일 삭제)
+- System Admin Reports 페이지 (Backend API 7개 + Frontend 4탭 페이지 생성)
+  - ⏳ MainLayout 메뉴 활성화 + 빌드 + 테스트 남음
 
-##### 2. Brand/Foodcourt 페이지 전면 리팩토링
-- BrandPlansPage: Charge Type UI (Fixed/Percentage), 다중통화 가격, billing_day
-- FoodcourtPlansPage: 동일 구조
-- BrandSubscriptionsPage, FoodcourtSubscriptionsPage: issuer 구분 반영
-- BrandInvoicesPage, FoodcourtInvoicesPage: issuer 구분 반영
-- BrandGeneralDashboard, FoodcourtGeneralDashboard: 통계 개선
-
-##### 3. 인보이스 issuer 체계
-- system_admin / brand / foodcourt 발행 주체 구분
-- 각 주체별 독립 인보이스 발행
-
-##### 4. 레시피/재고 다중통화
-- RestaurantIngredientCost 모델 추가
-- 원재료 원가 통화별 관리
-
-##### 5. 배포 스모크 테스트
-- deploy-to-production.sh에 POS 핵심 흐름 자동 검증 추가
-- Health → Login → Menu → POST Order → GET Bill Data → Frontend (6개)
-
-##### 6. 운영서버 배포
-- 스모크 테스트 6/6 통과
-
-### 현재 비밀번호 매핑
-| 계정 | 이메일 | 비밀번호 |
-|------|--------|----------|
-| Demo | demo-brand/demo-restaurant@purplehere.com | Demo@2024 |
-| System Admin | irene@irenewp.com | Admin1234 |
-| Foodcourt/Brand General/Manager | *@orderhere.center | Test1234 |
-| Restaurant Owner | owner@purplehere.com | Owner1234 |
-| Restaurant Admin (K-DINE) | admin@kdine.com | Restaurant1 |
-| Staff (K-DINE) | staff@kdine.com | Staff1234 |
-
-### 전체 완료 현황
-- 서비스 오픈 준비 로드맵: Phase A ✅, Phase B ✅
-- Brand/Foodcourt 구독 플랜: Phase 1~5 전체 ✅
-- Restaurant-Admin 1:1 매칭 ✅
-- Restaurant Admin 리네임 + 비밀번호 정책 ✅
-- Blog/FAQ CMS ✅
-- 랜딩 페이지 디자인 통일 ✅
-- Brand General/Foodcourt General RestaurantsPage Admin 기준 통일 ✅
-- Brand/Foodcourt Manager 대시보드 실데이터 ✅
-- 백엔드 자동 연결 + Trial 권한 ✅
-- Staff 관리 + PIN 캐셔 전환 + 메뉴 권한 시스템 ✅
-- 배포 안정화 + DB 스키마 동기화 시스템 ✅
-- Staff 비밀번호 리셋 기능 ✅
-- Restaurant Owner 역할 전체 구현 ✅
-- **EntityPlan 1플랜=1과금항목 구조 + 인보이스 issuer 체계 ✅**
-- **레시피/재고 다중통화 지원 ✅**
-- **배포 스모크 테스트 (POS 주문→빌) ✅**
-- 운영서버 배포 ✅
+### 참조 파일 (Reports 페이지)
+- Plan: `/home/irene/.claude/plans/binary-stirring-pike.md`
+- Backend API: `/var/www/dev-backend/routes/admin-reports.js`
+- Frontend Page: `/var/www/dev-frontend/src/pages/Admin/ReportsPage.tsx`
+- Route: `/var/www/dev-frontend/src/App.tsx` (ReportsPage import + 라우트 변경 완료)
+- Menu: `/var/www/dev-frontend/src/components/Layout/MainLayout.tsx` (lines 839-842 변경 필요)
 
 ### 다음 할 일
-- 인보이스 자동 발행 (billing_day 14일 전)
-- 결제 시스템 연동 (Stripe/PayPal)
-- Phase C: 셀프 회원가입, 결제 연동, 세금계산서
+1. Reports 페이지 마무리 (MainLayout 메뉴 + 빌드 + 테스트)
+2. 커밋 + 운영 배포
+3. Phase C: 셀프 회원가입, 세금계산서
 
 ---
 

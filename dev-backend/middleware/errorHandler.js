@@ -1,10 +1,25 @@
+const SENSITIVE_FIELDS = ['password', 'token', 'secret', 'authorization', 'cookie', 'creditCard', 'cardNumber', 'cvv', 'pin'];
+
+const sanitizeBody = (body) => {
+  if (!body || typeof body !== 'object') return body;
+  const sanitized = {};
+  for (const [key, value] of Object.entries(body)) {
+    if (SENSITIVE_FIELDS.some(field => key.toLowerCase().includes(field))) {
+      sanitized[key] = '[FILTERED]';
+    } else {
+      sanitized[key] = value;
+    }
+  }
+  return sanitized;
+};
+
 const errorHandler = (err, req, res, next) => {
   console.error('API Error:', {
     error: err.message,
     stack: err.stack,
     url: req.originalUrl,
     method: req.method,
-    body: req.body,
+    body: sanitizeBody(req.body),
     timestamp: new Date().toISOString()
   });
 

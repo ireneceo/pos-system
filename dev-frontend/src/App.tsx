@@ -73,6 +73,7 @@ const RestaurantInvoicesPage = React.lazy(() => import('./pages/Restaurant/Invoi
 const ManagerInvoicesPage = React.lazy(() => import('./pages/Manager/InvoicesPage'));
 const PlansPage = React.lazy(() => import('./pages/Admin/PlansPage'));
 const AnalyticsPage = React.lazy(() => import('./pages/Admin/AnalyticsPage'));
+const ReportsPage = React.lazy(() => import('./pages/Admin/ReportsPage'));
 const SystemInquiryPage = React.lazy(() => import('./pages/Admin/SystemInquiryPage'));
 const ContactInquiriesPage = React.lazy(() => import('./pages/Admin/ContactInquiriesPage'));
 const ManagerSupportTicketsPage = React.lazy(() => import('./pages/Manager/SupportTicketsPage'));
@@ -355,7 +356,7 @@ function App() {
                       } />
                       <Route path="/pos/admin/report" element={
                         <ProtectedRoute requiredRole={['System Admin']}>
-                          <AnalyticsPage />
+                          <ReportsPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/admin/support" element={

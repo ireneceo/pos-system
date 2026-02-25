@@ -34,6 +34,34 @@ cp -r /var/www/dev-frontend/build/* /var/www/dev-frontend-build/
 pm2 restart dev-backend
 ```
 
+### 6. 작업 히스토리 자동 기록 규칙 (필수!)
+Claude는 **각 기능/작업 단위 완료 시** 아래 파일들을 즉시 업데이트해야 한다. `/저장` 명령 없이도 자동 수행.
+
+#### session-state.md 업데이트 타이밍
+- **작업 시작 시**: "진행 중인 작업" 섹션에 작업명 추가
+- **작업 완료 시**: "진행 중인 작업"에서 제거 → "완료된 작업" 섹션으로 이동
+- **파일 경로**: `/var/www/.claude/session-state.md`
+
+#### DEVELOPMENT_PLAN.md 업데이트 타이밍
+- **기능 개발 완료 시**: 해당 Phase/작업의 상태를 ✅로 변경
+- **새 기능 시작 시**: 작업 항목이 없으면 섹션 추가
+- **파일 경로**: `/var/www/DEVELOPMENT_PLAN.md`
+
+#### 기록 형식
+```markdown
+# session-state.md 예시
+### 진행 중인 작업
+- Stripe 결제 연동: 프론트엔드 결제 폼 구현 중
+
+### 완료된 작업 (이번 세션)
+#### 시스템 로그 메뉴 개발 (2026-02-25)
+- SystemLog 모델 + API + 프론트엔드 페이지 완료
+```
+
+#### 목적
+- 서버 다운/세션 중단 시에도 마지막 완료 작업까지 복구 가능
+- `/개발시작` 명령 시 정확한 현황 표시
+
 ## 프로젝트 구조 (개발서버: 87.106.11.184)
 - `dev-frontend/`: React 프론트엔드 소스 (개발)
 - `dev-frontend-build/`: 개발서버 Nginx가 서빙하는 빌드 폴더
