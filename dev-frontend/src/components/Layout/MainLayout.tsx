@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useStaff } from '../../contexts/StaffContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePaymentStatus } from '../../contexts/PaymentStatusContext';
-import { useOrders } from '../../contexts/OrderContext';
 import { BrandThemeProvider } from '../../contexts/BrandThemeContext';
 import { PaymentStatusModals } from '../PaymentStatus/PaymentStatusModals';
 import { AccessBlocked } from '../PaymentStatus/AccessBlocked';
@@ -237,13 +236,12 @@ const NavIcon = styled.span<{ hasPending?: boolean }>`
   flex-shrink: 0;
 
   ${props => props.hasPending && `
-    animation: pulse 1.5s infinite;
+    animation: pulse 1s infinite;
   `}
 
   @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-    100% { transform: scale(1); }
+    0%, 50% { transform: scale(1); }
+    25% { transform: scale(1.15); }
   }
 `;
 
@@ -513,12 +511,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [brandLogo, setBrandLogo] = useState<string>('');
   const sidebarNavRef = React.useRef<HTMLDivElement>(null);
-  const savedScrollPosition = React.useRef<number>(0);
   const { logout, currentStaff, isLoggedIn } = useStaff();
   const { user, logout: authLogout } = useAuth();
   const { paymentStatus, canAccess } = usePaymentStatus();
-  const { orders } = useOrders();
-
   // Get restaurantId from URL or user context
   const urlRestaurantId = location.pathname.match(/\/restaurant\/(\d+)/)?.[1];
   const restaurantId = urlRestaurantId || user?.restaurantId || user?.restaurant_id?.toString() || '1';
@@ -529,8 +524,74 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     (user?.role === 'Restaurant Admin' || user?.role === 'Staff') ? Number(restaurantId) : null
   );
 
-  // Count pending orders (새 주문만) - orders가 있을 때만 필터링
-  const pendingOrders = orders && Array.isArray(orders) ? orders.filter(order => order.status === 'pending').length : 0;
+  // Pending order count from API polling (not stale OrderContext)
+  const [pendingOrders, setPendingOrders] = useState(0);
+
+  // Badge counts for sidebar notifications
+  const [badgeCounts, setBadgeCounts] = useState({
+    systemInquiry: 0,
+    operationInquiry: 0,
+    notices: 0,
+    invoices: 0,
+    unreadComments: { notices: 0, systemInquiry: 0, operationInquiry: 0 }
+  });
+
+  const fetchBadgeCounts = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+      const res = await fetch('/api/badge-counts', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) setBadgeCounts(data.data);
+      }
+    } catch (e) { /* silent */ }
+  }, []);
+
+  // 30초 polling (백그라운드 동기화)
+  useEffect(() => {
+    if (user) {
+      fetchBadgeCounts();
+      const interval = setInterval(fetchBadgeCounts, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user, fetchBadgeCounts]);
+
+  // CustomEvent 리스너: 공지/문의 읽음 시 즉시 뱃지 갱신
+  useEffect(() => {
+    const handler = () => fetchBadgeCounts();
+    window.addEventListener('refreshBadgeCounts', handler);
+    return () => window.removeEventListener('refreshBadgeCounts', handler);
+  }, [fetchBadgeCounts]);
+
+  // Pending order count polling (Restaurant Admin / Staff only)
+  useEffect(() => {
+    const isRestaurantRole = user?.role === 'Restaurant Admin' || user?.role === 'Staff';
+    if (!isRestaurantRole || !restaurantId) return;
+
+    const fetchPendingCount = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) return;
+        const res = await fetch(`/api/orders/restaurant/${restaurantId}/counts`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            const counts = data.data?.counts || {};
+            setPendingOrders((counts.pending || 0) + (counts.awaiting_payment || 0));
+          }
+        }
+      } catch (e) { /* silent */ }
+    };
+
+    fetchPendingCount();
+    const interval = setInterval(fetchPendingCount, 15000);
+    return () => clearInterval(interval);
+  }, [user, restaurantId]);
 
   const handleLogout = () => {
     logout();
@@ -646,24 +707,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       }
     }
   }, [location.pathname, paymentStatus.restrictionLevel, canAccess, navigate, user]);
-
-  // Save sidebar scroll position before navigation and restore after
-  useEffect(() => {
-    const sidebarNav = sidebarNavRef.current;
-    if (!sidebarNav) return;
-
-    // Save current scroll position
-    savedScrollPosition.current = sidebarNav.scrollTop;
-
-    // Restore scroll position after navigation
-    const timer = setTimeout(() => {
-      if (sidebarNav && savedScrollPosition.current !== undefined) {
-        sidebarNav.scrollTop = savedScrollPosition.current;
-      }
-    }, 0);
-
-    return () => clearTimeout(timer);
-  }, [location.pathname]);
 
   // Inactive 레스토랑 체크 (Restaurant Admin과 Staff만)
   if ((user?.role === 'Restaurant Admin' || user?.role === 'Staff') && user?.restaurantStatus === 'inactive') {
@@ -817,15 +860,34 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   Staff
                 </NavItem>
 
-                <NavTitle>Billing</NavTitle>
+                <NavTitle>Operations</NavTitle>
+                <NavItem to="/pos/admin/invoices" active={isActive('/pos/admin/invoices')} hasPending={badgeCounts.invoices > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.invoices > 0}>▦</NavIcon>
+                  Invoices
+                </NavItem>
                 <NavItem to="/pos/admin/subscriptions" active={isActive('/pos/admin/subscriptions')} onClick={closeSidebar}>
                   <NavIcon>◈</NavIcon>
                   Subscriptions
                 </NavItem>
-                <NavItem to="/pos/admin/invoices" active={isActive('/pos/admin/invoices')} onClick={closeSidebar}>
-                  <NavIcon>▦</NavIcon>
-                  Invoices
+                <NavItem to="/pos/admin/report" active={isActive('/pos/admin/report')} onClick={closeSidebar}>
+                  <NavIcon>☰</NavIcon>
+                  Report
                 </NavItem>
+                <NavTitle>Communication</NavTitle>
+                <NavItem to="/pos/admin/notices" active={isActive('/pos/admin/notices')} hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0}>◈</NavIcon>
+                  Notices
+                </NavItem>
+                <NavItem to="/pos/admin/support" active={isActive('/pos/admin/support')} hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0}>◎</NavIcon>
+                  Inquiry Management
+                </NavItem>
+                <NavItem to="/pos/admin/contact-inquiries" active={isActive('/pos/admin/contact-inquiries')} onClick={closeSidebar}>
+                  <NavIcon>@</NavIcon>
+                  Contact Inquiries
+                </NavItem>
+
+                <NavTitle>Plans & Payments</NavTitle>
                 <NavItem to="/pos/admin/plans" active={isActive('/pos/admin/plans')} onClick={closeSidebar}>
                   <NavIcon>≡</NavIcon>
                   Subscription Plans
@@ -833,22 +895,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <NavItem to="/pos/admin/payment-settings" active={isActive('/pos/admin/payment-settings')} onClick={closeSidebar}>
                   <NavIcon>$</NavIcon>
                   Payment Settings
-                </NavItem>
-
-                <NavTitle>Analytics</NavTitle>
-                <NavItem to="/pos/admin/report" active={isActive('/pos/admin/report')} onClick={closeSidebar}>
-                  <NavIcon>◈</NavIcon>
-                  Report
-                </NavItem>
-
-                <NavTitle>Support</NavTitle>
-                <NavItem to="/pos/admin/support" active={isActive('/pos/admin/support')} onClick={closeSidebar}>
-                  <NavIcon>◎</NavIcon>
-                  Inquiry Management
-                </NavItem>
-                <NavItem to="/pos/admin/contact-inquiries" active={isActive('/pos/admin/contact-inquiries')} onClick={closeSidebar}>
-                  <NavIcon>@</NavIcon>
-                  Contact Inquiries
                 </NavItem>
               </>
             )}
@@ -875,7 +921,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   Staff
                 </NavItem>
 
-                <NavTitle>Products</NavTitle>
+                <NavTitle>Products & Inventory</NavTitle>
                 <NavItem to="/pos/brand-products" active={isActive('/pos/brand-products')} onClick={closeSidebar}>
                   <NavIcon>◇</NavIcon>
                   Products
@@ -888,8 +934,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>⊕</NavIcon>
                   Product Recipes
                 </NavItem>
-
-                <NavTitle>Stock Management</NavTitle>
                 <NavItem to="/pos/suppliers" active={isActive('/pos/suppliers')} onClick={closeSidebar}>
                   <NavIcon>◇</NavIcon>
                   Suppliers
@@ -899,31 +943,34 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   Inventory
                 </NavItem>
 
-                <NavTitle>Marketing</NavTitle>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
-                  Customers
-                </DisabledNavItem>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
-                  Coupons
-                </DisabledNavItem>
-
-                <NavTitle>Analytics</NavTitle>
-                <NavItem to="/pos/brand/general/performance" active={isActive('/pos/brand/general/performance')} onClick={closeSidebar}>
-                  <NavIcon>▲</NavIcon>
-                  Performance
+                <NavTitle>Operations</NavTitle>
+                <NavItem to="/pos/brand/invoices" active={isActive('/pos/brand/invoices')} hasPending={badgeCounts.invoices > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.invoices > 0}>▦</NavIcon>
+                  Invoices
                 </NavItem>
                 <NavItem to="/pos/brand/general/reports" active={isActive('/pos/brand/general/reports')} onClick={closeSidebar}>
                   <NavIcon>◉</NavIcon>
                   Reports
                 </NavItem>
-
-                <NavTitle>Billing</NavTitle>
-                <NavItem to="/pos/brand/invoices" active={isActive('/pos/brand/invoices')} onClick={closeSidebar}>
-                  <NavIcon>▦</NavIcon>
-                  Invoices
+                <NavItem to="/pos/brand/general/performance" active={isActive('/pos/brand/general/performance')} onClick={closeSidebar}>
+                  <NavIcon>▲</NavIcon>
+                  Performance
                 </NavItem>
+                <NavTitle>Communication</NavTitle>
+                <NavItem to="/pos/brand/general/notices" active={isActive('/pos/brand/general/notices')} hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0}>◈</NavIcon>
+                  Notices
+                </NavItem>
+                <NavItem to="/pos/brand/general/system-inquiry" active={isActive('/pos/brand/general/system-inquiry')} hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0}>?</NavIcon>
+                  System Inquiry
+                </NavItem>
+                <NavItem to="/pos/brand/general/operation-inquiry" active={isActive('/pos/brand/general/operation-inquiry')} hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0}>◎</NavIcon>
+                  Inquiry Management
+                </NavItem>
+
+                <NavTitle>Plans & Payments</NavTitle>
                 <NavItem to="/pos/brand/plans" active={isActive('/pos/brand/plans')} onClick={closeSidebar}>
                   <NavIcon>☰</NavIcon>
                   Subscription Plans
@@ -935,16 +982,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <NavItem to="/pos/brand/payment-settings" active={isActive('/pos/brand/payment-settings')} onClick={closeSidebar}>
                   <NavIcon>$</NavIcon>
                   Payment Settings
-                </NavItem>
-
-                <NavTitle>Support</NavTitle>
-                <NavItem to="/pos/brand/general/system-inquiry" active={isActive('/pos/brand/general/system-inquiry')} onClick={closeSidebar}>
-                  <NavIcon>?</NavIcon>
-                  System Inquiry
-                </NavItem>
-                <NavItem to="/pos/brand/general/operation-inquiry" active={isActive('/pos/brand/general/operation-inquiry')} onClick={closeSidebar}>
-                  <NavIcon>◎</NavIcon>
-                  Inquiry Management
                 </NavItem>
               </>
             )}
@@ -971,7 +1008,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   Staff
                 </NavItem>
 
-                <NavTitle>Marketing</NavTitle>
+                <NavTitle>Operations</NavTitle>
+                <NavItem to="/pos/foodcourt/invoices" active={isActive('/pos/foodcourt/invoices')} hasPending={badgeCounts.invoices > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.invoices > 0}>▦</NavIcon>
+                  Invoices
+                </NavItem>
+                <NavItem to="/pos/foodcourt/general/stats" active={isActive('/pos/foodcourt/general/stats')} onClick={closeSidebar}>
+                  <NavIcon>▲</NavIcon>
+                  Statistics
+                </NavItem>
                 <NavItem to="/pos/manager/customers" active={isActive('/pos/manager/customers')} onClick={closeSidebar}>
                   <NavIcon>○</NavIcon>
                   Customers
@@ -980,26 +1025,21 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>%</NavIcon>
                   Coupons
                 </NavItem>
-
-                <NavTitle>Analytics</NavTitle>
-                <NavItem to="/pos/foodcourt/general/stats" active={isActive('/pos/foodcourt/general/stats')} onClick={closeSidebar}>
-                  <NavIcon>▲</NavIcon>
-                  Statistics
+                <NavTitle>Communication</NavTitle>
+                <NavItem to="/pos/foodcourt/general/notices" active={isActive('/pos/foodcourt/general/notices')} hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0}>◈</NavIcon>
+                  Notices
                 </NavItem>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
-                  Sales
-                </DisabledNavItem>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
-                  Reports
-                </DisabledNavItem>
-
-                <NavTitle>Billing</NavTitle>
-                <NavItem to="/pos/foodcourt/invoices" active={isActive('/pos/foodcourt/invoices')} onClick={closeSidebar}>
-                  <NavIcon>▦</NavIcon>
-                  Invoices
+                <NavItem to="/pos/foodcourt/general/system-inquiry" active={isActive('/pos/foodcourt/general/system-inquiry')} hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0}>?</NavIcon>
+                  System Inquiry
                 </NavItem>
+                <NavItem to="/pos/foodcourt/general/operation-inquiry" active={isActive('/pos/foodcourt/general/operation-inquiry')} hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0}>◎</NavIcon>
+                  Inquiry Management
+                </NavItem>
+
+                <NavTitle>Plans & Payments</NavTitle>
                 <NavItem to="/pos/foodcourt/plans" active={isActive('/pos/foodcourt/plans')} onClick={closeSidebar}>
                   <NavIcon>☰</NavIcon>
                   Subscription Plans
@@ -1012,16 +1052,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>$</NavIcon>
                   Payment Settings
                 </NavItem>
-
-                <NavTitle>Support</NavTitle>
-                <NavItem to="/pos/foodcourt/general/system-inquiry" active={isActive('/pos/foodcourt/general/system-inquiry')} onClick={closeSidebar}>
-                  <NavIcon>?</NavIcon>
-                  System Inquiry
-                </NavItem>
-                <NavItem to="/pos/foodcourt/general/operation-inquiry" active={isActive('/pos/foodcourt/general/operation-inquiry')} onClick={closeSidebar}>
-                  <NavIcon>◎</NavIcon>
-                  Inquiry Management
-                </NavItem>
               </>
             )}
 
@@ -1033,13 +1063,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   Dashboard
                 </NavItem>
 
-                <NavTitle>Management</NavTitle>
                 <NavItem to="/pos/owner/restaurants" active={isActive('/pos/owner/restaurants')} onClick={closeSidebar}>
                   <NavIcon>◐</NavIcon>
                   Restaurants
                 </NavItem>
 
-                <NavTitle>Analytics</NavTitle>
+                <NavTitle>Operations</NavTitle>
+                <NavItem to="/pos/owner/invoices" active={isActive('/pos/owner/invoices')} hasPending={badgeCounts.invoices > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.invoices > 0}>▦</NavIcon>
+                  Invoices
+                </NavItem>
                 <NavItem to="/pos/owner/performance" active={isActive('/pos/owner/performance')} onClick={closeSidebar}>
                   <NavIcon>◈</NavIcon>
                   Performance
@@ -1049,10 +1082,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   Reports
                 </NavItem>
 
-                <NavTitle>Billing</NavTitle>
-                <NavItem to="/pos/owner/invoices" active={isActive('/pos/owner/invoices')} onClick={closeSidebar}>
-                  <NavIcon>▦</NavIcon>
-                  Invoices
+                <NavTitle>Communication</NavTitle>
+                <NavItem to="/pos/owner/notices" active={isActive('/pos/owner/notices')} hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0}>◈</NavIcon>
+                  Notices
+                </NavItem>
+                <NavItem to="/pos/owner/system-inquiry" active={isActive('/pos/owner/system-inquiry')} hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0}>◇</NavIcon>
+                  System Inquiry
+                </NavItem>
+                <NavItem to="/pos/owner/operation-inquiry" active={isActive('/pos/owner/operation-inquiry')} hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0}>◆</NavIcon>
+                  Operation Inquiry
                 </NavItem>
               </>
             )}
@@ -1216,6 +1257,56 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             </NavSection>
           )}
           
+          {/* Restaurant Admin & Staff - Operations (high-frequency items) */}
+          {(hasMenuPermission('support') || hasMenuPermission('reports') || hasMenuPermission('inventory')) && (
+            <NavSection>
+              <NavTitle>Operations</NavTitle>
+              {hasMenuPermission('support') && isRouteAllowed(`/restaurant/${restaurantId}/invoices`) && (
+                <NavItem to={`/restaurant/${restaurantId}/invoices`} active={isActive(`/restaurant/${restaurantId}/invoices`)} hasPending={badgeCounts.invoices > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.invoices > 0}>▦</NavIcon>
+                  Invoices
+                </NavItem>
+              )}
+              {hasMenuPermission('reports') && isRouteAllowed(`/restaurant/${restaurantId}/reports`) && (
+                <NavItem to={`/restaurant/${restaurantId}/reports`} active={isActive(`/restaurant/${restaurantId}/reports`)} onClick={closeSidebar}>
+                  <NavIcon>☰</NavIcon>
+                  Reports
+                </NavItem>
+              )}
+              {hasMenuPermission('inventory') && isRouteAllowed(`/restaurant/${restaurantId}/inventory`) && (
+                <NavItem to={`/restaurant/${restaurantId}/inventory`} active={isActive(`/restaurant/${restaurantId}/inventory`)} onClick={closeSidebar}>
+                  <NavIcon>▤</NavIcon>
+                  Inventory
+                </NavItem>
+              )}
+              {hasMenuPermission('inventory') && isRouteAllowed(`/restaurant/${restaurantId}/suppliers`) && (
+                <NavItem to={`/restaurant/${restaurantId}/suppliers`} active={isActive(`/restaurant/${restaurantId}/suppliers`)} onClick={closeSidebar}>
+                  <NavIcon>◇</NavIcon>
+                  Suppliers
+                </NavItem>
+              )}
+              <NavTitle>Communication</NavTitle>
+              {hasMenuPermission('support') && isRouteAllowed(`/restaurant/${restaurantId}/notices`) && (
+                <NavItem to={`/restaurant/${restaurantId}/notices`} active={isActive(`/restaurant/${restaurantId}/notices`)} hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0}>◈</NavIcon>
+                  Notices
+                </NavItem>
+              )}
+              {hasMenuPermission('support') && isRouteAllowed(`/restaurant/${restaurantId}/support`) && (
+                <NavItem to={`/restaurant/${restaurantId}/support`} active={isActive(`/restaurant/${restaurantId}/support`)} hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0}>◎</NavIcon>
+                  System Inquiry
+                </NavItem>
+              )}
+              {hasMenuPermission('support') && isRouteAllowed(`/restaurant/${restaurantId}/operation-inquiry`) && (
+                <NavItem to={`/restaurant/${restaurantId}/operation-inquiry`} active={isActive(`/restaurant/${restaurantId}/operation-inquiry`)} hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0}>▲</NavIcon>
+                  Operation Inquiry
+                </NavItem>
+              )}
+            </NavSection>
+          )}
+
           {/* Restaurant Admin & Staff (with permission) - Products */}
           {hasMenuPermission('menu_management') && (
             <NavSection>
@@ -1247,100 +1338,26 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             </NavSection>
           )}
 
-          {/* Restaurant Admin & Staff (with permission) - Stock Management */}
-          {hasMenuPermission('inventory') && (
+          {/* Restaurant Admin & Staff - Team & Marketing */}
+          {(user?.role === 'Restaurant Admin' || hasMenuPermission('marketing')) && (
             <NavSection>
-              <NavTitle>Stock Management</NavTitle>
-              {isRouteAllowed(`/restaurant/${restaurantId}/suppliers`) && (
-                <NavItem to={`/restaurant/${restaurantId}/suppliers`} active={isActive(`/restaurant/${restaurantId}/suppliers`)} onClick={closeSidebar}>
-                  <NavIcon>◇</NavIcon>
-                  Suppliers
-                </NavItem>
-              )}
-              {isRouteAllowed(`/restaurant/${restaurantId}/inventory`) && (
-                <NavItem to={`/restaurant/${restaurantId}/inventory`} active={isActive(`/restaurant/${restaurantId}/inventory`)} onClick={closeSidebar}>
-                  <NavIcon>▤</NavIcon>
-                  Inventory
-                </NavItem>
-              )}
-              <DisabledNavItem title="Coming Soon">
-                <DisabledNavIcon>⊘</DisabledNavIcon>
-                Purchase Orders
-              </DisabledNavItem>
-            </NavSection>
-          )}
-
-          {/* Restaurant Admin - Team */}
-          {user?.role === 'Restaurant Admin' && (
-            <NavSection>
-              <NavTitle>Team</NavTitle>
-              {isRouteAllowed(`/restaurant/${restaurantId}/staff`) && (
+              <NavTitle>Team & Marketing</NavTitle>
+              {user?.role === 'Restaurant Admin' && isRouteAllowed(`/restaurant/${restaurantId}/staff`) && (
                 <NavItem to={`/restaurant/${restaurantId}/staff`} active={isActive(`/restaurant/${restaurantId}/staff`)} onClick={closeSidebar}>
                   <NavIcon>◆</NavIcon>
                   Staff
                 </NavItem>
               )}
-            </NavSection>
-          )}
-
-          {/* Restaurant Admin & Staff (with permission) - Marketing */}
-          {hasMenuPermission('marketing') && (
-            <NavSection>
-              <NavTitle>Marketing</NavTitle>
-              {isRouteAllowed(`/restaurant/${restaurantId}/customers`) && (
+              {hasMenuPermission('marketing') && isRouteAllowed(`/restaurant/${restaurantId}/customers`) && (
                 <NavItem to={`/restaurant/${restaurantId}/customers`} active={isActive(`/restaurant/${restaurantId}/customers`)} onClick={closeSidebar}>
                   <NavIcon>◯</NavIcon>
                   Customers
                 </NavItem>
               )}
-              {isRouteAllowed(`/restaurant/${restaurantId}/coupons`) && (
+              {hasMenuPermission('marketing') && isRouteAllowed(`/restaurant/${restaurantId}/coupons`) && (
                 <NavItem to={`/restaurant/${restaurantId}/coupons`} active={isActive(`/restaurant/${restaurantId}/coupons`)} onClick={closeSidebar}>
                   <NavIcon>%</NavIcon>
                   Coupons
-                </NavItem>
-              )}
-            </NavSection>
-          )}
-
-          {/* Restaurant Admin & Staff (with permission) - Analytics */}
-          {hasMenuPermission('reports') && (
-            <NavSection>
-              <NavTitle>Analytics</NavTitle>
-              {isRouteAllowed(`/restaurant/${restaurantId}/reports`) && (
-                <NavItem to={`/restaurant/${restaurantId}/reports`} active={isActive(`/restaurant/${restaurantId}/reports`)} onClick={closeSidebar}>
-                  <NavIcon>☰</NavIcon>
-                  Reports
-                </NavItem>
-              )}
-              {isRouteAllowed(`/restaurant/${restaurantId}/history`) && (
-                <NavItem to={`/restaurant/${restaurantId}/history`} active={isActive(`/restaurant/${restaurantId}/history`)} onClick={closeSidebar}>
-                  <NavIcon>≡</NavIcon>
-                  Activity History
-                </NavItem>
-              )}
-            </NavSection>
-          )}
-
-          {/* Restaurant Admin & Staff (with permission) - Support */}
-          {hasMenuPermission('support') && (
-            <NavSection>
-              <NavTitle>Support</NavTitle>
-              {isRouteAllowed(`/restaurant/${restaurantId}/invoices`) && (
-                <NavItem to={`/restaurant/${restaurantId}/invoices`} active={isActive(`/restaurant/${restaurantId}/invoices`)} onClick={closeSidebar}>
-                  <NavIcon>$</NavIcon>
-                  Invoices
-                </NavItem>
-              )}
-              {isRouteAllowed(`/restaurant/${restaurantId}/support`) && (
-                <NavItem to={`/restaurant/${restaurantId}/support`} active={isActive(`/restaurant/${restaurantId}/support`)} onClick={closeSidebar}>
-                  <NavIcon>◎</NavIcon>
-                  System Inquiry
-                </NavItem>
-              )}
-              {isRouteAllowed(`/restaurant/${restaurantId}/operation-inquiry`) && (
-                <NavItem to={`/restaurant/${restaurantId}/operation-inquiry`} active={isActive(`/restaurant/${restaurantId}/operation-inquiry`)} onClick={closeSidebar}>
-                  <NavIcon>▲</NavIcon>
-                  Operation Inquiry
                 </NavItem>
               )}
             </NavSection>
@@ -1460,6 +1477,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   Notifications
                 </NavItem>
               </>
+            )}
+
+            {/* Restaurant Admin & Staff - Change History */}
+            {hasMenuPermission('reports') && (user?.role === 'Restaurant Admin' || user?.role === 'Staff') && isRouteAllowed(`/restaurant/${restaurantId}/history`) && (
+              <NavItem to={`/restaurant/${restaurantId}/history`} active={isActive(`/restaurant/${restaurantId}/history`)} onClick={closeSidebar}>
+                <NavIcon>≡</NavIcon>
+                Change History
+              </NavItem>
             )}
 
             {/* Logout for all */}

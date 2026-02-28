@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { Container, Header, Title, Content } from '../../components/UI';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput } from '../../components/Common/FilterComponents';
@@ -621,7 +620,7 @@ const SuppliersPage: React.FC = () => {
 
   if (loading && !suppliers.length && !brandSuppliers.length) {
     return (
-      <MainLayout>
+      <>
         <Container>
           <Header>
             <Title>Suppliers</Title>
@@ -632,12 +631,12 @@ const SuppliersPage: React.FC = () => {
             </div>
           </Content>
         </Container>
-      </MainLayout>
+      </>
     );
   }
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Suppliers</Title>
@@ -878,7 +877,7 @@ const SuppliersPage: React.FC = () => {
           type="danger"
         />
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

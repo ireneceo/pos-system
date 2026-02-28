@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { StatsGrid, StatCard, StatValue, StatLabel, StatTrend } from '../../components/UI';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 
@@ -231,7 +230,7 @@ const FoodcourtStats: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <div>
@@ -336,7 +335,7 @@ const FoodcourtStats: React.FC = () => {
           </TableSection>
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

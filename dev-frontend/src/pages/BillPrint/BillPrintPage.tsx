@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { useOrders } from '../../contexts/OrderContext';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
@@ -264,7 +263,7 @@ const BillPrintPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <PageContainer className="no-print">
         <PageHeader>
           <Title>Bill Print</Title>
@@ -463,7 +462,7 @@ const BillPrintPage: React.FC = () => {
           }
         }
       `}</style>
-    </MainLayout>
+    </>
   );
 };
 

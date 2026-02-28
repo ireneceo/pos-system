@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { useAuth } from '../../contexts/AuthContext';
 import { StatsGrid, StatCard, StatValue, StatLabel, StatTrend } from '../../components/UI';
@@ -1243,7 +1242,7 @@ const ManagerRestaurantsPage: React.FC = () => {
 
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Restaurants</Title>
@@ -2041,7 +2040,7 @@ const ManagerRestaurantsPage: React.FC = () => {
           </Modal>
         </ModalOverlay>
       )}
-    </MainLayout>
+    </>
   );
 };
 

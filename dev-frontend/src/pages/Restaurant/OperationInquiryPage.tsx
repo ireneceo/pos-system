@@ -1,15 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
+import CommentSection from '../../components/Common/CommentSection';
+import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
+import AttachmentList from '../../components/Common/AttachmentList';
 
-interface Manager {
-  id: number;
-  username: string;
-  email: string;
-  role: string;
-  company_name?: string;
-}
 
 interface OperationTicket {
   id: string;
@@ -27,10 +22,7 @@ interface OperationTicket {
   status: 'open' | 'in-progress' | 'resolved' | 'closed';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   category: 'schedule' | 'inventory' | 'staff' | 'menu' | 'customer' | 'other';
-  response?: string;
-  responseTime: number;
-  resolutionTime?: number;
-  resolvedAt?: string;
+  attachments?: any[];
   createdAt: string;
   updatedAt: string;
 }
@@ -85,6 +77,11 @@ const Title = styled.h1`
   }
 `;
 
+const ActionSection = styled.div`
+  display: flex;
+  gap: 12px;
+`;
+
 const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
   padding: 12px 20px;
   border-radius: 8px;
@@ -118,26 +115,21 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
 
 const StatsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 20px;
   margin-bottom: 32px;
-
-  @media (max-width: 1024px) {
-    grid-template-columns: 1fr;
-  }
 `;
 
 const StatCard = styled.div<{ color?: string }>`
   background: white;
   border-radius: 12px;
-  padding: 24px;
+  padding: 20px;
+  border: 1px solid #E6EBF1;
   border-left: 4px solid ${props => props.color || '#635BFF'};
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   transition: all 0.2s;
 
   &:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    transform: translateY(-2px);
   }
 `;
 
@@ -155,45 +147,65 @@ const StatLabel = styled.div`
   letter-spacing: 0.5px;
 `;
 
-const TabContainer = styled.div`
-  display: flex;
-  gap: 24px;
+const FiltersContainer = styled.div`
+  padding: 20px 0;
   margin-bottom: 24px;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
   border-bottom: 1px solid #E6EBF1;
-  overflow-x: auto;
 `;
 
-const Tab = styled.button<{ active?: boolean }>`
-  padding: 12px 0;
+const FilterGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+const FilterLabel = styled.label`
+  font-size: 12px;
+  font-weight: 600;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const SearchInput = styled.input`
+  padding: 8px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
   font-size: 14px;
-  font-weight: 500;
-  color: ${props => props.active ? '#635BFF' : '#6B7C93'};
-  background: none;
-  border: none;
-  cursor: pointer;
-  position: relative;
-  transition: all 0.15s;
-  white-space: nowrap;
+  width: 250px;
 
-  &:hover {
-    color: #635BFF;
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
   }
+`;
 
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: ${props => props.active ? '#635BFF' : 'transparent'};
-    transition: all 0.15s;
+const Select = styled.select`
+  padding: 8px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
   }
 `;
 
 const TicketsGrid = styled.div`
   display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 20px;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const TicketCard = styled.div`
@@ -202,6 +214,7 @@ const TicketCard = styled.div`
   padding: 24px;
   border: 1px solid #E6EBF1;
   transition: all 0.2s;
+  overflow: hidden;
 
   &:hover {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
@@ -234,11 +247,20 @@ const TicketSubject = styled.div`
   color: #374151;
   margin-bottom: 8px;
   line-height: 1.4;
+  word-break: break-word;
+  overflow-wrap: break-word;
 `;
 
 const ManagerInfo = styled.div`
   font-size: 14px;
   color: #6B7280;
+`;
+
+const TicketBadges = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
 `;
 
 const StatusBadge = styled.span<{ status: string }>`
@@ -302,6 +324,48 @@ const TicketDescription = styled.div`
   background: #F8FAFC;
   border-radius: 8px;
   border-left: 3px solid #E6EBF1;
+  word-break: break-word;
+  overflow-wrap: break-word;
+`;
+
+const TicketMeta = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  border-top: 1px solid #F3F4F6;
+  font-size: 12px;
+  color: #6B7280;
+  flex-wrap: wrap;
+  gap: 12px;
+`;
+
+const MetaItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+`;
+
+const MetaLabel = styled.span`
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const MetaValue = styled.span`
+  color: #374151;
+`;
+
+
+const EmptyState = styled.div`
+  text-align: center;
+  padding: 60px 20px;
+  color: #6B7280;
+
+  h3 {
+    color: #374151;
+    margin-bottom: 8px;
+  }
 `;
 
 const Modal = styled.div`
@@ -402,6 +466,7 @@ const FormInput = styled.input`
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.15s;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -419,6 +484,7 @@ const FormSelect = styled.select`
   background: white;
   transition: all 0.15s;
   cursor: pointer;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -437,6 +503,7 @@ const FormTextArea = styled.textarea`
   min-height: 100px;
   transition: all 0.15s;
   font-family: inherit;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -448,16 +515,22 @@ const FormTextArea = styled.textarea`
 const OperationInquiryPage: React.FC = () => {
   const { user } = useAuth();
   const [tickets, setTickets] = useState<OperationTicket[]>([]);
-  const [managers, setManagers] = useState<Manager[]>([]);
-  const [activeTab, setActiveTab] = useState<'all' | 'open' | 'in-progress' | 'resolved' | 'closed'>('all');
+  const [managers, setManagers] = useState<{ id: number; name: string; email: string; role: string; company?: string }[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterPriority, setFilterPriority] = useState('all');
+  const [filterCategory, setFilterCategory] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedManagerId, setSelectedManagerId] = useState('');
   const [newTicket, setNewTicket] = useState({
     subject: '',
     description: '',
     priority: 'medium' as OperationTicket['priority'],
-    category: 'other' as OperationTicket['category'],
-    inquiryType: '' as 'foodcourt' | 'brand' | ''
+    category: 'other' as OperationTicket['category']
   });
+  const [selectedTicket, setSelectedTicket] = useState<OperationTicket | null>(null);
+  const [newAttachments, setNewAttachments] = useState<AttachmentFile[]>([]);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, { total_comments: number; unread_count: number }>>({});
 
   // Get current user info from auth context
   const currentUserId = user?.id || '3';
@@ -477,23 +550,29 @@ const OperationInquiryPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // Auto-select inquiry type if only one type of manager is connected
+  // Auto-select if only one person connected
   useEffect(() => {
-    if (managers.length > 0) {
-      const hasFoodcourtManager = managers.some(m => m.role === 'Foodcourt General' || m.role === 'Foodcourt Manager');
-      const hasBrandManager = managers.some(m => m.role === 'Brand General' || m.role === 'Brand Manager');
-
-      // If only one type of manager is connected, auto-select it
-      if (hasFoodcourtManager && !hasBrandManager) {
-        setNewTicket(prev => ({...prev, inquiryType: 'foodcourt'}));
-      } else if (hasBrandManager && !hasFoodcourtManager) {
-        setNewTicket(prev => ({...prev, inquiryType: 'brand'}));
-      } else {
-        // Both or neither - let user select (reset to empty)
-        setNewTicket(prev => ({...prev, inquiryType: ''}));
-      }
+    if (managers.length === 1) {
+      setSelectedManagerId(managers[0].id.toString());
     }
   }, [managers]);
+
+  // Helper: derive inquiryType from selected manager's role
+  const getInquiryType = (managerId: string): 'foodcourt' | 'brand' | 'owner' | undefined => {
+    const m = managers.find(mg => mg.id.toString() === managerId);
+    if (!m) return undefined;
+    if (m.role === 'Foodcourt General' || m.role === 'Foodcourt Manager') return 'foodcourt';
+    if (m.role === 'Brand General' || m.role === 'Brand Manager') return 'brand';
+    if (m.role === 'Restaurant Owner') return 'owner';
+    return undefined;
+  };
+
+  const getRoleLabel = (role: string): string => {
+    if (role === 'Foodcourt General' || role === 'Foodcourt Manager') return 'Foodcourt';
+    if (role === 'Brand General' || role === 'Brand Manager') return 'Brand';
+    if (role === 'Restaurant Owner') return 'Owner';
+    return role;
+  };
 
   const fetchManagers = async () => {
     try {
@@ -525,14 +604,40 @@ const OperationInquiryPage: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setTickets(data);
+        fetchUnreadCounts(data);
       }
     } catch (error) {
       console.error('Error fetching operation tickets:', error);
     }
   };
 
+  const fetchUnreadCounts = async (ticketList: OperationTicket[]) => {
+    if (ticketList.length === 0) return;
+    try {
+      const token = localStorage.getItem('auth_token');
+      const ids = ticketList.map(t => t.id).join(',');
+      const res = await fetch(`/api/comments/unread-counts?entity_type=operation_ticket&entity_ids=${ids}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          const map: Record<string, { total_comments: number; unread_count: number }> = {};
+          data.data.forEach((item: any) => { map[item.entity_id] = { total_comments: Number(item.total_comments), unread_count: Number(item.unread_count) }; });
+          setUnreadCounts(map);
+        }
+      }
+    } catch (e) { console.error('Error fetching unread counts:', e); }
+  };
+
   const filteredTickets = tickets.filter(ticket => {
-    return activeTab === 'all' || ticket.status === activeTab;
+    const matchesSearch = ticket.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         ticket.ticketNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         ticket.managerName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = filterStatus === 'all' || ticket.status === filterStatus;
+    const matchesPriority = filterPriority === 'all' || ticket.priority === filterPriority;
+    const matchesCategory = filterCategory === 'all' || ticket.category === filterCategory;
+    return matchesSearch && matchesStatus && matchesPriority && matchesCategory;
   });
 
   const totalTickets = tickets.length;
@@ -545,10 +650,9 @@ const OperationInquiryPage: React.FC = () => {
     return new Date(dateString).toLocaleString('en-MY');
   };
 
-  const formatDuration = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+  const handleViewTicket = (ticket: OperationTicket) => {
+    setSelectedTicket(ticket);
+    window.dispatchEvent(new Event('refreshBadgeCounts'));
   };
 
   const handleCreateTicket = () => {
@@ -556,29 +660,16 @@ const OperationInquiryPage: React.FC = () => {
   };
 
   const handleSubmitTicket = async () => {
-    if (!newTicket.subject.trim() || !newTicket.description.trim() || !newTicket.inquiryType) {
-      alert('Please fill in all required fields and select inquiry type.');
+    if (!newTicket.subject.trim() || !newTicket.description.trim() || !selectedManagerId) {
       return;
     }
 
+    const selectedManager = managers.find(m => m.id.toString() === selectedManagerId);
+    if (!selectedManager) return;
+
+    const inquiryType = getInquiryType(selectedManagerId);
+
     try {
-      // Get managers for the selected inquiry type
-      const typeManagers = managers.filter(m => {
-        if (newTicket.inquiryType === 'foodcourt') {
-          return m.role === 'Foodcourt General' || m.role === 'Foodcourt Manager';
-        } else {
-          return m.role === 'Brand General' || m.role === 'Brand Manager';
-        }
-      });
-
-      if (typeManagers.length === 0) {
-        alert(`No ${newTicket.inquiryType} managers connected to this restaurant.`);
-        return;
-      }
-
-      // Use first manager as representative
-      const representativeManager = typeManagers[0];
-
       const ticketData = {
         requesterId: parseInt(currentUserId),
         requesterName: currentUserName,
@@ -586,13 +677,14 @@ const OperationInquiryPage: React.FC = () => {
         requesterRole: currentUserRole,
         restaurantId: parseInt(currentRestaurantId),
         restaurantName: currentRestaurantName,
-        managerId: representativeManager.id,
-        managerName: representativeManager.company_name || representativeManager.username,
+        managerId: parseInt(selectedManager.id.toString()),
+        managerName: selectedManager.name,
         subject: newTicket.subject,
         description: newTicket.description,
         priority: newTicket.priority,
         category: newTicket.category,
-        inquiryType: newTicket.inquiryType
+        inquiryType,
+        attachments: newAttachments.length > 0 ? newAttachments : undefined
       };
 
       const token = localStorage.getItem('auth_token');
@@ -607,32 +699,25 @@ const OperationInquiryPage: React.FC = () => {
 
       if (response.ok) {
         await fetchTickets();
-        setNewTicket({
-          subject: '',
-          description: '',
-          priority: 'medium',
-          category: 'other',
-          inquiryType: ''
-        });
+        setNewTicket({ subject: '', description: '', priority: 'medium', category: 'other' });
+        setNewAttachments([]);
+        setSelectedManagerId(managers.length === 1 ? managers[0].id.toString() : '');
         setShowCreateModal(false);
-      } else {
-        alert('Failed to create inquiry. Please try again.');
       }
     } catch (error) {
       console.error('Error creating ticket:', error);
-      alert('Error creating inquiry. Please try again.');
     }
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Operation Inquiry</Title>
-          <div style={{ display: 'flex', gap: '12px' }}>
+          <ActionSection>
             <Button variant="secondary" onClick={fetchTickets}>Refresh</Button>
             <Button variant="primary" onClick={handleCreateTicket}>New Inquiry</Button>
-          </div>
+          </ActionSection>
         </Header>
         <Content>
           <StatsGrid>
@@ -654,88 +739,129 @@ const OperationInquiryPage: React.FC = () => {
             </StatCard>
           </StatsGrid>
 
-          <TabContainer>
-            <Tab active={activeTab === 'all'} onClick={() => setActiveTab('all')}>
-              All ({totalTickets})
-            </Tab>
-            <Tab active={activeTab === 'open'} onClick={() => setActiveTab('open')}>
-              Open ({openTickets})
-            </Tab>
-            <Tab active={activeTab === 'in-progress'} onClick={() => setActiveTab('in-progress')}>
-              In Progress ({inProgressTickets})
-            </Tab>
-            <Tab active={activeTab === 'resolved'} onClick={() => setActiveTab('resolved')}>
-              Resolved ({resolvedTickets})
-            </Tab>
-            <Tab active={activeTab === 'closed'} onClick={() => setActiveTab('closed')}>
-              Closed ({closedTickets})
-            </Tab>
-          </TabContainer>
+          <FiltersContainer>
+            <FilterGroup>
+              <FilterLabel>Search</FilterLabel>
+              <SearchInput
+                placeholder="Search inquiries..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </FilterGroup>
+            <FilterGroup>
+              <FilterLabel>Status</FilterLabel>
+              <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                <option value="all">All Status</option>
+                <option value="open">Open</option>
+                <option value="in-progress">In Progress</option>
+                <option value="resolved">Resolved</option>
+                <option value="closed">Closed</option>
+              </Select>
+            </FilterGroup>
+            <FilterGroup>
+              <FilterLabel>Priority</FilterLabel>
+              <Select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
+                <option value="all">All Priority</option>
+                <option value="urgent">Urgent</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </Select>
+            </FilterGroup>
+            <FilterGroup>
+              <FilterLabel>Category</FilterLabel>
+              <Select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+                <option value="all">All Categories</option>
+                <option value="schedule">Schedule</option>
+                <option value="inventory">Inventory</option>
+                <option value="staff">Staff</option>
+                <option value="menu">Menu</option>
+                <option value="customer">Customer</option>
+                <option value="other">Other</option>
+              </Select>
+            </FilterGroup>
+          </FiltersContainer>
 
           <TicketsGrid>
             {filteredTickets.map(ticket => (
-              <TicketCard key={ticket.id}>
+              <TicketCard key={ticket.id} onClick={() => handleViewTicket(ticket)} style={{ cursor: 'pointer' }}>
                 <TicketHeader>
                   <TicketInfo>
                     <TicketNumber>{ticket.ticketNumber}</TicketNumber>
                     <TicketSubject>{ticket.subject}</TicketSubject>
                     <ManagerInfo>Manager: {ticket.managerName}</ManagerInfo>
                   </TicketInfo>
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <TicketBadges>
                     <StatusBadge status={ticket.status}>{ticket.status}</StatusBadge>
                     <PriorityBadge priority={ticket.priority}>{ticket.priority}</PriorityBadge>
-                  </div>
+                  </TicketBadges>
                 </TicketHeader>
 
                 <TicketDescription>{ticket.description}</TicketDescription>
 
-                {ticket.response && (
-                  <div style={{
-                    marginTop: '16px',
-                    padding: '12px',
-                    backgroundColor: '#F0F9FF',
-                    borderRadius: '8px',
-                    border: '1px solid #BAE6FD'
-                  }}>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#0369A1', marginBottom: '6px' }}>
-                      Manager Response • {ticket.resolvedAt && formatDateTime(ticket.resolvedAt)}
-                    </div>
-                    <div style={{ fontSize: '14px', color: '#374151' }}>
-                      {ticket.response}
-                    </div>
-                  </div>
-                )}
-
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginTop: '16px',
-                  paddingTop: '16px',
-                  borderTop: '1px solid #F3F4F6',
-                  fontSize: '12px',
-                  color: '#6B7280'
-                }}>
-                  <span>Created: {formatDateTime(ticket.createdAt)}</span>
-                  <span>Category: {ticket.category}</span>
-                  {ticket.responseTime > 0 && (
-                    <span>Response Time: {formatDuration(ticket.responseTime)}</span>
+                <TicketMeta>
+                  <MetaItem>
+                    <MetaLabel>Created</MetaLabel>
+                    <MetaValue>{formatDateTime(ticket.createdAt)}</MetaValue>
+                  </MetaItem>
+                  <MetaItem>
+                    <MetaLabel>Category</MetaLabel>
+                    <MetaValue>{ticket.category}</MetaValue>
+                  </MetaItem>
+                  {unreadCounts[ticket.id] && (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      Comments {unreadCounts[ticket.id].total_comments}
+                      {unreadCounts[ticket.id].unread_count > 0 && (
+                        <span style={{ background: '#EF4444', color: 'white', borderRadius: '10px', padding: '1px 7px', fontSize: '11px', fontWeight: 600 }}>
+                          {unreadCounts[ticket.id].unread_count} new
+                        </span>
+                      )}
+                    </span>
                   )}
-                </div>
+                </TicketMeta>
               </TicketCard>
             ))}
 
             {filteredTickets.length === 0 && (
-              <div style={{
-                textAlign: 'center',
-                padding: '60px 20px',
-                color: '#6B7280'
-              }}>
-                <h3 style={{ color: '#374151', marginBottom: '8px' }}>No inquiries yet</h3>
+              <EmptyState>
+                <h3>No inquiries yet</h3>
                 <p>Click "New Inquiry" to submit your first operation inquiry to your manager.</p>
-              </div>
+              </EmptyState>
             )}
           </TicketsGrid>
+
+          {/* Detail View Modal */}
+          {selectedTicket && (
+            <Modal onClick={() => setSelectedTicket(null)}>
+              <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
+                <ModalHeader>
+                  <ModalTitle>{selectedTicket.ticketNumber}</ModalTitle>
+                  <CloseButton onClick={() => setSelectedTicket(null)}>×</CloseButton>
+                </ModalHeader>
+                <ModalBody>
+                  <div style={{ marginBottom: '16px' }}>
+                    <div style={{ fontSize: '18px', fontWeight: 600, color: '#0A2540', marginBottom: '8px', wordBreak: 'break-word' }}>{selectedTicket.subject}</div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                      <StatusBadge status={selectedTicket.status}>{selectedTicket.status}</StatusBadge>
+                      <PriorityBadge priority={selectedTicket.priority}>{selectedTicket.priority}</PriorityBadge>
+                      <span style={{ fontSize: '12px', color: '#6B7C93', padding: '4px 12px', background: '#F3F4F6', borderRadius: '6px' }}>{selectedTicket.category}</span>
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#6B7C93' }}>
+                      To: {selectedTicket.managerName} · {formatDateTime(selectedTicket.createdAt)}
+                    </div>
+                  </div>
+
+                  <TicketDescription>{selectedTicket.description}</TicketDescription>
+
+                  {selectedTicket?.attachments && selectedTicket.attachments.length > 0 && (
+                    <AttachmentList attachments={selectedTicket.attachments} />
+                  )}
+
+                  <CommentSection entityType="operation_ticket" entityId={String(selectedTicket.id)} currentUserId={user?.id} onMarkRead={() => setUnreadCounts(prev => { const next = { ...prev }; const key = String(selectedTicket.id); if (next[key]) next[key] = { ...next[key], unread_count: 0 }; return next; })} />
+                </ModalBody>
+              </ModalContent>
+            </Modal>
+          )}
 
           {/* Create Inquiry Modal */}
           {showCreateModal && (
@@ -749,27 +875,23 @@ const OperationInquiryPage: React.FC = () => {
                   <FormGroup>
                     <FormLabel>Inquiry Target *</FormLabel>
                     <FormSelect
-                      value={newTicket.inquiryType}
-                      onChange={(e) => setNewTicket({...newTicket, inquiryType: e.target.value as 'foodcourt' | 'brand'})}
+                      value={selectedManagerId}
+                      onChange={(e) => setSelectedManagerId(e.target.value)}
                       required
-                      disabled={managers.length === 0 || (
-                        (managers.filter(m => m.role === 'Foodcourt General' || m.role === 'Foodcourt Manager').length > 0 ? 1 : 0) +
-                        (managers.filter(m => m.role === 'Brand General' || m.role === 'Brand Manager').length > 0 ? 1 : 0)
-                      ) === 1}
+                      disabled={managers.length <= 1}
                     >
                       <option value="">
-                        {managers.length === 0 ? 'No managers connected' : 'Select Inquiry Target'}
+                        {managers.length === 0 ? 'No one connected' : 'Select Inquiry Target'}
                       </option>
-                      {managers.filter(m => m.role === 'Foodcourt General' || m.role === 'Foodcourt Manager').length > 0 && (
-                        <option value="foodcourt">Foodcourt General</option>
-                      )}
-                      {managers.filter(m => m.role === 'Brand General' || m.role === 'Brand Manager').length > 0 && (
-                        <option value="brand">Brand General</option>
-                      )}
+                      {managers.map(m => (
+                        <option key={m.id} value={m.id.toString()}>
+                          {m.name} ({getRoleLabel(m.role)})
+                        </option>
+                      ))}
                     </FormSelect>
                     {managers.length === 0 && (
                       <div style={{ fontSize: '12px', color: '#DC2626', marginTop: '4px' }}>
-                        This restaurant is not connected to any manager. Please contact system administrator.
+                        This restaurant is not connected to anyone. Please contact system administrator.
                       </div>
                     )}
                   </FormGroup>
@@ -791,6 +913,14 @@ const OperationInquiryPage: React.FC = () => {
                       placeholder="Detailed description of your inquiry..."
                       rows={4}
                       required
+                    />
+                  </FormGroup>
+                  <FormGroup>
+                    <FormLabel>Attachments</FormLabel>
+                    <FileUpload
+                      files={newAttachments}
+                      onChange={setNewAttachments}
+                      maxFiles={5}
                     />
                   </FormGroup>
                   <FormRow>
@@ -829,7 +959,7 @@ const OperationInquiryPage: React.FC = () => {
                   <Button
                     variant="primary"
                     onClick={handleSubmitTicket}
-                    disabled={!newTicket.subject.trim() || !newTicket.description.trim() || !newTicket.inquiryType}
+                    disabled={!newTicket.subject.trim() || !newTicket.description.trim() || !selectedManagerId}
                   >
                     Submit Inquiry
                   </Button>
@@ -839,7 +969,7 @@ const OperationInquiryPage: React.FC = () => {
           )}
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

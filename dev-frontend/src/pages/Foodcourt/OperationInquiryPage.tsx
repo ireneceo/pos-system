@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
+import CommentSection from '../../components/Common/CommentSection';
+import AttachmentList from '../../components/Common/AttachmentList';
 
 interface OperationTicket {
   id: string;
@@ -23,6 +24,7 @@ interface OperationTicket {
   responseTime: number;
   resolutionTime?: number;
   resolvedAt?: string;
+  attachments?: any[];
   createdAt: string;
   updatedAt: string;
 }
@@ -121,81 +123,97 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
 
 const StatsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 20px;
   margin-bottom: 32px;
-
-  @media (max-width: 1024px) {
-    grid-template-columns: 1fr;
-  }
 `;
 
-const StatCard = styled.div<{ borderColor?: string }>`
+const StatCard = styled.div<{ borderColor?: string; color?: string }>`
   background: white;
   border-radius: 12px;
-  padding: 24px;
-  border-left: 4px solid ${props => props.borderColor || '#635BFF'};
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  padding: 20px;
+  border: 1px solid #E6EBF1;
+  border-left: 4px solid ${props => props.borderColor || props.color || '#635BFF'};
   transition: all 0.2s;
 
   &:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    transform: translateY(-2px);
   }
 `;
 
 const StatValue = styled.div`
-  font-size: 32px;
+  font-size: 24px;
   font-weight: 700;
   color: #0A2540;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 `;
 
 const StatLabel = styled.div`
-  font-size: 14px;
-  color: #6B7C93;
-  font-weight: 500;
+  font-size: 13px;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 `;
 
-const TabContainer = styled.div`
-  display: flex;
-  gap: 24px;
+const FiltersContainer = styled.div`
+  padding: 20px 0;
   margin-bottom: 24px;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
   border-bottom: 1px solid #E6EBF1;
-  overflow-x: auto;
 `;
 
-const Tab = styled.button<{ active?: boolean }>`
-  padding: 12px 0;
+const FilterGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+const FilterLabel = styled.label`
+  font-size: 12px;
+  font-weight: 600;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const SearchInput = styled.input`
+  padding: 8px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
   font-size: 14px;
-  font-weight: 500;
-  color: ${props => props.active ? '#635BFF' : '#6B7C93'};
-  background: none;
-  border: none;
-  cursor: pointer;
-  position: relative;
-  transition: all 0.15s;
-  white-space: nowrap;
+  width: 250px;
 
-  &:hover {
-    color: #635BFF;
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
   }
+`;
 
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: ${props => props.active ? '#635BFF' : 'transparent'};
-    transition: all 0.15s;
+const Select = styled.select`
+  padding: 8px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
   }
 `;
 
 const TicketsGrid = styled.div`
   display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 20px;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const TicketCard = styled.div`
@@ -204,6 +222,8 @@ const TicketCard = styled.div`
   padding: 24px;
   border: 1px solid #E6EBF1;
   transition: all 0.2s;
+  cursor: pointer;
+  overflow: hidden;
 
   &:hover {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
@@ -316,27 +336,6 @@ const TicketDescription = styled.div`
   border-left: 3px solid #E6EBF1;
 `;
 
-const ResponseSection = styled.div`
-  margin-top: 16px;
-  padding: 16px;
-  background: #F0F9FF;
-  border-radius: 8px;
-  border: 1px solid #BAE6FD;
-`;
-
-const ResponseHeader = styled.div`
-  font-size: 12px;
-  font-weight: 600;
-  color: #0369A1;
-  margin-bottom: 8px;
-`;
-
-const ResponseText = styled.div`
-  font-size: 14px;
-  color: #374151;
-  line-height: 1.5;
-`;
-
 const TicketFooter = styled.div`
   display: flex;
   justify-content: space-between;
@@ -348,34 +347,6 @@ const TicketFooter = styled.div`
   color: #6B7280;
   flex-wrap: wrap;
   gap: 12px;
-`;
-
-const ActionButton = styled.button<{ variant?: 'primary' | 'danger' }>`
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-
-  ${props => props.variant === 'danger' ? `
-    background: #FEE2E2;
-    color: #DC2626;
-
-    &:hover {
-      background: #FEE2E2;
-      transform: translateY(-1px);
-    }
-  ` : `
-    background: #635BFF;
-    color: white;
-
-    &:hover {
-      background: #5A51E6;
-      transform: translateY(-1px);
-    }
-  `}
 `;
 
 const Modal = styled.div`
@@ -395,7 +366,7 @@ const ModalContent = styled.div`
   background: white;
   border-radius: 12px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  max-width: 600px;
+  max-width: 700px;
   width: 90%;
   max-height: 90vh;
   overflow: auto;
@@ -468,24 +439,7 @@ const FormSelect = styled.select`
   background: white;
   transition: all 0.15s;
   cursor: pointer;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
-
-const FormTextArea = styled.textarea`
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  font-size: 14px;
-  resize: vertical;
-  min-height: 120px;
-  transition: all 0.15s;
-  font-family: inherit;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -521,16 +475,35 @@ const InfoLabel = styled.span`
 const InfoValue = styled.span`
   color: #0A2540;
   font-weight: 600;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  text-align: right;
+  max-width: 60%;
+`;
+
+const DetailDescription = styled.div`
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.6;
+  padding: 16px;
+  background: #F8FAFC;
+  border-radius: 8px;
+  border-left: 3px solid #E6EBF1;
+  margin-bottom: 20px;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
 `;
 
 const OperationInquiryPage: React.FC = () => {
   const { user } = useAuth();
   const [tickets, setTickets] = useState<OperationTicket[]>([]);
-  const [activeTab, setActiveTab] = useState<'all' | 'open' | 'in-progress' | 'resolved' | 'closed'>('all');
-  const [showReplyModal, setShowReplyModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterPriority, setFilterPriority] = useState('all');
   const [selectedTicket, setSelectedTicket] = useState<OperationTicket | null>(null);
-  const [replyMessage, setReplyMessage] = useState('');
-  const [replyStatus, setReplyStatus] = useState<OperationTicket['status']>('in-progress');
+  const [detailStatus, setDetailStatus] = useState<OperationTicket['status']>('open');
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, { total_comments: number; unread_count: number }>>({});
 
   const currentUserId = user?.id || '4';
   const currentUserRole = user?.role || 'Foodcourt General';
@@ -555,14 +528,40 @@ const OperationInquiryPage: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setTickets(data);
+        fetchUnreadCounts(data);
       }
     } catch (error) {
       console.error('Error fetching operation tickets:', error);
     }
   };
 
+  const fetchUnreadCounts = async (ticketList: OperationTicket[]) => {
+    if (ticketList.length === 0) return;
+    try {
+      const token = localStorage.getItem('auth_token');
+      const ids = ticketList.map(t => t.id).join(',');
+      const res = await fetch(`/api/comments/unread-counts?entity_type=operation_ticket&entity_ids=${ids}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          const map: Record<string, { total_comments: number; unread_count: number }> = {};
+          data.data.forEach((item: any) => { map[item.entity_id] = { total_comments: Number(item.total_comments), unread_count: Number(item.unread_count) }; });
+          setUnreadCounts(map);
+        }
+      }
+    } catch (e) { console.error('Error fetching unread counts:', e); }
+  };
+
   const filteredTickets = tickets.filter(ticket => {
-    return activeTab === 'all' || ticket.status === activeTab;
+    const matchesSearch = ticket.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         ticket.ticketNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         ticket.requesterName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         ticket.restaurantName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = filterStatus === 'all' || ticket.status === filterStatus;
+    const matchesPriority = filterPriority === 'all' || ticket.priority === filterPriority;
+    return matchesSearch && matchesStatus && matchesPriority;
   });
 
   const totalTickets = tickets.length;
@@ -581,19 +580,14 @@ const OperationInquiryPage: React.FC = () => {
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
   };
 
-  const handleReplyTicket = (ticket: OperationTicket) => {
+  const handleViewTicket = (ticket: OperationTicket) => {
     setSelectedTicket(ticket);
-    setReplyMessage(ticket.response || '');
-    setReplyStatus(ticket.response ? ticket.status : 'in-progress');
-    setShowReplyModal(true);
+    setDetailStatus(ticket.status);
+    window.dispatchEvent(new Event('refreshBadgeCounts'));
   };
 
-  const handleSendReply = async () => {
-    if (!replyMessage.trim() || !selectedTicket) return;
-
-    const createdTime = new Date(selectedTicket.createdAt).getTime();
-    const currentTime = new Date().getTime();
-    const responseTimeMinutes = Math.round((currentTime - createdTime) / (1000 * 60));
+  const handleStatusChange = async () => {
+    if (!selectedTicket || detailStatus === selectedTicket.status) return;
 
     try {
       const token = localStorage.getItem('auth_token');
@@ -604,10 +598,8 @@ const OperationInquiryPage: React.FC = () => {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          status: replyStatus,
-          response: replyMessage,
-          responseTime: responseTimeMinutes > 0 ? responseTimeMinutes : 1,
-          ...(replyStatus === 'resolved' && {
+          status: detailStatus,
+          ...(detailStatus === 'resolved' && {
             resolvedAt: new Date().toISOString().replace('T', ' ').slice(0, 19)
           })
         })
@@ -619,19 +611,15 @@ const OperationInquiryPage: React.FC = () => {
         setTickets(prev => prev.map(t =>
           t.id === selectedTicket.id ? { ...t, ...updatedTicket } : t
         ));
-        setReplyMessage('');
-        setShowReplyModal(false);
-      } else {
-        alert('Failed to send reply. Please try again.');
+        setSelectedTicket(prev => prev ? { ...prev, ...updatedTicket } : null);
       }
     } catch (error) {
-      console.error('Error sending reply:', error);
-      alert('Error sending reply. Please try again.');
+      console.error('Error updating status:', error);
     }
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Operation Inquiry</Title>
@@ -659,27 +647,40 @@ const OperationInquiryPage: React.FC = () => {
             </StatCard>
           </StatsGrid>
 
-          <TabContainer>
-            <Tab active={activeTab === 'all'} onClick={() => setActiveTab('all')}>
-              All ({totalTickets})
-            </Tab>
-            <Tab active={activeTab === 'open'} onClick={() => setActiveTab('open')}>
-              Open ({openTickets})
-            </Tab>
-            <Tab active={activeTab === 'in-progress'} onClick={() => setActiveTab('in-progress')}>
-              In Progress ({inProgressTickets})
-            </Tab>
-            <Tab active={activeTab === 'resolved'} onClick={() => setActiveTab('resolved')}>
-              Resolved ({resolvedTickets})
-            </Tab>
-            <Tab active={activeTab === 'closed'} onClick={() => setActiveTab('closed')}>
-              Closed ({closedTickets})
-            </Tab>
-          </TabContainer>
+          <FiltersContainer>
+            <FilterGroup>
+              <FilterLabel>Search</FilterLabel>
+              <SearchInput
+                placeholder="Search inquiries..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </FilterGroup>
+            <FilterGroup>
+              <FilterLabel>Status</FilterLabel>
+              <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                <option value="all">All Status</option>
+                <option value="open">Open</option>
+                <option value="in-progress">In Progress</option>
+                <option value="resolved">Resolved</option>
+                <option value="closed">Closed</option>
+              </Select>
+            </FilterGroup>
+            <FilterGroup>
+              <FilterLabel>Priority</FilterLabel>
+              <Select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
+                <option value="all">All Priority</option>
+                <option value="urgent">Urgent</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </Select>
+            </FilterGroup>
+          </FiltersContainer>
 
           <TicketsGrid>
             {filteredTickets.map(ticket => (
-              <TicketCard key={ticket.id}>
+              <TicketCard key={ticket.id} onClick={() => handleViewTicket(ticket)}>
                 <TicketHeader>
                   <TicketInfo>
                     <TicketNumber>{ticket.ticketNumber}</TicketNumber>
@@ -698,23 +699,21 @@ const OperationInquiryPage: React.FC = () => {
 
                 <TicketDescription>{ticket.description}</TicketDescription>
 
-                {ticket.response && (
-                  <ResponseSection>
-                    <ResponseHeader>
-                      Your Response • {ticket.resolvedAt && formatDateTime(ticket.resolvedAt)}
-                    </ResponseHeader>
-                    <ResponseText>{ticket.response}</ResponseText>
-                  </ResponseSection>
-                )}
-
                 <TicketFooter>
                   <span>Created: {formatDateTime(ticket.createdAt)}</span>
                   {ticket.responseTime > 0 && (
                     <span>Response Time: {formatDuration(ticket.responseTime)}</span>
                   )}
-                  <ActionButton variant="primary" onClick={() => handleReplyTicket(ticket)}>
-                    {ticket.response ? 'Update Reply' : 'Reply'}
-                  </ActionButton>
+                  {unreadCounts[ticket.id] && (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      Comments {unreadCounts[ticket.id].total_comments}
+                      {unreadCounts[ticket.id].unread_count > 0 && (
+                        <span style={{ background: '#EF4444', color: 'white', borderRadius: '10px', padding: '1px 7px', fontSize: '11px', fontWeight: 600 }}>
+                          {unreadCounts[ticket.id].unread_count} new
+                        </span>
+                      )}
+                    </span>
+                  )}
                 </TicketFooter>
               </TicketCard>
             ))}
@@ -731,19 +730,19 @@ const OperationInquiryPage: React.FC = () => {
             )}
           </TicketsGrid>
 
-          {/* Reply Modal */}
-          {showReplyModal && selectedTicket && (
-            <Modal onClick={() => setShowReplyModal(false)}>
+          {/* Detail Modal */}
+          {selectedTicket && (
+            <Modal onClick={() => setSelectedTicket(null)}>
               <ModalContent onClick={(e) => e.stopPropagation()}>
                 <ModalHeader>
-                  <ModalTitle>{selectedTicket.response ? 'Update Reply' : 'Reply to Inquiry'}</ModalTitle>
-                  <CloseButton onClick={() => setShowReplyModal(false)}>×</CloseButton>
+                  <ModalTitle>{selectedTicket.ticketNumber}</ModalTitle>
+                  <CloseButton onClick={() => setSelectedTicket(null)}>×</CloseButton>
                 </ModalHeader>
                 <ModalBody>
                   <InfoBox>
                     <InfoRow>
-                      <InfoLabel>Ticket Number:</InfoLabel>
-                      <InfoValue>{selectedTicket.ticketNumber}</InfoValue>
+                      <InfoLabel>Subject:</InfoLabel>
+                      <InfoValue>{selectedTicket.subject}</InfoValue>
                     </InfoRow>
                     <InfoRow>
                       <InfoLabel>Restaurant:</InfoLabel>
@@ -754,51 +753,55 @@ const OperationInquiryPage: React.FC = () => {
                       <InfoValue>{selectedTicket.requesterName}</InfoValue>
                     </InfoRow>
                     <InfoRow>
-                      <InfoLabel>Subject:</InfoLabel>
-                      <InfoValue>{selectedTicket.subject}</InfoValue>
+                      <InfoLabel>Priority:</InfoLabel>
+                      <InfoValue><PriorityBadge priority={selectedTicket.priority}>{selectedTicket.priority}</PriorityBadge></InfoValue>
+                    </InfoRow>
+                    <InfoRow>
+                      <InfoLabel>Category:</InfoLabel>
+                      <InfoValue>{selectedTicket.category}</InfoValue>
+                    </InfoRow>
+                    <InfoRow>
+                      <InfoLabel>Created:</InfoLabel>
+                      <InfoValue>{formatDateTime(selectedTicket.createdAt)}</InfoValue>
                     </InfoRow>
                   </InfoBox>
 
-                  <FormGroup>
-                    <FormLabel>Status *</FormLabel>
-                    <FormSelect
-                      value={replyStatus}
-                      onChange={(e) => setReplyStatus(e.target.value as OperationTicket['status'])}
-                    >
-                      <option value="open">Open</option>
-                      <option value="in-progress">In Progress</option>
-                      <option value="resolved">Resolved</option>
-                      <option value="closed">Closed</option>
-                    </FormSelect>
-                  </FormGroup>
+                  <FormLabel>Description</FormLabel>
+                  <DetailDescription>{selectedTicket.description}</DetailDescription>
+
+                  {selectedTicket?.attachments && selectedTicket.attachments.length > 0 && (
+                    <AttachmentList attachments={selectedTicket.attachments} />
+                  )}
 
                   <FormGroup>
-                    <FormLabel>Response Message *</FormLabel>
-                    <FormTextArea
-                      value={replyMessage}
-                      onChange={(e) => setReplyMessage(e.target.value)}
-                      placeholder="Enter your response to the inquiry..."
-                    />
+                    <FormLabel>Status</FormLabel>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <FormSelect
+                        value={detailStatus}
+                        onChange={(e) => setDetailStatus(e.target.value as OperationTicket['status'])}
+                        style={{ flex: 1 }}
+                      >
+                        <option value="open">Open</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="resolved">Resolved</option>
+                        <option value="closed">Closed</option>
+                      </FormSelect>
+                      {detailStatus !== selectedTicket.status && (
+                        <Button variant="primary" onClick={handleStatusChange} style={{ padding: '10px 16px', fontSize: '13px' }}>
+                          Save
+                        </Button>
+                      )}
+                    </div>
                   </FormGroup>
+
+                  <CommentSection entityType="operation_ticket" entityId={String(selectedTicket.id)} currentUserId={user?.id} onMarkRead={() => setUnreadCounts(prev => { const next = { ...prev }; const key = String(selectedTicket.id); if (next[key]) next[key] = { ...next[key], unread_count: 0 }; return next; })} />
                 </ModalBody>
-                <ModalFooter>
-                  <Button variant="secondary" onClick={() => setShowReplyModal(false)}>
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={handleSendReply}
-                    disabled={!replyMessage.trim()}
-                  >
-                    Send Reply
-                  </Button>
-                </ModalFooter>
               </ModalContent>
             </Modal>
           )}
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

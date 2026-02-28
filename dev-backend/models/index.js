@@ -56,6 +56,10 @@ const EntityPlanRestaurant = require('./EntityPlanRestaurant');
 const EntityPlanPrice = require('./EntityPlanPrice');
 const RestaurantIngredientCost = require('./RestaurantIngredientCost');
 const SystemLog = require('./SystemLog');
+const Comment = require('./Comment');
+const CommentRead = require('./CommentRead');
+const Notice = require('./Notice');
+const NoticeRecipient = require('./NoticeRecipient');
 
 // Define associations
 // Brand - Restaurant associations
@@ -413,6 +417,26 @@ RestaurantIngredientCost.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as
 Ingredient.hasMany(RestaurantIngredientCost, { foreignKey: 'ingredient_id', as: 'restaurantCosts' });
 RestaurantIngredientCost.belongsTo(User, { foreignKey: 'updated_by', as: 'updater' });
 
+// Comment associations (polymorphic)
+Comment.belongsTo(User, { foreignKey: 'author_id', as: 'author' });
+User.hasMany(Comment, { foreignKey: 'author_id', as: 'comments' });
+
+// Notice associations
+Notice.belongsTo(User, { foreignKey: 'author_id', as: 'author' });
+User.hasMany(Notice, { foreignKey: 'author_id', as: 'notices' });
+Notice.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
+Brand.hasMany(Notice, { foreignKey: 'brand_id', as: 'notices' });
+Notice.belongsTo(Foodcourt, { foreignKey: 'foodcourt_id', as: 'foodcourt' });
+Foodcourt.hasMany(Notice, { foreignKey: 'foodcourt_id', as: 'notices' });
+
+// NoticeRecipient associations
+NoticeRecipient.belongsTo(Notice, { foreignKey: 'notice_id', as: 'notice' });
+Notice.hasMany(NoticeRecipient, { foreignKey: 'notice_id', as: 'recipients' });
+NoticeRecipient.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Restaurant.hasMany(NoticeRecipient, { foreignKey: 'restaurant_id', as: 'noticeRecipients' });
+NoticeRecipient.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+NoticeRecipient.belongsTo(User, { foreignKey: 'read_by', as: 'reader' });
+
 module.exports = {
   User,
   Restaurant,
@@ -471,5 +495,9 @@ module.exports = {
   EntityPlanRestaurant,
   EntityPlanPrice,
   RestaurantIngredientCost,
-  SystemLog
+  SystemLog,
+  Comment,
+  CommentRead,
+  Notice,
+  NoticeRecipient
 };

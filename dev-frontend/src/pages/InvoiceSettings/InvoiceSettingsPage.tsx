@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface InvoiceSettings {
@@ -675,7 +674,7 @@ const InvoiceSettingsPage: React.FC = () => {
   );
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Invoice Settings</Title>
@@ -777,7 +776,7 @@ const InvoiceSettingsPage: React.FC = () => {
           </Section>
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

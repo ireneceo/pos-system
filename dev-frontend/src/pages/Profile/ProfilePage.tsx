@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { useStaff } from '../../contexts/StaffContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton } from '../../components/UI/Modal';
@@ -772,7 +771,7 @@ const ProfilePage: React.FC = () => {
   // Show loading state while auth is checking or profile is loading
   if (authLoading || loading) {
     return (
-      <MainLayout>
+      <>
         <ProfileContainer>
           <PageHeader title="My Profile" />
           <Content>
@@ -783,14 +782,14 @@ const ProfilePage: React.FC = () => {
             </ContentCard>
           </Content>
         </ProfileContainer>
-      </MainLayout>
+      </>
     );
   }
 
   // Show login message only after auth check is complete
   if (!isAuthenticated || !currentUser) {
     return (
-      <MainLayout>
+      <>
         <ProfileContainer>
           <PageHeader title="My Profile" />
           <Content>
@@ -802,12 +801,12 @@ const ProfilePage: React.FC = () => {
             </ContentCard>
           </Content>
         </ProfileContainer>
-      </MainLayout>
+      </>
     );
   }
 
   return (
-    <MainLayout>
+    <>
       <ProfileContainer>
         <PageHeader title="My Profile" />
 
@@ -1186,7 +1185,7 @@ const ProfilePage: React.FC = () => {
           )}
         </Modal>
       </ProfileContainer>
-    </MainLayout>
+    </>
   );
 };
 

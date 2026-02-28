@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
-import MainLayout from '../../components/Layout/MainLayout';
 import { TabContainer, Tab, OrderControls } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
@@ -1641,7 +1640,7 @@ const SettingsPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <SettingsContainer>
         <PageHeader title="Store Settings" />
 
@@ -4579,7 +4578,7 @@ const SettingsPage: React.FC = () => {
 
         </Content>
       </SettingsContainer>
-    </MainLayout>
+    </>
   );
 };
 

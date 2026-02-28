@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
+import { useAuth } from '../../contexts/AuthContext';
+import CommentSection from '../../components/Common/CommentSection';
+import AttachmentList from '../../components/Common/AttachmentList';
 
 interface OperationTicket {
   id: string;
@@ -18,11 +20,7 @@ interface OperationTicket {
   status: 'open' | 'in-progress' | 'resolved' | 'closed';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   category: 'schedule' | 'inventory' | 'staff' | 'menu' | 'customer' | 'other';
-  response?: string;
-  internalNotes?: string;
-  responseTime: number;
-  resolutionTime?: number;
-  resolvedAt?: string;
+  attachments?: any[];
   createdAt: string;
   updatedAt: string;
 }
@@ -181,7 +179,12 @@ const Select = styled.select`
 
 const TicketsGrid = styled.div`
   display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 20px;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const TicketCard = styled.div`
@@ -190,6 +193,8 @@ const TicketCard = styled.div`
   padding: 24px;
   border: 1px solid #E6EBF1;
   transition: all 0.2s;
+  cursor: pointer;
+  overflow: hidden;
 
   &:hover {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
@@ -292,47 +297,33 @@ const TicketDescription = styled.div`
   border-left: 3px solid #E6EBF1;
 `;
 
-const ActionButtons = styled.div`
+const TicketBadges = styled.div`
   display: flex;
+  flex-direction: column;
   gap: 8px;
-  margin-top: 16px;
+  align-items: flex-end;
 `;
 
-const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
-  padding: 8px 16px;
-  border-radius: 6px;
+const TicketMeta = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  border-top: 1px solid #F3F4F6;
   font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid;
+  color: #6B7280;
+  flex-wrap: wrap;
+  gap: 12px;
+`;
 
-  ${props => props.variant === 'primary' ? `
-    background: #635BFF;
-    color: white;
-    border-color: #635BFF;
+const MetaLabel = styled.span`
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
 
-    &:hover {
-      background: #5A51E6;
-    }
-  ` : props.variant === 'danger' ? `
-    background: transparent;
-    color: #DC2626;
-    border-color: #FCA5A5;
-
-    &:hover {
-      background: #FEE2E2;
-    }
-  ` : `
-    background: transparent;
-    color: #6B7280;
-    border-color: #E6EBF1;
-
-    &:hover {
-      background: #F8FAFC;
-      color: #0A2540;
-    }
-  `}
+const MetaValue = styled.span`
+  color: #374151;
 `;
 
 const Modal = styled.div`
@@ -352,7 +343,7 @@ const ModalContent = styled.div`
   background: white;
   border-radius: 12px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  max-width: 600px;
+  max-width: 700px;
   width: 90%;
   max-height: 90vh;
   overflow: auto;
@@ -396,12 +387,48 @@ const ModalBody = styled.div`
   padding: 24px;
 `;
 
-const ModalFooter = styled.div`
-  padding: 20px 24px;
-  border-top: 1px solid #E6EBF1;
+const InfoBox = styled.div`
+  background: #F8FAFC;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+`;
+
+const InfoRow = styled.div`
   display: flex;
-  justify-content: flex-end;
-  gap: 12px;
+  align-items: center;
+  padding: 6px 0;
+
+  &:not(:last-child) {
+    border-bottom: 1px solid #F3F4F6;
+  }
+`;
+
+const InfoLabel = styled.span`
+  font-size: 13px;
+  font-weight: 600;
+  color: #6B7C93;
+  width: 100px;
+  flex-shrink: 0;
+`;
+
+const InfoValue = styled.span`
+  font-size: 14px;
+  color: #0A2540;
+`;
+
+const DetailDescription = styled.div`
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.6;
+  padding: 16px;
+  background: #F8FAFC;
+  border-radius: 8px;
+  border-left: 3px solid #635BFF;
+  margin-bottom: 20px;
+  white-space: pre-wrap;
+  word-break: break-word;
 `;
 
 const FormGroup = styled.div`
@@ -416,39 +443,24 @@ const FormLabel = styled.label`
   margin-bottom: 8px;
 `;
 
-const FormTextArea = styled.textarea`
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  font-size: 14px;
-  resize: vertical;
-  min-height: 100px;
-  transition: all 0.15s;
-  font-family: inherit;
-  box-sizing: border-box;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
+const StatusRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
 `;
 
 const OperationInquiryPage: React.FC = () => {
+  const { user } = useAuth();
   const [tickets, setTickets] = useState<OperationTicket[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
   const [selectedTicket, setSelectedTicket] = useState<OperationTicket | null>(null);
-  const [showReplyModal, setShowReplyModal] = useState(false);
-  const [showNoteModal, setShowNoteModal] = useState(false);
-  const [replyMessage, setReplyMessage] = useState('');
-  const [internalNote, setInternalNote] = useState('');
+  const [detailStatus, setDetailStatus] = useState('');
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, { total_comments: number; unread_count: number }>>({});
 
-  // Get current user info (for demo, using hardcoded manager ID)
-  const currentManagerId = localStorage.getItem('userId') || '2';
-  // const currentManagerName = localStorage.getItem('userName') || 'Manager';
+  const currentUserId = user?.id;
+  const currentUserRole = user?.role || 'Brand Manager';
 
   useEffect(() => {
     fetchTickets();
@@ -459,14 +471,34 @@ const OperationInquiryPage: React.FC = () => {
 
   const fetchTickets = async () => {
     try {
-      const response = await fetch(`/api/operation-tickets?userId=${currentManagerId}&userRole=Manager`);
+      const response = await fetch(`/api/operation-tickets?userId=${currentUserId}&userRole=${currentUserRole}`);
       if (response.ok) {
         const data = await response.json();
         setTickets(data);
+        fetchUnreadCounts(data);
       }
     } catch (error) {
       console.error('Error fetching operation tickets:', error);
     }
+  };
+
+  const fetchUnreadCounts = async (ticketList: OperationTicket[]) => {
+    if (ticketList.length === 0) return;
+    try {
+      const token = localStorage.getItem('auth_token');
+      const ids = ticketList.map(t => t.id).join(',');
+      const res = await fetch(`/api/comments/unread-counts?entity_type=operation_ticket&entity_ids=${ids}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          const map: Record<string, { total_comments: number; unread_count: number }> = {};
+          data.data.forEach((item: any) => { map[item.entity_id] = { total_comments: Number(item.total_comments), unread_count: Number(item.unread_count) }; });
+          setUnreadCounts(map);
+        }
+      }
+    } catch (e) { console.error('Error fetching unread counts:', e); }
   };
 
   const filteredTickets = tickets.filter(ticket => {
@@ -487,78 +519,25 @@ const OperationInquiryPage: React.FC = () => {
     return new Date(dateString).toLocaleString('en-MY');
   };
 
-  const formatDuration = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-  };
-
-  const handleReply = (ticket: OperationTicket) => {
+  const handleCardClick = (ticket: OperationTicket) => {
     setSelectedTicket(ticket);
-    setShowReplyModal(true);
+    setDetailStatus(ticket.status);
+    window.dispatchEvent(new Event('refreshBadgeCounts'));
   };
 
-  const handleSendReply = async () => {
-    if (!selectedTicket || !replyMessage.trim()) return;
-
-    try {
-      const response = await fetch(`/api/operation-tickets/${selectedTicket.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          response: replyMessage,
-          status: 'resolved'
-        })
-      });
-
-      if (response.ok) {
-        await fetchTickets();
-        setReplyMessage('');
-        setShowReplyModal(false);
-      }
-    } catch (error) {
-      console.error('Error sending reply:', error);
-    }
-  };
-
-  const handleAddNote = (ticket: OperationTicket) => {
-    setSelectedTicket(ticket);
-    setInternalNote(ticket.internalNotes || '');
-    setShowNoteModal(true);
-  };
-
-  const handleSaveNote = async () => {
+  const handleUpdateStatus = async () => {
     if (!selectedTicket) return;
 
     try {
       const response = await fetch(`/api/operation-tickets/${selectedTicket.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          internalNotes: internalNote
-        })
+        body: JSON.stringify({ status: detailStatus })
       });
 
       if (response.ok) {
         await fetchTickets();
-        setInternalNote('');
-        setShowNoteModal(false);
-      }
-    } catch (error) {
-      console.error('Error saving note:', error);
-    }
-  };
-
-  const handleUpdateStatus = async (ticket: OperationTicket, newStatus: string) => {
-    try {
-      const response = await fetch(`/api/operation-tickets/${ticket.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
-      });
-
-      if (response.ok) {
-        await fetchTickets();
+        setSelectedTicket(prev => prev ? { ...prev, status: detailStatus as OperationTicket['status'] } : null);
       }
     } catch (error) {
       console.error('Error updating status:', error);
@@ -566,7 +545,7 @@ const OperationInquiryPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Operation Inquiry</Title>
@@ -616,186 +595,117 @@ const OperationInquiryPage: React.FC = () => {
 
           <TicketsGrid>
             {filteredTickets.map(ticket => (
-              <TicketCard key={ticket.id}>
+              <TicketCard key={ticket.id} onClick={() => handleCardClick(ticket)}>
                 <TicketHeader>
                   <TicketInfo>
                     <TicketNumber>{ticket.ticketNumber}</TicketNumber>
                     <TicketSubject>{ticket.subject}</TicketSubject>
                     <RequesterInfo>
-                      {ticket.requesterName} ({ticket.requesterRole}) • {ticket.restaurantName}
+                      {ticket.requesterName} ({ticket.requesterRole}) - {ticket.restaurantName}
                     </RequesterInfo>
                   </TicketInfo>
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <TicketBadges>
                     <StatusBadge status={ticket.status}>{ticket.status}</StatusBadge>
                     <PriorityBadge priority={ticket.priority}>{ticket.priority}</PriorityBadge>
-                  </div>
+                  </TicketBadges>
                 </TicketHeader>
 
                 <TicketDescription>{ticket.description}</TicketDescription>
 
-                {ticket.response && (
-                  <div style={{
-                    marginTop: '16px',
-                    padding: '12px',
-                    backgroundColor: '#F0F9FF',
-                    borderRadius: '8px',
-                    border: '1px solid #BAE6FD'
-                  }}>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#0369A1', marginBottom: '6px' }}>
-                      Manager Response • {ticket.resolvedAt && formatDateTime(ticket.resolvedAt)}
-                    </div>
-                    <div style={{ fontSize: '14px', color: '#374151' }}>
-                      {ticket.response}
-                    </div>
+                <TicketMeta>
+                  <div>
+                    <MetaLabel>Created </MetaLabel>
+                    <MetaValue>{formatDateTime(ticket.createdAt)}</MetaValue>
                   </div>
-                )}
-
-                {ticket.internalNotes && (
-                  <div style={{
-                    marginTop: '16px',
-                    padding: '12px',
-                    backgroundColor: '#FEF3C7',
-                    borderRadius: '8px',
-                    border: '1px solid #FCD34D'
-                  }}>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#92400E', marginBottom: '6px' }}>
-                      Internal Notes (Not visible to requester)
-                    </div>
-                    <div style={{ fontSize: '14px', color: '#78350F' }}>
-                      {ticket.internalNotes}
-                    </div>
-                  </div>
-                )}
-
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginTop: '16px',
-                  paddingTop: '16px',
-                  borderTop: '1px solid #F3F4F6',
-                  fontSize: '12px',
-                  color: '#6B7280'
-                }}>
-                  <span>Created: {formatDateTime(ticket.createdAt)}</span>
-                  {ticket.responseTime > 0 && (
-                    <span>Response Time: {formatDuration(ticket.responseTime)}</span>
+                  {unreadCounts[ticket.id] && (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      Comments {unreadCounts[ticket.id].total_comments}
+                      {unreadCounts[ticket.id].unread_count > 0 && (
+                        <span style={{ background: '#EF4444', color: 'white', borderRadius: '10px', padding: '1px 7px', fontSize: '11px', fontWeight: 600 }}>
+                          {unreadCounts[ticket.id].unread_count} new
+                        </span>
+                      )}
+                    </span>
                   )}
-                </div>
-
-                <ActionButtons>
-                  {ticket.status === 'open' && (
-                    <ActionButton variant="primary" onClick={() => handleUpdateStatus(ticket, 'in-progress')}>
-                      Start Working
-                    </ActionButton>
-                  )}
-                  {ticket.status !== 'closed' && ticket.status !== 'resolved' && (
-                    <ActionButton variant="primary" onClick={() => handleReply(ticket)}>
-                      Reply
-                    </ActionButton>
-                  )}
-                  <ActionButton onClick={() => handleAddNote(ticket)}>
-                    {ticket.internalNotes ? 'Edit Note' : 'Add Note'}
-                  </ActionButton>
-                  {ticket.status === 'resolved' && (
-                    <ActionButton onClick={() => handleUpdateStatus(ticket, 'closed')}>
-                      Close Inquiry
-                    </ActionButton>
-                  )}
-                </ActionButtons>
+                </TicketMeta>
               </TicketCard>
             ))}
           </TicketsGrid>
 
-          {/* Reply Modal */}
-          {showReplyModal && selectedTicket && (
-            <Modal onClick={() => setShowReplyModal(false)}>
+          {/* Detail Modal */}
+          {selectedTicket && (
+            <Modal onClick={() => setSelectedTicket(null)}>
               <ModalContent onClick={(e) => e.stopPropagation()}>
                 <ModalHeader>
-                  <ModalTitle>Reply to {selectedTicket.ticketNumber}</ModalTitle>
-                  <CloseButton onClick={() => setShowReplyModal(false)}>×</CloseButton>
+                  <ModalTitle>{selectedTicket.ticketNumber}</ModalTitle>
+                  <CloseButton onClick={() => setSelectedTicket(null)}>×</CloseButton>
                 </ModalHeader>
                 <ModalBody>
-                  <div style={{ marginBottom: '20px' }}>
-                    <div style={{ padding: '12px', backgroundColor: '#F8FAFC', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
-                      <div style={{ fontWeight: '600', color: '#0A2540', marginBottom: '4px' }}>
-                        {selectedTicket.subject}
-                      </div>
-                      <div style={{ fontSize: '14px', color: '#6B7280', marginBottom: '8px' }}>
-                        From: {selectedTicket.requesterName} ({selectedTicket.requesterRole})
-                      </div>
-                      <div style={{ color: '#374151', lineHeight: '1.5' }}>
-                        {selectedTicket.description}
-                      </div>
-                    </div>
-                  </div>
+                  <InfoBox>
+                    <InfoRow>
+                      <InfoLabel>Subject</InfoLabel>
+                      <InfoValue>{selectedTicket.subject}</InfoValue>
+                    </InfoRow>
+                    <InfoRow>
+                      <InfoLabel>Restaurant</InfoLabel>
+                      <InfoValue>{selectedTicket.restaurantName}</InfoValue>
+                    </InfoRow>
+                    <InfoRow>
+                      <InfoLabel>From</InfoLabel>
+                      <InfoValue>{selectedTicket.requesterName} ({selectedTicket.requesterRole})</InfoValue>
+                    </InfoRow>
+                    <InfoRow>
+                      <InfoLabel>Priority</InfoLabel>
+                      <InfoValue><PriorityBadge priority={selectedTicket.priority}>{selectedTicket.priority}</PriorityBadge></InfoValue>
+                    </InfoRow>
+                    <InfoRow>
+                      <InfoLabel>Category</InfoLabel>
+                      <InfoValue>{selectedTicket.category}</InfoValue>
+                    </InfoRow>
+                    <InfoRow>
+                      <InfoLabel>Created</InfoLabel>
+                      <InfoValue>{formatDateTime(selectedTicket.createdAt)}</InfoValue>
+                    </InfoRow>
+                  </InfoBox>
+
+                  <DetailDescription>{selectedTicket.description}</DetailDescription>
+
+                  {selectedTicket?.attachments && selectedTicket.attachments.length > 0 && (
+                    <AttachmentList attachments={selectedTicket.attachments} />
+                  )}
 
                   <FormGroup>
-                    <FormLabel>Your Reply</FormLabel>
-                    <FormTextArea
-                      value={replyMessage}
-                      onChange={(e) => setReplyMessage(e.target.value)}
-                      placeholder="Type your reply to the staff member..."
-                      style={{ minHeight: '120px' }}
-                    />
+                    <FormLabel>Status</FormLabel>
+                    <StatusRow>
+                      <Select value={detailStatus} onChange={(e) => setDetailStatus(e.target.value)}>
+                        <option value="open">Open</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="resolved">Resolved</option>
+                        <option value="closed">Closed</option>
+                      </Select>
+                      <Button
+                        variant="primary"
+                        onClick={handleUpdateStatus}
+                        disabled={detailStatus === selectedTicket.status}
+                      >
+                        Save
+                      </Button>
+                    </StatusRow>
                   </FormGroup>
-                </ModalBody>
-                <ModalFooter>
-                  <Button variant="secondary" onClick={() => setShowReplyModal(false)}>
-                    Cancel
-                  </Button>
-                  <Button variant="primary" onClick={handleSendReply} disabled={!replyMessage.trim()}>
-                    Send Reply
-                  </Button>
-                </ModalFooter>
-              </ModalContent>
-            </Modal>
-          )}
 
-          {/* Note Modal */}
-          {showNoteModal && selectedTicket && (
-            <Modal onClick={() => setShowNoteModal(false)}>
-              <ModalContent onClick={(e) => e.stopPropagation()}>
-                <ModalHeader>
-                  <ModalTitle>Internal Note for {selectedTicket.ticketNumber}</ModalTitle>
-                  <CloseButton onClick={() => setShowNoteModal(false)}>×</CloseButton>
-                </ModalHeader>
-                <ModalBody>
-                  <div style={{ marginBottom: '20px' }}>
-                    <div style={{ padding: '12px', backgroundColor: '#F8FAFC', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
-                      <div style={{ fontWeight: '600', color: '#0A2540', marginBottom: '4px' }}>
-                        {selectedTicket.subject}
-                      </div>
-                      <div style={{ fontSize: '14px', color: '#6B7280' }}>
-                        From: {selectedTicket.requesterName} ({selectedTicket.requesterRole})
-                      </div>
-                    </div>
-                  </div>
-
-                  <FormGroup>
-                    <FormLabel>Internal Note (Not visible to requester)</FormLabel>
-                    <FormTextArea
-                      value={internalNote}
-                      onChange={(e) => setInternalNote(e.target.value)}
-                      placeholder="Add internal notes about this inquiry..."
-                      style={{ minHeight: '120px' }}
-                    />
-                  </FormGroup>
+                  <CommentSection
+                    entityType="operation_ticket"
+                    entityId={String(selectedTicket.id)}
+                    currentUserId={user?.id}
+                    onMarkRead={() => setUnreadCounts(prev => { const next = { ...prev }; const key = String(selectedTicket.id); if (next[key]) next[key] = { ...next[key], unread_count: 0 }; return next; })}
+                  />
                 </ModalBody>
-                <ModalFooter>
-                  <Button variant="secondary" onClick={() => setShowNoteModal(false)}>
-                    Cancel
-                  </Button>
-                  <Button variant="primary" onClick={handleSaveNote}>
-                    Save Note
-                  </Button>
-                </ModalFooter>
               </ModalContent>
             </Modal>
           )}
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

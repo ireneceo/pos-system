@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useSearchParams } from 'react-router-dom';
-import MainLayout from '../../components/Layout/MainLayout';
 import { Container, Header, Title, Content, TabContainer, Tab } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
 import BrandProductsTab from './BrandProductsTab';
@@ -79,7 +78,7 @@ const BrandProductManagementPage: React.FC = () => {
 
   if (loading) {
     return (
-      <MainLayout>
+      <>
         <Container>
           <Header>
             <Title>Product Management</Title>
@@ -90,12 +89,12 @@ const BrandProductManagementPage: React.FC = () => {
             </div>
           </Content>
         </Container>
-      </MainLayout>
+      </>
     );
   }
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Product Management</Title>
@@ -138,7 +137,7 @@ const BrandProductManagementPage: React.FC = () => {
           </div>
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

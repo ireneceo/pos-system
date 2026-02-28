@@ -11,6 +11,7 @@ import { PaymentStatusProvider } from './contexts/PaymentStatusContext';
 import { SiteSettingsProvider } from './contexts/SiteSettingsContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ScrollToTop from './components/ScrollToTop';
+import PosLayout from './components/Layout/PosLayout';
 // Landing Pages (keep static - first load)
 import HomePage from './pages/Landing/HomePage';
 import AboutPage from './pages/Landing/AboutPage';
@@ -131,6 +132,9 @@ const OwnerRestaurantsPage = React.lazy(() => import('./pages/Owner/OwnerRestaur
 const OwnerPerformancePage = React.lazy(() => import('./pages/Owner/OwnerPerformance'));
 const OwnerReportsPage = React.lazy(() => import('./pages/Owner/OwnerReportsPage'));
 const OwnerInvoicesPage = React.lazy(() => import('./pages/Owner/OwnerInvoicesPage'));
+const OwnerNoticesPage = React.lazy(() => import('./pages/Owner/NoticesPage'));
+const OwnerSystemInquiryPage = React.lazy(() => import('./pages/Owner/OwnerSystemInquiryPage'));
+const OwnerOperationInquiryPage = React.lazy(() => import('./pages/Owner/OwnerOperationInquiryPage'));
 
 // Manager Role Specific Pages
 const FoodcourtManagement = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtManagement'));
@@ -158,6 +162,12 @@ const BrandOperationInquiryPage = React.lazy(() => import('./pages/Brand/Operati
 // Foodcourt General Inquiry Pages
 const FoodcourtSystemInquiryPage = React.lazy(() => import('./pages/Foodcourt/SystemInquiryPage'));
 const FoodcourtOperationInquiryPage = React.lazy(() => import('./pages/Foodcourt/OperationInquiryPage'));
+
+// Notices Pages
+const AdminNoticesPage = React.lazy(() => import('./pages/Admin/NoticesPage'));
+const BrandNoticesPage = React.lazy(() => import('./pages/Brand/NoticesPage'));
+const FoodcourtNoticesPage = React.lazy(() => import('./pages/Foodcourt/NoticesPage'));
+const RestaurantNoticesPage = React.lazy(() => import('./pages/Restaurant/NoticesPage'));
 
 // POS Root redirect component (for authenticated users)
 const PosRootRedirect: React.FC = () => {
@@ -296,7 +306,7 @@ function App() {
                         <ScrollToTop />
                       <Suspense fallback={<PageLoader />}>
                       <Routes>
-                      {/* Landing Pages (Public) */}
+                      {/* ===== PUBLIC ROUTES (No MainLayout) ===== */}
                       <Route path="/" element={<HomePage />} />
                       <Route path="/about" element={<AboutPage />} />
                       <Route path="/features" element={<FeaturesPage />} />
@@ -311,12 +321,32 @@ function App() {
                       <Route path="/blog" element={<BlogPage />} />
                       <Route path="/blog/:slug" element={<BlogPostPage />} />
 
-                      {/* POS Login */}
+                      {/* Login */}
                       <Route path="/pos" element={<LoginPage />} />
                       <Route path="/login" element={<LoginPage />} />
 
-                      {/* Mobile Routes (QR Order - Outside POS) */}
+                      {/* Mobile */}
                       <Route path="/mobile/*" element={<MobileApp />} />
+
+                      {/* ===== FULL-SCREEN ROUTES (No MainLayout) ===== */}
+                      <Route path="/restaurant/:restaurantId/pos-terminal" element={
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
+                          <POSTerminalPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/restaurant/:restaurantId/kitchen" element={
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
+                          <KitchenDisplayPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/restaurant/:restaurantId/display" element={
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
+                          <CustomerDisplayPage />
+                        </ProtectedRoute>
+                      } />
+
+                      {/* ===== POS LAYOUT ROUTES (MainLayout mounted once) ===== */}
+                      <Route element={<PosLayout />}>
 
                       {/* System Admin Routes */}
                       <Route path="/pos/admin/dashboard" element={
@@ -367,6 +397,11 @@ function App() {
                       <Route path="/pos/admin/contact-inquiries" element={
                         <ProtectedRoute requiredRole={['System Admin']}>
                           <ContactInquiriesPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/admin/notices" element={
+                        <ProtectedRoute requiredRole={['System Admin']}>
+                          <AdminNoticesPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/admin/system-config" element={
@@ -453,6 +488,21 @@ function App() {
                           <OwnerInvoicesPage />
                         </ProtectedRoute>
                       } />
+                      <Route path="/pos/owner/notices" element={
+                        <ProtectedRoute requiredRole={['Restaurant Owner']}>
+                          <OwnerNoticesPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/owner/system-inquiry" element={
+                        <ProtectedRoute requiredRole={['Restaurant Owner']}>
+                          <OwnerSystemInquiryPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/owner/operation-inquiry" element={
+                        <ProtectedRoute requiredRole={['Restaurant Owner']}>
+                          <OwnerOperationInquiryPage />
+                        </ProtectedRoute>
+                      } />
 
                       {/* Foodcourt General Routes */}
                       <Route path="/pos/foodcourt/general/dashboard" element={
@@ -483,6 +533,11 @@ function App() {
                       <Route path="/pos/foodcourt/general/operation-inquiry" element={
                         <ProtectedRoute requiredRole={['Foodcourt General']}>
                           <FoodcourtOperationInquiryPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/foodcourt/general/notices" element={
+                        <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
+                          <FoodcourtNoticesPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/foodcourt/invoices" element={
@@ -535,6 +590,11 @@ function App() {
                       <Route path="/pos/brand/general/operation-inquiry" element={
                         <ProtectedRoute requiredRole={['Brand General']}>
                           <BrandOperationInquiryPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/brand/general/notices" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
+                          <BrandNoticesPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/brand/invoices" element={
@@ -644,7 +704,7 @@ function App() {
                         </ProtectedRoute>
                       } />
 
-                      {/* Manager Routes - 모든 매니저 역할이 접근 가능 */}
+                      {/* Manager Routes */}
                       <Route path="/pos/manager/dashboard" element={
                         <ProtectedRoute requiredRole={['Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager']}>
                           <ManagerDashboard />
@@ -711,10 +771,20 @@ function App() {
                         </ProtectedRoute>
                       } />
 
-                      {/* Legacy /pos/restaurant/* routes - redirect to new /restaurant/:restaurantId/* structure */}
+                      {/* Legacy routes */}
                       <Route path="/pos/restaurant/*" element={<LegacyRestaurantRedirect />} />
+                      <Route path="/pos/dashboard" element={
+                        <ProtectedRoute>
+                          <PosRootRedirect />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/basic" element={
+                        <ProtectedRoute>
+                          <BasicDashboard />
+                        </ProtectedRoute>
+                      } />
 
-                      {/* Restaurant Admin Routes - NEW STRUCTURE with restaurantId in URL */}
+                      {/* Restaurant Admin Routes */}
                       <Route path="/restaurant/:restaurantId/dashboard" element={
                         <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager']}>
                           <RestaurantDashboard />
@@ -723,21 +793,6 @@ function App() {
                       <Route path="/restaurant/:restaurantId/live-orders" element={
                         <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
                           <LiveOrdersPage />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/restaurant/:restaurantId/pos-terminal" element={
-                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
-                          <POSTerminalPage />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/restaurant/:restaurantId/kitchen" element={
-                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
-                          <KitchenDisplayPage />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/restaurant/:restaurantId/display" element={
-                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
-                          <CustomerDisplayPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/menu" element={
@@ -800,21 +855,14 @@ function App() {
                           <RestaurantOperationInquiryPage />
                         </ProtectedRoute>
                       } />
+                      <Route path="/restaurant/:restaurantId/notices" element={
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
+                          <RestaurantNoticesPage />
+                        </ProtectedRoute>
+                      } />
                       <Route path="/restaurant/:restaurantId/settings" element={
                         <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin', 'Staff']}>
                           <SettingsPage />
-                        </ProtectedRoute>
-                      } />
-
-                      {/* Legacy POS Routes - Redirect to new structure */}
-                      <Route path="/pos/dashboard" element={
-                        <ProtectedRoute>
-                          <PosRootRedirect />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/pos/basic" element={
-                        <ProtectedRoute>
-                          <BasicDashboard />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/company-information" element={
@@ -842,8 +890,6 @@ function App() {
                           <NotificationSettingsPage />
                         </ProtectedRoute>
                       } />
-
-                      {/* Inventory Management Routes */}
                       <Route path="/restaurant/:restaurantId/inventory" element={
                         <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin', 'Staff']}>
                           <InventoryPage />
@@ -864,13 +910,13 @@ function App() {
                           <StockTakePage />
                         </ProtectedRoute>
                       } />
-
-                      {/* Product Recipe Management */}
                       <Route path="/restaurant/:restaurantId/product-recipes" element={
                         <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin', 'Staff']}>
                           <ProductRecipePage />
                         </ProtectedRoute>
                       } />
+
+                      </Route>{/* End PosLayout */}
                     </Routes>
                     </Suspense>
                       </PaymentStatusProvider>

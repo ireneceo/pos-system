@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { StatsGrid, StatValue, StatLabel } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
+import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
+import AttachmentList from '../../components/Common/AttachmentList';
+import CommentSection from '../../components/Common/CommentSection';
 
 interface SupportTicket {
   id: string;
@@ -28,6 +30,7 @@ interface SupportTicket {
   replyMessage?: string;
   repliedBy?: string;
   repliedAt?: string;
+  attachments?: any[];
 }
 
 
@@ -403,19 +406,20 @@ const Modal = styled.div`
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   z-index: 1000;
+  overflow-y: auto;
+  padding: 40px 0;
 `;
 
 const ModalContent = styled.div`
   background: white;
   border-radius: 12px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  max-width: 600px;
+  max-width: 800px;
   width: 90%;
-  max-height: 90vh;
-  overflow: auto;
+  flex-shrink: 0;
 `;
 
 const ModalHeader = styled.div`
@@ -493,6 +497,7 @@ const FormInput = styled.input`
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.15s;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -510,6 +515,7 @@ const FormSelect = styled.select`
   background: white;
   transition: all 0.15s;
   cursor: pointer;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -528,6 +534,7 @@ const FormTextArea = styled.textarea`
   min-height: 100px;
   transition: all 0.15s;
   font-family: inherit;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -553,14 +560,33 @@ const SupportTicketsPage: React.FC = () => {
     priority: 'medium' as SupportTicket['priority'],
     category: 'general' as SupportTicket['category']
   });
+  const [newAttachments, setNewAttachments] = useState<AttachmentFile[]>([]);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, { total_comments: number; unread_count: number }>>({});
 
   // 현재 사용자의 레스토랑 ID (실제로는 user context에서 가져올 것)
   const currentRestaurantId = user?.restaurantId || 2;
   const currentRestaurantName = 'IOI Mall Food Court'; // 실제로는 user context에서 가져올 것
 
+  const fetchUnreadCounts = async (ticketList: SupportTicket[]) => {
+    if (ticketList.length === 0) return;
+    try {
+      const token = localStorage.getItem('auth_token');
+      const ids = ticketList.map(t => t.id).join(',');
+      const res = await fetch(`/api/comments/unread-counts?entity_type=support_ticket&entity_ids=${ids}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          const map: Record<string, { total_comments: number; unread_count: number }> = {};
+          data.data.forEach((item: any) => { map[item.entity_id] = { total_comments: Number(item.total_comments), unread_count: Number(item.unread_count) }; });
+          setUnreadCounts(map);
+        }
+      }
+    } catch (e) { console.error('Error fetching unread counts:', e); }
+  };
+
   useEffect(() => {
-    // What and Why: API에서 모든 티켓 불러오기
-    // - 새 응답 형식 { success: true, data: [...] } 처리
     const fetchTickets = async () => {
       try {
         const response = await fetch('/api/support-tickets');
@@ -568,6 +594,7 @@ const SupportTicketsPage: React.FC = () => {
           const result = await response.json();
           const ticketsData = result.data || result;
           setTickets(ticketsData);
+          fetchUnreadCounts(ticketsData);
         }
       } catch (error) {
         // 에러 처리
@@ -675,7 +702,8 @@ const SupportTicketsPage: React.FC = () => {
         description: newTicket.description,
         status: 'open',
         priority: newTicket.priority,
-        category: newTicket.category
+        category: newTicket.category,
+        attachments: newAttachments.length > 0 ? newAttachments : undefined
       };
 
       const response = await fetch('/api/support-tickets', {
@@ -685,19 +713,19 @@ const SupportTicketsPage: React.FC = () => {
       });
 
       if (response.ok) {
-        // 티켓 생성 후 다시 전체 티켓 목록을 가져와서 동기화
         const refreshResponse = await fetch('/api/support-tickets');
         if (refreshResponse.ok) {
           const result = await refreshResponse.json();
           const ticketsData = result.data || result;
           setTickets(ticketsData);
+          fetchUnreadCounts(ticketsData);
         }
         setShowCreateTicketModal(false);
       } else {
-        alert('Failed to create support ticket. Please try again.');
+        return;
       }
     } catch (error) {
-      alert('Error creating support ticket. Please try again.');
+      return;
     }
     setNewTicket({
       subject: '',
@@ -705,6 +733,7 @@ const SupportTicketsPage: React.FC = () => {
       priority: 'medium',
       category: 'general'
     });
+    setNewAttachments([]);
   };
 
   const handleViewTicket = (ticket: SupportTicket) => {
@@ -713,7 +742,7 @@ const SupportTicketsPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Support Tickets</Title>
@@ -858,6 +887,18 @@ const SupportTicketsPage: React.FC = () => {
                       <MetaValue>{ticket.assignedTo}</MetaValue>
                     </MetaItem>
                   )}
+                  {unreadCounts[ticket.id] && (
+                    <MetaItem>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        Comments {unreadCounts[ticket.id].total_comments}
+                        {unreadCounts[ticket.id].unread_count > 0 && (
+                          <span style={{ background: '#EF4444', color: 'white', borderRadius: '10px', padding: '1px 7px', fontSize: '11px', fontWeight: 600 }}>
+                            {unreadCounts[ticket.id].unread_count} new
+                          </span>
+                        )}
+                      </span>
+                    </MetaItem>
+                  )}
                 </TicketMeta>
 
                 <ActionButtons>
@@ -896,6 +937,14 @@ const SupportTicketsPage: React.FC = () => {
                       required
                     />
                   </FormGroup>
+                  <div style={{ marginBottom: '20px' }}>
+                    <FormLabel>Attachments</FormLabel>
+                    <FileUpload
+                      files={newAttachments}
+                      onChange={setNewAttachments}
+                      maxFiles={5}
+                    />
+                  </div>
                   <FormRow>
                     <FormGroup>
                       <FormLabel>Priority</FormLabel>
@@ -1022,6 +1071,10 @@ const SupportTicketsPage: React.FC = () => {
                       </div>
                     </div>
 
+                    {selectedTicket?.attachments && selectedTicket.attachments.length > 0 && (
+                      <AttachmentList attachments={selectedTicket.attachments} />
+                    )}
+
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                       <div>
                         <FormLabel>Created At</FormLabel>
@@ -1046,6 +1099,12 @@ const SupportTicketsPage: React.FC = () => {
                       </div>
                     )}
 
+                    <CommentSection
+                      entityType="support_ticket"
+                      entityId={selectedTicket.id}
+                      currentUserId={user?.id}
+                      onMarkRead={() => setUnreadCounts(prev => { const next = { ...prev }; if (next[selectedTicket.id]) next[selectedTicket.id] = { ...next[selectedTicket.id], unread_count: 0 }; return next; })}
+                    />
                   </div>
                 </ModalBody>
                 <ModalFooter>
@@ -1058,7 +1117,7 @@ const SupportTicketsPage: React.FC = () => {
           )}
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

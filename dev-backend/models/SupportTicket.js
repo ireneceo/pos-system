@@ -58,49 +58,15 @@ SupportTicket.init({
     type: DataTypes.ENUM('general', 'technical', 'billing', 'feature-request', 'bug-report'),
     defaultValue: 'general'
   },
-  assignedTo: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  response: {
-    type: DataTypes.TEXT,
-    allowNull: true
-  },
-  responseTime: {
-    type: DataTypes.INTEGER,
-    defaultValue: 0,
-    comment: 'Response time in minutes'
-  },
-  resolutionTime: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    comment: 'Resolution time in minutes'
-  },
-  resolvedAt: {
-    type: DataTypes.DATE,
-    allowNull: true
-  },
-  replyMessage: {
-    type: DataTypes.TEXT,
-    allowNull: true
-  },
-  repliedBy: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  repliedAt: {
-    type: DataTypes.DATE,
-    allowNull: true
-  },
-  notes: {
+  attachments: {
     type: DataTypes.TEXT,
     allowNull: true,
     get() {
-      const value = this.getDataValue('notes');
-      return value ? JSON.parse(value) : [];
+      const v = this.getDataValue('attachments');
+      return v ? JSON.parse(v) : [];
     },
-    set(value) {
-      this.setDataValue('notes', JSON.stringify(value));
+    set(v) {
+      this.setDataValue('attachments', v && v.length > 0 ? JSON.stringify(v) : null);
     }
   }
 }, {

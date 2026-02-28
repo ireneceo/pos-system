@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import CommentSection from '../../components/Common/CommentSection';
+import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
+import AttachmentList from '../../components/Common/AttachmentList';
 
 interface SupportTicket {
   id: string;
@@ -18,15 +20,10 @@ interface SupportTicket {
   status: 'open' | 'in-progress' | 'resolved' | 'closed';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   category: 'technical' | 'billing' | 'feature-request' | 'bug-report' | 'general';
-  assignedTo?: string;
   createdAt: string;
   updatedAt: string;
   resolvedAt?: string;
-  responseTime: number;
-  resolutionTime?: number;
-  replyMessage?: string;
-  repliedBy?: string;
-  repliedAt?: string;
+  attachments?: any[];
 }
 
 
@@ -153,7 +150,12 @@ const StatLabel = styled.div`
 
 const TicketsGrid = styled.div`
   display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 20px;
+
+  @media (max-width: 968px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const TicketCard = styled.div`
@@ -162,6 +164,8 @@ const TicketCard = styled.div`
   padding: 24px;
   border: 1px solid #E6EBF1;
   transition: all 0.2s;
+  overflow: hidden;
+  cursor: pointer;
 
   &:hover {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
@@ -194,6 +198,7 @@ const TicketSubject = styled.div`
   color: #374151;
   margin-bottom: 8px;
   line-height: 1.4;
+  word-break: break-word;
 `;
 
 const CustomerInfo = styled.div`
@@ -297,6 +302,7 @@ const TicketDescription = styled.div`
   background: #F8FAFC;
   border-radius: 8px;
   border-left: 3px solid #E6EBF1;
+  word-break: break-word;
 `;
 
 const TicketMeta = styled.div`
@@ -327,50 +333,6 @@ const MetaValue = styled.span`
   color: #374151;
 `;
 
-const ActionButtons = styled.div`
-  display: flex;
-  gap: 8px;
-  margin-top: 16px;
-  flex-wrap: wrap;
-`;
-
-const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid;
-
-  ${props => props.variant === 'primary' ? `
-    background: #635BFF;
-    color: white;
-    border-color: #635BFF;
-
-    &:hover {
-      background: #5A51E6;
-    }
-  ` : props.variant === 'danger' ? `
-    background: transparent;
-    color: #DC2626;
-    border-color: #FCA5A5;
-
-    &:hover {
-      background: #FEE2E2;
-    }
-  ` : `
-    background: transparent;
-    color: #6B7280;
-    border-color: #E6EBF1;
-
-    &:hover {
-      background: #F8FAFC;
-      color: #0A2540;
-    }
-  `}
-`;
-
 // Modal components (using same styles as Admin)
 const Modal = styled.div`
   position: fixed;
@@ -380,19 +342,20 @@ const Modal = styled.div`
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   z-index: 1000;
+  overflow-y: auto;
+  padding: 40px 0;
 `;
 
 const ModalContent = styled.div`
   background: white;
   border-radius: 12px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  max-width: 600px;
+  max-width: 800px;
   width: 90%;
-  max-height: 90vh;
-  overflow: auto;
+  flex-shrink: 0;
 `;
 
 const ModalHeader = styled.div`
@@ -524,29 +487,19 @@ const SupportTicketsPage: React.FC = () => {
   const [filterPriority, setFilterPriority] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterRole, setFilterRole] = useState('all');
-  const [filterRestaurant, setFilterRestaurant] = useState('all');
   const [showCreateTicketModal, setShowCreateTicketModal] = useState(false);
   const [showViewTicketModal, setShowViewTicketModal] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
+  const [detailStatus, setDetailStatus] = useState('');
   const [newTicket, setNewTicket] = useState({
     subject: '',
     description: '',
     priority: 'medium' as SupportTicket['priority'],
     category: 'general' as SupportTicket['category']
   });
-
-  // 매니저는 모든 레스토랑의 티켓을 볼 수 있음
-  const restaurants = [
-    { id: 'rest-001', name: 'Sunway Food Court' },
-    { id: 'rest-002', name: 'IOI Mall Food Court' },
-    { id: 'rest-003', name: 'Pavilion Food Hub' },
-    { id: 'rest-004', name: 'Mid Valley Dining' },
-    { id: 'rest-005', name: 'Single Restaurant' }
-  ];
+  const [newAttachments, setNewAttachments] = useState<AttachmentFile[]>([]);
 
   useEffect(() => {
-    // What and Why: API에서 티켓 데이터 불러오기
-    // - 새 응답 형식 { success: true, data: [...] } 처리
     const fetchTickets = async () => {
       try {
         const response = await fetch('/api/support-tickets');
@@ -556,13 +509,12 @@ const SupportTicketsPage: React.FC = () => {
           setTickets(ticketsData);
         }
       } catch (error) {
-        // 에러 처리
+        // error handling
       }
     };
 
     fetchTickets();
 
-    // 10초마다 자동으로 티켓 새로고침
     const interval = setInterval(fetchTickets, 10000);
 
     return () => clearInterval(interval);
@@ -577,24 +529,16 @@ const SupportTicketsPage: React.FC = () => {
     const matchesPriority = filterPriority === 'all' || ticket.priority === filterPriority;
     const matchesCategory = filterCategory === 'all' || ticket.category === filterCategory;
     const matchesRole = filterRole === 'all' || ticket.customerRole === filterRole;
-    const matchesRestaurant = filterRestaurant === 'all' || ticket.restaurantId === filterRestaurant;
-    return matchesSearch && matchesStatus && matchesPriority && matchesCategory && matchesRole && matchesRestaurant;
+    return matchesSearch && matchesStatus && matchesPriority && matchesCategory && matchesRole;
   });
 
   const totalTickets = tickets.length;
   const openTickets = tickets.filter(t => t.status === 'open').length;
   const inProgressTickets = tickets.filter(t => t.status === 'in-progress').length;
   const resolvedTickets = tickets.filter(t => t.status === 'resolved').length;
-  const avgResponseTime = Math.round(tickets.reduce((sum, t) => sum + t.responseTime, 0) / tickets.length);
 
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString('en-MY');
-  };
-
-  const formatDuration = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
   };
 
   const handleExportReports = () => {
@@ -609,11 +553,8 @@ const SupportTicketsPage: React.FC = () => {
       'Status',
       'Priority',
       'Category',
-      'Assigned To',
       'Created At',
-      'Updated At',
-      'Response Time (minutes)',
-      'Resolution Time (minutes)'
+      'Updated At'
     ];
 
     const csvRows = filteredTickets.map(ticket => [
@@ -627,11 +568,8 @@ const SupportTicketsPage: React.FC = () => {
       ticket.status,
       ticket.priority,
       ticket.category,
-      ticket.assignedTo || 'Unassigned',
       ticket.createdAt,
-      ticket.updatedAt,
-      ticket.responseTime,
-      ticket.resolutionTime || 'N/A'
+      ticket.updatedAt
     ]);
 
     const csvContent = [
@@ -668,7 +606,8 @@ const SupportTicketsPage: React.FC = () => {
         description: newTicket.description,
         status: 'open',
         priority: newTicket.priority,
-        category: newTicket.category
+        category: newTicket.category,
+        attachments: newAttachments.length > 0 ? newAttachments : undefined
       };
 
       const response = await fetch('/api/support-tickets', {
@@ -682,11 +621,9 @@ const SupportTicketsPage: React.FC = () => {
         const createdTicket = result.data || result;
         setTickets([createdTicket, ...tickets]);
       } else {
-        alert('Failed to create support ticket. Please try again.');
         return;
       }
     } catch (error) {
-      alert('Error creating support ticket. Please try again.');
       return;
     }
 
@@ -697,21 +634,44 @@ const SupportTicketsPage: React.FC = () => {
       priority: 'medium',
       category: 'general'
     });
+    setNewAttachments([]);
   };
 
   const handleViewTicket = (ticket: SupportTicket) => {
     setSelectedTicket(ticket);
+    setDetailStatus(ticket.status);
     setShowViewTicketModal(true);
+    window.dispatchEvent(new Event('refreshBadgeCounts'));
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!selectedTicket) return;
+    setDetailStatus(newStatus);
+    try {
+      const response = await fetch(`/api/support-tickets/${selectedTicket.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (response.ok) {
+        setTickets(prev => prev.map(t =>
+          t.id === selectedTicket.id ? { ...t, status: newStatus as SupportTicket['status'] } : t
+        ));
+        setSelectedTicket(prev => prev ? { ...prev, status: newStatus as SupportTicket['status'] } : null);
+      }
+    } catch (error) {
+      // error handling
+    }
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
-          <Title>Support Tickets</Title>
+          <Title>System Inquiry</Title>
           <ActionSection>
             <Button variant="secondary" onClick={handleExportReports}>Export</Button>
-            <Button variant="primary" onClick={handleCreateTicket}>Create Ticket</Button>
+            <Button variant="primary" onClick={handleCreateTicket}>Create Inquiry</Button>
           </ActionSection>
         </Header>
         <Content>
@@ -732,16 +692,12 @@ const SupportTicketsPage: React.FC = () => {
               <StatValue>{resolvedTickets}</StatValue>
               <StatLabel>Resolved</StatLabel>
             </StatCard>
-            <StatCard color="#DC2626">
-              <StatValue>{formatDuration(avgResponseTime)}</StatValue>
-              <StatLabel>Avg Response Time</StatLabel>
-            </StatCard>
           </StatsGrid>
 
           <FilterBar>
             <SearchInput
               type="text"
-              placeholder="Search tickets, customers, or restaurants..."
+              placeholder="Search tickets, customers..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -769,13 +725,6 @@ const SupportTicketsPage: React.FC = () => {
               <option value="staff">Staff</option>
             </FilterSelect>
 
-            <FilterSelect value={filterRestaurant} onChange={(e) => setFilterRestaurant(e.target.value)}>
-              <option value="all">All Restaurants</option>
-              {restaurants.map(restaurant => (
-                <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>
-              ))}
-            </FilterSelect>
-
             <FilterSelect value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
               <option value="all">All Categories</option>
               <option value="technical">Technical</option>
@@ -788,7 +737,7 @@ const SupportTicketsPage: React.FC = () => {
 
           <TicketsGrid>
             {filteredTickets.map(ticket => (
-              <TicketCard key={ticket.id}>
+              <TicketCard key={ticket.id} onClick={() => handleViewTicket(ticket)}>
                 <TicketHeader>
                   <TicketInfo>
                     <TicketNumber>{ticket.ticketNumber}</TicketNumber>
@@ -815,33 +764,6 @@ const SupportTicketsPage: React.FC = () => {
                   {ticket.description}
                 </TicketDescription>
 
-                {/* Reply Section */}
-                {ticket.replyMessage && (
-                  <div style={{
-                    marginTop: '16px',
-                    padding: '12px',
-                    backgroundColor: '#F0F9FF',
-                    borderRadius: '8px',
-                    border: '1px solid #BAE6FD'
-                  }}>
-                    <div style={{
-                      fontSize: '12px',
-                      fontWeight: '600',
-                      color: '#0369A1',
-                      marginBottom: '6px'
-                    }}>
-                      Reply from {ticket.repliedBy} • {formatDateTime(ticket.repliedAt || '')}
-                    </div>
-                    <div style={{
-                      fontSize: '14px',
-                      color: '#374151',
-                      lineHeight: '1.4'
-                    }}>
-                      {ticket.replyMessage}
-                    </div>
-                  </div>
-                )}
-
                 <TicketMeta>
                   <MetaItem>
                     <MetaLabel>Created</MetaLabel>
@@ -851,21 +773,7 @@ const SupportTicketsPage: React.FC = () => {
                     <MetaLabel>Category</MetaLabel>
                     <MetaValue style={{textTransform: 'capitalize'}}>{ticket.category.replace('-', ' ')}</MetaValue>
                   </MetaItem>
-                  <MetaItem>
-                    <MetaLabel>Response Time</MetaLabel>
-                    <MetaValue>{formatDuration(ticket.responseTime)}</MetaValue>
-                  </MetaItem>
-                  {ticket.assignedTo && (
-                    <MetaItem>
-                      <MetaLabel>Assigned To</MetaLabel>
-                      <MetaValue>{ticket.assignedTo}</MetaValue>
-                    </MetaItem>
-                  )}
                 </TicketMeta>
-
-                <ActionButtons>
-                  <ActionButton variant="primary" onClick={() => handleViewTicket(ticket)}>View Details</ActionButton>
-                </ActionButtons>
               </TicketCard>
             ))}
           </TicketsGrid>
@@ -875,7 +783,7 @@ const SupportTicketsPage: React.FC = () => {
             <Modal onClick={() => setShowCreateTicketModal(false)}>
               <ModalContent onClick={(e) => e.stopPropagation()}>
                 <ModalHeader>
-                  <ModalTitle>Create Support Ticket</ModalTitle>
+                  <ModalTitle>Create System Inquiry</ModalTitle>
                   <CloseButton onClick={() => setShowCreateTicketModal(false)}>×</CloseButton>
                 </ModalHeader>
                 <ModalBody>
@@ -899,6 +807,14 @@ const SupportTicketsPage: React.FC = () => {
                       required
                     />
                   </FormGroup>
+                  <div style={{ marginBottom: '20px' }}>
+                    <FormLabel>Attachments</FormLabel>
+                    <FileUpload
+                      files={newAttachments}
+                      onChange={setNewAttachments}
+                      maxFiles={5}
+                    />
+                  </div>
                   <FormRow>
                     <FormGroup>
                       <FormLabel>Priority</FormLabel>
@@ -936,7 +852,7 @@ const SupportTicketsPage: React.FC = () => {
                     onClick={handleSubmitTicket}
                     disabled={!newTicket.subject || !newTicket.description}
                   >
-                    Create Ticket
+                    Create Inquiry
                   </Button>
                 </ModalFooter>
               </ModalContent>
@@ -948,7 +864,7 @@ const SupportTicketsPage: React.FC = () => {
             <Modal onClick={() => setShowViewTicketModal(false)}>
               <ModalContent onClick={(e) => e.stopPropagation()}>
                 <ModalHeader>
-                  <ModalTitle>Ticket Details</ModalTitle>
+                  <ModalTitle>Inquiry Details</ModalTitle>
                   <CloseButton onClick={() => setShowViewTicketModal(false)}>×</CloseButton>
                 </ModalHeader>
                 <ModalBody>
@@ -962,11 +878,15 @@ const SupportTicketsPage: React.FC = () => {
                       </div>
                       <div>
                         <FormLabel>Status</FormLabel>
-                        <div style={{ padding: '8px 0' }}>
-                          <StatusBadge status={selectedTicket.status}>
-                            {selectedTicket.status}
-                          </StatusBadge>
-                        </div>
+                        <FormSelect
+                          value={detailStatus}
+                          onChange={(e) => handleStatusChange(e.target.value)}
+                        >
+                          <option value="open">Open</option>
+                          <option value="in-progress">In Progress</option>
+                          <option value="resolved">Resolved</option>
+                          <option value="closed">Closed</option>
+                        </FormSelect>
                       </div>
                     </div>
 
@@ -1030,31 +950,27 @@ const SupportTicketsPage: React.FC = () => {
                       </div>
                     </div>
 
+                    {selectedTicket?.attachments && selectedTicket.attachments.length > 0 && (
+                      <AttachmentList attachments={selectedTicket.attachments} />
+                    )}
+
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                       <div>
                         <FormLabel>Created At</FormLabel>
                         <div style={{ padding: '8px 0', color: '#6B7280' }}>
-                          {selectedTicket.createdAt}
+                          {formatDateTime(selectedTicket.createdAt)}
                         </div>
                       </div>
                       <div>
                         <FormLabel>Last Updated</FormLabel>
                         <div style={{ padding: '8px 0', color: '#6B7280' }}>
-                          {selectedTicket.updatedAt}
+                          {formatDateTime(selectedTicket.updatedAt)}
                         </div>
                       </div>
                     </div>
 
-                    {selectedTicket.assignedTo && (
-                      <div>
-                        <FormLabel>Assigned To</FormLabel>
-                        <div style={{ padding: '8px 0', color: '#0A2540' }}>
-                          {selectedTicket.assignedTo}
-                        </div>
-                      </div>
-                    )}
-
                   </div>
+                  <CommentSection entityType="support_ticket" entityId={selectedTicket.id} currentUserId={user?.id} />
                 </ModalBody>
                 <ModalFooter>
                   <Button variant="secondary" onClick={() => setShowViewTicketModal(false)}>
@@ -1066,7 +982,7 @@ const SupportTicketsPage: React.FC = () => {
           )}
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

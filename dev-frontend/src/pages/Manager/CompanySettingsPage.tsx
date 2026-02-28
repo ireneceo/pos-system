@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { TabContainer, Tab } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -702,7 +701,7 @@ const ManagerCompanySettingsPage: React.FC = () => {
   );
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Company Settings</Title>
@@ -730,7 +729,7 @@ const ManagerCompanySettingsPage: React.FC = () => {
           </ButtonGroup>
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

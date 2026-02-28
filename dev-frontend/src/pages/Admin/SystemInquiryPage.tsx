@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import CommentSection from '../../components/Common/CommentSection';
+import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
+import AttachmentList from '../../components/Common/AttachmentList';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   Container,
   Header,
@@ -32,21 +35,10 @@ interface SupportTicket {
   status: 'open' | 'in-progress' | 'closed';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   category: 'technical' | 'billing' | 'feature-request' | 'bug-report' | 'general';
-  assignedTo?: string;
   createdAt: string;
   updatedAt: string;
   resolvedAt?: string;
-  responseTime: number;
-  resolutionTime?: number;
-  replyMessage?: string;
-  repliedBy?: string;
-  repliedAt?: string;
-  notes?: Array<{
-    id: string;
-    message: string;
-    createdBy: string;
-    createdAt: string;
-  }>;
+  attachments?: any[];
 }
 
 // Using common components from PageComponents and StatCard
@@ -127,7 +119,9 @@ const TicketCard = styled.div`
   padding: 24px;
   border: 1px solid #E6EBF1;
   transition: all 0.2s;
-  
+  overflow: hidden;
+  cursor: pointer;
+
   &:hover {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
     transform: translateY(-2px);
@@ -159,6 +153,7 @@ const TicketSubject = styled.div`
   color: #0A2540;
   margin-bottom: 8px;
   line-height: 1.4;
+  word-break: break-word;
 `;
 
 const CustomerInfo = styled.div`
@@ -234,6 +229,7 @@ const TicketDescription = styled.div`
   background: #F8FAFC;
   border-radius: 8px;
   border-left: 3px solid #E6EBF1;
+  word-break: break-word;
 `;
 
 const TicketMeta = styled.div`
@@ -260,49 +256,6 @@ const MetaLabel = styled.span`
 
 const MetaValue = styled.span`
   color: #374151;
-`;
-
-const ActionButtons = styled.div`
-  display: flex;
-  gap: 8px;
-  margin-top: 16px;
-`;
-
-const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid;
-  
-  ${props => props.variant === 'primary' ? `
-    background: #635BFF;
-    color: white;
-    border-color: #635BFF;
-    
-    &:hover {
-      background: #5A51E6;
-    }
-  ` : props.variant === 'danger' ? `
-    background: transparent;
-    color: #DC2626;
-    border-color: #FCA5A5;
-    
-    &:hover {
-      background: #FEE2E2;
-    }
-  ` : `
-    background: transparent;
-    color: #6B7280;
-    border-color: #E6EBF1;
-    
-    &:hover {
-      background: #F8FAFC;
-      color: #0A2540;
-    }
-  `}
 `;
 
 const Modal = styled.div`
@@ -378,7 +331,7 @@ const FormRow = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
-  
+
   @media (max-width: 640px) {
     grid-template-columns: 1fr;
   }
@@ -403,6 +356,7 @@ const FormInput = styled.input`
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.15s;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -420,6 +374,7 @@ const FormSelect = styled.select`
   background: white;
   transition: all 0.15s;
   cursor: pointer;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -438,6 +393,7 @@ const FormTextArea = styled.textarea`
   min-height: 100px;
   transition: all 0.15s;
   font-family: inherit;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -509,6 +465,7 @@ const SelectedUserBadge = styled.div`
 `;
 
 const SystemInquiryPage: React.FC = () => {
+  const { user } = useAuth();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [activeTab, setActiveTab] = useState<'all' | 'open' | 'in-progress'>('open');
   const [searchTerm, setSearchTerm] = useState('');
@@ -517,14 +474,8 @@ const SystemInquiryPage: React.FC = () => {
   const [filterCategory, setFilterCategory] = useState('all');
   const [showCreateTicketModal, setShowCreateTicketModal] = useState(false);
   const [showViewTicketModal, setShowViewTicketModal] = useState(false);
-  const [showReplyModal, setShowReplyModal] = useState(false);
-  const [showAddNoteModal, setShowAddNoteModal] = useState(false);
-  const [showCloseTicketModal, setShowCloseTicketModal] = useState(false);
-  const [showDeleteTicketModal, setShowDeleteTicketModal] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
-  const [replyMessage, setReplyMessage] = useState('');
-  const [replyStatus, setReplyStatus] = useState<SupportTicket['status']>('in-progress');
-  const [noteMessage, setNoteMessage] = useState('');
+  const [detailStatus, setDetailStatus] = useState('');
   const [newTicket, setNewTicket] = useState({
     subject: '',
     description: '',
@@ -534,6 +485,9 @@ const SystemInquiryPage: React.FC = () => {
     customerEmail: '',
     customerId: ''
   });
+  const [newAttachments, setNewAttachments] = useState<AttachmentFile[]>([]);
+
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, { total_comments: number; unread_count: number }>>({});
 
   // User search states
   const [users, setUsers] = useState<any[]>([]);
@@ -542,9 +496,26 @@ const SystemInquiryPage: React.FC = () => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
 
+  const fetchUnreadCounts = async (ticketList: SupportTicket[]) => {
+    if (ticketList.length === 0) return;
+    try {
+      const token = localStorage.getItem('auth_token');
+      const ids = ticketList.map(t => t.id).join(',');
+      const res = await fetch(`/api/comments/unread-counts?entity_type=support_ticket&entity_ids=${ids}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          const map: Record<string, { total_comments: number; unread_count: number }> = {};
+          data.data.forEach((item: any) => { map[item.entity_id] = { total_comments: Number(item.total_comments), unread_count: Number(item.unread_count) }; });
+          setUnreadCounts(map);
+        }
+      }
+    } catch (e) { console.error('Error fetching unread counts:', e); }
+  };
+
   useEffect(() => {
-    // What and Why: API에서 티켓 데이터 불러오기
-    // - 새 응답 형식 { success: true, data: [...] } 처리
     const fetchTickets = async () => {
       try {
         const response = await fetch('/api/support-tickets');
@@ -552,9 +523,10 @@ const SystemInquiryPage: React.FC = () => {
           const result = await response.json();
           const ticketsData = result.data || result;
           setTickets(ticketsData);
+          fetchUnreadCounts(ticketsData);
         }
       } catch (error) {
-        // 에러 처리
+        // error handling
       }
     };
 
@@ -571,14 +543,13 @@ const SystemInquiryPage: React.FC = () => {
           setUsers(usersArray);
         }
       } catch (error) {
-        // 에러 처리
+        // error handling
       }
     };
 
     fetchTickets();
     fetchUsers();
 
-    // 10초마다 자동으로 티켓 새로고침
     const interval = setInterval(fetchTickets, 10000);
 
     return () => clearInterval(interval);
@@ -600,22 +571,8 @@ const SystemInquiryPage: React.FC = () => {
   const inProgressTickets = tickets.filter(t => t.status === 'in-progress').length;
   const closedTickets = tickets.filter(t => t.status === 'closed').length;
 
-  // Calculate average response time from resolved/closed tickets only
-  const ticketsWithResponseTime = tickets.filter(t => t.responseTime && t.responseTime > 0);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const avgResponseTime = ticketsWithResponseTime.length > 0
-    ? Math.round(ticketsWithResponseTime.reduce((sum, t) => sum + t.responseTime, 0) / ticketsWithResponseTime.length)
-    : 0;
-
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString('en-MY');
-  };
-
-  const formatDuration = (minutes: number) => {
-    if (!minutes || minutes === 0) return 'Pending';
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
   };
 
   const handleRefreshTickets = async () => {
@@ -626,12 +583,11 @@ const SystemInquiryPage: React.FC = () => {
         setTickets(result.data || result);
       }
     } catch (error) {
-      // 에러 처리
+      // error handling
     }
   };
 
   const handleExportReports = () => {
-    // CSV 헤더
     const csvHeaders = [
       'Ticket Number',
       'Customer Name',
@@ -641,41 +597,31 @@ const SystemInquiryPage: React.FC = () => {
       'Status',
       'Priority',
       'Category',
-      'Assigned To',
       'Created At',
-      'Updated At',
-      'Response Time (minutes)',
-      'Resolution Time (minutes)'
+      'Updated At'
     ];
 
-    // CSV 데이터 행
     const csvRows = filteredTickets.map(ticket => [
       ticket.ticketNumber,
       ticket.customerName,
       ticket.customerEmail,
-      `"${ticket.subject.replace(/"/g, '""')}"`, // 따옴표 이스케이프
-      `"${ticket.description.replace(/"/g, '""')}"`, // 따옴표 이스케이프
+      `"${ticket.subject.replace(/"/g, '""')}"`,
+      `"${ticket.description.replace(/"/g, '""')}"`,
       ticket.status,
       ticket.priority,
       ticket.category,
-      ticket.assignedTo || 'Unassigned',
       ticket.createdAt,
-      ticket.updatedAt,
-      ticket.responseTime,
-      ticket.resolutionTime || 'N/A'
+      ticket.updatedAt
     ]);
 
-    // CSV 문자열 생성
     const csvContent = [
       csvHeaders.join(','),
       ...csvRows.map(row => row.join(','))
     ].join('\n');
 
-    // BOM 추가 (엑셀에서 한글이 깨지지 않도록)
     const bom = '\uFEFF';
     const csvWithBom = bom + csvContent;
 
-    // 다운로드
     const dataBlob = new Blob([csvWithBom], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement('a');
@@ -722,10 +668,7 @@ const SystemInquiryPage: React.FC = () => {
   };
 
   const handleSubmitTicket = async () => {
-    if (!selectedUser) {
-      alert('Please select a user to create ticket for');
-      return;
-    }
+    if (!selectedUser) return;
 
     try {
       const newSupportTicket = {
@@ -739,7 +682,8 @@ const SystemInquiryPage: React.FC = () => {
         description: newTicket.description,
         status: 'open',
         priority: newTicket.priority,
-        category: newTicket.category
+        category: newTicket.category,
+        attachments: newAttachments.length > 0 ? newAttachments : undefined
       };
 
       const response = await fetch('/api/support-tickets', {
@@ -753,11 +697,9 @@ const SystemInquiryPage: React.FC = () => {
         const createdTicket = result.data || result;
         setTickets([createdTicket, ...tickets]);
       } else {
-        alert('Failed to create support ticket. Please try again.');
         return;
       }
     } catch (error) {
-      alert('Error creating support ticket. Please try again.');
       return;
     }
     setShowCreateTicketModal(false);
@@ -770,6 +712,7 @@ const SystemInquiryPage: React.FC = () => {
       customerEmail: '',
       customerId: ''
     });
+    setNewAttachments([]);
     setSelectedUser(null);
     setUserSearchQuery('');
     setUserSearchResults([]);
@@ -777,162 +720,40 @@ const SystemInquiryPage: React.FC = () => {
 
   const handleViewTicket = (ticket: SupportTicket) => {
     setSelectedTicket(ticket);
+    setDetailStatus(ticket.status);
     setShowViewTicketModal(true);
+    window.dispatchEvent(new Event('refreshBadgeCounts'));
   };
 
-  const handleAddNote = (ticket: SupportTicket) => {
-    setSelectedTicket(ticket);
-    setShowAddNoteModal(true);
-  };
-
-  const handleConfirmAddNote = async () => {
-    if (!noteMessage.trim() || !selectedTicket) return;
-
-    const newNote = {
-      id: `note-${Date.now()}`,
-      message: noteMessage,
-      createdBy: 'System Admin',
-      createdAt: new Date().toISOString().replace('T', ' ').slice(0, 19)
-    };
-
-    const updatedNotes = [...(selectedTicket.notes || []), newNote];
-
-    try {
-      const response = await fetch(`/api/support-tickets/${selectedTicket.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          notes: updatedNotes
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        const updatedTicket = result.data || result;
-        setTickets(prev => prev.map(t =>
-          t.id === selectedTicket.id ? { ...t, ...updatedTicket } : t
-        ));
-      } else {
-        alert('Failed to add note. Please try again.');
-        return;
-      }
-    } catch (error) {
-      alert('Error adding note. Please try again.');
-      return;
-    }
-
-    setNoteMessage('');
-    setShowAddNoteModal(false);
-  };
-
-  const handleCloseTicket = (ticket: SupportTicket) => {
-    setSelectedTicket(ticket);
-    setShowCloseTicketModal(true);
-  };
-
-  const handleConfirmCloseTicket = () => {
+  const handleStatusChange = async (newStatus: string) => {
     if (!selectedTicket) return;
-
-    setTickets(prev => prev.map(t => 
-      t.id === selectedTicket.id 
-        ? { 
-            ...t, 
-            status: 'closed' as const, 
-            resolvedAt: new Date().toISOString().replace('T', ' ').slice(0, 19),
-            updatedAt: new Date().toISOString().replace('T', ' ').slice(0, 19) 
-          }
-        : t
-    ));
-    setShowCloseTicketModal(false);
-  };
-
-  const handleReplyTicket = (ticket: SupportTicket) => {
-    setSelectedTicket(ticket);
-    setReplyMessage(ticket.replyMessage || '');
-    setReplyStatus(ticket.status);
-    setShowReplyModal(true);
-  };
-
-  const handleSendReply = async () => {
-    if (!replyMessage.trim() || !selectedTicket) return;
-
-    // Calculate response time in minutes
-    const createdTime = new Date(selectedTicket.createdAt).getTime();
-    const currentTime = new Date().getTime();
-    const responseTimeMinutes = Math.round((currentTime - createdTime) / (1000 * 60));
-
+    setDetailStatus(newStatus);
     try {
       const response = await fetch(`/api/support-tickets/${selectedTicket.id}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: replyStatus,
-          replyMessage: replyMessage,
-          repliedBy: 'Support Agent',
-          repliedAt: new Date().toISOString().replace('T', ' ').slice(0, 19),
-          responseTime: responseTimeMinutes > 0 ? responseTimeMinutes : 1,
-          ...(replyStatus === 'closed' && {
-            resolvedAt: new Date().toISOString().replace('T', ' ').slice(0, 19)
-          })
-        })
+        body: JSON.stringify({ status: newStatus })
       });
-
       if (response.ok) {
-        const result = await response.json();
-        const updatedTicket = result.data || result;
         setTickets(prev => prev.map(t =>
-          t.id === selectedTicket.id ? { ...t, ...updatedTicket } : t
+          t.id === selectedTicket.id ? { ...t, status: newStatus as SupportTicket['status'] } : t
         ));
-      } else {
-        alert('Failed to send reply. Please try again.');
-        return;
+        setSelectedTicket(prev => prev ? { ...prev, status: newStatus as SupportTicket['status'] } : null);
       }
     } catch (error) {
-      alert('Error sending reply. Please try again.');
-      return;
+      // error handling
     }
-
-    setReplyMessage('');
-    setShowReplyModal(false);
-  };
-
-  const handleDeleteTicket = (ticket: SupportTicket) => {
-    setSelectedTicket(ticket);
-    setShowDeleteTicketModal(true);
-  };
-
-  const handleConfirmDeleteTicket = async () => {
-    if (!selectedTicket) return;
-
-    try {
-      const response = await fetch(`/api/support-tickets/${selectedTicket.id}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        setTickets(prev => prev.filter(t => t.id !== selectedTicket.id));
-      } else {
-        alert('Failed to delete support ticket. Please try again.');
-        return;
-      }
-    } catch (error) {
-      alert('Error deleting support ticket. Please try again.');
-      return;
-    }
-
-    setShowDeleteTicketModal(false);
-    setSelectedTicket(null);
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>System Inquiry</Title>
           <ActionSection>
             <Button variant="secondary" onClick={handleRefreshTickets}>Refresh</Button>
             <Button variant="secondary" onClick={handleExportReports}>Export</Button>
-            <Button variant="primary" onClick={handleCreateTicket}>Create Ticket</Button>
+            <Button variant="primary" onClick={handleCreateTicket}>Create Inquiry</Button>
           </ActionSection>
         </Header>
         <Content>
@@ -1013,7 +834,7 @@ const SystemInquiryPage: React.FC = () => {
 
         <TicketsGrid>
           {filteredTickets.map(ticket => (
-            <TicketCard key={ticket.id}>
+            <TicketCard key={ticket.id} onClick={() => handleViewTicket(ticket)}>
               <TicketHeader>
                 <TicketInfo>
                   <TicketNumber>{ticket.ticketNumber}</TicketNumber>
@@ -1030,33 +851,6 @@ const SystemInquiryPage: React.FC = () => {
                 {ticket.description}
               </TicketDescription>
 
-              {/* Reply Section */}
-              {ticket.replyMessage && (
-                <div style={{
-                  marginTop: '16px',
-                  padding: '12px',
-                  backgroundColor: '#F0F9FF',
-                  borderRadius: '8px',
-                  border: '1px solid #BAE6FD'
-                }}>
-                  <div style={{
-                    fontSize: '12px',
-                    fontWeight: '600',
-                    color: '#0369A1',
-                    marginBottom: '6px'
-                  }}>
-                    Reply from {ticket.repliedBy} • {formatDateTime(ticket.repliedAt || '')}
-                  </div>
-                  <div style={{
-                    fontSize: '14px',
-                    color: '#374151',
-                    lineHeight: '1.4'
-                  }}>
-                    {ticket.replyMessage}
-                  </div>
-                </div>
-              )}
-
               <TicketMeta>
                 <MetaItem>
                   <MetaLabel>Created</MetaLabel>
@@ -1066,23 +860,19 @@ const SystemInquiryPage: React.FC = () => {
                   <MetaLabel>Category</MetaLabel>
                   <MetaValue style={{textTransform: 'capitalize'}}>{ticket.category.replace('-', ' ')}</MetaValue>
                 </MetaItem>
-                <MetaItem>
-                  <MetaLabel>Response Time</MetaLabel>
-                  <MetaValue>{ticket.replyMessage ? formatDuration(ticket.responseTime) : 'Pending'}</MetaValue>
-                </MetaItem>
+                {unreadCounts[ticket.id] && (
+                  <MetaItem>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      Comments {unreadCounts[ticket.id].total_comments}
+                      {unreadCounts[ticket.id].unread_count > 0 && (
+                        <span style={{ background: '#EF4444', color: 'white', borderRadius: '10px', padding: '1px 7px', fontSize: '11px', fontWeight: 600 }}>
+                          {unreadCounts[ticket.id].unread_count} new
+                        </span>
+                      )}
+                    </span>
+                  </MetaItem>
+                )}
               </TicketMeta>
-
-              <ActionButtons>
-                <ActionButton variant="primary" onClick={() => handleViewTicket(ticket)}>View</ActionButton>
-                {ticket.status !== 'closed' && (
-                  <ActionButton variant="primary" onClick={() => handleReplyTicket(ticket)}>Reply</ActionButton>
-                )}
-                <ActionButton onClick={() => handleAddNote(ticket)}>Add Note</ActionButton>
-                {ticket.replyMessage && ticket.status !== 'closed' && (
-                  <ActionButton onClick={() => handleCloseTicket(ticket)}>Close Ticket</ActionButton>
-                )}
-                <ActionButton variant="danger" onClick={() => handleDeleteTicket(ticket)}>Delete</ActionButton>
-              </ActionButtons>
             </TicketCard>
           ))}
         </TicketsGrid>
@@ -1092,7 +882,7 @@ const SystemInquiryPage: React.FC = () => {
           <Modal onClick={() => setShowCreateTicketModal(false)}>
             <ModalContent onClick={(e) => e.stopPropagation()}>
               <ModalHeader>
-                <ModalTitle>Create Support Ticket</ModalTitle>
+                <ModalTitle>Create System Inquiry</ModalTitle>
                 <CloseButton onClick={() => setShowCreateTicketModal(false)}>×</CloseButton>
               </ModalHeader>
               <ModalBody>
@@ -1152,6 +942,14 @@ const SystemInquiryPage: React.FC = () => {
                     required
                   />
                 </FormGroup>
+                <div>
+                  <FormLabel>Attachments</FormLabel>
+                  <FileUpload
+                    files={newAttachments}
+                    onChange={setNewAttachments}
+                    maxFiles={5}
+                  />
+                </div>
                 <FormRow>
                   <FormGroup>
                     <FormLabel>Priority</FormLabel>
@@ -1189,7 +987,7 @@ const SystemInquiryPage: React.FC = () => {
                   onClick={handleSubmitTicket}
                   disabled={!newTicket.subject || !newTicket.description || !selectedUser}
                 >
-                  Create Ticket
+                  Create Inquiry
                 </Button>
               </ModalFooter>
             </ModalContent>
@@ -1201,7 +999,7 @@ const SystemInquiryPage: React.FC = () => {
           <Modal onClick={() => setShowViewTicketModal(false)}>
             <ModalContent onClick={(e) => e.stopPropagation()}>
               <ModalHeader>
-                <ModalTitle>Ticket Details</ModalTitle>
+                <ModalTitle>Inquiry Details</ModalTitle>
                 <CloseButton onClick={() => setShowViewTicketModal(false)}>×</CloseButton>
               </ModalHeader>
               <ModalBody>
@@ -1215,41 +1013,24 @@ const SystemInquiryPage: React.FC = () => {
                     </div>
                     <div>
                       <FormLabel>Status</FormLabel>
-                      <div style={{ padding: '8px 0' }}>
-                        <span style={{
-                          padding: '4px 12px',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          background: selectedTicket.status === 'open' ? '#FEF3C7' :
-                                    selectedTicket.status === 'in-progress' ? '#DBEAFE' : '#ECFDF5',
-                          color: selectedTicket.status === 'open' ? '#D97706' :
-                                selectedTicket.status === 'in-progress' ? '#1E40AF' : '#059669'
-                        }}>
-                          {selectedTicket.status}
-                        </span>
-                      </div>
+                      <FormSelect
+                        value={detailStatus}
+                        onChange={(e) => handleStatusChange(e.target.value)}
+                      >
+                        <option value="open">Open</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="closed">Closed</option>
+                      </FormSelect>
                     </div>
                   </div>
-                  
+
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                     <div>
                       <FormLabel>Priority</FormLabel>
                       <div style={{ padding: '8px 0' }}>
-                        <span style={{
-                          padding: '4px 12px',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          background: selectedTicket.priority === 'urgent' ? '#FEE2E2' :
-                                    selectedTicket.priority === 'high' ? '#FEF3C7' :
-                                    selectedTicket.priority === 'medium' ? '#DBEAFE' : '#F3F4F6',
-                          color: selectedTicket.priority === 'urgent' ? '#DC2626' :
-                                selectedTicket.priority === 'high' ? '#D97706' :
-                                selectedTicket.priority === 'medium' ? '#1E40AF' : '#6B7280'
-                        }}>
+                        <PriorityBadge priority={selectedTicket.priority}>
                           {selectedTicket.priority}
-                        </span>
+                        </PriorityBadge>
                       </div>
                     </div>
                     <div>
@@ -1295,340 +1076,40 @@ const SystemInquiryPage: React.FC = () => {
                     </div>
                   </div>
 
+                  {selectedTicket?.attachments && selectedTicket.attachments.length > 0 && (
+                    <AttachmentList attachments={selectedTicket.attachments} />
+                  )}
+
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                     <div>
                       <FormLabel>Created At</FormLabel>
                       <div style={{ padding: '8px 0', color: '#6B7280' }}>
-                        {selectedTicket.createdAt}
+                        {formatDateTime(selectedTicket.createdAt)}
                       </div>
                     </div>
                     <div>
                       <FormLabel>Last Updated</FormLabel>
                       <div style={{ padding: '8px 0', color: '#6B7280' }}>
-                        {selectedTicket.updatedAt}
+                        {formatDateTime(selectedTicket.updatedAt)}
                       </div>
                     </div>
                   </div>
 
-                  {selectedTicket.assignedTo && (
-                    <div>
-                      <FormLabel>Assigned To</FormLabel>
-                      <div style={{ padding: '8px 0', color: '#0A2540' }}>
-                        {selectedTicket.assignedTo}
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedTicket.replyMessage && (
-                    <div>
-                      <FormLabel>Support Reply</FormLabel>
-                      <div style={{
-                        padding: '12px',
-                        backgroundColor: '#F0F9FF',
-                        borderRadius: '8px',
-                        border: '1px solid #BAE6FD',
-                        marginTop: '8px'
-                      }}>
-                        <div style={{
-                          fontSize: '12px',
-                          color: '#0369A1',
-                          marginBottom: '8px',
-                          fontWeight: '600'
-                        }}>
-                          {selectedTicket.repliedBy} • {formatDateTime(selectedTicket.repliedAt || '')}
-                        </div>
-                        <div style={{
-                          color: '#374151',
-                          lineHeight: '1.5',
-                          whiteSpace: 'pre-wrap'
-                        }}>
-                          {selectedTicket.replyMessage}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedTicket.notes && selectedTicket.notes.length > 0 && (
-                    <div>
-                      <FormLabel>Internal Notes (Admin Only)</FormLabel>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
-                        {selectedTicket.notes.map(note => (
-                          <div key={note.id} style={{
-                            padding: '12px',
-                            backgroundColor: '#FEF3C7',
-                            borderRadius: '8px',
-                            border: '1px solid #FCD34D'
-                          }}>
-                            <div style={{
-                              fontSize: '12px',
-                              color: '#92400E',
-                              marginBottom: '8px',
-                              fontWeight: '600'
-                            }}>
-                              {note.createdBy} • {formatDateTime(note.createdAt)}
-                            </div>
-                            <div style={{
-                              color: '#374151',
-                              lineHeight: '1.5',
-                              whiteSpace: 'pre-wrap'
-                            }}>
-                              {note.message}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
                 </div>
+                <CommentSection entityType="support_ticket" entityId={selectedTicket.id} currentUserId={user?.id} onMarkRead={() => setUnreadCounts(prev => { const next = { ...prev }; if (next[selectedTicket.id]) next[selectedTicket.id] = { ...next[selectedTicket.id], unread_count: 0 }; return next; })} />
               </ModalBody>
               <ModalFooter>
                 <Button variant="secondary" onClick={() => setShowViewTicketModal(false)}>
                   Close
                 </Button>
-                {selectedTicket.status !== 'closed' && (
-                  <Button variant="primary" onClick={() => {
-                    setShowViewTicketModal(false);
-                    handleReplyTicket(selectedTicket);
-                  }}>
-                    Reply
-                  </Button>
-                )}
-                <Button variant="secondary" onClick={() => handleAddNote(selectedTicket)}>
-                  Add Note
-                </Button>
               </ModalFooter>
             </ModalContent>
           </Modal>
         )}
 
-        {/* Reply Modal */}
-        {showReplyModal && selectedTicket && (
-          <Modal onClick={() => setShowReplyModal(false)}>
-            <ModalContent onClick={(e) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Reply to Ticket {selectedTicket.ticketNumber}</ModalTitle>
-                <CloseButton onClick={() => setShowReplyModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
-                <div style={{ marginBottom: '20px' }}>
-                  <div style={{ padding: '12px', backgroundColor: '#F8FAFC', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
-                    <div style={{ fontWeight: '600', color: '#0A2540', marginBottom: '4px' }}>
-                      {selectedTicket.subject}
-                    </div>
-                    <div style={{ fontSize: '14px', color: '#6B7280', marginBottom: '8px' }}>
-                      From: {selectedTicket.customerName} ({selectedTicket.customerEmail})
-                    </div>
-                    <div style={{ color: '#374151', lineHeight: '1.5' }}>
-                      {selectedTicket.description}
-                    </div>
-                  </div>
-                </div>
-
-                {selectedTicket.notes && selectedTicket.notes.length > 0 && (
-                  <div style={{ marginBottom: '20px' }}>
-                    <FormLabel>Internal Notes (Admin Only)</FormLabel>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
-                      {selectedTicket.notes.map(note => (
-                        <div key={note.id} style={{
-                          padding: '10px',
-                          backgroundColor: '#FEF3C7',
-                          borderRadius: '6px',
-                          border: '1px solid #FCD34D'
-                        }}>
-                          <div style={{
-                            fontSize: '11px',
-                            color: '#92400E',
-                            marginBottom: '6px',
-                            fontWeight: '600'
-                          }}>
-                            📝 {note.createdBy} • {formatDateTime(note.createdAt)}
-                          </div>
-                          <div style={{
-                            color: '#374151',
-                            fontSize: '13px',
-                            lineHeight: '1.4'
-                          }}>
-                            {note.message}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <FormGroup>
-                  <FormLabel>Ticket Status</FormLabel>
-                  <FormSelect
-                    value={replyStatus}
-                    onChange={(e) => setReplyStatus(e.target.value as SupportTicket['status'])}
-                  >
-                    <option value="open">Open</option>
-                    <option value="in-progress">In Progress</option>
-                    <option value="closed">Closed</option>
-                  </FormSelect>
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel>Your Reply</FormLabel>
-                  <FormTextArea
-                    value={replyMessage}
-                    onChange={(e) => setReplyMessage(e.target.value)}
-                    placeholder="Type your reply to the customer..."
-                    style={{ minHeight: '120px' }}
-                  />
-                </FormGroup>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="secondary" onClick={() => setShowReplyModal(false)}>
-                  Cancel
-                </Button>
-                <Button 
-                  variant="primary" 
-                  onClick={handleSendReply}
-                  disabled={!replyMessage.trim()}
-                >
-                  Send Reply
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
-        )}
-
-        {/* Add Note Modal */}
-        {showAddNoteModal && selectedTicket && (
-          <Modal onClick={() => setShowAddNoteModal(false)}>
-            <ModalContent onClick={(e) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Add Note to Ticket {selectedTicket.ticketNumber}</ModalTitle>
-                <CloseButton onClick={() => setShowAddNoteModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
-                <div style={{ marginBottom: '20px' }}>
-                  <div style={{ padding: '12px', backgroundColor: '#F8FAFC', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
-                    <div style={{ fontWeight: '600', color: '#0A2540', marginBottom: '4px' }}>
-                      {selectedTicket.subject}
-                    </div>
-                    <div style={{ fontSize: '14px', color: '#6B7280' }}>
-                      From: {selectedTicket.customerName} ({selectedTicket.customerEmail})
-                    </div>
-                  </div>
-                </div>
-                
-                <FormGroup>
-                  <FormLabel>Internal Note (Not visible to customer)</FormLabel>
-                  <FormTextArea
-                    value={noteMessage}
-                    onChange={(e) => setNoteMessage(e.target.value)}
-                    placeholder="Add an internal note for your team..."
-                  />
-                </FormGroup>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="secondary" onClick={() => setShowAddNoteModal(false)}>
-                  Cancel
-                </Button>
-                <Button 
-                  variant="primary" 
-                  onClick={handleConfirmAddNote}
-                  disabled={!noteMessage.trim()}
-                >
-                  Add Note
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
-        )}
-
-
-        {/* Close Ticket Modal */}
-        {showCloseTicketModal && selectedTicket && (
-          <Modal onClick={() => setShowCloseTicketModal(false)}>
-            <ModalContent onClick={(e) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Close Ticket</ModalTitle>
-                <CloseButton onClick={() => setShowCloseTicketModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
-                <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                  <h3 style={{ color: '#0A2540', marginBottom: '12px' }}>Close This Ticket?</h3>
-                  <p style={{ color: '#6B7280', marginBottom: '20px', lineHeight: '1.5' }}>
-                    This will mark ticket <strong>{selectedTicket.ticketNumber}</strong> as <strong>CLOSED</strong>.
-                    <br />
-                    The customer will be notified that their issue has been resolved.
-                  </p>
-                  
-                  <div style={{ padding: '12px', backgroundColor: '#ECFDF5', borderRadius: '8px', border: '1px solid #86EFAC', marginBottom: '20px' }}>
-                    <div style={{ fontWeight: '600', color: '#065F46', marginBottom: '4px' }}>
-                      Subject: {selectedTicket.subject}
-                    </div>
-                    <div style={{ fontSize: '14px', color: '#047857' }}>
-                      Customer: {selectedTicket.customerName}
-                    </div>
-                    <div style={{ fontSize: '14px', color: '#047857' }}>
-                      Current Status: <span style={{ textTransform: 'uppercase', fontWeight: '600' }}>{selectedTicket.status}</span>
-                    </div>
-                  </div>
-                </div>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="secondary" onClick={() => setShowCloseTicketModal(false)}>
-                  Cancel
-                </Button>
-                <Button variant="primary" onClick={handleConfirmCloseTicket}>
-                  Close Ticket
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
-        )}
-
-        {/* Delete Ticket Modal */}
-        {showDeleteTicketModal && selectedTicket && (
-          <Modal onClick={() => setShowDeleteTicketModal(false)}>
-            <ModalContent onClick={(e) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Delete Ticket</ModalTitle>
-                <CloseButton onClick={() => setShowDeleteTicketModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
-                <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                  <h3 style={{ color: '#0A2540', marginBottom: '12px' }}>Delete This Ticket?</h3>
-                  <p style={{ color: '#6B7280', marginBottom: '20px', lineHeight: '1.5' }}>
-                    This action <strong>cannot be undone</strong>. This will permanently delete ticket <strong>{selectedTicket.ticketNumber}</strong> and remove all associated data.
-                  </p>
-
-                  <div style={{ padding: '12px', backgroundColor: '#FEE2E2', borderRadius: '8px', border: '1px solid #FCA5A5', marginBottom: '20px' }}>
-                    <div style={{ fontWeight: '600', color: '#991B1B', marginBottom: '4px' }}>
-                      Subject: {selectedTicket.subject}
-                    </div>
-                    <div style={{ fontSize: '14px', color: '#B91C1C' }}>
-                      Customer: {selectedTicket.customerName}
-                    </div>
-                    <div style={{ fontSize: '14px', color: '#B91C1C' }}>
-                      Status: <span style={{ textTransform: 'uppercase', fontWeight: '600' }}>{selectedTicket.status}</span>
-                    </div>
-                  </div>
-                </div>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="secondary" onClick={() => setShowDeleteTicketModal(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={handleConfirmDeleteTicket}
-                  style={{ backgroundColor: '#DC2626', borderColor: '#DC2626' }}
-                >
-                  Delete Permanently
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
-        )}
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

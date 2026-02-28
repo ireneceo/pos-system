@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
@@ -440,12 +439,28 @@ const RestaurantDashboard: React.FC = () => {
   const [salesChartData, setSalesChartData] = useState<SalesChartData[]>([]);
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
+  const [badgeCounts, setBadgeCounts] = useState({ systemInquiry: 0, operationInquiry: 0, notices: 0, invoices: 0 });
 
   useEffect(() => {
     if (defaultCurrency) {
       setSelectedCurrency(defaultCurrency);
     }
   }, [defaultCurrency]);
+
+  useEffect(() => {
+    const fetchBadges = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) return;
+        const res = await fetch('/api/badge-counts', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) setBadgeCounts(data.data);
+        }
+      } catch (e) { /* silent */ }
+    };
+    fetchBadges();
+  }, []);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -547,7 +562,7 @@ const RestaurantDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <MainLayout>
+      <>
         <Container>
           <Header>
             <Title>Restaurant Dashboard</Title>
@@ -558,13 +573,13 @@ const RestaurantDashboard: React.FC = () => {
             </div>
           </Content>
         </Container>
-      </MainLayout>
+      </>
     );
   }
 
   if (!dashboardData) {
     return (
-      <MainLayout>
+      <>
         <Container>
           <Header>
             <Title>Restaurant Dashboard</Title>
@@ -575,14 +590,14 @@ const RestaurantDashboard: React.FC = () => {
             </div>
           </Content>
         </Container>
-      </MainLayout>
+      </>
     );
   }
 
   const { restaurant, today, monthly, yearly, total, billing, recentOrders } = dashboardData;
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Restaurant Dashboard</Title>
@@ -819,7 +834,40 @@ const RestaurantDashboard: React.FC = () => {
                 </Alert>
               )}
 
-              {(today.pendingOrders || 0) === 0 && (billing.unpaidInvoices || 0) === 0 && (today.orders || 0) === 0 && (
+              {badgeCounts.notices > 0 && (
+                <Alert
+                  type="info"
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => navigate(`/restaurant/${restaurantId}/notices`)}
+                >
+                  <div className="title">Unread Notices</div>
+                  <div className="description">{badgeCounts.notices} unread notice(s)</div>
+                </Alert>
+              )}
+
+              {badgeCounts.systemInquiry > 0 && (
+                <Alert
+                  type="info"
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => navigate(`/restaurant/${restaurantId}/support`)}
+                >
+                  <div className="title">System Inquiry Updates</div>
+                  <div className="description">{badgeCounts.systemInquiry} inquiry(s) with new replies</div>
+                </Alert>
+              )}
+
+              {badgeCounts.operationInquiry > 0 && (
+                <Alert
+                  type="info"
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => navigate(`/restaurant/${restaurantId}/operation-inquiry`)}
+                >
+                  <div className="title">Operation Inquiry Updates</div>
+                  <div className="description">{badgeCounts.operationInquiry} inquiry(s) with responses</div>
+                </Alert>
+              )}
+
+              {(today.pendingOrders || 0) === 0 && (billing.unpaidInvoices || 0) === 0 && (today.orders || 0) === 0 && badgeCounts.notices === 0 && badgeCounts.systemInquiry === 0 && badgeCounts.operationInquiry === 0 && (
                 <div style={{
                   padding: '20px',
                   textAlign: 'center',
@@ -966,7 +1014,7 @@ const RestaurantDashboard: React.FC = () => {
           </TableContainer>
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

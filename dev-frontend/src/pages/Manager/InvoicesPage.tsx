@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import { API_BASE_URL } from '../../config/api';
 import { formatCurrency } from '../../utils/currency';
@@ -33,6 +32,11 @@ interface Invoice {
   billingPeriod: string;
   planType: string;
   restaurantManager?: string;
+  discountType?: string;
+  discountValue?: number;
+  discountAmount?: number;
+  discountReason?: string;
+  subtotalBeforeDiscount?: number;
 }
 
 interface InvoiceItem {
@@ -793,7 +797,7 @@ const ManagerInvoicesPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Restaurant Invoice Management</Title>
@@ -908,7 +912,7 @@ const ManagerInvoicesPage: React.FC = () => {
                     </DataTableCell>
 
                     <DataTableCell data-label="Total" align="right">
-                      <DataTableAmount highlight>{formatCurrency(invoice.total)}</DataTableAmount>
+                      <DataTableAmount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total)}</DataTableAmount>
                     </DataTableCell>
 
                     <DataTableCell data-label="" mobileFullWidth>
@@ -922,11 +926,11 @@ const ManagerInvoicesPage: React.FC = () => {
                         )}
                         {invoice.status === 'sent' && (
                           <>
-                            <ActionButton variant="primary" onClick={() => handlePayInvoice(invoice)}>Pay Now</ActionButton>
+                            {invoice.total > 0 && <ActionButton variant="primary" onClick={() => handlePayInvoice(invoice)}>Pay Now</ActionButton>}
                             <ActionButton onClick={() => handleMarkAsOverdue(invoice)}>Mark Overdue</ActionButton>
                           </>
                         )}
-                        {invoice.status === 'overdue' && (
+                        {invoice.status === 'overdue' && invoice.total > 0 && (
                           <ActionButton variant="primary" onClick={() => handlePayInvoice(invoice)}>Pay Now</ActionButton>
                         )}
                         {invoice.status === 'paid' && (
@@ -1103,8 +1107,16 @@ const ManagerInvoicesPage: React.FC = () => {
                 <InvoiceSummary>
                   <SummaryRow>
                     <span>Subtotal:</span>
-                    <span>{formatCurrency(selectedInvoice.amount, selectedCurrency)}</span>
+                    <span>{formatCurrency(selectedInvoice.subtotalBeforeDiscount || selectedInvoice.amount, selectedCurrency)}</span>
                   </SummaryRow>
+                  {selectedInvoice.discountAmount && selectedInvoice.discountAmount > 0 && (
+                    <SummaryRow>
+                      <span style={{ color: '#059669' }}>
+                        Discount{selectedInvoice.discountType === 'percentage' ? ` (${selectedInvoice.discountValue}%)` : ''}:
+                      </span>
+                      <span style={{ color: '#059669' }}>-{formatCurrency(selectedInvoice.discountAmount, selectedCurrency)}</span>
+                    </SummaryRow>
+                  )}
                   <SummaryRow>
                     <span>Tax (6%):</span>
                     <span>{formatCurrency(selectedInvoice.tax, selectedCurrency)}</span>
@@ -1412,6 +1424,14 @@ const ManagerInvoicesPage: React.FC = () => {
                     <span>Subtotal:</span>
                     <span>{formatCurrency(parseFloat(editInvoice.amount || 0), selectedCurrency)}</span>
                   </SummaryRow>
+                  {selectedInvoice && selectedInvoice.discountAmount && selectedInvoice.discountAmount > 0 && (
+                    <SummaryRow>
+                      <span style={{ color: '#059669' }}>
+                        Discount{selectedInvoice.discountType === 'percentage' ? ` (${selectedInvoice.discountValue}%)` : ''}:
+                      </span>
+                      <span style={{ color: '#059669' }}>-{formatCurrency(selectedInvoice.discountAmount, selectedCurrency)}</span>
+                    </SummaryRow>
+                  )}
                   <SummaryRow>
                     <span>Tax (6%):</span>
                     <span>{formatCurrency(parseFloat(editInvoice.tax || 0), selectedCurrency)}</span>
@@ -1435,7 +1455,7 @@ const ManagerInvoicesPage: React.FC = () => {
         )}
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-02-26
+> **최종 업데이트:** 2026-02-28 (세션 2)
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -58,6 +58,229 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 
 ---
 
+## ✅ 완료: Communication 시스템 버그 수정 + Owner 문의 페이지 (2026-02-27)
+
+### 1. 버그 수정
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Operation Inquiry 500 에러 | operationTickets.js POST에서 `as:'manager'`→`as:'admin'` | ✅ |
+| notices.js status:'active' | users 테이블에 없는 status 컬럼 참조 제거 | ✅ |
+| comments.js user.name | `user.name`→`user.full_name`, includes에서도 수정 | ✅ |
+| notices.js user.name | `user.name`→`user.full_name`, 8곳 includes 수정 | ✅ |
+
+### 2. Operation Inquiry 확장
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| inquiryType ENUM 확장 | 'foodcourt','brand' → 'foodcourt','brand','owner' | ✅ |
+| Inquiry Target에 Owner 추가 | Restaurant OperationInquiry 드롭다운에 Restaurant Owner 옵션 | ✅ |
+| Owner 지원 (GET) | Restaurant Owner가 소유 레스토랑의 운영문의 조회 가능 | ✅ |
+
+### 3. Restaurant Owner 문의 페이지 (신규 2개)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| OwnerSystemInquiryPage | 소유 레스토랑 선택 + 시스템 문의 생성/조회 | ✅ |
+| OwnerOperationInquiryPage | 소유 레스토랑 운영문의 조회/응답/해결 | ✅ |
+| 사이드바 메뉴 추가 | Communication 섹션에 System Inquiry + Operation Inquiry | ✅ |
+| App.tsx 라우트 | /pos/owner/system-inquiry, /pos/owner/operation-inquiry | ✅ |
+
+### 4. UX 기획 문서
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| INQUIRY_NOTICE_UX_SPECIFICATION.md | 역할별 접근 권한, 알림 뱃지 규칙, 생성/조회 규칙 정의 | ✅ |
+
+### 수정/생성된 파일
+- `dev-backend/routes/operationTickets.js` (POST 500 에러 수정 + Owner 지원)
+- `dev-backend/routes/notices.js` (status:'active' 제거)
+- `dev-backend/routes/comments.js` (full_name 수정)
+- `dev-backend/models/OperationTicket.js` (inquiryType ENUM 확장)
+- `dev-frontend/src/pages/Owner/OwnerSystemInquiryPage.tsx` (신규)
+- `dev-frontend/src/pages/Owner/OwnerOperationInquiryPage.tsx` (신규)
+- `dev-frontend/src/pages/Restaurant/OperationInquiryPage.tsx` (Owner 옵션 추가)
+- `dev-frontend/src/components/Layout/MainLayout.tsx` (Owner 메뉴 추가)
+- `dev-frontend/src/App.tsx` (Owner 라우트 추가)
+- `docs/INQUIRY_NOTICE_UX_SPECIFICATION.md` (신규)
+
+---
+
+## ✅ 완료: 댓글 내부 메모 + PlansPage 보완 (2026-02-28)
+
+### 1. 댓글 '나만 보기' (Internal Note) 기능
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Comment 모델 is_internal | `is_internal` BOOLEAN 필드 추가 | ✅ |
+| comments.js 가시성 필터 | 역할 그룹별 internal comment 필터링 (canSeeInternal 함수) | ✅ |
+| unread-counts 필터 | 보이지 않는 internal 댓글을 미확인 카운트에서 제외 | ✅ |
+| CommentSection UI | Internal note 토글, 노란색 스타일, Internal 뱃지 | ✅ |
+
+### 2. Admin PlansPage 보완
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Plan Target에 Owner 추가 | PlanTemplate plan_target ENUM 'owner' 프론트 연동 | ✅ |
+| AddonModule ENUM 확장 | target_user_type에 'owner' 추가 | ✅ |
+| 모듈 카테고리 5종 완성 | basic, advanced, revenue, operation, analytics 전부 UI 표시 | ✅ |
+| Create/Edit 폼 통일 | 두 폼 모두 5개 카테고리 + Owner plan target 지원 | ✅ |
+
+### 3. 모달 스크롤 수정 (3개 파일)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Restaurant/SupportTicketsPage | Modal align-items:center→flex-start, max-width:800px | ✅ |
+| Manager/SupportTicketsPage | 동일 패턴 수정 | ✅ |
+| Manager/SystemInquiryPage | 동일 패턴 수정 | ✅ |
+
+### 수정된 파일
+- `dev-backend/models/Comment.js` (is_internal 필드 추가)
+- `dev-backend/models/AddonModule.js` (target_user_type ENUM 'owner' 추가)
+- `dev-backend/routes/comments.js` (canSeeInternal 함수 + 필터링 로직)
+- `dev-frontend/src/components/Common/CommentSection.tsx` (Internal note UI)
+- `dev-frontend/src/pages/Admin/PlansPage.tsx` (Owner target + 5 module categories)
+- `dev-frontend/src/pages/Restaurant/SupportTicketsPage.tsx` (모달 스크롤 수정)
+- `dev-frontend/src/pages/Manager/SupportTicketsPage.tsx` (모달 스크롤 수정)
+- `dev-frontend/src/pages/Manager/SystemInquiryPage.tsx` (모달 스크롤 수정)
+- `docs/INQUIRY_NOTICE_UX_SPECIFICATION.md` (Internal note + 첨부파일 문서 보완)
+
+---
+
+## ✅ 완료: 파일 첨부 기능 - Notices/Inquiry 페이지 (2026-02-28)
+
+### 1. Notices 페이지 첨부파일 지원
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Admin NoticesPage | FileUpload + AttachmentList (작성+조회) | ✅ (기완료) |
+| Brand NoticesPage | FileUpload + AttachmentList (작성+조회) | ✅ (기완료) |
+| Foodcourt NoticesPage | FileUpload + AttachmentList (작성+조회) | ✅ |
+| Restaurant NoticesPage | AttachmentList (조회만) | ✅ |
+| Owner NoticesPage | FileUpload + AttachmentList (작성+조회) | ✅ |
+
+### 2. Inquiry 페이지 첨부파일 확인
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| System Inquiry (전체) | CommentSection + FileUpload 기반 첨부 | ✅ (기완료) |
+| Operation Inquiry (전체) | CommentSection + FileUpload 기반 첨부 | ✅ (기완료) |
+
+### 3. DB 스키마 동기화
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| notices.attachments 컬럼 | TEXT(JSON array) - sync-database.js로 추가 | ✅ |
+
+### 수정된 파일
+- `dev-frontend/src/pages/Foodcourt/NoticesPage.tsx` (FileUpload + AttachmentList 추가)
+- `dev-frontend/src/pages/Restaurant/NoticesPage.tsx` (AttachmentList 추가)
+- `dev-frontend/src/pages/Owner/NoticesPage.tsx` (FileUpload + AttachmentList 추가)
+
+---
+
+## ✅ 완료: Communication 시스템 - 공지(Notices) + 댓글(Comments) (2026-02-27)
+
+### 1. 백엔드 모델 & API
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Comment 모델 | 다형성 댓글 (notice/operation_ticket/support_ticket) | ✅ |
+| Notice 모델 | 공지 (target_type: all/role/brand/foodcourt/restaurant) | ✅ |
+| NoticeRecipient 모델 | 수신자 추적 (read_at, read_by) | ✅ |
+| Comments API | GET/POST/DELETE /api/comments | ✅ |
+| Notices API | GET metadata/sent/received/:id, POST, DELETE /api/notices | ✅ |
+
+### 2. 사이드바 Communication 섹션 추가
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| System Admin | Communication 소제목 + Notices 메뉴 | ✅ |
+| Brand General | Communication 소제목 + Notices 메뉴 | ✅ |
+| Foodcourt General | Communication 소제목 + Notices 메뉴 | ✅ |
+| Restaurant Owner | Communication 소제목 + Notices 메뉴 | ✅ |
+| Restaurant Admin/Staff | Communication 소제목 + Notices 메뉴 | ✅ |
+
+### 3. Notices 페이지 (역할별 5개)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Admin NoticesPage | 보내기 전용 (All/By Role/Select Restaurants) | ✅ |
+| Brand NoticesPage | 받기+보내기 (By Brand/Select Restaurants) | ✅ |
+| Foodcourt NoticesPage | 받기+보내기 (By Foodcourt/Select Restaurants) | ✅ |
+| Owner NoticesPage | 받기+보내기 (All Owned/Individual) | ✅ |
+| Restaurant NoticesPage | 받기 전용 | ✅ |
+
+### 4. 문의 페이지 댓글 추가
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 공통 CommentSection 컴포넌트 | components/Common/CommentSection.tsx | ✅ |
+| Admin SystemInquiry | 댓글 섹션 추가 | ✅ |
+| Restaurant SystemInquiry | 댓글 섹션 추가 | ✅ |
+| Manager SupportTickets | 댓글 섹션 추가 | ✅ |
+| Brand OperationInquiry | 댓글 섹션 추가 | ✅ |
+| Foodcourt OperationInquiry | 댓글 섹션 추가 | ✅ |
+| Manager OperationInquiry | 댓글 섹션 추가 | ✅ |
+
+### 수정/생성된 파일
+- `dev-backend/models/Comment.js` (신규)
+- `dev-backend/models/Notice.js` (신규)
+- `dev-backend/models/NoticeRecipient.js` (신규)
+- `dev-backend/models/index.js` (associations 추가)
+- `dev-backend/routes/comments.js` (신규)
+- `dev-backend/routes/notices.js` (신규)
+- `dev-backend/server.js` (라우트 등록)
+- `dev-frontend/src/components/Layout/MainLayout.tsx` (Communication 메뉴)
+- `dev-frontend/src/components/Common/CommentSection.tsx` (신규)
+- `dev-frontend/src/pages/Admin/NoticesPage.tsx` (신규)
+- `dev-frontend/src/pages/Brand/NoticesPage.tsx` (신규)
+- `dev-frontend/src/pages/Foodcourt/NoticesPage.tsx` (신규)
+- `dev-frontend/src/pages/Owner/NoticesPage.tsx` (신규)
+- `dev-frontend/src/pages/Restaurant/NoticesPage.tsx` (신규)
+- `dev-frontend/src/App.tsx` (라우트 추가)
+- 6개 문의 페이지에 CommentSection import 추가
+
+---
+
+## ✅ 완료: UI/UX 개선 - MainLayout 싱글마운트 + 사이드바 메뉴 재정리 (2026-02-27)
+
+### 1. System Inquiry 헤더 수정
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Restaurant/SystemInquiryPage.tsx | "Support Tickets" → "System Inquiry" 수정 | ✅ |
+| Manager/SystemInquiryPage.tsx | "Support Tickets" → "System Inquiry" 수정 | ✅ |
+
+### 2. MainLayout 싱글 마운트 리팩토링 (아키텍처 변경)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| PosLayout.tsx 생성 | React Router Layout Route + Outlet 패턴 | ✅ |
+| App.tsx 라우트 구조 변경 | 공개/전체화면/POS 3구역 분리, PosLayout 중첩 | ✅ |
+| 102개 페이지 MainLayout 제거 | 각 페이지에서 MainLayout import/wrapper 제거 | ✅ |
+| MainLayout 스크롤 코드 제거 | 불필요한 savedScrollPosition/useEffect 제거 | ✅ |
+
+### 3. 사이드바 메뉴 역할별 재정리
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| System Admin | Billing+Analytics → Operations + Plans & Payments | ✅ |
+| Brand General | 8섹션→6섹션. Products+Stock 통합, Invoices/Reports 상위 이동 | ✅ |
+| Foodcourt General | 6섹션→5섹션. Operations+Plans & Payments 통합 | ✅ |
+| Restaurant Owner | 4섹션→3섹션. Operations 통합, Invoices 최상위 | ✅ |
+| Restaurant Admin/Staff | 8섹션→6섹션. Operations(Invoices,Reports,Inventory) 통합 | ✅ |
+
+### 수정된 파일
+- `dev-frontend/src/components/Layout/PosLayout.tsx` (신규)
+- `dev-frontend/src/components/Layout/MainLayout.tsx` (스크롤 코드 제거 + 메뉴 재정리)
+- `dev-frontend/src/App.tsx` (라우트 구조 변경)
+- 102개 페이지 파일 (MainLayout 제거)
+- `dev-frontend/src/pages/Restaurant/SystemInquiryPage.tsx` (헤더 수정)
+- `dev-frontend/src/pages/Manager/SystemInquiryPage.tsx` (헤더 수정)
+
+---
+
 ## ✅ 완료: DB 백업 체계 + 파일 정리 + PayPal 결제 + 서버 모니터링 + Reports 페이지 (2026-02-25)
 
 ### 1. DB 백업 체계 구축
@@ -108,8 +331,8 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 | server.js 라우트 등록 | /api/admin-reports 등록 | ✅ |
 | ReportsPage.tsx | 4탭 리포트 페이지 (Revenue/Payment/Customer/Subscription) | ✅ |
 | App.tsx 라우트 | ReportsPage import + /pos/admin/report 라우트 | ✅ |
-| MainLayout 메뉴 활성화 | DisabledNavItem → NavItem 변경 | ⏳ 다음 세션 |
-| 빌드 + 테스트 | 프론트엔드 빌드 + 개발서버 확인 | ⏳ 다음 세션 |
+| MainLayout 메뉴 활성화 | DisabledNavItem → NavItem 변경 | ✅ |
+| 빌드 + 테스트 | 프론트엔드 빌드 + 개발서버 확인 | ✅ |
 
 ### 수정된 파일
 - `dev-backend/routes/admin-reports.js` (신규), `dev-backend/utils/paypalService.js` (신규)
@@ -810,6 +1033,34 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 - `dev-backend/services/serverHealthMonitor.js`
 - `dev-backend/services/invoiceScheduler.js`
 - `dev-backend/models/CompanySettings.js`
+
+---
+
+## ✅ 완료: 할인 시스템 품질 보완 + 실제 결제 금액 표시 (2026-02-28)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 품질 체크 수정 | Restaurant/InvoicesPage 모달 Free 표시, NoticesPage/InquiryPage refreshBadgeCounts 이벤트 | ✅ 완료 |
+| Subscriptions 400 에러 수정 | Brand/Foodcourt SubscriptionsPage restaurant_id→restaurant_ids 배열 변환 | ✅ 완료 |
+| Create Invoice 할인 UI | Admin/Brand/Foodcourt InvoicesPage Create Invoice 모달에 Discount 입력 UI 추가 | ✅ 완료 |
+| Admin SubscriptionsPage 401 수정 | handleUpdateSubscription Authorization 헤더 누락 수정 | ✅ 완료 |
+| Admin RestaurantsPage 할인 UI | Edit 모달 Subscription Settings에 Discount Type/Value/Reason 추가 | ✅ 완료 |
+| 할인 후 실제 결제 금액 표시 | Admin/Brand/Foodcourt/Manager SubscriptionsPage 테이블+모달에 취소선+할인후 금액 표시 | ✅ 완료 |
+| Manager API 할인 필드 추가 | /api/restaurants/subscriptions/manager/:id에 discountType/Value/Reason 반환 | ✅ 완료 |
+
+### 수정된 파일 (주요)
+- `dev-frontend/src/pages/Admin/SubscriptionsPage.tsx` (401 수정 + 할인 금액 표시)
+- `dev-frontend/src/pages/Admin/RestaurantsPage.tsx` (Edit 모달 할인 UI)
+- `dev-frontend/src/pages/Admin/InvoicesPage.tsx` (Create Invoice 할인)
+- `dev-frontend/src/pages/BrandGeneral/BrandSubscriptionsPage.tsx` (할인 금액 표시)
+- `dev-frontend/src/pages/BrandGeneral/BrandInvoicesPage.tsx` (Create Invoice 할인)
+- `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtSubscriptionsPage.tsx` (할인 금액 표시)
+- `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtInvoicesPage.tsx` (Create Invoice 할인)
+- `dev-frontend/src/pages/Manager/SubscriptionsPage.tsx` (카드 할인 금액 표시)
+- `dev-backend/routes/restaurants.js` (Manager API 할인 필드)
+- 12개 InquiryPage + SupportTicketsPage (refreshBadgeCounts 이벤트)
 
 ---
 

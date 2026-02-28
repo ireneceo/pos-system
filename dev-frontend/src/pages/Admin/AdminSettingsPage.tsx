@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { SaveButtonContainer, SaveButtonGroup, SaveButton, StatusMessage } from '../../components/UI';
 import { COUNTRIES } from '../../constants/countries';
 import PhoneInput from '../../components/Common/PhoneInput';
@@ -372,7 +371,7 @@ const AdminSettingsPage: React.FC = () => {
   // };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <PageTitle>Company Information</PageTitle>
@@ -605,7 +604,7 @@ const AdminSettingsPage: React.FC = () => {
             </SaveButtonContainer>
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import styled, { createGlobalStyle } from 'styled-components';
 import { io, Socket } from 'socket.io-client';
-import MainLayout from '../../components/Layout/MainLayout';
 import PageHeader from '../../components/Common/PageHeader';
 import { useAuth } from '../../contexts/AuthContext';
 import PaymentModal from '../../components/POSTerminal/PaymentModal';
@@ -2695,7 +2694,7 @@ const LiveOrdersPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <PrintStyles />
 
       {/* Items Added Alert - for merged orders */}
@@ -4438,7 +4437,7 @@ const LiveOrdersPage: React.FC = () => {
         </ToastContainer>,
         document.body
       )}
-    </MainLayout>
+    </>
   );
 };
 

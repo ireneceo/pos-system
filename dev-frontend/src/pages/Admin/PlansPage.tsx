@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import {
   StatsGrid,
   StatCard,
@@ -28,11 +27,14 @@ interface Plan {
   displayName: string;
   description: string;
   category: 'basic' | 'custom';
-  planTarget: 'restaurant' | 'brand' | 'foodcourt';
+  planTarget: 'restaurant' | 'brand' | 'foodcourt' | 'owner';
   monthlyPrice: number;
   annualPrice: number;
-  restaurantLimit: number;
   orderLimit: number;
+  menuItemLimit: number;
+  staffLimit: number;
+  restaurantLimit: number;
+  managerLimit: number;
   features: string[];
   includedModules?: string[];
   isPopular: boolean;
@@ -44,7 +46,7 @@ interface Plan {
 
 interface AddonModule {
   id: number;
-  target_user_type: 'restaurant' | 'brand' | 'foodcourt' | 'all';
+  target_user_type: 'restaurant' | 'brand' | 'foodcourt' | 'owner' | 'all';
   module_code: string;
   name: string;
   description: string;
@@ -566,7 +568,7 @@ const PlansPage: React.FC = () => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [subscriptionStats, setSubscriptionStats] = useState<{[key: string]: number}>({});
   const [searchTerm, setSearchTerm] = useState('');
-  const [planTargetFilter, setPlanTargetFilter] = useState<'all' | 'restaurant' | 'brand' | 'foodcourt'>('all');
+  const [planTargetFilter, setPlanTargetFilter] = useState<'all' | 'restaurant' | 'brand' | 'foodcourt' | 'owner'>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'basic' | 'custom'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [displayCurrency, setDisplayCurrency] = useState<string>('USD');
@@ -587,13 +589,15 @@ const PlansPage: React.FC = () => {
     display_name: '',
     description: '',
     category: 'basic' as 'basic' | 'custom',
-    plan_target: 'restaurant' as 'restaurant' | 'brand' | 'foodcourt',
+    plan_target: 'restaurant' as 'restaurant' | 'brand' | 'foodcourt' | 'owner',
     base_price_monthly: '',
     base_price_annual: '',
     currency_prices: {} as {[currency: string]: {monthly: string; annual: string}},
     order_limit: '',
     menu_item_limit: '',
     staff_limit: '',
+    restaurant_limit: '',
+    manager_limit: '',
     features: '',
     included_modules: [] as string[],
     is_popular: false,
@@ -607,13 +611,15 @@ const PlansPage: React.FC = () => {
     display_name: '',
     description: '',
     category: 'basic' as 'basic' | 'custom',
-    plan_target: 'restaurant' as 'restaurant' | 'brand' | 'foodcourt',
+    plan_target: 'restaurant' as 'restaurant' | 'brand' | 'foodcourt' | 'owner',
     base_price_monthly: '',
     base_price_annual: '',
     currency_prices: {} as {[currency: string]: {monthly: string; annual: string}},
     order_limit: '',
     menu_item_limit: '',
     staff_limit: '',
+    restaurant_limit: '',
+    manager_limit: '',
     features: '',
     included_modules: [] as string[],
     is_popular: false,
@@ -820,8 +826,11 @@ const PlansPage: React.FC = () => {
           planTarget: plan.plan_target || 'restaurant',
           monthlyPrice: parseFloat(plan.base_price_monthly),
           annualPrice: parseFloat(plan.base_price_annual),
-          restaurantLimit: plan.staff_limit, // Using staff_limit as restaurant limit
           orderLimit: plan.order_limit,
+          menuItemLimit: plan.menu_item_limit,
+          staffLimit: plan.staff_limit,
+          restaurantLimit: plan.restaurant_limit,
+          managerLimit: plan.manager_limit,
           features: features,
           includedModules: includedModules,
           isPopular: plan.name === 'professional',
@@ -857,6 +866,8 @@ const PlansPage: React.FC = () => {
         order_limit: isCustom ? -1 : (parseInt(createFormData.order_limit) || -1),
         menu_item_limit: isCustom ? -1 : (parseInt(createFormData.menu_item_limit) || -1),
         staff_limit: isCustom ? -1 : (parseInt(createFormData.staff_limit) || -1),
+        restaurant_limit: isCustom ? -1 : (parseInt(createFormData.restaurant_limit) || -1),
+        manager_limit: isCustom ? -1 : (parseInt(createFormData.manager_limit) || -1),
         features: createFormData.features.split('\n').filter(f => f.trim()),
         included_modules: createFormData.included_modules,
         is_popular: createFormData.is_popular,
@@ -906,13 +917,15 @@ const PlansPage: React.FC = () => {
         display_name: '',
         description: '',
         category: 'basic' as 'basic' | 'custom',
-        plan_target: 'restaurant' as 'restaurant' | 'brand' | 'foodcourt',
+        plan_target: 'restaurant' as 'restaurant' | 'brand' | 'foodcourt' | 'owner',
         base_price_monthly: '',
         base_price_annual: '',
         currency_prices: {},
         order_limit: '',
         menu_item_limit: '',
         staff_limit: '',
+        restaurant_limit: '',
+        manager_limit: '',
         features: '',
         included_modules: [],
         is_popular: false,
@@ -946,6 +959,8 @@ const PlansPage: React.FC = () => {
         order_limit: isCustom ? -1 : (parseInt(editFormData.order_limit) || -1),
         menu_item_limit: isCustom ? -1 : (parseInt(editFormData.menu_item_limit) || -1),
         staff_limit: isCustom ? -1 : (parseInt(editFormData.staff_limit) || -1),
+        restaurant_limit: isCustom ? -1 : (parseInt(editFormData.restaurant_limit) || -1),
+        manager_limit: isCustom ? -1 : (parseInt(editFormData.manager_limit) || -1),
         features: editFormData.features.split('\n').filter(f => f.trim()),
         included_modules: editFormData.included_modules,
         is_popular: editFormData.is_popular,
@@ -1046,8 +1061,11 @@ const PlansPage: React.FC = () => {
         planTarget: 'restaurant',
         monthlyPrice: 29,
         annualPrice: 290,
-        restaurantLimit: 1,
+        menuItemLimit: 50,
         orderLimit: 1000,
+        staffLimit: 5,
+        restaurantLimit: -1,
+        managerLimit: -1,
         features: [
           'Up to 1,000 orders per month',
           'Up to 50 menu items',
@@ -1070,8 +1088,11 @@ const PlansPage: React.FC = () => {
         planTarget: 'restaurant',
         monthlyPrice: 99,
         annualPrice: 990,
-        restaurantLimit: 5,
+        menuItemLimit: 200,
         orderLimit: 10000,
+        staffLimit: 20,
+        restaurantLimit: -1,
+        managerLimit: -1,
         features: [
           'Up to 10,000 orders per month',
           'Up to 200 menu items',
@@ -1096,8 +1117,11 @@ const PlansPage: React.FC = () => {
         planTarget: 'restaurant',
         monthlyPrice: 199,
         annualPrice: 2190,
-        restaurantLimit: -1,
+        menuItemLimit: -1,
         orderLimit: -1,
+        staffLimit: -1,
+        restaurantLimit: -1,
+        managerLimit: -1,
         features: [
           'Unlimited orders',
           'Unlimited menu items',
@@ -1209,8 +1233,10 @@ const PlansPage: React.FC = () => {
       base_price_annual: plan.annualPrice.toString(),
       currency_prices: currencyPricesData,
       order_limit: plan.orderLimit.toString(),
-      menu_item_limit: '50', // default value
-      staff_limit: plan.restaurantLimit.toString(),
+      menu_item_limit: plan.menuItemLimit.toString(),
+      staff_limit: plan.staffLimit.toString(),
+      restaurant_limit: plan.restaurantLimit.toString(),
+      manager_limit: plan.managerLimit.toString(),
       features: plan.features.join('\n'),
       included_modules: plan.includedModules || [],
       is_popular: plan.isPopular,
@@ -1240,7 +1266,7 @@ const PlansPage: React.FC = () => {
   const customPlansCount = plans.filter(p => p.category === 'custom').length;
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Subscription Plans</Title>
@@ -1289,6 +1315,7 @@ const PlansPage: React.FC = () => {
             <option value="restaurant">Restaurant Plans</option>
             <option value="brand">Brand Plans</option>
             <option value="foodcourt">Foodcourt Plans</option>
+            <option value="owner">Restaurant Owner Plans</option>
           </FilterSelect>
           <FilterSelect
             value={categoryFilter}
@@ -1367,15 +1394,39 @@ const PlansPage: React.FC = () => {
                 </PlanPricing>
               </PlanHeader>
 
-              {plan.category === 'basic' && (
+              {plan.category === 'basic' && plan.planTarget === 'restaurant' && (
                 <PlanLimits>
                   <LimitItem>
-                    <LimitLabel>Staff Limit</LimitLabel>
-                    <LimitValue>{formatLimit(plan.restaurantLimit)}</LimitValue>
+                    <LimitLabel>Menu Items</LimitLabel>
+                    <LimitValue>{formatLimit(plan.menuItemLimit)}</LimitValue>
                   </LimitItem>
                   <LimitItem>
                     <LimitLabel>Orders/month</LimitLabel>
                     <LimitValue>{formatLimit(plan.orderLimit)}</LimitValue>
+                  </LimitItem>
+                  <LimitItem>
+                    <LimitLabel>Staff</LimitLabel>
+                    <LimitValue>{formatLimit(plan.staffLimit)}</LimitValue>
+                  </LimitItem>
+                </PlanLimits>
+              )}
+              {plan.category === 'basic' && (plan.planTarget === 'brand' || plan.planTarget === 'foodcourt') && (
+                <PlanLimits>
+                  <LimitItem>
+                    <LimitLabel>Restaurants</LimitLabel>
+                    <LimitValue>{formatLimit(plan.restaurantLimit)}</LimitValue>
+                  </LimitItem>
+                  <LimitItem>
+                    <LimitLabel>Managers</LimitLabel>
+                    <LimitValue>{formatLimit(plan.managerLimit)}</LimitValue>
+                  </LimitItem>
+                </PlanLimits>
+              )}
+              {plan.category === 'basic' && plan.planTarget === 'owner' && (
+                <PlanLimits>
+                  <LimitItem>
+                    <LimitLabel>Restaurants</LimitLabel>
+                    <LimitValue>{formatLimit(plan.restaurantLimit)}</LimitValue>
                   </LimitItem>
                 </PlanLimits>
               )}
@@ -1472,11 +1523,12 @@ const PlansPage: React.FC = () => {
                   <FormLabel>Plan Target *</FormLabel>
                   <FormSelect
                     value={createFormData.plan_target}
-                    onChange={(e) => setCreateFormData(prev => ({...prev, plan_target: e.target.value as 'restaurant' | 'brand' | 'foodcourt'}))}
+                    onChange={(e) => setCreateFormData(prev => ({...prev, plan_target: e.target.value as 'restaurant' | 'brand' | 'foodcourt' | 'owner'}))}
                   >
                     <option value="restaurant">Restaurant Plan</option>
                     <option value="brand">Brand Plan</option>
                     <option value="foodcourt">Foodcourt Plan</option>
+                    <option value="owner">Restaurant Owner Plan</option>
                   </FormSelect>
                 </FormGroup>
                 <FormGroup>
@@ -1577,7 +1629,7 @@ const PlansPage: React.FC = () => {
                     )}
                   </div>
                 </FormGroup>
-                {createFormData.category === 'basic' && (
+                {createFormData.category === 'basic' && createFormData.plan_target === 'restaurant' && (
                   <>
                     <LimitsRow>
                       <FormGroup>
@@ -1609,6 +1661,39 @@ const PlansPage: React.FC = () => {
                       />
                     </FormGroup>
                   </>
+                )}
+                {createFormData.category === 'basic' && (createFormData.plan_target === 'brand' || createFormData.plan_target === 'foodcourt') && (
+                  <LimitsRow>
+                    <FormGroup>
+                      <FormLabel>Restaurant Limit</FormLabel>
+                      <FormInput
+                        type="number"
+                        placeholder="-1 for unlimited"
+                        value={createFormData.restaurant_limit}
+                        onChange={(e) => setCreateFormData(prev => ({...prev, restaurant_limit: e.target.value}))}
+                      />
+                    </FormGroup>
+                    <FormGroup>
+                      <FormLabel>Manager Limit</FormLabel>
+                      <FormInput
+                        type="number"
+                        placeholder="-1 for unlimited"
+                        value={createFormData.manager_limit}
+                        onChange={(e) => setCreateFormData(prev => ({...prev, manager_limit: e.target.value}))}
+                      />
+                    </FormGroup>
+                  </LimitsRow>
+                )}
+                {createFormData.category === 'basic' && createFormData.plan_target === 'owner' && (
+                  <FormGroup>
+                    <FormLabel>Restaurant Limit</FormLabel>
+                    <FormInput
+                      type="number"
+                      placeholder="-1 for unlimited"
+                      value={createFormData.restaurant_limit}
+                      onChange={(e) => setCreateFormData(prev => ({...prev, restaurant_limit: e.target.value}))}
+                    />
+                  </FormGroup>
                 )}
 
                 {/* Only show module selection for Basic plans */}
@@ -1668,6 +1753,135 @@ const PlansPage: React.FC = () => {
                       <CheckboxGroup>
                         {availableModules
                           .filter(m => m.category === 'advanced' && (m.target_user_type === createFormData.plan_target || m.target_user_type === 'all'))
+                          .map((module) => {
+                            const isChecked = createFormData.included_modules.includes(module.module_code);
+                            return (
+                              <CheckboxItem key={module.module_code}>
+                                <input
+                                  type="checkbox"
+                                  id={`module-${module.module_code}`}
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setCreateFormData(prev => ({
+                                        ...prev,
+                                        included_modules: [...prev.included_modules, module.module_code]
+                                      }));
+                                    } else {
+                                      setCreateFormData(prev => ({
+                                        ...prev,
+                                        included_modules: prev.included_modules.filter(m => m !== module.module_code)
+                                      }));
+                                    }
+                                  }}
+                                />
+                                <label htmlFor={`module-${module.module_code}`}>
+                                  <strong>{module.name}</strong>
+                                  <br />
+                                  <small style={{color: '#6B7280'}}>{module.description}</small>
+                                </label>
+                              </CheckboxItem>
+                            );
+                          })}
+                      </CheckboxGroup>
+                    </>
+                  )}
+
+                  {/* Revenue Modules */}
+                  {availableModules.filter(m => m.category === 'revenue' && (m.target_user_type === createFormData.plan_target || m.target_user_type === 'all')).length > 0 && (
+                    <>
+                      <div style={{marginTop: '24px', marginBottom: '8px', fontSize: '14px', fontWeight: 600, color: '#10B981'}}>
+                        Revenue Modules
+                      </div>
+                      <CheckboxGroup>
+                        {availableModules
+                          .filter(m => m.category === 'revenue' && (m.target_user_type === createFormData.plan_target || m.target_user_type === 'all'))
+                          .map((module) => {
+                            const isChecked = createFormData.included_modules.includes(module.module_code);
+                            return (
+                              <CheckboxItem key={module.module_code}>
+                                <input
+                                  type="checkbox"
+                                  id={`module-${module.module_code}`}
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setCreateFormData(prev => ({
+                                        ...prev,
+                                        included_modules: [...prev.included_modules, module.module_code]
+                                      }));
+                                    } else {
+                                      setCreateFormData(prev => ({
+                                        ...prev,
+                                        included_modules: prev.included_modules.filter(m => m !== module.module_code)
+                                      }));
+                                    }
+                                  }}
+                                />
+                                <label htmlFor={`module-${module.module_code}`}>
+                                  <strong>{module.name}</strong>
+                                  <br />
+                                  <small style={{color: '#6B7280'}}>{module.description}</small>
+                                </label>
+                              </CheckboxItem>
+                            );
+                          })}
+                      </CheckboxGroup>
+                    </>
+                  )}
+
+                  {/* Operation Modules */}
+                  {availableModules.filter(m => m.category === 'operation' && (m.target_user_type === createFormData.plan_target || m.target_user_type === 'all')).length > 0 && (
+                    <>
+                      <div style={{marginTop: '24px', marginBottom: '8px', fontSize: '14px', fontWeight: 600, color: '#F59E0B'}}>
+                        Operation Modules
+                      </div>
+                      <CheckboxGroup>
+                        {availableModules
+                          .filter(m => m.category === 'operation' && (m.target_user_type === createFormData.plan_target || m.target_user_type === 'all'))
+                          .map((module) => {
+                            const isChecked = createFormData.included_modules.includes(module.module_code);
+                            return (
+                              <CheckboxItem key={module.module_code}>
+                                <input
+                                  type="checkbox"
+                                  id={`module-${module.module_code}`}
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setCreateFormData(prev => ({
+                                        ...prev,
+                                        included_modules: [...prev.included_modules, module.module_code]
+                                      }));
+                                    } else {
+                                      setCreateFormData(prev => ({
+                                        ...prev,
+                                        included_modules: prev.included_modules.filter(m => m !== module.module_code)
+                                      }));
+                                    }
+                                  }}
+                                />
+                                <label htmlFor={`module-${module.module_code}`}>
+                                  <strong>{module.name}</strong>
+                                  <br />
+                                  <small style={{color: '#6B7280'}}>{module.description}</small>
+                                </label>
+                              </CheckboxItem>
+                            );
+                          })}
+                      </CheckboxGroup>
+                    </>
+                  )}
+
+                  {/* Analytics Modules */}
+                  {availableModules.filter(m => m.category === 'analytics' && (m.target_user_type === createFormData.plan_target || m.target_user_type === 'all')).length > 0 && (
+                    <>
+                      <div style={{marginTop: '24px', marginBottom: '8px', fontSize: '14px', fontWeight: 600, color: '#EF4444'}}>
+                        Analytics Modules
+                      </div>
+                      <CheckboxGroup>
+                        {availableModules
+                          .filter(m => m.category === 'analytics' && (m.target_user_type === createFormData.plan_target || m.target_user_type === 'all'))
                           .map((module) => {
                             const isChecked = createFormData.included_modules.includes(module.module_code);
                             return (
@@ -1768,11 +1982,12 @@ const PlansPage: React.FC = () => {
                   <FormLabel>Plan Target *</FormLabel>
                   <FormSelect
                     value={editFormData.plan_target}
-                    onChange={(e) => setEditFormData(prev => ({...prev, plan_target: e.target.value as 'restaurant' | 'brand' | 'foodcourt'}))}
+                    onChange={(e) => setEditFormData(prev => ({...prev, plan_target: e.target.value as 'restaurant' | 'brand' | 'foodcourt' | 'owner'}))}
                   >
                     <option value="restaurant">Restaurant Plan</option>
                     <option value="brand">Brand Plan</option>
                     <option value="foodcourt">Foodcourt Plan</option>
+                    <option value="owner">Restaurant Owner Plan</option>
                   </FormSelect>
                 </FormGroup>
                 <FormGroup>
@@ -1843,7 +2058,7 @@ const PlansPage: React.FC = () => {
                     )}
                   </div>
                 </FormGroup>
-                {editFormData.category === 'basic' && (
+                {editFormData.category === 'basic' && editFormData.plan_target === 'restaurant' && (
                   <>
                     <LimitsRow>
                       <FormGroup>
@@ -1875,6 +2090,39 @@ const PlansPage: React.FC = () => {
                       />
                     </FormGroup>
                   </>
+                )}
+                {editFormData.category === 'basic' && (editFormData.plan_target === 'brand' || editFormData.plan_target === 'foodcourt') && (
+                  <LimitsRow>
+                    <FormGroup>
+                      <FormLabel>Restaurant Limit</FormLabel>
+                      <FormInput
+                        type="number"
+                        placeholder="-1 for unlimited"
+                        value={editFormData.restaurant_limit}
+                        onChange={(e) => setEditFormData(prev => ({...prev, restaurant_limit: e.target.value}))}
+                      />
+                    </FormGroup>
+                    <FormGroup>
+                      <FormLabel>Manager Limit</FormLabel>
+                      <FormInput
+                        type="number"
+                        placeholder="-1 for unlimited"
+                        value={editFormData.manager_limit}
+                        onChange={(e) => setEditFormData(prev => ({...prev, manager_limit: e.target.value}))}
+                      />
+                    </FormGroup>
+                  </LimitsRow>
+                )}
+                {editFormData.category === 'basic' && editFormData.plan_target === 'owner' && (
+                  <FormGroup>
+                    <FormLabel>Restaurant Limit</FormLabel>
+                    <FormInput
+                      type="number"
+                      placeholder="-1 for unlimited"
+                      value={editFormData.restaurant_limit}
+                      onChange={(e) => setEditFormData(prev => ({...prev, restaurant_limit: e.target.value}))}
+                    />
+                  </FormGroup>
                 )}
 
                 {/* Only show module selection for Basic plans */}
@@ -1934,6 +2182,135 @@ const PlansPage: React.FC = () => {
                         <CheckboxGroup>
                           {availableModules
                             .filter(m => m.category === 'advanced' && (m.target_user_type === editFormData.plan_target || m.target_user_type === 'all'))
+                            .map((module) => {
+                              const isChecked = editFormData.included_modules.includes(module.module_code);
+                              return (
+                                <CheckboxItem key={module.module_code}>
+                                  <input
+                                    type="checkbox"
+                                    id={`edit-module-${module.module_code}`}
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setEditFormData(prev => ({
+                                          ...prev,
+                                          included_modules: [...prev.included_modules, module.module_code]
+                                        }));
+                                      } else {
+                                        setEditFormData(prev => ({
+                                          ...prev,
+                                          included_modules: prev.included_modules.filter(m => m !== module.module_code)
+                                        }));
+                                      }
+                                    }}
+                                  />
+                                  <label htmlFor={`edit-module-${module.module_code}`}>
+                                    <strong>{module.name}</strong>
+                                    <br />
+                                    <small style={{color: '#6B7280'}}>{module.description}</small>
+                                  </label>
+                                </CheckboxItem>
+                              );
+                            })}
+                        </CheckboxGroup>
+                      </>
+                    )}
+
+                    {/* Revenue Modules */}
+                    {availableModules.filter(m => m.category === 'revenue' && (m.target_user_type === editFormData.plan_target || m.target_user_type === 'all')).length > 0 && (
+                      <>
+                        <div style={{marginTop: '24px', marginBottom: '8px', fontSize: '14px', fontWeight: 600, color: '#10B981'}}>
+                          Revenue Modules
+                        </div>
+                        <CheckboxGroup>
+                          {availableModules
+                            .filter(m => m.category === 'revenue' && (m.target_user_type === editFormData.plan_target || m.target_user_type === 'all'))
+                            .map((module) => {
+                              const isChecked = editFormData.included_modules.includes(module.module_code);
+                              return (
+                                <CheckboxItem key={module.module_code}>
+                                  <input
+                                    type="checkbox"
+                                    id={`edit-module-${module.module_code}`}
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setEditFormData(prev => ({
+                                          ...prev,
+                                          included_modules: [...prev.included_modules, module.module_code]
+                                        }));
+                                      } else {
+                                        setEditFormData(prev => ({
+                                          ...prev,
+                                          included_modules: prev.included_modules.filter(m => m !== module.module_code)
+                                        }));
+                                      }
+                                    }}
+                                  />
+                                  <label htmlFor={`edit-module-${module.module_code}`}>
+                                    <strong>{module.name}</strong>
+                                    <br />
+                                    <small style={{color: '#6B7280'}}>{module.description}</small>
+                                  </label>
+                                </CheckboxItem>
+                              );
+                            })}
+                        </CheckboxGroup>
+                      </>
+                    )}
+
+                    {/* Operation Modules */}
+                    {availableModules.filter(m => m.category === 'operation' && (m.target_user_type === editFormData.plan_target || m.target_user_type === 'all')).length > 0 && (
+                      <>
+                        <div style={{marginTop: '24px', marginBottom: '8px', fontSize: '14px', fontWeight: 600, color: '#F59E0B'}}>
+                          Operation Modules
+                        </div>
+                        <CheckboxGroup>
+                          {availableModules
+                            .filter(m => m.category === 'operation' && (m.target_user_type === editFormData.plan_target || m.target_user_type === 'all'))
+                            .map((module) => {
+                              const isChecked = editFormData.included_modules.includes(module.module_code);
+                              return (
+                                <CheckboxItem key={module.module_code}>
+                                  <input
+                                    type="checkbox"
+                                    id={`edit-module-${module.module_code}`}
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setEditFormData(prev => ({
+                                          ...prev,
+                                          included_modules: [...prev.included_modules, module.module_code]
+                                        }));
+                                      } else {
+                                        setEditFormData(prev => ({
+                                          ...prev,
+                                          included_modules: prev.included_modules.filter(m => m !== module.module_code)
+                                        }));
+                                      }
+                                    }}
+                                  />
+                                  <label htmlFor={`edit-module-${module.module_code}`}>
+                                    <strong>{module.name}</strong>
+                                    <br />
+                                    <small style={{color: '#6B7280'}}>{module.description}</small>
+                                  </label>
+                                </CheckboxItem>
+                              );
+                            })}
+                        </CheckboxGroup>
+                      </>
+                    )}
+
+                    {/* Analytics Modules */}
+                    {availableModules.filter(m => m.category === 'analytics' && (m.target_user_type === editFormData.plan_target || m.target_user_type === 'all')).length > 0 && (
+                      <>
+                        <div style={{marginTop: '24px', marginBottom: '8px', fontSize: '14px', fontWeight: 600, color: '#EF4444'}}>
+                          Analytics Modules
+                        </div>
+                        <CheckboxGroup>
+                          {availableModules
+                            .filter(m => m.category === 'analytics' && (m.target_user_type === editFormData.plan_target || m.target_user_type === 'all'))
                             .map((module) => {
                               const isChecked = editFormData.included_modules.includes(module.module_code);
                               return (
@@ -2064,14 +2441,40 @@ const PlansPage: React.FC = () => {
 
                 <DetailSection>
                   <h4>Limits</h4>
-                  <DetailRow>
-                    <DetailLabel>Restaurant Limit</DetailLabel>
-                    <DetailValue>{formatLimit(selectedPlan.restaurantLimit)}</DetailValue>
-                  </DetailRow>
-                  <DetailRow>
-                    <DetailLabel>Monthly Order Limit</DetailLabel>
-                    <DetailValue>{formatLimit(selectedPlan.orderLimit)}</DetailValue>
-                  </DetailRow>
+                  {selectedPlan.planTarget === 'restaurant' && (
+                    <>
+                      <DetailRow>
+                        <DetailLabel>Menu Item Limit</DetailLabel>
+                        <DetailValue>{formatLimit(selectedPlan.menuItemLimit)}</DetailValue>
+                      </DetailRow>
+                      <DetailRow>
+                        <DetailLabel>Monthly Order Limit</DetailLabel>
+                        <DetailValue>{formatLimit(selectedPlan.orderLimit)}</DetailValue>
+                      </DetailRow>
+                      <DetailRow>
+                        <DetailLabel>Staff Limit</DetailLabel>
+                        <DetailValue>{formatLimit(selectedPlan.staffLimit)}</DetailValue>
+                      </DetailRow>
+                    </>
+                  )}
+                  {(selectedPlan.planTarget === 'brand' || selectedPlan.planTarget === 'foodcourt') && (
+                    <>
+                      <DetailRow>
+                        <DetailLabel>Restaurant Limit</DetailLabel>
+                        <DetailValue>{formatLimit(selectedPlan.restaurantLimit)}</DetailValue>
+                      </DetailRow>
+                      <DetailRow>
+                        <DetailLabel>Manager Limit</DetailLabel>
+                        <DetailValue>{formatLimit(selectedPlan.managerLimit)}</DetailValue>
+                      </DetailRow>
+                    </>
+                  )}
+                  {selectedPlan.planTarget === 'owner' && (
+                    <DetailRow>
+                      <DetailLabel>Restaurant Limit</DetailLabel>
+                      <DetailValue>{formatLimit(selectedPlan.restaurantLimit)}</DetailValue>
+                    </DetailRow>
+                  )}
                 </DetailSection>
 
                 <DetailSection>
@@ -2206,7 +2609,7 @@ const PlansPage: React.FC = () => {
 
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

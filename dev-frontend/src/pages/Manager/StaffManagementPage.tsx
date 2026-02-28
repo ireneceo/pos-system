@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { TabContainer, Tab, StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useAuth } from '../../contexts/AuthContext';
@@ -867,7 +866,7 @@ const ManagerStaffManagementPage: React.FC = () => {
   const roles = Array.from(new Set(staffList.map(s => s.role)));
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Staff</Title>
@@ -1176,7 +1175,7 @@ const ManagerStaffManagementPage: React.FC = () => {
           </ModalContent>
         </Modal>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

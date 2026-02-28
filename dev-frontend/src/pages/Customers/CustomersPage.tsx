@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useParams } from 'react-router-dom';
-import MainLayout from '../../components/Layout/MainLayout';
 import { useCustomer, Customer } from '../../contexts/CustomerContext';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
@@ -568,7 +567,7 @@ const CustomersPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <CustomersContainer>
         <PageHeader title="Customers">
           <Button onClick={handleAddCustomer} variant="primary">
@@ -935,7 +934,7 @@ const CustomersPage: React.FC = () => {
           .mobile-only { display: none !important; }
         }
       `}</style>
-    </MainLayout>
+    </>
   );
 };
 

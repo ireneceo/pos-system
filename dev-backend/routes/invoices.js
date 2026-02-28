@@ -558,7 +558,13 @@ router.get('/', authenticateToken, async (req, res) => {
         receiptUrl: invoice.receipt_url,
         hasPaymentInfo: !!invoice.payment_method || !!invoice.receipt_url,
         // Additional charges (Tax, Service Charge, etc.)
-        additionalCharges: invoice.additional_charges || []
+        additionalCharges: invoice.additional_charges || [],
+        // Discount info
+        discountType: invoice.discount_type || 'none',
+        discountValue: parseFloat(invoice.discount_value) || 0,
+        discountAmount: parseFloat(invoice.discount_amount) || 0,
+        discountReason: invoice.discount_reason || null,
+        subtotalBeforeDiscount: parseFloat(invoice.subtotal) || null
       };
     });
 
@@ -656,7 +662,13 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
         issuerInfo: issuerInfo,
         payerInfo: payerInfo,
         // Additional charges (Tax, Service Charge, etc.)
-        additional_charges: invoice.additional_charges || []
+        additional_charges: invoice.additional_charges || [],
+        // Discount info
+        discount_type: invoice.discount_type || 'none',
+        discount_value: parseFloat(invoice.discount_value) || 0,
+        discount_amount: parseFloat(invoice.discount_amount) || 0,
+        discount_reason: invoice.discount_reason || null,
+        subtotal_before_discount: parseFloat(invoice.subtotal) || null
       };
     }));
 
@@ -799,7 +811,12 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
         payerId: invoice.payer_id,
         issuerType: invoice.issuer_type,
         issuerId: invoice.issuer_id,
-        items: invoiceItems
+        items: invoiceItems,
+        discountType: invoice.discount_type || 'none',
+        discountValue: parseFloat(invoice.discount_value) || 0,
+        discountAmount: parseFloat(invoice.discount_amount) || 0,
+        discountReason: invoice.discount_reason || null,
+        subtotalBeforeDiscount: parseFloat(invoice.subtotal) || null
       };
     });
 
@@ -1255,7 +1272,13 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
           };
         }) || [],
         // Additional charges (Tax, Service Charge, etc.)
-        additionalCharges: invoice.additional_charges || []
+        additionalCharges: invoice.additional_charges || [],
+        // Discount info
+        discountType: invoice.discount_type || 'none',
+        discountValue: parseFloat(invoice.discount_value) || 0,
+        discountAmount: parseFloat(invoice.discount_amount) || 0,
+        discountReason: invoice.discount_reason || null,
+        subtotalBeforeDiscount: parseFloat(invoice.subtotal) || null
       };
     }));
 
@@ -1346,7 +1369,13 @@ router.get('/:id', authenticateToken, async (req, res) => {
       confirmedAt: invoice.confirmed_at,
       rejectionReason: invoice.rejection_reason,
       // Additional charges (Tax, Service Charge, etc.)
-      additionalCharges: invoice.additional_charges || []
+      additionalCharges: invoice.additional_charges || [],
+      // Discount info
+      discountType: invoice.discount_type || 'none',
+      discountValue: parseFloat(invoice.discount_value) || 0,
+      discountAmount: parseFloat(invoice.discount_amount) || 0,
+      discountReason: invoice.discount_reason || null,
+      subtotalBeforeDiscount: parseFloat(invoice.subtotal) || null
     };
 
     res.json({ invoice: transformedInvoice, items });

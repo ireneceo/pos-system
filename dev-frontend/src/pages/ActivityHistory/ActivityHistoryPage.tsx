@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { Container, Header, Title, Content } from '../../components/UI/PageComponents';
 import { BaseButton, StatusBadge } from '../../components/UI/CommonStyles';
 import { FilterSelect } from '../../components/Common/FilterComponents';
@@ -275,7 +274,7 @@ const ActivityHistoryPage: React.FC = () => {
   const hasActiveFilters = entityType || actionType || userId || startDate || endDate;
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Activity History</Title>
@@ -391,7 +390,7 @@ const ActivityHistoryPage: React.FC = () => {
           )}
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

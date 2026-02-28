@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import styled from 'styled-components';
 import { useSearchParams } from 'react-router-dom';
-import MainLayout from '../../components/Layout/MainLayout';
 import { TabContainer, Tab, StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
@@ -448,7 +447,7 @@ const ReportsPage: React.FC = () => {
         fetch(`/api/customers/${user.restaurantId}`, {
           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
         }),
-        fetch(`/api/menu?restaurantId=${user.restaurantId}`, {
+        fetch(`/api/menu?restaurantId=${user.restaurantId}&excludeImage=true`, {
           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
         })
       ]);
@@ -917,7 +916,7 @@ const ReportsPage: React.FC = () => {
   );
 
   return (
-    <MainLayout>
+    <>
       <ReportsContainer>
         <PageHeader title="Reports" />
 
@@ -1473,7 +1472,7 @@ const ReportsPage: React.FC = () => {
 
         </Content>
       </ReportsContainer>
-    </MainLayout>
+    </>
   );
 };
 

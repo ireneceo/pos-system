@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useSearchParams, useParams } from 'react-router-dom';
-import MainLayout from '../../components/Layout/MainLayout';
 import { Container, Header, Title, Content, TabContainer, Tab } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
 import RecipesTab from './RecipesTab';
@@ -124,7 +123,7 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
 
   if (loading) {
     return (
-      <MainLayout>
+      <>
         <Container>
           <Header>
             <Title>Recipes</Title>
@@ -135,13 +134,13 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
             </div>
           </Content>
         </Container>
-      </MainLayout>
+      </>
     );
   }
 
   if (user?.role === 'Brand General' && brands.length === 0) {
     return (
-      <MainLayout>
+      <>
         <Container>
           <Header>
             <Title>Recipes</Title>
@@ -152,12 +151,12 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
             </div>
           </Content>
         </Container>
-      </MainLayout>
+      </>
     );
   }
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Recipes</Title>
@@ -215,7 +214,7 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
           )}
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

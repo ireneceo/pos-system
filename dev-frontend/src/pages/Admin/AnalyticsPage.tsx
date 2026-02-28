@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { TabContainer, Tab, StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI';
 import {
   LineChart, Line, PieChart, Pie, Cell,
@@ -1241,7 +1240,7 @@ const AnalyticsPage: React.FC = () => {
   );
 
   return (
-    <MainLayout>
+    <>
       <ReportsContainer>
         <Header>
           <HeaderTitle>Reports</HeaderTitle>
@@ -2700,7 +2699,7 @@ const AnalyticsPage: React.FC = () => {
 
         </Content>
       </ReportsContainer>
-    </MainLayout>
+    </>
   );
 };
 

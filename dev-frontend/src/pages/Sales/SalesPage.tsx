@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { useStaff } from '../../contexts/StaffContext';
 import { useOrders } from '../../contexts/OrderContext';
 import { useStore } from '../../contexts/StoreContext';
@@ -1395,7 +1394,7 @@ const SalesPage: React.FC = () => {
   // 권한 체크
   if (!isLoggedIn || !currentStaff || !['admin', 'manager'].includes(currentStaff.role)) {
     return (
-      <MainLayout>
+      <>
         <SalesContainer>
           <EmptyState>
             <EmptyStateIcon>🚫</EmptyStateIcon>
@@ -1407,14 +1406,14 @@ const SalesPage: React.FC = () => {
             </p>
           </EmptyState>
         </SalesContainer>
-      </MainLayout>
+      </>
     );
   }
 
   const filteredTransactions = getFilteredTransactions();
 
   return (
-    <MainLayout>
+    <>
       <SalesContainer>
         <Header>
           <HeaderTitle>Sales Management</HeaderTitle>
@@ -2079,7 +2078,7 @@ const SalesPage: React.FC = () => {
           )}
         </Content>
       </SalesContainer>
-    </MainLayout>
+    </>
   );
 };
 

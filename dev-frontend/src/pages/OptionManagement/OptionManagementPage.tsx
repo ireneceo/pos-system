@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { useMenu } from '../../contexts/MenuContext';
 import { Modal, ModalButton } from '../../components/UI/Modal';
 
@@ -472,7 +471,7 @@ const OptionManagementPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <HeaderTitle>Options</HeaderTitle>
@@ -662,7 +661,7 @@ const OptionManagementPage: React.FC = () => {
           <p>Are you sure you want to delete this option group? This action cannot be undone.</p>
         </Modal>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

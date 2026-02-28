@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { Container, Header, Title, Content } from '../../components/UI/PageComponents';
 import { Modal, ModalButton } from '../../components/UI/Modal';
 import { SaveButtonContainer, SaveButtonGroup, SaveButton, StatusMessage } from '../../components/UI';
@@ -464,7 +463,7 @@ const SiteSettingsPage: React.FC = () => {
 
   if (loading) {
     return (
-      <MainLayout>
+      <>
         <Container>
           <Header>
             <Title>Site Settings</Title>
@@ -473,12 +472,12 @@ const SiteSettingsPage: React.FC = () => {
             <p>Loading...</p>
           </Content>
         </Container>
-      </MainLayout>
+      </>
     );
   }
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Site Settings</Title>
@@ -709,7 +708,7 @@ const SiteSettingsPage: React.FC = () => {
         </Content>
       </Container>
 
-    </MainLayout>
+    </>
   );
 };
 

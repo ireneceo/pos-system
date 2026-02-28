@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
@@ -894,7 +893,7 @@ const ManagerPromotionsPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <HeaderContent>
@@ -1358,7 +1357,7 @@ const ManagerPromotionsPage: React.FC = () => {
           </ModalContent>
         </Modal>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

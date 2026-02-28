@@ -11,6 +11,7 @@ const router = express.Router();
 const path = require('path');
 const fs = require('fs').promises;
 const sharp = require('sharp');
+const multer = require('multer');
 const { authenticateToken } = require('../middleware/auth');
 const crypto = require('crypto');
 
@@ -172,6 +173,113 @@ router.delete('/image', authenticateToken, async (req, res) => {
       success: false,
       message: error.message || 'Failed to delete image'
     });
+  }
+});
+
+// ========== 범용 파일 첨부 업로드 ==========
+
+const ATTACHMENTS_BASE = '/var/www/uploads/attachments';
+
+const ALLOWED_EXTENSIONS = [
+  '.jpg', '.jpeg', '.png', '.gif', '.webp',
+  '.pdf', '.doc', '.docx', '.xls', '.xlsx',
+  '.zip'
+];
+
+const attachmentStorage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const yearMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+    const dir = path.join(ATTACHMENTS_BASE, yearMonth);
+    try {
+      await fs.mkdir(dir, { recursive: true });
+    } catch (e) { /* ignore */ }
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const timestamp = Date.now();
+    const random = crypto.randomBytes(8).toString('hex');
+    const ext = path.extname(file.originalname).toLowerCase();
+    const safeName = file.originalname
+      .replace(ext, '')
+      .replace(/[^a-zA-Z0-9가-힣_-]/g, '_')
+      .slice(0, 50);
+    cb(null, `${timestamp}_${random}_${safeName}${ext}`);
+  }
+});
+
+const attachmentUpload = multer({
+  storage: attachmentStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB per file
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (ALLOWED_EXTENSIONS.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`File type not allowed: ${ext}`));
+    }
+  }
+});
+
+/**
+ * POST /api/upload/files
+ * 범용 파일 첨부 업로드 (최대 5개)
+ */
+router.post('/files', authenticateToken, (req, res) => {
+  attachmentUpload.array('files', 5)(req, res, (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ success: false, message: 'File too large. Max 10MB per file.' });
+        }
+        if (err.code === 'LIMIT_FILE_COUNT') {
+          return res.status(400).json({ success: false, message: 'Too many files. Max 5 files.' });
+        }
+      }
+      return res.status(400).json({ success: false, message: err.message || 'Upload failed' });
+    }
+
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ success: false, message: 'No files uploaded' });
+    }
+
+    const data = req.files.map(file => {
+      const relativePath = file.path.replace('/var/www', '');
+      return {
+        url: relativePath,
+        originalName: file.originalname,
+        size: file.size,
+        mimeType: file.mimetype
+      };
+    });
+
+    res.json({ success: true, data });
+  });
+});
+
+/**
+ * DELETE /api/upload/file
+ * 첨부파일 삭제
+ */
+router.delete('/file', authenticateToken, async (req, res) => {
+  try {
+    const { url } = req.body;
+
+    if (!url || !url.startsWith('/uploads/attachments/')) {
+      return res.status(400).json({ success: false, message: 'Invalid file URL' });
+    }
+
+    const filePath = path.join('/var/www', url);
+
+    try {
+      await fs.unlink(filePath);
+    } catch (e) {
+      // File doesn't exist — OK
+    }
+
+    res.json({ success: true, message: 'File deleted' });
+  } catch (error) {
+    console.error('File delete error:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete file' });
   }
 });
 

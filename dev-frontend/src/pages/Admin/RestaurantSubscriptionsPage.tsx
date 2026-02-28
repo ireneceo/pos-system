@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { RestaurantSubscription } from '../../interfaces/RestaurantSubscription';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { formatCurrency } from '../../utils/currency';
@@ -722,7 +721,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Restaurant Subscriptions</Title>
@@ -1133,7 +1132,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
         )}
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

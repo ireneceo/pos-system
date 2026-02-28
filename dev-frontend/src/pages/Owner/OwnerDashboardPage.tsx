@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/StatCard';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/currency';
@@ -296,10 +295,24 @@ const OwnerDashboardPage: React.FC = () => {
   const [compareData, setCompareData] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<Array<{ type: 'warning' | 'info' | 'success'; message: string }>>([]);
   const [currency, setCurrency] = useState('RM');
+  const [badgeCounts, setBadgeCounts] = useState({ systemInquiry: 0, operationInquiry: 0, notices: 0, invoices: 0 });
 
   useEffect(() => {
     fetchDashboardData();
+    fetchBadgeCounts();
   }, []);
+
+  const fetchBadgeCounts = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+      const res = await fetch('/api/badge-counts', { headers: { 'Authorization': `Bearer ${token}` } });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) setBadgeCounts(data.data);
+      }
+    } catch (e) { /* silent */ }
+  };
 
   useEffect(() => {
     fetchCompareData();
@@ -383,6 +396,15 @@ const OwnerDashboardPage: React.FC = () => {
       if (noRevenueToday.length > 0 && noRevenueToday.length < restaurantList.length) {
         alertList.push({ type: 'info', message: `${noRevenueToday.length} active restaurant${noRevenueToday.length > 1 ? 's' : ''} with no orders today` });
       }
+      if (badgeCounts.notices > 0) {
+        alertList.push({ type: 'info', message: `${badgeCounts.notices} unread notice(s)` });
+      }
+      if (badgeCounts.systemInquiry > 0) {
+        alertList.push({ type: 'info', message: `${badgeCounts.systemInquiry} system inquiry(s) with new replies` });
+      }
+      if (badgeCounts.operationInquiry > 0) {
+        alertList.push({ type: 'info', message: `${badgeCounts.operationInquiry} operation inquiry(s) with responses` });
+      }
       if (alertList.length === 0) {
         alertList.push({ type: 'success', message: 'All systems running smoothly. No issues detected.' });
       }
@@ -425,19 +447,19 @@ const OwnerDashboardPage: React.FC = () => {
 
   if (loading) {
     return (
-      <MainLayout>
+      <>
         <Container>
           <Header>
             <HeaderTitle>Owner Dashboard</HeaderTitle>
           </Header>
           <LoadingContainer>Loading dashboard data...</LoadingContainer>
         </Container>
-      </MainLayout>
+      </>
     );
   }
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <HeaderTitle>Owner Dashboard</HeaderTitle>
@@ -624,7 +646,7 @@ const OwnerDashboardPage: React.FC = () => {
           </RestaurantGrid>
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

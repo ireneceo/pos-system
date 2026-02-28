@@ -44,6 +44,18 @@ PlanTemplate.init({
     defaultValue: 5,
     comment: '-1 for unlimited'
   },
+  restaurant_limit: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 5,
+    comment: 'Max restaurants for brand/foodcourt/owner plans. -1 for unlimited'
+  },
+  manager_limit: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 3,
+    comment: 'Max managers for brand/foodcourt plans. -1 for unlimited'
+  },
   category: {
     type: DataTypes.ENUM('basic', 'custom'),
     allowNull: false,

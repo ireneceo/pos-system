@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
-import MainLayout from '../../components/Layout/MainLayout';
 import {
   Container,
   Header,
@@ -1040,7 +1039,7 @@ const ManagersPage: React.FC = () => {
 
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Managers</Title>
@@ -1732,7 +1731,7 @@ const ManagersPage: React.FC = () => {
 
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

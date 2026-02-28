@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { useSearchParams, useParams } from 'react-router-dom';
-import MainLayout from '../../components/Layout/MainLayout';
 import { formatCurrency } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -97,6 +96,11 @@ interface Invoice {
     businessRegistration?: string;
   };
   additionalCharges?: AdditionalCharge[];
+  discountType?: string;
+  discountValue?: number;
+  discountAmount?: number;
+  discountReason?: string;
+  subtotalBeforeDiscount?: number;
 }
 
 interface InvoiceItem {
@@ -1192,7 +1196,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                 `).join('')}
                 <div class="summary-row total">
                     <span>Total:</span>
-                    <span>${formatCurrency(invoice.total, invoice.currency || 'MYR')}</span>
+                    <span>${invoice.total === 0 ? '<span style="color: #10B981; font-weight: 600;">Free</span>' : formatCurrency(invoice.total, invoice.currency || 'MYR')}</span>
                 </div>
             </div>
         </div>
@@ -1441,7 +1445,7 @@ const RestaurantInvoicesPage: React.FC = () => {
             )}
             <TotalRow highlight>
               <TotalLabel highlight>Total</TotalLabel>
-              <TotalValue highlight>{formatCurrency(invoice.total, invoice.currency || 'MYR')}</TotalValue>
+              <TotalValue highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</TotalValue>
             </TotalRow>
           </TotalBox>
         </TotalSection>
@@ -1504,7 +1508,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                   <DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount>
                 </DataTableCell>
                 <DataTableCell data-label="Total" align="right">
-                  <DataTableAmount highlight>{formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount>
+                  <DataTableAmount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount>
                 </DataTableCell>
                 <DataTableCell data-label="" mobileFullWidth>
                   <ActionButtons>
@@ -1512,8 +1516,8 @@ const RestaurantInvoicesPage: React.FC = () => {
                       View
                     </LocalActionButton>
 
-                    {/* Pay button for pending/overdue invoices */}
-                    {showPayButton && (invoice.status === 'pending_payment' || invoice.status === 'overdue') && (
+                    {/* Pay button for pending/overdue invoices (not for free invoices) */}
+                    {showPayButton && (invoice.status === 'pending_payment' || invoice.status === 'overdue') && invoice.total > 0 && (
                       <LocalActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>
                         Pay
                       </LocalActionButton>
@@ -1553,7 +1557,7 @@ const RestaurantInvoicesPage: React.FC = () => {
   );
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Invoices</Title>
@@ -1779,8 +1783,14 @@ const RestaurantInvoicesPage: React.FC = () => {
                   <div style={{ width: '280px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', fontSize: '14px', color: '#6B7280' }}>
                       <span>Subtotal:</span>
-                      <span>{formatCurrency(selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</span>
+                      <span>{formatCurrency(selectedInvoice.subtotalBeforeDiscount || selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</span>
                     </div>
+                    {selectedInvoice.discountType && selectedInvoice.discountType !== 'none' && selectedInvoice.discountAmount > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', fontSize: '14px', color: '#15803D' }}>
+                        <span>Discount{selectedInvoice.discountType === 'percentage' ? ` (${selectedInvoice.discountValue}%)` : ''}:</span>
+                        <span>-{formatCurrency(selectedInvoice.discountAmount, selectedInvoice.currency || 'MYR')}</span>
+                      </div>
+                    )}
                     {selectedInvoice.tax > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', fontSize: '14px', color: '#6B7280' }}>
                         <span>Tax:</span>
@@ -1817,7 +1827,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                 )}
               </ModalBody>
               <ModalFooter>
-                {(selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && (
+                {(selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && selectedInvoice.total > 0 && (
                   <Button variant="success" onClick={() => {
                     setShowViewModal(false);
                     handlePayInvoice(selectedInvoice);
@@ -2041,7 +2051,7 @@ const RestaurantInvoicesPage: React.FC = () => {
           </Modal>
         )}
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import {
   StatsGrid,
@@ -376,7 +375,7 @@ const IngredientsPage: React.FC = () => {
     : 0;
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Ingredients</Title>
@@ -610,7 +609,7 @@ const IngredientsPage: React.FC = () => {
           </ButtonGroup>
         </form>
       </Modal>
-    </MainLayout>
+    </>
   );
 };
 

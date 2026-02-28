@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { Container, Header, Title, ActionSection, Content } from '../../components/UI/PageComponents';
 import { BaseButton } from '../../components/UI/CommonStyles';
 import { StandardSelect } from '../../components/UI/SelectComponents';
@@ -519,7 +518,7 @@ const BackupRestorePage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Backup & Restore</Title>
@@ -813,7 +812,7 @@ const BackupRestorePage: React.FC = () => {
         </Modal>
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

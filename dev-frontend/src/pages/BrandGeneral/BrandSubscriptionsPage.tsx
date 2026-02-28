@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/currency';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
@@ -48,6 +47,9 @@ interface BrandSubscription {
     billing_cycle: string;
     auto_generate: boolean;
     activation_date: string;
+    discount_type?: string;
+    discount_value?: number;
+    discount_reason?: string;
   } | null;
   latest_invoice: {
     id: number;
@@ -390,6 +392,11 @@ const BrandSubscriptionsPage: React.FC = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingSub, setViewingSub] = useState<BrandSubscription | null>(null);
 
+  // Discount Modal
+  const [showDiscountModal, setShowDiscountModal] = useState(false);
+  const [discountTarget, setDiscountTarget] = useState<BrandSubscription | null>(null);
+  const [discountForm, setDiscountForm] = useState({ discount_type: 'none' as string, discount_value: 0, discount_reason: '' });
+
   // Confirm Modal
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<BrandSubscription | null>(null);
@@ -481,7 +488,7 @@ const BrandSubscriptionsPage: React.FC = () => {
       const response = await fetch(`/api/brands/${brandId}/plans/${selectedPlanId}/restaurants`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ restaurant_id: assignTarget.restaurant_id })
+        body: JSON.stringify({ restaurant_ids: [assignTarget.restaurant_id] })
       });
 
       if (response.ok) {
@@ -537,6 +544,38 @@ const BrandSubscriptionsPage: React.FC = () => {
     setShowViewModal(true);
   };
 
+  const handleOpenDiscount = (sub: BrandSubscription) => {
+    setDiscountTarget(sub);
+    setDiscountForm({
+      discount_type: sub.plan?.discount_type || 'none',
+      discount_value: sub.plan?.discount_value || 0,
+      discount_reason: sub.plan?.discount_reason || ''
+    });
+    setShowDiscountModal(true);
+  };
+
+  const handleSaveDiscount = async () => {
+    if (!discountTarget || !discountTarget.plan || !brandId) return;
+    try {
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      };
+      const response = await fetch(`/api/brands/${brandId}/plans/${discountTarget.plan.id}/restaurants/${discountTarget.restaurant_id}/discount`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(discountForm)
+      });
+      if (response.ok) {
+        setShowDiscountModal(false);
+        setDiscountTarget(null);
+        fetchSubscriptions();
+      }
+    } catch (error) {
+      console.error('Failed to save discount:', error);
+    }
+  };
+
   // CSV Export
   const handleExportData = () => {
     const csvRows = [
@@ -572,7 +611,7 @@ const BrandSubscriptionsPage: React.FC = () => {
   // ============================================
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Subscriptions</Title>
@@ -660,7 +699,22 @@ const BrandSubscriptionsPage: React.FC = () => {
                         <div>
                           <div style={{fontWeight: 600, color: '#0A2540', fontSize: '13px'}}>{sub.plan.name}</div>
                           <div style={{fontSize: '12px', color: '#6B7280'}}>
-                            {formatCurrency(parseFloat(sub.plan.subscription_fee) || 0, currency)}/mo
+                            {sub.plan.discount_type && sub.plan.discount_type !== 'none' && (sub.plan.discount_value || 0) > 0 ? (
+                              <>
+                                <span style={{textDecoration: 'line-through', color: '#9CA3AF'}}>{formatCurrency(parseFloat(sub.plan.subscription_fee) || 0, currency)}</span>
+                                {' '}
+                                <span style={{color: '#15803D', fontWeight: 600}}>
+                                  {formatCurrency(
+                                    sub.plan.discount_type === 'percentage'
+                                      ? (parseFloat(sub.plan.subscription_fee) || 0) * (1 - (sub.plan.discount_value || 0) / 100)
+                                      : Math.max(0, (parseFloat(sub.plan.subscription_fee) || 0) - (sub.plan.discount_value || 0)),
+                                    currency
+                                  )}/mo
+                                </span>
+                              </>
+                            ) : (
+                              <>{formatCurrency(parseFloat(sub.plan.subscription_fee) || 0, currency)}/mo</>
+                            )}
                             {parseFloat(sub.plan.revenue_percentage) > 0 && ` + ${sub.plan.revenue_percentage}%`}
                           </div>
                         </div>
@@ -871,7 +925,24 @@ const BrandSubscriptionsPage: React.FC = () => {
                             </div>
                             <div style={{marginBottom: '12px'}}>
                               <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Subscription Fee</div>
-                              <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{formatCurrency(parseFloat(viewingSub.plan.subscription_fee) || 0, currency)}/mo</div>
+                              {viewingSub.plan.discount_type && viewingSub.plan.discount_type !== 'none' && (viewingSub.plan.discount_value || 0) > 0 ? (
+                                <div>
+                                  <span style={{textDecoration: 'line-through', color: '#9CA3AF', fontSize: '13px'}}>{formatCurrency(parseFloat(viewingSub.plan.subscription_fee) || 0, currency)}/mo</span>
+                                  <div style={{fontSize: '16px', fontWeight: '600', color: '#15803D'}}>
+                                    {formatCurrency(
+                                      viewingSub.plan.discount_type === 'percentage'
+                                        ? (parseFloat(viewingSub.plan.subscription_fee) || 0) * (1 - (viewingSub.plan.discount_value || 0) / 100)
+                                        : Math.max(0, (parseFloat(viewingSub.plan.subscription_fee) || 0) - (viewingSub.plan.discount_value || 0)),
+                                      currency
+                                    )}/mo
+                                    <span style={{fontSize: '12px', fontWeight: '500', marginLeft: '4px'}}>
+                                      (-{viewingSub.plan.discount_type === 'percentage' ? `${viewingSub.plan.discount_value}%` : formatCurrency(viewingSub.plan.discount_value || 0, currency)})
+                                    </span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{formatCurrency(parseFloat(viewingSub.plan.subscription_fee) || 0, currency)}/mo</div>
+                              )}
                             </div>
                             {parseFloat(viewingSub.plan.revenue_percentage) > 0 && (
                               <div style={{marginBottom: '12px'}}>
@@ -893,9 +964,25 @@ const BrandSubscriptionsPage: React.FC = () => {
                               <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Billing Cycle</div>
                               <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.plan.billing_cycle}</div>
                             </div>
-                            <div>
+                            <div style={{marginBottom: '12px'}}>
                               <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Activation Date</div>
                               <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{new Date(viewingSub.plan.activation_date).toLocaleDateString()}</div>
+                            </div>
+                            <div>
+                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Discount</div>
+                              {viewingSub.plan.discount_type && viewingSub.plan.discount_type !== 'none' && (viewingSub.plan.discount_value || 0) > 0 ? (
+                                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                  <span style={{fontSize: '14px', fontWeight: '500', color: '#15803D'}}>
+                                    {viewingSub.plan.discount_type === 'percentage'
+                                      ? `${viewingSub.plan.discount_value}%`
+                                      : `${formatCurrency(viewingSub.plan.discount_value || 0, currency)}`}
+                                    {viewingSub.plan.discount_reason ? ` (${viewingSub.plan.discount_reason})` : ''}
+                                  </span>
+                                  <button onClick={() => handleOpenDiscount(viewingSub)} style={{background: 'none', border: '1px solid #D1D5DB', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', color: '#6B7280', cursor: 'pointer'}}>Edit</button>
+                                </div>
+                              ) : (
+                                <button onClick={() => handleOpenDiscount(viewingSub)} style={{background: 'none', border: '1px solid #D1D5DB', borderRadius: '4px', padding: '4px 12px', fontSize: '12px', color: '#635BFF', cursor: 'pointer', fontWeight: '500'}}>Set Discount</button>
+                              )}
                             </div>
                           </>
                         ) : (
@@ -992,9 +1079,74 @@ const BrandSubscriptionsPage: React.FC = () => {
             </ModalOverlay>
           )}
 
+          {/* Discount Modal */}
+          {showDiscountModal && discountTarget && (
+            <ModalOverlay show={showDiscountModal} onClick={() => setShowDiscountModal(false)}>
+              <Modal onClick={(e) => e.stopPropagation()} style={{maxWidth: '480px'}}>
+                <ModalHeader>
+                  <ModalTitle>Set Discount - {discountTarget.restaurant_name}</ModalTitle>
+                  <CloseButton onClick={() => setShowDiscountModal(false)}>×</CloseButton>
+                </ModalHeader>
+                <ModalBody>
+                  <div style={{display: 'grid', gap: '16px'}}>
+                    <div>
+                      <div style={{fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px'}}>Discount Type</div>
+                      <FormSelect value={discountForm.discount_type} onChange={(e) => setDiscountForm({...discountForm, discount_type: e.target.value, discount_value: e.target.value === 'none' ? 0 : discountForm.discount_value})}>
+                        <option value="none">None</option>
+                        <option value="percentage">Percentage (%)</option>
+                        <option value="fixed">Fixed Amount ({currency})</option>
+                      </FormSelect>
+                    </div>
+                    {discountForm.discount_type !== 'none' && (
+                      <div>
+                        <div style={{fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px'}}>
+                          {discountForm.discount_type === 'percentage' ? 'Discount Rate (%)' : `Discount Amount (${currency})`}
+                        </div>
+                        <FormInput
+                          type="number"
+                          step={discountForm.discount_type === 'percentage' ? '1' : '0.01'}
+                          min="0"
+                          max={discountForm.discount_type === 'percentage' ? '100' : undefined}
+                          value={discountForm.discount_value}
+                          onChange={(e) => setDiscountForm({...discountForm, discount_value: parseFloat(e.target.value) || 0})}
+                          placeholder={discountForm.discount_type === 'percentage' ? 'e.g. 10' : 'e.g. 50.00'}
+                        />
+                      </div>
+                    )}
+                    {discountForm.discount_type !== 'none' && (
+                      <div>
+                        <div style={{fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px'}}>Reason (optional)</div>
+                        <FormInput
+                          type="text"
+                          value={discountForm.discount_reason}
+                          onChange={(e) => setDiscountForm({...discountForm, discount_reason: e.target.value})}
+                          placeholder="e.g. Opening promotion"
+                        />
+                      </div>
+                    )}
+                    {discountForm.discount_type !== 'none' && discountForm.discount_value > 0 && discountTarget.plan && (
+                      <div style={{background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '12px 16px'}}>
+                        <div style={{fontSize: '12px', color: '#166534', fontWeight: '600', marginBottom: '4px'}}>Preview</div>
+                        <div style={{fontSize: '13px', color: '#15803D'}}>
+                          {discountForm.discount_type === 'percentage'
+                            ? `${discountForm.discount_value}% off all charges`
+                            : `${formatCurrency(discountForm.discount_value, currency)} off total`}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </ModalBody>
+                <ModalActions>
+                  <ThemedButton variant="cancel" onClick={() => setShowDiscountModal(false)}>Cancel</ThemedButton>
+                  <ThemedButton variant="primary" onClick={handleSaveDiscount}>Save Discount</ThemedButton>
+                </ModalActions>
+              </Modal>
+            </ModalOverlay>
+          )}
+
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

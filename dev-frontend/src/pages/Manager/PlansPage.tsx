@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { useNavigate } from 'react-router-dom';
 
 interface Plan {
@@ -431,7 +430,7 @@ const PlansPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <BackButton onClick={() => navigate('/pos/manager/subscriptions')}>
@@ -526,7 +525,7 @@ const PlansPage: React.FC = () => {
           </ComparisonSection>
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

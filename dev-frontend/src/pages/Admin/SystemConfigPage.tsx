@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { Container, Header, Title, ActionSection, Content } from '../../components/UI/PageComponents';
 import { BaseButton } from '../../components/UI/CommonStyles';
 import { StandardSelect } from '../../components/UI/SelectComponents';
@@ -427,7 +426,7 @@ const SystemConfigPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>System Configuration</Title>
@@ -553,7 +552,7 @@ const SystemConfigPage: React.FC = () => {
           )}
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

@@ -1,6 +1,5 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import MainLayout from '../../components/Layout/MainLayout';
 import InventoryManager from '../../components/Inventory/InventoryManager';
 
 /**
@@ -16,9 +15,9 @@ const InventoryPage: React.FC = () => {
   const { restaurantId } = useParams<{ restaurantId: string }>();
 
   return (
-    <MainLayout>
+    <>
       <InventoryManager mode="restaurant" restaurantId={restaurantId ? Number(restaurantId) : undefined} />
-    </MainLayout>
+    </>
   );
 };
 

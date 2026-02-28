@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { Modal, ModalButton, FormGroup, FormLabel, FormInput, FormTextArea } from '../../components/UI/Modal';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
@@ -826,7 +825,7 @@ const ContentManagementPage: React.FC = () => {
   );
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Content</Title>
@@ -912,7 +911,7 @@ const ContentManagementPage: React.FC = () => {
         cancelText="Cancel"
         variant="danger"
       />
-    </MainLayout>
+    </>
   );
 };
 

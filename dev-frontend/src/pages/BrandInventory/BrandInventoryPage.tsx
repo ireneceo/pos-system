@@ -1,5 +1,4 @@
 import React from 'react';
-import MainLayout from '../../components/Layout/MainLayout';
 import InventoryManager from '../../components/Inventory/InventoryManager';
 
 /**
@@ -12,9 +11,9 @@ import InventoryManager from '../../components/Inventory/InventoryManager';
  */
 const BrandInventoryPage: React.FC = () => {
   return (
-    <MainLayout>
+    <>
       <InventoryManager mode="brand" />
-    </MainLayout>
+    </>
   );
 };
 

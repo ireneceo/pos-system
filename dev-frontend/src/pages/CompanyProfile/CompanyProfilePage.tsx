@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import PhoneInput from '../../components/Common/PhoneInput';
 
@@ -450,7 +449,7 @@ const CompanyProfilePage: React.FC = () => {
   );
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Company Profile</Title>
@@ -675,7 +674,7 @@ const CompanyProfilePage: React.FC = () => {
           </Section>
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

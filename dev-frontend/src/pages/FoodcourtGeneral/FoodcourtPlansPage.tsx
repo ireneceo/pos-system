@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import {
   Container,
   Header,
@@ -1056,7 +1055,7 @@ const FoodcourtPlansPage: React.FC = () => {
   // ============================================
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Subscription Plans</Title>
@@ -1583,7 +1582,7 @@ const FoodcourtPlansPage: React.FC = () => {
 
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

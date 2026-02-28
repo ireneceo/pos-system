@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
 import { FilterBar, FilterSelect } from '../../components/Common/FilterComponents';
@@ -381,7 +380,7 @@ const ManagerReportsPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <HeaderContent>
@@ -651,7 +650,7 @@ const ManagerReportsPage: React.FC = () => {
           </ReportSection>
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

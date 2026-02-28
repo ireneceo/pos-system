@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { TabContainer, Tab, DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
@@ -324,19 +323,19 @@ const BrandManagerDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <MainLayout>
+      <>
         <Container>
           <Header><Title>Brand Manager Dashboard</Title></Header>
           <Content>
             <EmptyState>Loading dashboard data...</EmptyState>
           </Content>
         </Container>
-      </MainLayout>
+      </>
     );
   }
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <div>
@@ -392,7 +391,7 @@ const BrandManagerDashboard: React.FC = () => {
                   <QuickActionTitle>Support Tickets</QuickActionTitle>
                   <QuickActionDesc>Franchise support requests</QuickActionDesc>
                 </QuickAction>
-                <QuickAction onClick={() => navigate('/pos/subscriptions')}>
+                <QuickAction onClick={() => navigate('/pos/manager/subscriptions')}>
                   <QuickActionIcon>&#9733;</QuickActionIcon>
                   <QuickActionTitle>Subscriptions</QuickActionTitle>
                   <QuickActionDesc>Manage subscription plans</QuickActionDesc>
@@ -482,7 +481,7 @@ const BrandManagerDashboard: React.FC = () => {
           )}
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

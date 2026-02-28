@@ -27,7 +27,7 @@ AddonModule.init({
     allowNull: false
   },
   target_user_type: {
-    type: DataTypes.ENUM('restaurant', 'brand', 'foodcourt', 'all'),
+    type: DataTypes.ENUM('restaurant', 'brand', 'foodcourt', 'owner', 'all'),
     allowNull: false,
     defaultValue: 'restaurant'
   },

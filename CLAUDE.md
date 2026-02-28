@@ -1,124 +1,125 @@
 # 프로젝트 가이드라인
 
-## 개발 환경 규칙 (중요!)
+## 작업 워크플로우 (최우선 규칙)
+
+모든 작업 요청은 아래 흐름을 자동으로 따른다. Irene이 단계 이름을 말할 필요 없다.
+
+### 흐름
+**요구사항 정리 → 화면/UX 설계 → 기술 설계 → 구현 → 검증**
+
+### 규칙
+- 이전 단계 산출물을 반드시 참조한 후 다음 단계 진행
+- 각 단계 완료 시 핵심 요약을 보여주고 승인 확인
+- Irene이 수정 지시하면 해당 단계에서 반영 후 재확인
+- 승인되면 다음 단계로 자동 이동
+- **구현 중 설계에 없는 것을 임의로 추가하지 않는다**
+- 검증 단계: 요구사항 누락, UI 불일치, 유저 시나리오 흐름, 에러 처리, 반응형까지 체크
+
+### 규모별 자동 조절
+| 규모 | 기준 | 워크플로우 |
+|------|------|-----------|
+| **소** | 버그 수정, 텍스트 변경, 단일 파일 수정 | 바로 구현 |
+| **중** | 기능 추가/수정 (2~5 파일) | 기술 설계 요약 → 승인 → 구현 → 검증 |
+| **대** | 신규 시스템, 다수 파일, DB 변경 포함 | 전 단계 수행 |
+
+### 설계 문서
+- **대규모 작업**: `docs/` 폴더에 설계 문서 저장
+- **중소규모 작업**: 대화 내에서 정리하고 승인 (문서 생성 불필요)
+
+### 핵심 원칙
+- Irene은 "뭘 만들고 싶은지"만 말하면 된다
+- 나머지는 자동으로 적합한 관점에서 작업한다
+- 방향이 바뀌거나 중요한 결정이 필요하면 반드시 Irene에게 묻는다
+- 작은 구현 디테일은 묻지 않고 최선의 판단으로 진행한다
+
+---
+
+## 개발 환경 규칙
 
 ### 1. 개발 vs 운영 분리
 - **모든 작업은 개발서버(dev-frontend, dev-backend)에서 진행**
-- 프론트엔드 개발: `/var/www/dev-frontend`
-- 백엔드 개발: `/var/www/dev-backend`
-- **절대 운영서버에 직접 배포하지 않음**
+- 프론트엔드: `/var/www/dev-frontend`
+- 백엔드: `/var/www/dev-backend`
+- **절대 운영서버에 직접 코드 수정/배포하지 않음**
 
 ### 2. 배포 규칙 (절대 준수!)
-- **사용자가 명시적으로 "배포" 또는 "/배포" 명령을 하지 않으면 절대 배포하지 않음**
+- **Irene이 "배포" 또는 "/배포" 명령을 하지 않으면 절대 배포하지 않음**
 - 빌드 완료 후 자동 배포 금지
 - **배포 스크립트: `/var/www/deploy-to-production.sh`** (SSH로 원격 운영서버에 배포)
-- 운영서버(87.106.78.146)에 직접 접속하여 코드 수정 금지
 - "안 떠", "메뉴 안 보여" 등의 피드백 = 개발서버 문제 → 운영서버 배포가 아님!
 
-### 3. 개발 서버 URL
-- 개발서버: `dev.purplehere.com`
-- 운영서버: `purplehere.com` (배포 명령 시에만)
+### 3. 서버 URL
+- 개발: `dev.purplehere.com`
+- 운영: `purplehere.com` (배포 명령 시에만)
 
-### 4. 프론트엔드 빌드 프로세스 (개발서버)
+### 4. 빌드 & 반영
 ```bash
-# 1. 빌드
+# 프론트엔드 빌드 + 개발서버 반영 (두 단계 모두 필수!)
 cd /var/www/dev-frontend && npm run build
+sudo cp -r /var/www/dev-frontend/build/* /var/www/dev-frontend-build/
 
-# 2. 개발서버에 적용 (빌드 후 반드시 실행!)
-cp -r /var/www/dev-frontend/build/* /var/www/dev-frontend-build/
-```
-**중요**: 빌드만 하면 개발서버에 반영 안 됨! 반드시 2번 복사 명령도 실행해야 함.
+# 백엔드 변경 시
+pm2 restart dev-backend
 
-### 5. 백엔드 변경 시
-```bash
+# DB 스키마 변경 시
+cd /var/www/dev-backend && node sync-database.js
 pm2 restart dev-backend
 ```
 
-### 6. 작업 히스토리 자동 기록 규칙 (필수!)
-Claude는 **각 기능/작업 단위 완료 시** 아래 파일들을 즉시 업데이트해야 한다. `/저장` 명령 없이도 자동 수행.
+### 5. 작업 히스토리 자동 기록 (필수!)
+Claude는 **각 기능 완료 시** 아래 파일을 즉시 업데이트한다. `/저장` 명령 없이도 자동 수행.
 
-#### session-state.md 업데이트 타이밍
-- **작업 시작 시**: "진행 중인 작업" 섹션에 작업명 추가
-- **작업 완료 시**: "진행 중인 작업"에서 제거 → "완료된 작업" 섹션으로 이동
-- **파일 경로**: `/var/www/.claude/session-state.md`
+| 파일 | 타이밍 | 내용 |
+|------|--------|------|
+| `/var/www/.claude/session-state.md` | 작업 시작/완료 시 | 진행 중 → 완료 이동 |
+| `/var/www/DEVELOPMENT_PLAN.md` | 기능 완료 시 | 해당 항목 ✅ 표시 |
 
-#### DEVELOPMENT_PLAN.md 업데이트 타이밍
-- **기능 개발 완료 시**: 해당 Phase/작업의 상태를 ✅로 변경
-- **새 기능 시작 시**: 작업 항목이 없으면 섹션 추가
-- **파일 경로**: `/var/www/DEVELOPMENT_PLAN.md`
+**목적**: 세션 중단 시 복구 + `/개발시작` 시 정확한 현황 표시
 
-#### 기록 형식
-```markdown
-# session-state.md 예시
-### 진행 중인 작업
-- Stripe 결제 연동: 프론트엔드 결제 폼 구현 중
+---
 
-### 완료된 작업 (이번 세션)
-#### 시스템 로그 메뉴 개발 (2026-02-25)
-- SystemLog 모델 + API + 프론트엔드 페이지 완료
-```
+## 프로젝트 구조
 
-#### 목적
-- 서버 다운/세션 중단 시에도 마지막 완료 작업까지 복구 가능
-- `/개발시작` 명령 시 정확한 현황 표시
+### 개발서버 (87.106.11.184)
+- `dev-frontend/`: React 프론트엔드 소스
+- `dev-frontend-build/`: Nginx가 서빙하는 빌드 폴더
+- `dev-backend/`: Node.js/Express (PM2 dev-backend, port 3001)
 
-## 프로젝트 구조 (개발서버: 87.106.11.184)
-- `dev-frontend/`: React 프론트엔드 소스 (개발)
-- `dev-frontend-build/`: 개발서버 Nginx가 서빙하는 빌드 폴더
-- `dev-backend/`: Node.js/Express 백엔드 (개발, PM2 dev-backend, port 3001)
-
-## 운영 서버 구조 (원격: 87.106.78.146)
-- `production-backend/`: 운영 백엔드 (PM2 production-backend, port 3002)
+### 운영서버 (원격: 87.106.78.146)
+- `production-backend/`: PM2 production-backend, port 3002
 - `production-frontend/`: 운영 프론트엔드 빌드
-- **주의**: 운영 디렉토리는 원격 서버에만 존재. 개발서버에 없음!
+- **주의**: 운영 디렉토리는 원격 서버에만 존재
 
-## 보안 가이드라인 (v2.0 - 2026-02-05)
+---
+
+## 보안 가이드라인
 
 ### 적용된 보안 체계
 
-| 항목 | 상태 | 구현 위치 |
-|------|------|----------|
-| CORS | ✅ | app.js (allowedOrigins 화이트리스트) |
-| CSRF 방어 | ✅ | Cookie SameSite=strict |
-| XSS 방지 | ✅ | Helmet + Security Headers + Input Sanitization |
-| SSRF 방어 | ✅ | middleware/security.js (ssrfProtection) |
-| AuthN/AuthZ | ✅ | JWT + middleware/auth.js |
-| RBAC | ✅ | requireRole, checkRestaurantAccess |
-| Rate Limit | ✅ | express-rate-limit (API: 1000/15min, Login: 20/15min) |
-| Cookie 보안 | ✅ | HttpOnly, Secure, SameSite=strict |
-| 입력 검증 | ✅ | express-validator (middleware/validation.js) |
-| SQL Injection | ✅ | Sequelize ORM + 패턴 감지 미들웨어 |
-| 에러 처리 | ✅ | 통일된 응답 형식, 프로덕션에서 스택 숨김 |
-| 의존성 취약점 | ✅ | npm audit fix (0 vulnerabilities) |
-| 보안 헤더 | ✅ | X-XSS-Protection, X-Frame-Options, CSP 등 |
-| Password 정책 | ✅ | 회원가입 시 8자 이상, 대소문자+숫자 필수 |
+| 항목 | 구현 위치 |
+|------|----------|
+| CORS | app.js (allowedOrigins 화이트리스트) |
+| CSRF 방어 | Cookie SameSite=strict |
+| XSS 방지 | Helmet + Security Headers + Input Sanitization |
+| SSRF 방어 | middleware/security.js (ssrfProtection) |
+| AuthN/AuthZ | JWT + middleware/auth.js |
+| RBAC | requireRole, checkRestaurantAccess |
+| Rate Limit | express-rate-limit (API: 1000/15min, Login: 20/15min) |
+| Cookie 보안 | HttpOnly, Secure, SameSite=strict |
+| 입력 검증 | express-validator (middleware/validation.js) |
+| SQL Injection | Sequelize ORM + 패턴 감지 미들웨어 |
+| 에러 처리 | 통일된 응답 형식, 프로덕션에서 스택 숨김 |
+| 보안 헤더 | X-XSS-Protection, X-Frame-Options, CSP |
+| Password 정책 | 8자 이상, 대소문자+숫자 필수 |
 
-### 보안 미들웨어 파일
+### 보안 미들웨어
+- **middleware/security.js**: ssrfProtection, securityHeaders, sqlInjectionProtection, cookieOptions, cspMiddleware
+- **middleware/validation.js**: validateLogin, validateRegister, validateCreateOrder, validateMenuItem, sanitizeString
+- **middleware/auth.js**: authenticateToken, requireRole, checkRestaurantAccess
 
-1. **middleware/security.js**
-   - `ssrfProtection`: 외부 URL 검증 (내부 IP 차단)
-   - `securityHeaders`: XSS, Clickjacking, Cache 제어 헤더
-   - `sqlInjectionProtection`: SQL 패턴 감지 (ORM 위 추가 방어층)
-   - `cookieOptions`: 보안 쿠키 설정 옵션
-   - `cspMiddleware`: Content Security Policy
-
-2. **middleware/validation.js**
-   - `validateLogin`: 로그인 입력 검증
-   - `validateRegister`: 회원가입 검증 (강력한 비밀번호 정책)
-   - `validateCreateOrder`: 주문 생성 검증
-   - `validateMenuItem`: 메뉴 아이템 검증
-   - `sanitizeString`: XSS 방지용 문자열 정리
-
-3. **middleware/auth.js**
-   - `authenticateToken`: JWT 토큰 검증
-   - `requireRole`: 역할 기반 접근 제어
-   - `checkRestaurantAccess`: 레스토랑별 접근 권한 확인
-
-### 보안 유지 체크리스트
-
-개발 시 다음 사항 준수:
-- [ ] 새 API 엔드포인트에 적절한 인증/인가 미들웨어 적용
-- [ ] 사용자 입력은 validation.js의 검증 규칙 사용
-- [ ] 외부 URL 접근 시 ssrfProtection 또는 validateExternalUrl 사용
-- [ ] 새 의존성 추가 후 `npm audit` 실행
-- [ ] 민감한 데이터 로깅 금지 (비밀번호, 토큰 등)
+### 개발 시 보안 체크리스트
+- 새 API 엔드포인트에 적절한 인증/인가 미들웨어 적용
+- 사용자 입력은 validation.js의 검증 규칙 사용
+- 외부 URL 접근 시 ssrfProtection 사용
+- 새 의존성 추가 후 `npm audit` 실행
+- 민감한 데이터 로깅 금지 (비밀번호, 토큰 등)

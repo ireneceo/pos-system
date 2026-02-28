@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { COUNTRIES } from '../../constants/countries';
 import PhoneInput from '../../components/Common/PhoneInput';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
@@ -343,7 +342,7 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Company Information</Title>
@@ -581,7 +580,7 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
           </Section>
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

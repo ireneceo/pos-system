@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { TabContainer, Tab, StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI';
 import {
   LineChart, Line, PieChart, Pie, Cell, BarChart, Bar,
@@ -891,7 +890,7 @@ const ReportsPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <ReportsContainer>
         <Header>
           <HeaderTitle>Reports</HeaderTitle>
@@ -935,7 +934,7 @@ const ReportsPage: React.FC = () => {
           {activeTab === 'subscription' && renderSubscription()}
         </Content>
       </ReportsContainer>
-    </MainLayout>
+    </>
   );
 };
 

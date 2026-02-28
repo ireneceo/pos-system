@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import {
   Container,
   Header,
@@ -427,18 +426,18 @@ const ProductRecipePage: React.FC = () => {
 
   if (!restaurantId) {
     return (
-      <MainLayout>
+      <>
         <Container>
           <EmptyState>
             <p>Restaurant not found. Please log in with a restaurant account.</p>
           </EmptyState>
         </Container>
-      </MainLayout>
+      </>
     );
   }
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Product Recipes</Title>
@@ -713,7 +712,7 @@ const ProductRecipePage: React.FC = () => {
           </>
         )}
       </Modal>
-    </MainLayout>
+    </>
   );
 };
 

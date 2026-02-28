@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import {
   StatsGrid,
@@ -773,7 +772,7 @@ const RecipesPage: React.FC = () => {
   const avgCost = recipes.length > 0 ? totalCost / recipes.length : 0;
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Recipes</Title>
@@ -1189,7 +1188,7 @@ const RecipesPage: React.FC = () => {
             </ButtonGroup>
           </form>
       </Modal>
-    </MainLayout>
+    </>
   );
 };
 

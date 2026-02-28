@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { useSearchParams } from 'react-router-dom';
-import MainLayout from '../../components/Layout/MainLayout';
 import { formatCurrency } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
 import { BaseButton, StatusBadge as CommonStatusBadge, StatusMessage } from '../../components/UI/CommonStyles';
@@ -65,6 +64,11 @@ interface Invoice {
   issuerType?: 'system_admin' | 'brand' | 'foodcourt';
   issuerId?: number | string;
   issuerName?: string;
+  discountType?: string;
+  discountValue?: number;
+  discountAmount?: number;
+  discountReason?: string;
+  subtotalBeforeDiscount?: number;
 }
 
 interface CurrencyConfig {
@@ -777,7 +781,10 @@ const FoodcourtInvoicesPage: React.FC = () => {
     billingCycle: 'monthly',
     invoiceCategory: 'service',
     customDescription: '',
-    serviceDescription: ''
+    serviceDescription: '',
+    discountType: 'none' as 'none' | 'percentage' | 'fixed',
+    discountValue: '',
+    discountReason: ''
   });
 
   // Fetch invoices from API
@@ -2015,7 +2022,10 @@ const FoodcourtInvoicesPage: React.FC = () => {
       billingCycle: 'monthly',
       invoiceCategory: 'service',
       customDescription: '',
-      serviceDescription: ''
+      serviceDescription: '',
+      discountType: 'none' as 'none' | 'percentage' | 'fixed',
+      discountValue: '',
+      discountReason: ''
     });
     setSelectedTarget(null);
     setSearchQuery('');
@@ -2309,8 +2319,11 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
     try {
       const amount = parseFloat(newInvoice.amount);
-      const tax = parseFloat(newInvoice.tax);
-      const total = parseFloat(newInvoice.total);
+      const discountVal = parseFloat(newInvoice.discountValue) || 0;
+      const discountAmt = newInvoice.discountType === 'percentage' ? amount * (discountVal / 100) : newInvoice.discountType === 'fixed' ? discountVal : 0;
+      const afterDiscount = Math.max(0, amount - discountAmt);
+      const tax = afterDiscount * 0.06;
+      const total = afterDiscount + tax;
 
       // Prepare data for API
       const billingPeriodStart = new Date();
@@ -2369,9 +2382,14 @@ const FoodcourtInvoicesPage: React.FC = () => {
         billing_period_end: billingPeriodEnd.toISOString(),
         due_date: new Date(newInvoice.dueDate).toISOString(),
         total_amount: total,
+        subtotal_before_discount: discountAmt > 0 ? amount : null,
+        discount_type: newInvoice.discountType !== 'none' ? newInvoice.discountType : null,
+        discount_value: discountAmt > 0 ? discountVal : null,
+        discount_amount: discountAmt > 0 ? discountAmt : null,
+        discount_reason: newInvoice.discountReason || null,
         status: 'draft',
         notes: description,
-        issued_by: 1, // Current admin user ID
+        issued_by: 1,
         issued_at: new Date().toISOString()
       };
 
@@ -2529,7 +2547,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Invoices</Title>
@@ -2687,7 +2705,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
                 <MobileValue className="col-total">
                   <MobileLabel>Total</MobileLabel>
-                  <Amount highlight>{formatCurrency(invoice.total, invoice.currency || 'USD')}</Amount>
+                  <Amount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'USD')}</Amount>
                 </MobileValue>
               </MobileGrid>
 
@@ -2923,15 +2941,15 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
                       <MobileValue className="col-total">
                         <MobileLabel>Total</MobileLabel>
-                        <Amount highlight>{formatCurrency(invoice.total, invoice.currency || 'USD')}</Amount>
+                        <Amount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'USD')}</Amount>
                       </MobileValue>
                     </MobileGrid>
 
                     <ActionButtons className="col-actions">
                       <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</LocalActionButton>
 
-                      {/* Pay button for pending/overdue invoices */}
-                      {(invoice.status === 'pending_payment' || invoice.status === 'overdue') && (
+                      {/* Pay button for pending/overdue invoices (not for free) */}
+                      {(invoice.status === 'pending_payment' || invoice.status === 'overdue') && invoice.total > 0 && (
                         <LocalActionButton variant="primary" onClick={() => handlePayInvoice(invoice)}>Pay</LocalActionButton>
                       )}
 
@@ -3022,7 +3040,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
                       <MobileValue className="col-total">
                         <MobileLabel>Total</MobileLabel>
-                        <Amount highlight>{formatCurrency(invoice.total, invoice.currency || 'USD')}</Amount>
+                        <Amount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'USD')}</Amount>
                       </MobileValue>
                     </MobileGrid>
 
@@ -3406,14 +3424,12 @@ const FoodcourtInvoicesPage: React.FC = () => {
                       value={newInvoice.amount}
                       onChange={(e) => {
                         const amount = parseFloat(e.target.value) || 0;
-                        const tax = amount * 0.06;
-                        const total = amount + tax;
-                        setNewInvoice({
-                          ...newInvoice,
-                          amount: e.target.value,
-                          tax: tax.toFixed(2),
-                          total: total.toFixed(2)
-                        });
+                        const discountVal = parseFloat(newInvoice.discountValue) || 0;
+                        const discountAmt = newInvoice.discountType === 'percentage' ? amount * (discountVal / 100) : newInvoice.discountType === 'fixed' ? discountVal : 0;
+                        const afterDiscount = Math.max(0, amount - discountAmt);
+                        const tax = afterDiscount * 0.06;
+                        const total = afterDiscount + tax;
+                        setNewInvoice({ ...newInvoice, amount: e.target.value, tax: tax.toFixed(2), total: total.toFixed(2) });
                       }}
                       placeholder="0.00"
                       required
@@ -3429,6 +3445,62 @@ const FoodcourtInvoicesPage: React.FC = () => {
                       min={new Date().toISOString().split('T')[0]}
                     />
                   </FormGroup>
+                </FormRow>
+
+                <FormRow>
+                  <FormGroup>
+                    <FormLabel>Discount</FormLabel>
+                    <FormSelect
+                      value={newInvoice.discountType}
+                      onChange={(e) => {
+                        const dtype = e.target.value as 'none' | 'percentage' | 'fixed';
+                        const amount = parseFloat(newInvoice.amount) || 0;
+                        const discountVal = dtype === 'none' ? 0 : (parseFloat(newInvoice.discountValue) || 0);
+                        const discountAmt = dtype === 'percentage' ? amount * (discountVal / 100) : dtype === 'fixed' ? discountVal : 0;
+                        const afterDiscount = Math.max(0, amount - discountAmt);
+                        const tax = afterDiscount * 0.06;
+                        const total = afterDiscount + tax;
+                        setNewInvoice({ ...newInvoice, discountType: dtype, discountValue: dtype === 'none' ? '' : newInvoice.discountValue, tax: tax.toFixed(2), total: total.toFixed(2) });
+                      }}
+                    >
+                      <option value="none">No Discount</option>
+                      <option value="percentage">Percentage (%)</option>
+                      <option value="fixed">Fixed Amount</option>
+                    </FormSelect>
+                  </FormGroup>
+                  {newInvoice.discountType !== 'none' && (
+                    <FormGroup>
+                      <FormLabel>{newInvoice.discountType === 'percentage' ? 'Discount (%)' : 'Discount Amount'}</FormLabel>
+                      <FormInput
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max={newInvoice.discountType === 'percentage' ? '100' : undefined}
+                        value={newInvoice.discountValue}
+                        onChange={(e) => {
+                          const amount = parseFloat(newInvoice.amount) || 0;
+                          const discountVal = parseFloat(e.target.value) || 0;
+                          const discountAmt = newInvoice.discountType === 'percentage' ? amount * (discountVal / 100) : discountVal;
+                          const afterDiscount = Math.max(0, amount - discountAmt);
+                          const tax = afterDiscount * 0.06;
+                          const total = afterDiscount + tax;
+                          setNewInvoice({ ...newInvoice, discountValue: e.target.value, tax: tax.toFixed(2), total: total.toFixed(2) });
+                        }}
+                        placeholder="0"
+                      />
+                    </FormGroup>
+                  )}
+                  {newInvoice.discountType !== 'none' && (
+                    <FormGroup>
+                      <FormLabel>Discount Reason</FormLabel>
+                      <FormInput
+                        type="text"
+                        value={newInvoice.discountReason}
+                        onChange={(e) => setNewInvoice({ ...newInvoice, discountReason: e.target.value })}
+                        placeholder="e.g. Loyalty discount"
+                      />
+                    </FormGroup>
+                  )}
                 </FormRow>
 
                 <FormGroup>
@@ -3479,6 +3551,17 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     <span>Subtotal:</span>
                     <span>{formatCurrency(parseFloat(newInvoice.amount || '0'), operationSettings.currency)}</span>
                   </SummaryRow>
+                  {newInvoice.discountType !== 'none' && parseFloat(newInvoice.discountValue || '0') > 0 && (() => {
+                    const amt = parseFloat(newInvoice.amount || '0');
+                    const dv = parseFloat(newInvoice.discountValue || '0');
+                    const discountAmt = newInvoice.discountType === 'percentage' ? amt * (dv / 100) : dv;
+                    return (
+                      <SummaryRow>
+                        <span style={{ color: '#15803D' }}>Discount{newInvoice.discountType === 'percentage' ? ` (${dv}%)` : ''}:</span>
+                        <span style={{ color: '#15803D' }}>-{formatCurrency(discountAmt, operationSettings.currency)}</span>
+                      </SummaryRow>
+                    );
+                  })()}
                   <SummaryRow>
                     <span>Tax (6%):</span>
                     <span>{formatCurrency(parseFloat(newInvoice.tax || '0'), operationSettings.currency)}</span>
@@ -3612,8 +3695,14 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     <InvoiceSummary>
                       <SummaryRow>
                         <span>Subtotal:</span>
-                        <span>{formatCurrency(selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</span>
+                        <span>{formatCurrency(selectedInvoice.subtotalBeforeDiscount || selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</span>
                       </SummaryRow>
+                      {selectedInvoice.discountType && selectedInvoice.discountType !== 'none' && selectedInvoice.discountAmount > 0 && (
+                        <SummaryRow>
+                          <span style={{color: '#15803D'}}>Discount{selectedInvoice.discountType === 'percentage' ? ` (${selectedInvoice.discountValue}%)` : ''}:</span>
+                          <span style={{color: '#15803D'}}>-{formatCurrency(selectedInvoice.discountAmount, selectedInvoice.currency || 'MYR')}</span>
+                        </SummaryRow>
+                      )}
                       <SummaryRow>
                         <span>Tax (6%):</span>
                         <span>{formatCurrency(selectedInvoice.tax, selectedInvoice.currency || 'MYR')}</span>
@@ -4363,7 +4452,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
         {/* Download Success Modal */}
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

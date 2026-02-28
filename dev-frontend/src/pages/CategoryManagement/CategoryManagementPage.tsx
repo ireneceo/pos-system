@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { useMenu } from '../../contexts/MenuContext';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import { Modal as UIModal, ModalButton } from '../../components/UI/Modal';
@@ -485,7 +484,7 @@ const CategoryManagementPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <HeaderTitle>Categories</HeaderTitle>
@@ -626,7 +625,7 @@ const CategoryManagementPage: React.FC = () => {
           variant="danger"
         />
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

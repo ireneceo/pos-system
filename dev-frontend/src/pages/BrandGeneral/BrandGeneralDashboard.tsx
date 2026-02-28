@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI/StatCard';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
@@ -264,6 +263,7 @@ const BrandGeneralDashboard: React.FC = () => {
   const [trendData, setTrendData] = useState<any[]>([]);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<Array<{ type: 'warning' | 'info' | 'success'; message: string }>>([]);
+  const [badgeCounts, setBadgeCounts] = useState({ systemInquiry: 0, operationInquiry: 0, notices: 0, invoices: 0 });
 
   useEffect(() => {
     if (defaultCurrency) setCurrency(defaultCurrency);
@@ -272,7 +272,20 @@ const BrandGeneralDashboard: React.FC = () => {
   // Fetch all dashboard data
   useEffect(() => {
     fetchDashboardData();
+    fetchBadgeCounts();
   }, []);
+
+  const fetchBadgeCounts = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+      const res = await fetch('/api/badge-counts', { headers: { 'Authorization': `Bearer ${token}` } });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) setBadgeCounts(data.data);
+      }
+    } catch (e) { /* silent */ }
+  };
 
   // Fetch chart data when period changes
   useEffect(() => {
@@ -372,6 +385,15 @@ const BrandGeneralDashboard: React.FC = () => {
       if (noOrderRestaurants.length > 0) {
         alertList.push({ type: 'info', message: `${noOrderRestaurants.length} restaurant${noOrderRestaurants.length > 1 ? 's' : ''} with no orders this month` });
       }
+      if (badgeCounts.notices > 0) {
+        alertList.push({ type: 'info', message: `${badgeCounts.notices} unread notice(s)` });
+      }
+      if (badgeCounts.systemInquiry > 0) {
+        alertList.push({ type: 'info', message: `${badgeCounts.systemInquiry} system inquiry(s) with new replies` });
+      }
+      if (badgeCounts.operationInquiry > 0) {
+        alertList.push({ type: 'info', message: `${badgeCounts.operationInquiry} open operation inquiry(s)` });
+      }
       if (alertList.length === 0) {
         alertList.push({ type: 'success', message: 'All systems running smoothly. No issues detected.' });
       }
@@ -415,19 +437,19 @@ const BrandGeneralDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <MainLayout>
+      <>
         <Container>
           <Header>
             <HeaderTitle>Brand Dashboard</HeaderTitle>
           </Header>
           <LoadingContainer>Loading dashboard data...</LoadingContainer>
         </Container>
-      </MainLayout>
+      </>
     );
   }
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <HeaderTitle>Brand Dashboard</HeaderTitle>
@@ -487,22 +509,22 @@ const BrandGeneralDashboard: React.FC = () => {
           <QuickAccess>
             <SectionTitle>Quick Access</SectionTitle>
             <QuickButtons>
-              <QuickBtnDiv onClick={() => navigate('/pos/brand-general/restaurants')}>
+              <QuickBtnDiv onClick={() => navigate('/pos/brand/general/management')}>
                 <QuickBtnIcon>◫</QuickBtnIcon>
                 <QuickBtnTitle>Manage Restaurants</QuickBtnTitle>
                 <QuickBtnDesc>Franchise management</QuickBtnDesc>
               </QuickBtnDiv>
-              <QuickBtnDiv onClick={() => navigate('/pos/brand-general/invoices')}>
+              <QuickBtnDiv onClick={() => navigate('/pos/brand/invoices')}>
                 <QuickBtnIcon>◧</QuickBtnIcon>
                 <QuickBtnTitle>Invoices</QuickBtnTitle>
                 <QuickBtnDesc>Invoice management</QuickBtnDesc>
               </QuickBtnDiv>
-              <QuickBtnDiv onClick={() => navigate('/pos/brand-general/plans')}>
+              <QuickBtnDiv onClick={() => navigate('/pos/brand/plans')}>
                 <QuickBtnIcon>◨</QuickBtnIcon>
                 <QuickBtnTitle>Subscription Plans</QuickBtnTitle>
                 <QuickBtnDesc>Plan configuration</QuickBtnDesc>
               </QuickBtnDiv>
-              <QuickBtnDiv onClick={() => navigate('/pos/brand-general/reports')}>
+              <QuickBtnDiv onClick={() => navigate('/pos/brand/general/reports')}>
                 <QuickBtnIcon>◩</QuickBtnIcon>
                 <QuickBtnTitle>Reports</QuickBtnTitle>
                 <QuickBtnDesc>Performance analytics</QuickBtnDesc>
@@ -627,7 +649,7 @@ const BrandGeneralDashboard: React.FC = () => {
           </TableCard>
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 // Updated with new UI components
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { useMenu, MenuItem as MenuItemType, SetMenuItem } from '../../contexts/MenuContext';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import NumberInputModal from '../../components/Common/NumberInputModal';
@@ -1164,7 +1163,7 @@ const MenuManagementPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <HeaderTitle>Menu</HeaderTitle>
@@ -1953,7 +1952,7 @@ const MenuManagementPage: React.FC = () => {
           cancelText="Cancel"
         />
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

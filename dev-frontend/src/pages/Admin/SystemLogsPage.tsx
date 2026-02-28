@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styled from 'styled-components';
 import axios from 'axios';
-import MainLayout from '../../components/Layout/MainLayout';
 import { Container, Header, Title, ActionSection, Content } from '../../components/UI/PageComponents';
 import { BaseButton } from '../../components/UI/CommonStyles';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/StatCard';
@@ -1022,7 +1021,7 @@ const SystemLogsPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>System Logs</Title>
@@ -1254,7 +1253,7 @@ const SystemLogsPage: React.FC = () => {
           </WarningSubtext>
         </Modal>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

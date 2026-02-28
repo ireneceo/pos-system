@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { useParams } from 'react-router-dom';
-import MainLayout from '../../components/Layout/MainLayout';
 import { TabContainer, Tab } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -467,7 +466,7 @@ const NotificationSettingsPage: React.FC = () => {
 
   if (loading) {
     return (
-      <MainLayout>
+      <>
         <SettingsContainer>
           <Header>
             <HeaderTitle>Notification Settings</HeaderTitle>
@@ -476,12 +475,12 @@ const NotificationSettingsPage: React.FC = () => {
             <SettingsCard>Loading...</SettingsCard>
           </Content>
         </SettingsContainer>
-      </MainLayout>
+      </>
     );
   }
 
   return (
-    <MainLayout>
+    <>
       <SettingsContainer>
         <Header>
           <HeaderTitle>Notification Settings</HeaderTitle>
@@ -676,7 +675,7 @@ const NotificationSettingsPage: React.FC = () => {
           </ModalContent>
         </ModalOverlay>
       )}
-    </MainLayout>
+    </>
   );
 };
 

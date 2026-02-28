@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import {
   Container,
   Header,
@@ -355,7 +354,7 @@ const BrandManagement: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Brands</Title>
@@ -566,7 +565,7 @@ const BrandManagement: React.FC = () => {
           />
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 // Chart libraries temporarily removed - will be added when needed
@@ -451,7 +450,7 @@ const ManagerSalesPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <PageTitle>Sales</PageTitle>
@@ -630,7 +629,7 @@ const ManagerSalesPage: React.FC = () => {
           </SalesTableContainer>
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

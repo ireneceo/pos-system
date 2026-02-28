@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { OperationTicket, User, Restaurant } = require('../models');
+const { OperationTicket, User, Restaurant, RestaurantManager } = require('../models');
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
@@ -43,6 +43,19 @@ router.get('/', async (req, res) => {
         restaurantId: { [Op.in]: restaurantIds },
         inquiryType: 'brand'
       };
+    } else if (userRole === 'Restaurant Owner') {
+      // Restaurant Owner sees all tickets from their owned restaurants
+      const ownedRestaurants = await RestaurantManager.findAll({
+        where: { manager_id: userId, relationship_type: 'ownership' },
+        attributes: ['restaurant_id']
+      });
+      const restaurantIds = ownedRestaurants.map(r => r.restaurant_id);
+      if (restaurantId) {
+        // If specific restaurant requested, filter to that one (if owned)
+        whereClause.restaurantId = restaurantId;
+      } else {
+        whereClause.restaurantId = { [Op.in]: restaurantIds };
+      }
     } else if (userRole === 'Restaurant Admin' || userRole === 'Staff') {
       // Restaurant Admin and Staff see their own tickets
       whereClause.requesterId = userId;
@@ -97,31 +110,50 @@ router.post('/', authenticateToken, async (req, res) => {
 
     // Get user information from JWT token
     const user = req.user;
+    const { managerId, managerName, restaurantId, restaurantName, inquiryType } = req.body;
 
-    if (!user || !user.restaurant_id) {
-      return res.status(400).json({ error: 'User not assigned to any restaurant' });
+    // If frontend provides managerId/restaurantId, use them directly
+    // Otherwise fallback to user's restaurant_id
+    let finalRestaurantId = restaurantId || user.restaurant_id;
+    let finalRestaurantName = restaurantName;
+    let finalManagerId = managerId;
+    let finalManagerName = managerName;
+
+    if (!finalRestaurantId) {
+      return res.status(400).json({ error: 'Restaurant ID is required' });
     }
 
-    // Get manager information for the restaurant
-    const restaurant = await Restaurant.findByPk(user.restaurant_id, {
-      include: [{ model: User, as: 'manager', attributes: ['id', 'full_name'] }]
-    });
+    // If managerId not provided from frontend, look up from restaurant
+    if (!finalManagerId) {
+      const restaurant = await Restaurant.findByPk(finalRestaurantId, {
+        include: [{ model: User, as: 'admin', attributes: ['id', 'full_name'] }]
+      });
 
-    if (!restaurant || !restaurant.manager) {
-      return res.status(400).json({ error: 'No manager assigned to this restaurant' });
+      if (!restaurant) {
+        return res.status(400).json({ error: 'Restaurant not found' });
+      }
+
+      finalRestaurantName = finalRestaurantName || restaurant.name;
+
+      if (restaurant.admin) {
+        finalManagerId = restaurant.admin.id;
+        finalManagerName = restaurant.admin.full_name;
+      } else {
+        return res.status(400).json({ error: 'No admin assigned to this restaurant' });
+      }
     }
 
     const ticketData = {
       ...req.body,
       ticketNumber,
-      managerId: restaurant.manager.id,
-      managerName: restaurant.manager.full_name,
+      managerId: finalManagerId,
+      managerName: finalManagerName,
       requesterId: user.id,
       requesterName: user.full_name || user.email,
       requesterEmail: user.email,
       requesterRole: user.role,
-      restaurantId: restaurant.id,
-      restaurantName: restaurant.name
+      restaurantId: finalRestaurantId,
+      restaurantName: finalRestaurantName
     };
 
     const ticket = await OperationTicket.create(ticketData);
@@ -141,7 +173,7 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 });
 
-// Update operation ticket (Manager response or internal notes)
+// Update operation ticket status
 router.put('/:id', async (req, res) => {
   try {
     const ticket = await OperationTicket.findByPk(req.params.id);
@@ -150,16 +182,9 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Ticket not found' });
     }
 
-    // Calculate response/resolution times if status changes
-    const updateData = { ...req.body };
-
-    if (req.body.status === 'resolved' && ticket.status !== 'resolved') {
-      updateData.resolvedAt = new Date();
-      updateData.resolutionTime = Math.floor((new Date() - new Date(ticket.createdAt)) / (1000 * 60));
-    }
-
-    if (req.body.response && !ticket.response) {
-      updateData.responseTime = Math.floor((new Date() - new Date(ticket.createdAt)) / (1000 * 60));
+    const updateData = {};
+    if (req.body.status) {
+      updateData.status = req.body.status;
     }
 
     await ticket.update(updateData);
@@ -207,27 +232,11 @@ router.get('/stats/summary', async (req, res) => {
     const inProgressTickets = await OperationTicket.count({ where: { ...whereClause, status: 'in-progress' } });
     const resolvedTickets = await OperationTicket.count({ where: { ...whereClause, status: 'resolved' } });
 
-    const avgResponseTime = await OperationTicket.findOne({
-      where: { ...whereClause, responseTime: { [Op.gt]: 0 } },
-      attributes: [
-        [sequelize.fn('AVG', sequelize.col('responseTime')), 'avgResponseTime']
-      ]
-    });
-
-    const avgResolutionTime = await OperationTicket.findOne({
-      where: { ...whereClause, resolutionTime: { [Op.gt]: 0 } },
-      attributes: [
-        [sequelize.fn('AVG', sequelize.col('resolutionTime')), 'avgResolutionTime']
-      ]
-    });
-
     res.json({
       totalTickets,
       openTickets,
       inProgressTickets,
-      resolvedTickets,
-      avgResponseTime: avgResponseTime?.dataValues?.avgResponseTime || 0,
-      avgResolutionTime: avgResolutionTime?.dataValues?.avgResolutionTime || 0
+      resolvedTickets
     });
   } catch (error) {
     console.error('Error fetching operation ticket stats:', error);

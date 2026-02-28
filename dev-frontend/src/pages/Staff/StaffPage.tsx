@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { Modal, ModalButton, ModalWarning, FormRow, FormGroup, FormLabel, FormInput, FormSelect } from '../../components/UI/Modal';
@@ -683,7 +682,7 @@ const StaffPage: React.FC = () => {
   );
 
   return (
-    <MainLayout>
+    <>
       <StaffContainer>
         <Header>
           <HeaderTitle>Restaurant Staff</HeaderTitle>
@@ -1161,7 +1160,7 @@ const StaffPage: React.FC = () => {
           </div>
         </Modal>
       </StaffContainer>
-    </MainLayout>
+    </>
   );
 };
 

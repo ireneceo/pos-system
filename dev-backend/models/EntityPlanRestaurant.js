@@ -28,6 +28,22 @@ EntityPlanRestaurant.init({
   is_active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  // Discount per restaurant for this entity plan
+  discount_type: {
+    type: DataTypes.ENUM('none', 'percentage', 'fixed'),
+    defaultValue: 'none',
+    comment: 'Discount type for this restaurant on this plan'
+  },
+  discount_value: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0,
+    comment: 'Discount value (percentage rate or fixed amount)'
+  },
+  discount_reason: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'Reason for discount'
   }
 }, {
   sequelize: database.sequelize,

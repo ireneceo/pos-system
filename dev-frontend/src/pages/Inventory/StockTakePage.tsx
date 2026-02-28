@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import {
   Container,
@@ -508,20 +507,20 @@ const StockTakePage: React.FC = () => {
 
   if (!restaurantId) {
     return (
-      <MainLayout>
+      <>
         <Container>
           <EmptyState>
             <EmptyTitle>Access Denied</EmptyTitle>
             <EmptyDescription>Please log in with a restaurant account.</EmptyDescription>
           </EmptyState>
         </Container>
-      </MainLayout>
+      </>
     );
   }
 
   if (loading) {
     return (
-      <MainLayout>
+      <>
         <Container>
           <Header>
             <Title>Stock Take</Title>
@@ -530,12 +529,12 @@ const StockTakePage: React.FC = () => {
             <EmptyDescription>Loading...</EmptyDescription>
           </EmptyState>
         </Container>
-      </MainLayout>
+      </>
     );
   }
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Stock Take</Title>
@@ -720,7 +719,7 @@ const StockTakePage: React.FC = () => {
         )}
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

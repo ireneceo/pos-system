@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
@@ -596,7 +595,7 @@ const CouponsPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <CouponsContainer>
         <PageHeader title="Coupons">
           <Button primary onClick={handleCreateCoupon}>Create Coupon</Button>
@@ -808,7 +807,7 @@ const CouponsPage: React.FC = () => {
           </ModalContent>
         </Modal>
       </CouponsContainer>
-    </MainLayout>
+    </>
   );
 };
 

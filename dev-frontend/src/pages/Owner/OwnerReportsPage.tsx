@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { useSearchParams } from 'react-router-dom';
-import MainLayout from '../../components/Layout/MainLayout';
 import { TabContainer, Tab, StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -534,7 +533,7 @@ const OwnerReportsPage: React.FC = () => {
         }
 
         // Fetch menu items for category mapping
-        const menuResponse = await fetch('/api/menu', {
+        const menuResponse = await fetch('/api/menu?excludeImage=true', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (menuResponse.ok) {
@@ -1022,7 +1021,7 @@ const OwnerReportsPage: React.FC = () => {
   );
 
   return (
-    <MainLayout>
+    <>
       <ReportsContainer>
         <Header>
           <HeaderTitle>Reports</HeaderTitle>
@@ -1434,7 +1433,7 @@ const OwnerReportsPage: React.FC = () => {
 
         </Content>
       </ReportsContainer>
-    </MainLayout>
+    </>
   );
 };
 

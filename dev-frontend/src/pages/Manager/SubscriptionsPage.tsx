@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import { RestaurantSubscription } from '../../interfaces/RestaurantSubscription';
 import { API_BASE_URL } from '../../config/api';
@@ -851,7 +850,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Subscriptions</Title>
@@ -905,7 +904,26 @@ const ManagerSubscriptionsPage: React.FC = () => {
                   </PlanBilling>
                 </PlanDetails>
                 <PlanPrice>
-                  {formatCurrency(subscription.billingCycle === 'monthly' ? subscription.monthlyFee : subscription.annualFee)}
+                  {(subscription as any).discountType && (subscription as any).discountType !== 'none' && ((subscription as any).discountValue || 0) > 0 ? (
+                    <div style={{textAlign: 'right'}}>
+                      <div style={{textDecoration: 'line-through', color: '#9CA3AF', fontSize: '12px', fontWeight: 400}}>
+                        {formatCurrency(subscription.billingCycle === 'monthly' ? subscription.monthlyFee : subscription.annualFee)}
+                      </div>
+                      <div style={{color: '#15803D'}}>
+                        {formatCurrency(
+                          (subscription.billingCycle === 'monthly' ? subscription.monthlyFee : subscription.annualFee) *
+                          ((subscription as any).discountType === 'percentage'
+                            ? (1 - ((subscription as any).discountValue || 0) / 100)
+                            : 1) -
+                          ((subscription as any).discountType === 'fixed' ? ((subscription as any).discountValue || 0) : 0)
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {formatCurrency(subscription.billingCycle === 'monthly' ? subscription.monthlyFee : subscription.annualFee)}
+                    </>
+                  )}
                   {subscription.billingCycle === 'annual' && <span style={{fontSize: '12px', color: '#6B7280'}}>/year</span>}
                 </PlanPrice>
               </PlanInfo>
@@ -1169,7 +1187,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
           </ModalActions>
         </ModalContent>
       </Modal>
-    </MainLayout>
+    </>
   );
 };
 

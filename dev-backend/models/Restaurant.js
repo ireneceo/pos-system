@@ -507,6 +507,22 @@ Restaurant.init({
     type: DataTypes.INTEGER,
     allowNull: true,
     comment: 'Foodcourt ID if restaurant is a tenant in a foodcourt'
+  },
+  // Subscription Discount (applied by System Admin)
+  discount_type: {
+    type: DataTypes.ENUM('none', 'percentage', 'fixed'),
+    defaultValue: 'none',
+    comment: 'Subscription discount type'
+  },
+  discount_value: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0,
+    comment: 'Discount value (percentage rate or fixed amount)'
+  },
+  discount_reason: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'Reason for discount'
   }
 }, {
   sequelize: database.sequelize,

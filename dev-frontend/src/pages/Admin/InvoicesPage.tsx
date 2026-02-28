@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { useSearchParams } from 'react-router-dom';
-import MainLayout from '../../components/Layout/MainLayout';
 import { formatCurrency, getCurrencyDecimals } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
 import { BaseButton, StatusBadge as CommonStatusBadge } from '../../components/UI/CommonStyles';
@@ -72,6 +71,11 @@ interface Invoice {
   serviceDescription?: string;
   categoryDisplayName?: string;
   additionalCharges?: AdditionalCharge[];
+  discountType?: string;
+  discountValue?: number;
+  discountAmount?: number;
+  discountReason?: string;
+  subtotalBeforeDiscount?: number;
 }
 
 interface CurrencyConfig {
@@ -821,7 +825,10 @@ const InvoicesPage: React.FC = () => {
     invoiceCategory: 'service',
     customDescription: '',
     serviceDescription: '',
-    currency: ''
+    currency: '',
+    discountType: 'none' as 'none' | 'percentage' | 'fixed',
+    discountValue: '',
+    discountReason: ''
   });
 
   // Period filter handlers
@@ -2001,7 +2008,10 @@ const InvoicesPage: React.FC = () => {
       invoiceCategory: 'service',
       customDescription: '',
       serviceDescription: '',
-      currency: ''
+      currency: '',
+      discountType: 'none' as 'none' | 'percentage' | 'fixed',
+      discountValue: '',
+      discountReason: ''
     });
     setSelectedTarget(null);
     setSearchQuery('');
@@ -2370,18 +2380,22 @@ const InvoicesPage: React.FC = () => {
     try {
       const amount = parseFloat(newInvoice.amount);
 
-      // Calculate additional charges from payment settings
+      // Calculate discount
+      const discountVal = parseFloat(newInvoice.discountValue) || 0;
+      const discountAmt = newInvoice.discountType === 'percentage' ? amount * (discountVal / 100) : newInvoice.discountType === 'fixed' ? discountVal : 0;
+      const afterDiscount = Math.max(0, amount - discountAmt);
+
+      // Calculate additional charges from payment settings (on discounted amount)
       const calculatedCharges = additionalCharges
         .filter(charge => charge.enabled && charge.name && charge.rate > 0)
         .map(charge => ({
           name: charge.name,
           rate: charge.rate,
-          amount: Math.round(amount * charge.rate / 100 * 100) / 100
+          amount: Math.round(afterDiscount * charge.rate / 100 * 100) / 100
         }));
 
-      // Calculate total additional charges amount
       const totalChargesAmount = calculatedCharges.reduce((sum, c) => sum + c.amount, 0);
-      const total = amount + totalChargesAmount;
+      const total = afterDiscount + totalChargesAmount;
 
       // Prepare data for API
       let description = '';
@@ -2442,10 +2456,15 @@ const InvoicesPage: React.FC = () => {
         billing_period_end: null,
         due_date: new Date(newInvoice.dueDate).toISOString(),
         total_amount: total,
+        subtotal_before_discount: discountAmt > 0 ? amount : null,
+        discount_type: newInvoice.discountType !== 'none' ? newInvoice.discountType : null,
+        discount_value: discountAmt > 0 ? discountVal : null,
+        discount_amount: discountAmt > 0 ? discountAmt : null,
+        discount_reason: newInvoice.discountReason || null,
         currency: newInvoice.currency || 'USD',
         status: 'draft',
         notes: `${companyName}\n${customerName}\n${customerAddress}\n\n${description}`,
-        issued_by: 1, // Current admin user ID
+        issued_by: 1,
         issued_at: new Date().toISOString(),
         issuer_type: 'system_admin',
         invoice_category: newInvoice.invoiceCategory || 'service',
@@ -2606,7 +2625,7 @@ const InvoicesPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Invoices</Title>
@@ -2745,7 +2764,7 @@ const InvoicesPage: React.FC = () => {
                     </StatusBadge>
                   </DataTableCell>
                   <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'USD')}</DataTableAmount></DataTableCell>
-                  <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{formatCurrency(invoice.total, invoice.currency || 'USD')}</DataTableAmount></DataTableCell>
+                  <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'USD')}</DataTableAmount></DataTableCell>
                   <DataTableCell data-label="" mobileFullWidth>
                     <ActionButtons>
                       <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</LocalActionButton>
@@ -2949,7 +2968,7 @@ const InvoicesPage: React.FC = () => {
                         {invoice.paidDate ? formatDate(invoice.paidDate) : '-'}
                       </DataTableCell>
                       <DataTableCell data-label="Amount" align="right">
-                        <DataTableAmount highlight>{formatCurrency(invoice.total, invoice.currency || 'USD')}</DataTableAmount>
+                        <DataTableAmount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'USD')}</DataTableAmount>
                       </DataTableCell>
                       <DataTableCell data-label="" mobileFullWidth>
                         <ActionButtons>
@@ -3270,33 +3289,24 @@ const InvoicesPage: React.FC = () => {
                       value={newInvoice.amount}
                       onChange={(e) => {
                         const amount = parseFloat(e.target.value) || 0;
-                        // Calculate total from all enabled additional charges
-                        const chargesTotal = additionalCharges
-                          .filter(c => c.enabled && c.rate > 0)
-                          .reduce((sum, c) => sum + (amount * c.rate / 100), 0);
-                        const total = amount + chargesTotal;
-                        setNewInvoice({
-                          ...newInvoice,
-                          amount: e.target.value,
-                          tax: chargesTotal.toFixed(2),
-                          total: total.toFixed(2)
-                        });
+                        const discountVal = parseFloat(newInvoice.discountValue) || 0;
+                        const discountAmt = newInvoice.discountType === 'percentage' ? amount * (discountVal / 100) : newInvoice.discountType === 'fixed' ? discountVal : 0;
+                        const afterDiscount = Math.max(0, amount - discountAmt);
+                        const chargesTotal = additionalCharges.filter(c => c.enabled && c.rate > 0).reduce((sum, c) => sum + (afterDiscount * c.rate / 100), 0);
+                        const total = afterDiscount + chargesTotal;
+                        setNewInvoice({ ...newInvoice, amount: e.target.value, tax: chargesTotal.toFixed(2), total: total.toFixed(2) });
                       }}
                       onBlur={(e) => {
                         if (e.target.value && newInvoice.currency) {
                           const decimals = getCurrencyDecimals(newInvoice.currency);
                           const amount = parseFloat(e.target.value) || 0;
                           const formattedAmount = amount.toFixed(decimals);
-                          const chargesTotal = additionalCharges
-                            .filter(c => c.enabled && c.rate > 0)
-                            .reduce((sum, c) => sum + (amount * c.rate / 100), 0);
-                          const total = amount + chargesTotal;
-                          setNewInvoice({
-                            ...newInvoice,
-                            amount: formattedAmount,
-                            tax: chargesTotal.toFixed(decimals),
-                            total: total.toFixed(decimals)
-                          });
+                          const discountVal = parseFloat(newInvoice.discountValue) || 0;
+                          const discountAmt = newInvoice.discountType === 'percentage' ? amount * (discountVal / 100) : newInvoice.discountType === 'fixed' ? discountVal : 0;
+                          const afterDiscount = Math.max(0, amount - discountAmt);
+                          const chargesTotal = additionalCharges.filter(c => c.enabled && c.rate > 0).reduce((sum, c) => sum + (afterDiscount * c.rate / 100), 0);
+                          const total = afterDiscount + chargesTotal;
+                          setNewInvoice({ ...newInvoice, amount: formattedAmount, tax: chargesTotal.toFixed(decimals), total: total.toFixed(decimals) });
                         }
                       }}
                       placeholder={newInvoice.currency ? (getCurrencyDecimals(newInvoice.currency) === 0 ? '0' : '0.00') : '0.00'}
@@ -3319,6 +3329,62 @@ const InvoicesPage: React.FC = () => {
                       min={new Date().toISOString().split('T')[0]}
                     />
                   </FormGroup>
+                </FormRow>
+
+                <FormRow>
+                  <FormGroup>
+                    <FormLabel>Discount</FormLabel>
+                    <FormSelect
+                      value={newInvoice.discountType}
+                      onChange={(e) => {
+                        const dtype = e.target.value as 'none' | 'percentage' | 'fixed';
+                        const amount = parseFloat(newInvoice.amount) || 0;
+                        const discountVal = dtype === 'none' ? 0 : (parseFloat(newInvoice.discountValue) || 0);
+                        const discountAmt = dtype === 'percentage' ? amount * (discountVal / 100) : dtype === 'fixed' ? discountVal : 0;
+                        const afterDiscount = Math.max(0, amount - discountAmt);
+                        const chargesTotal = additionalCharges.filter(c => c.enabled && c.rate > 0).reduce((sum, c) => sum + (afterDiscount * c.rate / 100), 0);
+                        const total = afterDiscount + chargesTotal;
+                        setNewInvoice({ ...newInvoice, discountType: dtype, discountValue: dtype === 'none' ? '' : newInvoice.discountValue, tax: chargesTotal.toFixed(2), total: total.toFixed(2) });
+                      }}
+                    >
+                      <option value="none">No Discount</option>
+                      <option value="percentage">Percentage (%)</option>
+                      <option value="fixed">Fixed Amount</option>
+                    </FormSelect>
+                  </FormGroup>
+                  {newInvoice.discountType !== 'none' && (
+                    <FormGroup>
+                      <FormLabel>{newInvoice.discountType === 'percentage' ? 'Discount (%)' : 'Discount Amount'}</FormLabel>
+                      <FormInput
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max={newInvoice.discountType === 'percentage' ? '100' : undefined}
+                        value={newInvoice.discountValue}
+                        onChange={(e) => {
+                          const amount = parseFloat(newInvoice.amount) || 0;
+                          const discountVal = parseFloat(e.target.value) || 0;
+                          const discountAmt = newInvoice.discountType === 'percentage' ? amount * (discountVal / 100) : discountVal;
+                          const afterDiscount = Math.max(0, amount - discountAmt);
+                          const chargesTotal = additionalCharges.filter(c => c.enabled && c.rate > 0).reduce((sum, c) => sum + (afterDiscount * c.rate / 100), 0);
+                          const total = afterDiscount + chargesTotal;
+                          setNewInvoice({ ...newInvoice, discountValue: e.target.value, tax: chargesTotal.toFixed(2), total: total.toFixed(2) });
+                        }}
+                        placeholder="0"
+                      />
+                    </FormGroup>
+                  )}
+                  {newInvoice.discountType !== 'none' && (
+                    <FormGroup>
+                      <FormLabel>Discount Reason</FormLabel>
+                      <FormInput
+                        type="text"
+                        value={newInvoice.discountReason}
+                        onChange={(e) => setNewInvoice({ ...newInvoice, discountReason: e.target.value })}
+                        placeholder="e.g. Loyalty discount"
+                      />
+                    </FormGroup>
+                  )}
                 </FormRow>
 
                 <FormGroup>
@@ -3366,8 +3432,23 @@ const InvoicesPage: React.FC = () => {
                     <span>Subtotal:</span>
                     <span>{newInvoice.currency ? formatCurrency(parseFloat(newInvoice.amount || '0'), newInvoice.currency) : '-'}</span>
                   </SummaryRow>
+                  {newInvoice.discountType !== 'none' && parseFloat(newInvoice.discountValue || '0') > 0 && (() => {
+                    const amt = parseFloat(newInvoice.amount || '0');
+                    const dv = parseFloat(newInvoice.discountValue || '0');
+                    const discountAmt = newInvoice.discountType === 'percentage' ? amt * (dv / 100) : dv;
+                    return (
+                      <SummaryRow>
+                        <span style={{ color: '#15803D' }}>Discount{newInvoice.discountType === 'percentage' ? ` (${dv}%)` : ''}:</span>
+                        <span style={{ color: '#15803D' }}>-{newInvoice.currency ? formatCurrency(discountAmt, newInvoice.currency) : '-'}</span>
+                      </SummaryRow>
+                    );
+                  })()}
                   {additionalCharges.filter(c => c.enabled && c.name && c.rate > 0).map((charge, idx) => {
-                    const chargeAmount = (parseFloat(newInvoice.amount || '0') * charge.rate / 100);
+                    const amt = parseFloat(newInvoice.amount || '0');
+                    const dv = parseFloat(newInvoice.discountValue || '0');
+                    const discountAmt = newInvoice.discountType === 'percentage' ? amt * (dv / 100) : newInvoice.discountType === 'fixed' ? dv : 0;
+                    const afterDiscount = Math.max(0, amt - discountAmt);
+                    const chargeAmount = afterDiscount * (charge.rate / 100);
                     return (
                       <SummaryRow key={idx}>
                         <span>{charge.name} ({charge.rate}%):</span>
@@ -3507,9 +3588,15 @@ const InvoicesPage: React.FC = () => {
                     <InvoiceSummary>
                       <SummaryRow>
                         <span>Subtotal:</span>
-                        <span>{formatCurrency(selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</span>
+                        <span>{formatCurrency(selectedInvoice.subtotalBeforeDiscount || selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</span>
                       </SummaryRow>
-                      {(selectedInvoice.additionalCharges || []).map((charge, idx) => (
+                      {selectedInvoice.discountType && selectedInvoice.discountType !== 'none' && selectedInvoice.discountAmount > 0 && (
+                        <SummaryRow>
+                          <span style={{color: '#15803D'}}>Discount{selectedInvoice.discountType === 'percentage' ? ` (${selectedInvoice.discountValue}%)` : ''}:</span>
+                          <span style={{color: '#15803D'}}>-{formatCurrency(selectedInvoice.discountAmount, selectedInvoice.currency || 'MYR')}</span>
+                        </SummaryRow>
+                      )}
+                      {(selectedInvoice.additionalCharges || []).map((charge: any, idx: number) => (
                         <SummaryRow key={idx}>
                           <span>{charge.name} ({charge.rate}%):</span>
                           <span>{formatCurrency(charge.amount, selectedInvoice.currency || 'MYR')}</span>
@@ -4272,7 +4359,7 @@ const InvoicesPage: React.FC = () => {
         {/* Download Success Modal */}
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

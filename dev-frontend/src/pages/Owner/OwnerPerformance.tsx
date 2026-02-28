@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import {
   Container,
   Header,
@@ -655,7 +654,7 @@ const OwnerPerformance: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <div>
@@ -852,7 +851,7 @@ const OwnerPerformance: React.FC = () => {
           )}
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

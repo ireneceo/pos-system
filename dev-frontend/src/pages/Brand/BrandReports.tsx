@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 
 const Container = styled.div`
@@ -379,7 +378,7 @@ const BrandReports: React.FC = () => {
       );
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <div>
@@ -598,7 +597,7 @@ const BrandReports: React.FC = () => {
           </TableSection>
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

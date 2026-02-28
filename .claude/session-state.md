@@ -1,24 +1,22 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-02-25
+**마지막 업데이트:** 2026-02-28
 **작업 상태:** 완료
 
 ### 진행 중인 작업
 - 없음
 
 ### 완료된 작업 (이번 세션)
-- Reports 타임존 적용 마무리 (ReportsPage dueDate에 siteTimezone 적용)
-- 사이트 타임존 설정 (Admin > Site Settings, CompanySettings.timezone)
-- Dashboard 통화 필터 개선 (supported_currencies만 표시, All 제거, 인보이스 건수 기준 기본 통화)
-- Reports 기간 필터 개선 (All 추가, 백엔드 period=all 지원)
-- Server Health 모니터 최적화 (info 로깅 제거, securityUpdates 오탐 수정)
-- SystemLogsPage Auto-scroll 구현 (useRef + useEffect)
-- 시스템 로그 대응 가이드 (logActionGuides.ts + UI 패널)
-- Dashboard 시스템 알림 (alerts-summary API + AlertsPanel)
-- 이메일 자동 알림 (systemLogger error/critical → 이메일, 1시간 중복 방지)
-- 운영서버 배포 완료 (스모크 테스트 6/6 통과)
+- 품질 체크: Restaurant/InvoicesPage 모달 Free 표시, NoticesPage/InquiryPage refreshBadgeCounts 이벤트 추가
+- Brand/Foodcourt Subscriptions Assign/Change Plan 400 에러 수정 (restaurant_id→restaurant_ids)
+- Create Invoice 모달 할인 UI 추가 (Admin, Brand, Foodcourt 3개 페이지)
+- Admin SubscriptionsPage 401 에러 수정 (Authorization 헤더 추가)
+- Admin RestaurantsPage Edit 모달에 Subscription Discount UI 추가
+- 할인 후 실제 결제 금액 표시 일괄 수정 (Admin/Brand/Foodcourt/Manager SubscriptionsPage)
+- Manager API에 discountType/Value/Reason 필드 반환 추가
 
 ### 다음 할 일
-- Phase C: 셀프 회원가입, 세금계산서
+- DEVELOPMENT_PLAN.md Phase별 진행 현황 점검
+- 인보이스 할인 e2e 테스트 (자동 인보이스 + 수동 인보이스)
 
 ---
 

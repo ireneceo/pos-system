@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 
 
 interface ContactInquiry {
@@ -132,7 +131,12 @@ const FilterSelect = styled.select`
 
 const InquiryGrid = styled.div`
   display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 20px;
+
+  @media (max-width: 968px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const InquiryCard = styled.div`
@@ -141,9 +145,12 @@ const InquiryCard = styled.div`
   padding: 24px;
   border: 1px solid #E6EBF1;
   transition: all 0.2s;
+  overflow: hidden;
+  cursor: pointer;
 
   &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
   }
 `;
 
@@ -157,6 +164,7 @@ const InquiryHeader = styled.div`
 
 const InquiryInfo = styled.div`
   flex: 1;
+  min-width: 0;
 `;
 
 const InquiryName = styled.div`
@@ -164,11 +172,17 @@ const InquiryName = styled.div`
   font-weight: 600;
   color: #0A2540;
   margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `;
 
 const InquiryEmail = styled.div`
   font-size: 14px;
   color: #635BFF;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `;
 
 const InquiryCompany = styled.div`
@@ -183,6 +197,7 @@ const StatusBadge = styled.span<{ status: string }>`
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
+  flex-shrink: 0;
   background: ${props => {
     switch(props.status) {
       case 'new': return '#FEF3C7';
@@ -241,15 +256,6 @@ const InquiryTypeBadge = styled.span<{ type?: string }>`
   }};
 `;
 
-const DetailRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 6px;
-  font-size: 13px;
-  color: #6B7280;
-`;
-
 const InquiryMessage = styled.div`
   font-size: 14px;
   color: #374151;
@@ -260,6 +266,19 @@ const InquiryMessage = styled.div`
   border-left: 3px solid #E6EBF1;
   margin: 16px 0;
   white-space: pre-wrap;
+  word-break: break-word;
+`;
+
+const CardMessagePreview = styled.div`
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.5;
+  margin: 12px 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
 `;
 
 const ReplySection = styled.div`
@@ -283,6 +302,7 @@ const ReplyContent = styled.div`
   color: #065F46;
   line-height: 1.6;
   white-space: pre-wrap;
+  word-break: break-word;
 `;
 
 const ReplyMeta = styled.div`
@@ -303,40 +323,17 @@ const InquiryMeta = styled.div`
   gap: 12px;
 `;
 
-const ActionButtons = styled.div`
-  display: flex;
-  gap: 8px;
-`;
-
-const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid;
-
-  ${props => props.variant === 'primary' ? `
-    background: #635BFF;
-    color: white;
-    border-color: #635BFF;
-    &:hover { background: #5A51E6; }
-  ` : props.variant === 'danger' ? `
-    background: transparent;
-    color: #DC2626;
-    border-color: #FCA5A5;
-    &:hover { background: #FEE2E2; }
-  ` : `
-    background: transparent;
-    color: #6B7280;
-    border-color: #E6EBF1;
-    &:hover { background: #F8FAFC; color: #0A2540; }
-  `}
+const RepliedBadge = styled.span`
+  font-size: 11px;
+  font-weight: 600;
+  color: #059669;
+  background: #ECFDF5;
+  padding: 2px 8px;
+  border-radius: 4px;
 `;
 
 // Modal styles
-const Modal = styled.div`
+const ModalOverlay = styled.div`
   position: fixed;
   top: 0;
   left: 0;
@@ -344,18 +341,19 @@ const Modal = styled.div`
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   z-index: 1000;
+  overflow-y: auto;
+  padding: 40px 0;
 `;
 
 const ModalContent = styled.div`
   background: white;
   border-radius: 12px;
-  max-width: 600px;
+  max-width: 700px;
   width: 90%;
-  max-height: 90vh;
-  overflow: auto;
+  flex-shrink: 0;
 `;
 
 const ModalHeader = styled.div`
@@ -445,6 +443,86 @@ const EmptyState = styled.div`
   color: #6B7280;
 `;
 
+const DetailRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 13px;
+  color: #6B7280;
+`;
+
+const DetailGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+`;
+
+const DetailItem = styled.div`
+  font-size: 14px;
+`;
+
+const DetailItemLabel = styled.div`
+  font-size: 12px;
+  color: #6B7280;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  font-weight: 600;
+`;
+
+const DetailItemValue = styled.div`
+  font-size: 14px;
+  color: #0A2540;
+  word-break: break-word;
+`;
+
+const StatusSelect = styled.select`
+  padding: 6px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  font-size: 13px;
+  background: white;
+  cursor: pointer;
+  font-weight: 500;
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+  }
+`;
+
+const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid;
+
+  ${props => props.variant === 'primary' ? `
+    background: #635BFF;
+    color: white;
+    border-color: #635BFF;
+    &:hover { background: #5A51E6; }
+  ` : props.variant === 'danger' ? `
+    background: transparent;
+    color: #DC2626;
+    border-color: #FCA5A5;
+    &:hover { background: #FEE2E2; }
+  ` : `
+    background: transparent;
+    color: #6B7280;
+    border-color: #E6EBF1;
+    &:hover { background: #F8FAFC; color: #0A2540; }
+  `}
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
 const ContactInquiriesPage: React.FC = () => {
   const [inquiries, setInquiries] = useState<ContactInquiry[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, new: 0, in_progress: 0, resolved: 0 });
@@ -452,12 +530,19 @@ const ContactInquiriesPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  // Reply modal state
-  const [replyModal, setReplyModal] = useState(false);
+  // Detail modal state
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedInquiry, setSelectedInquiry] = useState<ContactInquiry | null>(null);
+  const [detailStatus, setDetailStatus] = useState('');
+
+  // Reply modal state
+  const [showReplyModal, setShowReplyModal] = useState(false);
   const [replyMessage, setReplyMessage] = useState('');
   const [sendEmail, setSendEmail] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  // Delete confirm state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const loadData = useCallback(async (silent = false) => {
     try {
@@ -499,11 +584,40 @@ const ContactInquiriesPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [loadData]);
 
-  const handleReply = (inquiry: ContactInquiry) => {
+  const openDetail = (inquiry: ContactInquiry) => {
     setSelectedInquiry(inquiry);
+    setDetailStatus(inquiry.status);
+    setShowDetailModal(true);
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!selectedInquiry) return;
+    setDetailStatus(newStatus);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/public/admin/inquiries/${selectedInquiry.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (response.ok) {
+        setInquiries(prev => prev.map(i =>
+          i.id === selectedInquiry.id ? { ...i, status: newStatus as ContactInquiry['status'] } : i
+        ));
+        setSelectedInquiry(prev => prev ? { ...prev, status: newStatus as ContactInquiry['status'] } : null);
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+    }
+  };
+
+  const openReplyModal = () => {
     setReplyMessage('');
     setSendEmail(true);
-    setReplyModal(true);
+    setShowReplyModal(true);
   };
 
   const submitReply = async () => {
@@ -525,46 +639,27 @@ const ContactInquiriesPage: React.FC = () => {
       });
 
       if (response.ok) {
-        setReplyModal(false);
+        setShowReplyModal(false);
+        setShowDetailModal(false);
         loadData();
-      } else {
-        const data = await response.json();
-        alert(data.error || 'Failed to send reply');
       }
     } catch (error) {
       console.error('Error sending reply:', error);
-      alert('Failed to send reply');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const updateStatus = async (id: number, status: string) => {
+  const deleteInquiry = async () => {
+    if (!selectedInquiry) return;
     try {
       const token = localStorage.getItem('auth_token');
-      await fetch(`/api/public/admin/inquiries/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ status })
-      });
-      loadData();
-    } catch (error) {
-      console.error('Error updating status:', error);
-    }
-  };
-
-  const deleteInquiry = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this inquiry?')) return;
-
-    try {
-      const token = localStorage.getItem('auth_token');
-      await fetch(`/api/public/admin/inquiries/${id}`, {
+      await fetch(`/api/public/admin/inquiries/${selectedInquiry.id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      setShowDeleteConfirm(false);
+      setShowDetailModal(false);
       loadData();
     } catch (error) {
       console.error('Error deleting inquiry:', error);
@@ -599,7 +694,7 @@ const ContactInquiriesPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Contact Inquiries</Title>
@@ -650,29 +745,15 @@ const ContactInquiriesPage: React.FC = () => {
           ) : (
             <InquiryGrid>
               {inquiries.map((inquiry) => (
-                <InquiryCard key={inquiry.id}>
+                <InquiryCard key={inquiry.id} onClick={() => openDetail(inquiry)}>
                   <InquiryHeader>
                     <InquiryInfo>
                       <InquiryName>
                         {inquiry.name}
-                        {inquiry.inquiry_type && (
-                          <InquiryTypeBadge type={inquiry.inquiry_type}>
-                            {formatInquiryType(inquiry.inquiry_type)}
-                          </InquiryTypeBadge>
-                        )}
-                        {inquiry.interested_plan && (
-                          <PlanBadge>{formatPlan(inquiry.interested_plan)}</PlanBadge>
-                        )}
                       </InquiryName>
                       <InquiryEmail>{inquiry.email}</InquiryEmail>
                       {inquiry.company_name && (
                         <InquiryCompany>{inquiry.company_name}</InquiryCompany>
-                      )}
-                      {inquiry.phone && (
-                        <DetailRow>Phone: {inquiry.phone}</DetailRow>
-                      )}
-                      {inquiry.preferred_username && (
-                        <DetailRow>Preferred Username: <strong>{inquiry.preferred_username}</strong></DetailRow>
                       )}
                     </InquiryInfo>
                     <StatusBadge status={inquiry.status}>
@@ -680,42 +761,20 @@ const ContactInquiriesPage: React.FC = () => {
                     </StatusBadge>
                   </InquiryHeader>
 
-                  <InquiryMessage>{inquiry.message}</InquiryMessage>
-
-                  {inquiry.reply_message && (
-                    <ReplySection>
-                      <ReplyLabel>
-                        Reply {inquiry.email_sent && '(Email Sent)'}
-                      </ReplyLabel>
-                      <ReplyContent>{inquiry.reply_message}</ReplyContent>
-                      <ReplyMeta>
-                        Replied by {inquiry.replied_by_name} on {formatDate(inquiry.replied_at!)}
-                      </ReplyMeta>
-                    </ReplySection>
-                  )}
+                  <CardMessagePreview>{inquiry.message}</CardMessagePreview>
 
                   <InquiryMeta>
-                    <span>Received: {formatDate(inquiry.createdAt)}</span>
-                    <ActionButtons>
-                      {inquiry.status === 'new' && (
-                        <ActionButton onClick={() => updateStatus(inquiry.id, 'in_progress')}>
-                          Mark In Progress
-                        </ActionButton>
+                    <span>{formatDate(inquiry.createdAt)}</span>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      {inquiry.inquiry_type && (
+                        <InquiryTypeBadge type={inquiry.inquiry_type} style={{ marginLeft: 0 }}>
+                          {formatInquiryType(inquiry.inquiry_type)}
+                        </InquiryTypeBadge>
                       )}
-                      {!inquiry.reply_message && (
-                        <ActionButton variant="primary" onClick={() => handleReply(inquiry)}>
-                          Reply
-                        </ActionButton>
+                      {inquiry.reply_message && (
+                        <RepliedBadge>Replied</RepliedBadge>
                       )}
-                      {inquiry.status !== 'closed' && inquiry.reply_message && (
-                        <ActionButton onClick={() => updateStatus(inquiry.id, 'closed')}>
-                          Close
-                        </ActionButton>
-                      )}
-                      <ActionButton variant="danger" onClick={() => deleteInquiry(inquiry.id)}>
-                        Delete
-                      </ActionButton>
-                    </ActionButtons>
+                    </div>
                   </InquiryMeta>
                 </InquiryCard>
               ))}
@@ -723,13 +782,126 @@ const ContactInquiriesPage: React.FC = () => {
           )}
         </Content>
 
+        {/* Detail Modal */}
+        {showDetailModal && selectedInquiry && (
+          <ModalOverlay onClick={() => setShowDetailModal(false)}>
+            <ModalContent onClick={(e) => e.stopPropagation()}>
+              <ModalHeader>
+                <ModalTitle>Inquiry Details</ModalTitle>
+                <CloseButton onClick={() => setShowDetailModal(false)}>&times;</CloseButton>
+              </ModalHeader>
+
+              <ModalBody>
+                <DetailGrid>
+                  <DetailItem>
+                    <DetailItemLabel>Name</DetailItemLabel>
+                    <DetailItemValue>{selectedInquiry.name}</DetailItemValue>
+                  </DetailItem>
+                  <DetailItem>
+                    <DetailItemLabel>Email</DetailItemLabel>
+                    <DetailItemValue>{selectedInquiry.email}</DetailItemValue>
+                  </DetailItem>
+                  {selectedInquiry.company_name && (
+                    <DetailItem>
+                      <DetailItemLabel>Company</DetailItemLabel>
+                      <DetailItemValue>{selectedInquiry.company_name}</DetailItemValue>
+                    </DetailItem>
+                  )}
+                  {selectedInquiry.phone && (
+                    <DetailItem>
+                      <DetailItemLabel>Phone</DetailItemLabel>
+                      <DetailItemValue>{selectedInquiry.phone}</DetailItemValue>
+                    </DetailItem>
+                  )}
+                  {selectedInquiry.inquiry_type && (
+                    <DetailItem>
+                      <DetailItemLabel>Type</DetailItemLabel>
+                      <DetailItemValue>
+                        <InquiryTypeBadge type={selectedInquiry.inquiry_type} style={{ marginLeft: 0 }}>
+                          {formatInquiryType(selectedInquiry.inquiry_type)}
+                        </InquiryTypeBadge>
+                      </DetailItemValue>
+                    </DetailItem>
+                  )}
+                  {selectedInquiry.interested_plan && (
+                    <DetailItem>
+                      <DetailItemLabel>Interested Plan</DetailItemLabel>
+                      <DetailItemValue>
+                        <PlanBadge style={{ marginLeft: 0 }}>{formatPlan(selectedInquiry.interested_plan)}</PlanBadge>
+                      </DetailItemValue>
+                    </DetailItem>
+                  )}
+                  {selectedInquiry.preferred_username && (
+                    <DetailItem>
+                      <DetailItemLabel>Preferred Username</DetailItemLabel>
+                      <DetailItemValue><strong>{selectedInquiry.preferred_username}</strong></DetailItemValue>
+                    </DetailItem>
+                  )}
+                  <DetailItem>
+                    <DetailItemLabel>Status</DetailItemLabel>
+                    <DetailItemValue>
+                      <StatusSelect
+                        value={detailStatus}
+                        onChange={(e) => handleStatusChange(e.target.value)}
+                      >
+                        <option value="new">New</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="resolved">Resolved</option>
+                        <option value="closed">Closed</option>
+                      </StatusSelect>
+                    </DetailItemValue>
+                  </DetailItem>
+                  <DetailItem>
+                    <DetailItemLabel>Received</DetailItemLabel>
+                    <DetailItemValue>{formatDate(selectedInquiry.createdAt)}</DetailItemValue>
+                  </DetailItem>
+                </DetailGrid>
+
+                <FormGroup>
+                  <FormLabel>Message</FormLabel>
+                  <InquiryMessage style={{ margin: 0 }}>
+                    {selectedInquiry.message}
+                  </InquiryMessage>
+                </FormGroup>
+
+                {selectedInquiry.reply_message && (
+                  <ReplySection>
+                    <ReplyLabel>
+                      Reply {selectedInquiry.email_sent && '(Email Sent)'}
+                    </ReplyLabel>
+                    <ReplyContent>{selectedInquiry.reply_message}</ReplyContent>
+                    <ReplyMeta>
+                      Replied by {selectedInquiry.replied_by_name} on {formatDate(selectedInquiry.replied_at!)}
+                    </ReplyMeta>
+                  </ReplySection>
+                )}
+              </ModalBody>
+
+              <ModalFooter>
+                <ActionButton variant="danger" onClick={() => setShowDeleteConfirm(true)}>
+                  Delete
+                </ActionButton>
+                <div style={{ flex: 1 }} />
+                {!selectedInquiry.reply_message && (
+                  <ActionButton variant="primary" onClick={openReplyModal}>
+                    Reply
+                  </ActionButton>
+                )}
+                <ActionButton onClick={() => setShowDetailModal(false)}>
+                  Close
+                </ActionButton>
+              </ModalFooter>
+            </ModalContent>
+          </ModalOverlay>
+        )}
+
         {/* Reply Modal */}
-        {replyModal && selectedInquiry && (
-          <Modal onClick={() => setReplyModal(false)}>
+        {showReplyModal && selectedInquiry && (
+          <ModalOverlay onClick={() => setShowReplyModal(false)}>
             <ModalContent onClick={(e) => e.stopPropagation()}>
               <ModalHeader>
                 <ModalTitle>Reply to {selectedInquiry.name}</ModalTitle>
-                <CloseButton onClick={() => setReplyModal(false)}>&times;</CloseButton>
+                <CloseButton onClick={() => setShowReplyModal(false)}>&times;</CloseButton>
               </ModalHeader>
 
               <ModalBody>
@@ -760,7 +932,7 @@ const ContactInquiriesPage: React.FC = () => {
               </ModalBody>
 
               <ModalFooter>
-                <ActionButton onClick={() => setReplyModal(false)}>
+                <ActionButton onClick={() => setShowReplyModal(false)}>
                   Cancel
                 </ActionButton>
                 <ActionButton
@@ -772,10 +944,35 @@ const ContactInquiriesPage: React.FC = () => {
                 </ActionButton>
               </ModalFooter>
             </ModalContent>
-          </Modal>
+          </ModalOverlay>
+        )}
+
+        {/* Delete Confirm Modal */}
+        {showDeleteConfirm && (
+          <ModalOverlay onClick={() => setShowDeleteConfirm(false)}>
+            <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '420px' }}>
+              <ModalHeader>
+                <ModalTitle>Confirm Delete</ModalTitle>
+                <CloseButton onClick={() => setShowDeleteConfirm(false)}>&times;</CloseButton>
+              </ModalHeader>
+              <ModalBody>
+                <p style={{ margin: 0, color: '#374151', fontSize: '14px' }}>
+                  Are you sure you want to delete this inquiry from <strong>{selectedInquiry?.name}</strong>? This action cannot be undone.
+                </p>
+              </ModalBody>
+              <ModalFooter>
+                <ActionButton onClick={() => setShowDeleteConfirm(false)}>
+                  Cancel
+                </ActionButton>
+                <ActionButton variant="danger" onClick={deleteInquiry}>
+                  Delete
+                </ActionButton>
+              </ModalFooter>
+            </ModalContent>
+          </ModalOverlay>
         )}
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

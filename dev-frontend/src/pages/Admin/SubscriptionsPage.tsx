@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import {
   Container,
@@ -49,6 +48,9 @@ interface RestaurantSubscription {
   location: string;
   email?: string;
   phone?: string;
+  discountType: 'none' | 'percentage' | 'fixed';
+  discountValue: number;
+  discountReason: string;
 }
 
 // Common components now imported from ../../components/UI
@@ -478,7 +480,10 @@ const SubscriptionsPage: React.FC = () => {
           lastPayment: restaurant.subscription_start ? new Date(restaurant.subscription_start).toISOString().split('T')[0] : '-',
           nextPayment: restaurant.subscription_end ? new Date(restaurant.subscription_end).toISOString().split('T')[0] : new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
           autoRenew: restaurant.auto_renew !== undefined ? restaurant.auto_renew : subscriptionStatus === 'active',
-          location: restaurant.address || 'Location not specified'
+          location: restaurant.address || 'Location not specified',
+          discountType: restaurant.discount_type || 'none',
+          discountValue: parseFloat(restaurant.discount_value) || 0,
+          discountReason: restaurant.discount_reason || ''
         };
       });
       
@@ -884,16 +889,21 @@ const SubscriptionsPage: React.FC = () => {
         planAmount: editingSubscription.monthlyFee,
         status: editingSubscription.status === 'active' ? 'active' : 'inactive',
         subscriptionStart: editingSubscription.startDate,
-        subscriptionEnd: editingSubscription.endDate
+        subscriptionEnd: editingSubscription.endDate,
+        discount_type: editingSubscription.discountType || 'none',
+        discount_value: editingSubscription.discountValue || 0,
+        discount_reason: editingSubscription.discountReason || null
       };
 
       console.log('📤 Sending update data:', updateData);
 
       // Make actual API call to update subscription
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/restaurants/${editingSubscription.restaurantId}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(updateData)
       });
@@ -1041,7 +1051,7 @@ const SubscriptionsPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Subscriptions</Title>
@@ -1141,7 +1151,19 @@ const SubscriptionsPage: React.FC = () => {
 
                   <MobileValue>
                     <MobileLabel>Monthly Fee</MobileLabel>
-                    RM {subscription.monthlyFee}
+                    {subscription.discountType !== 'none' && subscription.discountValue > 0 ? (
+                      <div>
+                        <span style={{textDecoration: 'line-through', color: '#9CA3AF', fontSize: '12px'}}>RM {subscription.monthlyFee}</span>
+                        <div style={{color: '#15803D', fontWeight: '600'}}>
+                          RM {(subscription.discountType === 'percentage'
+                            ? subscription.monthlyFee * (1 - subscription.discountValue / 100)
+                            : Math.max(0, subscription.monthlyFee - subscription.discountValue)
+                          ).toFixed(2)}
+                        </div>
+                      </div>
+                    ) : (
+                      <>RM {subscription.monthlyFee}</>
+                    )}
                   </MobileValue>
 
                   <MobileValue>
@@ -1765,6 +1787,68 @@ const SubscriptionsPage: React.FC = () => {
                         </span>
                       </label>
                     </FormGroup>
+
+                    {/* Discount Section */}
+                    <div style={{gridColumn: '1 / -1', marginTop: '20px', marginBottom: '10px'}}>
+                      <h3 style={{margin: 0, fontSize: '18px', fontWeight: '600', color: '#0A2540', borderBottom: '2px solid #635BFF', paddingBottom: '8px'}}>
+                        Discount
+                      </h3>
+                    </div>
+
+                    <FormGroup>
+                      <FormLabel>Discount Type</FormLabel>
+                      <FormSelect
+                        value={editingSubscription.discountType || 'none'}
+                        onChange={(e) => setEditingSubscription({...editingSubscription, discountType: e.target.value as 'none' | 'percentage' | 'fixed', discountValue: e.target.value === 'none' ? 0 : editingSubscription.discountValue})}
+                      >
+                        <option value="none">None</option>
+                        <option value="percentage">Percentage (%)</option>
+                        <option value="fixed">Fixed Amount (RM)</option>
+                      </FormSelect>
+                    </FormGroup>
+
+                    {editingSubscription.discountType !== 'none' && (
+                      <FormGroup>
+                        <FormLabel>{editingSubscription.discountType === 'percentage' ? 'Discount Rate (%)' : 'Discount Amount (RM)'}</FormLabel>
+                        <FormInput
+                          type="number"
+                          step={editingSubscription.discountType === 'percentage' ? '1' : '0.01'}
+                          min="0"
+                          max={editingSubscription.discountType === 'percentage' ? '100' : undefined}
+                          value={editingSubscription.discountValue}
+                          onChange={(e) => setEditingSubscription({...editingSubscription, discountValue: parseFloat(e.target.value) || 0})}
+                          placeholder={editingSubscription.discountType === 'percentage' ? 'e.g. 10' : 'e.g. 50.00'}
+                        />
+                      </FormGroup>
+                    )}
+
+                    {editingSubscription.discountType !== 'none' && (
+                      <FormGroup style={{gridColumn: '1 / -1'}}>
+                        <FormLabel>Discount Reason</FormLabel>
+                        <FormInput
+                          type="text"
+                          value={editingSubscription.discountReason || ''}
+                          onChange={(e) => setEditingSubscription({...editingSubscription, discountReason: e.target.value})}
+                          placeholder="e.g. Opening promotion, Loyalty discount"
+                        />
+                      </FormGroup>
+                    )}
+
+                    {editingSubscription.discountType !== 'none' && editingSubscription.discountValue > 0 && (
+                      <div style={{gridColumn: '1 / -1', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '12px 16px'}}>
+                        <div style={{fontSize: '12px', color: '#166534', fontWeight: '600', marginBottom: '4px'}}>Discount Preview</div>
+                        <div style={{fontSize: '13px', color: '#15803D'}}>
+                          Monthly Fee: RM {editingSubscription.monthlyFee.toFixed(2)} →{' '}
+                          <strong>
+                            RM {(editingSubscription.discountType === 'percentage'
+                              ? editingSubscription.monthlyFee * (1 - editingSubscription.discountValue / 100)
+                              : Math.max(0, editingSubscription.monthlyFee - editingSubscription.discountValue)
+                            ).toFixed(2)}
+                          </strong>
+                          {' '}(-{editingSubscription.discountType === 'percentage' ? `${editingSubscription.discountValue}%` : `RM ${editingSubscription.discountValue.toFixed(2)}`})
+                        </div>
+                      </div>
+                    )}
                   </FormGrid>
                 </ModalBody>
                 <ModalActions>
@@ -1832,7 +1916,22 @@ const SubscriptionsPage: React.FC = () => {
                         </div>
                         <div style={{marginBottom: '12px'}}>
                           <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Monthly Fee</div>
-                          <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>RM {viewingSubscription.monthlyFee}</div>
+                          {viewingSubscription.discountType !== 'none' && viewingSubscription.discountValue > 0 ? (
+                            <div>
+                              <span style={{textDecoration: 'line-through', color: '#9CA3AF', fontSize: '13px'}}>RM {viewingSubscription.monthlyFee}</span>
+                              <div style={{fontSize: '16px', fontWeight: '600', color: '#15803D'}}>
+                                RM {(viewingSubscription.discountType === 'percentage'
+                                  ? viewingSubscription.monthlyFee * (1 - viewingSubscription.discountValue / 100)
+                                  : Math.max(0, viewingSubscription.monthlyFee - viewingSubscription.discountValue)
+                                ).toFixed(2)}
+                                <span style={{fontSize: '12px', fontWeight: '500', marginLeft: '4px'}}>
+                                  (-{viewingSubscription.discountType === 'percentage' ? `${viewingSubscription.discountValue}%` : `RM ${viewingSubscription.discountValue}`})
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>RM {viewingSubscription.monthlyFee}</div>
+                          )}
                         </div>
                         <div style={{marginBottom: '12px'}}>
                           <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Billing Cycle</div>
@@ -1852,6 +1951,33 @@ const SubscriptionsPage: React.FC = () => {
                         </div>
                       </div>
                     </div>
+
+                    {/* Discount Info */}
+                    {viewingSubscription.discountType !== 'none' && viewingSubscription.discountValue > 0 && (
+                      <div>
+                        <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>Discount</div>
+                        <div style={{background: '#F0FDF4', padding: '16px', borderRadius: '8px', border: '1px solid #BBF7D0'}}>
+                          <div style={{marginBottom: '12px'}}>
+                            <div style={{fontSize: '12px', color: '#166534', marginBottom: '4px'}}>Type</div>
+                            <div style={{fontSize: '14px', fontWeight: '500', color: '#15803D'}}>
+                              {viewingSubscription.discountType === 'percentage' ? 'Percentage' : 'Fixed Amount'}
+                            </div>
+                          </div>
+                          <div style={{marginBottom: '12px'}}>
+                            <div style={{fontSize: '12px', color: '#166534', marginBottom: '4px'}}>Value</div>
+                            <div style={{fontSize: '14px', fontWeight: '500', color: '#15803D'}}>
+                              {viewingSubscription.discountType === 'percentage' ? `${viewingSubscription.discountValue}%` : `RM ${viewingSubscription.discountValue.toFixed(2)}`}
+                            </div>
+                          </div>
+                          {viewingSubscription.discountReason && (
+                            <div>
+                              <div style={{fontSize: '12px', color: '#166534', marginBottom: '4px'}}>Reason</div>
+                              <div style={{fontSize: '14px', fontWeight: '500', color: '#15803D'}}>{viewingSubscription.discountReason}</div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Dates */}
                     <div>
@@ -1945,7 +2071,7 @@ const SubscriptionsPage: React.FC = () => {
 
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

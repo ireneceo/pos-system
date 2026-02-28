@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import {
   TabContainer,
   Tab,
@@ -1516,7 +1515,7 @@ const AdminStaffManagementPage: React.FC = () => {
   const roles = Array.from(new Set(staffList.map(s => s.role))).filter(role => role !== 'Manager');
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Staff Management</Title>
@@ -2387,7 +2386,7 @@ const AdminStaffManagementPage: React.FC = () => {
           </Modal>
         )}
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

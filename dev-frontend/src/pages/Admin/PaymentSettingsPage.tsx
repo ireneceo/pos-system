@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import PageHeader from '../../components/Common/PageHeader';
 import { SaveButtonContainer, SaveButtonGroup, SaveButton, StatusMessage } from '../../components/UI';
 import { Modal, ModalButton } from '../../components/UI/Modal';
@@ -577,19 +576,19 @@ const PaymentSettingsPage: React.FC = () => {
 
   if (loading) {
     return (
-      <MainLayout>
+      <>
         <Container>
           <PageHeader title="Payment Settings" />
           <Content>
             <p>Loading...</p>
           </Content>
         </Container>
-      </MainLayout>
+      </>
     );
   }
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <PageHeader title="Payment Settings" />
         <Content>
@@ -1019,7 +1018,7 @@ const PaymentSettingsPage: React.FC = () => {
           ))}
         </div>
       </Modal>
-    </MainLayout>
+    </>
   );
 };
 

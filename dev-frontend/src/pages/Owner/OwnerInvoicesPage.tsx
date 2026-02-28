@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useSearchParams } from 'react-router-dom';
-import MainLayout from '../../components/Layout/MainLayout';
 import { formatCurrency } from '../../utils/currency';
 import { useAuth } from '../../contexts/AuthContext';
 import { BaseButton, StatusBadge as CommonStatusBadge } from '../../components/UI/CommonStyles';
@@ -105,6 +104,11 @@ interface Invoice {
     businessRegistration?: string;
   };
   additionalCharges?: AdditionalCharge[];
+  discountType?: string;
+  discountValue?: number;
+  discountAmount?: number;
+  discountReason?: string;
+  subtotalBeforeDiscount?: number;
 }
 
 interface PaymentMethod {
@@ -1291,7 +1295,7 @@ const OwnerInvoicesPage: React.FC = () => {
                   <DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount>
                 </DataTableCell>
                 <DataTableCell data-label="Total" align="right">
-                  <DataTableAmount highlight>{formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount>
+                  <DataTableAmount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount>
                 </DataTableCell>
                 <DataTableCell data-label="" mobileFullWidth>
                   <ActionButtons>
@@ -1299,7 +1303,7 @@ const OwnerInvoicesPage: React.FC = () => {
                       View
                     </LocalActionButton>
 
-                    {showPayButton && (invoice.status === 'pending_payment' || invoice.status === 'overdue') && (
+                    {showPayButton && (invoice.status === 'pending_payment' || invoice.status === 'overdue') && invoice.total > 0 && (
                       <LocalActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>
                         Pay
                       </LocalActionButton>
@@ -1337,7 +1341,7 @@ const OwnerInvoicesPage: React.FC = () => {
   );
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Invoices</Title>
@@ -1568,8 +1572,14 @@ const OwnerInvoicesPage: React.FC = () => {
                   <div style={{ width: '280px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', fontSize: '14px', color: '#6B7280' }}>
                       <span>Subtotal:</span>
-                      <span>{formatCurrency(selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</span>
+                      <span>{formatCurrency(selectedInvoice.subtotalBeforeDiscount || selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</span>
                     </div>
+                    {selectedInvoice.discountType && selectedInvoice.discountType !== 'none' && selectedInvoice.discountAmount > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', fontSize: '14px', color: '#15803D' }}>
+                        <span>Discount{selectedInvoice.discountType === 'percentage' ? ` (${selectedInvoice.discountValue}%)` : ''}:</span>
+                        <span>-{formatCurrency(selectedInvoice.discountAmount, selectedInvoice.currency || 'MYR')}</span>
+                      </div>
+                    )}
                     {selectedInvoice.tax > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', fontSize: '14px', color: '#6B7280' }}>
                         <span>Tax:</span>
@@ -1606,7 +1616,7 @@ const OwnerInvoicesPage: React.FC = () => {
                 )}
               </ModalBody>
               <ModalFooter>
-                {(selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && (
+                {(selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && selectedInvoice.total > 0 && (
                   <Button variant="success" onClick={() => {
                     setShowViewModal(false);
                     handlePayInvoice(selectedInvoice);
@@ -1831,7 +1841,7 @@ const OwnerInvoicesPage: React.FC = () => {
           </Modal>
         )}
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

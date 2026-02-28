@@ -187,9 +187,22 @@ class InvoiceScheduler {
       return;
     }
 
-    // Calculate amounts
-    const taxAmount = planAmount * taxRate;
-    const totalAmount = planAmount + taxAmount;
+    // Calculate discount
+    const discountType = restaurant.discount_type || 'none';
+    const discountValue = parseFloat(restaurant.discount_value) || 0;
+    let discountAmount = 0;
+
+    if (discountType === 'percentage' && discountValue > 0) {
+      discountAmount = Math.round(planAmount * discountValue / 100 * 100) / 100;
+    } else if (discountType === 'fixed' && discountValue > 0) {
+      discountAmount = Math.min(discountValue, planAmount); // Cannot exceed subtotal
+    }
+
+    const discountedAmount = planAmount - discountAmount;
+
+    // Calculate amounts (tax on discounted amount)
+    const taxAmount = Math.round(discountedAmount * taxRate * 100) / 100;
+    const totalAmount = Math.round((discountedAmount + taxAmount) * 100) / 100;
 
     // Generate invoice number
     const year = now.getFullYear();
@@ -234,9 +247,16 @@ class InvoiceScheduler {
       billing_period_start: billingStart,
       billing_period_end: billingEnd,
       due_date: dueDate,
+      subtotal: planAmount,
+      discount_type: discountType,
+      discount_value: discountValue,
+      discount_amount: discountAmount,
+      discount_reason: restaurant.discount_reason || null,
       total_amount: totalAmount,
       currency: currency,
-      status: 'pending_payment',
+      status: totalAmount === 0 ? 'paid' : 'pending_payment',
+      paid_at: totalAmount === 0 ? now : null,
+      payment_notes: totalAmount === 0 ? '100% discount - auto-completed' : null,
       notes: `${billingCycle === 'annual' ? 'Annual' : 'Monthly'} subscription invoice for ${restaurant.plan_type}. Auto-generated.`,
       issued_by: 0,
       issued_at: now,
@@ -254,7 +274,7 @@ class InvoiceScheduler {
       description: `${restaurant.plan_type} - ${billingCycle === 'annual' ? 'Annual' : 'Monthly'} Subscription (${periodText})`,
       calculation_method: 'fixed',
       fixed_amount: planAmount,
-      calculated_amount: planAmount,
+      calculated_amount: discountedAmount,
       tax_rate: taxRate * 100,
       tax_amount: taxAmount,
       total_amount: totalAmount
@@ -402,13 +422,22 @@ class InvoiceScheduler {
             });
             const revenue = parseFloat(revenueResult?.revenue || 0);
 
-            // Calculate charges
-            const charges = this.calculatePlanCharges(plan, revenue);
+            // Get discount info from plan-restaurant assignment
+            const discountInfo = {
+              type: pr.discount_type || 'none',
+              value: parseFloat(pr.discount_value) || 0,
+              reason: pr.discount_reason || null
+            };
 
-            if (charges.totalAmount <= 0) {
+            // Calculate charges
+            const charges = this.calculatePlanCharges(plan, revenue, discountInfo);
+
+            if (charges.totalAmount < 0) {
               result.skipped++;
               continue;
             }
+
+            const isZeroAmount = charges.totalAmount === 0;
 
             // Generate invoice number
             const invoiceNumber = await this.generateEntityInvoiceNumber(plan.entity_type, plan.entity_id);
@@ -423,9 +452,16 @@ class InvoiceScheduler {
               billing_period_start: periodStart,
               billing_period_end: periodEnd,
               due_date: dueDate,
-              total_amount: charges.totalAmount,
+              subtotal: charges.subtotal,
+              discount_type: charges.discountType || 'none',
+              discount_value: charges.discountValue || 0,
+              discount_amount: charges.discountAmount || 0,
+              discount_reason: charges.discountReason || null,
+              total_amount: Math.max(0, charges.totalAmount),
               currency: plan.currency || 'MYR',
-              status: 'pending_payment',
+              status: isZeroAmount ? 'paid' : 'pending_payment',
+              paid_at: isZeroAmount ? today : null,
+              payment_notes: isZeroAmount ? '100% discount - auto-completed' : null,
               notes: `Auto-generated ${plan.entity_type} plan invoice for ${plan.name}. Period: ${periodStart.toISOString().split('T')[0]} ~ ${periodEnd.toISOString().split('T')[0]}`,
               issued_by: 0,
               issued_at: today,
@@ -468,7 +504,7 @@ class InvoiceScheduler {
   /**
    * Calculate charges based on entity plan and revenue (same logic as brands.js)
    */
-  calculatePlanCharges(plan, revenue) {
+  calculatePlanCharges(plan, revenue, discountInfo = { type: 'none', value: 0, reason: null }) {
     const items = [];
     let subtotal = 0;
     const taxRate = parseFloat(plan.tax_rate || 0) / 100;
@@ -551,9 +587,27 @@ class InvoiceScheduler {
       }
     }
 
-    const taxAmount = Math.round(subtotal * taxRate * 100) / 100;
-    const totalAmount = Math.round((subtotal + taxAmount) * 100) / 100;
-    return { items, subtotal, taxAmount, totalAmount };
+    // Apply discount
+    let discountAmount = 0;
+    const discountType = discountInfo.type || 'none';
+    const discountValue = parseFloat(discountInfo.value) || 0;
+
+    if (discountType === 'percentage' && discountValue > 0) {
+      discountAmount = Math.round(subtotal * discountValue / 100 * 100) / 100;
+    } else if (discountType === 'fixed' && discountValue > 0) {
+      discountAmount = Math.min(discountValue, subtotal);
+    }
+
+    const discountedSubtotal = Math.round((subtotal - discountAmount) * 100) / 100;
+    const taxAmount = Math.round(discountedSubtotal * taxRate * 100) / 100;
+    const totalAmount = Math.round((discountedSubtotal + taxAmount) * 100) / 100;
+
+    return {
+      items, subtotal, taxAmount, totalAmount,
+      discountType, discountValue, discountAmount,
+      discountReason: discountInfo.reason,
+      discountedSubtotal
+    };
   }
 
   /**

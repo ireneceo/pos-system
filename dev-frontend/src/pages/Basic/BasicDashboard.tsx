@@ -1,6 +1,5 @@
 import React from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
 
 const Container = styled.div`
@@ -121,7 +120,7 @@ const BasicDashboard: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <WelcomeCard>
           <Title>Welcome to Purple Here POS</Title>
@@ -154,7 +153,7 @@ const BasicDashboard: React.FC = () => {
           </InfoGrid>
         </WelcomeCard>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

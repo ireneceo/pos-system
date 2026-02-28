@@ -161,6 +161,32 @@ Invoice.init({
     allowNull: true,
     comment: 'When payment receipt was submitted'
   },
+  // Discount Information
+  subtotal: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    comment: 'Subtotal before discount (null for legacy invoices without discount)'
+  },
+  discount_type: {
+    type: DataTypes.ENUM('none', 'percentage', 'fixed'),
+    defaultValue: 'none',
+    comment: 'Discount type applied to this invoice'
+  },
+  discount_value: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0,
+    comment: 'Discount rate (percentage) or fixed amount'
+  },
+  discount_amount: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0,
+    comment: 'Actual discount amount deducted'
+  },
+  discount_reason: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'Reason for discount'
+  },
   // Additional Charges (Tax, Service Charge, etc.)
   additional_charges: {
     type: DataTypes.JSON,

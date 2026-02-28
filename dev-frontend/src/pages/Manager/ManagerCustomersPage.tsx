@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
@@ -272,7 +271,7 @@ const ManagerCustomersPage: React.FC = () => {
   const avgOrderValue = customers.length > 0 ? totalRevenue / customers.reduce((sum, c) => sum + c.totalOrders, 0) : 0;
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <HeaderContent>
@@ -379,7 +378,7 @@ const ManagerCustomersPage: React.FC = () => {
           </TableContainer>
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

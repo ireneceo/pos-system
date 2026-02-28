@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { StatsGrid, StatCard, StatValue, StatLabel, StatTrend } from '../../components/UI';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 
@@ -404,7 +403,7 @@ const FranchiseSupport: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <div>
@@ -586,7 +585,7 @@ Training Management
           )}
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { useNavigate } from 'react-router-dom';
 import { RestaurantSubscription } from '../../interfaces/RestaurantSubscription';
 import { StatsGrid, StatCard, StatLabel, StatValue } from '../../components/UI';
@@ -328,7 +327,7 @@ const ManagerDashboard: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Dashboard</Title>
@@ -443,7 +442,7 @@ const ManagerDashboard: React.FC = () => {
         </RestaurantGrid>
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

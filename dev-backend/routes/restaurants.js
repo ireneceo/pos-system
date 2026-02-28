@@ -159,7 +159,10 @@ router.get('/', optionalAuth, async (req, res) => {
         postalCode: restaurantData.postal_code || '',
         country: restaurantData.country || 'MY',
         businessRegistration: restaurantData.business_registration || '',
-        taxId: restaurantData.tax_id || ''
+        taxId: restaurantData.tax_id || '',
+        discount_type: restaurantData.discount_type || 'none',
+        discount_value: restaurantData.discount_value ? parseFloat(restaurantData.discount_value) : 0,
+        discount_reason: restaurantData.discount_reason || null
       };
     });
 
@@ -867,6 +870,17 @@ router.put('/:id', authenticateToken, validateRestaurantCreation, async (req, re
       updateData.payment_model = req.body.payment_model;
     }
 
+    // Discount fields
+    if (req.body.discount_type !== undefined) {
+      updateData.discount_type = req.body.discount_type;
+    }
+    if (req.body.discount_value !== undefined) {
+      updateData.discount_value = parseFloat(req.body.discount_value) || 0;
+    }
+    if (req.body.discount_reason !== undefined) {
+      updateData.discount_reason = req.body.discount_reason || null;
+    }
+
     // Cuisine field
     if (req.body.cuisine !== undefined) updateData.cuisine = req.body.cuisine;
 
@@ -1153,7 +1167,10 @@ router.get('/subscriptions/manager/:managerId', async (req, res) => {
         lastPayment: lastPaidInvoice ? lastPaidInvoice.paid_at.toISOString().split('T')[0] : '-',
         nextPayment: nextInvoice ? nextInvoice.due_date.toISOString().split('T')[0] : new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
         autoRenew: restaurant.auto_renew !== undefined && restaurant.auto_renew !== null ? restaurant.auto_renew : restaurant.status === 'active',
-        location: restaurant.address || 'No address provided'
+        location: restaurant.address || 'No address provided',
+        discountType: restaurant.discount_type || 'none',
+        discountValue: parseFloat(restaurant.discount_value) || 0,
+        discountReason: restaurant.discount_reason || ''
       };
     });
 

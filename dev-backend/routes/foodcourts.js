@@ -890,6 +890,48 @@ router.delete('/:id/plans/:planId/restaurants/:restaurantId', authenticateToken,
   }
 });
 
+// PUT /api/foodcourts/:id/plans/:planId/restaurants/:restaurantId/discount - Set discount for a restaurant
+router.put('/:id/plans/:planId/restaurants/:restaurantId/discount', authenticateToken, async (req, res) => {
+  try {
+    const { id, planId, restaurantId } = req.params;
+    const access = await verifyFoodcourtAccess(req, id);
+    if (access.error) return res.status(access.status).json({ success: false, message: access.error });
+
+    const { discount_type, discount_value, discount_reason } = req.body;
+
+    if (!['none', 'percentage', 'fixed'].includes(discount_type)) {
+      return res.status(400).json({ success: false, message: 'Invalid discount_type. Must be none, percentage, or fixed.' });
+    }
+
+    const numValue = parseFloat(discount_value) || 0;
+    if (discount_type === 'percentage' && (numValue < 0 || numValue > 100)) {
+      return res.status(400).json({ success: false, message: 'Percentage discount must be between 0 and 100.' });
+    }
+    if (numValue < 0) {
+      return res.status(400).json({ success: false, message: 'Discount value cannot be negative.' });
+    }
+
+    const assignment = await EntityPlanRestaurant.findOne({
+      where: { entity_plan_id: planId, restaurant_id: restaurantId, is_active: true }
+    });
+
+    if (!assignment) {
+      return res.status(404).json({ success: false, message: 'Active plan assignment not found' });
+    }
+
+    await assignment.update({
+      discount_type: discount_type || 'none',
+      discount_value: numValue,
+      discount_reason: discount_reason || null
+    });
+
+    res.json({ success: true, data: assignment });
+  } catch (error) {
+    console.error('Error setting discount:', error);
+    res.status(500).json({ success: false, message: 'Failed to set discount' });
+  }
+});
+
 // GET /api/foodcourts/:id/plans/:planId/prices - Get multi-currency prices for a plan
 router.get('/:id/plans/:planId/prices', authenticateToken, async (req, res) => {
   try {
@@ -1204,7 +1246,10 @@ router.get('/:id/subscriptions', authenticateToken, async (req, res) => {
           percentage_value: activePlan.plan.percentage_value,
           revenue_base: activePlan.plan.revenue_base,
           billing_day: activePlan.plan.billing_day,
-          auto_generate: activePlan.plan.auto_generate, activation_date: activePlan.activation_date
+          auto_generate: activePlan.plan.auto_generate, activation_date: activePlan.activation_date,
+          discount_type: activePlan.discount_type || 'none',
+          discount_value: parseFloat(activePlan.discount_value) || 0,
+          discount_reason: activePlan.discount_reason || null
         } : null,
         latest_invoice: latestInvoice ? {
           id: latestInvoice.id, invoice_number: latestInvoice.invoice_number, total_amount: latestInvoice.total_amount,

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
@@ -500,7 +499,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Subscriptions</Title>
@@ -619,7 +618,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
           </SubscriptionGrid>
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

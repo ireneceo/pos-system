@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { useSearchParams } from 'react-router-dom';
-import MainLayout from '../../components/Layout/MainLayout';
 import { Container, Header, Title, Content, TabContainer, Tab } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
 import ProductRecipesTab from './ProductRecipesTab';
@@ -45,7 +44,7 @@ const BrandProductRecipePage: React.FC = () => {
 
   if (!brandId) {
     return (
-      <MainLayout>
+      <>
         <Container>
           <Header>
             <Title>Product Recipes</Title>
@@ -56,12 +55,12 @@ const BrandProductRecipePage: React.FC = () => {
             </div>
           </Content>
         </Container>
-      </MainLayout>
+      </>
     );
   }
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Product Recipes</Title>
@@ -113,7 +112,7 @@ const BrandProductRecipePage: React.FC = () => {
           </div>
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

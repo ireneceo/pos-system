@@ -79,28 +79,20 @@ OperationTicket.init({
     defaultValue: 'other'
   },
   inquiryType: {
-    type: DataTypes.ENUM('foodcourt', 'brand'),
+    type: DataTypes.ENUM('foodcourt', 'brand', 'owner'),
     allowNull: true,
-    comment: 'Type of inquiry: foodcourt or brand'
+    comment: 'Type of inquiry: foodcourt, brand, or owner'
   },
-  response: {
-    type: DataTypes.TEXT
-  },
-  internalNotes: {
+  attachments: {
     type: DataTypes.TEXT,
-    comment: 'Manager internal notes not visible to requester'
-  },
-  responseTime: {
-    type: DataTypes.INTEGER,
-    defaultValue: 0,
-    comment: 'Response time in minutes'
-  },
-  resolutionTime: {
-    type: DataTypes.INTEGER,
-    comment: 'Resolution time in minutes'
-  },
-  resolvedAt: {
-    type: DataTypes.DATE
+    allowNull: true,
+    get() {
+      const v = this.getDataValue('attachments');
+      return v ? JSON.parse(v) : [];
+    },
+    set(v) {
+      this.setDataValue('attachments', v && v.length > 0 ? JSON.stringify(v) : null);
+    }
   }
 }, {
   sequelize: database.sequelize,

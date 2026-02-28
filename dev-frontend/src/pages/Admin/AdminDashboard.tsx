@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { TabContainer, Tab, DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
 import { formatCurrency } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
@@ -853,7 +852,7 @@ const AdminDashboard: React.FC = () => {
   }, [timePeriod, siteTimezone]);
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>Admin Dashboard</Title>
@@ -1383,7 +1382,7 @@ const AdminDashboard: React.FC = () => {
         )}
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

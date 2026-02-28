@@ -15,7 +15,7 @@ router.get('/', async (req, res) => {
     // Allow restaurantId from query parameter (for System Admin)
     // or from authenticated user (for restaurant users)
     const restaurantId = req.query.restaurantId || req.user.restaurant_id;
-    const { page = 1, limit = 0, categoryId } = req.query; // limit 0 = all items (backward compatible)
+    const { page = 1, limit = 0, categoryId, excludeImage } = req.query; // limit 0 = all items (backward compatible)
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
 
@@ -93,7 +93,11 @@ router.get('/', async (req, res) => {
       let imageUrl = null;
       let thumbnailUrl = null;
 
-      if (prod.image) {
+      if (excludeImage === 'true') {
+        // Skip image parsing entirely (for Reports etc. that only need names/categories)
+        imageUrl = null;
+        thumbnailUrl = null;
+      } else if (prod.image) {
         // New URL format (starts with /uploads/)
         if (prod.image.startsWith('/uploads/')) {
           imageUrl = prod.image;

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { useAuth } from '../../contexts/AuthContext';
+import CommentSection from '../../components/Common/CommentSection';
+import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
+import AttachmentList from '../../components/Common/AttachmentList';
 
 interface SupportTicket {
   id: string;
@@ -15,12 +17,9 @@ interface SupportTicket {
   status: 'open' | 'in-progress' | 'resolved' | 'closed';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   category: string;
-  response?: string;
-  responseTime: number;
-  resolutionTime?: number;
-  resolvedAt?: string;
   createdAt: string;
   updatedAt: string;
+  attachments?: any[];
 }
 
 const Container = styled.div`
@@ -185,7 +184,12 @@ const Tab = styled.button<{ active?: boolean }>`
 
 const TicketsGrid = styled.div`
   display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 20px;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const TicketCard = styled.div`
@@ -194,6 +198,7 @@ const TicketCard = styled.div`
   padding: 24px;
   border: 1px solid #E6EBF1;
   transition: all 0.2s;
+  overflow: hidden;
 
   &:hover {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
@@ -302,27 +307,6 @@ const TicketDescription = styled.div`
   background: #F8FAFC;
   border-radius: 8px;
   border-left: 3px solid #E6EBF1;
-`;
-
-const ResponseSection = styled.div`
-  margin-top: 16px;
-  padding: 16px;
-  background: #F0F9FF;
-  border-radius: 8px;
-  border: 1px solid #BAE6FD;
-`;
-
-const ResponseHeader = styled.div`
-  font-size: 12px;
-  font-weight: 600;
-  color: #0369A1;
-  margin-bottom: 8px;
-`;
-
-const ResponseText = styled.div`
-  font-size: 14px;
-  color: #374151;
-  line-height: 1.5;
 `;
 
 const TicketFooter = styled.div`
@@ -436,6 +420,7 @@ const FormInput = styled.input`
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.15s;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -453,6 +438,7 @@ const FormSelect = styled.select`
   background: white;
   transition: all 0.15s;
   cursor: pointer;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -471,6 +457,7 @@ const FormTextArea = styled.textarea`
   min-height: 120px;
   transition: all 0.15s;
   font-family: inherit;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -484,12 +471,17 @@ const SystemInquiryPage: React.FC = () => {
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [activeTab, setActiveTab] = useState<'all' | 'open' | 'in-progress' | 'resolved' | 'closed'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
+  const [detailStatus, setDetailStatus] = useState<string>('open');
   const [newTicket, setNewTicket] = useState({
     subject: '',
     description: '',
     priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
     category: 'general'
   });
+  const [newAttachments, setNewAttachments] = useState<AttachmentFile[]>([]);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, { total_comments: number; unread_count: number }>>({});
 
   const currentUserId = user?.id || '4';
   const currentUserName = user?.name || user?.email || 'Foodcourt User';
@@ -517,10 +509,30 @@ const SystemInquiryPage: React.FC = () => {
         const data = await response.json();
         const ticketsData = data.success ? data.data : (Array.isArray(data) ? data : []);
         setTickets(ticketsData);
+        fetchUnreadCounts(ticketsData);
       }
     } catch (error) {
       console.error('Error fetching support tickets:', error);
     }
+  };
+
+  const fetchUnreadCounts = async (ticketList: SupportTicket[]) => {
+    if (ticketList.length === 0) return;
+    try {
+      const token = localStorage.getItem('auth_token');
+      const ids = ticketList.map(t => t.id).join(',');
+      const res = await fetch(`/api/comments/unread-counts?entity_type=support_ticket&entity_ids=${ids}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          const map: Record<string, { total_comments: number; unread_count: number }> = {};
+          data.data.forEach((item: any) => { map[item.entity_id] = { total_comments: Number(item.total_comments), unread_count: Number(item.unread_count) }; });
+          setUnreadCounts(map);
+        }
+      }
+    } catch (e) { console.error('Error fetching unread counts:', e); }
   };
 
   const filteredTickets = tickets.filter(ticket => {
@@ -537,14 +549,33 @@ const SystemInquiryPage: React.FC = () => {
     return new Date(dateString).toLocaleString('en-MY');
   };
 
-  const formatDuration = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-  };
-
   const handleCreateTicket = () => {
     setShowCreateModal(true);
+  };
+
+  const handleViewTicket = (ticket: SupportTicket) => {
+    setSelectedTicket(ticket);
+    setDetailStatus(ticket.status);
+    setShowViewModal(true);
+    window.dispatchEvent(new Event('refreshBadgeCounts'));
+  };
+
+  const handleStatusChange = async () => {
+    if (!selectedTicket) return;
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/support-tickets/${selectedTicket.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ status: detailStatus })
+      });
+      if (response.ok) {
+        setTickets(prev => prev.map(t => t.id === selectedTicket.id ? { ...t, status: detailStatus as SupportTicket['status'] } : t));
+        setSelectedTicket(prev => prev ? { ...prev, status: detailStatus as SupportTicket['status'] } : prev);
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+    }
   };
 
   const handleSubmitTicket = async () => {
@@ -562,7 +593,8 @@ const SystemInquiryPage: React.FC = () => {
         subject: newTicket.subject,
         description: newTicket.description,
         priority: newTicket.priority,
-        category: newTicket.category
+        category: newTicket.category,
+        attachments: newAttachments.length > 0 ? newAttachments : undefined
       };
 
       const token = localStorage.getItem('auth_token');
@@ -583,6 +615,7 @@ const SystemInquiryPage: React.FC = () => {
           priority: 'medium',
           category: 'general'
         });
+        setNewAttachments([]);
         setShowCreateModal(false);
       } else {
         alert('Failed to create ticket. Please try again.');
@@ -594,7 +627,7 @@ const SystemInquiryPage: React.FC = () => {
   };
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <Title>System Inquiry</Title>
@@ -643,7 +676,7 @@ const SystemInquiryPage: React.FC = () => {
 
           <TicketsGrid>
             {filteredTickets.map(ticket => (
-              <TicketCard key={ticket.id}>
+              <TicketCard key={ticket.id} style={{ cursor: 'pointer' }} onClick={() => handleViewTicket(ticket)}>
                 <TicketHeader>
                   <TicketInfo>
                     <TicketNumber>{ticket.ticketNumber}</TicketNumber>
@@ -660,19 +693,17 @@ const SystemInquiryPage: React.FC = () => {
 
                 <TicketDescription>{ticket.description}</TicketDescription>
 
-                {ticket.response && (
-                  <ResponseSection>
-                    <ResponseHeader>
-                      System Admin Response • {ticket.resolvedAt && formatDateTime(ticket.resolvedAt)}
-                    </ResponseHeader>
-                    <ResponseText>{ticket.response}</ResponseText>
-                  </ResponseSection>
-                )}
-
                 <TicketFooter>
                   <span>Created: {formatDateTime(ticket.createdAt)}</span>
-                  {ticket.responseTime > 0 && (
-                    <span>Response Time: {formatDuration(ticket.responseTime)}</span>
+                  {unreadCounts[ticket.id] && (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      Comments {unreadCounts[ticket.id].total_comments}
+                      {unreadCounts[ticket.id].unread_count > 0 && (
+                        <span style={{ background: '#EF4444', color: 'white', borderRadius: '10px', padding: '1px 7px', fontSize: '11px', fontWeight: 600 }}>
+                          {unreadCounts[ticket.id].unread_count} new
+                        </span>
+                      )}
+                    </span>
                   )}
                 </TicketFooter>
               </TicketCard>
@@ -696,7 +727,7 @@ const SystemInquiryPage: React.FC = () => {
               <ModalContent onClick={(e) => e.stopPropagation()}>
                 <ModalHeader>
                   <ModalTitle>Create System Inquiry</ModalTitle>
-                  <CloseButton onClick={() => setShowCreateModal(false)}>×</CloseButton>
+                  <CloseButton onClick={() => setShowCreateModal(false)}>&times;</CloseButton>
                 </ModalHeader>
                 <ModalBody>
                   <FormGroup>
@@ -718,6 +749,14 @@ const SystemInquiryPage: React.FC = () => {
                       required
                     />
                   </FormGroup>
+                  <div>
+                    <FormLabel>Attachments</FormLabel>
+                    <FileUpload
+                      files={newAttachments}
+                      onChange={setNewAttachments}
+                      maxFiles={5}
+                    />
+                  </div>
                   <FormRow>
                     <FormGroup>
                       <FormLabel>Priority</FormLabel>
@@ -761,9 +800,78 @@ const SystemInquiryPage: React.FC = () => {
               </ModalContent>
             </Modal>
           )}
+
+          {/* View Ticket Detail Modal */}
+          {showViewModal && selectedTicket && (
+            <Modal onClick={() => setShowViewModal(false)}>
+              <ModalContent onClick={(e) => e.stopPropagation()}>
+                <ModalHeader>
+                  <ModalTitle>Inquiry Details</ModalTitle>
+                  <CloseButton onClick={() => setShowViewModal(false)}>&times;</CloseButton>
+                </ModalHeader>
+                <ModalBody>
+                  <div style={{ display: 'grid', gap: '20px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                      <div>
+                        <FormLabel>Ticket Number</FormLabel>
+                        <div style={{ padding: '8px 0', color: '#0A2540', fontWeight: '600' }}>{selectedTicket.ticketNumber}</div>
+                      </div>
+                      <div>
+                        <FormLabel>Status</FormLabel>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <FormSelect value={detailStatus} onChange={(e) => setDetailStatus(e.target.value)} style={{ flex: 1 }}>
+                            <option value="open">Open</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="resolved">Resolved</option>
+                            <option value="closed">Closed</option>
+                          </FormSelect>
+                          {detailStatus !== selectedTicket.status && (
+                            <Button variant="primary" onClick={handleStatusChange} style={{ padding: '10px 20px' }}>Save</Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                      <div>
+                        <FormLabel>Priority</FormLabel>
+                        <div style={{ padding: '8px 0' }}>
+                          <PriorityBadge priority={selectedTicket.priority}>{selectedTicket.priority}</PriorityBadge>
+                        </div>
+                      </div>
+                      <div>
+                        <FormLabel>Category</FormLabel>
+                        <div style={{ padding: '8px 0', color: '#374151', textTransform: 'capitalize' }}>{selectedTicket.category.replace('-', ' ')}</div>
+                      </div>
+                    </div>
+                    <div>
+                      <FormLabel>Subject</FormLabel>
+                      <div style={{ padding: '8px 0', color: '#0A2540', fontWeight: '600' }}>{selectedTicket.subject}</div>
+                    </div>
+                    <div>
+                      <FormLabel>Description</FormLabel>
+                      <div style={{ padding: '12px', backgroundColor: '#F8FAFC', borderRadius: '8px', border: '1px solid #E6EBF1', minHeight: '80px', whiteSpace: 'pre-wrap', lineHeight: '1.5', color: '#374151' }}>
+                        {selectedTicket.description}
+                      </div>
+                    </div>
+                    {selectedTicket?.attachments && selectedTicket.attachments.length > 0 && (
+                      <AttachmentList attachments={selectedTicket.attachments} />
+                    )}
+                    <div>
+                      <FormLabel>Created</FormLabel>
+                      <div style={{ padding: '8px 0', color: '#6B7280' }}>{formatDateTime(selectedTicket.createdAt)}</div>
+                    </div>
+                  </div>
+                  <CommentSection entityType="support_ticket" entityId={selectedTicket.id} currentUserId={user?.id} onMarkRead={() => setUnreadCounts(prev => { const next = { ...prev }; if (next[selectedTicket.id]) next[selectedTicket.id] = { ...next[selectedTicket.id], unread_count: 0 }; return next; })} />
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant="secondary" onClick={() => setShowViewModal(false)}>Close</Button>
+                </ModalFooter>
+              </ModalContent>
+            </Modal>
+          )}
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 

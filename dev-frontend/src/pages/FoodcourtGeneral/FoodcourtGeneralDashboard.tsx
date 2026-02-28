@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import MainLayout from '../../components/Layout/MainLayout';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/StatCard';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
@@ -259,6 +258,7 @@ const FoodcourtGeneralDashboard: React.FC = () => {
   const [trendData, setTrendData] = useState<any[]>([]);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<Array<{ type: 'warning' | 'info' | 'success'; message: string }>>([]);
+  const [badgeCounts, setBadgeCounts] = useState({ systemInquiry: 0, operationInquiry: 0, notices: 0, invoices: 0 });
 
   useEffect(() => {
     if (defaultCurrency) setCurrency(defaultCurrency);
@@ -266,7 +266,20 @@ const FoodcourtGeneralDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchDashboardData();
+    fetchBadgeCounts();
   }, []);
+
+  const fetchBadgeCounts = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+      const res = await fetch('/api/badge-counts', { headers: { 'Authorization': `Bearer ${token}` } });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) setBadgeCounts(data.data);
+      }
+    } catch (e) { /* silent */ }
+  };
 
   useEffect(() => {
     if (foodcourtId) fetchTrendData(foodcourtId);
@@ -357,6 +370,15 @@ const FoodcourtGeneralDashboard: React.FC = () => {
       if (noOrderTenants.length > 0) {
         alertList.push({ type: 'info', message: `${noOrderTenants.length} tenant${noOrderTenants.length > 1 ? 's' : ''} with no orders this month` });
       }
+      if (badgeCounts.notices > 0) {
+        alertList.push({ type: 'info', message: `${badgeCounts.notices} unread notice(s)` });
+      }
+      if (badgeCounts.systemInquiry > 0) {
+        alertList.push({ type: 'info', message: `${badgeCounts.systemInquiry} system inquiry(s) with new replies` });
+      }
+      if (badgeCounts.operationInquiry > 0) {
+        alertList.push({ type: 'info', message: `${badgeCounts.operationInquiry} open operation inquiry(s)` });
+      }
       if (alertList.length === 0) {
         alertList.push({ type: 'success', message: 'All systems running smoothly. No issues detected.' });
       }
@@ -396,19 +418,19 @@ const FoodcourtGeneralDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <MainLayout>
+      <>
         <Container>
           <Header>
             <HeaderTitle>Foodcourt Dashboard</HeaderTitle>
           </Header>
           <LoadingContainer>Loading dashboard data...</LoadingContainer>
         </Container>
-      </MainLayout>
+      </>
     );
   }
 
   return (
-    <MainLayout>
+    <>
       <Container>
         <Header>
           <HeaderTitle>Foodcourt Dashboard</HeaderTitle>
@@ -468,22 +490,22 @@ const FoodcourtGeneralDashboard: React.FC = () => {
           <QuickAccess>
             <SectionTitle>Quick Access</SectionTitle>
             <QuickButtons>
-              <QuickBtnDiv onClick={() => navigate('/pos/foodcourt-general/restaurants')}>
+              <QuickBtnDiv onClick={() => navigate('/pos/foodcourt/general/management')}>
                 <QuickBtnIcon>◫</QuickBtnIcon>
                 <QuickBtnTitle>Manage Tenants</QuickBtnTitle>
                 <QuickBtnDesc>Tenant management</QuickBtnDesc>
               </QuickBtnDiv>
-              <QuickBtnDiv onClick={() => navigate('/pos/foodcourt-general/invoices')}>
+              <QuickBtnDiv onClick={() => navigate('/pos/foodcourt/invoices')}>
                 <QuickBtnIcon>◧</QuickBtnIcon>
                 <QuickBtnTitle>Invoices</QuickBtnTitle>
                 <QuickBtnDesc>Invoice management</QuickBtnDesc>
               </QuickBtnDiv>
-              <QuickBtnDiv onClick={() => navigate('/pos/foodcourt-general/plans')}>
+              <QuickBtnDiv onClick={() => navigate('/pos/foodcourt/plans')}>
                 <QuickBtnIcon>◨</QuickBtnIcon>
                 <QuickBtnTitle>Subscription Plans</QuickBtnTitle>
                 <QuickBtnDesc>Plan configuration</QuickBtnDesc>
               </QuickBtnDiv>
-              <QuickBtnDiv onClick={() => navigate('/pos/foodcourt-general/reports')}>
+              <QuickBtnDiv onClick={() => navigate('/pos/foodcourt/general/stats')}>
                 <QuickBtnIcon>◩</QuickBtnIcon>
                 <QuickBtnTitle>Reports</QuickBtnTitle>
                 <QuickBtnDesc>Performance analytics</QuickBtnDesc>
@@ -605,7 +627,7 @@ const FoodcourtGeneralDashboard: React.FC = () => {
           </TableCard>
         </Content>
       </Container>
-    </MainLayout>
+    </>
   );
 };
 
