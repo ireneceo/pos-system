@@ -5,7 +5,8 @@ import { useOrders } from '../../contexts/OrderContext';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
 import { getTodayInTimezone, getDateInTimezone } from '../../utils/timezone';
-import { TabContainer, Tab } from '../../components/UI';
+import { Tabs, Tab } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 
 // 매출 데이터 타입 정의
 interface SalesTransaction {
@@ -462,7 +463,7 @@ const EmptyStateText = styled.p`
   margin-bottom: 24px;
 `;
 
-// TabContainer and Tab are now imported from UI components
+// Tabs and Tab components now imported from Common/TabComponents
 
 const PeriodTitle = styled.div`
   font-size: 18px;
@@ -593,7 +594,7 @@ const SalesPage: React.FC = () => {
   const { currentStaff, isLoggedIn } = useStaff();
   const { orders } = useOrders();
   const { operationSettings } = useStore();
-  const [viewMode, setViewMode] = useState<ViewMode>('transactions');
+  const [viewMode, handleViewModeChange] = useTabParam<ViewMode>('transactions');
   const [dateFilter, setDateFilter] = useState('today');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -1428,48 +1429,48 @@ const SalesPage: React.FC = () => {
         </Header>
 
         <Content>
-          <TabContainer>
-            <Tab 
-              active={viewMode === 'transactions'} 
+          <Tabs>
+            <Tab
+              active={viewMode === 'transactions'}
               onClick={() => {
-                setViewMode('transactions');
+                handleViewModeChange('transactions');
                 setDetailView({ type: null, value: '' });
                 setDetailTransactions([]);
               }}
             >
               Transactions
             </Tab>
-            <Tab 
-              active={viewMode === 'yearly'} 
+            <Tab
+              active={viewMode === 'yearly'}
               onClick={() => {
-                setViewMode('yearly');
+                handleViewModeChange('yearly');
                 setDetailView({ type: null, value: '' });
                 setDetailTransactions([]);
               }}
             >
               Yearly Sales
             </Tab>
-            <Tab 
-              active={viewMode === 'monthly'} 
+            <Tab
+              active={viewMode === 'monthly'}
               onClick={() => {
-                setViewMode('monthly');
+                handleViewModeChange('monthly');
                 setDetailView({ type: null, value: '' });
                 setDetailTransactions([]);
               }}
             >
               Monthly Sales
             </Tab>
-            <Tab 
-              active={viewMode === 'daily'} 
+            <Tab
+              active={viewMode === 'daily'}
               onClick={() => {
-                setViewMode('daily');
+                handleViewModeChange('daily');
                 setDetailView({ type: null, value: '' });
                 setDetailTransactions([]);
               }}
             >
               Daily Sales
             </Tab>
-          </TabContainer>
+          </Tabs>
 
           {viewMode === 'transactions' && (
             <>

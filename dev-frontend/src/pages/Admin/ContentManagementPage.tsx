@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { Modal, ModalButton, FormGroup, FormLabel, FormInput, FormTextArea } from '../../components/UI/Modal';
@@ -19,7 +18,8 @@ import {
   ActionButtons,
   ActionButton
 } from '../../components/UI';
-import { TabContainer, Tab } from '../../components/UI/Tabs';
+import { Tabs, Tab } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 
 interface ContentCategory {
@@ -263,12 +263,7 @@ const FilterBarWithButton = styled(FilterBar)`
 `;
 
 const ContentManagementPage: React.FC = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const tabParam = searchParams.get('tab') || 'blog';
-
-  const [activeTab, setActiveTab] = useState<'blog' | 'blog-categories' | 'faq' | 'faq-categories'>(
-    tabParam as 'blog' | 'blog-categories' | 'faq' | 'faq-categories'
-  );
+  const [activeTab, setTabParam] = useTabParam<'blog' | 'blog-categories' | 'faq' | 'faq-categories'>('blog');
   const [categories, setCategories] = useState<ContentCategory[]>([]);
   const [contents, setContents] = useState<ContentItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -300,7 +295,6 @@ const ContentManagementPage: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-    setSearchParams({ tab: activeTab });
   }, [activeTab]);
 
   const fetchData = async () => {
@@ -331,7 +325,7 @@ const ContentManagementPage: React.FC = () => {
   };
 
   const handleTabChange = (tab: 'blog' | 'blog-categories' | 'faq' | 'faq-categories') => {
-    setActiveTab(tab);
+    setTabParam(tab);
     setIsEditing(false);
     setEditingContent(null);
   };
@@ -838,7 +832,7 @@ const ContentManagementPage: React.FC = () => {
         )}
 
         <Content>
-          <TabContainer>
+          <Tabs>
             <Tab active={activeTab === 'blog'} onClick={() => handleTabChange('blog')}>
               Blog
             </Tab>
@@ -851,7 +845,7 @@ const ContentManagementPage: React.FC = () => {
             <Tab active={activeTab === 'faq-categories'} onClick={() => handleTabChange('faq-categories')}>
               FAQ Categories
             </Tab>
-          </TabContainer>
+          </Tabs>
 
           {isCategory ? renderCategories() : renderContents()}
         </Content>

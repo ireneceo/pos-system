@@ -4,7 +4,8 @@ import { Container, Header, Title, ActionSection, Content } from '../../componen
 import { BaseButton } from '../../components/UI/CommonStyles';
 import { StandardSelect } from '../../components/UI/SelectComponents';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/StatCard';
-import { TabContainer, Tab } from '../../components/UI';
+import { Tabs, Tab } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 import { Modal, ModalButton } from '../../components/UI/Modal';
 
 interface SecurityEvent {
@@ -318,7 +319,7 @@ const PolicyToggle = styled.div`
 `;
 
 const SecurityPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('events');
+  const [activeTab, handleTabChange] = useTabParam('events');
   const [events, setEvents] = useState<SecurityEvent[]>([]);
   const [policies, setPolicies] = useState<SecurityPolicy[]>([]);
   const [showConfigureModal, setShowConfigureModal] = useState(false);
@@ -455,17 +456,17 @@ const SecurityPage: React.FC = () => {
           </StatCard>
         </StatsGrid>
 
-        <TabContainer>
-          <Tab active={activeTab === 'events'} onClick={() => setActiveTab('events')}>
+        <Tabs>
+          <Tab active={activeTab === 'events'} onClick={() => handleTabChange('events')}>
             Security Events
           </Tab>
-          <Tab active={activeTab === 'policies'} onClick={() => setActiveTab('policies')}>
+          <Tab active={activeTab === 'policies'} onClick={() => handleTabChange('policies')}>
             Security Policies
           </Tab>
-          <Tab active={activeTab === 'access'} onClick={() => setActiveTab('access')}>
+          <Tab active={activeTab === 'access'} onClick={() => handleTabChange('access')}>
             Access Control
           </Tab>
-        </TabContainer>
+        </Tabs>
 
         <ContentSection>
           {activeTab === 'events' && (

@@ -4,6 +4,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
 import CommentSection from '../../components/Common/CommentSection';
+import { Tabs, Tab } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 
 // ============================================================================
 // TypeScript Interfaces
@@ -185,41 +187,6 @@ const StatLabel = styled.div`
   letter-spacing: 0.5px;
 `;
 
-const TabContainer = styled.div`
-  display: flex;
-  gap: 24px;
-  margin-bottom: 24px;
-  border-bottom: 1px solid #E6EBF1;
-  overflow-x: auto;
-`;
-
-const Tab = styled.button<{ active?: boolean }>`
-  padding: 12px 0;
-  font-size: 14px;
-  font-weight: 500;
-  color: ${props => props.active ? '#635BFF' : '#6B7C93'};
-  background: none;
-  border: none;
-  cursor: pointer;
-  position: relative;
-  transition: all 0.15s;
-  white-space: nowrap;
-
-  &:hover {
-    color: #635BFF;
-  }
-
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: ${props => props.active ? '#635BFF' : 'transparent'};
-    transition: all 0.15s;
-  }
-`;
 
 const FiltersContainer = styled.div`
   display: flex;
@@ -689,7 +656,7 @@ const RecipientTag = styled.span`
 
 const NoticesPage: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'received' | 'sent'>('received');
+  const [activeTab, setActiveTab] = useTabParam<'received' | 'sent'>('received');
   const [receivedNotices, setReceivedNotices] = useState<Notice[]>([]);
   const [sentNotices, setSentNotices] = useState<Notice[]>([]);
   const [metadata, setMetadata] = useState<NoticeMetadata | null>(null);
@@ -975,7 +942,6 @@ const NoticesPage: React.FC = () => {
         <Header>
           <Title>Notices</Title>
           <ActionSection>
-            <Button variant="secondary" onClick={fetchAll}>Refresh</Button>
             <Button variant="primary" onClick={() => setShowNewModal(true)}>New Notice</Button>
           </ActionSection>
         </Header>
@@ -1002,14 +968,14 @@ const NoticesPage: React.FC = () => {
           </StatsGrid>
 
           {/* Tabs */}
-          <TabContainer>
+          <Tabs>
             <Tab active={activeTab === 'received'} onClick={() => setActiveTab('received')}>
               Received ({totalReceived})
             </Tab>
             <Tab active={activeTab === 'sent'} onClick={() => setActiveTab('sent')}>
               Sent ({totalSent})
             </Tab>
-          </TabContainer>
+          </Tabs>
 
           {/* Category Filter Pills */}
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>

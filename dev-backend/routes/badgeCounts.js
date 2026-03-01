@@ -11,7 +11,9 @@ const {
   Invoice,
   Order,
   Restaurant,
-  RestaurantManager
+  RestaurantManager,
+  Brand,
+  Foodcourt
 } = require('../models');
 
 // Helper: count unread comments on entities authored by this user
@@ -120,19 +122,58 @@ router.get('/', authenticateToken, async (req, res) => {
 
     // --- Notices ---
     if (role === 'Restaurant Admin' || role === 'Staff') {
-      // Count unread notices for this restaurant
       if (restaurantId) {
         counts.notices = await NoticeRecipient.count({
           where: { restaurant_id: restaurantId, read_at: null }
         });
       }
-    } else if (role === 'Brand General' || role === 'Brand Manager' ||
-               role === 'Foodcourt General' || role === 'Foodcourt Manager' ||
-               role === 'Restaurant Owner') {
-      // Count unread notices addressed directly to this user
-      counts.notices = await NoticeRecipient.count({
-        where: { user_id: userId, read_at: null }
+    } else if (role === 'Brand General' || role === 'Brand Manager') {
+      // Count unread notices for brand restaurants + direct user recipients
+      const noticeConditions = [{ user_id: userId, read_at: null }];
+      const brand = await Brand.findOne({ where: { owner_id: userId } });
+      if (brand) {
+        const brandRestaurants = await Restaurant.findAll({ where: { brand_id: brand.id }, attributes: ['id'] });
+        const brIds = brandRestaurants.map(r => r.id);
+        if (brIds.length > 0) {
+          noticeConditions.push({ restaurant_id: { [Op.in]: brIds }, read_at: null });
+        }
+      }
+      // Count unique notice_ids with unread recipients
+      const unreadRecipients = await NoticeRecipient.findAll({
+        where: { [Op.or]: noticeConditions },
+        attributes: [[sequelize.fn('DISTINCT', sequelize.col('notice_id')), 'notice_id']]
       });
+      counts.notices = unreadRecipients.length;
+    } else if (role === 'Foodcourt General' || role === 'Foodcourt Manager') {
+      const noticeConditions = [{ user_id: userId, read_at: null }];
+      const foodcourt = await Foodcourt.findOne({ where: { owner_id: userId } });
+      if (foodcourt) {
+        const fcRestaurants = await Restaurant.findAll({ where: { foodcourt_id: foodcourt.id }, attributes: ['id'] });
+        const fcIds = fcRestaurants.map(r => r.id);
+        if (fcIds.length > 0) {
+          noticeConditions.push({ restaurant_id: { [Op.in]: fcIds }, read_at: null });
+        }
+      }
+      const unreadRecipients = await NoticeRecipient.findAll({
+        where: { [Op.or]: noticeConditions },
+        attributes: [[sequelize.fn('DISTINCT', sequelize.col('notice_id')), 'notice_id']]
+      });
+      counts.notices = unreadRecipients.length;
+    } else if (role === 'Restaurant Owner') {
+      const noticeConditions = [{ user_id: userId, read_at: null }];
+      const owned = await RestaurantManager.findAll({
+        where: { manager_id: userId, relationship_type: 'ownership' },
+        attributes: ['restaurant_id']
+      });
+      const ownedIds = owned.map(r => r.restaurant_id);
+      if (ownedIds.length > 0) {
+        noticeConditions.push({ restaurant_id: { [Op.in]: ownedIds }, read_at: null });
+      }
+      const unreadRecipients = await NoticeRecipient.findAll({
+        where: { [Op.or]: noticeConditions },
+        attributes: [[sequelize.fn('DISTINCT', sequelize.col('notice_id')), 'notice_id']]
+      });
+      counts.notices = unreadRecipients.length;
     }
 
     // --- Invoices ---
@@ -171,7 +212,7 @@ router.get('/', authenticateToken, async (req, res) => {
       );
     }
 
-    // System Inquiry (SupportTicket): customerId stores userId as string
+    // System Inquiry (SupportTicket): unread comments on my tickets
     const myTickets = await SupportTicket.findAll({
       where: { customerId: userId.toString() },
       attributes: ['id']

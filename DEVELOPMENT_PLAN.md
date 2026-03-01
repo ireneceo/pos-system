@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-02-28 (세션 2)
+> **최종 업데이트:** 2026-03-01
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -55,6 +55,28 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 - 각 역할이 자기 notification_settings에 SMTP 설정
 - 자기가 발행한 인보이스는 자기 SMTP로 발송
 - System Admin SMTP를 다른 역할이 대신 쓰지 않음
+
+---
+
+## ✅ 완료: 결제 모달 UI 개선 + 대시보드 카드 높이 통일 (2026-03-01)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 결제 모달 카드형 UI | 4개 인보이스 페이지 결제 수단 선택을 카드 버튼 UI로 변경 | ✅ 완료 |
+| Stripe 결제폼 통합 | StripePaymentForm 컴포넌트를 4개 인보이스 페이지에 연동 | ✅ 완료 |
+| 오류 메시지 중복 해결 | StripePaymentForm 내부 ErrorBox와 외부 에러 표시 중복 제거 | ✅ 완료 |
+| 수동 입력 필드 조건부 표시 | Stripe/PayPal 선택 시 Transaction ID, Receipt 등 수동 필드 숨김 | ✅ 완료 |
+| 대시보드 카드 높이 통일 | Sales & Orders Overview와 Notifications 카드 높이 동일하게 맞춤 | ✅ 완료 |
+| 운영서버 배포 | 모든 변경사항 운영서버 배포 완료 (스모크 테스트 6/6 통과) | ✅ 완료 |
+
+### 수정된 파일
+- `dev-frontend/src/pages/Restaurant/InvoicesPage.tsx`
+- `dev-frontend/src/pages/Owner/OwnerInvoicesPage.tsx`
+- `dev-frontend/src/pages/BrandGeneral/BrandInvoicesPage.tsx`
+- `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtInvoicesPage.tsx`
+- `dev-frontend/src/pages/Restaurant/RestaurantDashboard.tsx`
 
 ---
 

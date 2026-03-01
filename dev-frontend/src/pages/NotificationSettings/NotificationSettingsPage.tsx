@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { useParams } from 'react-router-dom';
-import { TabContainer, Tab } from '../../components/UI';
+import { Tabs, Tab } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 
 const SettingsContainer = styled.div`
@@ -86,9 +87,9 @@ const RequiredMark = styled.span`
 
 const Input = styled.input`
   width: 100%;
-  padding: 12px 16px;
+  padding: 8px 12px;
   border: 1px solid #E6EBF1;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 14px;
   color: #0A2540;
   background: white;
@@ -101,13 +102,9 @@ const Input = styled.input`
     box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
   }
 
-  &:hover {
-    border-color: #C7D2FE;
-  }
-
   &:disabled {
-    background: #F6F9FC;
-    color: #8898AA;
+    background: #F9FAFB;
+    color: #6B7280;
     cursor: not-allowed;
   }
 
@@ -224,8 +221,10 @@ const ModalOverlay = styled.div`
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  overflow-y: auto;
+  padding: 40px 0;
   z-index: 1000;
 `;
 
@@ -291,7 +290,7 @@ interface Settings {
 const NotificationSettingsPage: React.FC = () => {
   const { user } = useAuth();
   const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
-  const [activeTab, setActiveTab] = useState('email');
+  const [activeTab, handleTabChange] = useTabParam<'email' | 'sms' | 'whatsapp'>('email');
   const [settings, setSettings] = useState<Settings>({
     email_enabled: false,
     smtp_host: '',
@@ -487,17 +486,17 @@ const NotificationSettingsPage: React.FC = () => {
         </Header>
 
         <Content>
-          <TabContainer>
-            <Tab active={activeTab === 'email'} onClick={() => setActiveTab('email')}>
+          <Tabs>
+            <Tab active={activeTab === 'email'} onClick={() => handleTabChange('email')}>
               Email
             </Tab>
-            <Tab active={activeTab === 'sms'} onClick={() => setActiveTab('sms')}>
+            <Tab active={activeTab === 'sms'} onClick={() => handleTabChange('sms')}>
               SMS
             </Tab>
-            <Tab active={activeTab === 'whatsapp'} onClick={() => setActiveTab('whatsapp')}>
+            <Tab active={activeTab === 'whatsapp'} onClick={() => handleTabChange('whatsapp')}>
               WhatsApp
             </Tab>
-          </TabContainer>
+          </Tabs>
 
           {activeTab === 'email' && (
             <SettingsCard>

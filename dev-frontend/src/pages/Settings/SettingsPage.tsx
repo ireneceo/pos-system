@@ -11,7 +11,7 @@ import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import PhoneInput from '../../components/Common/PhoneInput';
 import PageHeader from '../../components/Common/PageHeader';
 import { useTabParam } from '../../hooks/useTabParam';
-import { printTableQR, getPrinterMode, setPrinterMode } from '../../utils/billPrint';
+import { getPrinterMode, setPrinterMode } from '../../utils/billPrint';
 import { getCurrencySymbol } from '../../utils/currency';
 
 // 스타일 컴포넌트
@@ -824,7 +824,28 @@ const SettingsPage: React.FC = () => {
   const [loadingManagers, setLoadingManagers] = useState(false);
   const [membershipSettings, setMembershipSettings] = useState<MembershipSettings>(defaultMembershipSettings);
   const [loadingMembership, setLoadingMembership] = useState(false);
-  // loadingStoreData removed - not used
+  const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>([]);
+
+  // Load supported currencies from system settings
+  useEffect(() => {
+    const fetchSupportedCurrencies = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch('/api/currencies/supported', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && Array.isArray(data.data)) {
+            setSupportedCurrencies(data.data.map((c: any) => c.code || c));
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch supported currencies:', error);
+      }
+    };
+    fetchSupportedCurrencies();
+  }, []);
 
   // Load store data from restaurants API on mount
   useEffect(() => {
@@ -1728,7 +1749,7 @@ const SettingsPage: React.FC = () => {
                           }}>
                             POS
                           </span>
-                          <ToggleSwitch style={{ position: 'relative', width: '44px', height: '24px' }}>
+                          <ToggleSwitch>
                             <ToggleInput
                               type="checkbox"
                               checked={method.availableIn?.includes('pos') || false}
@@ -1748,7 +1769,7 @@ const SettingsPage: React.FC = () => {
                           }}>
                             Mobile
                           </span>
-                          <ToggleSwitch style={{ position: 'relative', width: '44px', height: '24px' }}>
+                          <ToggleSwitch>
                             <ToggleInput
                               type="checkbox"
                               checked={method.availableIn?.includes('mobile') || false}
@@ -3220,22 +3241,41 @@ const SettingsPage: React.FC = () => {
                       setHasChanges(true);
                     }}
                   >
-                    <option value="RM">Malaysian Ringgit (RM)</option>
-                    <option value="USD">US Dollar ($)</option>
-                    <option value="SGD">Singapore Dollar (S$)</option>
-                    <option value="JPY">Japanese Yen (¥)</option>
-                    <option value="THB">Thai Baht (฿)</option>
-                    <option value="KRW">Korean Won (₩)</option>
-                    <option value="EUR">Euro (€)</option>
-                    <option value="GBP">British Pound (£)</option>
-                    <option value="AUD">Australian Dollar (A$)</option>
-                    <option value="CNY">Chinese Yuan (¥)</option>
-                    <option value="INR">Indian Rupee (₹)</option>
-                    <option value="PHP">Philippine Peso (₱)</option>
-                    <option value="VND">Vietnamese Dong (₫)</option>
-                    <option value="IDR">Indonesian Rupiah (Rp)</option>
-                    <option value="TWD">Taiwan Dollar (NT$)</option>
-                    <option value="HKD">Hong Kong Dollar (HK$)</option>
+                    {(() => {
+                      const allCurrencies: Record<string, string> = {
+                        'MYR': 'Malaysian Ringgit (RM)',
+                        'RM': 'Malaysian Ringgit (RM)',
+                        'USD': 'US Dollar ($)',
+                        'SGD': 'Singapore Dollar (S$)',
+                        'JPY': 'Japanese Yen (¥)',
+                        'THB': 'Thai Baht (฿)',
+                        'KRW': 'Korean Won (₩)',
+                        'EUR': 'Euro (€)',
+                        'GBP': 'British Pound (£)',
+                        'AUD': 'Australian Dollar (A$)',
+                        'CNY': 'Chinese Yuan (¥)',
+                        'INR': 'Indian Rupee (₹)',
+                        'PHP': 'Philippine Peso (₱)',
+                        'VND': 'Vietnamese Dong (₫)',
+                        'IDR': 'Indonesian Rupiah (Rp)',
+                        'TWD': 'Taiwan Dollar (NT$)',
+                        'HKD': 'Hong Kong Dollar (HK$)'
+                      };
+                      const currencies = supportedCurrencies.length > 0
+                        ? supportedCurrencies
+                        : Object.keys(allCurrencies);
+                      const seen = new Set<string>();
+                      return currencies.map(code => {
+                        const displayCode = code === 'MYR' ? 'RM' : code;
+                        if (seen.has(displayCode)) return null;
+                        seen.add(displayCode);
+                        return (
+                          <option key={displayCode} value={displayCode}>
+                            {allCurrencies[code] || code}
+                          </option>
+                        );
+                      });
+                    })()}
                   </Select>
                 </FormGroup>
 

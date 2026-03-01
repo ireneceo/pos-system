@@ -33,12 +33,11 @@ const InputWrapper = styled.div`
 
 const StyledInput = styled.input<{ hasError?: boolean }>`
   width: 100%;
-  padding: 12px 16px 12px 80px;
-  border: 2px solid ${props => props.hasError ? '#EF4444' : '#E5E7EB'};
-  border-radius: 8px;
+  padding: 8px 12px 8px 80px;
+  border: 1px solid ${props => props.hasError ? '#EF4444' : '#E6EBF1'};
+  border-radius: 6px;
   font-size: 14px;
-  transition: all 0.2s;
-  min-height: 44px;
+  transition: all 0.15s;
   box-sizing: border-box;
 
   &:focus {
@@ -100,8 +99,8 @@ const CountryDropdown = styled.div`
   top: calc(100% + 4px);
   left: 0;
   background: white;
-  border: 2px solid #E5E7EB;
-  border-radius: 8px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   max-height: 280px;
   z-index: 1000;

@@ -4,7 +4,8 @@ import { Container, Header, Title, ActionSection, Content } from '../../componen
 import { BaseButton } from '../../components/UI/CommonStyles';
 import { StandardSelect } from '../../components/UI/SelectComponents';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/StatCard';
-import { TabContainer, Tab } from '../../components/UI';
+import { Tabs, Tab } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 import { Modal, ModalButton } from '../../components/UI/Modal';
 
 interface BackupRecord {
@@ -388,7 +389,7 @@ const BackupListSize = styled.div`
 `;
 
 const BackupRestorePage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('backups');
+  const [activeTab, handleTabChange] = useTabParam('backups');
   const [backups, setBackups] = useState<BackupRecord[]>([]);
   const [restoreOperations, setRestoreOperations] = useState<RestoreOperation[]>([]);
   const [showCreateBackupModal, setShowCreateBackupModal] = useState(false);
@@ -548,17 +549,17 @@ const BackupRestorePage: React.FC = () => {
           </StatCard>
         </StatsGrid>
 
-        <TabContainer>
-          <Tab active={activeTab === 'backups'} onClick={() => setActiveTab('backups')}>
+        <Tabs>
+          <Tab active={activeTab === 'backups'} onClick={() => handleTabChange('backups')}>
             Backup History
           </Tab>
-          <Tab active={activeTab === 'restore'} onClick={() => setActiveTab('restore')}>
+          <Tab active={activeTab === 'restore'} onClick={() => handleTabChange('restore')}>
             Restore Operations
           </Tab>
-          <Tab active={activeTab === 'schedule'} onClick={() => setActiveTab('schedule')}>
+          <Tab active={activeTab === 'schedule'} onClick={() => handleTabChange('schedule')}>
             Backup Schedule
           </Tab>
-        </TabContainer>
+        </Tabs>
 
         <ContentSection>
           {activeTab === 'backups' && (

@@ -48,6 +48,7 @@ interface RestaurantSubscription {
   location: string;
   email?: string;
   phone?: string;
+  currency?: string;
   discountType: 'none' | 'percentage' | 'fixed';
   discountValue: number;
   discountReason: string;
@@ -463,6 +464,7 @@ const SubscriptionsPage: React.FC = () => {
           id: `sub-${restaurant.id}`,
           restaurantId: restaurant.id?.toString() || `rest-${index}`,
           restaurantName: restaurant.name || 'Restaurant Name',
+          currency: restaurant.currency || 'RM',
           managerId: (restaurant.managerId || restaurant.admin_id)?.toString() || '',
           managerName: restaurant.managerName || restaurant.admin_name || 'No Manager Assigned',
           planType: planType as 'basic' | 'professional' | 'enterprise',
@@ -1123,7 +1125,7 @@ const SubscriptionsPage: React.FC = () => {
                   <MobileValue>
                     <MobileLabel>Restaurant Info</MobileLabel>
                     <RestaurantInfo>
-                      <RestaurantName>{subscription.restaurantName}</RestaurantName>
+                      <RestaurantName>{subscription.restaurantName} {subscription.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{subscription.currency}</span>}</RestaurantName>
                       <RestaurantMeta>
                         {subscription.managerName} • {subscription.location}
                       </RestaurantMeta>

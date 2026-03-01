@@ -1,0 +1,548 @@
+"use strict";(self.webpackChunkfrontend=self.webpackChunkfrontend||[]).push([[4022],{4022:(e,r,t)=>{t.r(r),t.d(r,{default:()=>Q});var i=t(9950),n=t(4752),o=t(1367),a=t(4302),s=t(6649),l=t(4414);const d=n.Ay.div`
+  min-height: 100vh;
+`,c=n.Ay.div`
+  background: white;
+  padding: 16px 32px;
+  border-bottom: 1px solid #E6EBF1;
+  height: 56px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  @media (max-width: 768px) {
+    padding: 16px;
+    height: auto;
+    min-height: 56px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+`,p=n.Ay.div`
+  padding: 32px;
+  background: #FAFBFC;
+  min-height: calc(100vh - 120px);
+
+  @media (max-width: 768px) {
+    padding: 20px;
+  }
+`,x=n.Ay.h1`
+  font-size: 24px;
+  font-weight: 700;
+  color: #0A2540;
+  margin: 0;
+  line-height: 1;
+`,h=n.Ay.div`
+  display: flex;
+  gap: 12px;
+`,u=n.Ay.button`
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+
+  ${e=>"primary"===e.variant?"\n    background: #635BFF;\n    color: white;\n    &:hover {\n      background: #5A51E6;\n      transform: translateY(-2px);\n      box-shadow: 0 4px 12px rgba(99, 91, 255, 0.3);\n    }\n  ":"\n    background: white;\n    color: #6B7280;\n    border: 1px solid #E6EBF1;\n    &:hover {\n      background: #F8FAFC;\n      color: #0A2540;\n      border-color: #CBD5E1;\n    }\n  "}
+`,g=n.Ay.div`
+  padding: 20px 0;
+  margin-bottom: 24px;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  border-bottom: 1px solid #E6EBF1;
+`,y=n.Ay.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`,f=n.Ay.label`
+  font-size: 12px;
+  font-weight: 600;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`,m=n.Ay.input`
+  padding: 8px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  font-size: 14px;
+  width: 250px;
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+`,j=n.Ay.select`
+  padding: 8px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  &:focus { outline: none; border-color: #635BFF; }
+`,v=n.Ay.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+  }
+`,b=n.Ay.div`
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid #E6EBF1;
+  transition: all 0.2s;
+  cursor: pointer;
+  overflow: hidden;
+  &:hover {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
+`,A=n.Ay.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  gap: 16px;
+`,w=n.Ay.div`
+  flex: 1;
+`,F=n.Ay.div`
+  font-size: 16px;
+  font-weight: 600;
+  color: #0A2540;
+  margin-bottom: 4px;
+`,k=n.Ay.div`
+  font-size: 18px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 8px;
+  line-height: 1.4;
+`,E=n.Ay.div`
+  font-size: 14px;
+  color: #6B7280;
+`,C=n.Ay.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+`,B=n.Ay.span`
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: ${e=>{switch(e.status){case"open":return"#FEF3C7";case"in-progress":return"#DBEAFE";case"resolved":return"#ECFDF5";default:return"#F3F4F6"}}};
+  color: ${e=>{switch(e.status){case"open":return"#D97706";case"in-progress":return"#1E40AF";case"resolved":return"#059669";default:return"#6B7280"}}};
+`,z=n.Ay.span`
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: ${e=>{switch(e.priority){case"urgent":return"#FEE2E2";case"high":return"#FED7AA";case"medium":return"#FEF3C7";case"low":return"#E0F2FE";default:return"#F3F4F6"}}};
+  color: ${e=>{switch(e.priority){case"urgent":return"#DC2626";case"high":return"#EA580C";case"medium":return"#D97706";case"low":return"#0891B2";default:return"#6B7280"}}};
+`,S=n.Ay.span`
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #F3E8FF;
+  color: #7C3AED;
+  margin-left: 8px;
+`,I=n.Ay.div`
+  font-size: 14px;
+  color: #6B7280;
+  line-height: 1.5;
+  margin: 16px 0;
+  padding: 16px;
+  background: #F8FAFC;
+  border-radius: 8px;
+  border-left: 3px solid #E6EBF1;
+`,_=n.Ay.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  border-top: 1px solid #F3F4F6;
+  font-size: 12px;
+  color: #6B7280;
+  flex-wrap: wrap;
+  gap: 12px;
+`,$=n.Ay.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+`,N=n.Ay.span`
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`,T=n.Ay.span`
+  color: #374151;
+`,D=n.Ay.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+`,q=n.Ay.div`
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow: auto;
+`,R=n.Ay.div`
+  padding: 24px;
+  border-bottom: 1px solid #E6EBF1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`,O=n.Ay.h2`
+  font-size: 20px;
+  font-weight: 600;
+  color: #0A2540;
+  margin: 0;
+`,P=n.Ay.button`
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #6B7C93;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  &:hover { color: #0A2540; }
+`,L=n.Ay.div`
+  padding: 24px;
+`,M=n.Ay.div`
+  padding: 20px 24px;
+  border-top: 1px solid #E6EBF1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+`,U=n.Ay.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  @media (max-width: 640px) { grid-template-columns: 1fr; }
+`,J=n.Ay.div`
+  margin-bottom: 20px;
+`,W=n.Ay.label`
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7C93;
+  margin-bottom: 8px;
+`,H=n.Ay.input`
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 14px;
+  box-sizing: border-box;
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+`,K=n.Ay.select`
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+  box-sizing: border-box;
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+`,Y=n.Ay.textarea`
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 14px;
+  resize: vertical;
+  min-height: 100px;
+  font-family: inherit;
+  box-sizing: border-box;
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+`,G=n.Ay.div`
+  text-align: center;
+  padding: 60px 20px;
+  color: #6B7280;
+  h3 { color: #374151; margin-bottom: 8px; }
+`,Q=()=>{const{user:e}=(0,o.As)(),[r,t]=(0,i.useState)([]),[n,Q]=(0,i.useState)([]),[V,X]=(0,i.useState)(""),[Z,ee]=(0,i.useState)("all"),[re,te]=(0,i.useState)("all"),[ie,ne]=(0,i.useState)("all"),[oe,ae]=(0,i.useState)("all"),[se,le]=(0,i.useState)(!1),[de,ce]=(0,i.useState)(!1),[pe,xe]=(0,i.useState)(null),[he,ue]=(0,i.useState)("open"),[ge,ye]=(0,i.useState)({restaurantId:"",subject:"",description:"",priority:"medium",category:"general"}),[fe,me]=(0,i.useState)([]),[je,ve]=(0,i.useState)({});(0,i.useEffect)(()=>{e&&be()},[e]),(0,i.useEffect)(()=>{if(n.length>0){Ae();const e=setInterval(Ae,1e4);return()=>clearInterval(e)}},[n]);const be=async()=>{try{const e=localStorage.getItem("auth_token"),r=await fetch("/api/owner/restaurants",{headers:{Authorization:`Bearer ${e}`}});if(r.ok){const e=await r.json(),t=e.data||e;Q(t.map(e=>({id:e.id,name:e.name})))}}catch(e){console.error("Error fetching owned restaurants:",e)}},Ae=async()=>{try{const e=localStorage.getItem("auth_token"),r=await fetch("/api/support-tickets",{headers:{Authorization:`Bearer ${e}`}});if(r.ok){const e=await r.json(),i=e.data||e;t(i),we(i)}}catch(e){console.error("Error fetching tickets:",e)}},we=async e=>{if(0!==e.length)try{const r=localStorage.getItem("auth_token"),t=e.map(e=>e.id).join(","),i=await fetch(`/api/comments/unread-counts?entity_type=support_ticket&entity_ids=${t}`,{headers:{Authorization:`Bearer ${r}`}});if(i.ok){const e=await i.json();if(e.success){const r={};e.data.forEach(e=>{r[e.entity_id]={total_comments:Number(e.total_comments),unread_count:Number(e.unread_count)}}),ve(r)}}}catch(r){console.error("Error fetching unread counts:",r)}},Fe=r.filter(e=>{const r=e.subject.toLowerCase().includes(V.toLowerCase())||e.ticketNumber.toLowerCase().includes(V.toLowerCase()),t="all"===Z||e.status===Z,i="all"===re||e.priority===re,n="all"===ie||e.category===ie,o="all"===oe||String(e.restaurantId)===oe;return r&&t&&i&&n&&o}),ke=r.filter(e=>"open"===e.status).length,Ee=r.filter(e=>"in-progress"===e.status).length,Ce=r.filter(e=>"resolved"===e.status).length,Be=e=>new Date(e).toLocaleString("en-MY"),ze=e=>{if(!e)return"";const r=n.find(r=>r.id===e);return r?r.name:""};return(0,l.jsx)(l.Fragment,{children:(0,l.jsxs)(d,{children:[(0,l.jsxs)(c,{children:[(0,l.jsx)(x,{children:"System Inquiry"}),(0,l.jsx)(h,{children:(0,l.jsx)(u,{variant:"primary",onClick:()=>le(!0),children:"New Inquiry"})})]}),(0,l.jsxs)(p,{children:[(0,l.jsxs)(s.MD,{children:[(0,l.jsxs)(s.hI,{color:"#635BFF",children:[(0,l.jsx)(s.Os,{children:r.length}),(0,l.jsx)(s.v0,{children:"Total Inquiries"})]}),(0,l.jsxs)(s.hI,{color:"#F59E0B",children:[(0,l.jsx)(s.Os,{children:ke}),(0,l.jsx)(s.v0,{children:"Open"})]}),(0,l.jsxs)(s.hI,{color:"#3B82F6",children:[(0,l.jsx)(s.Os,{children:Ee}),(0,l.jsx)(s.v0,{children:"In Progress"})]}),(0,l.jsxs)(s.hI,{color:"#10B981",children:[(0,l.jsx)(s.Os,{children:Ce}),(0,l.jsx)(s.v0,{children:"Resolved"})]})]}),(0,l.jsxs)(g,{children:[(0,l.jsxs)(y,{children:[(0,l.jsx)(f,{children:"Search"}),(0,l.jsx)(m,{placeholder:"Search inquiries...",value:V,onChange:e=>X(e.target.value)})]}),(0,l.jsxs)(y,{children:[(0,l.jsx)(f,{children:"Restaurant"}),(0,l.jsxs)(j,{value:oe,onChange:e=>ae(e.target.value),children:[(0,l.jsx)("option",{value:"all",children:"All Restaurants"}),n.map(e=>(0,l.jsx)("option",{value:String(e.id),children:e.name},e.id))]})]}),(0,l.jsxs)(y,{children:[(0,l.jsx)(f,{children:"Status"}),(0,l.jsxs)(j,{value:Z,onChange:e=>ee(e.target.value),children:[(0,l.jsx)("option",{value:"all",children:"All Status"}),(0,l.jsx)("option",{value:"open",children:"Open"}),(0,l.jsx)("option",{value:"in-progress",children:"In Progress"}),(0,l.jsx)("option",{value:"resolved",children:"Resolved"}),(0,l.jsx)("option",{value:"closed",children:"Closed"})]})]}),(0,l.jsxs)(y,{children:[(0,l.jsx)(f,{children:"Priority"}),(0,l.jsxs)(j,{value:re,onChange:e=>te(e.target.value),children:[(0,l.jsx)("option",{value:"all",children:"All Priority"}),(0,l.jsx)("option",{value:"urgent",children:"Urgent"}),(0,l.jsx)("option",{value:"high",children:"High"}),(0,l.jsx)("option",{value:"medium",children:"Medium"}),(0,l.jsx)("option",{value:"low",children:"Low"})]})]}),(0,l.jsxs)(y,{children:[(0,l.jsx)(f,{children:"Category"}),(0,l.jsxs)(j,{value:ie,onChange:e=>ne(e.target.value),children:[(0,l.jsx)("option",{value:"all",children:"All Categories"}),(0,l.jsx)("option",{value:"technical",children:"Technical"}),(0,l.jsx)("option",{value:"billing",children:"Billing"}),(0,l.jsx)("option",{value:"feature-request",children:"Feature Request"}),(0,l.jsx)("option",{value:"bug-report",children:"Bug Report"}),(0,l.jsx)("option",{value:"general",children:"General"})]})]})]}),(0,l.jsxs)(v,{children:[Fe.map(e=>(0,l.jsxs)(b,{onClick:()=>{xe(e),ue(e.status),ce(!0),window.dispatchEvent(new Event("refreshBadgeCounts"))},children:[(0,l.jsxs)(A,{children:[(0,l.jsxs)(w,{children:[(0,l.jsx)(F,{children:e.ticketNumber}),(0,l.jsx)(k,{children:e.subject}),(0,l.jsxs)(E,{children:[e.customerName,e.restaurantName&&(0,l.jsx)(S,{children:e.restaurantName})]})]}),(0,l.jsxs)(C,{children:[(0,l.jsx)(B,{status:e.status,children:e.status}),(0,l.jsx)(z,{priority:e.priority,children:e.priority})]})]}),(0,l.jsx)(I,{children:e.description}),(0,l.jsxs)(_,{children:[(0,l.jsxs)($,{children:[(0,l.jsx)(N,{children:"Created"}),(0,l.jsx)(T,{children:Be(e.createdAt)})]}),(0,l.jsxs)($,{children:[(0,l.jsx)(N,{children:"Category"}),(0,l.jsx)(T,{style:{textTransform:"capitalize"},children:e.category.replace("-"," ")})]}),(0,l.jsxs)($,{children:[(0,l.jsx)(N,{children:"Restaurant"}),(0,l.jsx)(T,{children:ze(e.restaurantId)||e.restaurantName||"-"})]}),je[e.id]&&(0,l.jsx)($,{children:(0,l.jsxs)("span",{style:{display:"flex",alignItems:"center",gap:"4px"},children:["Comments ",je[e.id].total_comments,je[e.id].unread_count>0&&(0,l.jsxs)("span",{style:{background:"#EF4444",color:"white",borderRadius:"10px",padding:"1px 7px",fontSize:"11px",fontWeight:600},children:[je[e.id].unread_count," new"]})]})})]})]},e.id)),0===Fe.length&&(0,l.jsxs)(G,{children:[(0,l.jsx)("h3",{children:"No inquiries yet"}),(0,l.jsx)("p",{children:'Click "New Inquiry" to submit a system inquiry for your restaurants.'})]})]}),se&&(0,l.jsx)(D,{onClick:()=>le(!1),children:(0,l.jsxs)(q,{onClick:e=>e.stopPropagation(),children:[(0,l.jsxs)(R,{children:[(0,l.jsx)(O,{children:"Create System Inquiry"}),(0,l.jsx)(P,{onClick:()=>le(!1),children:"\xd7"})]}),(0,l.jsxs)(L,{children:[(0,l.jsxs)(J,{children:[(0,l.jsx)(W,{children:"Restaurant *"}),(0,l.jsxs)(K,{value:ge.restaurantId,onChange:e=>ye({...ge,restaurantId:e.target.value}),required:!0,children:[(0,l.jsx)("option",{value:"",children:"Select Restaurant"}),n.map(e=>(0,l.jsx)("option",{value:String(e.id),children:e.name},e.id))]})]}),(0,l.jsxs)(J,{children:[(0,l.jsx)(W,{children:"Subject *"}),(0,l.jsx)(H,{type:"text",value:ge.subject,onChange:e=>ye({...ge,subject:e.target.value}),placeholder:"Brief description of your inquiry",required:!0})]}),(0,l.jsxs)(J,{children:[(0,l.jsx)(W,{children:"Description *"}),(0,l.jsx)(Y,{value:ge.description,onChange:e=>ye({...ge,description:e.target.value}),placeholder:"Detailed description...",rows:4,required:!0})]}),(0,l.jsxs)(U,{children:[(0,l.jsxs)(J,{children:[(0,l.jsx)(W,{children:"Priority"}),(0,l.jsxs)(K,{value:ge.priority,onChange:e=>ye({...ge,priority:e.target.value}),children:[(0,l.jsx)("option",{value:"low",children:"Low"}),(0,l.jsx)("option",{value:"medium",children:"Medium"}),(0,l.jsx)("option",{value:"high",children:"High"}),(0,l.jsx)("option",{value:"urgent",children:"Urgent"})]})]}),(0,l.jsxs)(J,{children:[(0,l.jsx)(W,{children:"Category"}),(0,l.jsxs)(K,{value:ge.category,onChange:e=>ye({...ge,category:e.target.value}),children:[(0,l.jsx)("option",{value:"general",children:"General"}),(0,l.jsx)("option",{value:"technical",children:"Technical"}),(0,l.jsx)("option",{value:"billing",children:"Billing"}),(0,l.jsx)("option",{value:"feature-request",children:"Feature Request"}),(0,l.jsx)("option",{value:"bug-report",children:"Bug Report"})]})]})]})]}),(0,l.jsxs)(M,{children:[(0,l.jsx)(u,{variant:"secondary",onClick:()=>le(!1),children:"Cancel"}),(0,l.jsx)(u,{variant:"primary",onClick:async()=>{if(!ge.restaurantId||!ge.subject.trim()||!ge.description.trim())return;const e=n.find(e=>e.id===parseInt(ge.restaurantId));try{const r={restaurantId:parseInt(ge.restaurantId),restaurantName:(null===e||void 0===e?void 0:e.name)||"",subject:ge.subject,description:ge.description,status:"open",priority:ge.priority,category:ge.category},t=localStorage.getItem("auth_token");(await fetch("/api/support-tickets",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${t}`},body:JSON.stringify(r)})).ok&&(Ae(),le(!1),ye({restaurantId:"",subject:"",description:"",priority:"medium",category:"general"}))}catch(r){console.error("Error creating ticket:",r)}},disabled:!ge.restaurantId||!ge.subject.trim()||!ge.description.trim(),children:"Submit Inquiry"})]})]})}),de&&pe&&(0,l.jsx)(D,{onClick:()=>ce(!1),children:(0,l.jsxs)(q,{onClick:e=>e.stopPropagation(),children:[(0,l.jsxs)(R,{children:[(0,l.jsx)(O,{children:"Inquiry Details"}),(0,l.jsx)(P,{onClick:()=>ce(!1),children:"\xd7"})]}),(0,l.jsxs)(L,{children:[(0,l.jsxs)("div",{style:{display:"grid",gap:"20px"},children:[(0,l.jsxs)("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"20px"},children:[(0,l.jsxs)("div",{children:[(0,l.jsx)(W,{children:"Ticket Number"}),(0,l.jsx)("div",{style:{padding:"8px 0",color:"#0A2540",fontWeight:"600"},children:pe.ticketNumber})]}),(0,l.jsxs)("div",{children:[(0,l.jsx)(W,{children:"Status"}),(0,l.jsxs)("div",{style:{display:"flex",alignItems:"center",gap:"12px"},children:[(0,l.jsxs)(K,{value:he,onChange:e=>ue(e.target.value),style:{flex:1},children:[(0,l.jsx)("option",{value:"open",children:"Open"}),(0,l.jsx)("option",{value:"in-progress",children:"In Progress"}),(0,l.jsx)("option",{value:"resolved",children:"Resolved"}),(0,l.jsx)("option",{value:"closed",children:"Closed"})]}),he!==pe.status&&(0,l.jsx)(u,{variant:"primary",onClick:async()=>{if(pe)try{const e=localStorage.getItem("auth_token");(await fetch(`/api/support-tickets/${pe.id}`,{method:"PUT",headers:{"Content-Type":"application/json",Authorization:`Bearer ${e}`},body:JSON.stringify({status:he})})).ok&&(t(e=>e.map(e=>e.id===pe.id?{...e,status:he}:e)),xe(e=>e?{...e,status:he}:e))}catch(e){console.error("Error updating status:",e)}},style:{padding:"10px 20px"},children:"Save"})]})]})]}),(0,l.jsxs)("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"20px"},children:[(0,l.jsxs)("div",{children:[(0,l.jsx)(W,{children:"Priority"}),(0,l.jsx)("div",{style:{padding:"8px 0"},children:(0,l.jsx)(z,{priority:pe.priority,children:pe.priority})})]}),(0,l.jsxs)("div",{children:[(0,l.jsx)(W,{children:"Restaurant"}),(0,l.jsx)("div",{style:{padding:"8px 0",color:"#374151"},children:ze(pe.restaurantId)||pe.restaurantName||"-"})]})]}),(0,l.jsxs)("div",{children:[(0,l.jsx)(W,{children:"Subject"}),(0,l.jsx)("div",{style:{padding:"8px 0",color:"#0A2540",fontWeight:"600"},children:pe.subject})]}),(0,l.jsxs)("div",{children:[(0,l.jsx)(W,{children:"Description"}),(0,l.jsx)("div",{style:{padding:"12px",backgroundColor:"#F8FAFC",borderRadius:"8px",border:"1px solid #E6EBF1",minHeight:"80px",whiteSpace:"pre-wrap",lineHeight:"1.5",color:"#374151"},children:pe.description})]}),(0,l.jsxs)("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"20px"},children:[(0,l.jsxs)("div",{children:[(0,l.jsx)(W,{children:"Created"}),(0,l.jsx)("div",{style:{padding:"8px 0",color:"#6B7280"},children:Be(pe.createdAt)})]}),(0,l.jsxs)("div",{children:[(0,l.jsx)(W,{children:"Category"}),(0,l.jsx)("div",{style:{padding:"8px 0",color:"#374151",textTransform:"capitalize"},children:pe.category.replace("-"," ")})]})]})]}),(0,l.jsx)(a.A,{entityType:"support_ticket",entityId:pe.id,currentUserId:null===e||void 0===e?void 0:e.id,onMarkRead:()=>ve(e=>{const r={...e};return r[pe.id]&&(r[pe.id]={...r[pe.id],unread_count:0}),r})})]}),(0,l.jsx)(M,{children:(0,l.jsx)(u,{variant:"secondary",onClick:()=>ce(!1),children:"Close"})})]})})]})]})})}},4185:(e,r,t)=>{t.d(r,{A:()=>u});t(9950);var i=t(4752),n=t(4414);const o=i.Ay.div`
+  margin-top: 12px;
+`,a=i.Ay.div`
+  font-size: 12px;
+  font-weight: 600;
+  color: #6B7280;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+`,s=i.Ay.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+`,l=i.Ay.a`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: #F8F9FA;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  text-decoration: none;
+  color: #0A2540;
+  font-size: 12px;
+  transition: all 0.15s;
+  max-width: 240px;
+
+  &:hover {
+    border-color: #635BFF;
+    background: #F4F3FF;
+  }
+`,d=i.Ay.span`
+  font-size: 14px;
+  flex-shrink: 0;
+`,c=i.Ay.span`
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+`,p=i.Ay.span`
+  color: #9CA3AF;
+  flex-shrink: 0;
+  font-size: 11px;
+`,x=i.Ay.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+`,h=i.Ay.a`
+  display: block;
+  width: 80px;
+  height: 80px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #E6EBF1;
+  transition: all 0.15s;
+
+  &:hover {
+    border-color: #635BFF;
+    box-shadow: 0 2px 8px rgba(99, 91, 255, 0.15);
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;const u=e=>{let{attachments:r}=e;if(!r||0===r.length)return null;const t=r.filter(e=>{var r;return null===(r=e.mimeType)||void 0===r?void 0:r.startsWith("image/")}),i=r.filter(e=>{var r;return!(null!==(r=e.mimeType)&&void 0!==r&&r.startsWith("image/"))});return(0,n.jsxs)(o,{children:[(0,n.jsxs)(a,{children:["Attachments (",r.length,")"]}),t.length>0&&(0,n.jsx)(x,{children:t.map((e,r)=>(0,n.jsx)(h,{href:e.url,target:"_blank",rel:"noopener noreferrer",title:e.originalName,children:(0,n.jsx)("img",{src:e.url,alt:e.originalName})},r))}),i.length>0&&(0,n.jsx)(s,{children:i.map((e,r)=>{return(0,n.jsxs)(l,{href:e.url,target:"_blank",rel:"noopener noreferrer",download:e.originalName,children:[(0,n.jsx)(d,{children:(i=e.mimeType,"application/pdf"===i?"\ud83d\udcc4":i.includes("word")||i.includes("document")?"\ud83d\udcdd":i.includes("sheet")||i.includes("excel")?"\ud83d\udcca":i.includes("zip")||i.includes("compressed")?"\ud83d\udce6":"\ud83d\udcce")}),(0,n.jsx)(c,{children:e.originalName}),(0,n.jsx)(p,{children:(t=e.size,t<1024?`${t}B`:t<1048576?`${(t/1024).toFixed(1)}KB`:`${(t/1048576).toFixed(1)}MB`)})]},r);var t,i})})]})}},4302:(e,r,t)=>{t.d(r,{A:()=>T});var i=t(9950),n=t(4752),o=t(4185),a=t(4414);const s=n.Ay.div`
+  margin-top: 24px;
+  border-top: 1px solid #E6EBF1;
+  padding-top: 20px;
+`,l=n.Ay.h4`
+  font-size: 14px;
+  font-weight: 600;
+  color: #0A2540;
+  margin: 0 0 16px 0;
+`,d=n.Ay.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+  max-height: 300px;
+  overflow-y: auto;
+`,c=n.Ay.div`
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  background: ${e=>e.isInternal?"#FFFBEB":"#F8F9FA"};
+  border-radius: 8px;
+  ${e=>e.isInternal&&"\n    border: 1px dashed #F59E0B;\n  "}
+`,p=n.Ay.div`
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #635BFF;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+`,x=n.Ay.div`
+  flex: 1;
+  min-width: 0;
+`,h=n.Ay.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+`,u=n.Ay.span`
+  font-size: 13px;
+  font-weight: 600;
+  color: #0A2540;
+`,g=n.Ay.span`
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #EEF2FF;
+  color: #4338CA;
+`,y=n.Ay.span`
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #FEF3C7;
+  color: #92400E;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+`,f=n.Ay.span`
+  font-size: 11px;
+  color: #9CA3AF;
+  margin-left: auto;
+`,m=n.Ay.p`
+  font-size: 13px;
+  color: #374151;
+  margin: 0;
+  line-height: 1.5;
+  white-space: pre-wrap;
+`,j=n.Ay.button`
+  background: none;
+  border: none;
+  color: #9CA3AF;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 8px;
+  &:hover { color: #EF4444; }
+`,v=n.Ay.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`,b=n.Ay.div`
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+`,A=n.Ay.textarea`
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 13px;
+  resize: none;
+  min-height: 40px;
+  max-height: 100px;
+  font-family: inherit;
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+  &::placeholder { color: #9CA3AF; }
+`,w=n.Ay.div`
+  display: flex;
+  gap: 4px;
+`,F=n.Ay.button`
+  padding: 10px 12px;
+  background: #F3F4F6;
+  color: #6B7280;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 15px;
+  cursor: pointer;
+  line-height: 1;
+  &:hover { background: #E5E7EB; color: #0A2540; }
+`,k=n.Ay.button`
+  padding: 10px 16px;
+  background: #635BFF;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  &:hover { background: #5046E5; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+`,E=n.Ay.p`
+  font-size: 13px;
+  color: #9CA3AF;
+  text-align: center;
+  padding: 12px 0;
+`,C=n.Ay.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+`,B=n.Ay.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: #F0F0FF;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #635BFF;
+`,z=n.Ay.button`
+  background: none;
+  border: none;
+  color: #9CA3AF;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  &:hover { color: #EF4444; }
+`,S=n.Ay.span`
+  font-size: 11px;
+  color: #635BFF;
+  padding: 3px 8px;
+`,I=n.Ay.span`
+  font-size: 11px;
+  color: #EF4444;
+  padding: 3px 8px;
+`,_=n.Ay.input`
+  display: none;
+`,$=n.Ay.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+`,N=n.Ay.label`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #6B7280;
+  cursor: pointer;
+  user-select: none;
+
+  input {
+    width: 14px;
+    height: 14px;
+    accent-color: #D97706;
+    cursor: pointer;
+  }
+`,T=e=>{let{entityType:r,entityId:t,currentUserId:n,onMarkRead:T}=e;const[D,q]=(0,i.useState)([]),[R,O]=(0,i.useState)(""),[P,L]=(0,i.useState)(!1),[M,U]=(0,i.useState)([]),[J,W]=(0,i.useState)(!1),[H,K]=(0,i.useState)(""),[Y,G]=(0,i.useState)(!1),Q=(0,i.useRef)(null),V=async()=>{try{const e=localStorage.getItem("auth_token"),i=await fetch(`/api/comments/${r}/${t}`,{headers:{Authorization:`Bearer ${e}`}});if(i.ok){const e=await i.json();e.success&&q(e.data)}}catch(e){console.error("Error fetching comments:",e)}};(0,i.useEffect)(()=>{t&&(V(),(async()=>{try{const e=localStorage.getItem("auth_token");await fetch("/api/comments/mark-read",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${e}`},body:JSON.stringify({entity_type:r,entity_id:t})}),T&&T(),window.dispatchEvent(new Event("refreshBadgeCounts"))}catch(e){console.error("Error marking comments as read:",e)}})())},[r,t]);const X=async()=>{if(J)return;const e=R.trim(),i=M.length>0;if((e||i)&&!Y){G(!0);try{const e=localStorage.getItem("auth_token");(await fetch("/api/comments",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${e}`},body:JSON.stringify({entity_type:r,entity_id:t,content:R.trim(),attachments:i?M:void 0,is_internal:P||void 0})})).ok&&(O(""),U([]),L(!1),V())}catch(n){console.error("Error adding comment:",n)}finally{G(!1)}}},Z=e=>{const r=new Date(e),t=(new Date).getTime()-r.getTime(),i=Math.floor(t/6e4);if(i<1)return"Just now";if(i<60)return`${i}m ago`;const n=Math.floor(i/60);if(n<24)return`${n}h ago`;const o=Math.floor(n/24);return o<7?`${o}d ago`:r.toLocaleDateString("en-US",{month:"short",day:"numeric"})};return(0,a.jsxs)(s,{children:[(0,a.jsxs)(l,{children:["Comments (",D.length,")"]}),D.length>0?(0,a.jsx)(d,{children:D.map(e=>{var r,t,i;return(0,a.jsxs)(c,{isInternal:e.is_internal,children:[(0,a.jsx)(p,{children:((null===(r=e.author)||void 0===r?void 0:r.full_name)||e.author_name||"?")[0].toUpperCase()}),(0,a.jsxs)(x,{children:[(0,a.jsxs)(h,{children:[(0,a.jsx)(u,{children:(null===(t=e.author)||void 0===t?void 0:t.full_name)||e.author_name}),(0,a.jsx)(g,{children:(null===(i=e.author)||void 0===i?void 0:i.role)||e.author_role}),e.is_internal&&(0,a.jsx)(y,{children:"Internal"}),(0,a.jsx)(f,{children:Z(e.createdAt)}),n&&e.author_id===n&&(0,a.jsx)(j,{onClick:()=>(async e=>{try{const r=localStorage.getItem("auth_token");(await fetch(`/api/comments/${e}`,{method:"DELETE",headers:{Authorization:`Bearer ${r}`}})).ok&&V()}catch(r){console.error("Error deleting comment:",r)}})(e.id),children:"Delete"})]}),e.content&&(0,a.jsx)(m,{children:e.content}),e.attachments&&e.attachments.length>0&&(0,a.jsx)(o.A,{attachments:e.attachments})]})]},e.id)})}):(0,a.jsx)(E,{children:"No comments yet"}),(0,a.jsxs)(v,{children:[(0,a.jsxs)(b,{children:[(0,a.jsx)(A,{value:R,onChange:e=>O(e.target.value),onKeyDown:e=>{"Enter"!==e.key||e.shiftKey||(e.preventDefault(),X())},placeholder:P?"Write an internal note... (visible only to your role group)":"Add a comment... (Enter to send, Shift+Enter for newline)",rows:1}),(0,a.jsxs)(w,{children:[(0,a.jsx)(F,{onClick:()=>{var e;return null===(e=Q.current)||void 0===e?void 0:e.click()},title:"Attach file",children:"\ud83d\udcce"}),(0,a.jsx)(k,{onClick:X,disabled:!R.trim()&&0===M.length||Y||J,children:"Send"})]})]}),(0,a.jsx)($,{children:(0,a.jsxs)(N,{children:[(0,a.jsx)("input",{type:"checkbox",checked:P,onChange:e=>L(e.target.checked)}),"Internal note (visible only to your role group)"]})}),(M.length>0||J||H)&&(0,a.jsxs)(C,{children:[J&&(0,a.jsx)(S,{children:"Uploading..."}),H&&(0,a.jsx)(I,{children:H}),M.map((e,r)=>(0,a.jsxs)(B,{children:[e.originalName.length>20?e.originalName.slice(0,17)+"...":e.originalName,(0,a.jsx)(z,{onClick:()=>(e=>{const r=M[e],t=localStorage.getItem("auth_token");fetch("/api/upload/file",{method:"DELETE",headers:{"Content-Type":"application/json",Authorization:`Bearer ${t}`},body:JSON.stringify({url:r.url})}).catch(()=>{}),U(r=>r.filter((r,t)=>t!==e))})(r),children:"\u2715"})]},e.url))]})]}),(0,a.jsx)(_,{ref:Q,type:"file",accept:".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.zip",multiple:!0,onChange:async e=>{const r=e.target.files;if(!r||0===r.length)return;const t=5-M.length,i=Array.from(r).slice(0,t);if(e.target.value="",0!==i.length){W(!0),K("");try{const e=new FormData;i.forEach(r=>e.append("files",r));const r=localStorage.getItem("auth_token"),t=await fetch("/api/upload/files",{method:"POST",headers:{Authorization:`Bearer ${r}`},body:e}),n=await t.json();n.success&&n.data?U(e=>[...e,...n.data]):K(n.message||"Upload failed")}catch(n){console.error("File upload error:",n),K("File upload failed. Please try again.")}finally{W(!1)}}}})]})}}}]);

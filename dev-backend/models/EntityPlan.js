@@ -113,7 +113,7 @@ EntityPlan.init({
   billing_day: {
     type: DataTypes.INTEGER,
     allowNull: true,
-    comment: 'Monthly billing day (1-28). NULL = subscription start date based'
+    comment: 'Monthly billing day (1-28) or -1 for end of month. NULL = subscription start date based'
   },
   created_by: {
     type: DataTypes.INTEGER,

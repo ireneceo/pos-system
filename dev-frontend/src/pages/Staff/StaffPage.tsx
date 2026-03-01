@@ -223,6 +223,12 @@ const StatusBadge = styled.span<{ active: boolean }>`
   color: ${props => props.active ? '#059669' : '#DC2626'};
 `;
 
+const ActionGroup = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+`;
+
 const ActionButton = styled.button`
   padding: 6px 12px;
   background: transparent;
@@ -233,16 +239,11 @@ const ActionButton = styled.button`
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
-  margin-right: 8px;
 
   &:hover {
     border-color: #635BFF;
     color: #635BFF;
     background: #F4F3FF;
-  }
-
-  &:last-child {
-    margin-right: 0;
   }
 `;
 
@@ -324,8 +325,8 @@ const StaffPage: React.FC = () => {
   // Error/Notice modal
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Promote confirmation modal
-  const [confirmPromoteTarget, setConfirmPromoteTarget] = useState<Staff | null>(null);
+  // Promote confirmation modal (disabled - 1:1 admin constraint)
+  // const [confirmPromoteTarget, setConfirmPromoteTarget] = useState<Staff | null>(null);
 
   // Reset Password
   const [resetPasswordTarget, setResetPasswordTarget] = useState<Staff | null>(null);
@@ -577,38 +578,7 @@ const StaffPage: React.FC = () => {
     }
   };
 
-  // === Promote ===
-  const handlePromoteStaff = (staff: Staff) => {
-    if (staff.role === 'Restaurant Admin') return;
-    setConfirmPromoteTarget(staff);
-  };
-
-  const executePromotion = async () => {
-    const staff = confirmPromoteTarget;
-    if (!staff) return;
-    setConfirmPromoteTarget(null);
-
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/users/${staff.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ role: 'Restaurant Admin' })
-      });
-
-      if (response.ok) {
-        await fetchStaff();
-      } else {
-        const errorData = await response.json();
-        setErrorMessage(errorData.error || 'Failed to promote staff');
-      }
-    } catch (error) {
-      setErrorMessage((error as Error).message);
-    }
-  };
+  // === Promote === (disabled - 1:1 admin constraint prevents promotion)
 
   // === Reset Password ===
   const executeResetPassword = async () => {
@@ -779,24 +749,16 @@ const StaffPage: React.FC = () => {
                     {staff.status}
                   </StatusBadge>
 
-                  <div>
+                  <ActionGroup>
                     <ActionButton onClick={() => handleOpenEditModal(staff)}>
                       Edit
                     </ActionButton>
                     {staff.role === 'Staff' && (
-                      <>
-                        <ActionButton onClick={() => setResetPasswordTarget(staff)}>
-                          Reset PW
-                        </ActionButton>
-                        <ActionButton
-                          onClick={() => handlePromoteStaff(staff)}
-                          style={{ backgroundColor: '#635BFF', color: 'white', borderColor: '#635BFF' }}
-                        >
-                          Promote
-                        </ActionButton>
-                      </>
+                      <ActionButton onClick={() => setResetPasswordTarget(staff)}>
+                        Reset PW
+                      </ActionButton>
                     )}
-                  </div>
+                  </ActionGroup>
                 </StaffItem>
               ))
             )}
@@ -1142,23 +1104,7 @@ const StaffPage: React.FC = () => {
           </div>
         </Modal>
 
-        {/* ===== Promote Confirmation Modal (Portal) ===== */}
-        <Modal
-          isOpen={!!confirmPromoteTarget}
-          onClose={() => setConfirmPromoteTarget(null)}
-          title="Promote Staff"
-          size="small"
-          footer={
-            <>
-              <ModalButton variant="secondary" onClick={() => setConfirmPromoteTarget(null)}>Cancel</ModalButton>
-              <ModalButton variant="primary" onClick={executePromotion}>Promote</ModalButton>
-            </>
-          }
-        >
-          <div style={{ fontSize: '14px', color: '#374151' }}>
-            Promote <strong>{confirmPromoteTarget?.name}</strong> to Restaurant Admin?
-          </div>
-        </Modal>
+        {/* Promote modal removed - 1:1 admin constraint */}
       </StaffContainer>
     </>
   );

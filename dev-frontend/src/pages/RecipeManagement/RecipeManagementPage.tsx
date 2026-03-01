@@ -1,27 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useSearchParams, useParams } from 'react-router-dom';
-import { Container, Header, Title, Content, TabContainer, Tab } from '../../components/UI';
+import { Container, Header, Title, Content } from '../../components/UI';
+import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 import RecipesTab from './RecipesTab';
 import IngredientsTab from './IngredientsTab';
 import RecipeCategoriesTab from './RecipeCategoriesTab';
 import IngredientCategoriesTab from './IngredientCategoriesTab';
-
-const TabBadge = styled.span`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  margin-left: 8px;
-  background: #F0F4FF;
-  color: #635BFF;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 600;
-`;
 
 const HeaderActions = styled.div`
   display: flex;
@@ -64,6 +51,7 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
   const { user } = useAuth();
   const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, handleTabParamChange] = useTabParam<TabType>('recipes');
   const [recipesCount, setRecipesCount] = useState(0);
   const [ingredientsCount, setIngredientsCount] = useState(0);
   const [recipeCategoriesCount, setRecipeCategoriesCount] = useState(0);
@@ -73,7 +61,6 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
   const [recipeCategoryRefreshKey, setRecipeCategoryRefreshKey] = useState(0);
   const [ingredientCategoryRefreshKey, setIngredientCategoryRefreshKey] = useState(0);
 
-  const activeTab = (searchParams.get('tab') as TabType) || 'recipes';
   const brandIdFromUrl = searchParams.get('brandId');
   const selectedBrand = brandIdFromUrl ? Number(brandIdFromUrl) : (brands.length > 0 ? brands[0].id : null);
 
@@ -110,11 +97,15 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
   };
 
   const handleTabChange = (tab: TabType) => {
-    const params: Record<string, string> = { tab };
+    handleTabParamChange(tab);
     if (selectedBrand) {
-      params.brandId = String(selectedBrand);
+      // Preserve brandId in URL when changing tabs
+      setSearchParams(prev => {
+        prev.set('tab', tab);
+        prev.set('brandId', String(selectedBrand));
+        return prev;
+      });
     }
-    setSearchParams(params);
   };
 
   const handleBrandChange = (brandId: number) => {
@@ -177,24 +168,20 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
         </Header>
 
         <Content>
-          <TabContainer>
+          <Tabs>
             <Tab active={activeTab === 'recipes'} onClick={() => handleTabChange('recipes')}>
-              Recipes
-              <TabBadge>{recipesCount}</TabBadge>
+              Recipes <Badge count={recipesCount} showZero />
             </Tab>
             <Tab active={activeTab === 'ingredients'} onClick={() => handleTabChange('ingredients')}>
-              Ingredients
-              <TabBadge>{ingredientsCount}</TabBadge>
+              Ingredients <Badge count={ingredientsCount} showZero />
             </Tab>
             <Tab active={activeTab === 'recipe-categories'} onClick={() => handleTabChange('recipe-categories')}>
-              Recipe Categories
-              <TabBadge>{recipeCategoriesCount}</TabBadge>
+              Recipe Categories <Badge count={recipeCategoriesCount} showZero />
             </Tab>
             <Tab active={activeTab === 'ingredient-categories'} onClick={() => handleTabChange('ingredient-categories')}>
-              Ingredient Categories
-              <TabBadge>{ingredientCategoriesCount}</TabBadge>
+              Ingredient Categories <Badge count={ingredientCategoriesCount} showZero />
             </Tab>
-          </TabContainer>
+          </Tabs>
 
           {(selectedBrand || user?.role !== 'Brand General') && (
             <>

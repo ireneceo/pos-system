@@ -155,8 +155,10 @@ const ModalOverlay = styled.div<{ show?: boolean }>`
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   display: ${props => props.show ? 'flex' : 'none'};
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  overflow-y: auto;
+  padding: 40px 0;
   z-index: 1000;
 `;
 

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
-import { StatsGrid, StatValue, StatLabel } from '../../components/UI';
+import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
+import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
@@ -13,7 +15,7 @@ interface SupportTicket {
   customerId: string;
   customerName: string;
   customerEmail: string;
-  customerRole: 'manager' | 'restaurant' | 'staff';
+  customerRole: string;
   restaurantId?: number;
   restaurantName?: string;
   subject: string;
@@ -132,56 +134,6 @@ const TicketsGrid = styled.div`
   }
 `;
 
-const StatCard = styled.div<{ borderColor?: string }>`
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  border-left: 4px solid ${props => props.borderColor || '#635BFF'};
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition: all 0.2s;
-
-  &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    transform: translateY(-2px);
-  }
-`;
-
-const TabContainer = styled.div`
-  display: flex;
-  gap: 24px;
-  margin-bottom: 24px;
-  border-bottom: 1px solid #E6EBF1;
-  overflow-x: auto;
-`;
-
-const Tab = styled.button<{ active?: boolean }>`
-  padding: 12px 0;
-  font-size: 14px;
-  font-weight: 500;
-  color: ${props => props.active ? '#635BFF' : '#6B7C93'};
-  background: none;
-  border: none;
-  cursor: pointer;
-  position: relative;
-  transition: all 0.15s;
-  white-space: nowrap;
-
-  &:hover {
-    color: #635BFF;
-  }
-
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: ${props => props.active ? '#635BFF' : 'transparent'};
-    transition: all 0.15s;
-  }
-`;
-
 const TicketCard = styled.div`
   background: white;
   border-radius: 12px;
@@ -230,29 +182,26 @@ const CustomerInfo = styled.div`
   gap: 2px;
 `;
 
+const getRoleBadgeColors = (role: string) => {
+  const r = role.toLowerCase();
+  if (r.includes('admin') && !r.includes('restaurant')) return { bg: '#F3E8FF', color: '#7C3AED' };
+  if (r.includes('brand')) return { bg: '#E0F2FE', color: '#0891B2' };
+  if (r.includes('foodcourt')) return { bg: '#E0F2FE', color: '#0891B2' };
+  if (r.includes('restaurant') || r === 'restaurant') return { bg: '#FEF3C7', color: '#D97706' };
+  if (r.includes('owner')) return { bg: '#FFF7ED', color: '#EA580C' };
+  if (r.includes('staff') || r === 'staff') return { bg: '#ECFDF5', color: '#059669' };
+  if (r === 'manager') return { bg: '#E0F2FE', color: '#0891B2' };
+  return { bg: '#F3F4F6', color: '#6B7280' };
+};
+
 const RoleBadge = styled.span<{ role: string }>`
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
-  text-transform: uppercase;
   margin-left: 8px;
-  background: ${props => {
-    switch(props.role) {
-      case 'manager': return '#E0F2FE';
-      case 'restaurant': return '#FEF3C7';
-      case 'staff': return '#ECFDF5';
-      default: return '#F3F4F6';
-    }
-  }};
-  color: ${props => {
-    switch(props.role) {
-      case 'manager': return '#0891B2';
-      case 'restaurant': return '#D97706';
-      case 'staff': return '#059669';
-      default: return '#6B7280';
-    }
-  }};
+  background: ${props => getRoleBadgeColors(props.role).bg};
+  color: ${props => getRoleBadgeColors(props.role).color};
 `;
 
 const TicketBadges = styled.div`
@@ -351,50 +300,6 @@ const MetaLabel = styled.span`
 
 const MetaValue = styled.span`
   color: #374151;
-`;
-
-const ActionButtons = styled.div`
-  display: flex;
-  gap: 8px;
-  margin-top: 16px;
-  flex-wrap: wrap;
-`;
-
-const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid;
-
-  ${props => props.variant === 'primary' ? `
-    background: #635BFF;
-    color: white;
-    border-color: #635BFF;
-
-    &:hover {
-      background: #5A51E6;
-    }
-  ` : props.variant === 'danger' ? `
-    background: transparent;
-    color: #DC2626;
-    border-color: #FCA5A5;
-
-    &:hover {
-      background: #FEE2E2;
-    }
-  ` : `
-    background: transparent;
-    color: #6B7280;
-    border-color: #E6EBF1;
-
-    &:hover {
-      background: #F8FAFC;
-      color: #0A2540;
-    }
-  `}
 `;
 
 // Modal components (using same styles as Admin)
@@ -547,10 +452,9 @@ const SupportTicketsPage: React.FC = () => {
   const { user } = useAuth();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'all' | 'open' | 'in-progress' | 'resolved' | 'closed'>('all');
+  const [activeTab, handleTabChange] = useTabParam<'all' | 'open' | 'in-progress' | 'resolved' | 'closed'>('all');
   const [filterPriority, setFilterPriority] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
-  const [filterRole, setFilterRole] = useState('all');
   const [showCreateTicketModal, setShowCreateTicketModal] = useState(false);
   const [showViewTicketModal, setShowViewTicketModal] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
@@ -589,7 +493,10 @@ const SupportTicketsPage: React.FC = () => {
   useEffect(() => {
     const fetchTickets = async () => {
       try {
-        const response = await fetch('/api/support-tickets');
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch('/api/support-tickets', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         if (response.ok) {
           const result = await response.json();
           const ticketsData = result.data || result;
@@ -611,9 +518,7 @@ const SupportTicketsPage: React.FC = () => {
     const matchesStatus = activeTab === 'all' || ticket.status === activeTab;
     const matchesPriority = filterPriority === 'all' || ticket.priority === filterPriority;
     const matchesCategory = filterCategory === 'all' || ticket.category === filterCategory;
-    const matchesRole = filterRole === 'all' || ticket.customerRole === filterRole;
-    // 모든 티켓 표시 (레스토랑 제한 제거)
-    return matchesSearch && matchesStatus && matchesPriority && matchesCategory && matchesRole;
+    return matchesSearch && matchesStatus && matchesPriority && matchesCategory;
   });
 
   const totalTickets = tickets.length;
@@ -692,10 +597,6 @@ const SupportTicketsPage: React.FC = () => {
   const handleSubmitTicket = async () => {
     try {
       const newSupportTicket = {
-        customerId: user?.id || 'restaurant-user',
-        customerName: user?.name || 'Restaurant User',
-        customerEmail: user?.email || 'user@restaurant.com',
-        customerRole: ['Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager'].includes(user?.role || '') ? 'manager' : user?.role === 'Restaurant Admin' ? 'restaurant' : 'staff',
         restaurantId: currentRestaurantId,
         restaurantName: currentRestaurantName,
         subject: newTicket.subject,
@@ -706,14 +607,17 @@ const SupportTicketsPage: React.FC = () => {
         attachments: newAttachments.length > 0 ? newAttachments : undefined
       };
 
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/support-tickets', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(newSupportTicket)
       });
 
       if (response.ok) {
-        const refreshResponse = await fetch('/api/support-tickets');
+        const refreshResponse = await fetch('/api/support-tickets', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         if (refreshResponse.ok) {
           const result = await refreshResponse.json();
           const ticketsData = result.data || result;
@@ -753,41 +657,41 @@ const SupportTicketsPage: React.FC = () => {
         </Header>
         <Content>
           <StatsGrid>
-            <StatCard borderColor="#635BFF">
+            <StatCard color="#635BFF">
               <StatValue>{totalTickets}</StatValue>
               <StatLabel>Total Tickets</StatLabel>
             </StatCard>
-            <StatCard borderColor="#F59E0B">
+            <StatCard color="#F59E0B">
               <StatValue>{openTickets}</StatValue>
               <StatLabel>Open Tickets</StatLabel>
             </StatCard>
-            <StatCard borderColor="#3B82F6">
+            <StatCard color="#3B82F6">
               <StatValue>{inProgressTickets}</StatValue>
               <StatLabel>In Progress</StatLabel>
             </StatCard>
-            <StatCard borderColor="#10B981">
+            <StatCard color="#10B981">
               <StatValue>{resolvedTickets}</StatValue>
               <StatLabel>Resolved</StatLabel>
             </StatCard>
           </StatsGrid>
 
-          <TabContainer>
-            <Tab active={activeTab === 'all'} onClick={() => setActiveTab('all')}>
-              All ({totalTickets})
+          <Tabs>
+            <Tab active={activeTab === 'all'} onClick={() => handleTabChange('all')}>
+              All <Badge count={totalTickets} showZero />
             </Tab>
-            <Tab active={activeTab === 'open'} onClick={() => setActiveTab('open')}>
-              Open ({openTickets})
+            <Tab active={activeTab === 'open'} onClick={() => handleTabChange('open')}>
+              Open <Badge count={openTickets} showZero />
             </Tab>
-            <Tab active={activeTab === 'in-progress'} onClick={() => setActiveTab('in-progress')}>
-              In Progress ({inProgressTickets})
+            <Tab active={activeTab === 'in-progress'} onClick={() => handleTabChange('in-progress')}>
+              In Progress <Badge count={inProgressTickets} showZero />
             </Tab>
-            <Tab active={activeTab === 'resolved'} onClick={() => setActiveTab('resolved')}>
-              Resolved ({resolvedTickets})
+            <Tab active={activeTab === 'resolved'} onClick={() => handleTabChange('resolved')}>
+              Resolved <Badge count={resolvedTickets} showZero />
             </Tab>
-            <Tab active={activeTab === 'closed'} onClick={() => setActiveTab('closed')}>
-              Closed ({tickets.filter(t => t.status === 'closed').length})
+            <Tab active={activeTab === 'closed'} onClick={() => handleTabChange('closed')}>
+              Closed <Badge count={tickets.filter(t => t.status === 'closed').length} showZero />
             </Tab>
-          </TabContainer>
+          </Tabs>
 
           <FilterBar>
             <SearchInput
@@ -802,11 +706,6 @@ const SupportTicketsPage: React.FC = () => {
               <option value="medium">Medium</option>
               <option value="low">Low</option>
             </FilterSelect>
-            <FilterSelect value={filterRole} onChange={(e) => setFilterRole(e.target.value)}>
-              <option value="all">All Roles</option>
-              <option value="restaurant">Restaurant Admin</option>
-              <option value="staff">Staff</option>
-            </FilterSelect>
             <FilterSelect value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
               <option value="all">All Categories</option>
               <option value="technical">Technical</option>
@@ -819,7 +718,7 @@ const SupportTicketsPage: React.FC = () => {
 
           <TicketsGrid>
             {filteredTickets.map(ticket => (
-              <TicketCard key={ticket.id}>
+              <TicketCard key={ticket.id} onClick={() => handleViewTicket(ticket)} style={{ cursor: 'pointer' }}>
                 <TicketHeader>
                   <TicketInfo>
                     <TicketNumber>{ticket.ticketNumber}</TicketNumber>
@@ -901,9 +800,6 @@ const SupportTicketsPage: React.FC = () => {
                   )}
                 </TicketMeta>
 
-                <ActionButtons>
-                  <ActionButton variant="primary" onClick={() => handleViewTicket(ticket)}>View Details</ActionButton>
-                </ActionButtons>
               </TicketCard>
             ))}
           </TicketsGrid>

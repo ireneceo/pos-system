@@ -206,9 +206,10 @@ router.get('/received', authenticateToken, async (req, res) => {
     }
 
     // Build read status map (notice_id → read_at)
+    // If any recipient row for a notice has read_at, consider it read
     const readMap = {};
     recipientRows.forEach(r => {
-      if (!readMap[r.notice_id] || r.read_at) {
+      if (!readMap[r.notice_id] && r.read_at) {
         readMap[r.notice_id] = r.read_at;
       }
     });
@@ -286,6 +287,28 @@ router.get('/:id', authenticateToken, async (req, res) => {
       ownedLinks.forEach(l => {
         updateConditions.push({ notice_id: notice.id, restaurant_id: l.restaurant_id, read_at: null });
       });
+    }
+
+    // Brand General: mark as read for all brand restaurant recipients
+    if (user.role === 'Brand General') {
+      const brand = await Brand.findOne({ where: { owner_id: user.id } });
+      if (brand) {
+        const brandRestaurants = await Restaurant.findAll({ where: { brand_id: brand.id }, attributes: ['id'] });
+        brandRestaurants.forEach(r => {
+          updateConditions.push({ notice_id: notice.id, restaurant_id: r.id, read_at: null });
+        });
+      }
+    }
+
+    // Foodcourt General: mark as read for all foodcourt restaurant recipients
+    if (user.role === 'Foodcourt General') {
+      const foodcourt = await Foodcourt.findOne({ where: { owner_id: user.id } });
+      if (foodcourt) {
+        const fcRestaurants = await Restaurant.findAll({ where: { foodcourt_id: foodcourt.id }, attributes: ['id'] });
+        fcRestaurants.forEach(r => {
+          updateConditions.push({ notice_id: notice.id, restaurant_id: r.id, read_at: null });
+        });
+      }
     }
 
     if (updateConditions.length > 0) {

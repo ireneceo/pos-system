@@ -1,26 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import styled from 'styled-components';
-import { useSearchParams } from 'react-router-dom';
-import { Container, Header, Title, Content, TabContainer, Tab } from '../../components/UI';
+import { Container, Header, Title, Content } from '../../components/UI';
+import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 import BrandProductsTab from './BrandProductsTab';
 import BrandProductCategoriesTab from './BrandProductCategoriesTab';
 import BrandProductOptionsTab from './BrandProductOptionsTab';
-
-const TabBadge = styled.span`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  margin-left: 8px;
-  background: #F0F4FF;
-  color: #635BFF;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 600;
-`;
 
 interface Brand {
   id: number;
@@ -33,7 +18,7 @@ type TabType = 'products' | 'categories' | 'options';
 
 const BrandProductManagementPage: React.FC = () => {
   const { user } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, handleTabChange] = useTabParam<TabType>('products');
   const [productsCount, setProductsCount] = useState(0);
   const [categoriesCount, setCategoriesCount] = useState(0);
   const [optionsCount, setOptionsCount] = useState(0);
@@ -41,8 +26,6 @@ const BrandProductManagementPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [categoryRefreshKey, setCategoryRefreshKey] = useState(0);
   const [optionRefreshKey, setOptionRefreshKey] = useState(0);
-
-  const activeTab = (searchParams.get('tab') as TabType) || 'products';
 
   useEffect(() => {
     if (user && (user.role === 'Brand General' || user.role === 'Brand Manager')) {
@@ -72,10 +55,6 @@ const BrandProductManagementPage: React.FC = () => {
     }
   };
 
-  const handleTabChange = (tab: TabType) => {
-    setSearchParams({ tab });
-  };
-
   if (loading) {
     return (
       <>
@@ -101,20 +80,20 @@ const BrandProductManagementPage: React.FC = () => {
         </Header>
 
         <Content>
-          <TabContainer>
+          <Tabs>
             <Tab active={activeTab === 'products'} onClick={() => handleTabChange('products')}>
               Products
-              <TabBadge>{productsCount}</TabBadge>
+              <Badge count={productsCount} showZero />
             </Tab>
             <Tab active={activeTab === 'categories'} onClick={() => handleTabChange('categories')}>
               Categories
-              <TabBadge>{categoriesCount}</TabBadge>
+              <Badge count={categoriesCount} showZero />
             </Tab>
             <Tab active={activeTab === 'options'} onClick={() => handleTabChange('options')}>
               Options
-              <TabBadge>{optionsCount}</TabBadge>
+              <Badge count={optionsCount} showZero />
             </Tab>
-          </TabContainer>
+          </Tabs>
 
           <div style={{ display: activeTab === 'products' ? 'block' : 'none' }}>
             <BrandProductsTab

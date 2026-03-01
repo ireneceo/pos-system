@@ -127,9 +127,11 @@ const MainGrid = styled.div`
   grid-template-columns: 2fr 1fr;
   gap: 32px;
   margin-bottom: 32px;
+  align-items: stretch;
 
   @media (max-width: 1200px) {
     grid-template-columns: 1fr;
+    align-items: stretch;
   }
 `;
 
@@ -150,65 +152,96 @@ const ChartContainer = styled.div`
 const AlertsPanel = styled.div`
   background: white;
   border-radius: 16px;
-  padding: 24px;
+  padding: 20px;
   border: 1px solid #E6EBF1;
+  display: flex;
+  flex-direction: column;
 
   h3 {
-    margin: 0 0 20px 0;
+    margin: 0 0 16px 0;
     color: #0A2540;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-shrink: 0;
+  }
+`;
+
+const AlertsList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  overflow-y: auto;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 4px;
   }
 `;
 
 const Alert = styled.div<{ type: 'warning' | 'error' | 'info' }>`
-  padding: 16px;
-  border-radius: 12px;
-  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
   background: ${props => {
     switch(props.type) {
       case 'error': return '#FEF2F2';
-      case 'warning': return '#FFF4E6';
+      case 'warning': return '#FFFBEB';
       case 'info': return '#EFF6FF';
       default: return '#F8FAFC';
     }
   }};
-  border-left: 4px solid ${props => {
+  border: 1px solid ${props => {
     switch(props.type) {
-      case 'error': return '#EF4444';
-      case 'warning': return '#F59E0B';
-      case 'info': return '#3B82F6';
-      default: return '#6B7280';
+      case 'error': return '#FECACA';
+      case 'warning': return '#FDE68A';
+      case 'info': return '#BFDBFE';
+      default: return '#E6EBF1';
     }
   }};
+  flex-shrink: 0;
 
-  .title {
-    font-weight: 600;
-    color: ${props => {
-      switch(props.type) {
-        case 'error': return '#DC2626';
-        case 'warning': return '#D97706';
-        case 'info': return '#2563EB';
-        default: return '#374151';
-      }
-    }};
-    margin-bottom: 4px;
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   }
+`;
 
-  .description {
-    font-size: 14px;
-    color: ${props => {
-      switch(props.type) {
-        case 'error': return '#991B1B';
-        case 'warning': return '#92400E';
-        case 'info': return '#1D4ED8';
-        default: return '#6B7280';
-      }
-    }};
-  }
+
+const AlertContent = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const AlertTitle = styled.div<{ type: 'warning' | 'error' | 'info' }>`
+  font-size: 13px;
+  font-weight: 600;
+  color: ${props => {
+    switch(props.type) {
+      case 'error': return '#DC2626';
+      case 'warning': return '#D97706';
+      case 'info': return '#2563EB';
+      default: return '#374151';
+    }
+  }};
+`;
+
+const AlertDescription = styled.div`
+  font-size: 12px;
+  color: #6B7280;
+  margin-top: 2px;
 `;
 
 const TableContainer = styled.div`
@@ -795,89 +828,64 @@ const RestaurantDashboard: React.FC = () => {
             <AlertsPanel>
               <h3>Notifications</h3>
 
-              {(today.pendingOrders || 0) > 0 && (
-                <Alert
-                  type="warning"
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => navigate('/pos/live-orders')}
-                >
-                  <div className="title">Pending Orders</div>
-                  <div className="description">
-                    {today.pendingOrders || 0} order(s) waiting to be processed
+              <AlertsList>
+                {(today.pendingOrders || 0) > 0 && (
+                  <Alert type="warning" onClick={() => navigate(`/restaurant/${restaurantId}/live-orders`)}>
+                    <AlertContent>
+                      <AlertTitle type="warning">Pending Orders</AlertTitle>
+                      <AlertDescription>{today.pendingOrders} order(s) waiting to be processed</AlertDescription>
+                    </AlertContent>
+                  </Alert>
+                )}
+
+                {(billing.unpaidInvoices || 0) > 0 && (
+                  <Alert type="warning" onClick={() => navigate(`/restaurant/${restaurantId}/invoices`)}>
+                    <AlertContent>
+                      <AlertTitle type="warning">Unpaid Invoices</AlertTitle>
+                      <AlertDescription>{billing.unpaidInvoices} invoice(s) • {formatCurrency(billing.totalUnpaidAmount || 0, selectedCurrency)} due</AlertDescription>
+                    </AlertContent>
+                  </Alert>
+                )}
+
+                {badgeCounts.notices > 0 && (
+                  <Alert type="info" onClick={() => navigate(`/restaurant/${restaurantId}/notices`)}>
+                    <AlertContent>
+                      <AlertTitle type="info">Unread Notices</AlertTitle>
+                      <AlertDescription>{badgeCounts.notices} unread notice(s)</AlertDescription>
+                    </AlertContent>
+                  </Alert>
+                )}
+
+                {badgeCounts.systemInquiry > 0 && (
+                  <Alert type="info" onClick={() => navigate(`/restaurant/${restaurantId}/support`)}>
+                    <AlertContent>
+                      <AlertTitle type="info">System Inquiry Updates</AlertTitle>
+                      <AlertDescription>{badgeCounts.systemInquiry} inquiry(s) with new replies</AlertDescription>
+                    </AlertContent>
+                  </Alert>
+                )}
+
+                {badgeCounts.operationInquiry > 0 && (
+                  <Alert type="info" onClick={() => navigate(`/restaurant/${restaurantId}/operation-inquiry`)}>
+                    <AlertContent>
+                      <AlertTitle type="info">Operation Inquiry Updates</AlertTitle>
+                      <AlertDescription>{badgeCounts.operationInquiry} inquiry(s) with responses</AlertDescription>
+                    </AlertContent>
+                  </Alert>
+                )}
+
+                {(today.pendingOrders || 0) === 0 && (billing.unpaidInvoices || 0) === 0 && badgeCounts.notices === 0 && badgeCounts.systemInquiry === 0 && badgeCounts.operationInquiry === 0 && (
+                  <div style={{
+                    padding: '16px',
+                    textAlign: 'center',
+                    color: '#9CA3AF',
+                    fontSize: '13px',
+                    fontStyle: 'italic'
+                  }}>
+                    No new notifications
                   </div>
-                </Alert>
-              )}
-
-              {(billing.unpaidInvoices || 0) > 0 && (
-                <Alert
-                  type="warning"
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => navigate('/pos/invoices')}
-                >
-                  <div className="title">Unpaid Invoices</div>
-                  <div className="description">
-                    {billing.unpaidInvoices || 0} invoice(s) • {formatCurrency(billing.totalUnpaidAmount || 0, selectedCurrency)} due
-                  </div>
-                </Alert>
-              )}
-
-              {(today.orders || 0) > 0 && (
-                <Alert
-                  type="info"
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => navigate('/pos/sales')}
-                >
-                  <div className="title">Today's Performance</div>
-                  <div className="description">
-                    {formatCurrency(today.revenue || 0, selectedCurrency)} earned from {today.orders || 0} order(s)
-                  </div>
-                </Alert>
-              )}
-
-              {badgeCounts.notices > 0 && (
-                <Alert
-                  type="info"
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => navigate(`/restaurant/${restaurantId}/notices`)}
-                >
-                  <div className="title">Unread Notices</div>
-                  <div className="description">{badgeCounts.notices} unread notice(s)</div>
-                </Alert>
-              )}
-
-              {badgeCounts.systemInquiry > 0 && (
-                <Alert
-                  type="info"
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => navigate(`/restaurant/${restaurantId}/support`)}
-                >
-                  <div className="title">System Inquiry Updates</div>
-                  <div className="description">{badgeCounts.systemInquiry} inquiry(s) with new replies</div>
-                </Alert>
-              )}
-
-              {badgeCounts.operationInquiry > 0 && (
-                <Alert
-                  type="info"
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => navigate(`/restaurant/${restaurantId}/operation-inquiry`)}
-                >
-                  <div className="title">Operation Inquiry Updates</div>
-                  <div className="description">{badgeCounts.operationInquiry} inquiry(s) with responses</div>
-                </Alert>
-              )}
-
-              {(today.pendingOrders || 0) === 0 && (billing.unpaidInvoices || 0) === 0 && (today.orders || 0) === 0 && badgeCounts.notices === 0 && badgeCounts.systemInquiry === 0 && badgeCounts.operationInquiry === 0 && (
-                <div style={{
-                  padding: '20px',
-                  textAlign: 'center',
-                  color: '#6B7280',
-                  fontSize: '14px',
-                  fontStyle: 'italic'
-                }}>
-                  No new activities today. All systems running smoothly.
-                </div>
-              )}
+                )}
+              </AlertsList>
             </AlertsPanel>
           </MainGrid>
 

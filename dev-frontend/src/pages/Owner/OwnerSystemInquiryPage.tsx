@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import CommentSection from '../../components/Common/CommentSection';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
+import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 
 interface SupportTicket {
   id: string;
@@ -102,37 +103,6 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
       border-color: #CBD5E1;
     }
   `}
-`;
-
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-  margin-bottom: 32px;
-`;
-
-const StatCard = styled.div<{ color?: string }>`
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  border: 1px solid #E6EBF1;
-  border-left: 4px solid ${props => props.color || '#635BFF'};
-  transition: all 0.2s;
-  &:hover { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); }
-`;
-
-const StatValue = styled.div`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin-bottom: 4px;
-`;
-
-const StatLabel = styled.div`
-  font-size: 13px;
-  color: #6B7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 `;
 
 const FiltersContainer = styled.div`
@@ -538,18 +508,15 @@ const OwnerSystemInquiryPage: React.FC = () => {
 
   const fetchTickets = async () => {
     try {
-      const response = await fetch('/api/support-tickets');
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/support-tickets', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (response.ok) {
         const result = await response.json();
-        const allTickets = result.data || result;
-        // Filter to only owned restaurants' tickets + tickets created by this owner
-        const ownedIds = ownedRestaurants.map(r => r.id);
-        const myTickets = allTickets.filter((t: SupportTicket) =>
-          (t.restaurantId && ownedIds.includes(t.restaurantId)) ||
-          t.customerId === String(user?.id)
-        );
-        setTickets(myTickets);
-        fetchUnreadCounts(myTickets);
+        const ticketsData = result.data || result;
+        setTickets(ticketsData);
+        fetchUnreadCounts(ticketsData);
       }
     } catch (error) {
       console.error('Error fetching tickets:', error);
@@ -604,10 +571,6 @@ const OwnerSystemInquiryPage: React.FC = () => {
 
     try {
       const ticket = {
-        customerId: user?.id || '',
-        customerName: user?.name || 'Restaurant Owner',
-        customerEmail: user?.email || '',
-        customerRole: 'manager',
         restaurantId: parseInt(newTicket.restaurantId),
         restaurantName: selectedRestaurant?.name || '',
         subject: newTicket.subject,
@@ -617,9 +580,10 @@ const OwnerSystemInquiryPage: React.FC = () => {
         category: newTicket.category
       };
 
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/support-tickets', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(ticket)
       });
 
@@ -636,9 +600,10 @@ const OwnerSystemInquiryPage: React.FC = () => {
   const handleStatusChange = async () => {
     if (!selectedTicket) return;
     try {
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/support-tickets/${selectedTicket.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ status: detailStatus })
       });
       if (response.ok) {
@@ -656,7 +621,6 @@ const OwnerSystemInquiryPage: React.FC = () => {
         <Header>
           <Title>System Inquiry</Title>
           <ActionSection>
-            <Button variant="secondary" onClick={fetchTickets}>Refresh</Button>
             <Button variant="primary" onClick={() => setShowCreateModal(true)}>New Inquiry</Button>
           </ActionSection>
         </Header>

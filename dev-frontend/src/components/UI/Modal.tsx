@@ -11,9 +11,11 @@ export const ModalOverlay = styled.div`
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   z-index: 1000;
+  overflow-y: auto;
+  padding: 40px 0;
 `;
 
 // 모달 컨텐츠
@@ -23,8 +25,7 @@ export const ModalContent = styled.div`
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   max-width: 600px;
   width: 90%;
-  max-height: 90vh;
-  overflow: auto;
+  flex-shrink: 0;
 `;
 
 // 모달 헤더
@@ -108,9 +109,9 @@ export const FormInput = styled.input`
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  padding: 10px 12px;
+  padding: 8px 12px;
   border: 1px solid #E6EBF1;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 14px;
   transition: all 0.15s;
 
@@ -119,6 +120,16 @@ export const FormInput = styled.input`
     border-color: #635BFF;
     box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
   }
+
+  &:disabled {
+    background: #F9FAFB;
+    color: #6B7280;
+    cursor: not-allowed;
+  }
+
+  &::placeholder {
+    color: #9CA3AF;
+  }
 `;
 
 // 폼 셀렉트
@@ -126,9 +137,9 @@ export const FormSelect = styled.select`
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  padding: 10px 12px;
+  padding: 8px 12px;
   border: 1px solid #E6EBF1;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 14px;
   background: white;
   transition: all 0.15s;
@@ -139,6 +150,12 @@ export const FormSelect = styled.select`
     border-color: #635BFF;
     box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
   }
+
+  &:disabled {
+    background: #F9FAFB;
+    color: #6B7280;
+    cursor: not-allowed;
+  }
 `;
 
 // 폼 텍스트에어리어
@@ -146,9 +163,9 @@ export const FormTextArea = styled.textarea`
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  padding: 10px 12px;
+  padding: 8px 12px;
   border: 1px solid #E6EBF1;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 14px;
   min-height: 100px;
   resize: vertical;
@@ -158,6 +175,10 @@ export const FormTextArea = styled.textarea`
     outline: none;
     border-color: #635BFF;
     box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+
+  &::placeholder {
+    color: #9CA3AF;
   }
 `;
 

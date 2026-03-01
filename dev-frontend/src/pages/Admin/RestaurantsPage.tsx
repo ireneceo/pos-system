@@ -69,6 +69,7 @@ interface Restaurant {
   subscriptionEnd?: string;
   brand_id?: number;
   foodcourt_id?: number;
+  currency?: string;
   discount_type?: 'none' | 'percentage' | 'fixed';
   discount_value?: number;
   discount_reason?: string;
@@ -1781,7 +1782,7 @@ const RestaurantsPage: React.FC = () => {
             <RestaurantCard key={restaurant.id}>
               <RestaurantHeader>
                 <RestaurantInfo>
-                  <RestaurantName>{restaurant.name}</RestaurantName>
+                  <RestaurantName>{restaurant.name} {restaurant.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{restaurant.currency}</span>}</RestaurantName>
                   <RestaurantMeta>
                     Admin: {restaurant.admin ? `${restaurant.admin.name} (${restaurant.admin.email})` : 'No Admin Assigned'}
                   </RestaurantMeta>

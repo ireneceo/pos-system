@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { StatsGrid, StatCard, StatValue, StatLabel, StatTrend } from '../../components/UI';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
+import { Tabs, Tab } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -60,38 +62,6 @@ const Subtitle = styled.p`
 `;
 
 
-const TabContainer = styled.div`
-  background: white;
-  border-radius: 16px 16px 0 0;
-  border: 1px solid #E6EBF1;
-  border-bottom: none;
-  margin-bottom: 0;
-`;
-
-const TabList = styled.div`
-  display: flex;
-  gap: 0;
-  padding: 0 24px;
-`;
-
-const Tab = styled.button<{ active?: boolean }>`
-  padding: 16px 24px;
-  border: none;
-  background: ${props => props.active ? '#635BFF' : 'transparent'};
-  color: ${props => props.active ? 'white' : '#6B7280'};
-  border-radius: 12px 12px 0 0;
-  font-weight: ${props => props.active ? '600' : '500'};
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-  position: relative;
-  top: 1px;
-
-  &:hover {
-    background: ${props => props.active ? '#635BFF' : '#F3F4F6'};
-    color: ${props => props.active ? 'white' : '#374151'};
-  }
-`;
 
 const ContentSection = styled.div`
   background: white;
@@ -316,7 +286,7 @@ interface SupportStats {
 }
 
 const FranchiseSupport: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useTabParam('overview');
   const [franchises, setFranchises] = useState<FranchiseData[]>([]);
   const [stats, setStats] = useState<SupportStats>({
     totalFranchises: 0,
@@ -454,8 +424,7 @@ const FranchiseSupport: React.FC = () => {
             </ActionGrid>
           </QuickActions>
 
-          <TabContainer>
-            <TabList>
+          <Tabs>
               <Tab
                 active={activeTab === 'overview'}
                 onClick={() => setActiveTab('overview')}
@@ -474,8 +443,7 @@ Franchise Status
               >
 Training Management
               </Tab>
-            </TabList>
-          </TabContainer>
+          </Tabs>
 
           {activeTab === 'overview' && (
             <ContentSection>

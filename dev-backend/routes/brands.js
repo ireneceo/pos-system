@@ -4,6 +4,7 @@ const { Brand, Restaurant, User, EntityPlan, EntityPlanRestaurant, EntityPlanPri
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
+const bcrypt = require('bcrypt');
 
 // ============================================
 // Company Info APIs (MUST be before /:id routes)
@@ -681,6 +682,11 @@ router.post('/:id/plans', authenticateToken, async (req, res) => {
 
     if (!name) return res.status(400).json({ success: false, message: 'Plan name is required' });
 
+    // Validate billing_day: -1 (end of month), 1-28, or null/empty
+    if (billing_day != null && billing_day !== '' && billing_day !== -1 && (billing_day < 1 || billing_day > 28)) {
+      return res.status(400).json({ success: false, message: 'Billing day must be 1-28 or -1 (end of month)' });
+    }
+
     // Validate plan currency against system supported currencies
     const planCurrency = currency || access.brand.currency || 'MYR';
     const SystemSettings = require('../models/SystemSettings');
@@ -698,7 +704,7 @@ router.post('/:id/plans', authenticateToken, async (req, res) => {
       charge_type: charge_type || 'fixed',
       percentage_value: charge_type === 'percentage' ? (percentage_value || 0) : 0,
       revenue_base: charge_type === 'percentage' ? (revenue_base || 'previous_month') : 'previous_month',
-      billing_day: billing_day || null,
+      billing_day: billing_day != null && billing_day !== '' ? parseInt(billing_day) : null,
       auto_generate: auto_generate !== undefined ? auto_generate : true,
       currency: planCurrency,
       category: category || 'custom',
@@ -875,9 +881,10 @@ router.post('/:id/plans/:planId/restaurants', authenticateToken, async (req, res
     const access = await verifyBrandAccess(req, id);
     if (access.error) return res.status(access.status).json({ success: false, message: access.error });
 
-    // Verify plan exists and belongs to this brand
+    // Verify plan exists and belongs to this brand (include prices for currency check)
     const plan = await EntityPlan.findOne({
-      where: { id: planId, entity_type: 'brand', entity_id: id }
+      where: { id: planId, entity_type: 'brand', entity_id: id },
+      include: [{ model: EntityPlanPrice, as: 'prices' }]
     });
     if (!plan) return res.status(404).json({ success: false, message: 'Plan not found' });
 
@@ -886,10 +893,10 @@ router.post('/:id/plans/:planId/restaurants', authenticateToken, async (req, res
       return res.status(400).json({ success: false, message: 'restaurant_ids array is required' });
     }
 
-    // Verify all restaurants belong to this brand
+    // Verify all restaurants belong to this brand (include currency for validation)
     const restaurants = await Restaurant.findAll({
       where: { id: restaurant_ids, brand_id: id },
-      attributes: ['id', 'name']
+      attributes: ['id', 'name', 'currency']
     });
 
     if (restaurants.length !== restaurant_ids.length) {
@@ -900,10 +907,26 @@ router.post('/:id/plans/:planId/restaurants', authenticateToken, async (req, res
     }
 
     const results = [];
-    for (const restaurantId of restaurant_ids) {
+    const currency_warnings = [];
+
+    for (const restaurant of restaurants) {
       try {
+        // Check currency compatibility for fixed plans
+        const restCurrency = restaurant.currency || 'RM';
+        if (plan.charge_type === 'fixed') {
+          const priceRecord = (plan.prices || []).find(p => p.currency === restCurrency);
+          if (!priceRecord || parseFloat(priceRecord.monthly_price || 0) <= 0) {
+            currency_warnings.push({
+              restaurant_id: restaurant.id,
+              restaurant_name: restaurant.name,
+              currency: restCurrency,
+              message: `Plan "${plan.name}" has no pricing for ${restCurrency}. Please add pricing for this currency before generating invoices.`
+            });
+          }
+        }
+
         const [assignment, created] = await EntityPlanRestaurant.findOrCreate({
-          where: { entity_plan_id: planId, restaurant_id: restaurantId },
+          where: { entity_plan_id: planId, restaurant_id: restaurant.id },
           defaults: { activation_date: new Date(), is_active: true }
         });
 
@@ -911,13 +934,15 @@ router.post('/:id/plans/:planId/restaurants', authenticateToken, async (req, res
           await assignment.update({ is_active: true, activation_date: new Date() });
         }
 
-        results.push({ restaurant_id: restaurantId, status: created ? 'assigned' : 'reactivated' });
+        results.push({ restaurant_id: restaurant.id, status: created ? 'assigned' : 'reactivated' });
       } catch (e) {
-        results.push({ restaurant_id: restaurantId, status: 'error', message: e.message });
+        results.push({ restaurant_id: restaurant.id, status: 'error', message: e.message });
       }
     }
 
-    res.json({ success: true, data: results });
+    const response = { success: true, data: results };
+    if (currency_warnings.length > 0) response.currency_warnings = currency_warnings;
+    res.json(response);
   } catch (error) {
     console.error('Error assigning restaurants to plan:', error);
     res.status(500).json({ success: false, message: 'Failed to assign restaurants' });
@@ -1277,7 +1302,7 @@ router.post('/:id/generate-invoices', authenticateToken, async (req, res) => {
         model: EntityPlanRestaurant,
         as: 'planRestaurants',
         where: { is_active: true },
-        include: [{ model: Restaurant, as: 'restaurant', attributes: ['id', 'name', 'email'] }]
+        include: [{ model: Restaurant, as: 'restaurant', attributes: ['id', 'name', 'email', 'currency'] }]
       }, {
         model: EntityPlanPrice,
         as: 'prices'
@@ -1307,22 +1332,37 @@ router.post('/:id/generate-invoices', authenticateToken, async (req, res) => {
     const brandPaymentSettings = access.brand.payment_settings || {};
 
     for (const plan of plans) {
-      const planCurrency = plan.currency || 'MYR';
-      if (!hasPaymentMethodForCurrency(brandPaymentSettings, planCurrency)) {
-        for (const pr of plan.planRestaurants) {
-          skipped++;
-          results.push({
-            restaurant: pr.restaurant?.name || 'Unknown',
-            status: 'skipped',
-            reason: `No payment methods configured for ${planCurrency}. Please set up payment settings first.`
-          });
-        }
-        continue;
-      }
-
       for (const pr of plan.planRestaurants) {
         const restaurant = pr.restaurant;
         if (!restaurant) continue;
+
+        // Use restaurant's base currency (design rule: invoice in recipient's currency)
+        const invoiceCurrency = restaurant.currency || 'RM';
+
+        // Validate issuer has payment methods for this restaurant's currency
+        if (!hasPaymentMethodForCurrency(brandPaymentSettings, invoiceCurrency)) {
+          skipped++;
+          results.push({
+            restaurant: restaurant.name,
+            status: 'skipped',
+            reason: `No payment methods configured for ${invoiceCurrency}. Please set up payment settings first.`
+          });
+          continue;
+        }
+
+        // For fixed plans, verify pricing exists for restaurant's currency
+        if (plan.charge_type === 'fixed') {
+          const priceRecord = (plan.prices || []).find(p => p.currency === invoiceCurrency);
+          if (!priceRecord || parseFloat(priceRecord.monthly_price || 0) <= 0) {
+            skipped++;
+            results.push({
+              restaurant: restaurant.name,
+              status: 'skipped',
+              reason: `No pricing set for ${invoiceCurrency} in plan "${plan.name}". Please add pricing for this currency.`
+            });
+            continue;
+          }
+        }
 
         // Check for duplicate
         const existing = await Invoice.findOne({
@@ -1354,8 +1394,8 @@ router.post('/:id/generate-invoices', authenticateToken, async (req, res) => {
         });
         const revenue = parseFloat(revenueResult?.revenue || 0);
 
-        // Calculate charges
-        const charges = calculatePlanCharges(plan, revenue);
+        // Calculate charges using restaurant's currency
+        const charges = calculatePlanCharges(plan, revenue, 0, invoiceCurrency);
 
         if (charges.totalAmount <= 0) {
           skipped++;
@@ -1377,7 +1417,7 @@ router.post('/:id/generate-invoices', authenticateToken, async (req, res) => {
           billing_period_end: periodEnd,
           due_date: dueDate,
           total_amount: charges.totalAmount,
-          currency: plan.currency || 'MYR',
+          currency: invoiceCurrency,
           status: 'pending_payment',
           notes: `Auto-generated invoice for ${plan.name}. Billing period: ${periodStart.toISOString().split('T')[0]} ~ ${periodEnd.toISOString().split('T')[0]}`,
           issued_by: req.user.id,
@@ -1432,7 +1472,7 @@ router.get('/:id/subscriptions', authenticateToken, async (req, res) => {
     // Get all restaurants with their plan assignments
     const restaurants = await Restaurant.findAll({
       where: { brand_id: id },
-      attributes: ['id', 'name', 'email', 'status', 'phone', 'address'],
+      attributes: ['id', 'name', 'email', 'status', 'phone', 'address', 'currency'],
       include: [{
         model: EntityPlanRestaurant,
         as: 'entityPlanRestaurants',
@@ -1517,6 +1557,7 @@ router.get('/:id/subscriptions', authenticateToken, async (req, res) => {
         restaurant_name: r.name,
         restaurant_email: r.email,
         restaurant_status: r.status,
+        restaurant_currency: r.currency || 'RM',
         plan: activePlan ? {
           id: activePlan.plan.id,
           name: activePlan.plan.name,
@@ -1657,5 +1698,293 @@ async function generateBrandInvoiceNumber(brandId) {
 
   return `${prefix}${String(nextNumber).padStart(3, '0')}`;
 }
+
+// ============================================
+// Brand Manager (Staff) APIs
+// ============================================
+
+// Get all managers for a brand
+router.get('/:id/staff', authenticateToken, async (req, res) => {
+  try {
+    const brandId = req.params.id;
+
+    // Verify access: System Admin or Brand General/Manager of this brand
+    if (req.user.role === 'System Admin') {
+      // OK
+    } else if ((req.user.role === 'Brand General' || req.user.role === 'Brand Manager') && req.user.brand_id === parseInt(brandId)) {
+      // OK
+    } else {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const managers = await User.findAll({
+      where: {
+        brand_id: brandId,
+        role: 'Brand Manager'
+      },
+      attributes: { exclude: ['password'] },
+      order: [['full_name', 'ASC']]
+    });
+
+    res.json({ success: true, data: managers });
+  } catch (error) {
+    console.error('Error fetching brand managers:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch managers' });
+  }
+});
+
+// Create a brand manager
+router.post('/:id/staff', authenticateToken, async (req, res) => {
+  try {
+    const brandId = req.params.id;
+
+    // Only Brand General or System Admin can create managers
+    if (req.user.role === 'System Admin') {
+      // OK
+    } else if (req.user.role === 'Brand General' && req.user.brand_id === parseInt(brandId)) {
+      // OK
+    } else {
+      return res.status(403).json({ success: false, message: 'Access denied. Only Brand General can create managers.' });
+    }
+
+    // Verify brand exists
+    const brand = await Brand.findByPk(brandId);
+    if (!brand) {
+      return res.status(404).json({ success: false, message: 'Brand not found' });
+    }
+
+    const { username, email, full_name, phone, permissions } = req.body;
+
+    // Validate required fields
+    if (!username || !email || !full_name) {
+      return res.status(400).json({ success: false, message: 'Username, email, and full name are required' });
+    }
+
+    // Check duplicate email/username
+    const existingUser = await User.findOne({
+      where: {
+        [Op.or]: [{ email }, { username }]
+      }
+    });
+
+    if (existingUser) {
+      let errorDetail = '';
+      if (existingUser.email === email && existingUser.username === username) {
+        errorDetail = `Both email "${email}" and username "${username}" are already in use`;
+      } else if (existingUser.email === email) {
+        errorDetail = `Email "${email}" is already in use`;
+      } else {
+        errorDetail = `Username "${username}" is already in use`;
+      }
+      return res.status(400).json({ success: false, message: errorDetail });
+    }
+
+    // Auto-generate password (12 chars)
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+    let generatedPassword = '';
+    generatedPassword += 'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random() * 24)];
+    generatedPassword += 'abcdefghjkmnpqrstuvwxyz'[Math.floor(Math.random() * 23)];
+    generatedPassword += '23456789'[Math.floor(Math.random() * 8)];
+    generatedPassword += '!@#$%'[Math.floor(Math.random() * 5)];
+    for (let i = 0; i < 8; i++) {
+      generatedPassword += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    generatedPassword = generatedPassword.split('').sort(() => Math.random() - 0.5).join('');
+
+    const hashedPassword = await bcrypt.hash(generatedPassword, 10);
+
+    const manager = await User.create({
+      username,
+      email,
+      password: hashedPassword,
+      role: 'Brand Manager',
+      full_name,
+      phone: phone || null,
+      brand_id: parseInt(brandId),
+      permissions: permissions || '[]'
+    });
+
+    const { password: _, ...managerData } = manager.toJSON();
+    res.status(201).json({
+      success: true,
+      data: managerData,
+      generatedPassword
+    });
+  } catch (error) {
+    console.error('Error creating brand manager:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update a brand manager
+router.put('/:id/staff/:userId', authenticateToken, async (req, res) => {
+  try {
+    const brandId = req.params.id;
+    const userId = req.params.userId;
+
+    // Only Brand General or System Admin
+    if (req.user.role === 'System Admin') {
+      // OK
+    } else if (req.user.role === 'Brand General' && req.user.brand_id === parseInt(brandId)) {
+      // OK
+    } else {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const manager = await User.findOne({
+      where: { id: userId, brand_id: brandId, role: 'Brand Manager' }
+    });
+
+    if (!manager) {
+      return res.status(404).json({ success: false, message: 'Manager not found in this brand' });
+    }
+
+    const { full_name, email, phone, username } = req.body;
+    const updateData = {};
+
+    if (full_name) updateData.full_name = full_name;
+    if (phone !== undefined) updateData.phone = phone;
+
+    // Check email uniqueness if changing
+    if (email && email !== manager.email) {
+      const emailExists = await User.findOne({ where: { email, id: { [Op.ne]: userId } } });
+      if (emailExists) {
+        return res.status(400).json({ success: false, message: `Email "${email}" is already in use` });
+      }
+      updateData.email = email;
+    }
+
+    // Check username uniqueness if changing
+    if (username && username !== manager.username) {
+      const usernameExists = await User.findOne({ where: { username, id: { [Op.ne]: userId } } });
+      if (usernameExists) {
+        return res.status(400).json({ success: false, message: `Username "${username}" is already in use` });
+      }
+      updateData.username = username;
+    }
+
+    await manager.update(updateData);
+
+    const { password: _, ...managerData } = manager.toJSON();
+    res.json({ success: true, data: managerData });
+  } catch (error) {
+    console.error('Error updating brand manager:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Delete a brand manager
+router.delete('/:id/staff/:userId', authenticateToken, async (req, res) => {
+  try {
+    const brandId = req.params.id;
+    const userId = req.params.userId;
+
+    // Only Brand General or System Admin
+    if (req.user.role === 'System Admin') {
+      // OK
+    } else if (req.user.role === 'Brand General' && req.user.brand_id === parseInt(brandId)) {
+      // OK
+    } else {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const manager = await User.findOne({
+      where: { id: userId, brand_id: brandId, role: 'Brand Manager' }
+    });
+
+    if (!manager) {
+      return res.status(404).json({ success: false, message: 'Manager not found in this brand' });
+    }
+
+    await manager.destroy();
+    res.json({ success: true, message: 'Manager deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting brand manager:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update brand manager permissions
+router.put('/:id/staff/:userId/permissions', authenticateToken, async (req, res) => {
+  try {
+    const brandId = req.params.id;
+    const userId = req.params.userId;
+
+    // Only Brand General or System Admin
+    if (req.user.role === 'System Admin') {
+      // OK
+    } else if (req.user.role === 'Brand General' && req.user.brand_id === parseInt(brandId)) {
+      // OK
+    } else {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const manager = await User.findOne({
+      where: { id: userId, brand_id: brandId, role: 'Brand Manager' }
+    });
+
+    if (!manager) {
+      return res.status(404).json({ success: false, message: 'Manager not found in this brand' });
+    }
+
+    const { permissions } = req.body;
+    if (!Array.isArray(permissions)) {
+      return res.status(400).json({ success: false, message: 'Permissions must be an array' });
+    }
+
+    await manager.update({ permissions: JSON.stringify(permissions) });
+
+    const { password: _, ...managerData } = manager.toJSON();
+    res.json({ success: true, data: managerData });
+  } catch (error) {
+    console.error('Error updating brand manager permissions:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Reset brand manager password
+router.put('/:id/staff/:userId/reset-password', authenticateToken, async (req, res) => {
+  try {
+    const brandId = req.params.id;
+    const userId = req.params.userId;
+
+    // Only Brand General or System Admin
+    if (req.user.role === 'System Admin') {
+      // OK
+    } else if (req.user.role === 'Brand General' && req.user.brand_id === parseInt(brandId)) {
+      // OK
+    } else {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const manager = await User.findOne({
+      where: { id: userId, brand_id: brandId, role: 'Brand Manager' }
+    });
+
+    if (!manager) {
+      return res.status(404).json({ success: false, message: 'Manager not found in this brand' });
+    }
+
+    // Generate new password
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+    let newPassword = '';
+    newPassword += 'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random() * 24)];
+    newPassword += 'abcdefghjkmnpqrstuvwxyz'[Math.floor(Math.random() * 23)];
+    newPassword += '23456789'[Math.floor(Math.random() * 8)];
+    newPassword += '!@#$%'[Math.floor(Math.random() * 5)];
+    for (let i = 0; i < 8; i++) {
+      newPassword += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    newPassword = newPassword.split('').sort(() => Math.random() - 0.5).join('');
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await manager.update({ password: hashedPassword });
+
+    res.json({ success: true, generatedPassword: newPassword });
+  } catch (error) {
+    console.error('Error resetting brand manager password:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 module.exports = router;

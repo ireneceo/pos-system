@@ -508,7 +508,11 @@ router.get('/', authenticateToken, async (req, res) => {
         paidDate: invoice.paid_at,
         status: invoice.status || 'pending_payment',
         currency: invoice.currency || 'MYR',
-        amount: parseFloat(invoice.total_amount) - parseFloat(invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0),
+        amount: invoice.subtotal
+          ? parseFloat(invoice.subtotal)
+          : parseFloat(invoice.discount_amount || 0) > 0
+            ? parseFloat(invoice.total_amount) + parseFloat(invoice.discount_amount)
+            : parseFloat(invoice.total_amount) - parseFloat(invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0),
         tax: parseFloat(invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0),
         total: parseFloat(invoice.total_amount),
         items: (invoice.items && invoice.items.length > 0) ? invoice.items.map(item => {
@@ -528,8 +532,8 @@ router.get('/', authenticateToken, async (req, res) => {
           return {
             description: fullDescription,
             quantity: 1,
-            unitPrice: parseFloat(item.calculated_amount),
-            total: parseFloat(item.total_amount)
+            unitPrice: parseFloat(item.fixed_amount || item.calculated_amount || 0),
+            total: parseFloat(item.fixed_amount || item.calculated_amount || 0)
           };
         }) : [{
           // Fallback for invoices without items: create item from invoice data
@@ -564,7 +568,11 @@ router.get('/', authenticateToken, async (req, res) => {
         discountValue: parseFloat(invoice.discount_value) || 0,
         discountAmount: parseFloat(invoice.discount_amount) || 0,
         discountReason: invoice.discount_reason || null,
-        subtotalBeforeDiscount: parseFloat(invoice.subtotal) || null
+        subtotalBeforeDiscount: invoice.subtotal
+          ? parseFloat(invoice.subtotal)
+          : parseFloat(invoice.discount_amount || 0) > 0
+            ? parseFloat(invoice.total_amount) + parseFloat(invoice.discount_amount)
+            : null
       };
     });
 
@@ -758,9 +766,10 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
       if (invoice.items && invoice.items.length > 0) {
         invoiceItems = invoice.items.map(item => ({
           description: item.description,
-          quantity: item.quantity,
-          unitPrice: parseFloat(item.unit_price),
-          total: parseFloat(item.total)
+          quantity: item.quantity || 1,
+          unitPrice: parseFloat(item.fixed_amount || item.calculated_amount || 0),
+          taxAmount: parseFloat(item.tax_amount || 0),
+          total: parseFloat(item.fixed_amount || item.calculated_amount || 0)
         }));
       } else {
         // Fallback for automatic invoices
@@ -768,6 +777,7 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
           description: `${invoice.restaurant?.plan_type || invoice.plan_type || 'Subscription'} - Monthly`,
           quantity: 1,
           unitPrice: parseFloat(invoice.subtotal || invoice.total_amount),
+          taxAmount: 0,
           total: parseFloat(invoice.subtotal || invoice.total_amount)
         }];
       }
@@ -798,8 +808,12 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
         paidDate: invoice.paid_at?.toISOString().split('T')[0] || null,
         status: invoice.status,
         currency: invoice.currency || 'MYR',
-        amount: parseFloat(invoice.subtotal || 0),
-        tax: parseFloat(invoice.tax_amount || 0),
+        amount: invoice.subtotal
+          ? parseFloat(invoice.subtotal)
+          : parseFloat(invoice.discount_amount || 0) > 0
+            ? parseFloat(invoice.total_amount) + parseFloat(invoice.discount_amount)
+            : parseFloat(invoice.total_amount),
+        tax: invoiceItems?.reduce((sum, item) => sum + parseFloat(item.taxAmount || 0), 0) || 0,
         total: parseFloat(invoice.total_amount),
         billingPeriod: invoice.billing_period_start
           ? `${invoice.billing_period_start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
@@ -816,7 +830,11 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
         discountValue: parseFloat(invoice.discount_value) || 0,
         discountAmount: parseFloat(invoice.discount_amount) || 0,
         discountReason: invoice.discount_reason || null,
-        subtotalBeforeDiscount: parseFloat(invoice.subtotal) || null
+        subtotalBeforeDiscount: invoice.subtotal
+          ? parseFloat(invoice.subtotal)
+          : parseFloat(invoice.discount_amount || 0) > 0
+            ? parseFloat(invoice.total_amount) + parseFloat(invoice.discount_amount)
+            : null
       };
     });
 
@@ -1267,8 +1285,8 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
           return {
             description: desc,
             quantity: item.quantity || 1,
-            unitPrice: parseFloat(item.calculated_amount || item.fixed_amount || 0),
-            total: parseFloat(item.total_amount || 0)
+            unitPrice: parseFloat(item.fixed_amount || item.calculated_amount || 0),
+            total: parseFloat(item.fixed_amount || item.calculated_amount || 0)
           };
         }) || [],
         // Additional charges (Tax, Service Charge, etc.)
@@ -1278,7 +1296,11 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
         discountValue: parseFloat(invoice.discount_value) || 0,
         discountAmount: parseFloat(invoice.discount_amount) || 0,
         discountReason: invoice.discount_reason || null,
-        subtotalBeforeDiscount: parseFloat(invoice.subtotal) || null
+        subtotalBeforeDiscount: invoice.subtotal
+          ? parseFloat(invoice.subtotal)
+          : parseFloat(invoice.discount_amount || 0) > 0
+            ? parseFloat(invoice.total_amount) + parseFloat(invoice.discount_amount)
+            : null
       };
     }));
 
@@ -1344,17 +1366,21 @@ router.get('/:id', authenticateToken, async (req, res) => {
       paidDate: invoice.paid_at,
       status: invoice.status || 'pending_payment',
       currency: invoice.currency || 'MYR',
-      amount: parseFloat(invoice.total_amount) - (items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0),
+      amount: invoice.subtotal
+        ? parseFloat(invoice.subtotal)
+        : parseFloat(invoice.discount_amount || 0) > 0
+          ? parseFloat(invoice.total_amount) + parseFloat(invoice.discount_amount)
+          : parseFloat(invoice.total_amount) - (items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0),
       tax: items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0,
       total: parseFloat(invoice.total_amount),
       items: items?.map(item => ({
         id: item.id?.toString(),
         description: item.description,
         quantity: item.quantity || 1,
-        unitPrice: parseFloat(item.calculated_amount || item.fixed_amount || 0),
+        unitPrice: parseFloat(item.fixed_amount || item.calculated_amount || 0),
         taxRate: parseFloat(item.tax_rate || 0),
         taxAmount: parseFloat(item.tax_amount || 0),
-        total: parseFloat(item.total_amount || 0)
+        total: parseFloat(item.fixed_amount || item.calculated_amount || 0)
       })) || [],
       billingPeriod: invoice.billing_period_start && invoice.billing_period_end
         ? `${new Date(invoice.billing_period_start).toLocaleDateString()} - ${new Date(invoice.billing_period_end).toLocaleDateString()}`
@@ -1375,7 +1401,11 @@ router.get('/:id', authenticateToken, async (req, res) => {
       discountValue: parseFloat(invoice.discount_value) || 0,
       discountAmount: parseFloat(invoice.discount_amount) || 0,
       discountReason: invoice.discount_reason || null,
-      subtotalBeforeDiscount: parseFloat(invoice.subtotal) || null
+      subtotalBeforeDiscount: invoice.subtotal
+        ? parseFloat(invoice.subtotal)
+        : parseFloat(invoice.discount_amount || 0) > 0
+          ? parseFloat(invoice.total_amount) + parseFloat(invoice.discount_amount)
+          : null
     };
 
     res.json({ invoice: transformedInvoice, items });
@@ -1433,12 +1463,14 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
 
-    // Debug logging
-    console.log('Invoice data before creation:', JSON.stringify(invoice_data, null, 2));
+    // Map subtotal_before_discount → subtotal (DB column name)
+    if (invoice_data.subtotal_before_discount != null && !invoice_data.subtotal) {
+      invoice_data.subtotal = invoice_data.subtotal_before_discount;
+      delete invoice_data.subtotal_before_discount;
+    }
 
     // Generate invoice number using standardized format
     invoice_data.invoice_number = await generateInvoiceNumber(issuerType, issuerId, transaction);
-    console.log('Generated invoice number:', invoice_data.invoice_number);
 
     // Create invoice within transaction
     const invoice = await Invoice.create(invoice_data, { transaction });

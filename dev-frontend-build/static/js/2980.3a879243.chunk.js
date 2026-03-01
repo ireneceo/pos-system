@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunkfrontend=self.webpackChunkfrontend||[]).push([[2980],{2980:(e,r,t)=>{t.r(r),t.d(r,{default:()=>d});t(9950);var n=t(4492),s=t(3310),a=t(2045),u=t(4414);const d=()=>{const{restaurantId:e}=(0,n.g)();return(0,u.jsx)(s.A,{children:(0,u.jsx)(a.A,{mode:"restaurant",restaurantId:e?Number(e):void 0})})}}}]);

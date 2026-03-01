@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { TabContainer, Tab, DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
+import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
+import { Tabs, Tab } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 import { formatCurrency } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
 
@@ -303,7 +305,7 @@ const Alert = styled.div<{ type: 'warning' | 'error' | 'info' }>`
   }
 `;
 
-// TabContainer and Tab components now imported from ../../components/UI
+// Tabs and Tab components now imported from Common/TabComponents
 
 const TableContainer = styled.div`
   background: white;
@@ -451,7 +453,7 @@ const Badge = styled.span<{ variant: string }>`
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { operationSettings, siteTimezone } = useStore();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, handleTabChange] = useTabParam('overview');
   const [managers, setManagers] = useState<Manager[]>([]);
   const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
   const [invoicesData, setInvoicesData] = useState<any[]>([]);
@@ -1240,20 +1242,20 @@ const AdminDashboard: React.FC = () => {
           </AlertsPanel>
         </MainGrid>
 
-        <TabContainer>
-          <Tab active={activeTab === 'overview'} onClick={() => setActiveTab('overview')}>
+        <Tabs>
+          <Tab active={activeTab === 'overview'} onClick={() => handleTabChange('overview')}>
             Manager Overview
           </Tab>
-          <Tab active={activeTab === 'performance'} onClick={() => setActiveTab('performance')}>
+          <Tab active={activeTab === 'performance'} onClick={() => handleTabChange('performance')}>
             Performance Analytics
           </Tab>
-          <Tab active={activeTab === 'health'} onClick={() => setActiveTab('health')}>
+          <Tab active={activeTab === 'health'} onClick={() => handleTabChange('health')}>
             Account Health
           </Tab>
-          <Tab active={activeTab === 'system'} onClick={() => setActiveTab('system')}>
+          <Tab active={activeTab === 'system'} onClick={() => handleTabChange('system')}>
             System Operations
           </Tab>
-        </TabContainer>
+        </Tabs>
 
         {activeTab === 'overview' && (
           <TableContainer>

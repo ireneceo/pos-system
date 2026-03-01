@@ -715,7 +715,6 @@ const OperationInquiryPage: React.FC = () => {
         <Header>
           <Title>Operation Inquiry</Title>
           <ActionSection>
-            <Button variant="secondary" onClick={fetchTickets}>Refresh</Button>
             <Button variant="primary" onClick={handleCreateTicket}>New Inquiry</Button>
           </ActionSection>
         </Header>

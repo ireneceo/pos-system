@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { useSearchParams } from 'react-router-dom';
+import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 import { formatCurrency } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
 import { BaseButton, StatusBadge as CommonStatusBadge, StatusMessage } from '../../components/UI/CommonStyles';
@@ -28,6 +30,7 @@ import {
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import StripePaymentForm from '../../components/Invoice/StripePaymentForm';
 
 interface Invoice {
   id: string;
@@ -371,29 +374,6 @@ const IconSymbol = styled.span`
   line-height: 1;
 `;
 
-const TabContainer = styled.div`
-  display: flex;
-  gap: 0;
-  margin-bottom: 24px;
-  border-bottom: 1px solid #E6EBF1;
-`;
-
-const Tab = styled.button<{ active?: boolean }>`
-  padding: 12px 24px;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid ${props => props.active ? '#635BFF' : 'transparent'};
-  color: ${props => props.active ? '#635BFF' : '#6B7280'};
-  font-weight: ${props => props.active ? '600' : '500'};
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    color: #635BFF;
-  }
-`;
-
 const Modal = styled.div`
   position: fixed;
   top: 0;
@@ -668,10 +648,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState('');
 
   // URL-based tab management
-  const activeTab = (searchParams.get('tab') as TabType) || 'to_pay';
-  const handleTabChange = (tab: TabType) => {
-    setSearchParams({ tab });
-  };
+  const [activeTab, handleTabChange] = useTabParam<TabType>('to_pay');
 
   // State for invoices to pay (from system admin)
   const [invoicesToPay, setInvoicesToPay] = useState<Invoice[]>([]);
@@ -998,7 +975,10 @@ const FoodcourtInvoicesPage: React.FC = () => {
       } else if (issuerType === 'foodcourt' && issuerId) {
         url = `/api/foodcourts/${issuerId}/payment-settings/available/${currency}`;
       }
-      const response = await fetch(url);
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (response.ok) {
         const data = await response.json();
         setAvailablePaymentMethods(data.methods || []);
@@ -2556,17 +2536,17 @@ const FoodcourtInvoicesPage: React.FC = () => {
         </Header>
         <Content>
 
-        <TabContainer>
+        <Tabs>
           <Tab active={activeTab === 'to_pay'} onClick={() => handleTabChange('to_pay')}>
-            Invoices to Pay ({invoicesToPay.filter(i => i.status === 'pending_payment' || i.status === 'overdue').length})
+            Invoices to Pay <Badge count={invoicesToPay.filter(i => i.status === 'pending_payment' || i.status === 'overdue').length} showZero />
           </Tab>
           <Tab active={activeTab === 'paid'} onClick={() => handleTabChange('paid')}>
-            Paid Invoices ({paidInvoicesList.length})
+            Paid Invoices <Badge count={paidInvoicesList.length} showZero />
           </Tab>
           <Tab active={activeTab === 'issued'} onClick={() => handleTabChange('issued')}>
-            Issued Invoices ({invoices.length})
+            Issued Invoices <Badge count={invoices.length} showZero />
           </Tab>
-        </TabContainer>
+        </Tabs>
 
         {activeTab === 'issued' && (
           <>
@@ -3113,83 +3093,97 @@ const FoodcourtInvoicesPage: React.FC = () => {
                   </div>
                 ) : (
                   <>
-                    <FormGroup>
+                    {/* Payment Method Selection - Card Style */}
+                    <div style={{ marginBottom: '20px' }}>
                       <FormLabel>Payment Method *</FormLabel>
-                      <FormSelect
-                        value={paymentData.paymentMethod}
-                        onChange={(e) => setPaymentData(prev => ({ ...prev, paymentMethod: e.target.value }))}
-                      >
-                        <option value="">Select payment method</option>
+                      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(availablePaymentMethods.length, 3)}, 1fr)`, gap: '10px', marginTop: '8px' }}>
                         {availablePaymentMethods.map((method: any) => (
-                          <option key={method.id} value={method.id}>{method.name}</option>
+                          <button
+                            key={method.id}
+                            onClick={() => { setPaymentData(prev => ({ ...prev, paymentMethod: method.id })); setPaymentSubmitError(null); }}
+                            style={{
+                              display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '14px 8px',
+                              border: `2px solid ${paymentData.paymentMethod === method.id ? '#635BFF' : '#E5E7EB'}`,
+                              borderRadius: '8px',
+                              background: paymentData.paymentMethod === method.id ? '#F5F3FF' : 'white',
+                              cursor: 'pointer', transition: 'all 0.2s'
+                            }}
+                          >
+                            <span style={{ fontSize: '22px', marginBottom: '6px' }}>
+                              {method.id === 'stripe' ? '💳' : method.id === 'paypal' ? '🅿️' : method.id === 'qr_payment' ? '📱' : '🏦'}
+                            </span>
+                            <span style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>{method.name}</span>
+                          </button>
                         ))}
-                      </FormSelect>
-                    </FormGroup>
-
-                    {(() => {
-                      const selectedMethod = availablePaymentMethods.find((m: any) => m.id === paymentData.paymentMethod);
-                      if (selectedMethod && selectedMethod.id === 'bank_transfer') {
-                        return (
-                          <div style={{ padding: '16px', background: '#EFF6FF', borderRadius: '8px', marginBottom: '16px', fontSize: '14px' }}>
-                            <p style={{ margin: '0 0 8px 0', fontWeight: '600', color: '#1E40AF' }}>Bank Transfer Details</p>
-                            <p style={{ margin: '0 0 4px 0', color: '#374151' }}>Bank: <strong>{selectedMethod.bankName}</strong></p>
-                            <p style={{ margin: '0 0 4px 0', color: '#374151' }}>Account: <strong>{selectedMethod.accountNumber}</strong></p>
-                            <p style={{ margin: '0', color: '#374151' }}>Name: <strong>{selectedMethod.accountName}</strong></p>
-                          </div>
-                        );
-                      }
-                      if (selectedMethod && selectedMethod.id === 'qr_payment' && selectedMethod.qrImage) {
-                        return (
-                          <div style={{ padding: '16px', background: '#EFF6FF', borderRadius: '8px', marginBottom: '16px', textAlign: 'center' }}>
-                            <p style={{ margin: '0 0 8px 0', fontWeight: '600', color: '#1E40AF' }}>Scan QR Code to Pay</p>
-                            <img src={selectedMethod.qrImage} alt="QR Code" style={{ maxWidth: '200px', margin: '0 auto' }} />
-                            {selectedMethod.qrDescription && <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#6B7280' }}>{selectedMethod.qrDescription}</p>}
-                          </div>
-                        );
-                      }
-                      return null;
-                    })()}
-
-                    {/* Required field notice */}
-                    <div style={{
-                      padding: '12px 16px',
-                      background: '#FEF3C7',
-                      borderRadius: '8px',
-                      marginBottom: '16px',
-                      fontSize: '13px',
-                      color: '#92400E',
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '8px'
-                    }}>
-                      <span style={{ fontWeight: '600', flexShrink: 0 }}>*</span>
-                      <span>Please provide either a <strong>Transaction ID / Reference Number</strong> or upload a <strong>Payment Receipt Image</strong> to submit your payment.</span>
+                      </div>
                     </div>
 
-                    <FormGroup>
-                      <FormLabel>Transaction ID / Reference Number</FormLabel>
-                      <FormInput
-                        type="text"
-                        placeholder="Enter transaction ID or reference number"
-                        value={paymentData.transactionId}
-                        onChange={(e) => setPaymentData(prev => ({ ...prev, transactionId: e.target.value }))}
+                    {/* Stripe Card Payment Form */}
+                    {paymentData.paymentMethod === 'stripe' && selectedInvoice && (
+                      <StripePaymentForm
+                        invoiceId={selectedInvoice.id}
+                        onSuccess={() => {
+                          setShowPaymentSubmitModal(false);
+                          setSelectedInvoice(null);
+                          setPaymentData({ paymentMethod: 'bank_transfer', transactionId: '', notes: '', receiptImage: '' });
+                          setSuccessMessage('Payment submitted successfully! The system admin will review and confirm your payment.');
+                          setShowSuccessModal(true);
+                          fetchInvoicesToPay();
+                          fetchPaidInvoices();
+                        }}
+                        onError={() => {}}
                       />
-                    </FormGroup>
+                    )}
+
+                    {/* Bank Transfer Details */}
+                    {paymentData.paymentMethod === 'bank_transfer' && (() => {
+                      const m = availablePaymentMethods.find((m: any) => m.id === 'bank_transfer');
+                      return m ? (
+                        <div style={{ padding: '16px', background: '#EFF6FF', borderRadius: '8px', marginBottom: '16px', fontSize: '14px' }}>
+                          <p style={{ margin: '0 0 8px 0', fontWeight: '600', color: '#1E40AF' }}>Bank Transfer Details</p>
+                          <p style={{ margin: '0 0 4px 0', color: '#374151' }}>Bank: <strong>{m.bankName}</strong></p>
+                          <p style={{ margin: '0 0 4px 0', color: '#374151' }}>Account: <strong>{m.accountNumber}</strong></p>
+                          <p style={{ margin: '0', color: '#374151' }}>Name: <strong>{m.accountName}</strong></p>
+                        </div>
+                      ) : null;
+                    })()}
+
+                    {/* QR Payment Details */}
+                    {paymentData.paymentMethod === 'qr_payment' && (() => {
+                      const m = availablePaymentMethods.find((m: any) => m.id === 'qr_payment');
+                      return m && m.qrImage ? (
+                        <div style={{ padding: '16px', background: '#EFF6FF', borderRadius: '8px', marginBottom: '16px', textAlign: 'center' }}>
+                          <p style={{ margin: '0 0 8px 0', fontWeight: '600', color: '#1E40AF' }}>Scan QR Code to Pay</p>
+                          <img src={m.qrImage} alt="QR Code" style={{ maxWidth: '200px', margin: '0 auto' }} />
+                          {m.qrDescription && <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#6B7280' }}>{m.qrDescription}</p>}
+                        </div>
+                      ) : null;
+                    })()}
+
+                    {/* Manual payment fields (bank_transfer, qr_payment only) */}
+                    {paymentData.paymentMethod && paymentData.paymentMethod !== 'stripe' && paymentData.paymentMethod !== 'paypal' && (
+                      <>
+                        <div style={{ padding: '12px 16px', background: '#FEF3C7', borderRadius: '8px', marginBottom: '16px', fontSize: '13px', color: '#92400E', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                          <span style={{ fontWeight: '600', flexShrink: 0 }}>*</span>
+                          <span>Please provide either a <strong>Transaction ID / Reference Number</strong> or upload a <strong>Payment Receipt Image</strong> to submit your payment.</span>
+                        </div>
+                        <FormGroup>
+                          <FormLabel>Transaction ID / Reference Number</FormLabel>
+                          <FormInput type="text" placeholder="Enter transaction ID or reference number" value={paymentData.transactionId} onChange={(e) => setPaymentData(prev => ({ ...prev, transactionId: e.target.value }))} />
+                        </FormGroup>
+                        <FormGroup>
+                          <FormLabel>Notes (Optional)</FormLabel>
+                          <FormTextarea placeholder="Any additional information about the payment..." value={paymentData.notes} onChange={(e) => setPaymentData(prev => ({ ...prev, notes: e.target.value }))} />
+                        </FormGroup>
+                      </>
+                    )}
                   </>
                 )}
-
-                <FormGroup>
-                  <FormLabel>Notes (Optional)</FormLabel>
-                  <FormTextarea
-                    placeholder="Any additional information about the payment..."
-                    value={paymentData.notes}
-                    onChange={(e) => setPaymentData(prev => ({ ...prev, notes: e.target.value }))}
-                  />
-                </FormGroup>
               </ModalBody>
               <ModalFooter style={{ flexDirection: 'column', alignItems: 'stretch' }}>
                 <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                   <Button variant="secondary" onClick={() => { setShowPaymentSubmitModal(false); setPaymentSubmitError(null); }}>Cancel</Button>
+                  {paymentData.paymentMethod !== 'stripe' && paymentData.paymentMethod !== 'paypal' && (
                   <Button
                     variant="primary"
                     onClick={handleSubmitPayment}
@@ -3197,6 +3191,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                   >
                     {isSubmittingPayment ? 'Submitting...' : 'Submit Payment'}
                   </Button>
+                  )}
                 </div>
                 {paymentSubmitError && (
                   <StatusMessage type="error" style={{ marginTop: '12px', wordBreak: 'break-word' }}>

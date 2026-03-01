@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import CommentSection from '../../components/Common/CommentSection';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
+import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 
 interface SupportTicket {
   id: string;
@@ -11,7 +12,7 @@ interface SupportTicket {
   customerId: string;
   customerName: string;
   customerEmail: string;
-  customerRole: 'manager' | 'restaurant' | 'staff';
+  customerRole: string;
   restaurantId?: number;
   restaurantName?: string;
   subject: string;
@@ -109,40 +110,6 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
       border-color: #CBD5E1;
     }
   `}
-`;
-
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-  margin-bottom: 32px;
-`;
-
-const StatCard = styled.div<{ color?: string }>`
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  border: 1px solid #E6EBF1;
-  border-left: 4px solid ${props => props.color || '#635BFF'};
-  transition: all 0.2s;
-
-  &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  }
-`;
-
-const StatValue = styled.div`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin-bottom: 4px;
-`;
-
-const StatLabel = styled.div`
-  font-size: 13px;
-  color: #6B7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 `;
 
 const FiltersContainer = styled.div`
@@ -257,29 +224,26 @@ const CustomerInfo = styled.div`
   gap: 2px;
 `;
 
+const getRoleBadgeColors = (role: string) => {
+  const r = role.toLowerCase();
+  if (r.includes('admin') && !r.includes('restaurant')) return { bg: '#F3E8FF', color: '#7C3AED' };
+  if (r.includes('brand')) return { bg: '#E0F2FE', color: '#0891B2' };
+  if (r.includes('foodcourt')) return { bg: '#E0F2FE', color: '#0891B2' };
+  if (r.includes('restaurant') || r === 'restaurant') return { bg: '#FEF3C7', color: '#D97706' };
+  if (r.includes('owner')) return { bg: '#FFF7ED', color: '#EA580C' };
+  if (r.includes('staff') || r === 'staff') return { bg: '#ECFDF5', color: '#059669' };
+  if (r === 'manager') return { bg: '#E0F2FE', color: '#0891B2' };
+  return { bg: '#F3F4F6', color: '#6B7280' };
+};
+
 const RoleBadge = styled.span<{ role: string }>`
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
-  text-transform: uppercase;
   margin-left: 8px;
-  background: ${props => {
-    switch(props.role) {
-      case 'manager': return '#E0F2FE';
-      case 'restaurant': return '#FEF3C7';
-      case 'staff': return '#ECFDF5';
-      default: return '#F3F4F6';
-    }
-  }};
-  color: ${props => {
-    switch(props.role) {
-      case 'manager': return '#0891B2';
-      case 'restaurant': return '#D97706';
-      case 'staff': return '#059669';
-      default: return '#6B7280';
-    }
-  }};
+  background: ${props => getRoleBadgeColors(props.role).bg};
+  color: ${props => getRoleBadgeColors(props.role).color};
 `;
 
 const TicketBadges = styled.div`
@@ -534,7 +498,6 @@ const SupportTicketsPage: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
-  const [filterRole, setFilterRole] = useState('all');
   const [showCreateTicketModal, setShowCreateTicketModal] = useState(false);
   const [showViewTicketModal, setShowViewTicketModal] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
@@ -572,11 +535,12 @@ const SupportTicketsPage: React.FC = () => {
   };
 
   useEffect(() => {
-    // What and Why: API에서 모든 티켓 불러오기
-    // - 새 응답 형식 { success: true, data: [...] } 처리
     const fetchTickets = async () => {
       try {
-        const response = await fetch('/api/support-tickets');
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch('/api/support-tickets', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         if (response.ok) {
           const result = await response.json();
           const ticketsData = result.data || result;
@@ -598,9 +562,7 @@ const SupportTicketsPage: React.FC = () => {
     const matchesStatus = filterStatus === 'all' || ticket.status === filterStatus;
     const matchesPriority = filterPriority === 'all' || ticket.priority === filterPriority;
     const matchesCategory = filterCategory === 'all' || ticket.category === filterCategory;
-    const matchesRole = filterRole === 'all' || ticket.customerRole === filterRole;
-    // 모든 티켓 표시 (레스토랑 제한 제거)
-    return matchesSearch && matchesStatus && matchesPriority && matchesCategory && matchesRole;
+    return matchesSearch && matchesStatus && matchesPriority && matchesCategory;
   });
 
   const totalTickets = tickets.length;
@@ -666,10 +628,6 @@ const SupportTicketsPage: React.FC = () => {
   const handleSubmitTicket = async () => {
     try {
       const newSupportTicket = {
-        customerId: user?.id || 'restaurant-user',
-        customerName: user?.name || 'Restaurant User',
-        customerEmail: user?.email || 'user@restaurant.com',
-        customerRole: ['Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager'].includes(user?.role || '') ? 'manager' : user?.role === 'Restaurant Admin' ? 'restaurant' : 'staff',
         restaurantId: currentRestaurantId,
         restaurantName: currentRestaurantName,
         subject: newTicket.subject,
@@ -680,15 +638,17 @@ const SupportTicketsPage: React.FC = () => {
         attachments: newAttachments.length > 0 ? newAttachments : undefined
       };
 
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/support-tickets', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(newSupportTicket)
       });
 
       if (response.ok) {
-        // 티켓 생성 후 다시 전체 티켓 목록을 가져와서 동기화
-        const refreshResponse = await fetch('/api/support-tickets');
+        const refreshResponse = await fetch('/api/support-tickets', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         if (refreshResponse.ok) {
           const result = await refreshResponse.json();
           const ticketsData = result.data || result;
@@ -721,9 +681,10 @@ const SupportTicketsPage: React.FC = () => {
   const handleStatusChange = async () => {
     if (!selectedTicket) return;
     try {
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/support-tickets/${selectedTicket.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ status: detailStatus })
       });
       if (response.ok) {
@@ -792,14 +753,6 @@ const SupportTicketsPage: React.FC = () => {
                 <option value="high">High</option>
                 <option value="medium">Medium</option>
                 <option value="low">Low</option>
-              </Select>
-            </FilterGroup>
-            <FilterGroup>
-              <FilterLabel>Role</FilterLabel>
-              <Select value={filterRole} onChange={(e) => setFilterRole(e.target.value)}>
-                <option value="all">All Roles</option>
-                <option value="restaurant">Restaurant Admin</option>
-                <option value="staff">Staff</option>
               </Select>
             </FilterGroup>
             <FilterGroup>

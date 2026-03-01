@@ -623,9 +623,6 @@ const OperationInquiryPage: React.FC = () => {
       <Container>
         <Header>
           <Title>Operation Inquiry</Title>
-          <ActionSection>
-            <Button variant="secondary" onClick={fetchTickets}>Refresh</Button>
-          </ActionSection>
         </Header>
         <Content>
           <StatsGrid>

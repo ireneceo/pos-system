@@ -194,7 +194,7 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
     '/pos/categories',
     '/pos/options',
     '/pos/customers',
-    '/pos/staff',
+    '/pos/manager/staff',
     '/pos/coupons',
     '/pos/reports',
     '/pos/settings',
@@ -218,7 +218,7 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
     '/pos/categories',
     '/pos/options',
     '/pos/customers',
-    '/pos/staff',
+    '/pos/manager/staff',
     '/pos/coupons',
     '/pos/reports',
     '/pos/settings',
@@ -239,7 +239,7 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
     '/pos/categories',
     '/pos/options',
     '/pos/customers',
-    '/pos/staff',
+    '/pos/manager/staff',
     '/pos/coupons',
     '/pos/reports',
     '/pos/settings',
@@ -263,7 +263,7 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
     '/pos/categories',
     '/pos/options',
     '/pos/customers',
-    '/pos/staff',
+    '/pos/manager/staff',
     '/pos/coupons',
     '/pos/reports',
     '/pos/settings',
@@ -288,7 +288,7 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
     '/pos/categories',
     '/pos/options',
     '/pos/customers',
-    '/pos/staff',
+    '/pos/manager/staff',
     '/pos/coupons',
     '/pos/reports',
     '/pos/settings',
@@ -355,7 +355,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (result.success && result.data) {
             const apiUser = result.data;
             // Staff는 DB에서 받은 메뉴 permissions 사용, 나머지는 ROLE_PERMISSIONS 사용
-            const userPermissions = apiUser.role === 'Staff' && Array.isArray(apiUser.permissions)
+            const userPermissions = (apiUser.role === 'Staff' || apiUser.role === 'Brand Manager' || apiUser.role === 'Foodcourt Manager') && Array.isArray(apiUser.permissions)
               ? apiUser.permissions
               : ROLE_PERMISSIONS[apiUser.role as UserRole] || [];
 

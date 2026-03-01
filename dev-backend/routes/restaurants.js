@@ -160,6 +160,7 @@ router.get('/', optionalAuth, async (req, res) => {
         country: restaurantData.country || 'MY',
         businessRegistration: restaurantData.business_registration || '',
         taxId: restaurantData.tax_id || '',
+        currency: restaurantData.currency || 'RM',
         discount_type: restaurantData.discount_type || 'none',
         discount_value: restaurantData.discount_value ? parseFloat(restaurantData.discount_value) : 0,
         discount_reason: restaurantData.discount_reason || null

@@ -4,6 +4,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import CommentSection from '../../components/Common/CommentSection';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
+import { Tabs, Tab } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
+import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 
 interface SupportTicket {
   id: string;
@@ -106,80 +109,6 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
       border-color: #CBD5E1;
     }
   `}
-`;
-
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 20px;
-  margin-bottom: 32px;
-
-  @media (max-width: 1024px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const StatCard = styled.div<{ borderColor?: string }>`
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  border-left: 4px solid ${props => props.borderColor || '#635BFF'};
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition: all 0.2s;
-
-  &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    transform: translateY(-2px);
-  }
-`;
-
-const StatValue = styled.div`
-  font-size: 32px;
-  font-weight: 700;
-  color: #0A2540;
-  margin-bottom: 8px;
-`;
-
-const StatLabel = styled.div`
-  font-size: 14px;
-  color: #6B7C93;
-  font-weight: 500;
-`;
-
-const TabContainer = styled.div`
-  display: flex;
-  gap: 24px;
-  margin-bottom: 24px;
-  border-bottom: 1px solid #E6EBF1;
-  overflow-x: auto;
-`;
-
-const Tab = styled.button<{ active?: boolean }>`
-  padding: 12px 0;
-  font-size: 14px;
-  font-weight: 500;
-  color: ${props => props.active ? '#635BFF' : '#6B7C93'};
-  background: none;
-  border: none;
-  cursor: pointer;
-  position: relative;
-  transition: all 0.15s;
-  white-space: nowrap;
-
-  &:hover {
-    color: #635BFF;
-  }
-
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: ${props => props.active ? '#635BFF' : 'transparent'};
-    transition: all 0.15s;
-  }
 `;
 
 const TicketsGrid = styled.div`
@@ -469,7 +398,7 @@ const FormTextArea = styled.textarea`
 const SystemInquiryPage: React.FC = () => {
   const { user } = useAuth();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
-  const [activeTab, setActiveTab] = useState<'all' | 'open' | 'in-progress' | 'resolved' | 'closed'>('all');
+  const [activeTab, setActiveTab] = useTabParam<'all' | 'open' | 'in-progress' | 'resolved' | 'closed'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
@@ -586,10 +515,6 @@ const SystemInquiryPage: React.FC = () => {
 
     try {
       const ticketData = {
-        customerId: currentUserId,
-        customerName: currentUserName,
-        customerEmail: currentUserEmail,
-        customerRole: currentUserRole,
         subject: newTicket.subject,
         description: newTicket.description,
         priority: newTicket.priority,
@@ -632,31 +557,30 @@ const SystemInquiryPage: React.FC = () => {
         <Header>
           <Title>System Inquiry</Title>
           <ActionSection>
-            <Button variant="secondary" onClick={fetchTickets}>Refresh</Button>
             <Button variant="primary" onClick={handleCreateTicket}>New Inquiry</Button>
           </ActionSection>
         </Header>
         <Content>
           <StatsGrid>
-            <StatCard borderColor="#635BFF">
+            <StatCard color="#635BFF">
               <StatValue>{totalTickets}</StatValue>
               <StatLabel>Total Tickets</StatLabel>
             </StatCard>
-            <StatCard borderColor="#F59E0B">
+            <StatCard color="#F59E0B">
               <StatValue>{openTickets}</StatValue>
               <StatLabel>Open Tickets</StatLabel>
             </StatCard>
-            <StatCard borderColor="#3B82F6">
+            <StatCard color="#3B82F6">
               <StatValue>{inProgressTickets}</StatValue>
               <StatLabel>In Progress</StatLabel>
             </StatCard>
-            <StatCard borderColor="#10B981">
+            <StatCard color="#10B981">
               <StatValue>{resolvedTickets}</StatValue>
               <StatLabel>Resolved</StatLabel>
             </StatCard>
           </StatsGrid>
 
-          <TabContainer>
+          <Tabs>
             <Tab active={activeTab === 'all'} onClick={() => setActiveTab('all')}>
               All ({totalTickets})
             </Tab>
@@ -672,7 +596,7 @@ const SystemInquiryPage: React.FC = () => {
             <Tab active={activeTab === 'closed'} onClick={() => setActiveTab('closed')}>
               Closed ({closedTickets})
             </Tab>
-          </TabContainer>
+          </Tabs>
 
           <TicketsGrid>
             {filteredTickets.map(ticket => (

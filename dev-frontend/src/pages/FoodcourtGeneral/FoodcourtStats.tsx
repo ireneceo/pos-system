@@ -239,7 +239,6 @@ const FoodcourtStats: React.FC = () => {
           </div>
           <ActionSection>
             <ThemedButton variant="outline">Export Report</ThemedButton>
-            <ThemedButton variant="primary">Refresh Data</ThemedButton>
           </ActionSection>
         </Header>
 

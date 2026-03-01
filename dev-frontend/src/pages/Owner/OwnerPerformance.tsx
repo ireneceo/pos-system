@@ -661,7 +661,6 @@ const OwnerPerformance: React.FC = () => {
             <Title>Performance</Title>
           </div>
           <ActionSection>
-            <Button variant="secondary" onClick={() => fetchOrdersData()}>Refresh</Button>
             <Button variant="primary" onClick={handleExportReport}>Export Report</Button>
           </ActionSection>
         </Header>

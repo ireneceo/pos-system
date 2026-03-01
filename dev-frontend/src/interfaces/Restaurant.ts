@@ -8,6 +8,7 @@ export interface BaseRestaurant {
   email: string;
   brandId: string;
   brandName?: string;
+  currency?: string;
   status: 'active' | 'inactive' | 'maintenance';
 }
 

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import styled from 'styled-components';
-import { useSearchParams } from 'react-router-dom';
-import { TabContainer, Tab, StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI';
+import { StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI';
+import { Tabs, Tab } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
@@ -33,7 +34,7 @@ const Content = styled.main`
   }
 `;
 
-// TabContainer and Tab components now imported from ../../components/UI
+// Tabs and Tab components now imported from Common/TabComponents
 
 const StatsRow = StatsGrid;
 
@@ -191,17 +192,7 @@ const ReportsPage: React.FC = () => {
     return `${year}-${month}-${day}`;
   };
 
-  // localStorage에서 마지막 활성 탭 복원
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState<TabType>(() => {
-    const tabFromUrl = searchParams.get('tab') as TabType;
-    return tabFromUrl || 'sales';
-  });
-
-  // Update URL when tab changes
-  useEffect(() => {
-    setSearchParams({ tab: activeTab }, { replace: true });
-  }, [activeTab, setSearchParams]);
+  const [activeTab, handleTabChange] = useTabParam<TabType>('sales');
 
   const [activePeriod, setActivePeriod] = useState<PeriodType>('week');
   const [dateRange, setDateRange] = useState(() => {
@@ -236,11 +227,6 @@ const ReportsPage: React.FC = () => {
   // Drilldown state for Sales Details tab
   const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set());
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
-
-  // activeTab 변경 시 localStorage에 저장
-  useEffect(() => {
-    localStorage.setItem('reports_active_tab', activeTab);
-  }, [activeTab]);
 
   // Re-initialize date range when operationSettings loads (to apply correct timezone)
   useEffect(() => {
@@ -921,23 +907,23 @@ const ReportsPage: React.FC = () => {
         <PageHeader title="Reports" />
 
         <Content>
-          <TabContainer>
-            <Tab active={activeTab === 'sales'} onClick={() => setActiveTab('sales')}>
+          <Tabs>
+            <Tab active={activeTab === 'sales'} onClick={() => handleTabChange('sales')}>
               Sales Report
             </Tab>
-            <Tab active={activeTab === 'details'} onClick={() => setActiveTab('details')}>
+            <Tab active={activeTab === 'details'} onClick={() => handleTabChange('details')}>
               Sales Details
             </Tab>
-            <Tab active={activeTab === 'menu'} onClick={() => setActiveTab('menu')}>
+            <Tab active={activeTab === 'menu'} onClick={() => handleTabChange('menu')}>
               Menu Analysis
             </Tab>
-            <Tab active={activeTab === 'customers'} onClick={() => setActiveTab('customers')}>
+            <Tab active={activeTab === 'customers'} onClick={() => handleTabChange('customers')}>
               Customer Insights
             </Tab>
-            <Tab active={activeTab === 'operations'} onClick={() => setActiveTab('operations')}>
+            <Tab active={activeTab === 'operations'} onClick={() => handleTabChange('operations')}>
               Operations
             </Tab>
-          </TabContainer>
+          </Tabs>
 
           {/* Sales Tab - CSS로 숨기기 (탭 전환 시 state 유지) */}
           <div style={{ display: activeTab === 'sales' ? 'block' : 'none' }}>

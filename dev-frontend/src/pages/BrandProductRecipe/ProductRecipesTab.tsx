@@ -554,9 +554,10 @@ const RecipeModalOverlay = styled.div`
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
+  overflow-y: auto;
+  padding: 40px 0;
   z-index: 1000;
-  padding: 20px;
 `;
 
 const RecipeModalContent = styled.div`

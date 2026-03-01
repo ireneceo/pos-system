@@ -3,7 +3,8 @@ import styled from 'styled-components';
 import { useStaff } from '../../contexts/StaffContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton } from '../../components/UI/Modal';
-import Tabs from '../../components/UI/Tabs';
+import { Tabs, Tab } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 import PhoneInput from '../../components/Common/PhoneInput';
 import PageHeader from '../../components/Common/PageHeader';
 
@@ -131,8 +132,6 @@ const ProfileMeta = styled.div`
   color: #6B7280;
 `;
 
-// TabContainer and Tab are now imported from UI components
-
 const ContentCard = styled.div`
   background: white;
   border-radius: 12px;
@@ -152,22 +151,27 @@ const FormGrid = styled.div`
 `;
 
 const FormGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  margin-bottom: 20px;
 `;
 
 const Label = styled.label`
-  font-size: 14px;
-  font-weight: 600;
-  color: #374151;
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7C93;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 8px;
 `;
 
 const Input = styled.input`
-  padding: 12px 16px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
   border: 1px solid #E6EBF1;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 14px;
+  transition: all 0.15s;
 
   &:focus {
     outline: none;
@@ -323,7 +327,7 @@ const ProfilePage: React.FC = () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { currentStaff, updateStaff, isLoggedIn } = useStaff();
   const { user: authUser, isAuthenticated, updateUser, isLoading: authLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState<'profile' | 'schedule' | 'performance' | 'security'>('profile');
+  const [activeTab, handleTabParamChange] = useTabParam<'profile' | 'schedule' | 'performance' | 'security'>('profile');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -396,8 +400,6 @@ const ProfilePage: React.FC = () => {
     fetchUserData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser?.id]);
-
-  // Tab state is now automatically managed by the Tabs component via URL params
 
   // Use database user as primary source, fallback to authUser if dbUser not loaded
   // Wrapped in useMemo to prevent exhaustive-deps warnings
@@ -506,13 +508,13 @@ const ProfilePage: React.FC = () => {
     }
   }, [formData, currentUser, savedSuccessfully]);
 
-  // Tab change handler - now just updates local state since URL is managed by Tabs component
+  // Tab change handler
   const handleTabChange = (tab: string) => {
     // System Admin should not access performance tab
     if (currentUser?.role === 'System Admin' && tab === 'performance') {
-      setActiveTab('profile');
+      handleTabParamChange('profile');
     } else {
-      setActiveTab(tab as 'profile' | 'schedule' | 'performance' | 'security');
+      handleTabParamChange(tab as 'profile' | 'schedule' | 'performance' | 'security');
     }
   };
 
@@ -832,18 +834,22 @@ const ProfilePage: React.FC = () => {
             </ProfileInfo>
           </ProfileHeader>
 
-          <Tabs
-            useUrlParams={true}
-            defaultTab="profile"
-            onTabChange={handleTabChange}
-            tabs={[
-              { key: 'profile', label: 'Personal Information' },
-              { key: 'schedule', label: 'Work Schedule' },
-              // Performance tab only for non-System Admin roles
-              ...(currentUser.role !== 'System Admin' ? [{ key: 'performance', label: 'Performance' }] : []),
-              { key: 'security', label: 'Change Password' }
-            ]}
-          />
+          <Tabs>
+            <Tab active={activeTab === 'profile'} onClick={() => handleTabChange('profile')}>
+              Personal Information
+            </Tab>
+            <Tab active={activeTab === 'schedule'} onClick={() => handleTabChange('schedule')}>
+              Work Schedule
+            </Tab>
+            {currentUser.role !== 'System Admin' && (
+              <Tab active={activeTab === 'performance'} onClick={() => handleTabChange('performance')}>
+                Performance
+              </Tab>
+            )}
+            <Tab active={activeTab === 'security'} onClick={() => handleTabChange('security')}>
+              Change Password
+            </Tab>
+          </Tabs>
 
           {activeTab === 'profile' && (
             <ContentCard>

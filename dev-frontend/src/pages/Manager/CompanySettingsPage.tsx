@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { TabContainer, Tab } from '../../components/UI';
+import { Tabs, Tab } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface CompanyInfo {
@@ -97,8 +98,6 @@ const Content = styled.div`
     padding: 20px 16px;
   }
 `;
-
-// TabContainer and Tab components now imported from ../../components/UI
 
 const FormGrid = styled.div`
   display: grid;
@@ -310,7 +309,7 @@ const ButtonGroup = styled.div`
 
 const ManagerCompanySettingsPage: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('company');
+  const [activeTab, handleTabChange] = useTabParam<'company' | 'operations'>('company');
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
     id: 'comp-001',
     companyName: 'Sunway Food Court Management Sdn Bhd',
@@ -709,14 +708,14 @@ const ManagerCompanySettingsPage: React.FC = () => {
         </Header>
         
         <Content>
-          <TabContainer>
-            <Tab active={activeTab === 'company'} onClick={() => setActiveTab('company')}>
+          <Tabs>
+            <Tab active={activeTab === 'company'} onClick={() => handleTabChange('company')}>
               Company Information
             </Tab>
-            <Tab active={activeTab === 'operations'} onClick={() => setActiveTab('operations')}>
+            <Tab active={activeTab === 'operations'} onClick={() => handleTabChange('operations')}>
               Operations & Social
             </Tab>
-          </TabContainer>
+          </Tabs>
 
           {activeTab === 'company' && renderCompanyTab()}
           {activeTab === 'operations' && renderOperationsTab()}

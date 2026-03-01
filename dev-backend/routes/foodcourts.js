@@ -4,6 +4,7 @@ const { Foodcourt, Restaurant, User, EntityPlan, EntityPlanRestaurant, EntityPla
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
+const bcrypt = require('bcrypt');
 
 // Get all foodcourts (filtered by owner for Foodcourt General)
 router.get('/', authenticateToken, async (req, res) => {
@@ -684,6 +685,12 @@ router.post('/:id/plans', authenticateToken, async (req, res) => {
     const access = await verifyFoodcourtAccess(req, id);
     if (access.error) return res.status(access.status).json({ success: false, message: access.error });
 
+    // Validate billing_day: -1 (end of month), 1-28, or null/empty
+    const billingDay = req.body.billing_day;
+    if (billingDay != null && billingDay !== '' && billingDay !== -1 && (billingDay < 1 || billingDay > 28)) {
+      return res.status(400).json({ success: false, message: 'Billing day must be 1-28 or -1 (end of month)' });
+    }
+
     // Validate plan currency against system supported currencies
     const planCurrency = req.body.currency || access.foodcourt.currency || 'MYR';
     const SystemSettings = require('../models/SystemSettings');
@@ -701,7 +708,7 @@ router.post('/:id/plans', authenticateToken, async (req, res) => {
       charge_type: req.body.charge_type || 'fixed',
       percentage_value: req.body.charge_type === 'percentage' ? (req.body.percentage_value || 0) : 0,
       revenue_base: req.body.charge_type === 'percentage' ? (req.body.revenue_base || 'previous_month') : 'previous_month',
-      billing_day: req.body.billing_day || null,
+      billing_day: req.body.billing_day != null && req.body.billing_day !== '' ? parseInt(req.body.billing_day) : null,
       auto_generate: req.body.auto_generate !== false,
       currency: planCurrency,
       is_active: true,
@@ -842,28 +849,70 @@ router.post('/:id/plans/:planId/restaurants', authenticateToken, async (req, res
     const access = await verifyFoodcourtAccess(req, id);
     if (access.error) return res.status(access.status).json({ success: false, message: access.error });
 
+    // Verify plan exists and belongs to this foodcourt (include prices for currency check)
+    const plan = await EntityPlan.findOne({
+      where: { id: planId, entity_type: 'foodcourt', entity_id: id },
+      include: [{ model: EntityPlanPrice, as: 'prices' }]
+    });
+    if (!plan) return res.status(404).json({ success: false, message: 'Plan not found' });
+
     const { restaurant_ids } = req.body;
     if (!restaurant_ids || !Array.isArray(restaurant_ids) || restaurant_ids.length === 0) {
       return res.status(400).json({ success: false, message: 'restaurant_ids array is required' });
     }
 
-    const results = [];
-    for (const restaurantId of restaurant_ids) {
-      const [assignment, created] = await EntityPlanRestaurant.findOrCreate({
-        where: { entity_plan_id: planId, restaurant_id: restaurantId },
-        defaults: { is_active: true, activation_date: new Date() }
+    // Get restaurants with currency for validation
+    const restaurants = await Restaurant.findAll({
+      where: { id: restaurant_ids, foodcourt_id: id },
+      attributes: ['id', 'name', 'currency']
+    });
+
+    if (restaurants.length !== restaurant_ids.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'Some restaurants do not belong to this foodcourt'
       });
-      if (!created && !assignment.is_active) {
-        await assignment.update({ is_active: true, activation_date: new Date() });
-        results.push({ restaurant_id: restaurantId, status: 'reactivated' });
-      } else if (created) {
-        results.push({ restaurant_id: restaurantId, status: 'assigned' });
-      } else {
-        results.push({ restaurant_id: restaurantId, status: 'already_assigned' });
+    }
+
+    const results = [];
+    const currency_warnings = [];
+
+    for (const restaurant of restaurants) {
+      try {
+        // Check currency compatibility for fixed plans
+        const restCurrency = restaurant.currency || 'RM';
+        if (plan.charge_type === 'fixed') {
+          const priceRecord = (plan.prices || []).find(p => p.currency === restCurrency);
+          if (!priceRecord || parseFloat(priceRecord.monthly_price || 0) <= 0) {
+            currency_warnings.push({
+              restaurant_id: restaurant.id,
+              restaurant_name: restaurant.name,
+              currency: restCurrency,
+              message: `Plan "${plan.name}" has no pricing for ${restCurrency}. Please add pricing for this currency before generating invoices.`
+            });
+          }
+        }
+
+        const [assignment, created] = await EntityPlanRestaurant.findOrCreate({
+          where: { entity_plan_id: planId, restaurant_id: restaurant.id },
+          defaults: { is_active: true, activation_date: new Date() }
+        });
+        if (!created && !assignment.is_active) {
+          await assignment.update({ is_active: true, activation_date: new Date() });
+          results.push({ restaurant_id: restaurant.id, status: 'reactivated' });
+        } else if (created) {
+          results.push({ restaurant_id: restaurant.id, status: 'assigned' });
+        } else {
+          results.push({ restaurant_id: restaurant.id, status: 'already_assigned' });
+        }
+      } catch (e) {
+        results.push({ restaurant_id: restaurant.id, status: 'error', message: e.message });
       }
     }
 
-    res.json({ success: true, data: results });
+    const response = { success: true, data: results };
+    if (currency_warnings.length > 0) response.currency_warnings = currency_warnings;
+    res.json(response);
   } catch (error) {
     console.error('Error assigning restaurants to plan:', error);
     res.status(500).json({ success: false, message: 'Failed to assign restaurants' });
@@ -1100,7 +1149,7 @@ router.post('/:id/generate-invoices', authenticateToken, async (req, res) => {
       where: planWhere,
       include: [{
         model: EntityPlanRestaurant, as: 'planRestaurants', where: { is_active: true },
-        include: [{ model: Restaurant, as: 'restaurant', attributes: ['id', 'name', 'email'] }]
+        include: [{ model: Restaurant, as: 'restaurant', attributes: ['id', 'name', 'email', 'currency'] }]
       }, {
         model: EntityPlanPrice, as: 'prices'
       }]
@@ -1123,22 +1172,37 @@ router.post('/:id/generate-invoices', authenticateToken, async (req, res) => {
     const foodcourtPaymentSettings = access.foodcourt.payment_settings || {};
 
     for (const plan of plans) {
-      const planCurrency = plan.currency || 'MYR';
-      if (!hasPaymentMethodForCurrency(foodcourtPaymentSettings, planCurrency)) {
-        for (const pr of plan.planRestaurants) {
-          skipped++;
-          results.push({
-            restaurant: pr.restaurant?.name || 'Unknown',
-            status: 'skipped',
-            reason: `No payment methods configured for ${planCurrency}. Please set up payment settings first.`
-          });
-        }
-        continue;
-      }
-
       for (const pr of plan.planRestaurants) {
         const restaurant = pr.restaurant;
         if (!restaurant) continue;
+
+        // Use restaurant's base currency (design rule: invoice in recipient's currency)
+        const invoiceCurrency = restaurant.currency || 'RM';
+
+        // Validate issuer has payment methods for this restaurant's currency
+        if (!hasPaymentMethodForCurrency(foodcourtPaymentSettings, invoiceCurrency)) {
+          skipped++;
+          results.push({
+            restaurant: restaurant.name,
+            status: 'skipped',
+            reason: `No payment methods configured for ${invoiceCurrency}. Please set up payment settings first.`
+          });
+          continue;
+        }
+
+        // For fixed plans, verify pricing exists for restaurant's currency
+        if (plan.charge_type === 'fixed') {
+          const priceRecord = (plan.prices || []).find(p => p.currency === invoiceCurrency);
+          if (!priceRecord || parseFloat(priceRecord.monthly_price || 0) <= 0) {
+            skipped++;
+            results.push({
+              restaurant: restaurant.name,
+              status: 'skipped',
+              reason: `No pricing set for ${invoiceCurrency} in plan "${plan.name}". Please add pricing for this currency.`
+            });
+            continue;
+          }
+        }
 
         const existing = await Invoice.findOne({
           where: { restaurant_id: restaurant.id, issuer_type: 'foodcourt', issuer_id: parseInt(id), billing_period_start: periodStart, type: 'automatic' }
@@ -1151,7 +1215,7 @@ router.post('/:id/generate-invoices', authenticateToken, async (req, res) => {
           raw: true
         });
         const revenue = parseFloat(revenueResult?.revenue || 0);
-        const charges = calculatePlanCharges(plan, revenue);
+        const charges = calculatePlanCharges(plan, revenue, 0, invoiceCurrency);
 
         if (charges.totalAmount <= 0) { skipped++; results.push({ restaurant: restaurant.name, status: 'skipped', reason: 'Zero amount' }); continue; }
 
@@ -1161,7 +1225,7 @@ router.post('/:id/generate-invoices', authenticateToken, async (req, res) => {
           restaurant_id: restaurant.id, invoice_number: invoiceNumber, type: 'automatic',
           invoice_category: 'foodcourt_plan', category_display_name: plan.name,
           billing_period_start: periodStart, billing_period_end: periodEnd, due_date: dueDate,
-          total_amount: charges.totalAmount, currency: plan.currency || 'MYR',
+          total_amount: charges.totalAmount, currency: invoiceCurrency,
           status: 'pending_payment',
           notes: `Auto-generated invoice for ${plan.name}. Period: ${periodStart.toISOString().split('T')[0]} ~ ${periodEnd.toISOString().split('T')[0]}`,
           issued_by: req.user.id, issued_at: now,
@@ -1191,7 +1255,7 @@ router.get('/:id/subscriptions', authenticateToken, async (req, res) => {
 
     const restaurants = await Restaurant.findAll({
       where: { foodcourt_id: id },
-      attributes: ['id', 'name', 'email', 'status', 'phone', 'address'],
+      attributes: ['id', 'name', 'email', 'status', 'phone', 'address', 'currency'],
       include: [{
         model: EntityPlanRestaurant, as: 'entityPlanRestaurants', required: false,
         include: [{
@@ -1239,7 +1303,7 @@ router.get('/:id/subscriptions', authenticateToken, async (req, res) => {
       if (activePlan?.plan) estimatedCharges = calculatePlanCharges(activePlan.plan, monthRevenue);
 
       return {
-        restaurant_id: r.id, restaurant_name: r.name, restaurant_email: r.email, restaurant_status: r.status,
+        restaurant_id: r.id, restaurant_name: r.name, restaurant_email: r.email, restaurant_status: r.status, restaurant_currency: r.currency || 'RM',
         plan: activePlan ? {
           id: activePlan.plan.id, name: activePlan.plan.name,
           charge_type: activePlan.plan.charge_type,
@@ -1365,5 +1429,293 @@ async function generateFoodcourtInvoiceNumber(foodcourtId) {
   }
   return `${prefix}${String(nextNumber).padStart(3, '0')}`;
 }
+
+// ============================================
+// Foodcourt Manager (Staff) APIs
+// ============================================
+
+// Get all managers for a foodcourt
+router.get('/:id/staff', authenticateToken, async (req, res) => {
+  try {
+    const foodcourtId = req.params.id;
+
+    // Verify access: System Admin or Foodcourt General/Manager of this foodcourt
+    if (req.user.role === 'System Admin') {
+      // OK
+    } else if ((req.user.role === 'Foodcourt General' || req.user.role === 'Foodcourt Manager') && req.user.foodcourt_id === parseInt(foodcourtId)) {
+      // OK
+    } else {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const managers = await User.findAll({
+      where: {
+        foodcourt_id: foodcourtId,
+        role: 'Foodcourt Manager'
+      },
+      attributes: { exclude: ['password'] },
+      order: [['full_name', 'ASC']]
+    });
+
+    res.json({ success: true, data: managers });
+  } catch (error) {
+    console.error('Error fetching foodcourt managers:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch managers' });
+  }
+});
+
+// Create a foodcourt manager
+router.post('/:id/staff', authenticateToken, async (req, res) => {
+  try {
+    const foodcourtId = req.params.id;
+
+    // Only Foodcourt General or System Admin can create managers
+    if (req.user.role === 'System Admin') {
+      // OK
+    } else if (req.user.role === 'Foodcourt General' && req.user.foodcourt_id === parseInt(foodcourtId)) {
+      // OK
+    } else {
+      return res.status(403).json({ success: false, message: 'Access denied. Only Foodcourt General can create managers.' });
+    }
+
+    // Verify foodcourt exists
+    const foodcourt = await Foodcourt.findByPk(foodcourtId);
+    if (!foodcourt) {
+      return res.status(404).json({ success: false, message: 'Foodcourt not found' });
+    }
+
+    const { username, email, full_name, phone, permissions } = req.body;
+
+    // Validate required fields
+    if (!username || !email || !full_name) {
+      return res.status(400).json({ success: false, message: 'Username, email, and full name are required' });
+    }
+
+    // Check duplicate email/username
+    const existingUser = await User.findOne({
+      where: {
+        [Op.or]: [{ email }, { username }]
+      }
+    });
+
+    if (existingUser) {
+      let errorDetail = '';
+      if (existingUser.email === email && existingUser.username === username) {
+        errorDetail = `Both email "${email}" and username "${username}" are already in use`;
+      } else if (existingUser.email === email) {
+        errorDetail = `Email "${email}" is already in use`;
+      } else {
+        errorDetail = `Username "${username}" is already in use`;
+      }
+      return res.status(400).json({ success: false, message: errorDetail });
+    }
+
+    // Auto-generate password (12 chars)
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+    let generatedPassword = '';
+    generatedPassword += 'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random() * 24)];
+    generatedPassword += 'abcdefghjkmnpqrstuvwxyz'[Math.floor(Math.random() * 23)];
+    generatedPassword += '23456789'[Math.floor(Math.random() * 8)];
+    generatedPassword += '!@#$%'[Math.floor(Math.random() * 5)];
+    for (let i = 0; i < 8; i++) {
+      generatedPassword += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    generatedPassword = generatedPassword.split('').sort(() => Math.random() - 0.5).join('');
+
+    const hashedPassword = await bcrypt.hash(generatedPassword, 10);
+
+    const manager = await User.create({
+      username,
+      email,
+      password: hashedPassword,
+      role: 'Foodcourt Manager',
+      full_name,
+      phone: phone || null,
+      foodcourt_id: parseInt(foodcourtId),
+      permissions: permissions || '[]'
+    });
+
+    const { password: _, ...managerData } = manager.toJSON();
+    res.status(201).json({
+      success: true,
+      data: managerData,
+      generatedPassword
+    });
+  } catch (error) {
+    console.error('Error creating foodcourt manager:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update a foodcourt manager
+router.put('/:id/staff/:userId', authenticateToken, async (req, res) => {
+  try {
+    const foodcourtId = req.params.id;
+    const userId = req.params.userId;
+
+    // Only Foodcourt General or System Admin
+    if (req.user.role === 'System Admin') {
+      // OK
+    } else if (req.user.role === 'Foodcourt General' && req.user.foodcourt_id === parseInt(foodcourtId)) {
+      // OK
+    } else {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const manager = await User.findOne({
+      where: { id: userId, foodcourt_id: foodcourtId, role: 'Foodcourt Manager' }
+    });
+
+    if (!manager) {
+      return res.status(404).json({ success: false, message: 'Manager not found in this foodcourt' });
+    }
+
+    const { full_name, email, phone, username } = req.body;
+    const updateData = {};
+
+    if (full_name) updateData.full_name = full_name;
+    if (phone !== undefined) updateData.phone = phone;
+
+    // Check email uniqueness if changing
+    if (email && email !== manager.email) {
+      const emailExists = await User.findOne({ where: { email, id: { [Op.ne]: userId } } });
+      if (emailExists) {
+        return res.status(400).json({ success: false, message: `Email "${email}" is already in use` });
+      }
+      updateData.email = email;
+    }
+
+    // Check username uniqueness if changing
+    if (username && username !== manager.username) {
+      const usernameExists = await User.findOne({ where: { username, id: { [Op.ne]: userId } } });
+      if (usernameExists) {
+        return res.status(400).json({ success: false, message: `Username "${username}" is already in use` });
+      }
+      updateData.username = username;
+    }
+
+    await manager.update(updateData);
+
+    const { password: _, ...managerData } = manager.toJSON();
+    res.json({ success: true, data: managerData });
+  } catch (error) {
+    console.error('Error updating foodcourt manager:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Delete a foodcourt manager
+router.delete('/:id/staff/:userId', authenticateToken, async (req, res) => {
+  try {
+    const foodcourtId = req.params.id;
+    const userId = req.params.userId;
+
+    // Only Foodcourt General or System Admin
+    if (req.user.role === 'System Admin') {
+      // OK
+    } else if (req.user.role === 'Foodcourt General' && req.user.foodcourt_id === parseInt(foodcourtId)) {
+      // OK
+    } else {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const manager = await User.findOne({
+      where: { id: userId, foodcourt_id: foodcourtId, role: 'Foodcourt Manager' }
+    });
+
+    if (!manager) {
+      return res.status(404).json({ success: false, message: 'Manager not found in this foodcourt' });
+    }
+
+    await manager.destroy();
+    res.json({ success: true, message: 'Manager deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting foodcourt manager:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update foodcourt manager permissions
+router.put('/:id/staff/:userId/permissions', authenticateToken, async (req, res) => {
+  try {
+    const foodcourtId = req.params.id;
+    const userId = req.params.userId;
+
+    // Only Foodcourt General or System Admin
+    if (req.user.role === 'System Admin') {
+      // OK
+    } else if (req.user.role === 'Foodcourt General' && req.user.foodcourt_id === parseInt(foodcourtId)) {
+      // OK
+    } else {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const manager = await User.findOne({
+      where: { id: userId, foodcourt_id: foodcourtId, role: 'Foodcourt Manager' }
+    });
+
+    if (!manager) {
+      return res.status(404).json({ success: false, message: 'Manager not found in this foodcourt' });
+    }
+
+    const { permissions } = req.body;
+    if (!Array.isArray(permissions)) {
+      return res.status(400).json({ success: false, message: 'Permissions must be an array' });
+    }
+
+    await manager.update({ permissions: JSON.stringify(permissions) });
+
+    const { password: _, ...managerData } = manager.toJSON();
+    res.json({ success: true, data: managerData });
+  } catch (error) {
+    console.error('Error updating foodcourt manager permissions:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Reset foodcourt manager password
+router.put('/:id/staff/:userId/reset-password', authenticateToken, async (req, res) => {
+  try {
+    const foodcourtId = req.params.id;
+    const userId = req.params.userId;
+
+    // Only Foodcourt General or System Admin
+    if (req.user.role === 'System Admin') {
+      // OK
+    } else if (req.user.role === 'Foodcourt General' && req.user.foodcourt_id === parseInt(foodcourtId)) {
+      // OK
+    } else {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const manager = await User.findOne({
+      where: { id: userId, foodcourt_id: foodcourtId, role: 'Foodcourt Manager' }
+    });
+
+    if (!manager) {
+      return res.status(404).json({ success: false, message: 'Manager not found in this foodcourt' });
+    }
+
+    // Generate new password
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+    let newPassword = '';
+    newPassword += 'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random() * 24)];
+    newPassword += 'abcdefghjkmnpqrstuvwxyz'[Math.floor(Math.random() * 23)];
+    newPassword += '23456789'[Math.floor(Math.random() * 8)];
+    newPassword += '!@#$%'[Math.floor(Math.random() * 5)];
+    for (let i = 0; i < 8; i++) {
+      newPassword += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    newPassword = newPassword.split('').sort(() => Math.random() - 0.5).join('');
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await manager.update({ password: hashedPassword });
+
+    res.json({ success: true, generatedPassword: newPassword });
+  } catch (error) {
+    console.error('Error resetting foodcourt manager password:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 module.exports = router;

@@ -1,33 +1,18 @@
 import React, { useState } from 'react';
-import styled from 'styled-components';
-import { useSearchParams } from 'react-router-dom';
-import { Container, Header, Title, Content, TabContainer, Tab } from '../../components/UI';
+import { Container, Header, Title, Content } from '../../components/UI';
+import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 import ProductRecipesTab from './ProductRecipesTab';
 import ProductIngredientsTab from './ProductIngredientsTab';
 import ProductRecipeCategoriesTab from './ProductRecipeCategoriesTab';
 import ProductIngredientCategoriesTab from './ProductIngredientCategoriesTab';
 
-const TabBadge = styled.span`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  margin-left: 8px;
-  background: #F0F4FF;
-  color: #635BFF;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 600;
-`;
-
 type TabType = 'recipes' | 'ingredients' | 'recipe-categories' | 'ingredient-categories';
 
 const BrandProductRecipePage: React.FC = () => {
   const { user } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, handleTabChange] = useTabParam<TabType>('recipes');
   const [recipesCount, setRecipesCount] = useState(0);
   const [ingredientsCount, setIngredientsCount] = useState(0);
   const [recipeCategoriesCount, setRecipeCategoriesCount] = useState(0);
@@ -35,12 +20,7 @@ const BrandProductRecipePage: React.FC = () => {
   const [ingredientCategoryRefreshKey, setIngredientCategoryRefreshKey] = useState(0);
   const [recipeCategoryRefreshKey, setRecipeCategoryRefreshKey] = useState(0);
 
-  const activeTab = (searchParams.get('tab') as TabType) || 'recipes';
   const brandId = user?.brand_id;
-
-  const handleTabChange = (tab: TabType) => {
-    setSearchParams({ tab });
-  };
 
   if (!brandId) {
     return (
@@ -67,24 +47,24 @@ const BrandProductRecipePage: React.FC = () => {
         </Header>
 
         <Content>
-          <TabContainer>
+          <Tabs>
             <Tab active={activeTab === 'recipes'} onClick={() => handleTabChange('recipes')}>
               Recipes
-              <TabBadge>{recipesCount}</TabBadge>
+              <Badge count={recipesCount} showZero />
             </Tab>
             <Tab active={activeTab === 'ingredients'} onClick={() => handleTabChange('ingredients')}>
               Ingredients
-              <TabBadge>{ingredientsCount}</TabBadge>
+              <Badge count={ingredientsCount} showZero />
             </Tab>
             <Tab active={activeTab === 'recipe-categories'} onClick={() => handleTabChange('recipe-categories')}>
               Recipe Categories
-              <TabBadge>{recipeCategoriesCount}</TabBadge>
+              <Badge count={recipeCategoriesCount} showZero />
             </Tab>
             <Tab active={activeTab === 'ingredient-categories'} onClick={() => handleTabChange('ingredient-categories')}>
               Ingredient Categories
-              <TabBadge>{ingredientCategoriesCount}</TabBadge>
+              <Badge count={ingredientCategoriesCount} showZero />
             </Tab>
-          </TabContainer>
+          </Tabs>
 
           <div style={{ display: activeTab === 'recipes' ? 'block' : 'none' }}>
             <ProductRecipesTab

@@ -88,39 +88,49 @@ const FormGroup = styled.div`
 
 const Label = styled.label`
   display: block;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   color: #6B7C93;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
   margin-bottom: 8px;
 `;
 
 const Input = styled.input`
   width: 100%;
-  padding: 10px 12px;
+  box-sizing: border-box;
+  padding: 8px 12px;
   border: 1px solid #E6EBF1;
   border-radius: 6px;
   font-size: 14px;
   transition: all 0.15s;
-  
+
   &:focus {
     outline: none;
     border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+
+  &::placeholder {
+    color: #9CA3AF;
   }
 `;
 
 const Select = styled.select`
   width: 100%;
-  padding: 10px 12px;
+  box-sizing: border-box;
+  padding: 8px 12px;
   border: 1px solid #E6EBF1;
   border-radius: 6px;
   font-size: 14px;
   transition: all 0.15s;
   background: white;
   cursor: pointer;
-  
+
   &:focus {
     outline: none;
     border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
   }
 `;
 

@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import {
-  TabContainer,
-  Tab,
   Container,
   Header,
   Title,
@@ -25,6 +23,8 @@ import {
   IconButton,
   EmptyState
 } from '../../components/UI';
+import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { formatCurrency } from '../../utils/currency';
@@ -448,7 +448,7 @@ const AdminStaffManagementPage: React.FC = () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const auth = useAuth();
   const { operationSettings } = useStore();
-  const [activeTab, setActiveTab] = useState<'all' | 'System Admin' | 'Restaurant Admin' | 'Staff' | 'Managers'>('all');
+  const [activeTab, handleTabChange] = useTabParam<'all' | 'System Admin' | 'Restaurant Admin' | 'Staff' | 'Managers'>('all');
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
@@ -1551,23 +1551,23 @@ const AdminStaffManagementPage: React.FC = () => {
             </StatCard>
           </StatsGrid>
 
-          <TabContainer>
-            <Tab active={activeTab === 'all'} onClick={() => setActiveTab('all')}>
-              All Staff ({stats.total})
+          <Tabs>
+            <Tab active={activeTab === 'all'} onClick={() => handleTabChange('all')}>
+              All Staff <Badge count={stats.total} showZero />
             </Tab>
-            <Tab active={activeTab === 'System Admin'} onClick={() => setActiveTab('System Admin')}>
-              System Admin ({stats.systemAdmin || 0})
+            <Tab active={activeTab === 'System Admin'} onClick={() => handleTabChange('System Admin')}>
+              System Admin <Badge count={stats.systemAdmin || 0} showZero />
             </Tab>
-            <Tab active={activeTab === 'Managers'} onClick={() => setActiveTab('Managers')}>
-              Managers ({stats.managers || 0})
+            <Tab active={activeTab === 'Managers'} onClick={() => handleTabChange('Managers')}>
+              Managers <Badge count={stats.managers || 0} showZero />
             </Tab>
-            <Tab active={activeTab === 'Restaurant Admin'} onClick={() => setActiveTab('Restaurant Admin')}>
-              Restaurant Admin ({stats.restaurantAdmin || 0})
+            <Tab active={activeTab === 'Restaurant Admin'} onClick={() => handleTabChange('Restaurant Admin')}>
+              Restaurant Admin <Badge count={stats.restaurantAdmin || 0} showZero />
             </Tab>
-            <Tab active={activeTab === 'Staff'} onClick={() => setActiveTab('Staff')}>
-              Staff ({stats.staff || 0})
+            <Tab active={activeTab === 'Staff'} onClick={() => handleTabChange('Staff')}>
+              Staff <Badge count={stats.staff || 0} showZero />
             </Tab>
-          </TabContainer>
+          </Tabs>
 
           <FilterBar>
             <SearchInput

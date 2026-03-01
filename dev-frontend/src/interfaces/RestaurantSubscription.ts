@@ -3,6 +3,7 @@ export interface RestaurantSubscription {
   id: string;
   restaurantId: string;
   restaurantName: string;
+  currency?: string;
   location?: string;
   managerId: string;
   managerName: string;

@@ -3,7 +3,9 @@ import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 import { Container, Header, Title, Content, Button, ActionSection } from '../../components/UI/PageComponents';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/StatCard';
+import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
 import CommentSection from '../../components/Common/CommentSection';
@@ -47,42 +49,6 @@ interface NoticeMetadata {
 // ============================================================================
 // Styled Components
 // ============================================================================
-
-const TabContainer = styled.div`
-  display: flex;
-  gap: 24px;
-  margin-bottom: 24px;
-  border-bottom: 1px solid #E6EBF1;
-  overflow-x: auto;
-`;
-
-const Tab = styled.button<{ active?: boolean }>`
-  padding: 12px 0;
-  font-size: 14px;
-  font-weight: 500;
-  color: ${props => props.active ? '#635BFF' : '#6B7C93'};
-  background: none;
-  border: none;
-  cursor: pointer;
-  position: relative;
-  transition: all 0.15s;
-  white-space: nowrap;
-
-  &:hover {
-    color: #635BFF;
-  }
-
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: ${props => props.active ? '#635BFF' : 'transparent'};
-    transition: all 0.15s;
-  }
-`;
 
 const FilterBar = styled.div`
   display: flex;
@@ -555,7 +521,7 @@ const NoticesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   // Tab & filter state
-  const [activeTab, setActiveTab] = useState<'received' | 'sent'>('received');
+  const [activeTab, setActiveTab] = useTabParam<'received' | 'sent'>('received');
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'general' | 'guide'>('all');
@@ -909,14 +875,14 @@ const NoticesPage: React.FC = () => {
 
       <Content>
         {/* Tabs */}
-        <TabContainer>
+        <Tabs>
           <Tab active={activeTab === 'received'} onClick={() => setActiveTab('received')}>
             Received ({receivedNotices.length})
           </Tab>
           <Tab active={activeTab === 'sent'} onClick={() => setActiveTab('sent')}>
             Sent ({sentNotices.length})
           </Tab>
-        </TabContainer>
+        </Tabs>
 
         {/* Stats */}
         {activeTab === 'received' ? (

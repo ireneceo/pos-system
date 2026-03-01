@@ -109,6 +109,8 @@ const FoodcourtGeneralDashboard = React.lazy(() => import('./pages/FoodcourtGene
 const BrandGeneralDashboard = React.lazy(() => import('./pages/BrandGeneral/BrandGeneralDashboard'));
 const FoodcourtManagerDashboard = React.lazy(() => import('./pages/Foodcourt/FoodcourtManagerDashboard'));
 const BrandManagerDashboard = React.lazy(() => import('./pages/Brand/BrandManagerDashboard'));
+const BrandStaffPage = React.lazy(() => import('./pages/Brand/BrandStaffPage'));
+const FoodcourtStaffPage = React.lazy(() => import('./pages/Foodcourt/FoodcourtStaffPage'));
 
 // Recipe Management
 const RecipeManagementPage = React.lazy(() => import('./pages/RecipeManagement/RecipeManagementPage'));
@@ -190,9 +192,9 @@ const PosRootRedirect: React.FC = () => {
     case 'Brand General':
       return <Navigate to="/pos/brand/general/dashboard" replace />;
     case 'Foodcourt Manager':
-      return <Navigate to="/pos/foodcourt/dashboard" replace />;
+      return <Navigate to="/pos/foodcourt/general/dashboard" replace />;
     case 'Brand Manager':
-      return <Navigate to="/pos/brand/dashboard" replace />;
+      return <Navigate to="/pos/brand/general/dashboard" replace />;
     case 'Restaurant Owner':
       return <Navigate to="/pos/owner/dashboard" replace />;
     case 'Restaurant Admin':
@@ -504,35 +506,40 @@ function App() {
                         </ProtectedRoute>
                       } />
 
-                      {/* Foodcourt General Routes */}
+                      {/* Foodcourt General / Foodcourt Manager Routes */}
                       <Route path="/pos/foodcourt/general/dashboard" element={
-                        <ProtectedRoute requiredRole={['Foodcourt General']}>
+                        <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
                           <FoodcourtGeneralDashboard />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/foodcourt/general/management" element={
-                        <ProtectedRoute requiredRole={['Foodcourt General']}>
+                        <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
                           <FoodcourtManagement />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/foodcourt/general/stats" element={
-                        <ProtectedRoute requiredRole={['Foodcourt General']}>
+                        <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
                           <FoodcourtStats />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/foodcourt/general/subscriptions" element={
-                        <ProtectedRoute requiredRole={['Foodcourt General']}>
+                        <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
                           <FoodcourtSubscriptionsPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/foodcourt/general/system-inquiry" element={
-                        <ProtectedRoute requiredRole={['Foodcourt General']}>
+                        <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
                           <FoodcourtSystemInquiryPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/foodcourt/general/operation-inquiry" element={
-                        <ProtectedRoute requiredRole={['Foodcourt General']}>
+                        <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
                           <FoodcourtOperationInquiryPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/foodcourt/manager" element={
+                        <ProtectedRoute requiredRole={['Foodcourt General']}>
+                          <FoodcourtStaffPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/foodcourt/general/notices" element={
@@ -556,40 +563,45 @@ function App() {
                         </ProtectedRoute>
                       } />
 
-                      {/* Brand General Routes */}
+                      {/* Brand General / Brand Manager Routes */}
                       <Route path="/pos/brand/general/dashboard" element={
-                        <ProtectedRoute requiredRole={['Brand General']}>
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
                           <BrandGeneralDashboard />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/brand/general/management" element={
-                        <ProtectedRoute requiredRole={['Brand General']}>
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
                           <BrandManagement />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/brand/general/performance" element={
-                        <ProtectedRoute requiredRole={['Brand General']}>
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
                           <BrandPerformance />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/brand/general/reports" element={
-                        <ProtectedRoute requiredRole={['Brand General']}>
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
                           <BrandReportsPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/brand/general/subscriptions" element={
-                        <ProtectedRoute requiredRole={['Brand General']}>
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
                           <BrandSubscriptionsPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/brand/general/system-inquiry" element={
-                        <ProtectedRoute requiredRole={['Brand General']}>
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
                           <BrandSystemInquiryPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/brand/general/operation-inquiry" element={
-                        <ProtectedRoute requiredRole={['Brand General']}>
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
                           <BrandOperationInquiryPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/brand/manager" element={
+                        <ProtectedRoute requiredRole={['Brand General']}>
+                          <BrandStaffPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/brand/general/notices" element={

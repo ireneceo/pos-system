@@ -889,7 +889,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
             <SubscriptionCard key={subscription.id}>
               <CardHeader>
                 <RestaurantInfo>
-                  <RestaurantName>{subscription.restaurantName}</RestaurantName>
+                  <RestaurantName>{subscription.restaurantName} {subscription.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{subscription.currency}</span>}</RestaurantName>
                 </RestaurantInfo>
                 <StatusBadge status={subscription.status}>
                   {subscription.status}

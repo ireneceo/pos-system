@@ -60,3 +60,7 @@ export {
 
 // Explicitly export OrderControls
 export { OrderControls } from './OrderControls';
+
+// 통합 Button 컴포넌트 (신규 - Button.tsx)
+export { Button as ThemedButton, ModalButton as ThemedModalButton, BaseButton as ThemedBaseButton } from './Button';
+export type { ButtonVariant, ButtonSize } from './Button';

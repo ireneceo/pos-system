@@ -36,6 +36,7 @@ interface BrandSubscription {
   restaurant_name: string;
   restaurant_email: string;
   restaurant_status: string;
+  restaurant_currency?: string;
   plan: {
     id: number;
     name: string;
@@ -387,6 +388,7 @@ const BrandSubscriptionsPage: React.FC = () => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [assignTarget, setAssignTarget] = useState<BrandSubscription | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<number | ''>('');
+  const [currencyWarning, setCurrencyWarning] = useState<string | null>(null);
 
   // View Modal
   const [showViewModal, setShowViewModal] = useState(false);
@@ -492,10 +494,15 @@ const BrandSubscriptionsPage: React.FC = () => {
       });
 
       if (response.ok) {
+        const result = await response.json();
         setShowAssignModal(false);
         setAssignTarget(null);
         setSelectedPlanId('');
         fetchSubscriptions();
+        // Show currency warning if plan has no pricing for restaurant's currency
+        if (result.currency_warnings && result.currency_warnings.length > 0) {
+          setCurrencyWarning(result.currency_warnings[0].message);
+        }
       } else {
         const error = await response.json();
         console.error('Failed to assign plan:', error);
@@ -671,6 +678,13 @@ const BrandSubscriptionsPage: React.FC = () => {
               <EmptyDescription>{subscriptions.length === 0 ? 'No restaurants are assigned to this brand yet.' : 'No restaurants match your search criteria.'}</EmptyDescription>
             </EmptyState>
           ) : (
+            <>
+            {currencyWarning && (
+              <div style={{ padding: '12px 16px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: '8px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '13px', color: '#92400E' }}>{currencyWarning}</span>
+                <button onClick={() => setCurrencyWarning(null)} style={{ background: 'none', border: 'none', color: '#92400E', cursor: 'pointer', fontSize: '16px', padding: '0 4px' }}>×</button>
+              </div>
+            )}
             <Table>
               <SubscriptionTableHeader columns="2fr 1.5fr 1fr 1fr 1fr 1fr 180px">
                 <span>Restaurant</span>
@@ -688,7 +702,7 @@ const BrandSubscriptionsPage: React.FC = () => {
                     <MobileValue>
                       <MobileLabel>Restaurant</MobileLabel>
                       <RestaurantInfo>
-                        <RestaurantName>{sub.restaurant_name}</RestaurantName>
+                        <RestaurantName>{sub.restaurant_name} {sub.restaurant_currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{sub.restaurant_currency}</span>}</RestaurantName>
                         <RestaurantMeta>{sub.restaurant_email}</RestaurantMeta>
                       </RestaurantInfo>
                     </MobileValue>
@@ -790,6 +804,7 @@ const BrandSubscriptionsPage: React.FC = () => {
                 </SubscriptionTableRow>
               ))}
             </Table>
+            </>
           )}
 
           {/* Assign Plan Modal */}

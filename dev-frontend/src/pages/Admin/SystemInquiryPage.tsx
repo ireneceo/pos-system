@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { Tabs, Tab } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 import { SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import CommentSection from '../../components/Common/CommentSection';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
@@ -27,7 +29,7 @@ interface SupportTicket {
   customerId: string;
   customerName: string;
   customerEmail: string;
-  customerRole: 'manager' | 'restaurant' | 'staff';
+  customerRole: string;
   restaurantId?: number;
   restaurantName?: string;
   subject: string;
@@ -44,42 +46,6 @@ interface SupportTicket {
 // Using common components from PageComponents and StatCard
 // Container, Header, Title, Content, Button, ActionSection are imported
 // StatsGrid, StatCard, StatValue, StatLabel are imported
-
-const TabsContainer = styled.div`
-  display: flex;
-  gap: 24px;
-  margin-bottom: 24px;
-  border-bottom: 1px solid #E6EBF1;
-  overflow-x: auto;
-`;
-
-const Tab = styled.button<{ active: boolean }>`
-  padding: 12px 0;
-  font-size: 14px;
-  font-weight: 500;
-  color: ${props => props.active ? '#635BFF' : '#6B7C93'};
-  background: none;
-  border: none;
-  cursor: pointer;
-  position: relative;
-  transition: all 0.15s;
-  white-space: nowrap;
-
-  &:hover {
-    color: #635BFF;
-  }
-
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: ${props => props.active ? '#635BFF' : 'transparent'};
-    transition: all 0.15s;
-  }
-`;
 
 const FiltersContainer = styled.div`
   padding: 20px 0;
@@ -467,7 +433,7 @@ const SelectedUserBadge = styled.div`
 const SystemInquiryPage: React.FC = () => {
   const { user } = useAuth();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
-  const [activeTab, setActiveTab] = useState<'all' | 'open' | 'in-progress'>('open');
+  const [activeTab, handleTabChange] = useTabParam<'all' | 'open' | 'in-progress'>('open');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
@@ -518,7 +484,10 @@ const SystemInquiryPage: React.FC = () => {
   useEffect(() => {
     const fetchTickets = async () => {
       try {
-        const response = await fetch('/api/support-tickets');
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch('/api/support-tickets', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         if (response.ok) {
           const result = await response.json();
           const ticketsData = result.data || result;
@@ -573,18 +542,6 @@ const SystemInquiryPage: React.FC = () => {
 
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString('en-MY');
-  };
-
-  const handleRefreshTickets = async () => {
-    try {
-      const response = await fetch('/api/support-tickets');
-      if (response.ok) {
-        const result = await response.json();
-        setTickets(result.data || result);
-      }
-    } catch (error) {
-      // error handling
-    }
   };
 
   const handleExportReports = () => {
@@ -673,11 +630,6 @@ const SystemInquiryPage: React.FC = () => {
     try {
       const newSupportTicket = {
         customerId: newTicket.customerId,
-        customerName: newTicket.customerName,
-        customerEmail: newTicket.customerEmail,
-        customerRole: selectedUser.role === 'System Admin' ? 'admin' :
-                      selectedUser.role === 'Restaurant Admin' ? 'restaurant' :
-                      ['Foodcourt Manager', 'Foodcourt General', 'Brand Manager', 'Brand General'].includes(selectedUser.role) ? 'manager' : 'staff',
         subject: newTicket.subject,
         description: newTicket.description,
         status: 'open',
@@ -686,9 +638,10 @@ const SystemInquiryPage: React.FC = () => {
         attachments: newAttachments.length > 0 ? newAttachments : undefined
       };
 
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/support-tickets', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(newSupportTicket)
       });
 
@@ -729,9 +682,10 @@ const SystemInquiryPage: React.FC = () => {
     if (!selectedTicket) return;
     setDetailStatus(newStatus);
     try {
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/support-tickets/${selectedTicket.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ status: newStatus })
       });
       if (response.ok) {
@@ -751,7 +705,6 @@ const SystemInquiryPage: React.FC = () => {
         <Header>
           <Title>System Inquiry</Title>
           <ActionSection>
-            <Button variant="secondary" onClick={handleRefreshTickets}>Refresh</Button>
             <Button variant="secondary" onClick={handleExportReports}>Export</Button>
             <Button variant="primary" onClick={handleCreateTicket}>Create Inquiry</Button>
           </ActionSection>
@@ -781,17 +734,17 @@ const SystemInquiryPage: React.FC = () => {
           </StatCard>
         </StatsGrid>
 
-        <TabsContainer>
-          <Tab active={activeTab === 'open'} onClick={() => setActiveTab('open')}>
+        <Tabs>
+          <Tab active={activeTab === 'open'} onClick={() => handleTabChange('open')}>
             Open
           </Tab>
-          <Tab active={activeTab === 'in-progress'} onClick={() => setActiveTab('in-progress')}>
+          <Tab active={activeTab === 'in-progress'} onClick={() => handleTabChange('in-progress')}>
             In Progress
           </Tab>
-          <Tab active={activeTab === 'all'} onClick={() => setActiveTab('all')}>
+          <Tab active={activeTab === 'all'} onClick={() => handleTabChange('all')}>
             All Tickets
           </Tab>
-        </TabsContainer>
+        </Tabs>
 
         <FiltersContainer>
           <FilterGroup>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import PageHeader from '../../components/Common/PageHeader';
 import { SaveButtonContainer, SaveButtonGroup, SaveButton, StatusMessage } from '../../components/UI';
+import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { Modal, ModalButton } from '../../components/UI/Modal';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import { useAuth } from '../../contexts/AuthContext';
@@ -280,33 +281,6 @@ const Checkbox = styled.input`
   cursor: pointer;
 `;
 
-const CurrencyTabs = styled.div`
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid #E6EBF1;
-  padding-bottom: 0;
-  overflow-x: auto;
-`;
-
-const CurrencyTab = styled.button<{ active: boolean }>`
-  padding: 10px 16px;
-  border: none;
-  background: none;
-  font-size: 14px;
-  font-weight: 500;
-  color: ${props => props.active ? '#635BFF' : '#6B7C93'};
-  cursor: pointer;
-  border-bottom: 2px solid ${props => props.active ? '#635BFF' : 'transparent'};
-  margin-bottom: -1px;
-  transition: all 0.2s;
-  white-space: nowrap;
-
-  &:hover {
-    color: #635BFF;
-  }
-`;
-
 const NoCurrencyMessage = styled.div`
   background: #FEF3C7;
   border: 1px solid #F59E0B;
@@ -395,10 +369,11 @@ const BrandPaymentSettingsPage: React.FC = () => {
       }
 
       // 시스템관리자가 설정한 통화 목록 가져오기
+      let systemCurrencyCodes: string[] = [];
       if (systemCurrenciesRes.ok) {
         const data = await systemCurrenciesRes.json();
         if (data.success && data.data) {
-          const systemCurrencyCodes = data.data.map((c: { code: string }) => c.code);
+          systemCurrencyCodes = data.data.map((c: { code: string }) => c.code);
           setSystemSupportedCurrencies(systemCurrencyCodes);
         }
       }
@@ -410,12 +385,23 @@ const BrandPaymentSettingsPage: React.FC = () => {
         // API returns { success: true, data: { payment_settings, supported_currencies } }
         const data = responseData.data || responseData;
 
-        // Set supported currencies from brand settings
+        // Set supported currencies from brand settings (filtered by system-allowed currencies)
         if (data.supported_currencies && Array.isArray(data.supported_currencies)) {
-          setSupportedCurrencies(data.supported_currencies);
-          if (data.supported_currencies.length > 0) {
-            setSelectedCurrency(data.supported_currencies[0]);
-            setDefaultCurrency(data.supported_currencies[0]);
+          // Filter: only keep currencies that the system still supports
+          const validCurrencies = systemCurrencyCodes.length > 0
+            ? data.supported_currencies.filter((c: string) => systemCurrencyCodes.includes(c))
+            : data.supported_currencies;
+
+          setSupportedCurrencies(validCurrencies);
+          if (validCurrencies.length > 0) {
+            setSelectedCurrency(validCurrencies[0]);
+            // Check if payment_settings has a saved defaultCurrency
+            const savedDefault = data.payment_settings?.defaultCurrency;
+            if (savedDefault && validCurrencies.includes(savedDefault)) {
+              setDefaultCurrency(savedDefault);
+            } else {
+              setDefaultCurrency(validCurrencies[0]);
+            }
           }
         }
 
@@ -843,17 +829,17 @@ const BrandPaymentSettingsPage: React.FC = () => {
               </NoCurrencyMessage>
             ) : (
               <>
-                <CurrencyTabs>
+                <Tabs>
                   {supportedCurrencies.map(code => (
-                    <CurrencyTab
+                    <Tab
                       key={code}
                       active={selectedCurrency === code}
                       onClick={() => setSelectedCurrency(code)}
                     >
                       {currencyConfig[code]?.symbol} {code}
-                    </CurrencyTab>
+                    </Tab>
                   ))}
-                </CurrencyTabs>
+                </Tabs>
 
                 {/* Bank Transfer */}
                 <PaymentMethodCard>

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Restaurant = require('../models/Restaurant');
+const SystemSettings = require('../models/SystemSettings');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 
 // Get store settings
@@ -116,6 +117,26 @@ router.put('/settings', authenticateToken, async (req, res) => {
       }
     }
     console.log('✅ Access control passed');
+
+    // Validate currency against system-allowed currencies
+    if (req.body.currency) {
+      try {
+        const supportedSetting = await SystemSettings.findOne({ where: { setting_key: 'supported_currencies' } });
+        if (supportedSetting) {
+          const raw = supportedSetting.setting_value;
+          const supported = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          const normalizedCurrency = req.body.currency === 'RM' ? 'MYR' : req.body.currency;
+          if (Array.isArray(supported) && supported.length > 0 && !supported.includes(normalizedCurrency)) {
+            return res.status(400).json({
+              success: false,
+              error: `Currency ${req.body.currency} is not allowed. Supported currencies: ${supported.join(', ')}`
+            });
+          }
+        }
+      } catch (e) {
+        console.error('Error checking supported currencies:', e);
+      }
+    }
 
     console.log('🔍 Finding restaurant with ID:', restaurantId);
     const restaurant = await Restaurant.findByPk(restaurantId);

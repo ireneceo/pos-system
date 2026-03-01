@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import PageHeader from '../../components/Common/PageHeader';
 import { SaveButtonContainer, SaveButtonGroup, SaveButton, StatusMessage } from '../../components/UI';
+import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { Modal, ModalButton } from '../../components/UI/Modal';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface CurrencyConfig {
   [code: string]: {
@@ -40,10 +42,10 @@ interface QRPaymentConfig {
   qrDescription: string;
 }
 
-interface TaxConfig {
+interface AdditionalChargeConfig {
   enabled: boolean;
-  rate: number;
   name: string;
+  rate: number;
 }
 
 interface PaymentSettings {
@@ -51,7 +53,7 @@ interface PaymentSettings {
   paypal: PayPalConfig;
   bankTransfer: { [currency: string]: BankTransferConfig };
   qrPayment: { [currency: string]: QRPaymentConfig };
-  tax?: TaxConfig;
+  additionalCharges?: AdditionalChargeConfig[];
 }
 
 const Container = styled.div`
@@ -279,33 +281,6 @@ const Checkbox = styled.input`
   cursor: pointer;
 `;
 
-const CurrencyTabs = styled.div`
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid #E6EBF1;
-  padding-bottom: 0;
-  overflow-x: auto;
-`;
-
-const CurrencyTab = styled.button<{ active: boolean }>`
-  padding: 10px 16px;
-  border: none;
-  background: none;
-  font-size: 14px;
-  font-weight: 500;
-  color: ${props => props.active ? '#635BFF' : '#6B7C93'};
-  cursor: pointer;
-  border-bottom: 2px solid ${props => props.active ? '#635BFF' : 'transparent'};
-  margin-bottom: -1px;
-  transition: all 0.2s;
-  white-space: nowrap;
-
-  &:hover {
-    color: #635BFF;
-  }
-`;
-
 const NoCurrencyMessage = styled.div`
   background: #FEF3C7;
   border: 1px solid #F59E0B;
@@ -329,17 +304,21 @@ const defaultPaymentSettings: PaymentSettings = {
   },
   bankTransfer: {},
   qrPayment: {},
-  tax: {
-    enabled: true,
-    rate: 6,
-    name: 'Tax'
-  }
+  additionalCharges: [
+    { enabled: false, name: '', rate: 0 },
+    { enabled: false, name: '', rate: 0 },
+    { enabled: false, name: '', rate: 0 }
+  ]
 };
 
 const FoodcourtPaymentSettingsPage: React.FC = () => {
-  // Currency settings (moved from Site Settings)
+  const { user } = useAuth();
+  const foodcourtId = user?.foodcourt_id;
+
+  // Currency settings (foodcourt-specific)
   const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
   const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>([]);
+  const [systemSupportedCurrencies, setSystemSupportedCurrencies] = useState<string[]>([]);
   const [defaultCurrency, setDefaultCurrency] = useState<string>('USD');
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [tempSelectedCurrencies, setTempSelectedCurrencies] = useState<string[]>([]);
@@ -365,45 +344,72 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
   }, [supportedCurrencies, selectedCurrency]);
 
   const loadAllSettings = async () => {
+    if (!foodcourtId) {
+      console.error('No foodcourt ID available');
+      setLoading(false);
+      return;
+    }
+
     try {
       const token = localStorage.getItem('auth_token');
       const headers = { 'Authorization': `Bearer ${token}` };
 
-      const [configRes, supportedRes, paymentRes] = await Promise.all([
+      // Fetch currency config (global), system supported currencies, and foodcourt-specific payment settings
+      const [configRes, systemCurrenciesRes, foodcourtSettingsRes] = await Promise.all([
         fetch('/api/currencies/config'),
         fetch('/api/currencies/supported'),
-        fetch('/api/admin/payment-settings', { headers })
+        fetch(`/api/foodcourts/${foodcourtId}/payment-settings`, { headers })
       ]);
 
       if (configRes.ok) {
         const data = await configRes.json();
         if (data.success && data.currencies) {
           setCurrencyConfig(data.currencies);
-          if (data.defaultCurrency) {
-            setDefaultCurrency(data.defaultCurrency);
-          }
         }
       }
 
-      if (supportedRes.ok) {
-        const data = await supportedRes.json();
+      // System admin's supported currencies (read-only reference)
+      let systemCurrencyCodes: string[] = [];
+      if (systemCurrenciesRes.ok) {
+        const data = await systemCurrenciesRes.json();
         if (data.success && data.data) {
-          const currencies = data.data.map((c: { code: string }) => c.code);
-          setSupportedCurrencies(currencies);
-          if (currencies.length > 0) {
-            setSelectedCurrency(currencies[0]);
-          }
+          systemCurrencyCodes = data.data.map((c: { code: string }) => c.code);
+          setSystemSupportedCurrencies(systemCurrencyCodes);
         }
       }
 
-      if (paymentRes.ok) {
-        const data = await paymentRes.json();
-        if (data && Object.keys(data).length > 0) {
+      if (foodcourtSettingsRes.ok) {
+        const responseData = await foodcourtSettingsRes.json();
+        console.log('Foodcourt payment settings loaded:', responseData);
+
+        // API returns { success: true, data: { payment_settings, supported_currencies } }
+        const data = responseData.data || responseData;
+
+        // Set supported currencies from foodcourt settings (filtered by system-allowed currencies)
+        if (data.supported_currencies && Array.isArray(data.supported_currencies)) {
+          const validCurrencies = systemCurrencyCodes.length > 0
+            ? data.supported_currencies.filter((c: string) => systemCurrencyCodes.includes(c))
+            : data.supported_currencies;
+
+          setSupportedCurrencies(validCurrencies);
+          if (validCurrencies.length > 0) {
+            setSelectedCurrency(validCurrencies[0]);
+            const savedDefault = data.payment_settings?.defaultCurrency;
+            if (savedDefault && validCurrencies.includes(savedDefault)) {
+              setDefaultCurrency(savedDefault);
+            } else {
+              setDefaultCurrency(validCurrencies[0]);
+            }
+          }
+        }
+
+        // Set payment settings
+        if (data.payment_settings && Object.keys(data.payment_settings).length > 0) {
           setPaymentSettings({
             ...defaultPaymentSettings,
-            ...data,
-            bankTransfer: data.bankTransfer || {},
-            qrPayment: data.qrPayment || {}
+            ...data.payment_settings,
+            bankTransfer: data.payment_settings.bankTransfer || {},
+            qrPayment: data.payment_settings.qrPayment || {}
           });
         }
       }
@@ -414,40 +420,24 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
     }
   };
 
-  // Currency functions
-  const updateDefaultCurrency = async (currency: string) => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/currencies/default', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ defaultCurrency: currency })
-      });
-
-      if (response.ok) {
-        setDefaultCurrency(currency);
-        setSaveStatus({ type: 'success', message: 'Default currency updated' });
-        setTimeout(() => setSaveStatus(null), 3000);
-      }
-    } catch (error) {
-      console.error('Error updating default currency:', error);
-      setSaveStatus({ type: 'error', message: 'Failed to update default currency' });
-    }
+  // Currency functions - using foodcourt-specific API
+  const updateDefaultCurrency = (currency: string) => {
+    setDefaultCurrency(currency);
+    setHasChanges(true);
   };
 
   const updateSupportedCurrencies = async () => {
+    if (!foodcourtId) return;
+
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/currencies/supported', {
+      const response = await fetch(`/api/foodcourts/${foodcourtId}/payment-settings`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ currencies: tempSelectedCurrencies })
+        body: JSON.stringify({ supported_currencies: tempSelectedCurrencies })
       });
 
       if (response.ok) {
@@ -457,11 +447,13 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
         setTimeout(() => setSaveStatus(null), 3000);
 
         if (!tempSelectedCurrencies.includes(defaultCurrency) && tempSelectedCurrencies.length > 0) {
-          await updateDefaultCurrency(tempSelectedCurrencies[0]);
+          setDefaultCurrency(tempSelectedCurrencies[0]);
         }
         if (tempSelectedCurrencies.length > 0 && !tempSelectedCurrencies.includes(selectedCurrency)) {
           setSelectedCurrency(tempSelectedCurrencies[0]);
         }
+      } else {
+        throw new Error('Failed to update currencies');
       }
     } catch (error) {
       console.error('Error updating supported currencies:', error);
@@ -536,8 +528,8 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
   };
 
   const savePaymentSettings = async () => {
-    if (!hasChanges) {
-      console.log('No changes to save');
+    if (!hasChanges || !foodcourtId) {
+      console.log('No changes to save or no foodcourt ID');
       return;
     }
 
@@ -546,15 +538,15 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
 
     try {
       const token = localStorage.getItem('auth_token');
-      console.log('Saving payment settings:', JSON.stringify(paymentSettings, null, 2));
+      console.log('Saving foodcourt payment settings:', JSON.stringify(paymentSettings, null, 2));
 
-      const response = await fetch('/api/admin/payment-settings', {
-        method: 'POST',
+      const response = await fetch(`/api/foodcourts/${foodcourtId}/payment-settings`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(paymentSettings)
+        body: JSON.stringify({ payment_settings: paymentSettings })
       });
 
       const responseData = await response.json();
@@ -592,87 +584,80 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
       <Container>
         <PageHeader title="Payment Settings" />
         <Content>
-          {/* Tax Settings Section */}
+          {/* Additional Charges Section */}
           <Section>
-            <SectionTitle>Tax Settings</SectionTitle>
+            <SectionTitle>Additional Charges</SectionTitle>
             <SectionDescription>
-              Configure tax rate for invoices. This tax will be applied to all invoices you generate.
+              Configure additional charges for invoices. These will be applied to all invoices you generate. You can set up to 3 custom charge items (e.g., Tax, Service Charge, Processing Fee).
             </SectionDescription>
 
-            <PaymentMethodCard>
-              <MethodHeader>
-                <MethodInfo>
-                  <MethodLabel>Enable Tax</MethodLabel>
-                  <MethodDescription>Apply tax to invoices</MethodDescription>
-                </MethodInfo>
-                <ToggleSwitch>
-                  <ToggleInput
-                    type="checkbox"
-                    checked={paymentSettings.tax?.enabled ?? true}
-                    onChange={(e) => {
-                      setPaymentSettings(prev => ({
-                        ...prev,
-                        tax: {
-                          ...prev.tax!,
-                          enabled: e.target.checked
-                        }
-                      }));
-                      setHasChanges(true);
-                    }}
-                  />
-                  <ToggleSlider />
-                </ToggleSwitch>
-              </MethodHeader>
-
-              {paymentSettings.tax?.enabled && (
-                <MethodContent>
-                  <FormRow>
-                    <FormGroup>
-                      <Label>Tax Name</Label>
-                      <Input
-                        type="text"
-                        value={paymentSettings.tax?.name || 'Tax'}
+            {[0, 1, 2].map((index) => {
+              const charge = paymentSettings.additionalCharges?.[index] || { enabled: false, name: '', rate: 0 };
+              return (
+                <PaymentMethodCard key={index} style={{ marginBottom: '16px' }}>
+                  <MethodHeader>
+                    <MethodInfo>
+                      <MethodLabel>Charge Item {index + 1}</MethodLabel>
+                      <MethodDescription>{charge.enabled && charge.name ? `${charge.name} (${charge.rate}%)` : 'Not configured'}</MethodDescription>
+                    </MethodInfo>
+                    <ToggleSwitch>
+                      <ToggleInput
+                        type="checkbox"
+                        checked={charge.enabled}
                         onChange={(e) => {
-                          setPaymentSettings(prev => ({
-                            ...prev,
-                            tax: {
-                              ...prev.tax!,
-                              name: e.target.value
-                            }
-                          }));
+                          const newCharges = [...(paymentSettings.additionalCharges || [{ enabled: false, name: '', rate: 0 }, { enabled: false, name: '', rate: 0 }, { enabled: false, name: '', rate: 0 }])];
+                          newCharges[index] = { ...newCharges[index], enabled: e.target.checked };
+                          setPaymentSettings(prev => ({ ...prev, additionalCharges: newCharges }));
                           setHasChanges(true);
                         }}
-                        placeholder="e.g., VAT, GST, Sales Tax"
                       />
-                      <HelpText>Name displayed on invoices (e.g., VAT, GST, Sales Tax)</HelpText>
-                    </FormGroup>
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                  </MethodHeader>
 
-                    <FormGroup>
-                      <Label>Tax Rate (%)</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        value={paymentSettings.tax?.rate ?? 6}
-                        onChange={(e) => {
-                          setPaymentSettings(prev => ({
-                            ...prev,
-                            tax: {
-                              ...prev.tax!,
-                              rate: parseFloat(e.target.value) || 0
-                            }
-                          }));
-                          setHasChanges(true);
-                        }}
-                        placeholder="6"
-                      />
-                      <HelpText>Percentage to add to subtotal (e.g., 6 for 6%)</HelpText>
-                    </FormGroup>
-                  </FormRow>
-                </MethodContent>
-              )}
-            </PaymentMethodCard>
+                  {charge.enabled && (
+                    <MethodContent>
+                      <FormRow>
+                        <FormGroup>
+                          <Label>Item Name</Label>
+                          <Input
+                            type="text"
+                            value={charge.name}
+                            onChange={(e) => {
+                              const newCharges = [...(paymentSettings.additionalCharges || [{ enabled: false, name: '', rate: 0 }, { enabled: false, name: '', rate: 0 }, { enabled: false, name: '', rate: 0 }])];
+                              newCharges[index] = { ...newCharges[index], name: e.target.value };
+                              setPaymentSettings(prev => ({ ...prev, additionalCharges: newCharges }));
+                              setHasChanges(true);
+                            }}
+                            placeholder="e.g., Tax, Service Charge, Processing Fee"
+                          />
+                          <HelpText>Name displayed on invoices</HelpText>
+                        </FormGroup>
+
+                        <FormGroup>
+                          <Label>Rate (%)</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            value={charge.rate}
+                            onChange={(e) => {
+                              const newCharges = [...(paymentSettings.additionalCharges || [{ enabled: false, name: '', rate: 0 }, { enabled: false, name: '', rate: 0 }, { enabled: false, name: '', rate: 0 }])];
+                              newCharges[index] = { ...newCharges[index], rate: parseFloat(e.target.value) || 0 };
+                              setPaymentSettings(prev => ({ ...prev, additionalCharges: newCharges }));
+                              setHasChanges(true);
+                            }}
+                            placeholder="0"
+                          />
+                          <HelpText>Percentage to add to subtotal</HelpText>
+                        </FormGroup>
+                      </FormRow>
+                    </MethodContent>
+                  )}
+                </PaymentMethodCard>
+              );
+            })}
           </Section>
 
           {/* Section 1: Currency Settings */}
@@ -841,17 +826,17 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
               </NoCurrencyMessage>
             ) : (
               <>
-                <CurrencyTabs>
+                <Tabs>
                   {supportedCurrencies.map(code => (
-                    <CurrencyTab
+                    <Tab
                       key={code}
                       active={selectedCurrency === code}
                       onClick={() => setSelectedCurrency(code)}
                     >
                       {currencyConfig[code]?.symbol} {code}
-                    </CurrencyTab>
+                    </Tab>
                   ))}
-                </CurrencyTabs>
+                </Tabs>
 
                 {/* Bank Transfer */}
                 <PaymentMethodCard>
@@ -983,47 +968,58 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
         }
       >
         <p style={{ color: '#6B7280', marginBottom: '16px' }}>
-          Select the currencies you want to support for subscription plans and invoices.
+          Select from the currencies enabled by System Administrator.
         </p>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: '8px',
-          maxHeight: '400px',
-          overflowY: 'auto'
-        }}>
-          {Object.entries(currencyConfig).map(([code, config]) => (
-            <label
-              key={code}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '12px',
-                border: `1px solid ${tempSelectedCurrencies.includes(code) ? '#635BFF' : '#E6EBF1'}`,
-                borderRadius: '8px',
-                cursor: 'pointer',
-                background: tempSelectedCurrencies.includes(code) ? '#F0F0FF' : 'white',
-                transition: 'all 0.2s'
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={tempSelectedCurrencies.includes(code)}
-                onChange={() => toggleCurrencySelection(code)}
-                style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
-              />
-              <div>
-                <div style={{ fontWeight: 500 }}>
-                  {config.symbol} {code}
-                </div>
-                <div style={{ fontSize: '12px', color: '#6B7280' }}>
-                  {config.name}
-                </div>
-              </div>
-            </label>
-          ))}
-        </div>
+        {systemSupportedCurrencies.length === 0 ? (
+          <p style={{ color: '#DC2626', padding: '16px', background: '#FEF2F2', borderRadius: '8px' }}>
+            No currencies have been configured by System Administrator yet.
+          </p>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: '8px',
+            maxHeight: '400px',
+            overflowY: 'auto'
+          }}>
+            {/* Only show currencies enabled by System Administrator */}
+            {systemSupportedCurrencies.map(code => {
+              const config = currencyConfig[code];
+              if (!config) return null;
+              return (
+                <label
+                  key={code}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px',
+                    border: `1px solid ${tempSelectedCurrencies.includes(code) ? '#635BFF' : '#E6EBF1'}`,
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    background: tempSelectedCurrencies.includes(code) ? '#F0F0FF' : 'white',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={tempSelectedCurrencies.includes(code)}
+                    onChange={() => toggleCurrencySelection(code)}
+                    style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: 500 }}>
+                      {config.symbol} {code}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#6B7280' }}>
+                      {config.name}
+                    </div>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+        )}
       </Modal>
     </>
   );

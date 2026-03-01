@@ -725,7 +725,6 @@ const BrandPerformance: React.FC = () => {
             <Title>Performance</Title>
           </div>
           <ActionSection>
-            <Button variant="secondary" onClick={() => fetchOrdersData()}>Refresh</Button>
             <Button variant="primary">Export Report</Button>
           </ActionSection>
         </Header>

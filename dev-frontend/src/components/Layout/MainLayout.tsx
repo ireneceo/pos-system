@@ -608,6 +608,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     return user?.permissions?.includes(permissionKey) || false;
   };
 
+  // Brand Manager / Foodcourt Manager 권한 체크
+  const hasManagerPermission = (permissionKey: string): boolean => {
+    if (user?.role === 'Brand General' || user?.role === 'Foodcourt General') return true;
+    if (user?.role !== 'Brand Manager' && user?.role !== 'Foodcourt Manager') return false;
+    return user?.permissions?.includes(permissionKey) || false;
+  };
+
   // Helper function to get initials from name
   const getInitials = (name: string) => {
     if (!name) return '?';
@@ -878,8 +885,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0}>◈</NavIcon>
                   Notices
                 </NavItem>
-                <NavItem to="/pos/admin/support" active={isActive('/pos/admin/support')} hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0}>◎</NavIcon>
+                <NavItem to="/pos/admin/support" active={isActive('/pos/admin/support')} hasPending={badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.unreadComments?.systemInquiry > 0}>◎</NavIcon>
                   Inquiry Management
                 </NavItem>
                 <NavItem to="/pos/admin/contact-inquiries" active={isActive('/pos/admin/contact-inquiries')} onClick={closeSidebar}>
@@ -899,159 +906,213 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </>
             )}
 
-            {/* ========== BRAND GENERAL ========== */}
+            {/* ========== BRAND GENERAL / BRAND MANAGER ========== */}
             {(user?.role === 'Brand General' || user?.role === 'Brand Manager') && (
               <>
-                <NavItem to="/pos/brand/general/dashboard" active={isActive('/pos/brand/general/dashboard')} onClick={closeSidebar}>
-                  <NavIcon>■</NavIcon>
-                  Dashboard
-                </NavItem>
+                {hasManagerPermission('dashboard') && (
+                  <NavItem to="/pos/brand/general/dashboard" active={isActive('/pos/brand/general/dashboard')} onClick={closeSidebar}>
+                    <NavIcon>■</NavIcon>
+                    Dashboard
+                  </NavItem>
+                )}
 
-                <NavTitle>Management</NavTitle>
-                <NavItem to="/pos/brand/general/management" active={isActive('/pos/brand/general/management')} onClick={closeSidebar}>
-                  <NavIcon>▬</NavIcon>
-                  Brands
-                </NavItem>
-                <NavItem to="/pos/manager/restaurants" active={isActive('/pos/manager/restaurants')} onClick={closeSidebar}>
-                  <NavIcon>◐</NavIcon>
-                  Restaurants
-                </NavItem>
-                <NavItem to="/pos/manager/staff" active={isActive('/pos/manager/staff')} onClick={closeSidebar}>
-                  <NavIcon>◆</NavIcon>
-                  Staff
-                </NavItem>
+                {hasManagerPermission('management') && (
+                  <>
+                    <NavTitle>Management</NavTitle>
+                    <NavItem to="/pos/brand/general/management" active={isActive('/pos/brand/general/management')} onClick={closeSidebar}>
+                      <NavIcon>▬</NavIcon>
+                      Brands
+                    </NavItem>
+                    <NavItem to="/pos/manager/restaurants" active={isActive('/pos/manager/restaurants')} onClick={closeSidebar}>
+                      <NavIcon>◐</NavIcon>
+                      Restaurants
+                    </NavItem>
+                    <NavItem to="/pos/manager/staff" active={isActive('/pos/manager/staff')} onClick={closeSidebar}>
+                      <NavIcon>◆</NavIcon>
+                      Admin & Staff
+                    </NavItem>
+                    {user?.role === 'Brand General' && (
+                      <NavItem to="/pos/brand/manager" active={isActive('/pos/brand/manager')} onClick={closeSidebar}>
+                        <NavIcon>◇</NavIcon>
+                        Managers
+                      </NavItem>
+                    )}
+                  </>
+                )}
 
-                <NavTitle>Products & Inventory</NavTitle>
-                <NavItem to="/pos/brand-products" active={isActive('/pos/brand-products')} onClick={closeSidebar}>
-                  <NavIcon>◇</NavIcon>
-                  Products
-                </NavItem>
-                <NavItem to="/pos/recipes" active={isActive('/pos/recipes')} onClick={closeSidebar}>
-                  <NavIcon>◈</NavIcon>
-                  Recipes
-                </NavItem>
-                <NavItem to="/pos/brand-product-recipes" active={isActive('/pos/brand-product-recipes')} onClick={closeSidebar}>
-                  <NavIcon>⊕</NavIcon>
-                  Product Recipes
-                </NavItem>
-                <NavItem to="/pos/suppliers" active={isActive('/pos/suppliers')} onClick={closeSidebar}>
-                  <NavIcon>◇</NavIcon>
-                  Suppliers
-                </NavItem>
-                <NavItem to="/pos/brand-inventory" active={isActive('/pos/brand-inventory')} onClick={closeSidebar}>
-                  <NavIcon>▤</NavIcon>
-                  Inventory
-                </NavItem>
+                {hasManagerPermission('products') && (
+                  <>
+                    <NavTitle>Products & Inventory</NavTitle>
+                    <NavItem to="/pos/brand-products" active={isActive('/pos/brand-products')} onClick={closeSidebar}>
+                      <NavIcon>◇</NavIcon>
+                      Products
+                    </NavItem>
+                    <NavItem to="/pos/recipes" active={isActive('/pos/recipes')} onClick={closeSidebar}>
+                      <NavIcon>◈</NavIcon>
+                      Recipes
+                    </NavItem>
+                    <NavItem to="/pos/brand-product-recipes" active={isActive('/pos/brand-product-recipes')} onClick={closeSidebar}>
+                      <NavIcon>⊕</NavIcon>
+                      Product Recipes
+                    </NavItem>
+                    <NavItem to="/pos/suppliers" active={isActive('/pos/suppliers')} onClick={closeSidebar}>
+                      <NavIcon>◇</NavIcon>
+                      Suppliers
+                    </NavItem>
+                    <NavItem to="/pos/brand-inventory" active={isActive('/pos/brand-inventory')} onClick={closeSidebar}>
+                      <NavIcon>▤</NavIcon>
+                      Inventory
+                    </NavItem>
+                  </>
+                )}
 
-                <NavTitle>Operations</NavTitle>
-                <NavItem to="/pos/brand/invoices" active={isActive('/pos/brand/invoices')} hasPending={badgeCounts.invoices > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={badgeCounts.invoices > 0}>▦</NavIcon>
-                  Invoices
-                </NavItem>
-                <NavItem to="/pos/brand/general/reports" active={isActive('/pos/brand/general/reports')} onClick={closeSidebar}>
-                  <NavIcon>◉</NavIcon>
-                  Reports
-                </NavItem>
-                <NavItem to="/pos/brand/general/performance" active={isActive('/pos/brand/general/performance')} onClick={closeSidebar}>
-                  <NavIcon>▲</NavIcon>
-                  Performance
-                </NavItem>
-                <NavTitle>Communication</NavTitle>
-                <NavItem to="/pos/brand/general/notices" active={isActive('/pos/brand/general/notices')} hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0}>◈</NavIcon>
-                  Notices
-                </NavItem>
-                <NavItem to="/pos/brand/general/system-inquiry" active={isActive('/pos/brand/general/system-inquiry')} hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0}>?</NavIcon>
-                  System Inquiry
-                </NavItem>
-                <NavItem to="/pos/brand/general/operation-inquiry" active={isActive('/pos/brand/general/operation-inquiry')} hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0}>◎</NavIcon>
-                  Inquiry Management
-                </NavItem>
+                {hasManagerPermission('operations') && (
+                  <>
+                    <NavTitle>Operations</NavTitle>
+                    <NavItem to="/pos/brand/invoices" active={isActive('/pos/brand/invoices')} hasPending={badgeCounts.invoices > 0} onClick={closeSidebar}>
+                      <NavIcon hasPending={badgeCounts.invoices > 0}>▦</NavIcon>
+                      Invoices
+                    </NavItem>
+                    <NavItem to="/pos/brand/general/reports" active={isActive('/pos/brand/general/reports')} onClick={closeSidebar}>
+                      <NavIcon>◉</NavIcon>
+                      Reports
+                    </NavItem>
+                    <NavItem to="/pos/brand/general/performance" active={isActive('/pos/brand/general/performance')} onClick={closeSidebar}>
+                      <NavIcon>▲</NavIcon>
+                      Performance
+                    </NavItem>
+                  </>
+                )}
 
-                <NavTitle>Plans & Payments</NavTitle>
-                <NavItem to="/pos/brand/plans" active={isActive('/pos/brand/plans')} onClick={closeSidebar}>
-                  <NavIcon>☰</NavIcon>
-                  Subscription Plans
-                </NavItem>
-                <NavItem to="/pos/brand/general/subscriptions" active={isActive('/pos/brand/general/subscriptions')} onClick={closeSidebar}>
-                  <NavIcon>◈</NavIcon>
-                  Subscriptions
-                </NavItem>
-                <NavItem to="/pos/brand/payment-settings" active={isActive('/pos/brand/payment-settings')} onClick={closeSidebar}>
-                  <NavIcon>$</NavIcon>
-                  Payment Settings
-                </NavItem>
+                {hasManagerPermission('communication') && (
+                  <>
+                    <NavTitle>Communication</NavTitle>
+                    <NavItem to="/pos/brand/general/notices" active={isActive('/pos/brand/general/notices')} hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0} onClick={closeSidebar}>
+                      <NavIcon hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0}>◈</NavIcon>
+                      Notices
+                    </NavItem>
+                    <NavItem to="/pos/brand/general/system-inquiry" active={isActive('/pos/brand/general/system-inquiry')} hasPending={badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
+                      <NavIcon hasPending={badgeCounts.unreadComments?.systemInquiry > 0}>?</NavIcon>
+                      System Inquiry
+                    </NavItem>
+                    <NavItem to="/pos/brand/general/operation-inquiry" active={isActive('/pos/brand/general/operation-inquiry')} hasPending={badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
+                      <NavIcon hasPending={badgeCounts.unreadComments?.operationInquiry > 0}>◎</NavIcon>
+                      Inquiry Management
+                    </NavItem>
+                  </>
+                )}
+
+                {hasManagerPermission('plans_payments') && (
+                  <>
+                    <NavTitle>Plans & Payments</NavTitle>
+                    <NavItem to="/pos/brand/plans" active={isActive('/pos/brand/plans')} onClick={closeSidebar}>
+                      <NavIcon>☰</NavIcon>
+                      Subscription Plans
+                    </NavItem>
+                    <NavItem to="/pos/brand/general/subscriptions" active={isActive('/pos/brand/general/subscriptions')} onClick={closeSidebar}>
+                      <NavIcon>◈</NavIcon>
+                      Subscriptions
+                    </NavItem>
+                    <NavItem to="/pos/brand/payment-settings" active={isActive('/pos/brand/payment-settings')} onClick={closeSidebar}>
+                      <NavIcon>$</NavIcon>
+                      Payment Settings
+                    </NavItem>
+                  </>
+                )}
               </>
             )}
 
-            {/* ========== FOODCOURT GENERAL ========== */}
+            {/* ========== FOODCOURT GENERAL / FOODCOURT MANAGER ========== */}
             {(user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager') && (
               <>
-                <NavItem to="/pos/foodcourt/general/dashboard" active={isActive('/pos/foodcourt/general/dashboard')} onClick={closeSidebar}>
-                  <NavIcon>■</NavIcon>
-                  Dashboard
-                </NavItem>
+                {hasManagerPermission('dashboard') && (
+                  <NavItem to="/pos/foodcourt/general/dashboard" active={isActive('/pos/foodcourt/general/dashboard')} onClick={closeSidebar}>
+                    <NavIcon>■</NavIcon>
+                    Dashboard
+                  </NavItem>
+                )}
 
-                <NavTitle>Management</NavTitle>
-                <NavItem to="/pos/foodcourt/general/management" active={isActive('/pos/foodcourt/general/management')} onClick={closeSidebar}>
-                  <NavIcon>◉</NavIcon>
-                  Foodcourts
-                </NavItem>
-                <NavItem to="/pos/manager/restaurants" active={isActive('/pos/manager/restaurants')} onClick={closeSidebar}>
-                  <NavIcon>◐</NavIcon>
-                  Restaurants
-                </NavItem>
-                <NavItem to="/pos/manager/staff" active={isActive('/pos/manager/staff')} onClick={closeSidebar}>
-                  <NavIcon>◆</NavIcon>
-                  Staff
-                </NavItem>
+                {hasManagerPermission('management') && (
+                  <>
+                    <NavTitle>Management</NavTitle>
+                    <NavItem to="/pos/foodcourt/general/management" active={isActive('/pos/foodcourt/general/management')} onClick={closeSidebar}>
+                      <NavIcon>◉</NavIcon>
+                      Foodcourts
+                    </NavItem>
+                    <NavItem to="/pos/manager/restaurants" active={isActive('/pos/manager/restaurants')} onClick={closeSidebar}>
+                      <NavIcon>◐</NavIcon>
+                      Restaurants
+                    </NavItem>
+                    <NavItem to="/pos/manager/staff" active={isActive('/pos/manager/staff')} onClick={closeSidebar}>
+                      <NavIcon>◆</NavIcon>
+                      Admin & Staff
+                    </NavItem>
+                    {user?.role === 'Foodcourt General' && (
+                      <NavItem to="/pos/foodcourt/manager" active={isActive('/pos/foodcourt/manager')} onClick={closeSidebar}>
+                        <NavIcon>◇</NavIcon>
+                        Managers
+                      </NavItem>
+                    )}
+                  </>
+                )}
 
-                <NavTitle>Operations</NavTitle>
-                <NavItem to="/pos/foodcourt/invoices" active={isActive('/pos/foodcourt/invoices')} hasPending={badgeCounts.invoices > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={badgeCounts.invoices > 0}>▦</NavIcon>
-                  Invoices
-                </NavItem>
-                <NavItem to="/pos/foodcourt/general/stats" active={isActive('/pos/foodcourt/general/stats')} onClick={closeSidebar}>
-                  <NavIcon>▲</NavIcon>
-                  Statistics
-                </NavItem>
-                <NavItem to="/pos/manager/customers" active={isActive('/pos/manager/customers')} onClick={closeSidebar}>
-                  <NavIcon>○</NavIcon>
-                  Customers
-                </NavItem>
-                <NavItem to="/pos/manager/coupons" active={isActive('/pos/manager/coupons')} onClick={closeSidebar}>
-                  <NavIcon>%</NavIcon>
-                  Coupons
-                </NavItem>
-                <NavTitle>Communication</NavTitle>
-                <NavItem to="/pos/foodcourt/general/notices" active={isActive('/pos/foodcourt/general/notices')} hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0}>◈</NavIcon>
-                  Notices
-                </NavItem>
-                <NavItem to="/pos/foodcourt/general/system-inquiry" active={isActive('/pos/foodcourt/general/system-inquiry')} hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0}>?</NavIcon>
-                  System Inquiry
-                </NavItem>
-                <NavItem to="/pos/foodcourt/general/operation-inquiry" active={isActive('/pos/foodcourt/general/operation-inquiry')} hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0}>◎</NavIcon>
-                  Inquiry Management
-                </NavItem>
+                {hasManagerPermission('operations') && (
+                  <>
+                    <NavTitle>Operations</NavTitle>
+                    <NavItem to="/pos/foodcourt/invoices" active={isActive('/pos/foodcourt/invoices')} hasPending={badgeCounts.invoices > 0} onClick={closeSidebar}>
+                      <NavIcon hasPending={badgeCounts.invoices > 0}>▦</NavIcon>
+                      Invoices
+                    </NavItem>
+                    <NavItem to="/pos/foodcourt/general/stats" active={isActive('/pos/foodcourt/general/stats')} onClick={closeSidebar}>
+                      <NavIcon>▲</NavIcon>
+                      Statistics
+                    </NavItem>
+                    <NavItem to="/pos/manager/customers" active={isActive('/pos/manager/customers')} onClick={closeSidebar}>
+                      <NavIcon>○</NavIcon>
+                      Customers
+                    </NavItem>
+                    <NavItem to="/pos/manager/coupons" active={isActive('/pos/manager/coupons')} onClick={closeSidebar}>
+                      <NavIcon>%</NavIcon>
+                      Coupons
+                    </NavItem>
+                  </>
+                )}
 
-                <NavTitle>Plans & Payments</NavTitle>
-                <NavItem to="/pos/foodcourt/plans" active={isActive('/pos/foodcourt/plans')} onClick={closeSidebar}>
-                  <NavIcon>☰</NavIcon>
-                  Subscription Plans
-                </NavItem>
-                <NavItem to="/pos/foodcourt/general/subscriptions" active={isActive('/pos/foodcourt/general/subscriptions')} onClick={closeSidebar}>
-                  <NavIcon>◈</NavIcon>
-                  Subscriptions
-                </NavItem>
-                <NavItem to="/pos/foodcourt/payment-settings" active={isActive('/pos/foodcourt/payment-settings')} onClick={closeSidebar}>
-                  <NavIcon>$</NavIcon>
-                  Payment Settings
-                </NavItem>
+                {hasManagerPermission('communication') && (
+                  <>
+                    <NavTitle>Communication</NavTitle>
+                    <NavItem to="/pos/foodcourt/general/notices" active={isActive('/pos/foodcourt/general/notices')} hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0} onClick={closeSidebar}>
+                      <NavIcon hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0}>◈</NavIcon>
+                      Notices
+                    </NavItem>
+                    <NavItem to="/pos/foodcourt/general/system-inquiry" active={isActive('/pos/foodcourt/general/system-inquiry')} hasPending={badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
+                      <NavIcon hasPending={badgeCounts.unreadComments?.systemInquiry > 0}>?</NavIcon>
+                      System Inquiry
+                    </NavItem>
+                    <NavItem to="/pos/foodcourt/general/operation-inquiry" active={isActive('/pos/foodcourt/general/operation-inquiry')} hasPending={badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
+                      <NavIcon hasPending={badgeCounts.unreadComments?.operationInquiry > 0}>◎</NavIcon>
+                      Inquiry Management
+                    </NavItem>
+                  </>
+                )}
+
+                {hasManagerPermission('plans_payments') && (
+                  <>
+                    <NavTitle>Plans & Payments</NavTitle>
+                    <NavItem to="/pos/foodcourt/plans" active={isActive('/pos/foodcourt/plans')} onClick={closeSidebar}>
+                      <NavIcon>☰</NavIcon>
+                      Subscription Plans
+                    </NavItem>
+                    <NavItem to="/pos/foodcourt/general/subscriptions" active={isActive('/pos/foodcourt/general/subscriptions')} onClick={closeSidebar}>
+                      <NavIcon>◈</NavIcon>
+                      Subscriptions
+                    </NavItem>
+                    <NavItem to="/pos/foodcourt/payment-settings" active={isActive('/pos/foodcourt/payment-settings')} onClick={closeSidebar}>
+                      <NavIcon>$</NavIcon>
+                      Payment Settings
+                    </NavItem>
+                  </>
+                )}
               </>
             )}
 
@@ -1087,12 +1148,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0}>◈</NavIcon>
                   Notices
                 </NavItem>
-                <NavItem to="/pos/owner/system-inquiry" active={isActive('/pos/owner/system-inquiry')} hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0}>◇</NavIcon>
+                <NavItem to="/pos/owner/system-inquiry" active={isActive('/pos/owner/system-inquiry')} hasPending={badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.unreadComments?.systemInquiry > 0}>◇</NavIcon>
                   System Inquiry
                 </NavItem>
-                <NavItem to="/pos/owner/operation-inquiry" active={isActive('/pos/owner/operation-inquiry')} hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0}>◆</NavIcon>
+                <NavItem to="/pos/owner/operation-inquiry" active={isActive('/pos/owner/operation-inquiry')} hasPending={badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.unreadComments?.operationInquiry > 0}>◆</NavIcon>
                   Operation Inquiry
                 </NavItem>
               </>
@@ -1157,6 +1218,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           
           {/* System Access - Only for Restaurant Admin & Staff */}
           {(user?.role === 'Restaurant Admin' || user?.role === 'Staff') && (
+            isRouteAllowed(`/restaurant/${restaurantId}/pos-terminal`) ||
+            isRouteAllowed(`/restaurant/${restaurantId}/kitchen`) ||
+            isRouteAllowed(`/restaurant/${restaurantId}/display`) ||
+            isRouteAllowed(`/mobile/:slug/menu`)
+          ) && (
             <NavSection>
               <NavTitle>System Access</NavTitle>
               {isRouteAllowed(`/restaurant/${restaurantId}/pos-terminal`) && (
@@ -1257,8 +1323,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             </NavSection>
           )}
           
-          {/* Restaurant Admin & Staff - Operations (high-frequency items) */}
+          {/* Restaurant Admin & Staff - Operations */}
           {(hasMenuPermission('support') || hasMenuPermission('reports') || hasMenuPermission('inventory')) && (
+            (hasMenuPermission('support') && isRouteAllowed(`/restaurant/${restaurantId}/invoices`)) ||
+            (hasMenuPermission('reports') && isRouteAllowed(`/restaurant/${restaurantId}/reports`)) ||
+            (hasMenuPermission('inventory') && isRouteAllowed(`/restaurant/${restaurantId}/inventory`)) ||
+            (hasMenuPermission('inventory') && isRouteAllowed(`/restaurant/${restaurantId}/suppliers`))
+          ) && (
             <NavSection>
               <NavTitle>Operations</NavTitle>
               {hasMenuPermission('support') && isRouteAllowed(`/restaurant/${restaurantId}/invoices`) && (
@@ -1285,22 +1356,32 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   Suppliers
                 </NavItem>
               )}
+            </NavSection>
+          )}
+
+          {/* Restaurant Admin & Staff - Communication */}
+          {hasMenuPermission('support') && (
+            isRouteAllowed(`/restaurant/${restaurantId}/notices`) ||
+            isRouteAllowed(`/restaurant/${restaurantId}/support`) ||
+            isRouteAllowed(`/restaurant/${restaurantId}/operation-inquiry`)
+          ) && (
+            <NavSection>
               <NavTitle>Communication</NavTitle>
-              {hasMenuPermission('support') && isRouteAllowed(`/restaurant/${restaurantId}/notices`) && (
+              {isRouteAllowed(`/restaurant/${restaurantId}/notices`) && (
                 <NavItem to={`/restaurant/${restaurantId}/notices`} active={isActive(`/restaurant/${restaurantId}/notices`)} hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0} onClick={closeSidebar}>
                   <NavIcon hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0}>◈</NavIcon>
                   Notices
                 </NavItem>
               )}
-              {hasMenuPermission('support') && isRouteAllowed(`/restaurant/${restaurantId}/support`) && (
-                <NavItem to={`/restaurant/${restaurantId}/support`} active={isActive(`/restaurant/${restaurantId}/support`)} hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0}>◎</NavIcon>
+              {isRouteAllowed(`/restaurant/${restaurantId}/support`) && (
+                <NavItem to={`/restaurant/${restaurantId}/support`} active={isActive(`/restaurant/${restaurantId}/support`)} hasPending={badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.unreadComments?.systemInquiry > 0}>◎</NavIcon>
                   System Inquiry
                 </NavItem>
               )}
-              {hasMenuPermission('support') && isRouteAllowed(`/restaurant/${restaurantId}/operation-inquiry`) && (
-                <NavItem to={`/restaurant/${restaurantId}/operation-inquiry`} active={isActive(`/restaurant/${restaurantId}/operation-inquiry`)} hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0}>▲</NavIcon>
+              {isRouteAllowed(`/restaurant/${restaurantId}/operation-inquiry`) && (
+                <NavItem to={`/restaurant/${restaurantId}/operation-inquiry`} active={isActive(`/restaurant/${restaurantId}/operation-inquiry`)} hasPending={badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.unreadComments?.operationInquiry > 0}>▲</NavIcon>
                   Operation Inquiry
                 </NavItem>
               )}
@@ -1309,6 +1390,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
           {/* Restaurant Admin & Staff (with permission) - Products */}
           {hasMenuPermission('menu_management') && (
+            isRouteAllowed(`/restaurant/${restaurantId}/menu`) ||
+            isRouteAllowed(`/restaurant/${restaurantId}/categories`) ||
+            isRouteAllowed(`/restaurant/${restaurantId}/options`) ||
+            isRouteAllowed(`/restaurant/${restaurantId}/recipe-management`)
+          ) && (
             <NavSection>
               <NavTitle>Products</NavTitle>
               {isRouteAllowed(`/restaurant/${restaurantId}/menu`) && (
@@ -1340,6 +1426,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
           {/* Restaurant Admin & Staff - Team & Marketing */}
           {(user?.role === 'Restaurant Admin' || hasMenuPermission('marketing')) && (
+            (user?.role === 'Restaurant Admin' && isRouteAllowed(`/restaurant/${restaurantId}/staff`)) ||
+            (hasMenuPermission('marketing') && isRouteAllowed(`/restaurant/${restaurantId}/customers`)) ||
+            (hasMenuPermission('marketing') && isRouteAllowed(`/restaurant/${restaurantId}/coupons`))
+          ) && (
             <NavSection>
               <NavTitle>Team & Marketing</NavTitle>
               {user?.role === 'Restaurant Admin' && isRouteAllowed(`/restaurant/${restaurantId}/staff`) && (

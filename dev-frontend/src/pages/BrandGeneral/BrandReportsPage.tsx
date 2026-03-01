@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { useSearchParams } from 'react-router-dom';
-import { TabContainer, Tab, StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI';
+import { StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI';
+import { Tabs, Tab } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/currency';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
@@ -413,10 +415,7 @@ const BrandReportsPage: React.FC = () => {
   }, [defaultCurrency]);
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<TabType>(() => {
-    const tabFromUrl = searchParams.get('tab') as TabType;
-    return tabFromUrl || 'ranking';
-  });
+  const [activeTab, handleTabChange] = useTabParam<TabType>('ranking');
 
   // Date range state
   const [activePeriod, setActivePeriod] = useState<PeriodType>('week');
@@ -466,14 +465,14 @@ const BrandReportsPage: React.FC = () => {
   const [initialRestaurantId] = useState(() => searchParams.get('restaurantId'));
   const [initialRestaurantName] = useState(() => searchParams.get('restaurantName'));
 
-  // Update URL when tab changes (preserve other params)
+  // Update URL when restaurant filter changes (preserve tab param)
   useEffect(() => {
     const newParams: Record<string, string> = { tab: activeTab };
     if (selectedRestaurant !== 'all') {
       newParams.restaurantId = selectedRestaurant;
     }
     setSearchParams(newParams, { replace: true });
-  }, [activeTab, setSearchParams, selectedRestaurant]);
+  }, [selectedRestaurant, setSearchParams, activeTab]);
 
   // Fetch brands and restaurants
   useEffect(() => {
@@ -1189,14 +1188,14 @@ const BrandReportsPage: React.FC = () => {
         </Header>
 
         <Content>
-          <TabContainer>
-            <Tab active={activeTab === 'ranking'} onClick={() => setActiveTab('ranking')}>Sales Ranking</Tab>
-            <Tab active={activeTab === 'sales'} onClick={() => setActiveTab('sales')}>Sales Report</Tab>
-            <Tab active={activeTab === 'details'} onClick={() => setActiveTab('details')}>Sales Details</Tab>
-            <Tab active={activeTab === 'menu'} onClick={() => setActiveTab('menu')}>Menu Analysis</Tab>
-            <Tab active={activeTab === 'customers'} onClick={() => setActiveTab('customers')}>Customer Insights</Tab>
-            <Tab active={activeTab === 'operations'} onClick={() => setActiveTab('operations')}>Operations</Tab>
-          </TabContainer>
+          <Tabs>
+            <Tab active={activeTab === 'ranking'} onClick={() => handleTabChange('ranking')}>Sales Ranking</Tab>
+            <Tab active={activeTab === 'sales'} onClick={() => handleTabChange('sales')}>Sales Report</Tab>
+            <Tab active={activeTab === 'details'} onClick={() => handleTabChange('details')}>Sales Details</Tab>
+            <Tab active={activeTab === 'menu'} onClick={() => handleTabChange('menu')}>Menu Analysis</Tab>
+            <Tab active={activeTab === 'customers'} onClick={() => handleTabChange('customers')}>Customer Insights</Tab>
+            <Tab active={activeTab === 'operations'} onClick={() => handleTabChange('operations')}>Operations</Tab>
+          </Tabs>
 
           {/* Sales Tab */}
           <div style={{ display: activeTab === 'sales' ? 'block' : 'none' }}>

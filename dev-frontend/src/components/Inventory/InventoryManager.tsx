@@ -1092,6 +1092,8 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
             ? { ...item, current_stock: newStock, stock_status: newStatus, last_stock_take_at: now }
             : item
         ));
+        // Remove resolved alerts for this ingredient
+        setAlerts(prev => prev.filter(alert => alert.ingredient_id !== selectedIngredient.id));
         setShowReceiveModal(false);
         setSelectedIngredient(null);
         setQuantity('');
@@ -1682,7 +1684,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                     return matchesSearch && matchesStatus;
                   }).length})</SectionTitle>}
                   <Table style={{ marginBottom: '24px' }}>
-                    <InventoryTableHeader columns="2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 120px">
+                    <InventoryTableHeader columns="2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 160px">
                       <span>Item</span>
                       <span>Status</span>
                       <span>Current Stock</span>
@@ -1700,7 +1702,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                         return matchesSearch && matchesStatus;
                       })
                       .map(item => (
-                      <InventoryTableRow key={`general-stock-${item.id}`} columns="2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 120px">
+                      <InventoryTableRow key={`general-stock-${item.id}`} columns="2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 160px">
                         <MobileGrid>
                           <MobileValue>
                             <MobileLabel>Item</MobileLabel>
@@ -1887,7 +1889,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                     </EmptyState>
                   ) : (
                 <Table>
-                  <InventoryTableHeader columns="2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 120px">
+                  <InventoryTableHeader columns="2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 160px">
                     <span>Ingredient</span>
                     <span>Status</span>
                     <span>Current Stock</span>
@@ -1899,7 +1901,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                     <span>Actions</span>
                   </InventoryTableHeader>
                   {filteredInventory.map(item => (
-                    <InventoryTableRow key={item.id} columns="2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 120px">
+                    <InventoryTableRow key={item.id} columns="2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 160px">
                       <MobileGrid>
                         <MobileValue>
                           <MobileLabel>Ingredient</MobileLabel>
@@ -2020,6 +2022,13 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                           style={{ padding: '6px 12px', fontSize: '13px' }}
                         >
                           Receive
+                        </Button>
+                        <Button
+                          variant="danger"
+                          onClick={() => openWasteModal(item)}
+                          style={{ padding: '6px 12px', fontSize: '13px' }}
+                        >
+                          Waste
                         </Button>
                         <SettingsButton onClick={() => openSettingsModal(item)}>
                           Settings

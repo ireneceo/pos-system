@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
-import { TabContainer, Tab, StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI';
+import { StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI';
+import { Tabs, Tab } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 import {
   LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -147,7 +149,7 @@ const Content = styled.main`
   }
 `;
 
-// TabContainer and Tab components now imported from ../../components/UI
+// Tabs and Tab components now imported from Common/TabComponents
 
 // Using common StatCard components from ../../components/UI
 // StatsGrid, StatCard, StatValue, StatLabel, StatDescription are now imported
@@ -381,7 +383,7 @@ const AnalyticsPage: React.FC = () => {
   const { operationSettings } = useStore();
   const currency = operationSettings.currency;
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState<TabType>('system');
+  const [activeTab, handleTabChange] = useTabParam<TabType>('system');
   const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
   const [dateRange, setDateRange] = useState({
     start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -417,7 +419,7 @@ const AnalyticsPage: React.FC = () => {
       console.log('Setting restaurant filter from URL:', { restaurantId, restaurantName });
       setSelectedRestaurant(restaurantId);
       setSelectedRestaurantName(decodeURIComponent(restaurantName));
-      setActiveTab('restaurant_sales');
+      handleTabChange('restaurant_sales');
     }
   }, [searchParams]);
 
@@ -1247,20 +1249,20 @@ const AnalyticsPage: React.FC = () => {
         </Header>
 
         <Content>
-          <TabContainer>
-            <Tab active={activeTab === 'system'} onClick={() => setActiveTab('system')}>
+          <Tabs>
+            <Tab active={activeTab === 'system'} onClick={() => handleTabChange('system')}>
               System Analytics
             </Tab>
-            <Tab active={activeTab === 'subscriptions'} onClick={() => setActiveTab('subscriptions')}>
+            <Tab active={activeTab === 'subscriptions'} onClick={() => handleTabChange('subscriptions')}>
               Subscription Report
             </Tab>
-            <Tab active={activeTab === 'manager_sales'} onClick={() => setActiveTab('manager_sales')}>
+            <Tab active={activeTab === 'manager_sales'} onClick={() => handleTabChange('manager_sales')}>
               Manager Sales
             </Tab>
-            <Tab active={activeTab === 'restaurant_sales'} onClick={() => setActiveTab('restaurant_sales')}>
+            <Tab active={activeTab === 'restaurant_sales'} onClick={() => handleTabChange('restaurant_sales')}>
               Restaurant Sales
             </Tab>
-          </TabContainer>
+          </Tabs>
 
           {activeTab === 'manager_sales' && (
             <>

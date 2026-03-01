@@ -365,7 +365,7 @@ class InvoiceScheduler {
           include: [{
             model: Restaurant,
             as: 'restaurant',
-            attributes: ['id', 'name', 'email']
+            attributes: ['id', 'name', 'email', 'currency']
           }]
         }]
       });
@@ -374,7 +374,7 @@ class InvoiceScheduler {
 
       for (const plan of plans) {
         // Determine effective billing day for this plan
-        const effectiveBillingDay = plan.billing_day || 1;
+        const effectiveBillingDay = plan.billing_day != null ? plan.billing_day : 1;
 
         // Check if today is ADVANCE_DAYS before this plan's billing day
         if (!this.isTodayAdvanceOf(effectiveBillingDay, today)) {
@@ -388,6 +388,9 @@ class InvoiceScheduler {
           try {
             const restaurant = pr.restaurant;
             if (!restaurant) continue;
+
+            // Use restaurant's base currency (design rule: invoice in recipient's currency)
+            const invoiceCurrency = restaurant.currency || 'RM';
 
             // Check for duplicate
             const existing = await Invoice.findOne({
@@ -458,7 +461,7 @@ class InvoiceScheduler {
               discount_amount: charges.discountAmount || 0,
               discount_reason: charges.discountReason || null,
               total_amount: Math.max(0, charges.totalAmount),
-              currency: plan.currency || 'MYR',
+              currency: invoiceCurrency,
               status: isZeroAmount ? 'paid' : 'pending_payment',
               paid_at: isZeroAmount ? today : null,
               payment_notes: isZeroAmount ? '100% discount - auto-completed' : null,
@@ -479,7 +482,7 @@ class InvoiceScheduler {
             await InvoiceItem.bulkCreate(invoiceItems);
 
             result.generated++;
-            console.log(`✅ [ENTITY PLAN] ${invoiceNumber} for ${restaurant.name} - ${plan.currency} ${charges.totalAmount.toFixed(2)} (billing_day: ${effectiveBillingDay})`);
+            console.log(`✅ [ENTITY PLAN] ${invoiceNumber} for ${restaurant.name} - ${invoiceCurrency} ${charges.totalAmount.toFixed(2)} (billing_day: ${effectiveBillingDay})`);
 
             // Send email notification (non-blocking)
             this.sendInvoiceEmail(invoice, restaurant, plan.entity_type, plan.entity_id, invoiceNumber);
@@ -637,9 +640,23 @@ class InvoiceScheduler {
   }
 
   /**
+   * Resolve billing_day to actual day for a given month.
+   * -1 means "end of month" (last day of the target month).
+   * @param {number} billingDay - Day of month (1-28) or -1 for end of month
+   * @param {number} year
+   * @param {number} month - 0-indexed
+   * @returns {number} actual day of month
+   */
+  resolveEffectiveDay(billingDay, year, month) {
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    if (billingDay === -1) return lastDay;
+    return Math.min(billingDay, lastDay);
+  }
+
+  /**
    * Check if today is exactly ADVANCE_DAYS before a given billing day.
    * Handles month boundary wrapping.
-   * @param {number} billingDay - Day of month (1-28)
+   * @param {number} billingDay - Day of month (1-28) or -1 for end of month
    * @param {Date} today - Current date
    * @returns {boolean}
    */
@@ -648,10 +665,9 @@ class InvoiceScheduler {
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
 
-    // Calculate the next upcoming billing date, clamping to month's last day
+    // Calculate the next upcoming billing date
     let billingDate;
-    const lastDayThisMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-    const effectiveThisMonth = Math.min(billingDay, lastDayThisMonth);
+    const effectiveThisMonth = this.resolveEffectiveDay(billingDay, currentYear, currentMonth);
 
     if (currentDay < effectiveThisMonth) {
       // Billing day is still ahead this month
@@ -659,8 +675,7 @@ class InvoiceScheduler {
     } else {
       // Billing day passed or is today -> next month
       const nextMonth = currentMonth + 1;
-      const lastDayNextMonth = new Date(currentYear, nextMonth + 1, 0).getDate();
-      const effectiveNextMonth = Math.min(billingDay, lastDayNextMonth);
+      const effectiveNextMonth = this.resolveEffectiveDay(billingDay, currentYear, nextMonth);
       billingDate = new Date(currentYear, nextMonth, effectiveNextMonth);
     }
 
@@ -677,7 +692,7 @@ class InvoiceScheduler {
   /**
    * Get the target billing month/year for a given billing day.
    * Since we generate in advance, the billing day is in the future.
-   * @param {number} billingDay - Day of month
+   * @param {number} billingDay - Day of month (1-28) or -1 for end of month
    * @param {Date} today - Current date
    * @returns {{ targetMonth: number, targetYear: number }}
    */
@@ -686,7 +701,9 @@ class InvoiceScheduler {
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
 
-    if (currentDay < billingDay) {
+    const effectiveDay = this.resolveEffectiveDay(billingDay, currentYear, currentMonth);
+
+    if (currentDay < effectiveDay) {
       return { targetMonth: currentMonth, targetYear: currentYear };
     } else {
       const nextMonth = currentMonth + 1;
@@ -701,22 +718,35 @@ class InvoiceScheduler {
    * Calculate billing period for entity plans based on billing_day.
    * Period: billing_day of previous cycle to (billing_day - 1) of current cycle.
    * Due date: the billing_day itself.
-   * @param {number} billingDay - Day of month (1-28)
+   * For end-of-month (-1): period is 1st~last day of month, due date = last day.
+   * @param {number} billingDay - Day of month (1-28) or -1 for end of month
    * @param {Date} today - Current date
    */
   calculateEntityBillingPeriod(billingDay, today) {
     const { targetMonth, targetYear } = this.getTargetBillingMonth(billingDay, today);
 
-    // Period end: (billingDay - 1) of the target billing month
-    const periodEnd = new Date(targetYear, targetMonth, billingDay - 1, 23, 59, 59);
+    if (billingDay === -1) {
+      // End of month: period = 1st to last day of target month
+      const lastDay = new Date(targetYear, targetMonth + 1, 0).getDate();
+      const periodStart = new Date(targetYear, targetMonth, 1);
+      const periodEnd = new Date(targetYear, targetMonth, lastDay, 23, 59, 59);
+      const dueDate = new Date(targetYear, targetMonth, lastDay);
+      return { periodStart, periodEnd, dueDate };
+    }
+
+    const effectiveDay = this.resolveEffectiveDay(billingDay, targetYear, targetMonth);
+
+    // Period end: (effectiveDay - 1) of the target billing month
+    const periodEnd = new Date(targetYear, targetMonth, effectiveDay - 1, 23, 59, 59);
 
     // Period start: billingDay of the month before
     const prevMonth = targetMonth === 0 ? 11 : targetMonth - 1;
     const prevYear = targetMonth === 0 ? targetYear - 1 : targetYear;
-    const periodStart = new Date(prevYear, prevMonth, billingDay);
+    const prevEffectiveDay = this.resolveEffectiveDay(billingDay, prevYear, prevMonth);
+    const periodStart = new Date(prevYear, prevMonth, prevEffectiveDay);
 
     // Due date: billing day itself
-    const dueDate = new Date(targetYear, targetMonth, billingDay);
+    const dueDate = new Date(targetYear, targetMonth, effectiveDay);
 
     return { periodStart, periodEnd, dueDate };
   }

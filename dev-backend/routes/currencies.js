@@ -257,7 +257,7 @@ router.get('/brands/:brandId', authenticateToken, async (req, res) => {
     const { brandId } = req.params;
 
     const brand = await Brand.findByPk(brandId, {
-      attributes: ['id', 'name', 'default_currency', 'supported_currencies']
+      attributes: ['id', 'name', 'currency', 'supported_currencies']
     });
 
     if (!brand) {
@@ -291,7 +291,7 @@ router.put('/brands/:brandId', authenticateToken, async (req, res) => {
     }
 
     await brand.update({
-      default_currency,
+      currency: default_currency,
       supported_currencies
     });
 

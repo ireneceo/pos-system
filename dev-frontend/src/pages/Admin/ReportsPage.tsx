@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
-import { TabContainer, Tab, StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI';
+import { StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI';
+import { Tabs, Tab } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 import {
   LineChart, Line, PieChart, Pie, Cell, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
@@ -281,7 +283,7 @@ interface SubscriptionData {
 const ReportsPage: React.FC = () => {
   const { operationSettings, siteTimezone } = useStore();
   const defaultCurrency = operationSettings?.currency || 'MYR';
-  const [activeTab, setActiveTab] = useState<TabType>('revenue');
+  const [activeTab, handleTabChange] = useTabParam<TabType>('revenue');
   const [period, setPeriod] = useState<PeriodType>('month');
   const [currency, setCurrency] = useState('');
   const [customStart, setCustomStart] = useState('');
@@ -900,12 +902,12 @@ const ReportsPage: React.FC = () => {
         </Header>
 
         <Content>
-          <TabContainer>
-            <Tab active={activeTab === 'revenue'} onClick={() => setActiveTab('revenue')}>Revenue</Tab>
-            <Tab active={activeTab === 'payment'} onClick={() => setActiveTab('payment')}>Payment</Tab>
-            <Tab active={activeTab === 'customer'} onClick={() => setActiveTab('customer')}>Customer</Tab>
-            <Tab active={activeTab === 'subscription'} onClick={() => setActiveTab('subscription')}>Subscription</Tab>
-          </TabContainer>
+          <Tabs>
+            <Tab active={activeTab === 'revenue'} onClick={() => handleTabChange('revenue')}>Revenue</Tab>
+            <Tab active={activeTab === 'payment'} onClick={() => handleTabChange('payment')}>Payment</Tab>
+            <Tab active={activeTab === 'customer'} onClick={() => handleTabChange('customer')}>Customer</Tab>
+            <Tab active={activeTab === 'subscription'} onClick={() => handleTabChange('subscription')}>Subscription</Tab>
+          </Tabs>
 
           <FilterControls>
             <DateButton active={period === 'all'} onClick={() => setPeriod('all')}>All</DateButton>

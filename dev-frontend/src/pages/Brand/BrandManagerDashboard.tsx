@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { TabContainer, Tab, DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
+import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
+import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
@@ -231,7 +233,7 @@ const QuickActionDesc = styled.div`
 const BrandManagerDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, handleTabChange] = useTabParam('overview');
   const [restaurants, setRestaurants] = useState<RestaurantSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [brandName, setBrandName] = useState('');
@@ -345,14 +347,14 @@ const BrandManagerDashboard: React.FC = () => {
         </Header>
 
         <Content>
-          <TabContainer>
-            <Tab active={activeTab === 'overview'} onClick={() => setActiveTab('overview')}>
+          <Tabs>
+            <Tab active={activeTab === 'overview'} onClick={() => handleTabChange('overview')}>
               Overview
             </Tab>
-            <Tab active={activeTab === 'restaurants'} onClick={() => setActiveTab('restaurants')}>
-              Restaurants ({totalRestaurants})
+            <Tab active={activeTab === 'restaurants'} onClick={() => handleTabChange('restaurants')}>
+              Restaurants <Badge count={totalRestaurants} showZero />
             </Tab>
-          </TabContainer>
+          </Tabs>
 
           {activeTab === 'overview' && (
             <>
