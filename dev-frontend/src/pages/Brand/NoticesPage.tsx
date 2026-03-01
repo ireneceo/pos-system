@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import { Container, Header, Title, Content, Button, ActionSection } from '../../components/UI/PageComponents';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/StatCard';
@@ -9,6 +10,7 @@ import { useTabParam } from '../../hooks/useTabParam';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
 import CommentSection from '../../components/Common/CommentSection';
+import { linkifyText } from '../../utils/linkify';
 
 // ============================================================================
 // Interfaces
@@ -465,16 +467,6 @@ const MetaFieldValue = styled.span`
 // Comments Styled Components
 // ============================================================================
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 60px 20px;
-  color: #6B7280;
-
-  h3 {
-    color: #374151;
-    margin-bottom: 8px;
-  }
-`;
 
 const DeleteNoticeButton = styled.button`
   background: none;
@@ -703,6 +695,7 @@ const NoticesPage: React.FC = () => {
       if (response.ok) {
         setShowCreateModal(false);
         setNewAttachments([]);
+        setActiveTab('sent');
         fetchSentNotices();
       }
     } catch (error) {
@@ -1082,52 +1075,28 @@ const NoticesPage: React.FC = () => {
                 />
               </FormGroup>
 
-              <FormRow>
-                <FormGroup>
-                  <FormLabel>Target Type *</FormLabel>
-                  <FormSelect
-                    value={newNotice.target_type}
-                    onChange={(e) => setNewNotice({
-                      ...newNotice,
-                      target_type: e.target.value,
-                      brand_id: '',
-                      restaurant_ids: []
-                    })}
-                  >
-                    <option value="">Select target...</option>
-                    {metadata?.targetOptions?.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    )) || (
-                      <>
-                        <option value="brand">By Brand</option>
-                        <option value="select_restaurants">Select Restaurants</option>
-                      </>
-                    )}
-                  </FormSelect>
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel>Category</FormLabel>
-                  <FormSelect
-                    value={newNotice.category}
-                    onChange={(e) => setNewNotice({ ...newNotice, category: e.target.value })}
-                  >
-                    <option value="general">General</option>
-                    <option value="guide">Guide</option>
-                  </FormSelect>
-                </FormGroup>
-                <FormGroup>
-                  <FormLabel>Priority</FormLabel>
-                  <FormSelect
-                    value={newNotice.priority}
-                    onChange={(e) => setNewNotice({ ...newNotice, priority: e.target.value as 'normal' | 'important' | 'urgent' })}
-                  >
-                    <option value="normal">Normal</option>
-                    <option value="important">Important</option>
-                    <option value="urgent">Urgent</option>
-                  </FormSelect>
-                </FormGroup>
-              </FormRow>
+              <FormGroup>
+                <FormLabel>Target Type *</FormLabel>
+                <FormSelect
+                  value={newNotice.target_type}
+                  onChange={(e) => setNewNotice({
+                    ...newNotice,
+                    target_type: e.target.value,
+                    brand_id: '',
+                    restaurant_ids: []
+                  })}
+                >
+                  <option value="">Select target...</option>
+                  {metadata?.targetOptions?.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  )) || (
+                    <>
+                      <option value="brand">By Brand</option>
+                      <option value="select_restaurants">Select Restaurants</option>
+                    </>
+                  )}
+                </FormSelect>
+              </FormGroup>
 
               {/* Brand select */}
               {newNotice.target_type === 'brand' && metadata?.brands && (
@@ -1171,6 +1140,30 @@ const NoticesPage: React.FC = () => {
                   </SelectedCount>
                 </FormGroup>
               )}
+
+              <FormRow>
+                <FormGroup>
+                  <FormLabel>Category</FormLabel>
+                  <FormSelect
+                    value={newNotice.category}
+                    onChange={(e) => setNewNotice({ ...newNotice, category: e.target.value })}
+                  >
+                    <option value="general">General</option>
+                    <option value="guide">Guide</option>
+                  </FormSelect>
+                </FormGroup>
+                <FormGroup>
+                  <FormLabel>Priority</FormLabel>
+                  <FormSelect
+                    value={newNotice.priority}
+                    onChange={(e) => setNewNotice({ ...newNotice, priority: e.target.value as 'normal' | 'important' | 'urgent' })}
+                  >
+                    <option value="normal">Normal</option>
+                    <option value="important">Important</option>
+                    <option value="urgent">Urgent</option>
+                  </FormSelect>
+                </FormGroup>
+              </FormRow>
             </ModalBody>
             <ModalFooter>
               <Button variant="secondary" onClick={() => setShowCreateModal(false)}>
@@ -1247,7 +1240,9 @@ const NoticesPage: React.FC = () => {
 
               {/* Content */}
               <ViewNoticeContent>
-                {selectedNotice.content}
+                {selectedNotice.content.split('\n').map((line, i) => (
+                  <React.Fragment key={i}>{i > 0 && <br />}{linkifyText(line)}</React.Fragment>
+                ))}
               </ViewNoticeContent>
 
               {selectedNotice?.attachments && selectedNotice.attachments.length > 0 && (

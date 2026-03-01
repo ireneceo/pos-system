@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 import { Modal } from '../../components/UI/Modal';
 
 const ToolBar = styled.div`
@@ -172,13 +173,6 @@ const OptionPrice = styled.span`
   font-size: 12px;
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 60px 20px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-`;
 
 const EmptyTitle = styled.h3`
   font-size: 18px;

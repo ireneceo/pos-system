@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 import { useOrders } from '../../contexts/OrderContext';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
@@ -222,11 +223,6 @@ const PrintButton = styled.button`
   }
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 60px;
-  color: #6B7280;
-`;
 
 const Footer = styled.div`
   text-align: center;

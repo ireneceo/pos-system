@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 import { Container, Header, Title, Content } from '../../components/UI';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput } from '../../components/Common/FilterComponents';
@@ -171,10 +172,6 @@ const ActionButton = styled.button<{ variant?: 'danger' }>`
   }
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 60px 20px;
-`;
 
 const EmptyTitle = styled.h3`
   font-size: 20px;

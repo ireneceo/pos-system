@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import {
   Container,
@@ -180,13 +181,6 @@ const ButtonGroup = styled.div`
   margin-top: 24px;
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 60px 20px;
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #E6EBF1;
-`;
 
 const EmptyTitle = styled.h3`
   font-size: 20px;

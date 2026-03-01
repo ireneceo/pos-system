@@ -235,6 +235,19 @@ export const EmptyState = styled.div`
   text-align: center;
   padding: 60px 20px;
   color: #6B7280;
+  grid-column: 1 / -1;
+
+  h3 {
+    color: #374151;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  p {
+    font-size: 14px;
+    color: #6B7280;
+  }
 
   @media (max-width: 1024px) {
     padding: 40px 20px;

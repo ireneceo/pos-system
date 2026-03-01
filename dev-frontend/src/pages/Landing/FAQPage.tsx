@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 import { LandingLayout } from '../../components/Landing';
 import SEOHead, { generateFAQSchema, generateBreadcrumbSchema } from '../../components/Common/SEOHead';
 
@@ -199,24 +200,6 @@ const CategoryBadge = styled.span`
   margin-bottom: 12px;
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 60px 20px;
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-
-  h3 {
-    font-size: 20px;
-    color: #0A2540;
-    margin: 0 0 8px;
-  }
-
-  p {
-    color: #6B7280;
-    margin: 0;
-  }
-`;
 
 const ContactSection = styled.div`
   text-align: center;

@@ -34,9 +34,9 @@ Notice.init({
     allowNull: false
   },
   target_type: {
-    type: DataTypes.ENUM('all', 'role', 'brand', 'foodcourt', 'restaurant', 'individual'),
+    type: DataTypes.ENUM('all', 'role', 'brand', 'foodcourt', 'restaurant', 'select_restaurants', 'individual'),
     allowNull: false,
-    comment: 'all=전체, role=역할별, brand=브랜드 단위, foodcourt=푸드코트 단위, restaurant=개별 레스토랑'
+    comment: 'all=전체, role=역할별, brand=브랜드 단위, foodcourt=푸드코트 단위, restaurant/select_restaurants=레스토랑 선택'
   },
   target_roles: {
     type: DataTypes.TEXT,

@@ -15,9 +15,10 @@ const { sequelize } = require('../config/database');
 // Helper: Get restaurants linked to a Brand General or Foodcourt General
 async function getLinkedRestaurants(user) {
   if (user.role === 'Brand General') {
-    const brand = await Brand.findOne({ where: { owner_id: user.id } });
-    if (!brand) return [];
-    return Restaurant.findAll({ where: { brand_id: brand.id }, attributes: ['id', 'name'] });
+    const brands = await Brand.findAll({ where: { owner_id: user.id }, attributes: ['id'] });
+    if (brands.length === 0) return [];
+    const brandIds = brands.map(b => b.id);
+    return Restaurant.findAll({ where: { brand_id: brandIds }, attributes: ['id', 'name'], order: [['name', 'ASC']] });
   }
   if (user.role === 'Foodcourt General') {
     const foodcourt = await Foodcourt.findOne({ where: { owner_id: user.id } });

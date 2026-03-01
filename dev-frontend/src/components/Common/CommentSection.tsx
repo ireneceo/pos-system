@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import AttachmentList from './AttachmentList';
+import { linkifyText } from '../../utils/linkify';
 
 interface AttachmentFile {
   url: string;
@@ -466,7 +467,9 @@ const CommentSection: React.FC<CommentSectionProps> = ({ entityType, entityId, c
                     <DeleteButton onClick={() => handleDelete(comment.id)}>Delete</DeleteButton>
                   )}
                 </CommentHeader>
-                {comment.content && <CommentText>{comment.content}</CommentText>}
+                {comment.content && <CommentText>{comment.content.split('\n').map((line, i) => (
+                  <React.Fragment key={i}>{i > 0 && <br />}{linkifyText(line)}</React.Fragment>
+                ))}</CommentText>}
                 {comment.attachments && comment.attachments.length > 0 && (
                   <AttachmentList attachments={comment.attachments} />
                 )}

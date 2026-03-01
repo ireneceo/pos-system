@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
@@ -71,11 +72,6 @@ const SectionTitle = styled.h2`
   margin-bottom: 16px;
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 48px 0;
-  color: #6B7C93;
-`;
 
 const EmptyStateText = styled.p`
   font-size: 14px;

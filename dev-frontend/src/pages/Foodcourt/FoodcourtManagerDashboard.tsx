@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
 import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
@@ -179,14 +180,6 @@ const TenantInfo = styled.div`
   justify-content: space-between;
 `;
 
-const EmptyState = styled.div`
-  padding: 60px 20px;
-  text-align: center;
-  color: #6B7280;
-  font-size: 14px;
-  border: 2px dashed #E6EBF1;
-  border-radius: 8px;
-`;
 
 const QuickActionsGrid = styled.div`
   display: grid;

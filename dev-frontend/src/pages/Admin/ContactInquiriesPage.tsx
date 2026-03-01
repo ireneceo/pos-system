@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 
 
 interface ContactInquiry {
@@ -437,11 +438,6 @@ const Checkbox = styled.label`
   }
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 60px 20px;
-  color: #6B7280;
-`;
 
 const DetailRow = styled.div`
   display: flex;

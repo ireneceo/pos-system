@@ -1086,6 +1086,34 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 
 ---
 
+## ✅ 완료: 공지사항 시스템 버그 수정 + UX 개선 (2026-03-01)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Notice target_type 수정 | metadata API에서 'restaurant' → 'select_restaurants'로 변경, DB ENUM 동기화 | ✅ 완료 |
+| Brand General 레스토랑 목록 | getLinkedRestaurants()에서 Brand.findOne → findAll로 변경, 다중 브랜드 지원 | ✅ 완료 |
+| EmptyState 통합 디자인 | 53개 파일의 인라인 EmptyState를 TableComponents 공유 컴포넌트로 통합, 센터 정렬 | ✅ 완료 |
+| Notice 모달 레이아웃 수정 | Target Type 아래에 레스토랑 선택이 바로 나오도록 FormRow 구조 변경 | ✅ 완료 |
+| 공지 등록 후 Sent 탭 이동 | Brand/Foodcourt/Admin NoticesPage에 setActiveTab('sent') 추가 | ✅ 완료 |
+| URL 링크 활성화 | 공지 내용/댓글에 포함된 URL을 클릭 가능한 링크로 변환 (linkifyText 유틸) | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/routes/notices.js` - target_type 수정, getLinkedRestaurants 다중 브랜드
+- `dev-backend/models/Notice.js` - target_type ENUM에 select_restaurants 추가
+- `dev-frontend/src/utils/linkify.tsx` - URL 링크 변환 유틸 (신규)
+- `dev-frontend/src/components/UI/TableComponents.tsx` - EmptyState 공유 컴포넌트 강화
+- `dev-frontend/src/components/Common/CommentSection.tsx` - 댓글 URL 링크
+- `dev-frontend/src/pages/Brand/NoticesPage.tsx` - 레이아웃 + Sent 탭 + URL 링크
+- `dev-frontend/src/pages/Foodcourt/NoticesPage.tsx` - 레이아웃 + Sent 탭 + URL 링크
+- `dev-frontend/src/pages/Admin/NoticesPage.tsx` - Sent 탭 + URL 링크
+- `dev-frontend/src/pages/Owner/NoticesPage.tsx` - URL 링크
+- `dev-frontend/src/pages/Restaurant/NoticesPage.tsx` - URL 링크
+- 53개 프론트엔드 페이지 - 인라인 EmptyState 제거, 공유 컴포넌트 import
+
+---
+
 ## 🚀 서비스 오픈 준비 로드맵 (현재 진행 중)
 
 ### 현재 상황

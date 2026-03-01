@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
 import CommentSection from '../../components/Common/CommentSection';
+import { linkifyText } from '../../utils/linkify';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 
@@ -600,23 +602,6 @@ const MetaValue = styled.span`
   color: #0A2540;
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 60px 20px;
-  color: #6B7280;
-
-  h3 {
-    color: #374151;
-    margin-bottom: 8px;
-    font-size: 18px;
-    font-weight: 600;
-  }
-
-  p {
-    font-size: 14px;
-    line-height: 1.5;
-  }
-`;
 
 const DeleteButton = styled.button`
   background: none;
@@ -1280,7 +1265,11 @@ const NoticesPage: React.FC = () => {
                 </FormGroup>
               )}
 
-              <NoticeContentBox>{viewNotice.content}</NoticeContentBox>
+              <NoticeContentBox>
+                {viewNotice.content.split('\n').map((line, i) => (
+                  <React.Fragment key={i}>{i > 0 && <br />}{linkifyText(line)}</React.Fragment>
+                ))}
+              </NoticeContentBox>
 
               {/* Attachments */}
               {viewNotice?.attachments && viewNotice.attachments.length > 0 && (

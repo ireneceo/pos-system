@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 import { useMenu } from '../../contexts/MenuContext';
 import { Modal, ModalButton } from '../../components/UI/Modal';
 
@@ -294,14 +295,6 @@ const Checkbox = styled.input`
 `;
 
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 60px 20px;
-  background: white;
-  border-radius: 12px;
-  margin: 24px 0;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-`;
 
 const EmptyIcon = styled.div`
   font-size: 64px;

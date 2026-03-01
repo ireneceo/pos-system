@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
+import { EmptyState as CategoryEmptyState } from '../../components/UI/TableComponents';
 import { useSearchParams } from 'react-router-dom';
 import { formatCurrency, getCurrencyDecimals } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
@@ -437,13 +438,6 @@ const CategoryIconButton = styled.button`
   }
 `;
 
-const CategoryEmptyState = styled.div`
-  text-align: center;
-  padding: 40px 20px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-`;
 
 const HeaderRow = styled.div`
   display: flex;

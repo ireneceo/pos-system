@@ -24,6 +24,7 @@ import { printBillViaRawBT, generateBillContent, printKitchenTicketViaRawBT, gen
 import { formatDateTime as formatDateTimeUtil, getTimeElapsed } from '../../utils/timezone';
 import ConfirmModal from '../../components/ConfirmModal';
 import DateRangeFilter, { PeriodType, calculateDateRange } from '../../components/Common/DateRangeFilter';
+import { EmptyState } from '../../components/UI/TableComponents';
 
 // Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM")
 const formatPickupTimeRange = (dateString: string): string => {
@@ -608,15 +609,6 @@ const IconSymbol = styled.span`
   line-height: 1;
 `;
 
-const EmptyState = styled.div`
-  padding: 60px 20px;
-  text-align: center;
-  color: #6B7280;
-
-  @media (max-width: 768px) {
-    padding: 40px 20px;
-  }
-`;
 
 // Modal styles
 const ModalOverlay = styled.div<{ isOpen: boolean }>`

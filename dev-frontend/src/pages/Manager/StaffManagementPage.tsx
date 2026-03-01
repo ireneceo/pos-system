@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
@@ -287,11 +288,6 @@ const ActionButton = styled.button`
   }
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 60px 20px;
-  color: #6B7280;
-`;
 
 const ManagerStaffManagementPage: React.FC = () => {
   const { user } = useAuth();

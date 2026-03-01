@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/currency';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
@@ -334,11 +335,6 @@ const FormSelect = styled.select`
   }
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 60px 40px;
-  color: #9CA3AF;
-`;
 
 const EmptyIcon = styled.div`
   font-size: 48px;

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 import { LandingLayout } from '../../components/Landing';
 
 interface BlogCategory {
@@ -223,25 +224,6 @@ const ReadMoreLink = styled.span`
   }
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 60px 20px;
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  grid-column: 1 / -1;
-
-  h3 {
-    font-size: 20px;
-    color: #0A2540;
-    margin: 0 0 8px;
-  }
-
-  p {
-    color: #6B7280;
-    margin: 0;
-  }
-`;
 
 const Pagination = styled.div`
   display: flex;

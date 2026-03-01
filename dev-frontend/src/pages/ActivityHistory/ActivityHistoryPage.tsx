@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 import { Container, Header, Title, Content } from '../../components/UI/PageComponents';
 import { BaseButton, StatusBadge } from '../../components/UI/CommonStyles';
 import { FilterSelect } from '../../components/Common/FilterComponents';
@@ -114,12 +115,6 @@ const EntityBadge = styled(StatusBadge)`
   padding: 4px 10px;
 `;
 
-const EmptyState = styled.div`
-  padding: 60px 24px;
-  text-align: center;
-  color: #8898AA;
-  font-size: 14px;
-`;
 
 const PaginationContainer = styled.div`
   display: flex;

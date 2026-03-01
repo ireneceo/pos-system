@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { useAuth } from '../../contexts/AuthContext';
 import { StatsGrid, StatCard, StatValue, StatLabel, StatTrend } from '../../components/UI';
@@ -558,12 +559,6 @@ const ItemDetails = styled.div`
   color: #6B7280;
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 60px 20px;
-  color: #6B7C93;
-  font-size: 14px;
-`;
 
 const OwnerRestaurantsPage: React.FC = () => {
   const { user } = useAuth();

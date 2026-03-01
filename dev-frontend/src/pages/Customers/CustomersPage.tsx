@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 import { useParams } from 'react-router-dom';
 import { useCustomer, Customer } from '../../contexts/CustomerContext';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
@@ -289,11 +290,6 @@ const IconSymbol = styled.span`
   line-height: 1;
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 60px 20px;
-  color: #6B7C93;
-`;
 
 
 const EmptyStateText = styled.p`

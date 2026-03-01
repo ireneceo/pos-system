@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import { Container, Header, Title, Content, Button, ActionSection } from '../../components/UI/PageComponents';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/StatCard';
@@ -9,6 +10,7 @@ import { useTabParam } from '../../hooks/useTabParam';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
 import CommentSection from '../../components/Common/CommentSection';
+import { linkifyText } from '../../utils/linkify';
 
 // ============================================================================
 // TypeScript Interfaces
@@ -473,16 +475,6 @@ const RecipientTag = styled.span`
   font-weight: 500;
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 60px 20px;
-  color: #6B7280;
-
-  h3 {
-    color: #374151;
-    margin-bottom: 8px;
-  }
-`;
 
 const DeleteNoticeButton = styled.button`
   background: none;
@@ -724,6 +716,7 @@ const NoticesPage: React.FC = () => {
       if (response.ok) {
         setShowNewModal(false);
         setNewAttachments([]);
+        setActiveTab('sent');
         await Promise.all([fetchSent(), fetchReceived()]);
       } else {
         console.error('Failed to send notice');
@@ -1083,46 +1076,22 @@ const NoticesPage: React.FC = () => {
                 />
               </FormGroup>
 
-              <FormRow>
-                <FormGroup>
-                  <FormLabel>Target</FormLabel>
-                  <FormSelect
-                    value={newNotice.target_type}
-                    onChange={(e) => setNewNotice({
-                      ...newNotice,
-                      target_type: e.target.value,
-                      foodcourt_id: e.target.value === 'foodcourt' ? (metadata?.foodcourts?.[0]?.id?.toString() || '') : '',
-                      restaurant_ids: []
-                    })}
-                  >
-                    {metadata?.targetOptions?.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </FormSelect>
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel>Category</FormLabel>
-                  <FormSelect
-                    value={newNotice.category}
-                    onChange={(e) => setNewNotice({ ...newNotice, category: e.target.value })}
-                  >
-                    <option value="general">General</option>
-                    <option value="guide">Guide</option>
-                  </FormSelect>
-                </FormGroup>
-                <FormGroup>
-                  <FormLabel>Priority</FormLabel>
-                  <FormSelect
-                    value={newNotice.priority}
-                    onChange={(e) => setNewNotice({ ...newNotice, priority: e.target.value as any })}
-                  >
-                    <option value="normal">Normal</option>
-                    <option value="important">Important</option>
-                    <option value="urgent">Urgent</option>
-                  </FormSelect>
-                </FormGroup>
-              </FormRow>
+              <FormGroup>
+                <FormLabel>Target *</FormLabel>
+                <FormSelect
+                  value={newNotice.target_type}
+                  onChange={(e) => setNewNotice({
+                    ...newNotice,
+                    target_type: e.target.value,
+                    foodcourt_id: e.target.value === 'foodcourt' ? (metadata?.foodcourts?.[0]?.id?.toString() || '') : '',
+                    restaurant_ids: []
+                  })}
+                >
+                  {metadata?.targetOptions?.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </FormSelect>
+              </FormGroup>
 
               {/* Foodcourt selector */}
               {newNotice.target_type === 'foodcourt' && metadata?.foodcourts && metadata.foodcourts.length > 0 && (
@@ -1140,7 +1109,7 @@ const NoticesPage: React.FC = () => {
               )}
 
               {/* Restaurant multi-select */}
-              {newNotice.target_type === 'restaurant' && metadata?.restaurants && (
+              {(newNotice.target_type === 'select_restaurants' || newNotice.target_type === 'restaurant') && metadata?.restaurants && (
                 <FormGroup>
                   <FormLabel>Select Restaurants</FormLabel>
                   <SelectAllRow>
@@ -1170,6 +1139,30 @@ const NoticesPage: React.FC = () => {
                   </CheckboxList>
                 </FormGroup>
               )}
+
+              <FormRow>
+                <FormGroup>
+                  <FormLabel>Category</FormLabel>
+                  <FormSelect
+                    value={newNotice.category}
+                    onChange={(e) => setNewNotice({ ...newNotice, category: e.target.value })}
+                  >
+                    <option value="general">General</option>
+                    <option value="guide">Guide</option>
+                  </FormSelect>
+                </FormGroup>
+                <FormGroup>
+                  <FormLabel>Priority</FormLabel>
+                  <FormSelect
+                    value={newNotice.priority}
+                    onChange={(e) => setNewNotice({ ...newNotice, priority: e.target.value as any })}
+                  >
+                    <option value="normal">Normal</option>
+                    <option value="important">Important</option>
+                    <option value="urgent">Urgent</option>
+                  </FormSelect>
+                </FormGroup>
+              </FormRow>
             </ModalBody>
             <ModalFooter>
               <Button variant="secondary" onClick={() => setShowNewModal(false)}>Cancel</Button>
@@ -1180,6 +1173,7 @@ const NoticesPage: React.FC = () => {
                   sending ||
                   !newNotice.title.trim() ||
                   !newNotice.content.trim() ||
+                  (newNotice.target_type === 'select_restaurants' && newNotice.restaurant_ids.length === 0) ||
                   (newNotice.target_type === 'restaurant' && newNotice.restaurant_ids.length === 0)
                 }
               >
@@ -1218,7 +1212,11 @@ const NoticesPage: React.FC = () => {
               </NoticeDetailMeta>
 
               {/* Notice content */}
-              <NoticeDetailContent>{selectedNotice.content}</NoticeDetailContent>
+              <NoticeDetailContent>
+                {selectedNotice.content.split('\n').map((line, i) => (
+                  <React.Fragment key={i}>{i > 0 && <br />}{linkifyText(line)}</React.Fragment>
+                ))}
+              </NoticeDetailContent>
 
               {/* Attachments */}
               {selectedNotice?.attachments && selectedNotice.attachments.length > 0 && (

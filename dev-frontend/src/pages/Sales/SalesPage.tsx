@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 import { useStaff } from '../../contexts/StaffContext';
 import { useOrders } from '../../contexts/OrderContext';
 import { useStore } from '../../contexts/StoreContext';
@@ -446,11 +447,6 @@ const StatusBadge = styled.span<{ status: string }>`
   }};
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 60px 20px;
-  color: #6B7C93;
-`;
 
 const EmptyStateIcon = styled.div`
   font-size: 48px;

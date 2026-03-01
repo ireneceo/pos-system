@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import {
   StatsGrid,
@@ -274,10 +275,6 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger
   }}
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 60px 20px;
-`;
 
 const EmptyIcon = styled.div`
   font-size: 64px;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { Modal, ModalButton, ModalWarning, FormRow, FormGroup, FormLabel, FormInput } from '../../components/UI/Modal';
@@ -243,11 +244,6 @@ const DeleteButton = styled(ActionButton)`
   }
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 60px 20px;
-  color: #6B7280;
-`;
 
 const PermissionGrid = styled.div`
   display: grid;

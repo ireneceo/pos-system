@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { Modal, ModalButton, FormGroup, FormLabel, FormInput, FormTextArea } from '../../components/UI/Modal';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
@@ -147,25 +148,6 @@ const IconButton = styled.button`
   }
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 60px 20px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-
-  h3 {
-    font-size: 18px;
-    color: #1F2937;
-    margin: 16px 0 8px;
-  }
-
-  p {
-    color: #6B7280;
-    font-size: 14px;
-    margin-bottom: 24px;
-  }
-`;
 
 const EditorWrapper = styled.div`
   background: white;

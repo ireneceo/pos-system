@@ -6,16 +6,17 @@
 - 없음
 
 ### 완료된 작업 (이번 세션)
-- **결제 모달 UI 개선**: 4개 인보이스 페이지 결제 수단 선택을 카드형 버튼 UI로 변경 (Restaurant, Owner, BrandGeneral, FoodcourtGeneral)
-- **Stripe 결제폼 통합**: StripePaymentForm 컴포넌트를 4개 인보이스 페이지에 연동, 수동 입력 필드 조건부 표시
-- **Stripe/PayPal 오류 메시지 중복 해결**: onError 콜백에서 외부 에러 상태 설정 제거 (StripePaymentForm 내부 ErrorBox만 사용)
-- **대시보드 카드 높이 통일**: Sales & Orders Overview와 Notifications 카드 높이 맞춤 (CSS Grid stretch + flex)
-- **운영서버 배포 완료**: 스모크 테스트 6/6 통과, 백업 생성
+- **Notice target_type 버그 수정**: metadata API 값 불일치('restaurant' → 'select_restaurants'), DB ENUM 동기화
+- **Brand General 다중 브랜드 레스토랑 목록**: getLinkedRestaurants()에서 Brand.findOne → findAll 변경
+- **EmptyState 통합 디자인**: 53개 파일 인라인 정의 → TableComponents 공유 컴포넌트로 통합, 센터 정렬
+- **Notice 모달 레이아웃**: Target Type 아래에 레스토랑 선택이 바로 나오도록 구조 변경
+- **공지 등록 후 Sent 탭 자동 이동**: Brand/Foodcourt/Admin NoticesPage
+- **URL 링크 활성화**: 공지 내용/댓글 URL을 클릭 가능한 링크로 변환 (linkifyText 유틸)
+- **운영서버 배포 3회**: 스모크 테스트 6/6 통과
 
 ### 다음 할 일
-- EntityPlan 1플랜=1과금항목 구조 관련 추가 개선
-- Stripe 실제 결제 테스트 (실제 Stripe 테스트 키 필요)
 - 서비스 오픈 준비 로드맵 Phase A 계속 진행
+- Stripe 실제 결제 테스트
 
 ---
 

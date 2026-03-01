@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 import { useParams } from 'react-router-dom';
 import { Container, Header, Title, Content } from '../../components/UI/PageComponents';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/StatCard';
 import { SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import AttachmentList from '../../components/Common/AttachmentList';
 import CommentSection from '../../components/Common/CommentSection';
+import { linkifyText } from '../../utils/linkify';
 import { useAuth } from '../../contexts/AuthContext';
 
 // ============================================================================
@@ -206,23 +208,6 @@ const DateText = styled.span`
   color: #9CA3AF;
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 60px 20px;
-  color: #6B7280;
-
-  h3 {
-    font-size: 18px;
-    font-weight: 600;
-    color: #0A2540;
-    margin-bottom: 8px;
-  }
-
-  p {
-    font-size: 14px;
-    color: #6B7280;
-  }
-`;
 
 // Modal Components
 const ModalOverlay = styled.div`
@@ -808,7 +793,9 @@ const NoticesPage: React.FC = () => {
                 <NoticeDetailSection>
                   <NoticeDetailLabel>Content</NoticeDetailLabel>
                   <NoticeDetailContent>
-                    {noticeDetail?.content || selectedNotice.content}
+                    {(noticeDetail?.content || selectedNotice.content).split('\n').map((line: string, i: number) => (
+                      <React.Fragment key={i}>{i > 0 && <br />}{linkifyText(line)}</React.Fragment>
+                    ))}
                   </NoticeDetailContent>
                 </NoticeDetailSection>
 

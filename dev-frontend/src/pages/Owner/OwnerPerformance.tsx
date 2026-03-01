@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 import {
   Container,
   Header,
@@ -252,22 +253,6 @@ const RankStat = styled.span`
   gap: 4px;
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 60px 20px;
-  color: #6B7280;
-
-  h3 {
-    font-size: 18px;
-    font-weight: 600;
-    color: #0A2540;
-    margin-bottom: 8px;
-  }
-
-  p {
-    font-size: 14px;
-  }
-`;
 
 interface Restaurant {
   id: number;

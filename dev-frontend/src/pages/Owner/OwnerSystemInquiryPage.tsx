@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import CommentSection from '../../components/Common/CommentSection';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
@@ -446,12 +447,6 @@ const FormTextArea = styled.textarea`
   }
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 60px 20px;
-  color: #6B7280;
-  h3 { color: #374151; margin-bottom: 8px; }
-`;
 
 const OwnerSystemInquiryPage: React.FC = () => {
   const { user } = useAuth();

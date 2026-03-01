@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from '../../components/UI/TableComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import { SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
 import CommentSection from '../../components/Common/CommentSection';
+import { linkifyText } from '../../utils/linkify';
 import {
   Container,
   Header,
@@ -511,22 +513,6 @@ const ReadStatus = styled.span<{ isRead?: boolean }>`
   flex-shrink: 0;
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 60px 20px;
-  color: #6B7280;
-
-  h3 {
-    font-size: 18px;
-    font-weight: 600;
-    color: #0A2540;
-    margin-bottom: 8px;
-  }
-
-  p {
-    font-size: 14px;
-  }
-`;
 
 const DeleteButton = styled.button`
   padding: 8px 16px;
@@ -754,6 +740,7 @@ const NoticesPage: React.FC = () => {
       if (response.ok) {
         setShowSendModal(false);
         resetNewNoticeForm();
+        setActiveTab('sent');
         fetchNotices();
       }
     } catch (error) {
@@ -1165,7 +1152,11 @@ const NoticesPage: React.FC = () => {
                   <TargetBadge>{getTargetDisplay(selectedNotice)}</TargetBadge>
                   <span>{formatDateTime(selectedNotice.createdAt)}</span>
                 </ViewNoticeMeta>
-                <ViewNoticeContent>{selectedNotice.content}</ViewNoticeContent>
+                <ViewNoticeContent>
+                  {selectedNotice.content.split('\n').map((line, i) => (
+                    <React.Fragment key={i}>{i > 0 && <br />}{linkifyText(line)}</React.Fragment>
+                  ))}
+                </ViewNoticeContent>
                 {selectedNotice?.attachments && selectedNotice.attachments.length > 0 && (
                   <AttachmentList attachments={selectedNotice.attachments} />
                 )}
