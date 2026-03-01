@@ -79,7 +79,7 @@ router.get('/metadata', authenticateToken, async (req, res) => {
       targetOptions.push({ value: 'foodcourt', label: 'By Foodcourt' });
     }
     if (restaurants.length > 0) {
-      targetOptions.push({ value: 'restaurant', label: 'Select Restaurants' });
+      targetOptions.push({ value: 'select_restaurants', label: 'Select Restaurants' });
     }
 
     res.json({
@@ -417,7 +417,7 @@ router.post('/', authenticateToken, async (req, res) => {
       fcRestaurants.forEach(r => {
         recipients.push({ notice_id: notice.id, restaurant_id: r.id });
       });
-    } else if (target_type === 'restaurant' || target_type === 'individual') {
+    } else if (target_type === 'restaurant' || target_type === 'select_restaurants' || target_type === 'individual') {
       // Individual restaurant selection
       if (restaurant_ids && Array.isArray(restaurant_ids)) {
         restaurant_ids.forEach(rId => {
