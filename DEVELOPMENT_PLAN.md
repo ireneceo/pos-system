@@ -1154,6 +1154,24 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 
 ---
 
+## ✅ 완료: QR코드 결제 설정 버그 수정 + 운영 배포 (2026-03-02)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| QR 키 불일치 수정 | SettingsPage: `qr` / `qrPayment` 둘 다 허용 | ✅ 완료 |
+| 모바일 QR 페이지 수정 | QRPaymentPage: `qr` / `qrPayment` 둘 다 체크 | ✅ 완료 |
+| 소켓 emit plain object 변환 | 모든 order emit에서 .get({plain:true}) 적용 | ✅ 완료 |
+| 운영서버 배포 | 프론트/백엔드 + DB 스키마 동기화 (guest_count, floor_plan) | ✅ 완료 |
+
+### 수정된 파일
+- `dev-frontend/src/pages/Settings/SettingsPage.tsx` — QR key 양쪽 허용
+- `dev-frontend/src/mobile/pages/QRPaymentPage.tsx` — QR key 양쪽 허용
+- `dev-backend/routes/orders.js` — 소켓 emit plain object 변환
+
+---
+
 ## 🚀 서비스 오픈 준비 로드맵 (현재 진행 중)
 
 ### 현재 상황

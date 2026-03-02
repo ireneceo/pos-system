@@ -7,18 +7,14 @@
 
 ### 완료된 작업 (이번 세션)
 - **Floor Plan 매장 운영 허브 대규모 리팩토링** (Phase 1~9 전체 완료)
-  - DB guest_count 컬럼 + table-status API 확장
-  - types.ts / TableNode guestCount 표시
-  - OrderContext guest_count 매핑
-  - FloorPlanStatsBar (하단 범례+통계)
-  - TableDetailPanel (우측 상세 패널: 주문조회/상태변경/결제)
-  - FloorPlanPage 2단 레이아웃 (캔버스 + 디테일패널 + 결제모달)
-  - OrderOverlay (POS Terminal 동일 스타일 메뉴+카트+주문)
-  - POS Terminal guest_count UI
+  - DB guest_count + table-status API 확장 + 결제완료 필터
   - FloorPlanCanvas auto-fit viewBox + 균일 스케일링 (비율 유지)
-  - Live Orders guest_count 실시간 표시 (4곳)
-  - 소켓 emit plain object 변환 (guest_count 실시간 전달)
-  - table-status API 결제완료 주문 필터링
+  - OrderOverlay (POS Terminal 동일 스타일)
+  - TableDetailPanel + FloorPlanStatsBar + FloorPlanPage 2단 레이아웃
+  - POS Terminal / Live Orders guest_count UI
+- **소켓 emit plain object 변환** — 모든 order emit에서 .get({plain:true}) 적용 (8곳)
+- **QR코드 결제 설정 버그 수정** — qr/qrPayment 키 불일치 (SettingsPage + QRPaymentPage)
+- **운영서버 배포 완료** — 프론트/백엔드 + DB 스키마 동기화
 
 ### 다음 할 일
 - Floor Plan 실제 사용 테스트 (테이블 클릭 → 상세패널 → 주문/결제/상태변경 플로우)
