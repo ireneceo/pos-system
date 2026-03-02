@@ -2089,7 +2089,7 @@ const SettingsPage: React.FC = () => {
                   )}
 
                   {/* QR Payment Settings */}
-                  {key === 'qrPayment' && method.enabled && (
+                  {(key === 'qrPayment' || key === 'qr') && method.enabled && (
                     <div style={{ borderTop: '1px solid #E6EBF1', paddingTop: '16px' }}>
                       <ImageUploadDropzone
                         value={method.qrImage || ''}

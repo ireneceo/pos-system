@@ -269,13 +269,13 @@ const QRPaymentPage: React.FC = () => {
           const data = await response.json();
           const restaurant = data.data || data;
 
-          // Get QR code image from payment settings (use qrPayment key, not qr)
-          if (restaurant.payment_settings?.qrPayment?.qrImage) {
-            setQrCodeImage(restaurant.payment_settings.qrPayment.qrImage);
+          // Get QR code image from payment settings (support both 'qrPayment' and 'qr' keys)
+          const qrSettings = restaurant.payment_settings?.qrPayment || restaurant.payment_settings?.qr;
+          if (qrSettings?.qrImage) {
+            setQrCodeImage(qrSettings.qrImage);
             console.log('✅ QR Code image loaded from settings');
           } else {
-            console.log('❌ No QR image found in qrPayment settings');
-            console.log('Payment settings keys:', Object.keys(restaurant.payment_settings || {}));
+            console.log('❌ No QR image found in payment settings');
           }
         }
       } catch (error) {
