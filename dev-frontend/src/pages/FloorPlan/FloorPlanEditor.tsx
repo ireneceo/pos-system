@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styled from 'styled-components';
 import { useParams } from 'react-router-dom';
-import { FloorPlanData, FloorTable, DEFAULT_FLOOR_PLAN, TABLE_SHAPES } from './types';
+import { FloorPlanData, FloorTable, FixtureType, DEFAULT_FLOOR_PLAN, TABLE_SHAPES, FIXTURE_PRESETS } from './types';
 import FloorPlanCanvas from './FloorPlanCanvas';
 
 // ─── Styled Components ───
@@ -9,9 +9,10 @@ import FloorPlanCanvas from './FloorPlanCanvas';
 const PageContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: #FAFBFC;
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 `;
 
 const Header = styled.div`
@@ -75,6 +76,7 @@ const Content = styled.div`
   display: flex;
   padding: 24px;
   gap: 20px;
+  min-height: 0;
   overflow: hidden;
 
   @media (max-width: 768px) {
@@ -89,11 +91,13 @@ const Sidebar = styled.div`
   display: flex;
   flex-direction: column;
   gap: 16px;
+  overflow-y: auto;
 
   @media (max-width: 768px) {
     width: 100%;
     flex-direction: row;
     flex-wrap: wrap;
+    overflow-y: visible;
   }
 `;
 
@@ -115,7 +119,7 @@ const CardTitle = styled.div`
 
 const ShapeGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 `;
 
@@ -141,11 +145,24 @@ const ShapeBtn = styled.button`
   }
 `;
 
-const ShapeIcon = styled.div<{ $shape: string }>`
-  width: ${p => p.$shape === 'rectangle' ? '36px' : '24px'};
-  height: 24px;
+const ShapeIcon = styled.div<{ $shape: string; $variant?: string }>`
+  width: ${p => p.$variant === 'vertical' ? '24px' : p.$shape === 'rectangle' ? '36px' : '24px'};
+  height: ${p => p.$variant === 'vertical' ? '36px' : '24px'};
   border: 2px solid currentColor;
   border-radius: ${p => p.$shape === 'round' ? '50%' : '4px'};
+`;
+
+const FixtureIcon = styled.div<{ $type: string }>`
+  width: 36px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  font-style: italic;
+  color: currentColor;
+  opacity: 0.7;
 `;
 
 const CanvasArea = styled.div`
@@ -205,6 +222,26 @@ const FormRow = styled.div`
   gap: 8px;
 `;
 
+const SizeRow = styled.div`
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+`;
+
+const SizeBtn = styled.button<{ $active?: boolean }>`
+  flex: 1;
+  padding: 6px 4px;
+  border: 1px solid ${p => p.$active ? '#635BFF' : '#E6EBF1'};
+  border-radius: 4px;
+  background: ${p => p.$active ? 'rgba(99, 91, 255, 0.08)' : 'white'};
+  color: ${p => p.$active ? '#635BFF' : '#6B7C93'};
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.1s;
+  &:hover { border-color: #635BFF; }
+`;
+
 const CheckboxRow = styled.label`
   display: flex;
   align-items: center;
@@ -231,6 +268,7 @@ const FloorPlanEditor: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const justFinishedDrag = useRef(false);
   const [undoStack, setUndoStack] = useState<FloorPlanData[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -303,11 +341,11 @@ const FloorPlanEditor: React.FC = () => {
   };
 
   // Add table
-  const addTable = (shape: FloorTable['shape']) => {
+  const addTable = (shape: FloorTable['shape'], shapeConfig?: { defaultWidth: number; defaultHeight: number }) => {
     const nextNumber = unusedTableNumbers[0];
     if (!nextNumber) return;
 
-    const shapeConfig = TABLE_SHAPES.find(s => s.value === shape)!;
+    const config = shapeConfig || TABLE_SHAPES.find(s => s.value === shape)!;
     const newTable: FloorTable = {
       id: `ft-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       tableNumber: nextNumber,
@@ -315,15 +353,38 @@ const FloorPlanEditor: React.FC = () => {
       shape,
       x: floorPlan.canvasWidth / 2,
       y: floorPlan.canvasHeight / 2,
-      width: shapeConfig.defaultWidth,
-      height: shapeConfig.defaultHeight,
+      width: config.defaultWidth,
+      height: config.defaultHeight,
       rotation: 0,
-      seats: 4
+      seats: shape === 'square' ? 2 : 4,
+      tableType: 'table'
     };
 
     pushUndo();
     setFloorPlan(prev => ({ ...prev, tables: [...prev.tables, newTable] }));
     setSelectedId(newTable.id);
+    setHasChanges(true);
+  };
+
+  // Add fixture (kitchen, counter, entrance)
+  const addFixture = (preset: typeof FIXTURE_PRESETS[number]) => {
+    const newFixture: FloorTable = {
+      id: `fx-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      tableNumber: '',
+      label: preset.textOnly ? preset.label.toUpperCase() : preset.label.replace(/ \(.\)$/, '').toUpperCase(),
+      shape: 'rectangle',
+      x: floorPlan.canvasWidth / 2,
+      y: floorPlan.canvasHeight / 2,
+      width: preset.defaultWidth,
+      height: preset.defaultHeight,
+      rotation: 0,
+      seats: 0,
+      tableType: preset.type
+    };
+
+    pushUndo();
+    setFloorPlan(prev => ({ ...prev, tables: [...prev.tables, newFixture] }));
+    setSelectedId(newFixture.id);
     setHasChanges(true);
   };
 
@@ -432,7 +493,11 @@ const FloorPlanEditor: React.FC = () => {
       setHasChanges(true);
     };
 
-    const handleUp = () => setIsDragging(false);
+    const handleUp = () => {
+      setIsDragging(false);
+      justFinishedDrag.current = true;
+      setTimeout(() => { justFinishedDrag.current = false; }, 0);
+    };
 
     document.addEventListener('mousemove', handleMove, { passive: false });
     document.addEventListener('mouseup', handleUp);
@@ -492,105 +557,162 @@ const FloorPlanEditor: React.FC = () => {
 
       <Content>
         <Sidebar>
-          {/* Add Tables */}
+          {/* Add Tables & Counter */}
           <SidebarCard>
             <CardTitle>Add Table ({unusedTableNumbers.length} left)</CardTitle>
             <ShapeGrid>
-              {TABLE_SHAPES.map(shape => (
+              {TABLE_SHAPES.map((shape, idx) => (
                 <ShapeBtn
-                  key={shape.value}
-                  onClick={() => addTable(shape.value)}
+                  key={`${shape.value}-${idx}`}
+                  onClick={() => addTable(shape.value, shape)}
                   disabled={unusedTableNumbers.length === 0}
                   title={`Add ${shape.label} table`}
                 >
-                  <ShapeIcon $shape={shape.value} />
+                  <ShapeIcon $shape={shape.value} $variant={shape.variant} />
                   {shape.label}
                 </ShapeBtn>
               ))}
+              {FIXTURE_PRESETS.filter(p => !p.textOnly).map((preset, idx) => (
+                <ShapeBtn
+                  key={`counter-${idx}`}
+                  onClick={() => addFixture(preset)}
+                  title={`Add ${preset.label}`}
+                >
+                  <ShapeIcon $shape="rectangle" $variant={preset.variant === 'vertical' ? 'vertical' : undefined} />
+                  {preset.label}
+                </ShapeBtn>
+              ))}
             </ShapeGrid>
-            {selectedId && (
-              <Btn $variant="danger" onClick={deleteSelected} style={{ width: '100%', justifyContent: 'center', marginTop: '12px' }}>
-                Delete Table
-              </Btn>
-            )}
+          </SidebarCard>
+
+          {/* Text Labels (Kitchen, Entrance) */}
+          <SidebarCard>
+            <CardTitle>Labels</CardTitle>
+            <ShapeGrid>
+              {FIXTURE_PRESETS.filter(p => p.textOnly).map(preset => (
+                <ShapeBtn
+                  key={preset.type}
+                  onClick={() => addFixture(preset)}
+                  title={`Add ${preset.label} label`}
+                >
+                  <FixtureIcon $type={preset.type}>{preset.icon}</FixtureIcon>
+                  {preset.label}
+                </ShapeBtn>
+              ))}
+            </ShapeGrid>
           </SidebarCard>
 
           {/* Properties Panel */}
-          {selectedTable && (
-            <SidebarCard>
-              <CardTitle>Properties</CardTitle>
-              <FormGroup>
-                <FormLabel>Table Number</FormLabel>
-                <FormSelect
-                  value={selectedTable.tableNumber}
-                  onChange={(e) => updateTable({ tableNumber: e.target.value, label: e.target.value })}
-                >
-                  <option value={selectedTable.tableNumber}>{selectedTable.tableNumber}</option>
-                  {unusedTableNumbers.map(tn => (
-                    <option key={tn} value={tn}>{tn}</option>
-                  ))}
-                </FormSelect>
-              </FormGroup>
-              <FormGroup>
-                <FormLabel>Label</FormLabel>
-                <FormInput
-                  value={selectedTable.label}
-                  onChange={(e) => updateTable({ label: e.target.value })}
-                />
-              </FormGroup>
-              <FormGroup>
-                <FormLabel>Shape</FormLabel>
-                <FormSelect
-                  value={selectedTable.shape}
-                  onChange={(e) => {
-                    const shape = e.target.value as FloorTable['shape'];
-                    const config = TABLE_SHAPES.find(s => s.value === shape)!;
-                    updateTable({ shape, width: config.defaultWidth, height: config.defaultHeight });
-                  }}
-                >
-                  {TABLE_SHAPES.map(s => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
-                </FormSelect>
-              </FormGroup>
-              <FormGroup>
-                <FormLabel>Seats</FormLabel>
-                <FormInput
-                  type="number"
-                  min={1} max={20}
-                  value={selectedTable.seats}
-                  onChange={(e) => updateTable({ seats: parseInt(e.target.value) || 1 })}
-                />
-              </FormGroup>
-              <FormRow>
+          {selectedTable && (() => {
+            const isFixture = selectedTable.tableType && selectedTable.tableType !== 'table';
+            return (
+              <SidebarCard>
+                <CardTitle>{isFixture ? 'Fixture Properties' : 'Table Properties'}</CardTitle>
+                {!isFixture && (
+                  <FormGroup>
+                    <FormLabel>Table Number</FormLabel>
+                    <FormSelect
+                      value={selectedTable.tableNumber}
+                      onChange={(e) => updateTable({ tableNumber: e.target.value, label: e.target.value })}
+                    >
+                      <option value={selectedTable.tableNumber}>{selectedTable.tableNumber}</option>
+                      {unusedTableNumbers.map(tn => (
+                        <option key={tn} value={tn}>{tn}</option>
+                      ))}
+                    </FormSelect>
+                  </FormGroup>
+                )}
                 <FormGroup>
-                  <FormLabel>Width</FormLabel>
+                  <FormLabel>Label</FormLabel>
                   <FormInput
-                    type="number"
-                    min={40} max={200}
-                    value={selectedTable.width}
-                    onChange={(e) => {
-                      const w = parseInt(e.target.value) || 60;
-                      updateTable({
-                        width: w,
-                        height: selectedTable.shape === 'round' || selectedTable.shape === 'square' ? w : selectedTable.height
-                      });
-                    }}
+                    value={selectedTable.label}
+                    onChange={(e) => updateTable({ label: e.target.value })}
                   />
                 </FormGroup>
-                <FormGroup>
-                  <FormLabel>Height</FormLabel>
-                  <FormInput
-                    type="number"
-                    min={40} max={200}
-                    value={selectedTable.height}
-                    onChange={(e) => updateTable({ height: parseInt(e.target.value) || 60 })}
-                    disabled={selectedTable.shape !== 'rectangle'}
-                  />
-                </FormGroup>
-              </FormRow>
-            </SidebarCard>
-          )}
+                {!isFixture && (
+                  <>
+                    <FormGroup>
+                      <FormLabel>Shape</FormLabel>
+                      <FormSelect
+                        value={selectedTable.shape}
+                        onChange={(e) => {
+                          const shape = e.target.value as FloorTable['shape'];
+                          const config = TABLE_SHAPES.find(s => s.value === shape)!;
+                          updateTable({ shape, width: config.defaultWidth, height: config.defaultHeight });
+                        }}
+                      >
+                        {TABLE_SHAPES.map((s, idx) => (
+                          <option key={`${s.value}-${idx}`} value={s.value}>{s.label}</option>
+                        ))}
+                      </FormSelect>
+                    </FormGroup>
+                    <FormGroup>
+                      <FormLabel>Size</FormLabel>
+                      <SizeRow>
+                        {(() => {
+                          const isRect = selectedTable.shape === 'rectangle';
+                          const isVertical = selectedTable.width < selectedTable.height;
+                          const sizes = isRect
+                            ? (isVertical
+                              ? [{ label: 'S', w: 55, h: 85, seats: 2 }, { label: 'M', w: 70, h: 110, seats: 4 }, { label: 'L', w: 90, h: 140, seats: 6 }]
+                              : [{ label: 'S', w: 85, h: 55, seats: 2 }, { label: 'M', w: 110, h: 70, seats: 4 }, { label: 'L', w: 140, h: 90, seats: 6 }])
+                            : [{ label: 'S', w: 60, h: 60, seats: 2 }, { label: 'M', w: 70, h: 70, seats: 4 }, { label: 'L', w: 90, h: 90, seats: 6 }];
+                          return sizes.map(s => (
+                            <SizeBtn
+                              key={s.label}
+                              $active={selectedTable.width === s.w && selectedTable.height === s.h}
+                              onClick={() => updateTable({ width: s.w, height: s.h, seats: s.seats })}
+                            >
+                              {s.label}
+                            </SizeBtn>
+                          ));
+                        })()}
+                      </SizeRow>
+                    </FormGroup>
+                    <FormGroup>
+                      <FormLabel>Seats</FormLabel>
+                      <FormInput
+                        type="number"
+                        min={1} max={20}
+                        value={selectedTable.seats}
+                        onChange={(e) => updateTable({ seats: parseInt(e.target.value) || 1 })}
+                      />
+                    </FormGroup>
+                  </>
+                )}
+                <FormRow>
+                  <FormGroup>
+                    <FormLabel>Width</FormLabel>
+                    <FormInput
+                      type="number"
+                      min={30} max={300}
+                      value={selectedTable.width}
+                      onChange={(e) => {
+                        const w = parseInt(e.target.value) || 60;
+                        updateTable({
+                          width: w,
+                          height: selectedTable.shape === 'round' || selectedTable.shape === 'square' ? w : selectedTable.height
+                        });
+                      }}
+                    />
+                  </FormGroup>
+                  <FormGroup>
+                    <FormLabel>Height</FormLabel>
+                    <FormInput
+                      type="number"
+                      min={30} max={300}
+                      value={selectedTable.height}
+                      onChange={(e) => updateTable({ height: parseInt(e.target.value) || 60 })}
+                      disabled={!isFixture && selectedTable.shape !== 'rectangle'}
+                    />
+                  </FormGroup>
+                </FormRow>
+                <Btn $variant="danger" onClick={deleteSelected} style={{ width: '100%', justifyContent: 'center', marginTop: '12px' }}>
+                  Delete {isFixture ? 'Fixture' : 'Table'}
+                </Btn>
+              </SidebarCard>
+            );
+          })()}
 
           {/* Canvas Settings */}
           <SidebarCard>
@@ -628,7 +750,7 @@ const FloorPlanEditor: React.FC = () => {
             selectedTableId={selectedId}
             onTableMouseDown={handleTableMouseDown}
             onTableTouchStart={handleTableTouchStart}
-            onCanvasClick={() => setSelectedId(null)}
+            onCanvasClick={() => { if (!justFinishedDrag.current) setSelectedId(null); }}
           />
         </CanvasArea>
       </Content>

@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { FloorTable, TableStatus, TableStatusInfo, STATUS_COLORS } from './types';
+import { FloorTable, FixtureType, TableStatus, TableStatusInfo, STATUS_COLORS } from './types';
 
 interface TableNodeProps {
   table: FloorTable;
@@ -59,7 +59,6 @@ const TableLabel = styled.div<{ $textColor: string }>`
   font-size: 13px;
   font-weight: 700;
   color: ${p => p.$textColor};
-  letter-spacing: 0.3px;
   line-height: 1;
 `;
 
@@ -78,6 +77,14 @@ const StatusInfo = styled.div<{ $textColor: string }>`
   margin-top: 3px;
 `;
 
+const TEXT_ONLY_FIXTURES = new Set(['kitchen', 'entrance']);
+
+const FIXTURE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  kitchen: { bg: 'transparent', border: 'transparent', text: '#6B7280' },
+  counter: { bg: '#FEF3C7', border: '#D97706', text: '#92400E' },
+  entrance: { bg: 'transparent', border: 'transparent', text: '#6B7280' }
+};
+
 const TableNode: React.FC<TableNodeProps> = React.memo(({
   table,
   status = 'available',
@@ -89,12 +96,18 @@ const TableNode: React.FC<TableNodeProps> = React.memo(({
   statusInfo,
   currency = ''
 }) => {
-  const colors = isEditing
-    ? { bg: '#F8F9FA', border: '#D1D9E0', text: '#374151' }
-    : STATUS_COLORS[status];
+  const fixtureType: FixtureType = table.tableType || 'table';
+  const isFixture = fixtureType !== 'table';
+  const isTextOnly = TEXT_ONLY_FIXTURES.has(fixtureType);
+
+  const colors = isFixture
+    ? (FIXTURE_COLORS[fixtureType] || FIXTURE_COLORS.kitchen)
+    : isEditing
+      ? { bg: '#F8F9FA', border: '#D1D9E0', text: '#374151' }
+      : STATUS_COLORS[status];
 
   const handleClick = (e: React.MouseEvent) => {
-    if (!isEditing && onClick) {
+    if (!isEditing && onClick && !isFixture) {
       e.stopPropagation();
       onClick(table.tableNumber);
     }
@@ -112,31 +125,55 @@ const TableNode: React.FC<TableNodeProps> = React.memo(({
     }
   };
 
+  const fixtureStyle: React.CSSProperties | undefined = isFixture ? {
+    ...(isTextOnly ? {
+      background: 'transparent',
+      border: isSelected && isEditing ? '1.5px dashed #635BFF' : 'none',
+      boxShadow: isSelected && isEditing ? '0 0 0 2px rgba(99, 91, 255, 0.2)' : 'none',
+      borderRadius: '4px',
+    } : {
+      border: `2.5px solid ${isSelected ? '#635BFF' : colors.border}`,
+    }),
+    cursor: isEditing ? 'grab' : 'default',
+    opacity: isEditing ? 1 : 0.85
+  } : undefined;
+
   return (
     <NodeWrapper
       $x={table.x} $y={table.y}
       $w={table.width} $h={table.height}
-      $shape={table.shape}
+      $shape={isTextOnly ? 'square' : table.shape}
       $rotation={table.rotation}
-      $bgColor={colors.bg} $borderColor={colors.border} $textColor={colors.text}
-      $isSelected={isSelected}
+      $bgColor={isTextOnly ? 'transparent' : colors.bg}
+      $borderColor={isTextOnly ? 'transparent' : colors.border}
+      $textColor={colors.text}
+      $isSelected={isSelected && !isTextOnly}
       $isEditing={isEditing}
       onClick={handleClick}
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
+      style={fixtureStyle}
     >
-      <TableLabel $textColor={colors.text}>
+      <TableLabel $textColor={colors.text} style={isTextOnly ? {
+        fontSize: '14px',
+        fontWeight: 600,
+        whiteSpace: 'nowrap',
+      } : undefined}>
         {table.label || table.tableNumber}
       </TableLabel>
-      <SeatsLabel $textColor={colors.text}>
-        {!isEditing && statusInfo?.guestCount
-          ? `${statusInfo.guestCount} guests`
-          : `${table.seats} seats`}
-      </SeatsLabel>
-      {!isEditing && statusInfo && status !== 'available' && (
-        <StatusInfo $textColor={colors.text}>
-          {currency}{statusInfo.totalAmount.toFixed(0)} · {statusInfo.elapsedMinutes}m
-        </StatusInfo>
+      {!isFixture && (
+        <>
+          <SeatsLabel $textColor={colors.text}>
+            {!isEditing && statusInfo?.guestCount
+              ? `${statusInfo.guestCount} guests`
+              : `${table.seats} seats`}
+          </SeatsLabel>
+          {!isEditing && statusInfo && status !== 'available' && (
+            <StatusInfo $textColor={colors.text}>
+              {currency}{statusInfo.totalAmount.toFixed(0)}
+            </StatusInfo>
+          )}
+        </>
       )}
     </NodeWrapper>
   );

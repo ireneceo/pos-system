@@ -7,6 +7,8 @@ export interface FloorPlanData {
   tables: FloorTable[];
 }
 
+export type FixtureType = 'table' | 'kitchen' | 'counter' | 'entrance';
+
 export interface FloorTable {
   id: string;
   tableNumber: string;
@@ -18,6 +20,7 @@ export interface FloorTable {
   height: number;
   rotation: number;
   seats: number;
+  tableType?: FixtureType;
 }
 
 export type TableStatus = 'available' | 'occupied' | 'ready' | 'needs-attention';
@@ -61,10 +64,18 @@ export const DEFAULT_FLOOR_PLAN: FloorPlanData = {
   tables: []
 };
 
-export const TABLE_SHAPES: { value: FloorTable['shape']; label: string; defaultWidth: number; defaultHeight: number }[] = [
+export const TABLE_SHAPES: { value: FloorTable['shape']; label: string; defaultWidth: number; defaultHeight: number; variant?: string }[] = [
   { value: 'round', label: 'Round', defaultWidth: 70, defaultHeight: 70 },
   { value: 'square', label: 'Square', defaultWidth: 70, defaultHeight: 70 },
-  { value: 'rectangle', label: 'Rectangle', defaultWidth: 110, defaultHeight: 70 }
+  { value: 'rectangle', label: 'Rect (H)', defaultWidth: 110, defaultHeight: 70 },
+  { value: 'rectangle', label: 'Rect (V)', defaultWidth: 70, defaultHeight: 110, variant: 'vertical' }
+];
+
+export const FIXTURE_PRESETS: { type: FixtureType; label: string; defaultWidth: number; defaultHeight: number; icon: string; variant?: string; textOnly?: boolean }[] = [
+  { type: 'counter', label: 'Counter (H)', defaultWidth: 120, defaultHeight: 40, icon: 'C', variant: 'horizontal' },
+  { type: 'counter', label: 'Counter (V)', defaultWidth: 40, defaultHeight: 120, icon: 'C', variant: 'vertical' },
+  { type: 'kitchen', label: 'Kitchen', defaultWidth: 80, defaultHeight: 30, icon: 'K', textOnly: true },
+  { type: 'entrance', label: 'Entrance', defaultWidth: 80, defaultHeight: 30, icon: 'E', textOnly: true }
 ];
 
 export const STATUS_COLORS: Record<TableStatus, { bg: string; border: string; text: string }> = {

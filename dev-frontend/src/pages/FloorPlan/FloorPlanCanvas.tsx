@@ -20,22 +20,16 @@ interface FloorPlanCanvasProps {
 const CanvasOuter = styled.div`
   width: 100%;
   flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   overflow: hidden;
-  background: #F0F2F5;
+  background: white;
   border-radius: 8px;
+  border: 1px solid #E6EBF1;
+  position: relative;
 `;
 
-const CanvasInner = styled.div<{ $aspectRatio: string }>`
-  position: relative;
-  width: 100%;
-  max-height: 100%;
-  aspect-ratio: ${p => p.$aspectRatio};
-  background: white;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
+const CanvasInner = styled.div`
+  position: absolute;
+  inset: 0;
   overflow: hidden;
   touch-action: none;
 `;
@@ -101,16 +95,17 @@ const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
       maxY = Math.max(maxY, t.y + halfH);
     }
 
-    // Add padding (15% of bounds or minimum 60px)
+    // Add symmetric padding (10% of bounds or minimum 40px)
     const boundsW = maxX - minX;
     const boundsH = maxY - minY;
-    const padX = Math.max(boundsW * 0.15, 60);
-    const padY = Math.max(boundsH * 0.15, 60);
+    const padX = Math.max(boundsW * 0.10, 40);
+    const padY = Math.max(boundsH * 0.10, 40);
 
-    const vx = Math.max(0, minX - padX);
-    const vy = Math.max(0, minY - padY);
-    const vw = Math.min(floorPlan.canvasWidth - vx, boundsW + padX * 2);
-    const vh = Math.min(floorPlan.canvasHeight - vy, boundsH + padY * 2);
+    // Keep padding symmetric around bounding box center
+    const vx = minX - padX;
+    const vy = minY - padY;
+    const vw = boundsW + padX * 2;
+    const vh = boundsH + padY * 2;
 
     return { x: vx, y: vy, w: vw, h: vh };
   }, [floorPlan, isEditing]);
@@ -138,7 +133,7 @@ const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
   useEffect(() => {
     updateScale();
     const observer = new ResizeObserver(() => updateScale());
-    if (innerRef.current) observer.observe(innerRef.current);
+    if (outerRef.current) observer.observe(outerRef.current);
     return () => observer.disconnect();
   }, [updateScale]);
 
@@ -146,13 +141,10 @@ const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
     return (tableStatuses[tableNumber]?.status as TableStatus) || 'available';
   };
 
-  const aspectRatio = `${viewBox.w} / ${viewBox.h}`;
-
   return (
     <CanvasOuter ref={outerRef}>
       <CanvasInner
         ref={innerRef}
-        $aspectRatio={aspectRatio}
         onClick={(e) => {
           if (e.target === e.currentTarget || (e.target as HTMLElement).closest('[data-scaled-layer]')) {
             onCanvasClick?.();

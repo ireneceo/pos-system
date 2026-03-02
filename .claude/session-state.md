@@ -1,24 +1,25 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-03-02
+**마지막 업데이트:** 2026-03-03
 **작업 상태:** 완료
 
 ### 진행 중인 작업
 - 없음
 
 ### 완료된 작업 (이번 세션)
-- **Floor Plan 매장 운영 허브 대규모 리팩토링** (Phase 1~9 전체 완료)
-  - DB guest_count + table-status API 확장 + 결제완료 필터
-  - FloorPlanCanvas auto-fit viewBox + 균일 스케일링 (비율 유지)
-  - OrderOverlay (POS Terminal 동일 스타일)
-  - TableDetailPanel + FloorPlanStatsBar + FloorPlanPage 2단 레이아웃
-  - POS Terminal / Live Orders guest_count UI
-- **소켓 emit plain object 변환** — 모든 order emit에서 .get({plain:true}) 적용 (8곳)
-- **QR코드 결제 설정 버그 수정** — qr/qrPayment 키 불일치 (SettingsPage + QRPaymentPage)
-- **운영서버 배포 완료** — 프론트/백엔드 + DB 스키마 동기화
+- **Floor Plan Editor 장식 요소 추가** — Counter(H/V), Kitchen/Entrance 텍스트형
+- **사이드바 아이콘 6개** — Round, Square, Rect(H/V), Counter(H/V)
+- **Size 프리셋 (S/M/L)** — Properties 패널에서 원클릭 사이즈 변경
+- **캔버스 풀 사이즈** — aspect-ratio 제거, 위아래 여백 없음
+- **viewBox 대칭 패딩** — 좌우/상하 균등 여백
+- **선택/삭제 버그 fix** — 드래그 후 선택 유지
+- **사이드바 스크롤 독립** — 캔버스 위치 고정
+- **시간 표시 제거** — 테이블 노드에서 경과 시간 제거
+- **letter-spacing 제거** — 라벨 자간 정상화
+- **정사각형 기본 seats 2**
 
 ### 다음 할 일
-- Floor Plan 실제 사용 테스트 (테이블 클릭 → 상세패널 → 주문/결제/상태변경 플로우)
-- 서비스 오픈 준비 로드맵 계속 진행
+- Payment Settings 통화별 Additional Charges 설계 및 구현
+- 운영서버 배포
 
 ---
 

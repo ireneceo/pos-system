@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-03-02
+> **최종 업데이트:** 2026-03-03
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -1169,6 +1169,31 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 - `dev-frontend/src/pages/Settings/SettingsPage.tsx` — QR key 양쪽 허용
 - `dev-frontend/src/mobile/pages/QRPaymentPage.tsx` — QR key 양쪽 허용
 - `dev-backend/routes/orders.js` — 소켓 emit plain object 변환
+
+---
+
+## ✅ 완료: Floor Plan Editor 장식 요소 + 캔버스 개선 (2026-03-03)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Fixtures 추가 | Counter (H/V) 박스형 + Kitchen/Entrance 텍스트형 배치 | ✅ 완료 |
+| 사이드바 아이콘 6개 | Round, Square, Rect(H), Rect(V), Counter(H), Counter(V) | ✅ 완료 |
+| Size 프리셋 (S/M/L) | Properties 패널에서 테이블 사이즈 원클릭 변경 + seats 연동 | ✅ 완료 |
+| 캔버스 풀 사이즈 | aspect-ratio 제거, 위아래 회색 여백 없이 전체 영역 사용 | ✅ 완료 |
+| viewBox 대칭 패딩 | 테이블 바운딩박스 기준 좌우/상하 동일 여백 | ✅ 완료 |
+| 선택/삭제 버그 fix | 드래그 후 캔버스 클릭으로 선택 해제되는 문제 수정 | ✅ 완료 |
+| 사이드바 스크롤 독립 | 사이드바 길어져도 캔버스 위치 고정 | ✅ 완료 |
+| 시간 표시 제거 | 테이블 노드에서 경과 시간 제거, 금액만 표시 | ✅ 완료 |
+| letter-spacing 제거 | 테이블/fixture 라벨 자간 정상화 | ✅ 완료 |
+| 정사각형 기본 seats 2 | Square 테이블 추가 시 기본 좌석 수 2로 | ✅ 완료 |
+
+### 수정된 파일
+- `dev-frontend/src/pages/FloorPlan/types.ts` — FixtureType, FIXTURE_PRESETS, vertical rect
+- `dev-frontend/src/pages/FloorPlan/TableNode.tsx` — fixture 렌더링, 시간 제거, letter-spacing 제거
+- `dev-frontend/src/pages/FloorPlan/FloorPlanEditor.tsx` — Fixtures UI, Size 프리셋, 사이드바 스크롤, 선택 버그 fix
+- `dev-frontend/src/pages/FloorPlan/FloorPlanCanvas.tsx` — 캔버스 풀 사이즈, 대칭 패딩
 
 ---
 
