@@ -1,31 +1,37 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
-import { FloorTable, TableStatusInfo, STATUS_COLORS } from './types';
+import { FloorTable, TableStatusInfo, ORDER_STATUS_COLORS } from './types';
 import { formatCurrency } from '../../utils/currency';
+import { useStore } from '../../contexts/StoreContext';
+import { printBillViaRawBT, printKitchenTicketViaRawBT } from '../../utils/billPrint';
+import OptionModal from '../../components/POSTerminal/OptionModal';
 
 interface TableDetailPanelProps {
   tableNumber: string;
   statusInfo: TableStatusInfo | undefined;
   tableInfo: FloorTable | undefined;
   currency: string;
+  timezone?: string;
+  restaurantId: number;
   onClose: () => void;
   onNewOrder: () => void;
-  onAddItems: () => void;
   onStatusChange: (orderId: number, newStatus: string) => Promise<void>;
   onPayment: () => void;
   onNavigateToPOS: () => void;
+  onOrderUpdated: () => void;
+  onClearTable: (orderId: number) => Promise<void>;
 }
 
 // ─── Styled Components ───
 
 const Panel = styled.div`
-  width: 340px;
-  min-width: 340px;
+  width: 380px;
+  min-width: 380px;
   background: white;
   border-left: 1px solid #E6EBF1;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  overflow: hidden;
 
   @media (max-width: 768px) {
     width: 100%;
@@ -42,6 +48,7 @@ const PanelHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  flex-shrink: 0;
 `;
 
 const TableTitle = styled.div`
@@ -70,8 +77,15 @@ const CloseBtn = styled.button`
   cursor: pointer;
   padding: 2px 6px;
   border-radius: 4px;
+  flex-shrink: 0;
 
   &:hover { background: #F3F4F6; }
+`;
+
+const BadgeRow = styled.div`
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
 `;
 
 const StatusBadge = styled.span<{ $color: string; $bg: string }>`
@@ -82,11 +96,16 @@ const StatusBadge = styled.span<{ $color: string; $bg: string }>`
   font-weight: 600;
   color: ${p => p.$color};
   background: ${p => p.$bg};
-  margin-top: 6px;
+`;
+
+const PanelBody = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 `;
 
 const Section = styled.div`
-  padding: 16px 20px;
+  padding: 14px 20px;
   border-bottom: 1px solid #F0F2F5;
 `;
 
@@ -96,37 +115,124 @@ const SectionTitle = styled.div`
   color: #9CA3AF;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 `;
 
-const ItemList = styled.div`
-  display: flex;
-  flex-direction: column;
+const InfoGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 6px;
 `;
 
-const Item = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 13px;
+const InfoItem = styled.div`
+  font-size: 12px;
 `;
 
-const ItemName = styled.span`
-  color: #374151;
+const InfoLabel = styled.span`
+  color: #9CA3AF;
   font-weight: 500;
 `;
 
-const ItemQty = styled.span`
-  color: #9CA3AF;
-  font-size: 12px;
+const InfoValue = styled.span`
+  color: #0A2540;
+  font-weight: 600;
   margin-left: 4px;
 `;
 
-const ItemPrice = styled.span`
-  color: #0A2540;
+const GroupHeader = styled.div<{ $isAdded?: boolean }>`
+  padding: 5px 0;
+  font-size: 10px;
   font-weight: 600;
+  color: ${p => p.$isAdded ? '#92400E' : '#6B7280'};
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const ItemRow = styled.div<{ $completed?: boolean }>`
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 6px 0;
+  border-bottom: 1px solid #F8FAFC;
+  opacity: ${p => p.$completed ? 0.5 : 1};
+
+  &:last-child { border-bottom: none; }
+`;
+
+const ServedCheckbox = styled.button<{ $checked: boolean }>`
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 2px solid ${p => p.$checked ? '#059669' : '#D1D5DB'};
+  background: ${p => p.$checked ? '#059669' : 'white'};
+  color: white;
+  font-size: 11px;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+  transition: all 0.15s;
+
+  &:hover {
+    border-color: ${p => p.$checked ? '#047857' : '#9CA3AF'};
+  }
+`;
+
+const ItemInfo = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const ItemName = styled.div<{ $completed?: boolean }>`
+  font-size: 13px;
+  font-weight: 600;
+  color: #0A2540;
+  text-decoration: ${p => p.$completed ? 'line-through' : 'none'};
+`;
+
+const ItemOptions = styled.div`
+  font-size: 10px;
+  color: #6B7C93;
+  margin-top: 1px;
+`;
+
+const ItemPrice = styled.div`
+  font-size: 12px;
+  font-weight: 600;
+  color: #0A2540;
+  white-space: nowrap;
+  flex-shrink: 0;
   font-variant-numeric: tabular-nums;
+`;
+
+const ItemQty = styled.span`
+  font-size: 11px;
+  color: #9CA3AF;
+  font-weight: 500;
+`;
+
+const DeleteItemBtn = styled.button`
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: none;
+  color: #D1D5DB;
+  font-size: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+
+  &:hover {
+    color: #DC2626;
+    background: #FEE2E2;
+  }
 `;
 
 const SummaryRow = styled.div<{ $bold?: boolean }>`
@@ -135,20 +241,31 @@ const SummaryRow = styled.div<{ $bold?: boolean }>`
   font-size: ${p => p.$bold ? '14px' : '12px'};
   color: ${p => p.$bold ? '#0A2540' : '#6B7C93'};
   font-weight: ${p => p.$bold ? '700' : '500'};
-  padding: 3px 0;
+  padding: 2px 0;
+`;
+
+const NotesBox = styled.div`
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: #92400E;
+  margin-top: 6px;
 `;
 
 const ActionGroup = styled.div`
-  padding: 16px 20px;
+  padding: 12px 20px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: auto;
+  gap: 6px;
+  flex-shrink: 0;
+  border-top: 1px solid #E6EBF1;
 `;
 
-const ActionBtn = styled.button<{ $variant: 'primary' | 'secondary' | 'success' | 'link' }>`
+const ActionBtn = styled.button<{ $variant: 'primary' | 'secondary' | 'success' | 'danger' | 'link' }>`
   width: 100%;
-  padding: 10px;
+  padding: 9px;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
@@ -159,15 +276,64 @@ const ActionBtn = styled.button<{ $variant: 'primary' | 'secondary' | 'success' 
   ${p => {
     switch (p.$variant) {
       case 'primary':
-        return `background: #635BFF; color: white; &:hover { background: #5046E5; }`;
+        return `background: #635BFF; color: white; &:hover { background: #5A51E6; }`;
       case 'success':
-        return `background: #059669; color: white; &:hover { background: #047857; }`;
+        return `background: #10B981; color: white; border: 1px solid #10B981; &:hover { background: #059669; }`;
       case 'secondary':
-        return `background: #F3F4F6; color: #374151; border: 1px solid #E6EBF1; &:hover { background: #E5E7EB; }`;
+        return `background: #F6F9FC; color: #6B7C93; border: 1px solid #E6EBF1; &:hover { background: #E6EBF1; }`;
+      case 'danger':
+        return `background: white; color: #DC2626; border: 1px solid #FCA5A5; &:hover { background: #FEF2F2; }`;
       case 'link':
         return `background: none; color: #6B7C93; font-weight: 500; padding: 6px; &:hover { color: #374151; }`;
     }
   }}
+`;
+
+const ActionRow = styled.div`
+  display: flex;
+  gap: 6px;
+`;
+
+const IconButtonGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: center;
+  padding-bottom: 4px;
+`;
+
+const IconButton = styled.button`
+  padding: 6px 10px;
+  background: #F6F9FC;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 32px;
+  font-size: 12px;
+  color: #6B7C93;
+  white-space: nowrap;
+
+  &:hover {
+    background: #E6EBF1;
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+`;
+
+const IconSymbol = styled.span`
+  font-size: 14px;
+  font-family: 'Lucida Console', 'Courier New', monospace;
+  color: #6B7C93;
+  display: inline-block;
+  line-height: 1;
 `;
 
 const EmptyState = styled.div`
@@ -186,6 +352,62 @@ const EmptyState = styled.div`
   }
 `;
 
+// ─── Confirm Modal ───
+
+const ConfirmOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const ConfirmBox = styled.div`
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  width: 320px;
+  max-width: 90vw;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+`;
+
+const ConfirmTitle = styled.div`
+  font-size: 16px;
+  font-weight: 700;
+  color: #0A2540;
+  margin-bottom: 8px;
+`;
+
+const ConfirmMessage = styled.div`
+  font-size: 14px;
+  color: #6B7C93;
+  margin-bottom: 20px;
+  line-height: 1.5;
+`;
+
+const ConfirmActions = styled.div`
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+`;
+
+const ConfirmBtn = styled.button<{ $danger?: boolean }>`
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: none;
+
+  ${p => p.$danger
+    ? `background: #DC2626; color: white; &:hover { background: #B91C1C; }`
+    : `background: #F3F4F6; color: #374151; &:hover { background: #E5E7EB; }`
+  }
+`;
+
 // ─── Status helpers ───
 
 const STATUS_LABELS: Record<string, string> = {
@@ -195,17 +417,38 @@ const STATUS_LABELS: Record<string, string> = {
   served: 'Served',
   awaiting_payment: 'Awaiting Payment',
   outstanding: 'Outstanding',
-  completed: 'Completed'
+  completed: 'Completed',
+  cancelled: 'Cancelled'
 };
 
-const getNextStatus = (current: string): { status: string; label: string } | null => {
+const SOURCE_LABELS: Record<string, string> = {
+  pos: 'POS Terminal',
+  mobile: 'Mobile Order',
+  kiosk: 'Kiosk'
+};
+
+const getNextStatus = (current: string, paymentStatus?: string): { status: string; label: string } | null => {
   switch (current) {
-    case 'pending': return { status: 'preparing', label: 'Start Preparing' };
+    case 'pending': return { status: 'preparing', label: 'Start Cooking' };
     case 'preparing': return { status: 'ready', label: 'Mark Ready' };
-    case 'ready': return { status: 'served', label: 'Mark Served' };
+    case 'ready': return paymentStatus === 'completed'
+      ? { status: 'completed', label: 'Complete Order' }
+      : { status: 'served', label: 'Served' };
     case 'served': return { status: 'completed', label: 'Complete Order' };
     default: return null;
   }
+};
+
+const getPreviousStatus = (current: string): string | null => {
+  const reverseFlow: Record<string, string | null> = {
+    preparing: 'pending',
+    ready: 'preparing',
+    served: 'ready',
+    completed: 'served',
+    pending: null,
+    cancelled: null
+  };
+  return reverseFlow[current] || null;
 };
 
 // ─── Component ───
@@ -215,20 +458,383 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   statusInfo,
   tableInfo,
   currency,
+  timezone,
+  restaurantId,
   onClose,
   onNewOrder,
-  onAddItems,
   onStatusChange,
   onPayment,
-  onNavigateToPOS
+  onNavigateToPOS,
+  onOrderUpdated,
+  onClearTable
 }) => {
+  const [loading, setLoading] = useState(false);
+  const { getStoreInfo } = useStore();
+
+  // ─── Confirm modal state ───
+  const [confirmModal, setConfirmModal] = useState<{
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
+
+  // ─── Add Items View state (like LiveOrders) ───
+  const [showAddItemsView, setShowAddItemsView] = useState(false);
+  const [menuItems, setMenuItems] = useState<any[]>([]);
+  const [addItemsCart, setAddItemsCart] = useState<any[]>([]);
+  const [isAddingItems, setIsAddingItems] = useState(false);
+  const [addItemsSearchQuery, setAddItemsSearchQuery] = useState('');
+  const [showOptionModal, setShowOptionModal] = useState(false);
+  const [selectedMenuItemForOption, setSelectedMenuItemForOption] = useState<any>(null);
+
+  // ─── Add Items: fetch menu ───
+  const fetchMenuForAddItems = useCallback(async () => {
+    if (!restaurantId) return;
+    try {
+      const token = localStorage.getItem('auth_token');
+      const headers = { 'Authorization': `Bearer ${token}` };
+      const itemRes = await fetch(`/api/menu?restaurantId=${restaurantId}`, { headers });
+      if (itemRes.ok) {
+        const itemResult = await itemRes.json();
+        const items = itemResult.data?.items || itemResult.items || [];
+        const normalizedItems = items.map((i: any) => {
+          let optionGroups = i.optionGroups;
+          if (typeof optionGroups === 'string') {
+            try { optionGroups = JSON.parse(optionGroups); } catch { optionGroups = []; }
+          }
+          return { ...i, category_id: i.category_id || i.categoryId, optionGroups: Array.isArray(optionGroups) ? optionGroups : [] };
+        });
+        setMenuItems(normalizedItems.filter((i: any) => i.is_available !== false));
+      }
+    } catch (err) {
+      console.error('Failed to fetch menu:', err);
+    }
+  }, [restaurantId]);
+
+  useEffect(() => {
+    if (showAddItemsView) {
+      fetchMenuForAddItems();
+    } else {
+      setAddItemsCart([]);
+      setAddItemsSearchQuery('');
+    }
+  }, [showAddItemsView, fetchMenuForAddItems]);
+
+  const handleAddToItemsCart = (item: any, quantity: number = 1, selectedOptions: any[] = []) => {
+    const optionsKey = selectedOptions.map((o: any) => o.id || o.name).sort().join(',');
+    setAddItemsCart(prev => {
+      if (selectedOptions.length === 0) {
+        const existing = prev.find(i => i.menuItemId === item.id && (!i.selectedOptions || i.selectedOptions.length === 0));
+        if (existing) return prev.map(i => i.cartId === existing.cartId ? { ...i, quantity: i.quantity + quantity } : i);
+      } else {
+        const existing = prev.find(i => i.menuItemId === item.id && i.selectedOptions?.map((o: any) => o.id || o.name).sort().join(',') === optionsKey);
+        if (existing) return prev.map(i => i.cartId === existing.cartId ? { ...i, quantity: i.quantity + quantity } : i);
+      }
+      const optionsTotalPrice = selectedOptions.reduce((sum: number, opt: any) => sum + (parseFloat(opt.price) || 0), 0);
+      const unitPrice = parseFloat(item.price) + optionsTotalPrice;
+      return [...prev, {
+        cartId: `cart-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        menuItemId: item.id, name: item.name, price: item.price, unitPrice,
+        quantity, selectedOptions, is_set_menu: item.is_set_menu, set_items: item.set_items
+      }];
+    });
+  };
+
+  const handleRemoveFromItemsCart = (cartId: string) => {
+    setAddItemsCart(prev => {
+      const existing = prev.find(i => i.cartId === cartId);
+      if (existing && existing.quantity > 1) return prev.map(i => i.cartId === cartId ? { ...i, quantity: i.quantity - 1 } : i);
+      return prev.filter(i => i.cartId !== cartId);
+    });
+  };
+
+  const handleIncreaseCartItem = (cartId: string) => {
+    setAddItemsCart(prev => prev.map(i => i.cartId === cartId ? { ...i, quantity: i.quantity + 1 } : i));
+  };
+
+  const handleSubmitAddItems = async () => {
+    if (!statusInfo?.orderId || addItemsCart.length === 0) return;
+    try {
+      setIsAddingItems(true);
+      const token = localStorage.getItem('auth_token');
+      const mergeItems = addItemsCart.map(item => ({
+        menu_item_id: item.menuItemId, menu_item_name: item.name, name: item.name,
+        quantity: item.quantity, price: item.price, unitPrice: item.unitPrice || item.price,
+        options: item.selectedOptions?.map((opt: any) => ({ name: opt.name, price: opt.price || 0 })) || [],
+        is_set_menu: item.is_set_menu, set_items: item.set_items
+      }));
+      const res = await fetch(`/api/orders/${statusInfo.orderId}/merge-items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ items: mergeItems, source: 'floor_plan' })
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || 'Failed to add items');
+      }
+      setShowAddItemsView(false);
+      setAddItemsCart([]);
+      setAddItemsSearchQuery('');
+      onOrderUpdated();
+    } catch (err: any) {
+      console.error('Add items error:', err);
+    } finally {
+      setIsAddingItems(false);
+    }
+  };
+
   const isOccupied = statusInfo && statusInfo.status !== 'available';
   const orderStatus = statusInfo?.orderStatus || '';
-  const nextAction = getNextStatus(orderStatus);
+  const paymentStatus = statusInfo?.paymentStatus || 'pending';
+  const nextAction = getNextStatus(orderStatus, paymentStatus);
+  const items = statusInfo?.orderItems || [];
+  // LiveOrders와 동일한 조건 패턴 사용
+  const showServedCheckbox = ['preparing', 'ready', 'served'].includes(orderStatus);
 
-  const statusColors = isOccupied
-    ? STATUS_COLORS[statusInfo!.status]
-    : STATUS_COLORS.available;
+  const statusColors = isOccupied && ORDER_STATUS_COLORS[orderStatus]
+    ? ORDER_STATUS_COLORS[orderStatus]
+    : { bg: '#F3F4F6', text: '#9CA3AF', border: '#D1D5DB' };
+
+  const paymentStatusColors = (() => {
+    switch (paymentStatus) {
+      case 'completed': case 'paid': return { color: '#059669', bg: '#ECFDF5' };
+      case 'failed': return { color: '#DC2626', bg: '#FEE2E2' };
+      case 'payment_verification_pending': return { color: '#D97706', bg: '#FEF3C7' };
+      default: return { color: '#6B7280', bg: '#F3F4F6' };
+    }
+  })();
+
+  // Group items by order_group
+  const groupedItems: Record<number, typeof items> = {};
+  items.forEach((item, idx) => {
+    const group = item.order_group || 0;
+    if (!groupedItems[group]) groupedItems[group] = [];
+    groupedItems[group].push({ ...item, _originalIndex: idx } as any);
+  });
+  const groupKeys = Object.keys(groupedItems).map(Number).sort((a, b) => a - b);
+
+  const formatDT = (dateStr?: string) => {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    const tzOpts = timezone ? { timeZone: timezone } : {};
+    return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', ...tzOpts })
+      + ', ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', ...tzOpts });
+  };
+
+  // ─── Handlers ───
+
+  const handleToggleItemServed = async (itemIndex: number) => {
+    if (loading || !statusInfo?.orderId) return;
+    setLoading(true);
+    try {
+      const updatedItems = items.map((item, idx) => {
+        if (idx === itemIndex) {
+          return { ...item, status: item.status === 'completed' ? 'pending' : 'completed' };
+        }
+        return item;
+      });
+
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch(`/api/orders/${statusInfo.orderId}/items`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ order_items: updatedItems })
+      });
+
+      if (res.ok) {
+        const allCompleted = updatedItems.every(i => i.status === 'completed');
+        if (allCompleted && ['preparing', 'ready'].includes(orderStatus)) {
+          await fetch(`/api/orders/${statusInfo.orderId}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ status: 'served' })
+          });
+        }
+        onOrderUpdated();
+      }
+    } catch (_) { /* silently fail */ }
+    setLoading(false);
+  };
+
+  const handleDeleteItem = (itemIndex: number, itemName: string) => {
+    if (!statusInfo?.orderId) return;
+    setConfirmModal({
+      title: 'Delete Item',
+      message: `Delete "${itemName}" from this order?`,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        try {
+          const token = localStorage.getItem('auth_token');
+          const res = await fetch(`/api/orders/${statusInfo.orderId}/items/${itemIndex}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) onOrderUpdated();
+        } catch (_) { /* silently fail */ }
+      }
+    });
+  };
+
+  const handleCancelOrder = () => {
+    if (!statusInfo?.orderId) return;
+    setConfirmModal({
+      title: 'Cancel Order',
+      message: 'Are you sure you want to cancel this order? This action cannot be undone.',
+      onConfirm: async () => {
+        setConfirmModal(null);
+        setLoading(true);
+        try {
+          const token = localStorage.getItem('auth_token');
+          await fetch(`/api/orders/${statusInfo.orderId}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ status: 'cancelled' })
+          });
+          onOrderUpdated();
+        } catch (_) { /* silently fail */ }
+        setLoading(false);
+      }
+    });
+  };
+
+  const handleRevertStatus = async () => {
+    if (!statusInfo?.orderId || loading) return;
+    const prevStatus = getPreviousStatus(orderStatus);
+    if (!prevStatus) return;
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      await fetch(`/api/orders/${statusInfo.orderId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ status: prevStatus })
+      });
+      onOrderUpdated();
+    } catch (_) { /* silently fail */ }
+    setLoading(false);
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!statusInfo?.orderId) return;
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      await fetch(`/api/orders/${statusInfo.orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ payment_status: 'completed' })
+      });
+      onOrderUpdated();
+    } catch (_) { /* silently fail */ }
+    setLoading(false);
+  };
+
+  const buildOrderDataForPrint = () => {
+    if (!statusInfo) return null;
+    return {
+      orderNumber: statusInfo.orderNumber || '',
+      pickupNumber: (statusInfo.orderNumber || '').split('-')[1] || '',
+      tableNumber: tableNumber || null,
+      pagerNumber: null,
+      date: statusInfo.orderCreatedAt ? new Date(statusInfo.orderCreatedAt) : new Date(),
+      items: items.map((item: any) => {
+        let itemOptions = item.options || [];
+        if (typeof itemOptions === 'string') {
+          try { itemOptions = JSON.parse(itemOptions); } catch (_) { itemOptions = []; }
+        }
+        if (!Array.isArray(itemOptions)) itemOptions = [];
+        return {
+          menuItem: {
+            name: item.name || 'Unknown Item',
+            price: parseFloat(item.price || '0'),
+            is_set_menu: item.is_set_menu || false,
+            set_items: item.set_items || []
+          },
+          quantity: item.quantity || 1,
+          options: itemOptions
+        };
+      }),
+      subtotal: parseFloat(String(statusInfo.subtotal || 0)),
+      discount: parseFloat(String(statusInfo.discount || 0)),
+      coupon: statusInfo.couponCode ? {
+        code: statusInfo.couponCode,
+        discount: parseFloat(String(statusInfo.couponDiscount || 0))
+      } : null,
+      serviceCharge: parseFloat(String(statusInfo.serviceCharge || 0)),
+      serviceChargeRate: parseFloat(String(statusInfo.serviceChargeRate || 10)),
+      tax: parseFloat(String(statusInfo.tax || 0)),
+      taxRate: parseFloat(String(statusInfo.taxRate || 6)),
+      total: parseFloat(String(statusInfo.totalAmount || 0)),
+      paymentMethod: statusInfo.paymentMethod || 'cash',
+      amountReceived: 0,
+      change: 0,
+      cashierName: statusInfo.cashierName || null
+    };
+  };
+
+  const buildKitchenDataForPrint = (printItems?: any[], groupLabel?: string) => {
+    if (!statusInfo) return null;
+    const itemsToPrint = printItems || items;
+    return {
+      orderNumber: statusInfo.orderNumber || '',
+      pickupNumber: (statusInfo.orderNumber || '').split('-')[1] || '',
+      date: statusInfo.orderCreatedAt ? new Date(statusInfo.orderCreatedAt) : new Date(),
+      orderType: statusInfo.orderType || 'dine_in',
+      orderSource: statusInfo.orderSource || 'pos',
+      tableNumber: tableNumber || null,
+      pagerNumber: null,
+      customerName: statusInfo.customerName || 'Walk-in Customer',
+      groupLabel: groupLabel,
+      items: itemsToPrint.map((item: any) => {
+        let itemOptions = item.options || [];
+        if (typeof itemOptions === 'string') {
+          try { itemOptions = JSON.parse(itemOptions); } catch (_) { itemOptions = []; }
+        }
+        if (!Array.isArray(itemOptions)) itemOptions = [];
+        return {
+          menuItem: {
+            name: item.name || 'Unknown Item',
+            price: parseFloat(item.price || '0'),
+            is_set_menu: item.is_set_menu || false,
+            set_items: item.set_items || []
+          },
+          quantity: item.quantity || 1,
+          options: itemOptions
+        };
+      }),
+      notes: statusInfo.notes || '',
+      takeawayCharge: 0
+    };
+  };
+
+  const handlePrintBill = async () => {
+    const orderData = buildOrderDataForPrint();
+    if (!orderData || items.length === 0) return;
+    await printBillViaRawBT(orderData, getStoreInfo());
+  };
+
+  const handlePrintKitchenTicket = async () => {
+    const orderData = buildKitchenDataForPrint();
+    if (!orderData || items.length === 0) return;
+    await printKitchenTicketViaRawBT(orderData, getStoreInfo());
+  };
+
+  const handlePrintLatestGroupTicket = async () => {
+    if (items.length === 0) return;
+    const groups = items.map((item: any) => item.order_group || 0);
+    const latestGroup = Math.max(...groups);
+    if (latestGroup === 0) {
+      handlePrintKitchenTicket();
+      return;
+    }
+    const latestGroupItems = items.filter((item: any) => (item.order_group || 0) === latestGroup);
+    const orderData = buildKitchenDataForPrint(latestGroupItems, `+Order ${latestGroup}`);
+    if (!orderData) return;
+    await printKitchenTicketViaRawBT(orderData, getStoreInfo());
+  };
+
+  const previousStatus = getPreviousStatus(orderStatus);
+  const hasAddedItems = items.some((item: any) => (item.order_group || 0) > 0);
 
   return (
     <Panel>
@@ -243,78 +849,446 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
             ) : null}
             {isOccupied && <span>{statusInfo!.elapsedMinutes}min</span>}
           </TableMeta>
-          <StatusBadge $color={statusColors.text} $bg={statusColors.bg}>
-            {isOccupied ? (STATUS_LABELS[orderStatus] || statusInfo!.status) : 'Available'}
-          </StatusBadge>
+          {isOccupied && (
+            <BadgeRow>
+              <StatusBadge $color={statusColors.text} $bg={statusColors.bg}>
+                {STATUS_LABELS[orderStatus] || statusInfo!.status}
+              </StatusBadge>
+              <StatusBadge $color={paymentStatusColors.color} $bg={paymentStatusColors.bg}>
+                {paymentStatus === 'completed' || paymentStatus === 'paid' ? 'Paid' : 'Unpaid'}
+              </StatusBadge>
+            </BadgeRow>
+          )}
+          {!isOccupied && (
+            <BadgeRow>
+              <StatusBadge $color={statusColors.text} $bg={statusColors.bg}>Available</StatusBadge>
+            </BadgeRow>
+          )}
         </TableTitle>
         <CloseBtn onClick={onClose}>&times;</CloseBtn>
       </PanelHeader>
 
       {isOccupied ? (
-        <>
-          {/* Order Info */}
-          <Section>
-            <SectionTitle>
-              Order {statusInfo!.orderNumber || ''}
-              {statusInfo!.customerName && statusInfo!.customerName !== 'Walk-in Customer'
-                ? ` — ${statusInfo!.customerName}`
-                : ''}
-            </SectionTitle>
-            <ItemList>
-              {statusInfo!.orderItems && statusInfo!.orderItems.length > 0 ? (
-                statusInfo!.orderItems.map((item, idx) => (
-                  <Item key={idx}>
-                    <span>
-                      <ItemName>{item.name}</ItemName>
-                      <ItemQty>x{item.quantity}</ItemQty>
-                    </span>
-                    <ItemPrice>{formatCurrency(item.price * item.quantity, currency)}</ItemPrice>
-                  </Item>
-                ))
-              ) : (
-                <Item><ItemName style={{ color: '#9CA3AF' }}>No items</ItemName><span /></Item>
+        showAddItemsView ? (
+          /* ─── Add Items View (like LiveOrders) ─── */
+          <>
+            <PanelBody style={{ padding: '16px 20px' }}>
+              {/* Search Input */}
+              <div style={{ marginBottom: '16px' }}>
+                <input
+                  type="text"
+                  placeholder="Search menu items..."
+                  value={addItemsSearchQuery}
+                  onChange={(e) => setAddItemsSearchQuery(e.target.value)}
+                  style={{
+                    width: '100%', padding: '10px 14px',
+                    border: '2px solid #E5E7EB', borderRadius: '8px',
+                    fontSize: '14px', outline: 'none', transition: 'border-color 0.15s',
+                    boxSizing: 'border-box'
+                  }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = '#635BFF'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = '#E5E7EB'; }}
+                  autoFocus
+                />
+              </div>
+
+              {/* Search Results */}
+              {addItemsSearchQuery.length > 0 && (
+                <div style={{ marginBottom: '16px', maxHeight: '200px', overflowY: 'auto', border: '1px solid #E5E7EB', borderRadius: '8px' }}>
+                  {menuItems
+                    .filter((item: any) => {
+                      if (!item || !item.name) return false;
+                      const q = addItemsSearchQuery.toLowerCase();
+                      return item.name.toLowerCase().includes(q) || (item.code && item.code.toLowerCase().includes(q));
+                    })
+                    .slice(0, 15)
+                    .map((item: any) => {
+                      const hasOptions = Array.isArray(item.optionGroups) && item.optionGroups.length > 0;
+                      return (
+                        <div key={item.id} style={{
+                          padding: '10px 14px', display: 'flex', justifyContent: 'space-between',
+                          alignItems: 'center', borderBottom: '1px solid #F3F4F6', cursor: 'pointer'
+                        }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = '#F9FAFB'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0 }} onClick={() => {
+                            handleAddToItemsCart(item, 1, []);
+                            setAddItemsSearchQuery('');
+                          }}>
+                            <span style={{ fontWeight: 500, fontSize: '13px' }}>
+                              {item.code ? `${item.code} ` : ''}{item.name}
+                            </span>
+                            {item.is_set_menu && (
+                              <span style={{ marginLeft: '6px', fontSize: '10px', background: '#EDE9FE', color: '#7C3AED', padding: '1px 5px', borderRadius: '3px' }}>SET</span>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                            <span style={{ color: '#635BFF', fontWeight: 500, fontSize: '13px' }}>
+                              {formatCurrency(parseFloat(item.price) || 0, currency)}
+                            </span>
+                            {hasOptions && (
+                              <button onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedMenuItemForOption(item);
+                                setShowOptionModal(true);
+                              }} style={{
+                                padding: '3px 8px', fontSize: '11px', background: '#FEF3C7',
+                                color: '#D97706', border: '1px solid #FCD34D', borderRadius: '4px',
+                                cursor: 'pointer', fontWeight: 500
+                              }}>Options</button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  {menuItems.filter((item: any) => {
+                    const q = addItemsSearchQuery.toLowerCase();
+                    return item.name?.toLowerCase().includes(q) || (item.code && item.code.toLowerCase().includes(q));
+                  }).length === 0 && (
+                    <div style={{ padding: '14px', textAlign: 'center', color: '#9CA3AF', fontSize: '13px' }}>No items found</div>
+                  )}
+                </div>
               )}
-            </ItemList>
-          </Section>
 
-          {/* Summary */}
-          <Section>
-            <SummaryRow><span>Subtotal</span><span>{formatCurrency(statusInfo!.subtotal || 0, currency)}</span></SummaryRow>
-            {(statusInfo!.discount || 0) > 0 && (
-              <SummaryRow><span>Discount</span><span>-{formatCurrency(statusInfo!.discount || 0, currency)}</span></SummaryRow>
-            )}
-            {(statusInfo!.tax || 0) > 0 && (
-              <SummaryRow><span>Tax</span><span>{formatCurrency(statusInfo!.tax || 0, currency)}</span></SummaryRow>
-            )}
-            {(statusInfo!.serviceCharge || 0) > 0 && (
-              <SummaryRow><span>Service Charge</span><span>{formatCurrency(statusInfo!.serviceCharge || 0, currency)}</span></SummaryRow>
-            )}
-            <SummaryRow $bold>
-              <span>Total</span>
-              <span>{formatCurrency(statusInfo!.totalAmount, currency)}</span>
-            </SummaryRow>
-          </Section>
+              {/* Cart — Items to Add */}
+              <div>
+                <SectionTitle style={{ marginBottom: '10px' }}>
+                  Items to Add ({addItemsCart.reduce((sum: number, item: any) => sum + item.quantity, 0)})
+                </SectionTitle>
+                {addItemsCart.length === 0 ? (
+                  <div style={{ padding: '20px', textAlign: 'center', color: '#9CA3AF', background: '#F9FAFB', borderRadius: '8px', fontSize: '13px' }}>
+                    Search and select items to add
+                  </div>
+                ) : (
+                  <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden' }}>
+                    {addItemsCart.map((item: any) => (
+                      <div key={item.cartId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderBottom: '1px solid #F3F4F6' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 500, fontSize: '13px' }}>{item.name}</div>
+                          {item.selectedOptions && item.selectedOptions.length > 0 && (
+                            <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '1px' }}>
+                              {item.selectedOptions.map((opt: any) => opt.name).join(', ')}
+                            </div>
+                          )}
+                          <div style={{ color: '#6B7280', fontSize: '12px' }}>
+                            {formatCurrency(item.unitPrice || parseFloat(item.price), currency)} each
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                          <button onClick={() => handleRemoveFromItemsCart(item.cartId)}
+                            style={{ width: '28px', height: '28px', border: '1px solid #E5E7EB', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '16px', fontWeight: 500 }}>-</button>
+                          <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 600, fontSize: '14px' }}>{item.quantity}</span>
+                          <button onClick={() => handleIncreaseCartItem(item.cartId)}
+                            style={{ width: '28px', height: '28px', border: '1px solid #E5E7EB', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '16px', fontWeight: 500 }}>+</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </PanelBody>
 
-          {/* Actions */}
-          <ActionGroup>
-            {nextAction && statusInfo!.orderId && (
-              <ActionBtn $variant="success" onClick={() => onStatusChange(statusInfo!.orderId!, nextAction.status)}>
-                {nextAction.label}
+            {/* Add Items Footer */}
+            <ActionGroup>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontWeight: 600, fontSize: '14px' }}>
+                  Total: {formatCurrency(
+                    addItemsCart.reduce((sum: number, item: any) => sum + ((item.unitPrice || parseFloat(item.price)) * item.quantity), 0),
+                    currency
+                  )}
+                </span>
+              </div>
+              <ActionBtn
+                $variant="primary"
+                onClick={handleSubmitAddItems}
+                disabled={addItemsCart.length === 0 || isAddingItems}
+              >
+                {isAddingItems ? 'Adding...' : 'Add to Order'}
               </ActionBtn>
-            )}
-            <ActionBtn $variant="primary" onClick={onAddItems}>
-              + Add Items
-            </ActionBtn>
-            {statusInfo!.paymentStatus === 'pending' && (
-              <ActionBtn $variant="secondary" onClick={onPayment}>
-                Payment {formatCurrency(statusInfo!.totalAmount, currency)}
+              <ActionBtn $variant="secondary" onClick={() => {
+                setShowAddItemsView(false);
+                setAddItemsCart([]);
+                setAddItemsSearchQuery('');
+              }}>
+                Cancel
               </ActionBtn>
-            )}
-            <ActionBtn $variant="link" onClick={onNavigateToPOS}>
-              Open in POS Terminal &#x2197;
-            </ActionBtn>
-          </ActionGroup>
-        </>
+            </ActionGroup>
+          </>
+        ) : (
+          /* ─── Normal Order Detail View ─── */
+          <>
+            <PanelBody>
+              {/* Customer & Order Info */}
+              <Section>
+                <SectionTitle>
+                  Order {statusInfo!.orderNumber || ''}
+                  {statusInfo!.customerName && statusInfo!.customerName !== 'Walk-in Customer'
+                    ? ` — ${statusInfo!.customerName}`
+                    : ''}
+                </SectionTitle>
+                <InfoGrid>
+                  <InfoItem>
+                    <InfoLabel>Customer</InfoLabel>
+                    <InfoValue>{statusInfo!.customerName || 'Walk-in'}</InfoValue>
+                  </InfoItem>
+                  {statusInfo!.customerPhone && (
+                    <InfoItem>
+                      <InfoLabel>Phone</InfoLabel>
+                      <InfoValue>{statusInfo!.customerPhone}</InfoValue>
+                    </InfoItem>
+                  )}
+                  <InfoItem>
+                    <InfoLabel>Type</InfoLabel>
+                    <InfoValue>{(statusInfo!.orderType || 'dine_in').replace(/_/g, ' ').toUpperCase()}</InfoValue>
+                  </InfoItem>
+                  <InfoItem>
+                    <InfoLabel>Source</InfoLabel>
+                    <InfoValue>{SOURCE_LABELS[statusInfo!.orderSource || 'pos'] || statusInfo!.orderSource}</InfoValue>
+                  </InfoItem>
+                  <InfoItem>
+                    <InfoLabel>Time</InfoLabel>
+                    <InfoValue>{formatDT(statusInfo!.orderCreatedAt)}</InfoValue>
+                  </InfoItem>
+                  {statusInfo!.paymentMethod && (
+                    <InfoItem>
+                      <InfoLabel>Payment</InfoLabel>
+                      <InfoValue>{statusInfo!.paymentMethod}</InfoValue>
+                    </InfoItem>
+                  )}
+                  {statusInfo!.cashierName && (
+                    <InfoItem>
+                      <InfoLabel>Cashier</InfoLabel>
+                      <InfoValue>{statusInfo!.cashierName}</InfoValue>
+                    </InfoItem>
+                  )}
+                </InfoGrid>
+              </Section>
+
+              {/* Order Items with Served Checkbox */}
+              <Section>
+                <SectionTitle>
+                  Items ({items.length})
+                  {showServedCheckbox && items.length > 0 && ` — ${items.filter(i => i.status === 'completed').length}/${items.length} served`}
+                </SectionTitle>
+
+                {groupKeys.map(groupNum => {
+                  const groupItems = groupedItems[groupNum];
+                  const isAdded = groupNum > 0;
+                  const firstItem = groupItems[0];
+
+                  return (
+                    <div key={groupNum}>
+                      {(groupKeys.length > 1 || isAdded) && (
+                        <GroupHeader $isAdded={isAdded}>
+                          <span>{isAdded ? `+Added #${groupNum}` : 'Original Order'}</span>
+                          {isAdded && firstItem?.added_at && (
+                            <span style={{ fontSize: '9px', fontWeight: 400, color: '#9CA3AF' }}>
+                              {formatDT(firstItem.added_at)}
+                            </span>
+                          )}
+                        </GroupHeader>
+                      )}
+                      {groupItems.map((item: any) => {
+                        const originalIndex = item._originalIndex as number;
+                        const isCompleted = item.status === 'completed';
+                        const optionsStr = Array.isArray(item.options)
+                          ? item.options.map((o: any) => typeof o === 'string' ? o : o?.name || '').filter(Boolean).join(', ')
+                          : '';
+
+                        return (
+                          <ItemRow key={originalIndex} $completed={isCompleted && showServedCheckbox}>
+                            {showServedCheckbox && (
+                              <ServedCheckbox
+                                $checked={isCompleted}
+                                onClick={() => handleToggleItemServed(originalIndex)}
+                                disabled={loading}
+                                title={isCompleted ? 'Mark as not served' : 'Mark as served'}
+                              >
+                                {isCompleted ? '\u2713' : ''}
+                              </ServedCheckbox>
+                            )}
+                            <ItemInfo>
+                              <ItemName $completed={isCompleted}>
+                                {item.name} <ItemQty>x{item.quantity}</ItemQty>
+                              </ItemName>
+                              {optionsStr && <ItemOptions>{optionsStr}</ItemOptions>}
+                            </ItemInfo>
+                            <ItemPrice>
+                              {formatCurrency(item.price * item.quantity, currency)}
+                            </ItemPrice>
+                            {paymentStatus !== 'completed' && items.length > 1 && (
+                              <DeleteItemBtn
+                                onClick={() => handleDeleteItem(originalIndex, item.name)}
+                                title="Delete item"
+                              >
+                                &times;
+                              </DeleteItemBtn>
+                            )}
+                          </ItemRow>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+
+                {items.length === 0 && (
+                  <div style={{ fontSize: '13px', color: '#9CA3AF' }}>No items</div>
+                )}
+              </Section>
+
+              {/* Payment Summary */}
+              <Section style={{ borderBottom: 'none' }}>
+                <SectionTitle>Summary</SectionTitle>
+                <SummaryRow>
+                  <span>Subtotal</span>
+                  <span>{formatCurrency(statusInfo!.subtotal || 0, currency)}</span>
+                </SummaryRow>
+
+                {(statusInfo!.discountPolicyAmount || 0) > 0 && (
+                  <SummaryRow>
+                    <span>Discount{statusInfo!.discountPolicyName ? ` (${statusInfo!.discountPolicyName})` : ''}</span>
+                    <span>-{formatCurrency(statusInfo!.discountPolicyAmount || 0, currency)}</span>
+                  </SummaryRow>
+                )}
+
+                {(statusInfo!.couponDiscount || 0) > 0 && (
+                  <SummaryRow>
+                    <span>Coupon{statusInfo!.couponCode ? ` (${statusInfo!.couponCode})` : ''}</span>
+                    <span>-{formatCurrency(statusInfo!.couponDiscount || 0, currency)}</span>
+                  </SummaryRow>
+                )}
+
+                {(statusInfo!.pointDiscount || 0) > 0 && (
+                  <SummaryRow>
+                    <span>Points{statusInfo!.pointsUsed ? ` (${statusInfo!.pointsUsed} pts)` : ''}</span>
+                    <span>-{formatCurrency(statusInfo!.pointDiscount || 0, currency)}</span>
+                  </SummaryRow>
+                )}
+
+                {(statusInfo!.discount || 0) > 0 && !statusInfo!.couponDiscount && !statusInfo!.discountPolicyAmount && !statusInfo!.pointDiscount && (
+                  <SummaryRow>
+                    <span>Discount</span>
+                    <span>-{formatCurrency(statusInfo!.discount || 0, currency)}</span>
+                  </SummaryRow>
+                )}
+
+                {(statusInfo!.serviceCharge || 0) > 0 && (
+                  <SummaryRow>
+                    <span>Svc Charge{statusInfo!.serviceChargeRate ? ` (${statusInfo!.serviceChargeRate}%)` : ''}</span>
+                    <span>{formatCurrency(statusInfo!.serviceCharge || 0, currency)}</span>
+                  </SummaryRow>
+                )}
+
+                {(statusInfo!.tax || 0) > 0 && (
+                  <SummaryRow>
+                    <span>Tax{statusInfo!.taxRate ? ` (${statusInfo!.taxRate}%)` : ''}</span>
+                    <span>{formatCurrency(statusInfo!.tax || 0, currency)}</span>
+                  </SummaryRow>
+                )}
+
+                <SummaryRow $bold style={{ marginTop: '4px', paddingTop: '6px', borderTop: '1px solid #E6EBF1' }}>
+                  <span>Total</span>
+                  <span>{formatCurrency(statusInfo!.totalAmount, currency)}</span>
+                </SummaryRow>
+
+                {statusInfo!.notes && (
+                  <NotesBox>{statusInfo!.notes}</NotesBox>
+                )}
+              </Section>
+            </PanelBody>
+
+            {/* Actions */}
+            <ActionGroup>
+              {/* Print & Revert row */}
+              <IconButtonGroup>
+                <IconButton onClick={handlePrintBill} title="Print Bill">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="6,9 6,2 18,2 18,9"/>
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                    <rect x="6" y="14" width="12" height="8"/>
+                  </svg>
+                  Bill
+                </IconButton>
+                <IconButton onClick={handlePrintKitchenTicket} title="Print Order Ticket">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                  </svg>
+                  Ticket
+                </IconButton>
+                {hasAddedItems && (
+                  <IconButton onClick={handlePrintLatestGroupTicket} title="Print +Order Ticket" style={{ background: '#FEF3C7', color: '#92400E' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 4v16m8-8H4"/>
+                    </svg>
+                    +Order
+                  </IconButton>
+                )}
+                {previousStatus && (
+                  <IconButton onClick={handleRevertStatus} title={`Revert to ${STATUS_LABELS[previousStatus] || previousStatus}`}>
+                    <IconSymbol>↺</IconSymbol>
+                    Revert
+                  </IconButton>
+                )}
+              </IconButtonGroup>
+
+              {/* Status progression — LiveOrders와 동일: completed/cancelled 제외 */}
+              {nextAction && statusInfo!.orderId && orderStatus !== 'completed' && orderStatus !== 'cancelled' && (
+                <ActionBtn
+                  $variant={orderStatus === 'ready' ? 'success' : 'primary'}
+                  onClick={() => onStatusChange(statusInfo!.orderId!, nextAction.status)}
+                  disabled={loading}
+                >
+                  {nextAction.label}
+                </ActionBtn>
+              )}
+
+              {/* Confirm Payment — LiveOrders와 동일 */}
+              {paymentStatus === 'payment_verification_pending' && (
+                <ActionBtn $variant="success" onClick={handleConfirmPayment} disabled={loading}>
+                  Confirm Payment
+                </ActionBtn>
+              )}
+
+              <ActionRow>
+                {/* Add Items — LiveOrders와 동일: payment_status=pending && status not served/completed/cancelled */}
+                {paymentStatus === 'pending' && !['served', 'completed', 'cancelled'].includes(orderStatus) && (
+                  <ActionBtn $variant="secondary" onClick={() => setShowAddItemsView(true)}>
+                    Add Items
+                  </ActionBtn>
+                )}
+                {/* Payment — LiveOrders와 동일: payment_status=pending */}
+                {paymentStatus === 'pending' && (
+                  <ActionBtn
+                    $variant={orderStatus === 'served' ? 'success' : 'secondary'}
+                    onClick={onPayment}
+                  >
+                    Payment
+                  </ActionBtn>
+                )}
+              </ActionRow>
+              {/* Cancel Order — LiveOrders와 동일: status not cancelled/completed */}
+              {orderStatus !== 'cancelled' && orderStatus !== 'completed' && (
+                <ActionBtn $variant="danger" onClick={handleCancelOrder} disabled={loading}>
+                  Cancel Order
+                </ActionBtn>
+              )}
+              {/* Leaved — completed 상태에서만: 테이블 비우기 */}
+              {orderStatus === 'completed' && statusInfo!.orderId && (
+                <ActionBtn
+                  $variant="primary"
+                  onClick={() => onClearTable(statusInfo!.orderId!)}
+                  disabled={loading}
+                >
+                  Leaved
+                </ActionBtn>
+              )}
+              <ActionBtn $variant="link" onClick={onNavigateToPOS}>
+                Open in POS Terminal &#x2197;
+              </ActionBtn>
+            </ActionGroup>
+          </>
+        )
       ) : (
         <>
           <EmptyState>
@@ -330,6 +1304,42 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
             </ActionBtn>
           </ActionGroup>
         </>
+      )}
+
+      {/* OptionModal for Add Items (reused from POS Terminal) */}
+      {selectedMenuItemForOption && (
+        <OptionModal
+          isOpen={showOptionModal}
+          onClose={() => { setShowOptionModal(false); setSelectedMenuItemForOption(null); }}
+          menuItem={{
+            id: selectedMenuItemForOption.id,
+            name: selectedMenuItemForOption.name,
+            price: parseFloat(selectedMenuItemForOption.price) || 0,
+            emoji: selectedMenuItemForOption.emoji || '',
+            image: selectedMenuItemForOption.image,
+            optionGroups: selectedMenuItemForOption.optionGroups
+          }}
+          onConfirm={(quantity: number, _selectedOptions: any, selectedOptionsData: any) => {
+            handleAddToItemsCart(selectedMenuItemForOption, quantity, selectedOptionsData);
+            setShowOptionModal(false);
+            setSelectedMenuItemForOption(null);
+            setAddItemsSearchQuery('');
+          }}
+        />
+      )}
+
+      {/* Confirm Modal */}
+      {confirmModal && (
+        <ConfirmOverlay onClick={() => setConfirmModal(null)}>
+          <ConfirmBox onClick={(e) => e.stopPropagation()}>
+            <ConfirmTitle>{confirmModal.title}</ConfirmTitle>
+            <ConfirmMessage>{confirmModal.message}</ConfirmMessage>
+            <ConfirmActions>
+              <ConfirmBtn onClick={() => setConfirmModal(null)}>Cancel</ConfirmBtn>
+              <ConfirmBtn $danger onClick={confirmModal.onConfirm}>Confirm</ConfirmBtn>
+            </ConfirmActions>
+          </ConfirmBox>
+        </ConfirmOverlay>
       )}
     </Panel>
   );

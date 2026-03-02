@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 
 // 고객 타입 정의
 export interface Customer {
@@ -140,11 +140,7 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
   };
 
-  // 초기 고객 데이터 로드
-  useEffect(() => {
-    loadInitialCustomers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // 초기 자동 로드 제거 — 고객 데이터는 필요한 페이지에서 reloadCustomers(restaurantId)로 로드
 
   // localStorage 동기화 제거 - 메모리 상태만 사용
 
@@ -248,8 +244,8 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setCurrentCustomer(newCustomer);
       setGuestInfo(null);
 
-      // 고객 목록 다시 로드
-      await loadInitialCustomers();
+      // 고객 목록 다시 로드 (restaurantId 전달)
+      await loadInitialCustomers(restaurantId);
 
       return newCustomer;
     } catch (error) {

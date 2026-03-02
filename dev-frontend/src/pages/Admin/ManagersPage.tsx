@@ -336,6 +336,9 @@ const ManagersPage: React.FC = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingManager, setEditingManager] = useState<Manager | null>(null);
+  const [addModalWarning, setAddModalWarning] = useState('');
+  const [editModalWarning, setEditModalWarning] = useState('');
+  const [actionError, setActionError] = useState('');
   const [newManager, setNewManager] = useState({
     managerId: '',
     fullName: '',
@@ -606,7 +609,7 @@ const ManagersPage: React.FC = () => {
       console.log('✅ Modal state updated to true');
     } catch (error) {
       console.error('❌ Error opening modal:', error);
-      alert('Error opening modal: ' + error.message);
+      setAddModalWarning('Error opening modal: ' + error.message);
     }
   };
 
@@ -745,7 +748,7 @@ const ManagersPage: React.FC = () => {
     if (!editingManager) return;
 
     if (!editingManager.managerId || !editingManager.fullName || !editingManager.companyName || !editingManager.email || !editingManager.position || !editingManager.department || !editingManager.phone) {
-      alert('Please fill in all required fields');
+      setEditModalWarning('Please fill in all required fields');
       return;
     }
 
@@ -779,28 +782,16 @@ const ManagersPage: React.FC = () => {
       console.log('📡 Update response status:', response.status);
 
       if (response.ok) {
-        const result = await response.json();
-        console.log('✅ Manager updated successfully:', result);
-
-        // Close modal first
         setShowEditModal(false);
         setEditingManager(null);
-
-        // Show success message
-        setSuccessMessage('Manager updated successfully');
-        setShowSuccessModal(true);
-
-        // Refresh the managers list from server
-        console.log('🔄 Refreshing managers list...');
+        setEditModalWarning('');
         await fetchManagers();
       } else {
         const errorData = await response.json();
-        console.error('❌ Update failed:', errorData);
-        throw new Error(errorData.error || 'Update failed');
+        setEditModalWarning(errorData.error || 'Update failed');
       }
     } catch (error) {
-      console.error('❌ Error updating manager:', error);
-      alert('Error updating manager: ' + error.message);
+      setEditModalWarning('Error updating manager: ' + (error as Error).message);
     }
   };
 
@@ -809,28 +800,18 @@ const ManagersPage: React.FC = () => {
 
     try {
       if (confirmAction === 'delete') {
-        console.log('🔄 Deleting manager:', selectedManager.id);
-        
-        // Extract the real user ID from the manager ID (remove 'mgr-' prefix)
         const userId = selectedManager.id.replace('mgr-', '');
-        console.log('📝 Extracted user ID:', userId);
-        
+
         const response = await fetch(`/api/users/${userId}`, {
           method: 'DELETE',
           headers: getAuthHeaders()
         });
 
-        console.log('📡 Delete response status:', response.status);
-        
         if (response.ok) {
-          // Refresh managers list from server to ensure consistency
           await fetchManagers();
-          setSuccessMessage('Manager deleted successfully');
-          console.log('✅ Manager deleted and list refreshed');
         } else {
-          const errorData = await response.text();
-          console.error('❌ Delete failed:', errorData);
-          throw new Error(`Delete failed: ${response.status}`);
+          const errorData = await response.json().catch(() => ({ error: 'Delete failed' }));
+          setActionError(errorData.error || `Delete failed: ${response.status}`);
         }
       } else if (confirmAction === 'resetPassword') {
         const userId = selectedManager.id.replace('mgr-', '');
@@ -847,15 +828,15 @@ const ManagersPage: React.FC = () => {
         });
 
         if (response.ok) {
-          setSuccessMessage(`Password reset successfully. New password: ${randomPassword}\n\nPlease save this password and share it securely with the manager.`);
+          setSuccessMessage(`New password: ${randomPassword}\n\nPlease save this password and share it securely with the manager.`);
+          setShowSuccessModal(true);
         } else {
-          throw new Error('Password reset failed');
+          setActionError('Password reset failed');
         }
       } else if (confirmAction === 'toggle') {
         const userId = selectedManager.id.replace('mgr-', '');
         const newStatus = selectedManager.status === 'active' ? 'inactive' : 'active';
 
-        // Update status on server
         const response = await fetch(`/api/users/${userId}`, {
           method: 'PUT',
           headers: getAuthHeaders(),
@@ -863,20 +844,15 @@ const ManagersPage: React.FC = () => {
         });
 
         if (response.ok) {
-          // Update local state only after successful API call
           setManagers(prev => prev.map(m =>
             m.id === selectedManager.id ? { ...m, status: newStatus } : m
           ));
-          setSuccessMessage(`Manager ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`);
         } else {
-          throw new Error('Status update failed');
+          setActionError('Status update failed');
         }
       }
-
-      setShowSuccessModal(true);
     } catch (error) {
-      console.error('❌ Action failed:', error);
-      alert(`Action failed: ${error.message}. Please try again.`);
+      setActionError(`Action failed: ${(error as Error).message}. Please try again.`);
     }
 
     setShowConfirmModal(false);
@@ -917,33 +893,24 @@ const ManagersPage: React.FC = () => {
     // Test connection first
     const isConnected = await testConnection();
     if (!isConnected) {
-      alert('Cannot connect to backend server. Please check if the server is running');
+      setAddModalWarning('Cannot connect to backend server. Please check if the server is running');
       return;
     }
-    
+
     if (!newManager.managerId || !newManager.fullName || !newManager.companyName || !newManager.email || !newManager.position || !newManager.department || !newManager.phone) {
-      console.error('❌ Validation failed:', {
-        managerId: newManager.managerId,
-        fullName: newManager.fullName,
-        companyName: newManager.companyName,
-        email: newManager.email,
-        position: newManager.position,
-        department: newManager.department,
-        phone: newManager.phone
-      });
-      alert('Please fill in all required fields');
+      setAddModalWarning('Please fill in all required fields');
       return;
     }
 
     // Validate that Brand Manager has a parent Brand General selected
     if (newManager.role === 'Brand Manager' && !newManager.parentManagerId) {
-      alert('Please select a Brand General for this Brand Manager');
+      setAddModalWarning('Please select a Brand General for this Brand Manager');
       return;
     }
 
     // Validate that Foodcourt Manager has a parent Foodcourt General selected
     if (newManager.role === 'Foodcourt Manager' && !newManager.parentManagerId) {
-      alert('Please select a Foodcourt General for this Foodcourt Manager');
+      setAddModalWarning('Please select a Foodcourt General for this Foodcourt Manager');
       return;
     }
 
@@ -1007,34 +974,20 @@ const ManagersPage: React.FC = () => {
       console.log('📡 Parsed result:', result);
 
       if (response.ok) {
-        console.log('✅ Manager created successfully:', result);
-        
-        // Close modal first
-        handleCloseModal();
-        
-        // Show success message in modal
-        setSuccessMessage('Manager created successfully! Default password: manager123');
+        // Show password info
+        setSuccessMessage(`Manager created. Default password: manager123`);
         setShowSuccessModal(true);
-        
-        // Refresh the managers list from server
-        console.log('🔄 Refreshing managers list...');
+
+        handleCloseModal();
         await fetchManagers();
       } else {
-        console.error('❌ Failed to create manager:', result);
-        alert('Failed to create manager: ' + (result.error || result.message || 'Unknown error'));
+        setAddModalWarning('Failed to create manager: ' + (result.error || result.message || 'Unknown error'));
       }
     } catch (error) {
-      console.error('❌ Error creating manager:', error);
-      console.error('Error details:', {
-        name: (error as Error).name,
-        message: (error as Error).message,
-        stack: (error as Error).stack
-      });
-      
       if ((error as Error).message.includes('Failed to fetch')) {
-        alert('Cannot connect to server. Please ensure the backend server is running');
+        setAddModalWarning('Cannot connect to server. Please ensure the backend server is running');
       } else {
-        alert('Error creating manager: ' + (error as Error).message);
+        setAddModalWarning('Error creating manager: ' + (error as Error).message);
       }
     }
   };
@@ -1420,6 +1373,11 @@ const ManagersPage: React.FC = () => {
                   </>
                 )}
               </FormGrid>
+              {addModalWarning && (
+                <div style={{ padding: '12px', background: '#FEE2E2', border: '1px solid #EF4444', borderRadius: '8px', color: '#DC2626', fontSize: '14px', marginTop: '8px' }}>
+                  {addModalWarning}
+                </div>
+              )}
             </ModalBody>
             <ModalActions>
               <Button variant="secondary" onClick={handleCloseModal}>Cancel</Button>
@@ -1429,12 +1387,11 @@ const ManagersPage: React.FC = () => {
         </ModalOverlay>
         )}
 
-        {/* Success Modal */}
+        {/* Info Modal (password reset result) */}
         {showSuccessModal && (
         <ModalOverlay show={showSuccessModal} onClick={() => setShowSuccessModal(false)}>
           <SuccessModal onClick={(e) => e.stopPropagation()}>
             <SuccessIcon>✓</SuccessIcon>
-            <SuccessTitle>Success!</SuccessTitle>
             <SuccessMessage>{successMessage}</SuccessMessage>
             <Button variant="primary" onClick={() => setShowSuccessModal(false)}>
               OK
@@ -1694,9 +1651,14 @@ const ManagersPage: React.FC = () => {
                   </>
                 )}
               </FormGrid>
+              {editModalWarning && (
+                <div style={{ padding: '12px', background: '#FEE2E2', border: '1px solid #EF4444', borderRadius: '8px', color: '#DC2626', fontSize: '14px', marginTop: '8px' }}>
+                  {editModalWarning}
+                </div>
+              )}
             </ModalBody>
             <ModalActions>
-              <Button variant="secondary" onClick={() => setShowEditModal(false)}>Cancel</Button>
+              <Button variant="secondary" onClick={() => { setShowEditModal(false); setEditModalWarning(''); }}>Cancel</Button>
               <Button variant="primary" onClick={handleUpdateManager}>Update Manager</Button>
             </ModalActions>
           </Modal>
@@ -1713,19 +1675,37 @@ const ManagersPage: React.FC = () => {
             </ModalHeader>
             <ModalBody>
               <p>
-                {confirmAction === 'delete' && `Are you sure you want to delete Manager ID: ${selectedManager?.managerId}?`}
+                {confirmAction === 'delete' && `Are you sure you want to delete Manager ID: ${selectedManager?.managerId}? This action cannot be undone.`}
                 {confirmAction === 'resetPassword' && `Are you sure you want to reset password for Manager ID: ${selectedManager?.managerId}?`}
                 {confirmAction === 'toggle' && `Are you sure you want to ${selectedManager?.status === 'active' ? 'deactivate' : 'activate'} Manager ID: ${selectedManager?.managerId}?`}
               </p>
             </ModalBody>
             <ModalActions>
               <Button variant="secondary" onClick={() => setShowConfirmModal(false)}>Cancel</Button>
-              <Button 
-                variant={confirmAction === 'delete' ? 'danger' : 'primary'} 
+              <Button
+                variant={confirmAction === 'delete' ? 'danger' : 'primary'}
                 onClick={handleConfirmAction}
               >
                 {confirmAction === 'delete' ? 'Delete' : confirmAction === 'resetPassword' ? 'Reset Password' : 'Confirm'}
               </Button>
+            </ModalActions>
+          </Modal>
+        </ModalOverlay>
+        )}
+
+        {/* Action Error Modal */}
+        {actionError && (
+        <ModalOverlay show={!!actionError} onClick={() => setActionError('')}>
+          <Modal onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <ModalTitle>Error</ModalTitle>
+              <CloseButton onClick={() => setActionError('')}>×</CloseButton>
+            </ModalHeader>
+            <ModalBody>
+              <p style={{ color: '#DC2626' }}>{actionError}</p>
+            </ModalBody>
+            <ModalActions>
+              <Button variant="primary" onClick={() => setActionError('')}>OK</Button>
             </ModalActions>
           </Modal>
         </ModalOverlay>

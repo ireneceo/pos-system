@@ -23,7 +23,7 @@ export interface FloorTable {
   tableType?: FixtureType;
 }
 
-export type TableStatus = 'available' | 'occupied' | 'ready' | 'needs-attention';
+export type TableStatus = 'available' | 'occupied' | 'ready' | 'needs-attention' | 'completed';
 
 export interface OrderItemSummary {
   name: string;
@@ -31,6 +31,11 @@ export interface OrderItemSummary {
   price: number;
   options?: string[];
   status?: string;
+  id?: string;
+  order_group?: number;
+  added_at?: string;
+  is_set_menu?: boolean;
+  set_items?: any[];
 }
 
 export interface TableStatusInfo {
@@ -53,6 +58,21 @@ export interface TableStatusInfo {
   discount?: number;
   cashierName?: string | null;
   orderStatus?: string;
+  // View mode fields
+  couponCode?: string | null;
+  couponDiscount?: number;
+  discountPolicyName?: string | null;
+  discountPolicyAmount?: number;
+  pointDiscount?: number;
+  pointsUsed?: number;
+  paymentMethod?: string | null;
+  orderSource?: string;
+  customerPhone?: string | null;
+  serviceChargeRate?: number;
+  taxRate?: number;
+  orderCreatedAt?: string;
+  notes?: string | null;
+  orderType?: string;
 }
 
 export const DEFAULT_FLOOR_PLAN: FloorPlanData = {
@@ -79,15 +99,29 @@ export const FIXTURE_PRESETS: { type: FixtureType; label: string; defaultWidth: 
 ];
 
 export const STATUS_COLORS: Record<TableStatus, { bg: string; border: string; text: string }> = {
-  available: { bg: '#ECFDF5', border: '#059669', text: '#059669' },
+  available: { bg: '#F3F4F6', border: '#D1D5DB', text: '#9CA3AF' },
   occupied: { bg: '#EFF6FF', border: '#635BFF', text: '#635BFF' },
   ready: { bg: '#FEF3C7', border: '#D97706', text: '#D97706' },
-  'needs-attention': { bg: '#FEE2E2', border: '#DC2626', text: '#DC2626' }
+  'needs-attention': { bg: '#FEE2E2', border: '#DC2626', text: '#DC2626' },
+  completed: { bg: '#E5E7EB', border: '#9CA3AF', text: '#374151' }
 };
 
 export const STATUS_LABELS: Record<TableStatus, string> = {
   available: 'Available',
   occupied: 'Occupied',
   ready: 'Ready',
-  'needs-attention': 'Attention'
+  'needs-attention': 'Attention',
+  completed: 'Completed'
+};
+
+// Order-level status colors — matches LiveOrders exactly
+export const ORDER_STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  outstanding: { bg: '#FEF3C7', text: '#F59E0B', border: '#F59E0B' },
+  pending: { bg: '#FEF3C7', text: '#92400E', border: '#D97706' },
+  preparing: { bg: '#DBEAFE', text: '#1E40AF', border: '#3B82F6' },
+  ready: { bg: '#D1FAE5', text: '#065F46', border: '#10B981' },
+  served: { bg: '#D1FAE5', text: '#065F46', border: '#10B981' },
+  completed: { bg: '#E5E7EB', text: '#374151', border: '#9CA3AF' },
+  cancelled: { bg: '#FEE2E2', text: '#991B1B', border: '#DC2626' },
+  awaiting_payment: { bg: '#FEF3C7', text: '#92400E', border: '#D97706' }
 };

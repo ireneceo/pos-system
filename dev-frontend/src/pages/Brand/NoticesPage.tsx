@@ -11,6 +11,7 @@ import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
 import CommentSection from '../../components/Common/CommentSection';
 import { linkifyText } from '../../utils/linkify';
+import ConfirmModal from '../../components/ConfirmModal';
 
 // ============================================================================
 // Interfaces
@@ -526,6 +527,10 @@ const NoticesPage: React.FC = () => {
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, { total_comments: number; unread_count: number }>>({});
 
+  // ConfirmModal states
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingNoticeId, setDeletingNoticeId] = useState<number | null>(null);
+
   const getAuthHeaders = useCallback(() => {
     const token = localStorage.getItem('auth_token');
     return {
@@ -709,11 +714,17 @@ const NoticesPage: React.FC = () => {
   // Delete Notice
   // ============================================================================
 
-  const handleDeleteNotice = async (noticeId: number) => {
-    if (!window.confirm('Are you sure you want to delete this notice?')) return;
+  const handleDeleteNotice = (noticeId: number) => {
+    setDeletingNoticeId(noticeId);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteNotice = async () => {
+    if (!deletingNoticeId) return;
+    setShowDeleteConfirm(false);
 
     try {
-      const response = await fetch(`/api/notices/${noticeId}`, {
+      const response = await fetch(`/api/notices/${deletingNoticeId}`, {
         method: 'DELETE',
         headers: getAuthHeaders()
       });
@@ -726,6 +737,8 @@ const NoticesPage: React.FC = () => {
       }
     } catch (error) {
       console.error('Error deleting notice:', error);
+    } finally {
+      setDeletingNoticeId(null);
     }
   };
 
@@ -1260,6 +1273,18 @@ const NoticesPage: React.FC = () => {
           </ModalContent>
         </ModalOverlay>
       )}
+
+      {/* Delete Notice Confirm Modal */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Delete Notice"
+        message="Are you sure you want to delete this notice?"
+        onConfirm={confirmDeleteNotice}
+        onCancel={() => { setShowDeleteConfirm(false); setDeletingNoticeId(null); }}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
     </Container>
   );
 };

@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { API_BASE_URL } from '../../config/api';
 import { formatCurrency } from '../../utils/currency';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import ConfirmModal from '../../components/ConfirmModal';
 import {
   DataTableContainer,
   DataTable,
@@ -510,6 +511,10 @@ const ManagerInvoicesPage: React.FC = () => {
     dueDate: '',
     planType: 'professional'
   });
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<Invoice | null>(null);
+  const [confirmType, setConfirmType] = useState<string>('');
+  const [inlineWarning, setInlineWarning] = useState<string>('');
 
   useEffect(() => {
     const fetchInvoices = async () => {
@@ -623,14 +628,37 @@ const ManagerInvoicesPage: React.FC = () => {
   };
 
   const handleSendInvoice = (invoice: Invoice) => {
-    if (window.confirm(`Send invoice ${invoice.invoiceNumber} to ${invoice.restaurantName}?`)) {
-      setInvoices(invoices.map(inv => 
-        inv.id === invoice.id 
+    setConfirmTarget(invoice);
+    setConfirmType('send');
+    setShowConfirmDialog(true);
+  };
+
+  const handleMarkAsOverdueClick = (invoice: Invoice) => {
+    setConfirmTarget(invoice);
+    setConfirmType('overdue');
+    setShowConfirmDialog(true);
+  };
+
+  const executeConfirmAction = () => {
+    if (!confirmTarget) return;
+    setShowConfirmDialog(false);
+
+    if (confirmType === 'send') {
+      setInvoices(invoices.map(inv =>
+        inv.id === confirmTarget.id
           ? { ...inv, status: 'sent' as const }
           : inv
       ));
-      alert(`Invoice ${invoice.invoiceNumber} has been sent to ${invoice.restaurantName}`);
+    } else if (confirmType === 'overdue') {
+      setInvoices(invoices.map(inv =>
+        inv.id === confirmTarget.id
+          ? { ...inv, status: 'overdue' as const }
+          : inv
+      ));
     }
+
+    setConfirmTarget(null);
+    setConfirmType('');
   };
 
   const handleSaveEdit = () => {
@@ -653,12 +681,11 @@ const ManagerInvoicesPage: React.FC = () => {
     setShowEditModal(false);
     setSelectedInvoice(null);
     setEditInvoice(null);
-    alert('Invoice updated successfully!');
   };
 
   const handleSubmitInvoice = () => {
     if (!newInvoice.restaurantName || !newInvoice.amount || !newInvoice.dueDate) {
-      alert('Please fill in all required fields.');
+      setInlineWarning('Please fill in all required fields.');
       return;
     }
 
@@ -700,7 +727,6 @@ const ManagerInvoicesPage: React.FC = () => {
       dueDate: '',
       planType: 'professional'
     });
-    alert('Invoice created successfully!');
   };
 
   const handlePayInvoice = (invoice: Invoice) => {
@@ -720,7 +746,7 @@ const ManagerInvoicesPage: React.FC = () => {
     
     // 둘 중 하나는 반드시 있어야 함
     if (!paymentData.transactionId && !paymentData.receiptFile) {
-      alert('Please provide either a Transaction ID/Reference Number OR upload a payment receipt.');
+      setInlineWarning('Please provide either a Transaction ID/Reference Number OR upload a payment receipt.');
       return;
     }
 
@@ -781,19 +807,12 @@ const ManagerInvoicesPage: React.FC = () => {
       
     } catch (error) {
       console.error('Payment processing error:', error);
-      alert('Error processing payment. Please try again.');
+      setInlineWarning('Error processing payment. Please try again.');
     }
   };
 
   const handleMarkAsOverdue = (invoice: Invoice) => {
-    if (window.confirm(`Mark invoice ${invoice.invoiceNumber} as overdue?`)) {
-      setInvoices(invoices.map(inv => 
-        inv.id === invoice.id 
-          ? { ...inv, status: 'overdue' as const }
-          : inv
-      ));
-      alert(`Invoice ${invoice.invoiceNumber} marked as overdue`);
-    }
+    handleMarkAsOverdueClick(invoice);
   };
 
   return (
@@ -1455,6 +1474,35 @@ const ManagerInvoicesPage: React.FC = () => {
         )}
         </Content>
       </Container>
+
+      {inlineWarning && (
+        <div style={{
+          position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
+          background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 8,
+          padding: '12px 20px', color: '#DC2626', fontSize: 14, fontWeight: 500,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: 12
+        }}>
+          <span>{inlineWarning}</span>
+          <button onClick={() => setInlineWarning('')} style={{
+            background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontWeight: 700, fontSize: 16
+          }}>x</button>
+        </div>
+      )}
+
+      <ConfirmModal
+        isOpen={showConfirmDialog}
+        title={confirmType === 'send' ? 'Send Invoice' : 'Mark as Overdue'}
+        message={
+          confirmType === 'send'
+            ? `Send invoice ${confirmTarget?.invoiceNumber} to ${confirmTarget?.restaurantName}?`
+            : `Mark invoice ${confirmTarget?.invoiceNumber} as overdue?`
+        }
+        onConfirm={executeConfirmAction}
+        onCancel={() => { setShowConfirmDialog(false); setConfirmTarget(null); setConfirmType(''); }}
+        confirmText={confirmType === 'send' ? 'Send' : 'Mark Overdue'}
+        cancelText="Cancel"
+        type={confirmType === 'send' ? 'info' : 'warning'}
+      />
     </>
   );
 };

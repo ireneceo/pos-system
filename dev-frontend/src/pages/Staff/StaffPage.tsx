@@ -99,39 +99,60 @@ const Content = styled.div`
   }
 `;
 
-const StaffList = styled.div`
+const TableContainer = styled.div`
   background: white;
   border-radius: 12px;
   border: 1px solid #E6EBF1;
   overflow: hidden;
+
+  @media (max-width: 768px) {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+  }
 `;
 
-const StaffHeader = styled.div`
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 80px 1fr 150px;
-  gap: 16px;
-  padding: 16px 20px;
+const Table = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+
+  @media (max-width: 768px) {
+    display: block;
+  }
+
+  tbody {
+    @media (max-width: 768px) {
+      display: block;
+    }
+  }
+`;
+
+const TableHead = styled.thead`
   background: #F8FAFC;
   border-bottom: 1px solid #E6EBF1;
-  font-size: 12px;
-  font-weight: 600;
-  color: #6B7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 
   @media (max-width: 768px) {
     display: none;
   }
+
+  th {
+    padding: 14px 16px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6B7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  th:first-child { text-align: left; }
+  th:last-child { text-align: right; }
 `;
 
-const StaffItem = styled.div`
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 80px 1fr 150px;
-  gap: 16px;
-  padding: 16px 20px;
-  border-bottom: 1px solid #F6F9FC;
-  align-items: center;
-  transition: all 0.2s;
+const TableRow = styled.tr`
+  border-bottom: 1px solid #F3F4F6;
+  transition: background 0.15s;
 
   &:hover {
     background: #F8FAFC;
@@ -142,10 +163,82 @@ const StaffItem = styled.div`
   }
 
   @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: 8px;
-    padding: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px;
+    margin-bottom: 10px;
+    background: white;
+    border-radius: 10px;
+    border: 1px solid #E6EBF1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+    &:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transform: translateY(-1px);
+    }
+
+    &:last-child {
+      margin-bottom: 0;
+    }
   }
+`;
+
+const TableCell = styled.td`
+  padding: 16px;
+  font-size: 14px;
+  color: #0A2540;
+  vertical-align: middle;
+  text-align: center;
+
+  &:first-child { text-align: left; }
+  &:last-child { text-align: right; }
+
+  @media (max-width: 768px) {
+    flex: 1 1 calc(50% - 5px);
+    min-width: 140px;
+    padding: 0;
+    text-align: left !important;
+
+    &:before {
+      content: attr(data-label);
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      color: #9CA3AF;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    &:last-child {
+      flex: 1 1 100%;
+      padding-top: 10px;
+      margin-top: 10px;
+      border-top: 1px solid #F3F4F6;
+
+      &:before {
+        display: none;
+      }
+    }
+  }
+`;
+
+const PermissionTags = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+`;
+
+const PermissionTag = styled.span`
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  background: #EDE9FE;
+  color: #7C3AED;
+  white-space: nowrap;
 `;
 
 const StaffInfo = styled.div`
@@ -227,7 +320,8 @@ const StatusBadge = styled.span<{ active: boolean }>`
 const ActionGroup = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
+  justify-content: flex-end;
 `;
 
 const ActionButton = styled.button`
@@ -697,16 +791,7 @@ const StaffPage: React.FC = () => {
             </FilterSelect>
           </FilterBar>
 
-          <StaffList>
-            <StaffHeader>
-              <span>Staff Member</span>
-              <span>Role</span>
-              <span>Department</span>
-              <span>PIN</span>
-              <span>Status</span>
-              <span>Actions</span>
-            </StaffHeader>
-
+          <TableContainer>
             {filteredStaff.length === 0 ? (
               <EmptyState>
                 <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
@@ -717,48 +802,91 @@ const StaffPage: React.FC = () => {
                 </div>
               </EmptyState>
             ) : (
-              filteredStaff.map(staff => (
-                <StaffItem key={staff.id}>
-                  <StaffInfo>
-                    <StaffAvatar role={staff.role}>
-                      {getInitials(staff.name)}
-                    </StaffAvatar>
-                    <StaffDetails>
-                      <StaffName>{staff.name}</StaffName>
-                      <StaffMeta>{staff.email}</StaffMeta>
-                    </StaffDetails>
-                  </StaffInfo>
+              <Table>
+                <TableHead>
+                  <tr>
+                    <th>Staff Member</th>
+                    <th>Role</th>
+                    <th>Department</th>
+                    <th>PIN</th>
+                    <th>Permissions</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </TableHead>
+                <tbody>
+                  {filteredStaff.map(staff => (
+                    <TableRow key={staff.id}>
+                      <TableCell data-label="Staff Member">
+                        <StaffInfo>
+                          <StaffAvatar role={staff.role}>
+                            {getInitials(staff.name)}
+                          </StaffAvatar>
+                          <StaffDetails>
+                            <StaffName>{staff.name}</StaffName>
+                            <StaffMeta>{staff.email}</StaffMeta>
+                          </StaffDetails>
+                        </StaffInfo>
+                      </TableCell>
 
-                  <RoleBadge role={staff.role}>
-                    {staff.role}
-                  </RoleBadge>
+                      <TableCell data-label="Role">
+                        <RoleBadge role={staff.role}>
+                          {staff.role}
+                        </RoleBadge>
+                      </TableCell>
 
-                  <div style={{ fontSize: '14px', color: '#6B7280' }}>
-                    {staff.department || '—'}
-                  </div>
+                      <TableCell data-label="Department">
+                        <span style={{ fontSize: '14px', color: '#6B7280' }}>
+                          {staff.department || '—'}
+                        </span>
+                      </TableCell>
 
-                  <div style={{ fontSize: '14px', color: '#6B7280', fontFamily: 'monospace', letterSpacing: '2px' }}>
-                    {staff.pin_code ? '****' : '—'}
-                  </div>
+                      <TableCell data-label="PIN">
+                        <span style={{ fontSize: '14px', color: '#6B7280', fontFamily: 'monospace', letterSpacing: '2px' }}>
+                          {staff.pin_code ? '****' : '—'}
+                        </span>
+                      </TableCell>
 
-                  <StatusBadge active={staff.status === 'active'}>
-                    {staff.status}
-                  </StatusBadge>
+                      <TableCell data-label="Permissions">
+                        {staff.role === 'Restaurant Admin' ? (
+                          <PermissionTag style={{ background: '#FEE2E2', color: '#DC2626' }}>Full Access</PermissionTag>
+                        ) : staff.permissions.length === 0 ? (
+                          <span style={{ fontSize: '12px', color: '#9CA3AF' }}>No permissions</span>
+                        ) : (
+                          <PermissionTags>
+                            {staff.permissions.map(p => (
+                              <PermissionTag key={p}>
+                                {MENU_GROUPS.find(g => g.key === p)?.label.split(' (')[0] || p}
+                              </PermissionTag>
+                            ))}
+                          </PermissionTags>
+                        )}
+                      </TableCell>
 
-                  <ActionGroup>
-                    <ActionButton onClick={() => handleOpenEditModal(staff)}>
-                      Edit
-                    </ActionButton>
-                    {staff.role === 'Staff' && (
-                      <ActionButton onClick={() => setResetPasswordTarget(staff)}>
-                        Reset PW
-                      </ActionButton>
-                    )}
-                  </ActionGroup>
-                </StaffItem>
-              ))
+                      <TableCell data-label="Status">
+                        <StatusBadge active={staff.status === 'active'}>
+                          {staff.status}
+                        </StatusBadge>
+                      </TableCell>
+
+                      <TableCell data-label="">
+                        <ActionGroup>
+                          <ActionButton onClick={() => handleOpenEditModal(staff)}>
+                            Edit
+                          </ActionButton>
+                          {staff.role === 'Staff' && (
+                            <ActionButton onClick={() => setResetPasswordTarget(staff)}>
+                              Reset PW
+                            </ActionButton>
+                          )}
+                        </ActionGroup>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </tbody>
+              </Table>
             )}
-          </StaffList>
+          </TableContainer>
         </Content>
 
         {/* ===== Add Staff Modal (Portal) ===== */}

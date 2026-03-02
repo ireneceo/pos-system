@@ -8,6 +8,7 @@ import {
   Content,
   Button
 } from '../../components/UI';
+import ConfirmModal from '../../components/ConfirmModal';
 
 interface AddonModule {
   id: number;
@@ -425,6 +426,10 @@ const AddonModulesPage: React.FC = () => {
   const [targetFilter, setTargetFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingModuleId, setDeletingModuleId] = useState<number | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   const [formData, setFormData] = useState({
     module_code: '',
     name: '',
@@ -495,6 +500,7 @@ const AddonModulesPage: React.FC = () => {
   };
 
   const saveModule = async () => {
+    setSaveError(null);
     try {
       const payload = {
         module_code: formData.module_code,
@@ -521,37 +527,41 @@ const AddonModulesPage: React.FC = () => {
       });
 
       if (response.ok) {
-        alert(editingModule ? 'Module updated successfully!' : 'Module created successfully!');
         setShowModal(false);
         fetchModules();
       } else {
         const error = await response.json();
-        alert(error.error || 'Failed to save module');
+        setSaveError(error.error || 'Failed to save module');
       }
     } catch (error) {
       console.error('Error saving module:', error);
-      alert('Failed to save module');
+      setSaveError('Failed to save module');
     }
   };
 
-  const deleteModule = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this module?')) return;
+  const deleteModule = (id: number) => {
+    setDeletingModuleId(id);
+    setShowDeleteConfirm(true);
+  };
 
+  const confirmDeleteModule = async () => {
+    if (!deletingModuleId) return;
+    setShowDeleteConfirm(false);
     try {
-      const response = await fetch(`/api/addon-modules/${id}`, {
+      const response = await fetch(`/api/addon-modules/${deletingModuleId}`, {
         method: 'DELETE'
       });
 
       if (response.ok) {
-        alert('Module deleted successfully!');
         fetchModules();
       } else {
-        alert('Failed to delete module');
+        setSaveError('Failed to delete module');
       }
     } catch (error) {
       console.error('Error deleting module:', error);
-      alert('Failed to delete module');
+      setSaveError('Failed to delete module');
     }
+    setDeletingModuleId(null);
   };
 
   const toggleModuleStatus = async (module: AddonModule) => {
@@ -620,6 +630,13 @@ const AddonModulesPage: React.FC = () => {
               <StatLabel>Advanced Modules</StatLabel>
             </StatCard>
           </StatsGrid>
+
+          {saveError && (
+            <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', color: '#DC2626', fontSize: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>{saveError}</span>
+              <button onClick={() => setSaveError(null)} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '16px' }}>&times;</button>
+            </div>
+          )}
 
           <FilterBar>
             <SearchInput
@@ -864,6 +881,17 @@ const AddonModulesPage: React.FC = () => {
           )}
         </Content>
       </Container>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Delete Module"
+        message="Are you sure you want to delete this module?"
+        onConfirm={confirmDeleteModule}
+        onCancel={() => { setShowDeleteConfirm(false); setDeletingModuleId(null); }}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
     </>
   );
 };

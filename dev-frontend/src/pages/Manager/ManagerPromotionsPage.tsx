@@ -4,6 +4,7 @@ import { EmptyState } from '../../components/UI/TableComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
+import ConfirmModal from '../../components/ConfirmModal';
 
 interface Restaurant {
   id: string;
@@ -654,6 +655,8 @@ const ManagerPromotionsPage: React.FC = () => {
   });
 
   const [restaurants] = useState<Restaurant[]>([]);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [confirmTargetId, setConfirmTargetId] = useState<string>('');
 
   // Fetch promotions data
   useEffect(() => {
@@ -840,9 +843,14 @@ const ManagerPromotionsPage: React.FC = () => {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleDeletePromotion = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this promotion?')) {
-      setPromotions(promotions.filter(p => p.id !== id));
-    }
+    setConfirmTargetId(id);
+    setShowConfirmDialog(true);
+  };
+
+  const executeDeletePromotion = () => {
+    setShowConfirmDialog(false);
+    setPromotions(promotions.filter(p => p.id !== confirmTargetId));
+    setConfirmTargetId('');
   };
 
   const handleExportData = () => {
@@ -1353,6 +1361,17 @@ const ManagerPromotionsPage: React.FC = () => {
           </ModalContent>
         </Modal>
       </Container>
+
+      <ConfirmModal
+        isOpen={showConfirmDialog}
+        title="Delete Promotion"
+        message="Are you sure you want to delete this promotion? This action cannot be undone."
+        onConfirm={executeDeletePromotion}
+        onCancel={() => { setShowConfirmDialog(false); setConfirmTargetId(''); }}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
     </>
   );
 };

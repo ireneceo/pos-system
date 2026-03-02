@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styled from 'styled-components';
 import { useParams } from 'react-router-dom';
-import { FloorPlanData, FloorTable, FixtureType, DEFAULT_FLOOR_PLAN, TABLE_SHAPES, FIXTURE_PRESETS } from './types';
+import { FloorPlanData, FloorTable, DEFAULT_FLOOR_PLAN, TABLE_SHAPES, FIXTURE_PRESETS } from './types';
 import FloorPlanCanvas from './FloorPlanCanvas';
 
 // ─── Styled Components ───

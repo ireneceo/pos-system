@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { FloorTable, FixtureType, TableStatus, TableStatusInfo, STATUS_COLORS } from './types';
+import { FloorTable, FixtureType, TableStatus, TableStatusInfo, STATUS_COLORS, ORDER_STATUS_COLORS } from './types';
 
 interface TableNodeProps {
   table: FloorTable;
@@ -100,11 +100,14 @@ const TableNode: React.FC<TableNodeProps> = React.memo(({
   const isFixture = fixtureType !== 'table';
   const isTextOnly = TEXT_ONLY_FIXTURES.has(fixtureType);
 
+  // Use order-level status colors (matching LiveOrders) when table has an active order
   const colors = isFixture
     ? (FIXTURE_COLORS[fixtureType] || FIXTURE_COLORS.kitchen)
     : isEditing
       ? { bg: '#F8F9FA', border: '#D1D9E0', text: '#374151' }
-      : STATUS_COLORS[status];
+      : (!isEditing && statusInfo?.orderStatus && ORDER_STATUS_COLORS[statusInfo.orderStatus])
+        ? ORDER_STATUS_COLORS[statusInfo.orderStatus]
+        : STATUS_COLORS[status];
 
   const handleClick = (e: React.MouseEvent) => {
     if (!isEditing && onClick && !isFixture) {
@@ -170,7 +173,14 @@ const TableNode: React.FC<TableNodeProps> = React.memo(({
           </SeatsLabel>
           {!isEditing && statusInfo && status !== 'available' && (
             <StatusInfo $textColor={colors.text}>
-              {currency}{statusInfo.totalAmount.toFixed(0)}
+              {({
+                pending: 'Pending',
+                preparing: 'Preparing',
+                ready: 'Ready',
+                served: 'Served',
+                awaiting_payment: 'Awaiting Pay',
+                outstanding: 'Outstanding'
+              } as Record<string, string>)[statusInfo.orderStatus || ''] || 'Occupied'}
             </StatusInfo>
           )}
         </>

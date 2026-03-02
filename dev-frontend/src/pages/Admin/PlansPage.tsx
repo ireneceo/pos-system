@@ -15,6 +15,7 @@ import {
 } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { formatCurrency } from '../../utils/currency';
+import ConfirmModal from '../../components/ConfirmModal';
 
 interface CurrencyPrice {
   monthly: number;
@@ -582,6 +583,8 @@ const PlansPage: React.FC = () => {
   const [showPlanPricesModal, setShowPlanPricesModal] = useState(false);
   const [, setPlanPrices] = useState<PlanPrice[]>([]);
   const [editingPlanPrices, setEditingPlanPrices] = useState<{[currency: string]: {monthly: string; annual: string}}>({});
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null);
 
   // Form data for create plan
   const [createFormData, setCreateFormData] = useState({
@@ -1011,13 +1014,16 @@ const PlansPage: React.FC = () => {
     }
   };
 
-  const deletePlan = async (planId: string) => {
-    if (!window.confirm('Are you sure you want to delete this plan? This action cannot be undone.')) {
-      return;
-    }
+  const deletePlan = (planId: string) => {
+    setDeletingPlanId(planId);
+    setShowDeleteConfirm(true);
+  };
 
+  const confirmDeletePlan = async () => {
+    if (!deletingPlanId) return;
+    setShowDeleteConfirm(false);
     try {
-      const response = await fetch(`/api/plans/${planId}`, {
+      const response = await fetch(`/api/plans/${deletingPlanId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -1035,6 +1041,7 @@ const PlansPage: React.FC = () => {
     } catch (error) {
       console.error('Error deleting plan:', error);
     }
+    setDeletingPlanId(null);
   };
 
   const getDefaultDescription = (name: string) => {
@@ -2609,6 +2616,17 @@ const PlansPage: React.FC = () => {
 
         </Content>
       </Container>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Delete Plan"
+        message="Are you sure you want to delete this plan? This action cannot be undone."
+        onConfirm={confirmDeletePlan}
+        onCancel={() => { setShowDeleteConfirm(false); setDeletingPlanId(null); }}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
     </>
   );
 };

@@ -485,7 +485,7 @@ const InfoBox = styled.div`
 `;
 
 // Coupon validation API endpoint
-const validateCouponAPI = async (code: string, restaurantId: number, orderAmount: number, orderType: string) => {
+const validateCouponAPI = async (code: string, restaurantId: number, orderAmount: number, orderType: string, customerId?: number) => {
   const response = await fetch(`${process.env.REACT_APP_API_URL}/api/coupons/validate`, {
     method: 'POST',
     headers: {
@@ -495,13 +495,14 @@ const validateCouponAPI = async (code: string, restaurantId: number, orderAmount
       code,
       restaurant_id: restaurantId,
       order_amount: orderAmount,
-      order_type: orderType
+      order_type: orderType,
+      customer_id: customerId || null
     })
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Invalid coupon');
+    const errorData = await response.json();
+    throw new Error(errorData.error || errorData.message || 'Invalid coupon');
   }
 
   return response.json();
@@ -1607,7 +1608,8 @@ const PaymentPage: React.FC = () => {
         couponCode,
         parseInt(currentStore.id as string, 10),
         subtotal,
-        orderType
+        orderType,
+        currentCustomer?.id
       );
 
       if (result.valid && result.data) {

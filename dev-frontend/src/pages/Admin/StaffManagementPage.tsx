@@ -1359,13 +1359,15 @@ const AdminStaffManagementPage: React.FC = () => {
     const roles = ['Staff', 'Restaurant Admin', 'System Admin'];
     const currentIndex = roles.indexOf(staff.role);
     if (currentIndex >= roles.length - 1) {
-      alert(`${staff.name} already has the highest authority.`);
       return;
     }
 
     const nextRole = roles[currentIndex + 1];
-    const confirmPromote = confirm(`Do you want to promote ${staff.name} from ${staff.role} to ${nextRole}?`);
-    if (!confirmPromote) return;
+    setSelectedStaff(staff);
+    setConfirmAction('toggle' as any);
+    setShowConfirmModal(true);
+    // Promotion logic would go in handleConfirmAction
+    return; // Currently unused function
 
     try {
       console.log(`🔄 [Admin] Promoting ${staff.name} to ${nextRole}...`);
@@ -2272,7 +2274,7 @@ const AdminStaffManagementPage: React.FC = () => {
                       </div>
                     </div>
                     <div style={{ fontSize: '13px', color: '#991B1B', lineHeight: '1.4' }}>
-                      이 작업은 되돌릴 수 없습니다. 직원의 모든 데이터가 영구적으로 삭제됩니다.
+                      This action cannot be undone. All staff data will be permanently deleted.
                     </div>
                   </div>
                 </div>

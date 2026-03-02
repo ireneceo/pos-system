@@ -261,9 +261,26 @@ router.put('/:id', authenticateToken, async (req, res) => {
         (first_name || last_name);
     }
 
+    const { Op } = require('sequelize');
+
+    // Email duplicate check (only if email is being changed)
+    if (updateData.email && updateData.email !== user.email) {
+      const emailExists = await User.findOne({
+        where: {
+          email: updateData.email,
+          id: { [Op.ne]: user.id }
+        }
+      });
+      if (emailExists) {
+        return res.status(400).json({
+          success: false,
+          error: `Email "${updateData.email}" is already used by another user`
+        });
+      }
+    }
+
     // PIN duplicate check within same restaurant (only if pin_code is being changed)
     if (updateData.pin_code && user.restaurant_id) {
-      const { Op } = require('sequelize');
       const pinExists = await User.findOne({
         where: {
           restaurant_id: user.restaurant_id,
@@ -288,21 +305,74 @@ router.put('/:id', authenticateToken, async (req, res) => {
     res.json({ success: true, data: userWithoutPassword });
   } catch (error) {
     console.error('❌ Error updating user:', error);
+    // Duplicate entry 에러를 사용자 친화적 메시지로 변환
+    if (error.original && error.original.code === 'ER_DUP_ENTRY') {
+      const match = error.original.message.match(/Duplicate entry '(.+?)' for key '(.+?)'/);
+      if (match) {
+        return res.status(400).json({ success: false, error: `"${match[1]}" is already in use by another user` });
+      }
+    }
     res.status(400).json({ success: false, error: error.message });
   }
 });
 
-// Delete user
+// Delete user (with cascade cleanup)
 router.delete('/:id', authenticateToken, async (req, res) => {
+  const { sequelize } = require('../config/database');
+  const RestaurantManager = require('../models/RestaurantManager');
+  const Restaurant = require('../models/Restaurant');
+  const Brand = require('../models/Brand');
+  const Foodcourt = require('../models/Foodcourt');
+  const OperationTicket = require('../models/OperationTicket');
+  const Comment = require('../models/Comment');
+  const Notice = require('../models/Notice');
+  const NoticeRecipient = require('../models/NoticeRecipient');
+  const EntityPlan = require('../models/EntityPlan');
+  const RestaurantIngredientCost = require('../models/RestaurantIngredientCost');
+
+  const t = await sequelize.transaction();
+
   try {
     const user = await User.findByPk(req.params.id);
     if (!user) {
+      await t.rollback();
       return res.status(404).json({ success: false, error: 'User not found' });
     }
-    
-    await user.destroy();
+
+    const uid = user.id;
+
+    // 1. Remove junction table records
+    await RestaurantManager.destroy({ where: { manager_id: uid }, transaction: t });
+    await NoticeRecipient.destroy({ where: { user_id: uid }, transaction: t });
+
+    // 2. Unlink restaurants admin_id
+    await Restaurant.update({ admin_id: null, admin_name: null }, { where: { admin_id: uid }, transaction: t });
+
+    // 3. Unlink brand/foodcourt ownership
+    await Brand.update({ owner_id: null }, { where: { owner_id: uid }, transaction: t });
+    await Foodcourt.update({ owner_id: null }, { where: { owner_id: uid }, transaction: t });
+
+    // 4. Unlink operation tickets
+    await OperationTicket.update({ managerId: null }, { where: { managerId: uid }, transaction: t });
+    await OperationTicket.update({ requesterId: null }, { where: { requesterId: uid }, transaction: t });
+
+    // 5. Unlink comments and notices (set NULL for read_by)
+    await Comment.update({ author_id: null }, { where: { author_id: uid }, transaction: t });
+    await Notice.update({ author_id: null }, { where: { author_id: uid }, transaction: t });
+    await NoticeRecipient.update({ read_by: null }, { where: { read_by: uid }, transaction: t });
+
+    // 6. Unlink entity plans and ingredient costs
+    await EntityPlan.update({ created_by: null }, { where: { created_by: uid }, transaction: t });
+    await RestaurantIngredientCost.update({ updated_by: null }, { where: { updated_by: uid }, transaction: t });
+
+    // 7. Delete the user
+    await user.destroy({ transaction: t });
+
+    await t.commit();
     res.json({ success: true, message: 'User deleted successfully' });
   } catch (error) {
+    await t.rollback();
+    console.error('[Users] Error deleting user:', error.message);
     res.status(500).json({ success: false, error: error.message });
   }
 });

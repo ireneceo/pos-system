@@ -249,15 +249,17 @@ const PermissionTags = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+  justify-content: center;
 `;
 
 const PermissionTag = styled.span`
-  padding: 2px 6px;
+  padding: 2px 8px;
   border-radius: 4px;
   font-size: 10px;
   font-weight: 500;
   background: #EDE9FE;
   color: #7C3AED;
+  white-space: nowrap;
 `;
 
 const StatusBadge = styled.span<{ active: boolean }>`
@@ -665,7 +667,9 @@ const BrandStaffPage: React.FC = () => {
               <TableHead>
                 <tr>
                   <th>Manager</th>
+                  <th>Phone</th>
                   <th>Permissions</th>
+                  <th>Joined</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -678,6 +682,12 @@ const BrandStaffPage: React.FC = () => {
                       <ManagerEmail>{manager.email}</ManagerEmail>
                     </TableCell>
 
+                    <TableCell data-label="Phone">
+                      <span style={{ fontSize: '13px', color: '#6B7280' }}>
+                        {manager.phone || '—'}
+                      </span>
+                    </TableCell>
+
                     <TableCell data-label="Permissions">
                       <PermissionTags>
                         {manager.permissions.length === 0 ? (
@@ -685,11 +695,17 @@ const BrandStaffPage: React.FC = () => {
                         ) : (
                           manager.permissions.map(p => (
                             <PermissionTag key={p}>
-                              {PERMISSION_GROUPS.find(g => g.key === p)?.key || p}
+                              {PERMISSION_GROUPS.find(g => g.key === p)?.label.split(' (')[0] || p}
                             </PermissionTag>
                           ))
                         )}
                       </PermissionTags>
+                    </TableCell>
+
+                    <TableCell data-label="Joined">
+                      <span style={{ fontSize: '13px', color: '#6B7280' }}>
+                        {manager.joinDate || '—'}
+                      </span>
                     </TableCell>
 
                     <TableCell data-label="Status">

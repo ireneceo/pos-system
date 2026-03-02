@@ -5,6 +5,7 @@ import { RestaurantSubscription } from '../../interfaces/RestaurantSubscription'
 import { API_BASE_URL } from '../../config/api';
 import { formatCurrency } from '../../utils/currency';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import ConfirmModal from '../../components/ConfirmModal';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -634,8 +635,6 @@ const ManagerSubscriptionsPage: React.FC = () => {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-
-    alert('Subscription data exported successfully!');
   };
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -651,6 +650,10 @@ const ManagerSubscriptionsPage: React.FC = () => {
   const [selectedPlan, setSelectedPlan] = useState<'basic' | 'professional' | 'enterprise'>('basic');
   const [selectedBilling, setSelectedBilling] = useState<'monthly' | 'annual'>('monthly');
   const [selectedPaymentModel, setSelectedPaymentModel] = useState<'manager' | 'self'>('manager');
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [confirmTargetId, setConfirmTargetId] = useState<string>('');
+  const [confirmTargetName, setConfirmTargetName] = useState<string>('');
+  const [inlineWarning, setInlineWarning] = useState<string>('');
 
   useEffect(() => {
     // Load available restaurants from API
@@ -681,7 +684,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
 
   const handleAddSubscription = async () => {
     if (!selectedRestaurant) {
-      alert('Please select a restaurant');
+      setInlineWarning('Please select a restaurant');
       return;
     }
 
@@ -728,14 +731,13 @@ const ManagerSubscriptionsPage: React.FC = () => {
         setSelectedPlan('basic');
         setSelectedBilling('monthly');
         setSelectedPaymentModel('manager');
-        alert('Subscription added successfully!');
       } else {
-        const error = await response.json();
-        alert(`Failed to add subscription: ${error.error}`);
+        const errorData = await response.json();
+        setInlineWarning(`Failed to add subscription: ${errorData.error}`);
       }
     } catch (error) {
       console.error('Error adding subscription:', error);
-      alert('Error adding subscription. Please try again.');
+      setInlineWarning('Error adding subscription. Please try again.');
     }
   };
 
@@ -764,26 +766,23 @@ const ManagerSubscriptionsPage: React.FC = () => {
 
     setShowUpgradeModal(false);
     setSelectedSubscription(null);
-    alert(`Plan updated to ${selectedPlan}. Changes will be applied from next billing cycle.`);
   };
 
   const handleCancelSubscription = (subscriptionId: string, restaurantName: string) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to cancel the subscription for ${restaurantName}?\n\n` +
-      'This action will:\n' +
-      '• End the subscription at the current billing cycle\n' +
-      '• Disable access to premium features\n' +
-      '• Cannot be undone'
-    );
-    
-    if (confirmed) {
-      setSubscriptions(subscriptions.map(sub => 
-        sub.id === subscriptionId 
-          ? { ...sub, status: 'cancelled' as const }
-          : sub
-      ));
-      alert('Subscription has been cancelled. The restaurant will maintain access until the end of the current billing period.');
-    }
+    setConfirmTargetId(subscriptionId);
+    setConfirmTargetName(restaurantName);
+    setShowConfirmDialog(true);
+  };
+
+  const executeCancelSubscription = () => {
+    setShowConfirmDialog(false);
+    setSubscriptions(subscriptions.map(sub =>
+      sub.id === confirmTargetId
+        ? { ...sub, status: 'cancelled' as const }
+        : sub
+    ));
+    setConfirmTargetId('');
+    setConfirmTargetName('');
   };
 
   const handlePaymentModelSwitch = async (subscriptionId: string, newModel: 'self' | 'manager') => {
@@ -836,10 +835,9 @@ const ManagerSubscriptionsPage: React.FC = () => {
           : sub
       ));
 
-      alert(`Payment model switched to ${newModel === 'manager' ? 'Manager-Pay' : 'Self-Pay'} successfully!`);
     } catch (error) {
       console.error('Error switching payment model:', error);
-      alert('Failed to switch payment model. Please try again.');
+      setInlineWarning('Failed to switch payment model. Please try again.');
     }
   };
 
@@ -1187,6 +1185,31 @@ const ManagerSubscriptionsPage: React.FC = () => {
           </ModalActions>
         </ModalContent>
       </Modal>
+
+      {inlineWarning && (
+        <div style={{
+          position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
+          background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 8,
+          padding: '12px 20px', color: '#DC2626', fontSize: 14, fontWeight: 500,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: 12
+        }}>
+          <span>{inlineWarning}</span>
+          <button onClick={() => setInlineWarning('')} style={{
+            background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontWeight: 700, fontSize: 16
+          }}>x</button>
+        </div>
+      )}
+
+      <ConfirmModal
+        isOpen={showConfirmDialog}
+        title="Cancel Subscription"
+        message={`Are you sure you want to cancel the subscription for ${confirmTargetName}? This action will end the subscription at the current billing cycle, disable access to premium features, and cannot be undone.`}
+        onConfirm={executeCancelSubscription}
+        onCancel={() => { setShowConfirmDialog(false); setConfirmTargetId(''); setConfirmTargetName(''); }}
+        confirmText="Cancel Subscription"
+        cancelText="Keep Subscription"
+        type="danger"
+      />
     </>
   );
 };

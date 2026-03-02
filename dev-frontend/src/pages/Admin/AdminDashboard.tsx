@@ -566,6 +566,7 @@ const AdminDashboard: React.FC = () => {
         let currentInvoicesData: any[] = [];
         let revenueDataArray: RevenueData[] = [];
         let totalInvoiceRevenue = 0;
+        const cumulativeRevenueByCurrency: CurrencyRevenue = {};
 
         if (invoicesResponse.ok) {
           const invoices = await invoicesResponse.json();
@@ -583,7 +584,6 @@ const AdminDashboard: React.FC = () => {
             invoice.status === 'completed' || invoice.status === 'paid'
           );
 
-          const cumulativeRevenueByCurrency: CurrencyRevenue = {};
           completedInvoices.forEach((invoice: any) => {
             const amount = parseFloat(invoice.total || invoice.total_amount || invoice.amount || 0);
             const cur = invoice.currency || 'MYR';

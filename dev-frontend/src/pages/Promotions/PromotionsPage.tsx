@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
 import PageHeader from '../../components/Common/PageHeader';
+import ConfirmModal from '../../components/ConfirmModal';
 
 // 스타일 컴포넌트
 const CouponsContainer = styled.div`
@@ -93,9 +94,8 @@ const TableHeader = styled.th`
   text-transform: uppercase;
   letter-spacing: 0.3px;
 
-  /* 정렬 규칙: 숫자/금액은 우측, 상태는 가운데, 액션은 우측 */
   &:nth-child(3) { text-align: right; } /* Discount */
-  &:nth-child(4) { text-align: right; } /* Min Order */
+  &:nth-child(4) { text-align: center; } /* Target */
   &:nth-child(5) { text-align: center; } /* Valid Until */
   &:nth-child(6) { text-align: center; } /* Usage */
   &:nth-child(7) { text-align: center; } /* Status */
@@ -109,9 +109,8 @@ const TableCell = styled.td`
   font-size: 13px;
   color: #0A2540;
 
-  /* 정렬 규칙: 숫자/금액은 우측, 상태는 가운데, 액션은 우측 */
   &:nth-child(3) { text-align: right; } /* Discount */
-  &:nth-child(4) { text-align: right; } /* Min Order */
+  &:nth-child(4) { text-align: center; } /* Target */
   &:nth-child(5) { text-align: center; } /* Valid Until */
   &:nth-child(6) { text-align: center; } /* Usage */
   &:nth-child(7) { text-align: center; } /* Status */
@@ -346,6 +345,126 @@ const LoadingSpinner = styled.div`
   color: #6B7C93;
 `;
 
+const RadioGroup = styled.div`
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+`;
+
+const RadioLabel = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
+
+  input[type="radio"] {
+    accent-color: #635BFF;
+  }
+`;
+
+const CheckboxGroup = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+`;
+
+const CheckboxLabel = styled.label<{ checked?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid ${props => props.checked ? '#635BFF' : '#E6EBF1'};
+  border-radius: 6px;
+  font-size: 13px;
+  color: ${props => props.checked ? '#635BFF' : '#374151'};
+  background: ${props => props.checked ? '#F4F3FF' : 'white'};
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    border-color: #635BFF;
+  }
+
+  input[type="checkbox"] {
+    accent-color: #635BFF;
+  }
+`;
+
+const CustomerSearchInput = styled.input`
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 14px;
+  box-sizing: border-box;
+  margin-bottom: 8px;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+`;
+
+const CustomerList = styled.div`
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+`;
+
+const CustomerItem = styled.div<{ selected?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #F6F9FC;
+  background: ${props => props.selected ? '#F4F3FF' : 'white'};
+  transition: background 0.1s;
+
+  &:hover {
+    background: ${props => props.selected ? '#F4F3FF' : '#F6F9FC'};
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const CustomerItemInfo = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const CustomerItemName = styled.div`
+  font-size: 13px;
+  font-weight: 500;
+  color: #0A2540;
+`;
+
+const CustomerItemMeta = styled.div`
+  font-size: 11px;
+  color: #6B7C93;
+`;
+
+const SelectedCount = styled.div`
+  font-size: 12px;
+  color: #6B7C93;
+  margin-top: 6px;
+`;
+
+const TargetBadge = styled.span`
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  background: #F4F3FF;
+  color: #635BFF;
+`;
+
 // 타입 정의
 interface Coupon {
   id: number;
@@ -363,6 +482,16 @@ interface Coupon {
   valid_until: string | null;
   is_active: boolean;
   applicable_order_types: string[] | null;
+  target_type: 'all' | 'customers' | 'tiers';
+  target_customer_ids: number[] | null;
+  target_loyalty_tiers: string[] | null;
+}
+
+interface CustomerOption {
+  id: number;
+  name: string;
+  phone: string;
+  loyalty_tier: string;
 }
 
 const CouponsPage: React.FC = () => {
@@ -388,9 +517,17 @@ const CouponsPage: React.FC = () => {
     max_discount: '',
     usage_limit: '',
     valid_from: '',
-    valid_until: ''
+    valid_until: '',
+    target_type: 'all' as 'all' | 'customers' | 'tiers',
+    target_customer_ids: [] as number[],
+    target_loyalty_tiers: [] as string[]
   });
   const [formError, setFormError] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingCoupon, setDeletingCoupon] = useState<Coupon | null>(null);
+  const [customers, setCustomers] = useState<CustomerOption[]>([]);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [loadingCustomers, setLoadingCustomers] = useState(false);
 
   // 쿠폰 목록 로드
   useEffect(() => {
@@ -425,6 +562,32 @@ const CouponsPage: React.FC = () => {
     }
   };
 
+  const fetchCustomers = async () => {
+    if (!restaurantId) return;
+    try {
+      setLoadingCustomers(true);
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/customers/${restaurantId}`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      const result = await response.json();
+      if (result.success) {
+        const data = result.data || [];
+        setCustomers(data.map((c: any) => ({
+          id: c.customer?.id || c.customer_id || c.id,
+          name: c.customer?.name || c.name || '',
+          phone: c.customer?.phone || c.phone || '',
+          loyalty_tier: c.loyalty_tier || 'Bronze'
+        })));
+      }
+    } catch (err) {
+      console.error('Error fetching customers:', err);
+    } finally {
+      setLoadingCustomers(false);
+    }
+  };
+
   const handleCreateCoupon = () => {
     setEditingCoupon(null);
     setCouponForm({
@@ -437,9 +600,14 @@ const CouponsPage: React.FC = () => {
       max_discount: '',
       usage_limit: '',
       valid_from: '',
-      valid_until: ''
+      valid_until: '',
+      target_type: 'all',
+      target_customer_ids: [],
+      target_loyalty_tiers: []
     });
+    setCustomerSearch('');
     setFormError(null);
+    fetchCustomers();
     setShowModal(true);
   };
 
@@ -455,9 +623,14 @@ const CouponsPage: React.FC = () => {
       max_discount: coupon.max_discount?.toString() || '',
       usage_limit: coupon.usage_limit?.toString() || '',
       valid_from: coupon.valid_from ? coupon.valid_from.split('T')[0] : '',
-      valid_until: coupon.valid_until ? coupon.valid_until.split('T')[0] : ''
+      valid_until: coupon.valid_until ? coupon.valid_until.split('T')[0] : '',
+      target_type: coupon.target_type || 'all',
+      target_customer_ids: coupon.target_customer_ids || [],
+      target_loyalty_tiers: coupon.target_loyalty_tiers || []
     });
+    setCustomerSearch('');
     setFormError(null);
+    fetchCustomers();
     setShowModal(true);
   };
 
@@ -477,7 +650,7 @@ const CouponsPage: React.FC = () => {
       setFormError(null);
       const token = localStorage.getItem('auth_token');
 
-      const payload = {
+      const payload: any = {
         restaurant_id: restaurantId,
         code: couponForm.code.toUpperCase(),
         name: couponForm.name || null,
@@ -489,7 +662,10 @@ const CouponsPage: React.FC = () => {
         usage_limit: couponForm.usage_limit ? parseInt(couponForm.usage_limit) : null,
         valid_from: couponForm.valid_from || null,
         valid_until: couponForm.valid_until || null,
-        is_active: true
+        is_active: true,
+        target_type: couponForm.target_type,
+        target_customer_ids: couponForm.target_type === 'customers' ? couponForm.target_customer_ids : null,
+        target_loyalty_tiers: couponForm.target_type === 'tiers' ? couponForm.target_loyalty_tiers : null
       };
 
       const url = editingCoupon
@@ -545,15 +721,18 @@ const CouponsPage: React.FC = () => {
     }
   };
 
-  const handleDeleteCoupon = async (coupon: Coupon) => {
-    if (!window.confirm(`Are you sure you want to delete coupon "${coupon.code}"?`)) {
-      return;
-    }
+  const handleDeleteCoupon = (coupon: Coupon) => {
+    setDeletingCoupon(coupon);
+    setShowDeleteConfirm(true);
+  };
 
+  const confirmDeleteCoupon = async () => {
+    if (!deletingCoupon) return;
+    setShowDeleteConfirm(false);
     try {
       const token = localStorage.getItem('auth_token');
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/coupons/${coupon.id}`,
+        `${process.env.REACT_APP_API_URL}/api/coupons/${deletingCoupon.id}`,
         {
           method: 'DELETE',
           headers: {
@@ -569,6 +748,7 @@ const CouponsPage: React.FC = () => {
     } catch (err) {
       console.error('Error deleting coupon:', err);
     }
+    setDeletingCoupon(null);
   };
 
   const formatDiscount = (coupon: Coupon) => {
@@ -615,7 +795,7 @@ const CouponsPage: React.FC = () => {
                     <TableHeader>Code</TableHeader>
                     <TableHeader>Name</TableHeader>
                     <TableHeader>Discount</TableHeader>
-                    <TableHeader>Min Order</TableHeader>
+                    <TableHeader>Target</TableHeader>
                     <TableHeader>Valid Until</TableHeader>
                     <TableHeader>Usage</TableHeader>
                     <TableHeader>Status</TableHeader>
@@ -631,7 +811,15 @@ const CouponsPage: React.FC = () => {
                         <TableCell>{coupon.name || '-'}</TableCell>
                         <TableCell>{formatDiscount(coupon)}</TableCell>
                         <TableCell>
-                          {coupon.min_order > 0 ? formatCurrency(coupon.min_order, currency) : '-'}
+                          {coupon.target_type === 'all' ? (
+                            <TargetBadge>All</TargetBadge>
+                          ) : coupon.target_type === 'customers' ? (
+                            <TargetBadge>{coupon.target_customer_ids?.length || 0} Customers</TargetBadge>
+                          ) : coupon.target_type === 'tiers' ? (
+                            <TargetBadge>{coupon.target_loyalty_tiers?.join(', ') || '-'}</TargetBadge>
+                          ) : (
+                            <TargetBadge>All</TargetBadge>
+                          )}
                         </TableCell>
                         <TableCell>{formatDate(coupon.valid_until)}</TableCell>
                         <TableCell>
@@ -784,6 +972,113 @@ const CouponsPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
+                <Label>Target Audience</Label>
+                <RadioGroup>
+                  <RadioLabel>
+                    <input
+                      type="radio"
+                      name="target_type"
+                      checked={couponForm.target_type === 'all'}
+                      onChange={() => setCouponForm({ ...couponForm, target_type: 'all', target_customer_ids: [], target_loyalty_tiers: [] })}
+                    />
+                    All Customers
+                  </RadioLabel>
+                  <RadioLabel>
+                    <input
+                      type="radio"
+                      name="target_type"
+                      checked={couponForm.target_type === 'customers'}
+                      onChange={() => setCouponForm({ ...couponForm, target_type: 'customers', target_loyalty_tiers: [] })}
+                    />
+                    Specific Customers
+                  </RadioLabel>
+                  <RadioLabel>
+                    <input
+                      type="radio"
+                      name="target_type"
+                      checked={couponForm.target_type === 'tiers'}
+                      onChange={() => setCouponForm({ ...couponForm, target_type: 'tiers', target_customer_ids: [] })}
+                    />
+                    Membership Tiers
+                  </RadioLabel>
+                </RadioGroup>
+
+                {couponForm.target_type === 'customers' && (
+                  <>
+                    <CustomerSearchInput
+                      type="text"
+                      placeholder="Search customers by name or phone..."
+                      value={customerSearch}
+                      onChange={(e) => setCustomerSearch(e.target.value)}
+                    />
+                    <CustomerList>
+                      {loadingCustomers ? (
+                        <CustomerItem>Loading customers...</CustomerItem>
+                      ) : customers
+                          .filter(c =>
+                            c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
+                            c.phone.includes(customerSearch)
+                          )
+                          .map(c => {
+                            const isSelected = couponForm.target_customer_ids.includes(c.id);
+                            return (
+                              <CustomerItem
+                                key={c.id}
+                                selected={isSelected}
+                                onClick={() => {
+                                  const ids = isSelected
+                                    ? couponForm.target_customer_ids.filter(id => id !== c.id)
+                                    : [...couponForm.target_customer_ids, c.id];
+                                  setCouponForm({ ...couponForm, target_customer_ids: ids });
+                                }}
+                              >
+                                <input type="checkbox" checked={isSelected} readOnly style={{ accentColor: '#635BFF' }} />
+                                <CustomerItemInfo>
+                                  <CustomerItemName>{c.name}</CustomerItemName>
+                                  <CustomerItemMeta>{c.phone} · {c.loyalty_tier}</CustomerItemMeta>
+                                </CustomerItemInfo>
+                              </CustomerItem>
+                            );
+                          })
+                      }
+                      {!loadingCustomers && customers.filter(c =>
+                        c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
+                        c.phone.includes(customerSearch)
+                      ).length === 0 && (
+                        <CustomerItem>No customers found</CustomerItem>
+                      )}
+                    </CustomerList>
+                    <SelectedCount>
+                      {couponForm.target_customer_ids.length} customer{couponForm.target_customer_ids.length !== 1 ? 's' : ''} selected
+                    </SelectedCount>
+                  </>
+                )}
+
+                {couponForm.target_type === 'tiers' && (
+                  <CheckboxGroup>
+                    {['Bronze', 'Silver', 'Gold', 'VIP'].map(tier => {
+                      const isChecked = couponForm.target_loyalty_tiers.includes(tier);
+                      return (
+                        <CheckboxLabel key={tier} checked={isChecked}>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              const tiers = isChecked
+                                ? couponForm.target_loyalty_tiers.filter(t => t !== tier)
+                                : [...couponForm.target_loyalty_tiers, tier];
+                              setCouponForm({ ...couponForm, target_loyalty_tiers: tiers });
+                            }}
+                          />
+                          {tier}
+                        </CheckboxLabel>
+                      );
+                    })}
+                  </CheckboxGroup>
+                )}
+              </FormGroup>
+
+              <FormGroup>
                 <Label>Description</Label>
                 <TextArea
                   value={couponForm.description}
@@ -803,6 +1098,17 @@ const CouponsPage: React.FC = () => {
           </ModalContent>
         </Modal>
       </CouponsContainer>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Delete Coupon"
+        message={`Are you sure you want to delete coupon "${deletingCoupon?.code}"?`}
+        onConfirm={confirmDeleteCoupon}
+        onCancel={() => { setShowDeleteConfirm(false); setDeletingCoupon(null); }}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
     </>
   );
 };

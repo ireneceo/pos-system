@@ -587,6 +587,20 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
       updateData.served_at = served_at ? new Date(served_at) : new Date();
     }
 
+    // If marking as served/completed, set all item statuses to completed
+    if ((status === 'served' || status === 'completed') && order.order_items) {
+      try {
+        const items = Array.isArray(order.order_items) ? order.order_items : JSON.parse(order.order_items);
+        const completedItems = items.map(item => ({
+          ...item,
+          status: 'completed'
+        }));
+        updateData.order_items = completedItems;
+      } catch (e) {
+        console.error('Failed to update item statuses:', e);
+      }
+    }
+
     // If reverting to pending, reset all item statuses
     if (status === 'pending' && order.order_items) {
       try {

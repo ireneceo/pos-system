@@ -15,6 +15,7 @@ import {
   Content
 } from '../../components/UI';
 import { ModalWarning } from '../../components/UI/Modal';
+import ConfirmModal from '../../components/ConfirmModal';
 // Using page-specific filter components instead of common ones
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
@@ -691,6 +692,8 @@ const RestaurantsPage: React.FC = () => {
   const [showEditManagerDropdown, setShowEditManagerDropdown] = useState(false);
   const [filteredEditManagers, setFilteredEditManagers] = useState<any[]>([]);
   const [selectedEditManagers, setSelectedEditManagers] = useState<any[]>([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingRestaurant, setDeletingRestaurant] = useState<Restaurant | null>(null);
   // Filter manager states
   const [filterManagerSearchQuery, setFilterManagerSearchQuery] = useState('');
   const [showFilterManagerDropdown, setShowFilterManagerDropdown] = useState(false);
@@ -1507,47 +1510,45 @@ const RestaurantsPage: React.FC = () => {
     }
   };
 
-  const handleDeleteRestaurant = async (restaurant: Restaurant) => {
-    if (!confirm(`Are you sure you want to delete "${restaurant.name}"? This action cannot be undone.`)) {
-      return;
-    }
+  const handleDeleteRestaurant = (restaurant: Restaurant) => {
+    setDeletingRestaurant(restaurant);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteRestaurant = async () => {
+    if (!deletingRestaurant) return;
 
     try {
-      console.log('Deleting restaurant:', restaurant.id);
-      setEditModalWarning(''); // Clear previous warning
-
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/restaurants/${restaurant.id}`, {
+      const response = await fetch(`/api/restaurants/${deletingRestaurant.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
 
-      console.log('📡 Restaurant delete API response status:', response.status);
-
       if (response.ok) {
-        console.log('✅ Restaurant deleted successfully');
-
+        setShowDeleteConfirm(false);
+        setDeletingRestaurant(null);
         setEditModalWarning('');
         setShowEditModal(false);
         setEditingRestaurant(null);
-        setSuccessMessage('Restaurant deleted successfully!');
-        setShowSuccessModal(true);
 
         // Refresh restaurant list
         await fetchRestaurants();
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('❌ Failed to delete restaurant:', errorData);
         let errorMsg = 'Please try again.';
         if (typeof errorData.error === 'string') errorMsg = errorData.error;
         else if (errorData.error?.message) errorMsg = errorData.error.message;
         else if (errorData.message) errorMsg = errorData.message;
+        setShowDeleteConfirm(false);
+        setDeletingRestaurant(null);
         setEditModalWarning(`Error deleting restaurant: ${errorMsg}`);
       }
     } catch (error) {
-      console.error('❌ Error deleting restaurant:', error);
+      setShowDeleteConfirm(false);
+      setDeletingRestaurant(null);
       setEditModalWarning('Error deleting restaurant. Please check your connection and try again.');
     }
   };
@@ -2959,19 +2960,17 @@ const RestaurantsPage: React.FC = () => {
           </ModalOverlay>
         )}
 
-        {/* Success Modal */}
-        {showSuccessModal && (
-          <ModalOverlay show={showSuccessModal} onClick={() => setShowSuccessModal(false)}>
-            <SuccessModal onClick={(e) => e.stopPropagation()}>
-              <SuccessIcon>✓</SuccessIcon>
-              <SuccessTitle>Success!</SuccessTitle>
-              <SuccessMessage>{successMessage}</SuccessMessage>
-              <ThemedButton variant="primary" onClick={() => setShowSuccessModal(false)}>
-                OK
-              </ThemedButton>
-            </SuccessModal>
-          </ModalOverlay>
-        )}
+        {/* Delete Confirm Modal */}
+        <ConfirmModal
+          isOpen={showDeleteConfirm}
+          title="Delete Restaurant"
+          message={`Are you sure you want to delete "${deletingRestaurant?.name}"? This action cannot be undone. All related data (orders, invoices, menu items, etc.) will be permanently removed.`}
+          onConfirm={confirmDeleteRestaurant}
+          onCancel={() => { setShowDeleteConfirm(false); setDeletingRestaurant(null); }}
+          confirmText="Delete"
+          cancelText="Cancel"
+          type="danger"
+        />
 
         </Content>
       </Container>

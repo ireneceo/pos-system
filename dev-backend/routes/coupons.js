@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Coupon = require('../models/Coupon');
+const RestaurantCustomer = require('../models/RestaurantCustomer');
 const { Op } = require('sequelize');
 const { authenticateToken, optionalAuthenticateToken } = require('../middleware/auth');
 
@@ -141,6 +142,47 @@ router.post('/validate', optionalAuthenticateToken, async (req, res) => {
       }
     }
 
+    // Check target audience (customer/tier targeting)
+    if (coupon.target_type === 'customers' && coupon.target_customer_ids) {
+      if (!finalCustomerId) {
+        return res.status(400).json({
+          success: false,
+          error: 'This coupon is for specific customers only',
+          valid: false
+        });
+      }
+      if (!coupon.target_customer_ids.includes(parseInt(finalCustomerId))) {
+        return res.status(400).json({
+          success: false,
+          error: 'This coupon is not available for your account',
+          valid: false
+        });
+      }
+    }
+
+    if (coupon.target_type === 'tiers' && coupon.target_loyalty_tiers) {
+      if (!finalCustomerId) {
+        return res.status(400).json({
+          success: false,
+          error: 'This coupon is for specific membership tiers only',
+          valid: false
+        });
+      }
+      const customerRecord = await RestaurantCustomer.findOne({
+        where: {
+          restaurant_id: finalRestaurantId,
+          customer_id: finalCustomerId
+        }
+      });
+      if (!customerRecord || !coupon.target_loyalty_tiers.includes(customerRecord.loyalty_tier)) {
+        return res.status(400).json({
+          success: false,
+          error: 'This coupon is not available for your membership tier',
+          valid: false
+        });
+      }
+    }
+
     // Calculate discount
     let discountAmount = 0;
     if (coupon.type === 'percentage') {
@@ -217,7 +259,10 @@ router.post('/', authenticateToken, async (req, res) => {
       valid_from,
       valid_until,
       is_active,
-      applicable_order_types
+      applicable_order_types,
+      target_type,
+      target_customer_ids,
+      target_loyalty_tiers
     } = req.body;
 
     const finalRestaurantId = restaurant_id || restaurantId;
@@ -258,7 +303,10 @@ router.post('/', authenticateToken, async (req, res) => {
       valid_from: valid_from ? new Date(valid_from) : null,
       valid_until: valid_until ? new Date(valid_until) : null,
       is_active: is_active !== false,
-      applicable_order_types
+      applicable_order_types,
+      target_type: target_type || 'all',
+      target_customer_ids: target_type === 'customers' ? target_customer_ids : null,
+      target_loyalty_tiers: target_type === 'tiers' ? target_loyalty_tiers : null
     });
 
     console.log(`✅ [COUPONS] Created coupon ${coupon.code} for restaurant ${finalRestaurantId}`);
@@ -291,7 +339,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
       valid_from,
       valid_until,
       is_active,
-      applicable_order_types
+      applicable_order_types,
+      target_type,
+      target_customer_ids,
+      target_loyalty_tiers
     } = req.body;
 
     // Check for duplicate code if code is being changed
@@ -312,6 +363,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
       }
     }
 
+    const finalTargetType = target_type !== undefined ? target_type : coupon.target_type;
+
     await coupon.update({
       code: code ? code.toUpperCase() : coupon.code,
       name: name !== undefined ? name : coupon.name,
@@ -325,7 +378,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
       valid_from: valid_from !== undefined ? (valid_from ? new Date(valid_from) : null) : coupon.valid_from,
       valid_until: valid_until !== undefined ? (valid_until ? new Date(valid_until) : null) : coupon.valid_until,
       is_active: is_active !== undefined ? is_active : coupon.is_active,
-      applicable_order_types: applicable_order_types !== undefined ? applicable_order_types : coupon.applicable_order_types
+      applicable_order_types: applicable_order_types !== undefined ? applicable_order_types : coupon.applicable_order_types,
+      target_type: finalTargetType,
+      target_customer_ids: target_type !== undefined ? (finalTargetType === 'customers' ? target_customer_ids : null) : coupon.target_customer_ids,
+      target_loyalty_tiers: target_type !== undefined ? (finalTargetType === 'tiers' ? target_loyalty_tiers : null) : coupon.target_loyalty_tiers
     });
 
     console.log(`✅ [COUPONS] Updated coupon ${coupon.code}`);

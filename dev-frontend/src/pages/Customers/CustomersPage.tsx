@@ -75,14 +75,20 @@ const CustomersTable = styled.div`
   background: white;
   border-radius: 8px;
   border: 1px solid #E6EBF1;
-  overflow: hidden;
+  overflow-x: auto;
+
+  @media (max-width: 768px) {
+    background: transparent;
+    border: none;
+    overflow: visible;
+  }
 `;
 
 const TableHeader = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr 120px 100px 100px 120px 150px 40px;
-  gap: 16px;
-  padding: 16px 20px;
+  grid-template-columns: minmax(180px, 2fr) minmax(140px, 1.5fr) 80px 80px 70px 100px 140px 36px;
+  gap: 12px;
+  padding: 14px 20px;
   background: #F8FAFC;
   border-bottom: 1px solid #E6EBF1;
   font-size: 12px;
@@ -90,36 +96,34 @@ const TableHeader = styled.div`
   color: #6B7C93;
   text-transform: uppercase;
   letter-spacing: 0.3px;
+  align-items: center;
 
-  /* 정렬 규칙: Tier 가운데, 숫자는 우측, 액션은 우측 */
-  & > span:nth-child(3) { text-align: center; } /* Tier */
-  & > span:nth-child(4) { text-align: right; } /* Points */
-  & > span:nth-child(5) { text-align: right; } /* Orders */
-  & > span:nth-child(6) { text-align: right; } /* Total Spent */
-  & > span:nth-child(7) { text-align: right; } /* Actions */
+  & > span:nth-child(3) { text-align: center; }
+  & > span:nth-child(4) { text-align: right; }
+  & > span:nth-child(5) { text-align: right; }
+  & > span:nth-child(6) { text-align: right; }
+  & > span:nth-child(7) { text-align: right; }
 
   @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: 8px;
+    display: none;
   }
 `;
 
 const TableRow = styled.div<{ clickable?: boolean }>`
   display: grid;
-  grid-template-columns: 1fr 1fr 120px 100px 100px 120px 150px 40px;
-  gap: 16px;
-  padding: 16px 20px;
+  grid-template-columns: minmax(180px, 2fr) minmax(140px, 1.5fr) 80px 80px 70px 100px 140px 36px;
+  gap: 12px;
+  padding: 14px 20px;
   border-bottom: 1px solid #F6F9FC;
   align-items: center;
   transition: all 0.2s;
   cursor: ${props => props.clickable ? 'pointer' : 'default'};
 
-  /* 정렬 규칙: Tier 가운데, 숫자는 우측, 액션은 우측 */
-  & > *:nth-child(3) { text-align: center; justify-self: center; } /* Tier (LoyaltyBadge) */
-  & > *:nth-child(4) { text-align: right; } /* Points */
-  & > *:nth-child(5) { text-align: right; } /* Orders */
-  & > *:nth-child(6) { text-align: right; } /* Total Spent */
-  & > *:nth-child(7) { justify-self: end; } /* Actions */
+  & > *:nth-child(3) { text-align: center; justify-self: center; }
+  & > *:nth-child(4) { text-align: right; }
+  & > *:nth-child(5) { text-align: right; }
+  & > *:nth-child(6) { text-align: right; }
+  & > *:nth-child(7) { justify-self: end; }
 
   &:hover {
     background: ${props => props.clickable ? '#F8FAFC' : 'transparent'};
@@ -130,9 +134,7 @@ const TableRow = styled.div<{ clickable?: boolean }>`
   }
 
   @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: 8px;
-    padding: 16px;
+    display: none;
   }
 `;
 
@@ -159,6 +161,7 @@ const CustomerInfo = styled.div`
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 `;
 
 const CustomerAvatar = styled.div<{ tier: string }>`
@@ -183,6 +186,7 @@ const CustomerAvatar = styled.div<{ tier: string }>`
 
 const CustomerDetails = styled.div`
   flex: 1;
+  min-width: 0;
 `;
 
 const CustomerName = styled.div`
@@ -190,11 +194,17 @@ const CustomerName = styled.div`
   font-weight: 600;
   color: #1F2937;
   margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 const CustomerMeta = styled.div`
   font-size: 12px;
   color: #6B7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 const LoyaltyBadge = styled.span<{ tier: string }>`
@@ -635,7 +645,7 @@ const CustomersPage: React.FC = () => {
           </StatsGrid>
 
           <CustomersTable>
-            <TableHeader className="desktop-only">
+            <TableHeader style={{ minWidth: '860px' }}>
               <span>Customer</span>
               <span>Contact</span>
               <span>Tier</span>
@@ -661,7 +671,7 @@ const CustomersPage: React.FC = () => {
             ) : (
               <>
                 {/* Desktop Table */}
-                <div className="desktop-only">
+                <div className="desktop-only" style={{ minWidth: '860px' }}>
                   {filteredCustomers.map(customer => (
                     <TableRow key={customer.id} clickable onClick={() => handleCustomerClick(customer)}>
                       <CustomerInfo>
@@ -677,12 +687,12 @@ const CustomersPage: React.FC = () => {
                         </CustomerDetails>
                       </CustomerInfo>
                       
-                      <div>
-                        <div style={{ fontSize: '14px', fontWeight: '500', color: '#1F2937' }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: '14px', fontWeight: '500', color: '#1F2937', whiteSpace: 'nowrap' }}>
                           {formatPhoneForDisplay(customer.phone)}
                         </div>
                         {customer.email && (
-                          <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+                          <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {customer.email}
                           </div>
                         )}

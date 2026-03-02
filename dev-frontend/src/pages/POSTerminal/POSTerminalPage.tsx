@@ -1123,7 +1123,9 @@ interface OrderItemType {
 const POSTerminalPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const fromFloorPlan = searchParams.get('from') === 'floor-plan';
+  const fromParam = searchParams.get('from') || '';
+  const fromFloorPlan = fromParam === 'floor-plan' || fromParam === 'floor-plan-overlay';
+  const isFloorPlanOverlay = fromParam === 'floor-plan-overlay';
   const initialTableFromUrl = searchParams.get('table');
   const { user, switchUser, logout: authLogout } = useAuth();
   const restaurantId = useRestaurantId();
@@ -1661,13 +1663,14 @@ const POSTerminalPage: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         },
         body: JSON.stringify({
           code: couponCode.toUpperCase(),
           restaurant_id: user?.restaurantId,
           order_amount: subtotal,
-          order_type: orderType
+          order_type: orderType,
+          customer_id: selectedCustomerForOrder?.id || null
         })
       });
 
@@ -2214,6 +2217,8 @@ const POSTerminalPage: React.FC = () => {
     setSelectedCustomerForOrder(null);
     setCustomerSearchQuery('');
     setApiSearchResults([]);
+    setAppliedCoupon(null);
+    setCouponCode('');
   };
 
   const handleCustomerSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2787,7 +2792,9 @@ const POSTerminalPage: React.FC = () => {
           isOpen={showOrderCompleteModal}
           onClose={() => {
             handleResetPOS();
-            if (fromFloorPlan) {
+            if (isFloorPlanOverlay && window.parent !== window) {
+              window.parent.postMessage({ type: 'pos-order-complete' }, '*');
+            } else if (fromFloorPlan) {
               navigate(`/restaurant/${restaurantId}/floor-plan`);
             }
           }}

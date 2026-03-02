@@ -254,8 +254,7 @@ router.get('/:id/table-status', authenticateToken, async (req, res) => {
         restaurant_id: restaurantId,
         table_number: { [Op.ne]: null },
         order_type: 'dine_in',
-        status: { [Op.notIn]: ['completed', 'cancelled'] },
-        payment_status: { [Op.ne]: 'completed' },
+        status: { [Op.notIn]: ['cancelled'] },
         [Op.or]: [{ is_deleted: false }, { is_deleted: null }],
         createdAt: { [Op.between]: [todayStart, todayEnd] }
       },
@@ -264,70 +263,74 @@ router.get('/:id/table-status', authenticateToken, async (req, res) => {
         'total_amount', 'createdAt', 'customer_name', 'customer_id',
         'guest_count', 'order_items', 'subtotal', 'tax', 'service_charge',
         'discount', 'coupon_discount', 'discount_policy_amount', 'point_discount',
-        'order_type', 'cashier_name'
+        'order_type', 'cashier_name',
+        'coupon_code', 'discount_policy_name', 'points_used',
+        'payment_method', 'source', 'customer_phone',
+        'service_charge_rate', 'tax_rate'
       ],
       order: [['createdAt', 'DESC']]
     });
 
+    // 테이블당 가장 최근 주문 1개만 사용 (DESC 정렬이므로 첫 번째가 최신)
     const tableStatusMap = {};
 
     for (const order of activeOrders) {
       const tn = order.table_number;
-      if (!tableStatusMap[tn]) {
-        // First (most recent) order sets detail fields
-        let orderItems = [];
-        try {
-          orderItems = typeof order.order_items === 'string'
-            ? JSON.parse(order.order_items)
-            : (order.order_items || []);
-        } catch (e) { orderItems = []; }
+      if (tableStatusMap[tn]) continue; // 이미 최신 주문이 있으면 스킵
 
-        tableStatusMap[tn] = {
-          tableNumber: tn,
-          status: 'available',
-          orderCount: 0,
-          totalAmount: 0,
-          elapsedMinutes: 0,
-          orderId: order.id,
-          orderNumber: order.order_number,
-          customerName: order.customer_name,
-          customerId: order.customer_id,
-          paymentStatus: order.payment_status,
-          guestCount: order.guest_count,
-          orderItems: orderItems,
-          subtotal: parseFloat(order.subtotal || 0),
-          tax: parseFloat(order.tax || 0),
-          serviceCharge: parseFloat(order.service_charge || 0),
-          discount: parseFloat(order.discount || 0) + parseFloat(order.coupon_discount || 0) + parseFloat(order.discount_policy_amount || 0) + parseFloat(order.point_discount || 0),
-          cashierName: order.cashier_name,
-          orderStatus: order.status
-        };
-      }
-
-      tableStatusMap[tn].orderCount++;
-      tableStatusMap[tn].totalAmount += parseFloat(order.total_amount || 0);
+      let orderItems = [];
+      try {
+        orderItems = typeof order.order_items === 'string'
+          ? JSON.parse(order.order_items)
+          : (order.order_items || []);
+      } catch (e) { orderItems = []; }
 
       const elapsed = Math.round((Date.now() - new Date(order.createdAt).getTime()) / 60000);
-      if (elapsed > tableStatusMap[tn].elapsedMinutes) {
-        tableStatusMap[tn].elapsedMinutes = elapsed;
-      }
-    }
 
-    // Derive composite status per table
-    for (const tn of Object.keys(tableStatusMap)) {
-      const orders = activeOrders.filter(o => o.table_number === tn);
-      const statuses = orders.map(o => o.status);
-      const paymentStatuses = orders.map(o => o.payment_status);
-
-      if (paymentStatuses.includes('failed') || statuses.includes('outstanding')) {
-        tableStatusMap[tn].status = 'needs-attention';
-      } else if (statuses.includes('ready') || statuses.includes('served')) {
-        tableStatusMap[tn].status = 'ready';
-      } else if (statuses.includes('preparing') || statuses.includes('pending') || statuses.includes('awaiting_payment')) {
-        tableStatusMap[tn].status = 'occupied';
-      } else {
-        tableStatusMap[tn].status = 'occupied';
+      // Derive table status from order status
+      let tableStatus = 'occupied';
+      if (order.payment_status === 'failed' || order.status === 'outstanding') {
+        tableStatus = 'needs-attention';
+      } else if (order.status === 'ready' || order.status === 'served') {
+        tableStatus = 'ready';
+      } else if (order.status === 'completed') {
+        tableStatus = 'completed';
       }
+
+      tableStatusMap[tn] = {
+        tableNumber: tn,
+        status: tableStatus,
+        orderCount: 1,
+        totalAmount: parseFloat(order.total_amount || 0),
+        elapsedMinutes: elapsed,
+        orderId: order.id,
+        orderNumber: order.order_number,
+        customerName: order.customer_name,
+        customerId: order.customer_id,
+        paymentStatus: order.payment_status,
+        guestCount: order.guest_count,
+        orderItems: orderItems,
+        subtotal: parseFloat(order.subtotal || 0),
+        tax: parseFloat(order.tax || 0),
+        serviceCharge: parseFloat(order.service_charge || 0),
+        discount: parseFloat(order.discount || 0) + parseFloat(order.coupon_discount || 0) + parseFloat(order.discount_policy_amount || 0) + parseFloat(order.point_discount || 0),
+        cashierName: order.cashier_name,
+        orderStatus: order.status,
+        couponCode: order.coupon_code || null,
+        couponDiscount: parseFloat(order.coupon_discount || 0),
+        discountPolicyName: order.discount_policy_name || null,
+        discountPolicyAmount: parseFloat(order.discount_policy_amount || 0),
+        pointDiscount: parseFloat(order.point_discount || 0),
+        pointsUsed: parseInt(order.points_used || 0),
+        paymentMethod: order.payment_method || null,
+        orderSource: order.source || 'pos',
+        customerPhone: order.customer_phone || null,
+        serviceChargeRate: parseFloat(order.service_charge_rate || 0),
+        taxRate: parseFloat(order.tax_rate || 0),
+        orderCreatedAt: order.createdAt,
+        notes: null,
+        orderType: order.order_type || 'dine_in'
+      };
     }
 
     res.json({ success: true, data: tableStatusMap });
@@ -1118,17 +1121,89 @@ router.put('/:id', authenticateToken, validateRestaurantCreation, async (req, re
   }
 });
 
-// Delete restaurant
+// Delete restaurant (with cascade cleanup)
 router.delete('/:id', async (req, res) => {
+  const { sequelize } = require('../config/database');
+  const RestaurantManager = require('../models/RestaurantManager');
+  const RestaurantCustomer = require('../models/RestaurantCustomer');
+  const OptionGroup = require('../models/OptionGroup');
+  const OperationTicket = require('../models/OperationTicket');
+  const MembershipSettings = require('../models/MembershipSettings');
+  const PointTransaction = require('../models/PointTransaction');
+  const EntityPlanRestaurant = require('../models/EntityPlanRestaurant');
+  const RestaurantIngredientCost = require('../models/RestaurantIngredientCost');
+  const NoticeRecipient = require('../models/NoticeRecipient');
+  const RecipeCategory = require('../models/RecipeCategory');
+  const IngredientCategory = require('../models/IngredientCategory');
+  const Supplier = require('../models/Supplier');
+  const SupplierCategory = require('../models/SupplierCategory');
+  const InventoryTransaction = require('../models/InventoryTransaction');
+  const StockTake = require('../models/StockTake');
+  const StockAlert = require('../models/StockAlert');
+  const InventoryBatch = require('../models/InventoryBatch');
+  const GeneralStock = require('../models/GeneralStock');
+  const GeneralStockCategory = require('../models/GeneralStockCategory');
+  const Coupon = require('../models/Coupon');
+
+  const t = await sequelize.transaction();
+
   try {
     const restaurant = await Restaurant.findByPk(req.params.id);
     if (!restaurant) {
+      await t.rollback();
       return res.status(404).json({ error: 'Restaurant not found' });
     }
 
-    await restaurant.destroy();
+    const rid = restaurant.id;
+
+    // 1. Remove junction table records
+    await RestaurantManager.destroy({ where: { restaurant_id: rid }, transaction: t });
+    await RestaurantCustomer.destroy({ where: { restaurant_id: rid }, transaction: t });
+    await EntityPlanRestaurant.destroy({ where: { restaurant_id: rid }, transaction: t });
+    await NoticeRecipient.destroy({ where: { restaurant_id: rid }, transaction: t });
+
+    // 2. Remove related business data
+    await PointTransaction.destroy({ where: { restaurant_id: rid }, transaction: t });
+    await MembershipSettings.destroy({ where: { restaurant_id: rid }, transaction: t });
+    await RestaurantIngredientCost.destroy({ where: { restaurant_id: rid }, transaction: t });
+    await Coupon.destroy({ where: { restaurant_id: rid }, transaction: t });
+
+    // 3. Remove inventory-related data
+    await StockAlert.destroy({ where: { restaurant_id: rid }, transaction: t });
+    await InventoryBatch.destroy({ where: { restaurant_id: rid }, transaction: t });
+    await InventoryTransaction.destroy({ where: { restaurant_id: rid }, transaction: t });
+    await StockTake.destroy({ where: { restaurant_id: rid }, transaction: t });
+    await Supplier.destroy({ where: { restaurant_id: rid }, transaction: t });
+    await SupplierCategory.destroy({ where: { restaurant_id: rid }, transaction: t });
+    await GeneralStock.destroy({ where: { restaurant_id: rid }, transaction: t });
+    await GeneralStockCategory.destroy({ where: { restaurant_id: rid }, transaction: t });
+
+    // 4. Remove recipe/ingredient categories
+    await RecipeCategory.destroy({ where: { restaurant_id: rid }, transaction: t });
+    await IngredientCategory.destroy({ where: { restaurant_id: rid }, transaction: t });
+
+    // 5. Remove menu data (options → option groups → products → categories)
+    await OptionGroup.destroy({ where: { restaurant_id: rid }, transaction: t });
+    await Product.destroy({ where: { restaurant_id: rid }, transaction: t });
+    await Category.destroy({ where: { restaurant_id: rid }, transaction: t });
+
+    // 6. Remove orders and invoices
+    await Order.destroy({ where: { restaurant_id: rid }, transaction: t });
+    await Invoice.destroy({ where: { restaurant_id: rid }, transaction: t });
+
+    // 7. Unlink operation tickets (set NULL instead of delete)
+    await OperationTicket.update({ restaurantId: null }, { where: { restaurantId: rid }, transaction: t });
+
+    // 8. Unlink admin user
+    await User.update({ restaurant_id: null }, { where: { restaurant_id: rid }, transaction: t });
+
+    // 9. Delete the restaurant
+    await restaurant.destroy({ transaction: t });
+
+    await t.commit();
     res.json({ success: true, message: 'Restaurant deleted successfully' });
   } catch (error) {
+    await t.rollback();
     console.error('[Restaurants] Error deleting restaurant:', error.message);
     res.status(500).json({ error: 'Failed to delete restaurant', details: error.message });
   }
@@ -1142,28 +1217,12 @@ router.patch('/:id/status', async (req, res) => {
     if (!restaurant) {
       return res.status(404).json({ error: 'Restaurant not found' });
     }
-    
+
     await restaurant.update({ status });
     res.json({ success: true, restaurant });
   } catch (error) {
     console.error('Error updating restaurant status:', error);
     res.status(500).json({ error: 'Failed to update restaurant status' });
-  }
-});
-
-// Delete restaurant
-router.delete('/:id', async (req, res) => {
-  try {
-    const restaurant = await Restaurant.findByPk(req.params.id);
-    if (!restaurant) {
-      return res.status(404).json({ error: 'Restaurant not found' });
-    }
-    
-    await restaurant.destroy();
-    res.json({ success: true, message: 'Restaurant deleted successfully' });
-  } catch (error) {
-    console.error('Error deleting restaurant:', error);
-    res.status(500).json({ error: 'Failed to delete restaurant' });
   }
 });
 

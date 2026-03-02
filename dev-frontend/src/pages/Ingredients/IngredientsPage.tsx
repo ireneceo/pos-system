@@ -19,6 +19,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormRow as UIFormRow } from '../../components/UI/Modal';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
+import ConfirmModal from '../../components/ConfirmModal';
 
 interface Ingredient {
   id: number;
@@ -197,6 +198,12 @@ const IngredientsPage: React.FC = () => {
     min_stock: '0'
   });
 
+  // ConfirmModal states
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingIngredientId, setDeletingIngredientId] = useState<number | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   // Set default currency when loaded
   useEffect(() => {
     if (defaultCurrency && !selectedCurrency) {
@@ -241,33 +248,40 @@ const IngredientsPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (ingredientId: number) => {
-    if (!window.confirm('정말 이 재료를 삭제하시겠습니까?')) {
-      return;
-    }
+  const handleDelete = (ingredientId: number) => {
+    setDeleteError(null);
+    setDeletingIngredientId(ingredientId);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingIngredientId) return;
+    setShowDeleteConfirm(false);
 
     try {
       let url = '';
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
-        url = `/api/brands/${user?.brand_id}/ingredients/${ingredientId}`;
+        url = `/api/brands/${user?.brand_id}/ingredients/${deletingIngredientId}`;
       } else if (user?.role === 'Restaurant Admin') {
-        url = `/api/restaurants/${user?.restaurant_id}/ingredients/${ingredientId}`;
+        url = `/api/restaurants/${user?.restaurant_id}/ingredients/${deletingIngredientId}`;
       }
 
       const response = await fetch(url, { method: 'DELETE' });
       const data = await response.json();
 
       if (data.success) {
-        alert('재료가 삭제되었습니다');
         fetchIngredients();
       }
     } catch (error) {
       console.error('Failed to delete ingredient:', error);
-      alert('재료 삭제 실패');
+      setDeleteError('Failed to delete ingredient');
+    } finally {
+      setDeletingIngredientId(null);
     }
   };
 
   const handleOpenModal = (ingredient: Ingredient | null) => {
+    setSubmitError(null);
     if (ingredient) {
       setSelectedIngredient(ingredient);
       setFormData({
@@ -310,9 +324,10 @@ const IngredientsPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(null);
 
     if (!formData.name || !formData.category || !formData.unit || !formData.unit_cost) {
-      alert('모든 필수 항목을 입력해주세요');
+      setSubmitError('Please fill in all required fields');
       return;
     }
 
@@ -347,15 +362,14 @@ const IngredientsPage: React.FC = () => {
       const data = await response.json();
 
       if (data.success) {
-        alert(selectedIngredient ? '재료가 수정되었습니다' : '재료가 생성되었습니다');
         handleCloseModal();
         fetchIngredients();
       } else {
-        alert(data.error || '재료 저장 실패');
+        setSubmitError(data.error || 'Failed to save ingredient');
       }
     } catch (error) {
       console.error('Failed to save ingredient:', error);
-      alert('재료 저장 실패');
+      setSubmitError('Failed to save ingredient');
     }
   };
 
@@ -435,6 +449,14 @@ const IngredientsPage: React.FC = () => {
         </FilterBar>
 
         <Content>
+          {/* Inline error messages */}
+          {deleteError && (
+            <div style={{ padding: '12px 16px', marginBottom: '16px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '8px', color: '#DC2626', fontSize: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              {deleteError}
+              <button onClick={() => setDeleteError(null)} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
+            </div>
+          )}
+
           {loading ? (
             <EmptyState>
               <EmptyTitle>Loading...</EmptyTitle>
@@ -596,6 +618,13 @@ const IngredientsPage: React.FC = () => {
             />
           </UIFormGroup>
 
+          {/* Error Display */}
+          {submitError && (
+            <div style={{ padding: '12px 16px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '8px', color: '#DC2626', fontSize: '14px' }}>
+              {submitError}
+            </div>
+          )}
+
           <ButtonGroup>
             <ModalButton type="button" variant="secondary" onClick={handleCloseModal}>
               Cancel
@@ -606,6 +635,18 @@ const IngredientsPage: React.FC = () => {
           </ButtonGroup>
         </form>
       </Modal>
+
+      {/* Delete Ingredient Confirm Modal */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Delete Ingredient"
+        message="Are you sure you want to delete this ingredient?"
+        onConfirm={confirmDelete}
+        onCancel={() => { setShowDeleteConfirm(false); setDeletingIngredientId(null); }}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
     </>
   );
 };

@@ -15,6 +15,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import { fetchAPI } from '../../utils/api';
+import ConfirmModal from '../../components/ConfirmModal';
 
 interface StockTakeItem {
   id: number;
@@ -300,6 +301,10 @@ const StockTakePage: React.FC = () => {
   const [localItems, setLocalItems] = useState<StockTakeItem[]>([]);
   const [saving, setSaving] = useState(false);
 
+  // ConfirmModal states
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+
   // URL 파라미터 우선, 없으면 user의 restaurant_id 사용
   const restaurantId = urlRestaurantId ? parseInt(urlRestaurantId, 10) : user?.restaurant_id;
 
@@ -414,7 +419,7 @@ const StockTakePage: React.FC = () => {
     }
   };
 
-  const handleComplete = async () => {
+  const handleComplete = () => {
     if (!currentStockTake || !restaurantId) return;
 
     const uncountedItems = localItems.filter(item => item.actual_stock === null);
@@ -422,9 +427,12 @@ const StockTakePage: React.FC = () => {
       return;
     }
 
-    if (!window.confirm('Complete this stock take? This will update all stock levels to the counted values.')) {
-      return;
-    }
+    setShowCompleteConfirm(true);
+  };
+
+  const confirmComplete = async () => {
+    if (!currentStockTake || !restaurantId) return;
+    setShowCompleteConfirm(false);
 
     try {
       setSaving(true);
@@ -461,12 +469,14 @@ const StockTakePage: React.FC = () => {
     }
   };
 
-  const handleCancel = async () => {
+  const handleCancel = () => {
     if (!currentStockTake || !restaurantId) return;
+    setShowCancelConfirm(true);
+  };
 
-    if (!window.confirm('Cancel this stock take? All entered data will be lost.')) {
-      return;
-    }
+  const confirmCancel = async () => {
+    if (!currentStockTake || !restaurantId) return;
+    setShowCancelConfirm(false);
 
     try {
       const response = await fetchAPI(
@@ -713,6 +723,30 @@ const StockTakePage: React.FC = () => {
         )}
         </Content>
       </Container>
+
+      {/* Complete Stock Take Confirm Modal */}
+      <ConfirmModal
+        isOpen={showCompleteConfirm}
+        title="Complete Stock Take"
+        message="Complete this stock take? This will update all stock levels to the counted values."
+        onConfirm={confirmComplete}
+        onCancel={() => setShowCompleteConfirm(false)}
+        confirmText="Complete"
+        cancelText="Cancel"
+        type="warning"
+      />
+
+      {/* Cancel Stock Take Confirm Modal */}
+      <ConfirmModal
+        isOpen={showCancelConfirm}
+        title="Cancel Stock Take"
+        message="Cancel this stock take? All entered data will be lost."
+        onConfirm={confirmCancel}
+        onCancel={() => setShowCancelConfirm(false)}
+        confirmText="Cancel Stock Take"
+        cancelText="Go Back"
+        type="danger"
+      />
     </>
   );
 };

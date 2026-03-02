@@ -173,34 +173,20 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    if (!email || !email.trim()) {
-      return res.status(400).json({
-        success: false,
-        field: 'email',
-        message: 'Email is required'
-      });
+    // 이메일 형식 검증 (있는 경우에만)
+    if (email && email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({
+          success: false,
+          field: 'email',
+          message: 'Please enter a valid email address'
+        });
+      }
     }
 
-    // 이메일 형식 검증
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({
-        success: false,
-        field: 'email',
-        message: 'Please enter a valid email address'
-      });
-    }
-
-    if (!password) {
-      return res.status(400).json({
-        success: false,
-        field: 'password',
-        message: 'Password is required'
-      });
-    }
-
-    // 비밀번호 기준 검증 (6자 이상)
-    if (password.length < 6) {
+    // 비밀번호 검증 (있는 경우에만)
+    if (password && password.length < 6) {
       return res.status(400).json({
         success: false,
         field: 'password',
@@ -229,21 +215,23 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    // 이메일 중복 체크
-    const existingByEmail = await Customer.findOne({
-      where: { email: email.trim().toLowerCase(), type: 'member' }
-    });
-
-    if (existingByEmail) {
-      return res.status(400).json({
-        success: false,
-        field: 'email',
-        message: 'This email is already registered. Please login instead.'
+    // 이메일 중복 체크 (이메일이 있는 경우에만)
+    if (email && email.trim()) {
+      const existingByEmail = await Customer.findOne({
+        where: { email: email.trim().toLowerCase(), type: 'member' }
       });
+
+      if (existingByEmail) {
+        return res.status(400).json({
+          success: false,
+          field: 'email',
+          message: 'This email is already registered. Please login instead.'
+        });
+      }
     }
 
-    // 비밀번호 해시
-    const password_hash = await bcrypt.hash(password, 10);
+    // 비밀번호 해시 (비밀번호가 있는 경우에만)
+    const password_hash = password ? await bcrypt.hash(password, 10) : null;
 
     // 기존 게스트 고객 확인 (전화번호로)
     let customer = await Customer.findOne({
@@ -257,23 +245,28 @@ router.post('/register', async (req, res) => {
       }
     });
 
+    // 비밀번호 있으면 member, 없으면 guest (관리자가 간단 등록)
+    const customerType = password_hash ? 'member' : 'guest';
+    const customerEmail = (email && email.trim()) ? email.trim().toLowerCase() : null;
+
     if (customer) {
-      // 게스트 → 회원 전환
-      await customer.update({
+      // 게스트 → 회원 전환 (또는 정보 업데이트)
+      const updateData = {
         name: name.trim(),
-        email: email.trim().toLowerCase(),
         phone, // E.164 형식으로 저장
-        password_hash,
-        type: 'member'
-      });
+        type: customerType
+      };
+      if (customerEmail) updateData.email = customerEmail;
+      if (password_hash) updateData.password_hash = password_hash;
+      await customer.update(updateData);
     } else {
-      // 신규 회원 생성
+      // 신규 고객 생성
       customer = await Customer.create({
         phone,
         name: name.trim(),
-        email: email.trim().toLowerCase(),
+        email: customerEmail,
         password_hash,
-        type: 'member'
+        type: customerType
       });
     }
 

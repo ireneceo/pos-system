@@ -7,6 +7,7 @@ import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/S
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { Modal, ModalButton } from '../../components/UI/Modal';
+import ConfirmModal from '../../components/ConfirmModal';
 
 interface BackupRecord {
   id: string;
@@ -398,6 +399,9 @@ const BackupRestorePage: React.FC = () => {
   const [, ] = useState<BackupRecord | null>(null);
   const [backupType, setBackupType] = useState<'full' | 'incremental' | 'differential'>('full');
   const [backupDescription, setBackupDescription] = useState('');
+  const [showCleanupConfirm, setShowCleanupConfirm] = useState(false);
+  const [cleanupCount, setCleanupCount] = useState(0);
+  const [oldBackupsToClean, setOldBackupsToClean] = useState<BackupRecord[]>([]);
 
   useEffect(() => {
     // TODO: Implement API call to fetch backups and restore operations
@@ -438,7 +442,6 @@ const BackupRestorePage: React.FC = () => {
   const handleDownloadBackup = () => {
     const completedBackups = backups.filter(b => b.status === 'completed');
     if (completedBackups.length === 0) {
-      alert('No completed backups available for download.');
       return;
     }
     setShowDownloadModal(true);
@@ -472,33 +475,36 @@ const BackupRestorePage: React.FC = () => {
 
     // Simulate backup completion
     setTimeout(() => {
-      setBackups(prev => prev.map(b => 
-        b.id === newBackup.id 
+      setBackups(prev => prev.map(b =>
+        b.id === newBackup.id
           ? { ...b, status: 'completed', duration: Math.floor(Math.random() * 1800) + 300, size: Math.floor(Math.random() * 1000000000) + 100000000 }
           : b
       ));
-      alert('Backup completed successfully!');
     }, 3000);
   };
 
   const handleCleanupOldBackups = () => {
-    const oldBackups = backups.filter(b => {
+    const oldBkps = backups.filter(b => {
       const backupDate = new Date(b.createdAt);
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       return backupDate < thirtyDaysAgo && b.status === 'completed';
     });
 
-    if (oldBackups.length === 0) {
-      alert('No old backups found to clean up.');
+    if (oldBkps.length === 0) {
       return;
     }
 
-    if (confirm(`This will delete ${oldBackups.length} backups older than 30 days. Continue?`)) {
-      const remainingBackups = backups.filter(b => !oldBackups.includes(b));
-      setBackups(remainingBackups);
-      alert(`Successfully cleaned up ${oldBackups.length} old backups.`);
-    }
+    setOldBackupsToClean(oldBkps);
+    setCleanupCount(oldBkps.length);
+    setShowCleanupConfirm(true);
+  };
+
+  const confirmCleanupBackups = () => {
+    const remainingBackups = backups.filter(b => !oldBackupsToClean.includes(b));
+    setBackups(remainingBackups);
+    setShowCleanupConfirm(false);
+    setOldBackupsToClean([]);
   };
 
   const handleAddSchedule = () => {
@@ -513,8 +519,7 @@ const BackupRestorePage: React.FC = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
-    alert(`Starting download of ${backup.name}...`);
+
     setShowDownloadModal(false);
   };
 
@@ -813,6 +818,17 @@ const BackupRestorePage: React.FC = () => {
         </Modal>
         </Content>
       </Container>
+
+      <ConfirmModal
+        isOpen={showCleanupConfirm}
+        title="Cleanup Old Backups"
+        message={`This will delete ${cleanupCount} backups older than 30 days. Continue?`}
+        onConfirm={confirmCleanupBackups}
+        onCancel={() => { setShowCleanupConfirm(false); setOldBackupsToClean([]); }}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="warning"
+      />
     </>
   );
 };

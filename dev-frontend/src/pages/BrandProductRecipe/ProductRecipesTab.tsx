@@ -11,6 +11,7 @@ import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { fetchAPI } from '../../utils/api';
 import { STANDARD_UNITS, calculateIngredientCost, calculateCostPerUnit } from '../../utils/unitConversion';
+import ConfirmModal from '../../components/ConfirmModal';
 
 interface ProductRecipesTabProps {
   onCountChange?: (count: number) => void;
@@ -736,6 +737,8 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
 
   // View mode for modal
   const [viewMode, setViewMode] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingRecipe, setDeletingRecipe] = useState<ProductRecipe | null>(null);
 
   // Emoji options for recipe
   const emojiOptions = [
@@ -993,11 +996,16 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
     }
   };
 
-  const handleDelete = async (recipe: ProductRecipe) => {
-    if (!window.confirm(`Delete "${recipe.name}"? This action cannot be undone.`)) return;
+  const handleDelete = (recipe: ProductRecipe) => {
+    setDeletingRecipe(recipe);
+    setShowDeleteConfirm(true);
+  };
 
+  const confirmDeleteRecipe = async () => {
+    if (!deletingRecipe) return;
+    setShowDeleteConfirm(false);
     try {
-      const response = await fetchAPI(`/api/product-recipes/${recipe.id}`, {
+      const response = await fetchAPI(`/api/product-recipes/${deletingRecipe.id}`, {
         method: 'DELETE'
       });
 
@@ -1009,6 +1017,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
     } catch (error) {
       console.error('Failed to delete recipe:', error);
     }
+    setDeletingRecipe(null);
   };
 
   const filteredRecipes = recipes.filter(item => {
@@ -1490,6 +1499,17 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
           </RecipeModalContent>
         </RecipeModalOverlay>
       )}
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Delete Recipe"
+        message={`Delete "${deletingRecipe?.name}"? This action cannot be undone.`}
+        onConfirm={confirmDeleteRecipe}
+        onCancel={() => { setShowDeleteConfirm(false); setDeletingRecipe(null); }}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
     </>
   );
 };

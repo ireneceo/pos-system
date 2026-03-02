@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { useParams } from 'react-router-dom';
 import { useCustomer } from '../../contexts/CustomerContext';
-import { Modal, ModalButton, FormLabel as Label } from '../UI/Modal';
+import { Modal, ModalButton, FormLabel as Label, FormInput } from '../UI/Modal';
 import PhoneInput from '../Common/PhoneInput';
 
 const TabContainer = styled.div`
@@ -38,28 +39,10 @@ const GuestSection = styled.div`
 const FormGroup = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 6px;
+  margin-bottom: 12px;
 `;
 
-const Input = styled.input`
-  padding: 12px 16px;
-  border: 2px solid #E5E7EB;
-  border-radius: 8px;
-  font-size: 14px;
-  transition: all 0.2s;
-  min-height: 44px;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-
-  &::placeholder {
-    color: #9CA3AF;
-  }
-`;
 
 const FooterWrapper = styled.div`
   display: flex;
@@ -93,6 +76,7 @@ const ErrorMessage = styled.div`
 `;
 
 const CustomerModal: React.FC = () => {
+  const { restaurantId } = useParams<{ restaurantId: string }>();
   const {
     showCustomerModal,
     setShowCustomerModal,
@@ -167,7 +151,13 @@ const CustomerModal: React.FC = () => {
       return;
     }
 
-    if (!registerForm.password || registerForm.password.length < 6) {
+    // register 모드(관리자 추가)에서는 비밀번호 선택, member 모드에서는 필수
+    if (customerModalMode === 'member' && (!registerForm.password || registerForm.password.length < 6)) {
+      setRegisterError('Password must be at least 6 characters');
+      return;
+    }
+
+    if (registerForm.password && registerForm.password.length > 0 && registerForm.password.length < 6) {
       setRegisterError('Password must be at least 6 characters');
       return;
     }
@@ -176,7 +166,7 @@ const CustomerModal: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await registerCustomer(registerForm);
+      await registerCustomer(registerForm, restaurantId);
       handleClose();
     } catch (error: any) {
       setRegisterError(error.message || 'Registration failed. Please try again.');
@@ -295,7 +285,7 @@ const CustomerModal: React.FC = () => {
         <GuestSection>
           <FormGroup>
             <Label>Your Name *</Label>
-            <Input
+            <FormInput
               type="text"
               placeholder="Enter your name"
               value={guestForm.name}
@@ -318,7 +308,7 @@ const CustomerModal: React.FC = () => {
         <>
           <FormGroup>
             <Label>Full Name *</Label>
-            <Input
+            <FormInput
               type="text"
               placeholder="Enter customer's full name"
               value={registerForm.name}
@@ -345,26 +335,12 @@ const CustomerModal: React.FC = () => {
 
           <FormGroup>
             <Label>Email Address</Label>
-            <Input
+            <FormInput
               type="email"
               placeholder="Enter email (optional)"
               value={registerForm.email}
               onChange={(e) => {
                 setRegisterForm({ ...registerForm, email: e.target.value });
-                setRegisterError('');
-              }}
-              disabled={isLoading}
-            />
-          </FormGroup>
-
-          <FormGroup>
-            <Label>Password *</Label>
-            <Input
-              type="password"
-              placeholder="Create a password (min 6 characters)"
-              value={registerForm.password}
-              onChange={(e) => {
-                setRegisterForm({ ...registerForm, password: e.target.value });
                 setRegisterError('');
               }}
               disabled={isLoading}
@@ -408,7 +384,7 @@ const CustomerModal: React.FC = () => {
 
               <FormGroup>
                 <Label>Password *</Label>
-                <Input
+                <FormInput
                   type="password"
                   placeholder="Enter your password"
                   value={loginForm.password}
@@ -426,7 +402,7 @@ const CustomerModal: React.FC = () => {
             <>
               <FormGroup>
                 <Label>Full Name *</Label>
-                <Input
+                <FormInput
                   type="text"
                   placeholder="Enter your full name"
                   value={registerForm.name}
@@ -453,7 +429,7 @@ const CustomerModal: React.FC = () => {
 
               <FormGroup>
                 <Label>Email Address</Label>
-                <Input
+                <FormInput
                   type="email"
                   placeholder="Enter your email (optional)"
                   value={registerForm.email}
@@ -467,7 +443,7 @@ const CustomerModal: React.FC = () => {
 
               <FormGroup>
                 <Label>Password *</Label>
-                <Input
+                <FormInput
                   type="password"
                   placeholder="Create a password (min 6 characters)"
                   value={registerForm.password}

@@ -19,6 +19,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea, FormRow as UIFormRow } from '../../components/UI/Modal';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
+import ConfirmModal from '../../components/ConfirmModal';
 
 interface Recipe {
   id: number;
@@ -417,6 +418,14 @@ const RecipesPage: React.FC = () => {
   const [viewMode, setViewMode] = useState(false);
   const [userBrandId, setUserBrandId] = useState<number | null>(null);
 
+  // ConfirmModal states
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingRecipeId, setDeletingRecipeId] = useState<number | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [showRegisterConfirm, setShowRegisterConfirm] = useState(false);
+  const [registeringRecipe, setRegisteringRecipe] = useState<Recipe | null>(null);
+  const [registerError, setRegisterError] = useState<string | null>(null);
+
   // Set default currency when loaded
   useEffect(() => {
     if (defaultCurrency && !selectedCurrency) {
@@ -536,33 +545,40 @@ const RecipesPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (recipeId: number) => {
-    if (!window.confirm('정말 이 레시피를 삭제하시겠습니까?')) {
-      return;
-    }
+  const handleDelete = (recipeId: number) => {
+    setDeleteError(null);
+    setDeletingRecipeId(recipeId);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingRecipeId) return;
+    setShowDeleteConfirm(false);
 
     try {
       let url = '';
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
-        url = `/api/brands/${userBrandId}/recipes/${recipeId}`;
+        url = `/api/brands/${userBrandId}/recipes/${deletingRecipeId}`;
       } else if (user?.role === 'Restaurant Admin') {
-        url = `/api/restaurants/${user?.restaurant_id}/recipes/${recipeId}`;
+        url = `/api/restaurants/${user?.restaurant_id}/recipes/${deletingRecipeId}`;
       }
 
       const response = await fetch(url, { method: 'DELETE' });
       const data = await response.json();
 
       if (data.success) {
-        alert('레시피가 삭제되었습니다');
         fetchRecipes();
       }
     } catch (error) {
       console.error('Failed to delete recipe:', error);
-      alert('레시피 삭제 실패');
+      setDeleteError('Failed to delete recipe');
+    } finally {
+      setDeletingRecipeId(null);
     }
   };
 
   const handleOpenModal = (recipe: Recipe | null, isViewMode: boolean = false) => {
+    setSubmitError(null);
     setViewMode(isViewMode);
     if (recipe) {
       // Edit or View mode
@@ -622,50 +638,56 @@ const RecipesPage: React.FC = () => {
   };
 
   // Register recipe as menu item
-  const handleRegisterAsMenu = async (recipe: Recipe) => {
+  const handleRegisterAsMenu = (recipe: Recipe) => {
     if (!user?.restaurant_id) {
-      alert('Restaurant ID is required to register menu');
+      setRegisterError('Restaurant ID is required to register menu');
       return;
     }
+    setRegisterError(null);
+    setRegisteringRecipe(recipe);
+    setShowRegisterConfirm(true);
+  };
 
-    const confirmMsg = `"${recipe.name}" 레시피를 메뉴로 등록하시겠습니까?\n\n가격: ${formatCurrency(recipe.suggested_price || 0, selectedCurrency || 'USD')}`;
-    if (!window.confirm(confirmMsg)) {
-      return;
-    }
+  const confirmRegisterAsMenu = async () => {
+    if (!registeringRecipe || !user?.restaurant_id) return;
+    setShowRegisterConfirm(false);
 
     try {
       const response = await fetch('/api/menu/product', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: recipe.name,
-          description: recipe.description || '',
-          price: recipe.suggested_price || 0,
-          category: recipe.category,
-          emoji: recipe.emoji || '🍽️',
+          name: registeringRecipe.name,
+          description: registeringRecipe.description || '',
+          price: registeringRecipe.suggested_price || 0,
+          category: registeringRecipe.category,
+          emoji: registeringRecipe.emoji || '',
           restaurant_id: user.restaurant_id,
-          recipe_id: recipe.id
+          recipe_id: registeringRecipe.id
         })
       });
 
       const data = await response.json();
 
-      if (data.success) {
-        alert(`"${recipe.name}" 메뉴가 등록되었습니다!`);
-      } else {
-        alert(data.error || '메뉴 등록 실패');
+      if (!data.success) {
+        setRegisterError(data.error || 'Failed to register menu item');
       }
     } catch (error) {
       console.error('Failed to register menu:', error);
-      alert('메뉴 등록 실패');
+      setRegisterError('Failed to register menu item');
+    } finally {
+      setRegisteringRecipe(null);
     }
   };
 
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(null);
 
     if (!formData.name || !formData.category) {
-      alert('레시피 이름과 카테고리는 필수입니다');
+      setSubmitError('Recipe name and category are required');
       return;
     }
 
@@ -712,15 +734,14 @@ const RecipesPage: React.FC = () => {
       const data = await response.json();
 
       if (data.success) {
-        alert(selectedRecipe ? '레시피가 수정되었습니다' : '레시피가 생성되었습니다');
         handleCloseModal();
         fetchRecipes();
       } else {
-        alert(data.error || '레시피 저장 실패');
+        setSubmitError(data.error || 'Failed to save recipe');
       }
     } catch (error) {
       console.error('Failed to save recipe:', error);
-      alert('레시피 저장 실패');
+      setSubmitError('Failed to save recipe');
     }
   };
 
@@ -836,6 +857,20 @@ const RecipesPage: React.FC = () => {
         </FilterBar>
 
         <Content>
+          {/* Inline error messages */}
+          {deleteError && (
+            <div style={{ padding: '12px 16px', marginBottom: '16px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '8px', color: '#DC2626', fontSize: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              {deleteError}
+              <button onClick={() => setDeleteError(null)} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
+            </div>
+          )}
+          {registerError && (
+            <div style={{ padding: '12px 16px', marginBottom: '16px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '8px', color: '#DC2626', fontSize: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              {registerError}
+              <button onClick={() => setRegisterError(null)} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
+            </div>
+          )}
+
           {loading ? (
             <EmptyState>
               <EmptyTitle>Loading...</EmptyTitle>
@@ -1159,6 +1194,13 @@ const RecipesPage: React.FC = () => {
               )}
             </div>
 
+            {/* Error Display */}
+            {submitError && (
+              <div style={{ padding: '12px 16px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '8px', color: '#DC2626', fontSize: '14px' }}>
+                {submitError}
+              </div>
+            )}
+
             {/* Action Buttons */}
             <ButtonGroup>
               <ModalButton type="button" variant="secondary" onClick={handleCloseModal}>
@@ -1185,6 +1227,30 @@ const RecipesPage: React.FC = () => {
             </ButtonGroup>
           </form>
       </Modal>
+
+      {/* Delete Recipe Confirm Modal */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Delete Recipe"
+        message="Are you sure you want to delete this recipe?"
+        onConfirm={confirmDelete}
+        onCancel={() => { setShowDeleteConfirm(false); setDeletingRecipeId(null); }}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
+
+      {/* Register as Menu Confirm Modal */}
+      <ConfirmModal
+        isOpen={showRegisterConfirm}
+        title="Register as Menu Item"
+        message={`Register "${registeringRecipe?.name}" as a menu item?`}
+        onConfirm={confirmRegisterAsMenu}
+        onCancel={() => { setShowRegisterConfirm(false); setRegisteringRecipe(null); }}
+        confirmText="Register"
+        cancelText="Cancel"
+        type="info"
+      />
     </>
   );
 };

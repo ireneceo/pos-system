@@ -93,6 +93,36 @@ Coupon.init({
     set(value) {
       this.setDataValue('applicable_order_types', value ? JSON.stringify(value) : null);
     }
+  },
+  target_type: {
+    type: DataTypes.ENUM('all', 'customers', 'tiers'),
+    allowNull: false,
+    defaultValue: 'all',
+    comment: 'Target audience: all customers, specific customers, or loyalty tiers'
+  },
+  target_customer_ids: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'JSON array of specific customer IDs (for target_type=customers)',
+    get() {
+      const value = this.getDataValue('target_customer_ids');
+      return value ? JSON.parse(value) : null;
+    },
+    set(value) {
+      this.setDataValue('target_customer_ids', value ? JSON.stringify(value) : null);
+    }
+  },
+  target_loyalty_tiers: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'JSON array of loyalty tier names (for target_type=tiers)',
+    get() {
+      const value = this.getDataValue('target_loyalty_tiers');
+      return value ? JSON.parse(value) : null;
+    },
+    set(value) {
+      this.setDataValue('target_loyalty_tiers', value ? JSON.stringify(value) : null);
+    }
   }
 }, {
   sequelize: database.sequelize,
