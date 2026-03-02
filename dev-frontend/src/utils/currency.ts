@@ -144,6 +144,19 @@ export function getCurrencySymbol(currencyCode: string): string {
   return CURRENCY_CONFIG[currencyCode]?.symbol || currencyCode;
 }
 
+// Map legacy/local currency symbols to ISO codes
+const SYMBOL_TO_CODE: Record<string, string> = {
+  RM: 'MYR',
+};
+
+/**
+ * Normalize a currency value to its ISO code.
+ * Converts legacy symbols (e.g., 'RM') to ISO codes ('MYR').
+ */
+export function normalizeCurrencyCode(currency: string): string {
+  return SYMBOL_TO_CODE[currency] || currency;
+}
+
 /**
  * Parse amount for currency (respecting decimals)
  * @param amount - Amount to parse

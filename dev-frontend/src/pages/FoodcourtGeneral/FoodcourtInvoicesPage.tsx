@@ -3,8 +3,9 @@ import styled from 'styled-components';
 import { useSearchParams } from 'react-router-dom';
 import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, normalizeCurrencyCode } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { BaseButton, StatusBadge as CommonStatusBadge, StatusMessage } from '../../components/UI/CommonStyles';
 import ConfirmModal from '../../components/ConfirmModal';
 import {
@@ -627,6 +628,7 @@ type TabType = 'to_pay' | 'paid' | 'issued';
 
 const FoodcourtInvoicesPage: React.FC = () => {
   const { operationSettings } = useStore();
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -743,6 +745,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
   const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
   const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
   const [invoiceCategories, setInvoiceCategories] = useState<InvoiceCategory[]>([]);
+  const [additionalChargesMap, setAdditionalChargesMap] = useState<{ [currency: string]: Array<{ enabled: boolean; name: string; rate: number }> }>({});
   const [newInvoice, setNewInvoice] = useState({
     managerId: '',
     managerName: '',
@@ -1270,6 +1273,40 @@ const FoodcourtInvoicesPage: React.FC = () => {
     setInvoices(sampleInvoices);
   };
 
+  // Fetch foodcourt payment settings for additional charges
+  const fetchFoodcourtPaymentSettings = useCallback(async () => {
+    if (!user?.foodcourt_id) return;
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/foodcourts/${user.foodcourt_id}/payment-settings`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const responseData = await response.json();
+        const data = responseData.data || responseData;
+        if (data.payment_settings?.additionalCharges) {
+          const raw = data.payment_settings.additionalCharges;
+          if (Array.isArray(raw)) {
+            setAdditionalChargesMap({});
+          } else {
+            setAdditionalChargesMap(raw);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching foodcourt payment settings:', error);
+    }
+  }, [user?.foodcourt_id]);
+
+  // Get additionalCharges for a specific currency from the map (normalizes RM→MYR etc.)
+  const getChargesForCurrency = (currency: string) => {
+    const code = normalizeCurrencyCode(currency);
+    return additionalChargesMap[code] || additionalChargesMap[currency] || [];
+  };
+
+  // Derive additionalCharges for the current new invoice currency
+  const additionalCharges = getChargesForCurrency(operationSettings.currency || 'MYR');
+
   // Fetch data on component mount
   useEffect(() => {
     fetchInvoices();
@@ -1281,6 +1318,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
     fetchCompanySettings();
     fetchCurrencyConfig();
     fetchInvoiceCategories();
+    fetchFoodcourtPaymentSettings();
   }, []);
 
   const fetchCurrencyConfig = async () => {
@@ -2302,8 +2340,18 @@ const FoodcourtInvoicesPage: React.FC = () => {
       const discountVal = parseFloat(newInvoice.discountValue) || 0;
       const discountAmt = newInvoice.discountType === 'percentage' ? amount * (discountVal / 100) : newInvoice.discountType === 'fixed' ? discountVal : 0;
       const afterDiscount = Math.max(0, amount - discountAmt);
-      const tax = afterDiscount * 0.06;
-      const total = afterDiscount + tax;
+
+      // Calculate additional charges from payment settings (on discounted amount)
+      const calculatedCharges = additionalCharges
+        .filter(charge => charge.enabled && charge.name && charge.rate > 0)
+        .map(charge => ({
+          name: charge.name,
+          rate: charge.rate,
+          amount: Math.round(afterDiscount * charge.rate / 100 * 100) / 100
+        }));
+
+      const totalChargesAmount = calculatedCharges.reduce((sum, c) => sum + c.amount, 0);
+      const total = afterDiscount + totalChargesAmount;
 
       // Prepare data for API
       const billingPeriodStart = new Date();
@@ -2367,10 +2415,15 @@ const FoodcourtInvoicesPage: React.FC = () => {
         discount_value: discountAmt > 0 ? discountVal : null,
         discount_amount: discountAmt > 0 ? discountAmt : null,
         discount_reason: newInvoice.discountReason || null,
+        currency: operationSettings.currency || 'MYR',
         status: 'draft',
         notes: description,
-        issued_by: 1,
-        issued_at: new Date().toISOString()
+        issued_by: user?.id || 1,
+        issued_at: new Date().toISOString(),
+        issuer_type: 'foodcourt',
+        issuer_id: user?.foodcourt_id || null,
+        invoice_category: newInvoice.invoiceCategory || 'service',
+        additional_charges: calculatedCharges
       };
 
       const items = [{
@@ -2379,9 +2432,9 @@ const FoodcourtInvoicesPage: React.FC = () => {
         calculation_method: 'fixed',
         fixed_amount: amount,
         calculated_amount: amount,
-        tax_rate: 6,
-        tax_amount: tax,
-        total_amount: total
+        tax_rate: 0,
+        tax_amount: 0,
+        total_amount: amount
       }];
 
       const token = localStorage.getItem('auth_token');
@@ -3422,9 +3475,9 @@ const FoodcourtInvoicesPage: React.FC = () => {
                         const discountVal = parseFloat(newInvoice.discountValue) || 0;
                         const discountAmt = newInvoice.discountType === 'percentage' ? amount * (discountVal / 100) : newInvoice.discountType === 'fixed' ? discountVal : 0;
                         const afterDiscount = Math.max(0, amount - discountAmt);
-                        const tax = afterDiscount * 0.06;
-                        const total = afterDiscount + tax;
-                        setNewInvoice({ ...newInvoice, amount: e.target.value, tax: tax.toFixed(2), total: total.toFixed(2) });
+                        const chargesTotal = additionalCharges.filter(c => c.enabled && c.rate > 0).reduce((sum, c) => sum + (afterDiscount * c.rate / 100), 0);
+                        const total = afterDiscount + chargesTotal;
+                        setNewInvoice({ ...newInvoice, amount: e.target.value, tax: chargesTotal.toFixed(2), total: total.toFixed(2) });
                       }}
                       placeholder="0.00"
                       required
@@ -3453,9 +3506,9 @@ const FoodcourtInvoicesPage: React.FC = () => {
                         const discountVal = dtype === 'none' ? 0 : (parseFloat(newInvoice.discountValue) || 0);
                         const discountAmt = dtype === 'percentage' ? amount * (discountVal / 100) : dtype === 'fixed' ? discountVal : 0;
                         const afterDiscount = Math.max(0, amount - discountAmt);
-                        const tax = afterDiscount * 0.06;
-                        const total = afterDiscount + tax;
-                        setNewInvoice({ ...newInvoice, discountType: dtype, discountValue: dtype === 'none' ? '' : newInvoice.discountValue, tax: tax.toFixed(2), total: total.toFixed(2) });
+                        const chargesTotal = additionalCharges.filter(c => c.enabled && c.rate > 0).reduce((sum, c) => sum + (afterDiscount * c.rate / 100), 0);
+                        const total = afterDiscount + chargesTotal;
+                        setNewInvoice({ ...newInvoice, discountType: dtype, discountValue: dtype === 'none' ? '' : newInvoice.discountValue, tax: chargesTotal.toFixed(2), total: total.toFixed(2) });
                       }}
                     >
                       <option value="none">No Discount</option>
@@ -3477,9 +3530,9 @@ const FoodcourtInvoicesPage: React.FC = () => {
                           const discountVal = parseFloat(e.target.value) || 0;
                           const discountAmt = newInvoice.discountType === 'percentage' ? amount * (discountVal / 100) : discountVal;
                           const afterDiscount = Math.max(0, amount - discountAmt);
-                          const tax = afterDiscount * 0.06;
-                          const total = afterDiscount + tax;
-                          setNewInvoice({ ...newInvoice, discountValue: e.target.value, tax: tax.toFixed(2), total: total.toFixed(2) });
+                          const chargesTotal = additionalCharges.filter(c => c.enabled && c.rate > 0).reduce((sum, c) => sum + (afterDiscount * c.rate / 100), 0);
+                          const total = afterDiscount + chargesTotal;
+                          setNewInvoice({ ...newInvoice, discountValue: e.target.value, tax: chargesTotal.toFixed(2), total: total.toFixed(2) });
                         }}
                         placeholder="0"
                       />
@@ -3557,10 +3610,25 @@ const FoodcourtInvoicesPage: React.FC = () => {
                       </SummaryRow>
                     );
                   })()}
-                  <SummaryRow>
-                    <span>Tax (6%):</span>
-                    <span>{formatCurrency(parseFloat(newInvoice.tax || '0'), operationSettings.currency)}</span>
-                  </SummaryRow>
+                  {additionalCharges.filter(c => c.enabled && c.rate > 0).map((charge, idx) => {
+                    const amt = parseFloat(newInvoice.amount || '0');
+                    const dv = parseFloat(newInvoice.discountValue || '0');
+                    const discountAmt = newInvoice.discountType === 'percentage' ? amt * (dv / 100) : newInvoice.discountType === 'fixed' ? dv : 0;
+                    const afterDiscount = Math.max(0, amt - discountAmt);
+                    const chargeAmount = afterDiscount * (charge.rate / 100);
+                    return (
+                      <SummaryRow key={idx}>
+                        <span>{charge.name} ({charge.rate}%):</span>
+                        <span>{formatCurrency(chargeAmount, operationSettings.currency)}</span>
+                      </SummaryRow>
+                    );
+                  })}
+                  {additionalCharges.filter(c => c.enabled && c.rate > 0).length === 0 && (
+                    <SummaryRow>
+                      <span>Additional Charges:</span>
+                      <span>{formatCurrency(0, operationSettings.currency)}</span>
+                    </SummaryRow>
+                  )}
                   <SummaryRow highlight>
                     <span>Total:</span>
                     <span><strong>{formatCurrency(parseFloat(newInvoice.total || '0'), operationSettings.currency)}</strong></span>
@@ -4000,12 +4068,13 @@ const FoodcourtInvoicesPage: React.FC = () => {
                       value={editInvoice.amount}
                       onChange={(e) => {
                         const amount = parseFloat(e.target.value) || 0;
-                        const tax = amount * 0.06;
-                        const total = amount + tax;
+                        const editCharges = getChargesForCurrency(editInvoice.currency || operationSettings.currency || 'MYR');
+                        const chargesTotal = editCharges.filter(c => c.enabled && c.rate > 0).reduce((sum, c) => sum + (amount * c.rate / 100), 0);
+                        const total = amount + chargesTotal;
                         setEditInvoice({
                           ...editInvoice,
                           amount: e.target.value,
-                          tax: tax.toFixed(2),
+                          tax: chargesTotal.toFixed(2),
                           total: total.toFixed(2)
                         });
                       }}
@@ -4083,15 +4152,20 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 <InvoiceSummary>
                   <SummaryRow>
                     <span>Subtotal:</span>
-                    <span>{formatCurrency(parseFloat(editInvoice.amount || '0'), editInvoice.currency || 'USD')}</span>
+                    <span>{formatCurrency(parseFloat(editInvoice.amount || '0'), editInvoice.currency || operationSettings.currency)}</span>
                   </SummaryRow>
-                  <SummaryRow>
-                    <span>Tax (6%):</span>
-                    <span>{formatCurrency(parseFloat(editInvoice.tax || '0'), editInvoice.currency || 'USD')}</span>
-                  </SummaryRow>
+                  {getChargesForCurrency(editInvoice.currency || operationSettings.currency || 'MYR').filter(c => c.enabled && c.rate > 0).map((charge, idx) => {
+                    const chargeAmount = parseFloat(editInvoice.amount || '0') * (charge.rate / 100);
+                    return (
+                      <SummaryRow key={idx}>
+                        <span>{charge.name} ({charge.rate}%):</span>
+                        <span>{formatCurrency(chargeAmount, editInvoice.currency || operationSettings.currency)}</span>
+                      </SummaryRow>
+                    );
+                  })}
                   <SummaryRow highlight>
                     <span>Total:</span>
-                    <span><strong>{formatCurrency(parseFloat(editInvoice.total || '0'), editInvoice.currency || 'USD')}</strong></span>
+                    <span><strong>{formatCurrency(parseFloat(editInvoice.total || '0'), editInvoice.currency || operationSettings.currency)}</strong></span>
                   </SummaryRow>
                 </InvoiceSummary>
               </ModalBody>

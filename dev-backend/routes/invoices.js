@@ -20,6 +20,7 @@ const subscriptionScheduler = require('../services/subscriptionScheduler');
 const PAYMENT_SETTINGS_KEY = 'payment_settings';
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const InvoiceCategory = require('../models/InvoiceCategory');
+const { normalizeAdditionalCharges } = require('../utils/paymentSettingsHelper');
 
 /**
  * Generate invoice number in format:
@@ -79,35 +80,25 @@ async function generateInvoiceNumber(issuerType = 'system_admin', issuerId = nul
 }
 
 // Helper function to get additional charges from issuer's payment settings
-async function getAdditionalCharges(issuerType, issuerId) {
+async function getAdditionalCharges(issuerType, issuerId, currency) {
   try {
-    let additionalCharges = [];
+    let rawCharges = null;
 
     if (issuerType === 'system_admin') {
-      // Get from system settings
       const paymentSettings = await SystemSettings.findOne({
         where: { setting_key: PAYMENT_SETTINGS_KEY }
       });
-
-      if (paymentSettings?.setting_value?.additionalCharges) {
-        additionalCharges = paymentSettings.setting_value.additionalCharges;
-      }
+      rawCharges = paymentSettings?.setting_value?.additionalCharges;
     } else if (issuerType === 'brand' && issuerId) {
-      // Get from brand's payment_settings
       const brand = await Brand.findByPk(issuerId);
-      if (brand?.payment_settings?.additionalCharges) {
-        additionalCharges = brand.payment_settings.additionalCharges;
-      }
+      rawCharges = brand?.payment_settings?.additionalCharges;
     } else if (issuerType === 'foodcourt' && issuerId) {
-      // Get from foodcourt's payment_settings
       const foodcourt = await Foodcourt.findByPk(issuerId);
-      if (foodcourt?.payment_settings?.additionalCharges) {
-        additionalCharges = foodcourt.payment_settings.additionalCharges;
-      }
+      rawCharges = foodcourt?.payment_settings?.additionalCharges;
     }
 
-    // Filter only enabled charges and return with calculated info
-    return additionalCharges.filter(charge => charge.enabled && charge.name && charge.rate > 0);
+    const charges = normalizeAdditionalCharges(rawCharges, currency);
+    return charges.filter(charge => charge.enabled && charge.name && charge.rate > 0);
   } catch (error) {
     console.error('Error fetching additional charges:', error);
     return [];

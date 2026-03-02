@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { EmptyState as CategoryEmptyState } from '../../components/UI/TableComponents';
 import { useSearchParams } from 'react-router-dom';
-import { formatCurrency, getCurrencyDecimals } from '../../utils/currency';
+import { formatCurrency, getCurrencyDecimals, normalizeCurrencyCode } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
 import { BaseButton, StatusBadge as CommonStatusBadge } from '../../components/UI/CommonStyles';
 import ConfirmModal from '../../components/ConfirmModal';
@@ -791,11 +791,7 @@ const InvoicesPage: React.FC = () => {
   const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
   const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>([]);
   const [invoiceCategories, setInvoiceCategories] = useState<InvoiceCategory[]>([]);
-  const [additionalCharges, setAdditionalCharges] = useState<Array<{ enabled: boolean; name: string; rate: number }>>([
-    { enabled: false, name: '', rate: 0 },
-    { enabled: false, name: '', rate: 0 },
-    { enabled: false, name: '', rate: 0 }
-  ]);
+  const [additionalChargesMap, setAdditionalChargesMap] = useState<{ [currency: string]: Array<{ enabled: boolean; name: string; rate: number }> }>({});
   const [taxSettings, setTaxSettings] = useState<{ enabled: boolean; rate: number; name: string }>({
     enabled: false,
     rate: 0,
@@ -1191,11 +1187,19 @@ const InvoicesPage: React.FC = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        // Load additional charges (3 items: Tax, Service Charge, etc.)
-        if (data.additionalCharges && Array.isArray(data.additionalCharges)) {
-          setAdditionalCharges(data.additionalCharges);
-          // Set first enabled charge as taxSettings for backward compatibility
-          const firstEnabled = data.additionalCharges.find((c: { enabled: boolean; name: string; rate: number }) => c.enabled);
+        // Load additional charges — per-currency object or legacy array
+        if (data.additionalCharges) {
+          if (Array.isArray(data.additionalCharges)) {
+            // Legacy flat array — treat as empty (no currency assignment)
+            setAdditionalChargesMap({});
+          } else {
+            setAdditionalChargesMap(data.additionalCharges);
+          }
+          // taxSettings backward compat — find first enabled from any currency
+          const allCharges = Array.isArray(data.additionalCharges)
+            ? data.additionalCharges
+            : Object.values(data.additionalCharges).flat();
+          const firstEnabled = (allCharges as any[]).find((c: any) => c?.enabled);
           if (firstEnabled) {
             setTaxSettings({
               enabled: firstEnabled.enabled,
@@ -1221,6 +1225,15 @@ const InvoicesPage: React.FC = () => {
     fetchInvoiceCategories();
     fetchPaymentSettings();
   }, []);
+
+  // Get additionalCharges for a specific currency from the map (normalizes RM→MYR etc.)
+  const getChargesForCurrency = (currency: string) => {
+    const code = normalizeCurrencyCode(currency);
+    return additionalChargesMap[code] || additionalChargesMap[currency] || [];
+  };
+
+  // Derive additionalCharges for the current new invoice currency
+  const additionalCharges = getChargesForCurrency(newInvoice.currency);
 
   const fetchCurrencyConfig = async () => {
     try {
@@ -3901,8 +3914,9 @@ const InvoicesPage: React.FC = () => {
                       value={editInvoice.amount}
                       onChange={(e) => {
                         const amount = parseFloat(e.target.value) || 0;
-                        // Calculate total from all enabled additional charges
-                        const chargesTotal = additionalCharges
+                        // Calculate total from all enabled additional charges for this currency
+                        const editCharges = getChargesForCurrency(editInvoice.currency || '');
+                        const chargesTotal = editCharges
                           .filter(c => c.enabled && c.rate > 0)
                           .reduce((sum, c) => sum + (amount * c.rate / 100), 0);
                         const total = amount + chargesTotal;
@@ -3986,7 +4000,7 @@ const InvoicesPage: React.FC = () => {
                     <span>Subtotal:</span>
                     <span>{editInvoice.currency ? formatCurrency(parseFloat(editInvoice.amount || '0'), editInvoice.currency) : '-'}</span>
                   </SummaryRow>
-                  {additionalCharges.filter(c => c.enabled && c.name && c.rate > 0).map((charge, idx) => {
+                  {getChargesForCurrency(editInvoice.currency || '').filter(c => c.enabled && c.name && c.rate > 0).map((charge, idx) => {
                     const chargeAmount = (parseFloat(editInvoice.amount || '0') * charge.rate / 100);
                     return (
                       <SummaryRow key={idx}>

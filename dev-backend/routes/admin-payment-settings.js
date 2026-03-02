@@ -20,12 +20,7 @@ const defaultPaymentSettings = {
   },
   bankTransfer: {},  // { "MYR": { enabled, bankName, accountNumber, accountName }, "KRW": { ... } }
   qrPayment: {},     // { "MYR": { enabled, qrImage, qrDescription }, "KRW": { ... } }
-  // 추가 청구 설정 (3개 항목 - Tax, Service Charge 등)
-  additionalCharges: [
-    { enabled: false, name: '', rate: 0 },
-    { enabled: false, name: '', rate: 0 },
-    { enabled: false, name: '', rate: 0 }
-  ]
+  additionalCharges: {}  // { "MYR": [{enabled, name, rate}, ...], "KRW": [...] }
 };
 
 // GET - 결제 설정 조회
@@ -47,7 +42,7 @@ router.get('/', async (req, res) => {
       paypal: { ...defaultPaymentSettings.paypal, ...savedSettings.paypal },
       bankTransfer: savedSettings.bankTransfer || {},
       qrPayment: savedSettings.qrPayment || {},
-      additionalCharges: savedSettings.additionalCharges || defaultPaymentSettings.additionalCharges
+      additionalCharges: savedSettings.additionalCharges || {}
     };
 
     // 시크릿 키 마스킹 (보안)
@@ -96,15 +91,26 @@ router.post('/', async (req, res) => {
 
     const { additionalCharges } = req.body;
 
-    // 추가 청구 항목 처리 (3개 항목)
-    const processedCharges = (additionalCharges || []).map((charge, index) => ({
-      enabled: charge?.enabled || false,
-      name: charge?.name || '',
-      rate: parseFloat(charge?.rate) || 0
-    }));
-    // 항상 3개 항목 유지
-    while (processedCharges.length < 3) {
-      processedCharges.push({ enabled: false, name: '', rate: 0 });
+    // Process additionalCharges — per-currency object: { "MYR": [{...}], "KRW": [{...}] }
+    let processedCharges = {};
+    if (additionalCharges && typeof additionalCharges === 'object' && !Array.isArray(additionalCharges)) {
+      for (const [cur, charges] of Object.entries(additionalCharges)) {
+        const arr = (Array.isArray(charges) ? charges : []).map(c => ({
+          enabled: c?.enabled || false,
+          name: c?.name || '',
+          rate: parseFloat(c?.rate) || 0
+        }));
+        while (arr.length < 3) arr.push({ enabled: false, name: '', rate: 0 });
+        processedCharges[cur] = arr;
+      }
+    } else if (Array.isArray(additionalCharges)) {
+      // Legacy flat array — keep as-is for backward compat
+      processedCharges = additionalCharges.map(c => ({
+        enabled: c?.enabled || false,
+        name: c?.name || '',
+        rate: parseFloat(c?.rate) || 0
+      }));
+      while (processedCharges.length < 3) processedCharges.push({ enabled: false, name: '', rate: 0 });
     }
 
     const settingsData = {

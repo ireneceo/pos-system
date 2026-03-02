@@ -1,11 +1,12 @@
 const cron = require('node-cron');
-const { Invoice, InvoiceItem, Restaurant, PlanPrice, EntityPlan, EntityPlanRestaurant, Order, Brand, Foodcourt } = require('../models');
+const { Invoice, InvoiceItem, Restaurant, PlanPrice, EntityPlan, EntityPlanRestaurant, Order, Brand, Foodcourt, SystemSettings } = require('../models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const systemLogger = require('../utils/systemLogger');
 const { sendIssuerEmail } = require('../utils/emailService');
 const { generateInvoiceNotificationEmail } = require('../utils/invoiceEmailTemplate');
 const { getSiteTimezone, getLocalDate } = require('../utils/dateTimeHelper');
+const { normalizeAdditionalCharges } = require('../utils/paymentSettingsHelper');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://dev.purplehere.com';
 const ADVANCE_DAYS = 14; // Generate invoices 14 days before billing day
@@ -137,7 +138,6 @@ class InvoiceScheduler {
    */
   async createSubscriptionInvoice(restaurant, billingStart, billingEnd, billingCycle) {
     const now = new Date();
-    const taxRate = 0.06; // 6% tax
 
     // Get plan price from subscription_snapshot or plan_prices table
     let planAmount = 0;
@@ -200,9 +200,27 @@ class InvoiceScheduler {
 
     const discountedAmount = planAmount - discountAmount;
 
-    // Calculate amounts (tax on discounted amount)
-    const taxAmount = Math.round(discountedAmount * taxRate * 100) / 100;
-    const totalAmount = Math.round((discountedAmount + taxAmount) * 100) / 100;
+    // Get additional charges from System Admin payment settings (per currency)
+    let additionalChargesConfig = [];
+    try {
+      const paymentSettings = await SystemSettings.findOne({
+        where: { setting_key: 'payment_settings' }
+      });
+      const rawCharges = paymentSettings?.setting_value?.additionalCharges;
+      const charges = normalizeAdditionalCharges(rawCharges, currency);
+      additionalChargesConfig = charges.filter(c => c.enabled && c.name && c.rate > 0);
+    } catch (err) {
+      console.error('Error fetching additional charges for subscription:', err.message);
+    }
+
+    // Calculate additional charges on discounted amount
+    const calculatedCharges = additionalChargesConfig.map(c => ({
+      name: c.name,
+      rate: parseFloat(c.rate) || 0,
+      amount: Math.round(discountedAmount * (parseFloat(c.rate) || 0) / 100 * 100) / 100
+    }));
+    const totalChargesAmount = calculatedCharges.reduce((sum, c) => sum + c.amount, 0);
+    const totalAmount = Math.round((discountedAmount + totalChargesAmount) * 100) / 100;
 
     // Generate invoice number
     const year = now.getFullYear();
@@ -262,7 +280,8 @@ class InvoiceScheduler {
       issued_at: now,
       issuer_type: 'system_admin',
       payer_type: payerType,
-      payer_id: payerId
+      payer_id: payerId,
+      additional_charges: calculatedCharges.length > 0 ? calculatedCharges : null
     });
 
     // Create invoice item
@@ -275,9 +294,9 @@ class InvoiceScheduler {
       calculation_method: 'fixed',
       fixed_amount: planAmount,
       calculated_amount: discountedAmount,
-      tax_rate: taxRate * 100,
-      tax_amount: taxAmount,
-      total_amount: totalAmount
+      tax_rate: 0,
+      tax_amount: 0,
+      total_amount: planAmount
     });
 
     console.log(`✅ Created invoice ${invoiceNumber} for ${restaurant.name} - ${currency} ${totalAmount.toFixed(2)}`);
@@ -440,10 +459,35 @@ class InvoiceScheduler {
               continue;
             }
 
-            const isZeroAmount = charges.totalAmount === 0;
-
             // Generate invoice number
             const invoiceNumber = await this.generateEntityInvoiceNumber(plan.entity_type, plan.entity_id);
+
+            // Get additional charges from issuer payment settings (per currency)
+            let entityAdditionalCharges = [];
+            try {
+              let rawCharges = null;
+              if (plan.entity_type === 'brand') {
+                const brand = await Brand.findByPk(plan.entity_id);
+                rawCharges = brand?.payment_settings?.additionalCharges;
+              } else if (plan.entity_type === 'foodcourt') {
+                const foodcourt = await Foodcourt.findByPk(plan.entity_id);
+                rawCharges = foodcourt?.payment_settings?.additionalCharges;
+              }
+              const normalized = normalizeAdditionalCharges(rawCharges, invoiceCurrency);
+              const enabledCharges = normalized.filter(c => c.enabled && c.name && c.rate > 0);
+              const discountedSub = charges.discountedSubtotal || charges.subtotal;
+              entityAdditionalCharges = enabledCharges.map(c => ({
+                name: c.name,
+                rate: parseFloat(c.rate) || 0,
+                amount: Math.round(discountedSub * (parseFloat(c.rate) || 0) / 100 * 100) / 100
+              }));
+            } catch (err) {
+              console.error('Error fetching entity additional charges:', err.message);
+            }
+
+            const entityChargesTotal = entityAdditionalCharges.reduce((sum, c) => sum + c.amount, 0);
+            const finalTotalAmount = Math.max(0, charges.totalAmount + entityChargesTotal);
+            const isZeroFinal = finalTotalAmount === 0;
 
             // Create invoice
             const invoice = await Invoice.create({
@@ -460,18 +504,19 @@ class InvoiceScheduler {
               discount_value: charges.discountValue || 0,
               discount_amount: charges.discountAmount || 0,
               discount_reason: charges.discountReason || null,
-              total_amount: Math.max(0, charges.totalAmount),
+              total_amount: finalTotalAmount,
               currency: invoiceCurrency,
-              status: isZeroAmount ? 'paid' : 'pending_payment',
-              paid_at: isZeroAmount ? today : null,
-              payment_notes: isZeroAmount ? '100% discount - auto-completed' : null,
+              status: isZeroFinal ? 'paid' : 'pending_payment',
+              paid_at: isZeroFinal ? today : null,
+              payment_notes: isZeroFinal ? '100% discount - auto-completed' : null,
               notes: `Auto-generated ${plan.entity_type} plan invoice for ${plan.name}. Period: ${periodStart.toISOString().split('T')[0]} ~ ${periodEnd.toISOString().split('T')[0]}`,
               issued_by: 0,
               issued_at: today,
               issuer_type: plan.entity_type,
               issuer_id: plan.entity_id,
               payer_type: 'restaurant',
-              payer_id: null
+              payer_id: null,
+              additional_charges: entityAdditionalCharges.length > 0 ? entityAdditionalCharges : null
             });
 
             // Create invoice items
@@ -482,7 +527,7 @@ class InvoiceScheduler {
             await InvoiceItem.bulkCreate(invoiceItems);
 
             result.generated++;
-            console.log(`✅ [ENTITY PLAN] ${invoiceNumber} for ${restaurant.name} - ${invoiceCurrency} ${charges.totalAmount.toFixed(2)} (billing_day: ${effectiveBillingDay})`);
+            console.log(`✅ [ENTITY PLAN] ${invoiceNumber} for ${restaurant.name} - ${invoiceCurrency} ${finalTotalAmount.toFixed(2)} (billing_day: ${effectiveBillingDay})`);
 
             // Send email notification (non-blocking)
             this.sendInvoiceEmail(invoice, restaurant, plan.entity_type, plan.entity_id, invoiceNumber);

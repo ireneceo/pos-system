@@ -1,25 +1,21 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-03-03
+**마지막 업데이트:** 2026-03-02
 **작업 상태:** 완료
 
 ### 진행 중인 작업
 - 없음
 
 ### 완료된 작업 (이번 세션)
-- **Floor Plan Editor 장식 요소 추가** — Counter(H/V), Kitchen/Entrance 텍스트형
-- **사이드바 아이콘 6개** — Round, Square, Rect(H/V), Counter(H/V)
-- **Size 프리셋 (S/M/L)** — Properties 패널에서 원클릭 사이즈 변경
-- **캔버스 풀 사이즈** — aspect-ratio 제거, 위아래 여백 없음
-- **viewBox 대칭 패딩** — 좌우/상하 균등 여백
-- **선택/삭제 버그 fix** — 드래그 후 선택 유지
-- **사이드바 스크롤 독립** — 캔버스 위치 고정
-- **시간 표시 제거** — 테이블 노드에서 경과 시간 제거
-- **letter-spacing 제거** — 라벨 자간 정상화
-- **정사각형 기본 seats 2**
+- 통화별 Additional Charges 데이터 구조 변경 (flat array → per-currency object)
+- Admin/Brand/Foodcourt Payment Settings UI를 통화 탭 안으로 이동
+- Admin/Brand/Foodcourt InvoicesPage에 통화별 charges 자동 적용
+- 백엔드 자동 인보이스(구독/Entity Plan)에 Payment Settings charges 적용 (6% 하드코딩 제거)
+- Foodcourt 결제설정 저장 시 additionalCharges 누락 버그 수정
+- RM→MYR 통화 코드 정규화 (normalizeCurrencyCode)
+- 운영서버 배포 완료 (2026-03-02)
 
 ### 다음 할 일
-- Payment Settings 통화별 Additional Charges 설계 및 구현
-- 운영서버 배포
+- DEVELOPMENT_PLAN.md 로드맵 기반 다음 작업 진행
 
 ---
 

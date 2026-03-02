@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-03-03
+> **최종 업데이트:** 2026-03-02
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -1194,6 +1194,38 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 - `dev-frontend/src/pages/FloorPlan/TableNode.tsx` — fixture 렌더링, 시간 제거, letter-spacing 제거
 - `dev-frontend/src/pages/FloorPlan/FloorPlanEditor.tsx` — Fixtures UI, Size 프리셋, 사이드바 스크롤, 선택 버그 fix
 - `dev-frontend/src/pages/FloorPlan/FloorPlanCanvas.tsx` — 캔버스 풀 사이즈, 대칭 패딩
+
+---
+
+## ✅ 완료: 통화별 Additional Charges + 인보이스 과금 통합 (2026-03-02)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 통화별 Additional Charges 데이터 구조 | `additionalCharges`를 flat array → per-currency object `{ "MYR": [...], "KRW": [...] }` 로 변경 | ✅ 완료 |
+| Payment Settings UI 통화 탭 통합 | Admin/Brand/Foodcourt Payment Settings에서 Additional Charges를 Manual Payment 통화 탭 안으로 이동 | ✅ 완료 |
+| Admin InvoicesPage charges 적용 | 수동 인보이스 생성 시 통화별 charges 자동 계산 + API에 `additional_charges` 전송 | ✅ 완료 |
+| Brand InvoicesPage charges 적용 | `handleSubmitInvoice`에 `additional_charges` 추가, `tax_rate` 6% 하드코딩 제거 | ✅ 완료 |
+| Foodcourt InvoicesPage charges 전체 추가 | `additionalChargesMap` + `getChargesForCurrency` + UI/계산/제출 전체 신규 구현 | ✅ 완료 |
+| 백엔드 자동 인보이스 charges 적용 | 구독/Entity Plan 자동 인보이스에서 6% 하드코딩 제거 → Payment Settings 참조 | ✅ 완료 |
+| Foodcourt 결제설정 저장 버그 수정 | `validPaymentSettings`에 `additionalCharges` 누락 → 추가 | ✅ 완료 |
+| RM→MYR 통화 코드 정규화 | `normalizeCurrencyCode()` 프론트/백엔드 추가, DB의 RM↔MYR 불일치 해결 | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/utils/paymentSettingsHelper.js` — `normalizeAdditionalCharges` + `CURRENCY_ALIASES`
+- `dev-backend/routes/admin-payment-settings.js` — per-currency object 처리
+- `dev-backend/routes/brands.js` — default `additionalCharges: {}`
+- `dev-backend/routes/foodcourts.js` — `additionalCharges` 저장 버그 수정
+- `dev-backend/routes/invoices.js` — `getAdditionalCharges`에 currency 파라미터
+- `dev-backend/services/invoiceScheduler.js` — 구독/Entity Plan 자동 인보이스 charges 적용
+- `dev-frontend/src/utils/currency.ts` — `normalizeCurrencyCode()`
+- `dev-frontend/src/pages/Admin/PaymentSettingsPage.tsx` — 통화 탭 내 charges UI
+- `dev-frontend/src/pages/Admin/InvoicesPage.tsx` — `additionalChargesMap` + 통화별 charges
+- `dev-frontend/src/pages/BrandGeneral/BrandPaymentSettingsPage.tsx` — 통화 탭 내 charges UI
+- `dev-frontend/src/pages/BrandGeneral/BrandInvoicesPage.tsx` — charges 계산/전송
+- `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtPaymentSettingsPage.tsx` — 통화 탭 내 charges UI
+- `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtInvoicesPage.tsx` — charges 전체 신규 구현
 
 ---
 

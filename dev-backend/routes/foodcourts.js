@@ -415,7 +415,8 @@ router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
         stripe: payment_settings.stripe || { enabled: false },
         paypal: payment_settings.paypal || { enabled: false },
         bankTransfer: payment_settings.bankTransfer || {},
-        qrPayment: payment_settings.qrPayment || {}
+        qrPayment: payment_settings.qrPayment || {},
+        additionalCharges: payment_settings.additionalCharges || {}
       };
       foodcourt.payment_settings = validPaymentSettings;
     }

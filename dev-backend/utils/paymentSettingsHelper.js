@@ -77,7 +77,35 @@ function hasPaymentMethodForCurrency(paymentSettings, currency) {
   return methods.length > 0;
 }
 
+const DEFAULT_CHARGES = [
+  { enabled: false, name: '', rate: 0 },
+  { enabled: false, name: '', rate: 0 },
+  { enabled: false, name: '', rate: 0 }
+];
+
+/**
+ * Normalize additionalCharges to an array for a given currency.
+ * Handles both legacy flat array and new per-currency object format.
+ * @param {Array|Object} additionalCharges - The additionalCharges data
+ * @param {string} [currency] - Currency code (required for per-currency object format)
+ * @returns {Array} Array of charge items [{enabled, name, rate}, ...]
+ */
+// Map legacy currency symbols to ISO codes
+const CURRENCY_ALIASES = { RM: 'MYR' };
+
+function normalizeAdditionalCharges(additionalCharges, currency) {
+  if (!additionalCharges) return [...DEFAULT_CHARGES];
+  if (Array.isArray(additionalCharges)) return additionalCharges; // legacy flat array
+  if (currency) {
+    const code = CURRENCY_ALIASES[currency] || currency;
+    if (additionalCharges[code]) return additionalCharges[code];
+    if (additionalCharges[currency]) return additionalCharges[currency];
+  }
+  return [...DEFAULT_CHARGES];
+}
+
 module.exports = {
   getAvailablePaymentMethods,
-  hasPaymentMethodForCurrency
+  hasPaymentMethodForCurrency,
+  normalizeAdditionalCharges
 };

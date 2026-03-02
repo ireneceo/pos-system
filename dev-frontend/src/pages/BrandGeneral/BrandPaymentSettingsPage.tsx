@@ -53,7 +53,7 @@ interface PaymentSettings {
   paypal: PayPalConfig;
   bankTransfer: { [currency: string]: BankTransferConfig };
   qrPayment: { [currency: string]: QRPaymentConfig };
-  additionalCharges?: AdditionalChargeConfig[];
+  additionalCharges: { [currency: string]: AdditionalChargeConfig[] };
 }
 
 const Container = styled.div`
@@ -304,11 +304,7 @@ const defaultPaymentSettings: PaymentSettings = {
   },
   bankTransfer: {},
   qrPayment: {},
-  additionalCharges: [
-    { enabled: false, name: '', rate: 0 },
-    { enabled: false, name: '', rate: 0 },
-    { enabled: false, name: '', rate: 0 }
-  ]
+  additionalCharges: {}
 };
 
 const BrandPaymentSettingsPage: React.FC = () => {
@@ -407,11 +403,14 @@ const BrandPaymentSettingsPage: React.FC = () => {
 
         // Set payment settings
         if (data.payment_settings && Object.keys(data.payment_settings).length > 0) {
+          let charges = data.payment_settings.additionalCharges || {};
+          if (Array.isArray(charges)) charges = {};
           setPaymentSettings({
             ...defaultPaymentSettings,
             ...data.payment_settings,
             bankTransfer: data.payment_settings.bankTransfer || {},
-            qrPayment: data.payment_settings.qrPayment || {}
+            qrPayment: data.payment_settings.qrPayment || {},
+            additionalCharges: charges
           });
         }
       }
@@ -530,6 +529,29 @@ const BrandPaymentSettingsPage: React.FC = () => {
     return paymentSettings.qrPayment[currency] || { enabled: false, qrImage: '', qrDescription: '' };
   };
 
+  const defaultCharges: AdditionalChargeConfig[] = [
+    { enabled: false, name: '', rate: 0 },
+    { enabled: false, name: '', rate: 0 },
+    { enabled: false, name: '', rate: 0 }
+  ];
+
+  const getChargesForCurrency = (currency: string): AdditionalChargeConfig[] => {
+    return paymentSettings.additionalCharges[currency] || defaultCharges;
+  };
+
+  const handleChargeChange = (currency: string, index: number, field: keyof AdditionalChargeConfig, value: boolean | string | number) => {
+    const currentCharges = [...getChargesForCurrency(currency)];
+    currentCharges[index] = { ...currentCharges[index], [field]: value };
+    setPaymentSettings(prev => ({
+      ...prev,
+      additionalCharges: {
+        ...prev.additionalCharges,
+        [currency]: currentCharges
+      }
+    }));
+    setHasChanges(true);
+  };
+
   const savePaymentSettings = async () => {
     if (!hasChanges || !brandId) {
       console.log('No changes to save or no brand ID');
@@ -587,82 +609,6 @@ const BrandPaymentSettingsPage: React.FC = () => {
       <Container>
         <PageHeader title="Payment Settings" />
         <Content>
-          {/* Additional Charges Section - 추가 청구 설정 */}
-          <Section>
-            <SectionTitle>Additional Charges</SectionTitle>
-            <SectionDescription>
-              Configure additional charges for invoices. These will be applied to all invoices you generate. You can set up to 3 custom charge items (e.g., Tax, Service Charge, Processing Fee).
-            </SectionDescription>
-
-            {[0, 1, 2].map((index) => {
-              const charge = paymentSettings.additionalCharges?.[index] || { enabled: false, name: '', rate: 0 };
-              return (
-                <PaymentMethodCard key={index} style={{ marginBottom: '16px' }}>
-                  <MethodHeader>
-                    <MethodInfo>
-                      <MethodLabel>Charge Item {index + 1}</MethodLabel>
-                      <MethodDescription>{charge.enabled && charge.name ? `${charge.name} (${charge.rate}%)` : 'Not configured'}</MethodDescription>
-                    </MethodInfo>
-                    <ToggleSwitch>
-                      <ToggleInput
-                        type="checkbox"
-                        checked={charge.enabled}
-                        onChange={(e) => {
-                          const newCharges = [...(paymentSettings.additionalCharges || [{ enabled: false, name: '', rate: 0 }, { enabled: false, name: '', rate: 0 }, { enabled: false, name: '', rate: 0 }])];
-                          newCharges[index] = { ...newCharges[index], enabled: e.target.checked };
-                          setPaymentSettings(prev => ({ ...prev, additionalCharges: newCharges }));
-                          setHasChanges(true);
-                        }}
-                      />
-                      <ToggleSlider />
-                    </ToggleSwitch>
-                  </MethodHeader>
-
-                  {charge.enabled && (
-                    <MethodContent>
-                      <FormRow>
-                        <FormGroup>
-                          <Label>Item Name</Label>
-                          <Input
-                            type="text"
-                            value={charge.name}
-                            onChange={(e) => {
-                              const newCharges = [...(paymentSettings.additionalCharges || [{ enabled: false, name: '', rate: 0 }, { enabled: false, name: '', rate: 0 }, { enabled: false, name: '', rate: 0 }])];
-                              newCharges[index] = { ...newCharges[index], name: e.target.value };
-                              setPaymentSettings(prev => ({ ...prev, additionalCharges: newCharges }));
-                              setHasChanges(true);
-                            }}
-                            placeholder="e.g., Tax, Service Charge, Processing Fee"
-                          />
-                          <HelpText>Name displayed on invoices</HelpText>
-                        </FormGroup>
-
-                        <FormGroup>
-                          <Label>Rate (%)</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.01"
-                            value={charge.rate}
-                            onChange={(e) => {
-                              const newCharges = [...(paymentSettings.additionalCharges || [{ enabled: false, name: '', rate: 0 }, { enabled: false, name: '', rate: 0 }, { enabled: false, name: '', rate: 0 }])];
-                              newCharges[index] = { ...newCharges[index], rate: parseFloat(e.target.value) || 0 };
-                              setPaymentSettings(prev => ({ ...prev, additionalCharges: newCharges }));
-                              setHasChanges(true);
-                            }}
-                            placeholder="0"
-                          />
-                          <HelpText>Percentage to add to subtotal</HelpText>
-                        </FormGroup>
-                      </FormRow>
-                    </MethodContent>
-                  )}
-                </PaymentMethodCard>
-              );
-            })}
-          </Section>
-
           {/* Section 1: Currency Settings */}
           <Section>
             <SectionTitle>Currency Settings</SectionTitle>
@@ -930,6 +876,65 @@ const BrandPaymentSettingsPage: React.FC = () => {
                     </MethodContent>
                   )}
                 </PaymentMethodCard>
+
+                {/* Additional Charges (per currency) */}
+                <SectionTitle style={{ fontSize: '15px', marginTop: '24px', marginBottom: '8px' }}>
+                  Additional Charges ({selectedCurrency})
+                </SectionTitle>
+                <SectionDescription style={{ marginBottom: '12px' }}>
+                  Configure tax, service charge, etc. for {selectedCurrency} invoices. Up to 3 items.
+                </SectionDescription>
+
+                {[0, 1, 2].map((index) => {
+                  const charge = getChargesForCurrency(selectedCurrency)[index] || { enabled: false, name: '', rate: 0 };
+                  return (
+                    <PaymentMethodCard key={`charge-${selectedCurrency}-${index}`} style={{ marginBottom: '12px' }}>
+                      <MethodHeader>
+                        <MethodInfo>
+                          <MethodLabel>Charge Item {index + 1}</MethodLabel>
+                          <MethodDescription>{charge.enabled && charge.name ? `${charge.name} (${charge.rate}%)` : 'Not configured'}</MethodDescription>
+                        </MethodInfo>
+                        <ToggleSwitch>
+                          <ToggleInput
+                            type="checkbox"
+                            checked={charge.enabled}
+                            onChange={(e) => handleChargeChange(selectedCurrency, index, 'enabled', e.target.checked)}
+                          />
+                          <ToggleSlider />
+                        </ToggleSwitch>
+                      </MethodHeader>
+                      {charge.enabled && (
+                        <MethodContent>
+                          <FormRow>
+                            <FormGroup>
+                              <Label>Item Name</Label>
+                              <Input
+                                type="text"
+                                value={charge.name}
+                                onChange={(e) => handleChargeChange(selectedCurrency, index, 'name', e.target.value)}
+                                placeholder="e.g., SST, VAT, Service Charge"
+                              />
+                              <HelpText>Name displayed on invoices</HelpText>
+                            </FormGroup>
+                            <FormGroup>
+                              <Label>Rate (%)</Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.01"
+                                value={charge.rate}
+                                onChange={(e) => handleChargeChange(selectedCurrency, index, 'rate', parseFloat(e.target.value) || 0)}
+                                placeholder="0"
+                              />
+                              <HelpText>Percentage to add to subtotal</HelpText>
+                            </FormGroup>
+                          </FormRow>
+                        </MethodContent>
+                      )}
+                    </PaymentMethodCard>
+                  );
+                })}
               </>
             )}
           </Section>
