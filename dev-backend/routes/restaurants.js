@@ -239,6 +239,104 @@ router.get('/slug/:slug', async (req, res) => {
   }
 });
 
+// Get table status for floor plan - MUST be before /:id route
+router.get('/:id/table-status', authenticateToken, async (req, res) => {
+  try {
+    const restaurantId = req.params.id;
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const activeOrders = await Order.findAll({
+      where: {
+        restaurant_id: restaurantId,
+        table_number: { [Op.ne]: null },
+        order_type: 'dine_in',
+        status: { [Op.notIn]: ['completed', 'cancelled'] },
+        payment_status: { [Op.ne]: 'completed' },
+        [Op.or]: [{ is_deleted: false }, { is_deleted: null }],
+        createdAt: { [Op.between]: [todayStart, todayEnd] }
+      },
+      attributes: [
+        'table_number', 'status', 'payment_status', 'order_number', 'id',
+        'total_amount', 'createdAt', 'customer_name', 'customer_id',
+        'guest_count', 'order_items', 'subtotal', 'tax', 'service_charge',
+        'discount', 'coupon_discount', 'discount_policy_amount', 'point_discount',
+        'order_type', 'cashier_name'
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    const tableStatusMap = {};
+
+    for (const order of activeOrders) {
+      const tn = order.table_number;
+      if (!tableStatusMap[tn]) {
+        // First (most recent) order sets detail fields
+        let orderItems = [];
+        try {
+          orderItems = typeof order.order_items === 'string'
+            ? JSON.parse(order.order_items)
+            : (order.order_items || []);
+        } catch (e) { orderItems = []; }
+
+        tableStatusMap[tn] = {
+          tableNumber: tn,
+          status: 'available',
+          orderCount: 0,
+          totalAmount: 0,
+          elapsedMinutes: 0,
+          orderId: order.id,
+          orderNumber: order.order_number,
+          customerName: order.customer_name,
+          customerId: order.customer_id,
+          paymentStatus: order.payment_status,
+          guestCount: order.guest_count,
+          orderItems: orderItems,
+          subtotal: parseFloat(order.subtotal || 0),
+          tax: parseFloat(order.tax || 0),
+          serviceCharge: parseFloat(order.service_charge || 0),
+          discount: parseFloat(order.discount || 0) + parseFloat(order.coupon_discount || 0) + parseFloat(order.discount_policy_amount || 0) + parseFloat(order.point_discount || 0),
+          cashierName: order.cashier_name,
+          orderStatus: order.status
+        };
+      }
+
+      tableStatusMap[tn].orderCount++;
+      tableStatusMap[tn].totalAmount += parseFloat(order.total_amount || 0);
+
+      const elapsed = Math.round((Date.now() - new Date(order.createdAt).getTime()) / 60000);
+      if (elapsed > tableStatusMap[tn].elapsedMinutes) {
+        tableStatusMap[tn].elapsedMinutes = elapsed;
+      }
+    }
+
+    // Derive composite status per table
+    for (const tn of Object.keys(tableStatusMap)) {
+      const orders = activeOrders.filter(o => o.table_number === tn);
+      const statuses = orders.map(o => o.status);
+      const paymentStatuses = orders.map(o => o.payment_status);
+
+      if (paymentStatuses.includes('failed') || statuses.includes('outstanding')) {
+        tableStatusMap[tn].status = 'needs-attention';
+      } else if (statuses.includes('ready') || statuses.includes('served')) {
+        tableStatusMap[tn].status = 'ready';
+      } else if (statuses.includes('preparing') || statuses.includes('pending') || statuses.includes('awaiting_payment')) {
+        tableStatusMap[tn].status = 'occupied';
+      } else {
+        tableStatusMap[tn].status = 'occupied';
+      }
+    }
+
+    res.json({ success: true, data: tableStatusMap });
+  } catch (error) {
+    console.error('Error fetching table status:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Get restaurant company info (for invoices) - MUST be before /:id route
 router.get('/:id/company-info', async (req, res) => {
   try {
@@ -854,6 +952,7 @@ router.put('/:id', authenticateToken, validateRestaurantCreation, async (req, re
     if (req.body.payment_settings !== undefined) updateData.payment_settings = req.body.payment_settings;
     if (req.body.operation_settings !== undefined) updateData.operation_settings = req.body.operation_settings;
     if (req.body.table_settings !== undefined) updateData.table_settings = req.body.table_settings;
+    if (req.body.floor_plan !== undefined) updateData.floor_plan = req.body.floor_plan;
     if (req.body.printer_settings !== undefined) updateData.printer_settings = req.body.printer_settings;
 
     // Brand association

@@ -6,7 +6,8 @@
       "Bash(curl:*)",
       "Bash(git push:*)",
       "Bash(npm run build:dev:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(python3 -m json.tool)"
     ],
     "deny": [],
     "ask": []

@@ -1,0 +1,208 @@
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import styled from 'styled-components';
+import { FloorPlanData, TableStatusInfo } from './types';
+import TableNode from './TableNode';
+
+type TableStatus = 'available' | 'occupied' | 'ready' | 'needs-attention';
+
+interface FloorPlanCanvasProps {
+  floorPlan: FloorPlanData;
+  tableStatuses?: Record<string, TableStatusInfo>;
+  isEditing?: boolean;
+  selectedTableId?: string | null;
+  onTableClick?: (tableNumber: string) => void;
+  onTableMouseDown?: (e: React.MouseEvent, tableId: string) => void;
+  onTableTouchStart?: (e: React.TouchEvent, tableId: string) => void;
+  onCanvasClick?: () => void;
+  currency?: string;
+}
+
+const CanvasOuter = styled.div`
+  width: 100%;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #F0F2F5;
+  border-radius: 8px;
+`;
+
+const CanvasInner = styled.div<{ $aspectRatio: string }>`
+  position: relative;
+  width: 100%;
+  max-height: 100%;
+  aspect-ratio: ${p => p.$aspectRatio};
+  background: white;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  overflow: hidden;
+  touch-action: none;
+`;
+
+const GridOverlay = styled.div<{ $gridSize: number; $scale: number }>`
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, #F0F2F5 1px, transparent 1px),
+    linear-gradient(to bottom, #F0F2F5 1px, transparent 1px);
+  background-size:
+    ${p => p.$gridSize / p.$scale}px ${p => p.$gridSize / p.$scale}px;
+  opacity: 0.5;
+`;
+
+const ScaledLayer = styled.div`
+  position: absolute;
+  transform-origin: 0 0;
+`;
+
+const EmptyMessage = styled.div`
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #9CA3AF;
+  font-size: 14px;
+  gap: 8px;
+`;
+
+const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
+  floorPlan,
+  tableStatuses = {},
+  isEditing = false,
+  selectedTableId,
+  onTableClick,
+  onTableMouseDown,
+  onTableTouchStart,
+  onCanvasClick,
+  currency = ''
+}) => {
+  const outerRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [uniformScale, setUniformScale] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+
+  // In view mode (not editing), compute bounding box of all tables + padding
+  const viewBox = useMemo(() => {
+    if (isEditing || floorPlan.tables.length === 0) {
+      return { x: 0, y: 0, w: floorPlan.canvasWidth, h: floorPlan.canvasHeight };
+    }
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const t of floorPlan.tables) {
+      const halfW = t.width / 2;
+      const halfH = t.height / 2;
+      minX = Math.min(minX, t.x - halfW);
+      minY = Math.min(minY, t.y - halfH);
+      maxX = Math.max(maxX, t.x + halfW);
+      maxY = Math.max(maxY, t.y + halfH);
+    }
+
+    // Add padding (15% of bounds or minimum 60px)
+    const boundsW = maxX - minX;
+    const boundsH = maxY - minY;
+    const padX = Math.max(boundsW * 0.15, 60);
+    const padY = Math.max(boundsH * 0.15, 60);
+
+    const vx = Math.max(0, minX - padX);
+    const vy = Math.max(0, minY - padY);
+    const vw = Math.min(floorPlan.canvasWidth - vx, boundsW + padX * 2);
+    const vh = Math.min(floorPlan.canvasHeight - vy, boundsH + padY * 2);
+
+    return { x: vx, y: vy, w: vw, h: vh };
+  }, [floorPlan, isEditing]);
+
+  const updateScale = useCallback(() => {
+    if (!innerRef.current) return;
+    const rect = innerRef.current.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
+    // Use uniform scale: pick the larger ratio so everything fits
+    const scaleX = viewBox.w / rect.width;
+    const scaleY = viewBox.h / rect.height;
+    const s = Math.max(scaleX, scaleY);
+    setUniformScale(s);
+
+    // Center the content within the container
+    const renderedW = viewBox.w / s;
+    const renderedH = viewBox.h / s;
+    setOffset({
+      x: (rect.width - renderedW) / 2,
+      y: (rect.height - renderedH) / 2
+    });
+  }, [viewBox]);
+
+  useEffect(() => {
+    updateScale();
+    const observer = new ResizeObserver(() => updateScale());
+    if (innerRef.current) observer.observe(innerRef.current);
+    return () => observer.disconnect();
+  }, [updateScale]);
+
+  const getTableStatus = (tableNumber: string): TableStatus => {
+    return (tableStatuses[tableNumber]?.status as TableStatus) || 'available';
+  };
+
+  const aspectRatio = `${viewBox.w} / ${viewBox.h}`;
+
+  return (
+    <CanvasOuter ref={outerRef}>
+      <CanvasInner
+        ref={innerRef}
+        $aspectRatio={aspectRatio}
+        onClick={(e) => {
+          if (e.target === e.currentTarget || (e.target as HTMLElement).closest('[data-scaled-layer]')) {
+            onCanvasClick?.();
+          }
+        }}
+      >
+        {isEditing && floorPlan.showGrid && (
+          <GridOverlay $gridSize={floorPlan.gridSize} $scale={uniformScale} />
+        )}
+
+        <ScaledLayer
+          data-scaled-layer
+          style={{
+            transform: `scale(${1 / uniformScale})`,
+            left: isEditing ? 0 : `${offset.x - viewBox.x / uniformScale}px`,
+            top: isEditing ? 0 : `${offset.y - viewBox.y / uniformScale}px`,
+            width: isEditing ? `${floorPlan.canvasWidth}px` : `${viewBox.w}px`,
+            height: isEditing ? `${floorPlan.canvasHeight}px` : `${viewBox.h}px`
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) onCanvasClick?.();
+          }}
+        >
+          {floorPlan.tables.map(table => (
+            <TableNode
+              key={table.id}
+              table={table}
+              status={getTableStatus(table.tableNumber)}
+              isSelected={selectedTableId === table.id}
+              isEditing={isEditing}
+              onClick={onTableClick}
+              onMouseDown={onTableMouseDown}
+              onTouchStart={onTableTouchStart}
+              statusInfo={tableStatuses[table.tableNumber]}
+              currency={currency}
+            />
+          ))}
+        </ScaledLayer>
+
+        {floorPlan.tables.length === 0 && (
+          <EmptyMessage>
+            <span style={{ fontSize: '32px' }}>&#x25A6;</span>
+            {isEditing
+              ? 'Add tables using the toolbar above'
+              : 'No floor plan configured yet'}
+          </EmptyMessage>
+        )}
+      </CanvasInner>
+    </CanvasOuter>
+  );
+};
+
+export default FloorPlanCanvas;

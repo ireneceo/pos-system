@@ -34,6 +34,12 @@ Order.init({
     type: DataTypes.STRING(10),
     allowNull: true
   },
+  guest_count: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: null,
+    comment: 'Number of guests at the table (dine-in only)'
+  },
   pager_number: {
     type: DataTypes.STRING(10),
     allowNull: true,

@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-03-01
+> **최종 업데이트:** 2026-03-02
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -1111,6 +1111,46 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 - `dev-frontend/src/pages/Owner/NoticesPage.tsx` - URL 링크
 - `dev-frontend/src/pages/Restaurant/NoticesPage.tsx` - URL 링크
 - 53개 프론트엔드 페이지 - 인라인 EmptyState 제거, 공유 컴포넌트 import
+
+---
+
+## ✅ 완료: Floor Plan 매장 운영 허브 대규모 리팩토링 (2026-03-02)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| DB guest_count 컬럼 추가 | Order 모델에 인원수 필드 추가 | ✅ 완료 |
+| table-status API 확장 | 주문상세, 고객정보, 아이템 목록 포함 확장 | ✅ 완료 |
+| types.ts 확장 | TableStatusInfo 16개 필드 (OrderItemSummary 포함) | ✅ 완료 |
+| TableNode guestCount 표시 | 테이블 노드에 인원수/금액/시간 표시 | ✅ 완료 |
+| OrderContext guest_count 추가 | addOrder에 guest_count 매핑 | ✅ 완료 |
+| FloorPlanStatsBar 신규 | 하단 범례 + 통계 바 | ✅ 완료 |
+| TableDetailPanel 신규 | 우측 상세 패널 (주문조회/상태변경/결제 진입) | ✅ 완료 |
+| FloorPlanPage 2단 레이아웃 | 캔버스 + 디테일패널 + 결제모달 통합 | ✅ 완료 |
+| OrderOverlay 신규 | POS Terminal 동일 스타일 메뉴+카트+주문 오버레이 | ✅ 완료 |
+| POS Terminal guest_count UI | 테이블번호 옆 인원수 셀렉트 | ✅ 완료 |
+| FloorPlanCanvas auto-fit | 테이블 배치 기준 자동 뷰포트 + 균일 스케일링 | ✅ 완료 |
+| Live Orders guest_count 표시 | 테이블번호 옆 인원수 (4개 위치) | ✅ 완료 |
+| 소켓 emission plain object 변환 | 모든 order-created/updated emit에서 .get({plain:true}) 적용 | ✅ 완료 |
+| table-status API 결제완료 필터 | payment_status='completed' 주문 제외 | ✅ 완료 |
+
+### 신규 파일
+- `dev-frontend/src/pages/FloorPlan/TableDetailPanel.tsx`
+- `dev-frontend/src/pages/FloorPlan/OrderOverlay.tsx`
+- `dev-frontend/src/pages/FloorPlan/FloorPlanStatsBar.tsx`
+
+### 수정된 파일
+- `dev-backend/models/Order.js` — guest_count 컬럼
+- `dev-backend/routes/restaurants.js` — table-status API 확장 + 결제완료 필터
+- `dev-backend/routes/orders.js` — 소켓 emit plain object 변환 (8곳)
+- `dev-frontend/src/pages/FloorPlan/types.ts` — TableStatusInfo 확장
+- `dev-frontend/src/pages/FloorPlan/TableNode.tsx` — guestCount/금액/시간 표시
+- `dev-frontend/src/pages/FloorPlan/FloorPlanCanvas.tsx` — auto-fit viewBox + 균일 스케일링
+- `dev-frontend/src/pages/FloorPlan/FloorPlanPage.tsx` — 2단 레이아웃 + 패널/오버레이/결제 통합
+- `dev-frontend/src/contexts/OrderContext.tsx` — guest_count 매핑
+- `dev-frontend/src/pages/POSTerminal/POSTerminalPage.tsx` — guest_count 셀렉트 UI
+- `dev-frontend/src/pages/LiveOrders/LiveOrdersPage.tsx` — guest_count 표시 (4곳)
 
 ---
 

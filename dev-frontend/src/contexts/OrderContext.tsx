@@ -146,6 +146,7 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
         order_date: new Date(),
         cashier_id: (order as any).cashier_id || null,
         cashier_name: (order as any).cashier_name || null,
+        guest_count: (order as any).guest_count || null,
         order_items: order.items.map(item => ({
           id: item.id,
           name: item.menuItem.name,

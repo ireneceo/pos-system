@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled from 'styled-components';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import PaymentModal from '../../components/POSTerminal/PaymentModal';
 import OptionModal from '../../components/POSTerminal/OptionModal';
 import OrderCompleteModal from '../../components/POSTerminal/OrderCompleteModal';
@@ -1122,6 +1122,9 @@ interface OrderItemType {
 
 const POSTerminalPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const fromFloorPlan = searchParams.get('from') === 'floor-plan';
+  const initialTableFromUrl = searchParams.get('table');
   const { user, switchUser, logout: authLogout } = useAuth();
   const restaurantId = useRestaurantId();
   const { addOrder } = useOrders();
@@ -1156,6 +1159,7 @@ const POSTerminalPage: React.FC = () => {
   const [showCouponError, setShowCouponError] = useState(false);
   const [orderType, setOrderType] = useState<'dine-in' | 'takeaway'>('dine-in');
   const [tableNumber, setTableNumber] = useState('');
+  const [guestCount, setGuestCount] = useState(0);
   const [availableTables, setAvailableTables] = useState<string[]>([]);
   const [pagerNumber, setPagerNumber] = useState('');
   const [pagerSearchQuery, setPagerSearchQuery] = useState('');
@@ -1325,6 +1329,14 @@ const POSTerminalPage: React.FC = () => {
 
     loadTableSettings();
   }, [user?.restaurantId]);
+
+  // Set initial table from floor plan URL param
+  useEffect(() => {
+    if (initialTableFromUrl && availableTables.length > 0 && availableTables.includes(initialTableFromUrl)) {
+      setTableNumber(initialTableFromUrl);
+      setOrderType('dine-in');
+    }
+  }, [initialTableFromUrl, availableTables]);
 
   // Load payment settings and currency settings from restaurant API
   useEffect(() => {
@@ -1618,6 +1630,7 @@ const POSTerminalPage: React.FC = () => {
     setCustomerSearchQuery('');
     setOrderType('dine-in');
     setTableNumber('');
+    setGuestCount(0);
     setPagerNumber('');
     setPagerSearchQuery('');
     setSearchQuery('');
@@ -1842,6 +1855,7 @@ const POSTerminalPage: React.FC = () => {
       orderType: orderType,
       orderSource: 'pos' as const,
       tableNumber: orderType === 'dine-in' && tableNumber ? tableNumber : undefined,
+      guest_count: orderType === 'dine-in' && guestCount > 0 ? guestCount : null,
       pagerNumber: pagerNumber || undefined,
       cashier_id: user?.id ? Number(user.id) : null,
       cashier_name: user?.name || null
@@ -1881,6 +1895,7 @@ const POSTerminalPage: React.FC = () => {
       setAppliedDiscountPolicy(null);
       setCouponCode('');
       setTableNumber('');
+      setGuestCount(0);
       setPagerNumber('');
       setPagerSearchQuery('');
       setSelectedCustomerForOrder(null);
@@ -1994,6 +2009,7 @@ const POSTerminalPage: React.FC = () => {
       orderType: orderType,
       orderSource: 'pos' as const,
       tableNumber: orderType === 'dine-in' && tableNumber ? tableNumber : undefined,
+      guest_count: orderType === 'dine-in' && guestCount > 0 ? guestCount : null,
       pagerNumber: pagerNumber || undefined,
       cashier_id: user?.id ? Number(user.id) : null,
       cashier_name: user?.name || null
@@ -2051,6 +2067,7 @@ const POSTerminalPage: React.FC = () => {
       setAppliedDiscountPolicy(null);
       setCouponCode('');
       setTableNumber('');
+      setGuestCount(0);
       setPagerNumber('');
       setPagerSearchQuery('');
       setSelectedCustomerForOrder(null);
@@ -2461,6 +2478,21 @@ const POSTerminalPage: React.FC = () => {
                   <option key={table} value={table}>{table}</option>
                 ))}
               </TableNumberSelect>
+              {tableNumber && (
+                <>
+                  <TableNumberLabel>Guests:</TableNumberLabel>
+                  <TableNumberSelect
+                    value={guestCount}
+                    onChange={(e) => setGuestCount(Number(e.target.value))}
+                    style={{ width: '80px' }}
+                  >
+                    <option value={0}>-</option>
+                    {[1,2,3,4,5,6,7,8,9,10,12,15,20].map(n => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </TableNumberSelect>
+                </>
+              )}
             </TableNumberSection>
           )}
 
@@ -2755,6 +2787,9 @@ const POSTerminalPage: React.FC = () => {
           isOpen={showOrderCompleteModal}
           onClose={() => {
             handleResetPOS();
+            if (fromFloorPlan) {
+              navigate(`/restaurant/${restaurantId}/floor-plan`);
+            }
           }}
           orderData={completedOrderData}
           onPrintBill={() => {

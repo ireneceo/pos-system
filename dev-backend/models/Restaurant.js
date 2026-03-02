@@ -438,6 +438,19 @@ Restaurant.init({
       this.setDataValue('table_settings', value ? JSON.stringify(value) : null);
     }
   },
+  floor_plan: {
+    type: DataTypes.TEXT('medium'),
+    allowNull: true,
+    comment: 'JSON floor plan layout data (table positions, shapes, sizes)',
+    get() {
+      const rawValue = this.getDataValue('floor_plan');
+      if (!rawValue) return null;
+      try { return JSON.parse(rawValue); } catch (e) { return null; }
+    },
+    set(value) {
+      this.setDataValue('floor_plan', value ? JSON.stringify(value) : null);
+    }
+  },
   printer_settings: {
     type: DataTypes.TEXT,
     allowNull: true,

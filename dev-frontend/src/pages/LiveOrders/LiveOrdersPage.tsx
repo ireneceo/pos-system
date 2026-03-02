@@ -93,6 +93,7 @@ interface DbOrder {
   customer_name: string | null;
   customer_phone: string | null;
   table_number: string | null;
+  guest_count?: number | null;
   pager_number: string | null;
   total_amount: number;
   status: 'outstanding' | 'pending' | 'preparing' | 'ready' | 'served' | 'completed' | 'cancelled';
@@ -2974,7 +2975,7 @@ const LiveOrdersPage: React.FC = () => {
                         {order.customer_name || 'Guest'}
                         {order.customer_phone && <><br />{order.customer_phone}</>}
                         {order.table_number && (
-                          <><br /><span style={{ color: '#635BFF', fontWeight: 500 }}>Table: {order.table_number}</span></>
+                          <><br /><span style={{ color: '#635BFF', fontWeight: 500 }}>Table: {order.table_number}{order.guest_count ? ` (${order.guest_count}p)` : ''}</span></>
                         )}
                         {order.pager_number && (
                           <><br />Pager: {order.pager_number}</>
@@ -3582,7 +3583,7 @@ const LiveOrdersPage: React.FC = () => {
                     {selectedOrder.table_number && (
                       <DetailRow>
                         <DetailLabel>Table Number:</DetailLabel>
-                        <DetailValue>{selectedOrder.table_number}</DetailValue>
+                        <DetailValue>{selectedOrder.table_number}{selectedOrder.guest_count ? ` (${selectedOrder.guest_count} guests)` : ''}</DetailValue>
                       </DetailRow>
                     )}
                     {selectedOrder.order_type === 'pickup' && (
@@ -4023,7 +4024,7 @@ const LiveOrdersPage: React.FC = () => {
               {selectedOrder.table_number && (
                 <BillRow>
                   <strong>Table:</strong>
-                  <span>{selectedOrder.table_number}</span>
+                  <span>{selectedOrder.table_number}{selectedOrder.guest_count ? ` (${selectedOrder.guest_count}p)` : ''}</span>
                 </BillRow>
               )}
               {(selectedOrder.order_type === 'takeaway' || selectedOrder.order_type === 'pickup') && (
@@ -4297,7 +4298,7 @@ const LiveOrdersPage: React.FC = () => {
                             {order.order_number}
                           </div>
                           <div style={{ fontSize: '13px', color: '#6B7C93', marginTop: '4px' }}>
-                            {order.table_number ? `Table ${order.table_number}` : ''}
+                            {order.table_number ? `Table ${order.table_number}${order.guest_count ? ` (${order.guest_count}p)` : ''}` : ''}
                             {order.table_number && order.pager_number ? ' / ' : ''}
                             {order.pager_number ? `Pager ${order.pager_number}` : ''}
                             {!order.table_number && !order.pager_number ? 'No Table/Pager' : ''}

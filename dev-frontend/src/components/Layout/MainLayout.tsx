@@ -575,7 +575,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       try {
         const token = localStorage.getItem('auth_token');
         if (!token) return;
-        const res = await fetch(`/api/orders/restaurant/${restaurantId}/counts`, {
+        const today = new Date().toISOString().split('T')[0];
+        const res = await fetch(`/api/orders/restaurant/${restaurantId}/counts?startDate=${today}&endDate=${today}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
@@ -1239,6 +1240,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   POS Terminal
                 </NavItem>
               )}
+              <NavItem
+                to={`/restaurant/${restaurantId}/floor-plan`}
+                active={isActive(`/restaurant/${restaurantId}/floor-plan`)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  closeSidebar();
+                  window.open(`/restaurant/${restaurantId}/floor-plan`, '_blank');
+                }}
+              >
+                <NavIcon>&#x25A6;</NavIcon>
+                Floor Plan
+              </NavItem>
               {isRouteAllowed(`/restaurant/${restaurantId}/kitchen`) && (
                 <NavItem
                   to={`/restaurant/${restaurantId}/kitchen`}
@@ -1520,10 +1533,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>◐</NavIcon>
                   Company Info
                 </NavItem>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
+                <NavItem to="/pos/manager/notification-settings" active={isActive('/pos/manager/notification-settings')} onClick={closeSidebar}>
+                  <NavIcon>✉</NavIcon>
                   Notifications
-                </DisabledNavItem>
+                </NavItem>
               </>
             )}
 
@@ -1534,10 +1547,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>◐</NavIcon>
                   Company Info
                 </NavItem>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
+                <NavItem to="/pos/manager/notification-settings" active={isActive('/pos/manager/notification-settings')} onClick={closeSidebar}>
+                  <NavIcon>✉</NavIcon>
                   Notifications
-                </DisabledNavItem>
+                </NavItem>
               </>
             )}
 
@@ -1566,6 +1579,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>✉</NavIcon>
                   Notifications
                 </NavItem>
+                {user?.role === 'Restaurant Admin' && (
+                  <NavItem to={`/restaurant/${restaurantId}/floor-plan-editor`} active={isActive(`/restaurant/${restaurantId}/floor-plan-editor`)} onClick={closeSidebar}>
+                    <NavIcon>▦</NavIcon>
+                    Floor Plan Editor
+                  </NavItem>
+                )}
               </>
             )}
 

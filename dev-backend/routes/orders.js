@@ -250,8 +250,12 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
         const io = req.app.get('io');
         if (io && mergeableOrder.restaurant_id) {
           const room = `restaurant_${mergeableOrder.restaurant_id}`;
-          // Regular order update
-          io.of('/orders').to(room).emit('order-updated', mergeResult.order);
+          // Regular order update - convert to plain object for proper serialization
+          const plainMerged = mergeResult.order.get ? mergeResult.order.get({ plain: true }) : mergeResult.order;
+          if (typeof plainMerged.order_items === 'string') {
+            try { plainMerged.order_items = JSON.parse(plainMerged.order_items); } catch(e) { plainMerged.order_items = []; }
+          }
+          io.of('/orders').to(room).emit('order-updated', plainMerged);
           // Special event for new items added (for notification sound)
           io.of('/orders').to(room).emit('order-items-added', {
             orderId: mergeableOrder.id,
@@ -502,7 +506,12 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
     if (io && order.restaurant_id) {
       console.log(`📡 Emitting order-created event to restaurant_${order.restaurant_id}`);
       console.log(`   Order ID: ${order.id}, Number: ${order.order_number}`);
-      io.of('/orders').to(`restaurant_${order.restaurant_id}`).emit('order-created', order);
+      // Convert to plain object to ensure all fields are serialized properly
+      const plainOrder = order.get ? order.get({ plain: true }) : order;
+      if (typeof plainOrder.order_items === 'string') {
+        try { plainOrder.order_items = JSON.parse(plainOrder.order_items); } catch(e) { plainOrder.order_items = []; }
+      }
+      io.of('/orders').to(`restaurant_${order.restaurant_id}`).emit('order-created', plainOrder);
       console.log(`✅ Socket event emitted successfully`);
     } else {
       console.warn('⚠️ Socket.IO not available or restaurant_id missing:', {
@@ -540,7 +549,11 @@ router.patch('/:id', authenticateToken, async (req, res) => {
     // Emit socket event for real-time update
     const io = req.app.get('io');
     if (io && result.restaurant_id) {
-      io.of('/orders').to(`restaurant_${result.restaurant_id}`).emit('order-updated', result);
+      const plainResult = result.get ? result.get({ plain: true }) : result;
+      if (typeof plainResult.order_items === 'string') {
+        try { plainResult.order_items = JSON.parse(plainResult.order_items); } catch(e) { plainResult.order_items = []; }
+      }
+      io.of('/orders').to(`restaurant_${result.restaurant_id}`).emit('order-updated', plainResult);
     }
 
     res.json({ success: true, data: result });
@@ -664,7 +677,11 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
     const io = req.app.get('io');
     if (io && order.restaurant_id) {
       console.log(`📡 [STATUS] Emitting order-updated for order ${order.id}, status: ${order.status}`);
-      io.of('/orders').to(`restaurant_${order.restaurant_id}`).emit('order-updated', order);
+      const plainStatusOrder = order.get ? order.get({ plain: true }) : order;
+      if (typeof plainStatusOrder.order_items === 'string') {
+        try { plainStatusOrder.order_items = JSON.parse(plainStatusOrder.order_items); } catch(e) { plainStatusOrder.order_items = []; }
+      }
+      io.of('/orders').to(`restaurant_${order.restaurant_id}`).emit('order-updated', plainStatusOrder);
     } else {
       console.warn('⚠️ [STATUS] Socket.IO not available or restaurant_id missing');
     }
@@ -708,7 +725,11 @@ router.patch('/:id/items', authenticateToken, async (req, res) => {
     // Emit socket event for real-time update
     const io = req.app.get('io');
     if (io && order.restaurant_id) {
-      io.of('/orders').to(`restaurant_${order.restaurant_id}`).emit('order-updated', order);
+      const plainItemsOrder = order.get ? order.get({ plain: true }) : order;
+      if (typeof plainItemsOrder.order_items === 'string') {
+        try { plainItemsOrder.order_items = JSON.parse(plainItemsOrder.order_items); } catch(e) { plainItemsOrder.order_items = []; }
+      }
+      io.of('/orders').to(`restaurant_${order.restaurant_id}`).emit('order-updated', plainItemsOrder);
     }
 
     res.json({ success: true, data: order });
@@ -1364,8 +1385,12 @@ router.post('/merge', authenticateToken, async (req, res) => {
     if (io && result.mergedOrder.restaurant_id) {
       const room = `restaurant_${result.mergedOrder.restaurant_id}`;
 
-      // Emit update for merged order
-      io.of('/orders').to(room).emit('order-updated', result.mergedOrder);
+      // Emit update for merged order - convert to plain object
+      const plainMergedOrder = result.mergedOrder.get ? result.mergedOrder.get({ plain: true }) : result.mergedOrder;
+      if (typeof plainMergedOrder.order_items === 'string') {
+        try { plainMergedOrder.order_items = JSON.parse(plainMergedOrder.order_items); } catch(e) { plainMergedOrder.order_items = []; }
+      }
+      io.of('/orders').to(room).emit('order-updated', plainMergedOrder);
 
       // Emit delete for source orders
       for (const deletedId of result.deletedOrderIds) {
@@ -1484,7 +1509,11 @@ router.post('/:id/add-items', authenticateToken, async (req, res) => {
     // Emit socket event
     const io = req.app.get('io');
     if (io && order.restaurant_id) {
-      io.of('/orders').to(`restaurant_${order.restaurant_id}`).emit('order-updated', order);
+      const plainAddOrder = order.get ? order.get({ plain: true }) : order;
+      if (typeof plainAddOrder.order_items === 'string') {
+        try { plainAddOrder.order_items = JSON.parse(plainAddOrder.order_items); } catch(e) { plainAddOrder.order_items = []; }
+      }
+      io.of('/orders').to(`restaurant_${order.restaurant_id}`).emit('order-updated', plainAddOrder);
     }
 
     res.json({
@@ -1547,8 +1576,12 @@ router.post('/:id/merge-items', authenticateToken, async (req, res) => {
     if (io && order.restaurant_id) {
       const room = `restaurant_${order.restaurant_id}`;
 
-      // Emit order-updated for general UI refresh
-      io.of('/orders').to(room).emit('order-updated', mergeResult.order);
+      // Emit order-updated for general UI refresh - convert to plain object
+      const plainMergeResult = mergeResult.order.get ? mergeResult.order.get({ plain: true }) : mergeResult.order;
+      if (typeof plainMergeResult.order_items === 'string') {
+        try { plainMergeResult.order_items = JSON.parse(plainMergeResult.order_items); } catch(e) { plainMergeResult.order_items = []; }
+      }
+      io.of('/orders').to(room).emit('order-updated', plainMergeResult);
 
       // Emit order-items-added for notification (same as auto-merge)
       io.of('/orders').to(room).emit('order-items-added', {
@@ -1741,8 +1774,12 @@ router.delete('/:id/items/:itemIndex', authenticateToken, async (req, res) => {
     if (io && order.restaurant_id) {
       const room = `restaurant_${order.restaurant_id}`;
 
-      // Send order update
-      io.of('/orders').to(room).emit('order-updated', order);
+      // Send order update - convert to plain object
+      const plainVoidOrder = order.get ? order.get({ plain: true }) : order;
+      if (typeof plainVoidOrder.order_items === 'string') {
+        try { plainVoidOrder.order_items = JSON.parse(plainVoidOrder.order_items); } catch(e) { plainVoidOrder.order_items = []; }
+      }
+      io.of('/orders').to(room).emit('order-updated', plainVoidOrder);
 
       // Send VOID notification for kitchen display
       io.of('/orders').to(room).emit('item-voided', {
