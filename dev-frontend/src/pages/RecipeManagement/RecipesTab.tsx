@@ -4,7 +4,7 @@ import { EmptyState } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useAuth } from '../../contexts/AuthContext';
-import { Modal, ModalButton, ModalWarning, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI/Modal';
+import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI/Modal';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import ConfirmModal from '../../components/ConfirmModal';
@@ -118,12 +118,6 @@ const RecipeHeader = styled.div`
   align-items: flex-start;
   gap: 12px;
   margin-bottom: 16px;
-`;
-
-const RecipeEmoji = styled.div`
-  font-size: 40px;
-  line-height: 1;
-  flex-shrink: 0;
 `;
 
 const RecipeInfo = styled.div`
@@ -913,7 +907,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         const promises: Promise<any>[] = [];
 
         // Build URLs based on role
-        let recipesUrl = '', ingredientsUrl = '', categoriesUrl = '', restaurantUrl = '';
+        let recipesUrl = '', ingredientsUrl = '', categoriesUrl = '';
 
         if (isBrandRole && brandId) {
           recipesUrl = `/api/brands/${brandId}/recipes`;
@@ -995,6 +989,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
     if (categoryRefreshKey && (brandId || effectiveRestaurantId)) {
       fetchRecipeCategories();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryRefreshKey]);
 
   const fetchRecipeCategories = async () => {
@@ -1036,46 +1031,6 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
     }
   };
 
-  const fetchIngredients = async () => {
-    try {
-      const token = localStorage.getItem('auth_token');
-
-      // Brand General/Manager
-      if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
-        if (brandId) {
-          const response = await fetch(`/api/brands/${brandId}/ingredients`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          const data = await response.json();
-          if (data.success) {
-            setIngredients(data.data);
-          }
-        }
-      }
-      // Restaurant Admin - 자체 재료 + 브랜드 재료 함께 조회
-      else if (user?.role === 'Restaurant Admin' && effectiveRestaurantId) {
-        const [ownRes, brandRes] = await Promise.all([
-          fetch(`/api/restaurants/${effectiveRestaurantId}/ingredients`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          }).then(r => r.json()),
-          fetch(`/api/restaurants/${effectiveRestaurantId}/brand-ingredients`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          }).then(r => r.json())
-        ]);
-
-        let allIngredients: Ingredient[] = [];
-        if (brandRes.success && Array.isArray(brandRes.data)) {
-          allIngredients = [...brandRes.data];
-        }
-        if (ownRes.success && Array.isArray(ownRes.data)) {
-          allIngredients = [...allIngredients, ...ownRes.data];
-        }
-        setIngredients(allIngredients);
-      }
-    } catch (error) {
-      console.error('Failed to fetch ingredients:', error);
-    }
-  };
 
   const fetchRecipes = async () => {
     try {

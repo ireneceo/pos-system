@@ -755,35 +755,6 @@ const SubscriptionsPage: React.FC = () => {
         paymentModel: newSubscription.paymentModel
       };
 
-      // Create invoice data with proper customer information
-      let customerName = '';
-      let customerAddress = '';
-      let companyName = '';
-      let restaurantName = '';
-
-      if (selectedTarget.type === 'restaurant') {
-        customerName = selectedTarget.data.name;
-        restaurantName = selectedTarget.data.name;
-        companyName = selectedTarget.data.name;
-
-        // Build full address from restaurant data
-        const addressParts = [];
-        if (selectedTarget.data.address) addressParts.push(selectedTarget.data.address);
-        if (selectedTarget.data.phone) addressParts.push(`Phone: ${selectedTarget.data.phone}`);
-        if (selectedTarget.data.email) addressParts.push(`Email: ${selectedTarget.data.email}`);
-        customerAddress = addressParts.join('\n');
-      } else if (selectedTarget.type === 'manager') {
-        customerName = selectedTarget.data.fullName || selectedTarget.data.full_name || selectedTarget.data.username;
-        companyName = selectedTarget.data.companyName || customerName;
-        restaurantName = newSubscription.restaurantName || '';
-
-        // Build address from manager data
-        const addressParts = [];
-        if (selectedTarget.data.companyName) addressParts.push(selectedTarget.data.companyName);
-        if (selectedTarget.data.email) addressParts.push(`Email: ${selectedTarget.data.email}`);
-        customerAddress = addressParts.join('\n');
-      }
-
       const planName = newSubscription.customPlanName || 'Custom Plan';
       const dueDate = new Date(new Date(newSubscription.startDate).getTime() + 14*24*60*60*1000).toISOString().split('T')[0];
       const payerType = selectedTarget.type === 'restaurant' ? 'restaurant' :

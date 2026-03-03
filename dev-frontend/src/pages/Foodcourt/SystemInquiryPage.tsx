@@ -413,9 +413,6 @@ const SystemInquiryPage: React.FC = () => {
   const [unreadCounts, setUnreadCounts] = useState<Record<string, { total_comments: number; unread_count: number }>>({});
 
   const currentUserId = user?.id || '4';
-  const currentUserName = user?.name || user?.email || 'Foodcourt User';
-  const currentUserEmail = user?.email || 'foodcourt@example.com';
-  const currentUserRole = user?.role || 'Foodcourt General';
 
   useEffect(() => {
     if (user) {

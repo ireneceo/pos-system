@@ -154,10 +154,6 @@ const LoadingSpinner = styled.div`
 /**
  * 이미지 URL인지 확인 (base64가 아닌 URL 형식)
  */
-const isImageUrl = (str: string): boolean => {
-  return str.startsWith('/uploads/') || str.startsWith('http://') || str.startsWith('https://');
-};
-
 /**
  * API base URL 가져오기
  */

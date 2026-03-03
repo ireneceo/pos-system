@@ -439,15 +439,6 @@ const Checkbox = styled.label`
 `;
 
 
-const DetailRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 6px;
-  font-size: 13px;
-  color: #6B7280;
-`;
-
 const DetailGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;

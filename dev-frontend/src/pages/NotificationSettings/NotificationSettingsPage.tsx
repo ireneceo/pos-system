@@ -357,6 +357,7 @@ const NotificationSettingsPage: React.FC = () => {
     };
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const { entityType, entityId } = useMemo(() => getEntityInfo(), [user, urlRestaurantId]);
 
   useEffect(() => {

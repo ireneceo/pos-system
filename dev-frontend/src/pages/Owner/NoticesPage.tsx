@@ -730,6 +730,7 @@ const NoticesPage: React.FC = () => {
     } catch (error) {
       console.error('Error fetching received notices:', error);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const fetchSentNotices = useCallback(async () => {
@@ -747,6 +748,7 @@ const NoticesPage: React.FC = () => {
     } catch (error) {
       console.error('Error fetching sent notices:', error);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const fetchAll = useCallback(async () => {

@@ -65,7 +65,7 @@ export function patchAPI(endpoint, data) {
   });
 }
 
-export default {
+const apiHelper = {
   fetchAPI,
   getAPI,
   postAPI,
@@ -74,3 +74,5 @@ export default {
   patchAPI,
   API_URL,
 };
+
+export default apiHelper;

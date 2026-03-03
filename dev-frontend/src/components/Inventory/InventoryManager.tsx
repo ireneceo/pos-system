@@ -10,7 +10,6 @@ import {
   Container,
   Header,
   Title,
-  ActionSection,
   Content,
   Button,
   Table,
@@ -29,9 +28,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput } from '../UI/Modal';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
-import { fetchAPI } from '../../utils/api';
 import GeneralStockCategoriesTab from '../../pages/RecipeManagement/GeneralStockCategoriesTab';
-import ProductIngredientCategoriesTab from '../../pages/BrandProductRecipe/ProductIngredientCategoriesTab';
 import ImageUploadDropzone from '../Common/ImageUploadDropzone';
 
 // Props interface for shared component
@@ -370,7 +367,6 @@ const ButtonGroup = styled.div`
   margin-top: 24px;
 `;
 
-const IngredientInfo = styled.div``;
 
 const IngredientName = styled.div`
   font-weight: 600;
@@ -475,48 +471,6 @@ const OrderButton = styled.button`
   }
 `;
 
-const SearchableSelectContainer = styled.div`
-  position: relative;
-`;
-
-const SearchableSelectInput = styled.input`
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #E5E7EB;
-  border-radius: 6px;
-  font-size: 14px;
-  outline: none;
-
-  &:focus {
-    border-color: #635BFF;
-    box-shadow: 0 0 0 2px rgba(99, 91, 255, 0.1);
-  }
-`;
-
-const SearchableSelectDropdown = styled.div`
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  max-height: 200px;
-  overflow-y: auto;
-  background: white;
-  border: 1px solid #E5E7EB;
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 9999;
-`;
-
-const SearchableSelectOption = styled.div<{ selected?: boolean }>`
-  padding: 10px 12px;
-  cursor: pointer;
-  background: ${props => props.selected ? '#F0F4FF' : 'white'};
-  color: ${props => props.selected ? '#635BFF' : '#0A2540'};
-
-  &:hover {
-    background: #F3F4F6;
-  }
-`;
 
 const DeleteButton = styled.button`
   width: 28px;
@@ -561,7 +515,7 @@ const EditButton = styled.button`
 `;
 
 const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId: propRestaurantId }) => {
-  const { user } = useAuth();
+  useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
@@ -580,8 +534,8 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   };
 
   // General Stock Categories state (only for restaurant mode)
-  const [generalStockCategoriesCount, setGeneralStockCategoriesCount] = useState(0);
-  const [generalStockCategoryRefreshKey, setGeneralStockCategoryRefreshKey] = useState(0);
+  const [, setGeneralStockCategoriesCount] = useState(0);
+  const [, setGeneralStockCategoryRefreshKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [inventory, setInventory] = useState<IngredientStock[]>([]);
@@ -609,7 +563,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   const [showReceiveModal, setShowReceiveModal] = useState(false);
   const [showWasteModal, setShowWasteModal] = useState(false);
   const [showInitialStockModal, setShowInitialStockModal] = useState(false);
-  const [showIngredientAdjustModal, setShowIngredientAdjustModal] = useState(false);
+
   const [selectedIngredient, setSelectedIngredient] = useState<IngredientStock | null>(null);
   const [quantity, setQuantity] = useState('');
   const [notes, setNotes] = useState('');
@@ -620,7 +574,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
 
   // Initial Stock Setup
   const [initialStockItems, setInitialStockItems] = useState<{[key: number]: { quantity: string; min_stock: string }}>({});
-  const [needsInitialSetup, setNeedsInitialSetup] = useState(false);
+  const [, setNeedsInitialSetup] = useState(false);
   const [savingInitialStock, setSavingInitialStock] = useState(false);
 
   // Settings Modal
@@ -654,8 +608,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   const [savingGeneralStock, setSavingGeneralStock] = useState(false);
   const [suppliers, setSuppliers] = useState<{id: number; name: string}[]>([]);
   const [generalStockCategories, setGeneralStockCategories] = useState<{id: number; name: string; emoji?: string}[]>([]);
-  const [unitSearchTerm, setUnitSearchTerm] = useState('');
-  const [showUnitDropdown, setShowUnitDropdown] = useState(false);
+  const [, setShowUnitDropdown] = useState(false);
 
   // Edit General Stock Modal
   const [showEditGeneralStockModal, setShowEditGeneralStockModal] = useState(false);
@@ -699,10 +652,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
     { value: 'ream', label: 'Ream' }
   ];
 
-  const filteredUnitOptions = unitOptions.filter(opt =>
-    opt.label.toLowerCase().includes(unitSearchTerm.toLowerCase()) ||
-    opt.value.toLowerCase().includes(unitSearchTerm.toLowerCase())
-  );
+
 
   // Inline editing for stock
   const [editingStockId, setEditingStockId] = useState<number | null>(null);
@@ -919,18 +869,6 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
     }
   }, [inventory]);
 
-  // Initialize initial stock items when modal opens
-  const openInitialStockModal = () => {
-    const items: {[key: number]: { quantity: string; min_stock: string }} = {};
-    inventory.forEach(item => {
-      items[item.id] = {
-        quantity: item.current_stock.toString(),
-        min_stock: item.min_stock.toString()
-      };
-    });
-    setInitialStockItems(items);
-    setShowInitialStockModal(true);
-  };
 
   // Handle initial stock save
   const handleSaveInitialStock = async () => {
@@ -1312,55 +1250,6 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
     return matchesSearch && matchesStatus;
   });
 
-  // 통합 재고 리스트 (Ingredients + General Stock)
-  const unifiedStockList: UnifiedStockItem[] = [
-    // Ingredients
-    ...(stockTypeFilter === 'all' || stockTypeFilter === 'ingredients'
-      ? filteredInventory.map(item => ({
-          id: item.id,
-          name: item.name,
-          code: item.code || null,
-          image_url: item.image_url || null,
-          category: item.category,
-          current_stock: item.current_stock,
-          min_stock: item.min_stock,
-          min_order: item.min_order || 0,
-          unit: item.unit,
-          unit_cost: item.unit_cost,
-          supplier_name: item.supplier_name,
-          stock_status: item.stock_status,
-          last_stock_take_at: item.last_stock_take_at,
-          item_type: 'ingredient' as const,
-          avg_daily_usage: parseFloat(String(item.avg_daily_usage)) || 0,
-          prediction_confidence: item.prediction_confidence
-        }))
-      : []),
-    // General Stock
-    ...(stockTypeFilter === 'all' || stockTypeFilter === 'general_stock'
-      ? generalStockInventory
-          .filter(item => {
-            const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesStatus = statusFilter === 'all' || item.stock_status === statusFilter;
-            return matchesSearch && matchesStatus;
-          })
-          .map(item => ({
-            id: item.id,
-            name: item.name,
-            code: item.code || null,
-            image_url: item.image_url || null,
-            category: item.category,
-            current_stock: item.current_stock,
-            min_stock: item.min_stock,
-            min_order: item.min_order || 0,
-            unit: item.stock_unit || item.unit,
-            unit_cost: item.unit_cost,
-            supplier_name: item.supplier_name,
-            stock_status: item.stock_status,
-            last_stock_take_at: item.last_stock_take_at,
-            item_type: 'general_stock' as const
-          }))
-      : [])
-  ];
 
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return '-';
@@ -3106,7 +2995,7 @@ interface Transaction {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const TransactionHistory: React.FC<TransactionHistoryProps> = ({ restaurantId, isBrandGeneralMode, currency }) => {
+const TransactionHistory: React.FC<TransactionHistoryProps> = ({ restaurantId, isBrandGeneralMode, currency: _currency }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 

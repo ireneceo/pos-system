@@ -20,7 +20,7 @@ import {
 } from '../../components/UI';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
-import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
+import { formatCurrency } from '../../utils/currency';
 
 // Styled Components
 const Container = styled.div`
@@ -1006,11 +1006,6 @@ const MenuManagementPage: React.FC = () => {
       setShowDeleteConfirm(false);
       setItemToDelete(null);
     }
-  };
-
-  const handleQuickPriceEdit = (item: MenuItemType) => {
-    setPriceEditItem(item);
-    setShowPriceModal(true);
   };
 
   const handlePriceUpdate = (value: string) => {

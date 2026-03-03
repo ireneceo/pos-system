@@ -75,7 +75,6 @@ const InvoicesPage = React.lazy(() => import('./pages/Admin/InvoicesPage'));
 const RestaurantInvoicesPage = React.lazy(() => import('./pages/Restaurant/InvoicesPage'));
 const ManagerInvoicesPage = React.lazy(() => import('./pages/Manager/InvoicesPage'));
 const PlansPage = React.lazy(() => import('./pages/Admin/PlansPage'));
-const AnalyticsPage = React.lazy(() => import('./pages/Admin/AnalyticsPage'));
 const AdminReportsPage = React.lazy(() => import('./pages/Admin/ReportsPage'));
 const SystemInquiryPage = React.lazy(() => import('./pages/Admin/SystemInquiryPage'));
 const ContactInquiriesPage = React.lazy(() => import('./pages/Admin/ContactInquiriesPage'));

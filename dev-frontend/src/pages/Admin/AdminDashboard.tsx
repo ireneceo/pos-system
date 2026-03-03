@@ -565,7 +565,6 @@ const AdminDashboard: React.FC = () => {
         const invoicesResponse = await fetch('/api/invoices', { headers });
         let currentInvoicesData: any[] = [];
         let revenueDataArray: RevenueData[] = [];
-        let totalInvoiceRevenue = 0;
         const cumulativeRevenueByCurrency: CurrencyRevenue = {};
 
         if (invoicesResponse.ok) {
@@ -589,10 +588,6 @@ const AdminDashboard: React.FC = () => {
             const cur = invoice.currency || 'MYR';
             cumulativeRevenueByCurrency[cur] = (cumulativeRevenueByCurrency[cur] || 0) + amount;
           });
-
-          totalInvoiceRevenue = completedInvoices.reduce((sum: number, invoice: any) => {
-            return sum + (parseFloat(invoice.total || invoice.total_amount || invoice.amount || 0));
-          }, 0);
 
 
           // Calculate revenue data by period
@@ -851,6 +846,7 @@ const AdminDashboard: React.FC = () => {
     };
 
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timePeriod, siteTimezone]);
 
   return (

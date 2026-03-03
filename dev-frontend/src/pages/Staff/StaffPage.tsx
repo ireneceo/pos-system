@@ -420,8 +420,6 @@ const StaffPage: React.FC = () => {
 
   // Reset Password
   const [resetPasswordTarget, setResetPasswordTarget] = useState<Staff | null>(null);
-  const [resetPasswordResult, setResetPasswordResult] = useState('');
-
   // Form error (shown inside modal)
   const [formError, setFormError] = useState('');
 

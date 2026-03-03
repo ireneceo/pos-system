@@ -1217,17 +1217,15 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                   Ticket
                 </IconButton>
                 {hasAddedItems && (
-                  <IconButton onClick={handlePrintLatestGroupTicket} title="Print +Order Ticket" style={{ background: '#FEF3C7', color: '#92400E' }}>
+                  <IconButton onClick={handlePrintLatestGroupTicket} title="+Order Ticket" style={{ background: '#FEF3C7', color: '#92400E' }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M12 4v16m8-8H4"/>
                     </svg>
-                    +Order
                   </IconButton>
                 )}
                 {previousStatus && (
                   <IconButton onClick={handleRevertStatus} title={`Revert to ${STATUS_LABELS[previousStatus] || previousStatus}`}>
                     <IconSymbol>↺</IconSymbol>
-                    Revert
                   </IconButton>
                 )}
               </IconButtonGroup>

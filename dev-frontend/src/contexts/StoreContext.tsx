@@ -166,7 +166,7 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
 
         // If not found and it's a mobile URL, try to get from slug
         if (!restaurantId && window.location.pathname.includes('/mobile/')) {
-          const slugMatch = window.location.pathname.match(/\/mobile\/([^\/]+)/);
+          const slugMatch = window.location.pathname.match(/\/mobile\/([^/]+)/);
           if (slugMatch) {
             const slug = slugMatch[1];
 
@@ -200,8 +200,6 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
 
             restaurantId = userInfo.restaurant_id;
           } else {
-
-            const errorText = await userInfoResponse.text();
 
           }
         }
@@ -270,8 +268,6 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
             }
           }
         } else {
-
-          const errorText = await response.text();
 
         }
       } catch (error) {

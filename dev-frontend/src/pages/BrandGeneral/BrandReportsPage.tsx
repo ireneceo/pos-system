@@ -445,7 +445,7 @@ const BrandReportsPage: React.FC = () => {
   // Data state
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [customers, setCustomers] = useState<any[]>([]);
+  const [customers] = useState<any[]>([]);
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
 

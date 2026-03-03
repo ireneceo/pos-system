@@ -27,12 +27,6 @@ import ConfirmModal from '../../components/ConfirmModal';
 import PhoneInput from '../../components/Common/PhoneInput';
 
 // Page-specific styled components
-const Subtitle = styled.p`
-  font-size: 14px;
-  color: #6B7280;
-  margin: 4px 0 0;
-`;
-
 const StatusBadge = styled.span<{ status: string }>`
   display: inline-block;
   padding: 4px 12px;

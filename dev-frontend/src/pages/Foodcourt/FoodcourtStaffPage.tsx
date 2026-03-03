@@ -226,31 +226,6 @@ const TableCell = styled.td`
   }
 `;
 
-const ManagerInfo = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-`;
-
-const ManagerAvatar = styled.div`
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 16px;
-  color: white;
-  flex-shrink: 0;
-  background: #2563EB;
-`;
-
-const ManagerDetails = styled.div`
-  flex: 1;
-  min-width: 0;
-`;
-
 const ManagerName = styled.div`
   font-size: 14px;
   font-weight: 600;
@@ -593,10 +568,6 @@ const FoodcourtStaffPage: React.FC = () => {
       setErrorMessage((error as Error).message);
     }
     setResetPasswordTarget(null);
-  };
-
-  const getInitials = (name: string) => {
-    return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2) || '?';
   };
 
   const renderPermissionCheckboxes = (

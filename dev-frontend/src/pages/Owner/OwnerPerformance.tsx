@@ -329,6 +329,7 @@ const OwnerPerformance: React.FC = () => {
     if (restaurants.length > 0) {
       fetchOrdersData();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restaurants, dateRange.start, dateRange.end]);
 
   const fetchData = async () => {

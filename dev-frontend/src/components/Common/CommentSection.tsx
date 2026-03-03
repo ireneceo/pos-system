@@ -327,6 +327,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ entityType, entityId, c
       fetchComments();
       markAsRead();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entityType, entityId]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -635,7 +635,6 @@ const OperationInquiryPage: React.FC = () => {
   const openTickets = tickets.filter(t => t.status === 'open').length;
   const inProgressTickets = tickets.filter(t => t.status === 'in-progress').length;
   const resolvedTickets = tickets.filter(t => t.status === 'resolved').length;
-  const closedTickets = tickets.filter(t => t.status === 'closed').length;
 
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString('en-MY');

@@ -44,8 +44,10 @@ export const ENVIRONMENT = getEnvironmentName();
 // Socket.IO 연결 URL
 export const SOCKET_URL = API_URL;
 
-export default {
+const environmentConfig = {
   API_URL,
   ENVIRONMENT,
   SOCKET_URL
 };
+
+export default environmentConfig;

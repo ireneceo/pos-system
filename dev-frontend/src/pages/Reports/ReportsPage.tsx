@@ -212,14 +212,14 @@ const ReportsPage: React.FC = () => {
     };
   });
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
-  const [orders, setOrders] = useState<any[]>([]);
+  const [, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [ordersLoading, setOrdersLoading] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [stats, setStats] = useState<any>(null);
   const [customers, setCustomers] = useState<any[]>([]);
-  const [menuItems, setMenuItems] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [, setMenuItems] = useState<any[]>([]);
+  const [, setCategories] = useState<any[]>([]);
 
   // What and Why: 서버 집계 데이터 - 10000개 주문 클라이언트 처리 대신 서버에서 집계된 요약 데이터 사용
   const [reportsSummary, setReportsSummary] = useState<any>(null);
@@ -551,7 +551,7 @@ const ReportsPage: React.FC = () => {
     const yearData: Record<string, any> = {};
 
     reportsSummary.dailySales.forEach((dayData: any) => {
-      const [year, monthNum, dayNum] = dayData.date.split('-');
+      const [year, monthNum] = dayData.date.split('-');
       const month = `${year}-${monthNum}`; // "2025-11"
       const day = dayData.date; // "2025-11-09"
 
@@ -737,10 +737,6 @@ const ReportsPage: React.FC = () => {
   };
 
   // What and Why: CSV 공통 헤더 생성 (간소화 - DB 스타일)
-  const generateCSVHeader = useCallback((): string[] => {
-    // 실무용 간단한 형식 - 헤더 없이 바로 데이터 시작
-    return [];
-  }, []);
 
   // What and Why: Sales Report 탭 CSV 생성 (실무용 간단 형식)
   const generateSalesCSV = useCallback((): string => {

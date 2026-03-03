@@ -630,40 +630,6 @@ const ActiveButton = styled.button`
 `;
 
 
-const SuccessModal = styled.div`
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  width: 400px;
-  text-align: center;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-`;
-
-const SuccessIcon = styled.div`
-  width: 60px;
-  height: 60px;
-  background: #10B981;
-  border-radius: 50%;
-  margin: 0 auto 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  color: white;
-`;
-
-const SuccessTitle = styled.h3`
-  font-size: 20px;
-  font-weight: 600;
-  color: #065F46;
-  margin: 0 0 8px;
-`;
-
-const SuccessMessage = styled.p`
-  color: #6B7280;
-  margin: 0 0 20px;
-  line-height: 1.5;
-`;
 
 const RestaurantsPage: React.FC = () => {
   const { operationSettings } = useStore();
@@ -675,8 +641,6 @@ const RestaurantsPage: React.FC = () => {
   const [filterManager, setFilterManager] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
   // Inline warning messages instead of browser alerts
   const [addModalWarning, setAddModalWarning] = useState('');
   const [editModalWarning, setEditModalWarning] = useState('');

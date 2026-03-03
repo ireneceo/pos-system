@@ -92,6 +92,7 @@ const StripePaymentForm: React.FC<StripePaymentFormProps> = ({ invoiceId, onSucc
     };
 
     initPayment();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invoiceId]);
 
   if (loading) {

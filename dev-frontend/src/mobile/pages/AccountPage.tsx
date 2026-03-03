@@ -320,7 +320,7 @@ const ModalButton = styled.button<{ variant?: 'primary' | 'secondary' }>`
 const AccountPage: React.FC = () => {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
-  const { currentCustomer, logoutCustomer, updateCustomer } = useCustomer();
+  const { currentCustomer, logoutCustomer } = useCustomer();
   const { currency, currentStore, setCurrentStore } = useMobileOrder();
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);

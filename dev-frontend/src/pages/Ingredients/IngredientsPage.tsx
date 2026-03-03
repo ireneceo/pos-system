@@ -160,11 +160,6 @@ const ButtonGroup = styled.div`
 `;
 
 
-const EmptyIcon = styled.div`
-  font-size: 64px;
-  margin-bottom: 16px;
-`;
-
 const EmptyTitle = styled.h3`
   font-size: 20px;
   font-weight: 600;
@@ -213,6 +208,7 @@ const IngredientsPage: React.FC = () => {
 
   useEffect(() => {
     fetchIngredients();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const fetchIngredients = async () => {

@@ -307,6 +307,7 @@ const SuppliersPage: React.FC = () => {
     } else {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isBrandUser, isRestaurantAdmin, effectiveRestaurantId]);
 
   const fetchBrands = async () => {

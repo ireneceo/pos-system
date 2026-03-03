@@ -9,13 +9,11 @@ import OptionModal from '../../components/POSTerminal/OptionModal';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
 import {
-  DataTableContainer,
   DataTable,
   DataTableHead,
   DataTableHeaderCell,
   DataTableRow,
   DataTableCell,
-  DataTableActions,
   DataTableEmpty,
   DataTableAmount
 } from '../../components/UI';
@@ -23,8 +21,7 @@ import {
 import { printBillViaRawBT, generateBillContent, printKitchenTicketViaRawBT, generateKitchenTicketPreview } from '../../utils/billPrint';
 import { formatDateTime as formatDateTimeUtil, getTimeElapsed } from '../../utils/timezone';
 import ConfirmModal from '../../components/ConfirmModal';
-import DateRangeFilter, { PeriodType, calculateDateRange } from '../../components/Common/DateRangeFilter';
-import { EmptyState } from '../../components/UI/TableComponents';
+import DateRangeFilter, { PeriodType } from '../../components/Common/DateRangeFilter';
 
 // Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM")
 const formatPickupTimeRange = (dateString: string): string => {
@@ -519,10 +516,6 @@ const TimeInfo = styled.div`
   line-height: 1.4;
 `;
 
-const Amount = styled.div`
-  font-weight: 600;
-  color: #0A2540;
-`;
 
 const PaymentMethod = styled.div<{ isPending?: boolean; isVerificationPending?: boolean }>`
   color: ${props => props.isVerificationPending ? '#F59E0B' : props.isPending ? '#FF6B6B' : '#6B7C93'};
@@ -1070,15 +1063,14 @@ const LiveOrdersPage: React.FC = () => {
   // Add Items View state (inside order detail modal)
   const [showAddItemsView, setShowAddItemsView] = useState(false);
   const [menuItems, setMenuItems] = useState<any[]>([]);
-  const [menuCategories, setMenuCategories] = useState<any[]>([]);
-  const [addItemsSelectedCategory, setAddItemsSelectedCategory] = useState<string | null>(null);
+  const [, setMenuCategories] = useState<any[]>([]);
+  const [, setAddItemsSelectedCategory] = useState<string | null>(null);
   const [addItemsCart, setAddItemsCart] = useState<any[]>([]);
   const [isAddingItems, setIsAddingItems] = useState(false);
   const [addItemsSearchQuery, setAddItemsSearchQuery] = useState('');
   const [showOptionModal, setShowOptionModal] = useState(false);
   const [selectedMenuItemForOption, setSelectedMenuItemForOption] = useState<any>(null);
-  const [optionSelections, setOptionSelections] = useState<Record<string, any>>({});
-  const [optionQuantity, setOptionQuantity] = useState(1);
+
 
   // Toast notification state
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info'; isVisible: boolean }>({
@@ -1097,9 +1089,6 @@ const LiveOrdersPage: React.FC = () => {
     itemCount: number;
   } | null>(null);
 
-  // Order group print selector
-  const [showGroupPrintSelector, setShowGroupPrintSelector] = useState(false);
-  const [selectedPrintGroup, setSelectedPrintGroup] = useState<number | null>(null);
 
   // Show toast notification
   const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success') => {
@@ -1962,19 +1951,6 @@ const LiveOrdersPage: React.FC = () => {
     }
   };
 
-  // Open option modal or add directly
-  const handleMenuItemClick = (item: any) => {
-    const hasOptions = item.optionGroups && item.optionGroups.length > 0;
-    if (hasOptions) {
-      setSelectedMenuItemForOption(item);
-      setOptionSelections({});
-      setOptionQuantity(1);
-      setShowOptionModal(true);
-    } else {
-      // Add directly without options
-      handleAddToItemsCart(item, 1, []);
-    }
-  };
 
   // Add item to cart in Add Items modal (with options support)
   const handleAddToItemsCart = (item: any, quantity: number = 1, selectedOptions: any[] = []) => {

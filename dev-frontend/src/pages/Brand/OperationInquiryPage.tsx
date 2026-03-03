@@ -79,11 +79,6 @@ const Title = styled.h1`
   }
 `;
 
-const ActionSection = styled.div`
-  display: flex;
-  gap: 12px;
-`;
-
 const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
   padding: 12px 20px;
   border-radius: 8px;
@@ -413,14 +408,6 @@ const CloseButton = styled.button`
 
 const ModalBody = styled.div`
   padding: 24px;
-`;
-
-const ModalFooter = styled.div`
-  padding: 20px 24px;
-  border-top: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
 `;
 
 const FormGroup = styled.div`

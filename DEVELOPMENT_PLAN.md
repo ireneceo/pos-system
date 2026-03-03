@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-03-02
+> **최종 업데이트:** 2026-03-03
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -1169,6 +1169,32 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 - `dev-frontend/src/pages/Settings/SettingsPage.tsx` — QR key 양쪽 허용
 - `dev-frontend/src/mobile/pages/QRPaymentPage.tsx` — QR key 양쪽 허용
 - `dev-backend/routes/orders.js` — 소켓 emit plain object 변환
+
+---
+
+## ✅ 완료: ESLint 빌드 경고 전량 제거 + Floor Plan UI 개선 + 쿠폰 타겟팅 (2026-03-03)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| ESLint unused var 경고 제거 | 17개 파일에서 미사용 변수/함수/컴포넌트 106개 정리 | ✅ 완료 |
+| ESLint exhaustive-deps 경고 제거 | 34개 파일에서 44개 useEffect dependency 경고 처리 | ✅ 완료 |
+| Floor Plan +Order/Revert 버튼 | 아이콘만 표시로 변경 (텍스트 겹침 해결) | ✅ 완료 |
+| 쿠폰 타겟팅 기능 | target_type(all/customers/tiers), target_customer_ids, target_loyalty_tiers 추가 | ✅ 완료 |
+| 운영서버 배포 | Smoke test 6/6 passed | ✅ 완료 |
+
+### 수정된 파일 (주요)
+- `dev-frontend/src/components/Inventory/InventoryManager.tsx` — 16개 경고 수정
+- `dev-frontend/src/pages/Owner/OwnerInvoicesPage.tsx` — 16개 경고 수정
+- `dev-frontend/src/pages/Admin/InvoicesPage.tsx` — 14개 경고 수정
+- `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtInvoicesPage.tsx` — 15개 경고 수정
+- `dev-frontend/src/pages/LiveOrders/LiveOrdersPage.tsx` — 11개 경고 수정
+- `dev-frontend/src/pages/BrandGeneral/BrandInvoicesPage.tsx` — 8개 경고 수정
+- `dev-frontend/src/pages/FloorPlan/TableDetailPanel.tsx` — +Order/Revert 아이콘만 표시
+- `dev-backend/models/Coupon.js` — 타겟팅 필드 추가
+- `dev-backend/routes/coupons.js` — 타겟팅 API
+- 외 60+ 파일 (eslint-disable-next-line 추가)
 
 ---
 

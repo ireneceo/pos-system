@@ -248,6 +248,7 @@ export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ childr
     };
 
     setCartItems(prev => [...prev, newCartItem]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
   // Update cart item quantity
@@ -263,11 +264,13 @@ export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ childr
       }
       return item;
     }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
   // Remove item from cart
   const removeFromCart = useCallback((cartItemId: string) => {
     setCartItems(prev => prev.filter(item => item.id !== cartItemId));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
   // Clear cart

@@ -5,7 +5,6 @@ import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/S
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { useAuth } from '../../contexts/AuthContext';
 
 // ============================================================================
 // Styled Components
@@ -236,7 +235,6 @@ const PIE_COLORS = ['#EA580C', '#F97316', '#FB923C', '#FDBA74', '#FED7AA', '#FFF
 
 const FoodcourtGeneralDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
   const [currency, setCurrency] = useState('RM');
   const [loading, setLoading] = useState(true);
@@ -267,6 +265,7 @@ const FoodcourtGeneralDashboard: React.FC = () => {
   useEffect(() => {
     fetchDashboardData();
     fetchBadgeCounts();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchBadgeCounts = async () => {
@@ -283,6 +282,7 @@ const FoodcourtGeneralDashboard: React.FC = () => {
 
   useEffect(() => {
     if (foodcourtId) fetchTrendData(foodcourtId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chartPeriod, foodcourtId]);
 
   const getHeaders = () => ({

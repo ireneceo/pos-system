@@ -352,7 +352,7 @@ const RegisterPage: React.FC = () => {
               {generalError.includes('already registered') && (
                 <>
                   {' '}
-                  <a onClick={() => navigate(`/mobile/${slug}/login`)}>
+                  <a href={`/mobile/${slug}/login`} onClick={(e) => { e.preventDefault(); navigate(`/mobile/${slug}/login`); }}>
                     Login here
                   </a>
                 </>

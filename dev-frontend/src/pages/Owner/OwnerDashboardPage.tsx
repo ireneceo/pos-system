@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/StatCard';
-import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/currency';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -276,7 +275,6 @@ interface RestaurantSummary {
 
 const OwnerDashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [chartPeriod, setChartPeriod] = useState('month');
 
@@ -300,6 +298,7 @@ const OwnerDashboardPage: React.FC = () => {
   useEffect(() => {
     fetchDashboardData();
     fetchBadgeCounts();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchBadgeCounts = async () => {
@@ -316,6 +315,7 @@ const OwnerDashboardPage: React.FC = () => {
 
   useEffect(() => {
     fetchCompareData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chartPeriod]);
 
   const getHeaders = () => ({

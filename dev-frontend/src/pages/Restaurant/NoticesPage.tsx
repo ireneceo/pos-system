@@ -423,7 +423,7 @@ const LoadingText = styled.div`
 // ============================================================================
 
 const NoticesPage: React.FC = () => {
-  const { restaurantId } = useParams<{ restaurantId: string }>();
+  useParams<{ restaurantId: string }>();
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');

@@ -619,7 +619,7 @@ const SystemLogsPage: React.FC = () => {
   const [showClearModal, setShowClearModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [stats, setStats] = useState({ total24h: 0, errors: 0, warnings: 0, recent1h: 0 });
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const liveIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const logsListRef = useRef<HTMLDivElement | null>(null);
 
@@ -658,6 +658,7 @@ const SystemLogsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterLevel, filterCategory, filterService, filterDate, searchTerm]);
 
   const fetchHealth = useCallback(async () => {
@@ -672,6 +673,7 @@ const SystemLogsPage: React.FC = () => {
     } finally {
       setHealthLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleCheckNow = async () => {

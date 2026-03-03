@@ -28,7 +28,7 @@ import {
   DataTableAmount,
   ActionButtons
 } from '../../components/UI';
-import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { SearchInput } from '../../components/Common/FilterComponents';
 import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Common/TabComponents';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -107,13 +107,6 @@ interface Invoice {
   subtotalBeforeDiscount?: number;
 }
 
-interface CurrencyConfig {
-  [code: string]: {
-    symbol: string;
-    name: string;
-    decimals: number;
-  };
-}
 
 interface InvoiceItem {
   description: string;
@@ -138,19 +131,6 @@ interface Restaurant {
   address?: string;
   phone?: string;
   email?: string;
-}
-
-interface Subscription {
-  id: string;
-  restaurant_id: string;
-  plan_type: 'basic' | 'professional' | 'enterprise';
-  status: 'Active' | 'Trial' | 'Expired' | 'Suspended' | 'Cancelled';
-  billing_cycle: 'monthly' | 'annual';
-  menu_limit: number;
-  monthly_price: number;
-  annual_price: number;
-  start_date: string;
-  end_date?: string;
 }
 
 interface InvoiceCategory {
@@ -285,11 +265,6 @@ const StatusBadge = styled(CommonStatusBadge)`
   white-space: normal;
   line-height: 1.3;
   text-align: center;
-`;
-
-const Amount = styled.div<{ highlight?: boolean }>`
-  font-weight: ${props => props.highlight ? '700' : '500'};
-  color: #374151;
 `;
 
 const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'email' | 'cancel' | 'success' }>`
@@ -978,7 +953,6 @@ const BrandInvoicesPage: React.FC = () => {
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState<{type: 'manager' | 'restaurant', data: Manager | Restaurant} | null>(null);
   const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
-  const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
   const [invoiceCategories, setInvoiceCategories] = useState<InvoiceCategory[]>([]);
   const [additionalChargesMap, setAdditionalChargesMap] = useState<{ [currency: string]: AdditionalChargeConfig[] }>({});
   const [newInvoice, setNewInvoice] = useState({
@@ -1302,20 +1276,6 @@ const BrandInvoicesPage: React.FC = () => {
   }, [user?.brand_id]);
 
   // Category management functions
-  const handleOpenCategoryModal = (category?: InvoiceCategory) => {
-    if (category) {
-      setEditingCategory(category);
-      setCategoryFormData({
-        name: category.name,
-        code: category.code,
-        description: category.description || ''
-      });
-    } else {
-      setEditingCategory(null);
-      setCategoryFormData({ name: '', code: '', description: '' });
-    }
-    setShowCategoryModal(true);
-  };
 
   const handleCloseCategoryModal = () => {
     setShowCategoryModal(false);
@@ -1363,10 +1323,6 @@ const BrandInvoicesPage: React.FC = () => {
     }
   };
 
-  const handleDeleteCategoryClick = (category: InvoiceCategory) => {
-    setCategoryToDelete(category);
-    setDeleteCategoryModalOpen(true);
-  };
 
   const handleDeleteCategoryConfirm = async () => {
     if (!categoryToDelete) return;
@@ -1392,26 +1348,6 @@ const BrandInvoicesPage: React.FC = () => {
     }
   };
 
-  const handleToggleCategoryActive = async (category: InvoiceCategory) => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/invoices/categories/${category.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ is_active: !category.is_active })
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        fetchInvoiceCategories();
-      }
-    } catch (error) {
-      console.error('Failed to toggle category:', error);
-    }
-  };
 
   // Sample data fallback - kept for reference but not currently used
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -1559,6 +1495,7 @@ const BrandInvoicesPage: React.FC = () => {
     fetchCurrencyConfig();
     fetchInvoiceCategories();
     fetchBrandPaymentSettings();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Get additionalCharges for a specific currency from the map (normalizes RM→MYR etc.)
@@ -2423,7 +2360,6 @@ const BrandInvoicesPage: React.FC = () => {
   const totalToPayCount = invoicesToPay.length;
   const overdueInvoices = allInvoices.filter(i => isInvoiceOverdue(i)).length;
   const pendingInvoices = allInvoices.filter(i => i.status === 'pending_payment' || i.status === 'payment_submitted').length;
-  const totalOutstanding = allInvoices.filter(i => i.status !== 'paid' && i.status !== 'cancelled' && i.status !== 'draft').reduce((sum, i) => sum + i.total, 0);
 
   // Filtered invoices to pay with search and date range
   const filteredInvoicesToPay = invoicesToPay.filter(invoice => {
@@ -2486,85 +2422,12 @@ const BrandInvoicesPage: React.FC = () => {
     return dateB - dateA;
   });
 
-  const handleExportInvoices = () => {
-    const exportData = {
-      exportDate: new Date().toISOString(),
-      totalInvoices: invoices.length,
-      summary: {
-        totalAmount: invoices.reduce((sum, inv) => sum + inv.total, 0),
-        paidInvoices: invoices.filter(inv => inv.status === 'paid').length,
-        overdueInvoices: invoices.filter(inv => inv.status === 'overdue').length,
-        draftInvoices: invoices.filter(inv => inv.status === 'draft').length,
-        paidAmount: invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.total, 0),
-        outstandingAmount: invoices.filter(inv => inv.status !== 'paid' && inv.status !== 'cancelled').reduce((sum, inv) => sum + inv.total, 0)
-      },
-      statusBreakdown: {
-        draft: invoices.filter(inv => inv.status === 'draft').length,
-        pending_payment: invoices.filter(inv => inv.status === 'pending_payment').length,
-        paid: invoices.filter(inv => inv.status === 'paid').length,
-        overdue: invoices.filter(inv => inv.status === 'overdue').length,
-        cancelled: invoices.filter(inv => inv.status === 'cancelled').length
-      },
-      invoices: invoices.map(invoice => ({
-        invoiceNumber: invoice.invoiceNumber,
-        managerName: invoice.managerName,
-        companyName: invoice.companyName,
-        issueDate: invoice.issueDate,
-        dueDate: invoice.dueDate,
-        paidDate: invoice.paidDate || 'N/A',
-        status: invoice.status,
-        amount: invoice.amount,
-        tax: invoice.tax,
-        total: invoice.total,
-        billingPeriod: invoice.billingPeriod,
-        planType: invoice.planType
-      }))
-    };
-
-    const dataStr = JSON.stringify(exportData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `invoices-export-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
 
   const handleCreateInvoice = () => {
     resetInvoiceForm();
     setShowCreateInvoiceModal(true);
   };
 
-  const handleGenerateSubscriptionInvoices = async () => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/invoices/generate-for-subscriptions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        await fetchInvoices(); // Refresh the invoice list
-        setSuccessMessage(`Successfully generated ${result.generated} subscription invoices!`);
-        setShowSuccessModal(true);
-      } else {
-        const errorData = await response.json();
-        setSuccessMessage(`Failed to generate subscription invoices: ${errorData.error || 'Unknown error'}`);
-        setShowSuccessModal(true);
-      }
-    } catch (error) {
-      console.error('Error generating subscription invoices:', error);
-      setSuccessMessage('Error generating subscription invoices. Please try again.');
-      setShowSuccessModal(true);
-    }
-  };
 
   const handleViewInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
@@ -2897,10 +2760,6 @@ const BrandInvoicesPage: React.FC = () => {
     }
   };
 
-  const handleResendInvoice = (invoice: Invoice) => {
-    setSelectedInvoice(invoice);
-    setShowResendConfirmModal(true);
-  };
 
   const confirmResendInvoice = () => {
     if (!selectedInvoice) return;

@@ -534,6 +534,7 @@ const CouponsPage: React.FC = () => {
     if (restaurantId) {
       fetchCoupons();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restaurantId]);
 
   const fetchCoupons = async () => {

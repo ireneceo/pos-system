@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
-import { useSearchParams } from 'react-router-dom';
 import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { formatCurrency, normalizeCurrencyCode } from '../../utils/currency';
@@ -28,7 +27,7 @@ import {
   ActionButtons,
   EmptyState
 } from '../../components/UI';
-import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import StripePaymentForm from '../../components/Invoice/StripePaymentForm';
@@ -198,43 +197,6 @@ const FiltersRight = styled.div`
     > button {
       width: 100%;
     }
-  }
-`;
-
-const PeriodFilterGroup = styled.div`
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-`;
-
-const DateButton = styled.button<{ active?: boolean }>`
-  padding: 8px 16px;
-  background: ${props => props.active ? '#059669' : '#FFFFFF'};
-  color: ${props => props.active ? '#FFFFFF' : '#6B7C93'};
-  border: 1px solid ${props => props.active ? '#059669' : '#E6EBF1'};
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    background: ${props => props.active ? '#047857' : '#F8FAFC'};
-    border-color: ${props => props.active ? '#047857' : '#CBD5E1'};
-  }
-`;
-
-const DateInput = styled.input`
-  padding: 8px 12px;
-  border: 1px solid #E6EBF1;
-  border-radius: 6px;
-  font-size: 14px;
-  color: #1F2937;
-
-  &:focus {
-    outline: none;
-    border-color: #059669;
   }
 `;
 
@@ -629,7 +591,6 @@ type TabType = 'to_pay' | 'paid' | 'issued';
 const FoodcourtInvoicesPage: React.FC = () => {
   const { operationSettings } = useStore();
   const { user } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -656,58 +617,6 @@ const FoodcourtInvoicesPage: React.FC = () => {
   const [invoicesToPay, setInvoicesToPay] = useState<Invoice[]>([]);
   const [paidInvoicesList, setPaidInvoicesList] = useState<Invoice[]>([]);
 
-  // Paid tab filters
-  type PeriodType = 'week' | 'month' | 'year' | 'all';
-  const [paidSearchTerm, setPaidSearchTerm] = useState('');
-  const [paidActivePeriod, setPaidActivePeriod] = useState<PeriodType>('all');
-  const [paidIsCustomDateRange, setPaidIsCustomDateRange] = useState(false);
-  const [paidDateRange, setPaidDateRange] = useState({ start: '', end: '' });
-
-  const handlePaidPeriodChange = (period: PeriodType) => {
-    setPaidActivePeriod(period);
-    setPaidIsCustomDateRange(false);
-
-    const now = new Date();
-    let start = new Date();
-    let end = new Date();
-
-    const fmtDate = (d: Date) => {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-
-    switch (period) {
-      case 'week':
-        start.setDate(now.getDate() - now.getDay());
-        break;
-      case 'month':
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        break;
-      case 'year':
-        start = new Date(now.getFullYear(), 0, 1);
-        end = new Date(now.getFullYear(), 11, 31);
-        break;
-      case 'all':
-        start = new Date(2000, 0, 1);
-        break;
-    }
-
-    setPaidDateRange({
-      start: period === 'all' ? '' : fmtDate(start),
-      end: period === 'all' ? '' : fmtDate(end)
-    });
-  };
-
-  const handlePaidDateRangeChange = (type: 'start' | 'end', value: string) => {
-    setPaidIsCustomDateRange(true);
-    setPaidDateRange(prev => ({
-      ...prev,
-      [type]: value
-    }));
-  };
 
   // Payment submission states
   const [showPaymentSubmitModal, setShowPaymentSubmitModal] = useState(false);
@@ -743,7 +652,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState<{type: 'manager' | 'restaurant', data: Manager | Restaurant} | null>(null);
   const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
-  const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
+  const [, setCurrencyConfig] = useState<CurrencyConfig>({});
   const [invoiceCategories, setInvoiceCategories] = useState<InvoiceCategory[]>([]);
   const [additionalChargesMap, setAdditionalChargesMap] = useState<{ [currency: string]: Array<{ enabled: boolean; name: string; rate: number }> }>({});
   const [newInvoice, setNewInvoice] = useState({
@@ -859,70 +768,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
   };
 
   // Resize image to reduce base64 size
-  const resizeImage = (file: File, maxWidth: number = 800, maxHeight: number = 800, quality: number = 0.7): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      const reader = new FileReader();
 
-      reader.onload = (e) => {
-        img.src = e.target?.result as string;
-      };
-
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-
-        if (width > maxWidth || height > maxHeight) {
-          const ratio = Math.min(maxWidth / width, maxHeight / height);
-          width = Math.round(width * ratio);
-          height = Math.round(height * ratio);
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Failed to get canvas context'));
-          return;
-        }
-
-        ctx.drawImage(img, 0, 0, width, height);
-        const resizedBase64 = canvas.toDataURL('image/jpeg', quality);
-        resolve(resizedBase64);
-      };
-
-      img.onerror = () => reject(new Error('Failed to load image'));
-      reader.onerror = () => reject(new Error('Failed to read file'));
-      reader.readAsDataURL(file);
-    });
-  };
-
-  // Handle receipt image upload with auto-resize
-  const handleReceiptImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      setPaymentSubmitError('Please upload an image file (JPG, PNG, etc.)');
-      return;
-    }
-
-    if (file.size > 10 * 1024 * 1024) {
-      setPaymentSubmitError('File size must be less than 10MB');
-      return;
-    }
-
-    try {
-      setPaymentSubmitError(null);
-      const resizedImage = await resizeImage(file, 1024, 1024, 0.8);
-      setPaymentData(prev => ({ ...prev, receiptImage: resizedImage }));
-    } catch (error) {
-      console.error('Error processing image:', error);
-      setPaymentSubmitError('Failed to process image. Please try another file.');
-    }
-  };
 
   // Submit payment for an invoice
   const handleSubmitPayment = async () => {
@@ -1027,20 +873,6 @@ const FoodcourtInvoicesPage: React.FC = () => {
   }, []);
 
   // Category management functions
-  const handleOpenCategoryModal = (category?: InvoiceCategory) => {
-    if (category) {
-      setEditingCategory(category);
-      setCategoryFormData({
-        name: category.name,
-        code: category.code,
-        description: category.description || ''
-      });
-    } else {
-      setEditingCategory(null);
-      setCategoryFormData({ name: '', code: '', description: '' });
-    }
-    setShowCategoryModal(true);
-  };
 
   const handleCloseCategoryModal = () => {
     setShowCategoryModal(false);
@@ -1088,10 +920,6 @@ const FoodcourtInvoicesPage: React.FC = () => {
     }
   };
 
-  const handleDeleteCategoryClick = (category: InvoiceCategory) => {
-    setCategoryToDelete(category);
-    setDeleteCategoryModalOpen(true);
-  };
 
   const handleDeleteCategoryConfirm = async () => {
     if (!categoryToDelete) return;
@@ -1117,26 +945,6 @@ const FoodcourtInvoicesPage: React.FC = () => {
     }
   };
 
-  const handleToggleCategoryActive = async (category: InvoiceCategory) => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/invoices/categories/${category.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ is_active: !category.is_active })
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        fetchInvoiceCategories();
-      }
-    } catch (error) {
-      console.error('Failed to toggle category:', error);
-    }
-  };
 
   // Sample data fallback - kept for reference but not currently used
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -1319,6 +1127,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
     fetchCurrencyConfig();
     fetchInvoiceCategories();
     fetchFoodcourtPaymentSettings();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchCurrencyConfig = async () => {
@@ -2110,85 +1919,12 @@ const FoodcourtInvoicesPage: React.FC = () => {
     }
   };
 
-  const handleExportInvoices = () => {
-    const exportData = {
-      exportDate: new Date().toISOString(),
-      totalInvoices: invoices.length,
-      summary: {
-        totalAmount: invoices.reduce((sum, inv) => sum + inv.total, 0),
-        paidInvoices: invoices.filter(inv => inv.status === 'paid').length,
-        overdueInvoices: invoices.filter(inv => inv.status === 'overdue').length,
-        draftInvoices: invoices.filter(inv => inv.status === 'draft').length,
-        paidAmount: invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.total, 0),
-        outstandingAmount: invoices.filter(inv => inv.status !== 'paid' && inv.status !== 'cancelled').reduce((sum, inv) => sum + inv.total, 0)
-      },
-      statusBreakdown: {
-        draft: invoices.filter(inv => inv.status === 'draft').length,
-        pending_payment: invoices.filter(inv => inv.status === 'pending_payment').length,
-        paid: invoices.filter(inv => inv.status === 'paid').length,
-        overdue: invoices.filter(inv => inv.status === 'overdue').length,
-        cancelled: invoices.filter(inv => inv.status === 'cancelled').length
-      },
-      invoices: invoices.map(invoice => ({
-        invoiceNumber: invoice.invoiceNumber,
-        managerName: invoice.managerName,
-        companyName: invoice.companyName,
-        issueDate: invoice.issueDate,
-        dueDate: invoice.dueDate,
-        paidDate: invoice.paidDate || 'N/A',
-        status: invoice.status,
-        amount: invoice.amount,
-        tax: invoice.tax,
-        total: invoice.total,
-        billingPeriod: invoice.billingPeriod,
-        planType: invoice.planType
-      }))
-    };
-
-    const dataStr = JSON.stringify(exportData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `invoices-export-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
 
   const handleCreateInvoice = () => {
     resetInvoiceForm();
     setShowCreateInvoiceModal(true);
   };
 
-  const handleGenerateSubscriptionInvoices = async () => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/invoices/generate-for-subscriptions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        await fetchInvoices(); // Refresh the invoice list
-        setSuccessMessage(`Successfully generated ${result.generated} subscription invoices!`);
-        setShowSuccessModal(true);
-      } else {
-        const errorData = await response.json();
-        setSuccessMessage(`Failed to generate subscription invoices: ${errorData.error || 'Unknown error'}`);
-        setShowSuccessModal(true);
-      }
-    } catch (error) {
-      console.error('Error generating subscription invoices:', error);
-      setSuccessMessage('Error generating subscription invoices. Please try again.');
-      setShowSuccessModal(true);
-    }
-  };
 
   const handleViewInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
@@ -2502,10 +2238,6 @@ const FoodcourtInvoicesPage: React.FC = () => {
     }
   };
 
-  const handleResendInvoice = (invoice: Invoice) => {
-    setSelectedInvoice(invoice);
-    setShowResendConfirmModal(true);
-  };
 
   const confirmResendInvoice = () => {
     if (!selectedInvoice) return;

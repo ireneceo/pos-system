@@ -70,6 +70,7 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
     } else {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const fetchBrands = async () => {

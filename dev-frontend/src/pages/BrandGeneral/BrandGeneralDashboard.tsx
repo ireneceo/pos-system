@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI/StatCard';
+import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/StatCard';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { useAuth } from '../../contexts/AuthContext';
 
 // ============================================================================
 // Styled Components
@@ -240,7 +239,6 @@ const PIE_COLORS = ['#DC2626', '#EF4444', '#F87171', '#FCA5A5', '#FECACA', '#FEE
 
 const BrandGeneralDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
   const [currency, setCurrency] = useState('RM');
   const [loading, setLoading] = useState(true);
@@ -273,6 +271,7 @@ const BrandGeneralDashboard: React.FC = () => {
   useEffect(() => {
     fetchDashboardData();
     fetchBadgeCounts();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchBadgeCounts = async () => {
@@ -290,6 +289,7 @@ const BrandGeneralDashboard: React.FC = () => {
   // Fetch chart data when period changes
   useEffect(() => {
     if (brandId) fetchTrendData(brandId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chartPeriod, brandId]);
 
   const getHeaders = () => ({

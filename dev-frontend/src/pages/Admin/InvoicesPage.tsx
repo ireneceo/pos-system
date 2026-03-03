@@ -23,12 +23,11 @@ import {
   DataTableHeaderCell,
   DataTableRow,
   DataTableCell,
-  DataTableActions,
   DataTableEmpty,
   DataTableAmount,
   ActionButtons
 } from '../../components/UI';
-import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { SearchInput } from '../../components/Common/FilterComponents';
 import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Common/TabComponents';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -148,54 +147,6 @@ interface CompanySettings {
 // Common components now imported from ../../components/UI
 // Page-specific styled components below
 
-// FilterBar wrapper for full width layout
-const FilterBarWrapper = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  margin-bottom: 24px;
-  width: 100%;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    gap: 12px;
-  }
-`;
-
-const FiltersLeft = styled.div`
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
-  flex: 1;
-
-  @media (max-width: 600px) {
-    flex-direction: column;
-    width: 100%;
-
-    > * {
-      width: 100% !important;
-      min-width: 100% !important;
-      max-width: 100% !important;
-    }
-  }
-`;
-
-const FiltersRight = styled.div`
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-
-  @media (max-width: 768px) {
-    width: 100%;
-
-    > button {
-      width: 100%;
-    }
-  }
-`;
-
 // Button 컴포넌트는 BaseButton으로 교체됨
 const Button = styled(BaseButton)``;
 
@@ -229,10 +180,6 @@ const StatusBadge = styled(CommonStatusBadge)`
   line-height: 1.3;
 `;
 
-const Amount = styled.div<{ highlight?: boolean }>`
-  font-weight: ${props => props.highlight ? '700' : '500'};
-  color: #374151;
-`;
 
 const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'email' | 'cancel' | 'success' }>`
   padding: 5px 8px;
@@ -674,52 +621,6 @@ const SummaryRow = styled.div<{ highlight?: boolean }>`
   ` : ''}
 `;
 
-// 사용하지 않는 컴포넌트 (호환성 유지)
-const MobileCardList = styled.div``;
-const MobileCard = styled.div`
-  background: white;
-  border-radius: 10px;
-  border: 1px solid #E6EBF1;
-  padding: 14px;
-  margin-bottom: 10px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-
-  &:last-child {
-    margin-bottom: 0;
-  }
-`;
-
-const MobileCardRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-
-  &:last-child {
-    margin-bottom: 0;
-  }
-`;
-
-const MobileCardLabel = styled.span`
-  font-size: 11px;
-  font-weight: 600;
-  color: #9CA3AF;
-  text-transform: uppercase;
-`;
-
-const MobileCardValue = styled.span`
-  font-size: 13px;
-  color: #0A2540;
-`;
-
-const MobileCardActions = styled.div`
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding-top: 10px;
-  margin-top: 10px;
-  border-top: 1px solid #F3F4F6;
-`;
 
 type TabType = 'invoices' | 'payment_submitted' | 'categories';
 type PeriodType = 'today' | 'week' | 'month' | 'year' | 'all';
@@ -788,11 +689,11 @@ const InvoicesPage: React.FC = () => {
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState<{type: 'manager' | 'restaurant', data: Manager | Restaurant} | null>(null);
   const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
-  const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
-  const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>([]);
+  const [, setCurrencyConfig] = useState<CurrencyConfig>({});
+  const [, setSupportedCurrencies] = useState<string[]>([]);
   const [invoiceCategories, setInvoiceCategories] = useState<InvoiceCategory[]>([]);
   const [additionalChargesMap, setAdditionalChargesMap] = useState<{ [currency: string]: Array<{ enabled: boolean; name: string; rate: number }> }>({});
-  const [taxSettings, setTaxSettings] = useState<{ enabled: boolean; rate: number; name: string }>({
+  const [, setTaxSettings] = useState<{ enabled: boolean; rate: number; name: string }>({
     enabled: false,
     rate: 0,
     name: 'Tax'
@@ -1224,6 +1125,7 @@ const InvoicesPage: React.FC = () => {
     fetchCurrencyConfig();
     fetchInvoiceCategories();
     fetchPaymentSettings();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Get additionalCharges for a specific currency from the map (normalizes RM→MYR etc.)
@@ -2159,85 +2061,12 @@ const InvoicesPage: React.FC = () => {
     return new Date(dateString).toLocaleDateString('en-MY');
   };
 
-  const handleExportInvoices = () => {
-    const exportData = {
-      exportDate: new Date().toISOString(),
-      totalInvoices: invoices.length,
-      summary: {
-        totalAmount: invoices.reduce((sum, inv) => sum + inv.total, 0),
-        paidInvoices: invoices.filter(inv => inv.status === 'paid').length,
-        overdueInvoices: invoices.filter(inv => inv.status === 'overdue').length,
-        draftInvoices: invoices.filter(inv => inv.status === 'draft').length,
-        paidAmount: invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.total, 0),
-        outstandingAmount: invoices.filter(inv => inv.status !== 'paid' && inv.status !== 'cancelled').reduce((sum, inv) => sum + inv.total, 0)
-      },
-      statusBreakdown: {
-        draft: invoices.filter(inv => inv.status === 'draft').length,
-        pending_payment: invoices.filter(inv => inv.status === 'pending_payment').length,
-        paid: invoices.filter(inv => inv.status === 'paid').length,
-        overdue: invoices.filter(inv => inv.status === 'overdue').length,
-        cancelled: invoices.filter(inv => inv.status === 'cancelled').length
-      },
-      invoices: invoices.map(invoice => ({
-        invoiceNumber: invoice.invoiceNumber,
-        managerName: invoice.managerName,
-        companyName: invoice.companyName,
-        issueDate: invoice.issueDate,
-        dueDate: invoice.dueDate,
-        paidDate: invoice.paidDate || 'N/A',
-        status: invoice.status,
-        amount: invoice.amount,
-        tax: invoice.tax,
-        total: invoice.total,
-        billingPeriod: invoice.billingPeriod,
-        planType: invoice.planType
-      }))
-    };
-
-    const dataStr = JSON.stringify(exportData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `invoices-export-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
 
   const handleCreateInvoice = () => {
     resetInvoiceForm();
     setShowCreateInvoiceModal(true);
   };
 
-  const handleGenerateSubscriptionInvoices = async () => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/invoices/generate-for-subscriptions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        await fetchInvoices(); // Refresh the invoice list
-        setSuccessMessage(`Successfully generated ${result.generated} subscription invoices!`);
-        setShowSuccessModal(true);
-      } else {
-        const errorData = await response.json();
-        setSuccessMessage(`Failed to generate subscription invoices: ${errorData.error || 'Unknown error'}`);
-        setShowSuccessModal(true);
-      }
-    } catch (error) {
-      console.error('Error generating subscription invoices:', error);
-      setSuccessMessage('Error generating subscription invoices. Please try again.');
-      setShowSuccessModal(true);
-    }
-  };
 
   const handleViewInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
@@ -2416,12 +2245,10 @@ const InvoicesPage: React.FC = () => {
       let customerName = '';
       let customerAddress = '';
       let companyName = '';
-      let restaurantName = '';
 
       if (selectedTarget.type === 'restaurant') {
         const restaurant = selectedTarget.data as Restaurant;
         customerName = restaurant.name;
-        restaurantName = restaurant.name;
         companyName = restaurant.name;
 
         // Build full address from restaurant data
@@ -2554,10 +2381,6 @@ const InvoicesPage: React.FC = () => {
     }
   };
 
-  const handleResendInvoice = (invoice: Invoice) => {
-    setSelectedInvoice(invoice);
-    setShowResendConfirmModal(true);
-  };
 
   const confirmResendInvoice = () => {
     if (!selectedInvoice) return;

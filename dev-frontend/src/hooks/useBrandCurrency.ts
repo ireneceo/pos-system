@@ -17,7 +17,7 @@ interface BrandCurrencyData {
 export const useBrandCurrency = (): BrandCurrencyData => {
   const { user } = useAuth();
   const [defaultCurrency, setDefaultCurrency] = useState<string>('RM');
-  const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>(Object.keys(CURRENCY_CONFIG));
+  const [supportedCurrencies] = useState<string[]>(Object.keys(CURRENCY_CONFIG));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

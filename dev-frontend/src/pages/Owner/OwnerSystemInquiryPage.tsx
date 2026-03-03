@@ -3,8 +3,6 @@ import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import CommentSection from '../../components/Common/CommentSection';
-import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
-import AttachmentList from '../../components/Common/AttachmentList';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 
 interface SupportTicket {
@@ -468,7 +466,6 @@ const OwnerSystemInquiryPage: React.FC = () => {
     priority: 'medium' as SupportTicket['priority'],
     category: 'general' as SupportTicket['category']
   });
-  const [newAttachments, setNewAttachments] = useState<AttachmentFile[]>([]);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, { total_comments: number; unread_count: number }>>({});
 
   useEffect(() => {
@@ -483,6 +480,7 @@ const OwnerSystemInquiryPage: React.FC = () => {
       const interval = setInterval(fetchTickets, 10000);
       return () => clearInterval(interval);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ownedRestaurants]);
 
   const fetchOwnedRestaurants = async () => {

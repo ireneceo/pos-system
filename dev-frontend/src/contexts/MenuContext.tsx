@@ -429,39 +429,6 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
     }
   }, [loadedCategories]);
 
-  // 카테고리만 빠르게 로드하는 함수
-  const loadCategoriesOnly = useCallback(async () => {
-    try {
-      const pathParts = window.location.pathname.split('/');
-      const restaurantIndex = pathParts.indexOf('restaurant');
-      const restaurantId = restaurantIndex >= 0 ? pathParts[restaurantIndex + 1] : null;
-
-      if (!restaurantId) return;
-
-      const response = await fetch(`/api/menu/categories?restaurantId=${restaurantId}`, {
-        ...getFetchOptions()
-      });
-
-      if (!response.ok) return;
-
-      const data = await response.json();
-      if (data.success && data.data?.categories) {
-        const categoryEmojis = ['🍔', '🍕', '🥤', '🍰', '🍜', '🥗', '🍣', '🌮'];
-        const cats = data.data.categories.map((cat: any, idx: number) => ({
-          id: cat.id ? cat.id.toString() : cat.name.toLowerCase().replace(/\s+/g, '_'),
-          name: cat.name,
-          emoji: cat.emoji || categoryEmojis[idx % categoryEmojis.length],
-          order: cat.displayOrder !== undefined ? cat.displayOrder : idx,
-          isActive: cat.isActive !== undefined ? cat.isActive : true
-        }));
-        setCategories(cats);
-        saveCategoriesCache(restaurantId, cats);
-      }
-    } catch (error) {
-
-    }
-  }, []);
-
   // 초기 로드 및 레스토랑 변경 시 다시 로드
   useEffect(() => {
     // Extract restaurant ID or slug from URL
@@ -837,12 +804,10 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-
-        throw new Error(`Failed to reorder categories: ${response.status}`);
+          throw new Error(`Failed to reorder categories: ${response.status}`);
       }
 
-      const result = await response.json();
+      await response.json();
 
     } catch (error) {
 

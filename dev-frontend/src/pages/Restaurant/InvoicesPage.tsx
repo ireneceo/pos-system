@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useSearchParams, useParams } from 'react-router-dom';
 import { formatCurrency } from '../../utils/currency';
@@ -383,142 +383,6 @@ const ModalFooter = styled.div`
   border-radius: 0 0 12px 12px;
 `;
 
-// Invoice Preview components
-const InvoicePreview = styled.div`
-  background: white;
-  padding: 40px;
-  font-family: 'Helvetica Neue', Arial, sans-serif;
-`;
-
-const InvoiceHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 40px;
-  padding-bottom: 20px;
-  border-bottom: 2px solid #E6EBF1;
-`;
-
-const CompanyLogo = styled.img`
-  max-width: 180px;
-  max-height: 60px;
-  object-fit: contain;
-`;
-
-const InvoiceTitle = styled.h1`
-  font-size: 32px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-  text-align: right;
-`;
-
-const InvoiceMeta = styled.div`
-  text-align: right;
-  margin-top: 8px;
-`;
-
-const MetaItem = styled.p`
-  margin: 4px 0;
-  font-size: 13px;
-  color: #6B7280;
-`;
-
-const InvoiceParties = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 40px;
-  margin-bottom: 40px;
-`;
-
-const PartySection = styled.div``;
-
-const PartyTitle = styled.h3`
-  font-size: 11px;
-  font-weight: 600;
-  color: #6B7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin: 0 0 12px 0;
-`;
-
-const PartyName = styled.p`
-  font-size: 16px;
-  font-weight: 600;
-  color: #0A2540;
-  margin: 0 0 8px 0;
-`;
-
-const PartyDetail = styled.p`
-  font-size: 13px;
-  color: #6B7280;
-  margin: 2px 0;
-`;
-
-const ItemsTable = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 24px;
-
-  th {
-    background: #F8FAFC;
-    padding: 12px 16px;
-    text-align: left;
-    font-size: 11px;
-    font-weight: 600;
-    color: #6B7280;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-bottom: 1px solid #E6EBF1;
-  }
-
-  th:last-child,
-  td:last-child {
-    text-align: right;
-  }
-
-  td {
-    padding: 16px;
-    font-size: 14px;
-    color: #0A2540;
-    border-bottom: 1px solid #E6EBF1;
-  }
-`;
-
-const TotalSection = styled.div`
-  display: flex;
-  justify-content: flex-end;
-`;
-
-const TotalBox = styled.div`
-  width: 280px;
-`;
-
-const TotalRow = styled.div<{ highlight?: boolean }>`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-
-  ${props => props.highlight ? `
-    border-top: 1px solid #E6EBF1;
-    margin-top: 8px;
-    padding-top: 16px;
-    font-size: 16px;
-  ` : ''}
-`;
-
-const TotalLabel = styled.span<{ highlight?: boolean }>`
-  font-size: ${props => props.highlight ? '16px' : '14px'};
-  color: ${props => props.highlight ? '#0A2540' : '#6B7280'};
-  font-weight: ${props => props.highlight ? '600' : '400'};
-`;
-
-const TotalValue = styled.span<{ highlight?: boolean }>`
-  font-size: ${props => props.highlight ? '20px' : '14px'};
-  font-weight: ${props => props.highlight ? '700' : '500'};
-  color: #0A2540;
-`;
 
 // Form components
 const FormGroup = styled.div`
@@ -540,22 +404,6 @@ const FormInput = styled.input`
   border-radius: 6px;
   font-size: 14px;
   color: #0A2540;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
-
-const FormSelect = styled.select`
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #E6EBF1;
-  border-radius: 6px;
-  font-size: 14px;
-  color: #0A2540;
-  background: white;
 
   &:focus {
     outline: none;
@@ -611,7 +459,7 @@ const RestaurantInvoicesPage: React.FC = () => {
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
   const [paymentSubmitError, setPaymentSubmitError] = useState('');
   const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
-  const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
+  const [, setCurrencyConfig] = useState<CurrencyConfig>({});
 
   // URL-based tab management
   const activeTab = (searchParams.get('tab') as TabType) || 'all';
@@ -883,6 +731,7 @@ const RestaurantInvoicesPage: React.FC = () => {
     fetchInvoicesToPay();
     fetchCompanySettings();
     fetchCurrencyConfig();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restaurantId, user?.restaurant_id]);
 
   // Helper functions
@@ -1328,134 +1177,6 @@ const RestaurantInvoicesPage: React.FC = () => {
   };
 
   // Render invoice preview
-  const renderInvoicePreview = (invoice: Invoice) => {
-    const issuerInfo = invoice.issuerInfo;
-    const payerInfo = invoice.payerInfo || (companySettings ? {
-      name: companySettings.companyName,
-      address: companySettings.address,
-      city: companySettings.city,
-      state: companySettings.state,
-      postalCode: companySettings.postalCode,
-      country: companySettings.country,
-      phone: companySettings.phone,
-      email: companySettings.email,
-      taxId: companySettings.taxNumber,
-      businessRegistration: companySettings.registrationNumber
-    } : null);
-
-    return (
-      <InvoicePreview id="invoice-preview-pdf">
-        <InvoiceHeader>
-          <div>
-            {issuerInfo?.logoUrl && (
-              <CompanyLogo src={issuerInfo.logoUrl} alt="Company Logo" />
-            )}
-            <PartyName style={{ fontSize: issuerInfo?.logoUrl ? '16px' : '24px' }}>{issuerInfo?.name || 'Company Name'}</PartyName>
-          </div>
-          <div>
-            <InvoiceTitle>INVOICE</InvoiceTitle>
-            <InvoiceMeta>
-              <MetaItem><strong>{invoice.invoiceNumber}</strong></MetaItem>
-              <MetaItem>Issue Date: {formatDate(invoice.issueDate)}</MetaItem>
-              <MetaItem>Due Date: {formatDate(invoice.dueDate)}</MetaItem>
-            </InvoiceMeta>
-          </div>
-        </InvoiceHeader>
-
-        <InvoiceParties>
-          <PartySection>
-            <PartyTitle>From</PartyTitle>
-            <PartyName>{issuerInfo?.name || invoice.issuerName || 'Issuer'}</PartyName>
-            {issuerInfo?.address && <PartyDetail>{issuerInfo.address}</PartyDetail>}
-            {(issuerInfo?.city || issuerInfo?.state || issuerInfo?.postalCode) && (
-              <PartyDetail>
-                {[issuerInfo.city, issuerInfo.state, issuerInfo.postalCode].filter(Boolean).join(', ')}
-              </PartyDetail>
-            )}
-            {issuerInfo?.country && <PartyDetail>{issuerInfo.country}</PartyDetail>}
-            {issuerInfo?.email && <PartyDetail>{issuerInfo.email}</PartyDetail>}
-            {issuerInfo?.phone && <PartyDetail>{issuerInfo.phone}</PartyDetail>}
-            {issuerInfo?.taxId && <PartyDetail>Tax ID: {issuerInfo.taxId}</PartyDetail>}
-          </PartySection>
-
-          <PartySection>
-            <PartyTitle>Bill To</PartyTitle>
-            <PartyName>{payerInfo?.name || companySettings?.companyName || 'Customer'}</PartyName>
-            {(payerInfo?.address || companySettings?.address) && (
-              <PartyDetail>{payerInfo?.address || companySettings?.address}</PartyDetail>
-            )}
-            {(payerInfo?.city || payerInfo?.state || payerInfo?.postalCode || companySettings?.city) && (
-              <PartyDetail>
-                {[
-                  payerInfo?.city || companySettings?.city,
-                  payerInfo?.state || companySettings?.state,
-                  payerInfo?.postalCode || companySettings?.postalCode
-                ].filter(Boolean).join(', ')}
-              </PartyDetail>
-            )}
-            {(payerInfo?.country || companySettings?.country) && (
-              <PartyDetail>{payerInfo?.country || companySettings?.country}</PartyDetail>
-            )}
-            {(payerInfo?.email || companySettings?.email) && (
-              <PartyDetail>{payerInfo?.email || companySettings?.email}</PartyDetail>
-            )}
-            {(payerInfo?.phone || companySettings?.phone) && (
-              <PartyDetail>{payerInfo?.phone || companySettings?.phone}</PartyDetail>
-            )}
-          </PartySection>
-        </InvoiceParties>
-
-        <ItemsTable>
-          <thead>
-            <tr>
-              <th>Description</th>
-              <th>Qty</th>
-              <th>Unit Price</th>
-              <th>Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {invoice.items && invoice.items.length > 0 ? (
-              invoice.items.map((item, index) => (
-                <tr key={index}>
-                  <td>{item.description}</td>
-                  <td>{item.quantity}</td>
-                  <td>{formatCurrency(item.unitPrice, invoice.currency || 'MYR')}</td>
-                  <td>{formatCurrency(item.total, invoice.currency || 'MYR')}</td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td>{invoice.categoryDisplayName || invoice.planType || 'Service'}</td>
-                <td>1</td>
-                <td>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</td>
-                <td>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</td>
-              </tr>
-            )}
-          </tbody>
-        </ItemsTable>
-
-        <TotalSection>
-          <TotalBox>
-            <TotalRow>
-              <TotalLabel>Subtotal</TotalLabel>
-              <TotalValue>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</TotalValue>
-            </TotalRow>
-            {invoice.tax > 0 && (
-              <TotalRow>
-                <TotalLabel>Tax</TotalLabel>
-                <TotalValue>{formatCurrency(invoice.tax, invoice.currency || 'MYR')}</TotalValue>
-              </TotalRow>
-            )}
-            <TotalRow highlight>
-              <TotalLabel highlight>Total</TotalLabel>
-              <TotalValue highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</TotalValue>
-            </TotalRow>
-          </TotalBox>
-        </TotalSection>
-      </InvoicePreview>
-    );
-  };
 
   // Render table
   const renderInvoiceTable = (invoices: Invoice[], showPayButton: boolean = false) => (

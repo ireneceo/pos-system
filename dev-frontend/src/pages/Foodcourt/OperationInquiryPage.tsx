@@ -79,11 +79,6 @@ const Title = styled.h1`
   }
 `;
 
-const ActionSection = styled.div`
-  display: flex;
-  gap: 12px;
-`;
-
 const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
   padding: 12px 20px;
   border-radius: 8px;
@@ -410,14 +405,6 @@ const ModalBody = styled.div`
   padding: 24px;
 `;
 
-const ModalFooter = styled.div`
-  padding: 20px 24px;
-  border-top: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-`;
-
 const FormGroup = styled.div`
   margin-bottom: 20px;
 `;
@@ -568,7 +555,6 @@ const OperationInquiryPage: React.FC = () => {
   const openTickets = tickets.filter(t => t.status === 'open').length;
   const inProgressTickets = tickets.filter(t => t.status === 'in-progress').length;
   const resolvedTickets = tickets.filter(t => t.status === 'resolved').length;
-  const closedTickets = tickets.filter(t => t.status === 'closed').length;
 
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString('en-MY');

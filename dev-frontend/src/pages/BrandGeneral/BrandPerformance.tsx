@@ -311,8 +311,6 @@ interface RestaurantPerformanceData {
 
 type PeriodType = 'today' | 'week' | 'month' | 'year' | 'all';
 
-const CARD_COLORS = ['#635BFF', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4'];
-
 // Helper function to format date string
 const formatDateString = (date: Date): string => {
   const year = date.getFullYear();
@@ -359,6 +357,7 @@ const BrandPerformance: React.FC = () => {
     if (restaurants.length > 0) {
       fetchOrdersData();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restaurants, dateRange.start, dateRange.end]);
 
   const fetchData = async () => {

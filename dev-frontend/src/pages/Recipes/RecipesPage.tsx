@@ -277,11 +277,6 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger
 `;
 
 
-const EmptyIcon = styled.div`
-  font-size: 64px;
-  margin-bottom: 16px;
-`;
-
 const EmptyTitle = styled.h3`
   font-size: 20px;
   font-weight: 600;
@@ -466,6 +461,7 @@ const RecipesPage: React.FC = () => {
       fetchRecipes();
       fetchIngredients();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, userBrandId]);
 
   const fetchIngredients = async () => {

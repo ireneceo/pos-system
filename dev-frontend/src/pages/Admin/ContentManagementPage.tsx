@@ -248,7 +248,7 @@ const ContentManagementPage: React.FC = () => {
   const [activeTab, setTabParam] = useTabParam<'blog' | 'blog-categories' | 'faq' | 'faq-categories'>('blog');
   const [categories, setCategories] = useState<ContentCategory[]>([]);
   const [contents, setContents] = useState<ContentItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -277,6 +277,7 @@ const ContentManagementPage: React.FC = () => {
 
   useEffect(() => {
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   const fetchData = async () => {

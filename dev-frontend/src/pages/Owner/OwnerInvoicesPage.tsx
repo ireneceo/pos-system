@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useSearchParams } from 'react-router-dom';
 import { formatCurrency } from '../../utils/currency';
-import { useAuth } from '../../contexts/AuthContext';
 import { BaseButton, StatusBadge as CommonStatusBadge } from '../../components/UI/CommonStyles';
 import {
   Container,
@@ -378,142 +377,6 @@ const ModalFooter = styled.div`
   border-radius: 0 0 12px 12px;
 `;
 
-// Invoice Preview components
-const InvoicePreview = styled.div`
-  background: white;
-  padding: 40px;
-  font-family: 'Helvetica Neue', Arial, sans-serif;
-`;
-
-const InvoiceHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 40px;
-  padding-bottom: 20px;
-  border-bottom: 2px solid #E6EBF1;
-`;
-
-const CompanyLogo = styled.img`
-  max-width: 180px;
-  max-height: 60px;
-  object-fit: contain;
-`;
-
-const InvoiceTitle = styled.h1`
-  font-size: 32px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-  text-align: right;
-`;
-
-const InvoiceMeta = styled.div`
-  text-align: right;
-  margin-top: 8px;
-`;
-
-const MetaItem = styled.p`
-  margin: 4px 0;
-  font-size: 13px;
-  color: #6B7280;
-`;
-
-const InvoiceParties = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 40px;
-  margin-bottom: 40px;
-`;
-
-const PartySection = styled.div``;
-
-const PartyTitle = styled.h3`
-  font-size: 11px;
-  font-weight: 600;
-  color: #6B7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin: 0 0 12px 0;
-`;
-
-const PartyName = styled.p`
-  font-size: 16px;
-  font-weight: 600;
-  color: #0A2540;
-  margin: 0 0 8px 0;
-`;
-
-const PartyDetail = styled.p`
-  font-size: 13px;
-  color: #6B7280;
-  margin: 2px 0;
-`;
-
-const ItemsTable = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 24px;
-
-  th {
-    background: #F8FAFC;
-    padding: 12px 16px;
-    text-align: left;
-    font-size: 11px;
-    font-weight: 600;
-    color: #6B7280;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-bottom: 1px solid #E6EBF1;
-  }
-
-  th:last-child,
-  td:last-child {
-    text-align: right;
-  }
-
-  td {
-    padding: 16px;
-    font-size: 14px;
-    color: #0A2540;
-    border-bottom: 1px solid #E6EBF1;
-  }
-`;
-
-const TotalSection = styled.div`
-  display: flex;
-  justify-content: flex-end;
-`;
-
-const TotalBox = styled.div`
-  width: 280px;
-`;
-
-const TotalRow = styled.div<{ highlight?: boolean }>`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-
-  ${props => props.highlight ? `
-    border-top: 1px solid #E6EBF1;
-    margin-top: 8px;
-    padding-top: 16px;
-    font-size: 16px;
-  ` : ''}
-`;
-
-const TotalLabel = styled.span<{ highlight?: boolean }>`
-  font-size: ${props => props.highlight ? '16px' : '14px'};
-  color: ${props => props.highlight ? '#0A2540' : '#6B7280'};
-  font-weight: ${props => props.highlight ? '600' : '400'};
-`;
-
-const TotalValue = styled.span<{ highlight?: boolean }>`
-  font-size: ${props => props.highlight ? '20px' : '14px'};
-  font-weight: ${props => props.highlight ? '700' : '500'};
-  color: #0A2540;
-`;
 
 // Form components
 const FormGroup = styled.div`
@@ -543,27 +406,11 @@ const FormInput = styled.input`
   }
 `;
 
-const FormSelect = styled.select`
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #E6EBF1;
-  border-radius: 6px;
-  font-size: 14px;
-  color: #0A2540;
-  background: white;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
 
 type TabType = 'all' | 'to_pay';
 type PeriodType = 'week' | 'month' | 'year' | 'all';
 
 const OwnerInvoicesPage: React.FC = () => {
-  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // States
@@ -830,6 +677,7 @@ const OwnerInvoicesPage: React.FC = () => {
   useEffect(() => {
     fetchAllInvoices();
     fetchInvoicesToPay();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRestaurant]);
 
   // Helper functions

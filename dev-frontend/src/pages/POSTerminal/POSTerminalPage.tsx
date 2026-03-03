@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PaymentModal from '../../components/POSTerminal/PaymentModal';
@@ -17,7 +17,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import CustomerModal from '../../components/Customer/CustomerModal';
 // StaffLoginModal removed - authentication handled by ProtectedRoute
 import { normalizeCustomerName } from '../../utils/orderUtils';
-import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
+import { getCurrencySymbol } from '../../utils/currency';
 import { useRestaurantId } from '../../hooks/useRestaurantId';
 
 const POSContainer = styled.div`
@@ -1056,38 +1056,6 @@ const ClearCustomerBtn = styled.button`
   }
 `;
 
-const QuickActions = styled.div`
-  position: fixed;
-  bottom: 24px;
-  left: 24px;
-  display: flex;
-  gap: 12px;
-`;
-
-const QuickActionBtn = styled.button`
-  padding: 12px 20px;
-  background: #F6F9FC;
-  color: #6B7C93;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-
-  &:hover {
-    background: #F6F9FC;
-    border-color: #635BFF;
-    color: #635BFF;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(99, 91, 255, 0.15);
-  }
-`;
-
 interface MenuItemType {
   id: string;
   code?: string;
@@ -1139,7 +1107,7 @@ const POSTerminalPage: React.FC = () => {
     updateCustomerOrderStats,
     searchCustomers
   } = useCustomer();
-  const { currentStaff, isLoggedIn, logout, updateStaff } = useStaff();
+  const { currentStaff, updateStaff } = useStaff();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [previousCategory, setPreviousCategory] = useState<string | null>(null); // 검색 전 카테고리 저장
   const [searchQuery, setSearchQuery] = useState('');

@@ -260,6 +260,7 @@ const FAQPage: React.FC = () => {
     if (category) {
       setActiveCategory(category);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -268,6 +269,7 @@ const FAQPage: React.FC = () => {
     } else {
       setSearchParams({});
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCategory]);
 
   const fetchFAQs = async () => {

@@ -280,10 +280,12 @@ const BlogPage: React.FC = () => {
     const page = searchParams.get('page');
     if (category) setActiveCategory(category);
     if (page) setPagination(prev => ({ ...prev, page: parseInt(page) }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     fetchPosts();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCategory, pagination.page]);
 
   useEffect(() => {
@@ -291,6 +293,7 @@ const BlogPage: React.FC = () => {
     if (activeCategory !== 'all') params.category = activeCategory;
     if (pagination.page > 1) params.page = pagination.page.toString();
     setSearchParams(params);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCategory, pagination.page]);
 
   const fetchPosts = async () => {

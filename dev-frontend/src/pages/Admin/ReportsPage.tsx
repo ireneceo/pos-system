@@ -455,6 +455,7 @@ const ReportsPage: React.FC = () => {
       case 'customer': fetchCustomer(); break;
       case 'subscription': fetchSubscription(); break;
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, period, currency, customStart, customEnd, currencyLoaded]);
 
   // CSV Export

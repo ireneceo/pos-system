@@ -25,7 +25,7 @@ const BrandProductManagementPage: React.FC = () => {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
   const [categoryRefreshKey, setCategoryRefreshKey] = useState(0);
-  const [optionRefreshKey, setOptionRefreshKey] = useState(0);
+  const [optionRefreshKey] = useState(0);
 
   useEffect(() => {
     if (user && (user.role === 'Brand General' || user.role === 'Brand Manager')) {

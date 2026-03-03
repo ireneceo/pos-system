@@ -482,6 +482,7 @@ const PricingPage: React.FC = () => {
   useEffect(() => {
     loadPlans();
     loadCurrencies();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadPlans = async () => {

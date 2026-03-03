@@ -1146,68 +1146,6 @@ export function generateSingleItemKitchenTicket(orderData, item, itemIndex, tota
 }
 
 /**
- * Generate HTML Single Item Kitchen Ticket (for browser print)
- */
-function generateHTMLSingleItemKitchenTicket(orderData, item, itemIndex, totalItems, storeInfo) {
-  const itemName = item.menuItem?.name || item.name;
-  const qty = item.quantity;
-  const timeStr = orderData.date.toLocaleTimeString('en-MY', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
-  });
-
-  let html = `
-    <div style="font-family: 'Courier New', monospace; width: 280px; padding: 10px;">
-      <div style="border-bottom: 1px dashed #000; padding-bottom: 8px; margin-bottom: 8px;">
-        <div>Order: ${orderData.orderNumber}</div>
-        <div>Time: ${timeStr}</div>
-        ${orderData.customerName && orderData.customerName !== 'Walk-in Customer' ? `<div>Customer: ${orderData.customerName}</div>` : ''}
-      </div>
-
-      <div style="text-align: center; font-weight: bold; margin: 12px 0;">
-        ** ITEM ${itemIndex} of ${totalItems} **
-      </div>
-
-      <div style="font-size: 18px; font-weight: bold; margin: 16px 0;">
-        ${qty} x ${itemName}
-      </div>
-
-      ${item.options && item.options.length > 0 ? `
-        <div style="margin-left: 10px; margin-bottom: 8px;">
-          ${item.options.map(opt => `<div>* ${opt}</div>`).join('')}
-        </div>
-      ` : ''}
-
-      ${itemIndex === 1 && orderData.notes ? `
-        <div style="border-top: 1px dashed #000; padding-top: 8px; margin-top: 8px;">
-          <div style="font-weight: bold;">** SPECIAL NOTES **</div>
-          <div>${orderData.notes}</div>
-        </div>
-      ` : ''}
-
-      ${orderData.tableNumber ? `
-        <div style="text-align: center; font-size: 20px; font-weight: bold; margin-top: 16px;">
-          TABLE ${orderData.tableNumber}
-        </div>
-      ` : ''}
-      ${!orderData.tableNumber && orderData.pagerNumber ? `
-        <div style="text-align: center; font-size: 20px; font-weight: bold; margin-top: 16px;">
-          PAGER #${orderData.pagerNumber}
-        </div>
-      ` : ''}
-      ${!orderData.tableNumber && !orderData.pagerNumber && orderData.pickupNumber ? `
-        <div style="text-align: center; font-size: 20px; font-weight: bold; margin-top: 16px;">
-          PICKUP #${orderData.pickupNumber}
-        </div>
-      ` : ''}
-    </div>
-  `;
-
-  return html;
-}
-
-/**
  * Generate HTML with all items as separate pages (for browser print per-item mode)
  * Each item gets its own page with page-break
  */
@@ -1751,10 +1689,6 @@ export function printTableQR(tableNumber, qrCanvas, storeName = 'Restaurant') {
   if (isMobileOrTablet && qrCanvas) {
     // Use RawBT for thermal printer
     try {
-      // Get QR code as base64 image
-      const qrImageData = qrCanvas.toDataURL('image/png');
-      const base64Image = qrImageData.split(',')[1];
-
       // Build ESC/POS content
       let content = '';
       content += CMD.INIT;

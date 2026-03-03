@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
@@ -298,13 +298,6 @@ const SuccessIcon = styled.div`
   font-weight: bold;
 `;
 
-const SuccessTitle = styled.h3`
-  font-size: 24px;
-  font-weight: 600;
-  color: #0A2540;
-  margin: 0 0 12px 0;
-`;
-
 const SuccessMessage = styled.p`
   font-size: 16px;
   color: #6B7280;
@@ -323,7 +316,7 @@ const getAuthHeaders = () => {
 
 const ManagersPage: React.FC = () => {
   const { operationSettings } = useStore();
-  const { user } = useAuth();
+  useAuth();
   const [managers, setManagers] = useState<Manager[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -716,10 +709,6 @@ const ManagersPage: React.FC = () => {
     setShowConfirmModal(true);
   };
 
-  const handleViewManager = (manager: Manager) => {
-    setSelectedManager(manager);
-    setShowViewModal(true);
-  };
 
   const handleEditManager = (manager: Manager) => {
     // Get plans for the manager's role (only General roles allowed)

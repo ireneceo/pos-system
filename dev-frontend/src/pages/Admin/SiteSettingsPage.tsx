@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { Container, Header, Title, Content } from '../../components/UI/PageComponents';
-import { Modal, ModalButton } from '../../components/UI/Modal';
 import { SaveButtonContainer, SaveButtonGroup, SaveButton, StatusMessage } from '../../components/UI';
 
 interface CurrencyConfig {
@@ -201,11 +200,9 @@ const SiteSettingsPage: React.FC = () => {
   const [isDraggingOG, setIsDraggingOG] = useState(false);
 
   // Currency settings
-  const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
-  const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>([]);
-  const [defaultCurrency, setDefaultCurrency] = useState<string>('RM');
-  const [showCurrencyModal, setShowCurrencyModal] = useState(false);
-  const [tempSelectedCurrencies, setTempSelectedCurrencies] = useState<string[]>([]);
+  const [, setCurrencyConfig] = useState<CurrencyConfig>({});
+  const [, setSupportedCurrencies] = useState<string[]>([]);
+  const [, setDefaultCurrency] = useState<string>('RM');
 
   useEffect(() => {
     fetchSettings();
@@ -251,69 +248,7 @@ const SiteSettingsPage: React.FC = () => {
     }
   };
 
-  const updateDefaultCurrency = async (currency: string) => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/currencies/default', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ defaultCurrency: currency })
-      });
 
-      if (response.ok) {
-        setDefaultCurrency(currency);
-        setSuccessMessage('Default currency updated successfully');
-        setTimeout(() => setSuccessMessage(''), 3000);
-      }
-    } catch (error) {
-      console.error('Error updating default currency:', error);
-      setErrorMessage('Failed to update default currency');
-    }
-  };
-
-  const updateSupportedCurrencies = async () => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/currencies/supported', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ currencies: tempSelectedCurrencies })
-      });
-
-      if (response.ok) {
-        setSupportedCurrencies(tempSelectedCurrencies);
-        setShowCurrencyModal(false);
-        setSuccessMessage('Supported currencies updated successfully');
-        setTimeout(() => setSuccessMessage(''), 3000);
-
-        // If default currency is not in supported list, update it
-        if (!tempSelectedCurrencies.includes(defaultCurrency) && tempSelectedCurrencies.length > 0) {
-          await updateDefaultCurrency(tempSelectedCurrencies[0]);
-        }
-      } else {
-        const errorData = await response.json();
-        console.error('Failed to update currencies:', errorData);
-        setErrorMessage(errorData.error || 'Failed to update supported currencies');
-      }
-    } catch (error) {
-      console.error('Error updating supported currencies:', error);
-      setErrorMessage('Failed to update supported currencies');
-    }
-  };
-
-  const toggleCurrency = (code: string) => {
-    setTempSelectedCurrencies(prev =>
-      prev.includes(code)
-        ? prev.filter(c => c !== code)
-        : [...prev, code]
-    );
-  };
 
   const fetchSettings = async () => {
     try {

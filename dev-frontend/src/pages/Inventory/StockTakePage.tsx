@@ -403,7 +403,7 @@ const StockTakePage: React.FC = () => {
           notes: item.notes
         }));
 
-      const response = await fetchAPI(
+      await fetchAPI(
         `/api/restaurants/${restaurantId}/stock-takes/${currentStockTake.id}/items`,
         {
           method: 'PUT',

@@ -155,7 +155,7 @@ const CostValue = styled.span<{ type?: 'brand' | 'my' | 'applied' }>`
   font-size: 13px;
   font-weight: ${props => props.type === 'applied' ? 700 : props.type === 'my' ? 600 : 400};
   color: ${props => props.type === 'brand' ? '#9CA3AF' : props.type === 'my' ? '#2563EB' : '#059669'};
-  text-decoration: ${props => props.type === 'brand' && props.children !== props.children ? 'line-through' : 'none'};
+  text-decoration: none;
 `;
 
 const SetCostButton = styled.button`
@@ -234,17 +234,6 @@ const ResetButton = styled.button`
   &:hover {
     color: #EF4444;
   }
-`;
-
-const TrackStockBadge = styled.span`
-  display: inline-block;
-  padding: 4px 8px;
-  background: #D1FAE5;
-  color: #065F46;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  margin-left: 8px;
 `;
 
 const TrackStockRow = styled.div`
@@ -625,6 +614,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
     if (categoryRefreshKey && (brandId || effectiveRestaurantId)) {
       fetchIngredientCategories();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryRefreshKey]);
 
   const fetchIngredientCategories = async () => {

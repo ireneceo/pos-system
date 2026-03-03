@@ -108,17 +108,6 @@ const IngredientCategoryBadge = styled.div`
   letter-spacing: 0.5px;
 `;
 
-const TrackStockBadge = styled.span`
-  display: inline-block;
-  padding: 4px 8px;
-  background: #D1FAE5;
-  color: #065F46;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  margin-left: 8px;
-`;
-
 const TrackStockRow = styled.div`
   display: flex;
   justify-content: space-between;
