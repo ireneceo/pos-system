@@ -6,13 +6,18 @@
 - 없음
 
 ### 완료된 작업 (이번 세션)
-- ESLint 빌드 경고 265개 → 0개 전량 제거 (unused var 106개 + exhaustive-deps 44개)
-- Floor Plan TableDetailPanel +Order/Revert 버튼 아이콘만 표시 (텍스트 겹침 해결)
+- ESLint 빌드 경고 265개 → 0개 전량 제거
+- Floor Plan TableDetailPanel +Order/Revert 버튼 아이콘만 표시
 - 쿠폰 타겟팅 기능 (target_type, target_customer_ids, target_loyalty_tiers)
-- 운영서버 배포 완료 (Smoke test 6/6 passed)
+- Admin/Brand/Foodcourt PlansPage 통화 필터 버그 수정 (USD 기본값→동적, API 응답 키 수정)
+- Pricing 페이지 하얀 에러 해결 (features JSON 문자열→배열 파싱)
+- PlanPrice 모델 복합 유니크 키 인덱스 추가
+- FAQ/Blog DB 마이그레이션 (개발→운영, content_categories 10건 + contents 25건)
+- 운영서버 배포 2회 (Smoke test 6/6 passed)
 
 ### 다음 할 일
-- TypeScript 타입 경고 정리 (선택사항, 기존부터 존재하던 TS 타입 에러들)
+- 운영서버 plan_prices 데이터 정리 (개발서버와 동기화)
+- 운영서버 plan_templates 데이터 정리 (Brand/Foodcourt 플랜 추가)
 - DEVELOPMENT_PLAN.md 로드맵 기반 다음 작업 진행
 
 ---

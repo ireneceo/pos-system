@@ -507,7 +507,7 @@ const FoodcourtPlansPage: React.FC = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
-  const [displayCurrency, setDisplayCurrency] = useState<string>('MYR');
+  const [displayCurrency, setDisplayCurrency] = useState<string>('');
 
   const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
   const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>([]);
@@ -568,7 +568,7 @@ const FoodcourtPlansPage: React.FC = () => {
       const response = await fetch('/api/currencies/config');
       if (response.ok) {
         const data = await response.json();
-        setCurrencyConfig(data.data || {});
+        setCurrencyConfig(data.currencies || data.data || {});
       }
     } catch (error) {
       console.error('Error fetching currency config:', error);
@@ -580,11 +580,16 @@ const FoodcourtPlansPage: React.FC = () => {
       const response = await fetch('/api/currencies/supported');
       if (response.ok) {
         const data = await response.json();
-        setSupportedCurrencies((data.data || []).map((c: any) => c.code));
+        const codes = (data.data || []).map((c: any) => c.code);
+        setSupportedCurrencies(codes);
+        if (codes.length > 0) {
+          setDisplayCurrency(prev => prev || codes[0]);
+        }
       }
     } catch (error) {
       console.error('Error fetching supported currencies:', error);
-      setSupportedCurrencies(['MYR']);
+      setSupportedCurrencies(['MYR', 'KRW']);
+      setDisplayCurrency(prev => prev || 'MYR');
     }
   };
 

@@ -533,7 +533,16 @@ const PricingPage: React.FC = () => {
     }
   };
 
-  const filteredPlans = plans.filter(plan => plan.plan_target === activeTab);
+  // features/included_modules가 문자열로 올 수 있으므로 배열로 정규화
+  const normalizedPlans = plans.map(plan => ({
+    ...plan,
+    features: Array.isArray(plan.features) ? plan.features :
+      (typeof plan.features === 'string' ? (() => { try { return JSON.parse(plan.features); } catch { return []; } })() : []),
+    included_modules: Array.isArray(plan.included_modules) ? plan.included_modules :
+      (typeof plan.included_modules === 'string' ? (() => { try { return JSON.parse(plan.included_modules); } catch { return []; } })() : [])
+  }));
+
+  const filteredPlans = normalizedPlans.filter(plan => plan.plan_target === activeTab);
 
   const getPopularPlan = (planName: string) => {
     return planName.toLowerCase().includes('professional');

@@ -572,7 +572,7 @@ const PlansPage: React.FC = () => {
   const [planTargetFilter, setPlanTargetFilter] = useState<'all' | 'restaurant' | 'brand' | 'foodcourt' | 'owner'>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'basic' | 'custom'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
-  const [displayCurrency, setDisplayCurrency] = useState<string>('USD');
+  const [displayCurrency, setDisplayCurrency] = useState<string>('');
 
   // Addon modules
   const [availableModules, setAvailableModules] = useState<AddonModule[]>([]);
@@ -641,7 +641,7 @@ const PlansPage: React.FC = () => {
       const response = await fetch('/api/currencies/config');
       if (response.ok) {
         const data = await response.json();
-        setCurrencyConfig(data.data || {});
+        setCurrencyConfig(data.currencies || data.data || {});
       }
     } catch (error) {
       console.error('Error fetching currency config:', error);
@@ -653,11 +653,16 @@ const PlansPage: React.FC = () => {
       const response = await fetch('/api/currencies/supported');
       if (response.ok) {
         const data = await response.json();
-        setSupportedCurrencies((data.data || []).map((c: any) => c.code));
+        const codes = (data.data || []).map((c: any) => c.code);
+        setSupportedCurrencies(codes);
+        if (codes.length > 0) {
+          setDisplayCurrency(prev => prev || codes[0]);
+        }
       }
     } catch (error) {
       console.error('Error fetching supported currencies:', error);
-      setSupportedCurrencies(['USD', 'RM', 'KRW']);
+      setSupportedCurrencies(['MYR', 'KRW']);
+      setDisplayCurrency(prev => prev || 'MYR');
     }
   };
 

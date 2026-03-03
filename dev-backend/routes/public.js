@@ -126,8 +126,21 @@ router.get('/plans', async (_req, res) => {
         attributes: ['currency', 'monthly_price', 'annual_price']
       });
 
+      const planData = plan.toJSON();
+      // features/included_modules가 문자열인 경우 배열로 파싱
+      let features = planData.features;
+      if (typeof features === 'string') {
+        try { features = JSON.parse(features); } catch { features = []; }
+      }
+      let included_modules = planData.included_modules;
+      if (typeof included_modules === 'string') {
+        try { included_modules = JSON.parse(included_modules); } catch { included_modules = []; }
+      }
+
       return {
-        ...plan.toJSON(),
+        ...planData,
+        features: Array.isArray(features) ? features : [],
+        included_modules: Array.isArray(included_modules) ? included_modules : [],
         currency_prices: prices.reduce((acc, p) => {
           acc[p.currency] = {
             monthly: parseFloat(p.monthly_price),

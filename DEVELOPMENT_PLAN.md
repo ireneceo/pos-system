@@ -1255,6 +1255,29 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 
 ---
 
+## ✅ 완료: 통화 필터 버그 수정 + Pricing 페이지 에러 해결 + FAQ/Blog 마이그레이션 (2026-03-03)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Admin PlansPage 통화 수정 | displayCurrency 기본값 USD→동적, fetchCurrencyConfig 응답 키 수정, fallback 통화 수정 | ✅ 완료 |
+| Brand/Foodcourt PlansPage 통화 수정 | 동일한 3가지 통화 버그 수정 (BrandPlansPage, FoodcourtPlansPage) | ✅ 완료 |
+| PlanPrice 모델 인덱스 정의 | 복합 유니크 키 (plan_id, currency) indexes 추가 | ✅ 완료 |
+| Pricing 페이지 하얀 에러 해결 | features가 JSON 문자열인 경우 배열로 파싱 (백엔드 + 프론트엔드 방어 코드) | ✅ 완료 |
+| FAQ/Blog DB 마이그레이션 | 개발DB→운영DB content_categories 10건 + contents 25건 마이그레이션 | ✅ 완료 |
+| 운영서버 배포 | Smoke test 6/6 passed | ✅ 완료 |
+
+### 수정된 파일
+- `dev-frontend/src/pages/Admin/PlansPage.tsx` — 통화 기본값/필터/API 응답 키 수정
+- `dev-frontend/src/pages/BrandGeneral/BrandPlansPage.tsx` — 통화 기본값/필터/API 응답 키 수정
+- `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtPlansPage.tsx` — 통화 기본값/필터/API 응답 키 수정
+- `dev-frontend/src/pages/Landing/PricingPage.tsx` — features/included_modules 배열 정규화
+- `dev-backend/routes/public.js` — features/included_modules JSON 문자열→배열 파싱
+- `dev-backend/models/PlanPrice.js` — 복합 유니크 키 인덱스 정의 추가
+
+---
+
 ## 🚀 서비스 오픈 준비 로드맵 (현재 진행 중)
 
 ### 현재 상황

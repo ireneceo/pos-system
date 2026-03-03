@@ -36,7 +36,14 @@ PlanPrice.init({
   timestamps: true,
   underscored: true,
   createdAt: 'created_at',
-  updatedAt: 'updated_at'
+  updatedAt: 'updated_at',
+  indexes: [
+    {
+      unique: true,
+      fields: ['plan_id', 'currency'],
+      name: 'plan_prices_plan_id_currency_unique'
+    }
+  ]
 });
 
 module.exports = PlanPrice;
