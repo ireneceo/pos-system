@@ -4,6 +4,7 @@ const { Ingredient, IngredientCategory, Restaurant, Supplier, RestaurantIngredie
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
 const { generateIngredientCode } = require('../utils/codeGenerator');
+const { deleteOldImages } = require('../utils/imageProcessor');
 
 // ============================================
 // Brand Ingredients
@@ -100,7 +101,12 @@ router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBr
     const updateData = {};
     if (code !== undefined) updateData.code = code;
     if (name !== undefined) updateData.name = name;
-    if (image_url !== undefined) updateData.image_url = image_url;
+    if (image_url !== undefined) {
+      if (image_url && ingredient.image_url && image_url !== ingredient.image_url) {
+        await deleteOldImages(ingredient.image_url);
+      }
+      updateData.image_url = image_url;
+    }
     if (ingredient_category_id !== undefined) updateData.ingredient_category_id = ingredient_category_id;
     if (unit !== undefined) updateData.unit = unit;
     if (base_quantity !== undefined) updateData.base_quantity = base_quantity;
@@ -324,7 +330,12 @@ router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateT
     const updateData = {};
     if (code !== undefined) updateData.code = code;
     if (name !== undefined) updateData.name = name;
-    if (image_url !== undefined) updateData.image_url = image_url;
+    if (image_url !== undefined) {
+      if (image_url && ingredient.image_url && image_url !== ingredient.image_url) {
+        await deleteOldImages(ingredient.image_url);
+      }
+      updateData.image_url = image_url;
+    }
     if (ingredient_category_id !== undefined) updateData.ingredient_category_id = ingredient_category_id;
     if (unit !== undefined) updateData.unit = unit;
     if (base_quantity !== undefined) updateData.base_quantity = base_quantity;

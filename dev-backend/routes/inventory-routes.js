@@ -14,6 +14,7 @@ async function getRestaurantCostMap(restaurantId) {
   return map;
 }
 const { authenticateToken } = require('../middleware/auth');
+const { deleteOldImages } = require('../utils/imageProcessor');
 
 // Apply auth middleware to all routes
 router.use(authenticateToken);
@@ -1359,7 +1360,12 @@ router.put('/:restaurantId/inventory/general-stock/:itemId', async (req, res) =>
     const updateData = {};
     if (name !== undefined) updateData.name = name;
     if (code !== undefined) updateData.code = code;
-    if (image_url !== undefined) updateData.image_url = image_url;
+    if (image_url !== undefined) {
+      if (image_url && item.image_url && image_url !== item.image_url) {
+        await deleteOldImages(item.image_url);
+      }
+      updateData.image_url = image_url;
+    }
     if (stock_unit !== undefined) updateData.unit = stock_unit;
     if (unit_cost !== undefined) updateData.unit_cost = unit_cost;
     if (category !== undefined) updateData.category = category;

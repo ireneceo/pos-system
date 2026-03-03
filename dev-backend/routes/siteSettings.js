@@ -2,8 +2,14 @@ const express = require('express');
 const router = express.Router();
 const CompanySettings = require('../models/CompanySettings');
 const { authenticateToken, requireRole } = require('../middleware/auth');
+const { deleteOldImages } = require('../utils/imageProcessor');
+
+// og_image_url (209KB Base64) excluded by default for performance (231KB → ~21KB)
+// brand_logo (19KB) and favicon_url (1.5KB) are kept - used by App.tsx and layouts
+const IMAGE_FIELDS = ['og_image_url'];
 
 // GET /api/site-settings - Get site settings (public)
+// Use ?include=images to include Base64 image fields (for admin settings page only)
 router.get('/', async (req, res) => {
   try {
     let settings = await CompanySettings.findOne();
@@ -19,10 +25,8 @@ router.get('/', async (req, res) => {
       });
     }
 
-    // Return settings with contact info for public pages (Contact, etc.)
-    res.json({
+    const result = {
       ...settings.toJSON(),
-      // Contact information from AdminSettings
       email: settings.email || 'support@purplehere.com',
       phone: settings.phone || '',
       whatsapp: settings.whatsapp || settings.phone || '',
@@ -30,7 +34,16 @@ router.get('/', async (req, res) => {
         weekdays: '9:00 AM - 6:00 PM (GMT+8)',
         weekend: 'Closed'
       }
-    });
+    };
+
+    // Exclude heavy Base64 image fields unless explicitly requested
+    if (req.query.include !== 'images') {
+      for (const field of IMAGE_FIELDS) {
+        delete result[field];
+      }
+    }
+
+    res.json(result);
   } catch (error) {
     console.error('Error fetching site settings:', error);
     res.status(500).json({ error: 'Failed to fetch site settings' });
@@ -67,6 +80,16 @@ router.put('/', authenticateToken, requireRole('System Admin'), async (req, res)
         timezone: timezone || 'Asia/Kuala_Lumpur'
       });
     } else {
+      // 이미지 변경 시 이전 파일 삭제
+      if (favicon_url && settings.favicon_url && favicon_url !== settings.favicon_url) {
+        await deleteOldImages(settings.favicon_url);
+      }
+      if (brand_logo && settings.brand_logo && brand_logo !== settings.brand_logo) {
+        await deleteOldImages(settings.brand_logo);
+      }
+      if (og_image_url && settings.og_image_url && og_image_url !== settings.og_image_url) {
+        await deleteOldImages(settings.og_image_url);
+      }
       // Update existing
       const updateData = {
         site_name,

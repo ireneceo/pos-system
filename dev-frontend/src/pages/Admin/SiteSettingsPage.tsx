@@ -252,7 +252,7 @@ const SiteSettingsPage: React.FC = () => {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch('/api/site-settings');
+      const response = await fetch('/api/site-settings?include=images');
       if (response.ok) {
         const data = await response.json();
         const loadedSettings = {

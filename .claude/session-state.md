@@ -6,23 +6,18 @@
 - 없음
 
 ### 완료된 작업 (이번 세션)
-- Favicon/로고 React 기본 → PurpleHere "P" 브랜드 아이콘 교체
-- Pricing 페이지 Owner 탭 추가 (동적 탭 생성)
-- Google Analytics GA4 추적 코드 삽입 (G-LTTLKH1J85)
-- Google Consent Mode v2 구현 (Cookie Consent Banner 연동)
-- Contact 페이지 하드코딩 초기값 제거 → API 로딩 전 "Loading..." 표시
-- AI 마케팅 인사이트 대시보드 기획 (Phase C 작업항목 등록)
-- 운영서버 배포 3회 완료
-
-### Irene 수동 작업 (남은 것)
-- Google Business Profile SAB 등록 (콘텐츠 기획 제공 완료)
-- Google Search Console 사이트맵 제출 (https://purplehere.com/sitemap.xml)
-- Twitter/X @purplehere 계정 생성
-- Facebook 페이지 / LinkedIn 회사 페이지 생성
+- deleteOldImages 유틸리티 함수 생성 (imageProcessor.js)
+- 10개 라우트에 이미지 재업로드 시 이전 파일 자동 삭제 적용
+  - menu.js, brands.js, foodcourts.js, restaurants.js, admin-settings.js
+  - siteSettings.js, ingredients.js, recipes.js, general-stock.js, inventory-routes.js
+- site-settings API 최적화 (231KB → 22KB, og_image_url 제외)
+- Nginx 정적 파일 캐싱 (이미지/폰트 7일 캐시)
+- Contact 페이지 하드코딩 초기값 제거
+- 운영서버 배포 완료 (스모크 테스트 6/6)
 
 ### 다음 할 일
-- 재료/재고/발주 시스템 Phase 2 (DB 테이블 생성)
-- AI 마케팅 인사이트 대시보드 (GA4 데이터 축적 후)
+- DEVELOPMENT_PLAN.md Phase A/B/C 로드맵 잔여 작업
+- entity_plan_charges 테이블 운영서버 마이그레이션 (스키마 차이 존재)
 
 ---
 

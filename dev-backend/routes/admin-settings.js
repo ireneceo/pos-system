@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const CompanySettings = require('../models/CompanySettings');
+const { deleteOldImages } = require('../utils/imageProcessor');
 
 // GET - 회사 설정 조회
 router.get('/', async (req, res) => {
@@ -113,6 +114,16 @@ router.post('/', async (req, res) => {
     };
 
     if (settings) {
+      // 이미지 변경 시 이전 파일 삭제
+      if (brandLogo && settings.brand_logo && brandLogo !== settings.brand_logo) {
+        await deleteOldImages(settings.brand_logo);
+      }
+      if (companyLogo && settings.company_logo && companyLogo !== settings.company_logo) {
+        await deleteOldImages(settings.company_logo);
+      }
+      if (logo && settings.logo && logo !== settings.logo) {
+        await deleteOldImages(settings.logo);
+      }
       // 업데이트
       await settings.update(settingsData);
     } else {

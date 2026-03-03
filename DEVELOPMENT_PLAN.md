@@ -1303,6 +1303,33 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 
 ---
 
+## ✅ 완료: 이미지 재업로드 시 이전 파일 자동 삭제 + API 성능 최적화 (2026-03-03)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| deleteOldImages 유틸리티 | /uploads/ 경로 이미지 재업로드 시 이전 파일 자동 삭제 함수 | ✅ 완료 |
+| 10개 라우트 적용 | menu, brands, foodcourts, restaurants, admin-settings, siteSettings, ingredients, recipes, general-stock, inventory-routes | ✅ 완료 |
+| site-settings API 최적화 | og_image_url(209KB) 제외 → 231KB→22KB (91% 감소) | ✅ 완료 |
+| Nginx 정적 파일 캐싱 | 이미지/폰트/아이콘 7일 브라우저 캐시 적용 | ✅ 완료 |
+| 운영서버 배포 | 전체 변경사항 운영서버 배포 완료 (스모크 테스트 6/6 통과) | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/utils/imageProcessor.js` — deleteOldImages 함수 추가
+- `dev-backend/routes/menu.js` — 상품 이미지 재업로드 시 이전 파일 삭제
+- `dev-backend/routes/brands.js` — 브랜드 로고 재업로드 시 이전 파일 삭제
+- `dev-backend/routes/foodcourts.js` — 푸드코트 로고 재업로드 시 이전 파일 삭제
+- `dev-backend/routes/restaurants.js` — 레스토랑 로고/재료 이미지 재업로드 시 이전 파일 삭제
+- `dev-backend/routes/admin-settings.js` — 회사 설정 로고 재업로드 시 이전 파일 삭제
+- `dev-backend/routes/siteSettings.js` — 사이트 설정 이미지 재업로드 시 이전 파일 삭제
+- `dev-backend/routes/ingredients.js` — 재료 이미지 재업로드 시 이전 파일 삭제
+- `dev-backend/routes/recipes.js` — 레시피 이미지 재업로드 시 이전 파일 삭제
+- `dev-backend/routes/general-stock.js` — 일반 재고 이미지 재업로드 시 이전 파일 삭제
+- `dev-backend/routes/inventory-routes.js` — 레스토랑 재고 이미지 재업로드 시 이전 파일 삭제
+
+---
+
 ## 🚀 서비스 오픈 준비 로드맵 (현재 진행 중)
 
 ### 현재 상황

@@ -17,6 +17,7 @@ const { Op } = require('sequelize');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { validateRestaurantCreation } = require('../middleware/validation');
 const jwt = require('jsonwebtoken');
+const { deleteOldImages } = require('../utils/imageProcessor');
 
 // Optional authentication middleware
 const optionalAuth = async (req, res, next) => {
@@ -916,7 +917,13 @@ router.put('/:id', authenticateToken, validateRestaurantCreation, async (req, re
     if (req.body.bank_name !== undefined) updateData.bank_name = req.body.bank_name;
     if (req.body.bank_account !== undefined) updateData.bank_account = req.body.bank_account;
     if (req.body.bank_account_name !== undefined) updateData.bank_account_name = req.body.bank_account_name;
-    if (req.body.logo_url !== undefined) updateData.logo_url = req.body.logo_url;
+    if (req.body.logo_url !== undefined) {
+      // 로고 변경 시 이전 파일 삭제
+      if (req.body.logo_url && restaurant.logo_url && req.body.logo_url !== restaurant.logo_url) {
+        await deleteOldImages(restaurant.logo_url);
+      }
+      updateData.logo_url = req.body.logo_url;
+    }
 
     // Subscription fields - only update if explicitly provided (prevents accidental overwrites)
     // Accept both camelCase and snake_case for plan_type and plan_amount
@@ -1659,7 +1666,12 @@ router.put('/:restaurantId/ingredients/:ingredientId', authenticateToken, checkR
     if (unit_cost !== undefined) updateData.unit_cost = unit_cost;
     if (supplier_name !== undefined) updateData.supplier_name = supplier_name;
     if (min_stock !== undefined) updateData.min_stock = min_stock;
-    if (image_url !== undefined) updateData.image_url = image_url;
+    if (image_url !== undefined) {
+      if (image_url && ingredient.image_url && image_url !== ingredient.image_url) {
+        await deleteOldImages(ingredient.image_url);
+      }
+      updateData.image_url = image_url;
+    }
     if (ingredient_category_id !== undefined) updateData.ingredient_category_id = ingredient_category_id;
     if (base_quantity !== undefined) updateData.base_quantity = base_quantity;
     if (supplier_id !== undefined) updateData.supplier_id = supplier_id;

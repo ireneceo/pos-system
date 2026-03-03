@@ -8,6 +8,8 @@
  */
 
 const sharp = require('sharp');
+const fs = require('fs').promises;
+const path = require('path');
 
 // 이미지 크기 설정
 const IMAGE_SIZES = {
@@ -205,11 +207,46 @@ function getImageUrl(imageData, size = 'thumbnail') {
   return null;
 }
 
+/**
+ * 이전 이미지 파일 삭제 (재업로드 시 호출)
+ * /uploads/ 경로의 파일만 삭제. Base64는 DB 덮어쓰기로 처리되므로 무시.
+ * @param {string|string[]} oldUrls - 이전 이미지 URL (단일 또는 배열)
+ */
+async function deleteOldImages(oldUrls) {
+  if (!oldUrls) return;
+
+  const urls = Array.isArray(oldUrls) ? oldUrls : [oldUrls];
+
+  for (const url of urls) {
+    if (!url || typeof url !== 'string' || !url.startsWith('/uploads/')) continue;
+
+    const filePath = path.join('/var/www', url);
+    try {
+      await fs.unlink(filePath);
+      console.log(`Deleted old image: ${url}`);
+    } catch (e) {
+      // File doesn't exist — OK
+    }
+
+    // 썸네일도 삭제 (products 이미지인 경우)
+    if (url.includes('/products/') && !url.includes('/thumbnails/')) {
+      const thumbnailPath = filePath.replace('/products/', '/products/thumbnails/');
+      try {
+        await fs.unlink(thumbnailPath);
+        console.log(`Deleted old thumbnail: ${url.replace('/products/', '/products/thumbnails/')}`);
+      } catch (e) {
+        // File doesn't exist — OK
+      }
+    }
+  }
+}
+
 module.exports = {
   processImage,
   createThumbnail,
   optimizeImage,
   getImageUrl,
+  deleteOldImages,
   IMAGE_SIZES,
   QUALITY_SETTINGS
 };

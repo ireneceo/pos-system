@@ -4,6 +4,7 @@ const { Recipe, Ingredient, RecipeIngredient, Restaurant, Product, RecipeCategor
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { canEditRecipe, isBrandManager } = require('../middleware/recipeAuth');
 const { generateRecipeCode } = require('../utils/codeGenerator');
+const { deleteOldImages } = require('../utils/imageProcessor');
 
 // ============================================
 // Brand Recipes (Brand General/Manager)
@@ -148,7 +149,12 @@ router.put('/brands/:brandId/recipes/:recipeId', authenticateToken, canEditRecip
     if (category !== undefined) updateData.category = category || null;
     if (recipe_category_id !== undefined) updateData.recipe_category_id = recipe_category_id || null;
     if (emoji !== undefined) updateData.emoji = emoji || null;
-    if (image !== undefined) updateData.image = image || null;
+    if (image !== undefined) {
+      if (image && recipe.image && image !== recipe.image) {
+        await deleteOldImages(recipe.image);
+      }
+      updateData.image = image || null;
+    }
     if (option_groups !== undefined) updateData.option_groups = option_groups || null;
     if (yield_amount !== undefined) updateData.yield_amount = yield_amount || 1;
     if (yield_unit !== undefined) updateData.yield_unit = yield_unit || 'portion';
@@ -459,6 +465,11 @@ router.put('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken, ch
     }
 
     const { name, description, category, emoji, image, option_groups, ingredients, yield_amount, yield_unit, prep_time, cook_time, instructions, instructions_summary, instructions_detail, suggested_price } = req.body;
+
+    // 이미지 변경 시 이전 파일 삭제
+    if (image && recipe.image && image !== recipe.image) {
+      await deleteOldImages(recipe.image);
+    }
 
     // 기본 정보 업데이트
     await recipe.update({

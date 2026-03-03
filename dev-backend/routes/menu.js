@@ -4,7 +4,7 @@ const Product = require('../models/Product');
 const Restaurant = require('../models/Restaurant');
 const Category = require('../models/Category');
 const { authenticateToken } = require('../middleware/auth');
-const { processImage } = require('../utils/imageProcessor');
+const { processImage, deleteOldImages } = require('../utils/imageProcessor');
 
 // Apply authentication to all routes
 router.use(authenticateToken);
@@ -465,6 +465,21 @@ router.put('/product/:id', async (req, res) => {
     }
     if (updateData.image_thumbnail === undefined || updateData.image_thumbnail === '' || updateData.image_thumbnail === null) {
       delete updateData.image_thumbnail;
+    }
+
+    // 이전 이미지 파일 삭제 (새 이미지로 교체 시)
+    if (updateData.image && product.image) {
+      try {
+        const oldImage = product.image;
+        // JSON 형식이면 파싱하여 URL 추출
+        if (oldImage.startsWith('{') || oldImage.startsWith('[')) {
+          const parsed = JSON.parse(oldImage);
+          const urls = typeof parsed === 'object' ? Object.values(parsed) : [parsed];
+          await deleteOldImages(urls.filter(u => typeof u === 'string' && u.startsWith('/uploads/')));
+        } else if (oldImage.startsWith('/uploads/')) {
+          await deleteOldImages(oldImage);
+        }
+      } catch (e) { /* ignore parse errors */ }
     }
 
     // 이미지 처리: URL이면 그대로 저장, base64면 파일로 저장

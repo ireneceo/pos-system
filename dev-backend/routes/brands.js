@@ -5,6 +5,7 @@ const { authenticateToken, requireRole } = require('../middleware/auth');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const bcrypt = require('bcrypt');
+const { deleteOldImages } = require('../utils/imageProcessor');
 
 // ============================================
 // Company Info APIs (MUST be before /:id routes)
@@ -262,6 +263,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
 
     const { name, code, description, logo_url, email, phone, address, website, status, currency } = req.body;
+
+    // 로고 변경 시 이전 파일 삭제
+    if (logo_url && brand.logo_url && logo_url !== brand.logo_url) {
+      await deleteOldImages(brand.logo_url);
+    }
 
     await brand.update({
       name: name || brand.name,

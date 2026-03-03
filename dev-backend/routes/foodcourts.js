@@ -5,6 +5,7 @@ const { authenticateToken, requireRole } = require('../middleware/auth');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const bcrypt = require('bcrypt');
+const { deleteOldImages } = require('../utils/imageProcessor');
 
 // Get all foodcourts (filtered by owner for Foodcourt General)
 router.get('/', authenticateToken, async (req, res) => {
@@ -127,6 +128,11 @@ router.put('/company-info', authenticateToken, async (req, res) => {
       operation_settings: req.body.operation_settings
     };
 
+    // 로고 변경 시 이전 파일 삭제
+    if (req.body.logo_url && foodcourt.logo_url && req.body.logo_url !== foodcourt.logo_url) {
+      await deleteOldImages(foodcourt.logo_url);
+    }
+
     await foodcourt.update(updateData);
     console.log(`✅ Foodcourt company info updated: ${foodcourt.name}`);
 
@@ -242,6 +248,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
 
     const { name, code, description, logo_url, email, phone, address, website, status, currency } = req.body;
+
+    // 로고 변경 시 이전 파일 삭제
+    if (logo_url && foodcourt.logo_url && logo_url !== foodcourt.logo_url) {
+      await deleteOldImages(foodcourt.logo_url);
+    }
 
     await foodcourt.update({
       name: name || foodcourt.name,
