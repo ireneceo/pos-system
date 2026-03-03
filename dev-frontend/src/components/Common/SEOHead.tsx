@@ -15,6 +15,7 @@ interface SEOHeadProps {
   // AEO: Structured data for AI engines
   jsonLd?: object | object[];
   noindex?: boolean;
+  twitterSite?: string;
 }
 
 const SEOHead: React.FC<SEOHeadProps> = ({
@@ -28,7 +29,8 @@ const SEOHead: React.FC<SEOHeadProps> = ({
   publishedTime,
   modifiedTime,
   jsonLd,
-  noindex = false
+  noindex = false,
+  twitterSite = '@purplehere'
 }) => {
   const { settings } = useSiteSettings();
 
@@ -91,6 +93,7 @@ const SEOHead: React.FC<SEOHeadProps> = ({
       <meta name="twitter:title" content={fullTitle} />
       <meta name="twitter:description" content={finalDescription} />
       {finalOgImage && <meta name="twitter:image" content={finalOgImage} />}
+      {twitterSite && <meta name="twitter:site" content={twitterSite} />}
 
       {/* JSON-LD Structured Data */}
       {renderJsonLd()}
@@ -204,6 +207,91 @@ export const generateBreadcrumbSchema = (items: Array<{ name: string; url: strin
     position: index + 1,
     name: item.name,
     item: item.url
+  }))
+});
+
+// Helper function to generate WebSite schema with SearchAction
+export const generateWebSiteSchema = (siteName?: string) => ({
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: siteName || 'PurpleHere',
+  url: 'https://purplehere.com',
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: {
+      '@type': 'EntryPoint',
+      urlTemplate: 'https://purplehere.com/blog?search={search_term_string}'
+    },
+    'query-input': 'required name=search_term_string'
+  }
+});
+
+// Helper function to generate SoftwareApplication schema with provider info
+export const generateLocalBusinessSchema = () => ({
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  '@id': 'https://purplehere.com/#software',
+  name: 'PurpleHere POS',
+  applicationCategory: 'BusinessApplication',
+  operatingSystem: 'Web Browser',
+  url: 'https://purplehere.com',
+  description: 'Cloud-based Point of Sale system for restaurants, brands, and food courts with real-time order management, inventory tracking, and multi-location support.',
+  provider: {
+    '@type': 'Organization',
+    name: 'GIT CONSULTING SDN. BHD.',
+    address: {
+      '@type': 'PostalAddress',
+      addressCountry: 'MY'
+    },
+    url: 'https://purplehere.com'
+  },
+  offers: {
+    '@type': 'AggregateOffer',
+    priceCurrency: 'USD',
+    lowPrice: '0',
+    highPrice: '0',
+    offerCount: '3',
+    description: '7-day free trial available. Contact us for pricing.'
+  }
+});
+
+// Helper function to generate HowTo schema
+export const generateHowToSchema = () => ({
+  '@context': 'https://schema.org',
+  '@type': 'HowTo',
+  name: 'How to Get Started with PurpleHere POS',
+  description: 'Set up your cloud POS system in minutes with PurpleHere.',
+  step: [
+    {
+      '@type': 'HowToStep',
+      position: 1,
+      name: 'Request a Free Trial',
+      text: 'Visit purplehere.com/contact and fill out the form to request your 7-day free trial. No credit card required.'
+    },
+    {
+      '@type': 'HowToStep',
+      position: 2,
+      name: 'Set Up Your Restaurant',
+      text: 'Add your restaurant details, configure menus, categories, and pricing in the dashboard.'
+    },
+    {
+      '@type': 'HowToStep',
+      position: 3,
+      name: 'Start Taking Orders',
+      text: 'Use the POS terminal to process orders, manage kitchen display, and track analytics in real-time.'
+    }
+  ]
+});
+
+// Helper function to generate ItemList schema (for blog listing, etc.)
+export const generateItemListSchema = (items: Array<{ name: string; url: string; position: number }>) => ({
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  itemListElement: items.map(item => ({
+    '@type': 'ListItem',
+    position: item.position,
+    name: item.name,
+    url: item.url
   }))
 });
 

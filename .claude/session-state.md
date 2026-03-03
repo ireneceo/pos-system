@@ -6,19 +6,23 @@
 - 없음
 
 ### 완료된 작업 (이번 세션)
-- ESLint 빌드 경고 265개 → 0개 전량 제거
-- Floor Plan TableDetailPanel +Order/Revert 버튼 아이콘만 표시
-- 쿠폰 타겟팅 기능 (target_type, target_customer_ids, target_loyalty_tiers)
-- Admin/Brand/Foodcourt PlansPage 통화 필터 버그 수정 (USD 기본값→동적, API 응답 키 수정)
-- Pricing 페이지 하얀 에러 해결 (features JSON 문자열→배열 파싱)
-- PlanPrice 모델 복합 유니크 키 인덱스 추가
-- FAQ/Blog DB 마이그레이션 (개발→운영, content_categories 10건 + contents 25건)
-- 운영서버 배포 2회 (Smoke test 6/6 passed)
+- Favicon/로고 React 기본 → PurpleHere "P" 브랜드 아이콘 교체
+- Pricing 페이지 Owner 탭 추가 (동적 탭 생성)
+- Google Analytics GA4 추적 코드 삽입 (G-LTTLKH1J85)
+- Google Consent Mode v2 구현 (Cookie Consent Banner 연동)
+- Contact 페이지 하드코딩 초기값 제거 → API 로딩 전 "Loading..." 표시
+- AI 마케팅 인사이트 대시보드 기획 (Phase C 작업항목 등록)
+- 운영서버 배포 3회 완료
+
+### Irene 수동 작업 (남은 것)
+- Google Business Profile SAB 등록 (콘텐츠 기획 제공 완료)
+- Google Search Console 사이트맵 제출 (https://purplehere.com/sitemap.xml)
+- Twitter/X @purplehere 계정 생성
+- Facebook 페이지 / LinkedIn 회사 페이지 생성
 
 ### 다음 할 일
-- 운영서버 plan_prices 데이터 정리 (개발서버와 동기화)
-- 운영서버 plan_templates 데이터 정리 (Brand/Foodcourt 플랜 추가)
-- DEVELOPMENT_PLAN.md 로드맵 기반 다음 작업 진행
+- 재료/재고/발주 시스템 Phase 2 (DB 테이블 생성)
+- AI 마케팅 인사이트 대시보드 (GA4 데이터 축적 후)
 
 ---
 

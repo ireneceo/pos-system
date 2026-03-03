@@ -109,12 +109,19 @@ process.on('SIGINT', () => {
 // ============================================
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const { securityHeaders, sqlInjectionProtection } = require('./middleware/security');
 
 // Helmet - HTTP 헤더 보안 (CSP는 프론트엔드에서 관리하므로 비활성화)
 app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false
 }));
+
+// 추가 보안 헤더 (XSS, Clickjacking, Referrer, Permissions-Policy, Cache-Control)
+app.use(securityHeaders);
+
+// SQL Injection 패턴 감지 (Sequelize ORM 위에 추가 방어층)
+app.use(sqlInjectionProtection);
 
 // Rate Limiting - API 요청 제한 (IP당 15분에 1000회)
 const apiLimiter = rateLimit({
@@ -214,9 +221,87 @@ app.post('/api/webhooks/paypal', express.raw({ type: 'application/json' }), asyn
   const systemLogger = require('./utils/systemLogger');
   try {
     const Invoice = require('./models/Invoice');
+    const { getWebhookIdForIssuer, getPayPalConfigForIssuer } = require('./utils/paypalService');
 
-    const event = JSON.parse(req.body.toString());
+    const rawBody = req.body.toString();
+    const event = JSON.parse(rawBody);
 
+    // ========================================
+    // PayPal Webhook Signature Verification
+    // ========================================
+    const webhookId = await getWebhookIdForIssuer('system_admin', null);
+    if (webhookId) {
+      const transmissionId = req.headers['paypal-transmission-id'];
+      const transmissionTime = req.headers['paypal-transmission-time'];
+      const transmissionSig = req.headers['paypal-transmission-sig'];
+      const certUrl = req.headers['paypal-cert-url'];
+      const authAlgo = req.headers['paypal-auth-algo'];
+
+      if (!transmissionId || !transmissionTime || !transmissionSig || !certUrl) {
+        await systemLogger.error('security', 'paypal-webhook', 'Missing PayPal signature headers');
+        return res.status(400).json({ error: 'Missing PayPal signature headers' });
+      }
+
+      // Verify signature via PayPal API
+      try {
+        const config = await getPayPalConfigForIssuer('system_admin', null);
+        const baseUrl = config.sandbox !== false
+          ? 'https://api-m.sandbox.paypal.com'
+          : 'https://api-m.paypal.com';
+
+        // Get access token
+        const tokenRes = await fetch(`${baseUrl}/v1/oauth2/token`, {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Basic ' + Buffer.from(`${config.clientId}:${config.clientSecret}`).toString('base64'),
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: 'grant_type=client_credentials'
+        });
+        const tokenData = await tokenRes.json();
+
+        if (!tokenData.access_token) {
+          await systemLogger.error('security', 'paypal-webhook', 'Failed to get PayPal access token for verification');
+          return res.status(500).json({ error: 'Verification failed' });
+        }
+
+        // Verify webhook signature
+        const verifyRes = await fetch(`${baseUrl}/v1/notifications/verify-webhook-signature`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${tokenData.access_token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            auth_algo: authAlgo,
+            cert_url: certUrl,
+            transmission_id: transmissionId,
+            transmission_sig: transmissionSig,
+            transmission_time: transmissionTime,
+            webhook_id: webhookId,
+            webhook_event: event
+          })
+        });
+        const verifyData = await verifyRes.json();
+
+        if (verifyData.verification_status !== 'SUCCESS') {
+          await systemLogger.error('security', 'paypal-webhook', 'Webhook signature verification FAILED', {
+            status: verifyData.verification_status
+          });
+          return res.status(400).json({ error: 'Webhook signature verification failed' });
+        }
+      } catch (verifyError) {
+        await systemLogger.error('security', 'paypal-webhook', 'Signature verification error', { error: verifyError.message });
+        return res.status(400).json({ error: 'Signature verification error' });
+      }
+    } else {
+      // No webhookId configured — log warning but still process (graceful degradation)
+      await systemLogger.warn('payment', 'paypal-webhook', 'No webhookId configured — processing without signature verification');
+    }
+
+    // ========================================
+    // Process webhook event
+    // ========================================
     switch (event.event_type) {
       case 'PAYMENT.CAPTURE.COMPLETED': {
         const resource = event.resource;
@@ -263,6 +348,7 @@ app.post('/api/webhooks/paypal', express.raw({ type: 'application/json' }), asyn
     res.json({ received: true });
   } catch (error) {
     console.error('PayPal webhook error:', error);
+    const systemLogger = require('./utils/systemLogger');
     await systemLogger.error('payment', 'paypal-webhook', 'Webhook handler error', { error: error.message });
     res.status(500).json({ error: 'Webhook handler error' });
   }

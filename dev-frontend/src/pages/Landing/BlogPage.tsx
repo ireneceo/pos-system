@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { LandingLayout } from '../../components/Landing';
+import SEOHead, { generateItemListSchema, generateBreadcrumbSchema } from '../../components/Common/SEOHead';
 
 interface BlogCategory {
   id: number;
@@ -322,6 +323,23 @@ const BlogPage: React.FC = () => {
     });
   };
 
+  // Generate ItemList schema for blog posts (AEO)
+  const blogListSchema = useMemo(() => {
+    if (posts.length === 0) return null;
+    return generateItemListSchema(
+      posts.map((post, index) => ({
+        name: post.title,
+        url: `https://purplehere.com/blog/${post.slug}`,
+        position: index + 1
+      }))
+    );
+  }, [posts]);
+
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: 'Home', url: 'https://purplehere.com' },
+    { name: 'Blog', url: 'https://purplehere.com/blog' }
+  ]);
+
   const handleCategoryChange = (slug: string) => {
     setActiveCategory(slug);
     setPagination(prev => ({ ...prev, page: 1 }));
@@ -329,6 +347,13 @@ const BlogPage: React.FC = () => {
 
   return (
     <LandingLayout>
+      <SEOHead
+        title="Blog - Restaurant Industry Insights & Tips"
+        description="Read the latest articles about restaurant management, POS technology, food industry trends, and business tips from PurpleHere."
+        keywords="restaurant blog, POS tips, food industry trends, restaurant management tips"
+        canonicalUrl="https://purplehere.com/blog"
+        jsonLd={blogListSchema ? [blogListSchema, breadcrumbSchema] : [breadcrumbSchema]}
+      />
       <PageContainer>
         <HeroSection>
           <HeroTitle>Blog</HeroTitle>

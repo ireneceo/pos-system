@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
+import SEOHead from '../../components/Common/SEOHead';
 
 const PageContainer = styled.div`
   background: #FAFBFC;
@@ -159,6 +160,12 @@ const AboutPage: React.FC = () => {
 
   return (
     <LandingLayout>
+      <SEOHead
+        title="About PurpleHere - Our Story & Mission"
+        description="Learn about PurpleHere, the cloud POS platform built for restaurants, brands, and food courts. Our mission is to simplify restaurant management."
+        keywords="about PurpleHere, restaurant POS company, cloud POS platform, restaurant technology"
+        canonicalUrl="https://purplehere.com/about"
+      />
       <PageContainer>
         <HeroSection>
           <HeroTitle>About PurpleHere</HeroTitle>

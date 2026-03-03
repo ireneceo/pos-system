@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
+import SEOHead from '../../components/Common/SEOHead';
 import { useAuth } from '../../contexts/AuthContext';
 
 const PageContainer = styled.div`
@@ -297,6 +298,12 @@ const DemoPage: React.FC = () => {
 
   return (
     <LandingLayout>
+      <SEOHead
+        title="Try Demo - Experience PurpleHere POS"
+        description="Try PurpleHere POS system live with our interactive demo. Explore features for restaurants, brands, and food courts - no signup required."
+        keywords="POS demo, try POS system, restaurant POS demo, free POS trial"
+        canonicalUrl="https://purplehere.com/demo"
+      />
       <PageContainer>
         <HeroSection>
           <HeroTitle>Try PurpleHere POS</HeroTitle>

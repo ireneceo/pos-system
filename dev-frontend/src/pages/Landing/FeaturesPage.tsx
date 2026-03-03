@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
+import SEOHead, { generateHowToSchema, generateBreadcrumbSchema } from '../../components/Common/SEOHead';
 
 const PageContainer = styled.div`
   background: #FAFBFC;
@@ -334,6 +335,19 @@ const FeaturesPage: React.FC = () => {
 
   return (
     <LandingLayout>
+      <SEOHead
+        title="Features - Powerful POS Tools for Every Business"
+        description="Explore PurpleHere's powerful features: POS terminal, menu management, real-time analytics, multi-branch support, kitchen display, and more."
+        keywords="POS features, restaurant management features, kitchen display, menu management, order management, analytics"
+        canonicalUrl="https://purplehere.com/features"
+        jsonLd={[
+          generateHowToSchema(),
+          generateBreadcrumbSchema([
+            { name: 'Home', url: 'https://purplehere.com' },
+            { name: 'Features', url: 'https://purplehere.com/features' }
+          ])
+        ]}
+      />
       <PageContainer>
         <HeroSection>
           <HeroTitle>Powerful Features for Every Need</HeroTitle>

@@ -1,6 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
+import SEOHead from '../../components/Common/SEOHead';
 
 const PageContainer = styled.div`
   background: #FAFBFC;
@@ -195,6 +196,12 @@ const Td = styled.td`
 const TermsOfServicePage: React.FC = () => {
   return (
     <LandingLayout>
+      <SEOHead
+        title="Terms of Service - PurpleHere"
+        description="PurpleHere's terms of service. Read our terms for using the PurpleHere POS platform and subscription services."
+        keywords="terms of service, PurpleHere terms, POS subscription terms"
+        canonicalUrl="https://purplehere.com/terms"
+      />
       <PageContainer>
         <HeroSection>
           <HeroTitle>Terms of Service</HeroTitle>

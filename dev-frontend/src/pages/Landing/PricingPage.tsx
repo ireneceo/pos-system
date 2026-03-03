@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
-import SEOHead, { generateBreadcrumbSchema } from '../../components/Common/SEOHead';
+import SEOHead, { generateBreadcrumbSchema, generateLocalBusinessSchema } from '../../components/Common/SEOHead';
 
 const PageContainer = styled.div`
   background: #FAFBFC;
@@ -372,7 +372,7 @@ interface Plan {
   base_price_monthly: number;
   base_price_annual: number;
   features: string[];
-  plan_target: 'restaurant' | 'brand' | 'foodcourt';
+  plan_target: 'restaurant' | 'brand' | 'foodcourt' | 'owner';
   order_limit: number;
   menu_item_limit: number;
   staff_limit: number;
@@ -435,7 +435,7 @@ const countryToCurrency: Record<string, string> = {
 
 const PricingPage: React.FC = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'restaurant' | 'brand' | 'foodcourt'>('restaurant');
+  const [activeTab, setActiveTab] = useState<'restaurant' | 'brand' | 'foodcourt' | 'owner'>('restaurant');
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [currencies, setCurrencies] = useState<CurrencyInfo[]>([]);
@@ -512,6 +512,9 @@ const PricingPage: React.FC = () => {
         const isSupported = loadedCurrencies.some((c: CurrencyInfo) => c.code === detectedCurrency);
         if (isSupported) {
           setSelectedCurrency(detectedCurrency);
+        } else if (loadedCurrencies.length > 0) {
+          // IP 감지 통화가 supported에 없으면 첫 번째 supported 통화를 기본값으로
+          setSelectedCurrency(loadedCurrencies[0].code);
         }
       }
     } catch (error) {
@@ -529,6 +532,8 @@ const PricingPage: React.FC = () => {
       const isSupported = defaultCurrencies.some(c => c.code === detectedCurrency);
       if (isSupported) {
         setSelectedCurrency(detectedCurrency);
+      } else {
+        setSelectedCurrency(defaultCurrencies[0].code);
       }
     }
   };
@@ -589,6 +594,18 @@ const PricingPage: React.FC = () => {
     return 'Subscription plan for your business';
   };
 
+  // API에서 가져온 플랜 데이터 기반으로 탭 동적 생성
+  const TAB_LABELS: Record<string, string> = {
+    restaurant: 'Restaurant',
+    brand: 'Brand',
+    foodcourt: 'Foodcourt',
+    owner: 'Owner'
+  };
+  const TAB_ORDER = ['restaurant', 'brand', 'foodcourt', 'owner'];
+  const availableTabs = TAB_ORDER.filter(target =>
+    normalizedPlans.some(plan => plan.plan_target === target)
+  );
+
   const displayPlans = filteredPlans.length > 0 ? filteredPlans : [];
   const currencyInfo = getCurrencyInfo(selectedCurrency);
 
@@ -604,7 +621,7 @@ const PricingPage: React.FC = () => {
         description="Simple, transparent pricing for PurpleHere POS system. Choose from Basic, Professional, or Enterprise plans for restaurants, brands, and food courts. 7-day free trial available."
         keywords="POS pricing, restaurant POS cost, POS subscription, PurpleHere plans, free trial POS"
         canonicalUrl="https://purplehere.com/pricing"
-        jsonLd={[breadcrumbSchema]}
+        jsonLd={[breadcrumbSchema, generateLocalBusinessSchema()]}
       />
       <PageContainer>
         <HeroSection>
@@ -618,15 +635,15 @@ const PricingPage: React.FC = () => {
         <ContentSection>
           <FilterBar>
             <PlanTabs>
-              <PlanTab active={activeTab === 'restaurant'} onClick={() => setActiveTab('restaurant')}>
-                Restaurant
-              </PlanTab>
-              <PlanTab active={activeTab === 'brand'} onClick={() => setActiveTab('brand')}>
-                Brand
-              </PlanTab>
-              <PlanTab active={activeTab === 'foodcourt'} onClick={() => setActiveTab('foodcourt')}>
-                Foodcourt
-              </PlanTab>
+              {availableTabs.map(tab => (
+                <PlanTab
+                  key={tab}
+                  active={activeTab === tab}
+                  onClick={() => setActiveTab(tab as typeof activeTab)}
+                >
+                  {TAB_LABELS[tab] || tab}
+                </PlanTab>
+              ))}
             </PlanTabs>
 
             <CurrencySelector>
@@ -729,7 +746,12 @@ const PricingPage: React.FC = () => {
 
                     <ContactButton
                       primary={isPopular}
-                      onClick={() => navigate('/contact')}
+                      onClick={() => navigate('/contact', {
+                        state: {
+                          inquiry_type: 'free_trial',
+                          interested_plan: `${activeTab}_${plan.name.toLowerCase()}`
+                        }
+                      })}
                     >
                       Start Free Trial
                     </ContactButton>

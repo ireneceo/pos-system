@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/StatCard';
+import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
 import { formatCurrency } from '../../utils/currency';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 // ============================================================================
-// Styled Components
+// Styled Components — RestaurantDashboard 기준 통일
 // ============================================================================
 
 const Container = styled.div`
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #FAFBFC;
   min-height: 100vh;
 `;
 
@@ -19,6 +17,7 @@ const Header = styled.div`
   background: white;
   padding: 16px 32px;
   border-bottom: 1px solid #E6EBF1;
+  margin-bottom: 0;
   height: 56px;
   display: flex;
   justify-content: space-between;
@@ -34,109 +33,216 @@ const Header = styled.div`
   }
 `;
 
-const HeaderTitle = styled.h1`
-  font-size: 24px;
-  font-weight: 600;
-  color: #0A2540;
-  @media (max-width: 768px) { font-size: 20px; }
-`;
-
-const Content = styled.main`
+const Content = styled.div`
   padding: 32px;
-  @media (max-width: 768px) { padding: 20px; }
-`;
+  background: #FAFBFC;
+  min-height: calc(100vh - 120px);
 
-const SectionTitle = styled.h2`
-  font-size: 16px;
-  font-weight: 600;
-  color: #0A2540;
-  margin-bottom: 16px;
-`;
-
-const AlertBox = styled.div<{ type: 'warning' | 'info' | 'success' }>`
-  background: ${props =>
-    props.type === 'warning' ? '#FEF2F2' :
-    props.type === 'success' ? '#ECFDF5' : '#EFF6FF'
-  };
-  border-left: 4px solid ${props =>
-    props.type === 'warning' ? '#DC2626' :
-    props.type === 'success' ? '#059669' : '#2563EB'
-  };
-  color: ${props =>
-    props.type === 'warning' ? '#991B1B' :
-    props.type === 'success' ? '#064E3B' : '#1E3A8A'
-  };
-  padding: 12px 16px;
-  margin-bottom: 12px;
-  border-radius: 4px;
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
-
-const AlertIcon = styled.span`
-  font-size: 14px;
-  flex-shrink: 0;
-`;
-
-const QuickAccess = styled.div`
-  margin-bottom: 32px;
-`;
-
-const QuickButtons = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-`;
-
-const QuickBtnDiv = styled.div`
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  color: #0A2540;
-  transition: all 0.15s;
-  border: 1px solid #E6EBF1;
-  cursor: pointer;
-
-  &:hover {
-    border-color: #C7D2FE;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  @media (max-width: 768px) {
+    padding: 20px;
   }
 `;
 
-const QuickBtnIcon = styled.div`
-  color: #635BFF;
-  font-size: 20px;
-  margin-bottom: 12px;
-`;
-
-const QuickBtnTitle = styled.div`
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 4px;
+const Title = styled.h1`
+  font-size: 24px;
+  font-weight: 700;
   color: #0A2540;
+  margin: 0;
+  line-height: 1;
+
+  @media (max-width: 768px) {
+    font-size: 20px;
+  }
 `;
 
-const QuickBtnDesc = styled.div`
+const MainGrid = styled.div`
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 32px;
+  margin-bottom: 32px;
+  align-items: stretch;
+
+  @media (max-width: 1200px) {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+`;
+
+const ChartContainer = styled.div`
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid #E6EBF1;
+
+  h3 {
+    margin: 0 0 20px 0;
+    color: #0A2540;
+    font-size: 18px;
+    font-weight: 600;
+  }
+`;
+
+const AlertsPanel = styled.div`
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid #E6EBF1;
+  display: flex;
+  flex-direction: column;
+
+  h3 {
+    margin: 0 0 16px 0;
+    color: #0A2540;
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+`;
+
+const AlertsList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  overflow-y: auto;
+
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+`;
+
+const Alert = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }>`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: ${props => {
+    switch(props.type) {
+      case 'error': return '#FEF2F2';
+      case 'warning': return '#FFFBEB';
+      case 'success': return '#ECFDF5';
+      case 'info': return '#EFF6FF';
+      default: return '#F8FAFC';
+    }
+  }};
+  border: 1px solid ${props => {
+    switch(props.type) {
+      case 'error': return '#FECACA';
+      case 'warning': return '#FDE68A';
+      case 'success': return '#A7F3D0';
+      case 'info': return '#BFDBFE';
+      default: return '#E6EBF1';
+    }
+  }};
+  flex-shrink: 0;
+
+  &:hover { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); }
+`;
+
+const AlertContent = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const AlertTitle = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }>`
+  font-size: 13px;
+  font-weight: 600;
+  color: ${props => {
+    switch(props.type) {
+      case 'error': return '#DC2626';
+      case 'warning': return '#D97706';
+      case 'success': return '#059669';
+      case 'info': return '#2563EB';
+      default: return '#374151';
+    }
+  }};
+`;
+
+const AlertDescription = styled.div`
   font-size: 12px;
-  color: #6B7C93;
+  color: #6B7280;
+  margin-top: 2px;
+`;
+
+const QuickActionsSection = styled.div`
+  margin-bottom: 32px;
+
+  h3 {
+    margin: 0 0 20px 0;
+    color: #0A2540;
+    font-size: 18px;
+    font-weight: 600;
+  }
+`;
+
+const QuickActionsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+`;
+
+const QuickActionCard = styled.div`
+  padding: 24px;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #E6EBF1;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #F6F9FC;
+    .icon { color: #0A2540; }
+    .title { color: #0A2540; }
+  }
+
+  .icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+    color: #6B7C93;
+    transition: color 0.2s;
+    font-family: 'Lucida Console', 'Courier New', monospace;
+  }
+
+  .title {
+    font-weight: 600;
+    font-size: 16px;
+    color: #0A2540;
+    margin-bottom: 4px;
+    transition: color 0.2s;
+  }
+
+  .description {
+    font-size: 13px;
+    color: #6B7280;
+  }
 `;
 
 const ChartGrid = styled.div`
   display: grid;
   grid-template-columns: 2fr 1fr;
-  gap: 24px;
+  gap: 32px;
   margin-bottom: 32px;
 
-  @media (max-width: 1024px) {
+  @media (max-width: 1200px) {
     grid-template-columns: 1fr;
   }
 `;
 
 const ChartCard = styled.div`
   background: white;
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 24px;
   border: 1px solid #E6EBF1;
 `;
@@ -149,23 +255,13 @@ const ChartHeader = styled.div`
 `;
 
 const ChartTitle = styled.h3`
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 600;
   color: #0A2540;
+  margin: 0;
 `;
 
-const PeriodSelect = styled.select`
-  padding: 6px 12px;
-  border: 1px solid #E6EBF1;
-  border-radius: 6px;
-  font-size: 13px;
-  color: #374151;
-  background: white;
-  cursor: pointer;
-  &:focus { outline: none; border-color: #635BFF; }
-`;
-
-// Restaurant Cards
+// Restaurant Cards (Owner-specific)
 const RestaurantGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -176,7 +272,7 @@ const RestaurantGrid = styled.div`
 const RestaurantCard = styled.div`
   background: white;
   border: 1px solid #E6EBF1;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 20px;
   cursor: pointer;
   transition: all 0.2s;
@@ -207,23 +303,25 @@ const AdminName = styled.div`
 `;
 
 const StatusBadge = styled.span<{ status: string }>`
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
   background: ${props => {
     switch(props.status) {
-      case 'active': return '#ECFDF5';
-      case 'trial': return '#FFF7ED';
-      case 'inactive': case 'overdue': return '#FEF2F2';
+      case 'active': return '#D1FAE5';
+      case 'trial': return '#FEF3C7';
+      case 'inactive': case 'overdue': return '#FEE2E2';
       default: return '#F3F4F6';
     }
   }};
   color: ${props => {
     switch(props.status) {
-      case 'active': return '#059669';
-      case 'trial': return '#EA580C';
-      case 'inactive': case 'overdue': return '#DC2626';
+      case 'active': return '#065F46';
+      case 'trial': return '#92400E';
+      case 'inactive': case 'overdue': return '#991B1B';
       default: return '#6B7280';
     }
   }};
@@ -247,11 +345,18 @@ const CardStatValue = styled.div`
   color: #0A2540;
 `;
 
+const SectionTitle = styled.h3`
+  margin: 0 0 20px 0;
+  color: #0A2540;
+  font-size: 18px;
+  font-weight: 600;
+`;
+
 const LoadingContainer = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 300px;
+  min-height: 200px;
   color: #6B7C93;
   font-size: 14px;
 `;
@@ -291,7 +396,7 @@ const OwnerDashboardPage: React.FC = () => {
 
   const [restaurants, setRestaurants] = useState<RestaurantSummary[]>([]);
   const [compareData, setCompareData] = useState<any[]>([]);
-  const [alerts, setAlerts] = useState<Array<{ type: 'warning' | 'info' | 'success'; message: string }>>([]);
+  const [alerts, setAlerts] = useState<Array<{ type: 'warning' | 'info' | 'success'; title: string; message: string; link?: string }>>([]);
   const [currency, setCurrency] = useState('RM');
   const [badgeCounts, setBadgeCounts] = useState({ systemInquiry: 0, operationInquiry: 0, notices: 0, invoices: 0 });
 
@@ -310,7 +415,7 @@ const OwnerDashboardPage: React.FC = () => {
         const data = await res.json();
         if (data.success) setBadgeCounts(data.data);
       }
-    } catch (e) { /* silent */ }
+    } catch { /* silent */ }
   };
 
   useEffect(() => {
@@ -328,7 +433,6 @@ const OwnerDashboardPage: React.FC = () => {
       setLoading(true);
       const headers = getHeaders();
 
-      // Fetch dashboard + compare + invoices in parallel
       const [dashRes, compareRes, invoicesRes] = await Promise.all([
         fetch('/api/owner/dashboard', { headers }),
         fetch(`/api/owner/statistics/compare?period=${chartPeriod}`, { headers }),
@@ -336,26 +440,20 @@ const OwnerDashboardPage: React.FC = () => {
       ]);
 
       const [dashData, compareResult, overdueData] = await Promise.all([
-        dashRes.json(),
-        compareRes.json(),
-        invoicesRes.json(),
+        dashRes.json(), compareRes.json(), invoicesRes.json(),
       ]);
 
-      // Dashboard data
       const dash = dashData.data || dashData;
       const restaurantList: RestaurantSummary[] = dash.restaurants || [];
       setRestaurants(restaurantList);
 
-      // Set currency from first restaurant
       if (restaurantList.length > 0 && restaurantList[0].currency) {
         setCurrency(restaurantList[0].currency);
       }
 
-      // Compare data for charts
       const compare = compareResult.data || compareResult || [];
       setCompareData(compare);
 
-      // Calculate stats from compare data
       const totalRevenue = compare.reduce((sum: number, r: any) => sum + parseFloat(r.revenue || 0), 0);
       const totalOrders = compare.reduce((sum: number, r: any) => sum + (r.orderCount || 0), 0);
       const avgOrderVal = totalOrders > 0 ? totalRevenue / totalOrders : 0;
@@ -363,10 +461,8 @@ const OwnerDashboardPage: React.FC = () => {
         ? compare.reduce((best: any, r: any) => parseFloat(r.revenue || 0) > parseFloat(best.revenue || 0) ? r : best, compare[0])
         : null;
 
-      // Overdue invoices
       const overdue = overdueData.data || [];
       const overdueCount = Array.isArray(overdue) ? overdue.length : 0;
-
       const activeCount = restaurantList.filter((r: RestaurantSummary) => r.status !== 'inactive').length;
 
       setStats({
@@ -381,35 +477,34 @@ const OwnerDashboardPage: React.FC = () => {
       });
 
       // Alerts
-      const alertList: Array<{ type: 'warning' | 'info' | 'success'; message: string }> = [];
+      const alertList: Array<{ type: 'warning' | 'info' | 'success'; title: string; message: string; link?: string }> = [];
       if (overdueCount > 0) {
-        alertList.push({ type: 'warning', message: `${overdueCount} overdue invoice${overdueCount > 1 ? 's' : ''} need attention` });
+        alertList.push({ type: 'warning', title: 'Overdue Invoices', message: `${overdueCount} invoice(s) need attention`, link: '/pos/owner/invoices' });
       }
       if ((dash.pendingInvoices || 0) > 0) {
-        alertList.push({ type: 'info', message: `${dash.pendingInvoices} invoice${dash.pendingInvoices > 1 ? 's' : ''} pending payment` });
+        alertList.push({ type: 'info', title: 'Pending Invoices', message: `${dash.pendingInvoices} invoice(s) pending payment`, link: '/pos/owner/invoices' });
       }
       const inactiveRestaurants = restaurantList.filter((r: RestaurantSummary) => r.status === 'inactive');
       if (inactiveRestaurants.length > 0) {
-        alertList.push({ type: 'warning', message: `${inactiveRestaurants.length} restaurant${inactiveRestaurants.length > 1 ? 's' : ''} currently inactive` });
+        alertList.push({ type: 'warning', title: 'Inactive Restaurants', message: `${inactiveRestaurants.length} restaurant(s) currently inactive`, link: '/pos/owner/restaurants' });
       }
       const noRevenueToday = restaurantList.filter((r: RestaurantSummary) => (r.todayRevenue || 0) === 0 && r.status === 'active');
       if (noRevenueToday.length > 0 && noRevenueToday.length < restaurantList.length) {
-        alertList.push({ type: 'info', message: `${noRevenueToday.length} active restaurant${noRevenueToday.length > 1 ? 's' : ''} with no orders today` });
+        alertList.push({ type: 'info', title: 'No Orders Today', message: `${noRevenueToday.length} active restaurant(s) with no orders today`, link: '/pos/owner/restaurants' });
       }
       if (badgeCounts.notices > 0) {
-        alertList.push({ type: 'info', message: `${badgeCounts.notices} unread notice(s)` });
+        alertList.push({ type: 'info', title: 'Unread Notices', message: `${badgeCounts.notices} unread notice(s)`, link: '/pos/owner/notices' });
       }
       if (badgeCounts.systemInquiry > 0) {
-        alertList.push({ type: 'info', message: `${badgeCounts.systemInquiry} system inquiry(s) with new replies` });
+        alertList.push({ type: 'info', title: 'System Inquiry', message: `${badgeCounts.systemInquiry} inquiry(s) with new replies`, link: '/pos/owner/system-inquiry' });
       }
       if (badgeCounts.operationInquiry > 0) {
-        alertList.push({ type: 'info', message: `${badgeCounts.operationInquiry} operation inquiry(s) with responses` });
+        alertList.push({ type: 'info', title: 'Operation Inquiry', message: `${badgeCounts.operationInquiry} inquiry(s) with responses`, link: '/pos/owner/operation-inquiry' });
       }
       if (alertList.length === 0) {
-        alertList.push({ type: 'success', message: 'All systems running smoothly. No issues detected.' });
+        alertList.push({ type: 'success', title: 'All Clear', message: 'All systems running smoothly. No issues detected.' });
       }
       setAlerts(alertList);
-
     } catch (error) {
       console.error('Error fetching dashboard:', error);
     } finally {
@@ -428,7 +523,6 @@ const OwnerDashboardPage: React.FC = () => {
     }
   };
 
-  // Bar chart data
   const barData = compareData.map((r: any) => ({
     name: (r.restaurantName || 'Unknown').length > 12
       ? (r.restaurantName || 'Unknown').substring(0, 12) + '...'
@@ -437,164 +531,166 @@ const OwnerDashboardPage: React.FC = () => {
     orders: r.orderCount || 0,
   }));
 
-  // Pie chart data
   const pieData = compareData
     .filter((r: any) => parseFloat(r.revenue || 0) > 0)
-    .map((r: any) => ({
-      name: r.restaurantName || 'Unknown',
-      value: parseFloat(r.revenue || 0),
-    }));
+    .map((r: any) => ({ name: r.restaurantName || 'Unknown', value: parseFloat(r.revenue || 0) }));
 
   if (loading) {
     return (
-      <>
-        <Container>
-          <Header>
-            <HeaderTitle>Owner Dashboard</HeaderTitle>
-          </Header>
-          <LoadingContainer>Loading dashboard data...</LoadingContainer>
-        </Container>
-      </>
+      <Container>
+        <Header><Title>Owner Dashboard</Title></Header>
+        <Content>
+          <div style={{ textAlign: 'center', padding: '40px' }}>Loading dashboard...</div>
+        </Content>
+      </Container>
     );
   }
 
   return (
-    <>
-      <Container>
-        <Header>
-          <HeaderTitle>Owner Dashboard</HeaderTitle>
-        </Header>
+    <Container>
+      <Header>
+        <Title>Owner Dashboard</Title>
+      </Header>
 
-        <Content>
-          {/* KPI Cards */}
-          <StatsGrid>
-            <StatCard color="#635BFF">
-              <StatValue>{stats.totalRestaurants}</StatValue>
-              <StatLabel>My Restaurants</StatLabel>
-            </StatCard>
-            <StatCard color="#059669">
-              <StatValue>{formatCurrency(stats.todayRevenue, currency)}</StatValue>
-              <StatLabel>Today's Revenue</StatLabel>
-            </StatCard>
-            <StatCard color="#10B981">
-              <StatValue>{formatCurrency(stats.monthRevenue, currency)}</StatValue>
-              <StatLabel>Monthly Revenue</StatLabel>
-            </StatCard>
-            <StatCard color="#2563EB">
-              <StatValue>{stats.monthOrders.toLocaleString()}</StatValue>
-              <StatLabel>Monthly Orders</StatLabel>
-            </StatCard>
-            <StatCard color="#F59E0B">
-              <StatValue>{stats.pendingInvoices}</StatValue>
-              <StatLabel>Pending Invoices</StatLabel>
-            </StatCard>
-            <StatCard color="#7C3AED">
-              <StatValue>{formatCurrency(stats.avgOrderValue, currency)}</StatValue>
-              <StatLabel>Avg Order Value</StatLabel>
-            </StatCard>
-            <StatCard color="#DC2626">
-              <StatValue style={{ fontSize: stats.bestRestaurant.length > 15 ? '16px' : '24px' }}>
-                {stats.bestRestaurant}
-              </StatValue>
-              <StatLabel>Best Restaurant</StatLabel>
-            </StatCard>
-            <StatCard color="#059669">
-              <StatValue>{stats.activeRestaurants}</StatValue>
-              <StatLabel>Active Restaurants</StatLabel>
-            </StatCard>
-          </StatsGrid>
+      <Content>
+        {/* KPI Cards */}
+        <DashboardStatsGrid>
+          <DashboardStatCard color="#635BFF">
+            <DashboardStatLabel>My Restaurants</DashboardStatLabel>
+            <DashboardStatValue>{stats.totalRestaurants}</DashboardStatValue>
+          </DashboardStatCard>
+          <DashboardStatCard color="#059669">
+            <DashboardStatLabel>Today's Revenue</DashboardStatLabel>
+            <DashboardStatValue>{formatCurrency(stats.todayRevenue, currency)}</DashboardStatValue>
+          </DashboardStatCard>
+          <DashboardStatCard color="#10B981">
+            <DashboardStatLabel>Monthly Revenue</DashboardStatLabel>
+            <DashboardStatValue>{formatCurrency(stats.monthRevenue, currency)}</DashboardStatValue>
+          </DashboardStatCard>
+          <DashboardStatCard color="#2563EB">
+            <DashboardStatLabel>Monthly Orders</DashboardStatLabel>
+            <DashboardStatValue>{stats.monthOrders.toLocaleString()}</DashboardStatValue>
+          </DashboardStatCard>
+          <DashboardStatCard color="#F59E0B">
+            <DashboardStatLabel>Pending Invoices</DashboardStatLabel>
+            <DashboardStatValue>{stats.pendingInvoices}</DashboardStatValue>
+          </DashboardStatCard>
+          <DashboardStatCard color="#7C3AED">
+            <DashboardStatLabel>Avg Order Value</DashboardStatLabel>
+            <DashboardStatValue>{formatCurrency(stats.avgOrderValue, currency)}</DashboardStatValue>
+          </DashboardStatCard>
+          <DashboardStatCard color="#DC2626">
+            <DashboardStatLabel>Best Restaurant</DashboardStatLabel>
+            <DashboardStatValue style={{ fontSize: stats.bestRestaurant.length > 15 ? '16px' : undefined }}>
+              {stats.bestRestaurant}
+            </DashboardStatValue>
+          </DashboardStatCard>
+          <DashboardStatCard color="#059669">
+            <DashboardStatLabel>Active Restaurants</DashboardStatLabel>
+            <DashboardStatValue>{stats.activeRestaurants}</DashboardStatValue>
+          </DashboardStatCard>
+        </DashboardStatsGrid>
 
-          {/* System Alerts */}
-          <QuickAccess>
-            <SectionTitle>System Alerts</SectionTitle>
-            {alerts.map((alert, idx) => (
-              <AlertBox key={idx} type={alert.type}>
-                <AlertIcon>
-                  {alert.type === 'warning' ? '⚠️' : alert.type === 'success' ? '✓' : 'ℹ'}
-                </AlertIcon>
-                {alert.message}
-              </AlertBox>
-            ))}
-          </QuickAccess>
+        {/* Chart + Notifications */}
+        <MainGrid>
+          <ChartContainer>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0 }}>Revenue Comparison</h3>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {(['week', 'month', 'year'] as const).map(p => (
+                  <button
+                    key={p}
+                    onClick={() => setChartPeriod(p)}
+                    style={{
+                      padding: '6px 12px',
+                      background: chartPeriod === p ? '#635BFF' : 'transparent',
+                      color: chartPeriod === p ? 'white' : '#6B7280',
+                      border: '1px solid #E6EBF1',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '13px'
+                    }}
+                  >
+                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {barData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={barData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+                  <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#6B7C93' }} />
+                  <YAxis tick={{ fontSize: 12, fill: '#6B7C93' }} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
+                  <Tooltip
+                    formatter={(value: any, name: string) => [
+                      name === 'revenue' ? formatCurrency(value, currency) : value,
+                      name === 'revenue' ? 'Revenue' : 'Orders'
+                    ]}
+                    labelStyle={{ color: '#0A2540', fontWeight: 600 }}
+                    contentStyle={{ borderRadius: 8, border: '1px solid #E6EBF1' }}
+                  />
+                  <Bar dataKey="revenue" fill="#635BFF" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <LoadingContainer>No comparison data available</LoadingContainer>
+            )}
+          </ChartContainer>
 
-          {/* Quick Access */}
-          <QuickAccess>
-            <SectionTitle>Quick Access</SectionTitle>
-            <QuickButtons>
-              <QuickBtnDiv onClick={() => navigate('/pos/owner/restaurants')}>
-                <QuickBtnIcon>◫</QuickBtnIcon>
-                <QuickBtnTitle>My Restaurants</QuickBtnTitle>
-                <QuickBtnDesc>Restaurant management</QuickBtnDesc>
-              </QuickBtnDiv>
-              <QuickBtnDiv onClick={() => navigate('/pos/owner/invoices')}>
-                <QuickBtnIcon>◧</QuickBtnIcon>
-                <QuickBtnTitle>Invoices</QuickBtnTitle>
-                <QuickBtnDesc>View invoices</QuickBtnDesc>
-              </QuickBtnDiv>
-              <QuickBtnDiv onClick={() => navigate('/pos/owner/reports')}>
-                <QuickBtnIcon>◩</QuickBtnIcon>
-                <QuickBtnTitle>Reports</QuickBtnTitle>
-                <QuickBtnDesc>Cross-restaurant analytics</QuickBtnDesc>
-              </QuickBtnDiv>
-              <QuickBtnDiv onClick={() => navigate('/pos/profile')}>
-                <QuickBtnIcon>◉</QuickBtnIcon>
-                <QuickBtnTitle>Settings</QuickBtnTitle>
-                <QuickBtnDesc>Profile settings</QuickBtnDesc>
-              </QuickBtnDiv>
-            </QuickButtons>
-          </QuickAccess>
+          <AlertsPanel>
+            <h3>Notifications</h3>
+            <AlertsList>
+              {alerts.map((alert, idx) => (
+                <Alert key={idx} type={alert.type} onClick={() => alert.link && navigate(alert.link)}>
+                  <AlertContent>
+                    <AlertTitle type={alert.type}>{alert.title}</AlertTitle>
+                    <AlertDescription>{alert.message}</AlertDescription>
+                  </AlertContent>
+                </Alert>
+              ))}
+            </AlertsList>
+          </AlertsPanel>
+        </MainGrid>
 
-          {/* Charts */}
-          <ChartGrid>
-            {/* Revenue Comparison Bar Chart */}
-            <ChartCard>
-              <ChartHeader>
-                <ChartTitle>Revenue Comparison</ChartTitle>
-                <PeriodSelect value={chartPeriod} onChange={e => setChartPeriod(e.target.value)}>
-                  <option value="week">This Week</option>
-                  <option value="month">This Month</option>
-                  <option value="year">This Year</option>
-                </PeriodSelect>
-              </ChartHeader>
-              {barData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={barData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                    <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#6B7C93' }} />
-                    <YAxis tick={{ fontSize: 12, fill: '#6B7C93' }} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
-                    <Tooltip
-                      formatter={(value: any, name: string) => [
-                        name === 'revenue' ? formatCurrency(value, currency) : value,
-                        name === 'revenue' ? 'Revenue' : 'Orders'
-                      ]}
-                      labelStyle={{ color: '#0A2540', fontWeight: 600 }}
-                      contentStyle={{ borderRadius: 8, border: '1px solid #E6EBF1' }}
-                    />
-                    <Bar dataKey="revenue" fill="#635BFF" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <LoadingContainer>No comparison data available</LoadingContainer>
-              )}
-            </ChartCard>
+        {/* Quick Actions */}
+        <QuickActionsSection>
+          <h3>Quick Actions</h3>
+          <QuickActionsGrid>
+            <QuickActionCard onClick={() => navigate('/pos/owner/restaurants')}>
+              <div className="icon">&#9835;</div>
+              <div className="title">My Restaurants</div>
+              <div className="description">Restaurant management</div>
+            </QuickActionCard>
+            <QuickActionCard onClick={() => navigate('/pos/owner/invoices')}>
+              <div className="icon">&#9783;</div>
+              <div className="title">Invoices</div>
+              <div className="description">View invoices</div>
+            </QuickActionCard>
+            <QuickActionCard onClick={() => navigate('/pos/owner/reports')}>
+              <div className="icon">&#9776;</div>
+              <div className="title">Reports</div>
+              <div className="description">Cross-restaurant analytics</div>
+            </QuickActionCard>
+            <QuickActionCard onClick={() => navigate('/pos/profile')}>
+              <div className="icon">&#9881;</div>
+              <div className="title">Settings</div>
+              <div className="description">Profile settings</div>
+            </QuickActionCard>
+          </QuickActionsGrid>
+        </QuickActionsSection>
 
-            {/* Revenue Distribution Pie Chart */}
-            <ChartCard>
-              <ChartHeader>
-                <ChartTitle>Revenue Distribution</ChartTitle>
-              </ChartHeader>
-              {pieData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
+        {/* Revenue Distribution Chart */}
+        <ChartGrid>
+          <ChartCard>
+            <ChartHeader>
+              <ChartTitle>Revenue Distribution</ChartTitle>
+            </ChartHeader>
+            {pieData.length > 0 ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                <ResponsiveContainer width="50%" height={220}>
                   <PieChart>
-                    <Pie
-                      data={pieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={2}
-                      dataKey="value"
-                    >
+                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2} dataKey="value">
                       {pieData.map((_: any, index: number) => (
                         <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                       ))}
@@ -602,51 +698,52 @@ const OwnerDashboardPage: React.FC = () => {
                     <Tooltip formatter={(value: any) => formatCurrency(value, currency)} />
                   </PieChart>
                 </ResponsiveContainer>
-              ) : (
-                <LoadingContainer>No revenue data available</LoadingContainer>
-              )}
-              <div style={{ marginTop: 8 }}>
-                {pieData.map((item: any, idx: number) => (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, fontSize: 12, color: '#374151' }}>
-                    <div style={{ width: 10, height: 10, borderRadius: 2, background: PIE_COLORS[idx % PIE_COLORS.length], flexShrink: 0 }} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
-                  </div>
-                ))}
+                <div style={{ flex: 1 }}>
+                  {pieData.map((item: any, idx: number) => (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, fontSize: 13, color: '#374151' }}>
+                      <div style={{ width: 10, height: 10, borderRadius: 2, background: PIE_COLORS[idx % PIE_COLORS.length], flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{item.name}</span>
+                      <span style={{ fontWeight: 600, flexShrink: 0 }}>{formatCurrency(item.value, currency)}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </ChartCard>
-          </ChartGrid>
+            ) : (
+              <LoadingContainer>No revenue data available</LoadingContainer>
+            )}
+          </ChartCard>
+        </ChartGrid>
 
-          {/* Restaurant Cards */}
-          <SectionTitle>Restaurant Performance</SectionTitle>
-          <RestaurantGrid>
-            {restaurants.map(restaurant => (
-              <RestaurantCard
-                key={restaurant.id}
-                onClick={() => navigate(`/pos/owner/reports?tab=sales&restaurantId=${restaurant.id}`)}
-              >
-                <CardHeader>
-                  <div>
-                    <RestaurantName>{restaurant.name}</RestaurantName>
-                    <AdminName>{restaurant.admin_name || 'No admin assigned'}</AdminName>
-                  </div>
-                  <StatusBadge status={restaurant.status}>{restaurant.status}</StatusBadge>
-                </CardHeader>
-                <CardStats>
-                  <div>
-                    <CardStatLabel>Today</CardStatLabel>
-                    <CardStatValue>{formatCurrency(restaurant.todayRevenue, restaurant.currency || currency)}</CardStatValue>
-                  </div>
-                  <div>
-                    <CardStatLabel>This Month</CardStatLabel>
-                    <CardStatValue>{formatCurrency(restaurant.monthRevenue, restaurant.currency || currency)}</CardStatValue>
-                  </div>
-                </CardStats>
-              </RestaurantCard>
-            ))}
-          </RestaurantGrid>
-        </Content>
-      </Container>
-    </>
+        {/* Restaurant Performance Cards */}
+        <SectionTitle>Restaurant Performance</SectionTitle>
+        <RestaurantGrid>
+          {restaurants.map(restaurant => (
+            <RestaurantCard
+              key={restaurant.id}
+              onClick={() => navigate(`/pos/owner/reports?tab=sales&restaurantId=${restaurant.id}`)}
+            >
+              <CardHeader>
+                <div>
+                  <RestaurantName>{restaurant.name}</RestaurantName>
+                  <AdminName>{restaurant.admin_name || 'No admin assigned'}</AdminName>
+                </div>
+                <StatusBadge status={restaurant.status}>{restaurant.status}</StatusBadge>
+              </CardHeader>
+              <CardStats>
+                <div>
+                  <CardStatLabel>Today</CardStatLabel>
+                  <CardStatValue>{formatCurrency(restaurant.todayRevenue, restaurant.currency || currency)}</CardStatValue>
+                </div>
+                <div>
+                  <CardStatLabel>This Month</CardStatLabel>
+                  <CardStatValue>{formatCurrency(restaurant.monthRevenue, restaurant.currency || currency)}</CardStatValue>
+                </div>
+              </CardStats>
+            </RestaurantCard>
+          ))}
+        </RestaurantGrid>
+      </Content>
+    </Container>
   );
 };
 

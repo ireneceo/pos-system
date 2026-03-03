@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI';
+import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 
-const DashboardContainer = styled.div`
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #FAFBFC;
+// ============================================================================
+// Styled Components — RestaurantDashboard 기준 통일
+// ============================================================================
+
+const Container = styled.div`
   min-height: 100vh;
 `;
 
@@ -31,238 +34,342 @@ const Header = styled.div`
   }
 `;
 
-const HeaderTitle = styled.h1`
-  font-size: 24px;
-  font-weight: 600;
-  color: #0A2540;
-
-  @media (max-width: 768px) {
-    font-size: 20px;
-  }
-`;
-
-const RoleBadge = styled.span`
-  display: inline-block;
-  padding: 4px 12px;
-  background: #635BFF;
-  color: white;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  margin-left: 12px;
-  letter-spacing: 0.5px;
-
-  @media (max-width: 768px) {
-    display: block;
-    margin-left: 0;
-    margin-top: 8px;
-    width: fit-content;
-  }
-`;
-
-
-const Content = styled.main`
+const Content = styled.div`
   padding: 32px;
+  background: #FAFBFC;
+  min-height: calc(100vh - 120px);
 
   @media (max-width: 768px) {
     padding: 20px;
   }
 `;
 
-
-const QuickAccess = styled.div`
-  margin-bottom: 32px;
-`;
-
-const SectionTitle = styled.h2`
-  font-size: 16px;
-  font-weight: 600;
+const Title = styled.h1`
+  font-size: 24px;
+  font-weight: 700;
   color: #0A2540;
-  margin-bottom: 16px;
-`;
-
-const QuickButtons = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-`;
-
-
-const QuickBtnDiv = styled.div`
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  text-decoration: none;
-  color: #0A2540;
-  transition: all 0.15s;
-  border: 1px solid #E6EBF1;
-  cursor: pointer;
-
-  &:hover {
-    border-color: #C7D2FE;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  }
-`;
-
-const QuickBtnIcon = styled.div`
-  color: #635BFF;
-  font-size: 20px;
-  margin-bottom: 12px;
-`;
-
-const QuickBtnTitle = styled.div`
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 4px;
-  color: #0A2540;
-`;
-
-const QuickBtnDesc = styled.div`
-  font-size: 12px;
-  color: #6B7C93;
-`;
-
-const StatusGrid = styled.div`
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 16px;
+  margin: 0;
+  line-height: 1;
 
   @media (max-width: 768px) {
-    grid-template-columns: 1fr;
+    font-size: 20px;
   }
 `;
 
-const AlertBox = styled.div<{ type: 'warning' | 'info' | 'success' }>`
-  background: ${props =>
-    props.type === 'warning' ? '#FEF2F2' :
-    props.type === 'success' ? '#ECFDF5' :
-    '#EFF6FF'
-  };
-  border-left: 4px solid ${props =>
-    props.type === 'warning' ? '#DC2626' :
-    props.type === 'success' ? '#059669' :
-    '#2563EB'
-  };
-  color: ${props =>
-    props.type === 'warning' ? '#991B1B' :
-    props.type === 'success' ? '#064E3B' :
-    '#1E3A8A'
-  };
-  padding: 12px 16px;
-  margin-bottom: 12px;
-  border-radius: 4px;
-  font-size: 13px;
+const Subtitle = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  font-size: 14px;
+  color: #6B7280;
+  margin: 8px 0 0 16px;
 `;
 
-const AlertIcon = styled.span`
-  font-size: 16px;
+const RoleBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #635BFF;
+  color: white;
 `;
 
-const StatusCard = styled.div`
+const MainGrid = styled.div`
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 32px;
+  margin-bottom: 32px;
+  align-items: stretch;
+
+  @media (max-width: 1200px) {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+`;
+
+const ChartContainer = styled.div`
   background: white;
+  border-radius: 16px;
   padding: 24px;
-  border-radius: 8px;
   border: 1px solid #E6EBF1;
+
+  h3 {
+    margin: 0 0 20px 0;
+    color: #0A2540;
+    font-size: 18px;
+    font-weight: 600;
+  }
+`;
+
+const AlertsPanel = styled.div`
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid #E6EBF1;
+  display: flex;
+  flex-direction: column;
+
+  h3 {
+    margin: 0 0 16px 0;
+    color: #0A2540;
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+`;
+
+const AlertsList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  overflow-y: auto;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 4px;
+  }
+`;
+
+const Alert = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }>`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: ${props => {
+    switch(props.type) {
+      case 'error': return '#FEF2F2';
+      case 'warning': return '#FFFBEB';
+      case 'success': return '#ECFDF5';
+      case 'info': return '#EFF6FF';
+      default: return '#F8FAFC';
+    }
+  }};
+  border: 1px solid ${props => {
+    switch(props.type) {
+      case 'error': return '#FECACA';
+      case 'warning': return '#FDE68A';
+      case 'success': return '#A7F3D0';
+      case 'info': return '#BFDBFE';
+      default: return '#E6EBF1';
+    }
+  }};
+  flex-shrink: 0;
+
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+`;
+
+const AlertContent = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const AlertTitle = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }>`
+  font-size: 13px;
+  font-weight: 600;
+  color: ${props => {
+    switch(props.type) {
+      case 'error': return '#DC2626';
+      case 'warning': return '#D97706';
+      case 'success': return '#059669';
+      case 'info': return '#2563EB';
+      default: return '#374151';
+    }
+  }};
+`;
+
+const AlertDescription = styled.div`
+  font-size: 12px;
+  color: #6B7280;
+  margin-top: 2px;
+`;
+
+const QuickActionsSection = styled.div`
+  margin-bottom: 32px;
+
+  h3 {
+    margin: 0 0 20px 0;
+    color: #0A2540;
+    font-size: 18px;
+    font-weight: 600;
+  }
+`;
+
+const QuickActionsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+`;
+
+const QuickActionCard = styled.div`
+  padding: 24px;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #E6EBF1;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #F6F9FC;
+
+    .icon {
+      color: #0A2540;
+    }
+
+    .title {
+      color: #0A2540;
+    }
+  }
+
+  .icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+    color: #6B7C93;
+    transition: color 0.2s;
+    font-family: 'Lucida Console', 'Courier New', monospace;
+  }
+
+  .title {
+    font-weight: 600;
+    font-size: 16px;
+    color: #0A2540;
+    margin-bottom: 4px;
+    transition: color 0.2s;
+  }
+
+  .description {
+    font-size: 13px;
+    color: #6B7280;
+  }
+`;
+
+const RecentOrdersSection = styled.div`
+  h3 {
+    background: white;
+    padding: 20px 24px;
+    margin: 0;
+    color: #0A2540;
+    font-size: 18px;
+    font-weight: 600;
+    border: 1px solid #E6EBF1;
+    border-radius: 16px 16px 0 0;
+  }
 `;
 
 const TableContainer = styled.div`
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-
-  @media (max-width: 768px) {
-    margin: 0 -24px;
-    padding: 0 24px;
-  }
+  background: white;
+  border-radius: 0 0 16px 16px;
+  border: 1px solid #E6EBF1;
+  border-top: none;
+  overflow: hidden;
 `;
 
-const OrdersTable = styled.table`
+const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
-  min-width: 600px;
+`;
 
-  @media (max-width: 768px) {
-    min-width: 500px;
+const Thead = styled.thead`
+  background: #F8FAFC;
+`;
+
+const Th = styled.th`
+  padding: 16px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6B7C93;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const Tbody = styled.tbody``;
+
+const Tr = styled.tr`
+  border-bottom: 1px solid #F3F4F6;
+  transition: background 0.2s;
+
+  &:hover {
+    background: #F8FAFC;
+  }
+
+  &:last-child {
+    border-bottom: none;
   }
 `;
 
-const TableHeader = styled.th`
-  padding: 12px 0;
-  text-align: left;
-  border-bottom: 1px solid #F6F9FC;
-  font-size: 11px;
-  color: #6B7C93;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
+const Td = styled.td`
+  padding: 16px;
+  font-size: 14px;
+  color: #374151;
+  vertical-align: middle;
 `;
 
-const TableCell = styled.td`
-  padding: 12px 0;
-  text-align: left;
-  border-bottom: 1px solid #F6F9FC;
-  font-size: 13px;
-  color: #0A2540;
-`;
-
-const StatusBadge = styled.span<{ status: 'pending' | 'preparing' | 'cooking' | 'ready' }>`
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 11px;
+const Badge = styled.span<{ variant: string }>`
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
   font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
 
   ${props => {
-    switch(props.status) {
+    switch(props.variant) {
+      case 'awaiting_payment':
+        return 'background: #FEF3C7; color: #F59E0B;';
       case 'pending':
-        return `
-          background: #FEF3C7;
-          color: #92400E;
-        `;
+        return 'background: #FEF3C7; color: #92400E;';
       case 'preparing':
-      case 'cooking':
-        return `
-          background: #DBEAFE;
-          color: #1E40AF;
-        `;
+        return 'background: #DBEAFE; color: #1E40AF;';
       case 'ready':
-        return `
-          background: #D1FAE5;
-          color: #065F46;
-        `;
+        return 'background: #D1FAE5; color: #065F46;';
+      case 'served':
+        return 'background: #D1FAE5; color: #065F46;';
+      case 'completed':
+        return 'background: #E5E7EB; color: #374151;';
+      case 'cancelled':
+        return 'background: #FEE2E2; color: #991B1B;';
+      default:
+        return 'background: #F3F4F6; color: #6B7280;';
     }
   }}
 `;
 
-const StatusItem = styled.div`
-  margin-bottom: 15px;
-`;
-
-const StatusLabel = styled.div`
-  color: #6B7C93;
-  font-size: 12px;
-  margin-bottom: 5px;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-`;
-
-const StatusValue = styled.div<{ color?: string; size?: string }>`
-  color: ${props => props.color || '#0A2540'};
-  font-weight: 600;
-  font-size: ${props => props.size || 'inherit'};
-`;
+// ============================================================================
+// Component
+// ============================================================================
 
 interface SystemAlert {
   type: 'warning' | 'info' | 'success';
   message: string;
-  timestamp: string;
+  title: string;
+  link?: string;
 }
 
 const DashboardContent: React.FC = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [stats, setStats] = React.useState({
     todaySales: 0,
@@ -279,6 +386,8 @@ const DashboardContent: React.FC = () => {
   const [systemAlerts, setSystemAlerts] = React.useState<SystemAlert[]>([]);
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
+  const [loading, setLoading] = useState(true);
+  const [badgeCounts, setBadgeCounts] = useState({ systemInquiry: 0, operationInquiry: 0, notices: 0, invoices: 0 });
 
   useEffect(() => {
     if (defaultCurrency) {
@@ -286,25 +395,47 @@ const DashboardContent: React.FC = () => {
     }
   }, [defaultCurrency]);
 
+  useEffect(() => {
+    const fetchBadges = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) return;
+        const res = await fetch('/api/badge-counts', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) setBadgeCounts(data.data);
+        }
+      } catch (e) { /* silent */ }
+    };
+    fetchBadges();
+  }, []);
+
   React.useEffect(() => {
     const fetchStats = async () => {
       try {
         const token = localStorage.getItem('auth_token');
         const headers = { 'Authorization': `Bearer ${token}` };
 
-        // Fetch managers
-        const managersResponse = await fetch('/api/users?role=Manager', { headers });
+        const [managersResponse, restaurantsResponse, staffResponse, invoicesResponse, ordersResponse, ticketsResponse] = await Promise.all([
+          fetch('/api/users?role=Manager', { headers }),
+          fetch('/api/restaurants', { headers }),
+          fetch('/api/users?role=Staff', { headers }),
+          fetch('/api/invoices', { headers }),
+          fetch('/api/orders', { headers }),
+          fetch('/api/support-tickets', { headers }),
+        ]);
+
         const managersData = await managersResponse.json();
-
-        // Fetch restaurants
-        const restaurantsResponse = await fetch('/api/restaurants', { headers });
         const restaurantsData = await restaurantsResponse.json();
-
-        // Fetch staff
-        const staffResponse = await fetch('/api/users?role=Staff', { headers });
         const staffData = await staffResponse.json();
+        const invoicesData = await invoicesResponse.json();
+        const ordersData = await ordersResponse.json();
+        const ticketsResult = ticketsResponse.ok ? await ticketsResponse.json() : { data: [] };
 
-        // Fetch subscriptions
+        const invoices = invoicesData.data || invoicesData || [];
+        const orders = ordersData.data || ordersData;
+        const tickets = ticketsResult.data || ticketsResult || [];
+
         let subscriptions: any[] = [];
         try {
           const subscriptionsResponse = await fetch('/api/subscriptions', { headers });
@@ -314,134 +445,97 @@ const DashboardContent: React.FC = () => {
           }
         } catch { /* graceful fallback */ }
 
-        // Fetch invoices
-        const invoicesResponse = await fetch('/api/invoices', { headers });
-        const invoicesData = await invoicesResponse.json();
-        const invoices = invoicesData.data || invoicesData || [];
-
-        // Fetch orders
-        const ordersResponse = await fetch('/api/orders', { headers });
-        const ordersData = await ordersResponse.json();
-        const orders = ordersData.data || ordersData;
-
-        // Fetch support tickets from API
-        const ticketsResponse = await fetch('/api/support-tickets', { headers });
-        const ticketsResult = ticketsResponse.ok ? await ticketsResponse.json() : { data: [] };
-        const tickets = ticketsResult.data || ticketsResult || [];
-
-        // Count only open tickets
         const openTicketsOnly = tickets.filter((t: any) => t.status === 'open').length;
-        const inProgressTickets = tickets.filter((t: any) => t.status === 'in-progress').length;
 
-        // Create system alerts with recent activities
+        // Create system alerts
         const alerts: SystemAlert[] = [];
         const today = new Date();
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
 
-        // Check for new managers (added in last 24 hours)
-        const recentManagers = managersData.filter((m: any) => {
-          if (!m.createdAt) return false;
-          const created = new Date(m.createdAt);
-          return created >= yesterday;
-        });
-        if (recentManagers.length > 0) {
-          alerts.push({
-            type: 'info',
-            message: `${recentManagers.length} new manager${recentManagers.length > 1 ? 's' : ''} added`,
-            timestamp: new Date().toISOString()
-          });
-        }
-
-        // Check for new restaurants (added in last 24 hours)
-        const recentRestaurants = restaurantsData.filter((r: any) => {
-          if (!r.createdAt) return false;
-          const created = new Date(r.createdAt);
-          return created >= yesterday;
-        });
-        if (recentRestaurants.length > 0) {
-          alerts.push({
-            type: 'info',
-            message: `${recentRestaurants.length} new restaurant${recentRestaurants.length > 1 ? 's' : ''} registered`,
-            timestamp: new Date().toISOString()
-          });
-        }
-
-        // Check for new staff (added in last 24 hours)
-        const recentStaff = staffData.filter((s: any) => {
-          if (!s.createdAt) return false;
-          const created = new Date(s.createdAt);
-          return created >= yesterday;
-        });
-        if (recentStaff.length > 0) {
-          alerts.push({
-            type: 'info',
-            message: `${recentStaff.length} new staff member${recentStaff.length > 1 ? 's' : ''} added`,
-            timestamp: new Date().toISOString()
-          });
-        }
-
-        // Check for new subscriptions (added in last 24 hours)
-        const recentSubscriptions = subscriptions.filter((sub: any) => {
-          if (!sub.createdAt) return false;
-          const created = new Date(sub.createdAt);
-          return created >= yesterday;
-        });
-        if (recentSubscriptions.length > 0) {
-          alerts.push({
-            type: 'success',
-            message: `${recentSubscriptions.length} new subscription${recentSubscriptions.length > 1 ? 's' : ''} activated`,
-            timestamp: new Date().toISOString()
-          });
-        }
-
-        // Check for new invoices (issued in last 24 hours)
-        const recentInvoices = invoices.filter((inv: any) => {
-          if (!inv.invoice_date && !inv.invoiceDate) return false;
-          const issued = new Date(inv.invoice_date || inv.invoiceDate);
-          return issued >= yesterday;
-        });
-        if (recentInvoices.length > 0) {
-          alerts.push({
-            type: 'info',
-            message: `${recentInvoices.length} invoice${recentInvoices.length > 1 ? 's' : ''} issued`,
-            timestamp: new Date().toISOString()
-          });
-        }
-
-        // Alert for open tickets needing response
-        if (openTicketsOnly > 0) {
-          alerts.push({
-            type: 'warning',
-            message: `${openTicketsOnly} support ticket${openTicketsOnly > 1 ? 's' : ''} waiting for response`,
-            timestamp: new Date().toISOString()
-          });
-        }
-
-        // Check for urgent/high priority tickets that are still open
         const urgentOpenTickets = tickets.filter((t: any) =>
           t.status === 'open' && (t.priority === 'urgent' || t.priority === 'high')
         );
         if (urgentOpenTickets.length > 0) {
-          alerts.unshift({
+          alerts.push({
             type: 'warning',
-            message: `⚠️ ${urgentOpenTickets.length} high priority ticket${urgentOpenTickets.length > 1 ? 's' : ''} need immediate attention`,
-            timestamp: new Date().toISOString()
+            title: 'High Priority Tickets',
+            message: `${urgentOpenTickets.length} high priority ticket(s) need immediate attention`,
+            link: '/pos/admin/support-tickets'
+          });
+        }
+
+        if (openTicketsOnly > 0) {
+          alerts.push({
+            type: 'warning',
+            title: 'Open Support Tickets',
+            message: `${openTicketsOnly} ticket(s) waiting for response`,
+            link: '/pos/admin/support-tickets'
+          });
+        }
+
+        const recentManagers = managersData.filter((m: any) => {
+          if (!m.createdAt) return false;
+          return new Date(m.createdAt) >= yesterday;
+        });
+        if (recentManagers.length > 0) {
+          alerts.push({
+            type: 'info',
+            title: 'New Managers',
+            message: `${recentManagers.length} new manager(s) added in last 24h`,
+            link: '/pos/admin/managers'
+          });
+        }
+
+        const recentRestaurants = restaurantsData.filter((r: any) => {
+          if (!r.createdAt) return false;
+          return new Date(r.createdAt) >= yesterday;
+        });
+        if (recentRestaurants.length > 0) {
+          alerts.push({
+            type: 'info',
+            title: 'New Restaurants',
+            message: `${recentRestaurants.length} restaurant(s) registered in last 24h`,
+            link: '/pos/admin/restaurants'
+          });
+        }
+
+        const recentInvoices = invoices.filter((inv: any) => {
+          if (!inv.invoice_date && !inv.invoiceDate) return false;
+          return new Date(inv.invoice_date || inv.invoiceDate) >= yesterday;
+        });
+        if (recentInvoices.length > 0) {
+          alerts.push({
+            type: 'info',
+            title: 'New Invoices',
+            message: `${recentInvoices.length} invoice(s) issued in last 24h`,
+            link: '/pos/admin/invoices'
+          });
+        }
+
+        const recentSubscriptions = subscriptions.filter((sub: any) => {
+          if (!sub.createdAt) return false;
+          return new Date(sub.createdAt) >= yesterday;
+        });
+        if (recentSubscriptions.length > 0) {
+          alerts.push({
+            type: 'success',
+            title: 'New Subscriptions',
+            message: `${recentSubscriptions.length} subscription(s) activated in last 24h`,
+            link: '/pos/admin/subscriptions'
           });
         }
 
         setSystemAlerts(alerts);
 
-        // Calculate stats from real data
+        // Calculate stats
         const todayStr = new Date().toISOString().split('T')[0];
         const todayOrders = orders.filter((order: any) =>
           order.order_date && order.order_date.startsWith(todayStr)
         );
-
         const pendingOrders = orders.filter((order: any) =>
           order.status === 'pending' || order.status === 'preparing'
         );
-
         const todaySales = todayOrders.reduce((sum: number, order: any) =>
           sum + parseFloat(order.total_amount || 0), 0
         );
@@ -458,261 +552,264 @@ const DashboardContent: React.FC = () => {
           openTickets: openTicketsOnly
         });
 
-        // Set recent orders (max 5)
         setRecentOrders(orders.slice(0, 5));
       } catch (error) {
         console.error('Error fetching stats:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchStats();
   }, []);
 
-  // Get role display name
-  const getRoleDisplayName = () => {
-    if (!user) return 'Dashboard';
-
-    switch(user.role) {
-      case 'System Admin':
-        return 'System Admin';
-      case 'Foodcourt General':
-        return 'Foodcourt General Manager';
-      case 'Foodcourt Manager':
-        return 'Foodcourt Manager';
-      case 'Brand General':
-        return 'Brand General Manager';
-      case 'Brand Manager':
-        return 'Brand Manager';
-      case 'Restaurant Admin':
-        return 'Restaurant Admin';
-      default:
-        return user.role;
-    }
-  };
+  if (loading) {
+    return (
+      <Container>
+        <Header>
+          <Title>System Admin Dashboard</Title>
+        </Header>
+        <Content>
+          <div style={{ textAlign: 'center', padding: '40px' }}>Loading dashboard...</div>
+        </Content>
+      </Container>
+    );
+  }
 
   return (
-    <DashboardContainer>
+    <Container>
       <Header>
-        <div>
-          <HeaderTitle>
-            Dashboard
-            <RoleBadge>{getRoleDisplayName()}</RoleBadge>
-          </HeaderTitle>
-        </div>
+        <Title>System Admin Dashboard</Title>
+        <Subtitle>
+          <span>{user?.full_name || 'Admin'}</span>
+          <RoleBadge>System Admin</RoleBadge>
+        </Subtitle>
       </Header>
 
       <Content>
         {/* Statistics Cards */}
-        <StatsGrid>
-          <StatCard color="#059669">
-            <StatValue>{formatCurrency(stats.todaySales, selectedCurrency)}</StatValue>
-            <StatLabel>Today's Sales</StatLabel>
-            <StatDescription>Revenue generated today</StatDescription>
-          </StatCard>
+        <DashboardStatsGrid>
+          <DashboardStatCard color="#F59E0B">
+            <DashboardStatLabel>Today's Sales</DashboardStatLabel>
+            <DashboardStatValue>{formatCurrency(stats.todaySales, selectedCurrency)}</DashboardStatValue>
+          </DashboardStatCard>
 
-          <StatCard color="#2563EB">
-            <StatValue>{stats.totalOrders}</StatValue>
-            <StatLabel>Total Orders Today</StatLabel>
-            <StatDescription>Orders placed today</StatDescription>
-          </StatCard>
+          <DashboardStatCard color="#2563EB">
+            <DashboardStatLabel>Today's Orders</DashboardStatLabel>
+            <DashboardStatValue>{stats.totalOrders}</DashboardStatValue>
+          </DashboardStatCard>
 
-          <StatCard color="#DC2626">
-            <StatValue>{stats.pendingOrders}</StatValue>
-            <StatLabel>Pending Orders</StatLabel>
-            <StatDescription>Awaiting processing</StatDescription>
-          </StatCard>
+          <DashboardStatCard color="#DC2626">
+            <DashboardStatLabel>Pending Orders</DashboardStatLabel>
+            <DashboardStatValue>{stats.pendingOrders}</DashboardStatValue>
+          </DashboardStatCard>
 
-          <StatCard color="#7C3AED">
-            <StatValue>{stats.totalManagers} / {stats.totalRestaurants}</StatValue>
-            <StatLabel>Managers / Restaurants</StatLabel>
-            <StatDescription>Total registered</StatDescription>
-          </StatCard>
+          <DashboardStatCard color="#7C3AED">
+            <DashboardStatLabel>Managers / Restaurants</DashboardStatLabel>
+            <DashboardStatValue>{stats.totalManagers} / {stats.totalRestaurants}</DashboardStatValue>
+          </DashboardStatCard>
 
-          <StatCard color="#F59E0B">
-            <StatValue>{stats.totalSubscriptions}</StatValue>
-            <StatLabel>Active Subscriptions</StatLabel>
-            <StatDescription>Currently active plans</StatDescription>
-          </StatCard>
+          <DashboardStatCard color="#10B981">
+            <DashboardStatLabel>Active Subscriptions</DashboardStatLabel>
+            <DashboardStatValue>{stats.totalSubscriptions}</DashboardStatValue>
+          </DashboardStatCard>
 
-          <StatCard color="#10B981">
-            <StatValue>{stats.totalInvoices}</StatValue>
-            <StatLabel>Total Invoices</StatLabel>
-            <StatDescription>All time invoices</StatDescription>
-          </StatCard>
+          <DashboardStatCard color="#059669">
+            <DashboardStatLabel>Total Invoices</DashboardStatLabel>
+            <DashboardStatValue>{stats.totalInvoices}</DashboardStatValue>
+          </DashboardStatCard>
 
-          <StatCard color="#6366F1">
-            <StatValue>{stats.totalStaff}</StatValue>
-            <StatLabel>Total Staff</StatLabel>
-            <StatDescription>Registered staff members</StatDescription>
-          </StatCard>
+          <DashboardStatCard color="#6366F1">
+            <DashboardStatLabel>Total Staff</DashboardStatLabel>
+            <DashboardStatValue>{stats.totalStaff}</DashboardStatValue>
+          </DashboardStatCard>
 
-          <StatCard color={stats.openTickets > 0 ? "#EF4444" : "#059669"}>
-            <StatValue>{stats.openTickets}</StatValue>
-            <StatLabel>Open Support Tickets</StatLabel>
-            <StatDescription>{stats.openTickets > 0 ? 'Need attention' : 'All resolved'}</StatDescription>
-          </StatCard>
-        </StatsGrid>
+          <DashboardStatCard color={stats.openTickets > 0 ? "#EF4444" : "#059669"}>
+            <DashboardStatLabel>Open Support Tickets</DashboardStatLabel>
+            <DashboardStatValue>{stats.openTickets}</DashboardStatValue>
+          </DashboardStatCard>
+        </DashboardStatsGrid>
 
-        {/* System Alerts */}
-        <QuickAccess style={{ marginBottom: '24px' }}>
-          <SectionTitle>Recent System Activities (Last 24 Hours)</SectionTitle>
-          {systemAlerts.length > 0 ? (
-            systemAlerts.map((alert, index) => (
-              <AlertBox key={index} type={alert.type}>
-                <AlertIcon>
-                  {alert.type === 'warning' ? '⚠️' :
-                   alert.type === 'success' ? '✓' : 'ℹ'}
-                </AlertIcon>
-                {alert.message}
-              </AlertBox>
-            ))
-          ) : (
-            <AlertBox type="success">
-              <AlertIcon>✓</AlertIcon>
-              No new activities today. All systems running smoothly.
-            </AlertBox>
-          )}
-        </QuickAccess>
+        {/* Chart + Notifications */}
+        <MainGrid>
+          <ChartContainer>
+            <h3>Platform Overview</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px' }}>
+                <div style={{ fontSize: '12px', color: '#6B7C93', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Restaurants</div>
+                <div style={{ fontSize: '28px', fontWeight: 700, color: '#0A2540' }}>{stats.totalRestaurants}</div>
+                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>Registered restaurants</div>
+              </div>
+              <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px' }}>
+                <div style={{ fontSize: '12px', color: '#6B7C93', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Managers</div>
+                <div style={{ fontSize: '28px', fontWeight: 700, color: '#0A2540' }}>{stats.totalManagers}</div>
+                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>Active managers</div>
+              </div>
+              <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px' }}>
+                <div style={{ fontSize: '12px', color: '#6B7C93', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Subscriptions</div>
+                <div style={{ fontSize: '28px', fontWeight: 700, color: '#0A2540' }}>{stats.totalSubscriptions}</div>
+                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>Active plans</div>
+              </div>
+              <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px' }}>
+                <div style={{ fontSize: '12px', color: '#6B7C93', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Staff</div>
+                <div style={{ fontSize: '28px', fontWeight: 700, color: '#0A2540' }}>{stats.totalStaff}</div>
+                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>Registered staff</div>
+              </div>
+            </div>
+          </ChartContainer>
 
-        {/* Quick Access */}
-        <QuickAccess>
-          <SectionTitle>System Quick Access</SectionTitle>
-          <QuickButtons>
-            <QuickBtnDiv onClick={() => window.open('/pos/pos-terminal', '_blank')}>
-              <QuickBtnIcon>▦</QuickBtnIcon>
-              <QuickBtnTitle>POS Terminal</QuickBtnTitle>
-              <QuickBtnDesc>Order processing and payment</QuickBtnDesc>
-            </QuickBtnDiv>
+          <AlertsPanel>
+            <h3>Notifications</h3>
+            <AlertsList>
+              {systemAlerts.length > 0 ? (
+                systemAlerts.map((alert, index) => (
+                  <Alert key={index} type={alert.type} onClick={() => alert.link && navigate(alert.link)}>
+                    <AlertContent>
+                      <AlertTitle type={alert.type}>{alert.title}</AlertTitle>
+                      <AlertDescription>{alert.message}</AlertDescription>
+                    </AlertContent>
+                  </Alert>
+                ))
+              ) : (
+                <Alert type="success" onClick={() => {}}>
+                  <AlertContent>
+                    <AlertTitle type="success">All Clear</AlertTitle>
+                    <AlertDescription>No new activities. All systems running smoothly.</AlertDescription>
+                  </AlertContent>
+                </Alert>
+              )}
 
-            <QuickBtnDiv onClick={() => window.open('/pos/kitchen', '_blank')}>
-              <QuickBtnIcon>◐</QuickBtnIcon>
-              <QuickBtnTitle>Kitchen Display</QuickBtnTitle>
-              <QuickBtnDesc>Cooking status and order management</QuickBtnDesc>
-            </QuickBtnDiv>
+              {badgeCounts.notices > 0 && (
+                <Alert type="info" onClick={() => navigate('/pos/admin/notices')}>
+                  <AlertContent>
+                    <AlertTitle type="info">Unread Notices</AlertTitle>
+                    <AlertDescription>{badgeCounts.notices} unread notice(s)</AlertDescription>
+                  </AlertContent>
+                </Alert>
+              )}
 
-            <QuickBtnDiv onClick={() => window.open('/pos/display', '_blank')}>
-              <QuickBtnIcon>□</QuickBtnIcon>
-              <QuickBtnTitle>Customer Display</QuickBtnTitle>
-              <QuickBtnDesc>Pickup number display screen</QuickBtnDesc>
-            </QuickBtnDiv>
-            
-            <QuickBtnDiv onClick={async () => {
+              {badgeCounts.systemInquiry > 0 && (
+                <Alert type="info" onClick={() => navigate('/pos/admin/system-inquiry')}>
+                  <AlertContent>
+                    <AlertTitle type="info">System Inquiry Updates</AlertTitle>
+                    <AlertDescription>{badgeCounts.systemInquiry} inquiry(s) with new replies</AlertDescription>
+                  </AlertContent>
+                </Alert>
+              )}
+            </AlertsList>
+          </AlertsPanel>
+        </MainGrid>
+
+        {/* Quick Actions */}
+        <QuickActionsSection>
+          <h3>Quick Actions</h3>
+          <QuickActionsGrid>
+            <QuickActionCard onClick={() => window.open('/pos/pos-terminal', '_blank')}>
+              <div className="icon">&#9638;</div>
+              <div className="title">POS Terminal</div>
+              <div className="description">Order processing</div>
+            </QuickActionCard>
+
+            <QuickActionCard onClick={() => window.open('/pos/kitchen', '_blank')}>
+              <div className="icon">&#9680;</div>
+              <div className="title">Kitchen Display</div>
+              <div className="description">Cooking status</div>
+            </QuickActionCard>
+
+            <QuickActionCard onClick={() => window.open('/pos/display', '_blank')}>
+              <div className="icon">&#9633;</div>
+              <div className="title">Customer Display</div>
+              <div className="description">Pickup number</div>
+            </QuickActionCard>
+
+            <QuickActionCard onClick={async () => {
               const restaurantId = user?.restaurantId || '1';
-              console.log('Dashboard: Fetching restaurant:', restaurantId);
               try {
                 const response = await fetch(`/api/restaurants/${restaurantId}`);
-                console.log('Dashboard: Response status:', response.status);
-
                 if (response.ok) {
                   const data = await response.json();
-                  console.log('Dashboard: Restaurant data:', data);
                   const slug = data.slug || `restaurant-${restaurantId}`;
-                  console.log('Dashboard: Using slug:', slug);
                   window.open(`/mobile/${slug}`, '_blank');
                 } else {
-                  console.error('Dashboard: Failed to fetch restaurant');
                   window.open(`/mobile/restaurant-${restaurantId}`, '_blank');
                 }
-              } catch (error) {
-                console.error('Dashboard: Error fetching restaurant slug:', error);
+              } catch {
                 window.open(`/mobile/restaurant-${restaurantId}`, '_blank');
               }
             }}>
-              <QuickBtnIcon>◯</QuickBtnIcon>
-              <QuickBtnTitle>Mobile Order</QuickBtnTitle>
-              <QuickBtnDesc>Customer mobile ordering system</QuickBtnDesc>
-            </QuickBtnDiv>
-          </QuickButtons>
-        </QuickAccess>
+              <div className="icon">&#9711;</div>
+              <div className="title">Mobile Order</div>
+              <div className="description">Customer ordering</div>
+            </QuickActionCard>
+          </QuickActionsGrid>
+        </QuickActionsSection>
 
-        {/* Live Status */}
-        <StatusGrid>
-          <StatusCard>
-            <SectionTitle>Live Order Status</SectionTitle>
-            <TableContainer>
-              <OrdersTable>
-                <thead>
-                  <tr>
-                    <TableHeader>Order #</TableHeader>
-                    <TableHeader>Items</TableHeader>
-                    <TableHeader>Status</TableHeader>
-                    <TableHeader>Time</TableHeader>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentOrders.length > 0 ? (
-                    recentOrders.map((order, index) => (
-                      <tr key={order.id || index}>
-                        <TableCell>{order.order_number || `#${order.id}`}</TableCell>
-                        <TableCell>
-                          {order.order_items ?
-                            (typeof order.order_items === 'string' ?
-                              JSON.parse(order.order_items).map((item: any) => item.name).join(', ') :
-                              order.order_items.map((item: any) => item.name).join(', ')
-                            ) : 'No items'
+        {/* Recent Orders Table */}
+        <RecentOrdersSection>
+          <h3>Recent Orders</h3>
+        </RecentOrdersSection>
+        <TableContainer>
+          <Table>
+            <Thead>
+              <Tr>
+                <Th>Order</Th>
+                <Th>Items</Th>
+                <Th>Status</Th>
+                <Th>Time</Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {recentOrders.length > 0 ? (
+                recentOrders.map((order, index) => (
+                  <Tr key={order.id || index}>
+                    <Td style={{ fontWeight: 600, color: '#0A2540' }}>
+                      {order.order_number || `#${order.id}`}
+                    </Td>
+                    <Td>
+                      {order.order_items ?
+                        (typeof order.order_items === 'string' ?
+                          JSON.parse(order.order_items).map((item: any) => item.name).join(', ') :
+                          order.order_items.map((item: any) => item.name).join(', ')
+                        ) : 'No items'
+                      }
+                    </Td>
+                    <Td>
+                      <Badge variant={order.status || 'pending'}>
+                        {(() => {
+                          switch(order.status) {
+                            case 'awaiting_payment': return 'Outstanding';
+                            case 'pending': return 'Pending';
+                            case 'preparing': return 'Preparing';
+                            case 'ready': return 'Ready';
+                            case 'served': return 'Served';
+                            case 'completed': return 'Completed';
+                            case 'cancelled': return 'Cancelled';
+                            default: return order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Pending';
                           }
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge status={
-                            order.status === 'preparing' ? 'cooking' :
-                            order.status === 'ready' ? 'ready' : 'pending'
-                          }>
-                            {order.status || 'pending'}
-                          </StatusBadge>
-                        </TableCell>
-                        <TableCell>
-                          {order.createdAt ? new Date(order.createdAt).toLocaleTimeString('en-US', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: false
-                          }) : '-'}
-                        </TableCell>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <TableCell colSpan={4} style={{ textAlign: 'center', color: '#6B7280' }}>
-                        No orders yet
-                      </TableCell>
-                    </tr>
-                  )}
-                </tbody>
-              </OrdersTable>
-            </TableContainer>
-          </StatusCard>
-          
-          <StatusCard>
-            <SectionTitle>Store Status</SectionTitle>
-            <div style={{ marginTop: '20px' }}>
-              <StatusItem>
-                <StatusLabel>
-                  <span style={{ marginRight: '8px' }}>⚙</span>Operation Status
-                </StatusLabel>
-                <StatusValue color="#059669">● Open & Operating</StatusValue>
-              </StatusItem>
-              <StatusItem>
-                <StatusLabel>
-                  <span style={{ marginRight: '8px' }}>◯</span>Total Managers
-                </StatusLabel>
-                <StatusValue>{stats.totalManagers} Managers</StatusValue>
-              </StatusItem>
-              <StatusItem>
-                <StatusLabel>
-                  <span style={{ marginRight: '8px' }}>◐</span>Kitchen Status
-                </StatusLabel>
-                <StatusValue color="#059669">● Normal Operation</StatusValue>
-              </StatusItem>
-              <StatusItem>
-                <StatusLabel>
-                  <span style={{ marginRight: '8px' }}>◉</span>Next Pickup
-                </StatusLabel>
-                <StatusValue color="#635BFF" size="18px">#002</StatusValue>
-              </StatusItem>
-            </div>
-          </StatusCard>
-        </StatusGrid>
+                        })()}
+                      </Badge>
+                    </Td>
+                    <Td style={{ color: '#6B7280', fontSize: '13px' }}>
+                      {order.createdAt ? new Date(order.createdAt).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                      }) : '-'}
+                    </Td>
+                  </Tr>
+                ))
+              ) : (
+                <Tr>
+                  <Td colSpan={4} style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
+                    No recent orders
+                  </Td>
+                </Tr>
+              )}
+            </Tbody>
+          </Table>
+        </TableContainer>
       </Content>
-    </DashboardContainer>
+    </Container>
   );
 };
 

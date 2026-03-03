@@ -2,6 +2,24 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <!-- Google Consent Mode v2 (must be before gtag) -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('consent', 'default', {
+        'analytics_storage': 'denied',
+        'ad_storage': 'denied',
+        'ad_user_data': 'denied',
+        'ad_personalization': 'denied',
+        'wait_for_update': 500
+      });
+    </script>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-LTTLKH1J85"></script>
+    <script>
+      gtag('js', new Date());
+      gtag('config', 'G-LTTLKH1J85');
+    </script>
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" id="favicon" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#635BFF" />
@@ -10,33 +28,34 @@
     <meta http-equiv="Expires" content="0" />
     <meta
       name="description"
-      content="Complete restaurant management solution with POS, ordering, and analytics"
+      content="PurpleHere - Cloud POS system for restaurants, brands, and food courts. Manage orders, menus, invoices, and analytics from anywhere."
       id="meta-description"
     />
     <meta
       name="keywords"
-      content="restaurant pos, food ordering, restaurant management, pos system"
+      content="POS system, restaurant POS, cloud POS, food ordering, restaurant management, brand management, food court POS"
       id="meta-keywords"
     />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="OrderHere - Restaurant POS System" id="og-title" />
+    <meta property="og:site_name" content="PurpleHere" />
+    <meta property="og:title" content="PurpleHere - Cloud POS System for Restaurants" id="og-title" />
     <meta
       property="og:description"
-      content="Complete restaurant management solution with POS, ordering, and analytics"
+      content="PurpleHere - Cloud POS system for restaurants, brands, and food courts. Manage orders, menus, invoices, and analytics from anywhere."
       id="og-description"
     />
-    <meta property="og:image" content="" id="og-image" />
+    <meta property="og:image" content="%PUBLIC_URL%/og-image.png" id="og-image" />
     <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:title" content="OrderHere - Restaurant POS System" id="twitter-title" />
+    <meta property="twitter:title" content="PurpleHere - Cloud POS System for Restaurants" id="twitter-title" />
     <meta
       property="twitter:description"
-      content="Complete restaurant management solution with POS, ordering, and analytics"
+      content="PurpleHere - Cloud POS system for restaurants, brands, and food courts. Manage orders, menus, invoices, and analytics from anywhere."
       id="twitter-description"
     />
-    <meta property="twitter:image" content="" id="twitter-image" />
+    <meta property="twitter:image" content="%PUBLIC_URL%/og-image.png" id="twitter-image" />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <title>OrderHere - Restaurant POS System</title>
+    <title>PurpleHere - Cloud POS System for Restaurants</title>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

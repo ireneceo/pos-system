@@ -1,6 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
+import SEOHead from '../../components/Common/SEOHead';
 
 const PageContainer = styled.div`
   background: #FAFBFC;
@@ -177,6 +178,12 @@ const ServiceDescription = styled.p`
 const CompanyPage: React.FC = () => {
   return (
     <LandingLayout>
+      <SEOHead
+        title="Company Information - GIT Consulting Sdn. Bhd."
+        description="GIT Consulting Sdn. Bhd. operates PurpleHere, a cloud-based POS platform for restaurants, brands, and food courts based in Malaysia."
+        keywords="GIT Consulting, PurpleHere company, Malaysia POS company, restaurant technology company"
+        canonicalUrl="https://purplehere.com/company"
+      />
       <PageContainer>
         <HeroSection>
           <HeroTitle>About Our Company</HeroTitle>

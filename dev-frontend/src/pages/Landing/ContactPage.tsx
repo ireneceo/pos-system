@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
+import SEOHead from '../../components/Common/SEOHead';
 
 const PageContainer = styled.div`
   background: #FAFBFC;
@@ -275,28 +277,23 @@ interface CompanyInfo {
 }
 
 const ContactPage: React.FC = () => {
+  const location = useLocation();
+  const navState = location.state as { inquiry_type?: string; interested_plan?: string } | null;
+
   const [formData, setFormData] = useState<ContactFormData>({
     name: '',
     email: '',
     phone: '',
     company_name: '',
-    inquiry_type: '',
-    interested_plan: '',
+    inquiry_type: navState?.inquiry_type || '',
+    interested_plan: navState?.interested_plan || '',
     preferred_username: '',
     message: ''
   });
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
-  const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
-    email: 'support@purplehere.com',
-    phone: '+60-XX-XXX-XXXX',
-    whatsapp: '+60-XX-XXX-XXXX',
-    business_hours: {
-      weekdays: '9:00 AM - 6:00 PM (GMT+8)',
-      weekend: 'Closed'
-    }
-  });
+  const [companyInfo, setCompanyInfo] = useState<CompanyInfo | null>(null);
 
   useEffect(() => {
     fetch('/api/site-settings')
@@ -357,6 +354,12 @@ const ContactPage: React.FC = () => {
 
   return (
     <LandingLayout>
+      <SEOHead
+        title="Contact Us - Get Started with PurpleHere"
+        description="Contact PurpleHere for a free trial, pricing inquiry, or technical support. We typically respond within 24 hours."
+        keywords="contact PurpleHere, POS free trial, POS demo request, restaurant POS support"
+        canonicalUrl="https://purplehere.com/contact"
+      />
       <PageContainer>
         <HeroSection>
           <HeroTitle>Get in Touch</HeroTitle>
@@ -527,61 +530,73 @@ const ContactPage: React.FC = () => {
             <InfoSection>
               <InfoCard>
                 <InfoTitle>Contact Information</InfoTitle>
-                <ContactItem>
-                  <ContactIcon>@</ContactIcon>
-                  <ContactDetails>
-                    <ContactLabel>Email</ContactLabel>
-                    <ContactValue>
-                      <ClickableLink href={`mailto:${companyInfo.email}`}>
-                        {companyInfo.email}
-                      </ClickableLink>
-                    </ContactValue>
-                  </ContactDetails>
-                </ContactItem>
-                <ContactItem>
-                  <ContactIcon>#</ContactIcon>
-                  <ContactDetails>
-                    <ContactLabel>Phone</ContactLabel>
-                    <ContactValue>
-                      <ClickableLink href={`tel:${companyInfo.phone.replace(/[^+\d]/g, '')}`}>
-                        {companyInfo.phone}
-                      </ClickableLink>
-                    </ContactValue>
-                  </ContactDetails>
-                </ContactItem>
-                <ContactItem>
-                  <ContactIcon>W</ContactIcon>
-                  <ContactDetails>
-                    <ContactLabel>WhatsApp</ContactLabel>
-                    <ContactValue>
-                      <ClickableLink
-                        href={`https://wa.me/${companyInfo.whatsapp.replace(/[^+\d]/g, '')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {companyInfo.whatsapp}
-                      </ClickableLink>
-                    </ContactValue>
-                  </ContactDetails>
-                </ContactItem>
+                {companyInfo ? (
+                  <>
+                    <ContactItem>
+                      <ContactIcon>@</ContactIcon>
+                      <ContactDetails>
+                        <ContactLabel>Email</ContactLabel>
+                        <ContactValue>
+                          <ClickableLink href={`mailto:${companyInfo.email}`}>
+                            {companyInfo.email}
+                          </ClickableLink>
+                        </ContactValue>
+                      </ContactDetails>
+                    </ContactItem>
+                    <ContactItem>
+                      <ContactIcon>#</ContactIcon>
+                      <ContactDetails>
+                        <ContactLabel>Phone</ContactLabel>
+                        <ContactValue>
+                          <ClickableLink href={`tel:${companyInfo.phone.replace(/[^+\d]/g, '')}`}>
+                            {companyInfo.phone}
+                          </ClickableLink>
+                        </ContactValue>
+                      </ContactDetails>
+                    </ContactItem>
+                    <ContactItem>
+                      <ContactIcon>W</ContactIcon>
+                      <ContactDetails>
+                        <ContactLabel>WhatsApp</ContactLabel>
+                        <ContactValue>
+                          <ClickableLink
+                            href={`https://wa.me/${companyInfo.whatsapp.replace(/[^+\d]/g, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {companyInfo.whatsapp}
+                          </ClickableLink>
+                        </ContactValue>
+                      </ContactDetails>
+                    </ContactItem>
+                  </>
+                ) : (
+                  <ContactValue style={{ color: '#9CA3AF' }}>Loading...</ContactValue>
+                )}
               </InfoCard>
 
               <InfoCard>
                 <InfoTitle>Business Hours</InfoTitle>
-                <ContactItem>
-                  <ContactIcon>~</ContactIcon>
-                  <ContactDetails>
-                    <ContactLabel>Monday - Friday</ContactLabel>
-                    <ContactValue>{companyInfo.business_hours?.weekdays || 'N/A'}</ContactValue>
-                  </ContactDetails>
-                </ContactItem>
-                <ContactItem>
-                  <ContactIcon>~</ContactIcon>
-                  <ContactDetails>
-                    <ContactLabel>Saturday - Sunday</ContactLabel>
-                    <ContactValue>{companyInfo.business_hours?.weekend || 'N/A'}</ContactValue>
-                  </ContactDetails>
-                </ContactItem>
+                {companyInfo ? (
+                  <>
+                    <ContactItem>
+                      <ContactIcon>~</ContactIcon>
+                      <ContactDetails>
+                        <ContactLabel>Monday - Friday</ContactLabel>
+                        <ContactValue>{companyInfo.business_hours?.weekdays || 'N/A'}</ContactValue>
+                      </ContactDetails>
+                    </ContactItem>
+                    <ContactItem>
+                      <ContactIcon>~</ContactIcon>
+                      <ContactDetails>
+                        <ContactLabel>Saturday - Sunday</ContactLabel>
+                        <ContactValue>{companyInfo.business_hours?.weekend || 'N/A'}</ContactValue>
+                      </ContactDetails>
+                    </ContactItem>
+                  </>
+                ) : (
+                  <ContactValue style={{ color: '#9CA3AF' }}>Loading...</ContactValue>
+                )}
               </InfoCard>
 
               <InfoCard>

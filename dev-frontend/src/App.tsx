@@ -11,6 +11,7 @@ import { PaymentStatusProvider } from './contexts/PaymentStatusContext';
 import { SiteSettingsProvider } from './contexts/SiteSettingsContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ScrollToTop from './components/ScrollToTop';
+import CookieConsentBanner from './components/Common/CookieConsentBanner';
 import PosLayout from './components/Layout/PosLayout';
 // Landing Pages (keep static - first load)
 import HomePage from './pages/Landing/HomePage';
@@ -307,6 +308,7 @@ function App() {
                     <MenuProvider>
                       <PaymentStatusProvider>
                         <ScrollToTop />
+                        <CookieConsentBanner />
                       <Suspense fallback={<PageLoader />}>
                       <Routes>
                       {/* ===== PUBLIC ROUTES (No MainLayout) ===== */}

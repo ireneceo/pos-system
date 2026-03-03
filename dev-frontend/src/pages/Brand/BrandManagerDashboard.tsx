@@ -1,33 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { EmptyState } from '../../components/UI/TableComponents';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
-import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
-import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 
-interface RestaurantSummary {
-  id: number;
-  name: string;
-  status: string;
-  address: string;
-  cuisine: string;
-  planType: string;
-  adminName: string;
-  todayOrders: number;
-  todayRevenue: number;
-  monthlyRevenue: number;
-}
+// ============================================================================
+// Styled Components — RestaurantDashboard 기준 통일
+// ============================================================================
 
 const Container = styled.div`
   min-height: 100vh;
-
-  @media (max-width: 768px) {
-    padding: 0;
-  }
 `;
 
 const Header = styled.div`
@@ -72,10 +56,13 @@ const Title = styled.h1`
   }
 `;
 
-const Subtitle = styled.p`
+const Subtitle = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
   font-size: 14px;
   color: #6B7280;
-  margin: 4px 0 0;
+  margin: 8px 0 0 16px;
 `;
 
 const MainGrid = styled.div`
@@ -83,13 +70,15 @@ const MainGrid = styled.div`
   grid-template-columns: 2fr 1fr;
   gap: 32px;
   margin-bottom: 32px;
+  align-items: stretch;
 
   @media (max-width: 1200px) {
     grid-template-columns: 1fr;
+    align-items: stretch;
   }
 `;
 
-const Card = styled.div`
+const ChartContainer = styled.div`
   background: white;
   border-radius: 16px;
   padding: 24px;
@@ -103,11 +92,31 @@ const Card = styled.div`
   }
 `;
 
-const QuickStatItem = styled.div`
+const AlertsPanel = styled.div`
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid #E6EBF1;
+  display: flex;
+  flex-direction: column;
+
+  h3 {
+    margin: 0 0 16px 0;
+    color: #0A2540;
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+`;
+
+const SummaryItem = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 0;
+  padding: 14px 0;
   border-bottom: 1px solid #F3F4F6;
 
   &:last-child {
@@ -115,118 +124,171 @@ const QuickStatItem = styled.div`
   }
 `;
 
-const QuickStatLabel = styled.span`
+const SummaryLabel = styled.span`
   font-size: 14px;
   color: #6B7280;
 `;
 
-const QuickStatValue = styled.span`
+const SummaryValue = styled.span`
   font-size: 16px;
   font-weight: 600;
   color: #0A2540;
 `;
 
-const RestaurantItem = styled.div`
-  padding: 16px;
-  border: 1px solid #F3F4F6;
-  border-radius: 8px;
-  margin-bottom: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
+const QuickActionsSection = styled.div`
+  margin-bottom: 32px;
 
-  &:hover {
-    border-color: #635BFF;
-    background: #F4F3FF;
-  }
-
-  &:last-child {
-    margin-bottom: 0;
+  h3 {
+    margin: 0 0 20px 0;
+    color: #0A2540;
+    font-size: 18px;
+    font-weight: 600;
   }
 `;
-
-const RestaurantHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-`;
-
-const RestaurantName = styled.span`
-  font-weight: 600;
-  color: #0A2540;
-`;
-
-const StatusBadge = styled.span<{ status: string }>`
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: white;
-  background: ${props => {
-    switch (props.status) {
-      case 'active': return '#059669';
-      case 'trial': return '#2563EB';
-      case 'expired': return '#DC2626';
-      case 'suspended': return '#D97706';
-      default: return '#6B7280';
-    }
-  }};
-`;
-
-const RestaurantInfo = styled.div`
-  font-size: 13px;
-  color: #6B7280;
-  display: flex;
-  justify-content: space-between;
-`;
-
 
 const QuickActionsGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 32px;
-`;
+  gap: 20px;
 
-const QuickAction = styled.div`
-  background: white;
-  padding: 20px;
-  border-radius: 12px;
-  border: 1px solid #E6EBF1;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-align: center;
-
-  &:hover {
-    border-color: #635BFF;
-    background: #F4F3FF;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(99, 91, 255, 0.15);
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
   }
 `;
 
-const QuickActionIcon = styled.div`
-  font-size: 28px;
-  margin-bottom: 8px;
-  color: #635BFF;
+const QuickActionCard = styled.div`
+  padding: 24px;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #E6EBF1;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #F6F9FC;
+    .icon { color: #0A2540; }
+    .title { color: #0A2540; }
+  }
+
+  .icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+    color: #6B7C93;
+    transition: color 0.2s;
+    font-family: 'Lucida Console', 'Courier New', monospace;
+  }
+
+  .title {
+    font-weight: 600;
+    font-size: 16px;
+    color: #0A2540;
+    margin-bottom: 4px;
+    transition: color 0.2s;
+  }
+
+  .description {
+    font-size: 13px;
+    color: #6B7280;
+  }
 `;
 
-const QuickActionTitle = styled.div`
-  font-size: 14px;
-  font-weight: 600;
-  color: #0A2540;
-  margin-bottom: 4px;
+const RecentOrdersSection = styled.div`
+  h3 {
+    background: white;
+    padding: 20px 24px;
+    margin: 0;
+    color: #0A2540;
+    font-size: 18px;
+    font-weight: 600;
+    border: 1px solid #E6EBF1;
+    border-radius: 16px 16px 0 0;
+  }
 `;
 
-const QuickActionDesc = styled.div`
+const TableContainer = styled.div`
+  background: white;
+  border-radius: 0 0 16px 16px;
+  border: 1px solid #E6EBF1;
+  border-top: none;
+  overflow: hidden;
+`;
+
+const Table = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+`;
+
+const Thead = styled.thead`
+  background: #F8FAFC;
+`;
+
+const Th = styled.th`
+  padding: 16px;
+  text-align: left;
   font-size: 12px;
-  color: #6B7280;
+  font-weight: 600;
+  color: #6B7C93;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 `;
+
+const Tbody = styled.tbody``;
+
+const Tr = styled.tr`
+  border-bottom: 1px solid #F3F4F6;
+  transition: background 0.2s;
+  cursor: pointer;
+  &:hover { background: #F8FAFC; }
+  &:last-child { border-bottom: none; }
+`;
+
+const Td = styled.td`
+  padding: 16px;
+  font-size: 14px;
+  color: #374151;
+  vertical-align: middle;
+`;
+
+const StatusBadge = styled.span<{ status: string }>`
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  ${props => {
+    switch (props.status) {
+      case 'active': return 'background: #D1FAE5; color: #065F46;';
+      case 'trial': return 'background: #DBEAFE; color: #1E40AF;';
+      case 'expired': return 'background: #FEE2E2; color: #991B1B;';
+      case 'suspended': return 'background: #FEF3C7; color: #92400E;';
+      default: return 'background: #F3F4F6; color: #6B7280;';
+    }
+  }}
+`;
+
+// ============================================================================
+// Component
+// ============================================================================
+
+interface RestaurantSummary {
+  id: number;
+  name: string;
+  status: string;
+  address: string;
+  cuisine: string;
+  planType: string;
+  adminName: string;
+  todayOrders: number;
+  todayRevenue: number;
+  monthlyRevenue: number;
+}
 
 const BrandManagerDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [activeTab, handleTabChange] = useTabParam('overview');
   const [restaurants, setRestaurants] = useState<RestaurantSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [brandName, setBrandName] = useState('');
@@ -243,7 +305,6 @@ const BrandManagerDashboard: React.FC = () => {
         const token = localStorage.getItem('auth_token');
         const headers = { 'Authorization': `Bearer ${token}` };
 
-        // Fetch brand info
         const brandRes = await fetch('/api/brands', { headers });
         if (brandRes.ok) {
           const brands = await brandRes.json();
@@ -252,12 +313,10 @@ const BrandManagerDashboard: React.FC = () => {
           }
         }
 
-        // Fetch restaurants (API filters by user role automatically)
         const restRes = await fetch('/api/restaurants', { headers });
         if (restRes.ok) {
           const restData = await restRes.json();
 
-          // Fetch orders for today's stats
           const todayStr = new Date().toISOString().split('T')[0];
           const ordersRes = await fetch('/api/orders', { headers });
           const ordersData = ordersRes.ok ? await ordersRes.json() : [];
@@ -318,165 +377,154 @@ const BrandManagerDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <>
-        <Container>
-          <Header><Title>Brand Manager Dashboard</Title></Header>
-          <Content>
-            <EmptyState>Loading dashboard data...</EmptyState>
-          </Content>
-        </Container>
-      </>
+      <Container>
+        <Header><Title>Brand Manager Dashboard</Title></Header>
+        <Content>
+          <div style={{ textAlign: 'center', padding: '40px' }}>Loading dashboard...</div>
+        </Content>
+      </Container>
     );
   }
 
   return (
-    <>
-      <Container>
-        <Header>
-          <div>
-            <Title>Brand Manager Dashboard</Title>
-            {brandName && <Subtitle>{brandName}</Subtitle>}
-          </div>
-        </Header>
+    <Container>
+      <Header>
+        <Title>Brand Manager Dashboard</Title>
+        {brandName && (
+          <Subtitle>
+            <span>{brandName}</span>
+          </Subtitle>
+        )}
+      </Header>
 
-        <Content>
-          <Tabs>
-            <Tab active={activeTab === 'overview'} onClick={() => handleTabChange('overview')}>
-              Overview
-            </Tab>
-            <Tab active={activeTab === 'restaurants'} onClick={() => handleTabChange('restaurants')}>
-              Restaurants <Badge count={totalRestaurants} showZero />
-            </Tab>
-          </Tabs>
+      <Content>
+        {/* KPI Cards */}
+        <DashboardStatsGrid>
+          <DashboardStatCard color="#DC2626">
+            <DashboardStatLabel>Total Restaurants</DashboardStatLabel>
+            <DashboardStatValue>{totalRestaurants}</DashboardStatValue>
+          </DashboardStatCard>
+          <DashboardStatCard color="#059669">
+            <DashboardStatLabel>Active Restaurants</DashboardStatLabel>
+            <DashboardStatValue>{activeRestaurants}</DashboardStatValue>
+          </DashboardStatCard>
+          <DashboardStatCard color="#F59E0B">
+            <DashboardStatLabel>Today's Revenue</DashboardStatLabel>
+            <DashboardStatValue>{formatCurrency(totalTodayRevenue, selectedCurrency)}</DashboardStatValue>
+          </DashboardStatCard>
+          <DashboardStatCard color="#2563EB">
+            <DashboardStatLabel>Today's Orders</DashboardStatLabel>
+            <DashboardStatValue>{totalTodayOrders}</DashboardStatValue>
+          </DashboardStatCard>
+          <DashboardStatCard color="#10B981">
+            <DashboardStatLabel>Monthly Revenue</DashboardStatLabel>
+            <DashboardStatValue>{formatCurrency(totalMonthlyRevenue, selectedCurrency)}</DashboardStatValue>
+          </DashboardStatCard>
+          <DashboardStatCard color="#7C3AED">
+            <DashboardStatLabel>Avg Revenue / Store</DashboardStatLabel>
+            <DashboardStatValue>{formatCurrency(avgRevenuePerStore, selectedCurrency)}</DashboardStatValue>
+          </DashboardStatCard>
+        </DashboardStatsGrid>
 
-          {activeTab === 'overview' && (
-            <>
-              <DashboardStatsGrid>
-                <DashboardStatCard>
-                  <DashboardStatValue>{totalRestaurants}</DashboardStatValue>
-                  <DashboardStatLabel>Total Restaurants</DashboardStatLabel>
-                </DashboardStatCard>
-                <DashboardStatCard>
-                  <DashboardStatValue>{activeRestaurants}</DashboardStatValue>
-                  <DashboardStatLabel>Active Restaurants</DashboardStatLabel>
-                </DashboardStatCard>
-                <DashboardStatCard>
-                  <DashboardStatValue>{formatCurrency(totalTodayRevenue, selectedCurrency)}</DashboardStatValue>
-                  <DashboardStatLabel>Today's Revenue</DashboardStatLabel>
-                </DashboardStatCard>
-                <DashboardStatCard>
-                  <DashboardStatValue>{totalTodayOrders}</DashboardStatValue>
-                  <DashboardStatLabel>Today's Orders</DashboardStatLabel>
-                </DashboardStatCard>
-              </DashboardStatsGrid>
+        {/* Summary + Quick Actions */}
+        <MainGrid>
+          <ChartContainer>
+            <h3>Brand Summary</h3>
+            <SummaryItem>
+              <SummaryLabel>Monthly Revenue</SummaryLabel>
+              <SummaryValue>{formatCurrency(totalMonthlyRevenue, selectedCurrency)}</SummaryValue>
+            </SummaryItem>
+            <SummaryItem>
+              <SummaryLabel>Avg Revenue / Store</SummaryLabel>
+              <SummaryValue>{formatCurrency(avgRevenuePerStore, selectedCurrency)}</SummaryValue>
+            </SummaryItem>
+            <SummaryItem>
+              <SummaryLabel>Active Restaurants</SummaryLabel>
+              <SummaryValue>{activeRestaurants} / {totalRestaurants}</SummaryValue>
+            </SummaryItem>
+            <SummaryItem>
+              <SummaryLabel>Today's Total Orders</SummaryLabel>
+              <SummaryValue>{totalTodayOrders}</SummaryValue>
+            </SummaryItem>
+          </ChartContainer>
 
-              <QuickActionsGrid>
-                <QuickAction onClick={() => navigate('/pos/manager/restaurants')}>
-                  <QuickActionIcon>&#9881;</QuickActionIcon>
-                  <QuickActionTitle>Manage Restaurants</QuickActionTitle>
-                  <QuickActionDesc>Add, edit, view restaurants</QuickActionDesc>
-                </QuickAction>
-                <QuickAction onClick={() => navigate('/pos/brand/reports')}>
-                  <QuickActionIcon>&#9776;</QuickActionIcon>
-                  <QuickActionTitle>Reports</QuickActionTitle>
-                  <QuickActionDesc>Sales and performance reports</QuickActionDesc>
-                </QuickAction>
-                <QuickAction onClick={() => navigate('/pos/brand/franchise-support')}>
-                  <QuickActionIcon>&#9993;</QuickActionIcon>
-                  <QuickActionTitle>Support Tickets</QuickActionTitle>
-                  <QuickActionDesc>Franchise support requests</QuickActionDesc>
-                </QuickAction>
-                <QuickAction onClick={() => navigate('/pos/manager/subscriptions')}>
-                  <QuickActionIcon>&#9733;</QuickActionIcon>
-                  <QuickActionTitle>Subscriptions</QuickActionTitle>
-                  <QuickActionDesc>Manage subscription plans</QuickActionDesc>
-                </QuickAction>
-              </QuickActionsGrid>
+          <AlertsPanel>
+            <h3>Notifications</h3>
+            <div style={{ padding: '16px', textAlign: 'center', color: '#9CA3AF', fontSize: '13px', fontStyle: 'italic' }}>
+              No new notifications
+            </div>
+          </AlertsPanel>
+        </MainGrid>
 
-              <MainGrid>
-                <Card>
-                  <h3>Restaurant Performance</h3>
-                  {restaurants.length === 0 ? (
-                    <EmptyState>No restaurants registered yet. Add your first restaurant to see performance data.</EmptyState>
-                  ) : (
-                    restaurants.slice(0, 5).map((restaurant) => (
-                      <RestaurantItem
-                        key={restaurant.id}
-                        onClick={() => navigate(`/pos/manager/restaurants`)}
-                      >
-                        <RestaurantHeader>
-                          <RestaurantName>{restaurant.name}</RestaurantName>
-                          <StatusBadge status={restaurant.status}>
-                            {restaurant.status}
-                          </StatusBadge>
-                        </RestaurantHeader>
-                        <RestaurantInfo>
-                          <span>{restaurant.cuisine} - {restaurant.adminName}</span>
-                          <span>Today: {formatCurrency(restaurant.todayRevenue, selectedCurrency)} ({restaurant.todayOrders} orders)</span>
-                        </RestaurantInfo>
-                      </RestaurantItem>
-                    ))
-                  )}
-                </Card>
+        {/* Quick Actions */}
+        <QuickActionsSection>
+          <h3>Quick Actions</h3>
+          <QuickActionsGrid>
+            <QuickActionCard onClick={() => navigate('/pos/manager/restaurants')}>
+              <div className="icon">&#9881;</div>
+              <div className="title">Manage Restaurants</div>
+              <div className="description">Add, edit, view restaurants</div>
+            </QuickActionCard>
+            <QuickActionCard onClick={() => navigate('/pos/brand/reports')}>
+              <div className="icon">&#9776;</div>
+              <div className="title">Reports</div>
+              <div className="description">Sales and performance</div>
+            </QuickActionCard>
+            <QuickActionCard onClick={() => navigate('/pos/brand/franchise-support')}>
+              <div className="icon">&#9993;</div>
+              <div className="title">Support Tickets</div>
+              <div className="description">Franchise support</div>
+            </QuickActionCard>
+            <QuickActionCard onClick={() => navigate('/pos/manager/subscriptions')}>
+              <div className="icon">&#9733;</div>
+              <div className="title">Subscriptions</div>
+              <div className="description">Manage plans</div>
+            </QuickActionCard>
+          </QuickActionsGrid>
+        </QuickActionsSection>
 
-                <Card>
-                  <h3>Brand Summary</h3>
-                  <QuickStatItem>
-                    <QuickStatLabel>Monthly Revenue</QuickStatLabel>
-                    <QuickStatValue>{formatCurrency(totalMonthlyRevenue, selectedCurrency)}</QuickStatValue>
-                  </QuickStatItem>
-                  <QuickStatItem>
-                    <QuickStatLabel>Avg Revenue / Store</QuickStatLabel>
-                    <QuickStatValue>{formatCurrency(avgRevenuePerStore, selectedCurrency)}</QuickStatValue>
-                  </QuickStatItem>
-                  <QuickStatItem>
-                    <QuickStatLabel>Active Restaurants</QuickStatLabel>
-                    <QuickStatValue>{activeRestaurants} / {totalRestaurants}</QuickStatValue>
-                  </QuickStatItem>
-                  <QuickStatItem>
-                    <QuickStatLabel>Today's Total Orders</QuickStatLabel>
-                    <QuickStatValue>{totalTodayOrders}</QuickStatValue>
-                  </QuickStatItem>
-                </Card>
-              </MainGrid>
-            </>
-          )}
-
-          {activeTab === 'restaurants' && (
-            <Card>
-              <h3>All Restaurants</h3>
-              {restaurants.length === 0 ? (
-                <EmptyState>
-                  No restaurants found. Click "Manage Restaurants" to add your first restaurant.
-                </EmptyState>
-              ) : (
+        {/* Restaurant Performance Table */}
+        <RecentOrdersSection>
+          <h3>Restaurant Performance</h3>
+        </RecentOrdersSection>
+        <TableContainer>
+          <Table>
+            <Thead>
+              <Tr>
+                <Th>Restaurant</Th>
+                <Th>Admin</Th>
+                <Th>Status</Th>
+                <Th>Today's Orders</Th>
+                <Th>Today's Revenue</Th>
+                <Th>Monthly Revenue</Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {restaurants.length > 0 ? (
                 restaurants.map((restaurant) => (
-                  <RestaurantItem
-                    key={restaurant.id}
-                    onClick={() => navigate(`/pos/brand/reports?restaurantId=${restaurant.id}&restaurantName=${encodeURIComponent(restaurant.name)}`)}
-                  >
-                    <RestaurantHeader>
-                      <RestaurantName>{restaurant.name}</RestaurantName>
-                      <StatusBadge status={restaurant.status}>
-                        {restaurant.status}
-                      </StatusBadge>
-                    </RestaurantHeader>
-                    <RestaurantInfo>
-                      <span>{restaurant.address}</span>
-                      <span>{restaurant.planType}</span>
-                    </RestaurantInfo>
-                    <RestaurantInfo style={{ marginTop: '4px' }}>
-                      <span>Admin: {restaurant.adminName} - {restaurant.cuisine}</span>
-                      <span>Monthly: {formatCurrency(restaurant.monthlyRevenue, selectedCurrency)}</span>
-                    </RestaurantInfo>
-                  </RestaurantItem>
+                  <Tr key={restaurant.id} onClick={() => navigate(`/pos/brand/reports?restaurantId=${restaurant.id}&restaurantName=${encodeURIComponent(restaurant.name)}`)}>
+                    <Td style={{ fontWeight: 600, color: '#0A2540' }}>{restaurant.name}</Td>
+                    <Td>{restaurant.adminName}</Td>
+                    <Td>
+                      <StatusBadge status={restaurant.status}>{restaurant.status}</StatusBadge>
+                    </Td>
+                    <Td>{restaurant.todayOrders}</Td>
+                    <Td>{formatCurrency(restaurant.todayRevenue, selectedCurrency)}</Td>
+                    <Td style={{ fontWeight: 600 }}>{formatCurrency(restaurant.monthlyRevenue, selectedCurrency)}</Td>
+                  </Tr>
                 ))
+              ) : (
+                <Tr>
+                  <Td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
+                    No restaurants registered yet
+                  </Td>
+                </Tr>
               )}
-            </Card>
-          )}
-        </Content>
-      </Container>
-    </>
+            </Tbody>
+          </Table>
+        </TableContainer>
+      </Content>
+    </Container>
   );
 };
 

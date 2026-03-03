@@ -71,6 +71,53 @@ router.post('/contact', async (req, res) => {
 
     console.log(`📬 New contact inquiry received: ${name} (${email}) - Type: ${inquiry_type || 'other'}`);
 
+    // Send confirmation email to customer (non-blocking)
+    try {
+      const CompanySettings = require('../models/CompanySettings');
+      const company = await CompanySettings.findOne({ where: { id: 1 } });
+      const companyName = company?.company_name || 'PurpleHere';
+
+      await sendPlatformEmail({
+        to: email,
+        subject: `Thank you for contacting ${companyName}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 24px;">${companyName}</h1>
+            </div>
+            <div style="background: white; padding: 30px; border: 1px solid #E6EBF1; border-top: none; border-radius: 0 0 12px 12px;">
+              <h2 style="color: #0A2540; margin-top: 0;">We've received your inquiry</h2>
+              <p style="color: #374151; line-height: 1.6;">Dear ${name},</p>
+              <p style="color: #374151; line-height: 1.6;">
+                Thank you for reaching out to us. We have successfully received your message and our team will review it shortly.
+              </p>
+              <p style="color: #374151; line-height: 1.6;">
+                <strong>We typically respond within 24 hours during business days.</strong>
+              </p>
+              <div style="background: #F8FAFC; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #635BFF;">
+                <p style="color: #6B7280; font-size: 13px; margin: 0 0 8px 0;"><strong>Your message:</strong></p>
+                <p style="color: #374151; font-size: 14px; margin: 0; white-space: pre-wrap;">${message.length > 500 ? message.substring(0, 500) + '...' : message}</p>
+              </div>
+              ${inquiry_type === 'free_trial' ? `
+              <div style="background: #EEF2FF; padding: 16px; border-radius: 8px; margin: 20px 0;">
+                <p style="color: #4338CA; font-size: 14px; margin: 0;">
+                  <strong>Free Trial Request</strong> — We'll set up your account and get back to you with login details.
+                </p>
+              </div>
+              ` : ''}
+              <hr style="border: none; border-top: 1px solid #E6EBF1; margin: 24px 0;">
+              <p style="color: #9CA3AF; font-size: 12px; text-align: center; margin: 0;">
+                ${companyName} | <a href="https://purplehere.com" style="color: #635BFF;">purplehere.com</a>
+              </p>
+            </div>
+          </div>
+        `
+      });
+    } catch (emailError) {
+      // Email failure should not block the inquiry submission
+      console.error('Failed to send confirmation email:', emailError.message);
+    }
+
     res.status(201).json({
       success: true,
       message: 'Your inquiry has been submitted successfully',

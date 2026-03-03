@@ -1,6 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
+import SEOHead from '../../components/Common/SEOHead';
 
 const PageContainer = styled.div`
   background: #FAFBFC;
@@ -154,6 +155,12 @@ const ContactLink = styled.a`
 const PrivacyPolicyPage: React.FC = () => {
   return (
     <LandingLayout>
+      <SEOHead
+        title="Privacy Policy - PurpleHere"
+        description="PurpleHere's privacy policy. Learn how we collect, use, and protect your personal information."
+        keywords="privacy policy, data protection, PurpleHere privacy"
+        canonicalUrl="https://purplehere.com/privacy"
+      />
       <PageContainer>
         <HeroSection>
           <HeroTitle>Privacy Policy</HeroTitle>

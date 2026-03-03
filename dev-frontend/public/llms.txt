@@ -1,100 +1,144 @@
-# PurpleHere - Cloud POS System
+# PurpleHere - Cloud POS System for Restaurants
 > Subscription-based Point of Sale system for restaurants, brands, and food courts
 
 ## What is PurpleHere?
 
-PurpleHere is a cloud-based POS (Point of Sale) system designed specifically for the food service industry. It provides real-time order management, inventory tracking, and multi-location support for restaurants, food court operators, and franchise brands.
+PurpleHere is a cloud-based POS (Point of Sale) system built specifically for the food service industry. It provides real-time order management, inventory tracking, multi-location support, and comprehensive analytics for restaurants, food court operators, and franchise brands. PurpleHere is developed by GIT CONSULTING SDN. BHD., based in Malaysia.
+
+## Why PurpleHere? (Key Differentiators)
+
+- **Multi-Entity Architecture**: Manage restaurants, brands (franchise), and food courts from a single platform — not just individual stores
+- **Role-Based Access**: 7 distinct roles (System Admin, Brand General, Foodcourt General, Restaurant Owner, Brand/Foodcourt Manager, Restaurant Admin, Staff) with granular permissions
+- **No Hardware Lock-in**: Runs on any device with a modern web browser — no proprietary hardware needed
+- **Real-Time Everything**: Live order tracking, kitchen display, customer display, and analytics updated in real-time
+- **Built for Southeast Asia**: Multi-currency support (MYR, SGD, THB, KRW, JPY, USD, EUR, and more), localized for Asian F&B operations
 
 ## Key Facts
 
 - **Product Type**: Cloud-based SaaS POS system
 - **Target Users**: Restaurants, food courts, franchise brands
-- **Pricing Model**: Subscription-based (monthly/annual)
-- **Free Trial**: 7 days, no credit card required
-- **Deployment**: 100% cloud-based, accessible via web browser
-
-## Core Features
-
-### For Restaurants
-- POS Terminal with real-time order processing
-- Menu management with categories, options, and modifiers
-- Kitchen Display System (KDS) for order tracking
-- Customer-facing display for order confirmation
-- Table management and dine-in/takeaway support
-- Staff management with role-based access
-- Reports and analytics dashboard
-
-### For Brands (Franchise)
-- Multi-location management from single dashboard
-- Centralized menu control across all branches
-- Brand-wide inventory tracking
-- Consolidated reporting and analytics
-- Recipe and cost management
-- Supplier management
-
-### For Food Courts
-- Multiple tenant management
-- Centralized payment processing
-- Shared customer display systems
-- Cross-tenant reporting
+- **Pricing Model**: Subscription-based (monthly/annual billing)
+- **Free Trial**: 7 days with full access, no credit card required
+- **Deployment**: 100% cloud-based, accessible via any modern web browser
+- **Payment Methods**: Stripe (credit card), PayPal, bank transfer
+- **Support**: Email support included with all plans
 
 ## Pricing Plans
 
 ### Restaurant Plans
-- **Basic**: For small restaurants starting out
-- **Professional**: For growing restaurants (Most Popular)
-- **Enterprise**: For large-scale operations with unlimited usage
+- **Basic**: For small restaurants starting out — limited staff, orders, and menu items
+- **Professional** (Most Popular): For growing restaurants — higher limits, more modules
+- **Enterprise**: For large-scale operations — unlimited usage, all modules included
 
-### Brand Plans
-- Multi-location management
-- Centralized control
+### Brand Plans (Franchise)
+- Multi-location management with centralized control
 - Custom pricing based on number of locations
+- Includes brand-wide menu management, analytics, and invoicing
 
 ### Food Court Plans
-- Multi-tenant support
+- Multi-tenant support with shared infrastructure
 - Custom pricing based on requirements
+- Centralized payment and reporting across all tenants
+
+**Note**: Prices vary by currency. Visit https://purplehere.com/pricing for current pricing in your local currency.
+
+## Core Features
+
+### For Restaurants
+- POS Terminal with fast order entry and split billing
+- Menu management with categories, options, modifiers, and images
+- Kitchen Display System (KDS) with color-coded priorities and bump functionality
+- Customer-facing display for order confirmation
+- Table management and dine-in/takeaway/delivery support
+- Staff management with PIN-based cashier switching and role-based permissions
+- Mobile ordering via QR code (customers order from their phones)
+- Coupon and promotional campaign management
+- Sales reports and analytics dashboard (daily, weekly, monthly)
+- Recipe and ingredient cost management
+- Customer database and loyalty tracking
+
+### For Brands (Franchise)
+- Multi-location dashboard with real-time overview
+- Centralized menu control — push updates to all outlets
+- Brand-wide inventory and recipe management
+- Consolidated reporting across all branches
+- Performance comparison between locations
+- Invoice management for franchise fees and subscriptions
+- Supplier and purchase order management
+
+### For Food Courts
+- Multiple tenant management from single dashboard
+- Centralized payment processing across all outlets
+- Shared customer display systems
+- Cross-tenant reporting and analytics
+- Independent invoicing per tenant
+
+### For Restaurant Owners
+- Portfolio overview across multiple owned restaurants
+- Financial summary and revenue tracking
+- Comparative performance analytics
+- Invoice payment and management
+- View-only access (no operational interference)
 
 ## Technical Specifications
 
-- **Platform**: Web-based (works on any modern browser)
-- **Mobile Support**: Responsive design for tablets and mobile
-- **API**: RESTful API for integrations
-- **Security**: HTTPS, JWT authentication, role-based access control
+- **Platform**: Web-based (Chrome, Firefox, Safari, Edge)
+- **Mobile Support**: Responsive design for tablets and smartphones
+- **API**: RESTful API for custom integrations
+- **Security**: HTTPS encryption, JWT authentication, RBAC, CSRF protection, SQL injection prevention, XSS protection
 - **Data**: Real-time sync across all devices
+- **Email**: Integrated email notifications with customizable SMTP per entity
+- **Payments**: Stripe and PayPal integration for subscription billing
 
-## Contact Information
+## Getting Started
 
-- **Website**: https://purplehere.com
-- **Pricing**: https://purplehere.com/pricing
-- **Free Trial**: https://purplehere.com/contact
-- **FAQ**: https://purplehere.com/faq
-- **Blog**: https://purplehere.com/blog
+1. Visit https://purplehere.com/contact and request a free trial
+2. Our team sets up your account within 24 hours
+3. Add your restaurant, configure menus, categories, and pricing
+4. Invite staff members and assign roles
+5. Start taking orders with the POS terminal
 
 ## Common Questions
 
 Q: How long is the free trial?
 A: 7 days with full access to all features. No credit card required.
 
-Q: What payment methods are accepted?
-A: Bank transfer. Credit card and PayPal coming soon.
+Q: What payment methods are accepted for subscriptions?
+A: Stripe (credit/debit cards), PayPal, and bank transfer.
 
-Q: Can I change plans later?
-A: Yes, you can upgrade or downgrade at any time.
+Q: Can I manage multiple restaurants?
+A: Yes. Restaurant Owners can oversee multiple restaurants. Brands can manage unlimited franchise outlets.
+
+Q: Can a restaurant belong to both a brand and a food court?
+A: Yes. Restaurants can simultaneously belong to a brand and a food court, each with independent invoicing.
 
 Q: Is there a setup fee?
 A: No setup fees. You only pay the subscription fee.
 
-Q: Do you offer custom plans?
-A: Yes, Enterprise plans are fully customizable. Contact us for a quote.
+Q: Can I change plans later?
+A: Yes, you can upgrade or downgrade your plan at any time.
 
 Q: What devices are supported?
-A: Any device with a modern web browser - desktops, laptops, tablets, and smartphones.
+A: Any device with a modern web browser — desktops, laptops, tablets, and smartphones. No app download required.
 
 Q: Is my data secure?
-A: Yes, we use industry-standard security including HTTPS encryption, secure authentication, and regular backups.
+A: Yes. We use HTTPS encryption, secure JWT authentication, role-based access control, and regular security audits. All data is protected with industry-standard security measures.
 
-Q: Can I integrate with other systems?
-A: We provide API access for integrations. Contact us for specific integration requirements.
+Q: Do you offer custom enterprise plans?
+A: Yes. Enterprise plans are fully customizable for large organizations. Contact us for a tailored quote.
+
+Q: What currencies are supported?
+A: We support multiple currencies including USD, MYR, SGD, KRW, JPY, THB, EUR, GBP, AUD, and more. Pricing is displayed in your local currency.
+
+## Contact Information
+
+- **Website**: https://purplehere.com
+- **Pricing**: https://purplehere.com/pricing
+- **Features**: https://purplehere.com/features
+- **Free Trial**: https://purplehere.com/contact
+- **FAQ**: https://purplehere.com/faq
+- **Blog**: https://purplehere.com/blog
+- **About**: https://purplehere.com/about
 
 ---
-Last updated: 2026-02-06
+Last updated: 2026-03-03

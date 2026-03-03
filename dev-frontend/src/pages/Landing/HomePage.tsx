@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
 import { BaseButton } from '../../components/UI';
-import SEOHead, { generateOrganizationSchema, generateSoftwareSchema } from '../../components/Common/SEOHead';
+import SEOHead, { generateOrganizationSchema, generateSoftwareSchema, generateWebSiteSchema, generateLocalBusinessSchema } from '../../components/Common/SEOHead';
 
 const PageContainer = styled.div`
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -132,7 +132,7 @@ const FeatureIcon = styled.div`
   margin-bottom: 20px;
 `;
 
-const FeatureTitle = styled.h3`
+const FeatureTitle = styled.h2`
   font-size: 24px;
   margin-bottom: 15px;
 `;
@@ -148,7 +148,9 @@ const HomePage: React.FC = () => {
 
   const jsonLdData = [
     generateOrganizationSchema(),
-    generateSoftwareSchema()
+    generateSoftwareSchema(),
+    generateWebSiteSchema(),
+    generateLocalBusinessSchema()
   ];
 
   return (
@@ -179,7 +181,7 @@ const HomePage: React.FC = () => {
 
         <Features>
           <FeatureCard>
-            <FeatureIcon>◎</FeatureIcon>
+            <FeatureIcon aria-hidden="true">◎</FeatureIcon>
             <FeatureTitle>Restaurant Management</FeatureTitle>
             <FeatureDescription>
               Efficiently manage your restaurant and monitor operations in real-time
@@ -187,7 +189,7 @@ const HomePage: React.FC = () => {
           </FeatureCard>
 
           <FeatureCard>
-            <FeatureIcon>☰</FeatureIcon>
+            <FeatureIcon aria-hidden="true">☰</FeatureIcon>
             <FeatureTitle>Brand Integration</FeatureTitle>
             <FeatureDescription>
               View data from all branches at a glance and analyze performance
@@ -195,7 +197,7 @@ const HomePage: React.FC = () => {
           </FeatureCard>
 
           <FeatureCard>
-            <FeatureIcon>◈</FeatureIcon>
+            <FeatureIcon aria-hidden="true">◈</FeatureIcon>
             <FeatureTitle>Easy Order & Payment</FeatureTitle>
             <FeatureDescription>
               Handle everything from mobile orders to POS payments conveniently

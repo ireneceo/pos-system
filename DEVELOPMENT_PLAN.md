@@ -1278,6 +1278,31 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 
 ---
 
+## ✅ 완료: Contact 페이지 로딩 개선 + GA4/SEO 마케팅 설정 (2026-03-03)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Favicon/로고 교체 | React 기본 아이콘 → PurpleHere "P" 브랜드 아이콘 (favicon.ico, logo192, logo512) | ✅ 완료 |
+| Pricing Owner 탭 | 하드코딩 3개 탭 → API 데이터 기반 동적 탭 생성 (Owner 포함) | ✅ 완료 |
+| GA4 추적 코드 | Google Analytics GA4 (G-LTTLKH1J85) 삽입 | ✅ 완료 |
+| Consent Mode v2 | Cookie Consent Banner와 GA4 Consent Mode v2 연동 | ✅ 완료 |
+| Contact 페이지 로딩 수정 | 하드코딩된 초기값 제거 → API 로딩 전 "Loading..." 표시 | ✅ 완료 |
+| AI 마케팅 인사이트 기획 | GA4+Search Console+Claude API 연동 리포트 - Phase C 작업항목 등록 | ✅ 완료 |
+| 운영서버 배포 | 전체 변경사항 운영서버 배포 완료 (스모크 테스트 6/6 통과) | ✅ 완료 |
+
+### 수정된 파일
+- `dev-frontend/public/favicon.ico` — PurpleHere 브랜드 아이콘
+- `dev-frontend/public/logo192.png` — PurpleHere 브랜드 로고
+- `dev-frontend/public/logo512.png` — PurpleHere 브랜드 로고
+- `dev-frontend/public/index.html` — GA4 + Consent Mode v2
+- `dev-frontend/src/components/Common/CookieConsentBanner.tsx` — Consent Mode v2 연동
+- `dev-frontend/src/pages/Landing/PricingPage.tsx` — 동적 탭 생성
+- `dev-frontend/src/pages/Landing/ContactPage.tsx` — 하드코딩 초기값 제거, 로딩 처리
+
+---
+
 ## 🚀 서비스 오픈 준비 로드맵 (현재 진행 중)
 
 ### 현재 상황
@@ -1316,6 +1341,18 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 | 셀프 회원가입 | 문의량 급증 시 |
 | Stripe/PayPal 연동 | 해외 고객 요청 시 |
 | 세금계산서 | 특정 국가 요구 시 |
+| **AI 마케팅 인사이트 대시보드** | GA4 + Search Console 데이터 축적 후 |
+
+#### AI 마케팅 인사이트 대시보드 (향후)
+- **GA4 API 연동**: 방문자 통계, 인기 페이지, 유입 경로, 전환율
+- **Search Console API 연동**: 검색 키워드, 노출/클릭수, 순위 변동
+- **AI 분석 리포트**: Claude API로 데이터 분석 → 실행 가능한 마케팅 전략 제안
+  - 주간/월간 자동 리포트 생성
+  - 키워드 트렌드 기반 콘텐츠 전략 추천
+  - 전환율 개선 제안, 이탈 페이지 분석
+  - 경쟁사 대비 포지셔닝 인사이트
+- **대상**: System Admin 대시보드에 전용 페이지 추가
+- **필요 작업**: Google Cloud Console API 키/서비스 계정 설정
 
 ---
 

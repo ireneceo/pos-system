@@ -719,13 +719,11 @@ const BrandInvoicesPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
+  const [activePeriod, setActivePeriod] = useState<PeriodType>('all');
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [dateRange, setDateRange] = useState(() => {
-    // Default to current month
+    // Default to all time
     const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
     const formatDate = (d: Date) => {
       const year = d.getFullYear();
       const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -733,8 +731,8 @@ const BrandInvoicesPage: React.FC = () => {
       return `${year}-${month}-${day}`;
     };
     return {
-      start: formatDate(firstDay),
-      end: formatDate(lastDay)
+      start: '2000-01-01',
+      end: formatDate(today)
     };
   });
   const [showCreateInvoiceModal, setShowCreateInvoiceModal] = useState(false);
