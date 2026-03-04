@@ -78,10 +78,37 @@ User.init({
     defaultValue: '[]',
     get() {
       const rawValue = this.getDataValue('permissions');
-      return rawValue ? JSON.parse(rawValue) : [];
+      if (!rawValue) return [];
+      try {
+        let parsed = rawValue;
+        // Unwrap nested JSON strings (protection against double-stringify)
+        for (let i = 0; i < 5 && typeof parsed === 'string'; i++) {
+          parsed = JSON.parse(parsed);
+        }
+        return Array.isArray(parsed) ? parsed.filter(x => typeof x === 'string' && x.length > 1) : [];
+      } catch { return []; }
     },
     set(value) {
-      this.setDataValue('permissions', JSON.stringify(value || []));
+      // If already a JSON string, parse first to avoid double-stringify
+      let arr = value || [];
+      if (typeof arr === 'string') {
+        try { arr = JSON.parse(arr); } catch { arr = []; }
+      }
+      this.setDataValue('permissions', JSON.stringify(Array.isArray(arr) ? arr : []));
+    }
+  },
+  notification_preferences: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    defaultValue: null,
+    comment: 'JSON: per-category notification on/off. null = all enabled (opt-out model)',
+    get() {
+      const raw = this.getDataValue('notification_preferences');
+      if (!raw) return null;
+      try { return JSON.parse(raw); } catch { return null; }
+    },
+    set(value) {
+      this.setDataValue('notification_preferences', value ? JSON.stringify(value) : null);
     }
   }
 }, {

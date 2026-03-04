@@ -12,12 +12,12 @@ const Header = styled.div`
   align-items: center;
 
   @media (max-width: 768px) {
-    padding: 16px;
+    padding: 12px 16px;
     height: auto;
-    min-height: 56px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
+    min-height: 48px;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
   }
 `;
 
@@ -29,8 +29,8 @@ const HeaderTitle = styled.h1`
 
   @media (max-width: 768px) {
     font-size: 18px;
-    flex: 1;
-    min-width: 0;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 `;
 
@@ -41,8 +41,6 @@ const HeaderActions = styled.div`
   flex-shrink: 0;
 
   @media (max-width: 768px) {
-    width: 100%;
-    justify-content: flex-end;
     gap: 8px;
   }
 `;

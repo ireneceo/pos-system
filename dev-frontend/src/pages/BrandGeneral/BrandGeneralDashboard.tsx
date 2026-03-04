@@ -412,6 +412,8 @@ const BrandGeneralDashboard: React.FC = () => {
 
   const fetchDashboardData = async () => {
     try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
       setLoading(true);
       const headers = getHeaders();
 
@@ -506,6 +508,8 @@ const BrandGeneralDashboard: React.FC = () => {
 
   const fetchTrendData = async (bId: number) => {
     try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
       const headers = getHeaders();
       const res = await fetch(`/api/brands/${bId}/sales-trend?period=${chartPeriod}`, { headers });
       const data = await res.json();
@@ -643,22 +647,22 @@ const BrandGeneralDashboard: React.FC = () => {
           <h3>Quick Actions</h3>
           <QuickActionsGrid>
             <QuickActionCard onClick={() => navigate('/pos/brand/general/management')}>
-              <div className="icon">&#9835;</div>
-              <div className="title">Manage Restaurants</div>
-              <div className="description">Franchise management</div>
+              <div className="icon">▬</div>
+              <div className="title">Brands</div>
+              <div className="description">Brand management</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/brand/invoices')}>
-              <div className="icon">&#9783;</div>
+              <div className="icon">▦</div>
               <div className="title">Invoices</div>
               <div className="description">Invoice management</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/brand/plans')}>
-              <div className="icon">&#9733;</div>
+              <div className="icon">☰</div>
               <div className="title">Subscription Plans</div>
               <div className="description">Plan configuration</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/brand/general/reports')}>
-              <div className="icon">&#9776;</div>
+              <div className="icon">◉</div>
               <div className="title">Reports</div>
               <div className="description">Performance analytics</div>
             </QuickActionCard>

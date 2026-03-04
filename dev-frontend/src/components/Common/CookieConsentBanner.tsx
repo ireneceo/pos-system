@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled, { keyframes } from 'styled-components';
+import { useLocation } from 'react-router-dom';
 
 declare global {
   interface Window {
@@ -110,11 +111,18 @@ const DeclineButton = styled.button`
 
 const CookieConsentBanner: React.FC = () => {
   const [visible, setVisible] = useState(false);
+  const location = useLocation();
+
+  // Only show on public website pages, not inside POS/restaurant app
+  const isPosRoute = location.pathname.startsWith('/pos') ||
+                     location.pathname.startsWith('/restaurant') ||
+                     location.pathname.startsWith('/kitchen') ||
+                     location.pathname.startsWith('/customer-display') ||
+                     location.pathname.startsWith('/mobile-order');
 
   useEffect(() => {
     const consent = localStorage.getItem(COOKIE_CONSENT_KEY);
-    if (!consent) {
-      // Small delay so it doesn't flash on page load
+    if (!consent && !isPosRoute) {
       const timer = setTimeout(() => setVisible(true), 1000);
       return () => clearTimeout(timer);
     }
@@ -127,7 +135,7 @@ const CookieConsentBanner: React.FC = () => {
         'ad_personalization': 'granted'
       });
     }
-  }, []);
+  }, [isPosRoute]);
 
   const handleAccept = () => {
     localStorage.setItem(COOKIE_CONSENT_KEY, 'true');

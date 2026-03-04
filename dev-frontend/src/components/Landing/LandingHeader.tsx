@@ -280,7 +280,7 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
           <NavLink active={isActive('/contact')} onClick={() => handleNavigate('/contact')}>
             Contact
           </NavLink>
-          <LoginButton onClick={() => handleNavigate(user ? '/pos' : '/login')}>
+          <LoginButton onClick={() => handleNavigate('/pos')}>
             POS System
           </LoginButton>
         </Nav>
@@ -318,7 +318,7 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
           <MobileNavLink active={isActive('/contact')} onClick={() => handleNavigate('/contact')}>
             Contact
           </MobileNavLink>
-          <MobileLoginButton onClick={() => handleNavigate(user ? '/pos' : '/login')}>
+          <MobileLoginButton onClick={() => handleNavigate('/pos')}>
             POS System
           </MobileLoginButton>
         </MobileMenuContent>

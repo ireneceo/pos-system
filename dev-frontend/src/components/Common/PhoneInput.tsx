@@ -294,9 +294,11 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
   const handleBlur = () => {
     setIsFocused(false);
 
-    // 유효성 검사
-    if (value && required) {
-      const errorMsg = getPhoneErrorMessage(value, selectedCountry.code);
+    // displayValue 기준으로 검증 (value prop은 비동기 업데이트라 stale할 수 있음)
+    if (displayValue && required) {
+      const numbers = displayValue.replace(/\D/g, '');
+      const internationalFormat = numbers ? formatPhoneNumber(numbers, selectedCountry.code) : '';
+      const errorMsg = internationalFormat ? getPhoneErrorMessage(internationalFormat, selectedCountry.code) : null;
       setError(errorMsg);
     }
 

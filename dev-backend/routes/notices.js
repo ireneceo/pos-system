@@ -11,6 +11,8 @@ const RestaurantManager = require('../models/RestaurantManager');
 const Comment = require('../models/Comment');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
+const { sendNotification, sendNotificationBatch } = require('../utils/notificationService');
+const { noticeReceivedEmail } = require('../utils/notificationTemplates');
 
 // Helper: Get restaurants linked to a Brand General or Foodcourt General
 async function getLinkedRestaurants(user) {
@@ -456,6 +458,33 @@ router.post('/', authenticateToken, async (req, res) => {
         }
       ]
     });
+
+    // Email notification to recipients (non-blocking)
+    (async () => {
+      try {
+        const mail = noticeReceivedEmail(fullNotice, fullNotice.author?.full_name || user.full_name);
+        const recipientUserIds = new Set();
+
+        for (const r of (fullNotice.recipients || [])) {
+          if (r.user_id && r.user_id !== user.id) {
+            recipientUserIds.add(r.user_id);
+          }
+          if (r.restaurant_id && r.restaurant?.id) {
+            // Notify restaurant admin
+            const rest = await Restaurant.findByPk(r.restaurant_id, { attributes: ['admin_id'] });
+            if (rest?.admin_id && rest.admin_id !== user.id) {
+              recipientUserIds.add(rest.admin_id);
+            }
+          }
+        }
+
+        if (recipientUserIds.size > 0) {
+          await sendNotificationBatch([...recipientUserIds], 'notice_received', mail);
+        }
+      } catch (e) {
+        console.error('[Notice notification error]', e.message);
+      }
+    })();
 
     res.status(201).json({ success: true, data: fullNotice });
   } catch (error) {

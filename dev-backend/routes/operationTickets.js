@@ -4,6 +4,8 @@ const { OperationTicket, User, Restaurant, RestaurantManager } = require('../mod
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
+const { sendNotification } = require('../utils/notificationService');
+const { inquiryReceivedEmail, ticketStatusChangedEmail } = require('../utils/notificationTemplates');
 
 // Get operation tickets for manager or staff/admin
 router.get('/', async (req, res) => {
@@ -166,6 +168,21 @@ router.post('/', authenticateToken, async (req, res) => {
       ]
     });
 
+    // Email notification to manager (non-blocking)
+    (async () => {
+      try {
+        if (createdTicket.managerId && createdTicket.managerId !== user.id) {
+          const mail = inquiryReceivedEmail(
+            { title: createdTicket.title || createdTicket.subject, subject: createdTicket.subject, category: createdTicket.inquiryType || createdTicket.category, priority: createdTicket.priority, description: createdTicket.description },
+            createdTicket.requesterName || user.full_name
+          );
+          await sendNotification(createdTicket.managerId, 'inquiry_received', mail);
+        }
+      } catch (e) {
+        console.error('[OpTicket notification error]', e.message);
+      }
+    })();
+
     res.status(201).json(createdTicket);
   } catch (error) {
     console.error('Error creating operation ticket:', error);
@@ -196,6 +213,23 @@ router.put('/:id', async (req, res) => {
         { model: Restaurant, as: 'restaurant', attributes: ['id', 'name'] }
       ]
     });
+
+    // Email notification on status change (non-blocking)
+    if (req.body.status) {
+      (async () => {
+        try {
+          const mail = ticketStatusChangedEmail(
+            { title: updatedTicket.title || updatedTicket.subject, subject: updatedTicket.subject },
+            req.body.status
+          );
+          if (updatedTicket.requesterId) {
+            await sendNotification(updatedTicket.requesterId, 'ticket_status_changed', mail);
+          }
+        } catch (e) {
+          console.error('[OpTicket status notification error]', e.message);
+        }
+      })();
+    }
 
     res.json(updatedTicket);
   } catch (error) {

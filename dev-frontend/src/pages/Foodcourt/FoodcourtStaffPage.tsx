@@ -443,7 +443,7 @@ const FoodcourtStaffPage: React.FC = () => {
           email: newManager.email.trim(),
           full_name: newManager.name.trim(),
           phone: newManager.phone.trim() || null,
-          permissions: JSON.stringify(newManager.permissions)
+          permissions: newManager.permissions
         })
       });
 

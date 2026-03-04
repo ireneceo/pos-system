@@ -802,6 +802,18 @@ const SupportTicketsPage: React.FC = () => {
 
               </TicketCard>
             ))}
+
+            {filteredTickets.length === 0 && (
+              <div style={{
+                textAlign: 'center',
+                padding: '60px 20px',
+                color: '#6B7280',
+                gridColumn: '1 / -1'
+              }}>
+                <h3 style={{ color: '#374151', marginBottom: '8px' }}>No tickets yet</h3>
+                <p>Click "Create Ticket" to submit your first support ticket.</p>
+              </div>
+            )}
           </TicketsGrid>
 
           {/* Create Ticket Modal */}

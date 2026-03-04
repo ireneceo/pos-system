@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import styled from 'styled-components';
 import { useParams } from 'react-router-dom';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
@@ -204,15 +204,6 @@ const Alert = styled.div<{ type: 'success' | 'error' }>`
   `}
 `;
 
-const DisabledMessage = styled.div`
-  padding: 40px;
-  background: #F9FAFB;
-  border-radius: 8px;
-  color: #6B7280;
-  font-size: 14px;
-  text-align: center;
-`;
-
 const ModalOverlay = styled.div`
   position: fixed;
   top: 0;
@@ -273,7 +264,135 @@ const CancelButton = styled.button`
   }
 `;
 
-interface Settings {
+/* Notification Preferences Styles */
+const SectionTitle = styled.h3`
+  font-size: 14px;
+  font-weight: 600;
+  color: #6B7C93;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 16px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #E6EBF1;
+`;
+
+const PreferenceRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid #F3F4F6;
+
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const PreferenceInfo = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const PreferenceLabel = styled.div`
+  font-size: 14px;
+  font-weight: 500;
+  color: #0A2540;
+  margin-bottom: 2px;
+`;
+
+const PreferenceDesc = styled.div`
+  font-size: 13px;
+  color: #6B7C93;
+`;
+
+const ToggleSwitch = styled.label`
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+  margin-left: 16px;
+`;
+
+const ToggleSlider = styled.span<{ checked: boolean }>`
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: ${props => props.checked ? '#635BFF' : '#D1D5DB'};
+  border-radius: 24px;
+  transition: 0.2s;
+
+  &::before {
+    content: '';
+    position: absolute;
+    height: 18px;
+    width: 18px;
+    left: ${props => props.checked ? '23px' : '3px'};
+    bottom: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: 0.2s;
+  }
+`;
+
+const ToggleInput = styled.input`
+  opacity: 0;
+  width: 0;
+  height: 0;
+`;
+
+const SectionSpacer = styled.div`
+  margin-top: 28px;
+`;
+
+const DescriptionText = styled.p`
+  font-size: 14px;
+  color: #6B7C93;
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+`;
+
+const EmailInfoBox = styled.div`
+  background: #F0F4FF;
+  border: 1px solid #D6E0FF;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: #425466;
+  line-height: 1.5;
+`;
+
+const EmailInfoIcon = styled.span`
+  font-size: 18px;
+  flex-shrink: 0;
+`;
+
+const EmailInfoContent = styled.div`
+  flex: 1;
+`;
+
+const EmailAddress = styled.span`
+  font-weight: 600;
+  color: #0A2540;
+`;
+
+const EmailInfoLink = styled.a`
+  color: #635BFF;
+  text-decoration: none;
+  font-weight: 500;
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
+interface SmtpSettings {
   email_enabled: boolean;
   smtp_host: string;
   smtp_port: number;
@@ -283,15 +402,22 @@ interface Settings {
   from_email: string;
   from_name: string;
   reply_to_email: string;
-  sms_enabled: boolean;
-  whatsapp_enabled: boolean;
+}
+
+interface NotificationCategory {
+  key: string;
+  label: string;
+  description: string;
+  section: string;
 }
 
 const NotificationSettingsPage: React.FC = () => {
   const { user } = useAuth();
   const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
-  const [activeTab, handleTabChange] = useTabParam<'email' | 'sms' | 'whatsapp'>('email');
-  const [settings, setSettings] = useState<Settings>({
+  const [activeTab, handleTabChange] = useTabParam<'preferences' | 'email'>('preferences');
+
+  // SMTP Settings state
+  const [smtpSettings, setSmtpSettings] = useState<SmtpSettings>({
     email_enabled: false,
     smtp_host: '',
     smtp_port: 587,
@@ -300,101 +426,115 @@ const NotificationSettingsPage: React.FC = () => {
     smtp_password: '',
     from_email: '',
     from_name: '',
-    reply_to_email: '',
-    sms_enabled: false,
-    whatsapp_enabled: false
+    reply_to_email: ''
   });
+
+  // Notification Preferences state
+  const [preferences, setPreferences] = useState<Record<string, boolean>>({});
+  const [categories, setCategories] = useState<NotificationCategory[]>([]);
+  const [prefsLoading, setPrefsLoading] = useState(false);
+  const [prefsSaving, setPrefsSaving] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [prefsMessage, setPrefsMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [showTestEmailModal, setShowTestEmailModal] = useState(false);
   const [testEmailAddress, setTestEmailAddress] = useState('');
   const [sendingTestEmail, setSendingTestEmail] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
   const [resultMessage, setResultMessage] = useState({ success: false, text: '' });
 
-  // 역할에 따라 entityType과 entityId 결정
-  const getEntityInfo = (): { entityType: 'restaurant' | 'manager' | 'admin' | 'brand' | 'foodcourt'; entityId: number } => {
-    // URL에서 restaurantId가 있으면 우선 사용
+  const getEntityInfo = useCallback((): { entityType: 'restaurant' | 'manager' | 'admin' | 'brand' | 'foodcourt'; entityId: number } => {
     if (urlRestaurantId) {
-      return {
-        entityType: 'restaurant' as const,
-        entityId: Number(urlRestaurantId)
-      };
+      return { entityType: 'restaurant', entityId: Number(urlRestaurantId) };
     }
-
     if (!user) {
-      return {
-        entityType: 'restaurant' as const,
-        entityId: 1
-      };
+      return { entityType: 'restaurant', entityId: 1 };
     }
     if (user.role === 'Restaurant Admin' || user.role === 'Staff') {
-      return {
-        entityType: 'restaurant' as const,
-        entityId: Number(user.restaurantId) || 1
-      };
+      return { entityType: 'restaurant', entityId: Number(user.restaurantId) || 1 };
     } else if (user.role === 'Brand General' || user.role === 'Brand Manager') {
-      return {
-        entityType: 'brand' as const,
-        entityId: Number(user.brand_id) || 1
-      };
+      return { entityType: 'brand', entityId: Number(user.brand_id) || 1 };
     } else if (user.role === 'Foodcourt General' || user.role === 'Foodcourt Manager') {
-      return {
-        entityType: 'foodcourt' as const,
-        entityId: Number(user.foodcourt_id) || 1
-      };
+      return { entityType: 'foodcourt', entityId: Number(user.foodcourt_id) || 1 };
     } else if (user.role === 'System Admin') {
-      return {
-        entityType: 'admin' as const,
-        entityId: Number(user.id) || 1
-      };
+      return { entityType: 'admin', entityId: Number(user.id) || 1 };
     }
-    return {
-      entityType: 'restaurant' as const,
-      entityId: Number(user.id) || 1
-    };
-  };
+    return { entityType: 'restaurant', entityId: Number(user.id) || 1 };
+  }, [user, urlRestaurantId]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const { entityType, entityId } = useMemo(() => getEntityInfo(), [user, urlRestaurantId]);
+  const { entityType, entityId } = useMemo(() => getEntityInfo(), [getEntityInfo]);
 
-  useEffect(() => {
-    if (user) {
-      loadSettings();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entityType, entityId]);
-
-  if (!user) {
-    return null;
-  }
-
-  const loadSettings = async () => {
+  const loadSmtpSettings = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(`/api/notification-settings/${entityType}/${entityId}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
       });
-
       if (response.ok) {
         const data = await response.json();
-        setSettings(data);
+        setSmtpSettings({
+          email_enabled: data.email_enabled || false,
+          smtp_host: data.smtp_host || '',
+          smtp_port: data.smtp_port || 587,
+          smtp_secure: data.smtp_secure || false,
+          smtp_user: data.smtp_user || '',
+          smtp_password: data.smtp_password || '',
+          from_email: data.from_email || '',
+          from_name: data.from_name || '',
+          reply_to_email: data.reply_to_email || ''
+        });
       }
     } catch (error) {
-      console.error('Failed to load settings:', error);
+      console.error('Failed to load SMTP settings:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [entityType, entityId]);
 
-  const handleSave = async () => {
+  const loadPreferences = useCallback(async () => {
+    setPrefsLoading(true);
+    try {
+      const response = await fetch('/api/notification-settings/preferences', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setPreferences(data.data.preferences || {});
+          setCategories(data.data.categories || []);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load preferences:', error);
+    } finally {
+      setPrefsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      loadPreferences();
+      loadSmtpSettings();
+    }
+  }, [user, loadPreferences, loadSmtpSettings]);
+
+  // Group categories by section (must be before conditional return)
+  const groupedCategories = useMemo(() => {
+    const groups: Record<string, NotificationCategory[]> = {};
+    categories.forEach(cat => {
+      if (!groups[cat.section]) groups[cat.section] = [];
+      groups[cat.section].push(cat);
+    });
+    return groups;
+  }, [categories]);
+
+  if (!user) return null;
+
+  const handleSmtpSave = async () => {
     setSaving(true);
     setMessage(null);
-
     try {
       const token = localStorage.getItem('auth_token');
       if (!token) {
@@ -402,20 +542,14 @@ const NotificationSettingsPage: React.FC = () => {
         setSaving(false);
         return;
       }
-
       const response = await fetch(`/api/notification-settings/${entityType}/${entityId}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(settings)
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(smtpSettings)
       });
-
       const data = await response.json();
-
       if (response.ok) {
-        setMessage({ type: 'success', text: 'Settings saved successfully' });
+        setMessage({ type: 'success', text: 'Email settings saved successfully' });
       } else {
         setMessage({ type: 'error', text: data.error || 'Failed to save settings' });
       }
@@ -427,6 +561,36 @@ const NotificationSettingsPage: React.FC = () => {
     }
   };
 
+  const handlePrefsSave = async () => {
+    setPrefsSaving(true);
+    setPrefsMessage(null);
+    try {
+      const response = await fetch('/api/notification-settings/preferences', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify({ preferences })
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setPrefsMessage({ type: 'success', text: 'Notification preferences saved' });
+      } else {
+        setPrefsMessage({ type: 'error', text: data.message || 'Failed to save preferences' });
+      }
+    } catch (error) {
+      console.error('Prefs save error:', error);
+      setPrefsMessage({ type: 'error', text: 'An error occurred while saving preferences' });
+    } finally {
+      setPrefsSaving(false);
+    }
+  };
+
+  const togglePreference = (key: string) => {
+    setPreferences(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
   const handleTestEmail = () => {
     setTestEmailAddress('');
     setShowTestEmailModal(true);
@@ -434,7 +598,6 @@ const NotificationSettingsPage: React.FC = () => {
 
   const sendTestEmail = async () => {
     if (!testEmailAddress) return;
-
     setSendingTestEmail(true);
     try {
       const response = await fetch(`/api/notification-settings/${entityType}/${entityId}/test-email`, {
@@ -445,9 +608,7 @@ const NotificationSettingsPage: React.FC = () => {
         },
         body: JSON.stringify({ testEmail: testEmailAddress })
       });
-
       const data = await response.json();
-
       setShowTestEmailModal(false);
       if (response.ok) {
         setResultMessage({ success: true, text: 'Test email sent successfully!' });
@@ -464,18 +625,12 @@ const NotificationSettingsPage: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (loading && prefsLoading) {
     return (
-      <>
-        <SettingsContainer>
-          <Header>
-            <HeaderTitle>Notification Settings</HeaderTitle>
-          </Header>
-          <Content>
-            <SettingsCard>Loading...</SettingsCard>
-          </Content>
-        </SettingsContainer>
-      </>
+      <SettingsContainer>
+        <Header><HeaderTitle>Notification Settings</HeaderTitle></Header>
+        <Content><SettingsCard>Loading...</SettingsCard></Content>
+      </SettingsContainer>
     );
   }
 
@@ -488,26 +643,86 @@ const NotificationSettingsPage: React.FC = () => {
 
         <Content>
           <Tabs>
+            <Tab active={activeTab === 'preferences'} onClick={() => handleTabChange('preferences')}>
+              Notification Preferences
+            </Tab>
             <Tab active={activeTab === 'email'} onClick={() => handleTabChange('email')}>
-              Email
-            </Tab>
-            <Tab active={activeTab === 'sms'} onClick={() => handleTabChange('sms')}>
-              SMS
-            </Tab>
-            <Tab active={activeTab === 'whatsapp'} onClick={() => handleTabChange('whatsapp')}>
-              WhatsApp
+              Email Setup
             </Tab>
           </Tabs>
 
+          {activeTab === 'preferences' && (
+            <SettingsCard>
+              <DescriptionText>
+                Choose which notifications you want to receive via email. All notifications are enabled by default.
+              </DescriptionText>
+
+              {user?.email && (
+                <EmailInfoBox>
+                  <EmailInfoContent>
+                    Notifications will be sent to <EmailAddress>{user.email}</EmailAddress>
+                    <br />
+                    To change your email, go to <EmailInfoLink href="/pos/profile">Profile Settings</EmailInfoLink>.
+                  </EmailInfoContent>
+                </EmailInfoBox>
+              )}
+
+              {prefsLoading ? (
+                <DescriptionText>Loading preferences...</DescriptionText>
+              ) : categories.length === 0 ? (
+                <DescriptionText>No notification categories available for your role.</DescriptionText>
+              ) : (
+                <>
+                  {Object.entries(groupedCategories).map(([section, cats], idx) => (
+                    <React.Fragment key={section}>
+                      {idx > 0 && <SectionSpacer />}
+                      <SectionTitle>{section}</SectionTitle>
+                      {cats.map(cat => (
+                        <PreferenceRow key={cat.key}>
+                          <PreferenceInfo>
+                            <PreferenceLabel>{cat.label}</PreferenceLabel>
+                            <PreferenceDesc>{cat.description}</PreferenceDesc>
+                          </PreferenceInfo>
+                          <ToggleSwitch>
+                            <ToggleInput
+                              type="checkbox"
+                              checked={preferences[cat.key] !== false}
+                              onChange={() => togglePreference(cat.key)}
+                            />
+                            <ToggleSlider checked={preferences[cat.key] !== false} />
+                          </ToggleSwitch>
+                        </PreferenceRow>
+                      ))}
+                    </React.Fragment>
+                  ))}
+
+                  <ButtonContainer>
+                    <SaveButton onClick={handlePrefsSave} disabled={prefsSaving}>
+                      {prefsSaving ? 'Saving...' : 'Save Preferences'}
+                    </SaveButton>
+                  </ButtonContainer>
+
+                  {prefsMessage && (
+                    <Alert type={prefsMessage.type}>{prefsMessage.text}</Alert>
+                  )}
+                </>
+              )}
+            </SettingsCard>
+          )}
+
           {activeTab === 'email' && (
             <SettingsCard>
+              <DescriptionText>
+                By default, notifications are sent from the platform. Set up custom SMTP to send emails from your own domain.
+              </DescriptionText>
+
               <CheckboxLabel>
                 <Checkbox
                   type="checkbox"
-                  checked={settings.email_enabled}
-                  onChange={(e) => setSettings({ ...settings, email_enabled: e.target.checked })}
+                  checked={smtpSettings.email_enabled}
+                  onChange={(e) => setSmtpSettings({ ...smtpSettings, email_enabled: e.target.checked })}
                 />
-                Enable Email Notifications
+                Enable Custom Email (SMTP)
               </CheckboxLabel>
 
               <FormGrid>
@@ -516,9 +731,9 @@ const NotificationSettingsPage: React.FC = () => {
                   <Input
                     type="text"
                     placeholder="smtp.gmail.com"
-                    value={settings.smtp_host}
-                    onChange={(e) => setSettings({ ...settings, smtp_host: e.target.value })}
-                    disabled={!settings.email_enabled}
+                    value={smtpSettings.smtp_host}
+                    onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_host: e.target.value })}
+                    disabled={!smtpSettings.email_enabled}
                   />
                   <HelpText>Gmail: smtp.gmail.com, Outlook: smtp-mail.outlook.com</HelpText>
                 </FormGroup>
@@ -528,9 +743,9 @@ const NotificationSettingsPage: React.FC = () => {
                   <Input
                     type="number"
                     placeholder="587"
-                    value={settings.smtp_port}
-                    onChange={(e) => setSettings({ ...settings, smtp_port: parseInt(e.target.value) })}
-                    disabled={!settings.email_enabled}
+                    value={smtpSettings.smtp_port}
+                    onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_port: parseInt(e.target.value) })}
+                    disabled={!smtpSettings.email_enabled}
                   />
                   <HelpText>Typically 587 (TLS) or 465 (SSL)</HelpText>
                 </FormGroup>
@@ -540,9 +755,9 @@ const NotificationSettingsPage: React.FC = () => {
                   <Input
                     type="email"
                     placeholder="your-email@gmail.com"
-                    value={settings.smtp_user}
-                    onChange={(e) => setSettings({ ...settings, smtp_user: e.target.value })}
-                    disabled={!settings.email_enabled}
+                    value={smtpSettings.smtp_user}
+                    onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_user: e.target.value })}
+                    disabled={!smtpSettings.email_enabled}
                   />
                   <HelpText>Your full email address</HelpText>
                 </FormGroup>
@@ -552,9 +767,9 @@ const NotificationSettingsPage: React.FC = () => {
                   <Input
                     type="password"
                     placeholder="••••••••"
-                    value={settings.smtp_password}
-                    onChange={(e) => setSettings({ ...settings, smtp_password: e.target.value })}
-                    disabled={!settings.email_enabled}
+                    value={smtpSettings.smtp_password}
+                    onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_password: e.target.value })}
+                    disabled={!smtpSettings.email_enabled}
                   />
                   <HelpText>Gmail: app password, Outlook: account password or app password</HelpText>
                 </FormGroup>
@@ -564,9 +779,9 @@ const NotificationSettingsPage: React.FC = () => {
                   <Input
                     type="email"
                     placeholder="noreply@yourstore.com"
-                    value={settings.from_email}
-                    onChange={(e) => setSettings({ ...settings, from_email: e.target.value })}
-                    disabled={!settings.email_enabled}
+                    value={smtpSettings.from_email}
+                    onChange={(e) => setSmtpSettings({ ...smtpSettings, from_email: e.target.value })}
+                    disabled={!smtpSettings.email_enabled}
                   />
                   <HelpText>Email address shown to recipients</HelpText>
                 </FormGroup>
@@ -576,9 +791,9 @@ const NotificationSettingsPage: React.FC = () => {
                   <Input
                     type="text"
                     placeholder="Your Store Name"
-                    value={settings.from_name}
-                    onChange={(e) => setSettings({ ...settings, from_name: e.target.value })}
-                    disabled={!settings.email_enabled}
+                    value={smtpSettings.from_name}
+                    onChange={(e) => setSmtpSettings({ ...smtpSettings, from_name: e.target.value })}
+                    disabled={!smtpSettings.email_enabled}
                   />
                   <HelpText>Display name shown to recipients</HelpText>
                 </FormGroup>
@@ -589,45 +804,27 @@ const NotificationSettingsPage: React.FC = () => {
                 <Input
                   type="email"
                   placeholder="support@yourstore.com"
-                  value={settings.reply_to_email}
-                  onChange={(e) => setSettings({ ...settings, reply_to_email: e.target.value })}
-                  disabled={!settings.email_enabled}
+                  value={smtpSettings.reply_to_email}
+                  onChange={(e) => setSmtpSettings({ ...smtpSettings, reply_to_email: e.target.value })}
+                  disabled={!smtpSettings.email_enabled}
                 />
                 <HelpText>Where replies should be sent</HelpText>
               </FormGroup>
 
-              {settings.email_enabled && (
-                <>
-                  <ButtonContainer>
-                    <SaveButton onClick={handleSave} disabled={saving}>
-                      {saving ? 'Saving...' : 'Save Settings'}
-                    </SaveButton>
-                    <SecondaryButton onClick={handleTestEmail}>
-                      Send Test Email
-                    </SecondaryButton>
-                  </ButtonContainer>
+              <ButtonContainer>
+                <SaveButton onClick={handleSmtpSave} disabled={saving}>
+                  {saving ? 'Saving...' : 'Save Settings'}
+                </SaveButton>
+                {smtpSettings.email_enabled && (
+                  <SecondaryButton onClick={handleTestEmail}>
+                    Send Test Email
+                  </SecondaryButton>
+                )}
+              </ButtonContainer>
 
-                  {message && (
-                    <Alert type={message.type}>{message.text}</Alert>
-                  )}
-                </>
+              {message && (
+                <Alert type={message.type}>{message.text}</Alert>
               )}
-            </SettingsCard>
-          )}
-
-          {activeTab === 'sms' && (
-            <SettingsCard>
-              <DisabledMessage>
-                SMS notifications are coming soon. Stay tuned for updates!
-              </DisabledMessage>
-            </SettingsCard>
-          )}
-
-          {activeTab === 'whatsapp' && (
-            <SettingsCard>
-              <DisabledMessage>
-                WhatsApp notifications are coming soon. Stay tuned for updates!
-              </DisabledMessage>
             </SettingsCard>
           )}
         </Content>

@@ -21,6 +21,8 @@ const PAYMENT_SETTINGS_KEY = 'payment_settings';
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const InvoiceCategory = require('../models/InvoiceCategory');
 const { normalizeAdditionalCharges } = require('../utils/paymentSettingsHelper');
+const { sendNotification, sendNotificationBatch, getSystemAdminIds, getBrandManagerIds, getFoodcourtManagerIds } = require('../utils/notificationService');
+const { invoicePaidEmail } = require('../utils/notificationTemplates');
 
 /**
  * Generate invoice number in format:
@@ -2516,6 +2518,28 @@ router.post('/:id/confirm-payment', authenticateToken, async (req, res) => {
     });
 
     console.log(`✅ Payment confirmed for invoice ${invoice.invoice_number} by user ${req.user.id}`);
+
+    // Notify issuer about payment confirmation (non-blocking)
+    (async () => {
+      try {
+        const restaurant = await Restaurant.findByPk(invoice.restaurant_id, { attributes: ['id', 'name'] });
+        const mail = invoicePaidEmail(invoice, restaurant?.name || 'Unknown Restaurant');
+        let issuerIds = [];
+        if (invoice.issuer_type === 'system_admin') {
+          issuerIds = await getSystemAdminIds();
+        } else if (invoice.issuer_type === 'brand' && invoice.issuer_id) {
+          issuerIds = await getBrandManagerIds(invoice.issuer_id);
+        } else if (invoice.issuer_type === 'foodcourt' && invoice.issuer_id) {
+          issuerIds = await getFoodcourtManagerIds(invoice.issuer_id);
+        }
+        const filteredIds = issuerIds.filter(id => id !== req.user.id);
+        if (filteredIds.length > 0) {
+          await sendNotificationBatch(filteredIds, 'invoice_paid', mail);
+        }
+      } catch (e) {
+        console.error('[Invoice paid notification error]', e.message);
+      }
+    })();
 
     res.json({
       success: true,

@@ -705,19 +705,19 @@ const DashboardContent: React.FC = () => {
           <h3>Quick Actions</h3>
           <QuickActionsGrid>
             <QuickActionCard onClick={() => window.open('/pos/pos-terminal', '_blank')}>
-              <div className="icon">&#9638;</div>
+              <div className="icon">▦</div>
               <div className="title">POS Terminal</div>
               <div className="description">Order processing</div>
             </QuickActionCard>
 
             <QuickActionCard onClick={() => window.open('/pos/kitchen', '_blank')}>
-              <div className="icon">&#9680;</div>
+              <div className="icon">◐</div>
               <div className="title">Kitchen Display</div>
               <div className="description">Cooking status</div>
             </QuickActionCard>
 
             <QuickActionCard onClick={() => window.open('/pos/display', '_blank')}>
-              <div className="icon">&#9633;</div>
+              <div className="icon">□</div>
               <div className="title">Customer Display</div>
               <div className="description">Pickup number</div>
             </QuickActionCard>
@@ -737,7 +737,7 @@ const DashboardContent: React.FC = () => {
                 window.open(`/mobile/restaurant-${restaurantId}`, '_blank');
               }
             }}>
-              <div className="icon">&#9711;</div>
+              <div className="icon">◯</div>
               <div className="title">Mobile Order</div>
               <div className="description">Customer ordering</div>
             </QuickActionCard>

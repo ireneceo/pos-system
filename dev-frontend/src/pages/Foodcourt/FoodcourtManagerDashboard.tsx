@@ -465,24 +465,24 @@ const FoodcourtManagerDashboard: React.FC = () => {
           <h3>Quick Actions</h3>
           <QuickActionsGrid>
             <QuickActionCard onClick={() => navigate('/pos/manager/restaurants')}>
-              <div className="icon">&#9881;</div>
-              <div className="title">Manage Tenants</div>
-              <div className="description">Add, edit, view tenants</div>
+              <div className="icon">◐</div>
+              <div className="title">Restaurants</div>
+              <div className="description">Tenant management</div>
             </QuickActionCard>
-            <QuickActionCard onClick={() => navigate('/pos/foodcourt/rent-management')}>
-              <div className="icon">&#9776;</div>
-              <div className="title">Rent Management</div>
-              <div className="description">Rental billing and tracking</div>
+            <QuickActionCard onClick={() => navigate('/pos/foodcourt/invoices')}>
+              <div className="icon">▦</div>
+              <div className="title">Invoices</div>
+              <div className="description">Invoice management</div>
             </QuickActionCard>
-            <QuickActionCard onClick={() => navigate('/pos/foodcourt/tenant-support')}>
-              <div className="icon">&#9993;</div>
-              <div className="title">Support Tickets</div>
-              <div className="description">Tenant support requests</div>
+            <QuickActionCard onClick={() => navigate('/pos/foodcourt/general/stats')}>
+              <div className="icon">▲</div>
+              <div className="title">Statistics</div>
+              <div className="description">Performance analytics</div>
             </QuickActionCard>
-            <QuickActionCard onClick={() => navigate('/pos/manager/subscriptions')}>
-              <div className="icon">&#9733;</div>
-              <div className="title">Subscriptions</div>
-              <div className="description">Manage plans</div>
+            <QuickActionCard onClick={() => navigate('/pos/manager/staff')}>
+              <div className="icon">◆</div>
+              <div className="title">Admin & Staff</div>
+              <div className="description">Staff management</div>
             </QuickActionCard>
           </QuickActionsGrid>
         </QuickActionsSection>

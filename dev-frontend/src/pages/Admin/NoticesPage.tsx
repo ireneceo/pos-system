@@ -604,7 +604,8 @@ const NoticesPage: React.FC = () => {
   const fetchNotices = useCallback(async () => {
     try {
       const response = await fetch('/api/notices/sent', {
-        headers: getAuthHeaders()
+        headers: getAuthHeaders(),
+        cache: 'no-store'
       });
       if (response.ok) {
         const result = await response.json();
@@ -741,7 +742,7 @@ const NoticesPage: React.FC = () => {
         setShowSendModal(false);
         resetNewNoticeForm();
         setActiveTab('sent');
-        fetchNotices();
+        await fetchNotices();
       }
     } catch (error) {
       // Silent error handling

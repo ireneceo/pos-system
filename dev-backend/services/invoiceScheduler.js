@@ -7,6 +7,8 @@ const { sendIssuerEmail } = require('../utils/emailService');
 const { generateInvoiceNotificationEmail } = require('../utils/invoiceEmailTemplate');
 const { getSiteTimezone, getLocalDate } = require('../utils/dateTimeHelper');
 const { normalizeAdditionalCharges } = require('../utils/paymentSettingsHelper');
+const { sendNotification, getRestaurantOwnerIds } = require('../utils/notificationService');
+const { invoiceCreatedEmail } = require('../utils/notificationTemplates');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://dev.purplehere.com';
 const ADVANCE_DAYS = 14; // Generate invoices 14 days before billing day
@@ -826,19 +828,35 @@ class InvoiceScheduler {
    * Send invoice notification email. Never blocks or throws.
    */
   async sendInvoiceEmail(invoice, restaurant, issuerType, issuerId, invoiceNumber) {
+    // 1. Existing: send via issuer's SMTP to restaurant email
     try {
       const recipientEmail = restaurant.email;
-      if (!recipientEmail) return;
-
-      const emailContent = generateInvoiceNotificationEmail(invoice, restaurant, FRONTEND_URL);
-      await sendIssuerEmail(issuerType, issuerId, {
-        to: recipientEmail,
-        ...emailContent
-      });
-      await systemLogger.info('payment', 'invoice-scheduler', `Invoice email sent: ${invoiceNumber}`, { recipientEmail, issuerType });
+      if (recipientEmail) {
+        const emailContent = generateInvoiceNotificationEmail(invoice, restaurant, FRONTEND_URL);
+        await sendIssuerEmail(issuerType, issuerId, {
+          to: recipientEmail,
+          ...emailContent
+        });
+        await systemLogger.info('payment', 'invoice-scheduler', `Invoice email sent: ${invoiceNumber}`, { recipientEmail, issuerType });
+      }
     } catch (emailError) {
-      // Don't fail invoice creation if email fails
       await systemLogger.warn('payment', 'invoice-scheduler', `Invoice email failed: ${invoiceNumber}`, { error: emailError.message, issuerType });
+    }
+
+    // 2. New: send receiver-based notification to Restaurant Admin + Owner
+    try {
+      const mail = invoiceCreatedEmail(invoice, restaurant.name);
+      // Notify restaurant admin
+      if (restaurant.admin_id) {
+        sendNotification(restaurant.admin_id, 'invoice_created', mail);
+      }
+      // Notify restaurant owners
+      const ownerIds = await getRestaurantOwnerIds(restaurant.id);
+      for (const ownerId of ownerIds) {
+        sendNotification(ownerId, 'invoice_created', mail);
+      }
+    } catch (e) {
+      console.error('[Invoice notification error]', e.message);
     }
   }
 

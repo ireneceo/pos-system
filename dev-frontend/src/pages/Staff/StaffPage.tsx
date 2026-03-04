@@ -453,10 +453,13 @@ const StaffPage: React.FC = () => {
           status: 'active' as const,
           joinDate: u.createdAt ? new Date(u.createdAt).toISOString().split('T')[0] : '',
           permissions: (() => {
-            if (Array.isArray(u.permissions)) return u.permissions;
-            if (typeof u.permissions === 'string') {
-              try { return JSON.parse(u.permissions); } catch { return []; }
+            let p = u.permissions;
+            if (!p) return [];
+            // Unwrap nested JSON strings (e.g. double/triple stringified)
+            for (let i = 0; i < 5 && typeof p === 'string'; i++) {
+              try { p = JSON.parse(p); } catch { return []; }
             }
+            if (Array.isArray(p)) return p.filter((x: any) => typeof x === 'string' && x.length > 1);
             return [];
           })()
         }));
@@ -551,7 +554,7 @@ const StaffPage: React.FC = () => {
         department: newStaff.department ? newStaff.department.trim() : null,
         company_name: newStaff.company_name ? newStaff.company_name.trim() : null,
         pin_code: newStaff.pin_code,
-        permissions: newStaff.role === 'Staff' ? JSON.stringify(newStaff.permissions) : '[]'
+        permissions: newStaff.role === 'Staff' ? newStaff.permissions : []
       };
 
       const token = localStorage.getItem('auth_token');
@@ -641,7 +644,7 @@ const StaffPage: React.FC = () => {
 
       // Staff 역할이면 permissions 업데이트
       if (editingStaff.role === 'Staff') {
-        updateData.permissions = JSON.stringify(editForm.permissions);
+        updateData.permissions = editForm.permissions;
       }
 
       const token = localStorage.getItem('auth_token');

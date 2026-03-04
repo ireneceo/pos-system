@@ -629,6 +629,18 @@ const OperationInquiryPage: React.FC = () => {
                 </TicketMeta>
               </TicketCard>
             ))}
+
+            {filteredTickets.length === 0 && (
+              <div style={{
+                textAlign: 'center',
+                padding: '60px 20px',
+                color: '#6B7280',
+                gridColumn: '1 / -1'
+              }}>
+                <h3 style={{ color: '#374151', marginBottom: '8px' }}>No inquiries yet</h3>
+                <p>No operation inquiries have been submitted.</p>
+              </div>
+            )}
           </TicketsGrid>
 
           {/* Detail Modal */}

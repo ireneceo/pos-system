@@ -386,7 +386,7 @@ const ManagerSignupPage: React.FC = () => {
       });
 
       alert(`Manager account created successfully!\nRestaurants: ${formData.restaurantCount}\nMonthly Fee: RM ${calculateTotalPrice()}`);
-      navigate('/login');
+      navigate('/pos');
 
     } catch (error) {
       console.error('Signup error:', error);
@@ -557,7 +557,7 @@ const ManagerSignupPage: React.FC = () => {
             {error && <ErrorMessage>{error}</ErrorMessage>}
 
             <ButtonGroup>
-              <Button type="button" variant="secondary" onClick={() => navigate('/login')}>
+              <Button type="button" variant="secondary" onClick={() => navigate('/pos')}>
                 Back to Login
               </Button>
               <Button type="submit" variant="primary" disabled={isLoading} style={{ flex: 1 }}>
@@ -567,7 +567,7 @@ const ManagerSignupPage: React.FC = () => {
           </Form>
 
           <LoginLink>
-            Already have an account? <a href="/login">Sign in here</a>
+            Already have an account? <a href="/pos">Sign in here</a>
           </LoginLink>
         </Content>
       </SignupBox>

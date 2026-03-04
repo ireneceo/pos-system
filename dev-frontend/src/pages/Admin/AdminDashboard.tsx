@@ -244,64 +244,159 @@ const ChartContainer = styled.div`
 const AlertsPanel = styled.div`
   background: white;
   border-radius: 16px;
-  padding: 24px;
+  padding: 20px;
   border: 1px solid #E6EBF1;
+  display: flex;
+  flex-direction: column;
+
+  h3 {
+    margin: 0 0 16px 0;
+    color: #0A2540;
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+`;
+
+const AlertsList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  overflow-y: auto;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 4px;
+  }
+`;
+
+const Alert = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }>`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: ${props => {
+    switch(props.type) {
+      case 'error': return '#FEF2F2';
+      case 'warning': return '#FFFBEB';
+      case 'success': return '#ECFDF5';
+      case 'info': return '#EFF6FF';
+      default: return '#F8FAFC';
+    }
+  }};
+  border: 1px solid ${props => {
+    switch(props.type) {
+      case 'error': return '#FECACA';
+      case 'warning': return '#FDE68A';
+      case 'success': return '#A7F3D0';
+      case 'info': return '#BFDBFE';
+      default: return '#E6EBF1';
+    }
+  }};
+  flex-shrink: 0;
+
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+`;
+
+const AlertContent = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const AlertTitle = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }>`
+  font-size: 13px;
+  font-weight: 600;
+  color: ${props => {
+    switch(props.type) {
+      case 'error': return '#DC2626';
+      case 'warning': return '#D97706';
+      case 'success': return '#059669';
+      case 'info': return '#2563EB';
+      default: return '#374151';
+    }
+  }};
+`;
+
+const AlertDescription = styled.div`
+  font-size: 12px;
+  color: #6B7280;
+  margin-top: 2px;
+`;
+
+const QuickActionsSection = styled.div`
+  margin-bottom: 32px;
 
   h3 {
     margin: 0 0 20px 0;
     color: #0A2540;
     font-size: 18px;
     font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
   }
 `;
 
-const Alert = styled.div<{ type: 'warning' | 'error' | 'info' }>`
-  padding: 16px;
+const QuickActionsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+`;
+
+const QuickActionCard = styled.div`
+  padding: 24px;
+  background: white;
   border-radius: 12px;
-  margin-bottom: 12px;
-  background: ${props => {
-    switch(props.type) {
-      case 'error': return '#FEF2F2';
-      case 'warning': return '#FFF4E6';
-      case 'info': return '#EFF6FF';
-      default: return '#F8FAFC';
+  border: 1px solid #E6EBF1;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #F6F9FC;
+
+    .icon {
+      color: #0A2540;
     }
-  }};
-  border-left: 4px solid ${props => {
-    switch(props.type) {
-      case 'error': return '#EF4444';
-      case 'warning': return '#F59E0B';
-      case 'info': return '#3B82F6';
-      default: return '#6B7280';
+
+    .title {
+      color: #0A2540;
     }
-  }};
+  }
+
+  .icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+    color: #6B7C93;
+  }
 
   .title {
+    font-size: 14px;
     font-weight: 600;
-    color: ${props => {
-      switch(props.type) {
-        case 'error': return '#DC2626';
-        case 'warning': return '#D97706';
-        case 'info': return '#2563EB';
-        default: return '#374151';
-      }
-    }};
+    color: #425466;
     margin-bottom: 4px;
   }
 
   .description {
-    font-size: 14px;
-    color: ${props => {
-      switch(props.type) {
-        case 'error': return '#991B1B';
-        case 'warning': return '#92400E';
-        case 'info': return '#1D4ED8';
-        default: return '#6B7280';
-      }
-    }};
+    font-size: 12px;
+    color: #8898AA;
   }
 `;
 
@@ -1137,106 +1232,126 @@ const AdminDashboard: React.FC = () => {
           </ChartContainer>
 
           <AlertsPanel>
-            <h3>System Alerts</h3>
+            <h3>Notifications</h3>
+            <AlertsList>
+              {/* System Log Alerts - Critical/Error in last 24h */}
+              {systemLogAlerts.total > 0 && (
+                <Alert
+                  type={systemLogAlerts.criticalCount > 0 ? 'error' : 'warning'}
+                  onClick={() => navigate('/pos/admin/logs')}
+                >
+                  <AlertContent>
+                    <AlertTitle type={systemLogAlerts.criticalCount > 0 ? 'error' : 'warning'}>
+                      {systemLogAlerts.criticalCount > 0 ? 'Critical System Alerts' : 'System Error Alerts'}
+                    </AlertTitle>
+                    <AlertDescription>
+                      {systemLogAlerts.criticalCount > 0 && `${systemLogAlerts.criticalCount} critical`}
+                      {systemLogAlerts.criticalCount > 0 && systemLogAlerts.errorCount > 0 && ', '}
+                      {systemLogAlerts.errorCount > 0 && `${systemLogAlerts.errorCount} error`}
+                      {' '}log(s) in the last 24 hours - Click to investigate
+                    </AlertDescription>
+                  </AlertContent>
+                </Alert>
+              )}
 
-            {/* System Log Alerts - Critical/Error in last 24h */}
-            {systemLogAlerts.total > 0 && (
-              <Alert
-                type={systemLogAlerts.criticalCount > 0 ? 'error' : 'warning'}
-                style={{ cursor: 'pointer' }}
-                onClick={() => navigate('/pos/admin/logs')}
-              >
-                <div className="title">
-                  {systemLogAlerts.criticalCount > 0 ? 'Critical System Alerts' : 'System Error Alerts'}
-                </div>
-                <div className="description">
-                  {systemLogAlerts.criticalCount > 0 && `${systemLogAlerts.criticalCount} critical`}
-                  {systemLogAlerts.criticalCount > 0 && systemLogAlerts.errorCount > 0 && ', '}
-                  {systemLogAlerts.errorCount > 0 && `${systemLogAlerts.errorCount} error`}
-                  {' '}log(s) in the last 24 hours - Click to investigate
-                </div>
-              </Alert>
-            )}
+              {/* New Manager Alert - Today's new managers */}
+              {managers.filter((m: any) => {
+                try { return new Date(m.createdAt).toLocaleDateString('en-CA', { timeZone: siteTimezone }) === todayInTz; } catch { return false; }
+              }).length > 0 && (
+                <Alert type="info" onClick={() => navigate('/pos/admin/managers')}>
+                  <AlertContent>
+                    <AlertTitle type="info">New Manager Registration</AlertTitle>
+                    <AlertDescription>{managers.filter((m: any) => {
+                      try { return new Date(m.createdAt).toLocaleDateString('en-CA', { timeZone: siteTimezone }) === todayInTz; } catch { return false; }
+                    }).length} new manager(s) registered today - Click to view</AlertDescription>
+                  </AlertContent>
+                </Alert>
+              )}
 
-            {/* New Manager Alert - Today's new managers */}
-            {managers.filter((m: any) => {
-              try { return new Date(m.createdAt).toLocaleDateString('en-CA', { timeZone: siteTimezone }) === todayInTz; } catch { return false; }
-            }).length > 0 && (
-              <Alert
-                type="info"
-                style={{ cursor: 'pointer' }}
-                onClick={() => navigate('/pos/admin/managers')}
-              >
-                <div className="title">New Manager Registration</div>
-                <div className="description">{managers.filter((m: any) => {
-                  try { return new Date(m.createdAt).toLocaleDateString('en-CA', { timeZone: siteTimezone }) === todayInTz; } catch { return false; }
-                }).length} new manager(s) registered today - Click to view</div>
-              </Alert>
-            )}
+              {/* Support Tickets Alert */}
+              {metrics.supportTickets > 0 && (
+                <Alert type="warning" onClick={() => navigate('/pos/admin/support')}>
+                  <AlertContent>
+                    <AlertTitle type="warning">Support Tickets Pending</AlertTitle>
+                    <AlertDescription>{metrics.supportTickets} open support ticket(s) require attention - Click to view</AlertDescription>
+                  </AlertContent>
+                </Alert>
+              )}
 
-            {/* Support Tickets Alert */}
-            {metrics.supportTickets > 0 && (
-              <Alert
-                type="warning"
-                style={{ cursor: 'pointer' }}
-                onClick={() => navigate('/pos/admin/support')}
-              >
-                <div className="title">Support Tickets Pending</div>
-                <div className="description">{metrics.supportTickets} open support ticket(s) require attention - Click to view</div>
-              </Alert>
-            )}
+              {/* Revenue Alert - When new revenue is generated today */}
+              {invoicesData.filter((invoice: any) => {
+                try { return new Date(invoice.createdAt).toLocaleDateString('en-CA', { timeZone: siteTimezone }) === todayInTz; } catch { return false; }
+              }).length > 0 && (
+                <Alert type="info" onClick={() => navigate('/pos/admin/report')}>
+                  <AlertContent>
+                    <AlertTitle type="info">New Revenue Generated</AlertTitle>
+                    <AlertDescription>
+                      {(() => {
+                        const todayInvoices = invoicesData.filter((invoice: any) => {
+                          try { return new Date(invoice.createdAt).toLocaleDateString('en-CA', { timeZone: siteTimezone }) === todayInTz; } catch { return false; }
+                        });
+                        const byCurrency: CurrencyRevenue = {};
+                        todayInvoices.forEach((inv: any) => {
+                          const amt = parseFloat(inv.total_amount || inv.amount || 0);
+                          const cur = inv.currency || 'MYR';
+                          byCurrency[cur] = (byCurrency[cur] || 0) + amt;
+                        });
+                        return formatMultiCurrency(byCurrency);
+                      })()}
+                      {' '}earned today from {invoicesData.filter((invoice: any) => {
+                        try { return new Date(invoice.createdAt).toLocaleDateString('en-CA', { timeZone: siteTimezone }) === todayInTz; } catch { return false; }
+                      }).length} transaction(s) - Click to view details
+                    </AlertDescription>
+                  </AlertContent>
+                </Alert>
+              )}
 
-            {/* Revenue Alert - When new revenue is generated today */}
-            {invoicesData.filter((invoice: any) => {
-              try { return new Date(invoice.createdAt).toLocaleDateString('en-CA', { timeZone: siteTimezone }) === todayInTz; } catch { return false; }
-            }).length > 0 && (
-              <Alert
-                type="info"
-                style={{ cursor: 'pointer' }}
-                onClick={() => navigate('/pos/admin/report')}
-              >
-                <div className="title">New Revenue Generated</div>
-                <div className="description">
-                  {(() => {
-                    const todayInvoices = invoicesData.filter((invoice: any) => {
-                      try { return new Date(invoice.createdAt).toLocaleDateString('en-CA', { timeZone: siteTimezone }) === todayInTz; } catch { return false; }
-                    });
-                    const byCurrency: CurrencyRevenue = {};
-                    todayInvoices.forEach((inv: any) => {
-                      const amt = parseFloat(inv.total_amount || inv.amount || 0);
-                      const cur = inv.currency || 'MYR';
-                      byCurrency[cur] = (byCurrency[cur] || 0) + amt;
-                    });
-                    return formatMultiCurrency(byCurrency);
-                  })()}
-                  {' '}earned today from {invoicesData.filter((invoice: any) => {
-                    try { return new Date(invoice.createdAt).toLocaleDateString('en-CA', { timeZone: siteTimezone }) === todayInTz; } catch { return false; }
-                  }).length} transaction(s) - Click to view details
-                </div>
-              </Alert>
-            )}
-
-            {/* No alerts message when everything is quiet */}
-            {systemLogAlerts.total === 0 &&
-            managers.filter((m: any) => {
-              try { return new Date(m.createdAt).toLocaleDateString('en-CA', { timeZone: siteTimezone }) === todayInTz; } catch { return false; }
-            }).length === 0 &&
-            metrics.supportTickets === 0 &&
-            invoicesData.filter((invoice: any) => {
-              try { return new Date(invoice.createdAt).toLocaleDateString('en-CA', { timeZone: siteTimezone }) === todayInTz; } catch { return false; }
-            }).length === 0 && (
-              <div style={{
-                padding: '20px',
-                textAlign: 'center',
-                color: '#6B7280',
-                fontSize: '14px',
-                fontStyle: 'italic'
-              }}>
-                No new activities today. All systems running smoothly.
-              </div>
-            )}
+              {/* No alerts - All Clear */}
+              {systemLogAlerts.total === 0 &&
+              managers.filter((m: any) => {
+                try { return new Date(m.createdAt).toLocaleDateString('en-CA', { timeZone: siteTimezone }) === todayInTz; } catch { return false; }
+              }).length === 0 &&
+              metrics.supportTickets === 0 &&
+              invoicesData.filter((invoice: any) => {
+                try { return new Date(invoice.createdAt).toLocaleDateString('en-CA', { timeZone: siteTimezone }) === todayInTz; } catch { return false; }
+              }).length === 0 && (
+                <Alert type="success" onClick={() => {}}>
+                  <AlertContent>
+                    <AlertTitle type="success">All Clear</AlertTitle>
+                    <AlertDescription>No new activities. All systems running smoothly.</AlertDescription>
+                  </AlertContent>
+                </Alert>
+              )}
+            </AlertsList>
           </AlertsPanel>
         </MainGrid>
+
+        {/* Quick Actions */}
+        <QuickActionsSection>
+          <h3>Quick Actions</h3>
+          <QuickActionsGrid>
+            <QuickActionCard onClick={() => navigate('/pos/admin/restaurants')}>
+              <div className="icon">◐</div>
+              <div className="title">Restaurants</div>
+              <div className="description">Manage all restaurants</div>
+            </QuickActionCard>
+            <QuickActionCard onClick={() => navigate('/pos/admin/invoices')}>
+              <div className="icon">▦</div>
+              <div className="title">Invoices</div>
+              <div className="description">Invoice management</div>
+            </QuickActionCard>
+            <QuickActionCard onClick={() => navigate('/pos/admin/notices')}>
+              <div className="icon">◈</div>
+              <div className="title">Notices</div>
+              <div className="description">Communication hub</div>
+            </QuickActionCard>
+            <QuickActionCard onClick={() => navigate('/pos/admin/report')}>
+              <div className="icon">☰</div>
+              <div className="title">Report</div>
+              <div className="description">Platform analytics</div>
+            </QuickActionCard>
+          </QuickActionsGrid>
+        </QuickActionsSection>
 
         <Tabs>
           <Tab active={activeTab === 'overview'} onClick={() => handleTabChange('overview')}>

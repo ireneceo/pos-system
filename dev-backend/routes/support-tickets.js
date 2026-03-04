@@ -11,6 +11,8 @@ const SupportTicket = require('../models/SupportTicket');
 const User = require('../models/User');
 const { Op } = require('sequelize');
 const { authenticateToken } = require('../middleware/auth');
+const { sendNotification, sendNotificationBatch, getSystemAdminIds } = require('../utils/notificationService');
+const { inquiryReceivedEmail, ticketStatusChangedEmail } = require('../utils/notificationTemplates');
 
 // Get all support tickets (filtered by role)
 router.get('/', authenticateToken, async (req, res) => {
@@ -103,6 +105,23 @@ router.post('/', authenticateToken, async (req, res) => {
       id: `ticket-${timestamp}-${random}`
     });
 
+    // Email notification to System Admins (non-blocking)
+    (async () => {
+      try {
+        const adminIds = await getSystemAdminIds();
+        const filteredIds = adminIds.filter(id => id !== req.user.id);
+        if (filteredIds.length > 0) {
+          const mail = inquiryReceivedEmail(
+            { title: ticket.subject, subject: ticket.subject, category: ticket.category, priority: ticket.priority, description: ticket.description },
+            customerName
+          );
+          await sendNotificationBatch(filteredIds, 'inquiry_received', mail);
+        }
+      } catch (e) {
+        console.error('[SupportTicket notification error]', e.message);
+      }
+    })();
+
     res.status(201).json({ success: true, data: ticket });
   } catch (error) {
     res.status(500).json({ success: false, error: 'Failed to create support ticket' });
@@ -124,6 +143,21 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
 
     await ticket.update(updateData);
+
+    // Email notification on status change (non-blocking)
+    if (req.body.status && ticket.customerId) {
+      (async () => {
+        try {
+          const mail = ticketStatusChangedEmail(
+            { title: ticket.subject, subject: ticket.subject },
+            req.body.status
+          );
+          await sendNotification(parseInt(ticket.customerId), 'ticket_status_changed', mail);
+        } catch (e) {
+          console.error('[SupportTicket status notification error]', e.message);
+        }
+      })();
+    }
 
     res.json({ success: true, data: ticket });
   } catch (error) {

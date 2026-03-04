@@ -280,14 +280,31 @@ const DownloadButton = styled.button`
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 500;
+  gap: 6px;
 
   svg {
     width: 18px;
     height: 18px;
   }
 
+  .download-label {
+    display: none;
+  }
+
   &:hover {
     background: #E6EBF1;
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    order: 11;
+    height: 40px;
+
+    .download-label {
+      display: inline;
+    }
   }
 `;
 
@@ -2811,6 +2828,7 @@ const LiveOrdersPage: React.FC = () => {
               <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
+              <span className="download-label">Download CSV</span>
             </DownloadButton>
           </FilterToolbar>
 

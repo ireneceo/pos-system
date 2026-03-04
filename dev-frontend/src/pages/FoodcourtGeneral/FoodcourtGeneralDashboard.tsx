@@ -410,6 +410,8 @@ const FoodcourtGeneralDashboard: React.FC = () => {
 
   const fetchDashboardData = async () => {
     try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
       setLoading(true);
       const headers = getHeaders();
 
@@ -503,6 +505,8 @@ const FoodcourtGeneralDashboard: React.FC = () => {
 
   const fetchTrendData = async (fcId: number) => {
     try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
       const headers = getHeaders();
       const res = await fetch(`/api/foodcourts/${fcId}/sales-trend?period=${chartPeriod}`, { headers });
       const data = await res.json();
@@ -640,23 +644,23 @@ const FoodcourtGeneralDashboard: React.FC = () => {
           <h3>Quick Actions</h3>
           <QuickActionsGrid>
             <QuickActionCard onClick={() => navigate('/pos/foodcourt/general/management')}>
-              <div className="icon">&#9835;</div>
-              <div className="title">Manage Tenants</div>
-              <div className="description">Tenant management</div>
+              <div className="icon">◉</div>
+              <div className="title">Foodcourts</div>
+              <div className="description">Foodcourt management</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/foodcourt/invoices')}>
-              <div className="icon">&#9783;</div>
+              <div className="icon">▦</div>
               <div className="title">Invoices</div>
               <div className="description">Invoice management</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/foodcourt/plans')}>
-              <div className="icon">&#9733;</div>
+              <div className="icon">☰</div>
               <div className="title">Subscription Plans</div>
               <div className="description">Plan configuration</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/foodcourt/general/stats')}>
-              <div className="icon">&#9776;</div>
-              <div className="title">Reports</div>
+              <div className="icon">▲</div>
+              <div className="title">Statistics</div>
               <div className="description">Performance analytics</div>
             </QuickActionCard>
           </QuickActionsGrid>

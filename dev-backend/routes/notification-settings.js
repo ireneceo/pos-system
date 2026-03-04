@@ -4,8 +4,96 @@ const { sequelize } = require('../config/database');
 const { QueryTypes } = require('sequelize');
 const { authenticateToken } = require('../middleware/auth');
 const { encrypt, decrypt } = require('../utils/encryption');
+const User = require('../models/User');
 
-// GET - 알림 설정 조회
+// Notification categories with role-based visibility
+const NOTIFICATION_CATEGORIES = [
+  { key: 'invoice_created', label: 'New Invoice Issued', description: 'When a new invoice is issued to your restaurant', section: 'Invoices', roles: ['Restaurant Admin', 'Restaurant Owner'] },
+  { key: 'invoice_overdue', label: 'Invoice Overdue Reminder', description: 'Reminders for overdue invoice payments', section: 'Invoices', roles: ['Restaurant Admin', 'Restaurant Owner'] },
+  { key: 'invoice_paid', label: 'Invoice Payment Confirmed', description: 'When an invoice payment is confirmed', section: 'Invoices', roles: ['Brand General', 'Foodcourt General', 'System Admin'] },
+  { key: 'notice_received', label: 'New Notice Received', description: 'When a new notice or announcement is posted', section: 'Communication', roles: ['all'] },
+  { key: 'comment_received', label: 'New Comment', description: 'When someone comments on your notice or ticket', section: 'Communication', roles: ['all'] },
+  { key: 'inquiry_received', label: 'New Inquiry Received', description: 'When a new support inquiry is submitted', section: 'Inquiries & Tickets', roles: ['Brand General', 'Foodcourt General', 'System Admin'] },
+  { key: 'inquiry_replied', label: 'Inquiry Reply', description: 'When your inquiry receives a reply', section: 'Inquiries & Tickets', roles: ['Restaurant Admin', 'Restaurant Owner'] },
+  { key: 'ticket_status_changed', label: 'Ticket Status Changed', description: 'When a ticket status is updated', section: 'Inquiries & Tickets', roles: ['all'] }
+];
+
+// GET - User notification preferences
+router.get('/preferences', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id, {
+      attributes: ['id', 'role', 'notification_preferences']
+    });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Filter categories by user role
+    const userRole = user.role;
+    const categories = NOTIFICATION_CATEGORIES.filter(c =>
+      c.roles.includes('all') || c.roles.includes(userRole)
+    );
+
+    // Build preferences with defaults (null = all enabled)
+    const saved = user.notification_preferences || {};
+    const preferences = {};
+    categories.forEach(c => {
+      preferences[c.key] = saved[c.key] !== undefined ? saved[c.key] : true;
+    });
+
+    res.json({
+      success: true,
+      data: {
+        preferences,
+        categories: categories.map(c => ({
+          key: c.key,
+          label: c.label,
+          description: c.description,
+          section: c.section
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('Notification preferences fetch error:', error);
+    res.status(500).json({ success: false, message: 'Failed to load notification preferences' });
+  }
+});
+
+// PUT - Update user notification preferences
+router.put('/preferences', authenticateToken, async (req, res) => {
+  try {
+    const { preferences } = req.body;
+    if (!preferences || typeof preferences !== 'object') {
+      return res.status(400).json({ success: false, message: 'Invalid preferences format' });
+    }
+
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Validate keys - only allow known category keys
+    const validKeys = NOTIFICATION_CATEGORIES.map(c => c.key);
+    const filtered = {};
+    for (const [key, value] of Object.entries(preferences)) {
+      if (validKeys.includes(key) && typeof value === 'boolean') {
+        filtered[key] = value;
+      }
+    }
+
+    // If all values are true, store null (default = all enabled)
+    const allEnabled = Object.values(filtered).every(v => v === true);
+    user.notification_preferences = allEnabled ? null : filtered;
+    await user.save();
+
+    res.json({ success: true, message: 'Notification preferences saved' });
+  } catch (error) {
+    console.error('Notification preferences save error:', error);
+    res.status(500).json({ success: false, message: 'Failed to save notification preferences' });
+  }
+});
+
+// GET - 알림 설정 조회 (SMTP)
 router.get('/:entityType/:entityId', authenticateToken, async (req, res) => {
   try {
     const { entityType, entityId } = req.params;

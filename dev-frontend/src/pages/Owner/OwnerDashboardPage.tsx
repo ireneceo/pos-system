@@ -658,24 +658,24 @@ const OwnerDashboardPage: React.FC = () => {
           <h3>Quick Actions</h3>
           <QuickActionsGrid>
             <QuickActionCard onClick={() => navigate('/pos/owner/restaurants')}>
-              <div className="icon">&#9835;</div>
-              <div className="title">My Restaurants</div>
+              <div className="icon">◐</div>
+              <div className="title">Restaurants</div>
               <div className="description">Restaurant management</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/owner/invoices')}>
-              <div className="icon">&#9783;</div>
+              <div className="icon">▦</div>
               <div className="title">Invoices</div>
-              <div className="description">View invoices</div>
+              <div className="description">Invoice management</div>
+            </QuickActionCard>
+            <QuickActionCard onClick={() => navigate('/pos/owner/performance')}>
+              <div className="icon">◈</div>
+              <div className="title">Performance</div>
+              <div className="description">Performance analytics</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/owner/reports')}>
-              <div className="icon">&#9776;</div>
+              <div className="icon">☰</div>
               <div className="title">Reports</div>
-              <div className="description">Cross-restaurant analytics</div>
-            </QuickActionCard>
-            <QuickActionCard onClick={() => navigate('/pos/profile')}>
-              <div className="icon">&#9881;</div>
-              <div className="title">Settings</div>
-              <div className="description">Profile settings</div>
+              <div className="description">Detailed reports</div>
             </QuickActionCard>
           </QuickActionsGrid>
         </QuickActionsSection>

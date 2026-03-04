@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 
 // 고객 타입 정의
 export interface Customer {
@@ -144,7 +144,14 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // localStorage 동기화 제거 - 메모리 상태만 사용
 
-  const loadInitialCustomers = async (restaurantIdParam?: string | number) => {
+  // 중복 호출 방지용 ref
+  const loadingRef = React.useRef(false);
+
+  const loadInitialCustomers = useCallback(async (restaurantIdParam?: string | number) => {
+    // 이미 로딩 중이면 중복 호출 방지
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+
     try {
       // restaurantId 결정: 파라미터 > localStorage > URL에서 추출 > 기본값 1
       let restaurantId = restaurantIdParam;
@@ -169,7 +176,14 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         restaurantId = 1; // 기본값
       }
 
-      const response = await fetch(`/api/customers/${restaurantId}`, getFetchOptions());
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/customers/${restaurantId}`, {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
       const data = await response.json();
 
       if (data.success && Array.isArray(data.data)) {
@@ -196,11 +210,12 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setCustomers([]);
       }
     } catch (error) {
-
       // 에러 시 빈 배열 설정
       setCustomers([]);
+    } finally {
+      loadingRef.current = false;
     }
-  };
+  }, []);
 
   const registerCustomer = async (customerData: Partial<Customer> & { password?: string }, restaurantId?: string | number): Promise<Customer> => {
     try {

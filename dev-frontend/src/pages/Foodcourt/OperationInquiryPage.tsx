@@ -705,7 +705,8 @@ const OperationInquiryPage: React.FC = () => {
               <div style={{
                 textAlign: 'center',
                 padding: '60px 20px',
-                color: '#6B7280'
+                color: '#6B7280',
+                gridColumn: '1 / -1'
               }}>
                 <h3 style={{ color: '#374151', marginBottom: '8px' }}>No inquiries yet</h3>
                 <p>Restaurant inquiries will appear here when submitted.</p>

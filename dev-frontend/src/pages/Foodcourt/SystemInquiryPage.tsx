@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import CommentSection from '../../components/Common/CommentSection';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
+import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
@@ -411,6 +412,9 @@ const SystemInquiryPage: React.FC = () => {
   });
   const [newAttachments, setNewAttachments] = useState<AttachmentFile[]>([]);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, { total_comments: number; unread_count: number }>>({});
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterPriority, setFilterPriority] = useState('all');
+  const [filterCategory, setFilterCategory] = useState('all');
 
   const currentUserId = user?.id || '4';
 
@@ -462,7 +466,12 @@ const SystemInquiryPage: React.FC = () => {
   };
 
   const filteredTickets = tickets.filter(ticket => {
-    return activeTab === 'all' || ticket.status === activeTab;
+    const matchesSearch = ticket.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         ticket.ticketNumber.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = activeTab === 'all' || ticket.status === activeTab;
+    const matchesPriority = filterPriority === 'all' || ticket.priority === filterPriority;
+    const matchesCategory = filterCategory === 'all' || ticket.category === filterCategory;
+    return matchesSearch && matchesStatus && matchesPriority && matchesCategory;
   });
 
   const totalTickets = tickets.length;
@@ -595,6 +604,29 @@ const SystemInquiryPage: React.FC = () => {
             </Tab>
           </Tabs>
 
+          <FilterBar>
+            <SearchInput
+              placeholder="Search tickets..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <FilterSelect value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
+              <option value="all">All Priority</option>
+              <option value="urgent">Urgent</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </FilterSelect>
+            <FilterSelect value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+              <option value="all">All Categories</option>
+              <option value="technical">Technical</option>
+              <option value="billing">Billing</option>
+              <option value="feature-request">Feature Request</option>
+              <option value="bug-report">Bug Report</option>
+              <option value="general">General</option>
+            </FilterSelect>
+          </FilterBar>
+
           <TicketsGrid>
             {filteredTickets.map(ticket => (
               <TicketCard key={ticket.id} style={{ cursor: 'pointer' }} onClick={() => handleViewTicket(ticket)}>
@@ -634,7 +666,8 @@ const SystemInquiryPage: React.FC = () => {
               <div style={{
                 textAlign: 'center',
                 padding: '60px 20px',
-                color: '#6B7280'
+                color: '#6B7280',
+                gridColumn: '1 / -1'
               }}>
                 <h3 style={{ color: '#374151', marginBottom: '8px' }}>No tickets yet</h3>
                 <p>Click "New Inquiry" to submit your first support ticket to system administrator.</p>

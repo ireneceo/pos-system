@@ -139,7 +139,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       case 'Restaurant Owner':
         return <Navigate to="/pos/owner/dashboard" replace />;
       case 'Staff':
-        return <Navigate to={`/restaurant/${user.restaurantId || '1'}/basic`} replace />;
+        return <Navigate to={`/restaurant/${user.restaurantId || '1'}/dashboard`} replace />;
       default:
         return <Navigate to="/pos" replace />;
     }
@@ -237,7 +237,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         case 'Restaurant Owner':
           return <Navigate to="/pos/owner/dashboard" replace />;
         case 'Staff':
-          return <Navigate to={`/restaurant/${user.restaurantId || '1'}/basic`} replace />;
+          return <Navigate to={`/restaurant/${user.restaurantId || '1'}/dashboard`} replace />;
         default:
           return <Navigate to="/pos" replace />;
       }

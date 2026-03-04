@@ -203,14 +203,11 @@ const PosRootRedirect: React.FC = () => {
     case 'Staff': {
       // For Restaurant Admin and Staff, include restaurantId in URL
       const restaurantId = user?.restaurantId || '1';
-      const targetRoute = user?.role === 'Restaurant Admin'
-        ? `/restaurant/${restaurantId}/dashboard`
-        : `/restaurant/${restaurantId}/basic`;
-      return <Navigate to={targetRoute} replace />;
+      return <Navigate to={`/restaurant/${restaurantId}/dashboard`} replace />;
     }
     default: {
       const restaurantId = user?.restaurantId || '1';
-      return <Navigate to={`/restaurant/${restaurantId}/basic`} replace />;
+      return <Navigate to={`/restaurant/${restaurantId}/dashboard`} replace />;
     }
   }
 };
@@ -328,7 +325,6 @@ function App() {
 
                       {/* Login */}
                       <Route path="/pos" element={<LoginPage />} />
-                      <Route path="/login" element={<LoginPage />} />
 
                       {/* Mobile */}
                       <Route path="/mobile/*" element={<MobileApp />} />

@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-03-03
+> **최종 업데이트:** 2026-03-04
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -55,6 +55,62 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 - 각 역할이 자기 notification_settings에 SMTP 설정
 - 자기가 발행한 인보이스는 자기 SMTP로 발송
 - System Admin SMTP를 다른 역할이 대신 쓰지 않음
+
+---
+
+## ⬜ 향후 작업: 데모 데이터 시스템 구축
+
+### 현재 상태
+- 데모 계정 2개만 존재: Brand General (`demo-brand@purplehere.com`), Restaurant Admin (`demo-restaurant@purplehere.com`)
+- DemoPage에 "매일 자정 리셋"이라 표시되어 있지만 실제 리셋 메커니즘 없음
+- 데이터 격리 없음 (일반 계정과 동일 DB)
+
+### 추가할 데모 계정
+- Foodcourt General 데모 계정 + 데이터
+- Restaurant Owner 데모 계정 + 데이터
+
+### 결정 필요 사항
+1. 시딩할 데이터 범위: 주문, 고객, 인보이스, 메뉴, 재고, 직원 등
+2. 데이터 양: 3개월 이상 치 권장
+3. 리셋 방식: 일일 크론잡(날짜 +1일 shift) vs 전체 리셋 후 재생성
+4. User 모델에 `is_demo` 플래그 추가 여부
+5. DemoPage 문구와 실제 리셋 메커니즘 일치시키기
+
+### 구현 항목
+| # | 작업 | 상태 |
+|---|------|:----:|
+| 1 | 데모 데이터 시딩 스크립트 (seed-demo-data.js) | ⬜ |
+| 2 | 일일 크론잡 (날짜 shift 또는 리셋+재생성) | ⬜ |
+| 3 | Foodcourt General 데모 계정 + 데이터 생성 | ⬜ |
+| 4 | Restaurant Owner 데모 계정 + 데이터 생성 | ⬜ |
+| 5 | DemoPage UI 업데이트 (4개 데모 카드) | ⬜ |
+
+---
+
+## ✅ 완료: Inquiry 필터 통일 + 로그아웃 403 수정 (2026-03-04)
+
+### 완료된 작업
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| /login → /pos URL 통합 | /login 라우트 제거, 모든 참조를 /pos로 변경 | ✅ 완료 |
+| System Inquiry 필터 추가 | Brand/Foodcourt SystemInquiry에 검색+우선순위+카테고리 필터 추가 (SupportPage 기준 통일) | ✅ 완료 |
+| 빈 상태 메시지 추가 | Manager/Restaurant/Admin SystemInquiry + Restaurant SupportTickets + Manager OperationInquiry | ✅ 완료 |
+| 로그아웃 후 403 에러 수정 | BrandGeneral/FoodcourtGeneral 대시보드 fetchTrendData/fetchDashboardData에 토큰 체크 추가 | ✅ 완료 |
+
+### 수정된 파일
+- `dev-frontend/src/App.tsx` - /login 라우트 제거
+- `dev-frontend/src/components/Landing/LandingHeader.tsx` - /login → /pos
+- `dev-frontend/src/pages/Manager/SignupPage.tsx` - /login → /pos
+- `dev-frontend/src/contexts/AuthContext.tsx` - 로그아웃 후 /pos로 이동
+- `dev-frontend/src/pages/Brand/SystemInquiryPage.tsx` - 필터 추가
+- `dev-frontend/src/pages/Foodcourt/SystemInquiryPage.tsx` - 필터 추가
+- `dev-frontend/src/pages/Manager/SystemInquiryPage.tsx` - 빈 상태 메시지
+- `dev-frontend/src/pages/Restaurant/SystemInquiryPage.tsx` - 빈 상태 메시지
+- `dev-frontend/src/pages/Admin/SystemInquiryPage.tsx` - 빈 상태 메시지
+- `dev-frontend/src/pages/Restaurant/SupportTicketsPage.tsx` - 빈 상태 메시지
+- `dev-frontend/src/pages/Manager/OperationInquiryPage.tsx` - 빈 상태 메시지
+- `dev-frontend/src/pages/BrandGeneral/BrandGeneralDashboard.tsx` - 토큰 체크
+- `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtGeneralDashboard.tsx` - 토큰 체크
 
 ---
 

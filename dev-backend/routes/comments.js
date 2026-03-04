@@ -6,6 +6,10 @@ const { sequelize } = require('../config/database');
 const Comment = require('../models/Comment');
 const CommentRead = require('../models/CommentRead');
 const User = require('../models/User');
+const Notice = require('../models/Notice');
+const { OperationTicket, SupportTicket } = require('../models');
+const { sendNotification } = require('../utils/notificationService');
+const { commentReceivedEmail, inquiryRepliedEmail } = require('../utils/notificationTemplates');
 
 // POST /api/comments/mark-read - Mark comments as read for an entity
 // MUST be before /:entityType/:entityId to avoid route collision
@@ -180,6 +184,55 @@ router.post('/', authenticateToken, async (req, res) => {
     const commentWithAuthor = await Comment.findByPk(comment.id, {
       include: [{ model: User, as: 'author', attributes: ['id', 'full_name', 'role'] }]
     });
+
+    // Email notification (non-blocking)
+    (async () => {
+      try {
+        let entityOwnerId = null;
+        let entityTitle = '';
+
+        if (entity_type === 'notice') {
+          const notice = await Notice.findByPk(entity_id, { attributes: ['id', 'title', 'author_id'] });
+          if (notice) { entityOwnerId = notice.author_id; entityTitle = notice.title; }
+        } else if (entity_type === 'operation_ticket') {
+          const ticket = await OperationTicket.findByPk(entity_id);
+          if (ticket) {
+            entityTitle = ticket.title || ticket.subject || `Ticket ${ticket.ticketNumber}`;
+            // Notify the other party: if commenter is requester → notify manager, vice versa
+            entityOwnerId = String(ticket.requesterId) === String(req.user.id) ? ticket.managerId : ticket.requesterId;
+            // For ticket comments, use inquiry_replied category
+            if (entityOwnerId && entityOwnerId !== req.user.id) {
+              const mail = inquiryRepliedEmail({ title: entityTitle, subject: entityTitle }, comment, req.user.full_name);
+              await sendNotification(entityOwnerId, 'inquiry_replied', mail);
+            }
+            return;
+          }
+        } else if (entity_type === 'support_ticket') {
+          const ticket = await SupportTicket.findByPk(entity_id);
+          if (ticket) {
+            entityTitle = ticket.subject || `Ticket ${ticket.ticketNumber}`;
+            entityOwnerId = String(ticket.customerId) === String(req.user.id) ? null : parseInt(ticket.customerId);
+            // System Admin responding → notify customer
+            if (!entityOwnerId && req.user.role === 'System Admin') {
+              entityOwnerId = parseInt(ticket.customerId);
+            }
+            if (entityOwnerId && entityOwnerId !== req.user.id) {
+              const mail = inquiryRepliedEmail({ title: entityTitle, subject: entityTitle }, comment, req.user.full_name);
+              await sendNotification(entityOwnerId, 'inquiry_replied', mail);
+            }
+            return;
+          }
+        }
+
+        // For notices: notify entity owner if commenter is different
+        if (entityOwnerId && entityOwnerId !== req.user.id) {
+          const mail = commentReceivedEmail(comment, entityTitle, req.user.full_name);
+          await sendNotification(entityOwnerId, 'comment_received', mail);
+        }
+      } catch (e) {
+        console.error('[Comment notification error]', e.message);
+      }
+    })();
 
     res.status(201).json({ success: true, data: commentWithAuthor });
   } catch (error) {

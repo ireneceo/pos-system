@@ -484,7 +484,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (isDemoAccount) {
       navigate('/demo');
     } else {
-      navigate('/login');
+      navigate('/pos');
     }
   };
 
