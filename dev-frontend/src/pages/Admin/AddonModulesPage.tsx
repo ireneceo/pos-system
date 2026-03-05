@@ -639,12 +639,6 @@ const AddonModulesPage: React.FC = () => {
           )}
 
           <FilterBar>
-            <SearchInput
-              type="text"
-              placeholder="Search modules..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
             <FilterSelect
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
@@ -673,6 +667,12 @@ const AddonModulesPage: React.FC = () => {
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </FilterSelect>
+            <SearchInput
+              type="text"
+              placeholder="Search modules..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </FilterBar>
 
           {loading ? (

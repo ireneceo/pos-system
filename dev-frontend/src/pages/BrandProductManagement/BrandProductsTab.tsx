@@ -589,39 +589,41 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
 
   return (
     <div>
-      <FilterBar>
-        <SearchInput
-          type="text"
-          placeholder="Search products..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        <FilterSelect
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-        >
-          <option value="all">All Categories</option>
-          {categories.map(cat => (
-            <option key={cat.id} value={cat.id.toString()}>
-              {cat.emoji} {cat.name}
-            </option>
-          ))}
-        </FilterSelect>
-        <FilterSelect
-          value={brandFilter}
-          onChange={(e) => setBrandFilter(e.target.value)}
-        >
-          <option value="all">All Brands</option>
-          {brands.map(brand => (
-            <option key={brand.id} value={brand.id.toString()}>
-              {brand.name}
-            </option>
-          ))}
-        </FilterSelect>
-        <ThemedButton onClick={() => handleOpenModal()}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+        <FilterBar style={{ marginBottom: 0 }}>
+          <SearchInput
+            type="text"
+            placeholder="Search products..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <FilterSelect
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+          >
+            <option value="all">All Categories</option>
+            {categories.map(cat => (
+              <option key={cat.id} value={cat.id.toString()}>
+                {cat.emoji} {cat.name}
+              </option>
+            ))}
+          </FilterSelect>
+          <FilterSelect
+            value={brandFilter}
+            onChange={(e) => setBrandFilter(e.target.value)}
+          >
+            <option value="all">All Brands</option>
+            {brands.map(brand => (
+              <option key={brand.id} value={brand.id.toString()}>
+                {brand.name}
+              </option>
+            ))}
+          </FilterSelect>
+        </FilterBar>
+        <ThemedButton onClick={() => handleOpenModal()} style={{ flexShrink: 0 }}>
           Add Product
         </ThemedButton>
-      </FilterBar>
+      </div>
 
       {filteredProducts.length === 0 ? (
         <EmptyState>

@@ -21,7 +21,7 @@ import {
 import { printBillViaRawBT, generateBillContent, printKitchenTicketViaRawBT, generateKitchenTicketPreview } from '../../utils/billPrint';
 import { formatDateTime as formatDateTimeUtil, getTimeElapsed } from '../../utils/timezone';
 import ConfirmModal from '../../components/ConfirmModal';
-import DateRangeFilter, { PeriodType } from '../../components/Common/DateRangeFilter';
+import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 
 // Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM")
 const formatPickupTimeRange = (dateString: string): string => {
@@ -108,7 +108,7 @@ interface DbOrder {
   updatedAt: string;
 }
 
-// PeriodType imported from DateRangeFilter component
+// PeriodType imported from DatePeriodFilter component
 
 const Container = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -192,9 +192,9 @@ const Content = styled.main`
   }
 `;
 
-// Note: FilterControls, FilterRow, DateButton, DateInput styles moved to DateRangeFilter component
+// Note: FilterControls, FilterRow, DateButton, DateInput styles moved to DatePeriodFilter component
 
-// Filter toolbar for Live Orders - contains DateRangeFilter, Search, Download
+// Filter toolbar for Live Orders - contains DatePeriodFilter, Search, Download
 const FilterToolbar = styled.div`
   display: flex;
   align-items: center;
@@ -202,7 +202,7 @@ const FilterToolbar = styled.div`
   margin-bottom: 24px;
   flex-wrap: wrap;
 
-  /* Override DateRangeFilter internal margin */
+  /* Override DatePeriodFilter internal margin */
   & > div:first-child > div {
     margin-bottom: 0 !important;
   }
@@ -1039,34 +1039,9 @@ const LiveOrdersPage: React.FC = () => {
   // Membership settings (used by PaymentModal for membership info display)
   const [membershipSettings, setMembershipSettings] = useState<any>(null);
 
-  // Helper function to get current date in restaurant's timezone
-  const getDateInTimezone = (timezone: string = 'Asia/Kuala_Lumpur') => {
-    try {
-      const now = new Date();
-      const formatter = new Intl.DateTimeFormat('en-CA', {
-        timeZone: timezone,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      });
-      return formatter.format(now); // Returns YYYY-MM-DD format
-    } catch {
-      // Fallback to local date if timezone is invalid
-      const now = new Date();
-      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    }
-  };
-
-  // Date filter state (default to 'today' in restaurant's timezone)
+  // Date filter state (default to 'today')
   const [activePeriod, setActivePeriod] = useState<PeriodType>('today');
-  const [dateRange, setDateRange] = useState(() => {
-    // Initial value will be updated by useEffect when operationSettings loads
-    const today = getDateInTimezone();
-    return {
-      start: today,
-      end: today
-    };
-  });
+  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('today'));
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -1376,75 +1351,16 @@ const LiveOrdersPage: React.FC = () => {
     fetchOrderCounts();
   }, [fetchOrderCounts]);
 
-  // Initialize date filter to 'today' when operationSettings loads (uses restaurant's timezone)
-  useEffect(() => {
-    if (operationSettings?.timeZone) {
-      handlePeriodChange('today');
-    }
-  }, [operationSettings?.timeZone]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // Reset page to 1 when tab or date filter changes
   useEffect(() => {
     setCurrentPage(1);
   }, [activeTab, dateRange.start, dateRange.end, activePeriod]);
 
-  // Handle period change - uses restaurant's timezone
+  // Handle period change
   const handlePeriodChange = (period: PeriodType) => {
     setActivePeriod(period);
     setIsCustomDateRange(false);
-
-    const timezone = operationSettings?.timeZone || 'Asia/Kuala_Lumpur';
-
-    // Helper to get date in restaurant's timezone
-    const getDateInTz = (daysOffset: number = 0) => {
-      try {
-        const date = new Date();
-        date.setDate(date.getDate() + daysOffset);
-        const formatter = new Intl.DateTimeFormat('en-CA', {
-          timeZone: timezone,
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit'
-        });
-        return formatter.format(date);
-      } catch {
-        const date = new Date();
-        date.setDate(date.getDate() + daysOffset);
-        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-      }
-    };
-
-    const todayInTz = getDateInTz(0);
-    let startDate: string;
-
-    switch (period) {
-      case 'today':
-        startDate = todayInTz;
-        break;
-      case 'week':
-        // Last 7 days including today (today + 6 previous days)
-        startDate = getDateInTz(-6);
-        break;
-      case 'month':
-        // Last 30 days including today (today + 29 previous days)
-        startDate = getDateInTz(-29);
-        break;
-      case 'year':
-        // Last 365 days including today (today + 364 previous days)
-        startDate = getDateInTz(-364);
-        break;
-      case 'all':
-        // 5 years ago
-        startDate = getDateInTz(-365 * 5);
-        break;
-      default:
-        startDate = todayInTz;
-    }
-
-    setDateRange({
-      start: startDate,
-      end: todayInTz
-    });
+    setDateRange(calculatePeriodDateRange(period));
   };
 
   // Get filtered orders - server-side filtering is now used, this returns the orders directly
@@ -1453,11 +1369,10 @@ const LiveOrdersPage: React.FC = () => {
     return orders;
   };
 
-  // Handle custom date range change
-  const handleDateRangeChange = (field: 'start' | 'end', value: string) => {
-    setDateRange(prev => ({ ...prev, [field]: value }));
+  const handleCalendarRangeSelect = (start: string, end: string) => {
     setIsCustomDateRange(true);
-    setActivePeriod('today'); // Reset active period when using custom dates
+    setActivePeriod('all');
+    setDateRange({ start, end });
   };
 
   // CSV Download function
@@ -2801,13 +2716,13 @@ const LiveOrdersPage: React.FC = () => {
         <Content>
           <FilterToolbar>
             <div>
-              <DateRangeFilter
+              <DatePeriodFilter
                 activePeriod={activePeriod}
                 dateRange={dateRange}
                 isCustomDateRange={isCustomDateRange}
                 onPeriodChange={handlePeriodChange}
-                onDateRangeChange={handleDateRangeChange}
-                timezone={operationSettings?.timeZone}
+                onCalendarRangeSelect={handleCalendarRangeSelect}
+                includeToday
               />
             </div>
             <SearchInputContainer>

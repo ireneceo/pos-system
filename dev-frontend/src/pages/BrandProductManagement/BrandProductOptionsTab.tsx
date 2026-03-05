@@ -1,28 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
+import { ThemedButton } from '../../components/Theme/ThemedButton';
+import { FilterBar, SearchInput } from '../../components/Common/FilterComponents';
 import { Modal } from '../../components/UI/Modal';
 
-const ToolBar = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 24px;
-  margin-bottom: 20px;
-`;
-
-const SearchInput = styled.input`
-  padding: 10px 16px;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  font-size: 14px;
-  width: 300px;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-  }
-`;
 
 const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
   padding: 10px 20px;
@@ -429,17 +411,19 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
 
   return (
     <>
-      <ToolBar>
-        <SearchInput
-          type="text"
-          placeholder="Search option groups..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        <Button onClick={() => handleOpenModal()}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+        <FilterBar style={{ marginBottom: 0 }}>
+          <SearchInput
+            type="text"
+            placeholder="Search option groups..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </FilterBar>
+        <ThemedButton onClick={() => handleOpenModal()} style={{ flexShrink: 0 }}>
           Add Option Group
-        </Button>
-      </ToolBar>
+        </ThemedButton>
+      </div>
 
       {filteredGroups.length === 0 ? (
         <EmptyState>

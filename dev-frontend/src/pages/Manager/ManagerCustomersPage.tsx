@@ -300,12 +300,6 @@ const ManagerCustomersPage: React.FC = () => {
           </StatsGrid>
 
           <FilterBar>
-            <SearchInput
-              type="text"
-              placeholder="Search customers..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
             <FilterSelect value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="all">All Status</option>
               <option value="active">Active</option>
@@ -324,6 +318,12 @@ const ManagerCustomersPage: React.FC = () => {
               <option value="Nasi Lemak Wangi">Nasi Lemak Wangi</option>
               <option value="Seoul Garden BBQ">Seoul Garden BBQ</option>
             </FilterSelect>
+            <SearchInput
+              type="text"
+              placeholder="Search customers..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </FilterBar>
 
           <TableContainer>

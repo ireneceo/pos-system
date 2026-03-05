@@ -565,7 +565,10 @@ router.get('/', authenticateToken, async (req, res) => {
           ? parseFloat(invoice.subtotal)
           : parseFloat(invoice.discount_amount || 0) > 0
             ? parseFloat(invoice.total_amount) + parseFloat(invoice.discount_amount)
-            : null
+            : null,
+        // Modification tracking
+        isModified: invoice.is_modified || false,
+        modificationHistory: invoice.modification_history || []
       };
     });
 
@@ -827,7 +830,10 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
           ? parseFloat(invoice.subtotal)
           : parseFloat(invoice.discount_amount || 0) > 0
             ? parseFloat(invoice.total_amount) + parseFloat(invoice.discount_amount)
-            : null
+            : null,
+        // Modification tracking
+        isModified: invoice.is_modified || false,
+        modificationHistory: invoice.modification_history || []
       };
     });
 
@@ -1293,7 +1299,10 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
           ? parseFloat(invoice.subtotal)
           : parseFloat(invoice.discount_amount || 0) > 0
             ? parseFloat(invoice.total_amount) + parseFloat(invoice.discount_amount)
-            : null
+            : null,
+        // Modification tracking
+        isModified: invoice.is_modified || false,
+        modificationHistory: invoice.modification_history || []
       };
     }));
 
@@ -1398,7 +1407,10 @@ router.get('/:id', authenticateToken, async (req, res) => {
         ? parseFloat(invoice.subtotal)
         : parseFloat(invoice.discount_amount || 0) > 0
           ? parseFloat(invoice.total_amount) + parseFloat(invoice.discount_amount)
-          : null
+          : null,
+      // Modification tracking
+      isModified: invoice.is_modified || false,
+      modificationHistory: invoice.modification_history || []
     };
 
     res.json({ invoice: transformedInvoice, items });
@@ -1515,29 +1527,69 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Invoice not found' });
     }
 
-    // Prevent editing automatic subscription invoices
-    if (invoice.type === 'automatic') {
-      await transaction.rollback();
-      return res.status(400).json({ error: 'Cannot edit automatic subscription invoices' });
-    }
-
     // Prevent editing invoices that are paid, cancelled, or have payment submitted
     if (invoice.status === 'paid' || invoice.status === 'cancelled' || invoice.status === 'payment_submitted') {
       await transaction.rollback();
       return res.status(400).json({ error: `Cannot edit invoice with status: ${invoice.status}` });
     }
 
-    // Update invoice fields
+    // For automatic invoices, modification reason is required
+    const { modificationReason } = req.body;
+    if (invoice.type === 'automatic' && !modificationReason) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Modification reason is required for automatic invoices' });
+    }
+
+    // Build modification history record
+    const changes = {};
+    if (amount !== undefined && parseFloat(amount) !== parseFloat(invoice.total_amount)) {
+      changes.total_amount = { from: parseFloat(invoice.total_amount), to: parseFloat(total || amount) };
+    }
+    if (dueDate !== undefined && dueDate !== invoice.due_date?.toISOString?.()?.split('T')[0]) {
+      changes.due_date = { from: invoice.due_date, to: dueDate };
+    }
+    if (notes !== undefined && notes !== invoice.notes) {
+      changes.notes = { from: invoice.notes, to: notes };
+    }
+
+    // Update invoice fields (status is managed by PATCH /:id/status, not here)
     const updateData = {};
     if (amount !== undefined) updateData.total_amount = total || amount;
     if (dueDate !== undefined) updateData.due_date = dueDate;
-    if (status !== undefined) updateData.status = status;
     if (payerType !== undefined) updateData.payer_type = payerType;
-    if (payerId !== undefined) updateData.payer_id = payerId;
+    if (payerId !== undefined) updateData.payer_id = payerId || null;
     if (invoiceCategory !== undefined) updateData.invoice_category = invoiceCategory;
     if (customDescription !== undefined) updateData.custom_description = customDescription;
     if (serviceDescription !== undefined) updateData.service_description = serviceDescription;
     if (notes !== undefined) updateData.notes = notes;
+
+    // Track discount changes
+    const { discountType, discountValue, discountAmount, discountReason, subtotal } = req.body;
+    if (discountType !== undefined) {
+      if (discountType !== invoice.discount_type) changes.discount_type = { from: invoice.discount_type, to: discountType };
+      updateData.discount_type = discountType;
+    }
+    if (discountValue !== undefined) {
+      if (parseFloat(discountValue) !== parseFloat(invoice.discount_value)) changes.discount_value = { from: parseFloat(invoice.discount_value), to: parseFloat(discountValue) };
+      updateData.discount_value = discountValue;
+    }
+    if (discountAmount !== undefined) updateData.discount_amount = discountAmount;
+    if (discountReason !== undefined) updateData.discount_reason = discountReason;
+    if (subtotal !== undefined) updateData.subtotal = subtotal;
+
+    // Save modification history if there are actual changes
+    if (Object.keys(changes).length > 0 || modificationReason) {
+      const history = Array.isArray(invoice.modification_history) ? [...invoice.modification_history] : [];
+      history.push({
+        modified_at: new Date().toISOString(),
+        modified_by: req.user.id,
+        modified_by_name: req.user.full_name || req.user.username,
+        changes,
+        reason: modificationReason || ''
+      });
+      updateData.is_modified = true;
+      updateData.modification_history = history;
+    }
 
     await invoice.update(updateData, { transaction });
 
@@ -1580,8 +1632,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
     res.json({ success: true, invoice: updatedInvoice });
   } catch (error) {
     await transaction.rollback();
-    console.error('Error updating invoice:', error);
-    res.status(500).json({ error: 'Failed to update invoice' });
+    console.error('Error updating invoice:', error.message, error.sql || '');
+    res.status(500).json({ error: 'Failed to update invoice', details: error.message });
   }
 });
 

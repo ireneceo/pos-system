@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
+import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 
 // 스타일 컴포넌트
 const ReportsContainer = styled.div`
@@ -38,28 +39,7 @@ const Header = styled.div`
   }
 `;
 
-const DateRangeInput = styled.input`
-  padding: 8px 12px;
-  border: 1px solid #E6EBF1;
-  border-radius: 6px;
-  font-size: 14px;
-  background: white;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
-
-const CustomDateRange = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: 8px;
-`;
+// DateRangeInput, CustomDateRange replaced by DatePeriodFilter component
 
 const HeaderTitle = styled.h1`
   font-size: 24px;
@@ -73,20 +53,7 @@ const HeaderTitle = styled.h1`
   }
 `;
 
-const FilterControls = styled.div`
-  background: #FAFBFC;
-  padding: 24px 0;
-  margin-bottom: 24px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 24px;
-  align-items: center;
-
-  @media (max-width: 768px) {
-    gap: 16px;
-    padding: 16px 0;
-  }
-`;
+// FilterControls replaced by DatePeriodFilter component
 
 const FilterRow = styled.div`
   display: flex;
@@ -97,23 +64,6 @@ const FilterRow = styled.div`
   @media (max-width: 768px) {
     gap: 8px;
     width: 100%;
-  }
-`;
-
-
-const DateButton = styled.button<{ active?: boolean }>`
-  padding: 8px 16px;
-  background: ${props => props.active ? '#635BFF' : 'white'};
-  color: ${props => props.active ? 'white' : '#6B7280'};
-  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    background: ${props => props.active ? '#5A51E6' : '#F8FAFC'};
   }
 `;
 
@@ -374,7 +324,7 @@ const NoResults = styled.div`
 
 // 타입 정의
 type TabType = 'manager_sales' | 'restaurant_sales' | 'subscriptions' | 'restaurants' | 'system';
-type PeriodType = 'today' | 'week' | 'month' | 'year';
+// PeriodType imported from DatePeriodFilter
 
 // 차트 색상
 const COLORS = ['#635BFF', '#00D924', '#FF6B6B', '#FFB800', '#0EA5E9', '#8B5CF6'];
@@ -386,7 +336,7 @@ const AnalyticsPage: React.FC = () => {
   const [activeTab, handleTabChange] = useTabParam<TabType>('system');
   const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
   const [dateRange, setDateRange] = useState({
-    start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    start: new Date(Date.now() - 29 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0]
   });
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
@@ -776,35 +726,18 @@ const AnalyticsPage: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const systemMetrics = useMemo(() => getSystemMetrics(), [salesData, subscriptionData, restaurantData, isCustomDateRange, dateRange, activePeriod, selectedRestaurant, selectedManager]);
 
-  // 날짜 범위 처리 함수
   const handlePeriodChange = (period: PeriodType) => {
-    console.log('Period changed to:', period);
     setActivePeriod(period);
     setIsCustomDateRange(false);
-    setRefreshKey(prev => prev + 1); // 강제 리렌더링
+    setDateRange(calculatePeriodDateRange(period));
+    setRefreshKey(prev => prev + 1);
+  };
 
-    const now = new Date();
-    let start = new Date();
-
-    switch (period) {
-      case 'today':
-        start = new Date(now);
-        break;
-      case 'week':
-        start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case 'month':
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-        break;
-      case 'year':
-        start = new Date(now.getFullYear(), 0, 1);
-        break;
-    }
-
-    setDateRange({
-      start: start.toISOString().split('T')[0],
-      end: now.toISOString().split('T')[0]
-    });
+  const handleCalendarRangeSelect = (start: string, end: string) => {
+    setIsCustomDateRange(true);
+    setActivePeriod('all');
+    setDateRange({ start, end });
+    setRefreshKey(prev => prev + 1);
   };
 
   // 다운로드 기능
@@ -1266,48 +1199,13 @@ const AnalyticsPage: React.FC = () => {
 
           {activeTab === 'manager_sales' && (
             <>
-              <FilterControls>
-                <FilterRow>
-                  <DateButton active={activePeriod === 'today' && !isCustomDateRange} onClick={() => handlePeriodChange('today')}>
-                    Today
-                  </DateButton>
-                  <DateButton active={activePeriod === 'week' && !isCustomDateRange} onClick={() => handlePeriodChange('week')}>
-                    Week
-                  </DateButton>
-                  <DateButton active={activePeriod === 'month' && !isCustomDateRange} onClick={() => handlePeriodChange('month')}>
-                    Month
-                  </DateButton>
-                  <DateButton active={activePeriod === 'year' && !isCustomDateRange} onClick={() => handlePeriodChange('year')}>
-                    Year
-                  </DateButton>
-                  <DateButton active={isCustomDateRange} onClick={() => setIsCustomDateRange(true)}>
-                    Custom
-                  </DateButton>
-                  {isCustomDateRange && (
-                    <CustomDateRange>
-                      <DateRangeInput
-                        type="date"
-                        value={dateRange.start}
-                        onChange={(e) => {
-                          console.log('Start date changed to:', e.target.value);
-                          setDateRange(prev => ({ ...prev, start: e.target.value }));
-                        }}
-                        max={dateRange.end}
-                      />
-                      <DateRangeInput
-                        type="date"
-                        value={dateRange.end}
-                        onChange={(e) => {
-                          console.log('End date changed to:', e.target.value);
-                          setDateRange(prev => ({ ...prev, end: e.target.value }));
-                        }}
-                        min={dateRange.start}
-                        max={new Date().toISOString().split('T')[0]}
-                      />
-                    </CustomDateRange>
-                  )}
-                </FilterRow>
-
+              <DatePeriodFilter
+                activePeriod={activePeriod}
+                dateRange={dateRange}
+                isCustomDateRange={isCustomDateRange}
+                onPeriodChange={handlePeriodChange}
+                onCalendarRangeSelect={handleCalendarRangeSelect}
+              >
                 <FilterRow>
                   <SearchableManagerDropdown />
                   <DownloadButton onClick={handleDownloadReport}>
@@ -1317,7 +1215,7 @@ const AnalyticsPage: React.FC = () => {
                     Download
                   </DownloadButton>
                 </FilterRow>
-              </FilterControls>
+              </DatePeriodFilter>
 
               <StatsGrid key={`manager-sales-stats-${refreshKey}-${activePeriod}-${selectedManager}-${dateRange.start}-${dateRange.end}`}>
                 <StatCard color="#059669">
@@ -1630,48 +1528,13 @@ const AnalyticsPage: React.FC = () => {
 
           {activeTab === 'restaurant_sales' && (
             <>
-              <FilterControls>
-                <FilterRow>
-                  <DateButton active={activePeriod === 'today' && !isCustomDateRange} onClick={() => handlePeriodChange('today')}>
-                    Today
-                  </DateButton>
-                  <DateButton active={activePeriod === 'week' && !isCustomDateRange} onClick={() => handlePeriodChange('week')}>
-                    Week
-                  </DateButton>
-                  <DateButton active={activePeriod === 'month' && !isCustomDateRange} onClick={() => handlePeriodChange('month')}>
-                    Month
-                  </DateButton>
-                  <DateButton active={activePeriod === 'year' && !isCustomDateRange} onClick={() => handlePeriodChange('year')}>
-                    Year
-                  </DateButton>
-                  <DateButton active={isCustomDateRange} onClick={() => setIsCustomDateRange(true)}>
-                    Custom
-                  </DateButton>
-                  {isCustomDateRange && (
-                    <CustomDateRange>
-                      <DateRangeInput
-                        type="date"
-                        value={dateRange.start}
-                        onChange={(e) => {
-                          console.log('Start date changed to:', e.target.value);
-                          setDateRange(prev => ({ ...prev, start: e.target.value }));
-                        }}
-                        max={dateRange.end}
-                      />
-                      <DateRangeInput
-                        type="date"
-                        value={dateRange.end}
-                        onChange={(e) => {
-                          console.log('End date changed to:', e.target.value);
-                          setDateRange(prev => ({ ...prev, end: e.target.value }));
-                        }}
-                        min={dateRange.start}
-                        max={new Date().toISOString().split('T')[0]}
-                      />
-                    </CustomDateRange>
-                  )}
-                </FilterRow>
-
+              <DatePeriodFilter
+                activePeriod={activePeriod}
+                dateRange={dateRange}
+                isCustomDateRange={isCustomDateRange}
+                onPeriodChange={handlePeriodChange}
+                onCalendarRangeSelect={handleCalendarRangeSelect}
+              >
                 <FilterRow>
                   <SearchableRestaurantDropdown />
                   <DownloadButton onClick={handleDownloadReport}>
@@ -1681,7 +1544,7 @@ const AnalyticsPage: React.FC = () => {
                     Download
                   </DownloadButton>
                 </FilterRow>
-              </FilterControls>
+              </DatePeriodFilter>
 
               <StatsGrid key={`restaurant-sales-stats-${refreshKey}-${activePeriod}-${selectedRestaurant}-${dateRange.start}-${dateRange.end}`}>
                 <StatCard color="#059669">
@@ -2013,48 +1876,13 @@ const AnalyticsPage: React.FC = () => {
 
           {activeTab === 'subscriptions' && (
             <>
-              <FilterControls>
-                <FilterRow>
-                  <DateButton active={activePeriod === 'today' && !isCustomDateRange} onClick={() => handlePeriodChange('today')}>
-                    Today
-                  </DateButton>
-                  <DateButton active={activePeriod === 'week' && !isCustomDateRange} onClick={() => handlePeriodChange('week')}>
-                    Week
-                  </DateButton>
-                  <DateButton active={activePeriod === 'month' && !isCustomDateRange} onClick={() => handlePeriodChange('month')}>
-                    Month
-                  </DateButton>
-                  <DateButton active={activePeriod === 'year' && !isCustomDateRange} onClick={() => handlePeriodChange('year')}>
-                    Year
-                  </DateButton>
-                  <DateButton active={isCustomDateRange} onClick={() => setIsCustomDateRange(true)}>
-                    Custom
-                  </DateButton>
-                  {isCustomDateRange && (
-                    <CustomDateRange>
-                      <DateRangeInput
-                        type="date"
-                        value={dateRange.start}
-                        onChange={(e) => {
-                          console.log('Start date changed to:', e.target.value);
-                          setDateRange(prev => ({ ...prev, start: e.target.value }));
-                        }}
-                        max={dateRange.end}
-                      />
-                      <DateRangeInput
-                        type="date"
-                        value={dateRange.end}
-                        onChange={(e) => {
-                          console.log('End date changed to:', e.target.value);
-                          setDateRange(prev => ({ ...prev, end: e.target.value }));
-                        }}
-                        min={dateRange.start}
-                        max={new Date().toISOString().split('T')[0]}
-                      />
-                    </CustomDateRange>
-                  )}
-                </FilterRow>
-
+              <DatePeriodFilter
+                activePeriod={activePeriod}
+                dateRange={dateRange}
+                isCustomDateRange={isCustomDateRange}
+                onPeriodChange={handlePeriodChange}
+                onCalendarRangeSelect={handleCalendarRangeSelect}
+              >
                 <FilterRow>
                   <SearchableManagerDropdown />
                   <DownloadButton onClick={handleDownloadReport}>
@@ -2064,7 +1892,7 @@ const AnalyticsPage: React.FC = () => {
                     Download
                   </DownloadButton>
                 </FilterRow>
-              </FilterControls>
+              </DatePeriodFilter>
 
               <StatsGrid key={`subscription-stats-${refreshKey}-${activePeriod}-${selectedManager}-${dateRange.start}-${dateRange.end}`}>
                 <StatCard color="#635BFF">
@@ -2311,55 +2139,20 @@ const AnalyticsPage: React.FC = () => {
 
           {activeTab === 'system' && (
             <>
-              <FilterControls>
-                <FilterRow>
-                  <DateButton active={activePeriod === 'today' && !isCustomDateRange} onClick={() => handlePeriodChange('today')}>
-                    Today
-                  </DateButton>
-                  <DateButton active={activePeriod === 'week' && !isCustomDateRange} onClick={() => handlePeriodChange('week')}>
-                    Week
-                  </DateButton>
-                  <DateButton active={activePeriod === 'month' && !isCustomDateRange} onClick={() => handlePeriodChange('month')}>
-                    Month
-                  </DateButton>
-                  <DateButton active={activePeriod === 'year' && !isCustomDateRange} onClick={() => handlePeriodChange('year')}>
-                    Year
-                  </DateButton>
-                  <DateButton active={isCustomDateRange} onClick={() => setIsCustomDateRange(true)}>
-                    Custom
-                  </DateButton>
-                  {isCustomDateRange && (
-                    <CustomDateRange>
-                      <DateRangeInput
-                        type="date"
-                        value={dateRange.start}
-                        onChange={(e) => {
-                          setDateRange(prev => ({ ...prev, start: e.target.value }));
-                        }}
-                        max={dateRange.end}
-                      />
-                      <DateRangeInput
-                        type="date"
-                        value={dateRange.end}
-                        onChange={(e) => {
-                          setDateRange(prev => ({ ...prev, end: e.target.value }));
-                        }}
-                        min={dateRange.start}
-                        max={new Date().toISOString().split('T')[0]}
-                      />
-                    </CustomDateRange>
-                  )}
-                </FilterRow>
-
-                <FilterRow>
-                  <DownloadButton onClick={handleDownloadReport}>
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    Download
-                  </DownloadButton>
-                </FilterRow>
-              </FilterControls>
+              <DatePeriodFilter
+                activePeriod={activePeriod}
+                dateRange={dateRange}
+                isCustomDateRange={isCustomDateRange}
+                onPeriodChange={handlePeriodChange}
+                onCalendarRangeSelect={handleCalendarRangeSelect}
+              >
+                <DownloadButton onClick={handleDownloadReport}>
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Download
+                </DownloadButton>
+              </DatePeriodFilter>
 
               <StatsGrid key={`system-analytics-${refreshKey}-${activePeriod}-${dateRange.start}-${dateRange.end}`}>
                 <StatCard color="#635BFF">

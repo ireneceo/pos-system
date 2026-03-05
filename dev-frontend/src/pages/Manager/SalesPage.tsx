@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
+import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 // Chart libraries temporarily removed - will be added when needed
 
 interface RestaurantSales {
@@ -88,26 +89,6 @@ const Button = styled.button`
 `;
 
 
-const DateRangeSelector = styled.div`
-  display: flex;
-  gap: 8px;
-`;
-
-const DateButton = styled.button<{ active?: boolean }>`
-  padding: 8px 16px;
-  background: ${props => props.active ? '#635BFF' : 'white'};
-  color: ${props => props.active ? 'white' : '#6B7280'};
-  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  
-  &:hover {
-    background: ${props => props.active ? '#5A51E6' : '#F8FAFC'};
-  }
-`;
 
 const Content = styled.div`
   padding: 32px;
@@ -357,7 +338,9 @@ const ActionButton = styled.button`
 const ManagerSalesPage: React.FC = () => {
   // const { } = useAuth();
   const [selectedRestaurant, setSelectedRestaurant] = useState('all');
-  const [dateRange, setDateRange] = useState('today');
+  const [activePeriod, setActivePeriod] = useState<PeriodType>('today');
+  const [dateRangeValues, setDateRangeValues] = useState(() => calculatePeriodDateRange('today'));
+  const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [restaurantSales, setRestaurantSales] = useState<RestaurantSales[]>([]);
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
@@ -367,6 +350,18 @@ const ManagerSalesPage: React.FC = () => {
       setSelectedCurrency(defaultCurrency);
     }
   }, [defaultCurrency]);
+
+  const handlePeriodChange = (period: PeriodType) => {
+    setActivePeriod(period);
+    setIsCustomDateRange(false);
+    setDateRangeValues(calculatePeriodDateRange(period));
+  };
+
+  const handleCalendarRangeSelect = (start: string, end: string) => {
+    setIsCustomDateRange(true);
+    setActivePeriod('all');
+    setDateRangeValues({ start, end });
+  };
 
   useEffect(() => {
     const fetchSalesData = async () => {
@@ -430,7 +425,7 @@ const ManagerSalesPage: React.FC = () => {
   const handleExportData = () => {
     const exportData = {
       date: new Date().toISOString(),
-      dateRange,
+      dateRange: dateRangeValues,
       totalSales: totals.todaySales,
       totalOrders: totals.todayOrders,
       averageOrderValue,
@@ -470,23 +465,14 @@ const ManagerSalesPage: React.FC = () => {
               ))}
             </FilterSelect>
             
-            <DateRangeSelector>
-              <DateButton active={dateRange === 'today'} onClick={() => setDateRange('today')}>
-                Today
-              </DateButton>
-              <DateButton active={dateRange === 'yesterday'} onClick={() => setDateRange('yesterday')}>
-                Yesterday
-              </DateButton>
-              <DateButton active={dateRange === 'week'} onClick={() => setDateRange('week')}>
-                This Week
-              </DateButton>
-              <DateButton active={dateRange === 'month'} onClick={() => setDateRange('month')}>
-                This Month
-              </DateButton>
-              <DateButton active={dateRange === 'custom'} onClick={() => setDateRange('custom')}>
-                Custom Range
-              </DateButton>
-            </DateRangeSelector>
+            <DatePeriodFilter
+              activePeriod={activePeriod}
+              dateRange={dateRangeValues}
+              isCustomDateRange={isCustomDateRange}
+              onPeriodChange={handlePeriodChange}
+              onCalendarRangeSelect={handleCalendarRangeSelect}
+              includeToday
+            />
             
             <Button onClick={handleExportData} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '16px', height: '16px' }}>

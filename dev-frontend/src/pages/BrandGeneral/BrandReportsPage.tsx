@@ -7,6 +7,7 @@ import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/currency';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -51,33 +52,10 @@ const HeaderTitle = styled.h1`
   }
 `;
 
-const DateRangeInput = styled.input`
-  padding: 8px 12px;
-  border: 1px solid #E6EBF1;
-  border-radius: 6px;
-  font-size: 14px;
-  background: white;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
-
-const CustomDateRange = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: 8px;
-`;
-
-const FilterControls = styled.div`
+const FilterControlsWrapper = styled.div`
   background: #FAFBFC;
   padding: 24px 0;
-  margin-bottom: 24px;
+  margin-bottom: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
@@ -86,58 +64,6 @@ const FilterControls = styled.div`
   @media (max-width: 768px) {
     gap: 12px;
     padding: 16px 0;
-  }
-`;
-
-const FilterRow = styled.div`
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-
-  @media (max-width: 768px) {
-    gap: 8px;
-    width: 100%;
-  }
-`;
-
-const DateButton = styled.button<{ active?: boolean }>`
-  padding: 8px 16px;
-  background: ${props => props.active ? '#635BFF' : 'white'};
-  color: ${props => props.active ? 'white' : '#6B7280'};
-  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    background: ${props => props.active ? '#5A51E6' : '#F8FAFC'};
-  }
-`;
-
-const DownloadButton = styled.button`
-  padding: 12px 16px;
-  background: #635BFF;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  &:hover {
-    background: #5A51E6;
-  }
-
-  svg {
-    width: 16px;
-    height: 16px;
   }
 `;
 
@@ -383,7 +309,6 @@ const RankBadge = styled.span<{ rank: number }>`
 
 // Types
 type TabType = 'sales' | 'details' | 'menu' | 'customers' | 'operations' | 'ranking';
-type PeriodType = 'today' | 'week' | 'month' | 'year' | 'all';
 
 interface Brand {
   id: number;
@@ -418,16 +343,8 @@ const BrandReportsPage: React.FC = () => {
   const [activeTab, handleTabChange] = useTabParam<TabType>('ranking');
 
   // Date range state
-  const [activePeriod, setActivePeriod] = useState<PeriodType>('week');
-  const [dateRange, setDateRange] = useState(() => {
-    const today = new Date();
-    const weekAgo = new Date(today);
-    weekAgo.setDate(weekAgo.getDate() - 6);
-    return {
-      start: formatDateString(weekAgo),
-      end: formatDateString(today)
-    };
-  });
+  const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
+  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('month'));
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
 
   // Brand/Restaurant filter state
@@ -1060,22 +977,14 @@ const BrandReportsPage: React.FC = () => {
   const handlePeriodChange = (period: PeriodType) => {
     setActivePeriod(period);
     setIsCustomDateRange(false);
+    setDateRange(calculatePeriodDateRange(period));
+  };
 
-    const now = new Date();
-    let start = new Date(now);
-
-    switch (period) {
-      case 'today': start = new Date(now); break;
-      case 'week': start.setDate(start.getDate() - 6); break;
-      case 'month': start.setDate(start.getDate() - 29); break;
-      case 'year':
-        start.setFullYear(start.getFullYear() - 1);
-        start.setDate(start.getDate() + 1); // 오늘 기준 정확히 365일
-        break;
-      case 'all': start = new Date(now.getFullYear() - 5, 0, 1); break;
-    }
-
-    setDateRange({ start: formatDateString(start), end: formatDateString(now) });
+  // Calendar range select handler
+  const handleCalendarRangeSelect = (start: string, end: string) => {
+    setIsCustomDateRange(true);
+    setActivePeriod('all');
+    setDateRange({ start, end });
   };
 
   // Download handler
@@ -1092,92 +1001,81 @@ const BrandReportsPage: React.FC = () => {
 
   // Filter component
   const FilterComponent = () => (
-    <FilterControls>
-      {/* Brand Filter */}
-      <DropdownContainer>
-        <DropdownInput
-          type="text"
-          placeholder="All Brands"
-          value={brandSearchQuery}
-          onChange={(e) => handleBrandSearch(e.target.value)}
-          onFocus={() => {
-            setShowBrandDropdown(true);
-            if (brandSearchQuery.length === 0) setFilteredBrands(brands.slice(0, 10));
-          }}
-          onBlur={() => setTimeout(() => setShowBrandDropdown(false), 200)}
-        />
-        {selectedBrand !== 'all' && brandSearchQuery && (
-          <ClearButton onClick={handleBrandClear}>×</ClearButton>
-        )}
-        <DropdownMenu show={showBrandDropdown}>
-          <DropdownItem onClick={() => { setSelectedBrand('all'); setBrandSearchQuery(''); setShowBrandDropdown(false); }}>
-            <ItemName>All Brands</ItemName>
-            <ItemDetails>Show all brand data</ItemDetails>
-          </DropdownItem>
-          {filteredBrands.map(brand => (
-            <DropdownItem key={brand.id} onClick={() => handleBrandSelect(brand)}>
-              <ItemName>{brand.name}</ItemName>
-              <ItemDetails>{brand.code} • {brand.currency}</ItemDetails>
+    <>
+      <FilterControlsWrapper>
+        {/* Brand Filter */}
+        <DropdownContainer>
+          <DropdownInput
+            type="text"
+            placeholder="All Brands"
+            value={brandSearchQuery}
+            onChange={(e) => handleBrandSearch(e.target.value)}
+            onFocus={() => {
+              setShowBrandDropdown(true);
+              if (brandSearchQuery.length === 0) setFilteredBrands(brands.slice(0, 10));
+            }}
+            onBlur={() => setTimeout(() => setShowBrandDropdown(false), 200)}
+          />
+          {selectedBrand !== 'all' && brandSearchQuery && (
+            <ClearButton onClick={handleBrandClear}>×</ClearButton>
+          )}
+          <DropdownMenu show={showBrandDropdown}>
+            <DropdownItem onClick={() => { setSelectedBrand('all'); setBrandSearchQuery(''); setShowBrandDropdown(false); }}>
+              <ItemName>All Brands</ItemName>
+              <ItemDetails>Show all brand data</ItemDetails>
             </DropdownItem>
-          ))}
-        </DropdownMenu>
-      </DropdownContainer>
+            {filteredBrands.map(brand => (
+              <DropdownItem key={brand.id} onClick={() => handleBrandSelect(brand)}>
+                <ItemName>{brand.name}</ItemName>
+                <ItemDetails>{brand.code} • {brand.currency}</ItemDetails>
+              </DropdownItem>
+            ))}
+          </DropdownMenu>
+        </DropdownContainer>
 
-      {/* Restaurant Filter */}
-      <DropdownContainer>
-        <DropdownInput
-          type="text"
-          placeholder="All Restaurants"
-          value={restaurantSearchQuery}
-          onChange={(e) => handleRestaurantSearch(e.target.value)}
-          onFocus={() => {
-            setShowRestaurantDropdown(true);
-            let available = restaurants;
-            if (selectedBrand !== 'all') {
-              available = restaurants.filter(r => r.brand_id?.toString() === selectedBrand);
-            }
-            setFilteredRestaurants(available.slice(0, 10));
-          }}
-          onBlur={() => setTimeout(() => setShowRestaurantDropdown(false), 200)}
-        />
-        {selectedRestaurant !== 'all' && restaurantSearchQuery && (
-          <ClearButton onClick={handleRestaurantClear}>×</ClearButton>
-        )}
-        <DropdownMenu show={showRestaurantDropdown}>
-          <DropdownItem onClick={() => { setSelectedRestaurant('all'); setRestaurantSearchQuery(''); setShowRestaurantDropdown(false); }}>
-            <ItemName>All Restaurants</ItemName>
-            <ItemDetails>Show all restaurant data</ItemDetails>
-          </DropdownItem>
-          {filteredRestaurants.map(restaurant => (
-            <DropdownItem key={restaurant.id} onClick={() => handleRestaurantSelect(restaurant)}>
-              <ItemName>{restaurant.name}</ItemName>
-              <ItemDetails>{restaurant.brand_name || 'Independent'}</ItemDetails>
+        {/* Restaurant Filter */}
+        <DropdownContainer>
+          <DropdownInput
+            type="text"
+            placeholder="All Restaurants"
+            value={restaurantSearchQuery}
+            onChange={(e) => handleRestaurantSearch(e.target.value)}
+            onFocus={() => {
+              setShowRestaurantDropdown(true);
+              let available = restaurants;
+              if (selectedBrand !== 'all') {
+                available = restaurants.filter(r => r.brand_id?.toString() === selectedBrand);
+              }
+              setFilteredRestaurants(available.slice(0, 10));
+            }}
+            onBlur={() => setTimeout(() => setShowRestaurantDropdown(false), 200)}
+          />
+          {selectedRestaurant !== 'all' && restaurantSearchQuery && (
+            <ClearButton onClick={handleRestaurantClear}>×</ClearButton>
+          )}
+          <DropdownMenu show={showRestaurantDropdown}>
+            <DropdownItem onClick={() => { setSelectedRestaurant('all'); setRestaurantSearchQuery(''); setShowRestaurantDropdown(false); }}>
+              <ItemName>All Restaurants</ItemName>
+              <ItemDetails>Show all restaurant data</ItemDetails>
             </DropdownItem>
-          ))}
-        </DropdownMenu>
-      </DropdownContainer>
+            {filteredRestaurants.map(restaurant => (
+              <DropdownItem key={restaurant.id} onClick={() => handleRestaurantSelect(restaurant)}>
+                <ItemName>{restaurant.name}</ItemName>
+                <ItemDetails>{restaurant.brand_name || 'Independent'}</ItemDetails>
+              </DropdownItem>
+            ))}
+          </DropdownMenu>
+        </DropdownContainer>
+      </FilterControlsWrapper>
 
-      {/* Date Buttons */}
-      <FilterRow>
-        <DateButton active={activePeriod === 'today' && !isCustomDateRange} onClick={() => handlePeriodChange('today')}>Today</DateButton>
-        <DateButton active={activePeriod === 'week' && !isCustomDateRange} onClick={() => handlePeriodChange('week')}>Week</DateButton>
-        <DateButton active={activePeriod === 'month' && !isCustomDateRange} onClick={() => handlePeriodChange('month')}>Month</DateButton>
-        <DateButton active={activePeriod === 'year' && !isCustomDateRange} onClick={() => handlePeriodChange('year')}>Year</DateButton>
-        <DateButton active={activePeriod === 'all' && !isCustomDateRange} onClick={() => handlePeriodChange('all')}>All</DateButton>
-        <CustomDateRange>
-          <DateRangeInput type="date" value={dateRange.start} onChange={(e) => { setDateRange({ ...dateRange, start: e.target.value }); setIsCustomDateRange(true); }} />
-          <span>to</span>
-          <DateRangeInput type="date" value={dateRange.end} onChange={(e) => { setDateRange({ ...dateRange, end: e.target.value }); setIsCustomDateRange(true); }} />
-        </CustomDateRange>
-      </FilterRow>
-
-      <DownloadButton onClick={handleDownloadReport}>
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-        Download
-      </DownloadButton>
-    </FilterControls>
+      <DatePeriodFilter
+        activePeriod={activePeriod}
+        dateRange={dateRange}
+        isCustomDateRange={isCustomDateRange}
+        onPeriodChange={handlePeriodChange}
+        onCalendarRangeSelect={handleCalendarRangeSelect}
+      />
+    </>
   );
 
   return (
@@ -1533,22 +1431,13 @@ const BrandReportsPage: React.FC = () => {
           {/* Sales Ranking Tab */}
           <div style={{ display: activeTab === 'ranking' ? 'block' : 'none' }}>
             {/* Date filter only - no brand/restaurant filters needed for ranking */}
-            <FilterControls>
-              <FilterRow>
-                <DateButton active={activePeriod === 'today'} onClick={() => handlePeriodChange('today')}>Today</DateButton>
-                <DateButton active={activePeriod === 'week'} onClick={() => handlePeriodChange('week')}>This Week</DateButton>
-                <DateButton active={activePeriod === 'month'} onClick={() => handlePeriodChange('month')}>This Month</DateButton>
-                <DateButton active={activePeriod === 'year'} onClick={() => handlePeriodChange('year')}>This Year</DateButton>
-                <DateButton active={activePeriod === 'all'} onClick={() => handlePeriodChange('all')}>All Time</DateButton>
-                {isCustomDateRange && (
-                  <CustomDateRange>
-                    <DateRangeInput type="date" value={dateRange.start} onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))} />
-                    <span>~</span>
-                    <DateRangeInput type="date" value={dateRange.end} onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))} />
-                  </CustomDateRange>
-                )}
-              </FilterRow>
-            </FilterControls>
+            <DatePeriodFilter
+              activePeriod={activePeriod}
+              dateRange={dateRange}
+              isCustomDateRange={isCustomDateRange}
+              onPeriodChange={handlePeriodChange}
+              onCalendarRangeSelect={handleCalendarRangeSelect}
+            />
 
             {/* Brand Rankings */}
             <RankingCard>

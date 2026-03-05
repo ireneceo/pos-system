@@ -15,79 +15,25 @@ import {
   StatDescription
 } from '../../components/UI';
 import { formatCurrency as formatCurrencyUtil } from '../../utils/currency';
+import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 
-// Filter styles
-const FilterControls = styled.div`
-  background: #FAFBFC;
-  padding: 24px 0;
-  margin-bottom: 24px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  align-items: center;
 
-  @media (max-width: 768px) {
-    gap: 12px;
-    padding: 16px 0;
-  }
-`;
-
-const FilterRow = styled.div`
+const SortRow = styled.div`
   display: flex;
   gap: 8px;
   align-items: center;
-  flex-wrap: wrap;
+  margin-bottom: 24px;
 
   @media (max-width: 768px) {
     gap: 6px;
-    width: 100%;
   }
 `;
 
-const FilterLabel = styled.span`
+const SortLabel = styled.span`
   font-size: 13px;
   font-weight: 500;
   color: #6B7280;
   margin-right: 4px;
-`;
-
-const DateButton = styled.button<{ active?: boolean }>`
-  padding: 8px 14px;
-  background: ${props => props.active ? '#7C3AED' : 'white'};
-  color: ${props => props.active ? 'white' : '#6B7280'};
-  border: 1px solid ${props => props.active ? '#7C3AED' : '#E6EBF1'};
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    background: ${props => props.active ? '#6D28D9' : '#F8FAFC'};
-  }
-`;
-
-const DateRangeInput = styled.input`
-  padding: 8px 12px;
-  border: 1px solid #E6EBF1;
-  border-radius: 6px;
-  font-size: 13px;
-  background: white;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:focus {
-    outline: none;
-    border-color: #7C3AED;
-    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
-  }
-`;
-
-const CustomDateRange = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: 8px;
 `;
 
 const FilterSelect = styled.select`
@@ -291,27 +237,9 @@ interface RestaurantPerformanceData {
   avgServiceTime: number;
 }
 
-type PeriodType = 'today' | 'week' | 'month' | 'year' | 'all';
-
-// Helper function to format date string
-const formatDateString = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
 const OwnerPerformance: React.FC = () => {
   const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
-  const [dateRange, setDateRange] = useState(() => {
-    const today = new Date();
-    const monthAgo = new Date(today);
-    monthAgo.setMonth(monthAgo.getMonth() - 1);
-    return {
-      start: formatDateString(monthAgo),
-      end: formatDateString(today)
-    };
-  });
+  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('month'));
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [selectedMetric, setSelectedMetric] = useState('sales');
 
@@ -417,35 +345,13 @@ const OwnerPerformance: React.FC = () => {
   const handlePeriodChange = (period: PeriodType) => {
     setActivePeriod(period);
     setIsCustomDateRange(false);
+    setDateRange(calculatePeriodDateRange(period));
+  };
 
-    const today = new Date();
-    let start = new Date();
-
-    switch (period) {
-      case 'today':
-        start = today;
-        break;
-      case 'week':
-        start = new Date(today);
-        start.setDate(start.getDate() - 6);
-        break;
-      case 'month':
-        start = new Date(today);
-        start.setMonth(start.getMonth() - 1);
-        break;
-      case 'year':
-        start = new Date(today);
-        start.setFullYear(start.getFullYear() - 1);
-        break;
-      case 'all':
-        start = new Date('2020-01-01');
-        break;
-    }
-
-    setDateRange({
-      start: formatDateString(start),
-      end: formatDateString(today)
-    });
+  const handleCalendarRangeSelect = (start: string, end: string) => {
+    setIsCustomDateRange(true);
+    setActivePeriod('all');
+    setDateRange({ start, end });
   };
 
   // Calculate previous period date range for growth comparison
@@ -459,9 +365,10 @@ const OwnerPerformance: React.FC = () => {
     const prevStart = new Date(prevEnd);
     prevStart.setDate(prevStart.getDate() - periodDays);
 
+    const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     return {
-      start: formatDateString(prevStart),
-      end: formatDateString(prevEnd)
+      start: fmt(prevStart),
+      end: fmt(prevEnd)
     };
   }, [dateRange.start, dateRange.end]);
 
@@ -602,17 +509,7 @@ const OwnerPerformance: React.FC = () => {
     return formatCurrencyUtil(amount, currencyCode);
   };
 
-  const getPeriodLabel = () => {
-    if (isCustomDateRange) return `${dateRange.start} to ${dateRange.end}`;
-    switch (activePeriod) {
-      case 'today': return 'Today';
-      case 'week': return 'This Week';
-      case 'month': return 'This Month';
-      case 'year': return 'This Year';
-      case 'all': return 'All Time';
-      default: return '';
-    }
-  };
+  const periodLabel = isCustomDateRange ? `${dateRange.start} ~ ${dateRange.end}` : activePeriod;
 
   const handleExportReport = () => {
     if (sortedRestaurants.length === 0) return;
@@ -653,65 +550,33 @@ const OwnerPerformance: React.FC = () => {
 
         <Content>
           {/* Filter Controls */}
-          <FilterControls>
-            <FilterRow>
-              <FilterLabel>Period:</FilterLabel>
-              <DateButton active={activePeriod === 'today' && !isCustomDateRange} onClick={() => handlePeriodChange('today')}>
-                Today
-              </DateButton>
-              <DateButton active={activePeriod === 'week' && !isCustomDateRange} onClick={() => handlePeriodChange('week')}>
-                Week
-              </DateButton>
-              <DateButton active={activePeriod === 'month' && !isCustomDateRange} onClick={() => handlePeriodChange('month')}>
-                Month
-              </DateButton>
-              <DateButton active={activePeriod === 'year' && !isCustomDateRange} onClick={() => handlePeriodChange('year')}>
-                Year
-              </DateButton>
-              <DateButton active={activePeriod === 'all' && !isCustomDateRange} onClick={() => handlePeriodChange('all')}>
-                All
-              </DateButton>
-              <CustomDateRange>
-                <DateRangeInput
-                  type="date"
-                  value={dateRange.start}
-                  onChange={(e) => {
-                    setDateRange({ ...dateRange, start: e.target.value });
-                    setIsCustomDateRange(true);
-                  }}
-                />
-                <span>to</span>
-                <DateRangeInput
-                  type="date"
-                  value={dateRange.end}
-                  onChange={(e) => {
-                    setDateRange({ ...dateRange, end: e.target.value });
-                    setIsCustomDateRange(true);
-                  }}
-                />
-              </CustomDateRange>
-            </FilterRow>
+          <DatePeriodFilter
+            activePeriod={activePeriod}
+            dateRange={dateRange}
+            isCustomDateRange={isCustomDateRange}
+            onPeriodChange={handlePeriodChange}
+            onCalendarRangeSelect={handleCalendarRangeSelect}
+          />
 
-            <FilterRow>
-              <FilterLabel>Sort by:</FilterLabel>
-              <FilterSelect
-                value={selectedMetric}
-                onChange={(e) => setSelectedMetric(e.target.value)}
-              >
-                <option value="sales">Revenue</option>
-                <option value="growth">Growth</option>
-                <option value="orders">Orders</option>
-                <option value="customers">Customers</option>
-              </FilterSelect>
-            </FilterRow>
-          </FilterControls>
+          <SortRow>
+            <SortLabel>Sort by:</SortLabel>
+            <FilterSelect
+              value={selectedMetric}
+              onChange={(e) => setSelectedMetric(e.target.value)}
+            >
+              <option value="sales">Revenue</option>
+              <option value="growth">Growth</option>
+              <option value="orders">Orders</option>
+              <option value="customers">Customers</option>
+            </FilterSelect>
+          </SortRow>
 
           {/* Stats Grid - Row 1 */}
           <StatsGrid>
             <StatCard color="#7C3AED">
               <StatValue>{formatCurrency(stats.totalSales)}</StatValue>
               <StatLabel>Total Revenue</StatLabel>
-              <StatDescription>{getPeriodLabel()}</StatDescription>
+              <StatDescription>{periodLabel}</StatDescription>
             </StatCard>
             <StatCard color="#10B981">
               <StatValue>{stats.totalOrders.toLocaleString()}</StatValue>
@@ -816,7 +681,7 @@ const OwnerPerformance: React.FC = () => {
               </PerformanceGrid>
 
               <RankingSection>
-                <SectionTitle>Restaurant Ranking ({getPeriodLabel()})</SectionTitle>
+                <SectionTitle>Restaurant Ranking ({periodLabel})</SectionTitle>
                 {sortedRestaurants.slice(0, 10).map((restaurant, index) => (
                   <RankingItem key={restaurant.id}>
                     <RankNumber rank={index + 1}>{index + 1}</RankNumber>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { EmptyState as CategoryEmptyState } from '../../components/UI/TableComponents';
 import { useSearchParams } from 'react-router-dom';
+import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { formatCurrency, normalizeCurrencyCode } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -105,6 +106,14 @@ interface Invoice {
   discountAmount?: number;
   discountReason?: string;
   subtotalBeforeDiscount?: number;
+  isModified?: boolean;
+  modificationHistory?: Array<{
+    modified_at: string;
+    modified_by: number;
+    modified_by_name: string;
+    changes: Record<string, { from: any; to: any }>;
+    reason: string;
+  }>;
 }
 
 
@@ -196,25 +205,6 @@ const FilterBarWrapper = styled.div`
   @media (max-width: 768px) {
     flex-direction: column;
     gap: 12px;
-  }
-`;
-
-const FiltersLeft = styled.div`
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
-  flex: 1;
-
-  @media (max-width: 600px) {
-    flex-direction: column;
-    width: 100%;
-
-    > * {
-      width: 100% !important;
-      min-width: 100% !important;
-      max-width: 100% !important;
-    }
   }
 `;
 
@@ -495,42 +485,6 @@ const SectionTitle = styled.h3`
 `;
 
 // Period filter components
-const PeriodFilterGroup = styled.div`
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-`;
-
-const DateButton = styled.button<{ active?: boolean }>`
-  padding: 8px 16px;
-  background: ${props => props.active ? '#635BFF' : '#FFFFFF'};
-  color: ${props => props.active ? '#FFFFFF' : '#6B7C93'};
-  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    background: ${props => props.active ? '#5A51E6' : '#F8FAFC'};
-    border-color: ${props => props.active ? '#5A51E6' : '#CBD5E1'};
-  }
-`;
-
-const DateInput = styled.input`
-  padding: 8px 12px;
-  border: 1px solid #E6EBF1;
-  border-radius: 6px;
-  font-size: 14px;
-  color: #1F2937;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-  }
-`;
 
 const Modal = styled.div`
   position: fixed;
@@ -711,7 +665,6 @@ const SummaryRow = styled.div<{ highlight?: boolean }>`
 
 type TabType = 'to_pay' | 'paid' | 'issued' | 'categories';
 
-type PeriodType = 'week' | 'month' | 'year' | 'all';
 
 const BrandInvoicesPage: React.FC = () => {
   const { operationSettings } = useStore();
@@ -719,22 +672,9 @@ const BrandInvoicesPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activePeriod, setActivePeriod] = useState<PeriodType>('all');
+  const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
-  const [dateRange, setDateRange] = useState(() => {
-    // Default to all time
-    const today = new Date();
-    const formatDate = (d: Date) => {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-    return {
-      start: '2000-01-01',
-      end: formatDate(today)
-    };
-  });
+  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('month'));
   const [showCreateInvoiceModal, setShowCreateInvoiceModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -759,51 +699,13 @@ const BrandInvoicesPage: React.FC = () => {
   const handlePeriodChange = (period: PeriodType) => {
     setActivePeriod(period);
     setIsCustomDateRange(false);
-
-    const now = new Date();
-    let start = new Date();
-    let end = new Date();
-
-    const formatDate = (d: Date) => {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-
-    switch (period) {
-      case 'week':
-        // Start of week (Sunday)
-        start.setDate(now.getDate() - now.getDay());
-        break;
-      case 'month':
-        // Start of month
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        break;
-      case 'year':
-        // Start of year
-        start = new Date(now.getFullYear(), 0, 1);
-        end = new Date(now.getFullYear(), 11, 31);
-        break;
-      case 'all':
-        // All time - set very old start date
-        start = new Date(2000, 0, 1);
-        break;
-    }
-
-    setDateRange({
-      start: formatDate(start),
-      end: formatDate(end)
-    });
+    setDateRange(calculatePeriodDateRange(period));
   };
 
-  const handleDateRangeChange = (type: 'start' | 'end', value: string) => {
+  const handleCalendarRangeSelect = (start: string, end: string) => {
     setIsCustomDateRange(true);
-    setDateRange(prev => ({
-      ...prev,
-      [type]: value
-    }));
+    setActivePeriod('all');
+    setDateRange({ start, end });
   };
 
   // State for invoices to pay (from system admin)
@@ -812,110 +714,39 @@ const BrandInvoicesPage: React.FC = () => {
 
   // To Pay tab filters (separate from Issued tab)
   const [toPaySearchTerm, setToPaySearchTerm] = useState('');
-  const [toPayActivePeriod, setToPayActivePeriod] = useState<PeriodType>('all');
+  const [toPayActivePeriod, setToPayActivePeriod] = useState<PeriodType>('month');
   const [toPayIsCustomDateRange, setToPayIsCustomDateRange] = useState(false);
-  const [toPayDateRange, setToPayDateRange] = useState({
-    start: '',
-    end: ''
-  });
+  const [toPayDateRange, setToPayDateRange] = useState(() => calculatePeriodDateRange('month'));
 
   // To Pay period filter handlers
   const handleToPayPeriodChange = (period: PeriodType) => {
     setToPayActivePeriod(period);
     setToPayIsCustomDateRange(false);
-
-    const now = new Date();
-    let start = new Date();
-    let end = new Date();
-
-    const formatDate = (d: Date) => {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-
-    switch (period) {
-      case 'week':
-        start.setDate(now.getDate() - now.getDay());
-        break;
-      case 'month':
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        break;
-      case 'year':
-        start = new Date(now.getFullYear(), 0, 1);
-        end = new Date(now.getFullYear(), 11, 31);
-        break;
-      case 'all':
-        start = new Date(2000, 0, 1);
-        break;
-    }
-
-    setToPayDateRange({
-      start: formatDate(start),
-      end: formatDate(end)
-    });
+    setToPayDateRange(calculatePeriodDateRange(period));
   };
 
-  const handleToPayDateRangeChange = (type: 'start' | 'end', value: string) => {
+  const handleToPayCalendarRangeSelect = (start: string, end: string) => {
     setToPayIsCustomDateRange(true);
-    setToPayDateRange(prev => ({
-      ...prev,
-      [type]: value
-    }));
+    setToPayActivePeriod('all');
+    setToPayDateRange({ start, end });
   };
 
   // Paid tab filters
   const [paidSearchTerm, setPaidSearchTerm] = useState('');
-  const [paidActivePeriod, setPaidActivePeriod] = useState<PeriodType>('all');
+  const [paidActivePeriod, setPaidActivePeriod] = useState<PeriodType>('month');
   const [paidIsCustomDateRange, setPaidIsCustomDateRange] = useState(false);
-  const [paidDateRange, setPaidDateRange] = useState({ start: '', end: '' });
+  const [paidDateRange, setPaidDateRange] = useState(() => calculatePeriodDateRange('month'));
 
   const handlePaidPeriodChange = (period: PeriodType) => {
     setPaidActivePeriod(period);
     setPaidIsCustomDateRange(false);
-
-    const now = new Date();
-    let start = new Date();
-    let end = new Date();
-
-    const formatDate = (d: Date) => {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-
-    switch (period) {
-      case 'week':
-        start.setDate(now.getDate() - now.getDay());
-        break;
-      case 'month':
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        break;
-      case 'year':
-        start = new Date(now.getFullYear(), 0, 1);
-        end = new Date(now.getFullYear(), 11, 31);
-        break;
-      case 'all':
-        start = new Date(2000, 0, 1);
-        break;
-    }
-
-    setPaidDateRange({
-      start: period === 'all' ? '' : formatDate(start),
-      end: period === 'all' ? '' : formatDate(end)
-    });
+    setPaidDateRange(calculatePeriodDateRange(period));
   };
 
-  const handlePaidDateRangeChange = (type: 'start' | 'end', value: string) => {
+  const handlePaidCalendarRangeSelect = (start: string, end: string) => {
     setPaidIsCustomDateRange(true);
-    setPaidDateRange(prev => ({
-      ...prev,
-      [type]: value
-    }));
+    setPaidActivePeriod('all');
+    setPaidDateRange({ start, end });
   };
 
   // Payment submission states
@@ -940,6 +771,7 @@ const BrandInvoicesPage: React.FC = () => {
   const [categoryToDelete, setCategoryToDelete] = useState<InvoiceCategory | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [editInvoice, setEditInvoice] = useState<any>(null);
+  const [editModificationReason, setEditModificationReason] = useState('');
   const [editSearchQuery, setEditSearchQuery] = useState('');
   const [editSearchResults, setEditSearchResults] = useState<{managers: Manager[], restaurants: Restaurant[]}>({managers: [], restaurants: []});
   const [showEditSearchDropdown, setShowEditSearchDropdown] = useState(false);
@@ -951,6 +783,7 @@ const BrandInvoicesPage: React.FC = () => {
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState<{type: 'manager' | 'restaurant', data: Manager | Restaurant} | null>(null);
   const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
+  const [, setCurrencyConfig] = useState<Record<string, any>>({});
   const [invoiceCategories, setInvoiceCategories] = useState<InvoiceCategory[]>([]);
   const [additionalChargesMap, setAdditionalChargesMap] = useState<{ [currency: string]: AdditionalChargeConfig[] }>({});
   const [newInvoice, setNewInvoice] = useState({
@@ -2481,6 +2314,7 @@ const BrandInvoicesPage: React.FC = () => {
       }
     }
 
+    setEditModificationReason('');
     setShowEditModal(true);
   };
 
@@ -2523,6 +2357,12 @@ const BrandInvoicesPage: React.FC = () => {
   const handleSaveEdit = async () => {
     if (!selectedInvoice || !editInvoice) return;
 
+    if (selectedInvoice.type === 'automatic' && !editModificationReason.trim()) {
+      setSuccessMessage('Please enter a reason for modifying this invoice.');
+      setShowSuccessModal(true);
+      return;
+    }
+
     try {
       const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/invoices/${selectedInvoice.id}`, {
@@ -2539,27 +2379,13 @@ const BrandInvoicesPage: React.FC = () => {
           status: editInvoice.status,
           payerType: editInvoice.payerType,
           payerId: editInvoice.payerId,
-          items: editInvoice.items
+          items: editInvoice.items,
+          modificationReason: editModificationReason.trim() || undefined
         }),
       });
 
       if (response.ok) {
-        const updatedInvoice = {
-          ...selectedInvoice,
-          amount: parseFloat(editInvoice.amount),
-          tax: parseFloat(editInvoice.tax),
-          total: parseFloat(editInvoice.total),
-          dueDate: editInvoice.dueDate,
-          status: editInvoice.status,
-          payerType: editInvoice.payerType,
-          payerId: editInvoice.payerId,
-          items: editInvoice.items
-        };
-
-        setInvoices(invoices.map(inv =>
-          inv.id === selectedInvoice.id ? updatedInvoice : inv
-        ));
-
+        await fetchInvoices();
         setShowEditModal(false);
         setSelectedInvoice(null);
         setEditInvoice(null);
@@ -2883,51 +2709,19 @@ const BrandInvoicesPage: React.FC = () => {
         {activeTab === 'issued' && (
           <>
         <FilterBarWrapper>
-          <FiltersLeft>
+          <DatePeriodFilter
+            activePeriod={activePeriod}
+            dateRange={dateRange}
+            isCustomDateRange={isCustomDateRange}
+            onPeriodChange={handlePeriodChange}
+            onCalendarRangeSelect={handleCalendarRangeSelect}
+          >
             <SearchInput
               placeholder="Search invoice, status, company, type..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-
-            <PeriodFilterGroup>
-              <DateButton
-                active={activePeriod === 'week' && !isCustomDateRange}
-                onClick={() => handlePeriodChange('week')}
-              >
-                Week
-              </DateButton>
-              <DateButton
-                active={activePeriod === 'month' && !isCustomDateRange}
-                onClick={() => handlePeriodChange('month')}
-              >
-                Month
-              </DateButton>
-              <DateButton
-                active={activePeriod === 'year' && !isCustomDateRange}
-                onClick={() => handlePeriodChange('year')}
-              >
-                Year
-              </DateButton>
-              <DateButton
-                active={activePeriod === 'all' && !isCustomDateRange}
-                onClick={() => handlePeriodChange('all')}
-              >
-                All
-              </DateButton>
-
-              <DateInput
-                type="date"
-                value={dateRange.start}
-                onChange={(e) => handleDateRangeChange('start', e.target.value)}
-              />
-              <DateInput
-                type="date"
-                value={dateRange.end}
-                onChange={(e) => handleDateRangeChange('end', e.target.value)}
-              />
-            </PeriodFilterGroup>
-          </FiltersLeft>
+          </DatePeriodFilter>
           <FiltersRight>
             <Button variant="primary" onClick={handleCreateInvoice}>Create Invoice</Button>
           </FiltersRight>
@@ -2973,6 +2767,9 @@ const BrandInvoicesPage: React.FC = () => {
                     <StatusBadge status={getEffectiveStatus(invoice)}>
                       {getStatusDisplay(getEffectiveStatus(invoice))}
                     </StatusBadge>
+                    {invoice.isModified && (
+                      <span style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle' }}>Modified</span>
+                    )}
                   </DataTableCell>
                   <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
                   <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
@@ -2981,9 +2778,7 @@ const BrandInvoicesPage: React.FC = () => {
                       <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</LocalActionButton>
                       {invoice.status === 'draft' && (
                         <>
-                          {invoice.type !== 'automatic' && (
-                            <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
-                          )}
+                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
                           <LocalActionButton variant="success" onClick={() => handleSendInvoice(invoice)} title="Send Invoice">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <line x1="22" y1="2" x2="11" y2="13"/>
@@ -2997,9 +2792,7 @@ const BrandInvoicesPage: React.FC = () => {
                       )}
                       {(invoice.status === 'pending_payment' || invoice.status === '' || !invoice.status) && (
                         <>
-                          {invoice.type !== 'automatic' && (
-                            <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
-                          )}
+                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
                           <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -3054,9 +2847,7 @@ const BrandInvoicesPage: React.FC = () => {
                       )}
                       {invoice.status === 'overdue' && (
                         <>
-                          {invoice.type !== 'automatic' && (
-                            <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
-                          )}
+                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
                           <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -3134,53 +2925,19 @@ const BrandInvoicesPage: React.FC = () => {
 
         {activeTab === 'to_pay' && (
           <>
-            <FilterBarWrapper>
-              <FiltersLeft>
-                <SearchInput
-                  placeholder="Search invoice, status, issuer..."
-                  value={toPaySearchTerm}
-                  onChange={(e) => setToPaySearchTerm(e.target.value)}
-                />
-
-                <PeriodFilterGroup>
-                  <DateButton
-                    active={toPayActivePeriod === 'week' && !toPayIsCustomDateRange}
-                    onClick={() => handleToPayPeriodChange('week')}
-                  >
-                    Week
-                  </DateButton>
-                  <DateButton
-                    active={toPayActivePeriod === 'month' && !toPayIsCustomDateRange}
-                    onClick={() => handleToPayPeriodChange('month')}
-                  >
-                    Month
-                  </DateButton>
-                  <DateButton
-                    active={toPayActivePeriod === 'year' && !toPayIsCustomDateRange}
-                    onClick={() => handleToPayPeriodChange('year')}
-                  >
-                    Year
-                  </DateButton>
-                  <DateButton
-                    active={toPayActivePeriod === 'all' && !toPayIsCustomDateRange}
-                    onClick={() => handleToPayPeriodChange('all')}
-                  >
-                    All
-                  </DateButton>
-
-                  <DateInput
-                    type="date"
-                    value={toPayDateRange.start}
-                    onChange={(e) => handleToPayDateRangeChange('start', e.target.value)}
-                  />
-                  <DateInput
-                    type="date"
-                    value={toPayDateRange.end}
-                    onChange={(e) => handleToPayDateRangeChange('end', e.target.value)}
-                  />
-                </PeriodFilterGroup>
-              </FiltersLeft>
-            </FilterBarWrapper>
+            <DatePeriodFilter
+              activePeriod={toPayActivePeriod}
+              dateRange={toPayDateRange}
+              isCustomDateRange={toPayIsCustomDateRange}
+              onPeriodChange={handleToPayPeriodChange}
+              onCalendarRangeSelect={handleToPayCalendarRangeSelect}
+            >
+              <SearchInput
+                placeholder="Search invoice, status, issuer..."
+                value={toPaySearchTerm}
+                onChange={(e) => setToPaySearchTerm(e.target.value)}
+              />
+            </DatePeriodFilter>
 
             <DataTableContainer>
               <DataTable>
@@ -3223,6 +2980,9 @@ const BrandInvoicesPage: React.FC = () => {
                           <StatusBadge status={getEffectiveStatus(invoice)}>
                             {getStatusDisplay(getEffectiveStatus(invoice))}
                           </StatusBadge>
+                          {invoice.isModified && (
+                            <span style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle' }}>Modified</span>
+                          )}
                         </DataTableCell>
                         <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
                         <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
@@ -3279,53 +3039,19 @@ const BrandInvoicesPage: React.FC = () => {
 
         {activeTab === 'paid' && (
           <>
-            <FilterBarWrapper>
-              <FiltersLeft>
-                <SearchInput
-                  placeholder="Search invoice, issuer, restaurant..."
-                  value={paidSearchTerm}
-                  onChange={(e) => setPaidSearchTerm(e.target.value)}
-                />
-
-                <PeriodFilterGroup>
-                  <DateButton
-                    active={paidActivePeriod === 'week' && !paidIsCustomDateRange}
-                    onClick={() => handlePaidPeriodChange('week')}
-                  >
-                    Week
-                  </DateButton>
-                  <DateButton
-                    active={paidActivePeriod === 'month' && !paidIsCustomDateRange}
-                    onClick={() => handlePaidPeriodChange('month')}
-                  >
-                    Month
-                  </DateButton>
-                  <DateButton
-                    active={paidActivePeriod === 'year' && !paidIsCustomDateRange}
-                    onClick={() => handlePaidPeriodChange('year')}
-                  >
-                    Year
-                  </DateButton>
-                  <DateButton
-                    active={paidActivePeriod === 'all' && !paidIsCustomDateRange}
-                    onClick={() => handlePaidPeriodChange('all')}
-                  >
-                    All
-                  </DateButton>
-
-                  <DateInput
-                    type="date"
-                    value={paidDateRange.start}
-                    onChange={(e) => handlePaidDateRangeChange('start', e.target.value)}
-                  />
-                  <DateInput
-                    type="date"
-                    value={paidDateRange.end}
-                    onChange={(e) => handlePaidDateRangeChange('end', e.target.value)}
-                  />
-                </PeriodFilterGroup>
-              </FiltersLeft>
-            </FilterBarWrapper>
+            <DatePeriodFilter
+              activePeriod={paidActivePeriod}
+              dateRange={paidDateRange}
+              isCustomDateRange={paidIsCustomDateRange}
+              onPeriodChange={handlePaidPeriodChange}
+              onCalendarRangeSelect={handlePaidCalendarRangeSelect}
+            >
+              <SearchInput
+                placeholder="Search invoice, issuer, restaurant..."
+                value={paidSearchTerm}
+                onChange={(e) => setPaidSearchTerm(e.target.value)}
+              />
+            </DatePeriodFilter>
 
             <DataTableContainer>
               <DataTable>
@@ -4105,6 +3831,9 @@ const BrandInvoicesPage: React.FC = () => {
                     <StatusBadge status={selectedInvoice.status} style={{ marginTop: '8px' }}>
                       {getStatusDisplay(selectedInvoice.status)}
                     </StatusBadge>
+                    {selectedInvoice.isModified && (
+                      <span style={{ display: 'inline-block', marginTop: '4px', padding: '2px 8px', fontSize: '11px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px' }}>Modified</span>
+                    )}
                   </div>
                 </div>
 
@@ -4235,6 +3964,26 @@ const BrandInvoicesPage: React.FC = () => {
                     {displayCompany?.registrationNumber && <span>Reg No: {displayCompany.registrationNumber}</span>}
                     {displayCompany?.registrationNumber && displayCompany?.taxNumber && <span> | </span>}
                     {displayCompany?.taxNumber && <span>Tax No: {displayCompany.taxNumber}</span>}
+                  </div>
+                )}
+
+                {/* Modification History in View Modal */}
+                {selectedInvoice.isModified && selectedInvoice.modificationHistory && selectedInvoice.modificationHistory.length > 0 && (
+                  <div style={{ marginTop: '20px', padding: '16px', background: '#FEF3C7', borderRadius: '8px', border: '1px solid #FDE68A' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#92400E', marginBottom: '12px' }}>Modification History</div>
+                    {selectedInvoice.modificationHistory.map((mod, idx) => (
+                      <div key={idx} style={{ fontSize: '12px', color: '#78350F', marginBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '10px' : '0', paddingBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '10px' : '0', borderBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '1px solid #FDE68A' : 'none' }}>
+                        <div style={{ fontWeight: 500 }}>{new Date(mod.modified_at).toLocaleString()} - {mod.modified_by_name}</div>
+                        {mod.reason && <div style={{ marginTop: '3px' }}>Reason: {mod.reason}</div>}
+                        {Object.keys(mod.changes).length > 0 && (
+                          <div style={{ marginTop: '3px', color: '#92400E' }}>
+                            {Object.entries(mod.changes).map(([field, change]) => (
+                              <div key={field}>{field}: {String(change.from)} → {String(change.to)}</div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </ModalBody>
@@ -4612,6 +4361,36 @@ const BrandInvoicesPage: React.FC = () => {
                     <span><strong>{formatCurrency(parseFloat(editInvoice.total || '0'), editInvoice.currency || 'MYR')}</strong></span>
                   </SummaryRow>
                 </InvoiceSummary>
+
+                {/* Modification Reason */}
+                <FormGroup style={{ marginTop: '16px' }}>
+                  <FormLabel>Modification Reason {selectedInvoice?.type === 'automatic' && <span style={{ color: '#EF4444' }}>*</span>}</FormLabel>
+                  <FormTextarea
+                    value={editModificationReason}
+                    onChange={(e) => setEditModificationReason(e.target.value)}
+                    placeholder="Enter reason for modification..."
+                    rows={2}
+                  />
+                </FormGroup>
+
+                {selectedInvoice?.modificationHistory && selectedInvoice.modificationHistory.length > 0 && (
+                  <div style={{ marginTop: '16px', padding: '12px', background: '#FEF3C7', borderRadius: '8px', border: '1px solid #FDE68A' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#92400E', marginBottom: '8px' }}>Modification History</div>
+                    {selectedInvoice.modificationHistory.map((mod, idx) => (
+                      <div key={idx} style={{ fontSize: '12px', color: '#78350F', marginBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '8px' : '0', paddingBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '8px' : '0', borderBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '1px solid #FDE68A' : 'none' }}>
+                        <div style={{ fontWeight: 500 }}>{new Date(mod.modified_at).toLocaleString()} - {mod.modified_by_name}</div>
+                        {mod.reason && <div style={{ marginTop: '2px' }}>Reason: {mod.reason}</div>}
+                        {Object.keys(mod.changes).length > 0 && (
+                          <div style={{ marginTop: '2px', color: '#92400E' }}>
+                            {Object.entries(mod.changes).map(([field, change]) => (
+                              <span key={field} style={{ marginRight: '8px' }}>{field}: {String(change.from)} → {String(change.to)}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </ModalBody>
               <ModalFooter>
                 <Button variant="secondary" onClick={() => setShowEditModal(false)}>

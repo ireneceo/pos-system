@@ -193,6 +193,18 @@ Invoice.init({
     allowNull: true,
     defaultValue: [],
     comment: 'Array of additional charges: [{name: "Tax", rate: 6, amount: 6.00}, ...]'
+  },
+  // Modification Tracking
+  is_modified: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    comment: 'Whether this invoice has been modified after issuance'
+  },
+  modification_history: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+    comment: 'Array of modification records: [{modified_at, modified_by, modified_by_name, changes: {field: {from, to}}, reason}]'
   }
 }, {
   sequelize: database.sequelize,

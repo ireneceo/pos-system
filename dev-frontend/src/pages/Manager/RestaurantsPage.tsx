@@ -1282,11 +1282,6 @@ const ManagerRestaurantsPage: React.FC = () => {
           </StatsGrid>
 
           <PageFilterWrapper>
-            <PageSearchInput
-              placeholder="Search restaurants..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
             <DropdownContainer>
               <DropdownInput
                 type="text"
@@ -1335,6 +1330,11 @@ const ManagerRestaurantsPage: React.FC = () => {
               <option value="suspended">Suspended</option>
               <option value="cancelled">Cancelled</option>
             </PageFilterSelect>
+            <PageSearchInput
+              placeholder="Search restaurants..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </PageFilterWrapper>
 
           <RestaurantGrid>

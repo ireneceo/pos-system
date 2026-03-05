@@ -783,12 +783,7 @@ const RestaurantsPage: React.FC = () => {
   };
 
   useEffect(() => {
-    console.log('🎯 RestaurantsPage useEffect triggered');
-    console.log('🎯 searchParams:', searchParams.toString());
-
-    fetchRestaurants();
-    fetchPlans();
-    fetchBrands();
+    Promise.all([fetchRestaurants(), fetchPlans(), fetchBrands()]);
 
     // URL 파라미터에서 매니저 ID를 읽어서 필터 설정
     const managerId = searchParams.get('managerId');
@@ -853,34 +848,24 @@ const RestaurantsPage: React.FC = () => {
 
   const fetchRestaurants = async () => {
     try {
-      console.log('🔄 Fetching restaurants from API (using same method as StaffManagementPage)...');
-
       const token = localStorage.getItem('auth_token');
       const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
 
-      // Use exact same method as StaffManagementPage and ManagersPage - direct fetch
-      const restaurantsResponse = await fetch('/api/restaurants', { headers });
-      console.log('📡 Restaurants API response status:', restaurantsResponse.status);
+      const [restaurantsResponse, managersResponse] = await Promise.all([
+        fetch('/api/restaurants', { headers }),
+        fetch('/api/users?role=Manager', { headers })
+      ]);
 
       if (restaurantsResponse.ok) {
         const restaurantsData = await restaurantsResponse.json();
-        console.log('✅ Restaurants API response:', restaurantsData);
-
-        // Fetch managers from API for dropdown - MUST include auth token
-        const managersResponse = await fetch('/api/users?role=Manager', { headers });
-        console.log('📡 Managers API response status:', managersResponse.status);
-
         const managersData = managersResponse.ok ? await managersResponse.json() : [];
-        console.log('✅ Managers API response:', managersData);
 
-        // Handle both data array and direct array like StaffManagementPage
         const restaurantsArray = restaurantsData.data || restaurantsData;
         const managersArray = managersData.data || managersData;
 
         const restaurants = Array.isArray(restaurantsArray) ? restaurantsArray : [];
         const managers = Array.isArray(managersArray) ? managersArray : [];
 
-        console.log('✅ Setting available managers:', managers);
         setAvailableManagers(managers);
 
         // Transform API data to Restaurant interface format
@@ -1629,11 +1614,6 @@ const RestaurantsPage: React.FC = () => {
         </StatsGrid>
 
         <PageFilterWrapper>
-          <PageSearchInput
-            placeholder="Search restaurants..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
           <FilterDropdownContainer>
             <DropdownInput
               type="text"
@@ -1722,6 +1702,11 @@ const RestaurantsPage: React.FC = () => {
             <option value="suspended">Suspended</option>
             <option value="cancelled">Cancelled</option>
           </PageFilterSelect>
+          <PageSearchInput
+            placeholder="Search restaurants..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </PageFilterWrapper>
 
         <RestaurantGrid>
@@ -1733,9 +1718,9 @@ const RestaurantsPage: React.FC = () => {
               color: '#6B7280',
               fontSize: '16px'
             }}>
-              {restaurants.length === 0 
-                ? '🔄 Loading restaurants...' 
-                : '📭 No restaurants found matching your criteria.'
+              {restaurants.length === 0
+                ? 'Loading restaurants...'
+                : 'No restaurants found matching your criteria.'
               }
               <br />
               <small style={{ fontSize: '14px', marginTop: '10px', display: 'block' }}>

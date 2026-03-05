@@ -756,13 +756,6 @@ const RestaurantSubscriptionsPage: React.FC = () => {
         </StatsGrid>
 
         <FilterBar>
-          <SearchInput
-            type="text"
-            placeholder="Search restaurants or managers..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-
           <FilterSelect
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
@@ -793,6 +786,13 @@ const RestaurantSubscriptionsPage: React.FC = () => {
             <option value="self">Self-Paying</option>
             <option value="manager">Manager-Paid</option>
           </FilterSelect>
+
+          <SearchInput
+            type="text"
+            placeholder="Search restaurants or managers..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </FilterBar>
 
         <SubscriptionTable>

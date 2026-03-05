@@ -113,13 +113,11 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
 `;
 
 const FiltersContainer = styled.div`
-  padding: 20px 0;
   margin-bottom: 24px;
   display: flex;
-  gap: 16px;
+  gap: 8px;
   flex-wrap: wrap;
   align-items: center;
-  border-bottom: 1px solid #E6EBF1;
 `;
 
 const FilterGroup = styled.div`

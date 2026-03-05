@@ -245,6 +245,10 @@ function App() {
             if (favicon) {
               favicon.href = settings.favicon_url;
             }
+            const appleTouchIcon = document.getElementById('apple-touch-icon') as HTMLLinkElement;
+            if (appleTouchIcon) {
+              appleTouchIcon.href = settings.favicon_url;
+            }
           }
 
           // Update meta description

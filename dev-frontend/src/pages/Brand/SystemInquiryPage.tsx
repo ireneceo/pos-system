@@ -605,11 +605,6 @@ const SystemInquiryPage: React.FC = () => {
           </Tabs>
 
           <FilterBar>
-            <SearchInput
-              placeholder="Search tickets..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
             <FilterSelect value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
               <option value="all">All Priority</option>
               <option value="urgent">Urgent</option>
@@ -625,6 +620,11 @@ const SystemInquiryPage: React.FC = () => {
               <option value="bug-report">Bug Report</option>
               <option value="general">General</option>
             </FilterSelect>
+            <SearchInput
+              placeholder="Search tickets..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </FilterBar>
 
           <TicketsGrid>

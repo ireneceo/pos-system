@@ -885,12 +885,6 @@ const NoticesPage: React.FC = () => {
 
         {/* Filters */}
         <FiltersContainer>
-          <SearchInput
-            type="text"
-            placeholder="Search notices..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
           <FilterSelect
             value={filterPriority}
             onChange={(e) => setFilterPriority(e.target.value)}
@@ -907,6 +901,12 @@ const NoticesPage: React.FC = () => {
             <option value="newest">Newest First</option>
             <option value="oldest">Oldest First</option>
           </FilterSelect>
+          <SearchInput
+            type="text"
+            placeholder="Search notices..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </FiltersContainer>
 
         {/* Notices List */}

@@ -72,6 +72,56 @@ const CommonSearchInput = styled.input`
   }
 `;
 
+const SearchInputWrapper = styled.div`
+  position: relative;
+  display: inline-flex;
+  flex: 1;
+  min-width: 180px;
+  max-width: 300px;
+
+  @media (max-width: 1024px) {
+    min-width: 150px;
+    max-width: 250px;
+  }
+
+  @media (max-width: 768px) {
+    min-width: 120px;
+    max-width: 200px;
+  }
+
+  @media (max-width: 600px) {
+    width: 100%;
+    min-width: 100%;
+    max-width: 100%;
+  }
+`;
+
+const ClearButton = styled.button`
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  color: #9CA3AF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: color 0.15s;
+
+  &:hover {
+    color: #374151;
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+`;
+
 // Common Filter Select
 const CommonFilterSelect = styled.select`
   padding: 12px 16px;
@@ -139,8 +189,28 @@ export const FilterBar: React.FC<CommonFilterBarProps> = ({ children, className,
   </CommonFilterBar>
 );
 
-export const SearchInput: React.FC<CommonSearchInputProps> = ({ placeholder = "Search...", ...props }) => (
-  <CommonSearchInput placeholder={placeholder} {...props} />
+export const SearchInput: React.FC<CommonSearchInputProps> = ({ placeholder = "Search...", value, onChange, style, ...props }) => (
+  <SearchInputWrapper style={style}>
+    <CommonSearchInput
+      placeholder={placeholder}
+      value={value}
+      onChange={onChange}
+      style={{ width: '100%', minWidth: 0, maxWidth: 'none', paddingRight: value ? '36px' : '16px' }}
+      {...props}
+    />
+    {value && (
+      <ClearButton
+        type="button"
+        onClick={() => onChange?.({ target: { value: '' } } as React.ChangeEvent<HTMLInputElement>)}
+        aria-label="Clear search"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </ClearButton>
+    )}
+  </SearchInputWrapper>
 );
 
 export const FilterSelect: React.FC<CommonFilterSelectProps> = ({ children, ...props }) => (

@@ -723,12 +723,6 @@ const ContentManagementPage: React.FC = () => {
       </StatsGrid>
 
       <FilterBarWithButton>
-        <SearchInput
-          type="text"
-          placeholder="Search..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
         <FilterSelect value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="all">All Status</option>
           <option value="published">Published</option>
@@ -740,6 +734,12 @@ const ContentManagementPage: React.FC = () => {
             <option key={cat.id} value={cat.id}>{cat.name}</option>
           ))}
         </FilterSelect>
+        <SearchInput
+          type="text"
+          placeholder="Search..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
         <div style={{ marginLeft: 'auto' }}>
           <ThemedButton onClick={() => { setEditingContent({ type: contentType as 'blog' | 'faq' }); setIsEditing(true); }}>
             New {contentType === 'blog' ? 'Post' : 'FAQ'}

@@ -6,14 +6,14 @@ import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
-import { getRestaurantTimezone } from '../../utils/timezone';
+// timezone utility no longer needed - DatePeriodFilter handles date calculations
 import { downloadCSV, escapeCSV, toCSVRow, generateFilename } from '../../utils/csvDownload';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import PageHeader from '../../components/Common/PageHeader';
-import DateRangeFilter, { PeriodType } from '../../components/Common/DateRangeFilter';
+import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 
 // 스타일 컴포넌트
 const ReportsContainer = styled.div`
@@ -23,7 +23,7 @@ const ReportsContainer = styled.div`
 `;
 
 
-// Note: FilterControls, DateButton, DateRangeInput styles moved to DateRangeFilter component
+// Note: FilterControls, DateButton, DateRangeInput styles moved to DatePeriodFilter component
 
 
 const Content = styled.main`
@@ -148,7 +148,7 @@ const ExpandIcon = styled.span<{ expanded?: boolean }>`
 
 // 타입 정의
 type TabType = 'sales' | 'details' | 'menu' | 'customers' | 'operations';
-// PeriodType imported from DateRangeFilter component
+// PeriodType imported from DatePeriodFilter component
 
 // 차트 색상
 const COLORS = ['#635BFF', '#00D924', '#FF6B6B', '#FFB800', '#0EA5E9', '#8B5CF6'];
@@ -157,60 +157,10 @@ const ReportsPage: React.FC = () => {
   const { user } = useAuth();
   const { operationSettings } = useStore();
 
-  // Helper function to get current date in restaurant's timezone
-  const getTodayInRestaurantTZ = (): Date => {
-    const timezone = getRestaurantTimezone(operationSettings);
-    const nowUTC = new Date();
-
-    // Get the current time in the restaurant's timezone
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    });
-
-    const parts = formatter.formatToParts(nowUTC);
-    const year = parseInt(parts.find(p => p.type === 'year')?.value || '0');
-    const month = parseInt(parts.find(p => p.type === 'month')?.value || '0');
-    const day = parseInt(parts.find(p => p.type === 'day')?.value || '0');
-
-    // Return a Date object representing today in the restaurant's timezone
-    // Note: This Date object is in local time, but represents the restaurant's "today"
-    return new Date(year, month - 1, day);
-  };
-
-  // Helper function to format date to YYYY-MM-DD string
-  const formatDateString = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
   const [activeTab, handleTabChange] = useTabParam<TabType>('sales');
 
-  const [activePeriod, setActivePeriod] = useState<PeriodType>('week');
-  const [dateRange, setDateRange] = useState(() => {
-    // Use restaurant timezone for date calculations
-    // Note: Initial render uses default timezone, will be updated after operationSettings loads
-    const today = new Date();
-    const localToday = formatDateString(today);
-
-    // Get 6 days ago (today + 6 previous days = 7 days total, ending today)
-    const weekAgo = new Date(today);
-    weekAgo.setDate(weekAgo.getDate() - 6);
-    const localWeekAgo = formatDateString(weekAgo);
-
-    return {
-      start: localWeekAgo,
-      end: localToday
-    };
-  });
+  const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
+  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('month'));
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -228,13 +178,7 @@ const ReportsPage: React.FC = () => {
   const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set());
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
 
-  // Re-initialize date range when operationSettings loads (to apply correct timezone)
-  useEffect(() => {
-    if (operationSettings && !isCustomDateRange) {
-      handlePeriodChange(activePeriod);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [operationSettings?.timeZone]);
+  // Date range is now calculated by DatePeriodFilter without timezone dependency
 
   // What and Why: 서버 집계 데이터 사용 - 기존 클라이언트 계산 대신 서버에서 받은 데이터 활용
   // 서버에서 dailySales 배열로 제공되므로 그대로 사용하여 성능 최적화
@@ -674,61 +618,16 @@ const ReportsPage: React.FC = () => {
   };
 
   // 날짜 범위 처리 함수
-  const handlePeriodChange = async (period: PeriodType) => {
+  const handlePeriodChange = (period: PeriodType) => {
     setActivePeriod(period);
     setIsCustomDateRange(false);
+    setDateRange(calculatePeriodDateRange(period));
+  };
 
-    // Get today in restaurant timezone
-    const now = getTodayInRestaurantTZ();
-    let start = new Date(now);
-
-    switch (period) {
-      case 'today':
-        start = new Date(now);
-        break;
-      case 'week':
-        // Last 7 days including today (today + 6 previous days)
-        start = new Date(now);
-        start.setDate(start.getDate() - 6);
-        break;
-      case 'month':
-        // Last 30 days including today
-        start = new Date(now);
-        start.setDate(start.getDate() - 29);
-        break;
-      case 'year':
-        // Last 365 days including today (today + 364 previous days)
-        start = new Date(now);
-        start.setDate(start.getDate() - 364);
-        break;
-      case 'all':
-        // Fetch earliest order date from server
-        try {
-          const token = localStorage.getItem('auth_token');
-          const res = await fetch(
-            `/api/dashboard/restaurant/${user?.restaurantId}/earliest-order`,
-            { headers: { 'Authorization': `Bearer ${token}` } }
-          );
-          const data = await res.json();
-          if (data.success && data.data.earliestDate) {
-            start = new Date(data.data.earliestDate);
-          } else {
-            start = new Date(now.getFullYear() - 5, 0, 1);
-          }
-        } catch {
-          start = new Date(now.getFullYear() - 5, 0, 1);
-        }
-        break;
-    }
-
-    // Convert to date strings
-    const startLocal = formatDateString(start);
-    const endLocal = formatDateString(now);
-
-    setDateRange({
-      start: startLocal,
-      end: endLocal
-    });
+  const handleCalendarRangeSelect = (start: string, end: string) => {
+    setIsCustomDateRange(true);
+    setActivePeriod('all');
+    setDateRange({ start, end });
   };
 
   // What and Why: 통화 기호 없이 숫자만 반환 (CSV용)
@@ -877,24 +776,30 @@ const ReportsPage: React.FC = () => {
   }, [activeTab, activePeriod, isCustomDateRange, dateRange, user?.restaurantId, generateSalesCSV, generateDetailsCSV, generateMenuCSV, generateCustomersCSV, generateOperationsCSV]);
 
 
-  // Handle date range change from filter component
-  const handleDateRangeFieldChange = (field: 'start' | 'end', value: string) => {
-    setDateRange({ ...dateRange, [field]: value });
-    setIsCustomDateRange(true);
-  };
-
-  // Filter component using common DateRangeFilter
+  // Filter component using common DatePeriodFilter
   const FilterComponent = () => (
-    <DateRangeFilter
+    <DatePeriodFilter
       activePeriod={activePeriod}
       dateRange={dateRange}
       isCustomDateRange={isCustomDateRange}
       onPeriodChange={handlePeriodChange}
-      onDateRangeChange={handleDateRangeFieldChange}
-      onDownload={handleDownloadReport}
-      showDownload={true}
-      timezone={operationSettings?.timeZone}
-    />
+      onCalendarRangeSelect={handleCalendarRangeSelect}
+    >
+      <button
+        onClick={handleDownloadReport}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
+          padding: '8px 16px', background: '#F6F9FC', color: '#0A2540',
+          border: '1px solid #E6EBF1', borderRadius: '6px', cursor: 'pointer',
+          fontSize: '14px', marginLeft: 'auto'
+        }}
+      >
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '16px', height: '16px' }}>
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        Download
+      </button>
+    </DatePeriodFilter>
   );
 
   return (

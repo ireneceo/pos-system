@@ -178,8 +178,9 @@ const LogItem = styled.div<{ level: string }>`
 const LogHeader = styled.div`
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   margin-bottom: 4px;
+  flex-wrap: wrap;
 `;
 
 const LogTimestamp = styled.span`
@@ -239,8 +240,9 @@ const LogMeta = styled.div`
   color: #9CA3AF;
   font-size: 11px;
   display: flex;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
+  align-items: center;
 `;
 
 const LogDetails = styled.pre`
@@ -1069,11 +1071,6 @@ const SystemLogsPage: React.FC = () => {
         </StatsGrid>
 
         <FilterBar>
-          <SearchInput
-            placeholder="Search logs..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
           <FilterSelect value={filterLevel} onChange={(e) => setFilterLevel(e.target.value)}>
             <option value="all">All Levels</option>
             <option value="critical">Critical</option>
@@ -1110,6 +1107,11 @@ const SystemLogsPage: React.FC = () => {
             type="date"
             value={filterDate}
             onChange={(e) => setFilterDate(e.target.value)}
+          />
+          <SearchInput
+            placeholder="Search logs..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
           <LiveToggle>
             <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: '600', textTransform: 'uppercase' }}>

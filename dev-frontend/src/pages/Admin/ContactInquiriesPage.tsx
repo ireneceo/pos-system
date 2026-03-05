@@ -708,11 +708,6 @@ const ContactInquiriesPage: React.FC = () => {
           </StatsGrid>
 
           <FilterBar>
-            <SearchInput
-              placeholder="Search by name, email, company..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
             <FilterSelect
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -723,6 +718,11 @@ const ContactInquiriesPage: React.FC = () => {
               <option value="resolved">Resolved</option>
               <option value="closed">Closed</option>
             </FilterSelect>
+            <SearchInput
+              placeholder="Search by name, email, company..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </FilterBar>
 
           {loading ? (

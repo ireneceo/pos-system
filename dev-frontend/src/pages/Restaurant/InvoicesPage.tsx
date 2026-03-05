@@ -30,6 +30,7 @@ import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Comm
 import jsPDF from 'jspdf';
 import StripePaymentForm from '../../components/Invoice/StripePaymentForm';
 import html2canvas from 'html2canvas';
+import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 
 interface AdditionalCharge {
   name: string;
@@ -150,76 +151,6 @@ interface CompanySettings {
 }
 
 // Styled Components
-const FilterBarWrapper = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  margin-bottom: 24px;
-  width: 100%;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    gap: 12px;
-  }
-`;
-
-const FiltersLeft = styled.div`
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
-  flex: 1;
-
-  @media (max-width: 600px) {
-    flex-direction: column;
-    width: 100%;
-
-    > * {
-      width: 100% !important;
-      min-width: 100% !important;
-      max-width: 100% !important;
-    }
-  }
-`;
-
-const PeriodFilterGroup = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-`;
-
-const DateButton = styled.button<{ active?: boolean }>`
-  padding: 8px 16px;
-  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
-  background: ${props => props.active ? '#635BFF' : 'white'};
-  color: ${props => props.active ? 'white' : '#0A2540'};
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    border-color: #635BFF;
-    background: ${props => props.active ? '#635BFF' : '#F7F7FF'};
-  }
-`;
-
-const DateInput = styled.input`
-  padding: 8px 12px;
-  border: 1px solid #E6EBF1;
-  border-radius: 6px;
-  font-size: 13px;
-  color: #0A2540;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
 
 const Button = styled(BaseButton)``;
 
@@ -413,7 +344,6 @@ const FormInput = styled.input`
 `;
 
 type TabType = 'all' | 'to_pay';
-type PeriodType = 'week' | 'month' | 'year' | 'all';
 
 const RestaurantInvoicesPage: React.FC = () => {
   const { operationSettings } = useStore();
@@ -428,22 +358,9 @@ const RestaurantInvoicesPage: React.FC = () => {
   const [allInvoices, setAllInvoices] = useState<Invoice[]>([]);
   const [invoicesToPay, setInvoicesToPay] = useState<Invoice[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activePeriod, setActivePeriod] = useState<PeriodType>('all');
+  const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
-  const [dateRange, setDateRange] = useState(() => {
-    const today = new Date();
-    const formatDate = (d: Date) => {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-    // Default to 'all' - wide date range
-    return {
-      start: '2000-01-01',
-      end: formatDate(today)
-    };
-  });
+  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('month'));
 
   // Modal states
   const [showViewModal, setShowViewModal] = useState(false);
@@ -471,47 +388,13 @@ const RestaurantInvoicesPage: React.FC = () => {
   const handlePeriodChange = (period: PeriodType) => {
     setActivePeriod(period);
     setIsCustomDateRange(false);
-
-    const now = new Date();
-    let start = new Date();
-    let end = new Date();
-
-    const formatDate = (d: Date) => {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-
-    switch (period) {
-      case 'week':
-        start.setDate(now.getDate() - now.getDay());
-        break;
-      case 'month':
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        break;
-      case 'year':
-        start = new Date(now.getFullYear(), 0, 1);
-        end = new Date(now.getFullYear(), 11, 31);
-        break;
-      case 'all':
-        start = new Date(2000, 0, 1);
-        break;
-    }
-
-    setDateRange({
-      start: formatDate(start),
-      end: formatDate(end)
-    });
+    setDateRange(calculatePeriodDateRange(period));
   };
 
-  const handleDateRangeChange = (type: 'start' | 'end', value: string) => {
+  const handleCalendarRangeSelect = (start: string, end: string) => {
     setIsCustomDateRange(true);
-    setDateRange(prev => ({
-      ...prev,
-      [type]: value
-    }));
+    setActivePeriod('all');
+    setDateRange({ start, end });
   };
 
   // Fetch all invoices for this restaurant
@@ -1321,53 +1204,19 @@ const RestaurantInvoicesPage: React.FC = () => {
           </Tabs>
 
           {/* Filters */}
-          <FilterBarWrapper>
-            <FiltersLeft>
-              <SearchInput
-                placeholder="Search invoice, issuer, status..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-
-              <PeriodFilterGroup>
-                <DateButton
-                  active={activePeriod === 'week' && !isCustomDateRange}
-                  onClick={() => handlePeriodChange('week')}
-                >
-                  Week
-                </DateButton>
-                <DateButton
-                  active={activePeriod === 'month' && !isCustomDateRange}
-                  onClick={() => handlePeriodChange('month')}
-                >
-                  Month
-                </DateButton>
-                <DateButton
-                  active={activePeriod === 'year' && !isCustomDateRange}
-                  onClick={() => handlePeriodChange('year')}
-                >
-                  Year
-                </DateButton>
-                <DateButton
-                  active={activePeriod === 'all' && !isCustomDateRange}
-                  onClick={() => handlePeriodChange('all')}
-                >
-                  All
-                </DateButton>
-
-                <DateInput
-                  type="date"
-                  value={dateRange.start}
-                  onChange={(e) => handleDateRangeChange('start', e.target.value)}
-                />
-                <DateInput
-                  type="date"
-                  value={dateRange.end}
-                  onChange={(e) => handleDateRangeChange('end', e.target.value)}
-                />
-              </PeriodFilterGroup>
-            </FiltersLeft>
-          </FilterBarWrapper>
+          <DatePeriodFilter
+            activePeriod={activePeriod}
+            dateRange={dateRange}
+            isCustomDateRange={isCustomDateRange}
+            onPeriodChange={handlePeriodChange}
+            onCalendarRangeSelect={handleCalendarRangeSelect}
+          >
+            <SearchInput
+              placeholder="Search invoice, issuer, status..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </DatePeriodFilter>
 
           {/* Invoice Table */}
           {activeTab === 'all' && renderInvoiceTable(filteredAllInvoices, true)}

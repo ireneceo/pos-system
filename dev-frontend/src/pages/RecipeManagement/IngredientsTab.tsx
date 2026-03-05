@@ -986,7 +986,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
 
   return (
     <>
-      <HeaderSection>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
         <FilterBar style={{ marginBottom: 0, flex: 1 }}>
           <SearchInput
             type="text"
@@ -1005,15 +1005,10 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
             ))}
           </FilterSelect>
         </FilterBar>
-
-        <ThemedButton
-          variant="primary"
-          onClick={() => handleOpenModal(null)}
-          style={{ whiteSpace: 'nowrap' }}
-        >
+        <ThemedButton variant="primary" onClick={() => handleOpenModal(null)} style={{ flexShrink: 0 }}>
           New Ingredient
         </ThemedButton>
-      </HeaderSection>
+      </div>
 
       {loading ? (
         <EmptyState>

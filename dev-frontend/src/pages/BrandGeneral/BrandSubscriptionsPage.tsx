@@ -648,11 +648,6 @@ const BrandSubscriptionsPage: React.FC = () => {
           </StatsGrid>
 
           <FilterBar>
-            <SearchInput
-              placeholder="Search restaurants or plans..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
             <FilterSelect
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -663,6 +658,11 @@ const BrandSubscriptionsPage: React.FC = () => {
               <option value="active">Active</option>
               <option value="overdue">Overdue</option>
             </FilterSelect>
+            <SearchInput
+              placeholder="Search restaurants or plans..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </FilterBar>
 
           {loading ? (

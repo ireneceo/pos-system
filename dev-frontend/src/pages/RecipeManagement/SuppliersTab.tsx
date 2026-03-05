@@ -517,7 +517,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: prop
 
   return (
     <>
-      <HeaderSection>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
         <FilterBar style={{ marginBottom: 0, flex: 1 }}>
           <SearchInput
             type="text"
@@ -526,10 +526,10 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: prop
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </FilterBar>
-        <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
+        <ThemedButton variant="primary" onClick={() => handleOpenModal()} style={{ flexShrink: 0 }}>
           Add Supplier
         </ThemedButton>
-      </HeaderSection>
+      </div>
 
       {isRestaurantAdmin && filteredBrandSuppliers.length > 0 && (
         <BrandSuppliersSection>

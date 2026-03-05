@@ -967,32 +967,28 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
 
   return (
     <>
-      <HeaderSection>
-        <div>
-          <SectionTitle>Product Recipes ({recipes.length})</SectionTitle>
-        </div>
-        <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+        <FilterBar style={{ marginBottom: 0, flex: 1 }}>
+          <SearchInput
+            type="text"
+            placeholder="Search recipes..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <FilterSelect
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+          >
+            <option value="all">All Categories</option>
+            {categories.map(cat => (
+              <option key={cat.id} value={cat.id}>{cat.emoji} {cat.name}</option>
+            ))}
+          </FilterSelect>
+        </FilterBar>
+        <ThemedButton variant="primary" onClick={() => handleOpenModal()} style={{ flexShrink: 0 }}>
           Add Recipe
         </ThemedButton>
-      </HeaderSection>
-
-      <FilterBar>
-        <SearchInput
-          type="text"
-          placeholder="Search recipes..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        <FilterSelect
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-        >
-          <option value="all">All Categories</option>
-          {categories.map(cat => (
-            <option key={cat.id} value={cat.id}>{cat.emoji} {cat.name}</option>
-          ))}
-        </FilterSelect>
-      </FilterBar>
+      </div>
 
       {filteredRecipes.length === 0 ? (
         <EmptyState>

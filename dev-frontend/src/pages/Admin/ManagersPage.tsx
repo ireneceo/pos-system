@@ -1018,13 +1018,6 @@ const ManagersPage: React.FC = () => {
         </StatsGrid>
 
         <FilterBar>
-          <SearchInput
-            type="text"
-            placeholder="Search by name, email, or company..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-
           <FilterSelect
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
@@ -1033,6 +1026,13 @@ const ManagersPage: React.FC = () => {
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </FilterSelect>
+
+          <SearchInput
+            type="text"
+            placeholder="Search by name, email, or company..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </FilterBar>
 
         <Table>

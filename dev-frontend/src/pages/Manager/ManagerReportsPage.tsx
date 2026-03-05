@@ -6,6 +6,7 @@ import { FilterBar, FilterSelect } from '../../components/Common/FilterComponent
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
+import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 
 interface Restaurant {
   id: string;
@@ -85,46 +86,6 @@ const PageTitle = styled.h1`
 
 
 
-
-const DateButton = styled.button<{ active?: boolean }>`
-  padding: 8px 16px;
-  background: ${props => props.active ? '#635BFF' : 'white'};
-  color: ${props => props.active ? 'white' : '#6B7280'};
-  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  
-  &:hover {
-    background: ${props => props.active ? '#5A51E6' : '#F8FAFC'};
-  }
-`;
-
-const DownloadButton = styled.button`
-  padding: 12px 16px;
-  background: #635BFF;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  
-  svg {
-    width: 16px;
-    height: 16px;
-  }
-  
-  &:hover {
-    background: #5A51E6;
-  }
-`;
 
 const Content = styled.div`
   padding: 32px;
@@ -227,7 +188,9 @@ const ManagerReportsPage: React.FC = () => {
   const { user } = useAuth();
   const location = useLocation();
   const [selectedRestaurant, setSelectedRestaurant] = useState('all');
-  const [dateRange, setDateRange] = useState('today');
+  const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
+  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('month'));
+  const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
 
@@ -254,6 +217,18 @@ const ManagerReportsPage: React.FC = () => {
       setSelectedRestaurant(restaurantId);
     }
   }, [location]);
+
+  const handlePeriodChange = (period: PeriodType) => {
+    setActivePeriod(period);
+    setDateRange(calculatePeriodDateRange(period));
+    setIsCustomDateRange(false);
+  };
+
+  const handleCalendarRangeSelect = (start: string, end: string) => {
+    setIsCustomDateRange(true);
+    setActivePeriod('all');
+    setDateRange({ start, end });
+  };
 
   const [reportData, setReportData] = useState<ReportData>({
     totalRevenue: 13130,
@@ -302,19 +277,19 @@ const ManagerReportsPage: React.FC = () => {
     const multiplier = selectedRestaurant === 'all' ? 1 : 0.33;
     const baseSales = 13130;
     const baseOrders = 222;
-    
+
     setReportData(prev => ({
       ...prev,
       totalRevenue: Math.round(baseSales * multiplier * (0.8 + Math.random() * 0.4)),
       totalOrders: Math.round(baseOrders * multiplier * (0.8 + Math.random() * 0.4))
     }));
-  }, [selectedRestaurant, dateRange]);
+  }, [selectedRestaurant, dateRange.start, dateRange.end]);
 
   const handleExportReport = () => {
     const exportData = {
       generatedAt: new Date().toISOString(),
       restaurant: selectedRestaurant === 'all' ? 'All Restaurants' : restaurants.find(r => r.id === selectedRestaurant)?.name,
-      dateRange: dateRange,
+      dateRange: `${dateRange.start}_to_${dateRange.end}`,
       manager: user?.name,
       summary: {
         totalRevenue: reportData.totalRevenue,
@@ -332,7 +307,7 @@ const ManagerReportsPage: React.FC = () => {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `manager-report-${selectedRestaurant}-${dateRange}-${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `manager-report-${selectedRestaurant}-${dateRange.start}_to_${dateRange.end}-${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
   };
 
@@ -396,21 +371,13 @@ const ManagerReportsPage: React.FC = () => {
         <Content>
           {/* Filter Controls */}
           <FilterBar>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              <span style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>Date Range:</span>
-              <DateButton active={dateRange === 'today'} onClick={() => setDateRange('today')}>
-                Today
-              </DateButton>
-              <DateButton active={dateRange === 'week'} onClick={() => setDateRange('week')}>
-                Week
-              </DateButton>
-              <DateButton active={dateRange === 'month'} onClick={() => setDateRange('month')}>
-                Month
-              </DateButton>
-              <DateButton active={dateRange === 'custom'} onClick={() => setDateRange('custom')}>
-                Year
-              </DateButton>
-            </div>
+            <DatePeriodFilter
+              activePeriod={activePeriod}
+              dateRange={dateRange}
+              isCustomDateRange={isCustomDateRange}
+              onPeriodChange={handlePeriodChange}
+              onCalendarRangeSelect={handleCalendarRangeSelect}
+            />
 
             <FilterSelect
               value={selectedRestaurant}
@@ -423,13 +390,6 @@ const ManagerReportsPage: React.FC = () => {
                 </option>
               ))}
             </FilterSelect>
-
-            <DownloadButton onClick={handleExportReport}>
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              Download Report
-            </DownloadButton>
           </FilterBar>
 
           {/* Sales Summary */}

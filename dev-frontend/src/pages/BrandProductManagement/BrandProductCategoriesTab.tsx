@@ -141,19 +141,6 @@ const EmptyDescription = styled.p`
   margin: 0 0 16px 0;
 `;
 
-const HeaderRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-`;
-
-const SectionTitle = styled.h3`
-  font-size: 18px;
-  font-weight: 600;
-  color: #1F2937;
-  margin: 0;
-`;
 
 const StatusBadge = styled.span<{ active: boolean }>`
   padding: 4px 8px;
@@ -374,12 +361,11 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
 
   return (
     <Container>
-      <HeaderRow>
-        <SectionTitle>Product Categories</SectionTitle>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
         <ThemedButton onClick={() => handleOpenModal()}>
           Add Category
         </ThemedButton>
-      </HeaderRow>
+      </div>
 
       {categories.length === 0 ? (
         <EmptyState>

@@ -1059,12 +1059,6 @@ const SubscriptionsPage: React.FC = () => {
           </StatsGrid>
 
           <FilterBar>
-            <SearchInput
-              placeholder="Search subscriptions..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-
             <FilterSelect
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -1076,6 +1070,12 @@ const SubscriptionsPage: React.FC = () => {
               <option value="suspended">Suspended</option>
               <option value="cancelled">Cancelled</option>
             </FilterSelect>
+
+            <SearchInput
+              placeholder="Search subscriptions..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </FilterBar>
 
           <Table>

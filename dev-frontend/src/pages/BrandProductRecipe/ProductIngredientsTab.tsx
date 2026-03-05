@@ -605,7 +605,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
 
   return (
     <>
-      <HeaderSection>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
         <FilterBar style={{ marginBottom: 0, flex: 1 }}>
           <SearchInput
             type="text"
@@ -624,15 +624,10 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
             ))}
           </FilterSelect>
         </FilterBar>
-
-        <ThemedButton
-          variant="primary"
-          onClick={() => handleOpenModal()}
-          style={{ whiteSpace: 'nowrap' }}
-        >
+        <ThemedButton variant="primary" onClick={() => handleOpenModal()} style={{ flexShrink: 0 }}>
           New Ingredient
         </ThemedButton>
-      </HeaderSection>
+      </div>
 
       {filteredIngredients.length === 0 ? (
         <EmptyState>

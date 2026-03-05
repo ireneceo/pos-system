@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
+import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { EmptyState as CategoryEmptyState } from '../../components/UI/TableComponents';
 import { useSearchParams } from 'react-router-dom';
 import { formatCurrency, getCurrencyDecimals, normalizeCurrencyCode } from '../../utils/currency';
@@ -76,6 +77,14 @@ interface Invoice {
   discountAmount?: number;
   discountReason?: string;
   subtotalBeforeDiscount?: number;
+  isModified?: boolean;
+  modificationHistory?: Array<{
+    modified_at: string;
+    modified_by: number;
+    modified_by_name: string;
+    changes: Record<string, { from: any; to: any }>;
+    reason: string;
+  }>;
 }
 
 interface CurrencyConfig {
@@ -400,47 +409,23 @@ const SectionTitle = styled.h3`
   margin: 0;
 `;
 
-// Period Filter Components (from LiveOrders)
-const FilterControls = styled.div`
-  margin-bottom: 24px;
-`;
+// FilterControls and FilterRow now come from DatePeriodFilter
 
-const FilterRow = styled.div`
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-`;
+const CreateButtonArea = styled.div`
+  margin-left: auto;
 
-const DateButton = styled.button<{ active?: boolean }>`
-  padding: 8px 16px;
-  background: ${props => props.active ? '#635BFF' : '#FFFFFF'};
-  color: ${props => props.active ? '#FFFFFF' : '#6B7C93'};
-  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
+  @media (max-width: 600px) {
+    margin-left: 0;
+    width: 100%;
+    order: 99;
 
-  &:hover {
-    background: ${props => props.active ? '#5A51E6' : '#F8FAFC'};
-    border-color: ${props => props.active ? '#5A51E6' : '#CBD5E1'};
+    button {
+      width: 100%;
+    }
   }
 `;
 
-const DateInput = styled.input`
-  padding: 8px 12px;
-  border: 1px solid #E6EBF1;
-  border-radius: 6px;
-  font-size: 14px;
-  color: #1F2937;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-  }
-`;
+// DateButton, DateRangePickerWrapper, DateRangeTrigger now come from DatePeriodFilter
 
 const Modal = styled.div`
   position: fixed;
@@ -623,7 +608,7 @@ const SummaryRow = styled.div<{ highlight?: boolean }>`
 
 
 type TabType = 'invoices' | 'payment_submitted' | 'categories';
-type PeriodType = 'today' | 'week' | 'month' | 'year' | 'all';
+// PeriodType imported from DatePeriodFilter
 
 const InvoicesPage: React.FC = () => {
   const { operationSettings } = useStore();
@@ -632,22 +617,7 @@ const InvoicesPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
-  const [dateRange, setDateRange] = useState(() => {
-    // Default to current month
-    const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    const formatDate = (d: Date) => {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-    return {
-      start: formatDate(firstDay),
-      end: formatDate(lastDay)
-    };
-  });
+  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('month'));
   const [showCreateInvoiceModal, setShowCreateInvoiceModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -677,6 +647,8 @@ const InvoicesPage: React.FC = () => {
   const [categoryToDelete, setCategoryToDelete] = useState<InvoiceCategory | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [editInvoice, setEditInvoice] = useState<any>(null);
+  const [editModificationReason, setEditModificationReason] = useState('');
+  const [editSaveError, setEditSaveError] = useState<string | null>(null);
   const [editSearchQuery, setEditSearchQuery] = useState('');
   const [editSearchResults, setEditSearchResults] = useState<{managers: Manager[], restaurants: Restaurant[]}>({managers: [], restaurants: []});
   const [showEditSearchDropdown, setShowEditSearchDropdown] = useState(false);
@@ -722,59 +694,20 @@ const InvoicesPage: React.FC = () => {
     discountReason: ''
   });
 
-  // Period filter handlers
+  // Calendar custom range handler
+  const handleCalendarRangeSelect = (start: string, end: string) => {
+    setIsCustomDateRange(true);
+    setActivePeriod('all');
+    setDateRange({ start, end });
+  };
+
+  // Period filter handler
   const handlePeriodChange = (period: PeriodType) => {
     setActivePeriod(period);
     setIsCustomDateRange(false);
-
-    const now = new Date();
-    let start = new Date();
-    let end = new Date();
-
-    const formatDate = (d: Date) => {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-
-    switch (period) {
-      case 'today':
-        // Today only
-        break;
-      case 'week':
-        // Start of week (Sunday)
-        start.setDate(now.getDate() - now.getDay());
-        break;
-      case 'month':
-        // Start of month
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        break;
-      case 'year':
-        // Start of year
-        start = new Date(now.getFullYear(), 0, 1);
-        end = new Date(now.getFullYear(), 11, 31);
-        break;
-      case 'all':
-        // All time - set very old start date
-        start = new Date(2000, 0, 1);
-        break;
-    }
-
-    setDateRange({
-      start: formatDate(start),
-      end: formatDate(end)
-    });
+    setDateRange(calculatePeriodDateRange(period));
   };
 
-  const handleDateRangeChange = (type: 'start' | 'end', value: string) => {
-    setIsCustomDateRange(true);
-    setDateRange(prev => ({
-      ...prev,
-      [type]: value
-    }));
-  };
 
   // Fetch invoices from API
   const fetchInvoices = async () => {
@@ -2083,17 +2016,24 @@ const InvoicesPage: React.FC = () => {
       companyName: invoice.companyName || '',
       restaurantId: invoice.restaurantId || '',
       restaurantName: invoice.restaurantName || '',
-      amount: invoice.amount.toString(),
+      amount: (invoice.subtotalBeforeDiscount || invoice.amount).toString(),
       tax: invoice.tax.toString(),
       total: invoice.total.toString(),
-      dueDate: invoice.dueDate,
+      dueDate: invoice.dueDate ? invoice.dueDate.split('T')[0] : '',
       status: invoice.status,
       planType: invoice.planType,
-      billingCycle: 'monthly', // Default, can be derived from planType
+      billingCycle: 'monthly',
       description: invoice.items?.[0]?.description || '',
       payerType: invoice.payerType || 'restaurant',
       payerId: invoice.payerId || '',
-      items: invoice.items
+      items: invoice.items,
+      currency: invoice.currency || operationSettings.currency || 'USD',
+      discountType: invoice.discountType || 'none',
+      discountValue: invoice.discountValue ? invoice.discountValue.toString() : '',
+      discountReason: invoice.discountReason || '',
+      invoiceCategory: invoice.invoiceCategory || 'service',
+      customDescription: invoice.customDescription || '',
+      serviceDescription: invoice.serviceDescription || ''
     });
 
     // Set up edit target selection
@@ -2111,6 +2051,8 @@ const InvoicesPage: React.FC = () => {
       }
     }
 
+    setEditModificationReason('');
+    setEditSaveError(null);
     setShowEditModal(true);
   };
 
@@ -2142,16 +2084,26 @@ const InvoicesPage: React.FC = () => {
         setSelectedInvoice(null);
       } else {
         const errorData = await response.json();
-        alert(`Failed to send invoice: ${errorData.error || 'Unknown error'}`);
+        setSuccessMessage(`Failed to send invoice: ${errorData.error || 'Unknown error'}`);
+        setShowSuccessModal(true);
       }
     } catch (error) {
       console.error('Error sending invoice:', error);
-      alert('Error sending invoice. Please try again.');
+      setSuccessMessage('Error sending invoice. Please try again.');
+      setShowSuccessModal(true);
     }
   };
 
   const handleSaveEdit = async () => {
     if (!selectedInvoice || !editInvoice) return;
+
+    setEditSaveError(null);
+
+    // Require modification reason for automatic invoices
+    if (selectedInvoice.type === 'automatic' && !editModificationReason.trim()) {
+      setEditSaveError('Please enter a reason for modifying this invoice.');
+      return;
+    }
 
     try {
       const token = localStorage.getItem('auth_token');
@@ -2166,10 +2118,24 @@ const InvoicesPage: React.FC = () => {
           tax: parseFloat(editInvoice.tax),
           total: parseFloat(editInvoice.total),
           dueDate: editInvoice.dueDate,
-          status: editInvoice.status,
           payerType: editInvoice.payerType,
           payerId: editInvoice.payerId,
-          items: editInvoice.items
+          items: editInvoice.items,
+          discountType: editInvoice.discountType !== 'none' ? editInvoice.discountType : null,
+          discountValue: editInvoice.discountType !== 'none' ? parseFloat(editInvoice.discountValue) || 0 : null,
+          discountAmount: (() => {
+            const amt = parseFloat(editInvoice.amount) || 0;
+            const dv = parseFloat(editInvoice.discountValue) || 0;
+            if (editInvoice.discountType === 'percentage') return amt * (dv / 100);
+            if (editInvoice.discountType === 'fixed') return dv;
+            return null;
+          })(),
+          discountReason: editInvoice.discountReason || null,
+          subtotal: editInvoice.discountType !== 'none' ? parseFloat(editInvoice.amount) || 0 : null,
+          invoiceCategory: editInvoice.invoiceCategory,
+          customDescription: editInvoice.customDescription,
+          serviceDescription: editInvoice.serviceDescription,
+          modificationReason: editModificationReason.trim() || undefined
         }),
       });
 
@@ -2193,17 +2159,14 @@ const InvoicesPage: React.FC = () => {
         setShowEditModal(false);
         setSelectedInvoice(null);
         setEditInvoice(null);
-        setSuccessMessage('Invoice updated successfully!');
-        setShowSuccessModal(true);
+        await fetchInvoices();
       } else {
         const errorData = await response.json();
-        setSuccessMessage(`Failed to update invoice: ${errorData.error || 'Unknown error'}`);
-        setShowSuccessModal(true);
+        setEditSaveError(errorData.error || 'Failed to update invoice');
       }
     } catch (error) {
       console.error('Error updating invoice:', error);
-      setSuccessMessage('Error updating invoice. Please try again.');
-      setShowSuccessModal(true);
+      setEditSaveError('Error updating invoice. Please try again.');
     }
   };
 
@@ -2498,59 +2461,23 @@ const InvoicesPage: React.FC = () => {
 
         {activeTab === 'invoices' && (
           <>
-        <FilterControls>
-          <FilterRow>
+        <DatePeriodFilter
+          activePeriod={activePeriod}
+          dateRange={dateRange}
+          isCustomDateRange={isCustomDateRange}
+          onPeriodChange={handlePeriodChange}
+          onCalendarRangeSelect={handleCalendarRangeSelect}
+        >
             <SearchInput
-              placeholder="Search invoices... (status, type, customer, etc.)"
+              placeholder="Search invoices..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ minWidth: '280px', maxWidth: '350px' }}
             />
 
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginLeft: '16px' }}>
-              <DateButton
-                active={activePeriod === 'week' && !isCustomDateRange}
-                onClick={() => handlePeriodChange('week')}
-              >
-                Week
-              </DateButton>
-              <DateButton
-                active={activePeriod === 'month' && !isCustomDateRange}
-                onClick={() => handlePeriodChange('month')}
-              >
-                Month
-              </DateButton>
-              <DateButton
-                active={activePeriod === 'year' && !isCustomDateRange}
-                onClick={() => handlePeriodChange('year')}
-              >
-                Year
-              </DateButton>
-              <DateButton
-                active={activePeriod === 'all' && !isCustomDateRange}
-                onClick={() => handlePeriodChange('all')}
-              >
-                All
-              </DateButton>
-
-              <DateInput
-                type="date"
-                value={dateRange.start}
-                onChange={(e) => handleDateRangeChange('start', e.target.value)}
-              />
-              <span style={{ color: '#6B7C93' }}>to</span>
-              <DateInput
-                type="date"
-                value={dateRange.end}
-                onChange={(e) => handleDateRangeChange('end', e.target.value)}
-              />
-            </div>
-
-            <div style={{ marginLeft: 'auto' }}>
+            <CreateButtonArea>
               <Button variant="primary" onClick={handleCreateInvoice}>Create Invoice</Button>
-            </div>
-          </FilterRow>
-        </FilterControls>
+            </CreateButtonArea>
+        </DatePeriodFilter>
 
         <DataTableContainer>
           <DataTable>
@@ -2592,6 +2519,9 @@ const InvoicesPage: React.FC = () => {
                     <StatusBadge status={getEffectiveStatus(invoice)}>
                       {getStatusDisplay(getEffectiveStatus(invoice))}
                     </StatusBadge>
+                    {invoice.isModified && (
+                      <span style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle' }}>Modified</span>
+                    )}
                   </DataTableCell>
                   <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'USD')}</DataTableAmount></DataTableCell>
                   <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'USD')}</DataTableAmount></DataTableCell>
@@ -2600,9 +2530,7 @@ const InvoicesPage: React.FC = () => {
                       <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</LocalActionButton>
                       {invoice.status === 'draft' && (
                         <>
-                          {invoice.type !== 'automatic' && (
-                            <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
-                          )}
+                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
                           <LocalActionButton variant="success" onClick={() => handleSendInvoice(invoice)} title="Send Invoice">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <line x1="22" y1="2" x2="11" y2="13"/>
@@ -2614,12 +2542,10 @@ const InvoicesPage: React.FC = () => {
                           </LocalIconButton>
                         </>
                       )}
-                      {/* 미결제 상태: 편집(수동만), 다운로드, 프린트, 이메일발송, 삭제 */}
+                      {/* 미결제 상태: 편집, 다운로드, 프린트, 이메일발송, 삭제 */}
                       {(invoice.status === 'pending_payment' || invoice.status === '' || !invoice.status) && (
                         <>
-                          {invoice.type !== 'automatic' && (
-                            <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
-                          )}
+                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
                           <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -2675,12 +2601,10 @@ const InvoicesPage: React.FC = () => {
                         </>
                       )}
 
-                      {/* 연체 상태: 편집(수동만), 다운로드, 프린트, 이메일발송, 삭제 */}
+                      {/* 연체 상태: 편집, 다운로드, 프린트, 이메일발송, 삭제 */}
                       {invoice.status === 'overdue' && (
                         <>
-                          {invoice.type !== 'automatic' && (
-                            <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
-                          )}
+                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
                           <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -3345,6 +3269,9 @@ const InvoicesPage: React.FC = () => {
                     <StatusBadge status={selectedInvoice.status} style={{ marginTop: '8px' }}>
                       {getStatusDisplay(selectedInvoice.status)}
                     </StatusBadge>
+                    {selectedInvoice.isModified && (
+                      <span style={{ display: 'inline-block', marginTop: '4px', padding: '2px 8px', fontSize: '11px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px' }}>Modified</span>
+                    )}
                   </div>
                 </div>
 
@@ -3458,6 +3385,26 @@ const InvoicesPage: React.FC = () => {
                     {companySettings?.registrationNumber && <span>Reg No: {companySettings.registrationNumber}</span>}
                     {companySettings?.registrationNumber && companySettings?.taxNumber && <span> | </span>}
                     {companySettings?.taxNumber && <span>Tax No: {companySettings.taxNumber}</span>}
+                  </div>
+                )}
+
+                {/* Modification History in View Modal */}
+                {selectedInvoice.isModified && selectedInvoice.modificationHistory && selectedInvoice.modificationHistory.length > 0 && (
+                  <div style={{ marginTop: '20px', padding: '16px', background: '#FEF3C7', borderRadius: '8px', border: '1px solid #FDE68A' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#92400E', marginBottom: '12px' }}>Modification History</div>
+                    {selectedInvoice.modificationHistory.map((mod, idx) => (
+                      <div key={idx} style={{ fontSize: '12px', color: '#78350F', marginBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '10px' : '0', paddingBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '10px' : '0', borderBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '1px solid #FDE68A' : 'none' }}>
+                        <div style={{ fontWeight: 500 }}>{new Date(mod.modified_at).toLocaleString()} - {mod.modified_by_name}</div>
+                        {mod.reason && <div style={{ marginTop: '3px' }}>Reason: {mod.reason}</div>}
+                        {Object.keys(mod.changes).length > 0 && (
+                          <div style={{ marginTop: '3px', color: '#92400E' }}>
+                            {Object.entries(mod.changes).map(([field, change]) => (
+                              <div key={field}>{field}: {String(change.from)} → {String(change.to)}</div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </ModalBody>
@@ -3731,18 +3678,20 @@ const InvoicesPage: React.FC = () => {
 
                 <FormRow>
                   <FormGroup>
-                    <FormLabel>Amount ({operationSettings.currency || 'RM'})</FormLabel>
+                    <FormLabel>Amount ({editInvoice.currency || operationSettings.currency || 'RM'})</FormLabel>
                     <FormInput
                       type="number"
                       value={editInvoice.amount}
                       onChange={(e) => {
                         const amount = parseFloat(e.target.value) || 0;
-                        // Calculate total from all enabled additional charges for this currency
+                        const discountVal = parseFloat(editInvoice.discountValue) || 0;
+                        const discountAmt = editInvoice.discountType === 'percentage' ? amount * (discountVal / 100) : editInvoice.discountType === 'fixed' ? discountVal : 0;
+                        const afterDiscount = Math.max(0, amount - discountAmt);
                         const editCharges = getChargesForCurrency(editInvoice.currency || '');
                         const chargesTotal = editCharges
-                          .filter(c => c.enabled && c.rate > 0)
-                          .reduce((sum, c) => sum + (amount * c.rate / 100), 0);
-                        const total = amount + chargesTotal;
+                          .filter((c: any) => c.enabled && c.rate > 0)
+                          .reduce((sum: number, c: any) => sum + (afterDiscount * c.rate / 100), 0);
+                        const total = afterDiscount + chargesTotal;
                         setEditInvoice({
                           ...editInvoice,
                           amount: e.target.value,
@@ -3762,20 +3711,64 @@ const InvoicesPage: React.FC = () => {
                   </FormGroup>
                 </FormRow>
 
-                <FormGroup>
-                  <FormLabel>Status</FormLabel>
-                  <FormSelect
-                    value={editInvoice.status}
-                    onChange={(e) => setEditInvoice({...editInvoice, status: e.target.value})}
-                  >
-                    <option value="draft">Draft</option>
-                    <option value="pending_payment">Pending Payment</option>
-                    <option value="payment_submitted">Payment Submitted</option>
-                    <option value="paid">Paid</option>
-                    <option value="overdue">Overdue</option>
-                    <option value="cancelled">Cancelled</option>
-                  </FormSelect>
-                </FormGroup>
+                <FormRow>
+                  <FormGroup>
+                    <FormLabel>Discount</FormLabel>
+                    <FormSelect
+                      value={editInvoice.discountType}
+                      onChange={(e) => {
+                        const dtype = e.target.value as 'none' | 'percentage' | 'fixed';
+                        const amount = parseFloat(editInvoice.amount) || 0;
+                        const discountVal = dtype === 'none' ? 0 : (parseFloat(editInvoice.discountValue) || 0);
+                        const discountAmt = dtype === 'percentage' ? amount * (discountVal / 100) : dtype === 'fixed' ? discountVal : 0;
+                        const afterDiscount = Math.max(0, amount - discountAmt);
+                        const editCharges = getChargesForCurrency(editInvoice.currency || '');
+                        const chargesTotal = editCharges.filter((c: any) => c.enabled && c.rate > 0).reduce((sum: number, c: any) => sum + (afterDiscount * c.rate / 100), 0);
+                        const total = afterDiscount + chargesTotal;
+                        setEditInvoice({ ...editInvoice, discountType: dtype, discountValue: dtype === 'none' ? '' : editInvoice.discountValue, tax: chargesTotal.toFixed(2), total: total.toFixed(2) });
+                      }}
+                    >
+                      <option value="none">No Discount</option>
+                      <option value="percentage">Percentage (%)</option>
+                      <option value="fixed">Fixed Amount</option>
+                    </FormSelect>
+                  </FormGroup>
+                  {editInvoice.discountType !== 'none' && (
+                    <FormGroup>
+                      <FormLabel>{editInvoice.discountType === 'percentage' ? 'Discount (%)' : 'Discount Amount'}</FormLabel>
+                      <FormInput
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max={editInvoice.discountType === 'percentage' ? '100' : undefined}
+                        value={editInvoice.discountValue}
+                        onChange={(e) => {
+                          const amount = parseFloat(editInvoice.amount) || 0;
+                          const discountVal = parseFloat(e.target.value) || 0;
+                          const discountAmt = editInvoice.discountType === 'percentage' ? amount * (discountVal / 100) : discountVal;
+                          const afterDiscount = Math.max(0, amount - discountAmt);
+                          const editCharges = getChargesForCurrency(editInvoice.currency || '');
+                          const chargesTotal = editCharges.filter((c: any) => c.enabled && c.rate > 0).reduce((sum: number, c: any) => sum + (afterDiscount * c.rate / 100), 0);
+                          const total = afterDiscount + chargesTotal;
+                          setEditInvoice({ ...editInvoice, discountValue: e.target.value, tax: chargesTotal.toFixed(2), total: total.toFixed(2) });
+                        }}
+                        placeholder="0"
+                      />
+                    </FormGroup>
+                  )}
+                  {editInvoice.discountType !== 'none' && (
+                    <FormGroup>
+                      <FormLabel>Discount Reason</FormLabel>
+                      <FormInput
+                        type="text"
+                        value={editInvoice.discountReason}
+                        onChange={(e) => setEditInvoice({ ...editInvoice, discountReason: e.target.value })}
+                        placeholder="e.g. Loyalty discount"
+                      />
+                    </FormGroup>
+                  )}
+                </FormRow>
+
                 <FormGroup>
                   <FormLabel>Invoice Category</FormLabel>
                   <FormSelect
@@ -3823,8 +3816,23 @@ const InvoicesPage: React.FC = () => {
                     <span>Subtotal:</span>
                     <span>{editInvoice.currency ? formatCurrency(parseFloat(editInvoice.amount || '0'), editInvoice.currency) : '-'}</span>
                   </SummaryRow>
-                  {getChargesForCurrency(editInvoice.currency || '').filter(c => c.enabled && c.name && c.rate > 0).map((charge, idx) => {
-                    const chargeAmount = (parseFloat(editInvoice.amount || '0') * charge.rate / 100);
+                  {editInvoice.discountType !== 'none' && parseFloat(editInvoice.discountValue || '0') > 0 && (() => {
+                    const amt = parseFloat(editInvoice.amount || '0');
+                    const dv = parseFloat(editInvoice.discountValue || '0');
+                    const da = editInvoice.discountType === 'percentage' ? amt * (dv / 100) : dv;
+                    return (
+                      <SummaryRow>
+                        <span style={{ color: '#DC2626' }}>Discount ({editInvoice.discountType === 'percentage' ? `${dv}%` : 'Fixed'}):</span>
+                        <span style={{ color: '#DC2626' }}>-{editInvoice.currency ? formatCurrency(da, editInvoice.currency) : da.toFixed(2)}</span>
+                      </SummaryRow>
+                    );
+                  })()}
+                  {getChargesForCurrency(editInvoice.currency || '').filter((c: any) => c.enabled && c.name && c.rate > 0).map((charge: any, idx: number) => {
+                    const amt = parseFloat(editInvoice.amount || '0');
+                    const dv = parseFloat(editInvoice.discountValue || '0');
+                    const da = editInvoice.discountType === 'percentage' ? amt * (dv / 100) : editInvoice.discountType === 'fixed' ? dv : 0;
+                    const afterDiscount = Math.max(0, amt - da);
+                    const chargeAmount = afterDiscount * charge.rate / 100;
                     return (
                       <SummaryRow key={idx}>
                         <span>{charge.name} ({charge.rate}%):</span>
@@ -3837,14 +3845,52 @@ const InvoicesPage: React.FC = () => {
                     <span><strong>{editInvoice.currency ? formatCurrency(parseFloat(editInvoice.total || '0'), editInvoice.currency) : '-'}</strong></span>
                   </SummaryRow>
                 </InvoiceSummary>
+
+                {/* Modification Reason */}
+                <FormGroup style={{ marginTop: '16px' }}>
+                  <FormLabel>Modification Reason {selectedInvoice?.type === 'automatic' && <span style={{ color: '#EF4444' }}>*</span>}</FormLabel>
+                  <FormTextarea
+                    value={editModificationReason}
+                    onChange={(e) => setEditModificationReason(e.target.value)}
+                    placeholder="Enter reason for modification..."
+                    rows={2}
+                  />
+                </FormGroup>
+
+                {/* Previous Modification History */}
+                {selectedInvoice?.modificationHistory && selectedInvoice.modificationHistory.length > 0 && (
+                  <div style={{ marginTop: '16px', padding: '12px', background: '#FEF3C7', borderRadius: '8px', border: '1px solid #FDE68A' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#92400E', marginBottom: '8px' }}>Modification History</div>
+                    {selectedInvoice.modificationHistory.map((mod, idx) => (
+                      <div key={idx} style={{ fontSize: '12px', color: '#78350F', marginBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '8px' : '0', paddingBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '8px' : '0', borderBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '1px solid #FDE68A' : 'none' }}>
+                        <div style={{ fontWeight: 500 }}>{new Date(mod.modified_at).toLocaleString()} - {mod.modified_by_name}</div>
+                        {mod.reason && <div style={{ marginTop: '2px' }}>Reason: {mod.reason}</div>}
+                        {Object.keys(mod.changes).length > 0 && (
+                          <div style={{ marginTop: '2px', color: '#92400E' }}>
+                            {Object.entries(mod.changes).map(([field, change]) => (
+                              <span key={field} style={{ marginRight: '8px' }}>{field}: {String(change.from)} → {String(change.to)}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </ModalBody>
-              <ModalFooter>
-                <Button variant="secondary" onClick={() => setShowEditModal(false)}>
-                  Cancel
-                </Button>
-                <Button variant="primary" onClick={handleSaveEdit}>
-                  Save Changes
-                </Button>
+              <ModalFooter style={{ flexDirection: 'column', gap: '12px' }}>
+                {editSaveError && (
+                  <div style={{ width: '100%', padding: '10px 14px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '6px', color: '#DC2626', fontSize: '13px' }}>
+                    {editSaveError}
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', width: '100%' }}>
+                  <Button variant="secondary" onClick={() => setShowEditModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="primary" onClick={handleSaveEdit}>
+                    Save Changes
+                  </Button>
+                </div>
               </ModalFooter>
             </ModalContent>
           </Modal>

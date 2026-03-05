@@ -48,16 +48,14 @@ interface SupportTicket {
 // StatsGrid, StatCard, StatValue, StatLabel are imported
 
 const FiltersContainer = styled.div`
-  padding: 20px 0;
   margin-bottom: 24px;
   display: flex;
-  gap: 16px;
+  gap: 8px;
   flex-wrap: wrap;
   align-items: center;
-  border-bottom: 1px solid #E6EBF1;
 
   @media (max-width: 768px) {
-    gap: 12px;
+    gap: 6px;
   }
 `;
 
@@ -747,13 +745,6 @@ const SystemInquiryPage: React.FC = () => {
         </Tabs>
 
         <FiltersContainer>
-          <FilterGroup>
-            <SearchInput
-              placeholder="Search tickets..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </FilterGroup>
           {activeTab === 'all' && (
             <FilterGroup>
               <FilterSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ maxWidth: '180px' }}>
@@ -782,6 +773,13 @@ const SystemInquiryPage: React.FC = () => {
               <option value="bug-report">Bug Report</option>
               <option value="general">General</option>
             </FilterSelect>
+          </FilterGroup>
+          <FilterGroup>
+            <SearchInput
+              placeholder="Search tickets..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </FilterGroup>
         </FiltersContainer>
 

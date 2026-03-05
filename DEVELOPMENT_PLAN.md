@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-03-04
+> **최종 업데이트:** 2026-03-05
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -84,6 +84,60 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 | 3 | Foodcourt General 데모 계정 + 데이터 생성 | ⬜ |
 | 4 | Restaurant Owner 데모 계정 + 데이터 생성 | ⬜ |
 | 5 | DemoPage UI 업데이트 (4개 데모 카드) | ⬜ |
+
+---
+
+## ✅ 완료: Inquiry 필터 스타일 통일 (2026-03-05)
+
+### 완료된 작업
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| FiltersContainer 스타일 통일 | 9개 Inquiry 페이지에서 padding: 20px 0 + border-bottom 제거, gap 8px로 통일 | ✅ 완료 |
+
+### 수정된 파일
+- `dev-frontend/src/pages/Admin/SystemInquiryPage.tsx`
+- `dev-frontend/src/pages/Brand/OperationInquiryPage.tsx`
+- `dev-frontend/src/pages/Foodcourt/OperationInquiryPage.tsx`
+- `dev-frontend/src/pages/Restaurant/OperationInquiryPage.tsx`
+- `dev-frontend/src/pages/Restaurant/SystemInquiryPage.tsx`
+- `dev-frontend/src/pages/Manager/OperationInquiryPage.tsx`
+- `dev-frontend/src/pages/Manager/SystemInquiryPage.tsx`
+- `dev-frontend/src/pages/Owner/OwnerOperationInquiryPage.tsx`
+- `dev-frontend/src/pages/Owner/OwnerSystemInquiryPage.tsx`
+
+---
+
+## ✅ 완료: 기간 필터 통합 (2026-03-05)
+
+### 개요
+Admin InvoicesPage 기간필터 패턴을 모든 역할/페이지에 통일 적용.
+기존 DateRangeFilter (input type=date) 제거, CalendarPicker 기반 통합 컴포넌트로 교체.
+
+### 설계 문서
+- `docs/DATE_PERIOD_FILTER_SPEC.md` - 전체 스펙
+- `dev-frontend/FILTER_STYLE_GUIDE.md` - 스타일 가이드 (업데이트)
+
+### 작업 항목
+| # | 작업 | 상태 |
+|---|------|:----:|
+| 1 | DatePeriodFilter 공용 컴포넌트 생성 | ✅ |
+| 2 | Admin/InvoicesPage 공용 컴포넌트 전환 | ✅ |
+| 3 | Admin/ReportsPage 교체 | ✅ |
+| 4 | Admin/AnalyticsPage 교체 | ✅ |
+| 5 | BrandGeneral/BrandReportsPage 교체 | ✅ |
+| 6 | BrandGeneral/BrandPerformance 교체 | ✅ |
+| 7 | BrandGeneral/BrandInvoicesPage 공용 전환 | ✅ |
+| 8 | FoodcourtGeneral/FoodcourtInvoicesPage 공용 전환 | ✅ |
+| 9 | Owner/OwnerReportsPage 교체 | ✅ |
+| 10 | Owner/OwnerPerformance 교체 | ✅ |
+| 11 | Owner/OwnerInvoicesPage 공용 전환 | ✅ |
+| 12 | Manager/ManagerReportsPage 교체 | ✅ |
+| 13 | Manager/SalesPage 교체 (Type B, Today 포함) | ✅ |
+| 14 | Reports/ReportsPage 교체 | ✅ |
+| 15 | Restaurant/InvoicesPage 공용 전환 | ✅ |
+| 16 | LiveOrders/LiveOrdersPage 교체 (Type B, Today 포함) | ✅ |
+| 17 | DateRangeFilter.tsx 삭제 | ✅ |
+| 18 | 빌드 + 전 페이지 검증 | ✅ |
 
 ---
 

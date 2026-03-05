@@ -9,6 +9,7 @@ import {
 } from 'recharts';
 import { formatCurrency } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
+import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 
 // Styled Components (AnalyticsPage 패턴)
 const ReportsContainer = styled.div`
@@ -53,34 +54,7 @@ const Content = styled.div`
   @media (max-width: 768px) { padding: 16px; }
 `;
 
-const FilterControls = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-  margin-bottom: 24px;
-`;
-
-const DateButton = styled.button<{ active?: boolean }>`
-  padding: 8px 16px;
-  background: ${props => props.active ? '#635BFF' : 'white'};
-  color: ${props => props.active ? 'white' : '#6B7280'};
-  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  &:hover { background: ${props => props.active ? '#5A51E6' : '#F8FAFC'}; }
-`;
-
-const DateRangeInput = styled.input`
-  padding: 8px 12px;
-  border: 1px solid #E6EBF1;
-  border-radius: 6px;
-  font-size: 14px;
-  &:focus { outline: none; border-color: #635BFF; }
-`;
+// FilterControls, DateButton, DateRangeInput replaced by DatePeriodFilter component
 
 const CurrencySelect = styled.select`
   padding: 8px 12px;
@@ -231,7 +205,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 type TabType = 'revenue' | 'payment' | 'customer' | 'subscription';
-type PeriodType = 'all' | 'month' | '3months' | '6months' | 'year' | 'custom';
+// PeriodType imported from DatePeriodFilter
 
 interface RevenueSummary {
   totalRevenue: number;
@@ -284,10 +258,10 @@ const ReportsPage: React.FC = () => {
   const { operationSettings, siteTimezone } = useStore();
   const defaultCurrency = operationSettings?.currency || 'MYR';
   const [activeTab, handleTabChange] = useTabParam<TabType>('revenue');
-  const [period, setPeriod] = useState<PeriodType>('month');
+  const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
+  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('month'));
+  const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [currency, setCurrency] = useState('');
-  const [customStart, setCustomStart] = useState('');
-  const [customEnd, setCustomEnd] = useState('');
   const [loading, setLoading] = useState(false);
   const [currencyLoaded, setCurrencyLoaded] = useState(false);
   const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>([]);
@@ -336,43 +310,24 @@ const ReportsPage: React.FC = () => {
   const [customerData, setCustomerData] = useState<CustomerData | null>(null);
   const [subscriptionData, setSubscriptionData] = useState<SubscriptionData | null>(null);
 
-  const getDateParams = useCallback(() => {
-    // Use site timezone for date calculations
-    const tz = siteTimezone || 'Asia/Kuala_Lumpur';
-    const nowStr = new Date().toLocaleDateString('en-CA', { timeZone: tz }); // YYYY-MM-DD
-    const [yearStr, monthStr] = nowStr.split('-');
-    const year = parseInt(yearStr);
-    const month = parseInt(monthStr) - 1; // 0-based
+  const handlePeriodChange = (period: PeriodType) => {
+    setActivePeriod(period);
+    setIsCustomDateRange(false);
+    setDateRange(calculatePeriodDateRange(period));
+  };
 
-    let start: Date, end: Date;
-    switch (period) {
-      case 'all':
-        return 'period=all'; // No date filter = all time
-      case '3months':
-        start = new Date(year, month - 2, 1);
-        end = new Date(year, month + 1, 0);
-        break;
-      case '6months':
-        start = new Date(year, month - 5, 1);
-        end = new Date(year, month + 1, 0);
-        break;
-      case 'year':
-        start = new Date(year, 0, 1);
-        end = new Date(year, 11, 31);
-        break;
-      case 'custom':
-        if (customStart && customEnd) {
-          return `start_date=${customStart}&end_date=${customEnd}`;
-        }
-        start = new Date(year, month, 1);
-        end = new Date(year, month + 1, 0);
-        break;
-      default: // month
-        start = new Date(year, month, 1);
-        end = new Date(year, month + 1, 0);
+  const handleCalendarRangeSelect = (start: string, end: string) => {
+    setIsCustomDateRange(true);
+    setActivePeriod('all');
+    setDateRange({ start, end });
+  };
+
+  const getDateParams = useCallback(() => {
+    if (activePeriod === 'all' && !isCustomDateRange) {
+      return 'period=all';
     }
-    return `start_date=${start.toISOString().split('T')[0]}&end_date=${end.toISOString().split('T')[0]}`;
-  }, [period, customStart, customEnd, siteTimezone]);
+    return `start_date=${dateRange.start}&end_date=${dateRange.end}`;
+  }, [activePeriod, isCustomDateRange, dateRange]);
 
   const fetchApi = useCallback(async (endpoint: string, params = '') => {
     const token = localStorage.getItem('auth_token');
@@ -456,7 +411,7 @@ const ReportsPage: React.FC = () => {
       case 'subscription': fetchSubscription(); break;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, period, currency, customStart, customEnd, currencyLoaded]);
+  }, [activeTab, activePeriod, currency, dateRange, currencyLoaded]);
 
   // CSV Export
   const handleExport = () => {
@@ -910,26 +865,19 @@ const ReportsPage: React.FC = () => {
             <Tab active={activeTab === 'subscription'} onClick={() => handleTabChange('subscription')}>Subscription</Tab>
           </Tabs>
 
-          <FilterControls>
-            <DateButton active={period === 'all'} onClick={() => setPeriod('all')}>All</DateButton>
-            <DateButton active={period === 'month'} onClick={() => setPeriod('month')}>This Month</DateButton>
-            <DateButton active={period === '3months'} onClick={() => setPeriod('3months')}>3 Months</DateButton>
-            <DateButton active={period === '6months'} onClick={() => setPeriod('6months')}>6 Months</DateButton>
-            <DateButton active={period === 'year'} onClick={() => setPeriod('year')}>This Year</DateButton>
-            <DateButton active={period === 'custom'} onClick={() => setPeriod('custom')}>Custom</DateButton>
-            {period === 'custom' && (
-              <>
-                <DateRangeInput type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} />
-                <span style={{ color: '#6B7280' }}>to</span>
-                <DateRangeInput type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} />
-              </>
-            )}
+          <DatePeriodFilter
+            activePeriod={activePeriod}
+            dateRange={dateRange}
+            isCustomDateRange={isCustomDateRange}
+            onPeriodChange={handlePeriodChange}
+            onCalendarRangeSelect={handleCalendarRangeSelect}
+          >
             <CurrencySelect value={currency} onChange={e => setCurrency(e.target.value)}>
               {supportedCurrencies.map(cur => (
                 <option key={cur} value={cur}>{cur}</option>
               ))}
             </CurrencySelect>
-          </FilterControls>
+          </DatePeriodFilter>
 
           {activeTab === 'revenue' && renderRevenue()}
           {activeTab === 'payment' && renderPayment()}

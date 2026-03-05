@@ -105,13 +105,11 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
 `;
 
 const FiltersContainer = styled.div`
-  padding: 20px 0;
   margin-bottom: 24px;
   display: flex;
-  gap: 16px;
+  gap: 8px;
   flex-wrap: wrap;
   align-items: center;
-  border-bottom: 1px solid #E6EBF1;
 `;
 
 const FilterGroup = styled.div`
@@ -639,14 +637,6 @@ const OwnerSystemInquiryPage: React.FC = () => {
 
           <FiltersContainer>
             <FilterGroup>
-              <FilterLabel>Search</FilterLabel>
-              <SearchInput
-                placeholder="Search inquiries..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </FilterGroup>
-            <FilterGroup>
               <FilterLabel>Restaurant</FilterLabel>
               <Select value={filterRestaurant} onChange={(e) => setFilterRestaurant(e.target.value)}>
                 <option value="all">All Restaurants</option>
@@ -685,6 +675,14 @@ const OwnerSystemInquiryPage: React.FC = () => {
                 <option value="bug-report">Bug Report</option>
                 <option value="general">General</option>
               </Select>
+            </FilterGroup>
+            <FilterGroup>
+              <FilterLabel>Search</FilterLabel>
+              <SearchInput
+                placeholder="Search inquiries..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </FilterGroup>
           </FiltersContainer>
 

@@ -28,6 +28,7 @@ import {
   EmptyState
 } from '../../components/UI';
 import { SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import StripePaymentForm from '../../components/Invoice/StripePaymentForm';
@@ -72,6 +73,14 @@ interface Invoice {
   discountAmount?: number;
   discountReason?: string;
   subtotalBeforeDiscount?: number;
+  isModified?: boolean;
+  modificationHistory?: Array<{
+    modified_at: string;
+    modified_by: number;
+    modified_by_name: string;
+    changes: Record<string, { from: any; to: any }>;
+    reason: string;
+  }>;
 }
 
 interface CurrencyConfig {
@@ -167,25 +176,6 @@ const FilterBarWrapper = styled.div`
   }
 `;
 
-const FiltersLeft = styled.div`
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
-  flex: 1;
-
-  @media (max-width: 600px) {
-    flex-direction: column;
-    width: 100%;
-
-    > * {
-      width: 100% !important;
-      min-width: 100% !important;
-      max-width: 100% !important;
-    }
-  }
-`;
-
 const FiltersRight = styled.div`
   display: flex;
   align-items: center;
@@ -199,6 +189,7 @@ const FiltersRight = styled.div`
     }
   }
 `;
+
 
 // Button 컴포넌트는 BaseButton으로 교체됨
 const Button = styled(BaseButton)``;
@@ -595,7 +586,21 @@ const FoodcourtInvoicesPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterType, setFilterType] = useState('all');
-  const [filterMonth, setFilterMonth] = useState('all');
+
+  // Period / Date Range filters (Issued tab)
+  const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
+  const [isCustomDateRange, setIsCustomDateRange] = useState(false);
+  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('month'));
+
+  // ToPay tab date filters
+  const [toPayActivePeriod, setToPayActivePeriod] = useState<PeriodType>('month');
+  const [toPayIsCustomDateRange, setToPayIsCustomDateRange] = useState(false);
+  const [toPayDateRange, setToPayDateRange] = useState(() => calculatePeriodDateRange('month'));
+
+  // Paid tab date filters
+  const [paidActivePeriod, setPaidActivePeriod] = useState<PeriodType>('month');
+  const [paidIsCustomDateRange, setPaidIsCustomDateRange] = useState(false);
+  const [paidDateRange, setPaidDateRange] = useState(() => calculatePeriodDateRange('month'));
   const [showCreateInvoiceModal, setShowCreateInvoiceModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -616,7 +621,45 @@ const FoodcourtInvoicesPage: React.FC = () => {
   // State for invoices to pay (from system admin)
   const [invoicesToPay, setInvoicesToPay] = useState<Invoice[]>([]);
   const [paidInvoicesList, setPaidInvoicesList] = useState<Invoice[]>([]);
+  const [toPaySearchTerm, setToPaySearchTerm] = useState('');
+  const [paidSearchTerm, setPaidSearchTerm] = useState('');
 
+
+  const handlePeriodChange = (period: PeriodType) => {
+    setActivePeriod(period);
+    setIsCustomDateRange(false);
+    setDateRange(calculatePeriodDateRange(period));
+  };
+
+  const handleCalendarRangeSelect = (start: string, end: string) => {
+    setIsCustomDateRange(true);
+    setActivePeriod('all');
+    setDateRange({ start, end });
+  };
+
+  const handleToPayPeriodChange = (period: PeriodType) => {
+    setToPayActivePeriod(period);
+    setToPayIsCustomDateRange(false);
+    setToPayDateRange(calculatePeriodDateRange(period));
+  };
+
+  const handleToPayCalendarRangeSelect = (start: string, end: string) => {
+    setToPayIsCustomDateRange(true);
+    setToPayActivePeriod('all');
+    setToPayDateRange({ start, end });
+  };
+
+  const handlePaidPeriodChange = (period: PeriodType) => {
+    setPaidActivePeriod(period);
+    setPaidIsCustomDateRange(false);
+    setPaidDateRange(calculatePeriodDateRange(period));
+  };
+
+  const handlePaidCalendarRangeSelect = (start: string, end: string) => {
+    setPaidIsCustomDateRange(true);
+    setPaidActivePeriod('all');
+    setPaidDateRange({ start, end });
+  };
 
   // Payment submission states
   const [showPaymentSubmitModal, setShowPaymentSubmitModal] = useState(false);
@@ -640,6 +683,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
   const [categoryToDelete, setCategoryToDelete] = useState<InvoiceCategory | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [editInvoice, setEditInvoice] = useState<any>(null);
+  const [editModificationReason, setEditModificationReason] = useState('');
   const [editSearchQuery, setEditSearchQuery] = useState('');
   const [editSearchResults, setEditSearchResults] = useState<{managers: Manager[], restaurants: Restaurant[]}>({managers: [], restaurants: []});
   const [showEditSearchDropdown, setShowEditSearchDropdown] = useState(false);
@@ -1859,13 +1903,6 @@ const FoodcourtInvoicesPage: React.FC = () => {
     setShowSearchDropdown(false);
   };
 
-  // Get unique months from invoices
-  const monthsArray = invoices.map(invoice => {
-    const date = new Date(invoice.issueDate);
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-  });
-  const availableMonths = Array.from(new Set(monthsArray)).sort().reverse();
-
   const filteredInvoices = invoices.filter(invoice => {
     const matchesSearch = invoice.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          invoice.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1873,16 +1910,17 @@ const FoodcourtInvoicesPage: React.FC = () => {
     const matchesStatus = filterStatus === 'all' || invoice.status === filterStatus || (filterStatus === 'pending_payment' && (invoice.status === '' || !invoice.status));
     const matchesType = filterType === 'all' || invoice.type === filterType;
 
-    let matchesMonth = true;
-    if (filterMonth !== 'all') {
+    let matchesDateRange = true;
+    if (dateRange.start && dateRange.end) {
       const invoiceDate = new Date(invoice.issueDate);
-      const invoiceMonth = `${invoiceDate.getFullYear()}-${String(invoiceDate.getMonth() + 1).padStart(2, '0')}`;
-      matchesMonth = invoiceMonth === filterMonth;
+      const startDate = new Date(dateRange.start);
+      const endDate = new Date(dateRange.end);
+      endDate.setHours(23, 59, 59, 999);
+      matchesDateRange = invoiceDate >= startDate && invoiceDate <= endDate;
     }
 
-    return matchesSearch && matchesStatus && matchesType && matchesMonth;
+    return matchesSearch && matchesStatus && matchesType && matchesDateRange;
   }).sort((a, b) => {
-    // Sort by issue date descending (newest first)
     const dateA = new Date(a.issueDate).getTime();
     const dateB = new Date(b.issueDate).getTime();
     return dateB - dateA;
@@ -1892,6 +1930,40 @@ const FoodcourtInvoicesPage: React.FC = () => {
   const paidInvoices = invoices.filter(i => i.status === 'paid').length;
   const overdueInvoices = invoices.filter(i => i.status === 'overdue').length;
   const totalRevenue = invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + i.total, 0);
+
+  // Filtered ToPay invoices (dateRange + search)
+  const filteredInvoicesToPay = invoicesToPay.filter(invoice => {
+    const matchesSearch = !toPaySearchTerm ||
+      invoice.invoiceNumber.toLowerCase().includes(toPaySearchTerm.toLowerCase()) ||
+      (invoice.restaurantName || '').toLowerCase().includes(toPaySearchTerm.toLowerCase()) ||
+      (invoice.customerName || '').toLowerCase().includes(toPaySearchTerm.toLowerCase());
+    let matchesDateRange = true;
+    if (toPayDateRange.start && toPayDateRange.end) {
+      const invoiceDate = new Date(invoice.issueDate);
+      const startDate = new Date(toPayDateRange.start);
+      const endDate = new Date(toPayDateRange.end);
+      endDate.setHours(23, 59, 59, 999);
+      matchesDateRange = invoiceDate >= startDate && invoiceDate <= endDate;
+    }
+    return matchesSearch && matchesDateRange;
+  });
+
+  // Filtered Paid invoices (dateRange + search)
+  const filteredPaidInvoices = paidInvoicesList.filter(invoice => {
+    const matchesSearch = !paidSearchTerm ||
+      invoice.invoiceNumber.toLowerCase().includes(paidSearchTerm.toLowerCase()) ||
+      (invoice.restaurantName || '').toLowerCase().includes(paidSearchTerm.toLowerCase()) ||
+      (invoice.customerName || '').toLowerCase().includes(paidSearchTerm.toLowerCase());
+    let matchesDateRange = true;
+    if (paidDateRange.start && paidDateRange.end) {
+      const invoiceDate = new Date(invoice.paidDate || invoice.issueDate);
+      const startDate = new Date(paidDateRange.start);
+      const endDate = new Date(paidDateRange.end);
+      endDate.setHours(23, 59, 59, 999);
+      matchesDateRange = invoiceDate >= startDate && invoiceDate <= endDate;
+    }
+    return matchesSearch && matchesDateRange;
+  }).sort((a, b) => new Date(b.paidDate || b.issueDate).getTime() - new Date(a.paidDate || a.issueDate).getTime());
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-MY');
@@ -1969,6 +2041,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
       }
     }
 
+    setEditModificationReason('');
     setShowEditModal(true);
   };
 
@@ -2011,6 +2084,12 @@ const FoodcourtInvoicesPage: React.FC = () => {
   const handleSaveEdit = async () => {
     if (!selectedInvoice || !editInvoice) return;
 
+    if (selectedInvoice.type === 'automatic' && !editModificationReason.trim()) {
+      setSuccessMessage('Please enter a reason for modifying this invoice.');
+      setShowSuccessModal(true);
+      return;
+    }
+
     try {
       const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/invoices/${selectedInvoice.id}`, {
@@ -2027,27 +2106,13 @@ const FoodcourtInvoicesPage: React.FC = () => {
           status: editInvoice.status,
           payerType: editInvoice.payerType,
           payerId: editInvoice.payerId,
-          items: editInvoice.items
+          items: editInvoice.items,
+          modificationReason: editModificationReason.trim() || undefined
         }),
       });
 
       if (response.ok) {
-        const updatedInvoice = {
-          ...selectedInvoice,
-          amount: parseFloat(editInvoice.amount),
-          tax: parseFloat(editInvoice.tax),
-          total: parseFloat(editInvoice.total),
-          dueDate: editInvoice.dueDate,
-          status: editInvoice.status,
-          payerType: editInvoice.payerType,
-          payerId: editInvoice.payerId,
-          items: editInvoice.items
-        };
-
-        setInvoices(invoices.map(inv =>
-          inv.id === selectedInvoice.id ? updatedInvoice : inv
-        ));
-
+        await fetchInvoices();
         setShowEditModal(false);
         setSelectedInvoice(null);
         setEditInvoice(null);
@@ -2359,13 +2424,18 @@ const FoodcourtInvoicesPage: React.FC = () => {
         </StatsGrid>
 
         <FilterBarWrapper>
-          <FiltersLeft>
+          <DatePeriodFilter
+            activePeriod={activePeriod}
+            dateRange={dateRange}
+            isCustomDateRange={isCustomDateRange}
+            onPeriodChange={handlePeriodChange}
+            onCalendarRangeSelect={handleCalendarRangeSelect}
+          >
             <SearchInput
               placeholder="Search by invoice #, company, restaurant..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-
             <FilterSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
               <option value="all">All Status</option>
               <option value="draft">Draft</option>
@@ -2375,28 +2445,12 @@ const FoodcourtInvoicesPage: React.FC = () => {
               <option value="overdue">Overdue</option>
               <option value="cancelled">Cancelled</option>
             </FilterSelect>
-
             <FilterSelect value={filterType} onChange={(e) => setFilterType(e.target.value)}>
               <option value="all">All Types</option>
               <option value="automatic">Automatic</option>
               <option value="manual">Manual</option>
             </FilterSelect>
-
-            <FilterSelect value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}>
-              <option value="all">All Months</option>
-              {availableMonths.map(month => {
-                const [year, monthNum] = month.split('-');
-                const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-                                   'July', 'August', 'September', 'October', 'November', 'December'];
-                const monthName = monthNames[parseInt(monthNum) - 1];
-                return (
-                  <option key={month} value={month}>
-                    {monthName} {year}
-                  </option>
-                );
-              })}
-            </FilterSelect>
-          </FiltersLeft>
+          </DatePeriodFilter>
           <FiltersRight>
             <Button variant="primary" onClick={handleCreateInvoice}>Create Invoice</Button>
           </FiltersRight>
@@ -2460,6 +2514,9 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     <StatusBadge status={invoice.status}>
                       {getStatusDisplay(invoice.status)}
                     </StatusBadge>
+                    {invoice.isModified && (
+                      <span style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle' }}>Modified</span>
+                    )}
                   </div>
                 </MobileValue>
 
@@ -2640,6 +2697,20 @@ const FoodcourtInvoicesPage: React.FC = () => {
               </StatCard>
             </StatsGrid>
 
+            <DatePeriodFilter
+              activePeriod={toPayActivePeriod}
+              dateRange={toPayDateRange}
+              isCustomDateRange={toPayIsCustomDateRange}
+              onPeriodChange={handleToPayPeriodChange}
+              onCalendarRangeSelect={handleToPayCalendarRangeSelect}
+            >
+              <SearchInput
+                placeholder="Search by invoice #, restaurant..."
+                value={toPaySearchTerm}
+                onChange={(e) => setToPaySearchTerm(e.target.value)}
+              />
+            </DatePeriodFilter>
+
             <Table>
               <InvoiceTableHeader columns="1.5fr 1.2fr 1fr 0.8fr 0.8fr 0.7fr 0.8fr 0.8fr minmax(120px, 160px)">
                 <span>Invoice</span>
@@ -2653,8 +2724,8 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 <span>Actions</span>
               </InvoiceTableHeader>
 
-              {invoicesToPay.length > 0 ? (
-                invoicesToPay.map(invoice => (
+              {filteredInvoicesToPay.length > 0 ? (
+                filteredInvoicesToPay.map(invoice => (
                   <InvoiceTableRow columns="1.5fr 1.2fr 1fr 0.8fr 0.8fr 0.7fr 0.8fr 0.8fr minmax(120px, 160px)" key={invoice.id}>
                     <MobileGrid>
                       <MobileValue className="col-invoice">
@@ -2697,6 +2768,9 @@ const FoodcourtInvoicesPage: React.FC = () => {
                         <StatusBadge status={invoice.status}>
                           {getStatusDisplay(invoice.status)}
                         </StatusBadge>
+                        {invoice.isModified && (
+                          <span style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle' }}>Modified</span>
+                        )}
                       </MobileValue>
 
                       <MobileValue className="col-amount">
@@ -2739,7 +2813,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                   </InvoiceTableRow>
                 ))
               ) : (
-                <EmptyState>No invoices to pay</EmptyState>
+                <EmptyState>{toPaySearchTerm || toPayActivePeriod !== 'all' || toPayIsCustomDateRange ? 'No matching invoices found' : 'No invoices to pay'}</EmptyState>
               )}
             </Table>
           </>
@@ -2747,6 +2821,20 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
         {activeTab === 'paid' && (
           <>
+            <DatePeriodFilter
+              activePeriod={paidActivePeriod}
+              dateRange={paidDateRange}
+              isCustomDateRange={paidIsCustomDateRange}
+              onPeriodChange={handlePaidPeriodChange}
+              onCalendarRangeSelect={handlePaidCalendarRangeSelect}
+            >
+              <SearchInput
+                placeholder="Search by invoice #, restaurant..."
+                value={paidSearchTerm}
+                onChange={(e) => setPaidSearchTerm(e.target.value)}
+              />
+            </DatePeriodFilter>
+
             <Table>
               <InvoiceTableHeader columns="1.5fr 1.2fr 1fr 0.8fr 0.7fr 0.8fr 0.8fr minmax(120px, 140px)">
                 <span>Invoice</span>
@@ -2759,8 +2847,8 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 <span>Actions</span>
               </InvoiceTableHeader>
 
-              {paidInvoicesList.length > 0 ? (
-                paidInvoicesList.sort((a, b) => new Date(b.paidDate || b.issueDate).getTime() - new Date(a.paidDate || a.issueDate).getTime()).map(invoice => (
+              {filteredPaidInvoices.length > 0 ? (
+                filteredPaidInvoices.map(invoice => (
                   <InvoiceTableRow columns="1.5fr 1.2fr 1fr 0.8fr 0.7fr 0.8fr 0.8fr minmax(120px, 140px)" key={invoice.id}>
                     <MobileGrid>
                       <MobileValue className="col-invoice">
@@ -2829,7 +2917,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                   </InvoiceTableRow>
                 ))
               ) : (
-                <EmptyState>No paid invoices yet</EmptyState>
+                <EmptyState>{paidSearchTerm || paidActivePeriod !== 'all' || paidIsCustomDateRange ? 'No matching invoices found' : 'No paid invoices yet'}</EmptyState>
               )}
             </Table>
           </>
@@ -3420,6 +3508,9 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     <StatusBadge status={selectedInvoice.status} style={{ marginTop: '8px' }}>
                       {getStatusDisplay(selectedInvoice.status)}
                     </StatusBadge>
+                    {selectedInvoice.isModified && (
+                      <span style={{ display: 'inline-block', marginTop: '4px', padding: '2px 8px', fontSize: '11px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px' }}>Modified</span>
+                    )}
                   </div>
                 </div>
 
@@ -3528,6 +3619,26 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     {companySettings?.registrationNumber && <span>Reg No: {companySettings.registrationNumber}</span>}
                     {companySettings?.registrationNumber && companySettings?.taxNumber && <span> | </span>}
                     {companySettings?.taxNumber && <span>Tax No: {companySettings.taxNumber}</span>}
+                  </div>
+                )}
+
+                {/* Modification History in View Modal */}
+                {selectedInvoice.isModified && selectedInvoice.modificationHistory && selectedInvoice.modificationHistory.length > 0 && (
+                  <div style={{ marginTop: '20px', padding: '16px', background: '#FEF3C7', borderRadius: '8px', border: '1px solid #FDE68A' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#92400E', marginBottom: '12px' }}>Modification History</div>
+                    {selectedInvoice.modificationHistory.map((mod, idx) => (
+                      <div key={idx} style={{ fontSize: '12px', color: '#78350F', marginBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '10px' : '0', paddingBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '10px' : '0', borderBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '1px solid #FDE68A' : 'none' }}>
+                        <div style={{ fontWeight: 500 }}>{new Date(mod.modified_at).toLocaleString()} - {mod.modified_by_name}</div>
+                        {mod.reason && <div style={{ marginTop: '3px' }}>Reason: {mod.reason}</div>}
+                        {Object.keys(mod.changes).length > 0 && (
+                          <div style={{ marginTop: '3px', color: '#92400E' }}>
+                            {Object.entries(mod.changes).map(([field, change]) => (
+                              <div key={field}>{field}: {String(change.from)} → {String(change.to)}</div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </ModalBody>
@@ -3900,6 +4011,36 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     <span><strong>{formatCurrency(parseFloat(editInvoice.total || '0'), editInvoice.currency || operationSettings.currency)}</strong></span>
                   </SummaryRow>
                 </InvoiceSummary>
+
+                {/* Modification Reason */}
+                <FormGroup style={{ marginTop: '16px' }}>
+                  <FormLabel>Modification Reason {selectedInvoice?.type === 'automatic' && <span style={{ color: '#EF4444' }}>*</span>}</FormLabel>
+                  <FormTextarea
+                    value={editModificationReason}
+                    onChange={(e) => setEditModificationReason(e.target.value)}
+                    placeholder="Enter reason for modification..."
+                    rows={2}
+                  />
+                </FormGroup>
+
+                {selectedInvoice?.modificationHistory && selectedInvoice.modificationHistory.length > 0 && (
+                  <div style={{ marginTop: '16px', padding: '12px', background: '#FEF3C7', borderRadius: '8px', border: '1px solid #FDE68A' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#92400E', marginBottom: '8px' }}>Modification History</div>
+                    {selectedInvoice.modificationHistory.map((mod, idx) => (
+                      <div key={idx} style={{ fontSize: '12px', color: '#78350F', marginBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '8px' : '0', paddingBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '8px' : '0', borderBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '1px solid #FDE68A' : 'none' }}>
+                        <div style={{ fontWeight: 500 }}>{new Date(mod.modified_at).toLocaleString()} - {mod.modified_by_name}</div>
+                        {mod.reason && <div style={{ marginTop: '2px' }}>Reason: {mod.reason}</div>}
+                        {Object.keys(mod.changes).length > 0 && (
+                          <div style={{ marginTop: '2px', color: '#92400E' }}>
+                            {Object.entries(mod.changes).map(([field, change]) => (
+                              <span key={field} style={{ marginRight: '8px' }}>{field}: {String(change.from)} → {String(change.to)}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </ModalBody>
               <ModalFooter>
                 <Button variant="secondary" onClick={() => setShowEditModal(false)}>

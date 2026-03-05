@@ -64,7 +64,8 @@ interface Staff {
 
 // 페이지별 반응형 테이블 헤더 (StaffManagement 전용)
 const StaffTableHeader = styled(CommonTableHeader)`
-  /* 정렬 규칙: 상태는 가운데, 금액/액션은 우측 */
+  /* 정렬 규칙: Department/상태는 가운데, 금액/액션은 우측 */
+  & > span:nth-child(4) { text-align: center; } /* Department */
   & > span:nth-child(5) { text-align: center; } /* Status */
   & > span:nth-child(6) { text-align: right; } /* Salary */
   & > span:nth-child(7) { text-align: right; } /* Actions */
@@ -1454,13 +1455,6 @@ const AdminStaffManagementPage: React.FC = () => {
           </Tabs>
 
           <FilterBar>
-            <SearchInput
-              type="text"
-              placeholder="Search by name, email, or restaurant..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-
             <FilterSelect
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
@@ -1490,6 +1484,13 @@ const AdminStaffManagementPage: React.FC = () => {
                 <option key={rest.id} value={rest.id}>{rest.name}</option>
               ))}
             </FilterSelect>
+
+            <SearchInput
+              type="text"
+              placeholder="Search by name, email, or restaurant..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </FilterBar>
 
           <Table>
@@ -1543,21 +1544,21 @@ const AdminStaffManagementPage: React.FC = () => {
                       </RoleBadge>
                     </MobileValue>
 
-                    <MobileValue>
+                    <MobileValue style={{ textAlign: 'center' }}>
                       <MobileLabel>Department</MobileLabel>
                       <div style={{ fontSize: '13px', color: '#6B7280' }}>
                         {staff.department}
                       </div>
                     </MobileValue>
 
-                    <MobileValue>
+                    <MobileValue style={{ textAlign: 'center' }}>
                       <MobileLabel>Status</MobileLabel>
                       <StatusBadge status={staff.status}>
                         {staff.status === 'active' ? 'Active' : 'Inactive'}
                       </StatusBadge>
                     </MobileValue>
 
-                    <MobileValue>
+                    <MobileValue style={{ textAlign: 'right' }}>
                       <MobileLabel>Salary</MobileLabel>
                       <div style={{ fontSize: '13px', color: '#374151', fontWeight: '600' }}>
                         {staff.salary ? formatCurrency(staff.salary, operationSettings.currency) : 'N/A'}

@@ -657,13 +657,6 @@ const SupportTicketsPage: React.FC = () => {
           </StatsGrid>
 
           <FilterBar>
-            <SearchInput
-              type="text"
-              placeholder="Search tickets, customers..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-
             <FilterSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
               <option value="all">All Status</option>
               <option value="open">Open</option>
@@ -688,6 +681,13 @@ const SupportTicketsPage: React.FC = () => {
               <option value="bug-report">Bug Report</option>
               <option value="general">General</option>
             </FilterSelect>
+
+            <SearchInput
+              type="text"
+              placeholder="Search tickets, customers..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </FilterBar>
 
           <TicketsGrid>

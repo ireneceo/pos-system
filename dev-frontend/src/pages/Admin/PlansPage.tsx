@@ -1313,12 +1313,6 @@ const PlansPage: React.FC = () => {
         </StatsGrid>
 
         <FilterBar>
-          <SearchInput
-            type="text"
-            placeholder="Search plans..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
           <FilterSelect
             value={planTargetFilter}
             onChange={(e) => setPlanTargetFilter(e.target.value as any)}
@@ -1359,6 +1353,12 @@ const PlansPage: React.FC = () => {
               );
             })}
           </FilterSelect>
+          <SearchInput
+            type="text"
+            placeholder="Search plans..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </FilterBar>
 
         <PlansGrid>

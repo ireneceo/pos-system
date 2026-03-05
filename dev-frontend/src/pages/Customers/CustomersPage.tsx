@@ -583,16 +583,6 @@ const CustomersPage: React.FC = () => {
 
         <Content>
           <FilterBar>
-            <SearchContainer>
-              <SearchIcon>🔍</SearchIcon>
-              <SearchInputWithIcon
-                type="text"
-                placeholder="Search customers by name, phone, or email..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </SearchContainer>
-
             <FilterSelect
               value={tierFilter}
               onChange={(e) => setTierFilter(e.target.value)}
@@ -623,6 +613,16 @@ const CustomersPage: React.FC = () => {
               <option value="totalOrders">Sort by Orders</option>
               <option value="points">Sort by Points</option>
             </FilterSelect>
+
+            <SearchContainer>
+              <SearchIcon>🔍</SearchIcon>
+              <SearchInputWithIcon
+                type="text"
+                placeholder="Search customers by name, phone, or email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </SearchContainer>
           </FilterBar>
 
           <StatsGrid>
