@@ -3,6 +3,7 @@ const router = express.Router();
 const Restaurant = require('../models/Restaurant');
 const SystemSettings = require('../models/SystemSettings');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
+const { logActivity } = require('../utils/activityLogger');
 
 // Get store settings
 router.get('/settings', authenticateToken, async (req, res) => {
@@ -204,6 +205,16 @@ router.put('/settings', authenticateToken, async (req, res) => {
     console.log('💾 Saving to database...');
     await restaurant.save();
     console.log('✅ Settings saved successfully!');
+
+    const changedFields = allowedFields.filter(f => req.body[f] !== undefined).join(', ');
+    logActivity(req, {
+      action_type: 'update',
+      entity_type: 'settings',
+      entity_id: restaurantId,
+      entity_name: restaurant.name,
+      description: `Updated store settings (${changedFields})`,
+      restaurant_id: restaurantId
+    });
 
     res.json({
       success: true,

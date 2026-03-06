@@ -475,10 +475,10 @@ const BrandManagerDashboard: React.FC = () => {
               <div className="title">Reports</div>
               <div className="description">Performance analytics</div>
             </QuickActionCard>
-            <QuickActionCard onClick={() => navigate('/pos/manager/staff')}>
+            <QuickActionCard onClick={() => navigate('/pos/manager/admins')}>
               <div className="icon">◆</div>
-              <div className="title">Admin & Staff</div>
-              <div className="description">Staff management</div>
+              <div className="title">Restaurant Admins</div>
+              <div className="description">Admin management</div>
             </QuickActionCard>
           </QuickActionsGrid>
         </QuickActionsSection>

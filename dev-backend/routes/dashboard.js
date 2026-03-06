@@ -3,6 +3,7 @@ const router = express.Router();
 require('../models'); // Load associations
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const Category = require('../models/Category');
 const User = require('../models/User');
 const Restaurant = require('../models/Restaurant');
 const Invoice = require('../models/Invoice');
@@ -802,6 +803,34 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
       attributes: ['id', 'order_date', 'total_amount', 'order_items', 'order_type', 'payment_method']
     });
 
+    // Build product ID → category name mapping for order_items that lack category
+    const products = await Product.findAll({
+      where: { restaurant_id: restaurantId },
+      attributes: ['id', 'name', 'category']
+    });
+    const categories = await Category.findAll({
+      where: { restaurant_id: restaurantId },
+      attributes: ['id', 'name']
+    });
+    const categoryIdToName = {};
+    categories.forEach(c => { categoryIdToName[c.id] = c.name; });
+    const productCategoryMap = {};
+    products.forEach(p => {
+      // product.category can be a category ID (number string) or category name
+      const catVal = p.category;
+      if (catVal && categoryIdToName[catVal]) {
+        productCategoryMap[p.id] = categoryIdToName[catVal];
+      } else if (catVal) {
+        productCategoryMap[p.id] = catVal;
+      }
+      // Also map by product name for fallback
+      if (!productCategoryMap[`name:${p.name}`] && (catVal && categoryIdToName[catVal])) {
+        productCategoryMap[`name:${p.name}`] = categoryIdToName[catVal];
+      } else if (!productCategoryMap[`name:${p.name}`] && catVal) {
+        productCategoryMap[`name:${p.name}`] = catVal;
+      }
+    });
+
     // Initialize aggregation containers
     const dailySales = {};
     const hourlySales = {};
@@ -853,10 +882,15 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
       // Category and menu item aggregation
       if (order.order_items && Array.isArray(order.order_items)) {
         order.order_items.forEach(item => {
-          const category = item.category || 'Uncategorized';
+          // Resolve category: item.category > product lookup by menuItem.id > product lookup by name > 'Uncategorized'
+          const productId = item.menuItem?.id || item.productId || item.id;
           const itemName = item.name || 'Unknown';
+          const category = item.category
+            || (productId && productCategoryMap[productId])
+            || productCategoryMap[`name:${itemName}`]
+            || 'Uncategorized';
           const quantity = parseInt(item.quantity) || 1;
-          const itemRevenue = parseFloat(item.price) * quantity;
+          const itemRevenue = (parseFloat(item.price) || 0) * quantity;
 
           // Category sales
           if (!categorySales[category]) {

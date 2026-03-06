@@ -368,6 +368,7 @@ const Modal = styled.div`
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  margin: auto 0;
 `;
 
 const ModalContent = styled.div`
@@ -378,6 +379,7 @@ const ModalContent = styled.div`
   width: 90%;
   max-height: 90vh;
   overflow: auto;
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`
@@ -820,7 +822,7 @@ const OperationInquiryPage: React.FC = () => {
           {/* Detail View Modal */}
           {selectedTicket && (
             <Modal onClick={() => setSelectedTicket(null)}>
-              <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
+              <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
                 <ModalHeader>
                   <ModalTitle>{selectedTicket.ticketNumber}</ModalTitle>
                   <CloseButton onClick={() => setSelectedTicket(null)}>×</CloseButton>

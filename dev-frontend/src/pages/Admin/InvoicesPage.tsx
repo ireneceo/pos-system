@@ -438,6 +438,7 @@ const Modal = styled.div`
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  margin: auto 0;
 `;
 
 const ModalContent = styled.div`
@@ -455,6 +456,7 @@ const ModalContent = styled.div`
     width: 95%;
     max-width: none;
   }
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`
@@ -670,6 +672,7 @@ const InvoicesPage: React.FC = () => {
     rate: 0,
     name: 'Tax'
   });
+  const [paymentMethodWarning, setPaymentMethodWarning] = useState<string | null>(null);
   const [sortField, setSortField] = useState<'invoiceNumber' | 'companyName' | 'issueDate' | 'dueDate' | 'amount' | 'status'>('issueDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [newInvoice, setNewInvoice] = useState({
@@ -875,141 +878,6 @@ const InvoicesPage: React.FC = () => {
     } catch (error) {
       console.error('Failed to toggle category:', error);
     }
-  };
-
-  // Sample data fallback - kept for reference but not currently used
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const setSampleData = () => {
-    const sampleInvoices: Invoice[] = [
-      {
-        id: 'inv-001',
-        invoiceNumber: 'INV-2025-001',
-        managerId: 'mgr-001',
-        managerName: 'Ahmad Rahman',
-        companyName: 'Sunway Food Court',
-        customerName: 'Ahmad Rahman',
-        customerAddress: 'Sunway Food Court',
-        issueDate: '2025-01-01',
-        dueDate: '2025-01-31',
-        paidDate: '2025-01-15',
-        status: 'paid',
-        amount: 2190,
-        tax: 131.4,
-        total: 2321.4,
-        billingPeriod: 'Jan 2025 - Dec 2025',
-        planType: 'Enterprise',
-        items: [
-          { description: 'Enterprise Plan - Annual', quantity: 1, unitPrice: 2190, total: 2190 }
-        ]
-      },
-      {
-        id: 'inv-002',
-        invoiceNumber: 'INV-2025-002',
-        managerId: 'mgr-002',
-        managerName: 'Sarah Lim',
-        companyName: 'IOI Mall Restaurants',
-        customerName: 'Sarah Lim',
-        customerAddress: 'IOI Mall Restaurants',
-        issueDate: '2025-01-15',
-        dueDate: '2025-02-15',
-        status: 'pending_payment',
-        amount: 99,
-        tax: 5.94,
-        total: 104.94,
-        billingPeriod: 'Feb 2025',
-        planType: 'Professional',
-        hasPaymentInfo: false,
-        items: [
-          { description: 'Professional Plan - Monthly', quantity: 1, unitPrice: 99, total: 99 }
-        ]
-      },
-      {
-        id: 'inv-003',
-        invoiceNumber: 'INV-2025-003',
-        managerId: 'mgr-003',
-        managerName: 'David Tan',
-        companyName: 'Pavilion Food Hub',
-        customerName: 'David Tan',
-        customerAddress: 'Pavilion Food Hub',
-        issueDate: '2024-12-10',
-        dueDate: '2025-01-10',
-        status: 'overdue',
-        amount: 2190,
-        tax: 131.4,
-        total: 2321.4,
-        billingPeriod: 'Nov 2024 - Oct 2025',
-        planType: 'Enterprise',
-        items: [
-          { description: 'Enterprise Plan - Annual Renewal', quantity: 1, unitPrice: 2190, total: 2190 }
-        ]
-      },
-      {
-        id: 'inv-004',
-        invoiceNumber: 'INV-2025-004',
-        managerId: 'mgr-005',
-        managerName: 'John Doe',
-        companyName: 'Single Restaurant Chain',
-        customerName: 'John Doe',
-        customerAddress: 'Single Restaurant Chain',
-        issueDate: '2025-01-20',
-        dueDate: '2025-02-20',
-        status: 'draft',
-        amount: 29,
-        tax: 1.74,
-        total: 30.74,
-        billingPeriod: 'Feb 2025',
-        planType: 'Basic',
-        items: [
-          { description: 'Basic Plan - Monthly', quantity: 1, unitPrice: 29, total: 29 }
-        ]
-      },
-      {
-        id: 'inv-005',
-        invoiceNumber: 'INV-2024-125',
-        managerId: 'mgr-004',
-        managerName: 'Lisa Wong',
-        companyName: 'Mid Valley Dining',
-        customerName: 'Lisa Wong',
-        customerAddress: 'Mid Valley Dining',
-        issueDate: '2024-12-20',
-        dueDate: '2025-01-20',
-        status: 'cancelled',
-        amount: 99,
-        tax: 5.94,
-        total: 104.94,
-        billingPeriod: 'Jan 2025',
-        planType: 'Professional',
-        items: [
-          { description: 'Professional Plan - Trial Conversion', quantity: 1, unitPrice: 99, total: 99 }
-        ]
-      },
-      {
-        id: 'inv-006',
-        invoiceNumber: 'INV-2025-006',
-        managerId: 'mgr-006',
-        managerName: 'Michael Chen',
-        companyName: 'Gateway Mall Food Court',
-        customerName: 'Michael Chen',
-        customerAddress: 'Gateway Mall Food Court',
-        issueDate: '2025-01-20',
-        dueDate: '2025-02-20',
-        status: 'payment_submitted',
-        amount: 290,
-        tax: 17.4,
-        total: 307.4,
-        billingPeriod: 'Feb 2025 - Jan 2026',
-        planType: 'Basic',
-        paymentMethod: 'Bank Transfer',
-        transactionId: 'TXN-2025-001',
-        receiptUrl: '/receipts/inv-006-receipt.pdf',
-        hasPaymentInfo: true,
-        items: [
-          { description: 'Basic Plan - Annual', quantity: 1, unitPrice: 290, total: 290 }
-        ]
-      }
-    ];
-    
-    setInvoices(sampleInvoices);
   };
 
   // Fetch payment settings (additional charges including tax)
@@ -1268,10 +1136,30 @@ const InvoicesPage: React.FC = () => {
     }
   };
 
+  const checkPaymentMethodsForCurrency = async (currency: string) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/admin/payment-settings/available/${currency}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (!data.methods || data.methods.length === 0) {
+          setPaymentMethodWarning(`No payment methods configured for ${currency}. Please set up payment methods in Payment Settings before sending this invoice.`);
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error checking payment methods:', error);
+    }
+    setPaymentMethodWarning(null);
+  };
+
   const selectTarget = async (type: 'manager' | 'restaurant', data: Manager | Restaurant) => {
     setSelectedTarget({type, data});
     setShowSearchDropdown(false);
     setSearchQuery(type === 'manager' ? (data as Manager).fullName : (data as Restaurant).name);
+    setPaymentMethodWarning(null);
 
     const token = localStorage.getItem('auth_token');
     let currency = 'USD'; // Default fallback if no currency configured
@@ -1339,6 +1227,7 @@ const InvoicesPage: React.FC = () => {
         restaurantName: '',
         currency
       });
+      await checkPaymentMethodsForCurrency(currency);
     } else {
       const restaurant = data as Restaurant;
       const manager = managers.find(m => m.id === restaurant.admin_id);
@@ -1365,6 +1254,7 @@ const InvoicesPage: React.FC = () => {
         companyName: restaurant.name,
         currency
       });
+      await checkPaymentMethodsForCurrency(currency);
     }
   };
 
@@ -2334,6 +2224,7 @@ const InvoicesPage: React.FC = () => {
         await fetchInvoices();
         setShowPaymentConfirmModal(false);
         setSelectedInvoice(null);
+        window.dispatchEvent(new Event('refreshBadgeCounts'));
       } else {
         const errorData = await response.json();
         alert(`Failed to update payment status: ${errorData.error || 'Unknown error'}`);
@@ -2379,6 +2270,7 @@ const InvoicesPage: React.FC = () => {
         await fetchInvoices();
         setShowCancelConfirmModal(false);
         setSelectedInvoice(null);
+        window.dispatchEvent(new Event('refreshBadgeCounts'));
       } else {
         const errorData = await response.json();
         alert(`Failed to cancel invoice: ${errorData.error || 'Unknown error'}`);
@@ -2407,6 +2299,7 @@ const InvoicesPage: React.FC = () => {
         await fetchInvoices();
         setShowDeleteConfirmModal(false);
         setSelectedInvoice(null);
+        window.dispatchEvent(new Event('refreshBadgeCounts'));
       } else {
         const errorData = await response.json();
         alert(`Failed to delete invoice: ${errorData.error || 'Unknown error'}`);
@@ -2830,7 +2723,7 @@ const InvoicesPage: React.FC = () => {
         {/* Category Modal */}
         {showCategoryModal && (
           <Modal onClick={handleCloseCategoryModal}>
-            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
               <ModalHeader>
                 <ModalTitle>{editingCategory ? 'Edit Category' : 'Add Category'}</ModalTitle>
                 <CloseButton onClick={handleCloseCategoryModal}>×</CloseButton>
@@ -3217,14 +3110,19 @@ const InvoicesPage: React.FC = () => {
                 </InvoiceSummary>
               </ModalBody>
               <ModalFooter>
+                {paymentMethodWarning && (
+                  <div style={{ padding: '10px 16px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: '8px', fontSize: '13px', color: '#92400E', marginBottom: '12px' }}>
+                    {paymentMethodWarning}
+                  </div>
+                )}
                 <Button variant="secondary" onClick={() => {
                   setShowCreateInvoiceModal(false);
                   resetInvoiceForm();
                 }}>
                   Cancel
                 </Button>
-                <Button 
-                  variant="primary" 
+                <Button
+                  variant="primary"
                   onClick={handleSubmitInvoice}
                   disabled={!selectedTarget || !newInvoice.amount || !newInvoice.dueDate}
                 >

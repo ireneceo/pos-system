@@ -524,15 +524,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     (user?.role === 'Restaurant Admin' || user?.role === 'Staff') ? Number(restaurantId) : null
   );
 
-  // Pending order count from API polling (not stale OrderContext)
-  const [pendingOrders, setPendingOrders] = useState(0);
-
-  // Badge counts for sidebar notifications
+  // Badge counts for sidebar notifications (includes pendingOrders)
   const [badgeCounts, setBadgeCounts] = useState({
     systemInquiry: 0,
     operationInquiry: 0,
     notices: 0,
     invoices: 0,
+    pendingOrders: 0,
     unreadComments: { notices: 0, systemInquiry: 0, operationInquiry: 0 }
   });
 
@@ -545,54 +543,26 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.success) setBadgeCounts(data.data);
+        if (data.success) setBadgeCounts(prev => ({ ...prev, ...data.data }));
       }
     } catch (e) { /* silent */ }
   }, []);
 
-  // 30초 polling (백그라운드 동기화)
+  // 15초 polling (통합)
   useEffect(() => {
     if (user) {
       fetchBadgeCounts();
-      const interval = setInterval(fetchBadgeCounts, 30000);
+      const interval = setInterval(fetchBadgeCounts, 15000);
       return () => clearInterval(interval);
     }
   }, [user, fetchBadgeCounts]);
 
-  // CustomEvent 리스너: 공지/문의 읽음 시 즉시 뱃지 갱신
+  // CustomEvent 리스너: 상태 변경 시 즉시 뱃지 갱신
   useEffect(() => {
     const handler = () => fetchBadgeCounts();
     window.addEventListener('refreshBadgeCounts', handler);
     return () => window.removeEventListener('refreshBadgeCounts', handler);
   }, [fetchBadgeCounts]);
-
-  // Pending order count polling (Restaurant Admin / Staff only)
-  useEffect(() => {
-    const isRestaurantRole = user?.role === 'Restaurant Admin' || user?.role === 'Staff';
-    if (!isRestaurantRole || !restaurantId) return;
-
-    const fetchPendingCount = async () => {
-      try {
-        const token = localStorage.getItem('auth_token');
-        if (!token) return;
-        const today = new Date().toISOString().split('T')[0];
-        const res = await fetch(`/api/orders/restaurant/${restaurantId}/counts?startDate=${today}&endDate=${today}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success) {
-            const counts = data.data?.counts || {};
-            setPendingOrders((counts.pending || 0) + (counts.awaiting_payment || 0));
-          }
-        }
-      } catch (e) { /* silent */ }
-    };
-
-    fetchPendingCount();
-    const interval = setInterval(fetchPendingCount, 15000);
-    return () => clearInterval(interval);
-  }, [user, restaurantId]);
 
   const handleLogout = () => {
     logout();
@@ -731,7 +701,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           background: 'white',
           borderRadius: '12px',
           padding: '48px',
-          maxWidth: '500px',
+          maxWidth: '600px',
           width: '100%',
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
           textAlign: 'center'
@@ -886,8 +856,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0}>◈</NavIcon>
                   Notices
                 </NavItem>
-                <NavItem to="/pos/admin/support" active={isActive('/pos/admin/support')} hasPending={badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={badgeCounts.unreadComments?.systemInquiry > 0}>◎</NavIcon>
+                <NavItem to="/pos/admin/support" active={isActive('/pos/admin/support')} hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0}>◎</NavIcon>
                   Inquiry Management
                 </NavItem>
                 <NavItem to="/pos/admin/contact-inquiries" active={isActive('/pos/admin/contact-inquiries')} onClick={closeSidebar}>
@@ -928,9 +898,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                       <NavIcon>◐</NavIcon>
                       Restaurants
                     </NavItem>
-                    <NavItem to="/pos/manager/staff" active={isActive('/pos/manager/staff')} onClick={closeSidebar}>
+                    <NavItem to="/pos/manager/admins" active={isActive('/pos/manager/admins')} onClick={closeSidebar}>
                       <NavIcon>◆</NavIcon>
-                      Admin & Staff
+                      Restaurant Admins
                     </NavItem>
                     {user?.role === 'Brand General' && (
                       <NavItem to="/pos/brand/manager" active={isActive('/pos/brand/manager')} onClick={closeSidebar}>
@@ -992,12 +962,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                       <NavIcon hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0}>◈</NavIcon>
                       Notices
                     </NavItem>
-                    <NavItem to="/pos/brand/general/system-inquiry" active={isActive('/pos/brand/general/system-inquiry')} hasPending={badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
-                      <NavIcon hasPending={badgeCounts.unreadComments?.systemInquiry > 0}>?</NavIcon>
+                    <NavItem to="/pos/brand/general/system-inquiry" active={isActive('/pos/brand/general/system-inquiry')} hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
+                      <NavIcon hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0}>?</NavIcon>
                       System Inquiry
                     </NavItem>
-                    <NavItem to="/pos/brand/general/operation-inquiry" active={isActive('/pos/brand/general/operation-inquiry')} hasPending={badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
-                      <NavIcon hasPending={badgeCounts.unreadComments?.operationInquiry > 0}>◎</NavIcon>
+                    <NavItem to="/pos/brand/general/operation-inquiry" active={isActive('/pos/brand/general/operation-inquiry')} hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
+                      <NavIcon hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0}>◎</NavIcon>
                       Inquiry Management
                     </NavItem>
                   </>
@@ -1044,9 +1014,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                       <NavIcon>◐</NavIcon>
                       Restaurants
                     </NavItem>
-                    <NavItem to="/pos/manager/staff" active={isActive('/pos/manager/staff')} onClick={closeSidebar}>
+                    <NavItem to="/pos/manager/admins" active={isActive('/pos/manager/admins')} onClick={closeSidebar}>
                       <NavIcon>◆</NavIcon>
-                      Admin & Staff
+                      Restaurant Admins
                     </NavItem>
                     {user?.role === 'Foodcourt General' && (
                       <NavItem to="/pos/foodcourt/manager" active={isActive('/pos/foodcourt/manager')} onClick={closeSidebar}>
@@ -1086,12 +1056,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                       <NavIcon hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0}>◈</NavIcon>
                       Notices
                     </NavItem>
-                    <NavItem to="/pos/foodcourt/general/system-inquiry" active={isActive('/pos/foodcourt/general/system-inquiry')} hasPending={badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
-                      <NavIcon hasPending={badgeCounts.unreadComments?.systemInquiry > 0}>?</NavIcon>
+                    <NavItem to="/pos/foodcourt/general/system-inquiry" active={isActive('/pos/foodcourt/general/system-inquiry')} hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
+                      <NavIcon hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0}>?</NavIcon>
                       System Inquiry
                     </NavItem>
-                    <NavItem to="/pos/foodcourt/general/operation-inquiry" active={isActive('/pos/foodcourt/general/operation-inquiry')} hasPending={badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
-                      <NavIcon hasPending={badgeCounts.unreadComments?.operationInquiry > 0}>◎</NavIcon>
+                    <NavItem to="/pos/foodcourt/general/operation-inquiry" active={isActive('/pos/foodcourt/general/operation-inquiry')} hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
+                      <NavIcon hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0}>◎</NavIcon>
                       Inquiry Management
                     </NavItem>
                   </>
@@ -1149,12 +1119,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0}>◈</NavIcon>
                   Notices
                 </NavItem>
-                <NavItem to="/pos/owner/system-inquiry" active={isActive('/pos/owner/system-inquiry')} hasPending={badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={badgeCounts.unreadComments?.systemInquiry > 0}>◇</NavIcon>
+                <NavItem to="/pos/owner/system-inquiry" active={isActive('/pos/owner/system-inquiry')} hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0}>◇</NavIcon>
                   System Inquiry
                 </NavItem>
-                <NavItem to="/pos/owner/operation-inquiry" active={isActive('/pos/owner/operation-inquiry')} hasPending={badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={badgeCounts.unreadComments?.operationInquiry > 0}>◆</NavIcon>
+                <NavItem to="/pos/owner/operation-inquiry" active={isActive('/pos/owner/operation-inquiry')} hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0}>◆</NavIcon>
                   Operation Inquiry
                 </NavItem>
               </>
@@ -1209,8 +1179,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>■</NavIcon>
                   Dashboard
                 </NavItem>
-                <NavItem to={`/restaurant/${restaurantId}/live-orders`} active={isActive(`/restaurant/${restaurantId}/live-orders`)} hasPending={pendingOrders > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={pendingOrders > 0}>◉</NavIcon>
+                <NavItem to={`/restaurant/${restaurantId}/live-orders`} active={isActive(`/restaurant/${restaurantId}/live-orders`)} hasPending={badgeCounts.pendingOrders > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.pendingOrders > 0}>◉</NavIcon>
                   Live Orders
                 </NavItem>
               </>
@@ -1387,14 +1357,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 </NavItem>
               )}
               {isRouteAllowed(`/restaurant/${restaurantId}/support`) && (
-                <NavItem to={`/restaurant/${restaurantId}/support`} active={isActive(`/restaurant/${restaurantId}/support`)} hasPending={badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={badgeCounts.unreadComments?.systemInquiry > 0}>◎</NavIcon>
+                <NavItem to={`/restaurant/${restaurantId}/support`} active={isActive(`/restaurant/${restaurantId}/support`)} hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0}>◎</NavIcon>
                   System Inquiry
                 </NavItem>
               )}
               {isRouteAllowed(`/restaurant/${restaurantId}/operation-inquiry`) && (
-                <NavItem to={`/restaurant/${restaurantId}/operation-inquiry`} active={isActive(`/restaurant/${restaurantId}/operation-inquiry`)} hasPending={badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={badgeCounts.unreadComments?.operationInquiry > 0}>▲</NavIcon>
+                <NavItem to={`/restaurant/${restaurantId}/operation-inquiry`} active={isActive(`/restaurant/${restaurantId}/operation-inquiry`)} hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0}>▲</NavIcon>
                   Operation Inquiry
                 </NavItem>
               )}

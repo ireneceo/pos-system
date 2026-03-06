@@ -255,6 +255,7 @@ const ModalContent = styled.div`
   width: 100%;
   max-width: 400px;
   padding: 24px;
+  margin: auto 0;
 `;
 
 const ModalTitle = styled.h3`

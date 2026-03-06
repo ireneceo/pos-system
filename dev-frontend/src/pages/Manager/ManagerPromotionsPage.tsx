@@ -443,6 +443,7 @@ const Modal = styled.div<{ isOpen: boolean }>`
     from { opacity: 0; }
     to { opacity: 1; }
   }
+  margin: auto 0;
 `;
 
 const ModalContent = styled.div`
@@ -465,6 +466,7 @@ const ModalContent = styled.div`
       opacity: 1;
     }
   }
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`

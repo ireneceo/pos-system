@@ -2,7 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled, { keyframes, css } from 'styled-components';
 import { theme } from '../../styles/theme';
 import { useAuth } from '../../contexts/AuthContext';
+import { useStore } from '../../contexts/StoreContext';
 import { io, Socket } from 'socket.io-client';
+import { getTodayInTimezone, getRestaurantTimezone } from '../../utils/timezone';
 
 interface DbOrder {
   id: number;
@@ -65,8 +67,34 @@ const Container = styled.div`
 `;
 
 const Header = styled.div`
-  text-align: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: ${theme.spacing['2xl']};
+`;
+
+const HeaderCenter = styled.div`
+  text-align: center;
+  flex: 1;
+`;
+
+const HeaderRight = styled.div`
+  text-align: right;
+  min-width: 180px;
+  flex-shrink: 0;
+`;
+
+const CurrentDate = styled.div`
+  font-size: ${theme.typography.fontSize.lg};
+  font-weight: ${theme.typography.fontWeight.semibold};
+  color: ${theme.colors.text.primary};
+  margin-bottom: 4px;
+`;
+
+const CurrentTime = styled.div`
+  font-size: ${theme.typography.fontSize['2xl']};
+  font-weight: ${theme.typography.fontWeight.bold};
+  color: ${theme.colors.primary};
 `;
 
 const Title = styled.h1`
@@ -209,24 +237,58 @@ const NoOrdersMessage = styled.div`
 
 const CustomerDisplayPage: React.FC = () => {
   const { user } = useAuth();
+  const { operationSettings } = useStore();
   const [dbOrders, setDbOrders] = useState<DbOrder[]>([]);
   const [orders, setOrders] = useState<DisplayOrder[]>([]);
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
   const [, setSocket] = useState<Socket | null>(null);
+  const [currentDateTime, setCurrentDateTime] = useState<{ date: string; time: string }>({ date: '', time: '' });
 
-  // Fetch orders from database - only preparing and ready status for display
+  const timezone = getRestaurantTimezone(operationSettings);
+
+  // Update current date/time display every second
+  useEffect(() => {
+    const updateDateTime = () => {
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-US', {
+        timeZone: timezone,
+        weekday: 'short',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+      const timeStr = now.toLocaleTimeString('en-US', {
+        timeZone: timezone,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
+      setCurrentDateTime({ date: dateStr, time: timeStr });
+    };
+
+    updateDateTime();
+    const interval = setInterval(updateDateTime, 1000);
+    return () => clearInterval(interval);
+  }, [timezone]);
+
+  // Fetch orders from database - only today's preparing and ready status for display
   const fetchOrders = useCallback(async () => {
     if (!user?.restaurantId) return;
 
     try {
-      // Fetch preparing and ready orders separately to avoid limit issues
+      const token = localStorage.getItem('auth_token');
+      const fetchOptions = {
+        credentials: 'include' as RequestCredentials,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      };
+      const today = getTodayInTimezone(timezone);
       const [preparingRes, readyRes] = await Promise.all([
-        fetch(`/api/orders/restaurant/${user.restaurantId}?status=preparing&limit=100`, {
-          credentials: 'include'
-        }),
-        fetch(`/api/orders/restaurant/${user.restaurantId}?status=ready&limit=100`, {
-          credentials: 'include'
-        })
+        fetch(`/api/orders/restaurant/${user.restaurantId}?status=preparing&limit=100&startDate=${today}&endDate=${today}`, fetchOptions),
+        fetch(`/api/orders/restaurant/${user.restaurantId}?status=ready&limit=100&startDate=${today}&endDate=${today}`, fetchOptions)
       ]);
 
       const preparingResult = await preparingRes.json();
@@ -241,7 +303,7 @@ const CustomerDisplayPage: React.FC = () => {
     } catch (error) {
       console.error('Failed to fetch orders:', error);
     }
-  }, [user?.restaurantId]);
+  }, [user?.restaurantId, timezone]);
 
   // Initialize Socket.IO connection
   useEffect(() => {
@@ -330,22 +392,20 @@ const CustomerDisplayPage: React.FC = () => {
   }, [dbOrders]);
 
   const formatTime = (dateString: string) => {
-    // Handle both timestamp and time string formats
     let date: Date;
     if (dateString.includes(':') && !dateString.includes('T')) {
-      // If it's a time string like "10:25 AM", use today's date
       const today = new Date();
       const timeStr = dateString.replace(/\s*(AM|PM)/i, ' $1');
       date = new Date(`${today.toDateString()} ${timeStr}`);
     } else {
-      // If it's an ISO string or timestamp
       date = new Date(dateString);
     }
-    
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
+
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: true
+      hour12: true,
+      timeZone: timezone
     });
   };
 
@@ -378,8 +438,15 @@ const CustomerDisplayPage: React.FC = () => {
   return (
     <Container>
       <Header>
-        <Title>Order Status</Title>
-        <Subtitle>Please check your pickup number</Subtitle>
+        <div style={{ minWidth: 180 }} />
+        <HeaderCenter>
+          <Title>Order Status</Title>
+          <Subtitle>Please check your pickup number</Subtitle>
+        </HeaderCenter>
+        <HeaderRight>
+          <CurrentDate>{currentDateTime.date}</CurrentDate>
+          <CurrentTime>{currentDateTime.time}</CurrentTime>
+        </HeaderRight>
       </Header>
 
       <OrdersGrid>

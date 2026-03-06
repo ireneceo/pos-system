@@ -184,7 +184,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       '/pos/manager/restaurants',
       '/pos/manager/invoices',
       '/pos/manager/subscriptions',
-      '/pos/manager/staff',
+      '/pos/manager/admins',
       '/pos/manager/customers',
       '/pos/manager/coupons',
       '/pos/manager/sales',

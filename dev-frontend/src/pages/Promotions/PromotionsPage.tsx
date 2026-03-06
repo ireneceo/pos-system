@@ -192,13 +192,14 @@ const Modal = styled.div<{ isOpen: boolean }>`
     from { opacity: 0; }
     to { opacity: 1; }
   }
+  margin: auto 0;
 `;
 
 const ModalContent = styled.div`
   background: white;
   border-radius: 12px;
   width: 90%;
-  max-width: 500px;
+  max-width: 600px;
   max-height: 90vh;
   overflow: auto;
   animation: slideUp 0.3s;
@@ -213,6 +214,7 @@ const ModalContent = styled.div`
       opacity: 1;
     }
   }
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`

@@ -232,6 +232,7 @@ const ModalContent = styled.div`
   max-width: 800px;
   width: 90%;
   flex-shrink: 0;
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`

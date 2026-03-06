@@ -26,6 +26,11 @@ export const ModalContent = styled.div`
   max-width: 600px;
   width: 90%;
   flex-shrink: 0;
+  margin: auto 0;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 80px);
+  overflow: hidden;
 `;
 
 // 모달 헤더
@@ -35,6 +40,7 @@ export const ModalHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 `;
 
 // 모달 타이틀
@@ -68,6 +74,8 @@ export const CloseButton = styled.button`
 // 모달 바디
 export const ModalBody = styled.div`
   padding: 24px;
+  flex: 1;
+  overflow-y: auto;
 `;
 
 // 모달 푸터
@@ -77,6 +85,7 @@ export const ModalFooter = styled.div`
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+  flex-shrink: 0;
 `;
 
 // 폼 행 (2열 레이아웃)

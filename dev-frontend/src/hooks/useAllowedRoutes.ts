@@ -72,7 +72,8 @@ export const useAllowedRoutes = (restaurantId: number | null) => {
     const isAllowed = allowedRoutes.some(allowedRoute => {
       const pattern = allowedRoute
         .replace(/:restaurantId/g, restaurantId?.toString() || '')
-        .replace(/:slug/g, '[^/]+');
+        .replace(/:slug/g, '[^/]+')
+        .replace(/\*/g, '[^/]+');
 
       const regex = new RegExp(`^${pattern}$`);
       return regex.test(normalizedRoute);

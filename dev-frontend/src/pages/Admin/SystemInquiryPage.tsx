@@ -233,6 +233,7 @@ const Modal = styled.div`
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  margin: auto 0;
 `;
 
 const ModalContent = styled.div`
@@ -243,6 +244,7 @@ const ModalContent = styled.div`
   width: 90%;
   max-height: 90vh;
   overflow: auto;
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`

@@ -1,6 +1,6 @@
 # 결제 시스템 설계 문서
 
-> 최종 업데이트: 2026-01-16
+> 최종 업데이트: 2026-03-06
 
 ## 1. 결제 흐름 개요
 
@@ -437,12 +437,17 @@ POST /api/restaurants/:id/payment-settings
 
 ### 8.2 Invoice Payment API
 ```
-GET  /api/invoices/:id/payment-options   # 사용 가능한 결제 수단 조회 (통화 기반)
+# 실제 구현된 엔드포인트 (2026-03-06 기준)
+GET  /api/admin/payment-settings/available/:currency      # System Admin 결제방법 조회
+GET  /api/brands/:id/payment-settings/available/:currency # Brand 결제방법 조회
+GET  /api/foodcourts/:id/payment-settings/available/:currency # Foodcourt 결제방법 조회
+POST /api/invoices/:id/submit-payment    # 결제 증빙 제출 (수신자) + 결제수단 유효성 검증
+POST /api/invoices/:id/confirm-payment   # 결제 확인 (발행자)
+POST /api/invoices/:id/reject-payment    # 결제 거절 (발행자)
+
+# 미구현 (Stripe/PayPal 연동 후)
 POST /api/invoices/:id/pay/stripe        # Stripe 결제 세션 생성
 POST /api/invoices/:id/pay/paypal        # PayPal 결제 시작
-POST /api/invoices/:id/submit-receipt    # 영수증 제출 (Bank/QR)
-POST /api/invoices/:id/confirm-payment   # 결제 확인 (청구자)
-
 POST /api/webhooks/stripe                # Stripe webhook
 POST /api/webhooks/paypal                # PayPal webhook
 ```
@@ -463,12 +468,16 @@ POST /api/subscriptions/:id/update-payment-method # 결제수단 변경
 - [x] Currency Settings를 Payment Settings로 통합
 - [x] Stripe/PayPal 글로벌 + Bank/QR 통화별 UI 구조
 
-### Phase 2: Invoice 결제 기능 ✓ (2026-02-24 완료)
-- [x] Invoice 결제 모달 (각 인보이스 페이지 내장)
+### Phase 2: Invoice 결제 기능 ✓ (2026-02-24 완료, 2026-03-06 보강)
+- [x] Invoice 결제 모달 (각 인보이스 페이지 내장, 6개 페이지: Admin/Brand/Foodcourt/Manager/Restaurant/Owner)
 - [x] Bank Transfer/QR 결제 프로세스 (영수증 업로드 → 확인/거절)
 - [x] Invoice 상태 업데이트 로직 (submit → confirm/reject)
 - [x] 발행자별 결제방법 분기 조회 (issuerType/issuerId 기반)
-- [x] 발행 시 결제방법 존재 검증 (통화별)
+- [x] 발행 시 결제방법 존재 검증 (통화별, 백엔드 `hasPaymentMethodForCurrency`)
+- [x] **결제 제출 시 결제수단 유효성 검증** (submit-payment 백엔드에서 발행자 결제설정 재확인)
+- [x] **발행 전 프론트엔드 경고 시스템** (수신자 선택 시 발행자 결제방법 조회 → 없으면 경고 배너)
+- [x] **Manager 페이지 결제방법 동적 로드** (발행자별 API 호출 → POS 스타일 결제수단 선택 UI)
+- [x] **샘플 데이터 제거** (Admin/Brand/Foodcourt 페이지에서 하드코딩 샘플 데이터 삭제)
 - [x] 통화 범위 검증 (Brand/Foodcourt ⊆ System Admin)
 - [ ] 이메일 결제 링크 발송 (미구현)
 

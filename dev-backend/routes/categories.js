@@ -4,6 +4,7 @@ const Product = require('../models/Product');
 const Category = require('../models/Category');
 const { Op } = require('sequelize');
 const { authenticateToken } = require('../middleware/auth');
+const { logActivity } = require('../utils/activityLogger');
 
 // Apply authentication to all routes
 router.use(authenticateToken);
@@ -144,6 +145,16 @@ router.put('/id/:categoryId', async (req, res) => {
       }
     );
 
+    logActivity(req, {
+      action_type: 'update',
+      entity_type: 'category',
+      entity_id: categoryId,
+      entity_name: updateData.name || oldName,
+      changes: { before: { name: oldName }, after: updateData },
+      description: `Updated category "${oldName}"${updateData.name ? ` → "${updateData.name}"` : ''}`,
+      restaurant_id: restaurantId
+    });
+
     res.json({
       success: true,
       message: 'Category updated successfully',
@@ -279,6 +290,14 @@ router.delete('/:categoryName', async (req, res) => {
       }
     });
 
+    logActivity(req, {
+      action_type: 'delete',
+      entity_type: 'category',
+      entity_name: categoryName,
+      description: `Deleted category "${categoryName}" (${result[0]} items moved to Uncategorized)`,
+      restaurant_id: restaurantId
+    });
+
     res.json({
       success: true,
       message: `Moved ${result[0]} products to 'Uncategorized' and deleted category '${categoryName}'`,
@@ -321,6 +340,15 @@ router.post('/', async (req, res) => {
       emoji: emoji || '',
       displayOrder: 0,
       isActive: true,
+      restaurant_id: restaurantId
+    });
+
+    logActivity(req, {
+      action_type: 'create',
+      entity_type: 'category',
+      entity_id: category.id,
+      entity_name: category.name,
+      description: `Created category "${category.name}"`,
       restaurant_id: restaurantId
     });
 

@@ -23,7 +23,7 @@ AddonModule.init({
     allowNull: true
   },
   category: {
-    type: DataTypes.ENUM('basic', 'advanced', 'revenue', 'operation', 'analytics'),
+    type: DataTypes.ENUM('basic', 'advanced'),
     allowNull: false
   },
   target_user_type: {

@@ -6,7 +6,7 @@ import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
 import CommentSection from '../../components/Common/CommentSection';
 import { linkifyText } from '../../utils/linkify';
-import { Tabs, Tab } from '../../components/Common/TabComponents';
+import { Tabs, Tab, Badge as TabBadge } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 
 // ============================================================================
@@ -404,9 +404,10 @@ const ModalContent = styled.div`
   background: white;
   border-radius: 12px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  max-width: 700px;
+  max-width: 800px;
   width: 90%;
   flex-shrink: 0;
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`
@@ -957,10 +958,10 @@ const NoticesPage: React.FC = () => {
           {/* Tabs */}
           <Tabs>
             <Tab active={activeTab === 'received'} onClick={() => setActiveTab('received')}>
-              Received ({totalReceived})
+              Received<TabBadge count={totalReceived} showZero />
             </Tab>
             <Tab active={activeTab === 'sent'} onClick={() => setActiveTab('sent')}>
-              Sent ({totalSent})
+              Sent<TabBadge count={totalSent} showZero />
             </Tab>
           </Tabs>
 

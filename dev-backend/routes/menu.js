@@ -5,6 +5,7 @@ const Restaurant = require('../models/Restaurant');
 const Category = require('../models/Category');
 const { authenticateToken } = require('../middleware/auth');
 const { processImage, deleteOldImages } = require('../utils/imageProcessor');
+const { logActivity } = require('../utils/activityLogger');
 
 // Apply authentication to all routes
 router.use(authenticateToken);
@@ -380,6 +381,16 @@ router.post('/product', async (req, res) => {
     }
 
     const product = await Product.create(productData);
+
+    logActivity(req, {
+      action_type: 'create',
+      entity_type: 'menu_item',
+      entity_id: product.id,
+      entity_name: product.name,
+      description: `Created menu item "${product.name}" in category "${product.category}"`,
+      restaurant_id: restaurantId
+    });
+
     res.status(201).json({ success: true, data: product });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
@@ -507,6 +518,16 @@ router.put('/product/:id', async (req, res) => {
     }
 
     await product.update(updateData);
+
+    logActivity(req, {
+      action_type: 'update',
+      entity_type: 'menu_item',
+      entity_id: product.id,
+      entity_name: product.name,
+      description: `Updated menu item "${product.name}"`,
+      restaurant_id: product.restaurant_id
+    });
+
     res.json({ success: true, data: product });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
@@ -573,6 +594,16 @@ router.post('/product/:id/copy', async (req, res) => {
     };
 
     const newProduct = await Product.create(copyData);
+
+    logActivity(req, {
+      action_type: 'create',
+      entity_type: 'menu_item',
+      entity_id: newProduct.id,
+      entity_name: newProduct.name,
+      description: `Duplicated menu item "${sourceProduct.name}" as "${newProduct.name}"`,
+      restaurant_id: sourceProduct.restaurant_id
+    });
+
     res.status(201).json({
       success: true,
       data: newProduct,
@@ -632,7 +663,20 @@ router.delete('/product/:id', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Product not found' });
     }
 
+    const productName = product.name;
+    const productId = product.id;
+    const productRestaurantId = product.restaurant_id;
     await product.destroy();
+
+    logActivity(req, {
+      action_type: 'delete',
+      entity_type: 'menu_item',
+      entity_id: productId,
+      entity_name: productName,
+      description: `Deleted menu item "${productName}"`,
+      restaurant_id: productRestaurantId
+    });
+
     res.json({ success: true, message: 'Product deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

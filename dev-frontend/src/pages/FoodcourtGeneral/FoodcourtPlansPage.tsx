@@ -297,6 +297,7 @@ const Modal = styled.div`
   z-index: 1000;
   padding: 40px 20px;
   overflow-y: auto;
+  margin: auto 0;
 `;
 
 const ModalContent = styled.div`
@@ -308,6 +309,7 @@ const ModalContent = styled.div`
   flex-direction: column;
   flex-shrink: 0;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`
@@ -1508,7 +1510,7 @@ const FoodcourtPlansPage: React.FC = () => {
         {/* Plan Prices Modal (Fixed type only) */}
         {showPricesModal && selectedPlan && (
           <Modal onClick={() => setShowPricesModal(false)}>
-            <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
+            <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
               <ModalHeader>
                 <ModalTitle>Set Prices for {selectedPlan.name}</ModalTitle>
                 <CloseButton onClick={() => setShowPricesModal(false)}>&times;</CloseButton>

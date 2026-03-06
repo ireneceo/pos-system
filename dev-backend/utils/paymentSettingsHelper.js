@@ -18,18 +18,26 @@ function getAvailablePaymentMethods(paymentSettings, currency) {
 
   const methods = [];
 
-  // Stripe (global - not currency-specific)
-  if (paymentSettings.stripe?.enabled) {
+  // Stripe (global - requires valid pk_ + sk_ keys, min 20 chars to exclude dummy values)
+  const stripeKey = paymentSettings.stripe?.publishableKey || '';
+  const stripeSecret = paymentSettings.stripe?.secretKey || '';
+  const stripeValid = paymentSettings.stripe?.enabled
+    && stripeKey.startsWith('pk_') && stripeKey.length > 20
+    && stripeSecret.startsWith('sk_') && stripeSecret.length > 20;
+  if (stripeValid) {
     methods.push({
       id: 'stripe',
-      name: 'Credit/Debit Card',
-      description: 'Secure payment via Stripe',
-      publishableKey: paymentSettings.stripe.publishableKey
+      name: 'Stripe',
+      description: 'Credit/Debit Card via Stripe',
+      publishableKey: stripeKey
     });
   }
 
-  // PayPal (global - not currency-specific)
-  if (paymentSettings.paypal?.enabled) {
+  // PayPal (global - requires non-empty clientId + clientSecret)
+  const paypalValid = paymentSettings.paypal?.enabled
+    && paymentSettings.paypal.clientId?.length > 10
+    && paymentSettings.paypal.clientSecret?.length > 10;
+  if (paypalValid) {
     methods.push({
       id: 'paypal',
       name: 'PayPal',
@@ -38,9 +46,9 @@ function getAvailablePaymentMethods(paymentSettings, currency) {
     });
   }
 
-  // Bank Transfer (currency-specific)
+  // Bank Transfer (currency-specific, requires bankName + accountNumber + accountName)
   const bankConfig = paymentSettings.bankTransfer?.[currency];
-  if (bankConfig?.enabled) {
+  if (bankConfig?.enabled && bankConfig.bankName && bankConfig.accountNumber && bankConfig.accountName) {
     methods.push({
       id: 'bank_transfer',
       name: 'Bank Transfer',
@@ -51,9 +59,9 @@ function getAvailablePaymentMethods(paymentSettings, currency) {
     });
   }
 
-  // QR Payment (currency-specific)
+  // QR Payment (currency-specific, requires qrImage)
   const qrConfig = paymentSettings.qrPayment?.[currency];
-  if (qrConfig?.enabled) {
+  if (qrConfig?.enabled && qrConfig.qrImage) {
     methods.push({
       id: 'qr_payment',
       name: 'QR Payment',

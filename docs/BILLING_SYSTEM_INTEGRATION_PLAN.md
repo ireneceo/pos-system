@@ -1,6 +1,6 @@
 # 청구/결제 시스템 통합 개발 기획서
 
-> **작성일:** 2026-01-19
+> **작성일:** 2026-01-19 | **최종 업데이트:** 2026-03-06
 > **목표:** 역할별 청구/결제 시스템 완성 및 유기적 연동
 
 ---
@@ -59,24 +59,32 @@
 
 | 항목 | 파일 | 비고 |
 |------|------|------|
-| Invoice 모델 | `models/Invoice.js` | payer_type, invoice_category 포함 |
+| Invoice 모델 | `models/Invoice.js` | issuer_type/issuer_id, payer_type, invoice_category 포함 |
 | InvoiceItem 모델 | `models/InvoiceItem.js` | 8가지 item_type |
 | InvoiceSettings 모델 | `models/InvoiceSettings.js` | rent, fee 설정 |
-| Admin InvoicesPage | `pages/Admin/InvoicesPage.tsx` | 전체 관리 |
+| Admin InvoicesPage | `pages/Admin/InvoicesPage.tsx` | 전체 관리 + 결제확인 + 카테고리 + 발행 전 경고 |
 | Admin SubscriptionsPage | `pages/Admin/SubscriptionsPage.tsx` | 구독 관리 |
-| Restaurant InvoicesPage | `pages/Restaurant/InvoicesPage.tsx` | 결제 + 영수증 업로드 |
-| Manager InvoicesPage | `pages/Manager/InvoicesPage.tsx` | 인보이스 관리 |
+| Brand General InvoicesPage | `pages/BrandGeneral/BrandInvoicesPage.tsx` | 발행 + 결제(SA→Brand) + 결제확인 + 발행 전 경고 |
+| Foodcourt General InvoicesPage | `pages/FoodcourtGeneral/FoodcourtInvoicesPage.tsx` | 발행 + 결제(SA→FC) + 결제확인 + 발행 전 경고 |
+| Manager InvoicesPage | `pages/Manager/InvoicesPage.tsx` | 결제 전용 (발행자별 결제방법 동적 로드, POS 스타일 UI) |
+| Restaurant InvoicesPage | `pages/Restaurant/InvoicesPage.tsx` | 결제 전용 (모든 발행자) |
+| Owner InvoicesPage | `pages/Owner/OwnerInvoicesPage.tsx` | 결제 전용 (여러 레스토랑) |
 | Payment Settings (Admin) | `pages/Admin/PaymentSettingsPage.tsx` | 전역 결제 설정 |
+| Payment Settings (Brand) | `pages/BrandGeneral/PaymentSettingsPage.tsx` | 브랜드 결제 설정 |
+| Payment Settings (Foodcourt) | `pages/FoodcourtGeneral/PaymentSettingsPage.tsx` | 푸드코트 결제 설정 |
+| Brand/Foodcourt payment_settings | `brands/foodcourts` 테이블 JSON 컬럼 | 구현 완료 |
+| 결제 확인/거절 (Admin/Brand/Foodcourt) | `routes/invoices.js` | confirm/reject-payment API |
+| submit-payment 결제수단 검증 | `routes/invoices.js` | 발행자 결제설정에서 유효성 확인 |
+| paymentSettingsHelper | `utils/paymentSettingsHelper.js` | 공통 결제방법 조회/검증 유틸 |
 
 ### 2.2 미구현 ❌
 
 | 항목 | 필요 이유 |
 |------|----------|
-| Brand General InvoicesPage | 브랜드→레스토랑 청구 + System Admin 인보이스 결제 |
-| Foodcourt General InvoicesPage | 푸드코트→레스토랑 청구 + System Admin 인보이스 결제 |
-| Brand/Foodcourt payment_settings | DB 필드 없음 |
-| Invoice Payment Page (공용) | 이메일 링크로 접근하는 결제 페이지 |
-| 결제 확인 기능 (Admin) | payment_submitted → paid 처리 |
+| Invoice Payment Page (공용) | 이메일 링크로 접근하는 결제 페이지 (로그인 없이) |
+| Stripe 실제 연동 | 카드 자동결제, 정기결제 |
+| PayPal 실제 연동 | PayPal 자동결제 |
+| Overdue 자동 전환 Cron | 서버에서 마감일 초과 인보이스 자동 상태 변경 |
 
 ---
 

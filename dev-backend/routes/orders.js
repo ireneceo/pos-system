@@ -14,7 +14,7 @@ const ActivityLog = require('../models/ActivityLog');
 // Get all orders
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const { status, date, limit = 50, restaurantId, restaurant_id } = req.query;
+    const { status, date, limit = 50, restaurantId, restaurant_id, start_date, end_date } = req.query;
     // Support both camelCase (new) and snake_case (legacy)
     const finalRestaurantId = restaurantId || restaurant_id;
 
@@ -28,12 +28,20 @@ router.get('/', authenticateToken, async (req, res) => {
     if (status) {
       whereCondition.status = status;
     }
-    if (date) {
+    if (start_date && end_date) {
+      // Date range filter
+      const rangeStart = new Date(start_date);
+      const rangeEnd = new Date(end_date);
+      rangeEnd.setHours(23, 59, 59, 999);
+      whereCondition.createdAt = {
+        [Op.between]: [rangeStart, rangeEnd]
+      };
+    } else if (date) {
       const startDate = new Date(date);
       const endDate = new Date(date);
       endDate.setHours(23, 59, 59, 999);
       whereCondition.createdAt = {
-        $between: [startDate, endDate]
+        [Op.between]: [startDate, endDate]
       };
     }
 

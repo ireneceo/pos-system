@@ -15,8 +15,8 @@ interface AddonModule {
   module_code: string;
   name: string;
   description: string;
-  category: 'basic' | 'advanced' | 'revenue' | 'operation' | 'analytics';
-  target_user_type: 'restaurant' | 'brand' | 'foodcourt' | 'all';
+  category: 'basic' | 'advanced';
+  target_user_type: 'restaurant' | 'brand' | 'foodcourt' | 'owner' | 'all';
   base_price_monthly: number;
   base_price_annual: number;
   features: string[];
@@ -213,6 +213,7 @@ const Modal = styled.div`
   justify-content: center;
   z-index: 1000;
   padding: 20px;
+  margin: auto 0;
 `;
 
 const ModalContent = styled.div`
@@ -224,6 +225,7 @@ const ModalContent = styled.div`
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`
@@ -434,8 +436,8 @@ const AddonModulesPage: React.FC = () => {
     module_code: '',
     name: '',
     description: '',
-    category: 'basic' as 'basic' | 'advanced' | 'revenue' | 'operation' | 'analytics',
-    target_user_type: 'all' as 'restaurant' | 'brand' | 'foodcourt' | 'all',
+    category: 'basic' as 'basic' | 'advanced',
+    target_user_type: 'all' as 'restaurant' | 'brand' | 'foodcourt' | 'owner' | 'all',
     base_price_monthly: '',
     base_price_annual: '',
     features: '',
@@ -646,9 +648,6 @@ const AddonModulesPage: React.FC = () => {
               <option value="all">All Categories</option>
               <option value="basic">Basic</option>
               <option value="advanced">Advanced</option>
-              <option value="revenue">Revenue</option>
-              <option value="operation">Operation</option>
-              <option value="analytics">Analytics</option>
             </FilterSelect>
             <FilterSelect
               value={targetFilter}
@@ -658,6 +657,7 @@ const AddonModulesPage: React.FC = () => {
               <option value="restaurant">Restaurant</option>
               <option value="brand">Brand</option>
               <option value="foodcourt">Foodcourt</option>
+              <option value="owner">Owner</option>
             </FilterSelect>
             <FilterSelect
               value={statusFilter}
@@ -789,9 +789,6 @@ const AddonModulesPage: React.FC = () => {
                       >
                         <option value="basic">Basic</option>
                         <option value="advanced">Advanced</option>
-                        <option value="revenue">Revenue</option>
-                        <option value="operation">Operation</option>
-                        <option value="analytics">Analytics</option>
                       </FormSelect>
                     </FormGroup>
                     <FormGroup>
@@ -804,6 +801,7 @@ const AddonModulesPage: React.FC = () => {
                         <option value="restaurant">Restaurant</option>
                         <option value="brand">Brand</option>
                         <option value="foodcourt">Foodcourt</option>
+                        <option value="owner">Owner</option>
                       </FormSelect>
                     </FormGroup>
                   </FormRow>

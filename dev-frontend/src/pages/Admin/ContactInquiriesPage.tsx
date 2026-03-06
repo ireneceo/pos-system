@@ -352,9 +352,10 @@ const ModalOverlay = styled.div`
 const ModalContent = styled.div`
   background: white;
   border-radius: 12px;
-  max-width: 700px;
+  max-width: 800px;
   width: 90%;
   flex-shrink: 0;
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`
@@ -937,7 +938,7 @@ const ContactInquiriesPage: React.FC = () => {
         {/* Delete Confirm Modal */}
         {showDeleteConfirm && (
           <ModalOverlay onClick={() => setShowDeleteConfirm(false)}>
-            <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '420px' }}>
+            <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
               <ModalHeader>
                 <ModalTitle>Confirm Delete</ModalTitle>
                 <CloseButton onClick={() => setShowDeleteConfirm(false)}>&times;</CloseButton>

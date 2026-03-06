@@ -354,6 +354,7 @@ const Modal = styled.div`
   z-index: 1000;
   overflow-y: auto;
   padding: 40px 0;
+  margin: auto 0;
 `;
 
 const ModalContent = styled.div`
@@ -363,6 +364,7 @@ const ModalContent = styled.div`
   max-width: 800px;
   width: 90%;
   flex-shrink: 0;
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`

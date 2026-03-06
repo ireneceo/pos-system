@@ -4,22 +4,9 @@ import { EmptyState } from '../../components/UI/TableComponents';
 import { Container, Header, Title, Content } from '../../components/UI/PageComponents';
 import { BaseButton, StatusBadge } from '../../components/UI/CommonStyles';
 import { FilterSelect } from '../../components/Common/FilterComponents';
+import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useAuth } from '../../contexts/AuthContext';
 
-const FilterSection = styled.div`
-  background: white;
-  padding: 20px;
-  border-radius: 12px;
-  margin-bottom: 24px;
-  border: 1px solid #E6EBF1;
-`;
-
-const FilterGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 16px;
-`;
 
 const FilterGroup = styled.div`
   display: flex;
@@ -33,19 +20,6 @@ const FilterLabel = styled.label`
   color: #6B7C93;
 `;
 
-const FilterInput = styled.input`
-  padding: 10px 12px;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  font-size: 14px;
-  transition: all 0.15s;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
 
 const ActivityList = styled.div`
   background: white;
@@ -144,9 +118,11 @@ const LoadingState = styled.div`
 interface ActivityLog {
   id: number;
   user_id: number;
-  user_name: string;
+  username: string;
+  full_name: string | null;
   entity_type: string;
-  entity_id: number;
+  entity_id: string | null;
+  entity_name: string | null;
   action_type: string;
   description: string;
   changes: any;
@@ -165,15 +141,16 @@ const ActivityHistoryPage: React.FC = () => {
   const [entityType, setEntityType] = useState('');
   const [actionType, setActionType] = useState('');
   const [userId, setUserId] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [activePeriod, setActivePeriod] = useState<PeriodType>('all');
+  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('all'));
+  const [isCustomDateRange, setIsCustomDateRange] = useState(false);
 
   const limit = 50;
 
   useEffect(() => {
     fetchActivityLogs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, entityType, actionType, userId, startDate, endDate]);
+  }, [currentPage, entityType, actionType, userId, dateRange.start, dateRange.end]);
 
   const fetchActivityLogs = async () => {
     if (!user?.restaurantId) return;
@@ -188,16 +165,22 @@ const ActivityHistoryPage: React.FC = () => {
       if (entityType) params.append('entity_type', entityType);
       if (actionType) params.append('action_type', actionType);
       if (userId) params.append('user_id', userId);
-      if (startDate) params.append('start_date', startDate);
-      if (endDate) params.append('end_date', endDate);
+      if (dateRange.start) params.append('start_date', dateRange.start);
+      if (dateRange.end) params.append('end_date', dateRange.end);
 
-      const response = await fetch(`/api/activity-logs/restaurant/${user.restaurantId}?${params}`);
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/activity-logs/restaurant/${user.restaurantId}?${params}`, {
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
 
       if (response.ok) {
-        const data = await response.json();
+        const result = await response.json();
+        const data = result.data || result;
         setLogs(data.logs || []);
-        setTotalPages(data.totalPages || 1);
-        setTotalLogs(data.totalLogs || 0);
+        setTotalPages(data.pagination?.totalPages || data.totalPages || 1);
+        setTotalLogs(data.pagination?.total || data.totalLogs || 0);
       } else {
         console.error('Failed to fetch activity logs');
         setLogs([]);
@@ -235,7 +218,10 @@ const ActivityHistoryPage: React.FC = () => {
       case 'settings': return 'warning';
       case 'staff': return 'success';
       case 'category': return 'info';
-      case 'order': return 'success';
+      case 'invoice': return 'warning';
+      case 'table': return 'info';
+      case 'promotion': return 'success';
+      case 'order_item': return 'error';
       default: return 'info';
     }
   };
@@ -257,16 +243,30 @@ const ActivityHistoryPage: React.FC = () => {
     return type.charAt(0).toUpperCase() + type.slice(1);
   };
 
+  const handlePeriodChange = (period: PeriodType) => {
+    setActivePeriod(period);
+    setDateRange(calculatePeriodDateRange(period));
+    setIsCustomDateRange(false);
+    setCurrentPage(1);
+  };
+
+  const handleCalendarRangeSelect = (start: string, end: string) => {
+    setDateRange({ start, end });
+    setIsCustomDateRange(true);
+    setCurrentPage(1);
+  };
+
   const handleResetFilters = () => {
     setEntityType('');
     setActionType('');
     setUserId('');
-    setStartDate('');
-    setEndDate('');
+    setActivePeriod('all');
+    setDateRange(calculatePeriodDateRange('all'));
+    setIsCustomDateRange(false);
     setCurrentPage(1);
   };
 
-  const hasActiveFilters = entityType || actionType || userId || startDate || endDate;
+  const hasActiveFilters = entityType || actionType || userId || activePeriod !== 'all' || isCustomDateRange;
 
   return (
     <>
@@ -276,59 +276,46 @@ const ActivityHistoryPage: React.FC = () => {
         </Header>
 
         <Content>
-          <FilterSection>
-            <FilterGrid>
-              <FilterGroup>
-                <FilterLabel>Entity Type</FilterLabel>
-                <FilterSelect value={entityType} onChange={(e) => { setEntityType(e.target.value); setCurrentPage(1); }}>
-                  <option value="">All Types</option>
-                  <option value="menu_item">Menu Item</option>
-                  <option value="category">Category</option>
-                  <option value="settings">Settings</option>
-                  <option value="staff">Staff</option>
-                  <option value="order">Order</option>
-                  <option value="customer">Customer</option>
-                  <option value="promotion">Promotion</option>
-                </FilterSelect>
-              </FilterGroup>
+          <DatePeriodFilter
+            activePeriod={activePeriod}
+            dateRange={dateRange}
+            isCustomDateRange={isCustomDateRange}
+            onPeriodChange={handlePeriodChange}
+            onCalendarRangeSelect={handleCalendarRangeSelect}
+          >
+            <FilterGroup>
+              <FilterLabel>Entity Type</FilterLabel>
+              <FilterSelect value={entityType} onChange={(e) => { setEntityType(e.target.value); setCurrentPage(1); }}>
+                <option value="">All Types</option>
+                <option value="menu_item">Menu Item</option>
+                <option value="category">Category</option>
+                <option value="settings">Settings</option>
+                <option value="staff">Staff</option>
+                <option value="invoice">Invoice</option>
+                <option value="table">Table</option>
+                <option value="promotion">Promotion</option>
+                <option value="order_item">Order Item</option>
+              </FilterSelect>
+            </FilterGroup>
 
-              <FilterGroup>
-                <FilterLabel>Action Type</FilterLabel>
-                <FilterSelect value={actionType} onChange={(e) => { setActionType(e.target.value); setCurrentPage(1); }}>
-                  <option value="">All Actions</option>
-                  <option value="create">Create</option>
-                  <option value="update">Update</option>
-                  <option value="delete">Delete</option>
-                </FilterSelect>
-              </FilterGroup>
+            <FilterGroup>
+              <FilterLabel>Action Type</FilterLabel>
+              <FilterSelect value={actionType} onChange={(e) => { setActionType(e.target.value); setCurrentPage(1); }}>
+                <option value="">All Actions</option>
+                <option value="create">Create</option>
+                <option value="update">Update</option>
+                <option value="delete">Delete</option>
+              </FilterSelect>
+            </FilterGroup>
+          </DatePeriodFilter>
 
-              <FilterGroup>
-                <FilterLabel>Start Date</FilterLabel>
-                <FilterInput
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }}
-                />
-              </FilterGroup>
-
-              <FilterGroup>
-                <FilterLabel>End Date</FilterLabel>
-                <FilterInput
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }}
-                />
-              </FilterGroup>
-            </FilterGrid>
-
-            {hasActiveFilters && (
-              <div style={{ textAlign: 'right' }}>
-                <BaseButton variant="secondary" size="small" onClick={handleResetFilters}>
-                  Reset Filters
-                </BaseButton>
-              </div>
-            )}
-          </FilterSection>
+          {hasActiveFilters && (
+            <div style={{ textAlign: 'right', marginBottom: '16px' }}>
+              <BaseButton variant="secondary" size="small" onClick={handleResetFilters}>
+                Reset Filters
+              </BaseButton>
+            </div>
+          )}
 
           {loading ? (
             <LoadingState>Loading activity logs...</LoadingState>
@@ -344,7 +331,7 @@ const ActivityHistoryPage: React.FC = () => {
                     <ActivityHeader>
                       <ActivityInfo>
                         <ActivityTime>{formatRelativeTime(log.created_at)}</ActivityTime>
-                        <ActivityUser>{log.user_name}</ActivityUser>
+                        <ActivityUser>{log.full_name || log.username}</ActivityUser>
                         <ActivityDescription>{log.description}</ActivityDescription>
                       </ActivityInfo>
                       <ActivityBadges>

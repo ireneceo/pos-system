@@ -49,6 +49,7 @@ router.get('/', authenticateToken, async (req, res) => {
       operationInquiry: 0,
       notices: 0,
       invoices: 0,
+      pendingOrders: 0,
       unreadComments: {
         notices: 0,
         systemInquiry: 0,
@@ -196,6 +197,18 @@ router.get('/', authenticateToken, async (req, res) => {
         where: {
           restaurant_id: { [Op.in]: rIds },
           status: { [Op.in]: ['pending_payment', 'overdue'] }
+        }
+      });
+    }
+
+    // --- Pending Orders (Restaurant Admin / Staff only) ---
+    if ((role === 'Restaurant Admin' || role === 'Staff') && restaurantId) {
+      const today = new Date().toISOString().split('T')[0];
+      counts.pendingOrders = await Order.count({
+        where: {
+          restaurant_id: restaurantId,
+          status: { [Op.in]: ['pending', 'awaiting_payment'] },
+          order_date: { [Op.gte]: today }
         }
       });
     }

@@ -76,23 +76,24 @@ const FilterBar = styled.div`
 
 const PlanTabs = styled.div`
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 12px;
 `;
 
 const PlanTab = styled.button<{ active: boolean }>`
-  background: ${props => props.active ? '#635BFF' : 'white'};
-  color: ${props => props.active ? 'white' : '#6B7C93'};
-  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
   padding: 12px 24px;
-  font-size: 15px;
+  border: 2px solid ${props => props.active ? '#635BFF' : '#E5E7EB'};
+  background: ${props => props.active ? '#635BFF' : 'white'};
+  color: ${props => props.active ? 'white' : '#425466'};
+  border-radius: 50px;
+  font-size: 14px;
   font-weight: 600;
-  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
 
   &:hover {
     border-color: #635BFF;
-    color: ${props => props.active ? 'white' : '#635BFF'};
+    ${props => !props.active && 'background: #F8F9FF;'}
   }
 `;
 

@@ -244,6 +244,7 @@ const ModalContent = styled.div<{ maxWidth?: string }>`
   width: 90%;
   max-height: 90vh;
   overflow: auto;
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`

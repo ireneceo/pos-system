@@ -380,13 +380,13 @@ const ManagerDashboard: React.FC = () => {
             </QuickActionIcon>
             <QuickActionText>Sales Overview</QuickActionText>
           </QuickActionCard>
-          <QuickActionCard onClick={() => navigate('/pos/manager/staff')}>
+          <QuickActionCard onClick={() => navigate('/pos/manager/admins')}>
             <QuickActionIcon>
               <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm4 18v-6h2.5l-2.54-7.63A2.98 2.98 0 0 0 17.05 6H16c-.8 0-1.54.37-2.01.96l-.94 1.21A1 1 0 0 0 13.96 10l.79 1.04c.39.51.97.86 1.61.96h.64v10h2zM12.5 11.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5S11 9.17 11 10s.67 1.5 1.5 1.5zM5.5 6c1.11 0 2-.89 2-2s-.89-2-2-2-2 .89-2 2 .89 2 2 2zm2 16v-7H9V9.5a2.5 2.5 0 0 0-5 0V15h1.5v7h2zm6.5-12c.83 0 1.5-.67 1.5-1.5S14.83 8 14 8s-1.5.67-1.5 1.5.67 1.5 1.5 1.5z"/>
               </svg>
             </QuickActionIcon>
-            <QuickActionText>Staff Management</QuickActionText>
+            <QuickActionText>Restaurant Admins</QuickActionText>
           </QuickActionCard>
           <QuickActionCard onClick={() => navigate('/pos/manager/subscriptions')}>
             <QuickActionIcon>

@@ -259,6 +259,7 @@ const Modal = styled.div`
   justify-content: center;
   z-index: 1000;
   padding: 20px;
+  margin: auto 0;
 `;
 
 const ModalContent = styled.div`
@@ -269,6 +270,7 @@ const ModalContent = styled.div`
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`
@@ -596,6 +598,7 @@ const RestaurantInvoicesPage: React.FC = () => {
         setPaymentData({ paymentMethod: '', transactionId: '', receiptImage: '' });
         await fetchAllInvoices();
         await fetchInvoicesToPay();
+        window.dispatchEvent(new Event('refreshBadgeCounts'));
       } else {
         const errorData = await response.json();
         setPaymentSubmitError(errorData.error || errorData.message || 'Failed to submit payment');
@@ -1453,28 +1456,31 @@ const RestaurantInvoicesPage: React.FC = () => {
                   </div>
                 ) : (
                   <>
-                    {/* Payment Method Selection - Card Style */}
+                    {/* Payment Method Selection */}
                     <div style={{ marginBottom: '20px' }}>
                       <FormLabel>Payment Method *</FormLabel>
-                      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(availablePaymentMethods.length, 3)}, 1fr)`, gap: '10px', marginTop: '8px' }}>
-                        {availablePaymentMethods.map(method => (
-                          <button
-                            key={method.id}
-                            onClick={() => { setPaymentData(prev => ({ ...prev, paymentMethod: method.id })); setPaymentSubmitError(''); }}
-                            style={{
-                              display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '14px 8px',
-                              border: `2px solid ${paymentData.paymentMethod === method.id ? '#635BFF' : '#E5E7EB'}`,
-                              borderRadius: '8px',
-                              background: paymentData.paymentMethod === method.id ? '#F5F3FF' : 'white',
-                              cursor: 'pointer', transition: 'all 0.2s'
-                            }}
-                          >
-                            <span style={{ fontSize: '22px', marginBottom: '6px' }}>
-                              {method.id === 'stripe' ? '💳' : method.id === 'paypal' ? '🅿️' : method.id === 'qr_payment' ? '📱' : '🏦'}
-                            </span>
-                            <span style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>{method.name}</span>
-                          </button>
-                        ))}
+                      <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(100px, 1fr))`, gap: '8px', marginTop: '8px' }}>
+                        {availablePaymentMethods.map(method => {
+                          const isSelected = paymentData.paymentMethod === method.id;
+                          return (
+                            <button
+                              key={method.id}
+                              onClick={() => { setPaymentData(prev => ({ ...prev, paymentMethod: method.id })); setPaymentSubmitError(''); }}
+                              style={{
+                                padding: '12px 16px', minHeight: '44px',
+                                borderRadius: '8px',
+                                border: `1px solid ${isSelected ? '#635BFF' : '#E6EBF1'}`,
+                                background: isSelected ? 'rgba(99, 91, 255, 0.1)' : 'white',
+                                color: isSelected ? '#635BFF' : '#374151',
+                                fontSize: '14px', fontWeight: '500',
+                                cursor: 'pointer', transition: 'all 0.15s',
+                                textAlign: 'center'
+                              }}
+                            >
+                              {method.name}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -1487,6 +1493,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                           setPaymentData({ paymentMethod: '', transactionId: '', receiptImage: '' });
                           fetchAllInvoices();
                           fetchInvoicesToPay();
+                          window.dispatchEvent(new Event('refreshBadgeCounts'));
                         }}
                         onError={() => {}}
                       />

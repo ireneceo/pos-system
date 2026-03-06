@@ -373,6 +373,7 @@ const Modal = styled.div`
   justify-content: center;
   z-index: 1000;
   padding: 20px;
+  margin: auto 0;
 `;
 
 const ModalContent = styled.div`
@@ -383,6 +384,7 @@ const ModalContent = styled.div`
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`

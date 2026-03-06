@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-03-05
+> **최종 업데이트:** 2026-03-06
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -58,6 +58,61 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 
 ---
 
+## ⬜ 다음 작업: 모달 푸터 고정 통일 (공통 Modal 마이그레이션)
+
+### 현재 상태
+- 공통 `Modal` 컴포넌트 (`UI/Modal.tsx`)는 이미 header/footer 고정 + body 스크롤 구조로 설계되어 있음
+- 문제: 많은 페이지들이 자체 styled-component 모달을 사용하여 푸터 고정이 안 됨
+- Create Invoice 팝업(BrandInvoicesPage)은 이미 잘 되는 참고 사례
+
+### 마이그레이션 대상 (자체 모달 → 공통 Modal 전환)
+
+**1차: Restaurant Admin 페이지** (우선순위 높음)
+| # | 파일 | 상태 |
+|---|------|:----:|
+| 1 | Restaurant/InvoicesPage.tsx | ⬜ |
+| 2 | Restaurant/NoticesPage.tsx | ⬜ |
+| 3 | Restaurant/SystemInquiryPage.tsx | ⬜ |
+| 4 | Restaurant/OperationInquiryPage.tsx | ⬜ |
+| 5 | Restaurant/SupportTicketsPage.tsx | ⬜ |
+
+**2차: Brand General 페이지** (우선순위 높음)
+| # | 파일 | 상태 |
+|---|------|:----:|
+| 6 | Brand/NoticesPage.tsx | ⬜ |
+| 7 | Brand/SystemInquiryPage.tsx | ⬜ |
+| 8 | Brand/OperationInquiryPage.tsx | ⬜ |
+| 9 | BrandGeneral/BrandPlansPage.tsx | ⬜ |
+| 10 | BrandGeneral/BrandSubscriptionsPage.tsx | ⬜ |
+
+**3차: Manager 페이지** (Brand/Foodcourt Manager 공유)
+| # | 파일 | 상태 |
+|---|------|:----:|
+| 11 | Manager/RestaurantsPage.tsx | ⬜ |
+| 12 | Manager/InvoicesPage.tsx | ⬜ |
+| 13 | Manager/SubscriptionsPage.tsx | ⬜ |
+| 14 | Manager/OperationInquiryPage.tsx | ⬜ |
+| 15 | Manager/SystemInquiryPage.tsx | ⬜ |
+| 16 | Manager/SupportTicketsPage.tsx | ⬜ |
+| 17 | Manager/ManagerPromotionsPage.tsx | ⬜ |
+
+**4차: Foodcourt + 기타**
+| # | 파일 | 상태 |
+|---|------|:----:|
+| 18 | Foodcourt/NoticesPage.tsx | ⬜ |
+| 19 | Foodcourt/SystemInquiryPage.tsx | ⬜ |
+| 20 | Foodcourt/OperationInquiryPage.tsx | ⬜ |
+| 21 | RecipeManagement/RecipesTab.tsx | ⬜ |
+| 22 | NotificationSettings/NotificationSettingsPage.tsx | ⬜ |
+
+### 작업 방법
+- 각 파일의 자체 Modal/ModalOverlay/ModalContent/ModalHeader/ModalBody/ModalFooter styled-components 제거
+- 공통 `Modal` 컴포넌트 (`import { Modal } from '../../components/UI'`) 사용으로 전환
+- `footer` prop에 버튼 배치, `children`에 폼 내용 배치
+- 각 차수마다 빌드+검증 후 다음 차수 진행
+
+---
+
 ## ⬜ 향후 작업: 데모 데이터 시스템 구축
 
 ### 현재 상태
@@ -84,6 +139,44 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 | 3 | Foodcourt General 데모 계정 + 데이터 생성 | ⬜ |
 | 4 | Restaurant Owner 데모 계정 + 데이터 생성 | ⬜ |
 | 5 | DemoPage UI 업데이트 (4개 데모 카드) | ⬜ |
+
+---
+
+## ✅ 완료: Staff 제거 + Features 이미지 + Activity History 필터 (2026-03-06)
+
+### 완료된 작업
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Activity History DatePeriodFilter 적용 | 기존 date input → DatePeriodFilter 컴포넌트로 교체 | ✅ 완료 |
+| Features 페이지 텍스트 리뉴얼 | 각 역할 subtitle → heading + description 분리, 경쟁력 있는 문구로 변경 | ✅ 완료 |
+| Manager StaffManagement → AdminManagement | Brand/Foodcourt General에서 Staff 관리 완전 제거, Restaurant Admin만 관리하도록 변경 | ✅ 완료 |
+| 사이드바/라우트 명칭 변경 | `/pos/manager/staff` → `/pos/manager/admins`, "Admin & Staff" → "Restaurant Admins" (9개 파일) | ✅ 완료 |
+| Brand Performance Avg Service Time 수정 | `preparation_time`(미존재) → `createdAt→served_at` 계산으로 변경, "Avg Fulfillment" 명칭 | ✅ 완료 |
+| Owner Performance 동일 수정 | Brand Performance와 동일하게 served_at 기반 계산 적용 | ✅ 완료 |
+| Orders API date range 필터 추가 | `start_date`/`end_date` 쿼리 파라미터 지원 추가 (Op.between) | ✅ 완료 |
+| Features 이미지 webp 변환 적용 | PNG→webp 변환 (113개), getImages 경로 수정, Restaurant+Brand 역할 이미지 count 업데이트 | ✅ 완료 |
+| Inquiry 모듈 카테고리 변경 | System Inquiry, Operation Inquiry, Inquiry Management를 모든 역할에서 basic → advanced로 변경 (DB + FeaturesPage + 설계문서) | ✅ 완료 |
+
+### 주요 변경사항
+- **파일명 변경**: `Manager/StaffManagementPage.tsx` → `Manager/AdminManagementPage.tsx`
+- **컴포넌트명 변경**: `ManagerStaffManagementPage` → `ManagerAdminManagementPage`
+- **라우트 변경**: `/pos/manager/staff` → `/pos/manager/admins` (App.tsx, ProtectedRoute, AuthContext, MainLayout, 3개 Dashboard)
+- **Features 이미지 경로**: `/images/features/dashboard/{code}_{n}.webp` (PNG 원본 + webp 변환본 공존)
+
+### 수정된 파일 (주요)
+- `dev-frontend/src/pages/Manager/AdminManagementPage.tsx` (파일명+컴포넌트명 변경)
+- `dev-frontend/src/App.tsx` (import + Route)
+- `dev-frontend/src/components/Layout/MainLayout.tsx` (사이드바 x2)
+- `dev-frontend/src/components/ProtectedRoute.tsx` (경로)
+- `dev-frontend/src/contexts/AuthContext.tsx` (5개 역할 경로)
+- `dev-frontend/src/pages/Manager/ManagerDashboard.tsx` (QuickAction)
+- `dev-frontend/src/pages/Brand/BrandManagerDashboard.tsx` (QuickAction)
+- `dev-frontend/src/pages/Foodcourt/FoodcourtManagerDashboard.tsx` (QuickAction)
+- `dev-frontend/src/pages/Landing/FeaturesPage.tsx` (텍스트+이미지)
+- `dev-frontend/src/pages/ActivityHistory/ActivityHistoryPage.tsx` (DatePeriodFilter)
+- `dev-frontend/src/pages/BrandGeneral/BrandPerformance.tsx` (served_at 계산)
+- `dev-frontend/src/pages/Owner/OwnerPerformance.tsx` (served_at 계산)
+- `dev-backend/routes/orders.js` (date range 필터)
 
 ---
 
@@ -3204,7 +3297,7 @@ DISABLE_ESLINT_PLUGIN=true TSC_COMPILE_ON_ERROR=true CI=false npm run build
 **해결:** `useBrandCurrency` 훅과 `formatCurrency` 유틸리티를 사용하여 동적 통화 표시
 
 **수정된 파일:**
-- Manager 페이지 (11개): SalesPage, ManagerDashboard, ManagerCustomersPage, ManagerPromotionsPage, ManagerReportsPage, InvoicesPage, RestaurantsPage, StaffManagementPage, ManagerSubscriptionsPage, SignupPage, SubscriptionsPage
+- Manager 페이지 (11개): SalesPage, ManagerDashboard, ManagerCustomersPage, ManagerPromotionsPage, ManagerReportsPage, InvoicesPage, RestaurantsPage, AdminManagementPage, ManagerSubscriptionsPage, SignupPage, SubscriptionsPage
 - BrandGeneral 페이지 (3개): BrandGeneralDashboard, BrandReportsPage, BrandPerformance
 - 기타 페이지 (4개): CustomersPage, RestaurantDashboard, MenuManagementPage, DashboardContent
 

@@ -1,6 +1,6 @@
 # 인보이스 시스템 기술 문서
 
-> **최종 업데이트:** 2026-02-24
+> **최종 업데이트:** 2026-03-06
 > **상태:** 구현 완료 (수동 결제 확인 방식, 결제 게이트웨이 미연동)
 
 ---
@@ -225,9 +225,12 @@ Brand와 동일 구조. `issuer_type: 'foodcourt'`, 인보이스 번호 `INV-FC{
 ```
 1. 수신자가 인보이스 목록에서 "Pay" 클릭
 2. fetchPaymentMethods(currency, issuerType, issuerId) → 발행자 결제정보 조회
-3. 결제 모달 표시 (발행자의 계좌/QR 정보)
-4. 수신자가 송금 후 영수증 업로드 + Transaction ID 입력
-5. POST /api/invoices/:id/submit-payment → status: 'payment_submitted'
+3. 결제 모달 표시 (발행자의 계좌/QR 정보, POS 스타일 카드 UI)
+4. 수신자가 결제 수단 선택 + 송금 후 영수증 업로드 + Transaction ID 입력
+5. POST /api/invoices/:id/submit-payment
+   → **백엔드 검증**: 발행자(issuer)의 결제설정에서 해당 통화의 결제방법 조회
+   → 제출된 payment_method가 유효한 결제방법 목록에 없으면 400 에러 반환
+   → 유효하면 status: 'payment_submitted'
 6. 발행자가 "Confirm" 클릭 → POST /api/invoices/:id/confirm-payment → status: 'paid'
    또는 "Reject" 클릭 → POST /api/invoices/:id/reject-payment → status: 'pending_payment'
 ```
@@ -549,6 +552,7 @@ hasPaymentMethodForCurrency(paymentSettings, currency)
 | System Admin | Admin/InvoicesPage.tsx | 발행 + 결제확인 + 카테고리관리 | /api/invoices |
 | Brand General | BrandGeneral/BrandInvoicesPage.tsx | 발행 + 결제(SA→Brand) + 결제확인 | /api/invoices, /api/invoices/to-pay |
 | Foodcourt General | FoodcourtGeneral/FoodcourtInvoicesPage.tsx | 발행 + 결제(SA→FC) + 결제확인 | /api/invoices, /api/invoices/to-pay |
+| Brand/Foodcourt Manager | Manager/InvoicesPage.tsx | 결제 전용 (발행자별 결제방법 동적 로드) | /api/invoices/to-pay |
 | Restaurant Admin | Restaurant/InvoicesPage.tsx | 결제 전용 (모든 발행자) | /api/invoices/restaurant/:id |
 | Restaurant Owner | Owner/OwnerInvoicesPage.tsx | 결제 전용 (여러 레스토랑) | /api/owner/invoices |
 
@@ -562,7 +566,28 @@ hasPaymentMethodForCurrency(paymentSettings, currency)
 4. 결제 수단 선택 + Transaction ID + 영수증 이미지 업로드
 5. "Submit Payment" → `POST /api/invoices/:id/submit-payment`
 
-### 7.3 결제방법 없을 때 안내 메시지
+### 7.3 인보이스 발행 전 결제방법 경고 (프론트엔드)
+
+발행자 페이지(Admin, Brand General, Foodcourt General)에서 인보이스 생성 시, 수신자를 선택하면 수신자의 통화로 발행자의 결제설정을 조회한다. 해당 통화에 결제방법이 없으면 모달 하단에 노란색 경고 배너를 표시한다.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ ⚠ Warning: You have no payment methods configured for {CURRENCY}.│
+│ The recipient won't be able to pay this invoice online.          │
+│ Please configure payment methods in Payment Settings first.      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**검증 API 호출:**
+| 발행자 | API | 타이밍 |
+|--------|-----|--------|
+| System Admin | `GET /api/admin/payment-settings/available/${currency}` | selectTarget 시 |
+| Brand General | `GET /api/brands/${brandId}/payment-settings/available/${currency}` | selectTarget 시 |
+| Foodcourt General | `GET /api/foodcourts/${fcId}/payment-settings/available/${currency}` | selectTarget 시 |
+
+경고는 발행을 차단하지 않음 (발행은 가능하나 결제 불가 경고). 백엔드에서 `hasPaymentMethodForCurrency`로 최종 차단.
+
+### 7.4 결제방법 없을 때 안내 메시지
 
 | 역할 | 시나리오 | 메시지 |
 |------|----------|--------|
@@ -701,6 +726,7 @@ Brand/Foodcourt 플랜 인보이스는 항상 해당 레스토랑이 결제한�
 | `pages/Admin/InvoicesPage.tsx` | System Admin 인보이스 페이지 |
 | `pages/BrandGeneral/BrandInvoicesPage.tsx` | Brand 인보이스 페이지 |
 | `pages/FoodcourtGeneral/FoodcourtInvoicesPage.tsx` | Foodcourt 인보이스 페이지 |
+| `pages/Manager/InvoicesPage.tsx` | Brand/Foodcourt Manager 인보이스 결제 페이지 |
 | `pages/Restaurant/InvoicesPage.tsx` | Restaurant 인보이스 페이지 |
 | `pages/Owner/OwnerInvoicesPage.tsx` | Owner 인보이스 페이지 |
 
@@ -709,16 +735,18 @@ Brand/Foodcourt 플랜 인보이스는 항상 해당 레스토랑이 결제한�
 ## 부록 B: 검증 체크리스트
 
 ### 발행 시 검증
-- [ ] 발행자 결제설정에 인보이스 통화의 결제방법 존재 확인
-- [ ] Brand/Foodcourt 통화가 System Admin 지원 범위 내인지
-- [ ] 동일 기간 중복 인보이스 방지 (자동 발행 시)
-- [ ] totalAmount > 0 확인 (자동 발행 시)
+- [x] 발행자 결제설정에 인보이스 통화의 결제방법 존재 확인 (백엔드: `hasPaymentMethodForCurrency`)
+- [x] **프론트엔드 사전 경고**: 수신자 선택 시 발행자 결제설정 조회 → 결제방법 없으면 경고 배너 표시
+- [x] Brand/Foodcourt 통화가 System Admin 지원 범위 내인지
+- [x] 동일 기간 중복 인보이스 방지 (자동 발행 시)
+- [x] totalAmount > 0 확인 (자동 발행 시)
 
 ### 결제 시 검증
-- [ ] 결제 제출은 pending_payment 또는 rejected 상태에서만
-- [ ] 결제 확인은 payment_submitted 상태에서만
-- [ ] 결제 거절 시 rejection_reason 필수
-- [ ] 역할별 결제/확인 권한 검증
+- [x] 결제 제출은 pending_payment 또는 overdue 상태에서만
+- [x] **결제 수단 유효성 검증**: submit-payment 시 발행자 결제설정에서 해당 통화의 결제방법 목록 조회 → 미허용 방법이면 400 에러
+- [x] 결제 확인은 payment_submitted 상태에서만
+- [x] 결제 거절 시 rejection_reason 필수
+- [x] 역할별 결제/확인 권한 검증
 
 ### 데이터 정합성
 - [ ] 인보이스 번호 유니크

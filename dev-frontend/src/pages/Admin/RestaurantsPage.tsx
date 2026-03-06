@@ -235,6 +235,7 @@ const Modal = styled.div`
       opacity: 1;
     }
   }
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`

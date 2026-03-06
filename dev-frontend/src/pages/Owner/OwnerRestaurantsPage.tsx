@@ -371,6 +371,7 @@ const Modal = styled.div`
     width: 95%;
     max-width: none;
   }
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`
@@ -1394,7 +1395,7 @@ const OwnerRestaurantsPage: React.FC = () => {
       {/* Remove Confirmation Modal */}
       {showDeleteModal && restaurantToDelete && (
         <ModalOverlay show={showDeleteModal} onClick={() => setShowDeleteModal(false)}>
-          <Modal onClick={(e) => e.stopPropagation()} style={{ maxWidth: '450px' }}>
+          <Modal onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
             <ModalHeader>
               <ModalTitle>Remove Restaurant</ModalTitle>
               <CloseButton onClick={() => setShowDeleteModal(false)}>&times;</CloseButton>

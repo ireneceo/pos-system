@@ -20,9 +20,10 @@ const subscriptionScheduler = require('../services/subscriptionScheduler');
 const PAYMENT_SETTINGS_KEY = 'payment_settings';
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const InvoiceCategory = require('../models/InvoiceCategory');
-const { normalizeAdditionalCharges } = require('../utils/paymentSettingsHelper');
+const { normalizeAdditionalCharges, getAvailablePaymentMethods } = require('../utils/paymentSettingsHelper');
 const { sendNotification, sendNotificationBatch, getSystemAdminIds, getBrandManagerIds, getFoodcourtManagerIds } = require('../utils/notificationService');
 const { invoicePaidEmail } = require('../utils/notificationTemplates');
+const { logActivity } = require('../utils/activityLogger');
 
 /**
  * Generate invoice number in format:
@@ -1490,6 +1491,16 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 
     await transaction.commit();
+
+    logActivity(req, {
+      action_type: 'create',
+      entity_type: 'invoice',
+      entity_id: invoice.id,
+      entity_name: invoice.invoice_number,
+      description: `Created invoice ${invoice.invoice_number} (${invoiceCurrency} ${invoice.total_amount})`,
+      restaurant_id: invoice.restaurant_id
+    });
+
     res.status(201).json({ success: true, invoice });
   } catch (error) {
     await transaction.rollback();
@@ -1668,6 +1679,15 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
       }
     }
 
+    logActivity(req, {
+      action_type: 'update',
+      entity_type: 'invoice',
+      entity_id: invoice.id,
+      entity_name: invoice.invoice_number,
+      description: `Updated invoice ${invoice.invoice_number} status to "${status}"`,
+      restaurant_id: invoice.restaurant_id
+    });
+
     res.json({ success: true, invoice });
   } catch (error) {
     console.error('Error updating invoice status:', error);
@@ -1715,6 +1735,15 @@ router.post('/:id/payment', authenticateToken, async (req, res) => {
       }
     }
 
+    logActivity(req, {
+      action_type: 'update',
+      entity_type: 'invoice',
+      entity_id: invoice.id,
+      entity_name: invoice.invoice_number,
+      description: `Recorded payment for invoice ${invoice.invoice_number} via ${payment_method || 'bank_transfer'}`,
+      restaurant_id: invoice.restaurant_id
+    });
+
     res.json({ success: true, invoice: await Invoice.findByPk(req.params.id) });
   } catch (error) {
     console.error('Error recording payment:', error);
@@ -1734,10 +1763,22 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     await InvoiceItem.destroy({
       where: { invoice_id: req.params.id }
     });
-    
+
+    const invoiceNumber = invoice.invoice_number;
+    const invoiceRestaurantId = invoice.restaurant_id;
+
     // Delete invoice
     await invoice.destroy();
-    
+
+    logActivity(req, {
+      action_type: 'delete',
+      entity_type: 'invoice',
+      entity_id: req.params.id,
+      entity_name: invoiceNumber,
+      description: `Deleted invoice ${invoiceNumber}`,
+      restaurant_id: invoiceRestaurantId
+    });
+
     res.json({ success: true, message: 'Invoice deleted successfully' });
   } catch (error) {
     console.error('Error deleting invoice:', error);
@@ -2507,6 +2548,34 @@ router.post('/:id/submit-payment', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'You do not have permission to pay this invoice' });
     }
 
+    // Validate payment_method against issuer's configured methods
+    if (payment_method) {
+      let paymentSettings = null;
+      const currency = invoice.currency || 'MYR';
+
+      if (invoice.issuer_type === 'brand' && invoice.issuer_id) {
+        const brand = await Brand.findByPk(invoice.issuer_id);
+        paymentSettings = brand?.payment_settings;
+      } else if (invoice.issuer_type === 'foodcourt' && invoice.issuer_id) {
+        const foodcourt = await Foodcourt.findByPk(invoice.issuer_id);
+        paymentSettings = foodcourt?.payment_settings;
+      } else {
+        // system_admin issuer
+        const settings = await SystemSettings.findOne({ where: { setting_key: PAYMENT_SETTINGS_KEY } });
+        paymentSettings = settings?.setting_value;
+      }
+
+      if (paymentSettings) {
+        const { methods } = getAvailablePaymentMethods(paymentSettings, currency);
+        const validMethodIds = methods.map(m => m.id);
+        if (validMethodIds.length > 0 && !validMethodIds.includes(payment_method)) {
+          return res.status(400).json({
+            error: `Payment method '${payment_method}' is not available for this invoice`
+          });
+        }
+      }
+    }
+
     // Update invoice with payment submission
     await invoice.update({
       status: 'payment_submitted',
@@ -2570,6 +2639,15 @@ router.post('/:id/confirm-payment', authenticateToken, async (req, res) => {
     });
 
     console.log(`✅ Payment confirmed for invoice ${invoice.invoice_number} by user ${req.user.id}`);
+
+    logActivity(req, {
+      action_type: 'update',
+      entity_type: 'invoice',
+      entity_id: invoice.id,
+      entity_name: invoice.invoice_number,
+      description: `Confirmed payment for invoice ${invoice.invoice_number}`,
+      restaurant_id: invoice.restaurant_id
+    });
 
     // Notify issuer about payment confirmation (non-blocking)
     (async () => {
@@ -2642,6 +2720,15 @@ router.post('/:id/reject-payment', authenticateToken, async (req, res) => {
     });
 
     console.log(`❌ Payment rejected for invoice ${invoice.invoice_number} by user ${req.user.id}. Reason: ${reason}`);
+
+    logActivity(req, {
+      action_type: 'update',
+      entity_type: 'invoice',
+      entity_id: invoice.id,
+      entity_name: invoice.invoice_number,
+      description: `Rejected payment for invoice ${invoice.invoice_number}. Reason: ${reason}`,
+      restaurant_id: invoice.restaurant_id
+    });
 
     res.json({
       success: true,

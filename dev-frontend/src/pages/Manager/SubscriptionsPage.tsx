@@ -348,16 +348,18 @@ const Modal = styled.div<{ show: boolean }>`
   z-index: 1000;
   align-items: center;
   justify-content: center;
+  margin: auto 0;
 `;
 
 const ModalContent = styled.div`
   background: white;
   border-radius: 12px;
   padding: 32px;
-  max-width: 500px;
+  max-width: 600px;
   width: 90%;
   max-height: 80vh;
   overflow-y: auto;
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`

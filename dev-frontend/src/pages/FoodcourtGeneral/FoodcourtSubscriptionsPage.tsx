@@ -220,6 +220,7 @@ const Modal = styled.div`
       opacity: 1;
     }
   }
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`
@@ -1090,7 +1091,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
           {/* Discount Modal */}
           {showDiscountModal && discountTarget && (
             <ModalOverlay show={showDiscountModal} onClick={() => setShowDiscountModal(false)}>
-              <Modal onClick={(e) => e.stopPropagation()} style={{maxWidth: '480px'}}>
+              <Modal onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
                 <ModalHeader>
                   <ModalTitle>Set Discount - {discountTarget.restaurant_name}</ModalTitle>
                   <CloseButton onClick={() => setShowDiscountModal(false)}>×</CloseButton>

@@ -51,7 +51,7 @@ interface AddonModule {
   module_code: string;
   name: string;
   description: string;
-  category: 'basic' | 'advanced' | 'revenue' | 'operation' | 'analytics';
+  category: 'basic' | 'advanced';
   base_price_monthly: number;
   base_price_annual: number;
   features: string[];
@@ -346,6 +346,7 @@ const Modal = styled.div`
   justify-content: center;
   z-index: 1000;
   padding: 20px;
+  margin: auto 0;
 `;
 
 const ModalContent = styled.div`
@@ -358,6 +359,7 @@ const ModalContent = styled.div`
   flex-direction: column;
   overflow: hidden;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`
@@ -2521,7 +2523,7 @@ const PlansPage: React.FC = () => {
         {/* Plan Prices Modal */}
         {showPlanPricesModal && selectedPlan && (
           <Modal onClick={() => setShowPlanPricesModal(false)}>
-            <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
+            <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
               <ModalHeader>
                 <ModalTitle>Set Prices for {selectedPlan.displayName}</ModalTitle>
                 <CloseButton onClick={() => setShowPlanPricesModal(false)}>×</CloseButton>

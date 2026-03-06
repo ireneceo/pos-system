@@ -217,8 +217,7 @@ interface Order {
   createdAt: string;
   customer_id?: number;
   customer_name?: string;
-  preparation_time?: number;
-  completed_at?: string;
+  served_at?: string;
 }
 
 interface RestaurantPerformanceData {
@@ -435,10 +434,15 @@ const OwnerPerformance: React.FC = () => {
       );
       const uniqueCustomers = customerIds.size;
 
-      // Average service/preparation time (in minutes)
-      const ordersWithPrepTime = completedOrders.filter(o => o.preparation_time && o.preparation_time > 0);
-      const avgServiceTime = ordersWithPrepTime.length > 0
-        ? ordersWithPrepTime.reduce((sum, o) => sum + (o.preparation_time || 0), 0) / ordersWithPrepTime.length
+      // Average fulfillment time (createdAt → served_at, in minutes)
+      const ordersWithServedTime = completedOrders.filter(o => o.served_at && o.createdAt);
+      const avgServiceTime = ordersWithServedTime.length > 0
+        ? ordersWithServedTime.reduce((sum, o) => {
+            const created = new Date(o.createdAt).getTime();
+            const served = new Date(o.served_at!).getTime();
+            const diffMin = (served - created) / (1000 * 60);
+            return sum + (diffMin > 0 ? diffMin : 0);
+          }, 0) / ordersWithServedTime.length
         : 0;
 
       return {
@@ -514,7 +518,7 @@ const OwnerPerformance: React.FC = () => {
   const handleExportReport = () => {
     if (sortedRestaurants.length === 0) return;
 
-    const headers = ['Restaurant', 'Status', 'Revenue', 'Orders', 'Customers', 'Avg Order', 'Max Order', 'Avg Service Time', 'Growth %'];
+    const headers = ['Restaurant', 'Status', 'Revenue', 'Orders', 'Customers', 'Avg Order', 'Max Order', 'Avg Fulfillment', 'Growth %'];
     const rows = sortedRestaurants.map(r => [
       `"${r.name}"`,
       r.status,
@@ -604,8 +608,8 @@ const OwnerPerformance: React.FC = () => {
             </StatCard>
             <StatCard color="#06B6D4">
               <StatValue>{stats.overallAvgServiceTime > 0 ? `${stats.overallAvgServiceTime} min` : 'N/A'}</StatValue>
-              <StatLabel>Avg Service Time</StatLabel>
-              <StatDescription>Preparation time</StatDescription>
+              <StatLabel>Avg Fulfillment</StatLabel>
+              <StatDescription>Order to served</StatDescription>
             </StatCard>
             <StatCard color="#F97316">
               <StatValue>{stats.overallGrowth > 0 ? '+' : ''}{stats.overallGrowth}%</StatValue>
@@ -671,7 +675,7 @@ const OwnerPerformance: React.FC = () => {
                       </MetricValue>
                     </MetricRow>
                     <MetricRow>
-                      <MetricLabel>Avg Service Time</MetricLabel>
+                      <MetricLabel>Avg Fulfillment</MetricLabel>
                       <MetricValue>
                         {restaurant.avgServiceTime > 0 ? `${restaurant.avgServiceTime} min` : 'N/A'}
                       </MetricValue>

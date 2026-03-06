@@ -17,6 +17,19 @@ import {
   DataTableAmount
 } from '../../components/UI';
 
+interface PaymentMethod {
+  id: string;
+  name: string;
+  description: string;
+  publishableKey?: string;
+  clientId?: string;
+  bankName?: string;
+  accountNumber?: string;
+  accountName?: string;
+  qrImage?: string;
+  qrDescription?: string;
+}
+
 interface Invoice {
   id: string;
   invoiceNumber: string;
@@ -25,7 +38,8 @@ interface Invoice {
   issueDate: string;
   dueDate: string;
   paidDate?: string;
-  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
+  status: 'draft' | 'sent' | 'pending_payment' | 'payment_submitted' | 'paid' | 'overdue' | 'cancelled';
+  currency?: string;
   amount: number;
   tax: number;
   total: number;
@@ -33,6 +47,10 @@ interface Invoice {
   billingPeriod: string;
   planType: string;
   restaurantManager?: string;
+  paymentMethod?: string;
+  hasPaymentInfo?: boolean;
+  issuerType?: 'system_admin' | 'brand' | 'foodcourt';
+  issuerId?: number | string;
   discountType?: string;
   discountValue?: number;
   discountAmount?: number;
@@ -309,6 +327,7 @@ const Modal = styled.div`
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  margin: auto 0;
 `;
 
 const ModalContent = styled.div`
@@ -319,6 +338,7 @@ const ModalContent = styled.div`
   width: 90%;
   max-height: 90vh;
   overflow: hidden;
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`
@@ -495,8 +515,10 @@ const ManagerInvoicesPage: React.FC = () => {
   const [showPaymentConfirmModal, setShowPaymentConfirmModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [editInvoice, setEditInvoice] = useState<any>(null);
+  const [availablePaymentMethods, setAvailablePaymentMethods] = useState<PaymentMethod[]>([]);
+  const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
   const [paymentData, setPaymentData] = useState({
-    paymentMethod: 'bank_transfer',
+    paymentMethod: '',
     transactionId: '',
     paymentDate: new Date().toISOString().split('T')[0],
     notes: '',
@@ -729,28 +751,67 @@ const ManagerInvoicesPage: React.FC = () => {
     });
   };
 
-  const handlePayInvoice = (invoice: Invoice) => {
+  // Fetch payment methods based on invoice issuer
+  const fetchPaymentMethods = async (currency: string, issuerType?: string, issuerId?: number | string) => {
+    setLoadingPaymentMethods(true);
+    try {
+      let url = `/api/admin/payment-settings/available/${currency}`;
+      if (issuerType === 'brand' && issuerId) {
+        url = `/api/brands/${issuerId}/payment-settings/available/${currency}`;
+      } else if (issuerType === 'foodcourt' && issuerId) {
+        url = `/api/foodcourts/${issuerId}/payment-settings/available/${currency}`;
+      }
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAvailablePaymentMethods(data.methods || []);
+        if (data.methods && data.methods.length > 0) {
+          setPaymentData(prev => ({ ...prev, paymentMethod: data.methods[0].id }));
+        }
+      } else {
+        setAvailablePaymentMethods([]);
+      }
+    } catch (error) {
+      console.error('Error fetching payment methods:', error);
+      setAvailablePaymentMethods([]);
+    } finally {
+      setLoadingPaymentMethods(false);
+    }
+  };
+
+  const handlePayInvoice = async (invoice: Invoice) => {
     setSelectedInvoice(invoice);
     setPaymentData({
-      paymentMethod: 'bank_transfer',
+      paymentMethod: '',
       transactionId: '',
       paymentDate: new Date().toISOString().split('T')[0],
       notes: '',
       receiptFile: null
     });
+    setInlineWarning('');
+    await fetchPaymentMethods(invoice.currency || 'MYR', invoice.issuerType, invoice.issuerId);
     setShowPaymentModal(true);
   };
 
   const handleSubmitPayment = () => {
     if (!selectedInvoice) return;
-    
-    // 둘 중 하나는 반드시 있어야 함
-    if (!paymentData.transactionId && !paymentData.receiptFile) {
-      setInlineWarning('Please provide either a Transaction ID/Reference Number OR upload a payment receipt.');
+
+    if (!paymentData.paymentMethod) {
+      setInlineWarning('Please select a payment method.');
       return;
     }
 
-    // 먼저 결제 모달을 닫고 확인 모달을 표시
+    // For non-online methods, require transaction ID or receipt
+    if (paymentData.paymentMethod !== 'stripe' && paymentData.paymentMethod !== 'paypal') {
+      if (!paymentData.transactionId && !paymentData.receiptFile) {
+        setInlineWarning('Please provide either a Transaction ID/Reference Number OR upload a payment receipt.');
+        return;
+      }
+    }
+
     setShowPaymentModal(false);
     setTimeout(() => {
       setShowPaymentConfirmModal(true);
@@ -761,50 +822,49 @@ const ManagerInvoicesPage: React.FC = () => {
     if (!selectedInvoice) return;
 
     try {
-      // 실제 API 호출
-      const response = await fetch(`${API_BASE_URL}/api/invoices/${selectedInvoice.id}/payment`, {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/invoices/${selectedInvoice.id}/submit-payment`, {
         method: 'POST',
         headers: {
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           payment_method: paymentData.paymentMethod,
           transaction_id: paymentData.transactionId,
-          payment_date: paymentData.paymentDate,
           notes: paymentData.notes,
           receipt_url: paymentData.receiptFile ? 'uploaded_receipt_url' : null
         })
       });
 
       if (response.ok) {
-        await response.json();
-
-        // 로컬 상태 업데이트
-        const updatedInvoice = {
-          ...selectedInvoice,
-          status: 'paid' as const,
-          paidDate: paymentData.paymentDate
-        };
-
-        setInvoices(invoices.map(inv => 
-          inv.id === selectedInvoice.id ? updatedInvoice : inv
-        ));
+        // Refresh invoices from API
+        const managerId = user?.managerId || user?.id || '2';
+        const refreshResponse = await fetch(`${API_BASE_URL}/api/invoices/manager/${managerId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (refreshResponse.ok) {
+          const data = await refreshResponse.json();
+          setInvoices(data);
+        }
       } else {
-        throw new Error('API call failed');
+        const errorData = await response.json();
+        setInlineWarning(errorData.error || errorData.message || 'Failed to submit payment');
+        return;
       }
-      
+
       // 모든 모달 닫기
       setShowPaymentModal(false);
       setShowPaymentConfirmModal(false);
       setSelectedInvoice(null);
       setPaymentData({
-        paymentMethod: 'bank_transfer',
+        paymentMethod: '',
         transactionId: '',
         paymentDate: new Date().toISOString().split('T')[0],
         notes: '',
         receiptFile: null
       });
-      
+
     } catch (error) {
       console.error('Payment processing error:', error);
       setInlineWarning('Error processing payment. Please try again.');
@@ -1217,7 +1277,7 @@ const ManagerInvoicesPage: React.FC = () => {
                     </SummaryRow>
                     <SummaryRow>
                       <span>Method:</span>
-                      <span>Bank Transfer</span>
+                      <span>{availablePaymentMethods.find(m => m.id === paymentData.paymentMethod)?.name || paymentData.paymentMethod}</span>
                     </SummaryRow>
                   </InvoiceSummary>
                   
@@ -1256,7 +1316,7 @@ const ManagerInvoicesPage: React.FC = () => {
           <Modal onClick={() => setShowPaymentModal(false)}>
             <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
               <ModalHeader>
-                <ModalTitle>Record Payment - {selectedInvoice.invoiceNumber}</ModalTitle>
+                <ModalTitle>Submit Payment - {selectedInvoice.invoiceNumber}</ModalTitle>
                 <CloseButton onClick={() => setShowPaymentModal(false)}>×</CloseButton>
               </ModalHeader>
               <ModalBody>
@@ -1268,91 +1328,98 @@ const ManagerInvoicesPage: React.FC = () => {
                       <span>{selectedInvoice.restaurantName}</span>
                     </SummaryRow>
                     <SummaryRow>
-                      <span>Manager:</span>
-                      <span>{selectedInvoice.restaurantManager}</span>
-                    </SummaryRow>
-                    <SummaryRow>
                       <span>Due Date:</span>
                       <span>{formatDate(selectedInvoice.dueDate)}</span>
                     </SummaryRow>
                     <SummaryRow highlight>
                       <span><strong>Amount Due:</strong></span>
-                      <span><strong>{formatCurrency(selectedInvoice.total)}</strong></span>
+                      <span><strong>{formatCurrency(selectedInvoice.total, selectedInvoice.currency)}</strong></span>
                     </SummaryRow>
                   </InvoiceSummary>
                 </FormGroup>
-                
-                <FormRow>
-                  <FormGroup>
-                    <FormLabel>Payment Method</FormLabel>
-                    <div style={{
-                      padding: '12px 16px',
-                      background: '#F8FAFC',
-                      border: '1px solid #E6EBF1',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      color: '#374151'
-                    }}>
-                      Bank Transfer
+
+                <FormGroup>
+                  <FormLabel>Payment Method</FormLabel>
+                  {loadingPaymentMethods ? (
+                    <div style={{ padding: '16px', textAlign: 'center', color: '#6B7280', fontSize: '14px' }}>Loading payment methods...</div>
+                  ) : availablePaymentMethods.length === 0 ? (
+                    <div style={{ padding: '16px', textAlign: 'center', color: '#EF4444', fontSize: '14px', background: '#FEF2F2', borderRadius: '8px' }}>
+                      No payment methods configured by the invoice issuer.
                     </div>
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>Payment Date *</FormLabel>
-                    <FormInput
-                      type="date"
-                      value={paymentData.paymentDate}
-                      onChange={(e) => setPaymentData({...paymentData, paymentDate: e.target.value})}
-                      required
-                      max={new Date().toISOString().split('T')[0]}
-                    />
-                  </FormGroup>
-                </FormRow>
-                
-                <div style={{ 
-                  background: '#F0F9FF', 
-                  border: '1px solid #0EA5E9', 
-                  borderRadius: '8px', 
-                  padding: '12px', 
-                  margin: '16px 0' 
-                }}>
-                  <p style={{ margin: '0 0 8px 0', color: '#0369A1', fontSize: '14px', fontWeight: '600' }}>
-                    Bank Transfer Payment Verification
-                  </p>
-                  <p style={{ margin: 0, color: '#0369A1', fontSize: '13px' }}>
-                    Please provide at least ONE of the following as proof of your bank transfer:
-                    <br />• Transaction ID/Reference Number from your bank
-                    <br />• Screenshot/Photo of the transfer receipt
-                  </p>
-                </div>
-                
-                <FormGroup>
-                  <FormLabel>Transaction ID / Reference Number *</FormLabel>
-                  <FormInput
-                    type="text"
-                    value={paymentData.transactionId}
-                    onChange={(e) => setPaymentData({...paymentData, transactionId: e.target.value})}
-                    placeholder="Enter transaction ID or reference number"
-                  />
-                  <FormHelp>Required if no receipt is uploaded</FormHelp>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '8px' }}>
+                      {availablePaymentMethods.map(method => {
+                        const isSelected = paymentData.paymentMethod === method.id;
+                        return (
+                          <div key={method.id}
+                            onClick={() => { setPaymentData(prev => ({ ...prev, paymentMethod: method.id })); setInlineWarning(''); }}
+                            style={{
+                              padding: '12px 8px', border: `1px solid ${isSelected ? '#635BFF' : '#E6EBF1'}`,
+                              borderRadius: '8px', cursor: 'pointer', textAlign: 'center',
+                              background: isSelected ? 'rgba(99,91,255,0.1)' : 'white',
+                              transition: 'all 0.15s'
+                            }}>
+                            <div style={{ fontSize: '14px', fontWeight: 600, color: isSelected ? '#635BFF' : '#374151' }}>{method.name}</div>
+                            <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '2px' }}>{method.description}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </FormGroup>
-                
-                <FormGroup>
-                  <FormLabel>Upload Receipt (Optional) *</FormLabel>
-                  <FormInput
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0] || null;
-                      setPaymentData({...paymentData, receiptFile: file});
-                    }}
+
+                {paymentData.paymentMethod === 'bank_transfer' && (() => {
+                  const m = availablePaymentMethods.find(m => m.id === 'bank_transfer');
+                  return m ? (
+                    <div style={{ background: '#F0F9FF', border: '1px solid #0EA5E9', borderRadius: '8px', padding: '12px', margin: '8px 0' }}>
+                      <p style={{ margin: 0, fontSize: '13px', color: '#0369A1' }}>
+                        <strong>Bank:</strong> {m.bankName}<br/>
+                        <strong>Account:</strong> {m.accountNumber}<br/>
+                        <strong>Name:</strong> {m.accountName}
+                      </p>
+                    </div>
+                  ) : null;
+                })()}
+
+                {paymentData.paymentMethod === 'qr_payment' && (() => {
+                  const m = availablePaymentMethods.find(m => m.id === 'qr_payment');
+                  return m ? (
+                    <div style={{ textAlign: 'center', margin: '8px 0' }}>
+                      <img src={m.qrImage} alt="QR Payment" style={{ maxWidth: '200px', borderRadius: '8px' }} />
+                      {m.qrDescription && <p style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>{m.qrDescription}</p>}
+                    </div>
+                  ) : null;
+                })()}
+
+                {paymentData.paymentMethod && paymentData.paymentMethod !== 'stripe' && paymentData.paymentMethod !== 'paypal' && (
+                  <>
+                    <FormGroup>
+                      <FormLabel>Transaction ID / Reference Number</FormLabel>
+                      <FormInput
+                        type="text"
+                        value={paymentData.transactionId}
+                        onChange={(e) => setPaymentData({...paymentData, transactionId: e.target.value})}
+                        placeholder="Enter transaction ID or reference number"
+                      />
+                    </FormGroup>
+
+                    <FormGroup>
+                      <FormLabel>Upload Receipt</FormLabel>
+                      <FormInput
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          setPaymentData({...paymentData, receiptFile: file});
+                        }}
                   />
                   <FormHelp>Upload bank transfer receipt if no transaction ID is provided</FormHelp>
                   {paymentData.receiptFile && (
-                    <div style={{ 
-                      marginTop: '8px', 
-                      padding: '8px', 
-                      background: '#F0F9FF', 
-                      border: '1px solid #0EA5E9', 
+                    <div style={{
+                      marginTop: '8px',
+                      padding: '8px',
+                      background: '#F0F9FF',
+                      border: '1px solid #0EA5E9',
                       borderRadius: '4px',
                       fontSize: '14px',
                       color: '#0369A1'
@@ -1361,27 +1428,25 @@ const ManagerInvoicesPage: React.FC = () => {
                     </div>
                   )}
                 </FormGroup>
-                
-                <FormGroup>
-                  <FormLabel>Payment Notes</FormLabel>
-                  <FormTextArea
-                    value={paymentData.notes}
-                    onChange={(e) => setPaymentData({...paymentData, notes: e.target.value})}
-                    placeholder="Add any additional notes about this payment"
-                    rows={3}
-                  />
-                </FormGroup>
+                  </>
+                )}
+
+                {inlineWarning && (
+                  <div style={{ padding: '10px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', fontSize: '13px', color: '#DC2626', marginTop: '8px' }}>
+                    {inlineWarning}
+                  </div>
+                )}
               </ModalBody>
               <ModalFooter>
                 <Button variant="secondary" onClick={() => setShowPaymentModal(false)}>
                   Cancel
                 </Button>
-                <Button 
-                  variant="primary" 
+                <Button
+                  variant="primary"
                   onClick={handleSubmitPayment}
-                  disabled={!paymentData.transactionId && !paymentData.receiptFile}
+                  disabled={!paymentData.paymentMethod || availablePaymentMethods.length === 0}
                 >
-                  Record Payment
+                  Submit Payment
                 </Button>
               </ModalFooter>
             </ModalContent>

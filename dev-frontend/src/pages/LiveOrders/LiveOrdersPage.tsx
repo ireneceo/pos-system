@@ -645,6 +645,7 @@ const ModalContent = styled.div`
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`
@@ -1276,6 +1277,7 @@ const LiveOrdersPage: React.FC = () => {
 
       // Play notification sound for new order (use ref to avoid dependency)
       playNotificationSoundRef.current();
+      window.dispatchEvent(new Event('refreshBadgeCounts'));
     });
 
     newSocket.on('order-updated', (order: DbOrder) => {
@@ -1292,6 +1294,7 @@ const LiveOrdersPage: React.FC = () => {
         }
         return prev.map(o => o.id === order.id ? order : o);
       });
+      window.dispatchEvent(new Event('refreshBadgeCounts'));
     });
 
     newSocket.on('order-deleted', ({ id }: { id: number }) => {
@@ -1307,6 +1310,7 @@ const LiveOrdersPage: React.FC = () => {
         }
         return prev.filter(o => o.id !== id);
       });
+      window.dispatchEvent(new Event('refreshBadgeCounts'));
     });
 
     // New items added to existing order (merged order notification)
@@ -1652,6 +1656,8 @@ const LiveOrdersPage: React.FC = () => {
       if (!result.success) {
         // Revert on error
         fetchOrders();
+      } else {
+        window.dispatchEvent(new Event('refreshBadgeCounts'));
       }
     } catch (error) {
       console.error('Failed to update status:', error);
@@ -4175,7 +4181,7 @@ const LiveOrdersPage: React.FC = () => {
 
         {/* Merge Target Selection Modal */}
         <ModalOverlay isOpen={showMergeModal} onClick={() => setShowMergeModal(false)} data-modal="merge-target">
-          <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+          <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
             <ModalHeader>
               <ModalTitle>Select Target Order</ModalTitle>
               <CloseButton onClick={() => setShowMergeModal(false)}>×</CloseButton>

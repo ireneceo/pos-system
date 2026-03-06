@@ -261,6 +261,48 @@ const CheckboxWrapper = styled.div`
   display: inline-flex;
 `;
 
+const ViewSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+`;
+
+const ViewRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const ViewField = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+const ViewLabel = styled.span`
+  font-size: 12px;
+  font-weight: 500;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+`;
+
+const ViewValue = styled.span`
+  font-size: 14px;
+  color: #1F2937;
+  font-weight: 500;
+`;
+
+const ViewDivider = styled.hr`
+  border: none;
+  border-top: 1px solid #E6EBF1;
+  margin: 4px 0;
+`;
+
 const SuppliersPage: React.FC = () => {
   const { user } = useAuth();
   const effectiveRestaurantId = user?.restaurant_id || (user as any)?.restaurantId;
@@ -272,6 +314,8 @@ const SuppliersPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewSupplier, setViewSupplier] = useState<Supplier | null>(null);
   const [formData, setFormData] = useState({
     code: '',
     name: '',
@@ -422,6 +466,11 @@ const SuppliersPage: React.FC = () => {
     });
   };
 
+  const handleViewSupplier = (supplier: Supplier) => {
+    setViewSupplier(supplier);
+    setShowViewModal(true);
+  };
+
   const handleBrandToggle = (brandId: number) => {
     setFormData(prev => ({
       ...prev,
@@ -537,7 +586,7 @@ const SuppliersPage: React.FC = () => {
       key={supplier.id}
       isActive={supplier.is_active}
       readOnly={readOnly}
-      onClick={() => !readOnly && handleOpenModal(supplier)}
+      onClick={() => readOnly ? handleViewSupplier(supplier) : handleOpenModal(supplier)}
     >
       <SupplierHeader>
         <div>
@@ -602,17 +651,20 @@ const SuppliersPage: React.FC = () => {
         )}
       </SupplierInfo>
 
-      {!readOnly && (
-        <CardActions onClick={e => e.stopPropagation()}>
-          <ActionButton onClick={() => handleOpenModal(supplier)}>Edit</ActionButton>
-          <ActionButton
-            variant="danger"
-            onClick={() => setDeleteConfirm({ isOpen: true, supplierId: supplier.id, supplierName: supplier.name })}
-          >
-            Delete
-          </ActionButton>
-        </CardActions>
-      )}
+      <CardActions onClick={e => e.stopPropagation()}>
+        <ActionButton onClick={() => handleViewSupplier(supplier)}>View</ActionButton>
+        {!readOnly && (
+          <>
+            <ActionButton onClick={() => handleOpenModal(supplier)}>Edit</ActionButton>
+            <ActionButton
+              variant="danger"
+              onClick={() => setDeleteConfirm({ isOpen: true, supplierId: supplier.id, supplierName: supplier.name })}
+            >
+              Delete
+            </ActionButton>
+          </>
+        )}
+      </CardActions>
     </SupplierCard>
   );
 
@@ -862,6 +914,111 @@ const SuppliersPage: React.FC = () => {
               />
             </UIFormGroup>
           </form>
+        </Modal>
+
+        <Modal
+          isOpen={showViewModal}
+          onClose={() => { setShowViewModal(false); setViewSupplier(null); }}
+          title="Supplier Details"
+          size="large"
+          footer={
+            <ModalButton variant="secondary" onClick={() => { setShowViewModal(false); setViewSupplier(null); }}>Close</ModalButton>
+          }
+        >
+          {viewSupplier && (
+            <ViewSection>
+              <ViewRow>
+                <ViewField>
+                  <ViewLabel>Supplier Name</ViewLabel>
+                  <ViewValue>{viewSupplier.name}</ViewValue>
+                </ViewField>
+                <ViewField>
+                  <ViewLabel>Code</ViewLabel>
+                  <ViewValue>{viewSupplier.code || '-'}</ViewValue>
+                </ViewField>
+              </ViewRow>
+
+              {viewSupplier.connectedBrands && viewSupplier.connectedBrands.length > 0 && (
+                <ViewField>
+                  <ViewLabel>Connected Brands</ViewLabel>
+                  <BrandTagsContainer>
+                    {viewSupplier.connectedBrands.map(brand => (
+                      <BrandTag key={brand.id}>{brand.name}</BrandTag>
+                    ))}
+                  </BrandTagsContainer>
+                </ViewField>
+              )}
+
+              <ViewDivider />
+
+              <ViewRow>
+                <ViewField>
+                  <ViewLabel>Contact Person</ViewLabel>
+                  <ViewValue>{viewSupplier.contact_name || '-'}</ViewValue>
+                </ViewField>
+                <ViewField>
+                  <ViewLabel>Phone</ViewLabel>
+                  <ViewValue>{viewSupplier.phone || '-'}</ViewValue>
+                </ViewField>
+              </ViewRow>
+
+              <ViewRow>
+                <ViewField>
+                  <ViewLabel>Email</ViewLabel>
+                  <ViewValue>{viewSupplier.email || '-'}</ViewValue>
+                </ViewField>
+                <ViewField>
+                  <ViewLabel>Business Number</ViewLabel>
+                  <ViewValue>{viewSupplier.business_number || '-'}</ViewValue>
+                </ViewField>
+              </ViewRow>
+
+              <ViewDivider />
+
+              <ViewField>
+                <ViewLabel>Address</ViewLabel>
+                <ViewValue>{viewSupplier.address || '-'}</ViewValue>
+              </ViewField>
+
+              <ViewRow>
+                <ViewField>
+                  <ViewLabel>Payment Terms</ViewLabel>
+                  <ViewValue>{viewSupplier.payment_terms || '-'}</ViewValue>
+                </ViewField>
+                <ViewField>
+                  <ViewLabel>Status</ViewLabel>
+                  <ViewValue>
+                    <StatusBadge active={viewSupplier.is_active} style={{ marginLeft: 0 }}>
+                      {viewSupplier.is_active ? 'Active' : 'Inactive'}
+                    </StatusBadge>
+                  </ViewValue>
+                </ViewField>
+              </ViewRow>
+
+              <ViewDivider />
+
+              <ViewRow>
+                <ViewField>
+                  <ViewLabel>Bank Name</ViewLabel>
+                  <ViewValue>{viewSupplier.bank_name || '-'}</ViewValue>
+                </ViewField>
+                <ViewField>
+                  <ViewLabel>Bank Account</ViewLabel>
+                  <ViewValue>{viewSupplier.bank_account || '-'}</ViewValue>
+                </ViewField>
+              </ViewRow>
+
+              {viewSupplier.notes && (
+                <>
+                  <ViewDivider />
+                  <ViewField>
+                    <ViewLabel>Notes</ViewLabel>
+                    <ViewValue style={{ whiteSpace: 'pre-wrap' }}>{viewSupplier.notes}</ViewValue>
+                  </ViewField>
+                </>
+              )}
+            </ViewSection>
+          )}
         </Modal>
 
         <ConfirmModal

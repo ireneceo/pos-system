@@ -92,7 +92,7 @@ const RestaurantSubscriptionsPage = React.lazy(() => import('./pages/Admin/Resta
 const ManagerDashboard = React.lazy(() => import('./pages/Manager/ManagerDashboard'));
 const ManagerSubscriptionsPage = React.lazy(() => import('./pages/Manager/SubscriptionsPage'));
 const ManagerRestaurantsPage = React.lazy(() => import('./pages/Manager/RestaurantsPage'));
-const ManagerStaffManagementPage = React.lazy(() => import('./pages/Manager/StaffManagementPage'));
+const ManagerAdminManagementPage = React.lazy(() => import('./pages/Manager/AdminManagementPage'));
 const AdminStaffManagementPage = React.lazy(() => import('./pages/Admin/StaffManagementPage'));
 const ManagerSalesPage = React.lazy(() => import('./pages/Manager/SalesPage'));
 const ManagerReportsPage = React.lazy(() => import('./pages/Manager/ManagerReportsPage'));
@@ -740,9 +740,9 @@ function App() {
                           <ManagerRestaurantsPage />
                         </ProtectedRoute>
                       } />
-                      <Route path="/pos/manager/staff" element={
+                      <Route path="/pos/manager/admins" element={
                         <ProtectedRoute requiredRole={['Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager']}>
-                          <ManagerStaffManagementPage />
+                          <ManagerAdminManagementPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/manager/sales" element={

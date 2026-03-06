@@ -30,8 +30,10 @@ const ModalContent = styled.div<{ size: 'small' | 'medium' | 'large' }>`
   border-radius: 12px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   width: 90%;
-  max-height: 90vh;
-  overflow: auto;
+  max-height: calc(100vh - 80px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   max-width: ${props => {
     switch(props.size) {
       case 'small': return '400px';
@@ -40,6 +42,7 @@ const ModalContent = styled.div<{ size: 'small' | 'medium' | 'large' }>`
       default: return '600px';
     }
   }};
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`
@@ -48,6 +51,7 @@ const ModalHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 `;
 
 const ModalTitle = styled.h2`
@@ -78,6 +82,8 @@ const CloseButton = styled.button`
 
 const ModalBody = styled.div`
   padding: 24px;
+  flex: 1;
+  overflow-y: auto;
 `;
 
 const ModalFooter = styled.div`
@@ -86,6 +92,7 @@ const ModalFooter = styled.div`
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+  flex-shrink: 0;
 `;
 
 const Modal: React.FC<ModalProps> = ({

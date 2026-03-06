@@ -4,7 +4,7 @@ import { EmptyState } from '../../components/UI/TableComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import { Container, Header, Title, Content, Button, ActionSection } from '../../components/UI/PageComponents';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/StatCard';
-import { Tabs, Tab } from '../../components/Common/TabComponents';
+import { Tabs, Tab, Badge as TabBadge } from '../../components/Common/TabComponents';
 import { SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
@@ -253,6 +253,7 @@ const ModalContent = styled.div<{ maxWidth?: string }>`
   max-width: ${props => props.maxWidth || '720px'};
   width: 90%;
   flex-shrink: 0;
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`
@@ -866,13 +867,13 @@ const NoticesPage: React.FC = () => {
             active={activeTab === 'received'}
             onClick={() => setActiveTab('received')}
           >
-            Received ({receivedTotal})
+            Received<TabBadge count={receivedTotal} showZero />
           </Tab>
           <Tab
             active={activeTab === 'sent'}
             onClick={() => setActiveTab('sent')}
           >
-            Sent ({sentTotal})
+            Sent<TabBadge count={sentTotal} showZero />
           </Tab>
         </Tabs>
 

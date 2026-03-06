@@ -29,10 +29,11 @@ const Modal = styled.div`
   background: white;
   border-radius: 12px;
   width: 100%;
-  max-width: 500px;
+  max-width: 600px;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  margin: auto 0;
 `;
 
 const Header = styled.div`

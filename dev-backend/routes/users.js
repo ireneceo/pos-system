@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const bcrypt = require('bcrypt');
 const { authenticateToken } = require('../middleware/auth');
+const { logActivity } = require('../utils/activityLogger');
 
 // Get all users
 router.get('/', authenticateToken, async (req, res) => {
@@ -219,6 +220,15 @@ router.post('/', authenticateToken, async (req, res) => {
 
     console.log('✅ User created successfully:', user.id, user.username);
 
+    logActivity(req, {
+      action_type: 'create',
+      entity_type: 'staff',
+      entity_id: user.id,
+      entity_name: user.full_name || user.username,
+      description: `Created ${role || 'Staff'} "${user.full_name || user.username}" (${email})`,
+      restaurant_id: finalRestaurantId
+    });
+
     // Return user without password (include generated password if auto-generated)
     const { password: _, ...userWithoutPassword } = user.toJSON();
     const response = { success: true, data: userWithoutPassword };
@@ -298,6 +308,15 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     await user.update(updateData);
 
+    logActivity(req, {
+      action_type: 'update',
+      entity_type: 'staff',
+      entity_id: user.id,
+      entity_name: user.full_name || user.username,
+      description: `Updated ${user.role} "${user.full_name || user.username}"`,
+      restaurant_id: user.restaurant_id
+    });
+
     console.log('✅ User updated successfully');
 
     // Return user without password
@@ -366,9 +385,22 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     await RestaurantIngredientCost.update({ updated_by: null }, { where: { updated_by: uid }, transaction: t });
 
     // 7. Delete the user
+    const userName = user.full_name || user.username;
+    const userRole = user.role;
+    const userRestaurantId = user.restaurant_id;
     await user.destroy({ transaction: t });
 
     await t.commit();
+
+    logActivity(req, {
+      action_type: 'delete',
+      entity_type: 'staff',
+      entity_id: uid,
+      entity_name: userName,
+      description: `Deleted ${userRole} "${userName}"`,
+      restaurant_id: userRestaurantId
+    });
+
     res.json({ success: true, message: 'User deleted successfully' });
   } catch (error) {
     await t.rollback();

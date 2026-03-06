@@ -26,6 +26,7 @@ const ModalContent = styled.div`
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`

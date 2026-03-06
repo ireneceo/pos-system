@@ -90,15 +90,17 @@ const Modal = styled.div`
   justify-content: center;
   z-index: 2000;
   padding: 20px;
+  margin: auto 0;
 `;
 
 const ModalContent = styled.div`
   background: white;
   border-radius: 16px;
-  max-width: 500px;
+  max-width: 600px;
   width: 100%;
   box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
   overflow: hidden;
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div<{ type: 'partial' | 'blocked' }>`

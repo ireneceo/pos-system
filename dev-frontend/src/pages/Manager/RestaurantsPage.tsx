@@ -311,6 +311,7 @@ const Modal = styled.div`
     width: 95%;
     max-width: none;
   }
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`
@@ -782,7 +783,6 @@ const ManagerRestaurantsPage: React.FC = () => {
   const activeRestaurants = restaurants.filter(r => r.status === 'active').length;
   const totalSales = restaurants.reduce((sum, r) => sum + r.todaySales, 0);
   const totalOrders = restaurants.reduce((sum, r) => sum + r.todayOrders, 0);
-  const totalStaff = restaurants.reduce((sum, r) => sum + r.staffCount, 0);
 
   const renderStars = (rating: number) => {
     const stars = [];
@@ -1273,11 +1273,6 @@ const ManagerRestaurantsPage: React.FC = () => {
               <StatValue>{totalOrders}</StatValue>
               <StatLabel>Today's Orders</StatLabel>
               <StatTrend trend="up">+18% vs yesterday</StatTrend>
-            </StatCard>
-            <StatCard color="#D97706">
-              <StatValue>{totalStaff}</StatValue>
-              <StatLabel>Total Staff</StatLabel>
-              <StatTrend trend="neutral">All present</StatTrend>
             </StatCard>
           </StatsGrid>
 
@@ -1999,7 +1994,7 @@ const ManagerRestaurantsPage: React.FC = () => {
       {/* Delete Confirmation Modal */}
       {showDeleteModal && restaurantToDelete && (
         <ModalOverlay show={showDeleteModal} onClick={() => setShowDeleteModal(false)}>
-          <Modal onClick={(e) => e.stopPropagation()} style={{ maxWidth: '450px' }}>
+          <Modal onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
             <ModalHeader>
               <ModalTitle>Delete Restaurant</ModalTitle>
               <CloseButton onClick={() => setShowDeleteModal(false)}>×</CloseButton>

@@ -264,6 +264,7 @@ const Modal = styled.div<{ show: boolean }>`
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  margin: auto 0;
 `;
 
 const ModalContent = styled.div`
@@ -271,9 +272,10 @@ const ModalContent = styled.div`
   border-radius: 12px;
   padding: 32px;
   width: 90%;
-  max-width: 500px;
+  max-width: 600px;
   max-height: 80vh;
   overflow-y: auto;
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`

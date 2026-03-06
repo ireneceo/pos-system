@@ -20,6 +20,7 @@ const Modal = styled.div`
   max-width: 400px;
   width: 90%;
   overflow: hidden;
+  margin: auto 0;
 `;
 
 const Header = styled.div`

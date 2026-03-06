@@ -19,38 +19,133 @@ import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency as formatCurrencyUtil } from '../../utils/currency';
 
 
-const FilterLabel = styled.span`
-  font-size: 13px;
-  font-weight: 500;
-  color: #6B7280;
-  margin-right: 4px;
-`;
-
-const FilterRow = styled.div`
+const FilterControlsWrapper = styled.div`
   display: flex;
-  gap: 8px;
-  align-items: center;
   flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 16px;
 
   @media (max-width: 768px) {
-    gap: 6px;
+    gap: 12px;
+  }
+`;
+
+const DropdownContainer = styled.div`
+  position: relative;
+  flex: 0 0 180px;
+
+  @media (max-width: 600px) {
+    flex: 1 1 100%;
     width: 100%;
   }
 `;
 
-const FilterSelect = styled.select`
+const DropdownInput = styled.input`
+  padding: 8px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+
+  &:hover {
+    border-color: #D1D5DB;
+  }
+`;
+
+const DropdownMenu = styled.div<{ show: boolean }>`
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  display: ${props => props.show ? 'block' : 'none'};
+`;
+
+const DropdownItem = styled.div`
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #F1F3F5;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background: #F8FAFC;
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const ItemName = styled.div`
+  font-weight: 600;
+  color: #0A2540;
+  margin-bottom: 2px;
+  font-size: 13px;
+`;
+
+const ItemDetails = styled.div`
+  font-size: 11px;
+  color: #6B7280;
+`;
+
+const ClearButton = styled.button`
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #9CA3AF;
+  cursor: pointer;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    color: #6B7280;
+  }
+`;
+
+const SortSelect = styled.select`
   padding: 8px 12px;
   border: 1px solid #E6EBF1;
   border-radius: 6px;
   font-size: 13px;
   background: white;
   cursor: pointer;
-  min-width: 140px;
+  min-width: 120px;
 
   &:focus {
     outline: none;
     border-color: #635BFF;
   }
+`;
+
+const SortLabel = styled.span`
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7280;
+  margin-right: 4px;
 `;
 
 const PerformanceGrid = styled.div`
@@ -234,8 +329,7 @@ interface Order {
   createdAt: string;
   customer_id?: number;
   customer_name?: string;
-  preparation_time?: number;
-  completed_at?: string;
+  served_at?: string;
 }
 
 interface RestaurantPerformanceData {
@@ -262,7 +356,14 @@ const BrandPerformance: React.FC = () => {
   const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('month'));
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [selectedBrandId, setSelectedBrandId] = useState<string>('all');
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>('all');
   const [selectedMetric, setSelectedMetric] = useState('sales');
+  const [brandSearchQuery, setBrandSearchQuery] = useState('');
+  const [restaurantSearchQuery, setRestaurantSearchQuery] = useState('');
+  const [showBrandDropdown, setShowBrandDropdown] = useState(false);
+  const [showRestaurantDropdown, setShowRestaurantDropdown] = useState(false);
+  const [filteredBrandsList, setFilteredBrandsList] = useState<Brand[]>([]);
+  const [filteredRestaurantsList, setFilteredRestaurantsList] = useState<Restaurant[]>([]);
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
 
@@ -415,6 +516,57 @@ const BrandPerformance: React.FC = () => {
     setDateRange({ start, end });
   };
 
+  // Brand search handler
+  const handleBrandSearch = (query: string) => {
+    setBrandSearchQuery(query);
+    if (query.length === 0) {
+      setFilteredBrandsList(brands.slice(0, 10));
+    } else {
+      setFilteredBrandsList(brands.filter(b => b.name.toLowerCase().includes(query.toLowerCase())).slice(0, 10));
+    }
+  };
+
+  const handleBrandSelect = (brand: Brand) => {
+    setSelectedBrandId(brand.id.toString());
+    setBrandSearchQuery(brand.name);
+    setShowBrandDropdown(false);
+    // Reset restaurant filter when brand changes
+    setSelectedRestaurantId('all');
+    setRestaurantSearchQuery('');
+  };
+
+  const handleBrandClear = () => {
+    setSelectedBrandId('all');
+    setBrandSearchQuery('');
+    setSelectedRestaurantId('all');
+    setRestaurantSearchQuery('');
+  };
+
+  // Restaurant search handler
+  const handleRestaurantSearch = (query: string) => {
+    setRestaurantSearchQuery(query);
+    let available = restaurants;
+    if (selectedBrandId !== 'all') {
+      available = restaurants.filter(r => r.brandId.toString() === selectedBrandId);
+    }
+    if (query.length === 0) {
+      setFilteredRestaurantsList(available.slice(0, 10));
+    } else {
+      setFilteredRestaurantsList(available.filter(r => r.name.toLowerCase().includes(query.toLowerCase())).slice(0, 10));
+    }
+  };
+
+  const handleRestaurantSelect = (restaurant: Restaurant) => {
+    setSelectedRestaurantId(restaurant.id.toString());
+    setRestaurantSearchQuery(restaurant.name);
+    setShowRestaurantDropdown(false);
+  };
+
+  const handleRestaurantClear = () => {
+    setSelectedRestaurantId('all');
+    setRestaurantSearchQuery('');
+  };
+
   // Calculate previous period date range for growth comparison
   const getPreviousPeriodRange = useMemo(() => {
     const startDate = new Date(dateRange.start);
@@ -514,10 +666,15 @@ const BrandPerformance: React.FC = () => {
       );
       const uniqueCustomers = customerIds.size;
 
-      // Average service/preparation time (in minutes)
-      const ordersWithPrepTime = completedOrders.filter(o => o.preparation_time && o.preparation_time > 0);
-      const avgServiceTime = ordersWithPrepTime.length > 0
-        ? ordersWithPrepTime.reduce((sum, o) => sum + (o.preparation_time || 0), 0) / ordersWithPrepTime.length
+      // Average fulfillment time (createdAt → served_at, in minutes)
+      const ordersWithServedTime = completedOrders.filter(o => o.served_at && o.createdAt);
+      const avgServiceTime = ordersWithServedTime.length > 0
+        ? ordersWithServedTime.reduce((sum, o) => {
+            const created = new Date(o.createdAt).getTime();
+            const served = new Date(o.served_at!).getTime();
+            const diffMin = (served - created) / (1000 * 60);
+            return sum + (diffMin > 0 ? diffMin : 0);
+          }, 0) / ordersWithServedTime.length
         : 0;
 
       return {
@@ -540,11 +697,17 @@ const BrandPerformance: React.FC = () => {
     });
   }, [restaurants, orders, dateRange.start, dateRange.end, getPreviousPeriodRange]);
 
-  // Filter by selected brand
+  // Filter by selected brand and restaurant
   const filteredRestaurants = useMemo(() => {
-    if (selectedBrandId === 'all') return performanceData;
-    return performanceData.filter(r => r.brandId.toString() === selectedBrandId);
-  }, [performanceData, selectedBrandId]);
+    let result = performanceData;
+    if (selectedBrandId !== 'all') {
+      result = result.filter(r => r.brandId.toString() === selectedBrandId);
+    }
+    if (selectedRestaurantId !== 'all') {
+      result = result.filter(r => r.id.toString() === selectedRestaurantId);
+    }
+    return result;
+  }, [performanceData, selectedBrandId, selectedRestaurantId]);
 
   // Sort restaurants by selected metric
   const sortedRestaurants = useMemo(() => {
@@ -615,40 +778,95 @@ const BrandPerformance: React.FC = () => {
         </Header>
 
         <Content>
-          {/* Filter Controls */}
-          <DatePeriodFilter
-            activePeriod={activePeriod}
-            dateRange={dateRange}
-            isCustomDateRange={isCustomDateRange}
-            onPeriodChange={handlePeriodChange}
-            onCalendarRangeSelect={handleCalendarRangeSelect}
-          />
+          {/* Brand & Restaurant Filter */}
+          <FilterControlsWrapper>
+            <DropdownContainer>
+              <DropdownInput
+                type="text"
+                placeholder="All Brands"
+                value={brandSearchQuery}
+                onChange={(e) => handleBrandSearch(e.target.value)}
+                onFocus={() => {
+                  setShowBrandDropdown(true);
+                  if (brandSearchQuery.length === 0) setFilteredBrandsList(brands.slice(0, 10));
+                }}
+                onBlur={() => setTimeout(() => setShowBrandDropdown(false), 200)}
+              />
+              {selectedBrandId !== 'all' && brandSearchQuery && (
+                <ClearButton onClick={handleBrandClear}>×</ClearButton>
+              )}
+              <DropdownMenu show={showBrandDropdown}>
+                <DropdownItem onClick={() => { setSelectedBrandId('all'); setBrandSearchQuery(''); setShowBrandDropdown(false); setSelectedRestaurantId('all'); setRestaurantSearchQuery(''); }}>
+                  <ItemName>All Brands</ItemName>
+                  <ItemDetails>Show all brand data</ItemDetails>
+                </DropdownItem>
+                {filteredBrandsList.map(brand => (
+                  <DropdownItem key={brand.id} onClick={() => handleBrandSelect(brand)}>
+                    <ItemName>{brand.name}</ItemName>
+                    <ItemDetails>{brand.code} {brand.currency ? `• ${brand.currency}` : ''}</ItemDetails>
+                  </DropdownItem>
+                ))}
+              </DropdownMenu>
+            </DropdownContainer>
 
-          <FilterRow>
-            <FilterLabel>Brand:</FilterLabel>
-            <FilterSelect
-              value={selectedBrandId}
-              onChange={(e) => setSelectedBrandId(e.target.value)}
-            >
-              <option value="all">All Brands</option>
-              {brands.map(brand => (
-                <option key={brand.id} value={brand.id.toString()}>
-                  {brand.name}
-                </option>
-              ))}
-            </FilterSelect>
+            <DropdownContainer>
+              <DropdownInput
+                type="text"
+                placeholder="All Restaurants"
+                value={restaurantSearchQuery}
+                onChange={(e) => handleRestaurantSearch(e.target.value)}
+                onFocus={() => {
+                  setShowRestaurantDropdown(true);
+                  let available = restaurants;
+                  if (selectedBrandId !== 'all') {
+                    available = restaurants.filter(r => r.brandId.toString() === selectedBrandId);
+                  }
+                  setFilteredRestaurantsList(available.slice(0, 10));
+                }}
+                onBlur={() => setTimeout(() => setShowRestaurantDropdown(false), 200)}
+              />
+              {selectedRestaurantId !== 'all' && restaurantSearchQuery && (
+                <ClearButton onClick={handleRestaurantClear}>×</ClearButton>
+              )}
+              <DropdownMenu show={showRestaurantDropdown}>
+                <DropdownItem onClick={() => { setSelectedRestaurantId('all'); setRestaurantSearchQuery(''); setShowRestaurantDropdown(false); }}>
+                  <ItemName>All Restaurants</ItemName>
+                  <ItemDetails>Show all restaurant data</ItemDetails>
+                </DropdownItem>
+                {filteredRestaurantsList.map(restaurant => (
+                  <DropdownItem key={restaurant.id} onClick={() => handleRestaurantSelect(restaurant)}>
+                    <ItemName>{restaurant.name}</ItemName>
+                    <ItemDetails>{restaurant.brandName || 'Independent'}</ItemDetails>
+                  </DropdownItem>
+                ))}
+              </DropdownMenu>
+            </DropdownContainer>
+          </FilterControlsWrapper>
 
-            <FilterLabel style={{ marginLeft: '16px' }}>Sort by:</FilterLabel>
-            <FilterSelect
-              value={selectedMetric}
-              onChange={(e) => setSelectedMetric(e.target.value)}
-            >
-              <option value="sales">Revenue</option>
-              <option value="growth">Growth</option>
-              <option value="orders">Orders</option>
-              <option value="customers">Customers</option>
-            </FilterSelect>
-          </FilterRow>
+          {/* Date Filter + Sort by */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '8px' }}>
+            <div style={{ flex: 1 }}>
+              <DatePeriodFilter
+                activePeriod={activePeriod}
+                dateRange={dateRange}
+                isCustomDateRange={isCustomDateRange}
+                onPeriodChange={handlePeriodChange}
+                onCalendarRangeSelect={handleCalendarRangeSelect}
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+              <SortLabel>Sort by:</SortLabel>
+              <SortSelect
+                value={selectedMetric}
+                onChange={(e) => setSelectedMetric(e.target.value)}
+              >
+                <option value="sales">Revenue</option>
+                <option value="growth">Growth</option>
+                <option value="orders">Orders</option>
+                <option value="customers">Customers</option>
+              </SortSelect>
+            </div>
+          </div>
 
           {/* Stats Grid - Row 1 */}
           <StatsGrid>
@@ -683,8 +901,8 @@ const BrandPerformance: React.FC = () => {
             </StatCard>
             <StatCard color="#06B6D4">
               <StatValue>{stats.overallAvgServiceTime > 0 ? `${stats.overallAvgServiceTime} min` : 'N/A'}</StatValue>
-              <StatLabel>Avg Service Time</StatLabel>
-              <StatDescription>Preparation time</StatDescription>
+              <StatLabel>Avg Fulfillment Time</StatLabel>
+              <StatDescription>Order to served</StatDescription>
             </StatCard>
             <StatCard color="#F97316">
               <StatValue>{stats.overallGrowth > 0 ? '+' : ''}{stats.overallGrowth}%</StatValue>
@@ -748,7 +966,7 @@ const BrandPerformance: React.FC = () => {
                       </MetricValue>
                     </MetricRow>
                     <MetricRow>
-                      <MetricLabel>Avg Service Time</MetricLabel>
+                      <MetricLabel>Avg Fulfillment</MetricLabel>
                       <MetricValue>
                         {restaurant.avgServiceTime > 0 ? `${restaurant.avgServiceTime} min` : 'N/A'}
                       </MetricValue>

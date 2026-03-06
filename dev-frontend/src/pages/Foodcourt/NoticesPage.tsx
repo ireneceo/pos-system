@@ -4,7 +4,7 @@ import { EmptyState } from '../../components/UI/TableComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import { Container, Header, Title, Content, Button, ActionSection } from '../../components/UI/PageComponents';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/StatCard';
-import { Tabs, Tab } from '../../components/Common/TabComponents';
+import { Tabs, Tab, Badge as TabBadge } from '../../components/Common/TabComponents';
 import { SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
@@ -227,9 +227,10 @@ const ModalContent = styled.div`
   background: white;
   border-radius: 12px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  max-width: 700px;
+  max-width: 800px;
   width: 90%;
   flex-shrink: 0;
+  margin: auto 0;
 `;
 
 const ModalHeader = styled.div`
@@ -870,10 +871,10 @@ const NoticesPage: React.FC = () => {
         {/* Tabs */}
         <Tabs>
           <Tab active={activeTab === 'received'} onClick={() => setActiveTab('received')}>
-            Received ({receivedNotices.length})
+            Received<TabBadge count={receivedNotices.length} showZero />
           </Tab>
           <Tab active={activeTab === 'sent'} onClick={() => setActiveTab('sent')}>
-            Sent ({sentNotices.length})
+            Sent<TabBadge count={sentNotices.length} showZero />
           </Tab>
         </Tabs>
 
@@ -1189,7 +1190,7 @@ const NoticesPage: React.FC = () => {
       {/* ================================================================== */}
       {showViewModal && selectedNotice && (
         <ModalOverlay onClick={() => { setShowViewModal(false); setSelectedNotice(null); }}>
-          <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '750px' }}>
+          <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
             <ModalHeader>
               <ModalTitle>{selectedNotice.title}</ModalTitle>
               <CloseButton onClick={() => { setShowViewModal(false); setSelectedNotice(null); }}>×</CloseButton>
