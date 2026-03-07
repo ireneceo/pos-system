@@ -1110,7 +1110,7 @@ const NoticesPage: React.FC = () => {
       {/* View Notice Modal                                                   */}
       {/* ================================================================== */}
       {showViewModal && selectedNotice && (
-        <CommonModal isOpen={true} onClose={() => { setShowViewModal(false); setSelectedNotice(null); }} title={selectedNotice.title} size="large" headerActions={<ViewModalHeaderRight><PriorityBadge priority={selectedNotice.priority}>{selectedNotice.priority}</PriorityBadge>{isOwnNotice(selectedNotice) && (<DeleteNoticeButton onClick={() => handleDeleteNotice(selectedNotice.id)}>Delete</DeleteNoticeButton>)}</ViewModalHeaderRight>}>
+        <CommonModal isOpen={true} onClose={() => { setShowViewModal(false); setSelectedNotice(null); }} title={selectedNotice.title} size="large" headerActions={<ViewModalHeaderRight><PriorityBadge priority={selectedNotice.priority}>{selectedNotice.priority}</PriorityBadge>{isOwnNotice(selectedNotice) && (<DeleteNoticeButton onClick={() => handleDeleteNotice(selectedNotice.id)}>Delete</DeleteNoticeButton>)}</ViewModalHeaderRight>} footer={<><Button variant="secondary" onClick={() => { setShowViewModal(false); setSelectedNotice(null); }}>Close</Button></>}>
               {/* Meta info */}
               <ViewNoticeMeta>
                 <MetaField>

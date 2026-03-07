@@ -969,7 +969,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
 
           {/* Discount Modal */}
           {showDiscountModal && discountTarget && (
-                        <CommonModal isOpen={true} onClose={() => setShowDiscountModal(false)} title="Set Discount - {discountTarget.restaurant_name}" footer={<><ThemedButton variant="cancel" onClick={() => setShowDiscountModal(false)}>Cancel</ThemedButton><ThemedButton variant="primary" onClick={handleSaveDiscount}>Save Discount</ThemedButton></>}>
+                        <CommonModal isOpen={true} onClose={() => setShowDiscountModal(false)} title={`Set Discount - ${discountTarget.restaurant_name}`} footer={<><ThemedButton variant="cancel" onClick={() => setShowDiscountModal(false)}>Cancel</ThemedButton><ThemedButton variant="primary" onClick={handleSaveDiscount}>Save Discount</ThemedButton></>}>
 
                   <div style={{display: 'grid', gap: '16px'}}>
                     <div>

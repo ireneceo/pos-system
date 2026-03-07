@@ -1134,7 +1134,7 @@ const NoticesPage: React.FC = () => {
       {/* View Notice Modal */}
       {/* ================================================================== */}
       {showViewModal && viewNotice && (
-        <CommonModal isOpen={true} onClose={() => { setShowViewModal(false); setViewNotice(null); }} title={viewNotice.title} size="large">
+        <CommonModal isOpen={true} onClose={() => { setShowViewModal(false); setViewNotice(null); }} title={viewNotice.title} size="large" footer={<><Button variant="secondary" onClick={() => { setShowViewModal(false); setViewNotice(null); }}>Close</Button></>}>
               <NoticeDetailMeta>
                 <MetaItem>
                   <MetaLabel>From:</MetaLabel>

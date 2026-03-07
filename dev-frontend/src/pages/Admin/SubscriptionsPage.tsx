@@ -1491,13 +1491,10 @@ const SubscriptionsPage: React.FC = () => {
 
           {/* Success Modal */}
           {showSuccessModal && (
-            <CommonModal isOpen={true} onClose={() => setShowSuccessModal(false)} title="Success!" size="small">
+            <CommonModal isOpen={true} onClose={() => setShowSuccessModal(false)} title="Success!" size="small" footer={<><ThemedButton variant="primary" onClick={() => setShowSuccessModal(false)}>OK</ThemedButton></>}>
               <div style={{ textAlign: 'center' }}>
                 <SuccessIcon>✓</SuccessIcon>
                 <SuccessMessage>{successMessage}</SuccessMessage>
-                <ThemedButton variant="primary" onClick={() => setShowSuccessModal(false)}>
-                  OK
-                </ThemedButton>
               </div>
             </CommonModal>
           )}

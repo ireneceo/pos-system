@@ -7,10 +7,11 @@
 
 ### 완료된 작업 (이번 세션)
 1. 전체 24개 페이지 공통 Modal 컴포넌트 마이그레이션 완료
-   - 커스텀 styled-component 모달 → 공통 Modal(UI/Modal.tsx) 통합
-   - Footer 고정 동작 통일
-   - 불필요한 Modal/ModalOverlay/ModalContent 등 styled-components 제거
-   - Admin 11개, BrandGeneral 3개, FoodcourtGeneral 3개, Manager 4개, LiveOrders 1개, Customers 1개, Promotions 1개 페이지
+2. 모달 제목 리터럴 버그 수정 23건 (title="...{var}" → title={`...${var}`})
+3. 모달 footer 누락 복원 13건 (Cancel/Save/Close 버튼 추가)
+4. Plan 카드 description → Plan Target 표시 (PlansPage + PricingPage)
+5. Prices 모달 input 레이아웃 수정 (box-sizing: border-box)
+6. Create/Edit Plan 모달 size를 medium(600px)으로 조정
 
 ### 다음 할 일
 - DEVELOPMENT_PLAN.md 로드맵 기준 다음 작업 진행

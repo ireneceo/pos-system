@@ -2674,7 +2674,7 @@ const RestaurantsPage: React.FC = () => {
 
         {/* View Restaurant Modal */}
         {showViewModal && selectedRestaurant && (
-                    <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Restaurant Details">
+                    <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Restaurant Details" size="large" footer={<><ActionButton onClick={() => setShowViewModal(false)}>Close</ActionButton></>}>
 
                 <FormGrid>
                   <FormGroup style={{ gridColumn: '1 / -1' }}>

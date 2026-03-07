@@ -1277,7 +1277,7 @@ const ManagersPage: React.FC = () => {
 
         {/* Info Modal (password reset result) */}
         {showSuccessModal && (
-        <CommonModal isOpen={true} onClose={() => setShowSuccessModal(false)} title="Success" size="small">
+        <CommonModal isOpen={true} onClose={() => setShowSuccessModal(false)} title="Success" size="small" footer={<><Button variant="primary" onClick={() => setShowSuccessModal(false)}>OK</Button></>}>
           <div style={{ textAlign: 'center' }}>
             <SuccessIcon>✓</SuccessIcon>
             <SuccessMessage>{successMessage}</SuccessMessage>

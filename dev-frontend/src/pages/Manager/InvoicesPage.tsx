@@ -1036,7 +1036,7 @@ const ManagerInvoicesPage: React.FC = () => {
 
         {/* View Invoice Modal */}
         {showViewModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Invoice Details - {selectedInvoice.invoiceNumber}" footer={<><Button variant="secondary" onClick={() => setShowViewModal(false)}> Close </Button><Button variant="primary" onClick={() => window.print()}> Print Invoice </Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title={`Invoice Details - ${selectedInvoice.invoiceNumber}`} footer={<><Button variant="secondary" onClick={() => setShowViewModal(false)}> Close </Button><Button variant="primary" onClick={() => window.print()}> Print Invoice </Button></>}>
 
                 <FormRow>
                   <FormGroup>
@@ -1170,7 +1170,7 @@ const ManagerInvoicesPage: React.FC = () => {
 
         {/* Payment Modal */}
         {showPaymentModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowPaymentModal(false)} title="Submit Payment - {selectedInvoice.invoiceNumber}" footer={<><Button variant="secondary" onClick={() => setShowPaymentModal(false)}> Cancel </Button><Button variant="primary" onClick={handleSubmitPayment} disabled={!paymentData.paymentMethod || availablePaymentMethods.length === 0} > Submit Payment </Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowPaymentModal(false)} title={`Submit Payment - ${selectedInvoice.invoiceNumber}`} footer={<><Button variant="secondary" onClick={() => setShowPaymentModal(false)}> Cancel </Button><Button variant="primary" onClick={handleSubmitPayment} disabled={!paymentData.paymentMethod || availablePaymentMethods.length === 0} > Submit Payment </Button></>}>
 
                 <FormGroup>
                   <FormLabel>Invoice Details</FormLabel>
@@ -1294,7 +1294,7 @@ const ManagerInvoicesPage: React.FC = () => {
 
         {/* Edit Invoice Modal */}
         {showEditModal && selectedInvoice && editInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title="Edit Invoice - {selectedInvoice.invoiceNumber}" footer={<><Button variant="secondary" onClick={() => setShowEditModal(false)}> Cancel </Button><Button variant="primary" onClick={handleSaveEdit}> Save Changes </Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title={`Edit Invoice - ${selectedInvoice.invoiceNumber}`} footer={<><Button variant="secondary" onClick={() => setShowEditModal(false)}> Cancel </Button><Button variant="primary" onClick={handleSaveEdit}> Save Changes </Button></>}>
 
                 <FormRow>
                   <FormGroup>

@@ -680,7 +680,9 @@ const PricingPage: React.FC = () => {
                   <PlanCard key={plan.id} popular={isPopular}>
                     {isPopular && <PopularBadge>Most Popular</PopularBadge>}
                     <PlanName>{plan.display_name}</PlanName>
-                    <PlanDescription>{getDescription(plan.name)}</PlanDescription>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#635BFF', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '24px', textAlign: 'center' }}>
+                      {plan.plan_target === 'restaurant' ? 'Restaurant Plan' : plan.plan_target === 'brand' ? 'Brand Plan' : plan.plan_target === 'foodcourt' ? 'Foodcourt Plan' : 'Owner Plan'}
+                    </div>
 
                     <PriceSection>
                       {monthlyPrice === 0 ? (

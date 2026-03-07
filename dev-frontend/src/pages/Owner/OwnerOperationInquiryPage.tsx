@@ -838,7 +838,7 @@ const OwnerOperationInquiryPage: React.FC = () => {
 
           {/* Detail Modal */}
           {selectedTicket && (
-            <CommonModal isOpen={true} onClose={() => setSelectedTicket(null)} title={selectedTicket.ticketNumber} size="large">
+            <CommonModal isOpen={true} onClose={() => setSelectedTicket(null)} title={selectedTicket.ticketNumber} size="large" footer={<><Button variant="secondary" onClick={() => setSelectedTicket(null)}>Close</Button></>}>
                   <InfoBox>
                     <InfoRow>
                       <InfoLabel>Subject:</InfoLabel>

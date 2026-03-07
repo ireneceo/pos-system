@@ -1300,7 +1300,9 @@ const PlansPage: React.FC = () => {
 
               <PlanHeader>
                 <PlanName>{plan.displayName}</PlanName>
-                <PlanDescription>{plan.description}</PlanDescription>
+                <div style={{ fontSize: '14px', fontWeight: 600, color: '#635BFF', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '24px' }}>
+                  {plan.planTarget === 'restaurant' ? 'Restaurant Plan' : plan.planTarget === 'brand' ? 'Brand Plan' : plan.planTarget === 'foodcourt' ? 'Foodcourt Plan' : 'Owner Plan'}
+                </div>
 
                 <PlanPricing>
                   {hasCurrencyPrice(plan) ? (
@@ -1449,7 +1451,7 @@ const PlansPage: React.FC = () => {
         
         {/* Create Plan Modal */}
         {showCreateModal && (
-                    <CommonModal isOpen={true} onClose={() => setShowCreateModal(false)} title="Create New Plan">
+                    <CommonModal isOpen={true} onClose={() => setShowCreateModal(false)} title="Create New Plan" footer={<><Button variant="secondary" onClick={() => setShowCreateModal(false)}>Cancel</Button><Button variant="primary" onClick={createPlan}>Create Plan</Button></>}>
 
                 <FormGroup>
                   <FormLabel>Plan Target *</FormLabel>
@@ -1886,7 +1888,7 @@ const PlansPage: React.FC = () => {
         
         {/* Edit Plan Modal */}
         {showEditModal && selectedPlan && (
-                    <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title="Edit Plan: {selectedPlan.displayName}">
+                    <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title={`Edit Plan: ${selectedPlan.displayName}`} footer={<><Button variant="secondary" onClick={() => setShowEditModal(false)}>Cancel</Button><Button variant="danger" onClick={() => deletePlan(selectedPlan.id)}>Delete</Button><Button variant="primary" onClick={updatePlan}>Save Changes</Button></>}>
 
                 <FormGroup>
                   <FormLabel>Plan Name *</FormLabel>
@@ -2305,7 +2307,7 @@ const PlansPage: React.FC = () => {
         
         {/* View Details Modal */}
         {showDetailsModal && selectedPlan && (
-                    <CommonModal isOpen={true} onClose={() => setShowDetailsModal(false)} title="Plan Details: {selectedPlan.displayName}">
+                    <CommonModal isOpen={true} onClose={() => setShowDetailsModal(false)} title={`Plan Details: ${selectedPlan.displayName}`} footer={<><Button variant="secondary" onClick={() => setShowDetailsModal(false)}>Close</Button><Button variant="primary" onClick={() => { setShowDetailsModal(false); handleEditPlan(selectedPlan); }}>Edit Plan</Button></>}>
 
                 <DetailSection>
                   <DetailRow>
@@ -2418,7 +2420,7 @@ const PlansPage: React.FC = () => {
 
         {/* Plan Prices Modal */}
         {showPlanPricesModal && selectedPlan && (
-                    <CommonModal isOpen={true} onClose={() => setShowPlanPricesModal(false)} title="Set Prices for {selectedPlan.displayName}">
+                    <CommonModal isOpen={true} onClose={() => setShowPlanPricesModal(false)} title={`Set Prices for ${selectedPlan.displayName}`} footer={<><Button variant="secondary" onClick={() => setShowPlanPricesModal(false)}>Cancel</Button><Button variant="primary" onClick={savePlanPrices}>Save Prices</Button></>}>
 
                 <p style={{ marginBottom: '20px', color: '#6B7280', fontSize: '14px' }}>
                   Configure pricing for each supported currency.
@@ -2467,7 +2469,8 @@ const PlansPage: React.FC = () => {
                                 padding: '10px 12px',
                                 border: '1px solid #E6EBF1',
                                 borderRadius: '6px',
-                                fontSize: '14px'
+                                fontSize: '14px',
+                                boxSizing: 'border-box' as const
                               }}
                               placeholder="0.00"
                             />
@@ -2488,7 +2491,8 @@ const PlansPage: React.FC = () => {
                                 padding: '10px 12px',
                                 border: '1px solid #E6EBF1',
                                 borderRadius: '6px',
-                                fontSize: '14px'
+                                fontSize: '14px',
+                                boxSizing: 'border-box' as const
                               }}
                               placeholder="0.00"
                             />

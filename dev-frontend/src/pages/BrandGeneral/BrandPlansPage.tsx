@@ -1171,7 +1171,7 @@ const BrandPlansPage: React.FC = () => {
 
         {/* Create Plan Modal */}
         {showCreateModal && (
-                    <CommonModal isOpen={true} onClose={() => setShowCreateModal(false)} title="Create New Plan">
+                    <CommonModal isOpen={true} onClose={() => setShowCreateModal(false)} title="Create New Plan" footer={<><Button variant="secondary" onClick={() => setShowCreateModal(false)}>Cancel</Button><Button variant="primary" onClick={createPlan}>Create Plan</Button></>}>
 
                 <FormGroup>
                   <FormLabel>Plan Name *</FormLabel>
@@ -1227,7 +1227,7 @@ const BrandPlansPage: React.FC = () => {
 
         {/* Edit Plan Modal */}
         {showEditModal && selectedPlan && (
-                    <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title="Edit Plan: {selectedPlan.name}">
+                    <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title={`Edit Plan: ${selectedPlan.name}`} footer={<><Button variant="secondary" onClick={() => setShowEditModal(false)}>Cancel</Button><Button variant="danger" onClick={() => deletePlan(selectedPlan.id)}>Delete</Button><Button variant="primary" onClick={updatePlan}>Save Changes</Button></>}>
 
                 <FormGroup>
                   <FormLabel>Plan Name *</FormLabel>
@@ -1280,7 +1280,7 @@ const BrandPlansPage: React.FC = () => {
 
         {/* View Details Modal */}
         {showDetailsModal && selectedPlan && (
-                    <CommonModal isOpen={true} onClose={() => setShowDetailsModal(false)} title="Plan Details: {selectedPlan.name}">
+                    <CommonModal isOpen={true} onClose={() => setShowDetailsModal(false)} title={`Plan Details: ${selectedPlan.name}`} footer={<><Button variant="secondary" onClick={() => setShowDetailsModal(false)}>Close</Button></>}>
 
                 <DetailSection>
                   <h4>Plan Info</h4>
@@ -1413,7 +1413,7 @@ const BrandPlansPage: React.FC = () => {
 
         {/* Plan Prices Modal (Fixed type only) */}
         {showPricesModal && selectedPlan && (
-                    <CommonModal isOpen={true} onClose={() => setShowPricesModal(false)} title="Set Prices for {selectedPlan.name}">
+                    <CommonModal isOpen={true} onClose={() => setShowPricesModal(false)} title={`Set Prices for ${selectedPlan.name}`} footer={<><Button variant="secondary" onClick={() => setShowPricesModal(false)}>Cancel</Button><Button variant="primary" onClick={savePlanPrices}>Save Prices</Button></>}>
 
                 <p style={{ marginBottom: '20px', color: '#6B7280', fontSize: '14px' }}>
                   Configure pricing for each supported currency.
@@ -1451,7 +1451,7 @@ const BrandPlansPage: React.FC = () => {
 
         {/* Restaurant Assignment Modal */}
         {showRestaurantModal && selectedPlan && (
-                    <CommonModal isOpen={true} onClose={() => setShowRestaurantModal(false)} title="Manage Restaurants: {selectedPlan.name}">
+                    <CommonModal isOpen={true} onClose={() => setShowRestaurantModal(false)} title={`Manage Restaurants: ${selectedPlan.name}`} footer={<><Button variant="secondary" onClick={() => setShowRestaurantModal(false)}>Close</Button></>}>
 
                 <p style={{ marginBottom: '16px', color: '#6B7280', fontSize: '14px' }}>
                   Assign or remove restaurants from this plan.

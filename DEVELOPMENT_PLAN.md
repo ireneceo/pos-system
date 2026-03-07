@@ -1571,6 +1571,43 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 
 ---
 
+## ✅ 완료: 모달 제목/footer 버그 수정 + Plan Target 표시 (2026-03-07)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 모달 제목 리터럴 버그 수정 (23건) | `title="Edit Plan: {selectedPlan.name}"` → 템플릿 리터럴로 변경 | ✅ 완료 |
+| 모달 footer 누락 복원 (13건) | Create/Edit/View/Prices 모달에 Cancel/Save/Close 버튼 footer 추가 | ✅ 완료 |
+| Plan 카드 description → Plan Target | 카드에 description 대신 Plan Target(Restaurant/Brand/Foodcourt/Owner Plan) 표시 | ✅ 완료 |
+| Pricing 페이지 Plan Target 반영 | PricingPage에서도 description 대신 Plan Target 표시 | ✅ 완료 |
+| Prices 모달 레이아웃 수정 | input box-sizing: border-box 추가로 넘침 해결 | ✅ 완료 |
+
+### 수정된 파일 (20개)
+- `dev-frontend/src/pages/Admin/PlansPage.tsx`
+- `dev-frontend/src/pages/Admin/InvoicesPage.tsx`
+- `dev-frontend/src/pages/Admin/ContactInquiriesPage.tsx`
+- `dev-frontend/src/pages/Admin/ManagersPage.tsx`
+- `dev-frontend/src/pages/Admin/RestaurantSubscriptionsPage.tsx`
+- `dev-frontend/src/pages/Admin/RestaurantsPage.tsx`
+- `dev-frontend/src/pages/Admin/SubscriptionsPage.tsx`
+- `dev-frontend/src/pages/BrandGeneral/BrandPlansPage.tsx`
+- `dev-frontend/src/pages/BrandGeneral/BrandInvoicesPage.tsx`
+- `dev-frontend/src/pages/BrandGeneral/BrandSubscriptionsPage.tsx`
+- `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtPlansPage.tsx`
+- `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtInvoicesPage.tsx`
+- `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtSubscriptionsPage.tsx`
+- `dev-frontend/src/pages/Manager/InvoicesPage.tsx`
+- `dev-frontend/src/pages/Manager/OperationInquiryPage.tsx`
+- `dev-frontend/src/pages/Brand/OperationInquiryPage.tsx`
+- `dev-frontend/src/pages/Brand/NoticesPage.tsx`
+- `dev-frontend/src/pages/Foodcourt/OperationInquiryPage.tsx`
+- `dev-frontend/src/pages/Owner/NoticesPage.tsx`
+- `dev-frontend/src/pages/Owner/OwnerOperationInquiryPage.tsx`
+- `dev-frontend/src/pages/Landing/PricingPage.tsx`
+
+---
+
 ## 🚀 서비스 오픈 준비 로드맵 (현재 진행 중)
 
 ### 현재 상황

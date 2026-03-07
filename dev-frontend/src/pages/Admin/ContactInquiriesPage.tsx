@@ -801,7 +801,7 @@ const ContactInquiriesPage: React.FC = () => {
 
         {/* Reply Modal */}
         {showReplyModal && selectedInquiry && (
-                    <CommonModal isOpen={true} onClose={() => setShowReplyModal(false)} title="Reply to {selectedInquiry.name}" footer={<><ActionButton onClick={() => setShowReplyModal(false)}> Cancel </ActionButton><ActionButton variant="primary" onClick={submitReply} disabled={submitting || !replyMessage.trim()} > {submitting ? 'Sending...' : (sendEmail ? 'Send Reply & Email' : 'Save Reply')} </ActionButton></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowReplyModal(false)} title={`Reply to ${selectedInquiry.name}`} footer={<><ActionButton onClick={() => setShowReplyModal(false)}> Cancel </ActionButton><ActionButton variant="primary" onClick={submitReply} disabled={submitting || !replyMessage.trim()} > {submitting ? 'Sending...' : (sendEmail ? 'Send Reply & Email' : 'Save Reply')} </ActionButton></>}>
 
                 <FormGroup>
                   <FormLabel>Original Message</FormLabel>

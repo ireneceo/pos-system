@@ -822,7 +822,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
         
         {/* Details Modal */}
         {showDetailsModal && selectedSubscription && (
-          <CommonModal isOpen={true} onClose={() => setShowDetailsModal(false)} title="Subscription Details">
+          <CommonModal isOpen={true} onClose={() => setShowDetailsModal(false)} title="Subscription Details" footer={<><Button variant="secondary" onClick={() => setShowDetailsModal(false)}>Close</Button></>}>
                 <DetailSection>
                   <DetailLabel>Restaurant</DetailLabel>
                   <DetailValue>{selectedSubscription.restaurantName}</DetailValue>
