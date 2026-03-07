@@ -307,83 +307,6 @@ const EmptyStateText = styled.p`
   margin-bottom: 24px;
 `;
 
-const CustomerDetailModal = styled.div<{ isOpen: boolean }>`
-  display: ${props => props.isOpen ? 'flex' : 'none'};
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-  animation: fadeIn 0.2s ease-out;
-  
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  border-radius: 16px;
-  width: 90%;
-  max-width: 600px;
-  max-height: 85vh;
-  overflow: auto;
-  animation: slideUp 0.3s ease-out;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-  
-  @keyframes slideUp {
-    from {
-      transform: translateY(30px);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-  margin: auto 0;
-`;
-
-const ModalHeader = styled.div`
-  padding: 24px 24px 0 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #F1F5F9;
-  margin-bottom: 0;
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 20px;
-  font-weight: 600;
-  color: #1E293B;
-  margin: 0;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: #64748B;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 8px;
-  transition: all 0.2s;
-  
-  &:hover {
-    background: #F1F5F9;
-    color: #475569;
-  }
-`;
-
-const ModalBody = styled.div`
-  padding: 24px;
-`;
 
 const DetailSection = styled.div`
   margin-bottom: 24px;
@@ -783,15 +706,11 @@ const CustomersPage: React.FC = () => {
         </Content>
 
         {/* Customer Detail Modal */}
-        <CustomerDetailModal isOpen={showDetailModal} onClick={() => setShowDetailModal(false)}>
-          <ModalContent onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <ModalTitle>Customer Details</ModalTitle>
-              <CloseButton onClick={() => setShowDetailModal(false)}>×</CloseButton>
-            </ModalHeader>
+        {showDetailModal && (
+        <Modal isOpen={true} onClose={() => setShowDetailModal(false)} title="Customer Details">
             
             {selectedCustomer && (
-              <ModalBody>
+              <>
                 <DetailSection>
                   <CustomerInfo style={{ marginBottom: '16px' }}>
                     <CustomerAvatar tier={selectedCustomer.loyaltyTier}>
@@ -891,10 +810,10 @@ const CustomersPage: React.FC = () => {
                     Order history integration coming soon...
                   </div>
                 </DetailSection>
-              </ModalBody>
+              </>
             )}
-          </ModalContent>
-        </CustomerDetailModal>
+        </Modal>
+        )}
 
         <CustomerModal />
 

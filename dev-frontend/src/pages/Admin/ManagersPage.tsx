@@ -23,7 +23,7 @@ import {
   ActionButtons,
   // ActionButton, // Removed - not used after handleEditManager was commented out
   IconButton
-} from '../../components/UI';
+, Modal as CommonModal } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { formatCurrency } from '../../utils/currency';
 import { formatPhoneForDisplay } from '../../utils/phoneUtils';
@@ -95,8 +95,6 @@ const ManagerTableRow = styled(CommonTableRow)`
   }
 `;
 
-
-
 const ManagerInfo = styled.div``;
 
 const CompanyName = styled.div`
@@ -145,82 +143,6 @@ const IconSymbol = styled.span`
 // Validation helpers
 
 
-
-// Modal styled components
-const ModalOverlay = styled.div<{ show?: boolean }>`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: ${props => props.show ? 'flex' : 'none'};
-  align-items: flex-start;
-  justify-content: center;
-  overflow-y: auto;
-  padding: 40px 0;
-  z-index: 1000;
-`;
-
-const Modal = styled.div`
-  background: white;
-  border-radius: 12px;
-  max-width: 800px;
-  width: 90%;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-  margin: auto 0;
-`;
-
-const ModalHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 24px;
-  border-bottom: 1px solid #E6EBF1;
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 20px;
-  font-weight: 600;
-  color: #0A2540;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 28px;
-  color: #6B7280;
-  cursor: pointer;
-  line-height: 1;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  transition: all 0.2s;
-
-  &:hover {
-    background: #F3F4F6;
-    color: #0A2540;
-  }
-`;
-
-const ModalBody = styled.div`
-  padding: 24px;
-`;
-
-const ModalActions = styled.div`
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  padding: 20px 24px;
-  border-top: 1px solid #E6EBF1;
-`;
-
 const FormGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -257,7 +179,6 @@ const FormInput = styled.input`
   }
 `;
 
-
 const FormTextarea = styled.textarea`
   padding: 10px 12px;
   border: 1px solid #E6EBF1;
@@ -272,17 +193,6 @@ const FormTextarea = styled.textarea`
     border-color: #635BFF;
     box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
   }
-`;
-
-// Success Modal Components
-const SuccessModal = styled.div`
-  background: white;
-  border-radius: 16px;
-  padding: 48px 32px;
-  max-width: 400px;
-  width: 90%;
-  text-align: center;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
 `;
 
 const SuccessIcon = styled.div`
@@ -710,7 +620,6 @@ const ManagersPage: React.FC = () => {
     setShowConfirmModal(true);
   };
 
-
   const handleEditManager = (manager: Manager) => {
     // Get plans for the manager's role (only General roles allowed)
     const role = manager.role as 'Foodcourt General' | 'Brand General';
@@ -982,7 +891,6 @@ const ManagersPage: React.FC = () => {
     }
   };
 
-
   return (
     <>
       <Container>
@@ -1142,13 +1050,8 @@ const ManagersPage: React.FC = () => {
 
         {/* Add Manager Modal */}
         {showAddModal && (
-        <ModalOverlay show={showAddModal} onClick={handleCloseModal}>
-          <Modal onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <ModalTitle>Add New Manager</ModalTitle>
-              <CloseButton onClick={handleCloseModal}>×</CloseButton>
-            </ModalHeader>
-            <ModalBody>
+                <CommonModal isOpen={true} onClose={handleCloseModal} title="Add New Manager" footer={<><Button variant="secondary" onClick={handleCloseModal}>Cancel</Button><Button variant="primary" onClick={handleSubmit}>Add Manager</Button></>}>
+
               <FormGrid>
                 <FormGroup>
                   <FormLabel>Manager ID *</FormLabel>
@@ -1368,37 +1271,27 @@ const ManagersPage: React.FC = () => {
                   {addModalWarning}
                 </div>
               )}
-            </ModalBody>
-            <ModalActions>
-              <Button variant="secondary" onClick={handleCloseModal}>Cancel</Button>
-              <Button variant="primary" onClick={handleSubmit}>Add Manager</Button>
-            </ModalActions>
-          </Modal>
-        </ModalOverlay>
+            
+        </CommonModal>
         )}
 
         {/* Info Modal (password reset result) */}
         {showSuccessModal && (
-        <ModalOverlay show={showSuccessModal} onClick={() => setShowSuccessModal(false)}>
-          <SuccessModal onClick={(e) => e.stopPropagation()}>
+        <CommonModal isOpen={true} onClose={() => setShowSuccessModal(false)} title="Success" size="small">
+          <div style={{ textAlign: 'center' }}>
             <SuccessIcon>✓</SuccessIcon>
             <SuccessMessage>{successMessage}</SuccessMessage>
             <Button variant="primary" onClick={() => setShowSuccessModal(false)}>
               OK
             </Button>
-          </SuccessModal>
-        </ModalOverlay>
+          </div>
+        </CommonModal>
         )}
 
         {/* View Manager Modal */}
         {showViewModal && selectedManager && (
-        <ModalOverlay show={showViewModal} onClick={() => setShowViewModal(false)}>
-          <Modal onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <ModalTitle>Manager Details</ModalTitle>
-              <CloseButton onClick={() => setShowViewModal(false)}>×</CloseButton>
-            </ModalHeader>
-            <ModalBody>
+                <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Manager Details" footer={<><Button variant="secondary" onClick={() => setShowViewModal(false)}>Close</Button></>}>
+
               <FormGrid>
                 <FormGroup>
                   <FormLabel>Manager ID</FormLabel>
@@ -1453,23 +1346,14 @@ const ManagersPage: React.FC = () => {
                   <FormTextarea value={selectedManager.address} disabled />
                 </FormGroup>
               </FormGrid>
-            </ModalBody>
-            <ModalActions>
-              <Button variant="secondary" onClick={() => setShowViewModal(false)}>Close</Button>
-            </ModalActions>
-          </Modal>
-        </ModalOverlay>
+            
+        </CommonModal>
         )}
 
         {/* Edit Manager Modal */}
         {showEditModal && editingManager && (
-        <ModalOverlay show={showEditModal} onClick={() => setShowEditModal(false)}>
-          <Modal onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <ModalTitle>Edit Manager</ModalTitle>
-              <CloseButton onClick={() => setShowEditModal(false)}>×</CloseButton>
-            </ModalHeader>
-            <ModalBody>
+                <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title="Edit Manager" footer={<><Button variant="secondary" onClick={() => { setShowEditModal(false); setEditModalWarning(''); }}>Cancel</Button><Button variant="primary" onClick={handleUpdateManager}>Update Manager</Button></>}>
+
               <FormGrid>
                 <FormGroup>
                   <FormLabel>Manager ID * (Read-only)</FormLabel>
@@ -1646,59 +1530,30 @@ const ManagersPage: React.FC = () => {
                   {editModalWarning}
                 </div>
               )}
-            </ModalBody>
-            <ModalActions>
-              <Button variant="secondary" onClick={() => { setShowEditModal(false); setEditModalWarning(''); }}>Cancel</Button>
-              <Button variant="primary" onClick={handleUpdateManager}>Update Manager</Button>
-            </ModalActions>
-          </Modal>
-        </ModalOverlay>
+            
+        </CommonModal>
         )}
 
         {/* Confirm Action Modal */}
         {showConfirmModal && (
-        <ModalOverlay show={showConfirmModal} onClick={() => setShowConfirmModal(false)}>
-          <Modal onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <ModalTitle>Confirm Action</ModalTitle>
-              <CloseButton onClick={() => setShowConfirmModal(false)}>×</CloseButton>
-            </ModalHeader>
-            <ModalBody>
+                <CommonModal isOpen={true} onClose={() => setShowConfirmModal(false)} title="Confirm Action" footer={<><Button variant="secondary" onClick={() => setShowConfirmModal(false)}>Cancel</Button><Button variant={confirmAction === 'delete' ? 'danger' : 'primary'} onClick={handleConfirmAction} > {confirmAction === 'delete' ? 'Delete' : confirmAction === 'resetPassword' ? 'Reset Password' : 'Confirm'} </Button></>}>
+
               <p>
                 {confirmAction === 'delete' && `Are you sure you want to delete Manager ID: ${selectedManager?.managerId}? This action cannot be undone.`}
                 {confirmAction === 'resetPassword' && `Are you sure you want to reset password for Manager ID: ${selectedManager?.managerId}?`}
                 {confirmAction === 'toggle' && `Are you sure you want to ${selectedManager?.status === 'active' ? 'deactivate' : 'activate'} Manager ID: ${selectedManager?.managerId}?`}
               </p>
-            </ModalBody>
-            <ModalActions>
-              <Button variant="secondary" onClick={() => setShowConfirmModal(false)}>Cancel</Button>
-              <Button
-                variant={confirmAction === 'delete' ? 'danger' : 'primary'}
-                onClick={handleConfirmAction}
-              >
-                {confirmAction === 'delete' ? 'Delete' : confirmAction === 'resetPassword' ? 'Reset Password' : 'Confirm'}
-              </Button>
-            </ModalActions>
-          </Modal>
-        </ModalOverlay>
+            
+        </CommonModal>
         )}
 
         {/* Action Error Modal */}
         {actionError && (
-        <ModalOverlay show={!!actionError} onClick={() => setActionError('')}>
-          <Modal onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <ModalTitle>Error</ModalTitle>
-              <CloseButton onClick={() => setActionError('')}>×</CloseButton>
-            </ModalHeader>
-            <ModalBody>
+                <CommonModal isOpen={true} onClose={() => setActionError('')} title="Error" footer={<><Button variant="primary" onClick={() => setActionError('')}>OK</Button></>}>
+
               <p style={{ color: '#DC2626' }}>{actionError}</p>
-            </ModalBody>
-            <ModalActions>
-              <Button variant="primary" onClick={() => setActionError('')}>OK</Button>
-            </ModalActions>
-          </Modal>
-        </ModalOverlay>
+            
+        </CommonModal>
         )}
 
         </Content>

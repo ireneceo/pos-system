@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { Modal as CommonModal } from '../../components/UI';
 import { RestaurantSubscription } from '../../interfaces/RestaurantSubscription';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { formatCurrency } from '../../utils/currency';
@@ -361,62 +362,6 @@ const ActionButton = styled.button`
 `;
 
 // Modal Components
-const Modal = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-  margin: auto 0;
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  border-radius: 12px;
-  max-width: 600px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-  margin: auto 0;
-`;
-
-const ModalHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 24px 24px 0 24px;
-  
-  h2 {
-    font-size: 20px;
-    font-weight: 600;
-    color: #0A2540;
-    margin: 0;
-  }
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: #6B7280;
-  cursor: pointer;
-  padding: 4px;
-  
-  &:hover {
-    color: #0A2540;
-  }
-`;
-
-const ModalBody = styled.div`
-  padding: 24px;
-`;
 
 const DetailSection = styled.div`
   margin-bottom: 16px;
@@ -475,12 +420,6 @@ const TextArea = styled.textarea`
   }
 `;
 
-const ModalActions = styled.div`
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  margin-top: 24px;
-`;
 
 const RestaurantSubscriptionsPage: React.FC = () => {
   const [subscriptions, setSubscriptions] = useState<RestaurantSubscription[]>([]);
@@ -883,13 +822,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
         
         {/* Details Modal */}
         {showDetailsModal && selectedSubscription && (
-          <Modal>
-            <ModalContent>
-              <ModalHeader>
-                <h2>Subscription Details</h2>
-                <CloseButton onClick={() => setShowDetailsModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+          <CommonModal isOpen={true} onClose={() => setShowDetailsModal(false)} title="Subscription Details">
                 <DetailSection>
                   <DetailLabel>Restaurant</DetailLabel>
                   <DetailValue>{selectedSubscription.restaurantName}</DetailValue>
@@ -955,20 +888,12 @@ const RestaurantSubscriptionsPage: React.FC = () => {
                   <DetailLabel>Auto Renew</DetailLabel>
                   <DetailValue>{selectedSubscription.autoRenew ? 'Yes' : 'No'}</DetailValue>
                 </DetailSection>
-              </ModalBody>
-            </ModalContent>
-          </Modal>
+          </CommonModal>
         )}
-        
+
         {/* Change Plan Modal */}
         {showPlanModal && selectedSubscription && (
-          <Modal>
-            <ModalContent>
-              <ModalHeader>
-                <h2>Change Plan</h2>
-                <CloseButton onClick={() => setShowPlanModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+          <CommonModal isOpen={true} onClose={() => setShowPlanModal(false)} title="Change Plan" footer={<><Button variant="secondary" onClick={() => setShowPlanModal(false)}>Cancel</Button><Button variant="primary" onClick={confirmChangePlan}>Change Plan</Button></>}>
                 <FormGroup>
                   <FormLabel>Current Plan: {selectedSubscription.planType}</FormLabel>
                   <FormLabel>Select New Plan:</FormLabel>
@@ -978,24 +903,12 @@ const RestaurantSubscriptionsPage: React.FC = () => {
                     <option value="enterprise">Enterprise - RM 199/month (Unlimited orders)</option>
                   </FilterSelect>
                 </FormGroup>
-                <ModalActions>
-                  <Button variant="secondary" onClick={() => setShowPlanModal(false)}>Cancel</Button>
-                  <Button variant="primary" onClick={confirmChangePlan}>Change Plan</Button>
-                </ModalActions>
-              </ModalBody>
-            </ModalContent>
-          </Modal>
+          </CommonModal>
         )}
-        
+
         {/* Switch Payment Modal */}
         {showPaymentModal && selectedSubscription && (
-          <Modal>
-            <ModalContent>
-              <ModalHeader>
-                <h2>Switch Payment Method</h2>
-                <CloseButton onClick={() => setShowPaymentModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+          <CommonModal isOpen={true} onClose={() => setShowPaymentModal(false)} title="Switch Payment Method" footer={<><Button variant="secondary" onClick={() => setShowPaymentModal(false)}>Cancel</Button><Button variant="primary" onClick={confirmSwitchPayment}>Update Payment</Button></>}>
                 <FormGroup>
                   <FormLabel>Current: {selectedSubscription.paymentModel === 'self' ? 'Self-Paying' : 'Manager-Paid'}</FormLabel>
                   <FormLabel>Select New Payment Method:</FormLabel>
@@ -1004,28 +917,16 @@ const RestaurantSubscriptionsPage: React.FC = () => {
                     <option value="manager">Manager-Paid (Manager pays on behalf)</option>
                   </FilterSelect>
                 </FormGroup>
-                <ModalActions>
-                  <Button variant="secondary" onClick={() => setShowPaymentModal(false)}>Cancel</Button>
-                  <Button variant="primary" onClick={confirmSwitchPayment}>Update Payment</Button>
-                </ModalActions>
-              </ModalBody>
-            </ModalContent>
-          </Modal>
+          </CommonModal>
         )}
-        
+
         {/* Suspend Modal */}
         {showSuspendModal && selectedSubscription && (
-          <Modal>
-            <ModalContent>
-              <ModalHeader>
-                <h2>Suspend Subscription</h2>
-                <CloseButton onClick={() => setShowSuspendModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+          <CommonModal isOpen={true} onClose={() => setShowSuspendModal(false)} title="Suspend Subscription" footer={<><Button variant="secondary" onClick={() => setShowSuspendModal(false)}>Cancel</Button><Button variant="primary" onClick={confirmSuspend} disabled={!suspendReason.trim()} style={{background: suspendReason.trim() ? '#DC2626' : '#9CA3AF'}}>Suspend Subscription</Button></>}>
                 <FormGroup>
                   <FormLabel>Restaurant: {selectedSubscription.restaurantName}</FormLabel>
                   <FormLabel>Suspension Reason:</FormLabel>
-                  <TextArea 
+                  <TextArea
                     value={suspendReason}
                     onChange={(e) => setSuspendReason(e.target.value)}
                     placeholder="Enter reason for suspension..."
@@ -1033,36 +934,17 @@ const RestaurantSubscriptionsPage: React.FC = () => {
                   />
                 </FormGroup>
                 <div style={{color: '#DC2626', fontSize: '14px', marginTop: '8px'}}>
-                  ⚠️ This will immediately stop all services for this restaurant.
+                  This will immediately stop all services for this restaurant.
                 </div>
-                <ModalActions>
-                  <Button variant="secondary" onClick={() => setShowSuspendModal(false)}>Cancel</Button>
-                  <Button 
-                    variant="primary" 
-                    onClick={confirmSuspend}
-                    disabled={!suspendReason.trim()}
-                    style={{background: suspendReason.trim() ? '#DC2626' : '#9CA3AF'}}
-                  >
-                    Suspend Subscription
-                  </Button>
-                </ModalActions>
-              </ModalBody>
-            </ModalContent>
-          </Modal>
+          </CommonModal>
         )}
-        
+
         {/* Add Restaurant Modal */}
         {showAddRestaurantModal && (
-          <Modal>
-            <ModalContent>
-              <ModalHeader>
-                <h2>Add New Restaurant</h2>
-                <CloseButton onClick={() => setShowAddRestaurantModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+          <CommonModal isOpen={true} onClose={() => setShowAddRestaurantModal(false)} title="Add New Restaurant" footer={<><Button variant="secondary" onClick={() => setShowAddRestaurantModal(false)}>Cancel</Button><Button variant="primary" onClick={confirmAddRestaurant} disabled={!newRestaurant.name || !newRestaurant.managerName}>Add Restaurant</Button></>}>
                 <FormGroup>
                   <FormLabel>Restaurant Name *</FormLabel>
-                  <SearchInput 
+                  <SearchInput
                     value={newRestaurant.name}
                     onChange={(e) => setNewRestaurant(prev => ({...prev, name: e.target.value}))}
                     placeholder="Enter restaurant name..."
@@ -1070,7 +952,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
                 </FormGroup>
                 <FormGroup>
                   <FormLabel>Manager Name *</FormLabel>
-                  <SearchInput 
+                  <SearchInput
                     value={newRestaurant.managerName}
                     onChange={(e) => setNewRestaurant(prev => ({...prev, managerName: e.target.value}))}
                     placeholder="Enter manager name..."
@@ -1078,7 +960,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
                 </FormGroup>
                 <FormGroup>
                   <FormLabel>Manager ID (optional)</FormLabel>
-                  <SearchInput 
+                  <SearchInput
                     value={newRestaurant.managerId}
                     onChange={(e) => setNewRestaurant(prev => ({...prev, managerId: e.target.value}))}
                     placeholder="Auto-generated if empty"
@@ -1116,21 +998,9 @@ const RestaurantSubscriptionsPage: React.FC = () => {
                   </FilterSelect>
                 </FormGroup>
                 <div style={{color: '#059669', fontSize: '14px', padding: '12px', background: '#ECFDF5', borderRadius: '8px', marginTop: '16px'}}>
-                  ✅ New restaurants start with a 30-day free trial period
+                  New restaurants start with a 30-day free trial period
                 </div>
-                <ModalActions>
-                  <Button variant="secondary" onClick={() => setShowAddRestaurantModal(false)}>Cancel</Button>
-                  <Button 
-                    variant="primary" 
-                    onClick={confirmAddRestaurant}
-                    disabled={!newRestaurant.name || !newRestaurant.managerName}
-                  >
-                    Add Restaurant
-                  </Button>
-                </ModalActions>
-              </ModalBody>
-            </ModalContent>
-          </Modal>
+          </CommonModal>
         )}
         </Content>
       </Container>

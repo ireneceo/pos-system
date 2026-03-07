@@ -15,7 +15,8 @@ import {
   DataTableRow,
   DataTableCell,
   DataTableEmpty,
-  DataTableAmount
+  DataTableAmount,
+  Modal as CommonModal
 } from '../../components/UI';
 // OLD: import { printBill } from '../../utils/thermalPrinter';
 import { printBillViaRawBT, generateBillContent, printKitchenTicketViaRawBT, generateKitchenTicketPreview } from '../../utils/billPrint';
@@ -621,72 +622,6 @@ const IconSymbol = styled.span`
 `;
 
 
-// Modal styles
-const ModalOverlay = styled.div<{ isOpen: boolean }>`
-  display: ${props => props.isOpen ? 'flex' : 'none'};
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 1000;
-  align-items: flex-start;
-  justify-content: center;
-  overflow-y: auto;
-  padding: 40px 0;
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  border-radius: 12px;
-  max-width: 600px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  margin: auto 0;
-`;
-
-const ModalHeader = styled.div`
-  padding: 24px;
-  border-bottom: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 20px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: #6B7C93;
-  cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  transition: all 0.15s;
-
-  &:hover {
-    background: #F6F9FC;
-    color: #0A2540;
-  }
-`;
-
-const ModalBody = styled.div`
-  padding: 24px;
-`;
 
 const OrderDetailSection = styled.div`
   margin-bottom: 24px;
@@ -779,14 +714,6 @@ const TotalRow = styled.div<{ isTotal?: boolean }>`
   color: ${props => props.isTotal ? '#0A2540' : '#6B7C93'};
 `;
 
-const ModalFooter = styled.div`
-  padding: 24px;
-  border-top: 1px solid #E6EBF1;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-`;
 
 // Toast notification styles
 const ToastContainer = styled.div<{ isVisible: boolean; type: 'success' | 'error' | 'info' }>`
@@ -3135,28 +3062,52 @@ const LiveOrdersPage: React.FC = () => {
         </OrdersCard>
 
         {/* Order Detail Modal */}
-        <ModalOverlay isOpen={isModalOpen} onClick={handleCloseModal} data-modal="order-detail">
-          <ModalContent onClick={(e) => e.stopPropagation()}>
-            {selectedOrder && (
+        {isModalOpen && selectedOrder && (
+        <CommonModal
+          isOpen={true}
+          onClose={() => {
+            setShowReceiptView(false);
+            setShowKitchenTicketView(false);
+            setShowAddItemsView(false);
+            setAddItemsCart([]);
+            handleCloseModal();
+          }}
+          title={showAddItemsView ? 'Add Items to Order' : showReceiptView ? 'Receipt Preview' : showKitchenTicketView ? 'Kitchen Order Ticket Preview' : `Order ${selectedOrder.order_number}`}
+          footer={!showAddItemsView ? (
+            showReceiptView ? (
+              <ActionButton onClick={() => setShowReceiptView(false)}>Back to Order Details</ActionButton>
+            ) : showKitchenTicketView ? (
+              <ActionButton onClick={() => setShowKitchenTicketView(false)}>Back to Order Details</ActionButton>
+            ) : (
               <>
-                <ModalHeader>
-                  <ModalTitle>
-                    {showAddItemsView ? 'Add Items to Order' : showReceiptView ? 'Receipt Preview' : showKitchenTicketView ? 'Kitchen Order Ticket Preview' : `Order ${selectedOrder.order_number}`}
-                  </ModalTitle>
-                  <CloseButton onClick={() => {
-                    // X button always closes the entire modal
-                    setShowReceiptView(false);
-                    setShowKitchenTicketView(false);
-                    setShowAddItemsView(false);
-                    setAddItemsCart([]);
-                    handleCloseModal();
-                  }}>×</CloseButton>
-                </ModalHeader>
+                <ActionButton variant="secondary" onClick={() => handleDeleteOrder(selectedOrder.id)} style={{ background: '#6B7280', borderColor: '#6B7280', color: 'white' }}>Remove</ActionButton>
+                {selectedOrder.status !== 'cancelled' && selectedOrder.status !== 'completed' && (
+                  <ActionButton onClick={() => handleCancelOrder(selectedOrder.id)} style={{ background: '#FF6B6B', borderColor: '#FF6B6B', color: 'white' }}>Cancel Order</ActionButton>
+                )}
+                {isOutstanding(selectedOrder) && selectedOrder.status !== 'pending' && (
+                  <ActionButton onClick={() => { handleStatusChange(selectedOrder.id, 'pending'); handleCloseModal(); }} style={{ background: '#F59E0B', borderColor: '#F59E0B', color: 'white' }}>Proceed Without Payment</ActionButton>
+                )}
+                {selectedOrder.payment_status === 'pending' && (
+                  <ActionButton onClick={() => handlePaymentClick(selectedOrder)} style={{ background: '#10B981', borderColor: '#10B981', color: 'white' }}>Payment</ActionButton>
+                )}
+                {(selectedOrder.payment_status as any) === 'payment_verification_pending' && (
+                  <ActionButton onClick={handleConfirmPayment} style={{ background: '#10B981', borderColor: '#10B981', color: 'white' }}>Confirm Payment</ActionButton>
+                )}
+                {selectedOrder.payment_status === 'pending' && !['served', 'completed', 'cancelled'].includes(selectedOrder.status) && (
+                  <ActionButton onClick={() => setShowAddItemsView(true)} style={{ background: '#8B5CF6', borderColor: '#8B5CF6', color: 'white' }}>Add Items</ActionButton>
+                )}
+                <ActionButton onClick={() => setShowReceiptView(true)} style={{ marginRight: '10px' }}>View Receipt</ActionButton>
+                <ActionButton onClick={() => setShowKitchenTicketView(true)} style={{ marginRight: '10px' }}>View Order Ticket</ActionButton>
+                <ActionButton onClick={handlePrintReceipt}>Print Bill</ActionButton>
+              </>
+            )
+          ) : undefined}
+        >
 
                 {showAddItemsView ? (
                   /* Add Items View - Improved UI with options support */
                   <>
-                    <ModalBody style={{ padding: '20px', maxHeight: 'calc(70vh - 80px)', overflow: 'auto' }}>
+                    <div style={{ padding: '20px', maxHeight: 'calc(70vh - 80px)', overflow: 'auto' }}>
                       {/* Search Input - Fixed width */}
                       <div style={{ marginBottom: '20px' }}>
                         <input
@@ -3302,10 +3253,10 @@ const LiveOrdersPage: React.FC = () => {
                           </div>
                         )}
                       </div>
-                    </ModalBody>
+                    </div>
 
                     {/* Fixed Footer - Total and Buttons */}
-                    <ModalFooter style={{ borderTop: '1px solid #E5E7EB', padding: '16px 20px' }}>
+                    <div style={{ borderTop: '1px solid #E5E7EB', padding: '16px 20px', display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: '8px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                         <div style={{ fontWeight: 600 }}>
                           Total: {formatCurrency(
@@ -3339,10 +3290,10 @@ const LiveOrdersPage: React.FC = () => {
                           </ActionButton>
                         </div>
                       </div>
-                    </ModalFooter>
+                    </div>
                   </>
                 ) : showKitchenTicketView ? (
-                  <ModalBody style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
                     <div style={{
                       width: '302px',
                       padding: '20px',
@@ -3390,9 +3341,9 @@ const LiveOrdersPage: React.FC = () => {
                         return content.split('\n').map((line, i) => <div key={i}>{line || '\u00A0'}</div>);
                       })()}
                     </div>
-                  </ModalBody>
+                  </div>
                 ) : showReceiptView ? (
-                  <ModalBody style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
                     <div style={{
                       width: '302px',
                       padding: '20px',
@@ -3471,9 +3422,9 @@ const LiveOrdersPage: React.FC = () => {
                           .replace(/[\x1B\x1D]./g, '');        // Any remaining ESC/GS sequences
                       })()}
                     </div>
-                  </ModalBody>
+                  </div>
                 ) : (
-                <ModalBody>
+                <div style={{ padding: '24px' }}>
                   {/* Customer Information */}
                   <OrderDetailSection>
                     <SectionTitle>Customer Information</SectionTitle>
@@ -3792,93 +3743,11 @@ const LiveOrdersPage: React.FC = () => {
                       <span>{formatCurrency(Number(selectedOrder.total_amount), operationSettings.currency)}</span>
                     </TotalRow>
                   </TotalSection>
-                </ModalBody>
+                </div>
                 )}
 
-                {/* Hide footer for Add Items view - it has its own buttons */}
-                {!showAddItemsView && (
-                <ModalFooter>
-                  {showReceiptView ? (
-                    <ActionButton onClick={() => setShowReceiptView(false)}>
-                      Back to Order Details
-                    </ActionButton>
-                  ) : showKitchenTicketView ? (
-                    <ActionButton onClick={() => setShowKitchenTicketView(false)}>
-                      Back to Order Details
-                    </ActionButton>
-                  ) : (
-                    <>
-                      <ActionButton
-                        variant="secondary"
-                        onClick={() => handleDeleteOrder(selectedOrder.id)}
-                        style={{ background: '#6B7280', borderColor: '#6B7280', color: 'white' }}
-                      >
-                        Remove
-                      </ActionButton>
-                  {selectedOrder.status !== 'cancelled' && selectedOrder.status !== 'completed' && (
-                    <ActionButton
-                      onClick={() => handleCancelOrder(selectedOrder.id)}
-                      style={{ background: '#FF6B6B', borderColor: '#FF6B6B', color: 'white' }}
-                    >
-                      Cancel Order
-                    </ActionButton>
-                  )}
-                  {/* Outstanding 상태에서 Proceed Without Payment 버튼 */}
-                  {isOutstanding(selectedOrder) && selectedOrder.status !== 'pending' && (
-                    <ActionButton
-                      onClick={() => {
-                        handleStatusChange(selectedOrder.id, 'pending');
-                        handleCloseModal();
-                      }}
-                      style={{ background: '#F59E0B', borderColor: '#F59E0B', color: 'white' }}
-                    >
-                      Proceed Without Payment
-                    </ActionButton>
-                  )}
-                  {/* Payment 버튼 - 결제 미완료 시 표시 (라이브 오더에서는 바로 결제 확인) */}
-                  {selectedOrder.payment_status === 'pending' && (
-                    <ActionButton
-                      onClick={() => handlePaymentClick(selectedOrder)}
-                      style={{ background: '#10B981', borderColor: '#10B981', color: 'white' }}
-                    >
-                      Payment
-                    </ActionButton>
-                  )}
-                  {/* payment_verification_pending 상태에서는 Confirm Payment 버튼 표시 */}
-                  {(selectedOrder.payment_status as any) === 'payment_verification_pending' && (
-                    <ActionButton
-                      onClick={handleConfirmPayment}
-                      style={{ background: '#10B981', borderColor: '#10B981', color: 'white' }}
-                    >
-                      Confirm Payment
-                    </ActionButton>
-                  )}
-                  {/* Add Items button - only show for unpaid orders */}
-                  {selectedOrder.payment_status === 'pending' && !['served', 'completed', 'cancelled'].includes(selectedOrder.status) && (
-                    <ActionButton
-                      onClick={() => setShowAddItemsView(true)}
-                      style={{ background: '#8B5CF6', borderColor: '#8B5CF6', color: 'white' }}
-                    >
-                      Add Items
-                    </ActionButton>
-                  )}
-                  <ActionButton onClick={() => setShowReceiptView(true)} style={{ marginRight: '10px' }}>
-                    View Receipt
-                  </ActionButton>
-                  <ActionButton onClick={() => setShowKitchenTicketView(true)} style={{ marginRight: '10px' }}>
-                    View Order Ticket
-                  </ActionButton>
-                  <ActionButton onClick={handlePrintReceipt}>
-                    Print Bill
-                  </ActionButton>
-                    </>
-                  )}
-                </ModalFooter>
-                )}
-              </>
-            )}
-          </ModalContent>
-        </ModalOverlay>
+        </CommonModal>
+        )}
 
         {/* Bill Print Content - Portal to body */}
         {selectedOrder && ReactDOM.createPortal(
@@ -4046,70 +3915,23 @@ const LiveOrdersPage: React.FC = () => {
         )}
 
         {/* Delete Confirmation Modal */}
-        <ModalOverlay isOpen={showDeleteConfirm} onClick={cancelDeleteOrder} data-modal="delete-confirm">
-          <ModalContent onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <ModalTitle>Delete Order</ModalTitle>
-              <CloseButton onClick={cancelDeleteOrder}>×</CloseButton>
-            </ModalHeader>
-            
-            <ModalBody>
+        {showDeleteConfirm && (
+        <CommonModal isOpen={true} onClose={cancelDeleteOrder} title="Delete Order" footer={<><ActionButton variant="secondary" onClick={cancelDeleteOrder}>Cancel</ActionButton><ActionButton onClick={confirmDeleteOrder} style={{ background: '#FF6B6B', borderColor: '#FF6B6B', color: 'white' }}>Delete Order</ActionButton></>}>
               <p>Are you sure you want to delete this order? This action cannot be undone.</p>
               <p style={{ color: '#FF6B6B', fontWeight: 500, marginTop: '16px' }}>
                 Order #{orderToDelete && orders.find(o => o.id === orderToDelete)?.order_number}
               </p>
-            </ModalBody>
-
-            <ModalFooter>
-              <ActionButton variant="secondary" onClick={cancelDeleteOrder}>
-                Cancel
-              </ActionButton>
-              <ActionButton 
-                onClick={confirmDeleteOrder}
-                style={{ 
-                  background: '#FF6B6B', 
-                  borderColor: '#FF6B6B',
-                  color: 'white'
-                }}
-              >
-                Delete Order
-              </ActionButton>
-            </ModalFooter>
-          </ModalContent>
-        </ModalOverlay>
+        </CommonModal>
+        )}
 
         {/* Cancel Order Confirmation Modal */}
-        <ModalOverlay
-          isOpen={showCancelConfirm}
-          onClick={(e) => e.target === e.currentTarget && cancelCancelOrder()}
-        >
-          <ModalContent onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <ModalTitle>Cancel Order</ModalTitle>
-              <CloseButton onClick={cancelCancelOrder}>×</CloseButton>
-            </ModalHeader>
-            <ModalBody>
+        {showCancelConfirm && (
+        <CommonModal isOpen={true} onClose={cancelCancelOrder} title="Cancel Order" footer={<><ActionButton variant="secondary" onClick={cancelCancelOrder}>No, Keep Order</ActionButton><ActionButton onClick={confirmCancelOrder} style={{ background: '#FF6B6B', borderColor: '#FF6B6B', color: 'white' }}>Yes, Cancel Order</ActionButton></>}>
               <p style={{ margin: 0, fontSize: '14px', lineHeight: '1.6' }}>
                 Are you sure you want to cancel this order? The order history will be kept for your records.
               </p>
-            </ModalBody>
-            <ModalFooter>
-              <ActionButton variant="secondary" onClick={cancelCancelOrder}>
-                No, Keep Order
-              </ActionButton>
-              <ActionButton
-                onClick={confirmCancelOrder}
-                style={{
-                  background: '#FF6B6B',
-                  borderColor: '#FF6B6B',
-                  color: 'white'
-                }}
-              >
-                Yes, Cancel Order
-              </ActionButton>
-            </ModalFooter>
-          </ModalContent>
-        </ModalOverlay>
+        </CommonModal>
+        )}
 
         {/* Delete Item Confirmation Modal */}
         <ConfirmModal
@@ -4180,13 +4002,9 @@ const LiveOrdersPage: React.FC = () => {
         )}
 
         {/* Merge Target Selection Modal */}
-        <ModalOverlay isOpen={showMergeModal} onClick={() => setShowMergeModal(false)} data-modal="merge-target">
-          <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
-            <ModalHeader>
-              <ModalTitle>Select Target Order</ModalTitle>
-              <CloseButton onClick={() => setShowMergeModal(false)}>×</CloseButton>
-            </ModalHeader>
-            <ModalBody>
+        {showMergeModal && (
+        <CommonModal isOpen={true} onClose={() => setShowMergeModal(false)} title="Select Target Order" footer={<><ActionButton onClick={() => setShowMergeModal(false)} style={{ background: 'white', color: '#374151', border: '1px solid #E5E7EB' }}>Cancel</ActionButton><ActionButton onClick={() => mergeTargetOrderId && executeMergeOrders(mergeTargetOrderId)} disabled={!mergeTargetOrderId || isMerging} style={{ background: mergeTargetOrderId ? '#635BFF' : '#E5E7EB', color: mergeTargetOrderId ? 'white' : '#9CA3AF', cursor: mergeTargetOrderId ? 'pointer' : 'not-allowed' }}>{isMerging ? 'Merging...' : 'Merge Orders'}</ActionButton></>}>
+            <div>
               <p style={{ marginBottom: '16px', color: '#6B7C93', fontSize: '14px' }}>
                 Select which order to merge INTO. The selected order's table/pager number will be kept.
               </p>
@@ -4247,28 +4065,9 @@ const LiveOrdersPage: React.FC = () => {
                     </div>
                   ))}
               </div>
-            </ModalBody>
-            <ModalFooter>
-              <ActionButton
-                onClick={() => setShowMergeModal(false)}
-                style={{ background: 'white', color: '#374151', border: '1px solid #E5E7EB' }}
-              >
-                Cancel
-              </ActionButton>
-              <ActionButton
-                onClick={() => mergeTargetOrderId && executeMergeOrders(mergeTargetOrderId)}
-                disabled={!mergeTargetOrderId || isMerging}
-                style={{
-                  background: mergeTargetOrderId ? '#635BFF' : '#E5E7EB',
-                  color: mergeTargetOrderId ? 'white' : '#9CA3AF',
-                  cursor: mergeTargetOrderId ? 'pointer' : 'not-allowed'
-                }}
-              >
-                {isMerging ? 'Merging...' : 'Merge Orders'}
-              </ActionButton>
-            </ModalFooter>
-          </ModalContent>
-        </ModalOverlay>
+            </div>
+        </CommonModal>
+        )}
         </Content>
 
         {/* Pagination */}

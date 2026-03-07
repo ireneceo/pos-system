@@ -11,6 +11,7 @@ import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
 import CommentSection from '../../components/Common/CommentSection';
 import { linkifyText } from '../../utils/linkify';
+import { Modal as CommonModal } from '../../components/UI';
 
 // ============================================================================
 // TypeScript Interfaces
@@ -208,76 +209,6 @@ const RecipientInfo = styled.span`
 // Modal Styled Components
 // ============================================================================
 
-const ModalOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  z-index: 1000;
-  overflow-y: auto;
-  padding: 40px 0;
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  max-width: 800px;
-  width: 90%;
-  flex-shrink: 0;
-  margin: auto 0;
-`;
-
-const ModalHeader = styled.div`
-  padding: 24px;
-  border-bottom: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 20px;
-  font-weight: 600;
-  color: #0A2540;
-  margin: 0;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: #6B7C93;
-  cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
-
-  &:hover {
-    color: #0A2540;
-  }
-`;
-
-const ModalBody = styled.div`
-  padding: 24px;
-`;
-
-const ModalFooter = styled.div`
-  padding: 20px 24px;
-  border-top: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-`;
 
 // ============================================================================
 // Form Styled Components
@@ -1042,13 +973,7 @@ const NoticesPage: React.FC = () => {
       {/* New Notice Modal */}
       {/* ================================================================== */}
       {showNewModal && (
-        <ModalOverlay onClick={() => setShowNewModal(false)}>
-          <ModalContent onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <ModalTitle>New Notice</ModalTitle>
-              <CloseButton onClick={() => setShowNewModal(false)}>×</CloseButton>
-            </ModalHeader>
-            <ModalBody>
+        <CommonModal isOpen={true} onClose={() => setShowNewModal(false)} title="New Notice" footer={<><Button variant="secondary" onClick={() => setShowNewModal(false)}>Cancel</Button><Button variant="primary" onClick={handleSendNotice} disabled={sending || !newNotice.title.trim() || !newNotice.content.trim() || (newNotice.target_type === 'select_restaurants' && newNotice.restaurant_ids.length === 0) || (newNotice.target_type === 'restaurant' && newNotice.restaurant_ids.length === 0)}>{sending ? 'Sending...' : 'Send Notice'}</Button></>}>
               <FormGroup>
                 <FormLabel>Title *</FormLabel>
                 <FormInput
@@ -1164,38 +1089,14 @@ const NoticesPage: React.FC = () => {
                   </FormSelect>
                 </FormGroup>
               </FormRow>
-            </ModalBody>
-            <ModalFooter>
-              <Button variant="secondary" onClick={() => setShowNewModal(false)}>Cancel</Button>
-              <Button
-                variant="primary"
-                onClick={handleSendNotice}
-                disabled={
-                  sending ||
-                  !newNotice.title.trim() ||
-                  !newNotice.content.trim() ||
-                  (newNotice.target_type === 'select_restaurants' && newNotice.restaurant_ids.length === 0) ||
-                  (newNotice.target_type === 'restaurant' && newNotice.restaurant_ids.length === 0)
-                }
-              >
-                {sending ? 'Sending...' : 'Send Notice'}
-              </Button>
-            </ModalFooter>
-          </ModalContent>
-        </ModalOverlay>
+        </CommonModal>
       )}
 
       {/* ================================================================== */}
       {/* View Notice Modal */}
       {/* ================================================================== */}
       {showViewModal && selectedNotice && (
-        <ModalOverlay onClick={() => { setShowViewModal(false); setSelectedNotice(null); }}>
-          <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
-            <ModalHeader>
-              <ModalTitle>{selectedNotice.title}</ModalTitle>
-              <CloseButton onClick={() => { setShowViewModal(false); setSelectedNotice(null); }}>×</CloseButton>
-            </ModalHeader>
-            <ModalBody>
+        <CommonModal isOpen={true} onClose={() => { setShowViewModal(false); setSelectedNotice(null); }} title={selectedNotice.title} size="large" footer={String(selectedNotice.author_id) === String(user?.id) ? <ViewModalActions><DeleteNoticeButton onClick={() => handleDeleteNotice(selectedNotice.id)}>Delete Notice</DeleteNoticeButton></ViewModalActions> : undefined}>
               {/* Notice metadata */}
               <NoticeDetailMeta>
                 <NoticeDetailMetaItem>
@@ -1247,20 +1148,7 @@ const NoticesPage: React.FC = () => {
                 currentUserId={user?.id}
                 onMarkRead={() => setUnreadCounts(prev => { const next = { ...prev }; const key = String(selectedNotice.id); if (next[key]) next[key] = { ...next[key], unread_count: 0 }; return next; })}
               />
-            </ModalBody>
-
-            {/* Footer with delete option for own notices */}
-            {String(selectedNotice.author_id) === String(user?.id) && (
-              <ModalFooter>
-                <ViewModalActions>
-                  <DeleteNoticeButton onClick={() => handleDeleteNotice(selectedNotice.id)}>
-                    Delete Notice
-                  </DeleteNoticeButton>
-                </ViewModalActions>
-              </ModalFooter>
-            )}
-          </ModalContent>
-        </ModalOverlay>
+        </CommonModal>
       )}
     </Container>
   );

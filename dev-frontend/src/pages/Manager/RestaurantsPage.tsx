@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { useAuth } from '../../contexts/AuthContext';
-import { StatsGrid, StatCard, StatValue, StatLabel, StatTrend } from '../../components/UI';
+import { StatsGrid, StatCard, StatValue, StatLabel, StatTrend , Modal as CommonModal } from '../../components/UI';
 // Using page-specific filter components instead of common ones
 // 매니저는 브랜드 테마 적용 안함
 import { BaseRestaurant } from '../../interfaces/Restaurant';
@@ -112,7 +112,6 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
     }
   `}
 `;
-
 
 const RestaurantGrid = styled.div`
   display: grid;
@@ -282,88 +281,6 @@ const ActionButton = styled.button`
   }
 `;
 
-// Modal Components (same as Admin)
-const ModalOverlay = styled.div<{ show: boolean }>`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: ${props => props.show ? 'flex' : 'none'};
-  align-items: flex-start;
-  justify-content: center;
-  z-index: 10000;
-  overflow-y: auto;
-  padding: 40px 0;
-`;
-
-const Modal = styled.div`
-  background: white;
-  border-radius: 12px;
-  padding: 0;
-  width: 90%;
-  max-width: 900px;
-  flex-shrink: 0;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-
-  @media (max-width: 768px) {
-    width: 95%;
-    max-width: none;
-  }
-  margin: auto 0;
-`;
-
-const ModalHeader = styled.div`
-  padding: 24px;
-  border-bottom: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 28px;
-  color: #6B7280;
-  cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &:hover {
-    background: #F3F4F6;
-    color: #374151;
-  }
-`;
-
-const ModalBody = styled.div`
-  padding: 24px;
-`;
-
-const ModalActions = styled.div`
-  padding: 24px;
-  border-top: 1px solid #E6EBF1;
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-
-  button {
-    min-width: 120px;
-  }
-`;
 
 const FormGrid = styled.div`
   display: grid;
@@ -1240,7 +1157,6 @@ const ManagerRestaurantsPage: React.FC = () => {
     }
   };
 
-
   return (
     <>
       <Container>
@@ -1390,13 +1306,8 @@ const ManagerRestaurantsPage: React.FC = () => {
 
       {/* Add Restaurant Modal */}
       {showAddModal && (
-        <ModalOverlay show={showAddModal} onClick={() => setShowAddModal(false)}>
-          <Modal onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <ModalTitle>Add New Restaurant</ModalTitle>
-              <CloseButton onClick={() => setShowAddModal(false)}>×</CloseButton>
-            </ModalHeader>
-            <ModalBody>
+                <CommonModal isOpen={true} onClose={() => setShowAddModal(false)} title="Add New Restaurant" footer={<>{formError && ( <div style={{width: '100%', padding: '10px 16px', marginBottom: '8px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#DC2626', fontSize: '13px', lineHeight: '1.5'}}> {formError} </div> )} <ThemedButton variant="cancel" onClick={() => { setShowAddModal(false); setFormError(''); }}>Cancel</ThemedButton><ThemedButton variant="primary" onClick={handleSubmitNewRestaurant}>Add Restaurant</ThemedButton></>}>
+
               <FormGrid>
                 <FormGroup style={{gridColumn: '1 / -1'}}>
                   <FormLabel>Restaurant Name *</FormLabel>
@@ -1732,29 +1643,14 @@ const ManagerRestaurantsPage: React.FC = () => {
                   </div>
                 </div>
               </FormGrid>
-            </ModalBody>
-            <ModalActions>
-              {formError && (
-                <div style={{width: '100%', padding: '10px 16px', marginBottom: '8px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#DC2626', fontSize: '13px', lineHeight: '1.5'}}>
-                  {formError}
-                </div>
-              )}
-              <ThemedButton variant="cancel" onClick={() => { setShowAddModal(false); setFormError(''); }}>Cancel</ThemedButton>
-              <ThemedButton variant="primary" onClick={handleSubmitNewRestaurant}>Add Restaurant</ThemedButton>
-            </ModalActions>
-          </Modal>
-        </ModalOverlay>
+            
+        </CommonModal>
       )}
 
       {/* Edit Restaurant Modal */}
       {showEditModal && (
-        <ModalOverlay show={showEditModal} onClick={() => setShowEditModal(false)}>
-          <Modal onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <ModalTitle>Edit Restaurant</ModalTitle>
-              <CloseButton onClick={() => setShowEditModal(false)}>×</CloseButton>
-            </ModalHeader>
-            <ModalBody>
+                <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title="Edit Restaurant" footer={<>{formError && ( <div style={{width: '100%', padding: '10px 16px', marginBottom: '8px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#DC2626', fontSize: '13px', lineHeight: '1.5'}}> {formError} </div> )} <ThemedButton variant="cancel" onClick={() => { setShowEditModal(false); setFormError(''); }}>Cancel</ThemedButton><ThemedButton variant="primary" onClick={handleUpdateRestaurant}>Update Restaurant</ThemedButton></>}>
+
               <FormGrid>
                 <FormGroup style={{gridColumn: '1 / -1'}}>
                   <FormLabel>Restaurant Name *</FormLabel>
@@ -1977,29 +1873,14 @@ const ManagerRestaurantsPage: React.FC = () => {
                   </div>
                 </div>
               </FormGrid>
-            </ModalBody>
-            <ModalActions>
-              {formError && (
-                <div style={{width: '100%', padding: '10px 16px', marginBottom: '8px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#DC2626', fontSize: '13px', lineHeight: '1.5'}}>
-                  {formError}
-                </div>
-              )}
-              <ThemedButton variant="cancel" onClick={() => { setShowEditModal(false); setFormError(''); }}>Cancel</ThemedButton>
-              <ThemedButton variant="primary" onClick={handleUpdateRestaurant}>Update Restaurant</ThemedButton>
-            </ModalActions>
-          </Modal>
-        </ModalOverlay>
+            
+        </CommonModal>
       )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && restaurantToDelete && (
-        <ModalOverlay show={showDeleteModal} onClick={() => setShowDeleteModal(false)}>
-          <Modal onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
-            <ModalHeader>
-              <ModalTitle>Delete Restaurant</ModalTitle>
-              <CloseButton onClick={() => setShowDeleteModal(false)}>×</CloseButton>
-            </ModalHeader>
-            <ModalBody>
+                <CommonModal isOpen={true} onClose={() => setShowDeleteModal(false)} title="Delete Restaurant" footer={<><ThemedButton variant="cancel" onClick={() => setShowDeleteModal(false)}>Cancel</ThemedButton><ThemedButton variant="primary" onClick={confirmDeleteRestaurant} style={{ background: '#DC2626' }} > Delete Restaurant </ThemedButton></>}>
+
               <div style={{ textAlign: 'center', padding: '20px 0' }}>
                 <div style={{
                   width: '64px',
@@ -2021,19 +1902,8 @@ const ManagerRestaurantsPage: React.FC = () => {
                   <br />This action cannot be undone.
                 </p>
               </div>
-            </ModalBody>
-            <ModalActions>
-              <ThemedButton variant="cancel" onClick={() => setShowDeleteModal(false)}>Cancel</ThemedButton>
-              <ThemedButton
-                variant="primary"
-                onClick={confirmDeleteRestaurant}
-                style={{ background: '#DC2626' }}
-              >
-                Delete Restaurant
-              </ThemedButton>
-            </ModalActions>
-          </Modal>
-        </ModalOverlay>
+            
+        </CommonModal>
       )}
     </>
   );

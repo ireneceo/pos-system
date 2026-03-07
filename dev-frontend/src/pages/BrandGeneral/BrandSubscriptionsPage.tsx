@@ -26,7 +26,7 @@ import {
   ActionButtons,
   ActionButton as CommonActionButton,
   IconButton as CommonIconButton
-} from '../../components/UI';
+, Modal as CommonModal } from '../../components/UI';
 
 // ============================================
 // Interfaces
@@ -184,91 +184,6 @@ const IconSymbol = styled.span`
   line-height: 1;
 `;
 
-// Modal Components
-const ModalOverlay = styled.div<{ show: boolean }>`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: ${props => props.show ? 'flex' : 'none'};
-  justify-content: center;
-  align-items: flex-start;
-  padding: 40px 0;
-  overflow-y: auto;
-  z-index: 10000;
-  pointer-events: ${props => props.show ? 'auto' : 'none'};
-`;
-
-const Modal = styled.div`
-  background: white;
-  border-radius: 12px;
-  padding: 0;
-  width: 90%;
-  max-width: 600px;
-  flex-shrink: 0;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  animation: slideIn 0.3s ease;
-
-  @keyframes slideIn {
-    from {
-      transform: translateY(-50px);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-  margin: auto 0;
-`;
-
-const ModalHeader = styled.div`
-  padding: 24px;
-  border-bottom: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #6B7280;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &:hover {
-    background: #F3F4F6;
-    color: #374151;
-  }
-`;
-
-const ModalBody = styled.div`
-  padding: 24px;
-`;
-
-const ModalActions = styled.div`
-  padding: 24px;
-  border-top: 1px solid #E6EBF1;
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-`;
 
 const FormGrid = styled.div`
   display: grid;
@@ -336,7 +251,6 @@ const FormSelect = styled.select`
     box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
   }
 `;
-
 
 const EmptyIcon = styled.div`
   font-size: 48px;
@@ -806,13 +720,8 @@ const BrandSubscriptionsPage: React.FC = () => {
 
           {/* Assign Plan Modal */}
           {showAssignModal && assignTarget && (
-            <ModalOverlay show={showAssignModal} onClick={() => setShowAssignModal(false)}>
-              <Modal onClick={(e) => e.stopPropagation()}>
-                <ModalHeader>
-                  <ModalTitle>{assignTarget.plan ? 'Change Plan' : 'Assign Plan'}</ModalTitle>
-                  <CloseButton onClick={() => setShowAssignModal(false)}>×</CloseButton>
-                </ModalHeader>
-                <ModalBody>
+                        <CommonModal isOpen={true} onClose={() => setShowAssignModal(false)} title={assignTarget.plan ? 'Change Plan' : 'Assign Plan'} footer={<><ThemedButton variant="cancel" onClick={() => setShowAssignModal(false)}>Cancel</ThemedButton><ThemedButton variant="primary" onClick={handleSubmitAssign} disabled={!selectedPlanId || brandPlans.length === 0} > {assignTarget.plan ? 'Change Plan' : 'Assign Plan'} </ThemedButton></>}>
+
                   <FormGrid>
                     <FormGroup style={{gridColumn: '1 / -1'}}>
                       <FormLabel>Restaurant</FormLabel>
@@ -879,30 +788,14 @@ const BrandSubscriptionsPage: React.FC = () => {
                       );
                     })()}
                   </FormGrid>
-                </ModalBody>
-                <ModalActions>
-                  <ThemedButton variant="cancel" onClick={() => setShowAssignModal(false)}>Cancel</ThemedButton>
-                  <ThemedButton
-                    variant="primary"
-                    onClick={handleSubmitAssign}
-                    disabled={!selectedPlanId || brandPlans.length === 0}
-                  >
-                    {assignTarget.plan ? 'Change Plan' : 'Assign Plan'}
-                  </ThemedButton>
-                </ModalActions>
-              </Modal>
-            </ModalOverlay>
+                
+            </CommonModal>
           )}
 
           {/* View Details Modal */}
           {showViewModal && viewingSub && (
-            <ModalOverlay show={showViewModal} onClick={() => setShowViewModal(false)}>
-              <Modal onClick={(e) => e.stopPropagation()}>
-                <ModalHeader>
-                  <ModalTitle>Subscription Details</ModalTitle>
-                  <CloseButton onClick={() => setShowViewModal(false)}>×</CloseButton>
-                </ModalHeader>
-                <ModalBody>
+                        <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Subscription Details" footer={<><ThemedButton variant="primary" onClick={() => setShowViewModal(false)}>Close</ThemedButton></>}>
+
                   <div style={{display: 'grid', gap: '20px'}}>
                     {/* Restaurant Info */}
                     <div>
@@ -1062,44 +955,25 @@ const BrandSubscriptionsPage: React.FC = () => {
                       </div>
                     )}
                   </div>
-                </ModalBody>
-                <ModalActions>
-                  <ThemedButton variant="primary" onClick={() => setShowViewModal(false)}>Close</ThemedButton>
-                </ModalActions>
-              </Modal>
-            </ModalOverlay>
+                
+            </CommonModal>
           )}
 
           {/* Confirm Action Modal */}
           {showConfirmModal && confirmTarget && (
-            <ModalOverlay show={showConfirmModal} onClick={() => setShowConfirmModal(false)}>
-              <Modal onClick={(e) => e.stopPropagation()}>
-                <ModalHeader>
-                  <ModalTitle>Confirm Action</ModalTitle>
-                  <CloseButton onClick={() => setShowConfirmModal(false)}>×</CloseButton>
-                </ModalHeader>
-                <ModalBody>
+                        <CommonModal isOpen={true} onClose={() => setShowConfirmModal(false)} title="Confirm Action" footer={<><ThemedButton variant="cancel" onClick={() => setShowConfirmModal(false)}>Cancel</ThemedButton><ThemedButton variant="danger" onClick={handleConfirmAction}>Remove Plan</ThemedButton></>}>
+
                   <p>
                     {confirmAction === 'unassign' && `Are you sure you want to remove the plan "${confirmTarget.plan?.name}" from ${confirmTarget.restaurant_name}?`}
                   </p>
-                </ModalBody>
-                <ModalActions>
-                  <ThemedButton variant="cancel" onClick={() => setShowConfirmModal(false)}>Cancel</ThemedButton>
-                  <ThemedButton variant="danger" onClick={handleConfirmAction}>Remove Plan</ThemedButton>
-                </ModalActions>
-              </Modal>
-            </ModalOverlay>
+                
+            </CommonModal>
           )}
 
           {/* Discount Modal */}
           {showDiscountModal && discountTarget && (
-            <ModalOverlay show={showDiscountModal} onClick={() => setShowDiscountModal(false)}>
-              <Modal onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
-                <ModalHeader>
-                  <ModalTitle>Set Discount - {discountTarget.restaurant_name}</ModalTitle>
-                  <CloseButton onClick={() => setShowDiscountModal(false)}>×</CloseButton>
-                </ModalHeader>
-                <ModalBody>
+                        <CommonModal isOpen={true} onClose={() => setShowDiscountModal(false)} title="Set Discount - {discountTarget.restaurant_name}" footer={<><ThemedButton variant="cancel" onClick={() => setShowDiscountModal(false)}>Cancel</ThemedButton><ThemedButton variant="primary" onClick={handleSaveDiscount}>Save Discount</ThemedButton></>}>
+
                   <div style={{display: 'grid', gap: '16px'}}>
                     <div>
                       <div style={{fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px'}}>Discount Type</div>
@@ -1147,13 +1021,8 @@ const BrandSubscriptionsPage: React.FC = () => {
                       </div>
                     )}
                   </div>
-                </ModalBody>
-                <ModalActions>
-                  <ThemedButton variant="cancel" onClick={() => setShowDiscountModal(false)}>Cancel</ThemedButton>
-                  <ThemedButton variant="primary" onClick={handleSaveDiscount}>Save Discount</ThemedButton>
-                </ModalActions>
-              </Modal>
-            </ModalOverlay>
+                
+            </CommonModal>
           )}
 
         </Content>

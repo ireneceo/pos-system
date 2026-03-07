@@ -13,7 +13,7 @@ import {
   Title,
   ActionSection,
   Content
-} from '../../components/UI';
+, Modal as CommonModal } from '../../components/UI';
 import { ModalWarning } from '../../components/UI/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
 // Using page-specific filter components instead of common ones
@@ -78,10 +78,6 @@ interface Restaurant {
 
 // Common components now imported from ../../components/UI
 // Page-specific styled components below
-
-
-
-
 
 const RestaurantGrid = styled.div`
   display: grid;
@@ -198,91 +194,6 @@ const Star = styled.span<{ filled: boolean }>`
   font-size: 14px;
 `;
 
-// Modal Components
-const ModalOverlay = styled.div<{ show: boolean }>`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: ${props => props.show ? 'flex' : 'none'};
-  justify-content: center;
-  align-items: flex-start;
-  padding: 40px 0;
-  overflow-y: auto;
-  z-index: 10000;
-  pointer-events: ${props => props.show ? 'auto' : 'none'};
-`;
-
-const Modal = styled.div`
-  background: white;
-  border-radius: 12px;
-  padding: 0;
-  width: 90%;
-  max-width: 600px;
-  flex-shrink: 0;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  animation: slideIn 0.3s ease;
-  
-  @keyframes slideIn {
-    from { 
-      transform: translateY(-50px);
-      opacity: 0;
-    }
-    to { 
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-  margin: auto 0;
-`;
-
-const ModalHeader = styled.div`
-  padding: 24px;
-  border-bottom: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #6B7280;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  
-  &:hover {
-    background: #F3F4F6;
-    color: #374151;
-  }
-`;
-
-const ModalBody = styled.div`
-  padding: 24px;
-`;
-
-const ModalActions = styled.div`
-  padding: 24px;
-  border-top: 1px solid #E6EBF1;
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-`;
 
 const FormGrid = styled.div`
   display: grid;
@@ -629,8 +540,6 @@ const ActiveButton = styled.button`
     margin-right: 0;
   }
 `;
-
-
 
 const RestaurantsPage: React.FC = () => {
   const { operationSettings } = useStore();
@@ -1094,7 +1003,6 @@ const RestaurantsPage: React.FC = () => {
   const handleRemoveManager = (managerId: string) => {
     setSelectedManagers(selectedManagers.filter(m => m.id.toString() !== managerId));
   };
-
 
   // Edit Modal Manager Search Functions
   const handleEditManagerSearch = (query: string) => {
@@ -1798,13 +1706,8 @@ const RestaurantsPage: React.FC = () => {
 
         {/* Add Restaurant Modal */}
         {showAddModal && (
-          <ModalOverlay show={showAddModal} onClick={() => setShowAddModal(false)}>
-            <Modal onClick={(e) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Add Restaurant</ModalTitle>
-                <CloseButton onClick={() => setShowAddModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+                    <CommonModal isOpen={true} onClose={() => setShowAddModal(false)} title="Add Restaurant" footer={<><ThemedButton variant="cancel" onClick={() => { setAddModalWarning(''); setShowAddModal(false); }}>Cancel</ThemedButton><ThemedButton variant="primary" onClick={handleSubmitAdd}>Add Restaurant</ThemedButton></>}>
+
                 <FormGrid>
                   <FormGroup style={{ gridColumn: '1 / -1' }}>
                     <FormLabel>Restaurant Name *</FormLabel>
@@ -2275,24 +2178,14 @@ const RestaurantsPage: React.FC = () => {
                 {addModalWarning && (
                   <ModalWarning>{addModalWarning}</ModalWarning>
                 )}
-              </ModalBody>
-              <ModalActions>
-                <ThemedButton variant="cancel" onClick={() => { setAddModalWarning(''); setShowAddModal(false); }}>Cancel</ThemedButton>
-                <ThemedButton variant="primary" onClick={handleSubmitAdd}>Add Restaurant</ThemedButton>
-              </ModalActions>
-            </Modal>
-          </ModalOverlay>
+              
+          </CommonModal>
         )}
 
         {/* Edit Restaurant Modal */}
         {showEditModal && editingRestaurant && (
-          <ModalOverlay show={showEditModal} onClick={() => setShowEditModal(false)}>
-            <Modal onClick={(e) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Edit Restaurant</ModalTitle>
-                <CloseButton onClick={() => setShowEditModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+                    <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title="Edit Restaurant" footer={<><ThemedButton variant="cancel" onClick={() => { setEditModalWarning(''); setShowEditModal(false); }}>Cancel</ThemedButton><ThemedButton variant="danger-outline" onClick={() => handleDeleteRestaurant(editingRestaurant)}>Delete</ThemedButton><ThemedButton variant="primary" onClick={handleSubmitEdit}>Update Restaurant</ThemedButton></>}>
+
                 <FormGrid>
                   <FormGroup style={{ gridColumn: '1 / -1' }}>
                     <FormLabel>Restaurant Name *</FormLabel>
@@ -2775,25 +2668,14 @@ const RestaurantsPage: React.FC = () => {
                 {editModalWarning && (
                   <ModalWarning>{editModalWarning}</ModalWarning>
                 )}
-              </ModalBody>
-              <ModalActions>
-                <ThemedButton variant="cancel" onClick={() => { setEditModalWarning(''); setShowEditModal(false); }}>Cancel</ThemedButton>
-                <ThemedButton variant="danger-outline" onClick={() => handleDeleteRestaurant(editingRestaurant)}>Delete</ThemedButton>
-                <ThemedButton variant="primary" onClick={handleSubmitEdit}>Update Restaurant</ThemedButton>
-              </ModalActions>
-            </Modal>
-          </ModalOverlay>
+              
+          </CommonModal>
         )}
 
         {/* View Restaurant Modal */}
         {showViewModal && selectedRestaurant && (
-          <ModalOverlay show={showViewModal} onClick={() => setShowViewModal(false)}>
-            <Modal onClick={(e) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Restaurant Details</ModalTitle>
-                <CloseButton onClick={() => setShowViewModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+                    <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Restaurant Details">
+
                 <FormGrid>
                   <FormGroup style={{ gridColumn: '1 / -1' }}>
                     <FormLabel>Restaurant Name</FormLabel>
@@ -2905,9 +2787,8 @@ const RestaurantsPage: React.FC = () => {
                     />
                   </FormGroup>
                 </FormGrid>
-              </ModalBody>
-            </Modal>
-          </ModalOverlay>
+              
+          </CommonModal>
         )}
 
         {/* Delete Confirm Modal */}

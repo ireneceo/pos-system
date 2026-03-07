@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
+import { Modal as CommonModal } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
 import CommentSection from '../../components/Common/CommentSection';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
@@ -348,61 +349,6 @@ const MetaValue = styled.span`
 `;
 
 
-const Modal = styled.div`
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  margin: auto 0;
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  max-width: 800px;
-  width: 90%;
-  max-height: 90vh;
-  overflow: auto;
-  margin: auto 0;
-`;
-
-const ModalHeader = styled.div`
-  padding: 24px;
-  border-bottom: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 20px;
-  font-weight: 600;
-  color: #0A2540;
-  margin: 0;
-`;
-
-const CloseButton = styled.button`
-  background: none; border: none; font-size: 24px; color: #6B7C93;
-  cursor: pointer; padding: 0; width: 32px; height: 32px;
-  display: flex; align-items: center; justify-content: center;
-  &:hover { color: #0A2540; }
-`;
-
-const ModalBody = styled.div`
-  padding: 24px;
-`;
-
-const ModalFooter = styled.div`
-  padding: 20px 24px;
-  border-top: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-`;
 
 const FormRow = styled.div`
   display: grid;
@@ -817,13 +763,7 @@ const OwnerOperationInquiryPage: React.FC = () => {
 
           {/* Create Modal */}
           {showCreateModal && (
-            <Modal onClick={() => setShowCreateModal(false)}>
-              <ModalContent onClick={(e) => e.stopPropagation()}>
-                <ModalHeader>
-                  <ModalTitle>Create Operation Inquiry</ModalTitle>
-                  <CloseButton onClick={() => setShowCreateModal(false)}>×</CloseButton>
-                </ModalHeader>
-                <ModalBody>
+            <CommonModal isOpen={true} onClose={() => setShowCreateModal(false)} title="Create Operation Inquiry" footer={<><Button variant="secondary" onClick={() => setShowCreateModal(false)}>Cancel</Button><Button variant="primary" onClick={handleSubmitTicket} disabled={!newTicket.restaurantId || !newTicket.subject.trim() || !newTicket.description.trim()}>Submit Inquiry</Button></>}>
                   <FormGroup>
                     <FormLabel>Restaurant *</FormLabel>
                     <FormSelect
@@ -893,30 +833,12 @@ const OwnerOperationInquiryPage: React.FC = () => {
                       </FormSelect>
                     </FormGroup>
                   </FormRow>
-                </ModalBody>
-                <ModalFooter>
-                  <Button variant="secondary" onClick={() => setShowCreateModal(false)}>Cancel</Button>
-                  <Button
-                    variant="primary"
-                    onClick={handleSubmitTicket}
-                    disabled={!newTicket.restaurantId || !newTicket.subject.trim() || !newTicket.description.trim()}
-                  >
-                    Submit Inquiry
-                  </Button>
-                </ModalFooter>
-              </ModalContent>
-            </Modal>
+            </CommonModal>
           )}
 
           {/* Detail Modal */}
           {selectedTicket && (
-            <Modal onClick={() => setSelectedTicket(null)}>
-              <ModalContent onClick={(e) => e.stopPropagation()}>
-                <ModalHeader>
-                  <ModalTitle>{selectedTicket.ticketNumber}</ModalTitle>
-                  <CloseButton onClick={() => setSelectedTicket(null)}>×</CloseButton>
-                </ModalHeader>
-                <ModalBody>
+            <CommonModal isOpen={true} onClose={() => setSelectedTicket(null)} title={selectedTicket.ticketNumber} size="large">
                   <InfoBox>
                     <InfoRow>
                       <InfoLabel>Subject:</InfoLabel>
@@ -973,9 +895,7 @@ const OwnerOperationInquiryPage: React.FC = () => {
                   </FormGroup>
 
                   <CommentSection entityType="operation_ticket" entityId={String(selectedTicket.id)} currentUserId={user?.id} onMarkRead={() => setUnreadCounts(prev => { const next = { ...prev }; const key = String(selectedTicket.id); if (next[key]) next[key] = { ...next[key], unread_count: 0 }; return next; })} />
-                </ModalBody>
-              </ModalContent>
-            </Modal>
+            </CommonModal>
           )}
         </Content>
       </Container>

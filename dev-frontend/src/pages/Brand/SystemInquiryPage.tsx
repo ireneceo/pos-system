@@ -7,7 +7,7 @@ import AttachmentList from '../../components/Common/AttachmentList';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
-import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
+import { StatsGrid, StatCard, StatValue, StatLabel, Modal as CommonModal } from '../../components/UI';
 
 interface SupportTicket {
   id: string;
@@ -252,76 +252,6 @@ const TicketFooter = styled.div`
   gap: 8px;
 `;
 
-const Modal = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  margin: auto 0;
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  max-width: 600px;
-  width: 90%;
-  max-height: 90vh;
-  overflow: auto;
-  margin: auto 0;
-`;
-
-const ModalHeader = styled.div`
-  padding: 24px;
-  border-bottom: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 20px;
-  font-weight: 600;
-  color: #0A2540;
-  margin: 0;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: #6B7C93;
-  cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
-
-  &:hover {
-    color: #0A2540;
-  }
-`;
-
-const ModalBody = styled.div`
-  padding: 24px;
-`;
-
-const ModalFooter = styled.div`
-  padding: 20px 24px;
-  border-top: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-`;
 
 const FormRow = styled.div`
   display: grid;
@@ -679,13 +609,25 @@ const SystemInquiryPage: React.FC = () => {
 
           {/* Create Ticket Modal */}
           {showCreateModal && (
-            <Modal onClick={() => setShowCreateModal(false)}>
-              <ModalContent onClick={(e) => e.stopPropagation()}>
-                <ModalHeader>
-                  <ModalTitle>Create System Inquiry</ModalTitle>
-                  <CloseButton onClick={() => setShowCreateModal(false)}>&times;</CloseButton>
-                </ModalHeader>
-                <ModalBody>
+            <CommonModal
+              isOpen={true}
+              onClose={() => setShowCreateModal(false)}
+              title="Create System Inquiry"
+              footer={
+                <>
+                  <Button variant="secondary" onClick={() => setShowCreateModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={handleSubmitTicket}
+                    disabled={!newTicket.subject.trim() || !newTicket.description.trim()}
+                  >
+                    Submit Inquiry
+                  </Button>
+                </>
+              }
+            >
                   <FormGroup>
                     <FormLabel>Subject *</FormLabel>
                     <FormInput
@@ -740,32 +682,19 @@ const SystemInquiryPage: React.FC = () => {
                       </FormSelect>
                     </FormGroup>
                   </FormRow>
-                </ModalBody>
-                <ModalFooter>
-                  <Button variant="secondary" onClick={() => setShowCreateModal(false)}>
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={handleSubmitTicket}
-                    disabled={!newTicket.subject.trim() || !newTicket.description.trim()}
-                  >
-                    Submit Inquiry
-                  </Button>
-                </ModalFooter>
-              </ModalContent>
-            </Modal>
+              </CommonModal>
           )}
 
           {/* View Ticket Detail Modal */}
           {showViewModal && selectedTicket && (
-            <Modal onClick={() => setShowViewModal(false)}>
-              <ModalContent onClick={(e) => e.stopPropagation()}>
-                <ModalHeader>
-                  <ModalTitle>Inquiry Details</ModalTitle>
-                  <CloseButton onClick={() => setShowViewModal(false)}>&times;</CloseButton>
-                </ModalHeader>
-                <ModalBody>
+            <CommonModal
+              isOpen={true}
+              onClose={() => setShowViewModal(false)}
+              title="Inquiry Details"
+              footer={
+                <Button variant="secondary" onClick={() => setShowViewModal(false)}>Close</Button>
+              }
+            >
                   <div style={{ display: 'grid', gap: '20px' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                       <div>
@@ -818,12 +747,7 @@ const SystemInquiryPage: React.FC = () => {
                     </div>
                   </div>
                   <CommentSection entityType="support_ticket" entityId={selectedTicket.id} currentUserId={user?.id} onMarkRead={() => setUnreadCounts(prev => { const next = { ...prev }; if (next[selectedTicket.id]) next[selectedTicket.id] = { ...next[selectedTicket.id], unread_count: 0 }; return next; })} />
-                </ModalBody>
-                <ModalFooter>
-                  <Button variant="secondary" onClick={() => setShowViewModal(false)}>Close</Button>
-                </ModalFooter>
-              </ModalContent>
-            </Modal>
+              </CommonModal>
           )}
         </Content>
       </Container>

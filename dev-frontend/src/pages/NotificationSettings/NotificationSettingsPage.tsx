@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import styled from 'styled-components';
+import { Modal as CommonModal } from '../../components/UI';
 import { useParams } from 'react-router-dom';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
@@ -204,50 +205,12 @@ const Alert = styled.div<{ type: 'success' | 'error' }>`
   `}
 `;
 
-const ModalOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  overflow-y: auto;
-  padding: 40px 0;
-  z-index: 1000;
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  width: 90%;
-  max-width: 400px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  margin: auto 0;
-`;
-
-const ModalTitle = styled.h3`
-  font-size: 18px;
-  font-weight: 600;
-  color: #0A2540;
-  margin: 0 0 16px 0;
-`;
-
 const ModalText = styled.p`
   font-size: 14px;
   color: #6B7C93;
   margin: 0 0 16px 0;
 `;
 
-const ModalButtonContainer = styled.div`
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  margin-top: 20px;
-`;
 
 const CancelButton = styled.button`
   padding: 8px 16px;
@@ -833,9 +796,7 @@ const NotificationSettingsPage: React.FC = () => {
 
       {/* Test Email Modal */}
       {showTestEmailModal && (
-        <ModalOverlay onClick={() => setShowTestEmailModal(false)}>
-          <ModalContent onClick={(e) => e.stopPropagation()}>
-            <ModalTitle>Send Test Email</ModalTitle>
+        <CommonModal isOpen={true} onClose={() => setShowTestEmailModal(false)} title="Send Test Email" footer={<><CancelButton onClick={() => setShowTestEmailModal(false)}>Cancel</CancelButton><SaveButton onClick={sendTestEmail} disabled={sendingTestEmail || !testEmailAddress}>{sendingTestEmail ? 'Sending...' : 'Send'}</SaveButton></>}>
             <ModalText>Enter the email address where you want to receive the test email.</ModalText>
             <FormGroup>
               <Label>Email Address</Label>
@@ -847,31 +808,14 @@ const NotificationSettingsPage: React.FC = () => {
                 autoFocus
               />
             </FormGroup>
-            <ModalButtonContainer>
-              <CancelButton onClick={() => setShowTestEmailModal(false)}>
-                Cancel
-              </CancelButton>
-              <SaveButton onClick={sendTestEmail} disabled={sendingTestEmail || !testEmailAddress}>
-                {sendingTestEmail ? 'Sending...' : 'Send'}
-              </SaveButton>
-            </ModalButtonContainer>
-          </ModalContent>
-        </ModalOverlay>
+        </CommonModal>
       )}
 
       {/* Result Modal */}
       {showResultModal && (
-        <ModalOverlay onClick={() => setShowResultModal(false)}>
-          <ModalContent onClick={(e) => e.stopPropagation()}>
-            <ModalTitle>{resultMessage.success ? 'Success' : 'Error'}</ModalTitle>
+        <CommonModal isOpen={true} onClose={() => setShowResultModal(false)} title={resultMessage.success ? 'Success' : 'Error'} footer={<SaveButton onClick={() => setShowResultModal(false)}>OK</SaveButton>}>
             <ModalText>{resultMessage.text}</ModalText>
-            <ModalButtonContainer>
-              <SaveButton onClick={() => setShowResultModal(false)}>
-                OK
-              </SaveButton>
-            </ModalButtonContainer>
-          </ModalContent>
-        </ModalOverlay>
+        </CommonModal>
       )}
     </>
   );

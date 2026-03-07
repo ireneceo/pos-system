@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { Modal as CommonModal } from '../../components/UI';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
@@ -425,84 +426,6 @@ const MobilePromotionStats = styled.div`
   border-top: 1px solid #F3F4F6;
 `;
 
-// Promotion Detail Modal
-const Modal = styled.div<{ isOpen: boolean }>`
-  display: ${props => props.isOpen ? 'flex' : 'none'};
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-  animation: fadeIn 0.2s ease-out;
-  
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  margin: auto 0;
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  border-radius: 16px;
-  width: 90%;
-  max-width: 900px;
-  max-height: 90vh;
-  overflow: auto;
-  animation: slideUp 0.3s ease-out;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-  
-  @keyframes slideUp {
-    from {
-      transform: translateY(30px);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-  margin: auto 0;
-`;
-
-const ModalHeader = styled.div`
-  padding: 24px;
-  border-bottom: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 20px;
-  font-weight: 600;
-  color: #1E293B;
-  margin: 0;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: #64748B;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 8px;
-  transition: all 0.2s;
-  
-  &:hover {
-    background: #F1F5F9;
-    color: #475569;
-  }
-`;
-
-const ModalBody = styled.div`
-  padding: 24px;
-`;
 
 const FormRow = styled.div`
   display: grid;
@@ -599,14 +522,6 @@ const CheckboxLabel = styled.label`
     height: 16px;
     accent-color: #635BFF;
   }
-`;
-
-const ModalFooter = styled.div`
-  padding: 24px;
-  border-top: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
 `;
 
 
@@ -1107,15 +1022,10 @@ const ManagerPromotionsPage: React.FC = () => {
         </Content>
 
         {/* Promotion Detail Modal */}
-        <Modal isOpen={showDetailModal}>
-          <ModalContent>
-            <ModalHeader>
-              <ModalTitle>Promotion Details</ModalTitle>
-              <CloseButton onClick={() => setShowDetailModal(false)}>×</CloseButton>
-            </ModalHeader>
-            
+        {showDetailModal && (
+        <CommonModal isOpen={true} onClose={() => setShowDetailModal(false)} title="Promotion Details" footer={<><Button variant="secondary" onClick={() => setShowDetailModal(false)}>Close</Button>{selectedPromotion && (<><Button variant="secondary" onClick={() => { setShowDetailModal(false); handleEditPromotion(selectedPromotion); }}>Edit Promotion</Button><Button variant="primary" onClick={() => { setShowDetailModal(false); handleCopyPromotion(selectedPromotion); }}>Duplicate</Button></>)}</>}>
             {selectedPromotion && (
-              <ModalBody>
+              <div>
                 <div style={{ marginBottom: '24px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                     <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1F2937', margin: 0 }}>
@@ -1188,42 +1098,15 @@ const ManagerPromotionsPage: React.FC = () => {
                     </ul>
                   </div>
                 )}
-              </ModalBody>
+              </div>
             )}
-            
-            <ModalFooter>
-              <Button variant="secondary" onClick={() => setShowDetailModal(false)}>
-                Close
-              </Button>
-              {selectedPromotion && (
-                <>
-                  <Button variant="secondary" onClick={() => {
-                    setShowDetailModal(false);
-                    handleEditPromotion(selectedPromotion);
-                  }}>
-                    Edit Promotion
-                  </Button>
-                  <Button variant="primary" onClick={() => {
-                    setShowDetailModal(false);
-                    handleCopyPromotion(selectedPromotion);
-                  }}>
-                    Duplicate
-                  </Button>
-                </>
-              )}
-            </ModalFooter>
-          </ModalContent>
-        </Modal>
+        </CommonModal>
+        )}
 
         {/* Add/Edit Promotion Modal */}
-        <Modal isOpen={showAddModal}>
-          <ModalContent style={{ maxWidth: '800px' }}>
-            <ModalHeader>
-              <ModalTitle>{editingPromotion ? 'Edit Promotion' : 'Create New Promotion'}</ModalTitle>
-              <CloseButton onClick={() => setShowAddModal(false)}>×</CloseButton>
-            </ModalHeader>
-            
-            <ModalBody>
+        {showAddModal && (
+        <CommonModal isOpen={true} onClose={() => setShowAddModal(false)} title={editingPromotion ? 'Edit Promotion' : 'Create New Promotion'} size="large" footer={<><Button variant="secondary" onClick={() => setShowAddModal(false)}>Cancel</Button><Button variant="primary" onClick={handleSavePromotion}>{editingPromotion ? 'Update Promotion' : 'Create Promotion'}</Button></>}>
+            <div>
               <FormRow>
                 <FormGroup>
                   <Label>Promotion Name *</Label>
@@ -1350,18 +1233,9 @@ const ManagerPromotionsPage: React.FC = () => {
                   rows={3}
                 />
               </FormGroup>
-            </ModalBody>
-            
-            <ModalFooter>
-              <Button variant="secondary" onClick={() => setShowAddModal(false)}>
-                Cancel
-              </Button>
-              <Button variant="primary" onClick={handleSavePromotion}>
-                {editingPromotion ? 'Update Promotion' : 'Create Promotion'}
-              </Button>
-            </ModalFooter>
-          </ModalContent>
-        </Modal>
+            </div>
+        </CommonModal>
+        )}
       </Container>
 
       <ConfirmModal

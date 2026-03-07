@@ -12,6 +12,7 @@ import AttachmentList from '../../components/Common/AttachmentList';
 import CommentSection from '../../components/Common/CommentSection';
 import { linkifyText } from '../../utils/linkify';
 import ConfirmModal from '../../components/ConfirmModal';
+import { Modal as CommonModal } from '../../components/UI';
 
 // ============================================================================
 // Interfaces
@@ -231,76 +232,6 @@ const CommentIcon = styled.span`
 // Modal Styled Components
 // ============================================================================
 
-const ModalOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  z-index: 1100;
-  overflow-y: auto;
-  padding: 40px 0;
-`;
-
-const ModalContent = styled.div<{ maxWidth?: string }>`
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  max-width: ${props => props.maxWidth || '720px'};
-  width: 90%;
-  flex-shrink: 0;
-  margin: auto 0;
-`;
-
-const ModalHeader = styled.div`
-  padding: 24px;
-  border-bottom: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 20px;
-  font-weight: 600;
-  color: #0A2540;
-  margin: 0;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: #6B7C93;
-  cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
-
-  &:hover {
-    color: #0A2540;
-  }
-`;
-
-const ModalBody = styled.div`
-  padding: 24px;
-`;
-
-const ModalFooter = styled.div`
-  padding: 20px 24px;
-  border-top: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-`;
 
 const FormGroup = styled.div`
   margin-bottom: 20px;
@@ -1054,13 +985,7 @@ const NoticesPage: React.FC = () => {
       {/* Create Notice Modal                                                 */}
       {/* ================================================================== */}
       {showCreateModal && (
-        <ModalOverlay onClick={() => setShowCreateModal(false)}>
-          <ModalContent maxWidth="720px" onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <ModalTitle>New Notice</ModalTitle>
-              <CloseButton onClick={() => setShowCreateModal(false)}>×</CloseButton>
-            </ModalHeader>
-            <ModalBody>
+        <CommonModal isOpen={true} onClose={() => setShowCreateModal(false)} title="New Notice" maxWidth="720px" footer={<><Button variant="secondary" onClick={() => setShowCreateModal(false)}>Cancel</Button><Button variant="primary" onClick={handleCreateNotice} disabled={submitting || !newNotice.title.trim() || !newNotice.content.trim() || !newNotice.target_type || (newNotice.target_type === 'brand' && !newNotice.brand_id) || (newNotice.target_type === 'select_restaurants' && newNotice.restaurant_ids.length === 0)}>{submitting ? 'Sending...' : 'Send Notice'}</Button></>}>
               <FormGroup>
                 <FormLabel>Title *</FormLabel>
                 <FormInput
@@ -1178,53 +1103,14 @@ const NoticesPage: React.FC = () => {
                   </FormSelect>
                 </FormGroup>
               </FormRow>
-            </ModalBody>
-            <ModalFooter>
-              <Button variant="secondary" onClick={() => setShowCreateModal(false)}>
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                onClick={handleCreateNotice}
-                disabled={
-                  submitting ||
-                  !newNotice.title.trim() ||
-                  !newNotice.content.trim() ||
-                  !newNotice.target_type ||
-                  (newNotice.target_type === 'brand' && !newNotice.brand_id) ||
-                  (newNotice.target_type === 'select_restaurants' && newNotice.restaurant_ids.length === 0)
-                }
-              >
-                {submitting ? 'Sending...' : 'Send Notice'}
-              </Button>
-            </ModalFooter>
-          </ModalContent>
-        </ModalOverlay>
+        </CommonModal>
       )}
 
       {/* ================================================================== */}
       {/* View Notice Modal                                                   */}
       {/* ================================================================== */}
       {showViewModal && selectedNotice && (
-        <ModalOverlay onClick={() => { setShowViewModal(false); setSelectedNotice(null); }}>
-          <ModalContent maxWidth="800px" onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <ModalTitle>{selectedNotice.title}</ModalTitle>
-              <ViewModalHeaderRight>
-                <PriorityBadge priority={selectedNotice.priority}>
-                  {selectedNotice.priority}
-                </PriorityBadge>
-                {isOwnNotice(selectedNotice) && (
-                  <DeleteNoticeButton onClick={() => handleDeleteNotice(selectedNotice.id)}>
-                    Delete
-                  </DeleteNoticeButton>
-                )}
-                <CloseButton onClick={() => { setShowViewModal(false); setSelectedNotice(null); }}>
-                  ×
-                </CloseButton>
-              </ViewModalHeaderRight>
-            </ModalHeader>
-            <ModalBody>
+        <CommonModal isOpen={true} onClose={() => { setShowViewModal(false); setSelectedNotice(null); }} title={selectedNotice.title} size="large" headerActions={<ViewModalHeaderRight><PriorityBadge priority={selectedNotice.priority}>{selectedNotice.priority}</PriorityBadge>{isOwnNotice(selectedNotice) && (<DeleteNoticeButton onClick={() => handleDeleteNotice(selectedNotice.id)}>Delete</DeleteNoticeButton>)}</ViewModalHeaderRight>}>
               {/* Meta info */}
               <ViewNoticeMeta>
                 <MetaField>
@@ -1270,9 +1156,7 @@ const NoticesPage: React.FC = () => {
                 currentUserId={user?.id}
                 onMarkRead={() => setUnreadCounts(prev => { const next = { ...prev }; const key = String(selectedNotice.id); if (next[key]) next[key] = { ...next[key], unread_count: 0 }; return next; })}
               />
-            </ModalBody>
-          </ModalContent>
-        </ModalOverlay>
+        </CommonModal>
       )}
 
       {/* Delete Notice Confirm Modal */}

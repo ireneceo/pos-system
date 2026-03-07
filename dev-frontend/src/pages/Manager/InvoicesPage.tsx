@@ -15,7 +15,7 @@ import {
   DataTableActions,
   DataTableEmpty,
   DataTableAmount
-} from '../../components/UI';
+, Modal as CommonModal } from '../../components/UI';
 
 interface PaymentMethod {
   id: string;
@@ -223,12 +223,6 @@ const FilterSelect = styled.select`
   }
 `;
 
-
-
-
-
-
-
 const InvoiceInfo = styled.div``;
 
 const InvoiceNumber = styled.div`
@@ -316,82 +310,6 @@ const LocalActionButtons = styled(DataTableActions)`
   }
 `;
 
-const Modal = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  margin: auto 0;
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  max-width: 600px;
-  width: 90%;
-  max-height: 90vh;
-  overflow: hidden;
-  margin: auto 0;
-`;
-
-const ModalHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 24px 24px 0 24px;
-  border-bottom: 1px solid #E6EBF1;
-  margin-bottom: 24px;
-`;
-
-const ModalTitle = styled.h3`
-  font-size: 18px;
-  font-weight: 600;
-  color: #0A2540;
-  margin: 0;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: #9CA3AF;
-  cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  transition: all 0.2s;
-  
-  &:hover {
-    background: #F3F4F6;
-    color: #6B7280;
-  }
-`;
-
-const ModalBody = styled.div`
-  padding: 0 24px 24px 24px;
-  max-height: 400px;
-  overflow-y: auto;
-`;
-
-const ModalFooter = styled.div`
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  padding: 24px;
-  border-top: 1px solid #E6EBF1;
-  background: #F8FAFC;
-`;
 
 const FormRow = styled.div`
   display: grid;
@@ -1026,13 +944,8 @@ const ManagerInvoicesPage: React.FC = () => {
 
         {/* Create Invoice Modal */}
         {showCreateInvoiceModal && (
-          <Modal onClick={() => setShowCreateInvoiceModal(false)}>
-            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Create New Invoice</ModalTitle>
-                <CloseButton onClick={() => setShowCreateInvoiceModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+                    <CommonModal isOpen={true} onClose={() => setShowCreateInvoiceModal(false)} title="Create New Invoice" footer={<><Button variant="secondary" onClick={() => setShowCreateInvoiceModal(false)}> Cancel </Button><Button variant="primary" onClick={handleSubmitInvoice} disabled={!newInvoice.restaurantName || !newInvoice.amount || !newInvoice.dueDate} > Create Invoice </Button></>}>
+
                 <FormRow>
                   <FormGroup>
                     <FormLabel>Restaurant Name *</FormLabel>
@@ -1117,32 +1030,14 @@ const ManagerInvoicesPage: React.FC = () => {
                     </SummaryRow>
                   </InvoiceSummary>
                 )}
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="secondary" onClick={() => setShowCreateInvoiceModal(false)}>
-                  Cancel
-                </Button>
-                <Button 
-                  variant="primary" 
-                  onClick={handleSubmitInvoice}
-                  disabled={!newInvoice.restaurantName || !newInvoice.amount || !newInvoice.dueDate}
-                >
-                  Create Invoice
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
+              
+          </CommonModal>
         )}
 
         {/* View Invoice Modal */}
         {showViewModal && selectedInvoice && (
-          <Modal onClick={() => setShowViewModal(false)}>
-            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Invoice Details - {selectedInvoice.invoiceNumber}</ModalTitle>
-                <CloseButton onClick={() => setShowViewModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+                    <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Invoice Details - {selectedInvoice.invoiceNumber}" footer={<><Button variant="secondary" onClick={() => setShowViewModal(false)}> Close </Button><Button variant="primary" onClick={() => window.print()}> Print Invoice </Button></>}>
+
                 <FormRow>
                   <FormGroup>
                     <FormLabel>Invoice Number</FormLabel>
@@ -1205,38 +1100,14 @@ const ManagerInvoicesPage: React.FC = () => {
                     <span><strong>{formatCurrency(selectedInvoice.total, selectedCurrency)}</strong></span>
                   </SummaryRow>
                 </InvoiceSummary>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="secondary" onClick={() => setShowViewModal(false)}>
-                  Close
-                </Button>
-                <Button variant="primary" onClick={() => window.print()}>
-                  Print Invoice
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
+              
+          </CommonModal>
         )}
 
         {/* Payment Confirmation Modal */}
         {showPaymentConfirmModal && selectedInvoice && (
-          <Modal onClick={() => {
-            setShowPaymentConfirmModal(false);
-            setTimeout(() => {
-              setShowPaymentModal(true);
-            }, 100);
-          }}>
-            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Confirm Payment</ModalTitle>
-                <CloseButton onClick={() => {
-                  setShowPaymentConfirmModal(false);
-                  setTimeout(() => {
-                    setShowPaymentModal(true);
-                  }, 100);
-                }}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+                    <CommonModal isOpen={true} onClose={() => { setShowPaymentConfirmModal(false); setTimeout(() => { setShowPaymentModal(true); }, 100); }} title="Confirm Payment" footer={<><Button variant="secondary" onClick={() => { setShowPaymentConfirmModal(false); setTimeout(() => { setShowPaymentModal(true); }, 100); }}> Cancel </Button><Button variant="primary" onClick={handleConfirmPayment}> Confirm Payment </Button></>}>
+
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                   <h3 style={{
                     fontSize: '18px',
@@ -1293,33 +1164,14 @@ const ManagerInvoicesPage: React.FC = () => {
                     Warning: This action will mark the invoice as PAID and cannot be easily undone.
                   </div>
                 </div>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="secondary" onClick={() => {
-                  setShowPaymentConfirmModal(false);
-                  setTimeout(() => {
-                    setShowPaymentModal(true);
-                  }, 100);
-                }}>
-                  Cancel
-                </Button>
-                <Button variant="primary" onClick={handleConfirmPayment}>
-                  Confirm Payment
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
+              
+          </CommonModal>
         )}
 
         {/* Payment Modal */}
         {showPaymentModal && selectedInvoice && (
-          <Modal onClick={() => setShowPaymentModal(false)}>
-            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Submit Payment - {selectedInvoice.invoiceNumber}</ModalTitle>
-                <CloseButton onClick={() => setShowPaymentModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+                    <CommonModal isOpen={true} onClose={() => setShowPaymentModal(false)} title="Submit Payment - {selectedInvoice.invoiceNumber}" footer={<><Button variant="secondary" onClick={() => setShowPaymentModal(false)}> Cancel </Button><Button variant="primary" onClick={handleSubmitPayment} disabled={!paymentData.paymentMethod || availablePaymentMethods.length === 0} > Submit Payment </Button></>}>
+
                 <FormGroup>
                   <FormLabel>Invoice Details</FormLabel>
                   <InvoiceSummary>
@@ -1436,32 +1288,14 @@ const ManagerInvoicesPage: React.FC = () => {
                     {inlineWarning}
                   </div>
                 )}
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="secondary" onClick={() => setShowPaymentModal(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={handleSubmitPayment}
-                  disabled={!paymentData.paymentMethod || availablePaymentMethods.length === 0}
-                >
-                  Submit Payment
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
+              
+          </CommonModal>
         )}
 
         {/* Edit Invoice Modal */}
         {showEditModal && selectedInvoice && editInvoice && (
-          <Modal onClick={() => setShowEditModal(false)}>
-            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Edit Invoice - {selectedInvoice.invoiceNumber}</ModalTitle>
-                <CloseButton onClick={() => setShowEditModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+                    <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title="Edit Invoice - {selectedInvoice.invoiceNumber}" footer={<><Button variant="secondary" onClick={() => setShowEditModal(false)}> Cancel </Button><Button variant="primary" onClick={handleSaveEdit}> Save Changes </Button></>}>
+
                 <FormRow>
                   <FormGroup>
                     <FormLabel>Amount (RM)</FormLabel>
@@ -1525,17 +1359,8 @@ const ManagerInvoicesPage: React.FC = () => {
                     <span><strong>{formatCurrency(parseFloat(editInvoice.total || 0), selectedCurrency)}</strong></span>
                   </SummaryRow>
                 </InvoiceSummary>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="secondary" onClick={() => setShowEditModal(false)}>
-                  Cancel
-                </Button>
-                <Button variant="primary" onClick={handleSaveEdit}>
-                  Save Changes
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
+              
+          </CommonModal>
         )}
         </Content>
       </Container>

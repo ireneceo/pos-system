@@ -21,7 +21,8 @@ import {
   ActionButtons,
   ActionButton,
   IconButton,
-  EmptyState
+  EmptyState,
+  Modal as CommonModal
 } from '../../components/UI';
 import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
@@ -253,66 +254,6 @@ const IconSymbol = styled.span`
   }
 `;
 
-const Modal = styled.div<{ show: boolean }>`
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  display: ${props => props.show ? 'flex' : 'none'};
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  margin: auto 0;
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  border-radius: 12px;
-  padding: 32px;
-  width: 90%;
-  max-width: 600px;
-  max-height: 80vh;
-  overflow-y: auto;
-  margin: auto 0;
-`;
-
-const ModalHeader = styled.div`
-  padding: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin: -32px -32px 24px -32px;
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #6B7280;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &:hover {
-    background: #F3F4F6;
-    color: #374151;
-  }
-`;
 
 const FormGrid = styled.div`
   display: grid;
@@ -427,15 +368,6 @@ const SelectedBadge = styled.div`
   }
 `;
 
-const ModalActions = styled.div`
-  padding: 24px;
-  padding-top: 16px;
-  border-top: 1px solid #E6EBF1;
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  margin: 24px -32px -32px -32px;
-`;
 
 const ErrorMessage = styled.div`
   padding: 12px 16px;
@@ -1599,12 +1531,8 @@ const AdminStaffManagementPage: React.FC = () => {
           </Table>
         </Content>
         
-        <Modal show={showAddModal} onClick={handleCloseModal}>
-          <ModalContent onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <ModalTitle>Add Staff</ModalTitle>
-              <CloseButton onClick={handleCloseModal}>&times;</CloseButton>
-            </ModalHeader>
+        {showAddModal && (
+        <CommonModal isOpen={true} onClose={handleCloseModal} title="Add Staff" footer={<><Button variant="secondary" onClick={handleCloseModal}>Cancel</Button><Button variant="primary" onClick={handleSubmitStaff}>Add Staff</Button></>}>
             
             <FormGrid>
               <FormGroup>
@@ -1805,24 +1733,12 @@ const AdminStaffManagementPage: React.FC = () => {
               <ErrorMessage style={{ marginTop: '16px' }}>{formError}</ErrorMessage>
             )}
 
-            <ModalActions>
-              <Button variant="secondary" onClick={handleCloseModal}>
-                Cancel
-              </Button>
-              <Button variant="primary" onClick={handleSubmitStaff}>
-                Add Staff
-              </Button>
-            </ModalActions>
-          </ModalContent>
-        </Modal>
+        </CommonModal>
+        )}
 
         {/* Edit Staff Modal */}
-        <Modal show={showEditModal} onClick={handleCloseEditModal}>
-          <ModalContent onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <ModalTitle>Edit Staff Member</ModalTitle>
-              <CloseButton onClick={handleCloseEditModal}>&times;</CloseButton>
-            </ModalHeader>
+        {showEditModal && (
+        <CommonModal isOpen={true} onClose={handleCloseEditModal} title="Edit Staff Member" footer={<><Button variant="secondary" onClick={handleCloseEditModal}>Cancel</Button><Button variant="primary" onClick={handleUpdateStaff}>Update Staff</Button></>}>
             
             {editingStaff && (
               <>
@@ -1994,26 +1910,14 @@ const AdminStaffManagementPage: React.FC = () => {
                   </FormGroup>
                 </FormGrid>
 
-                <ModalActions>
-                  <Button variant="secondary" onClick={handleCloseEditModal}>
-                    Cancel
-                  </Button>
-                  <Button variant="primary" onClick={handleUpdateStaff}>
-                    Update Staff
-                  </Button>
-                </ModalActions>
               </>
             )}
-          </ModalContent>
-        </Modal>
+        </CommonModal>
+        )}
 
         {/* Permissions Modal */}
-        <Modal show={showPermissionsModal} onClick={handleClosePermissionsModal}>
-          <ModalContent onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <ModalTitle>Permission Management</ModalTitle>
-              <CloseButton onClick={handleClosePermissionsModal}>&times;</CloseButton>
-            </ModalHeader>
+        {showPermissionsModal && (
+        <CommonModal isOpen={true} onClose={handleClosePermissionsModal} title="Permission Management" footer={<><Button variant="secondary" onClick={handleClosePermissionsModal}>Cancel</Button><Button variant="primary" onClick={handleUpdatePermissions}>Change Role</Button></>}>
             
             {viewingPermissions && (
               <>
@@ -2113,29 +2017,14 @@ const AdminStaffManagementPage: React.FC = () => {
                   </div>
                 </div>
                 
-                <ModalActions>
-                  <Button variant="secondary" onClick={handleClosePermissionsModal}>
-                    Cancel
-                  </Button>
-                  <Button variant="primary" onClick={handleUpdatePermissions}>
-                    Change Role
-                  </Button>
-                </ModalActions>
               </>
             )}
-          </ModalContent>
-        </Modal>
+        </CommonModal>
+        )}
 
         {/* Delete Confirmation Modal */}
-        <Modal show={showDeleteConfirm} onClick={cancelDelete}>
-          <ModalContent onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <ModalTitle>Delete Staff</ModalTitle>
-              <CloseButton onClick={cancelDelete}>&times;</CloseButton>
-            </ModalHeader>
-            
-            {deletingStaff && (
-              <>
+        {showDeleteConfirm && deletingStaff && (
+        <CommonModal isOpen={true} onClose={cancelDelete} title="Delete Staff" footer={<><Button variant="secondary" onClick={cancelDelete}>Cancel</Button><Button variant="primary" onClick={confirmDelete} style={{ backgroundColor: '#DC2626', borderColor: '#DC2626' }}>Delete</Button></>}>
                 <div style={{ marginBottom: '24px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                     <StaffAvatar role={deletingStaff.role}>
@@ -2150,10 +2039,10 @@ const AdminStaffManagementPage: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div style={{ padding: '16px', backgroundColor: '#FEF2F2', borderRadius: '8px', border: '1px solid #FECACA' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                      <span style={{ color: '#DC2626', fontSize: '16px' }}>⚠️</span>
+                      <span style={{ color: '#DC2626', fontSize: '16px' }}>&#9888;</span>
                       <div style={{ fontSize: '14px', fontWeight: '600', color: '#DC2626' }}>
                         Are you sure you want to delete?
                       </div>
@@ -2163,38 +2052,12 @@ const AdminStaffManagementPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                
-                <ModalActions>
-                  <Button variant="secondary" onClick={cancelDelete}>
-                    Cancel
-                  </Button>
-                  <Button 
-                    variant="primary" 
-                    onClick={confirmDelete}
-                    style={{ 
-                      backgroundColor: '#DC2626',
-                      borderColor: '#DC2626'
-                    }}
-                  >
-                    Delete
-                  </Button>
-                </ModalActions>
-              </>
-            )}
-          </ModalContent>
-        </Modal>
+        </CommonModal>
+        )}
 
         {/* Confirm Action Modal */}
-        {showConfirmModal && (
-          <Modal show={showConfirmModal} onClick={() => setShowConfirmModal(false)}>
-            <ModalContent onClick={(e) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Confirm Action</ModalTitle>
-                <CloseButton onClick={() => setShowConfirmModal(false)}>&times;</CloseButton>
-              </ModalHeader>
-
-              {selectedStaff && (
-                <>
+        {showConfirmModal && selectedStaff && (
+        <CommonModal isOpen={true} onClose={() => setShowConfirmModal(false)} title="Confirm Action" footer={<><Button variant="secondary" onClick={() => setShowConfirmModal(false)}>Cancel</Button><Button variant="primary" onClick={handleConfirmAction}>{confirmAction === 'toggle' ? 'Confirm' : 'Reset Password'}</Button></>}>
                   <div style={{ marginBottom: '24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                       <StaffAvatar role={selectedStaff.role}>
@@ -2221,30 +2084,12 @@ const AdminStaffManagementPage: React.FC = () => {
                       </div>
                     </div>
                   </div>
-
-                  <ModalActions>
-                    <Button variant="secondary" onClick={() => setShowConfirmModal(false)}>
-                      Cancel
-                    </Button>
-                    <Button variant="primary" onClick={handleConfirmAction}>
-                      {confirmAction === 'toggle' ? 'Confirm' : 'Reset Password'}
-                    </Button>
-                  </ModalActions>
-                </>
-              )}
-            </ModalContent>
-          </Modal>
+        </CommonModal>
         )}
 
         {/* Success Message Modal */}
         {showSuccessModal && (
-          <Modal show={showSuccessModal} onClick={() => setShowSuccessModal(false)}>
-            <ModalContent onClick={(e) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Success</ModalTitle>
-                <CloseButton onClick={() => setShowSuccessModal(false)}>&times;</CloseButton>
-              </ModalHeader>
-
+        <CommonModal isOpen={true} onClose={() => setShowSuccessModal(false)} title="Success" footer={<Button variant="primary" onClick={() => setShowSuccessModal(false)}>OK</Button>}>
               <div style={{ marginBottom: '24px' }}>
                 <div style={{
                   padding: '20px',
@@ -2263,14 +2108,7 @@ const AdminStaffManagementPage: React.FC = () => {
                   </div>
                 </div>
               </div>
-
-              <ModalActions>
-                <Button variant="primary" onClick={() => setShowSuccessModal(false)}>
-                  OK
-                </Button>
-              </ModalActions>
-            </ModalContent>
-          </Modal>
+        </CommonModal>
         )}
       </Container>
     </>

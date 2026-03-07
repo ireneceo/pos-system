@@ -21,7 +21,7 @@ import {
   ActionButtons,
   ActionButton as CommonActionButton,
   IconButton as CommonIconButton
-} from '../../components/UI';
+, Modal as CommonModal } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 
 interface RestaurantSubscription {
@@ -176,94 +176,6 @@ const IconSymbol = styled.span`
   line-height: 1;
 `;
 
-// Modal Components
-const ModalOverlay = styled.div<{ show: boolean }>`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: ${props => props.show ? 'flex' : 'none'};
-  justify-content: center;
-  align-items: flex-start;
-  padding: 40px 0;
-  overflow-y: auto;
-  z-index: 10000;
-  pointer-events: ${props => props.show ? 'auto' : 'none'};
-
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-`;
-
-const Modal = styled.div`
-  background: white;
-  border-radius: 12px;
-  padding: 0;
-  width: 90%;
-  max-width: 600px;
-  flex-shrink: 0;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  animation: slideIn 0.3s ease;
-  
-  @keyframes slideIn {
-    from { 
-      transform: translateY(-50px);
-      opacity: 0;
-    }
-    to { 
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-  margin: auto 0;
-`;
-
-const ModalHeader = styled.div`
-  padding: 24px;
-  border-bottom: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-`;
-
-const CloseThemedButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #6B7280;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  
-  &:hover {
-    background: #F3F4F6;
-    color: #374151;
-  }
-`;
-
-const SuccessModal = styled.div`
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  width: 400px;
-  text-align: center;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-`;
-
 const SuccessIcon = styled.div`
   width: 60px;
   height: 60px;
@@ -277,30 +189,12 @@ const SuccessIcon = styled.div`
   color: white;
 `;
 
-const SuccessTitle = styled.h3`
-  font-size: 20px;
-  font-weight: 600;
-  color: #065F46;
-  margin: 0 0 8px;
-`;
-
 const SuccessMessage = styled.p`
   color: #6B7280;
   margin: 0 0 20px;
   line-height: 1.5;
 `;
 
-const ModalBody = styled.div`
-  padding: 24px;
-`;
-
-const ModalActions = styled.div`
-  padding: 24px;
-  border-top: 1px solid #E6EBF1;
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-`;
 
 const FormGrid = styled.div`
   display: grid;
@@ -701,7 +595,6 @@ const SubscriptionsPage: React.FC = () => {
       });
     }
   };
-
 
   // Billing Cycle 변경 핸들러
   const handleBillingCycleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -1221,13 +1114,8 @@ const SubscriptionsPage: React.FC = () => {
 
           {/* Add Subscription Modal */}
           {showAddModal && (
-            <ModalOverlay show={showAddModal} onClick={() => setShowAddModal(false)}>
-              <Modal onClick={(e) => e.stopPropagation()}>
-                <ModalHeader>
-                  <ModalTitle>Add Subscription</ModalTitle>
-                  <CloseThemedButton onClick={() => setShowAddModal(false)}>×</CloseThemedButton>
-                </ModalHeader>
-                <ModalBody>
+                        <CommonModal isOpen={true} onClose={() => setShowAddModal(false)} title="Add Subscription" footer={<><ThemedButton variant="cancel" onClick={() => setShowAddModal(false)}>Cancel</ThemedButton><ThemedButton variant="primary" onClick={handleSubmit}>Add Subscription</ThemedButton></>}>
+
                   <FormGrid>
                     <FormGroup>
                       <FormLabel>User Type *</FormLabel>
@@ -1597,38 +1485,27 @@ const SubscriptionsPage: React.FC = () => {
                       </div>
                     </div>
                   </FormGrid>
-                </ModalBody>
-                <ModalActions>
-                  <ThemedButton variant="cancel" onClick={() => setShowAddModal(false)}>Cancel</ThemedButton>
-                  <ThemedButton variant="primary" onClick={handleSubmit}>Add Subscription</ThemedButton>
-                </ModalActions>
-              </Modal>
-            </ModalOverlay>
+                
+            </CommonModal>
           )}
 
           {/* Success Modal */}
           {showSuccessModal && (
-            <ModalOverlay show={showSuccessModal} onClick={() => setShowSuccessModal(false)}>
-              <SuccessModal onClick={(e) => e.stopPropagation()}>
+            <CommonModal isOpen={true} onClose={() => setShowSuccessModal(false)} title="Success!" size="small">
+              <div style={{ textAlign: 'center' }}>
                 <SuccessIcon>✓</SuccessIcon>
-                <SuccessTitle>Success!</SuccessTitle>
                 <SuccessMessage>{successMessage}</SuccessMessage>
                 <ThemedButton variant="primary" onClick={() => setShowSuccessModal(false)}>
                   OK
                 </ThemedButton>
-              </SuccessModal>
-            </ModalOverlay>
+              </div>
+            </CommonModal>
           )}
 
           {/* Edit Subscription Modal - Only for Custom Subscriptions */}
           {showEditModal && editingSubscription && (
-            <ModalOverlay show={showEditModal} onClick={() => setShowEditModal(false)}>
-              <Modal onClick={(e) => e.stopPropagation()}>
-                <ModalHeader>
-                  <ModalTitle>Edit Custom Subscription</ModalTitle>
-                  <CloseThemedButton onClick={() => setShowEditModal(false)}>×</CloseThemedButton>
-                </ModalHeader>
-                <ModalBody>
+                        <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title="Edit Custom Subscription" footer={<><ThemedButton variant="cancel" onClick={() => setShowEditModal(false)}>Cancel</ThemedButton><ThemedButton variant="primary" onClick={handleUpdateSubscription}>Update Subscription</ThemedButton></>}>
+
                   <FormGrid>
                     <FormGroup style={{gridColumn: '1 / -1'}}>
                       <FormLabel>Restaurant *</FormLabel>
@@ -1824,24 +1701,14 @@ const SubscriptionsPage: React.FC = () => {
                       </div>
                     )}
                   </FormGrid>
-                </ModalBody>
-                <ModalActions>
-                  <ThemedButton variant="cancel" onClick={() => setShowEditModal(false)}>Cancel</ThemedButton>
-                  <ThemedButton variant="primary" onClick={handleUpdateSubscription}>Update Subscription</ThemedButton>
-                </ModalActions>
-              </Modal>
-            </ModalOverlay>
+                
+            </CommonModal>
           )}
 
           {/* View Subscription Modal */}
           {showViewModal && viewingSubscription && (
-            <ModalOverlay show={showViewModal} onClick={() => setShowViewModal(false)}>
-              <Modal onClick={(e) => e.stopPropagation()}>
-                <ModalHeader>
-                  <ModalTitle>Subscription Details</ModalTitle>
-                  <CloseThemedButton onClick={() => setShowViewModal(false)}>×</CloseThemedButton>
-                </ModalHeader>
-                <ModalBody>
+                        <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Subscription Details" footer={<><ThemedButton variant="primary" onClick={() => setShowViewModal(false)}>Close</ThemedButton></>}>
+
                   <div style={{display: 'grid', gap: '20px'}}>
                     {/* Restaurant Info */}
                     <div>
@@ -2007,40 +1874,21 @@ const SubscriptionsPage: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                </ModalBody>
-                <ModalActions>
-                  <ThemedButton variant="primary" onClick={() => setShowViewModal(false)}>Close</ThemedButton>
-                </ModalActions>
-              </Modal>
-            </ModalOverlay>
+                
+            </CommonModal>
           )}
 
           {/* Confirm Action Modal */}
           {showConfirmModal && (
-            <ModalOverlay show={showConfirmModal} onClick={() => setShowConfirmModal(false)}>
-              <Modal onClick={(e) => e.stopPropagation()}>
-                <ModalHeader>
-                  <ModalTitle>Confirm Action</ModalTitle>
-                  <CloseThemedButton onClick={() => setShowConfirmModal(false)}>×</CloseThemedButton>
-                </ModalHeader>
-                <ModalBody>
+                        <CommonModal isOpen={true} onClose={() => setShowConfirmModal(false)} title="Confirm Action" footer={<><ThemedButton variant="cancel" onClick={() => setShowConfirmModal(false)}>Cancel</ThemedButton><ThemedButton variant={confirmAction === 'delete' ? 'danger' : 'primary'} onClick={handleConfirmAction} > {confirmAction === 'delete' ? 'Delete' : confirmAction === 'suspend' ? 'Suspend' : 'Activate'} </ThemedButton></>}>
+
                   <p>
                     {confirmAction === 'delete' && `Are you sure you want to delete subscription for ${selectedSubscription?.restaurantName}?`}
                     {confirmAction === 'suspend' && `Are you sure you want to suspend subscription for ${selectedSubscription?.restaurantName}?`}
                     {confirmAction === 'activate' && `Are you sure you want to activate subscription for ${selectedSubscription?.restaurantName}?`}
                   </p>
-                </ModalBody>
-                <ModalActions>
-                  <ThemedButton variant="cancel" onClick={() => setShowConfirmModal(false)}>Cancel</ThemedButton>
-                  <ThemedButton 
-                    variant={confirmAction === 'delete' ? 'danger' : 'primary'} 
-                    onClick={handleConfirmAction}
-                  >
-                    {confirmAction === 'delete' ? 'Delete' : confirmAction === 'suspend' ? 'Suspend' : 'Activate'}
-                  </ThemedButton>
-                </ModalActions>
-              </Modal>
-            </ModalOverlay>
+                
+            </CommonModal>
           )}
 
         </Content>

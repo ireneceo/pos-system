@@ -7,7 +7,7 @@ import {
   ActionSection,
   Content,
   Button
-} from '../../components/UI';
+, Modal as CommonModal } from '../../components/UI';
 import ConfirmModal from '../../components/ConfirmModal';
 
 interface AddonModule {
@@ -200,74 +200,6 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger
   `}
 `;
 
-// Modal Components
-const Modal = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-  margin: auto 0;
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  border-radius: 12px;
-  max-width: 600px;
-  width: 100%;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  margin: auto 0;
-`;
-
-const ModalHeader = styled.div`
-  padding: 24px;
-  border-bottom: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 20px;
-  font-weight: 600;
-  color: #0A2540;
-  margin: 0;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #6B7280;
-
-  &:hover {
-    color: #374151;
-  }
-`;
-
-const ModalBody = styled.div`
-  padding: 24px;
-  overflow-y: auto;
-  flex: 1;
-`;
-
-const ModalActions = styled.div`
-  padding: 24px;
-  border-top: 1px solid #E6EBF1;
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-`;
 
 const FormGroup = styled.div`
   margin-bottom: 20px;
@@ -741,13 +673,8 @@ const AddonModulesPage: React.FC = () => {
 
           {/* Create/Edit Modal */}
           {showModal && (
-            <Modal onClick={() => setShowModal(false)}>
-              <ModalContent onClick={(e) => e.stopPropagation()}>
-                <ModalHeader>
-                  <ModalTitle>{editingModule ? 'Edit Module' : 'Create New Module'}</ModalTitle>
-                  <CloseButton onClick={() => setShowModal(false)}>&times;</CloseButton>
-                </ModalHeader>
-                <ModalBody>
+                        <CommonModal isOpen={true} onClose={() => setShowModal(false)} title={editingModule ? 'Edit Module' : 'Create New Module'} footer={<><Button variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button><Button variant="primary" onClick={saveModule}> {editingModule ? 'Update' : 'Create'} </Button></>}>
+
                   <FormRow>
                     <FormGroup>
                       <FormLabel>Module Code *</FormLabel>
@@ -867,15 +794,8 @@ const AddonModulesPage: React.FC = () => {
                     />
                     <label htmlFor="is_active">Active</label>
                   </CheckboxItem>
-                </ModalBody>
-                <ModalActions>
-                  <Button variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button>
-                  <Button variant="primary" onClick={saveModule}>
-                    {editingModule ? 'Update' : 'Create'}
-                  </Button>
-                </ModalActions>
-              </ModalContent>
-            </Modal>
+                
+            </CommonModal>
           )}
         </Content>
       </Container>

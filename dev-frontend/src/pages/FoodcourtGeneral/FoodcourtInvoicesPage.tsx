@@ -26,7 +26,7 @@ import {
   MobileGrid,
   ActionButtons,
   EmptyState
-} from '../../components/UI';
+, Modal as CommonModal } from '../../components/UI';
 import { SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import jsPDF from 'jspdf';
@@ -190,7 +190,6 @@ const FiltersRight = styled.div`
   }
 `;
 
-
 // Button 컴포넌트는 BaseButton으로 교체됨
 const Button = styled(BaseButton)``;
 
@@ -328,89 +327,6 @@ const IconSymbol = styled.span`
   line-height: 1;
 `;
 
-const Modal = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  margin: auto 0;
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  max-width: 600px;
-  width: 90%;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-
-  @media (max-width: 640px) {
-    width: 95%;
-    max-width: none;
-  }
-  margin: auto 0;
-`;
-
-const ModalHeader = styled.div`
-  padding: 24px;
-  border-bottom: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-shrink: 0;
-`;
-
-const ModalTitle = styled.h3`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #6B7280;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &:hover {
-    background: #F3F4F6;
-    color: #374151;
-  }
-`;
-
-const ModalBody = styled.div`
-  padding: 24px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  flex: 1;
-  min-height: 0;
-`;
-
-const ModalFooter = styled.div`
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  padding: 24px;
-  border-top: 1px solid #E6EBF1;
-  flex-shrink: 0;
-`;
 
 const FormRow = styled.div`
   display: grid;
@@ -482,8 +398,6 @@ const FormSelect = styled.select`
     box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
   }
 `;
-
-
 
 const InvoiceSummary = styled.div`
   background: #F8FAFC;
@@ -625,7 +539,6 @@ const FoodcourtInvoicesPage: React.FC = () => {
   const [paidInvoicesList, setPaidInvoicesList] = useState<Invoice[]>([]);
   const [toPaySearchTerm, setToPaySearchTerm] = useState('');
   const [paidSearchTerm, setPaidSearchTerm] = useState('');
-
 
   const handlePeriodChange = (period: PeriodType) => {
     setActivePeriod(period);
@@ -816,7 +729,6 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
   // Resize image to reduce base64 size
 
-
   // Submit payment for an invoice
   const handleSubmitPayment = async () => {
     if (!selectedInvoice) return;
@@ -968,7 +880,6 @@ const FoodcourtInvoicesPage: React.FC = () => {
     }
   };
 
-
   const handleDeleteCategoryConfirm = async () => {
     if (!categoryToDelete) return;
 
@@ -992,7 +903,6 @@ const FoodcourtInvoicesPage: React.FC = () => {
       alert('Failed to delete category');
     }
   };
-
 
   // Fetch foodcourt payment settings for additional charges
   const fetchFoodcourtPaymentSettings = useCallback(async () => {
@@ -1887,12 +1797,10 @@ const FoodcourtInvoicesPage: React.FC = () => {
     }
   };
 
-
   const handleCreateInvoice = () => {
     resetInvoiceForm();
     setShowCreateInvoiceModal(true);
   };
-
 
   const handleViewInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
@@ -2202,14 +2110,12 @@ const FoodcourtInvoicesPage: React.FC = () => {
     }
   };
 
-
   const confirmResendInvoice = () => {
     if (!selectedInvoice) return;
 
     setShowResendConfirmModal(false);
     setSelectedInvoice(null);
   };
-
 
   const handleDeleteInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
@@ -2826,13 +2732,8 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
         {/* Payment Submit Modal */}
         {showPaymentSubmitModal && selectedInvoice && (
-          <Modal onClick={() => setShowPaymentSubmitModal(false)}>
-            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
-              <ModalHeader>
-                <ModalTitle>Submit Payment</ModalTitle>
-                <CloseButton onClick={() => setShowPaymentSubmitModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+                    <CommonModal isOpen={true} onClose={() => setShowPaymentSubmitModal(false)} title="Submit Payment" footer={<><div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}><Button variant="secondary" onClick={() => { setShowPaymentSubmitModal(false); setPaymentSubmitError(null); }}>Cancel</Button> {paymentData.paymentMethod !== 'stripe' && paymentData.paymentMethod !== 'paypal' && ( <Button variant="primary" onClick={handleSubmitPayment} disabled={!paymentData.paymentMethod || isSubmittingPayment || (!paymentData.transactionId && !paymentData.receiptImage)} > {isSubmittingPayment ? 'Submitting...' : 'Submit Payment'} </Button> )} </div> {paymentSubmitError && ( <StatusMessage type="error" style={{ marginTop: '12px', wordBreak: 'break-word' }}> {paymentSubmitError} </StatusMessage> )}</>}>
+
                 <div style={{ marginBottom: '20px', padding: '16px', background: '#F8FAFC', borderRadius: '8px' }}>
                   <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#6B7280' }}>Invoice: <strong>{selectedInvoice.invoiceNumber}</strong></p>
                   <p style={{ margin: '0', fontSize: '20px', fontWeight: '700', color: '#0A2540' }}>
@@ -2954,40 +2855,14 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     )}
                   </>
                 )}
-              </ModalBody>
-              <ModalFooter style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                  <Button variant="secondary" onClick={() => { setShowPaymentSubmitModal(false); setPaymentSubmitError(null); }}>Cancel</Button>
-                  {paymentData.paymentMethod !== 'stripe' && paymentData.paymentMethod !== 'paypal' && (
-                  <Button
-                    variant="primary"
-                    onClick={handleSubmitPayment}
-                    disabled={!paymentData.paymentMethod || isSubmittingPayment || (!paymentData.transactionId && !paymentData.receiptImage)}
-                  >
-                    {isSubmittingPayment ? 'Submitting...' : 'Submit Payment'}
-                  </Button>
-                  )}
-                </div>
-                {paymentSubmitError && (
-                  <StatusMessage type="error" style={{ marginTop: '12px', wordBreak: 'break-word' }}>
-                    {paymentSubmitError}
-                  </StatusMessage>
-                )}
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
+              
+          </CommonModal>
         )}
 
         {/* Legacy Category Modal - kept for compatibility */}
         {showCategoryModal && (
-          <Modal onClick={handleCloseCategoryModal}>
-            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
-              <ModalHeader>
-                <ModalTitle>{editingCategory ? 'Edit Category' : 'Add Category'}</ModalTitle>
-                <CloseButton onClick={handleCloseCategoryModal}>×</CloseButton>
-              </ModalHeader>
-              <form onSubmit={handleCategorySubmit}>
-                <ModalBody>
+                    <CommonModal isOpen={true} onClose={handleCloseCategoryModal} title={editingCategory ? 'Edit Category' : 'Add Category'} footer={<><Button variant="secondary" type="button" onClick={handleCloseCategoryModal}>Cancel</Button><Button variant="primary" type="submit" disabled={savingCategory || !categoryFormData.name || !categoryFormData.code}> {savingCategory ? 'Saving...' : (editingCategory ? 'Update' : 'Create')} </Button></>}>
+
                   <FormGroup>
                     <FormLabel>Name *</FormLabel>
                     <FormInput
@@ -3019,16 +2894,8 @@ const FoodcourtInvoicesPage: React.FC = () => {
                       rows={3}
                     />
                   </FormGroup>
-                </ModalBody>
-                <ModalFooter>
-                  <Button variant="secondary" type="button" onClick={handleCloseCategoryModal}>Cancel</Button>
-                  <Button variant="primary" type="submit" disabled={savingCategory || !categoryFormData.name || !categoryFormData.code}>
-                    {savingCategory ? 'Saving...' : (editingCategory ? 'Update' : 'Create')}
-                  </Button>
-                </ModalFooter>
-              </form>
-            </ModalContent>
-          </Modal>
+                
+          </CommonModal>
         )}
 
         {/* Delete Category Confirmation Modal */}
@@ -3045,21 +2912,8 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
         {/* Create Invoice Modal */}
         {showCreateInvoiceModal && (
-          <Modal onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setShowCreateInvoiceModal(false);
-              resetInvoiceForm();
-            }
-          }}>
-            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Create Invoice</ModalTitle>
-                <CloseButton onClick={() => {
-                  setShowCreateInvoiceModal(false);
-                  resetInvoiceForm();
-                }}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+                    <CommonModal isOpen={true} onClose={() => { setShowCreateInvoiceModal(false); resetInvoiceForm(); }} title="Create Invoice" footer={<><Button variant="secondary" onClick={() => { setShowCreateInvoiceModal(false); resetInvoiceForm(); }}> Cancel </Button> {paymentMethodWarning && ( <div style={{ padding: '10px 16px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: '8px', fontSize: '13px', color: '#92400E', marginBottom: '12px', flex: '1 1 100%' }}> {paymentMethodWarning} </div> )} <Button variant="primary" onClick={handleSubmitInvoice} disabled={!selectedTarget || !newInvoice.amount || !newInvoice.dueDate} > Create Invoice </Button></>}>
+
                 <FormGroup>
                   <FormLabel>Search Manager or Restaurant *</FormLabel>
                   <div style={{position: 'relative'}}>
@@ -3356,40 +3210,14 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     <span><strong>{formatCurrency(parseFloat(newInvoice.total || '0'), operationSettings.currency)}</strong></span>
                   </SummaryRow>
                 </InvoiceSummary>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="secondary" onClick={() => {
-                  setShowCreateInvoiceModal(false);
-                  resetInvoiceForm();
-                }}>
-                  Cancel
-                </Button>
-                {paymentMethodWarning && (
-                  <div style={{ padding: '10px 16px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: '8px', fontSize: '13px', color: '#92400E', marginBottom: '12px', flex: '1 1 100%' }}>
-                    {paymentMethodWarning}
-                  </div>
-                )}
-                <Button
-                  variant="primary"
-                  onClick={handleSubmitInvoice}
-                  disabled={!selectedTarget || !newInvoice.amount || !newInvoice.dueDate}
-                >
-                  Create Invoice
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
+              
+          </CommonModal>
         )}
 
         {/* View Invoice Modal */}
         {showViewModal && selectedInvoice && (
-          <Modal onClick={() => setShowViewModal(false)}>
-            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
-              <ModalHeader>
-                <ModalTitle>Invoice Details</ModalTitle>
-                <CloseButton onClick={() => setShowViewModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+                    <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Invoice Details">
+
                 {/* Invoice Header with Company Info */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '24px', borderBottom: '2px solid #E5E7EB' }}>
                   <div style={{ flex: '0 0 55%' }}>
@@ -3548,20 +3376,14 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     ))}
                   </div>
                 )}
-              </ModalBody>
-            </ModalContent>
-          </Modal>
+              
+          </CommonModal>
         )}
 
         {/* Payment Confirmation Modal */}
         {showPaymentConfirmModal && selectedInvoice && (
-          <Modal onClick={() => setShowPaymentConfirmModal(false)}>
-            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Confirm Payment - {selectedInvoice.invoiceNumber}</ModalTitle>
-                <CloseButton onClick={() => setShowPaymentConfirmModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+                    <CommonModal isOpen={true} onClose={() => setShowPaymentConfirmModal(false)} title="Confirm Payment - {selectedInvoice.invoiceNumber}" footer={<><Button variant="secondary" onClick={() => setShowPaymentConfirmModal(false)}> Cancel </Button><Button variant="primary" onClick={handleMarkAsPaid}> Confirm Payment Received </Button></>}>
+
                 <FormGroup>
                   <FormLabel>Payment Confirmation</FormLabel>
                   <InvoiceSummary>
@@ -3662,28 +3484,14 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     Paid Date: {new Date().toLocaleDateString('en-MY')}
                   </div>
                 </FormGroup>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="secondary" onClick={() => setShowPaymentConfirmModal(false)}>
-                  Cancel
-                </Button>
-                <Button variant="primary" onClick={handleMarkAsPaid}>
-                  Confirm Payment Received
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
+              
+          </CommonModal>
         )}
 
         {/* Edit Invoice Modal */}
         {showEditModal && selectedInvoice && editInvoice && (
-          <Modal onClick={() => setShowEditModal(false)}>
-            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Edit Invoice - {selectedInvoice.invoiceNumber}</ModalTitle>
-                <CloseButton onClick={() => setShowEditModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+                    <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title="Edit Invoice - {selectedInvoice.invoiceNumber}" footer={<><Button variant="secondary" onClick={() => setShowEditModal(false)}> Cancel </Button><Button variant="primary" onClick={handleSaveEdit}> Save Changes </Button></>}>
+
                 <FormGroup>
                   <FormLabel>Search Manager or Restaurant *</FormLabel>
                   <div style={{position: 'relative'}}>
@@ -3809,7 +3617,6 @@ const FoodcourtInvoicesPage: React.FC = () => {
                   )}
                 </FormGroup>
 
-
                 <FormRow>
                   <FormGroup>
                     <FormLabel>Amount (RM)</FormLabel>
@@ -3875,7 +3682,6 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     )}
                   </FormSelect>
                 </FormGroup>
-
 
                 {editInvoice.invoiceCategory === 'others' && (
                   <FormGroup>
@@ -3948,28 +3754,14 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     ))}
                   </div>
                 )}
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="secondary" onClick={() => setShowEditModal(false)}>
-                  Cancel
-                </Button>
-                <Button variant="primary" onClick={handleSaveEdit}>
-                  Save Changes
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
+              
+          </CommonModal>
         )}
 
         {/* Send Invoice Confirmation Modal */}
         {showSendConfirmModal && selectedInvoice && (
-          <Modal onClick={() => setShowSendConfirmModal(false)}>
-            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Send Invoice</ModalTitle>
-                <CloseButton onClick={() => setShowSendConfirmModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+                    <CommonModal isOpen={true} onClose={() => setShowSendConfirmModal(false)} title="Send Invoice" footer={<><Button variant="secondary" onClick={() => setShowSendConfirmModal(false)}> Cancel </Button><Button variant="primary" onClick={confirmSendInvoice}> Send Invoice </Button></>}>
+
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                   <h3 style={{
                     fontSize: '18px',
@@ -4009,28 +3801,14 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="secondary" onClick={() => setShowSendConfirmModal(false)}>
-                  Cancel
-                </Button>
-                <Button variant="primary" onClick={confirmSendInvoice}>
-                  Send Invoice
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
+              
+          </CommonModal>
         )}
 
         {/* Resend Invoice Confirmation Modal */}
         {showResendConfirmModal && selectedInvoice && (
-          <Modal onClick={() => setShowResendConfirmModal(false)}>
-            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Resend Invoice</ModalTitle>
-                <CloseButton onClick={() => setShowResendConfirmModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+                    <CommonModal isOpen={true} onClose={() => setShowResendConfirmModal(false)} title="Resend Invoice" footer={<><Button variant="secondary" onClick={() => setShowResendConfirmModal(false)}> Cancel </Button><Button variant="primary" onClick={confirmResendInvoice}> Resend Invoice </Button></>}>
+
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                   <h3 style={{
                     fontSize: '18px',
@@ -4057,28 +3835,14 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     ℹ️ This will send another copy of the invoice to the manager's email.
                   </div>
                 </div>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="secondary" onClick={() => setShowResendConfirmModal(false)}>
-                  Cancel
-                </Button>
-                <Button variant="primary" onClick={confirmResendInvoice}>
-                  Resend Invoice
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
+              
+          </CommonModal>
         )}
 
         {/* Cancel Invoice Confirmation Modal */}
         {showCancelConfirmModal && selectedInvoice && (
-          <Modal onClick={() => setShowCancelConfirmModal(false)}>
-            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Cancel Invoice</ModalTitle>
-                <CloseButton onClick={() => setShowCancelConfirmModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+                    <CommonModal isOpen={true} onClose={() => setShowCancelConfirmModal(false)} title="Cancel Invoice" footer={<><Button variant="secondary" onClick={() => setShowCancelConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmCancelInvoice} style={{ background: '#DC2626', borderColor: '#DC2626' }} > Cancel Invoice </Button></>}>
+
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                   <h3 style={{
                     fontSize: '18px',
@@ -4137,32 +3901,14 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="secondary" onClick={() => setShowCancelConfirmModal(false)}>
-                  Keep Invoice
-                </Button>
-                <Button 
-                  variant="primary" 
-                  onClick={confirmCancelInvoice}
-                  style={{ background: '#DC2626', borderColor: '#DC2626' }}
-                >
-                  Cancel Invoice
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
+              
+          </CommonModal>
         )}
 
         {/* Delete Invoice Confirmation Modal */}
         {showDeleteConfirmModal && selectedInvoice && (
-          <Modal onClick={() => setShowDeleteConfirmModal(false)}>
-            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Delete Invoice</ModalTitle>
-                <CloseButton onClick={() => setShowDeleteConfirmModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+                    <CommonModal isOpen={true} onClose={() => setShowDeleteConfirmModal(false)} title="Delete Invoice" footer={<><Button variant="secondary" onClick={() => setShowDeleteConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmDeleteInvoice} style={{ background: '#DC2626', borderColor: '#DC2626' }} > Delete Invoice </Button></>}>
+
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                   <h3 style={{
                     fontSize: '18px',
@@ -4179,32 +3925,14 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     <br />This action cannot be undone.
                   </p>
                 </div>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="secondary" onClick={() => setShowDeleteConfirmModal(false)}>
-                  Keep Invoice
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={confirmDeleteInvoice}
-                  style={{ background: '#DC2626', borderColor: '#DC2626' }}
-                >
-                  Delete Invoice
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
+              
+          </CommonModal>
         )}
 
         {/* Email Invoice Modal */}
         {showEmailModal && emailInvoice && (
-          <Modal onClick={() => setShowEmailModal(false)}>
-            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Send Invoice via Email</ModalTitle>
-                <CloseButton onClick={() => setShowEmailModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+                    <CommonModal isOpen={true} onClose={() => setShowEmailModal(false)} title="Send Invoice via Email" footer={<><Button variant="secondary" onClick={() => { setShowEmailModal(false); setEmailInvoice(null); setEmailRecipient(''); }}> Cancel </Button><Button variant="primary" onClick={handleSendInvoiceEmail} disabled={!emailRecipient || !emailRecipient.includes('@')} > Send Email </Button></>}>
+
                 <FormGroup>
                   <FormLabel>Invoice</FormLabel>
                   <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '6px', marginBottom: '16px' }}>
@@ -4250,36 +3978,14 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     The invoice will be sent to the recipient email address using the system email settings.
                   </p>
                 </div>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="secondary" onClick={() => {
-                  setShowEmailModal(false);
-                  setEmailInvoice(null);
-                  setEmailRecipient('');
-                }}>
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={handleSendInvoiceEmail}
-                  disabled={!emailRecipient || !emailRecipient.includes('@')}
-                >
-                  Send Email
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
+              
+          </CommonModal>
         )}
 
         {/* Success Modal */}
         {showSuccessModal && (
-          <Modal onClick={() => setShowSuccessModal(false)}>
-            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Success</ModalTitle>
-                <CloseButton onClick={() => setShowSuccessModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+                    <CommonModal isOpen={true} onClose={() => setShowSuccessModal(false)} title="Success" footer={<><Button variant="primary" onClick={() => setShowSuccessModal(false)}> OK </Button></>}>
+
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                   <p style={{
                     fontSize: '16px',
@@ -4288,14 +3994,8 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     fontWeight: '500'
                   }}>{successMessage}</p>
                 </div>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="primary" onClick={() => setShowSuccessModal(false)}>
-                  OK
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
+              
+          </CommonModal>
         )}
 
         {/* Download Success Modal */}

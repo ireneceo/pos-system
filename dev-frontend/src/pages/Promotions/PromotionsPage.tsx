@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { Modal as CommonModal } from '../../components/UI';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
@@ -174,95 +175,6 @@ const ActionButton = styled.button`
   }
 `;
 
-// 모달 스타일
-const Modal = styled.div<{ isOpen: boolean }>`
-  display: ${props => props.isOpen ? 'flex' : 'none'};
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  animation: fadeIn 0.2s;
-
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  margin: auto 0;
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  border-radius: 12px;
-  width: 90%;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow: auto;
-  animation: slideUp 0.3s;
-
-  @keyframes slideUp {
-    from {
-      transform: translateY(20px);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-  margin: auto 0;
-`;
-
-const ModalHeader = styled.div`
-  padding: 24px;
-  border-bottom: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 18px;
-  font-weight: 600;
-  color: #0A2540;
-  margin: 0;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: #6B7C93;
-  cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-
-  &:hover {
-    background: #F6F9FC;
-    color: #0A2540;
-  }
-`;
-
-const ModalBody = styled.div`
-  padding: 24px;
-`;
-
-const ModalFooter = styled.div`
-  padding: 20px 24px;
-  border-top: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-`;
 
 const FormGroup = styled.div`
   margin-bottom: 20px;
@@ -864,13 +776,8 @@ const CouponsPage: React.FC = () => {
         </Content>
 
         {/* 쿠폰 생성/편집 모달 */}
-        <Modal isOpen={showModal} onClick={() => setShowModal(false)}>
-          <ModalContent onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <ModalTitle>{editingCoupon ? 'Edit Coupon' : 'Create New Coupon'}</ModalTitle>
-              <CloseButton onClick={() => setShowModal(false)}>×</CloseButton>
-            </ModalHeader>
-            <ModalBody>
+        {showModal && (
+        <CommonModal isOpen={true} onClose={() => setShowModal(false)} title={editingCoupon ? 'Edit Coupon' : 'Create New Coupon'} footer={<><Button onClick={() => setShowModal(false)} disabled={saving}>Cancel</Button><Button primary onClick={handleSaveCoupon} disabled={saving}>{saving ? 'Saving...' : (editingCoupon ? 'Update Coupon' : 'Create Coupon')}</Button></>}>
               <FormGroup>
                 <Label>Coupon Code *</Label>
                 <Input
@@ -1091,15 +998,8 @@ const CouponsPage: React.FC = () => {
               </FormGroup>
 
               {formError && <ErrorText>{formError}</ErrorText>}
-            </ModalBody>
-            <ModalFooter>
-              <Button onClick={() => setShowModal(false)} disabled={saving}>Cancel</Button>
-              <Button primary onClick={handleSaveCoupon} disabled={saving}>
-                {saving ? 'Saving...' : (editingCoupon ? 'Update Coupon' : 'Create Coupon')}
-              </Button>
-            </ModalFooter>
-          </ModalContent>
-        </Modal>
+        </CommonModal>
+        )}
       </CouponsContainer>
 
       <ConfirmModal

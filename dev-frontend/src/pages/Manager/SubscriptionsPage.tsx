@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { Modal as CommonModal } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
 import { RestaurantSubscription } from '../../interfaces/RestaurantSubscription';
 import { API_BASE_URL } from '../../config/api';
@@ -336,43 +337,6 @@ const DateValue = styled.div`
   color: #374151;
 `;
 
-// Modal Styles
-const Modal = styled.div<{ show: boolean }>`
-  display: ${props => props.show ? 'flex' : 'none'};
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 1000;
-  align-items: center;
-  justify-content: center;
-  margin: auto 0;
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  border-radius: 12px;
-  padding: 32px;
-  max-width: 600px;
-  width: 90%;
-  max-height: 80vh;
-  overflow-y: auto;
-  margin: auto 0;
-`;
-
-const ModalHeader = styled.div`
-  margin-bottom: 24px;
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0 0 8px 0;
-`;
-
 const ModalSubtitle = styled.p`
   font-size: 14px;
   color: #6B7280;
@@ -481,40 +445,6 @@ const PlanFeatures = styled.ul`
   padding-left: 20px;
 `;
 
-const ModalActions = styled.div`
-  display: flex;
-  gap: 12px;
-  margin-top: 24px;
-`;
-
-const ModalButton = styled.button<{ variant?: 'primary' | 'secondary' }>`
-  flex: 1;
-  padding: 12px 20px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-  
-  ${props => props.variant === 'primary' ? `
-    background: #635BFF;
-    color: white;
-    
-    &:hover {
-      background: #5A51E6;
-    }
-  ` : `
-    background: white;
-    color: #6B7280;
-    border: 1px solid #E6EBF1;
-    
-    &:hover {
-      background: #F8FAFC;
-      color: #0A2540;
-    }
-  `}
-`;
 
 const ManagerSubscriptionsPage: React.FC = () => {
   const { user } = useAuth();
@@ -570,7 +500,6 @@ const ManagerSubscriptionsPage: React.FC = () => {
         return [];
     }
   };
-
 
   const activeSubscriptions = subscriptions.filter(s => s.status === 'active').length;
   const totalMonthlyFees = subscriptions
@@ -742,7 +671,6 @@ const ManagerSubscriptionsPage: React.FC = () => {
       setInlineWarning('Error adding subscription. Please try again.');
     }
   };
-
 
   const handleConfirmUpgrade = () => {
     if (!selectedSubscription) return;
@@ -986,12 +914,9 @@ const ManagerSubscriptionsPage: React.FC = () => {
       </Container>
 
       {/* Add Subscription Modal */}
-      <Modal show={showAddModal}>
-        <ModalContent>
-          <ModalHeader>
-            <ModalTitle>Add New Subscription</ModalTitle>
-            <ModalSubtitle>Connect a restaurant to a subscription plan</ModalSubtitle>
-          </ModalHeader>
+      {showAddModal && (
+        <CommonModal isOpen={true} onClose={() => setShowAddModal(false)} title="Add New Subscription" footer={<><Button variant="secondary" onClick={() => setShowAddModal(false)}>Cancel</Button><Button variant="primary" onClick={handleAddSubscription}>Add Subscription</Button></>}>
+          <ModalSubtitle style={{ marginBottom: '20px' }}>Connect a restaurant to a subscription plan</ModalSubtitle>
 
           <FormGroup>
             <FormLabel>Select Restaurant</FormLabel>
@@ -1100,26 +1025,15 @@ const ManagerSubscriptionsPage: React.FC = () => {
             </RadioGroup>
           </FormGroup>
 
-          <ModalActions>
-            <ModalButton variant="secondary" onClick={() => setShowAddModal(false)}>
-              Cancel
-            </ModalButton>
-            <ModalButton variant="primary" onClick={handleAddSubscription}>
-              Add Subscription
-            </ModalButton>
-          </ModalActions>
-        </ModalContent>
-      </Modal>
+        </CommonModal>
+      )}
 
       {/* Upgrade/Downgrade Plan Modal */}
-      <Modal show={showUpgradeModal}>
-        <ModalContent>
-          <ModalHeader>
-            <ModalTitle>Change Subscription Plan</ModalTitle>
-            <ModalSubtitle>
-              {selectedSubscription?.restaurantName} - Current: {selectedSubscription?.planType}
-            </ModalSubtitle>
-          </ModalHeader>
+      {showUpgradeModal && (
+        <CommonModal isOpen={true} onClose={() => setShowUpgradeModal(false)} title="Change Subscription Plan" footer={<><Button variant="secondary" onClick={() => setShowUpgradeModal(false)}>Cancel</Button><Button variant="primary" onClick={handleConfirmUpgrade} disabled={selectedSubscription?.planType === selectedPlan}>Confirm Change</Button></>}>
+          <ModalSubtitle style={{ marginBottom: '20px' }}>
+            {selectedSubscription?.restaurantName} - Current: {selectedSubscription?.planType}
+          </ModalSubtitle>
 
           <FormGroup>
             <FormLabel>Select New Plan</FormLabel>
@@ -1173,20 +1087,8 @@ const ManagerSubscriptionsPage: React.FC = () => {
             </p>
           </div>
 
-          <ModalActions>
-            <ModalButton variant="secondary" onClick={() => setShowUpgradeModal(false)}>
-              Cancel
-            </ModalButton>
-            <ModalButton 
-              variant="primary" 
-              onClick={handleConfirmUpgrade}
-              disabled={selectedSubscription?.planType === selectedPlan}
-            >
-              Confirm Change
-            </ModalButton>
-          </ModalActions>
-        </ModalContent>
-      </Modal>
+        </CommonModal>
+      )}
 
       {inlineWarning && (
         <div style={{

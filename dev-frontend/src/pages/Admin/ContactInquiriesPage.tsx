@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
-
+import { Modal as CommonModal } from '../../components/UI';
 
 interface ContactInquiry {
   id: number;
@@ -333,67 +333,6 @@ const RepliedBadge = styled.span`
   border-radius: 4px;
 `;
 
-// Modal styles
-const ModalOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  z-index: 1000;
-  overflow-y: auto;
-  padding: 40px 0;
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  border-radius: 12px;
-  max-width: 800px;
-  width: 90%;
-  flex-shrink: 0;
-  margin: auto 0;
-`;
-
-const ModalHeader = styled.div`
-  padding: 24px;
-  border-bottom: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 20px;
-  font-weight: 600;
-  color: #0A2540;
-  margin: 0;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: #6B7C93;
-  cursor: pointer;
-  padding: 0;
-  &:hover { color: #0A2540; }
-`;
-
-const ModalBody = styled.div`
-  padding: 24px;
-`;
-
-const ModalFooter = styled.div`
-  padding: 20px 24px;
-  border-top: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-`;
 
 const FormGroup = styled.div`
   margin-bottom: 20px;
@@ -438,7 +377,6 @@ const Checkbox = styled.label`
     cursor: pointer;
   }
 `;
-
 
 const DetailGrid = styled.div`
   display: grid;
@@ -772,14 +710,8 @@ const ContactInquiriesPage: React.FC = () => {
 
         {/* Detail Modal */}
         {showDetailModal && selectedInquiry && (
-          <ModalOverlay onClick={() => setShowDetailModal(false)}>
-            <ModalContent onClick={(e) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Inquiry Details</ModalTitle>
-                <CloseButton onClick={() => setShowDetailModal(false)}>&times;</CloseButton>
-              </ModalHeader>
+                    <CommonModal isOpen={true} onClose={() => setShowDetailModal(false)} title="Inquiry Details" footer={<><ActionButton variant="danger" onClick={() => setShowDeleteConfirm(true)}> Delete </ActionButton><div style={{ flex: 1 }} /> {!selectedInquiry.reply_message && ( <ActionButton variant="primary" onClick={openReplyModal}> Reply </ActionButton> )} <ActionButton onClick={() => setShowDetailModal(false)}> Close </ActionButton></>}>
 
-              <ModalBody>
                 <DetailGrid>
                   <DetailItem>
                     <DetailItemLabel>Name</DetailItemLabel>
@@ -863,36 +795,14 @@ const ContactInquiriesPage: React.FC = () => {
                     </ReplyMeta>
                   </ReplySection>
                 )}
-              </ModalBody>
-
-              <ModalFooter>
-                <ActionButton variant="danger" onClick={() => setShowDeleteConfirm(true)}>
-                  Delete
-                </ActionButton>
-                <div style={{ flex: 1 }} />
-                {!selectedInquiry.reply_message && (
-                  <ActionButton variant="primary" onClick={openReplyModal}>
-                    Reply
-                  </ActionButton>
-                )}
-                <ActionButton onClick={() => setShowDetailModal(false)}>
-                  Close
-                </ActionButton>
-              </ModalFooter>
-            </ModalContent>
-          </ModalOverlay>
+              
+          </CommonModal>
         )}
 
         {/* Reply Modal */}
         {showReplyModal && selectedInquiry && (
-          <ModalOverlay onClick={() => setShowReplyModal(false)}>
-            <ModalContent onClick={(e) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Reply to {selectedInquiry.name}</ModalTitle>
-                <CloseButton onClick={() => setShowReplyModal(false)}>&times;</CloseButton>
-              </ModalHeader>
+                    <CommonModal isOpen={true} onClose={() => setShowReplyModal(false)} title="Reply to {selectedInquiry.name}" footer={<><ActionButton onClick={() => setShowReplyModal(false)}> Cancel </ActionButton><ActionButton variant="primary" onClick={submitReply} disabled={submitting || !replyMessage.trim()} > {submitting ? 'Sending...' : (sendEmail ? 'Send Reply & Email' : 'Save Reply')} </ActionButton></>}>
 
-              <ModalBody>
                 <FormGroup>
                   <FormLabel>Original Message</FormLabel>
                   <InquiryMessage style={{ margin: 0 }}>
@@ -917,47 +827,19 @@ const ContactInquiriesPage: React.FC = () => {
                   />
                   Send reply via email to {selectedInquiry.email}
                 </Checkbox>
-              </ModalBody>
-
-              <ModalFooter>
-                <ActionButton onClick={() => setShowReplyModal(false)}>
-                  Cancel
-                </ActionButton>
-                <ActionButton
-                  variant="primary"
-                  onClick={submitReply}
-                  disabled={submitting || !replyMessage.trim()}
-                >
-                  {submitting ? 'Sending...' : (sendEmail ? 'Send Reply & Email' : 'Save Reply')}
-                </ActionButton>
-              </ModalFooter>
-            </ModalContent>
-          </ModalOverlay>
+              
+          </CommonModal>
         )}
 
         {/* Delete Confirm Modal */}
         {showDeleteConfirm && (
-          <ModalOverlay onClick={() => setShowDeleteConfirm(false)}>
-            <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
-              <ModalHeader>
-                <ModalTitle>Confirm Delete</ModalTitle>
-                <CloseButton onClick={() => setShowDeleteConfirm(false)}>&times;</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+                    <CommonModal isOpen={true} onClose={() => setShowDeleteConfirm(false)} title="Confirm Delete" footer={<><ActionButton onClick={() => setShowDeleteConfirm(false)}> Cancel </ActionButton><ActionButton variant="danger" onClick={deleteInquiry}> Delete </ActionButton></>}>
+
                 <p style={{ margin: 0, color: '#374151', fontSize: '14px' }}>
                   Are you sure you want to delete this inquiry from <strong>{selectedInquiry?.name}</strong>? This action cannot be undone.
                 </p>
-              </ModalBody>
-              <ModalFooter>
-                <ActionButton onClick={() => setShowDeleteConfirm(false)}>
-                  Cancel
-                </ActionButton>
-                <ActionButton variant="danger" onClick={deleteInquiry}>
-                  Delete
-                </ActionButton>
-              </ModalFooter>
-            </ModalContent>
-          </ModalOverlay>
+              
+          </CommonModal>
         )}
       </Container>
     </>

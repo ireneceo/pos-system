@@ -23,7 +23,8 @@ import {
   DataTableCell,
   DataTableEmpty,
   DataTableAmount,
-  ActionButtons
+  ActionButtons,
+  Modal as CommonModal
 } from '../../components/UI';
 import { SearchInput } from '../../components/Common/FilterComponents';
 import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Common/TabComponents';
@@ -245,77 +246,6 @@ const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'emai
     }
   `}
 `;
-
-// Modal styled components
-const Modal = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-  margin: auto 0;
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  border-radius: 12px;
-  max-width: 900px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  margin: auto 0;
-`;
-
-const ModalHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid #E6EBF1;
-`;
-
-const ModalTitle = styled.h2`
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #0A2540;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: #6B7280;
-  cursor: pointer;
-  padding: 0;
-  line-height: 1;
-
-  &:hover {
-    color: #0A2540;
-  }
-`;
-
-const ModalBody = styled.div`
-  padding: 24px;
-`;
-
-const ModalFooter = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding: 16px 24px;
-  border-top: 1px solid #E6EBF1;
-  background: #F8FAFC;
-  border-radius: 0 0 12px 12px;
-`;
-
 
 // Form components
 const FormGroup = styled.div`
@@ -1244,13 +1174,33 @@ const RestaurantInvoicesPage: React.FC = () => {
           } : null);
 
           return (
-          <Modal onClick={() => setShowViewModal(false)}>
-            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
-              <ModalHeader>
-                <ModalTitle>Invoice Details</ModalTitle>
-                <CloseButton onClick={() => setShowViewModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+          <CommonModal
+            isOpen={true}
+            onClose={() => setShowViewModal(false)}
+            title="Invoice Details"
+            size="large"
+            footer={
+              <>
+                {(selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && selectedInvoice.total > 0 && (
+                  <Button variant="success" onClick={() => {
+                    setShowViewModal(false);
+                    handlePayInvoice(selectedInvoice);
+                  }}>
+                    Pay Now
+                  </Button>
+                )}
+                <Button onClick={() => generateInvoicePDF(selectedInvoice)}>
+                  Download PDF
+                </Button>
+                <Button onClick={() => handlePrintInvoice(selectedInvoice)}>
+                  Print
+                </Button>
+                <Button variant="secondary" onClick={() => setShowViewModal(false)}>
+                  Close
+                </Button>
+              </>
+            }
+          >
                 {/* Invoice Header with Issuer Info */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '24px', borderBottom: '2px solid #E5E7EB' }}>
                   <div style={{ flex: '0 0 55%' }}>
@@ -1402,40 +1352,33 @@ const RestaurantInvoicesPage: React.FC = () => {
                     {issuerInfo?.taxId && <span>Tax No: {issuerInfo.taxId}</span>}
                   </div>
                 )}
-              </ModalBody>
-              <ModalFooter>
-                {(selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && selectedInvoice.total > 0 && (
-                  <Button variant="success" onClick={() => {
-                    setShowViewModal(false);
-                    handlePayInvoice(selectedInvoice);
-                  }}>
-                    Pay Now
-                  </Button>
-                )}
-                <Button onClick={() => generateInvoicePDF(selectedInvoice)}>
-                  Download PDF
-                </Button>
-                <Button onClick={() => handlePrintInvoice(selectedInvoice)}>
-                  Print
-                </Button>
-                <Button variant="secondary" onClick={() => setShowViewModal(false)}>
-                  Close
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
+          </CommonModal>
           );
         })()}
 
         {/* Payment Submit Modal */}
         {showPaymentSubmitModal && selectedInvoice && (
-          <Modal onClick={() => setShowPaymentSubmitModal(false)}>
-            <ModalContent onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
-              <ModalHeader>
-                <ModalTitle>Submit Payment</ModalTitle>
-                <CloseButton onClick={() => setShowPaymentSubmitModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+          <CommonModal
+            isOpen={true}
+            onClose={() => setShowPaymentSubmitModal(false)}
+            title="Submit Payment"
+            footer={
+              <>
+                <Button variant="secondary" onClick={() => setShowPaymentSubmitModal(false)}>
+                  Cancel
+                </Button>
+                {paymentData.paymentMethod && paymentData.paymentMethod !== 'stripe' && paymentData.paymentMethod !== 'paypal' && (
+                <Button
+                  variant="success"
+                  onClick={handleSubmitPayment}
+                  disabled={isSubmittingPayment || availablePaymentMethods.length === 0}
+                >
+                  {isSubmittingPayment ? 'Submitting...' : 'Submit Payment'}
+                </Button>
+                )}
+              </>
+            }
+          >
                 <div style={{ marginBottom: '20px', padding: '16px', background: '#F8FAFC', borderRadius: '8px' }}>
                   <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#6B7280' }}>Invoice: <strong>{selectedInvoice.invoiceNumber}</strong></p>
                   <p style={{ margin: '0', fontSize: '20px', fontWeight: '700', color: '#0A2540' }}>
@@ -1562,23 +1505,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                     <p style={{ margin: 0, color: '#DC2626', fontSize: '13px' }}>{paymentSubmitError}</p>
                   </div>
                 )}
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="secondary" onClick={() => setShowPaymentSubmitModal(false)}>
-                  Cancel
-                </Button>
-                {paymentData.paymentMethod && paymentData.paymentMethod !== 'stripe' && paymentData.paymentMethod !== 'paypal' && (
-                <Button
-                  variant="success"
-                  onClick={handleSubmitPayment}
-                  disabled={isSubmittingPayment || availablePaymentMethods.length === 0}
-                >
-                  {isSubmittingPayment ? 'Submitting...' : 'Submit Payment'}
-                </Button>
-                )}
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
+          </CommonModal>
         )}
       </Container>
     </>

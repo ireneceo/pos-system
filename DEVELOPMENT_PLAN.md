@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-03-06
+> **최종 업데이트:** 2026-03-07
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -1530,6 +1530,44 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 - `dev-backend/routes/recipes.js` — 레시피 이미지 재업로드 시 이전 파일 삭제
 - `dev-backend/routes/general-stock.js` — 일반 재고 이미지 재업로드 시 이전 파일 삭제
 - `dev-backend/routes/inventory-routes.js` — 레스토랑 재고 이미지 재업로드 시 이전 파일 삭제
+
+---
+
+## ✅ 완료: 전체 페이지 공통 Modal 컴포넌트 마이그레이션 (2026-03-07)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 24개 페이지 Modal 마이그레이션 | 커스텀 styled-component 모달을 공통 Modal(UI/Modal.tsx)로 통합 | ✅ 완료 |
+| Footer 고정 동작 통일 | 모든 모달에서 footer가 하단에 고정되도록 통일 | ✅ 완료 |
+| 불필요한 styled-components 제거 | Modal/ModalOverlay/ModalContent/ModalHeader/ModalTitle/CloseButton/ModalBody/ModalFooter 로컬 정의 제거 | ✅ 완료 |
+
+### 수정된 파일 (24개 페이지)
+- `dev-frontend/src/pages/Admin/AddonModulesPage.tsx`
+- `dev-frontend/src/pages/Admin/ContactInquiriesPage.tsx`
+- `dev-frontend/src/pages/Admin/InvoicesPage.tsx`
+- `dev-frontend/src/pages/Admin/ManagersPage.tsx`
+- `dev-frontend/src/pages/Admin/NoticesPage.tsx`
+- `dev-frontend/src/pages/Admin/PlansPage.tsx`
+- `dev-frontend/src/pages/Admin/RestaurantSubscriptionsPage.tsx`
+- `dev-frontend/src/pages/Admin/RestaurantsPage.tsx`
+- `dev-frontend/src/pages/Admin/StaffManagementPage.tsx`
+- `dev-frontend/src/pages/Admin/SubscriptionsPage.tsx`
+- `dev-frontend/src/pages/Admin/SystemInquiryPage.tsx`
+- `dev-frontend/src/pages/BrandGeneral/BrandInvoicesPage.tsx`
+- `dev-frontend/src/pages/BrandGeneral/BrandPlansPage.tsx`
+- `dev-frontend/src/pages/BrandGeneral/BrandSubscriptionsPage.tsx`
+- `dev-frontend/src/pages/Customers/CustomersPage.tsx`
+- `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtInvoicesPage.tsx`
+- `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtPlansPage.tsx`
+- `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtSubscriptionsPage.tsx`
+- `dev-frontend/src/pages/LiveOrders/LiveOrdersPage.tsx`
+- `dev-frontend/src/pages/Manager/InvoicesPage.tsx`
+- `dev-frontend/src/pages/Manager/ManagerPromotionsPage.tsx`
+- `dev-frontend/src/pages/Manager/RestaurantsPage.tsx`
+- `dev-frontend/src/pages/Manager/SubscriptionsPage.tsx`
+- `dev-frontend/src/pages/Promotions/PromotionsPage.tsx`
 
 ---
 

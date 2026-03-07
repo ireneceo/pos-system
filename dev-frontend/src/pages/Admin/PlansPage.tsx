@@ -12,7 +12,7 @@ import {
   ActionSection,
   Content,
   Button
-} from '../../components/UI';
+, Modal as CommonModal } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { formatCurrency } from '../../utils/currency';
 import ConfirmModal from '../../components/ConfirmModal';
@@ -62,7 +62,6 @@ interface AddonModule {
 
 // Common components now imported from ../../components/UI
 // Page-specific styled components below
-
 
 const PlansGrid = styled.div`
   display: grid;
@@ -333,74 +332,6 @@ const PlanButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' 
   `}
 `;
 
-// Modal Components
-const Modal = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-  margin: auto 0;
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  border-radius: 12px;
-  max-width: 600px;
-  width: 100%;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-  margin: auto 0;
-`;
-
-const ModalHeader = styled.div`
-  padding: 24px;
-  border-bottom: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const ModalTitle = styled.h2`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #6B7280;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &:hover {
-    background: #F3F4F6;
-    color: #374151;
-  }
-`;
-
-const ModalBody = styled.div`
-  padding: 24px;
-  overflow-y: auto;
-  flex: 1;
-`;
 
 const FormGroup = styled.div`
   margin-bottom: 20px;
@@ -501,13 +432,6 @@ const CheckboxItem = styled.div`
   }
 `;
 
-const ModalActions = styled.div`
-  padding: 24px;
-  border-top: 1px solid #E6EBF1;
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-`;
 
 const DetailSection = styled.div`
   margin-bottom: 24px;
@@ -544,7 +468,6 @@ const DetailValue = styled.span`
   color: #0A2540;
   font-weight: 500;
 `;
-
 
 // Currency types
 interface CurrencyConfig {
@@ -1526,13 +1449,8 @@ const PlansPage: React.FC = () => {
         
         {/* Create Plan Modal */}
         {showCreateModal && (
-          <Modal onClick={() => setShowCreateModal(false)}>
-            <ModalContent onClick={(e) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Create New Plan</ModalTitle>
-                <CloseButton onClick={() => setShowCreateModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+                    <CommonModal isOpen={true} onClose={() => setShowCreateModal(false)} title="Create New Plan">
+
                 <FormGroup>
                   <FormLabel>Plan Target *</FormLabel>
                   <FormSelect
@@ -1962,24 +1880,14 @@ const PlansPage: React.FC = () => {
                     <label htmlFor="active">Set as Active</label>
                   </CheckboxItem>
                 </CheckboxGroup>
-              </ModalBody>
-              <ModalActions>
-                <Button variant="secondary" onClick={() => setShowCreateModal(false)}>Cancel</Button>
-                <Button variant="primary" onClick={createPlan}>Create</Button>
-              </ModalActions>
-            </ModalContent>
-          </Modal>
+              
+          </CommonModal>
         )}
         
         {/* Edit Plan Modal */}
         {showEditModal && selectedPlan && (
-          <Modal onClick={() => setShowEditModal(false)}>
-            <ModalContent onClick={(e) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Edit Plan: {selectedPlan.displayName}</ModalTitle>
-                <CloseButton onClick={() => setShowEditModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+                    <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title="Edit Plan: {selectedPlan.displayName}">
+
                 <FormGroup>
                   <FormLabel>Plan Name *</FormLabel>
                   <FormInput
@@ -2391,25 +2299,14 @@ const PlansPage: React.FC = () => {
                     <label htmlFor="edit-active">Set as Active</label>
                   </CheckboxItem>
                 </CheckboxGroup>
-              </ModalBody>
-              <ModalActions>
-                <Button variant="secondary" onClick={() => setShowEditModal(false)}>Cancel</Button>
-                <Button variant="danger" onClick={() => deletePlan(selectedPlan.id)}>Delete</Button>
-                <Button variant="primary" onClick={updatePlan}>Update</Button>
-              </ModalActions>
-            </ModalContent>
-          </Modal>
+              
+          </CommonModal>
         )}
         
         {/* View Details Modal */}
         {showDetailsModal && selectedPlan && (
-          <Modal onClick={() => setShowDetailsModal(false)}>
-            <ModalContent onClick={(e) => e.stopPropagation()}>
-              <ModalHeader>
-                <ModalTitle>Plan Details: {selectedPlan.displayName}</ModalTitle>
-                <CloseButton onClick={() => setShowDetailsModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+                    <CommonModal isOpen={true} onClose={() => setShowDetailsModal(false)} title="Plan Details: {selectedPlan.displayName}">
+
                 <DetailSection>
                   <DetailRow>
                     <DetailLabel>Plan ID</DetailLabel>
@@ -2515,20 +2412,14 @@ const PlansPage: React.FC = () => {
                     ))}
                   </FeaturesList>
                 </DetailSection>
-              </ModalBody>
-            </ModalContent>
-          </Modal>
+              
+          </CommonModal>
         )}
 
         {/* Plan Prices Modal */}
         {showPlanPricesModal && selectedPlan && (
-          <Modal onClick={() => setShowPlanPricesModal(false)}>
-            <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
-              <ModalHeader>
-                <ModalTitle>Set Prices for {selectedPlan.displayName}</ModalTitle>
-                <CloseButton onClick={() => setShowPlanPricesModal(false)}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
+                    <CommonModal isOpen={true} onClose={() => setShowPlanPricesModal(false)} title="Set Prices for {selectedPlan.displayName}">
+
                 <p style={{ marginBottom: '20px', color: '#6B7280', fontSize: '14px' }}>
                   Configure pricing for each supported currency.
                 </p>
@@ -2612,13 +2503,8 @@ const PlansPage: React.FC = () => {
                     </p>
                   )}
                 </div>
-              </ModalBody>
-              <ModalActions>
-                <Button variant="secondary" onClick={() => setShowPlanPricesModal(false)}>Cancel</Button>
-                <Button variant="primary" onClick={savePlanPrices}>Save Prices</Button>
-              </ModalActions>
-            </ModalContent>
-          </Modal>
+              
+          </CommonModal>
         )}
 
         </Content>
