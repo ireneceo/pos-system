@@ -33,7 +33,8 @@ const authenticateToken = async (req, res, next) => {
       restaurant_id: user.restaurant_id,
       brand_id: user.brand_id,
       foodcourt_id: user.foodcourt_id,
-      manager_id: user.manager_id
+      manager_id: user.manager_id,
+      is_demo: user.is_demo || false
     };
 
     next();
@@ -166,7 +167,8 @@ const optionalAuthenticateToken = async (req, res, next) => {
         restaurant_id: user.restaurant_id,
         brand_id: user.brand_id,
         foodcourt_id: user.foodcourt_id,
-        manager_id: user.manager_id
+        manager_id: user.manager_id,
+        is_demo: user.is_demo || false
       };
     } else {
       req.user = null;
@@ -180,9 +182,21 @@ const optionalAuthenticateToken = async (req, res, next) => {
   }
 };
 
+// Block demo accounts from modifying their own account (password, email, profile)
+const demoProtection = (req, res, next) => {
+  if (req.user && req.user.is_demo) {
+    return res.status(403).json({
+      success: false,
+      message: 'Demo accounts cannot modify account settings. This account resets daily.'
+    });
+  }
+  next();
+};
+
 module.exports = {
   authenticateToken,
   optionalAuthenticateToken,
   requireRole,
-  checkRestaurantAccess
+  checkRestaurantAccess,
+  demoProtection
 };

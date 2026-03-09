@@ -97,6 +97,12 @@ User.init({
       this.setDataValue('permissions', JSON.stringify(Array.isArray(arr) ? arr : []));
     }
   },
+  is_demo: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: false,
+    comment: 'Demo account flag - prevents modification, enables daily reset'
+  },
   notification_preferences: {
     type: DataTypes.TEXT,
     allowNull: true,

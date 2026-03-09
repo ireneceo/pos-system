@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-03-07
+> **최종 업데이트:** 2026-03-09
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -58,87 +58,48 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 
 ---
 
-## ⬜ 다음 작업: 모달 푸터 고정 통일 (공통 Modal 마이그레이션)
+## ✅ 완료: 모달 푸터 고정 통일 (공통 Modal 마이그레이션) (2026-03-09)
 
-### 현재 상태
-- 공통 `Modal` 컴포넌트 (`UI/Modal.tsx`)는 이미 header/footer 고정 + body 스크롤 구조로 설계되어 있음
-- 문제: 많은 페이지들이 자체 styled-component 모달을 사용하여 푸터 고정이 안 됨
-- Create Invoice 팝업(BrandInvoicesPage)은 이미 잘 되는 참고 사례
+### 완료된 작업
+- 전체 22개 페이지의 자체 styled-component 모달 → 공통 `Modal` (`CommonModal`) 컴포넌트로 전환 완료
+- 모든 페이지에서 `import { Modal as CommonModal } from '../../components/UI'` 통일
 
-### 마이그레이션 대상 (자체 모달 → 공통 Modal 전환)
-
-**1차: Restaurant Admin 페이지** (우선순위 높음)
-| # | 파일 | 상태 |
-|---|------|:----:|
-| 1 | Restaurant/InvoicesPage.tsx | ⬜ |
-| 2 | Restaurant/NoticesPage.tsx | ⬜ |
-| 3 | Restaurant/SystemInquiryPage.tsx | ⬜ |
-| 4 | Restaurant/OperationInquiryPage.tsx | ⬜ |
-| 5 | Restaurant/SupportTicketsPage.tsx | ⬜ |
-
-**2차: Brand General 페이지** (우선순위 높음)
-| # | 파일 | 상태 |
-|---|------|:----:|
-| 6 | Brand/NoticesPage.tsx | ⬜ |
-| 7 | Brand/SystemInquiryPage.tsx | ⬜ |
-| 8 | Brand/OperationInquiryPage.tsx | ⬜ |
-| 9 | BrandGeneral/BrandPlansPage.tsx | ⬜ |
-| 10 | BrandGeneral/BrandSubscriptionsPage.tsx | ⬜ |
-
-**3차: Manager 페이지** (Brand/Foodcourt Manager 공유)
-| # | 파일 | 상태 |
-|---|------|:----:|
-| 11 | Manager/RestaurantsPage.tsx | ⬜ |
-| 12 | Manager/InvoicesPage.tsx | ⬜ |
-| 13 | Manager/SubscriptionsPage.tsx | ⬜ |
-| 14 | Manager/OperationInquiryPage.tsx | ⬜ |
-| 15 | Manager/SystemInquiryPage.tsx | ⬜ |
-| 16 | Manager/SupportTicketsPage.tsx | ⬜ |
-| 17 | Manager/ManagerPromotionsPage.tsx | ⬜ |
-
-**4차: Foodcourt + 기타**
-| # | 파일 | 상태 |
-|---|------|:----:|
-| 18 | Foodcourt/NoticesPage.tsx | ⬜ |
-| 19 | Foodcourt/SystemInquiryPage.tsx | ⬜ |
-| 20 | Foodcourt/OperationInquiryPage.tsx | ⬜ |
-| 21 | RecipeManagement/RecipesTab.tsx | ⬜ |
-| 22 | NotificationSettings/NotificationSettingsPage.tsx | ⬜ |
-
-### 작업 방법
-- 각 파일의 자체 Modal/ModalOverlay/ModalContent/ModalHeader/ModalBody/ModalFooter styled-components 제거
-- 공통 `Modal` 컴포넌트 (`import { Modal } from '../../components/UI'`) 사용으로 전환
-- `footer` prop에 버튼 배치, `children`에 폼 내용 배치
-- 각 차수마다 빌드+검증 후 다음 차수 진행
+| 차수 | 대상 | 상태 |
+|------|------|:----:|
+| 1차 Restaurant (5개) | InvoicesPage, NoticesPage, SystemInquiryPage, OperationInquiryPage, SupportTicketsPage | ✅ |
+| 2차 Brand (5개) | NoticesPage, SystemInquiryPage, OperationInquiryPage, BrandPlansPage, BrandSubscriptionsPage | ✅ |
+| 3차 Manager (7개) | RestaurantsPage, InvoicesPage, SubscriptionsPage, OperationInquiryPage, SystemInquiryPage, SupportTicketsPage, ManagerPromotionsPage | ✅ |
+| 4차 Foodcourt+기타 (5개) | NoticesPage, SystemInquiryPage, OperationInquiryPage, RecipesTab, NotificationSettingsPage | ✅ |
 
 ---
 
-## ⬜ 향후 작업: 데모 데이터 시스템 구축
+## ✅ 완료: 데모 데이터 시스템 구축 - Phase 1 (2026-03-09)
 
-### 현재 상태
-- 데모 계정 2개만 존재: Brand General (`demo-brand@purplehere.com`), Restaurant Admin (`demo-restaurant@purplehere.com`)
-- DemoPage에 "매일 자정 리셋"이라 표시되어 있지만 실제 리셋 메커니즘 없음
-- 데이터 격리 없음 (일반 계정과 동일 DB)
-
-### 추가할 데모 계정
-- Foodcourt General 데모 계정 + 데이터
-- Restaurant Owner 데모 계정 + 데이터
-
-### 결정 필요 사항
-1. 시딩할 데이터 범위: 주문, 고객, 인보이스, 메뉴, 재고, 직원 등
-2. 데이터 양: 3개월 이상 치 권장
-3. 리셋 방식: 일일 크론잡(날짜 +1일 shift) vs 전체 리셋 후 재생성
-4. User 모델에 `is_demo` 플래그 추가 여부
-5. DemoPage 문구와 실제 리셋 메커니즘 일치시키기
-
-### 구현 항목
+### 완료된 작업
 | # | 작업 | 상태 |
 |---|------|:----:|
-| 1 | 데모 데이터 시딩 스크립트 (seed-demo-data.js) | ⬜ |
-| 2 | 일일 크론잡 (날짜 shift 또는 리셋+재생성) | ⬜ |
-| 3 | Foodcourt General 데모 계정 + 데이터 생성 | ⬜ |
-| 4 | Restaurant Owner 데모 계정 + 데이터 생성 | ⬜ |
-| 5 | DemoPage UI 업데이트 (4개 데모 카드) | ⬜ |
+| 1 | User 모델 `is_demo` 플래그 추가 | ✅ |
+| 2 | 데모 전용 브랜드/레스토랑 생성 (기존 테스트 데이터와 분리) | ✅ |
+| 3 | 시드 스크립트 `seed-demo-data.js` (멱등, 전체 리셋 방식) | ✅ |
+| 4 | 다양한 상태의 데모 데이터: 주문(57건), 인보이스(10건), 메뉴(27개) | ✅ |
+| 5 | 데모 리셋 스케줄러 `demoResetScheduler.js` (매일 자정, 사이트 타임존) | ✅ |
+| 6 | 데모 계정 보호 미들웨어 (비밀번호/프로필 변경 차단) | ✅ |
+| 7 | DemoPage.tsx 리다이렉트 동적화 + 리셋 안내 업데이트 | ✅ |
+
+### 데모 데이터 구성
+- **Brand**: K-Taste Group (전용 데모 브랜드, 코드: DEMO-BRAND)
+- **Restaurant 1**: Seoul Garden BBQ (demo-restaurant 관리, Professional Plan)
+- **Restaurant 2**: Gangnam Noodle House (브랜드 소속, Basic Plan)
+- **주문 상태**: pending, preparing, ready, completed, served, cancelled
+- **인보이스 상태**: pending_payment, paid, overdue, cancelled, payment_submitted
+- **인보이스 발행자**: system_admin + brand
+
+### 향후 Phase 2
+| # | 작업 | 상태 |
+|---|------|:----:|
+| 1 | Foodcourt General 데모 계정 + 데이터 생성 | ⬜ |
+| 2 | Restaurant Owner 데모 계정 + 데이터 생성 | ⬜ |
+| 3 | DemoPage UI 업데이트 (4개 데모 카드) | ⬜ |
 
 ---
 

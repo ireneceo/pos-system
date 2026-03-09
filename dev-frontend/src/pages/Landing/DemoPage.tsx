@@ -284,7 +284,8 @@ const DemoPage: React.FC = () => {
         if (accountType === 'brand_general') {
           navigate('/pos/brand/general/dashboard');
         } else {
-          navigate('/restaurant/1/dashboard');
+          const restaurantId = data.data.user?.restaurant_id || data.data.user?.restaurantId;
+          navigate(`/restaurant/${restaurantId}/dashboard`);
         }
       } else {
         setError(data.message || data.error || 'Demo account login failed. Please contact support.');
@@ -360,8 +361,8 @@ const DemoPage: React.FC = () => {
           <NoticeBox>
             <NoticeTitle>Demo Account Notice</NoticeTitle>
             <NoticeText>
-              Demo accounts are reset daily at midnight (GMT+8).
-              Your changes will not be saved permanently.
+              Demo accounts are reset daily at midnight (site timezone).
+              Any changes you make will be restored to the default state.
             </NoticeText>
           </NoticeBox>
         </ContentSection>

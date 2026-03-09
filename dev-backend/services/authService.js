@@ -65,7 +65,8 @@ async function login(emailOrUsername, password) {
       manager_id: user.manager_id,
       brand_id: user.brand_id,
       foodcourt_id: user.foodcourt_id,
-      permissions
+      permissions,
+      is_demo: user.is_demo || false
     }
   };
 }

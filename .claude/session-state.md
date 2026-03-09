@@ -1,19 +1,23 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-03-07
+**마지막 업데이트:** 2026-03-09
 **작업 상태:** 완료
 
 ### 진행 중인 작업
 - 없음
 
 ### 완료된 작업 (이번 세션)
-1. 전체 24개 페이지 공통 Modal 컴포넌트 마이그레이션 완료
-2. 모달 제목 리터럴 버그 수정 23건 (title="...{var}" → title={`...${var}`})
-3. 모달 footer 누락 복원 13건 (Cancel/Save/Close 버튼 추가)
-4. Plan 카드 description → Plan Target 표시 (PlansPage + PricingPage)
-5. Prices 모달 input 레이아웃 수정 (box-sizing: border-box)
-6. Create/Edit Plan 모달 size를 medium(600px)으로 조정
+1. RecipesTab.tsx 공통 Modal 마이그레이션 완료 (22/22 페이지 완료)
+2. 데모 데이터 시스템 Phase 1 구축 완료:
+   - User 모델 `is_demo` 컬럼 추가
+   - 전용 데모 브랜드(K-Taste Group) + 2개 레스토랑 생성
+   - 시드 스크립트 `seed-demo-data.js` (멱등, 전체 리셋)
+   - 리셋 스케줄러 `demoResetScheduler.js` (매일 자정, 사이트 타임존)
+   - 데모 계정 보호 미들웨어 (비밀번호/프로필 변경 차단)
+   - DemoPage.tsx 리다이렉트 동적화 + 안내 문구 업데이트
+3. 운영서버 배포 완료 (Smoke 6/6 통과)
 
 ### 다음 할 일
+- 운영서버에서 `node seed-demo-data.js` 1회 실행 (데모 데이터 시딩)
 - DEVELOPMENT_PLAN.md 로드맵 기준 다음 작업 진행
 
 ---

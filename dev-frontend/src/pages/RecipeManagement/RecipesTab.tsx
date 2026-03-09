@@ -4,7 +4,7 @@ import { EmptyState } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useAuth } from '../../contexts/AuthContext';
-import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI/Modal';
+import { Modal as CommonModal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import ConfirmModal from '../../components/ConfirmModal';
@@ -667,78 +667,6 @@ const TagInput = styled.input`
   }
 `;
 
-const HeaderSection = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  gap: 16px;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: stretch;
-  }
-`;
-
-// Recipe Modal Styles (Cooking-focused popup)
-const RecipeModalOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  overflow-y: auto;
-  padding: 40px 0;
-  z-index: 1000;
-`;
-
-const RecipeModalContent = styled.div`
-  background: white;
-  border-radius: 16px;
-  max-width: 600px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-  margin: auto 0;
-`;
-
-const RecipeModalHeader = styled.div`
-  padding: 24px;
-  border-bottom: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-`;
-
-const RecipeModalTitle = styled.h2`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-`;
-
-const RecipeModalClose = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: #6B7280;
-  cursor: pointer;
-  padding: 4px;
-  line-height: 1;
-
-  &:hover {
-    color: #0A2540;
-  }
-`;
-
-const RecipeModalBody = styled.div`
-  padding: 24px;
-`;
 
 const RecipeTimeRow = styled.div`
   display: flex;
@@ -1574,7 +1502,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
       )}
 
       {/* Modal for create/edit/view */}
-      <Modal
+      <CommonModal
         isOpen={showModal}
         onClose={handleCloseModal}
         title={viewMode ? 'Recipe Details' : (selectedRecipe ? 'Edit Recipe' : 'New Recipe')}
@@ -1990,7 +1918,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             </ButtonGroup>
           </form>
         )}
-      </Modal>
+      </CommonModal>
 
       {/* Delete Confirmation Modal */}
       <ConfirmModal
@@ -2005,75 +1933,70 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
       />
 
       {/* Recipe Modal (Cooking-focused popup) */}
-      {showRecipeModal && recipeModalData && (
-        <RecipeModalOverlay onClick={handleCloseRecipeModal}>
-          <RecipeModalContent onClick={(e) => e.stopPropagation()}>
-            <RecipeModalHeader>
-              <RecipeModalTitle>{recipeModalData.name}</RecipeModalTitle>
-              <RecipeModalClose onClick={handleCloseRecipeModal}>&times;</RecipeModalClose>
-            </RecipeModalHeader>
-            <RecipeModalBody>
-              {/* Time Information */}
-              {(recipeModalData.prep_time || recipeModalData.cook_time) && (
-                <RecipeTimeRow>
-                  {recipeModalData.prep_time && (
-                    <RecipeTimeItem>
-                      <RecipeTimeIcon>⏱</RecipeTimeIcon>
-                      <RecipeTimeLabel>Prep:</RecipeTimeLabel>
-                      <RecipeTimeValue>{recipeModalData.prep_time} min</RecipeTimeValue>
-                    </RecipeTimeItem>
-                  )}
-                  {recipeModalData.cook_time && (
-                    <RecipeTimeItem>
-                      <RecipeTimeIcon>🔥</RecipeTimeIcon>
-                      <RecipeTimeLabel>Cook:</RecipeTimeLabel>
-                      <RecipeTimeValue>{recipeModalData.cook_time} min</RecipeTimeValue>
-                    </RecipeTimeItem>
-                  )}
-                </RecipeTimeRow>
-              )}
+      <CommonModal
+        isOpen={showRecipeModal && !!recipeModalData}
+        onClose={handleCloseRecipeModal}
+        title={recipeModalData?.name || 'Recipe'}
+        size="medium"
+      >
+        {/* Time Information */}
+        {(recipeModalData?.prep_time || recipeModalData?.cook_time) && (
+          <RecipeTimeRow>
+            {recipeModalData?.prep_time && (
+              <RecipeTimeItem>
+                <RecipeTimeIcon>⏱</RecipeTimeIcon>
+                <RecipeTimeLabel>Prep:</RecipeTimeLabel>
+                <RecipeTimeValue>{recipeModalData.prep_time} min</RecipeTimeValue>
+              </RecipeTimeItem>
+            )}
+            {recipeModalData?.cook_time && (
+              <RecipeTimeItem>
+                <RecipeTimeIcon>🔥</RecipeTimeIcon>
+                <RecipeTimeLabel>Cook:</RecipeTimeLabel>
+                <RecipeTimeValue>{recipeModalData.cook_time} min</RecipeTimeValue>
+              </RecipeTimeItem>
+            )}
+          </RecipeTimeRow>
+        )}
 
-              {/* Ingredients with Quantities */}
-              {recipeModalData.recipeIngredients && recipeModalData.recipeIngredients.length > 0 && (
-                <RecipeSection>
-                  <RecipeSectionTitle>Ingredients</RecipeSectionTitle>
-                  <RecipeIngredientList>
-                    {recipeModalData.recipeIngredients.map((ri, idx) => {
-                      const ingredient = ingredients.find(ing => ing.id === ri.ingredient_id);
-                      return (
-                        <RecipeIngredientItem key={idx}>
-                          <RecipeIngredientName>{ingredient?.name || `Ingredient #${ri.ingredient_id}`}</RecipeIngredientName>
-                          <RecipeIngredientQty>{Number(ri.quantity).toFixed(2)} {ri.unit}</RecipeIngredientQty>
-                        </RecipeIngredientItem>
-                      );
-                    })}
-                  </RecipeIngredientList>
-                </RecipeSection>
-              )}
+        {/* Ingredients with Quantities */}
+        {recipeModalData?.recipeIngredients && recipeModalData.recipeIngredients.length > 0 && (
+          <RecipeSection>
+            <RecipeSectionTitle>Ingredients</RecipeSectionTitle>
+            <RecipeIngredientList>
+              {recipeModalData.recipeIngredients.map((ri, idx) => {
+                const ingredient = ingredients.find(ing => ing.id === ri.ingredient_id);
+                return (
+                  <RecipeIngredientItem key={idx}>
+                    <RecipeIngredientName>{ingredient?.name || `Ingredient #${ri.ingredient_id}`}</RecipeIngredientName>
+                    <RecipeIngredientQty>{Number(ri.quantity).toFixed(2)} {ri.unit}</RecipeIngredientQty>
+                  </RecipeIngredientItem>
+                );
+              })}
+            </RecipeIngredientList>
+          </RecipeSection>
+        )}
 
-              {/* Recipe Summary */}
-              {(recipeModalData.instructions_summary || recipeModalData.instructions) && (
-                <RecipeSection>
-                  <RecipeSectionTitle>Summary</RecipeSectionTitle>
-                  <RecipeSummaryText>
-                    {recipeModalData.instructions_summary || recipeModalData.instructions}
-                  </RecipeSummaryText>
-                </RecipeSection>
-              )}
+        {/* Recipe Summary */}
+        {(recipeModalData?.instructions_summary || recipeModalData?.instructions) && (
+          <RecipeSection>
+            <RecipeSectionTitle>Summary</RecipeSectionTitle>
+            <RecipeSummaryText>
+              {recipeModalData?.instructions_summary || recipeModalData?.instructions}
+            </RecipeSummaryText>
+          </RecipeSection>
+        )}
 
-              {/* Detailed Instructions */}
-              {recipeModalData.instructions_detail && (
-                <RecipeSection>
-                  <RecipeSectionTitle>Detailed Instructions</RecipeSectionTitle>
-                  <RecipeDetailText>
-                    {recipeModalData.instructions_detail}
-                  </RecipeDetailText>
-                </RecipeSection>
-              )}
-            </RecipeModalBody>
-          </RecipeModalContent>
-        </RecipeModalOverlay>
-      )}
+        {/* Detailed Instructions */}
+        {recipeModalData?.instructions_detail && (
+          <RecipeSection>
+            <RecipeSectionTitle>Detailed Instructions</RecipeSectionTitle>
+            <RecipeDetailText>
+              {recipeModalData.instructions_detail}
+            </RecipeDetailText>
+          </RecipeSection>
+        )}
+      </CommonModal>
     </>
   );
 };

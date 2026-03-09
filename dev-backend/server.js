@@ -46,6 +46,7 @@ const server = http.createServer(app);
 const { syncDatabase } = require('./db');
 const invoiceScheduler = require('./services/invoiceScheduler');
 const subscriptionScheduler = require('./services/subscriptionScheduler');
+const demoResetScheduler = require('./services/demoResetScheduler');
 const serverHealthMonitor = require('./services/serverHealthMonitor');
 const { errorHandler } = require('./middleware/errorHandler');
 const { initSocketServer } = require('./services/socketService');
@@ -602,6 +603,9 @@ async function startServer() {
 
     // Start subscription scheduler (Trial/Unpaid/Suspended transitions)
     subscriptionScheduler.start();
+
+    // Start demo data reset scheduler (daily at midnight, site timezone)
+    demoResetScheduler.start();
 
     // Start production server health monitor
     serverHealthMonitor.start();

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const bcrypt = require('bcrypt');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, demoProtection } = require('../middleware/auth');
 const { logActivity } = require('../utils/activityLogger');
 
 // Get all users
@@ -243,7 +243,7 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // Update user
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, demoProtection, async (req, res) => {
   console.log('🔄 PUT /api/users/:id - Request received');
   console.log('📝 User ID:', req.params.id);
   console.log('📝 Request body:', req.body);
@@ -410,7 +410,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 });
 
 // Update user password
-router.patch('/:id/password', authenticateToken, async (req, res) => {
+router.patch('/:id/password', authenticateToken, demoProtection, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     const user = await User.findByPk(req.params.id);
