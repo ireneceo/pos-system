@@ -60,6 +60,14 @@ interface AddonModule {
   sort_order: number;
 }
 
+// Modules that are always included and cannot be removed from plans
+const ALWAYS_INCLUDED_MODULES: Record<string, string[]> = {
+  restaurant: ['dashboard', 'membership'],
+  brand: ['brand_dashboard'],
+  foodcourt: ['fc_dashboard'],
+  owner: ['owner_dashboard'],
+};
+
 // Common components now imported from ../../components/UI
 // Page-specific styled components below
 
@@ -802,7 +810,10 @@ const PlansPage: React.FC = () => {
         restaurant_limit: isCustom ? -1 : (parseInt(createFormData.restaurant_limit) || -1),
         manager_limit: isCustom ? -1 : (parseInt(createFormData.manager_limit) || -1),
         features: createFormData.features.split('\n').filter(f => f.trim()),
-        included_modules: createFormData.included_modules,
+        included_modules: [
+          ...(ALWAYS_INCLUDED_MODULES[createFormData.plan_target] || []),
+          ...createFormData.included_modules.filter(m => !(ALWAYS_INCLUDED_MODULES[createFormData.plan_target] || []).includes(m))
+        ],
         is_popular: createFormData.is_popular,
         is_active: createFormData.is_active
       };
@@ -895,7 +906,10 @@ const PlansPage: React.FC = () => {
         restaurant_limit: isCustom ? -1 : (parseInt(editFormData.restaurant_limit) || -1),
         manager_limit: isCustom ? -1 : (parseInt(editFormData.manager_limit) || -1),
         features: editFormData.features.split('\n').filter(f => f.trim()),
-        included_modules: editFormData.included_modules,
+        included_modules: [
+          ...(ALWAYS_INCLUDED_MODULES[editFormData.plan_target] || []),
+          ...editFormData.included_modules.filter(m => !(ALWAYS_INCLUDED_MODULES[editFormData.plan_target] || []).includes(m))
+        ],
         is_popular: editFormData.is_popular,
         is_active: editFormData.is_active
       };
@@ -1645,14 +1659,17 @@ const PlansPage: React.FC = () => {
                         {availableModules
                           .filter(m => m.category === 'basic' && (m.target_user_type === createFormData.plan_target || m.target_user_type === 'all'))
                           .map((module) => {
-                            const isChecked = createFormData.included_modules.includes(module.module_code);
+                            const alwaysIncluded = (ALWAYS_INCLUDED_MODULES[createFormData.plan_target] || []).includes(module.module_code);
+                            const isChecked = alwaysIncluded || createFormData.included_modules.includes(module.module_code);
                             return (
                               <CheckboxItem key={module.module_code}>
                                 <input
                                   type="checkbox"
                                   id={`module-${module.module_code}`}
                                   checked={isChecked}
+                                  disabled={alwaysIncluded}
                                   onChange={(e) => {
+                                    if (alwaysIncluded) return;
                                     if (e.target.checked) {
                                       setCreateFormData(prev => ({
                                         ...prev,
@@ -1667,7 +1684,7 @@ const PlansPage: React.FC = () => {
                                   }}
                                 />
                                 <label htmlFor={`module-${module.module_code}`}>
-                                  <strong>{module.name}</strong>
+                                  <strong>{module.name}</strong>{alwaysIncluded && <span style={{color: '#635BFF', fontSize: '12px', marginLeft: '6px'}}>Always Included</span>}
                                   <br />
                                   <small style={{color: '#6B7280'}}>{module.description}</small>
                                 </label>
@@ -2064,14 +2081,17 @@ const PlansPage: React.FC = () => {
                           {availableModules
                             .filter(m => m.category === 'basic' && (m.target_user_type === editFormData.plan_target || m.target_user_type === 'all'))
                             .map((module) => {
-                              const isChecked = editFormData.included_modules.includes(module.module_code);
+                              const alwaysIncluded = (ALWAYS_INCLUDED_MODULES[editFormData.plan_target] || []).includes(module.module_code);
+                              const isChecked = alwaysIncluded || editFormData.included_modules.includes(module.module_code);
                               return (
                                 <CheckboxItem key={module.module_code}>
                                   <input
                                     type="checkbox"
                                     id={`edit-module-${module.module_code}`}
                                     checked={isChecked}
+                                    disabled={alwaysIncluded}
                                     onChange={(e) => {
+                                      if (alwaysIncluded) return;
                                       if (e.target.checked) {
                                         setEditFormData(prev => ({
                                           ...prev,
@@ -2086,7 +2106,7 @@ const PlansPage: React.FC = () => {
                                     }}
                                   />
                                   <label htmlFor={`edit-module-${module.module_code}`}>
-                                    <strong>{module.name}</strong>
+                                    <strong>{module.name}</strong>{alwaysIncluded && <span style={{color: '#635BFF', fontSize: '12px', marginLeft: '6px'}}>Always Included</span>}
                                     <br />
                                     <small style={{color: '#6B7280'}}>{module.description}</small>
                                   </label>

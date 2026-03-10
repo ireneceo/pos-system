@@ -20,14 +20,14 @@ class DemoResetScheduler {
         // Only run at midnight (0:00) in site timezone
         if (localHour !== 0) return;
 
-        console.log('🎭 [DEMO RESET] Running daily demo data reset...');
-        await systemLogger.info('system', 'demo-reset', 'Daily demo data reset started');
+        console.log('🔄 [DEMO RESET] Running daily orders & invoices reset...');
+        await systemLogger.info('system', 'demo-reset', 'Daily demo orders/invoices reset started');
 
-        const { seedDemoData } = require('../seed-demo-data');
-        await seedDemoData();
+        const { resetDemoOrders } = require('../seed-demo-data');
+        await resetDemoOrders();
 
-        console.log('✅ [DEMO RESET] Demo data reset completed');
-        await systemLogger.info('system', 'demo-reset', 'Daily demo data reset completed successfully');
+        console.log('✅ [DEMO RESET] Orders & invoices reset completed');
+        await systemLogger.info('system', 'demo-reset', 'Daily demo orders/invoices reset completed');
 
       } catch (error) {
         console.error('❌ [DEMO RESET] Failed:', error.message);

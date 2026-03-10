@@ -256,7 +256,7 @@ const LimitValue = styled.span`
 `;
 
 const ModulesSection = styled.div`
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 `;
 
 const ModulesTitle = styled.div`
@@ -267,20 +267,49 @@ const ModulesTitle = styled.div`
   margin-bottom: 12px;
 `;
 
-const ModulesList = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+const ModulesList = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
 `;
 
-const ModuleTag = styled.span`
-  display: inline-block;
-  padding: 6px 12px;
-  background: #EEF2FF;
-  border: 1px solid #C7D2FE;
+const ModuleItem = styled.li<{ included?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
   border-radius: 6px;
-  font-size: 12px;
-  color: #4338CA;
+  font-size: 13px;
+  color: ${props => props.included ? '#1F2937' : '#D1D5DB'};
+  background: ${props => props.included ? '#F0FDF4' : 'transparent'};
+`;
+
+const ModuleCheck = styled.span<{ included?: boolean }>`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 11px;
+  flex-shrink: 0;
+  background: ${props => props.included ? '#10B981' : '#E5E7EB'};
+  color: ${props => props.included ? 'white' : '#9CA3AF'};
+`;
+
+const ModuleCategoryLabel = styled.div`
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #9CA3AF;
+  margin: 10px 0 4px 0;
+  &:first-child {
+    margin-top: 0;
+  }
 `;
 
 const FeaturesList = styled.ul`
@@ -390,24 +419,74 @@ interface CurrencyInfo {
 
 // 모듈 코드 -> 표시 이름 매핑
 const MODULE_NAMES: Record<string, string> = {
+  // Restaurant
+  dashboard: 'Dashboard',
+  live_orders: 'Live Orders',
   pos_terminal: 'POS Terminal',
-  menu_management: 'Menu Management',
-  customer_management: 'Customer Management',
-  reports_analytics: 'Reports & Analytics',
-  invoice_management: 'Invoice Management',
-  table_management: 'Table Management',
   kitchen_display: 'Kitchen Display',
   customer_display: 'Customer Display',
-  staff_management: 'Staff Management',
+  menu_management: 'Menu Management',
+  invoice_billing: 'Invoice & Billing',
+  reports: 'Reports & Analytics',
+  staff_management: 'Staff & Permissions',
+  customer_crm: 'Customer Management',
   coupons: 'Coupons & Promotions',
-  support_tickets: 'Support Tickets',
-  activity_logs: 'Activity Logs',
-  recipe_management: 'Recipe Management',
-  mobile_ordering: 'Mobile Ordering',
-  advanced_inventory: 'Advanced Inventory',
+  notices: 'Notices',
+  membership: 'Membership',
+  system_inquiry: 'System Inquiry',
   operation_inquiry: 'Operation Inquiry',
-  purchase_order: 'Purchase Order',
-  ai_prediction: 'AI Prediction'
+  activity_logs: 'Change History',
+  floor_plan: 'Floor Plan & Tables',
+  mobile_ordering: 'Mobile Ordering',
+  recipe_management: 'Recipe Management',
+  inventory_management: 'Inventory & Suppliers',
+  advanced_inventory: 'Advanced Inventory',
+  // Brand
+  brand_dashboard: 'Dashboard',
+  brand_management: 'Brand Management',
+  brand_restaurant_mgmt: 'Restaurant Management',
+  brand_admin_staff: 'Admin & Staff Management',
+  brand_restaurant_admin: 'Restaurant Admin Management',
+  brand_manager_mgmt: 'Manager Management',
+  brand_invoices: 'Invoice & Billing',
+  brand_reports: 'Reports',
+  brand_notices: 'Notice Management',
+  brand_system_inquiry: 'System Inquiry',
+  brand_operation_inquiry: 'Operation Inquiry',
+  brand_products: 'Product Management',
+  brand_recipes: 'Recipe Management',
+  brand_product_recipes: 'Product Recipe Management',
+  brand_inventory: 'Inventory & Suppliers',
+  brand_performance: 'Performance Analytics',
+  brand_plans: 'Subscription Plans',
+  brand_subscriptions: 'Subscription Management',
+  brand_payment_settings: 'Payment Settings',
+  // Foodcourt
+  fc_dashboard: 'Dashboard',
+  fc_management: 'Foodcourt Management',
+  fc_restaurant_mgmt: 'Restaurant Management',
+  fc_admin_mgmt: 'Admin Management',
+  fc_admin_staff: 'Admin & Staff Management',
+  fc_manager_mgmt: 'Manager Management',
+  fc_invoices: 'Invoice & Billing',
+  fc_notices: 'Notice Management',
+  fc_system_inquiry: 'System Inquiry',
+  fc_operation_inquiry: 'Operation Inquiry',
+  fc_stats: 'Statistics & Analytics',
+  fc_customers: 'Customer Management',
+  fc_coupons: 'Coupon Management',
+  fc_plans: 'Subscription Plans',
+  fc_subscriptions: 'Subscription Management',
+  fc_payment_settings: 'Payment Settings',
+  // Owner
+  owner_dashboard: 'Dashboard',
+  owner_restaurants: 'Restaurant Portfolio',
+  owner_invoices: 'Invoice & Billing',
+  owner_notices: 'Notices',
+  owner_system_inquiry: 'System Inquiry',
+  owner_operation_inquiry: 'Operation Inquiry',
+  owner_performance: 'Performance Analytics',
+  owner_reports: 'Financial Reports',
 };
 
 // 국가 코드 → 통화 매핑 (컴포넌트 외부에 정의)
@@ -440,6 +519,7 @@ const PricingPage: React.FC = () => {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [currencies, setCurrencies] = useState<CurrencyInfo[]>([]);
+  const [allModules, setAllModules] = useState<Array<{ module_code: string; name: string; category: string; target_user_type: string }>>([]);
   const [selectedCurrency, setSelectedCurrency] = useState('USD');
 
   // 브라우저 언어 기반 통화 감지 (fallback용)
@@ -483,6 +563,7 @@ const PricingPage: React.FC = () => {
   useEffect(() => {
     loadPlans();
     loadCurrencies();
+    loadModules();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -497,6 +578,19 @@ const PricingPage: React.FC = () => {
       console.error('Failed to load plans:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadModules = async () => {
+    try {
+      const response = await fetch('/api/addon-modules?active_only=true');
+      if (response.ok) {
+        const data = await response.json();
+        const modules = Array.isArray(data) ? data : (data.data || data.modules || []);
+        setAllModules(modules);
+      }
+    } catch (error) {
+      console.error('Failed to load modules:', error);
     }
   };
 
@@ -720,21 +814,61 @@ const PricingPage: React.FC = () => {
                       </LimitItem>
                     </LimitsSection>
 
-                    {plan.included_modules && plan.included_modules.length > 0 && (
-                      <ModulesSection>
-                        <ModulesTitle>Included Modules ({plan.included_modules.length})</ModulesTitle>
-                        <ModulesList>
-                          {plan.included_modules.slice(0, 6).map((moduleCode, index) => (
-                            <ModuleTag key={index}>
-                              {MODULE_NAMES[moduleCode] || moduleCode}
-                            </ModuleTag>
-                          ))}
-                          {plan.included_modules.length > 6 && (
-                            <ModuleTag>+{plan.included_modules.length - 6} more</ModuleTag>
-                          )}
-                        </ModulesList>
-                      </ModulesSection>
-                    )}
+                    {(() => {
+                      const targetModules = allModules.filter(m =>
+                        m.target_user_type === plan.plan_target || m.target_user_type === 'all'
+                      );
+                      const basicMods = targetModules.filter(m => m.category === 'basic');
+                      const advancedMods = targetModules.filter(m => m.category !== 'basic');
+                      const includedSet = new Set(plan.included_modules || []);
+
+                      if (targetModules.length === 0 && plan.included_modules?.length > 0) {
+                        // Fallback: allModules not loaded yet, show included only
+                        return (
+                          <ModulesSection>
+                            <ModulesTitle>Included Modules ({plan.included_modules.length})</ModulesTitle>
+                            <ModulesList>
+                              {plan.included_modules.map((code, i) => (
+                                <ModuleItem key={i} included>
+                                  <ModuleCheck included>✓</ModuleCheck>
+                                  {MODULE_NAMES[code] || code}
+                                </ModuleItem>
+                              ))}
+                            </ModulesList>
+                          </ModulesSection>
+                        );
+                      }
+
+                      return targetModules.length > 0 ? (
+                        <ModulesSection>
+                          <ModulesTitle>Modules</ModulesTitle>
+                          <ModulesList>
+                            {basicMods.length > 0 && (
+                              <ModuleCategoryLabel>Basic</ModuleCategoryLabel>
+                            )}
+                            {basicMods.map((m) => (
+                              <ModuleItem key={m.module_code} included={includedSet.has(m.module_code)}>
+                                <ModuleCheck included={includedSet.has(m.module_code)}>
+                                  {includedSet.has(m.module_code) ? '✓' : '—'}
+                                </ModuleCheck>
+                                {MODULE_NAMES[m.module_code] || m.name}
+                              </ModuleItem>
+                            ))}
+                            {advancedMods.length > 0 && (
+                              <ModuleCategoryLabel>Advanced</ModuleCategoryLabel>
+                            )}
+                            {advancedMods.map((m) => (
+                              <ModuleItem key={m.module_code} included={includedSet.has(m.module_code)}>
+                                <ModuleCheck included={includedSet.has(m.module_code)}>
+                                  {includedSet.has(m.module_code) ? '✓' : '—'}
+                                </ModuleCheck>
+                                {MODULE_NAMES[m.module_code] || m.name}
+                              </ModuleItem>
+                            ))}
+                          </ModulesList>
+                        </ModulesSection>
+                      ) : null;
+                    })()}
 
                     {plan.features && plan.features.length > 0 && plan.features[0] !== '' && (
                       <FeaturesList>

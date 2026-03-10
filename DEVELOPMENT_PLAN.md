@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-03-09
+> **최종 업데이트:** 2026-03-10
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -55,6 +55,29 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 - 각 역할이 자기 notification_settings에 SMTP 설정
 - 자기가 발행한 인보이스는 자기 SMTP로 발송
 - System Admin SMTP를 다른 역할이 대신 쓰지 않음
+
+---
+
+## ✅ 완료: Favicon + Membership 모듈 + Pricing UI 개편 (2026-03-10)
+
+### 완료된 작업
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Favicon Google 검색 지원 | 정적 favicon.ico (16x16) + favicon-48.png (48x48) 추가, index.html에 정적 선언 | ✅ 완료 |
+| Membership 모듈 추가 | DB addon_modules에 membership 추가, 레스토랑 3개 플랜에 기본 포함, FeaturesPage 카드 추가 | ✅ 완료 |
+| 플랜 모듈 Always Included 잠금 | Dashboard/Membership 등 필수 모듈 체크 해제 불가 + "Always Included" 라벨 | ✅ 완료 |
+| Pricing 페이지 모듈 UI 전면 개편 | "+8 more" 태그 → 전체 모듈 체크리스트 (Basic/Advanced 구분, 포함✓/미포함— 표시) | ✅ 완료 |
+| MODULE_NAMES 전체 매핑 완성 | 68개 모듈 코드→표시명 매핑 (restaurant/brand/foodcourt/owner) | ✅ 완료 |
+| 데모 주문 createdAt 수정 | bulkCreate 시 createdAt을 order_date 기준 랜덤 시각으로 설정 (최신 주문 정상 표시) | ✅ 완료 |
+| 운영서버 배포 | Smoke 6/6 + 운영 DB membership 모듈/플랜 동기화 + 데모 리셋 완료 | ✅ 완료 |
+
+### 수정된 파일 (주요)
+- `dev-frontend/public/index.html` (favicon 정적 선언)
+- `dev-frontend/public/favicon.ico`, `dev-frontend/public/favicon-48.png` (새 파일)
+- `dev-frontend/src/pages/Landing/FeaturesPage.tsx` (Membership 카드 추가)
+- `dev-frontend/src/pages/Landing/PricingPage.tsx` (모듈 UI 전면 개편 + MODULE_NAMES 완성)
+- `dev-frontend/src/pages/Admin/PlansPage.tsx` (ALWAYS_INCLUDED_MODULES + 잠금 처리)
+- `dev-backend/seed-demo-data.js` (createdAt 랜덤 시각 설정)
 
 ---
 
