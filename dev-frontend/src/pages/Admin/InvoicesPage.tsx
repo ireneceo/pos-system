@@ -2283,8 +2283,8 @@ const InvoicesPage: React.FC = () => {
           <DataTable>
             <DataTableHead>
               <tr>
-                <DataTableHeaderCell align="center" style={{ cursor: 'pointer' }} onClick={() => handleSort('invoiceNumber')}>Invoice{getSortIndicator('invoiceNumber')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="center" style={{ cursor: 'pointer' }} onClick={() => handleSort('companyName')}>Customer{getSortIndicator('companyName')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left" style={{ cursor: 'pointer' }} onClick={() => handleSort('invoiceNumber')}>Invoice{getSortIndicator('invoiceNumber')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left" style={{ cursor: 'pointer' }} onClick={() => handleSort('companyName')}>Customer{getSortIndicator('companyName')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="center">Period</DataTableHeaderCell>
                 <DataTableHeaderCell align="center">Issued</DataTableHeaderCell>
                 <DataTableHeaderCell align="center" style={{ cursor: 'pointer' }} onClick={() => handleSort('dueDate')}>Due{getSortIndicator('dueDate')}</DataTableHeaderCell>
@@ -2297,7 +2297,7 @@ const InvoicesPage: React.FC = () => {
             <tbody>
               {filteredInvoices.map(invoice => (
                 <DataTableRow key={invoice.id}>
-                  <DataTableCell data-label="Invoice">
+                  <DataTableCell data-label="Invoice" align="left">
                     <InvoiceInfo>
                       <InvoiceNumber>
                         {invoice.invoiceNumber}
@@ -2306,7 +2306,7 @@ const InvoicesPage: React.FC = () => {
                       <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
                     </InvoiceInfo>
                   </DataTableCell>
-                  <DataTableCell data-label="Customer">
+                  <DataTableCell data-label="Customer" align="left">
                     <InvoiceInfo>
                       <InvoiceNumber>{invoice.customerName || invoice.restaurantName || 'Unknown'}</InvoiceNumber>
                       <CompanyName>{getPayerDisplay(invoice.payerType || 'restaurant')}</CompanyName>
@@ -2492,8 +2492,8 @@ const InvoicesPage: React.FC = () => {
               <DataTable>
                 <DataTableHead>
                   <tr>
-                    <DataTableHeaderCell align="center">Invoice</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">Customer</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">Invoice</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">Customer</DataTableHeaderCell>
                     <DataTableHeaderCell align="center">Payment Method</DataTableHeaderCell>
                     <DataTableHeaderCell align="center">Submitted Date</DataTableHeaderCell>
                     <DataTableHeaderCell align="right">Amount</DataTableHeaderCell>
@@ -2503,13 +2503,13 @@ const InvoicesPage: React.FC = () => {
                 <tbody>
                   {invoices.filter(i => i.status === 'payment_submitted').map(invoice => (
                     <DataTableRow key={invoice.id}>
-                      <DataTableCell data-label="Invoice">
+                      <DataTableCell data-label="Invoice" align="left">
                         <InvoiceInfo>
                           <InvoiceNumber>{invoice.invoiceNumber}</InvoiceNumber>
                           <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
                         </InvoiceInfo>
                       </DataTableCell>
-                      <DataTableCell data-label="Customer">
+                      <DataTableCell data-label="Customer" align="left">
                         <InvoiceInfo>
                           <InvoiceNumber>{invoice.customerName || invoice.restaurantName || 'Unknown'}</InvoiceNumber>
                           <CompanyName>{invoice.companyName}</CompanyName>

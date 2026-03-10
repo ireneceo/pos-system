@@ -379,16 +379,16 @@ const BrandManagement: React.FC = () => {
           ) : (
             <Table>
               <TableHeader columns="2fr 1fr 1fr 1fr 1fr 120px">
-                <span>Brand</span>
+                <span className="col-info">Brand</span>
                 <span>Owner</span>
                 <span>Restaurants</span>
                 <span>Status</span>
                 <span>Contact</span>
-                <span>Actions</span>
+                <span className="col-action">Actions</span>
               </TableHeader>
               {brands.map((brand) => (
                 <TableRow key={brand.id} columns="2fr 1fr 1fr 1fr 1fr 120px">
-                  <BrandInfo>
+                  <BrandInfo className="col-info">
                     <BrandName>{brand.name}</BrandName>
                     <BrandCode>{brand.code}</BrandCode>
                   </BrandInfo>

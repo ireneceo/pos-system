@@ -189,6 +189,37 @@ if echo "$SYNC_OUTPUT" | grep -q "❌ Unable to sync"; then
 fi
 
 # ──────────────────────────────────────────
+# 9b. Sync seed data (addon_modules, plan_templates 등 시스템 설정 데이터)
+# ──────────────────────────────────────────
+log "Syncing seed data (system config tables)..."
+
+# Export seed data from dev DB
+cd $LOCAL_DEV_BACKEND
+SEED_EXPORT=$(node sync-seed-data.js --export --out /tmp/deploy_seed_data.json 2>&1) || true
+
+if [ -f /tmp/deploy_seed_data.json ]; then
+    # Copy to production
+    scp -q /tmp/deploy_seed_data.json $PROD_SERVER:/tmp/deploy_seed_data.json
+
+    # Import on production
+    SEED_IMPORT=$(ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node sync-seed-data.js --import --in /tmp/deploy_seed_data.json 2>&1") || true
+
+    if echo "$SEED_IMPORT" | grep -q "Seed data sync complete"; then
+        SEED_SUMMARY=$(echo "$SEED_IMPORT" | grep "📊" | head -1)
+        success "Seed data synced — $SEED_SUMMARY"
+    else
+        warn "Seed data sync had issues:"
+        echo "$SEED_IMPORT" | head -10
+    fi
+
+    # Cleanup
+    rm -f /tmp/deploy_seed_data.json
+    ssh $PROD_SERVER "rm -f /tmp/deploy_seed_data.json" 2>/dev/null || true
+else
+    warn "Could not export seed data (non-critical)"
+fi
+
+# ──────────────────────────────────────────
 # 10. Post-sync: Verify schema parity
 # ──────────────────────────────────────────
 log "Verifying schema parity after sync..."

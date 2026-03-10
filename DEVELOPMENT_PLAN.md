@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-03-10
+> **최종 업데이트:** 2026-03-10 (세션 2)
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -1589,6 +1589,31 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 - `dev-frontend/src/pages/Owner/NoticesPage.tsx`
 - `dev-frontend/src/pages/Owner/OwnerOperationInquiryPage.tsx`
 - `dev-frontend/src/pages/Landing/PricingPage.tsx`
+
+---
+
+## ✅ 완료: 브랜드 로고 정적 파일 최적화 + K-Dine 관리자 연결 수정 (2026-03-10)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 브랜드 로고 정적 파일 전환 | base64 API 호출 → `/uploads/logos/brand-logo.png` 정적 파일 직접 참조 (로딩 속도 4배 개선) | ✅ 완료 |
+| Favicon 정적 파일 전환 | 동일하게 `/uploads/logos/favicon.png` 정적 파일 방식으로 변경 | ✅ 완료 |
+| imageProcessor 유틸 추가 | `saveImageToFile()` - base64 → 고정 파일명 PNG 저장 (sharp 리사이즈) | ✅ 완료 |
+| 로고 마이그레이션 스크립트 | `scripts/migrate-logos-to-files.js` - 기존 DB base64 → 파일 일괄 변환 | ✅ 완료 |
+| K-Dine 관리자 연결 수정 | 운영DB restaurants.admin_id=NULL → 9 (kdine_admin) 매칭 복구 | ✅ 완료 |
+| 운영서버 배포 | Smoke 6/6 통과, 로고 정적 로딩 정상, K-Dine 관리자 표시 정상 | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/utils/imageProcessor.js` (saveImageToFile 추가)
+- `dev-backend/routes/siteSettings.js` (base64 → 파일 저장 로직)
+- `dev-backend/routes/admin-settings.js` (base64 → 파일 저장 로직)
+- `dev-backend/scripts/migrate-logos-to-files.js` (새 파일)
+- `dev-frontend/src/components/Landing/LandingHeader.tsx` (API fetch 제거 → 정적 경로)
+- `dev-frontend/src/components/Layout/MainLayout.tsx` (API fetch 제거 → 정적 경로 + 캐시버스트)
+- `dev-frontend/src/pages/Login/LoginPage.tsx` (API fetch 제거 → 정적 경로)
+- `dev-frontend/src/pages/POSTerminal/POSTerminalPage.tsx` (API fetch 제거 → 정적 경로 + 캐시버스트)
 
 ---
 

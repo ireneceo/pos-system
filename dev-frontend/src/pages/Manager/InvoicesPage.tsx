@@ -863,27 +863,27 @@ const ManagerInvoicesPage: React.FC = () => {
             <DataTable>
               <DataTableHead>
                 <tr>
-                  <DataTableHeaderCell>Invoice</DataTableHeaderCell>
-                  <DataTableHeaderCell>Restaurant</DataTableHeaderCell>
-                  <DataTableHeaderCell>Issue Date</DataTableHeaderCell>
-                  <DataTableHeaderCell>Due Date</DataTableHeaderCell>
-                  <DataTableHeaderCell>Status</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">Invoice</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">Restaurant</DataTableHeaderCell>
+                  <DataTableHeaderCell align="center">Issue Date</DataTableHeaderCell>
+                  <DataTableHeaderCell align="center">Due Date</DataTableHeaderCell>
+                  <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
                   <DataTableHeaderCell align="right">Amount</DataTableHeaderCell>
                   <DataTableHeaderCell align="right">Total</DataTableHeaderCell>
-                  <DataTableHeaderCell>Actions</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">Actions</DataTableHeaderCell>
                 </tr>
               </DataTableHead>
               <tbody>
                 {filteredInvoices.map(invoice => (
                   <DataTableRow key={invoice.id}>
-                    <DataTableCell data-label="Invoice">
+                    <DataTableCell data-label="Invoice" align="left">
                       <InvoiceInfo>
                         <InvoiceNumber>{invoice.invoiceNumber}</InvoiceNumber>
                         <CompanyName>{invoice.planType}</CompanyName>
                       </InvoiceInfo>
                     </DataTableCell>
 
-                    <DataTableCell data-label="Restaurant">
+                    <DataTableCell data-label="Restaurant" align="left">
                       <InvoiceInfo>
                         <InvoiceNumber>{invoice.restaurantName}</InvoiceNumber>
                         <CompanyName>{invoice.restaurantManager}</CompanyName>

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const CompanySettings = require('../models/CompanySettings');
-const { deleteOldImages } = require('../utils/imageProcessor');
+const { deleteOldImages, saveImageToFile } = require('../utils/imageProcessor');
 
 // GET - 회사 설정 조회
 router.get('/', async (req, res) => {
@@ -90,6 +90,12 @@ router.post('/', async (req, res) => {
     // 첫 번째 레코드 찾기 또는 생성
     let settings = await CompanySettings.findOne();
 
+    // Base64 이미지를 고정 파일로 저장
+    let savedBrandLogo = brandLogo || '';
+    if (brandLogo && brandLogo.startsWith('data:image/')) {
+      savedBrandLogo = await saveImageToFile(brandLogo, 'brand-logo', { maxWidth: 400, maxHeight: 400 }) || '';
+    }
+
     const settingsData = {
       company_name: companyName,
       address,
@@ -103,9 +109,9 @@ router.post('/', async (req, res) => {
       website,
       tax_number: taxNumber,
       registration_number: registrationNumber,
-      brand_logo: brandLogo || '',
+      brand_logo: savedBrandLogo,
       company_logo: companyLogo || '',
-      logo: logo || brandLogo || '', // Keep for backward compatibility
+      logo: logo || savedBrandLogo || '', // Keep for backward compatibility
       bank_name: bankName || '',
       bank_account: bankAccount || '',
       bank_account_name: bankAccountName || '',

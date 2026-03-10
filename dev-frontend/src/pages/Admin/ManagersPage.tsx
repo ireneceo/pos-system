@@ -946,12 +946,12 @@ const ManagersPage: React.FC = () => {
 
         <Table>
           <ManagerTableHeader columns="2fr 1fr 1fr 1fr 1fr 200px">
-            <span>Manager Info</span>
+            <span className="col-info">Manager Info</span>
             <span>Status</span>
             <span>Restaurants</span>
-            <span>Revenue (RM)</span>
+            <span className="col-revenue">Revenue (RM)</span>
             <span>Last Active</span>
-            <span>Actions</span>
+            <span className="col-action">Actions</span>
           </ManagerTableHeader>
 
           {filteredManagers.length === 0 ? (
@@ -967,7 +967,7 @@ const ManagersPage: React.FC = () => {
             filteredManagers.map(manager => (
               <ManagerTableRow columns="2fr 1fr 1fr 1fr 1fr 200px" key={manager.id}>
                 <MobileGrid>
-                  <MobileValue>
+                  <MobileValue className="col-info">
                     <MobileLabel>Manager Info</MobileLabel>
                     <ManagerInfo>
                       <CompanyName>{manager.fullName}</CompanyName>
@@ -1002,7 +1002,7 @@ const ManagersPage: React.FC = () => {
                     </span>
                   </MobileValue>
 
-                  <MobileValue>
+                  <MobileValue className="col-revenue">
                     <MobileLabel>Revenue (RM)</MobileLabel>
                     <div style={{ fontSize: '14px', color: '#374151', fontWeight: '600' }}>
                       {manager.totalRevenue.toLocaleString()}

@@ -398,32 +398,9 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [brandLogo, setBrandLogo] = useState<string>('');
+  const brandLogo = '/uploads/logos/brand-logo.png';
   const [showPassword, setShowPassword] = useState(false);
   const [showTestAccounts, setShowTestAccounts] = useState(false);
-
-  // Fetch site settings for brand logo
-  useEffect(() => {
-    const fetchSiteSettings = async () => {
-      try {
-        const response = await fetch('/api/site-settings');
-        if (response.ok) {
-          const settings = await response.json();
-          if (settings.brand_logo) {
-            setBrandLogo(settings.brand_logo);
-          } else if (settings.brandLogo) {
-            setBrandLogo(settings.brandLogo);
-          } else if (settings.logo) {
-            setBrandLogo(settings.logo);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch site settings:', error);
-      }
-    };
-
-    fetchSiteSettings();
-  }, []);
 
   // Redirect if already logged in
   useEffect(() => {

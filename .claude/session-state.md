@@ -6,16 +6,16 @@
 - 없음
 
 ### 완료된 작업 (이번 세션)
-1. Favicon Google 검색 지원 (정적 favicon.ico + favicon-48.png + index.html 선언)
-2. Membership 모듈 추가 (DB + FeaturesPage + PricingPage + 레스토랑 플랜 3개)
-3. 플랜 모듈 Always Included 잠금 (PlansPage Create/Edit 모달)
-4. Pricing 페이지 모듈 UI 전면 개편 (체크리스트 + Basic/Advanced 구분)
-5. MODULE_NAMES 전체 68개 매핑 완성
-6. 데모 주문 createdAt 수정 (order_date 기준 랜덤 시각)
-7. 운영서버 배포 완료 (Smoke 6/6) + 운영 DB 동기화
+1. 브랜드 로고/파비콘 정적 파일 방식 전환 (base64 API → `/uploads/logos/*.png` 직접 참조)
+2. imageProcessor.js에 saveImageToFile() 유틸 추가
+3. 프론트엔드 4곳 API fetch 제거 (LandingHeader, MainLayout, LoginPage, POSTerminalPage)
+4. DB base64 → 파일 마이그레이션 스크립트 작성 및 실행 (dev + production)
+5. K-Dine Korean Restaurant 관리자(admin_id) 연결 수정 (운영DB)
+6. 운영서버 배포 완료 (Smoke 6/6)
 
 ### 다음 할 일
-- DEVELOPMENT_PLAN.md 로드맵 기준 다음 작업 진행 (데모 데이터 Phase 2 등)
+- Plan type 변경 후 배포 시 보존 여부 확인
+- 서비스 오픈 준비 로드맵 Phase A~C 진행
 
 ---
 

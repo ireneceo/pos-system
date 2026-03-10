@@ -151,20 +151,18 @@ const PlanBadge = styled.span<{ planType: string }>`
   font-size: 12px;
   font-weight: 600;
   background: ${props => {
-    switch(props.planType) {
-      case 'basic': return '#DBEAFE';
-      case 'professional': return '#E4E7FF';
-      case 'enterprise': return '#FEF3C7';
-      default: return '#F3F4F6';
-    }
+    const pt = props.planType.toLowerCase();
+    if (pt.includes('basic')) return '#DBEAFE';
+    if (pt.includes('professional')) return '#E4E7FF';
+    if (pt.includes('enterprise')) return '#FEF3C7';
+    return '#F3F4F6';
   }};
   color: ${props => {
-    switch(props.planType) {
-      case 'basic': return '#1E40AF';
-      case 'professional': return '#6366F1';
-      case 'enterprise': return '#D97706';
-      default: return '#6B7280';
-    }
+    const pt = props.planType.toLowerCase();
+    if (pt.includes('basic')) return '#1E40AF';
+    if (pt.includes('professional')) return '#6366F1';
+    if (pt.includes('enterprise')) return '#D97706';
+    return '#6B7280';
   }};
 `;
 
@@ -341,7 +339,7 @@ const SubscriptionsPage: React.FC = () => {
       const restaurants = Array.isArray(restaurantsData) ? restaurantsData : [];
       
       const formattedSubscriptions: RestaurantSubscription[] = restaurants.map((restaurant: any, index: number) => {
-        const planType = restaurant.plan_type?.toLowerCase().replace(' plan', '') || 'basic';
+        const planType = restaurant.plan_type || 'Basic Plan';
         
         // Map restaurant status to subscription status
         let subscriptionStatus: 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled' = 'active';
@@ -349,12 +347,14 @@ const SubscriptionsPage: React.FC = () => {
         else if (restaurant.status === 'inactive') subscriptionStatus = 'suspended';
         else if (restaurant.status === 'cancelled') subscriptionStatus = 'cancelled';
         
+        const planTypeLower = planType.toLowerCase();
         const planLimits: { [key: string]: number } = {
           basic: 50,
           professional: 200,
           enterprise: -1
         };
-        
+        const limitKey = Object.keys(planLimits).find(k => planTypeLower.includes(k)) || '';
+
         return {
           id: `sub-${restaurant.id}`,
           restaurantId: restaurant.id?.toString() || `rest-${index}`,
@@ -362,7 +362,7 @@ const SubscriptionsPage: React.FC = () => {
           currency: restaurant.currency || 'RM',
           managerId: (restaurant.managerId || restaurant.admin_id)?.toString() || '',
           managerName: restaurant.managerName || restaurant.admin_name || 'No Manager Assigned',
-          planType: planType as 'basic' | 'professional' | 'enterprise',
+          planType: planType,
           status: subscriptionStatus,
           startDate: restaurant.subscription_start ? new Date(restaurant.subscription_start).toISOString().split('T')[0] : '2024-01-01',
           endDate: restaurant.subscription_end ? new Date(restaurant.subscription_end).toISOString().split('T')[0] : new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0],
@@ -371,8 +371,8 @@ const SubscriptionsPage: React.FC = () => {
           paymentModel: 'manager' as 'manager' | 'restaurant',
           payerId: (restaurant.managerId || restaurant.admin_id)?.toString() || '',
           payerName: restaurant.managerName || restaurant.admin_name || 'No Manager',
-          menuItemLimit: planLimits[planType] || 50,
-          currentMenuItems: Math.floor(Math.random() * (planLimits[planType] > 0 ? planLimits[planType] * 0.7 : 150)) + 10,
+          menuItemLimit: planLimits[limitKey] || 50,
+          currentMenuItems: Math.floor(Math.random() * ((planLimits[limitKey] || 50) > 0 ? (planLimits[limitKey] || 50) * 0.7 : 150)) + 10,
           features: [],
           lastPayment: restaurant.subscription_start ? new Date(restaurant.subscription_start).toISOString().split('T')[0] : '-',
           nextPayment: restaurant.subscription_end ? new Date(restaurant.subscription_end).toISOString().split('T')[0] : new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
@@ -599,18 +599,15 @@ const SubscriptionsPage: React.FC = () => {
   // Billing Cycle 변경 핸들러
   const handleBillingCycleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const cycle = e.target.value as 'monthly' | 'annual';
-    const planAmounts: { [key: string]: { monthly: number, annual: number } } = {
-      'basic': { monthly: 29, annual: 290 },
-      'professional': { monthly: 99, annual: 990 },
-      'enterprise': { monthly: 199, annual: 2190 }
-    };
-
-    const amounts = planAmounts[newSubscription.planType] || planAmounts['basic'];
+    // Find matching plan from availablePlans
+    const selectedPlan = availablePlans.find(p => p.display_name === newSubscription.customPlanName);
+    const monthlyPrice = parseFloat(selectedPlan?.base_price_monthly) || newSubscription.monthlyFee;
+    const annualPrice = parseFloat(selectedPlan?.base_price_annual) || monthlyPrice * 10;
 
     setNewSubscription({
       ...newSubscription,
       billingCycle: cycle,
-      monthlyFee: amounts[cycle]
+      monthlyFee: cycle === 'annual' ? annualPrice : monthlyPrice
     });
   };
 
@@ -686,7 +683,13 @@ const SubscriptionsPage: React.FC = () => {
         }]
       };
 
-      // Update restaurant subscription data if restaurant is selected
+      // Update entity subscription data based on target type
+      const authToken = localStorage.getItem('auth_token');
+      const authHeaders = {
+        'Content-Type': 'application/json',
+        ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
+      };
+
       if (selectedTarget.type === 'restaurant' && selectedTarget.data.id) {
         const restaurantUpdateData = {
           plan_type: newSubscription.customPlanName || 'Custom Plan',
@@ -698,18 +701,51 @@ const SubscriptionsPage: React.FC = () => {
           auto_renew: newSubscription.autoRenew
         };
 
-        const authToken = localStorage.getItem('auth_token');
         const restaurantResponse = await fetch(`/api/restaurants/${selectedTarget.data.id}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
-          },
+          headers: authHeaders,
           body: JSON.stringify(restaurantUpdateData)
         });
 
         if (!restaurantResponse.ok) {
           throw new Error('Failed to update restaurant subscription');
+        }
+      } else if (selectedTarget.type === 'manager' && selectedTarget.data.id) {
+        const role = selectedTarget.data.role || '';
+        const subscriptionData = {
+          plan_type: newSubscription.customPlanName || 'Custom Plan',
+          subscription_status: newSubscription.status === 'trial' ? 'trialing' : newSubscription.status,
+          subscription_start: newSubscription.startDate,
+          subscription_end: newSubscription.endDate
+        };
+
+        if (role === 'Brand General' || role === 'Brand Manager') {
+          const brandId = selectedTarget.data.brand_id;
+          if (brandId) {
+            const resp = await fetch(`/api/brands/${brandId}/subscription`, {
+              method: 'PUT',
+              headers: authHeaders,
+              body: JSON.stringify(subscriptionData)
+            });
+            if (!resp.ok) throw new Error('Failed to update brand subscription');
+          }
+        } else if (role === 'Foodcourt General' || role === 'Foodcourt Manager') {
+          const foodcourtId = selectedTarget.data.foodcourt_id;
+          if (foodcourtId) {
+            const resp = await fetch(`/api/foodcourts/${foodcourtId}/subscription`, {
+              method: 'PUT',
+              headers: authHeaders,
+              body: JSON.stringify(subscriptionData)
+            });
+            if (!resp.ok) throw new Error('Failed to update foodcourt subscription');
+          }
+        } else if (role === 'Restaurant Owner') {
+          const resp = await fetch(`/api/users/${selectedTarget.data.id}`, {
+            method: 'PUT',
+            headers: authHeaders,
+            body: JSON.stringify(subscriptionData)
+          });
+          if (!resp.ok) throw new Error('Failed to update owner subscription');
         }
       }
 
@@ -748,15 +784,21 @@ const SubscriptionsPage: React.FC = () => {
     try {
       console.log('🔄 Updating subscription:', editingSubscription);
 
+      // Use the plan name as-is (display_name from PlanTemplate)
+      const planName = editingSubscription.planType || 'Custom Plan';
+
       const updateData = {
         name: editingSubscription.restaurantName,
         managerId: editingSubscription.managerId || null,
-        planType: editingSubscription.planType === 'basic' ? 'Basic Plan' :
-                 editingSubscription.planType === 'professional' ? 'Professional Plan' : 'Enterprise Plan',
+        planType: planName,
+        plan_type: planName,
         planAmount: editingSubscription.monthlyFee,
+        plan_amount: editingSubscription.monthlyFee,
         status: editingSubscription.status === 'active' ? 'active' : 'inactive',
         subscriptionStart: editingSubscription.startDate,
         subscriptionEnd: editingSubscription.endDate,
+        subscription_start: editingSubscription.startDate,
+        subscription_end: editingSubscription.endDate,
         discount_type: editingSubscription.discountType || 'none',
         discount_value: editingSubscription.discountValue || 0,
         discount_reason: editingSubscription.discountReason || null
@@ -764,14 +806,16 @@ const SubscriptionsPage: React.FC = () => {
 
       console.log('📤 Sending update data:', updateData);
 
-      // Make actual API call to update subscription
       const token = localStorage.getItem('auth_token');
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      };
+
+      // Update restaurant subscription
       const response = await fetch(`/api/restaurants/${editingSubscription.restaurantId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers,
         body: JSON.stringify(updateData)
       });
 
@@ -781,11 +825,9 @@ const SubscriptionsPage: React.FC = () => {
         const result = await response.json();
         console.log('✅ Subscription updated successfully:', result);
 
-        // Close modal and show success message
         setShowEditModal(false);
         setEditingSubscription(null);
 
-        // Re-fetch data to ensure consistency
         console.log('🔄 Re-fetching subscription data...');
         await fetchSubscriptions();
 
@@ -974,20 +1016,20 @@ const SubscriptionsPage: React.FC = () => {
 
           <Table>
             <SubscriptionTableHeader columns="2.5fr 1fr 1fr 1.2fr 1fr 1fr 1fr 220px">
-              <span>Restaurant Info</span>
+              <span className="col-info">Restaurant Info</span>
               <span>Plan</span>
               <span>Status</span>
               <span>Menu Items</span>
-              <span>Monthly Fee</span>
+              <span className="col-fee">Monthly Fee</span>
               <span>Expires In</span>
               <span>Auto-Renew</span>
-              <span>Actions</span>
+              <span className="col-action">Actions</span>
             </SubscriptionTableHeader>
 
             {filteredSubscriptions.map(subscription => (
               <SubscriptionTableRow columns="2.5fr 1fr 1fr 1.2fr 1fr 1fr 1fr 220px" key={subscription.id}>
                 <MobileGrid>
-                  <MobileValue>
+                  <MobileValue className="col-info">
                     <MobileLabel>Restaurant Info</MobileLabel>
                     <RestaurantInfo>
                       <RestaurantName>{subscription.restaurantName} {subscription.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{subscription.currency}</span>}</RestaurantName>
@@ -1016,7 +1058,7 @@ const SubscriptionsPage: React.FC = () => {
                     {subscription.currentMenuItems}/{subscription.menuItemLimit === -1 ? '∞' : subscription.menuItemLimit}
                   </MobileValue>
 
-                  <MobileValue>
+                  <MobileValue className="col-fee">
                     <MobileLabel>Monthly Fee</MobileLabel>
                     {subscription.discountType !== 'none' && subscription.discountValue > 0 ? (
                       <div>
@@ -1515,7 +1557,7 @@ const SubscriptionsPage: React.FC = () => {
                     </FormGroup>
 
                     <FormGroup style={{gridColumn: '1 / -1'}}>
-                      <FormLabel>Custom Subscription Plan *</FormLabel>
+                      <FormLabel>Subscription Plan *</FormLabel>
                       <FormSelect
                         value={editingSubscription.planType}
                         onChange={(e) => {
@@ -1527,21 +1569,23 @@ const SubscriptionsPage: React.FC = () => {
                               monthlyFee: 0
                             });
                           } else if (selectedValue) {
-                            const selectedPlan = customPlans.find(p => p.name === selectedValue);
+                            const selectedPlan = availablePlans.find(p => p.display_name === selectedValue);
                             setEditingSubscription({
                               ...editingSubscription,
                               planType: selectedValue as any,
-                              monthlyFee: selectedPlan?.monthly_price || 0
+                              monthlyFee: parseFloat(selectedPlan?.base_price_monthly) || 0
                             });
                           }
                         }}
                       >
                         <option value="">Select Plan</option>
-                        {customPlans.map((plan) => (
-                          <option key={plan.id} value={plan.name}>
-                            {plan.display_name} - RM {plan.monthly_price}
-                          </option>
-                        ))}
+                        {availablePlans
+                          .filter(p => p.plan_target === 'restaurant')
+                          .map((plan) => (
+                            <option key={plan.id} value={plan.display_name}>
+                              {plan.display_name} - RM {plan.base_price_monthly}
+                            </option>
+                          ))}
                         <option value="others">Others</option>
                       </FormSelect>
                     </FormGroup>

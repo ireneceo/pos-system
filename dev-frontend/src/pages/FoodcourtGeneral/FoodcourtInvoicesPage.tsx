@@ -2526,8 +2526,8 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 <span>Issued</span>
                 <span>Due</span>
                 <span>Status</span>
-                <span>Amount</span>
-                <span>Total</span>
+                <span className="col-amount">Amount</span>
+                <span className="col-total">Total</span>
                 <span>Actions</span>
               </InvoiceTableHeader>
 
@@ -2649,8 +2649,8 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 <span>Period</span>
                 <span>Paid Date</span>
                 <span>Status</span>
-                <span>Amount</span>
-                <span>Total</span>
+                <span className="col-amount">Amount</span>
+                <span className="col-total">Total</span>
                 <span>Actions</span>
               </InvoiceTableHeader>
 

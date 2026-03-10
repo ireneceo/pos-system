@@ -598,19 +598,19 @@ const BrandSubscriptionsPage: React.FC = () => {
             )}
             <Table>
               <SubscriptionTableHeader columns="2fr 1.5fr 1fr 1fr 1fr 1fr 180px">
-                <span>Restaurant</span>
+                <span className="col-info">Restaurant</span>
                 <span>Plan</span>
                 <span>Status</span>
-                <span>Est. Charges</span>
+                <span className="col-fee">Est. Charges</span>
                 <span>Latest Invoice</span>
-                <span>Revenue (MTD)</span>
-                <span>Actions</span>
+                <span className="col-revenue">Revenue (MTD)</span>
+                <span className="col-action">Actions</span>
               </SubscriptionTableHeader>
 
               {filteredSubscriptions.map(sub => (
                 <SubscriptionTableRow columns="2fr 1.5fr 1fr 1fr 1fr 1fr 180px" key={sub.restaurant_id}>
                   <MobileGrid>
-                    <MobileValue>
+                    <MobileValue className="col-info">
                       <MobileLabel>Restaurant</MobileLabel>
                       <RestaurantInfo>
                         <RestaurantName>{sub.restaurant_name} {sub.restaurant_currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{sub.restaurant_currency}</span>}</RestaurantName>
@@ -660,7 +660,7 @@ const BrandSubscriptionsPage: React.FC = () => {
                       </StatusBadge>
                     </MobileValue>
 
-                    <MobileValue>
+                    <MobileValue className="col-fee">
                       <MobileLabel>Est. Charges</MobileLabel>
                       {sub.current_month?.estimated_charges ? (
                         <span style={{fontWeight: 500, color: '#0A2540'}}>
@@ -685,7 +685,7 @@ const BrandSubscriptionsPage: React.FC = () => {
                       )}
                     </MobileValue>
 
-                    <MobileValue>
+                    <MobileValue className="col-revenue">
                       <MobileLabel>Revenue (MTD)</MobileLabel>
                       <div>
                         <div style={{fontWeight: 500, color: '#0A2540'}}>

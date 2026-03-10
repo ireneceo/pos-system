@@ -2534,21 +2534,21 @@ const BrandInvoicesPage: React.FC = () => {
           <DataTable>
             <DataTableHead>
               <tr>
-                <DataTableHeaderCell>Invoice</DataTableHeaderCell>
-                <DataTableHeaderCell>Customer</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">Invoice</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">Customer</DataTableHeaderCell>
                 <DataTableHeaderCell align="center">Period</DataTableHeaderCell>
                 <DataTableHeaderCell align="center">Issued</DataTableHeaderCell>
                 <DataTableHeaderCell align="center">Due</DataTableHeaderCell>
                 <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
                 <DataTableHeaderCell align="right">Amount</DataTableHeaderCell>
                 <DataTableHeaderCell align="right">Total</DataTableHeaderCell>
-                <DataTableHeaderCell align="center">Actions</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">Actions</DataTableHeaderCell>
               </tr>
             </DataTableHead>
             <tbody>
               {filteredInvoices.map(invoice => (
                 <DataTableRow key={invoice.id}>
-                  <DataTableCell data-label="Invoice">
+                  <DataTableCell data-label="Invoice" align="left">
                     <InvoiceInfo>
                       <InvoiceNumber>
                         {invoice.invoiceNumber}
@@ -2557,7 +2557,7 @@ const BrandInvoicesPage: React.FC = () => {
                       <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
                     </InvoiceInfo>
                   </DataTableCell>
-                  <DataTableCell data-label="Customer">
+                  <DataTableCell data-label="Customer" align="left">
                     <InvoiceInfo>
                       <InvoiceNumber>{invoice.customerName || invoice.restaurantName || 'Unknown'}</InvoiceNumber>
                       <CompanyName>{getPayerDisplay(invoice.payerType || 'restaurant')}</CompanyName>
@@ -2746,22 +2746,22 @@ const BrandInvoicesPage: React.FC = () => {
               <DataTable>
                 <DataTableHead>
                   <tr>
-                    <DataTableHeaderCell>Invoice</DataTableHeaderCell>
-                    <DataTableHeaderCell>Issuer</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">Invoice</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">Issuer</DataTableHeaderCell>
                     <DataTableHeaderCell align="center">Period</DataTableHeaderCell>
                     <DataTableHeaderCell align="center">Issued</DataTableHeaderCell>
                     <DataTableHeaderCell align="center">Due</DataTableHeaderCell>
                     <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
                     <DataTableHeaderCell align="right">Amount</DataTableHeaderCell>
                     <DataTableHeaderCell align="right">Total</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">Actions</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">Actions</DataTableHeaderCell>
                   </tr>
                 </DataTableHead>
                 <tbody>
                   {filteredInvoicesToPay.length > 0 ? (
                     filteredInvoicesToPay.map(invoice => (
                       <DataTableRow key={invoice.id}>
-                        <DataTableCell data-label="Invoice">
+                        <DataTableCell data-label="Invoice" align="left">
                           <InvoiceInfo>
                             <InvoiceNumber>
                               {invoice.invoiceNumber}
@@ -2770,7 +2770,7 @@ const BrandInvoicesPage: React.FC = () => {
                             <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
                           </InvoiceInfo>
                         </DataTableCell>
-                        <DataTableCell data-label="Issuer">
+                        <DataTableCell data-label="Issuer" align="left">
                           <InvoiceInfo>
                             <InvoiceNumber>{invoice.issuerName || (invoice.issuerType === 'system_admin' ? 'System Admin' : invoice.issuerType === 'brand' ? 'Brand' : 'Foodcourt')}</InvoiceNumber>
                             <CompanyName>{invoice.restaurantName && invoice.restaurantName !== 'Unknown' ? `For: ${invoice.restaurantName}` : ''}</CompanyName>
@@ -2860,21 +2860,21 @@ const BrandInvoicesPage: React.FC = () => {
               <DataTable>
                 <DataTableHead>
                   <tr>
-                    <DataTableHeaderCell>Invoice</DataTableHeaderCell>
-                    <DataTableHeaderCell>Issuer</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">Invoice</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">Issuer</DataTableHeaderCell>
                     <DataTableHeaderCell align="center">Period</DataTableHeaderCell>
                     <DataTableHeaderCell align="center">Paid Date</DataTableHeaderCell>
                     <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
                     <DataTableHeaderCell align="right">Amount</DataTableHeaderCell>
                     <DataTableHeaderCell align="right">Total</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">Actions</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">Actions</DataTableHeaderCell>
                   </tr>
                 </DataTableHead>
                 <tbody>
                   {filteredPaidInvoices.length > 0 ? (
                     filteredPaidInvoices.map(invoice => (
                       <DataTableRow key={invoice.id}>
-                        <DataTableCell data-label="Invoice">
+                        <DataTableCell data-label="Invoice" align="left">
                           <InvoiceInfo>
                             <InvoiceNumber>
                               {invoice.invoiceNumber}
@@ -2883,7 +2883,7 @@ const BrandInvoicesPage: React.FC = () => {
                             <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
                           </InvoiceInfo>
                         </DataTableCell>
-                        <DataTableCell data-label="Issuer">
+                        <DataTableCell data-label="Issuer" align="left">
                           <InvoiceInfo>
                             <InvoiceNumber>{invoice.issuerName || (invoice.issuerType === 'system_admin' ? 'System Admin' : invoice.issuerType === 'brand' ? 'Brand' : 'Foodcourt')}</InvoiceNumber>
                             <CompanyName>{invoice.restaurantName && invoice.restaurantName !== 'Unknown' ? `For: ${invoice.restaurantName}` : ''}</CompanyName>

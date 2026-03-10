@@ -154,6 +154,8 @@ router.get('/plans', async (_req, res) => {
         'order_limit',
         'menu_item_limit',
         'staff_limit',
+        'restaurant_limit',
+        'manager_limit',
         'included_modules'
       ],
       order: [

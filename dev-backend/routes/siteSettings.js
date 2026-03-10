@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const CompanySettings = require('../models/CompanySettings');
 const { authenticateToken, requireRole } = require('../middleware/auth');
-const { deleteOldImages } = require('../utils/imageProcessor');
+const { deleteOldImages, saveImageToFile } = require('../utils/imageProcessor');
 
 // og_image_url (209KB Base64) excluded by default for performance (231KB → ~21KB)
 // brand_logo (19KB) and favicon_url (1.5KB) are kept - used by App.tsx and layouts
@@ -64,6 +64,17 @@ router.put('/', authenticateToken, requireRole('System Admin'), async (req, res)
       timezone
     } = req.body;
 
+    // Base64 이미지를 고정 파일로 저장
+    let savedFavicon = favicon_url;
+    let savedBrandLogo = brand_logo;
+
+    if (favicon_url && favicon_url.startsWith('data:image/')) {
+      savedFavicon = await saveImageToFile(favicon_url, 'favicon', { maxWidth: 64, maxHeight: 64 });
+    }
+    if (brand_logo && brand_logo.startsWith('data:image/')) {
+      savedBrandLogo = await saveImageToFile(brand_logo, 'brand-logo', { maxWidth: 400, maxHeight: 400 });
+    }
+
     let settings = await CompanySettings.findOne();
 
     if (!settings) {
@@ -71,8 +82,8 @@ router.put('/', authenticateToken, requireRole('System Admin'), async (req, res)
       settings = await CompanySettings.create({
         company_name: 'OrderHere POS System',
         site_name,
-        favicon_url,
-        brand_logo,
+        favicon_url: savedFavicon,
+        brand_logo: savedBrandLogo,
         seo_title,
         seo_description,
         seo_keywords,
@@ -81,10 +92,10 @@ router.put('/', authenticateToken, requireRole('System Admin'), async (req, res)
       });
     } else {
       // 이미지 변경 시 이전 파일 삭제
-      if (favicon_url && settings.favicon_url && favicon_url !== settings.favicon_url) {
+      if (savedFavicon && settings.favicon_url && savedFavicon !== settings.favicon_url) {
         await deleteOldImages(settings.favicon_url);
       }
-      if (brand_logo && settings.brand_logo && brand_logo !== settings.brand_logo) {
+      if (savedBrandLogo && settings.brand_logo && savedBrandLogo !== settings.brand_logo) {
         await deleteOldImages(settings.brand_logo);
       }
       if (og_image_url && settings.og_image_url && og_image_url !== settings.og_image_url) {
@@ -93,8 +104,8 @@ router.put('/', authenticateToken, requireRole('System Admin'), async (req, res)
       // Update existing
       const updateData = {
         site_name,
-        favicon_url,
-        brand_logo,
+        favicon_url: savedFavicon,
+        brand_logo: savedBrandLogo,
         seo_title,
         seo_description,
         seo_keywords,

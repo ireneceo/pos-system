@@ -760,15 +760,15 @@ const ContentManagementPage: React.FC = () => {
       ) : (
         <Table>
           <TableHeader columns="2fr 1fr 1fr 1fr 120px">
-            <span>Title</span>
+            <span className="col-info">Title</span>
             <span>Category</span>
             <span>Status</span>
             <span>Date</span>
-            <span>Actions</span>
+            <span className="col-action">Actions</span>
           </TableHeader>
           {filteredContents.map(item => (
             <TableRow key={item.id} columns="2fr 1fr 1fr 1fr 120px">
-              <div>
+              <div className="col-info">
                 <strong>{item.title}</strong>
                 {contentType === 'blog' && item.view_count > 0 && (
                   <span style={{ fontSize: '12px', color: '#6B7280', marginLeft: '8px' }}>

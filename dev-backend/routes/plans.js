@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const PlanTemplate = require('../models/PlanTemplate');
+const PlanPrice = require('../models/PlanPrice');
 const Restaurant = require('../models/Restaurant');
 const { Op } = require('sequelize');
 
@@ -94,6 +95,9 @@ router.delete('/:id', async (req, res) => {
         restaurantsCount: restaurantsUsingPlan
       });
     }
+
+    // Delete related plan_prices first (FK constraint)
+    await PlanPrice.destroy({ where: { plan_id: plan.id } });
 
     await plan.destroy();
     res.json({ success: true, message: 'Plan deleted successfully' });

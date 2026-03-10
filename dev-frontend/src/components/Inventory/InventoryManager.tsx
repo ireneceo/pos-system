@@ -1437,7 +1437,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                       <span>Current Stock</span>
                       <span>Daily Usage</span>
                       <span>Suggested Qty</span>
-                      <span>Est. Cost</span>
+                      <span className="col-cost">Est. Cost</span>
                       <span>Urgency</span>
                       <span>Order</span>
                     </TableHeader>
@@ -1447,7 +1447,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                         <div>{formatStock(s.current_stock)} {s.ingredient.unit}</div>
                         <div>{(parseFloat(String(s.avg_daily_usage)) || 0).toFixed(2)} {s.ingredient.unit}/day</div>
                         <div style={{ fontWeight: 600 }}>{formatStock(s.suggested_qty)} {s.ingredient.unit}</div>
-                        <div>{formatCurrency(s.estimated_cost, selectedCurrency)}</div>
+                        <div className="col-cost">{formatCurrency(s.estimated_cost, selectedCurrency)}</div>
                         <div>
                           <UrgencyBadge level={s.urgency}>
                             {s.urgency.toUpperCase()}
@@ -1574,15 +1574,15 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                   }).length})</SectionTitle>}
                   <Table style={{ marginBottom: '24px' }}>
                     <InventoryTableHeader columns="2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 160px">
-                      <span>Item</span>
+                      <span className="col-info">Item</span>
                       <span>Status</span>
                       <span>Current Stock</span>
                       <span>Min Stock</span>
-                      <span>Unit Cost</span>
+                      <span className="col-cost">Unit Cost</span>
                       <span>Supplier</span>
                       <span>Last Stock Take</span>
                       <span>Order</span>
-                      <span>Actions</span>
+                      <span className="col-action">Actions</span>
                     </InventoryTableHeader>
                     {generalStockInventory
                       .filter(item => {
@@ -1593,7 +1593,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                       .map(item => (
                       <InventoryTableRow key={`general-stock-${item.id}`} columns="2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 160px">
                         <MobileGrid>
-                          <MobileValue>
+                          <MobileValue className="col-info">
                             <MobileLabel>Item</MobileLabel>
                             <StockItemInfo>
                               <StockItemImage>
@@ -1644,7 +1644,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                               {formatStock(item.min_stock)} {item.stock_unit}
                             </div>
                           </MobileValue>
-                          <MobileValue>
+                          <MobileValue className="col-cost">
                             <MobileLabel>Unit Cost</MobileLabel>
                             <div style={{ color: '#0A2540' }}>
                               {formatCurrency(item.unit_cost, selectedCurrency)}
@@ -1779,20 +1779,20 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                   ) : (
                 <Table>
                   <InventoryTableHeader columns="2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 160px">
-                    <span>Ingredient</span>
+                    <span className="col-info">Ingredient</span>
                     <span>Status</span>
                     <span>Current Stock</span>
                     <span>Min / Prediction</span>
-                    <span>Unit Cost</span>
+                    <span className="col-cost">Unit Cost</span>
                     <span>Supplier</span>
                     <span>Last Stock Take</span>
                     <span>Order</span>
-                    <span>Actions</span>
+                    <span className="col-action">Actions</span>
                   </InventoryTableHeader>
                   {filteredInventory.map(item => (
                     <InventoryTableRow key={item.id} columns="2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 160px">
                       <MobileGrid>
-                        <MobileValue>
+                        <MobileValue className="col-info">
                           <MobileLabel>Ingredient</MobileLabel>
                           <StockItemInfo>
                             <StockItemImage>
@@ -1846,7 +1846,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                             {getConfidenceLabel(item.prediction_confidence || 'none')}
                           </ConfidenceBadge>
                         </MobileValue>
-                        <MobileValue>
+                        <MobileValue className="col-cost">
                           <MobileLabel>Unit Cost</MobileLabel>
                           <div style={{ color: '#0A2540' }}>
                             {formatCurrency(item.unit_cost, selectedCurrency)}
@@ -2121,7 +2121,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
               </h3>
               <Table>
                 <TableHeader columns="2fr 1fr 1fr">
-                  <span>Ingredient</span>
+                  <span className="col-info">Ingredient</span>
                   <span>Current Qty</span>
                   <span>Min Stock</span>
                 </TableHeader>
@@ -3082,11 +3082,11 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ restaurantId, i
     <Table>
       <TableHeader columns="1.5fr 1.5fr 1fr 1fr 1fr 2fr">
         <span>Date</span>
-        <span>Ingredient</span>
+        <span className="col-info">Ingredient</span>
         <span>Type</span>
         <span>Change</span>
         <span>After</span>
-        <span>Notes</span>
+        <span className="col-info">Notes</span>
       </TableHeader>
       {transactions.map(t => (
         <TableRow key={t.id} columns="1.5fr 1.5fr 1fr 1fr 1fr 2fr">

@@ -65,12 +65,6 @@ interface Staff {
 
 // 페이지별 반응형 테이블 헤더 (StaffManagement 전용)
 const StaffTableHeader = styled(CommonTableHeader)`
-  /* 정렬 규칙: Department/상태는 가운데, 금액/액션은 우측 */
-  & > span:nth-child(4) { text-align: center; } /* Department */
-  & > span:nth-child(5) { text-align: center; } /* Status */
-  & > span:nth-child(6) { text-align: right; } /* Salary */
-  & > span:nth-child(7) { text-align: right; } /* Actions */
-
   @media (max-width: 1400px) {
     & > span:nth-child(4),
     & > span:nth-child(5) {
@@ -89,8 +83,6 @@ const StaffTableHeader = styled(CommonTableHeader)`
 
 // 페이지별 반응형 테이블 행 (StaffManagement 전용)
 const StaffTableRow = styled(CommonTableRow)`
-  /* 정렬 규칙: 상태는 가운데, 금액/액션은 우측 */
-  & > div:nth-child(3) { text-align: center; } /* Status (MobileGrid 내부) */
 
   @media (max-width: 1400px) {
     & > div:nth-child(4),
@@ -1429,13 +1421,13 @@ const AdminStaffManagementPage: React.FC = () => {
 
           <Table>
             <StaffTableHeader columns="2.5fr 2.5fr 1fr 1fr 1fr 1fr 220px">
-              <span>Staff Member</span>
-              <span>Company & Location</span>
+              <span className="col-info">Staff Member</span>
+              <span className="col-info">Company & Location</span>
               <span>Role</span>
               <span>Department</span>
               <span>Status</span>
-              <span>Salary</span>
-              <span>Actions</span>
+              <span className="col-salary">Salary</span>
+              <span className="col-action">Actions</span>
             </StaffTableHeader>
 
             {filteredStaff.length === 0 ? (
@@ -1450,7 +1442,7 @@ const AdminStaffManagementPage: React.FC = () => {
             ) : (
               filteredStaff.map(staff => (
                 <StaffTableRow columns="2.5fr 2.5fr 1fr 1fr 1fr 1fr 220px" key={staff.id}>
-                  <StaffInfo>
+                  <StaffInfo className="col-info">
                     <StaffAvatar role={staff.role}>
                       {getInitials(staff.name)}
                     </StaffAvatar>
@@ -1478,21 +1470,21 @@ const AdminStaffManagementPage: React.FC = () => {
                       </RoleBadge>
                     </MobileValue>
 
-                    <MobileValue style={{ textAlign: 'center' }}>
+                    <MobileValue>
                       <MobileLabel>Department</MobileLabel>
                       <div style={{ fontSize: '13px', color: '#6B7280' }}>
                         {staff.department}
                       </div>
                     </MobileValue>
 
-                    <MobileValue style={{ textAlign: 'center' }}>
+                    <MobileValue>
                       <MobileLabel>Status</MobileLabel>
                       <StatusBadge status={staff.status}>
                         {staff.status === 'active' ? 'Active' : 'Inactive'}
                       </StatusBadge>
                     </MobileValue>
 
-                    <MobileValue style={{ textAlign: 'right' }}>
+                    <MobileValue className="col-salary">
                       <MobileLabel>Salary</MobileLabel>
                       <div style={{ fontSize: '13px', color: '#374151', fontWeight: '600' }}>
                         {staff.salary ? formatCurrency(staff.salary, operationSettings.currency) : 'N/A'}

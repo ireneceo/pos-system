@@ -97,6 +97,24 @@ User.init({
       this.setDataValue('permissions', JSON.stringify(Array.isArray(arr) ? arr : []));
     }
   },
+  plan_type: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: 'Subscription plan type for Restaurant Owner (matches PlanTemplate.display_name)'
+  },
+  subscription_status: {
+    type: DataTypes.ENUM('active', 'trial', 'expired', 'suspended', 'cancelled'),
+    allowNull: true,
+    comment: 'Subscription status for Restaurant Owner'
+  },
+  subscription_start: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  subscription_end: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
   is_demo: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,

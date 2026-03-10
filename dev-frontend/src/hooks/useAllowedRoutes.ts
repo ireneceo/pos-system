@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 
 interface AllowedRoutesResponse {
-  restaurant_id: number;
-  plan_type: string;
+  entity_id?: number;
+  restaurant_id?: number;
+  entity_type?: string;
+  plan_type: string | null;
+  subscription_status?: string | null;
   included_modules: string[];
   allowed_routes: string[];
   modules: Array<{
@@ -12,27 +15,63 @@ interface AllowedRoutesResponse {
   }>;
 }
 
+interface UseAllowedRoutesParams {
+  role: string;
+  restaurantId?: number | null;
+  brandId?: number | null;
+  foodcourtId?: number | null;
+}
+
 /**
- * Hook to fetch and manage allowed routes based on restaurant's subscription plan
- * @param restaurantId - The restaurant ID to fetch allowed routes for
- * @returns Object containing allowed routes array and loading state
+ * Hook to fetch and manage allowed routes based on subscription plan.
+ * Supports Restaurant, Brand, Foodcourt, and Owner roles.
  */
-export const useAllowedRoutes = (restaurantId: number | null) => {
+export const useAllowedRoutes = (params: UseAllowedRoutesParams | number | null) => {
   const [allowedRoutes, setAllowedRoutes] = useState<string[]>([]);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
+  const [planType, setPlanType] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Support legacy call: useAllowedRoutes(restaurantId)
+  const normalized: UseAllowedRoutesParams | null = typeof params === 'number'
+    ? { role: 'Restaurant Admin', restaurantId: params }
+    : params;
+
+  const role = normalized?.role || '';
+  const restaurantId = normalized?.restaurantId || null;
+  const brandId = normalized?.brandId || null;
+  const foodcourtId = normalized?.foodcourtId || null;
+
   useEffect(() => {
     const fetchAllowedRoutes = async () => {
-      if (!restaurantId) {
+      // Determine API URL based on role
+      let apiUrl: string | null = null;
+      const token = localStorage.getItem('auth_token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      if ((role === 'Restaurant Admin' || role === 'Staff') && restaurantId) {
+        apiUrl = `/api/restaurants/${restaurantId}/allowed-routes`;
+      } else if ((role === 'Brand General' || role === 'Brand Manager') && brandId) {
+        apiUrl = `/api/brands/${brandId}/allowed-routes`;
+      } else if ((role === 'Foodcourt General' || role === 'Foodcourt Manager') && foodcourtId) {
+        apiUrl = `/api/foodcourts/${foodcourtId}/allowed-routes`;
+      } else if (role === 'Restaurant Owner') {
+        apiUrl = `/api/owner/allowed-routes`;
+      }
+
+      if (!apiUrl) {
         setAllowedRoutes([]);
+        setSubscriptionStatus(null);
+        setPlanType(null);
         setLoading(false);
         return;
       }
 
       try {
         setLoading(true);
-        const response = await fetch(`/api/restaurants/${restaurantId}/allowed-routes`);
+        const response = await fetch(apiUrl, { headers });
 
         if (!response.ok) {
           throw new Error('Failed to fetch allowed routes');
@@ -40,52 +79,57 @@ export const useAllowedRoutes = (restaurantId: number | null) => {
 
         const data: AllowedRoutesResponse = await response.json();
         setAllowedRoutes(data.allowed_routes || []);
+        setSubscriptionStatus(data.subscription_status || null);
+        setPlanType(data.plan_type || null);
         setError(null);
       } catch (err) {
         console.error('useAllowedRoutes Error:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
-        // On error, allow all routes (fail open for safety)
         setAllowedRoutes([]);
+        setSubscriptionStatus(null);
+        setPlanType(null);
       } finally {
         setLoading(false);
       }
     };
 
     fetchAllowedRoutes();
-  }, [restaurantId]);
+  }, [role, restaurantId, brandId, foodcourtId]);
 
   /**
    * Check if a specific route is allowed
-   * @param route - The route to check (e.g., "/restaurant/:restaurantId/menu")
-   * @returns true if route is allowed or if no restrictions apply
    */
   const isRouteAllowed = (route: string): boolean => {
-    // If no routes are restricted (empty array), allow all
+    // If no routes fetched (empty array), allow all (fail-open)
     if (allowedRoutes.length === 0) {
       return true;
     }
 
-    // Replace :restaurantId with actual ID for matching
+    // For restaurant routes, replace :restaurantId with actual ID
     const normalizedRoute = route.replace(/:restaurantId/g, restaurantId?.toString() || '');
 
-    // Check if route matches any allowed pattern
-    const isAllowed = allowedRoutes.some(allowedRoute => {
+    return allowedRoutes.some(allowedRoute => {
       const pattern = allowedRoute
         .replace(/:restaurantId/g, restaurantId?.toString() || '')
         .replace(/:slug/g, '[^/]+')
+        .replace(/:id/g, '[^/]+')
         .replace(/\*/g, '[^/]+');
 
       const regex = new RegExp(`^${pattern}$`);
       return regex.test(normalizedRoute);
     });
-
-    return isAllowed;
   };
+
+  /** Whether the entity has an active subscription with a plan */
+  const hasActiveSubscription = planType !== null && planType !== '';
 
   return {
     allowedRoutes,
     loading,
     error,
-    isRouteAllowed
+    isRouteAllowed,
+    subscriptionStatus,
+    planType,
+    hasActiveSubscription
   };
 };

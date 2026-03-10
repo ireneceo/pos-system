@@ -906,4 +906,83 @@ router.get('/invoices/to-pay', requireRole('Restaurant Owner'), async (req, res)
   }
 });
 
+// ============================================
+// Owner Allowed Routes (module-based sidebar filtering)
+// ============================================
+router.get('/allowed-routes', requireRole('Restaurant Owner'), async (req, res) => {
+  try {
+    const PlanTemplate = require('../models/PlanTemplate');
+    const AddonModule = require('../models/AddonModule');
+
+    const owner = await User.findByPk(req.user.id);
+    if (!owner || !owner.plan_type) {
+      return res.json({
+        entity_id: req.user.id,
+        entity_type: 'owner',
+        plan_type: owner?.plan_type || null,
+        subscription_status: owner?.subscription_status || null,
+        included_modules: [],
+        allowed_routes: [],
+        modules: []
+      });
+    }
+
+    const plan = await PlanTemplate.findOne({
+      where: {
+        [Op.or]: [
+          { display_name: owner.plan_type },
+          { name: owner.plan_type }
+        ],
+        plan_target: 'owner'
+      }
+    });
+
+    if (!plan) {
+      return res.json({
+        entity_id: owner.id,
+        entity_type: 'owner',
+        plan_type: owner.plan_type,
+        subscription_status: owner.subscription_status,
+        included_modules: [],
+        allowed_routes: [],
+        modules: []
+      });
+    }
+
+    const includedModuleCodes = plan.included_modules || [];
+    if (includedModuleCodes.length === 0) {
+      return res.json({
+        entity_id: owner.id,
+        entity_type: 'owner',
+        plan_type: owner.plan_type,
+        subscription_status: owner.subscription_status,
+        included_modules: [],
+        allowed_routes: [],
+        modules: []
+      });
+    }
+
+    const modules = await AddonModule.findAll({
+      where: { module_code: includedModuleCodes, is_active: true }
+    });
+
+    const allowedRoutes = [...new Set(
+      modules.reduce((routes, m) => [...routes, ...(m.ui_routes || [])], [])
+    )];
+
+    res.json({
+      entity_id: owner.id,
+      entity_type: 'owner',
+      plan_type: owner.plan_type,
+      subscription_status: owner.subscription_status,
+      included_modules: includedModuleCodes,
+      allowed_routes: allowedRoutes,
+      modules: modules.map(m => ({ code: m.module_code, name: m.name, category: m.category }))
+    });
+  } catch (error) {
+    console.error('Error fetching owner allowed routes:', error);
+    res.status(500).json({ error: 'Failed to fetch allowed routes' });
+  }
+});
+
 module.exports = router;

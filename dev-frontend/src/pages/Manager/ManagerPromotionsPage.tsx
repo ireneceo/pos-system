@@ -917,12 +917,12 @@ const ManagerPromotionsPage: React.FC = () => {
           <PromotionTable>
             <TableHeader>
               <span>Promotion</span>
-              <span>Type</span>
+              <span style={{ textAlign: 'center' }}>Type</span>
               <span>Restaurants</span>
-              <span>Dates</span>
-              <span>Usage</span>
-              <span>Revenue</span>
-              <span>Status</span>
+              <span style={{ textAlign: 'center' }}>Dates</span>
+              <span style={{ textAlign: 'right' }}>Usage</span>
+              <span style={{ textAlign: 'right' }}>Revenue</span>
+              <span style={{ textAlign: 'center' }}>Status</span>
               <span>Actions</span>
             </TableHeader>
             
@@ -948,37 +948,41 @@ const ManagerPromotionsPage: React.FC = () => {
                       <PromotionName>{promotion.name}</PromotionName>
                       <PromotionDescription>{promotion.discountText}</PromotionDescription>
                     </PromotionInfo>
-                    
-                    <TypeBadge type={promotion.type}>
-                      {getTypeLabel(promotion.type)}
-                    </TypeBadge>
-                    
+
+                    <div style={{ textAlign: 'center' }}>
+                      <TypeBadge type={promotion.type}>
+                        {getTypeLabel(promotion.type)}
+                      </TypeBadge>
+                    </div>
+
                     <ValueCell>
                       <div style={{ fontSize: '12px' }}>
-                        {promotion.restaurantNames.length > 2 
+                        {promotion.restaurantNames.length > 2
                           ? `${promotion.restaurantNames.slice(0, 2).join(', ')} +${promotion.restaurantNames.length - 2}`
                           : promotion.restaurantNames.join(', ')
                         }
                       </div>
                     </ValueCell>
-                    
-                    <ValueCell>
+
+                    <ValueCell style={{ textAlign: 'center' }}>
                       <div>{formatDate(promotion.startDate)}</div>
                       <div style={{ fontSize: '12px', color: '#6B7280' }}>to {formatDate(promotion.endDate)}</div>
                     </ValueCell>
-                    
-                    <ValueCell>
+
+                    <ValueCell style={{ textAlign: 'right' }}>
                       {promotion.usageCount} / {promotion.usageLimit || '∞'}
                     </ValueCell>
-                    
-                    <ValueCell style={{ color: '#059669', fontWeight: '600' }}>
+
+                    <ValueCell style={{ color: '#059669', fontWeight: '600', textAlign: 'right' }}>
                       {formatCurrency(promotion.generatedRevenue, selectedCurrency)}
                     </ValueCell>
-                    
-                    <StatusBadge status={promotion.status}>
-                      {promotion.status}
-                    </StatusBadge>
-                    
+
+                    <div style={{ textAlign: 'center' }}>
+                      <StatusBadge status={promotion.status}>
+                        {promotion.status}
+                      </StatusBadge>
+                    </div>
+
                     <ActionButtons onClick={(e) => e.stopPropagation()}>
                       <ActionButton onClick={() => handleEditPromotion(promotion)}>Edit</ActionButton>
                       <ActionButton onClick={() => handleCopyPromotion(promotion)}>Copy</ActionButton>

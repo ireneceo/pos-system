@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
@@ -226,24 +226,9 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
   const location = useLocation();
   const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [brandLogo, setBrandLogo] = useState<string>('');
+  const brandLogo = '/uploads/logos/brand-logo.png';
 
   const isActive = (path: string) => location.pathname === path;
-
-  useEffect(() => {
-    const loadLogo = async () => {
-      try {
-        const response = await fetch('/api/site-settings');
-        if (response.ok) {
-          const settings = await response.json();
-          setBrandLogo(settings.brand_logo || settings.brandLogo || settings.logo || '');
-        }
-      } catch (error) {
-        // Logo loading failed, will use text logo only
-      }
-    };
-    loadLogo();
-  }, []);
 
   const handleNavigate = (path: string) => {
     navigate(path);

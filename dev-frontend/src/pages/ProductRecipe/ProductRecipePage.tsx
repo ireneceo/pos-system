@@ -493,24 +493,24 @@ const ProductRecipePage: React.FC = () => {
           ) : (
             <Table>
               <TableHeader columns="2fr 1fr 1fr 1fr 1fr 150px">
-                <span>Product</span>
-                <span>Price</span>
+                <span className="col-info">Product</span>
+                <span className="col-price">Price</span>
                 <span>Recipe Status</span>
-                <span>Ingredient Cost</span>
-                <span>Profit Margin</span>
-                <span>Actions</span>
+                <span className="col-cost">Ingredient Cost</span>
+                <span className="col-money">Profit Margin</span>
+                <span className="col-action">Actions</span>
               </TableHeader>
               {filteredProducts.map(product => (
                 <TableRow key={product.id} columns="2fr 1fr 1fr 1fr 1fr 150px">
                   <MobileGrid>
-                    <MobileValue>
+                    <MobileValue className="col-info">
                       <MobileLabel>Product</MobileLabel>
                       <ProductInfo>
                         <ProductName>{product.name}</ProductName>
                         <ProductMeta>{product.category} {product.code && `- ${product.code}`}</ProductMeta>
                       </ProductInfo>
                     </MobileValue>
-                    <MobileValue>
+                    <MobileValue className="col-price">
                       <MobileLabel>Price</MobileLabel>
                       <div style={{ fontWeight: 600, color: '#0A2540' }}>
                         {formatCurrency(product.price, selectedCurrency)}
@@ -522,13 +522,13 @@ const ProductRecipePage: React.FC = () => {
                         {product.has_recipe ? 'Linked' : 'No Recipe'}
                       </StatusBadge>
                     </MobileValue>
-                    <MobileValue>
+                    <MobileValue className="col-cost">
                       <MobileLabel>Ingredient Cost</MobileLabel>
                       <div style={{ color: product.has_recipe ? '#0A2540' : '#9CA3AF' }}>
                         {product.has_recipe ? formatCurrency(product.ingredient_cost, selectedCurrency) : '-'}
                       </div>
                     </MobileValue>
-                    <MobileValue>
+                    <MobileValue className="col-money">
                       <MobileLabel>Profit Margin</MobileLabel>
                       {product.profit_margin ? (
                         <ProfitBadge profit={parseFloat(product.profit_margin)}>

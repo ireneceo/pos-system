@@ -525,8 +525,9 @@ router.post('/', authenticateToken, validateRestaurantCreation, async (req, res)
       staff_limit: 5
     };
 
-    if (req.body.planType) {
-      const planName = req.body.planType.toLowerCase().replace(' plan', '');
+    const incomingPlanType = req.body.planType || req.body.plan_type;
+    if (incomingPlanType) {
+      const planName = incomingPlanType.toLowerCase().replace(' plan', '');
       const planTemplate = await PlanTemplate.findOne({ where: { name: planName } });
 
       if (planTemplate) {
@@ -622,8 +623,8 @@ router.post('/', authenticateToken, validateRestaurantCreation, async (req, res)
       country: req.body.country || 'MY',
       business_registration: req.body.business_registration || null,
       tax_id: req.body.tax_id || null,
-      plan_type: req.body.planType || 'Basic Plan',
-      plan_amount: parseFloat(req.body.planAmount) || (planSnapshot ? planSnapshot.base_price_monthly : 29.00),
+      plan_type: incomingPlanType || 'Basic Plan',
+      plan_amount: parseFloat(req.body.planAmount || req.body.plan_amount) || (planSnapshot ? planSnapshot.base_price_monthly : 29.00),
       status: (() => {
         const requestedStatus = req.body.status;
         const validStatuses = ['active', 'inactive', 'trial', 'overdue', 'suspended', 'expired', 'cancelled'];

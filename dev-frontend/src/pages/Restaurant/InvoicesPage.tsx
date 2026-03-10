@@ -1000,22 +1000,22 @@ const RestaurantInvoicesPage: React.FC = () => {
       <DataTable>
         <DataTableHead>
           <tr>
-            <DataTableHeaderCell>Invoice</DataTableHeaderCell>
-            <DataTableHeaderCell>Issuer</DataTableHeaderCell>
+            <DataTableHeaderCell align="left">Invoice</DataTableHeaderCell>
+            <DataTableHeaderCell align="left">Issuer</DataTableHeaderCell>
             <DataTableHeaderCell align="center">Period</DataTableHeaderCell>
             <DataTableHeaderCell align="center">Issued</DataTableHeaderCell>
             <DataTableHeaderCell align="center">Due</DataTableHeaderCell>
             <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
             <DataTableHeaderCell align="right">Amount</DataTableHeaderCell>
             <DataTableHeaderCell align="right">Total</DataTableHeaderCell>
-            <DataTableHeaderCell align="center">Actions</DataTableHeaderCell>
+            <DataTableHeaderCell align="left">Actions</DataTableHeaderCell>
           </tr>
         </DataTableHead>
         <tbody>
           {invoices.length > 0 ? (
             invoices.map(invoice => (
               <DataTableRow key={invoice.id}>
-                <DataTableCell data-label="Invoice">
+                <DataTableCell data-label="Invoice" align="left">
                   <InvoiceInfo>
                     <InvoiceNumber>
                       {invoice.invoiceNumber}
@@ -1024,7 +1024,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                     <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
                   </InvoiceInfo>
                 </DataTableCell>
-                <DataTableCell data-label="Issuer">
+                <DataTableCell data-label="Issuer" align="left">
                   <InvoiceInfo>
                     <InvoiceNumber>
                       {invoice.issuerName || (invoice.issuerType === 'system_admin' ? 'System Admin' : invoice.issuerType === 'brand' ? 'Brand' : 'Foodcourt')}

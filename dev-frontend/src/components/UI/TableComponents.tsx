@@ -19,7 +19,7 @@ export const Table = styled.div`
 `;
 
 // 테이블 헤더 (CSS Grid 기반)
-// 기본 가운데 정렬, 금액/액션은 개별 클래스로 우측 정렬
+// 헤더는 모든 열 가운데 정렬 (예외 없음)
 export const TableHeader = styled.div<{ columns: string }>`
   display: grid;
   grid-template-columns: ${props => props.columns};
@@ -33,13 +33,7 @@ export const TableHeader = styled.div<{ columns: string }>`
   text-transform: uppercase;
   letter-spacing: 0.5px;
   text-align: center;
-
-  /* 금액/액션 열은 우측 정렬 */
-  & > span.col-amount,
-  & > span.col-total,
-  & > span.col-actions {
-    text-align: right;
-  }
+  align-items: center;
 
   @media (max-width: 1024px) {
     display: none;
@@ -47,6 +41,8 @@ export const TableHeader = styled.div<{ columns: string }>`
 `;
 
 // 테이블 행
+// MobileGrid(display:contents)가 첫 번째 DOM 자식이므로 first-child 사용 불가
+// 클래스 기반으로 정렬: col-info(좌측), col-action(좌측), col-*(금액 우측)
 export const TableRow = styled.div<{ columns: string }>`
   display: grid;
   grid-template-columns: ${props => props.columns};
@@ -54,7 +50,30 @@ export const TableRow = styled.div<{ columns: string }>`
   padding: 20px 24px;
   border-bottom: 1px solid #F3F4F6;
   align-items: center;
+  text-align: center;
   transition: all 0.2s;
+
+  /* 정보/이름/제목 열 좌측 정렬 (MobileValue에 className="col-info") */
+  div.col-info {
+    text-align: left;
+  }
+
+  /* 액션 열 좌측 정렬 (ActionButtons에 className="col-action" 또는 자체 스타일) */
+  div.col-action {
+    text-align: left;
+  }
+
+  /* 금액/가격 열은 우측 정렬 */
+  div.col-amount,
+  div.col-total,
+  div.col-price,
+  div.col-fee,
+  div.col-salary,
+  div.col-revenue,
+  div.col-cost,
+  div.col-money {
+    text-align: right;
+  }
 
   &:hover {
     background: #F8FAFC;
@@ -72,6 +91,19 @@ export const TableRow = styled.div<{ columns: string }>`
     border-radius: 10px;
     border: 1px solid #E6EBF1;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+    /* 모바일에서는 모두 좌측 정렬 */
+    div.col-info,
+    div.col-amount,
+    div.col-total,
+    div.col-price,
+    div.col-fee,
+    div.col-salary,
+    div.col-revenue,
+    div.col-cost,
+    div.col-money {
+      text-align: left;
+    }
 
     &:hover {
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -285,10 +317,10 @@ export const DataTableHead = styled.thead`
   }
 `;
 
-// 헤더 셀 (th) - align prop으로 정렬 설정
+// 헤더 셀 (th) - 항상 가운데 정렬
 export const DataTableTh = styled.th<{ align?: 'left' | 'center' | 'right' }>`
   padding: 14px 16px;
-  text-align: ${props => props.align || 'center'};
+  text-align: center;
   font-size: 12px;
   font-weight: 600;
   color: #6B7280;

@@ -406,6 +406,8 @@ interface Plan {
   order_limit: number;
   menu_item_limit: number;
   staff_limit: number;
+  restaurant_limit: number;
+  manager_limit: number;
   included_modules: string[];
   currency_prices?: CurrencyPrices;
 }
@@ -800,18 +802,40 @@ const PricingPage: React.FC = () => {
                     </PriceSection>
 
                     <LimitsSection>
-                      <LimitItem>
-                        <LimitLabel>Staff Limit</LimitLabel>
-                        <LimitValue>{formatLimit(plan.staff_limit)}</LimitValue>
-                      </LimitItem>
-                      <LimitItem>
-                        <LimitLabel>Orders/month</LimitLabel>
-                        <LimitValue>{formatLimit(plan.order_limit)}</LimitValue>
-                      </LimitItem>
-                      <LimitItem>
-                        <LimitLabel>Menu Items</LimitLabel>
-                        <LimitValue>{formatLimit(plan.menu_item_limit)}</LimitValue>
-                      </LimitItem>
+                      {plan.plan_target === 'restaurant' && (
+                        <>
+                          <LimitItem>
+                            <LimitLabel>Staff Limit</LimitLabel>
+                            <LimitValue>{formatLimit(plan.staff_limit)}</LimitValue>
+                          </LimitItem>
+                          <LimitItem>
+                            <LimitLabel>Orders/month</LimitLabel>
+                            <LimitValue>{formatLimit(plan.order_limit)}</LimitValue>
+                          </LimitItem>
+                          <LimitItem>
+                            <LimitLabel>Menu Items</LimitLabel>
+                            <LimitValue>{formatLimit(plan.menu_item_limit)}</LimitValue>
+                          </LimitItem>
+                        </>
+                      )}
+                      {(plan.plan_target === 'brand' || plan.plan_target === 'foodcourt') && (
+                        <>
+                          <LimitItem>
+                            <LimitLabel>Restaurants</LimitLabel>
+                            <LimitValue>{formatLimit(plan.restaurant_limit)}</LimitValue>
+                          </LimitItem>
+                          <LimitItem>
+                            <LimitLabel>Managers</LimitLabel>
+                            <LimitValue>{formatLimit(plan.manager_limit)}</LimitValue>
+                          </LimitItem>
+                        </>
+                      )}
+                      {plan.plan_target === 'owner' && (
+                        <LimitItem>
+                          <LimitLabel>Restaurants</LimitLabel>
+                          <LimitValue>{formatLimit(plan.restaurant_limit)}</LimitValue>
+                        </LimitItem>
+                      )}
                     </LimitsSection>
 
                     {(() => {

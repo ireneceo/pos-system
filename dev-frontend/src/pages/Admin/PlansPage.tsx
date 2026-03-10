@@ -654,6 +654,7 @@ const PlansPage: React.FC = () => {
 
       if (response.ok) {
         setShowPlanPricesModal(false);
+        fetchPlans();
       } else {
         const error = await response.json();
         console.error('Failed to update prices:', error.error);
@@ -960,6 +961,7 @@ const PlansPage: React.FC = () => {
 
   const deletePlan = (planId: string) => {
     setDeletingPlanId(planId);
+    setShowEditModal(false);
     setShowDeleteConfirm(true);
   };
 
@@ -967,10 +969,13 @@ const PlansPage: React.FC = () => {
     if (!deletingPlanId) return;
     setShowDeleteConfirm(false);
     try {
-      const response = await fetch(`/api/plans/${deletingPlanId}`, {
+      const token = localStorage.getItem('auth_token');
+      const numericId = deletingPlanId.replace('plan-', '');
+      const response = await fetch(`/api/plans/${numericId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         }
       });
 

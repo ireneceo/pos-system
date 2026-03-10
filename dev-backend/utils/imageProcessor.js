@@ -241,12 +241,62 @@ async function deleteOldImages(oldUrls) {
   }
 }
 
+/**
+ * Base64 이미지를 고정 파일명으로 저장
+ * 브랜드 로고, 파비콘 등 사이트 전역 이미지에 사용
+ * @param {string} base64Image - data:image/... 형식의 base64 이미지
+ * @param {string} fixedFilename - 저장할 파일명 (확장자 제외, 예: 'brand-logo')
+ * @param {object} options - { maxWidth, maxHeight, quality }
+ * @returns {Promise<string|null>} 저장된 파일의 URL 경로 (예: '/uploads/logos/brand-logo.png')
+ */
+async function saveImageToFile(base64Image, fixedFilename, options = {}) {
+  if (!base64Image || typeof base64Image !== 'string') return null;
+
+  // 이미 파일 경로인 경우 그대로 반환
+  if (base64Image.startsWith('/uploads/')) return base64Image;
+
+  // base64가 아닌 경우 무시
+  if (!base64Image.startsWith('data:image/')) return null;
+
+  try {
+    const matches = base64Image.match(/^data:image\/(\w+);base64,(.+)$/);
+    if (!matches) return null;
+
+    const base64Data = matches[2];
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    const { maxWidth = 400, maxHeight = 400, quality = 90 } = options;
+
+    const processedBuffer = await sharp(buffer)
+      .resize(maxWidth, maxHeight, {
+        fit: 'inside',
+        withoutEnlargement: true
+      })
+      .png({ quality })
+      .toBuffer();
+
+    const dir = '/var/www/uploads/logos';
+    await fs.mkdir(dir, { recursive: true });
+
+    const filePath = path.join(dir, `${fixedFilename}.png`);
+    await fs.writeFile(filePath, processedBuffer);
+
+    const urlPath = `/uploads/logos/${fixedFilename}.png`;
+    console.log(`Saved image to ${filePath} (${Math.round(processedBuffer.length / 1024)}KB)`);
+    return urlPath;
+  } catch (error) {
+    console.error('saveImageToFile error:', error);
+    return null;
+  }
+}
+
 module.exports = {
   processImage,
   createThumbnail,
   optimizeImage,
   getImageUrl,
   deleteOldImages,
+  saveImageToFile,
   IMAGE_SIZES,
   QUALITY_SETTINGS
 };

@@ -1988,4 +1988,89 @@ router.put('/:id/staff/:userId/reset-password', authenticateToken, async (req, r
   }
 });
 
+// ============================================
+// Brand Allowed Routes (module-based sidebar filtering)
+// ============================================
+router.get('/:id/allowed-routes', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const PlanTemplate = require('../models/PlanTemplate');
+    const AddonModule = require('../models/AddonModule');
+
+    const brand = await Brand.findByPk(id);
+    if (!brand) {
+      return res.status(404).json({ error: 'Brand not found' });
+    }
+
+    if (!brand.plan_type) {
+      return res.json({
+        entity_id: brand.id,
+        entity_type: 'brand',
+        plan_type: null,
+        subscription_status: brand.subscription_status,
+        included_modules: [],
+        allowed_routes: [],
+        modules: []
+      });
+    }
+
+    // Match by display_name or name
+    const plan = await PlanTemplate.findOne({
+      where: {
+        [Op.or]: [
+          { display_name: brand.plan_type },
+          { name: brand.plan_type }
+        ],
+        plan_target: 'brand'
+      }
+    });
+
+    if (!plan) {
+      return res.json({
+        entity_id: brand.id,
+        entity_type: 'brand',
+        plan_type: brand.plan_type,
+        subscription_status: brand.subscription_status,
+        included_modules: [],
+        allowed_routes: [],
+        modules: []
+      });
+    }
+
+    const includedModuleCodes = plan.included_modules || [];
+    if (includedModuleCodes.length === 0) {
+      return res.json({
+        entity_id: brand.id,
+        entity_type: 'brand',
+        plan_type: brand.plan_type,
+        subscription_status: brand.subscription_status,
+        included_modules: [],
+        allowed_routes: [],
+        modules: []
+      });
+    }
+
+    const modules = await AddonModule.findAll({
+      where: { module_code: includedModuleCodes, is_active: true }
+    });
+
+    const allowedRoutes = [...new Set(
+      modules.reduce((routes, m) => [...routes, ...(m.ui_routes || [])], [])
+    )];
+
+    res.json({
+      entity_id: brand.id,
+      entity_type: 'brand',
+      plan_type: brand.plan_type,
+      subscription_status: brand.subscription_status,
+      included_modules: includedModuleCodes,
+      allowed_routes: allowedRoutes,
+      modules: modules.map(m => ({ code: m.module_code, name: m.name, category: m.category }))
+    });
+  } catch (error) {
+    console.error('Error fetching brand allowed routes:', error);
+    res.status(500).json({ error: 'Failed to fetch allowed routes' });
+  }
+});
+
 module.exports = router;

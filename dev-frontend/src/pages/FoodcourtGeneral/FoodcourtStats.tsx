@@ -296,33 +296,33 @@ const FoodcourtStats: React.FC = () => {
             <Table>
               <thead>
                 <TableRow>
-                  <TableHeader>Rank</TableHeader>
+                  <TableHeader style={{ textAlign: 'center' }}>Rank</TableHeader>
                   <TableHeader>Foodcourt Name</TableHeader>
-                  <TableHeader>Monthly Revenue</TableHeader>
-                  <TableHeader>Occupancy Rate</TableHeader>
-                  <TableHeader>Satisfaction</TableHeader>
-                  <TableHeader>Performance Grade</TableHeader>
+                  <TableHeader style={{ textAlign: 'right' }}>Monthly Revenue</TableHeader>
+                  <TableHeader style={{ textAlign: 'center' }}>Occupancy Rate</TableHeader>
+                  <TableHeader style={{ textAlign: 'center' }}>Satisfaction</TableHeader>
+                  <TableHeader style={{ textAlign: 'center' }}>Performance Grade</TableHeader>
                 </TableRow>
               </thead>
               <tbody>
                 {performers.map((performer, index) => (
                   <TableRow key={performer.id}>
-                    <TableCell>
+                    <TableCell style={{ textAlign: 'center' }}>
                       <strong>#{index + 1}</strong>
                     </TableCell>
                     <TableCell>
                       <strong>{performer.name}</strong>
                     </TableCell>
-                    <TableCell>
+                    <TableCell style={{ textAlign: 'right' }}>
                       RM {(performer.sales / 1000000).toFixed(1)}M
                     </TableCell>
-                    <TableCell>
+                    <TableCell style={{ textAlign: 'center' }}>
                       {performer.occupancy}%
                     </TableCell>
-                    <TableCell>
+                    <TableCell style={{ textAlign: 'center' }}>
                       {performer.satisfaction}/5.0
                     </TableCell>
-                    <TableCell>
+                    <TableCell style={{ textAlign: 'center' }}>
                       <PerformanceChip level={performer.performance}>
                         {getPerformanceText(performer.performance)}
                       </PerformanceChip>

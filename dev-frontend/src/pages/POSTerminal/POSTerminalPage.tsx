@@ -1164,35 +1164,15 @@ const POSTerminalPage: React.FC = () => {
   const [visibleCount, setVisibleCount] = useState(INITIAL_RENDER_COUNT);
   const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
 
-  // Load brand logo from site settings
+  // Brand logo: 고정 파일 경로 사용
   useEffect(() => {
-    const loadBrandLogo = async () => {
-      try {
-        const response = await fetch('/api/site-settings');
-        if (response.ok) {
-          const settings = await response.json();
-          if (settings.brand_logo) {
-            setBrandLogo(settings.brand_logo);
-          } else if (settings.brandLogo) {
-            setBrandLogo(settings.brandLogo);
-          } else if (settings.logo) {
-            setBrandLogo(settings.logo);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to load brand logo:', error);
-      }
-    };
+    setBrandLogo('/uploads/logos/brand-logo.png');
 
-    loadBrandLogo();
-
-    // Listen for brand logo update event
     const handleBrandLogoUpdate = () => {
-      loadBrandLogo();
+      setBrandLogo(`/uploads/logos/brand-logo.png?v=${Date.now()}`);
     };
 
     window.addEventListener('brandLogoUpdated', handleBrandLogoUpdate);
-
     return () => {
       window.removeEventListener('brandLogoUpdated', handleBrandLogoUpdate);
     };

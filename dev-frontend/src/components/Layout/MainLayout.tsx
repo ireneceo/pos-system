@@ -519,9 +519,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const restaurantId = urlRestaurantId || user?.restaurantId || user?.restaurant_id?.toString() || '1';
 
 
-  // Get allowed routes based on restaurant's subscription plan
-  const { isRouteAllowed } = useAllowedRoutes(
-    (user?.role === 'Restaurant Admin' || user?.role === 'Staff') ? Number(restaurantId) : null
+  // Get allowed routes based on subscription plan (all roles)
+  const { isRouteAllowed, hasActiveSubscription, loading: routesLoading } = useAllowedRoutes(
+    user?.role ? {
+      role: user.role,
+      restaurantId: (user.role === 'Restaurant Admin' || user.role === 'Staff') ? Number(restaurantId) : null,
+      brandId: (user.role === 'Brand General' || user.role === 'Brand Manager') ? Number(user.brand_id) : null,
+      foodcourtId: (user.role === 'Foodcourt General' || user.role === 'Foodcourt Manager') ? Number(user.foodcourt_id) : null,
+    } : null
   );
 
   // Badge counts for sidebar notifications (includes pendingOrders)
@@ -625,40 +630,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
   // 페이지 접근 권한 체크
 
-  // Load brand logo from API only (no localStorage)
+  // Brand logo: 고정 파일 경로 사용 (API 호출 불필요)
   useEffect(() => {
-    const loadBrandLogo = async () => {
-      try {
-        const response = await fetch('/api/site-settings');
-        if (response.ok) {
-          const settings = await response.json();
-          if (settings.brand_logo) {
-            setBrandLogo(settings.brand_logo);
-          } else if (settings.brandLogo) {
-            setBrandLogo(settings.brandLogo);
-          } else if (settings.logo) {
-            // Fallback to old 'logo' field for backward compatibility
-            setBrandLogo(settings.logo);
-          } else {
-            setBrandLogo('');
-          }
-        }
-      } catch (error) {
-        console.error('Failed to load brand logo from API:', error);
-        setBrandLogo('');
-      }
-    };
+    setBrandLogo('/uploads/logos/brand-logo.png');
 
-    loadBrandLogo();
-
-    // Listen for custom brand logo update event to reload from API
-    const handleBrandLogoUpdate = async () => {
-      console.log('Brand logo update event received, reloading from API...');
-      await loadBrandLogo();
+    // 관리자가 로고 변경 시 cache-bust로 즉시 반영
+    const handleBrandLogoUpdate = () => {
+      setBrandLogo(`/uploads/logos/brand-logo.png?v=${Date.now()}`);
     };
 
     window.addEventListener('brandLogoUpdated', handleBrandLogoUpdate);
-
     return () => {
       window.removeEventListener('brandLogoUpdated', handleBrandLogoUpdate);
     };
@@ -754,6 +735,82 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   // 완전 차단된 경우 AccessBlocked 컴포넌트 표시
   if (paymentStatus.restrictionLevel === 'blocked' && user?.role !== 'System Admin') {
     return <AccessBlocked />;
+  }
+
+  // 구독 플랜이 없는 Brand/Foodcourt/Owner는 안내 화면 표시
+  const needsSubscription = !routesLoading && !hasActiveSubscription &&
+    (user?.role === 'Brand General' || user?.role === 'Brand Manager' ||
+     user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager' ||
+     user?.role === 'Restaurant Owner');
+
+  const getInvoicePath = () => {
+    if (user?.role === 'Brand General' || user?.role === 'Brand Manager') return '/pos/brand/invoices';
+    if (user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager') return '/pos/foodcourt/invoices';
+    if (user?.role === 'Restaurant Owner') return '/pos/owner/invoices';
+    return '/pos/dashboard';
+  };
+
+  if (needsSubscription) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: '100vh',
+        background: '#F8FAFC',
+        padding: '20px'
+      }}>
+        <div style={{
+          background: 'white',
+          borderRadius: '16px',
+          padding: '48px',
+          maxWidth: '480px',
+          width: '100%',
+          textAlign: 'center',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.08)'
+        }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>&#9888;</div>
+          <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#1A1A2E', marginBottom: '12px' }}>
+            No Active Subscription
+          </h2>
+          <p style={{ color: '#6B7280', fontSize: '15px', lineHeight: '1.6', marginBottom: '32px' }}>
+            Your account does not have an active subscription plan. Please contact your system administrator or check your invoices to activate your subscription.
+          </p>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <button
+              onClick={() => navigate(getInvoicePath())}
+              style={{
+                padding: '12px 24px',
+                background: '#635BFF',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              View Invoices
+            </button>
+            <button
+              onClick={() => { authLogout(); navigate('/pos'); }}
+              style={{
+                padding: '12px 24px',
+                background: 'white',
+                color: '#374151',
+                border: '1px solid #E5E7EB',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -880,7 +937,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             {/* ========== BRAND GENERAL / BRAND MANAGER ========== */}
             {(user?.role === 'Brand General' || user?.role === 'Brand Manager') && (
               <>
-                {hasManagerPermission('dashboard') && (
+                {hasManagerPermission('dashboard') && isRouteAllowed('/pos/brand/general/dashboard') && (
                   <NavItem to="/pos/brand/general/dashboard" active={isActive('/pos/brand/general/dashboard')} onClick={closeSidebar}>
                     <NavIcon>■</NavIcon>
                     Dashboard
@@ -888,21 +945,32 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 )}
 
                 {hasManagerPermission('management') && (
+                  isRouteAllowed('/pos/brand/general/management') ||
+                  isRouteAllowed('/pos/manager/restaurants') ||
+                  isRouteAllowed('/pos/manager/staff') ||
+                  isRouteAllowed('/pos/brand/manager')
+                ) && (
                   <>
                     <NavTitle>Management</NavTitle>
-                    <NavItem to="/pos/brand/general/management" active={isActive('/pos/brand/general/management')} onClick={closeSidebar}>
-                      <NavIcon>▬</NavIcon>
-                      Brands
-                    </NavItem>
-                    <NavItem to="/pos/manager/restaurants" active={isActive('/pos/manager/restaurants')} onClick={closeSidebar}>
-                      <NavIcon>◐</NavIcon>
-                      Restaurants
-                    </NavItem>
-                    <NavItem to="/pos/manager/admins" active={isActive('/pos/manager/admins')} onClick={closeSidebar}>
-                      <NavIcon>◆</NavIcon>
-                      Restaurant Admins
-                    </NavItem>
-                    {user?.role === 'Brand General' && (
+                    {isRouteAllowed('/pos/brand/general/management') && (
+                      <NavItem to="/pos/brand/general/management" active={isActive('/pos/brand/general/management')} onClick={closeSidebar}>
+                        <NavIcon>▬</NavIcon>
+                        Brands
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/manager/restaurants') && (
+                      <NavItem to="/pos/manager/restaurants" active={isActive('/pos/manager/restaurants')} onClick={closeSidebar}>
+                        <NavIcon>◐</NavIcon>
+                        Restaurants
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/manager/staff') && (
+                      <NavItem to="/pos/manager/admins" active={isActive('/pos/manager/admins')} onClick={closeSidebar}>
+                        <NavIcon>◆</NavIcon>
+                        Restaurant Admins
+                      </NavItem>
+                    )}
+                    {user?.role === 'Brand General' && isRouteAllowed('/pos/brand/manager') && (
                       <NavItem to="/pos/brand/manager" active={isActive('/pos/brand/manager')} onClick={closeSidebar}>
                         <NavIcon>◇</NavIcon>
                         Managers
@@ -912,82 +980,127 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 )}
 
                 {hasManagerPermission('products') && (
+                  isRouteAllowed('/pos/brand-products') ||
+                  isRouteAllowed('/pos/recipes') ||
+                  isRouteAllowed('/pos/brand-product-recipes') ||
+                  isRouteAllowed('/pos/brand-inventory')
+                ) && (
                   <>
                     <NavTitle>Products & Inventory</NavTitle>
-                    <NavItem to="/pos/brand-products" active={isActive('/pos/brand-products')} onClick={closeSidebar}>
-                      <NavIcon>◇</NavIcon>
-                      Products
-                    </NavItem>
-                    <NavItem to="/pos/recipes" active={isActive('/pos/recipes')} onClick={closeSidebar}>
-                      <NavIcon>◈</NavIcon>
-                      Recipes
-                    </NavItem>
-                    <NavItem to="/pos/brand-product-recipes" active={isActive('/pos/brand-product-recipes')} onClick={closeSidebar}>
-                      <NavIcon>⊕</NavIcon>
-                      Product Recipes
-                    </NavItem>
-                    <NavItem to="/pos/suppliers" active={isActive('/pos/suppliers')} onClick={closeSidebar}>
-                      <NavIcon>◇</NavIcon>
-                      Suppliers
-                    </NavItem>
-                    <NavItem to="/pos/brand-inventory" active={isActive('/pos/brand-inventory')} onClick={closeSidebar}>
-                      <NavIcon>▤</NavIcon>
-                      Inventory
-                    </NavItem>
+                    {isRouteAllowed('/pos/brand-products') && (
+                      <NavItem to="/pos/brand-products" active={isActive('/pos/brand-products')} onClick={closeSidebar}>
+                        <NavIcon>◇</NavIcon>
+                        Products
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/recipes') && (
+                      <NavItem to="/pos/recipes" active={isActive('/pos/recipes')} onClick={closeSidebar}>
+                        <NavIcon>◈</NavIcon>
+                        Recipes
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/brand-product-recipes') && (
+                      <NavItem to="/pos/brand-product-recipes" active={isActive('/pos/brand-product-recipes')} onClick={closeSidebar}>
+                        <NavIcon>⊕</NavIcon>
+                        Product Recipes
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/suppliers') && (
+                      <NavItem to="/pos/suppliers" active={isActive('/pos/suppliers')} onClick={closeSidebar}>
+                        <NavIcon>◇</NavIcon>
+                        Suppliers
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/brand-inventory') && (
+                      <NavItem to="/pos/brand-inventory" active={isActive('/pos/brand-inventory')} onClick={closeSidebar}>
+                        <NavIcon>▤</NavIcon>
+                        Inventory
+                      </NavItem>
+                    )}
                   </>
                 )}
 
                 {hasManagerPermission('operations') && (
+                  isRouteAllowed('/pos/brand/invoices') ||
+                  isRouteAllowed('/pos/brand/general/reports') ||
+                  isRouteAllowed('/pos/brand/general/performance')
+                ) && (
                   <>
                     <NavTitle>Operations</NavTitle>
-                    <NavItem to="/pos/brand/invoices" active={isActive('/pos/brand/invoices')} hasPending={badgeCounts.invoices > 0} onClick={closeSidebar}>
-                      <NavIcon hasPending={badgeCounts.invoices > 0}>▦</NavIcon>
-                      Invoices
-                    </NavItem>
-                    <NavItem to="/pos/brand/general/reports" active={isActive('/pos/brand/general/reports')} onClick={closeSidebar}>
-                      <NavIcon>◉</NavIcon>
-                      Reports
-                    </NavItem>
-                    <NavItem to="/pos/brand/general/performance" active={isActive('/pos/brand/general/performance')} onClick={closeSidebar}>
-                      <NavIcon>▲</NavIcon>
-                      Performance
-                    </NavItem>
+                    {isRouteAllowed('/pos/brand/invoices') && (
+                      <NavItem to="/pos/brand/invoices" active={isActive('/pos/brand/invoices')} hasPending={badgeCounts.invoices > 0} onClick={closeSidebar}>
+                        <NavIcon hasPending={badgeCounts.invoices > 0}>▦</NavIcon>
+                        Invoices
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/brand/general/reports') && (
+                      <NavItem to="/pos/brand/general/reports" active={isActive('/pos/brand/general/reports')} onClick={closeSidebar}>
+                        <NavIcon>◉</NavIcon>
+                        Reports
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/brand/general/performance') && (
+                      <NavItem to="/pos/brand/general/performance" active={isActive('/pos/brand/general/performance')} onClick={closeSidebar}>
+                        <NavIcon>▲</NavIcon>
+                        Performance
+                      </NavItem>
+                    )}
                   </>
                 )}
 
                 {hasManagerPermission('communication') && (
+                  isRouteAllowed('/pos/brand/general/notices') ||
+                  isRouteAllowed('/pos/brand/general/system-inquiry') ||
+                  isRouteAllowed('/pos/brand/general/operation-inquiry')
+                ) && (
                   <>
                     <NavTitle>Communication</NavTitle>
-                    <NavItem to="/pos/brand/general/notices" active={isActive('/pos/brand/general/notices')} hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0} onClick={closeSidebar}>
-                      <NavIcon hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0}>◈</NavIcon>
-                      Notices
-                    </NavItem>
-                    <NavItem to="/pos/brand/general/system-inquiry" active={isActive('/pos/brand/general/system-inquiry')} hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
-                      <NavIcon hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0}>?</NavIcon>
-                      System Inquiry
-                    </NavItem>
-                    <NavItem to="/pos/brand/general/operation-inquiry" active={isActive('/pos/brand/general/operation-inquiry')} hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
-                      <NavIcon hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0}>◎</NavIcon>
-                      Inquiry Management
-                    </NavItem>
+                    {isRouteAllowed('/pos/brand/general/notices') && (
+                      <NavItem to="/pos/brand/general/notices" active={isActive('/pos/brand/general/notices')} hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0} onClick={closeSidebar}>
+                        <NavIcon hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0}>◈</NavIcon>
+                        Notices
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/brand/general/system-inquiry') && (
+                      <NavItem to="/pos/brand/general/system-inquiry" active={isActive('/pos/brand/general/system-inquiry')} hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
+                        <NavIcon hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0}>?</NavIcon>
+                        System Inquiry
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/brand/general/operation-inquiry') && (
+                      <NavItem to="/pos/brand/general/operation-inquiry" active={isActive('/pos/brand/general/operation-inquiry')} hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
+                        <NavIcon hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0}>◎</NavIcon>
+                        Inquiry Management
+                      </NavItem>
+                    )}
                   </>
                 )}
 
                 {hasManagerPermission('plans_payments') && (
+                  isRouteAllowed('/pos/brand/plans') ||
+                  isRouteAllowed('/pos/brand/general/subscriptions') ||
+                  isRouteAllowed('/pos/brand/payment-settings')
+                ) && (
                   <>
                     <NavTitle>Plans & Payments</NavTitle>
-                    <NavItem to="/pos/brand/plans" active={isActive('/pos/brand/plans')} onClick={closeSidebar}>
-                      <NavIcon>☰</NavIcon>
-                      Subscription Plans
-                    </NavItem>
-                    <NavItem to="/pos/brand/general/subscriptions" active={isActive('/pos/brand/general/subscriptions')} onClick={closeSidebar}>
-                      <NavIcon>◈</NavIcon>
-                      Subscriptions
-                    </NavItem>
-                    <NavItem to="/pos/brand/payment-settings" active={isActive('/pos/brand/payment-settings')} onClick={closeSidebar}>
-                      <NavIcon>$</NavIcon>
-                      Payment Settings
-                    </NavItem>
+                    {isRouteAllowed('/pos/brand/plans') && (
+                      <NavItem to="/pos/brand/plans" active={isActive('/pos/brand/plans')} onClick={closeSidebar}>
+                        <NavIcon>☰</NavIcon>
+                        Subscription Plans
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/brand/general/subscriptions') && (
+                      <NavItem to="/pos/brand/general/subscriptions" active={isActive('/pos/brand/general/subscriptions')} onClick={closeSidebar}>
+                        <NavIcon>◈</NavIcon>
+                        Subscriptions
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/brand/payment-settings') && (
+                      <NavItem to="/pos/brand/payment-settings" active={isActive('/pos/brand/payment-settings')} onClick={closeSidebar}>
+                        <NavIcon>$</NavIcon>
+                        Payment Settings
+                      </NavItem>
+                    )}
                   </>
                 )}
               </>
@@ -996,7 +1109,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             {/* ========== FOODCOURT GENERAL / FOODCOURT MANAGER ========== */}
             {(user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager') && (
               <>
-                {hasManagerPermission('dashboard') && (
+                {hasManagerPermission('dashboard') && isRouteAllowed('/pos/foodcourt/general/dashboard') && (
                   <NavItem to="/pos/foodcourt/general/dashboard" active={isActive('/pos/foodcourt/general/dashboard')} onClick={closeSidebar}>
                     <NavIcon>■</NavIcon>
                     Dashboard
@@ -1004,21 +1117,32 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 )}
 
                 {hasManagerPermission('management') && (
+                  isRouteAllowed('/pos/foodcourt/general/management') ||
+                  isRouteAllowed('/pos/manager/restaurants') ||
+                  isRouteAllowed('/pos/manager/staff') ||
+                  isRouteAllowed('/pos/foodcourt/manager')
+                ) && (
                   <>
                     <NavTitle>Management</NavTitle>
-                    <NavItem to="/pos/foodcourt/general/management" active={isActive('/pos/foodcourt/general/management')} onClick={closeSidebar}>
-                      <NavIcon>◉</NavIcon>
-                      Foodcourts
-                    </NavItem>
-                    <NavItem to="/pos/manager/restaurants" active={isActive('/pos/manager/restaurants')} onClick={closeSidebar}>
-                      <NavIcon>◐</NavIcon>
-                      Restaurants
-                    </NavItem>
-                    <NavItem to="/pos/manager/admins" active={isActive('/pos/manager/admins')} onClick={closeSidebar}>
-                      <NavIcon>◆</NavIcon>
-                      Restaurant Admins
-                    </NavItem>
-                    {user?.role === 'Foodcourt General' && (
+                    {isRouteAllowed('/pos/foodcourt/general/management') && (
+                      <NavItem to="/pos/foodcourt/general/management" active={isActive('/pos/foodcourt/general/management')} onClick={closeSidebar}>
+                        <NavIcon>◉</NavIcon>
+                        Foodcourts
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/manager/restaurants') && (
+                      <NavItem to="/pos/manager/restaurants" active={isActive('/pos/manager/restaurants')} onClick={closeSidebar}>
+                        <NavIcon>◐</NavIcon>
+                        Restaurants
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/manager/staff') && (
+                      <NavItem to="/pos/manager/admins" active={isActive('/pos/manager/admins')} onClick={closeSidebar}>
+                        <NavIcon>◆</NavIcon>
+                        Restaurant Admins
+                      </NavItem>
+                    )}
+                    {user?.role === 'Foodcourt General' && isRouteAllowed('/pos/foodcourt/manager') && (
                       <NavItem to="/pos/foodcourt/manager" active={isActive('/pos/foodcourt/manager')} onClick={closeSidebar}>
                         <NavIcon>◇</NavIcon>
                         Managers
@@ -1028,60 +1152,93 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 )}
 
                 {hasManagerPermission('operations') && (
+                  isRouteAllowed('/pos/foodcourt/invoices') ||
+                  isRouteAllowed('/pos/foodcourt/general/stats') ||
+                  isRouteAllowed('/pos/manager/customers') ||
+                  isRouteAllowed('/pos/manager/coupons')
+                ) && (
                   <>
                     <NavTitle>Operations</NavTitle>
-                    <NavItem to="/pos/foodcourt/invoices" active={isActive('/pos/foodcourt/invoices')} hasPending={badgeCounts.invoices > 0} onClick={closeSidebar}>
-                      <NavIcon hasPending={badgeCounts.invoices > 0}>▦</NavIcon>
-                      Invoices
-                    </NavItem>
-                    <NavItem to="/pos/foodcourt/general/stats" active={isActive('/pos/foodcourt/general/stats')} onClick={closeSidebar}>
-                      <NavIcon>▲</NavIcon>
-                      Statistics
-                    </NavItem>
-                    <NavItem to="/pos/manager/customers" active={isActive('/pos/manager/customers')} onClick={closeSidebar}>
-                      <NavIcon>○</NavIcon>
-                      Customers
-                    </NavItem>
-                    <NavItem to="/pos/manager/coupons" active={isActive('/pos/manager/coupons')} onClick={closeSidebar}>
-                      <NavIcon>%</NavIcon>
-                      Coupons
-                    </NavItem>
+                    {isRouteAllowed('/pos/foodcourt/invoices') && (
+                      <NavItem to="/pos/foodcourt/invoices" active={isActive('/pos/foodcourt/invoices')} hasPending={badgeCounts.invoices > 0} onClick={closeSidebar}>
+                        <NavIcon hasPending={badgeCounts.invoices > 0}>▦</NavIcon>
+                        Invoices
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/foodcourt/general/stats') && (
+                      <NavItem to="/pos/foodcourt/general/stats" active={isActive('/pos/foodcourt/general/stats')} onClick={closeSidebar}>
+                        <NavIcon>▲</NavIcon>
+                        Statistics
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/manager/customers') && (
+                      <NavItem to="/pos/manager/customers" active={isActive('/pos/manager/customers')} onClick={closeSidebar}>
+                        <NavIcon>○</NavIcon>
+                        Customers
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/manager/coupons') && (
+                      <NavItem to="/pos/manager/coupons" active={isActive('/pos/manager/coupons')} onClick={closeSidebar}>
+                        <NavIcon>%</NavIcon>
+                        Coupons
+                      </NavItem>
+                    )}
                   </>
                 )}
 
                 {hasManagerPermission('communication') && (
+                  isRouteAllowed('/pos/foodcourt/general/notices') ||
+                  isRouteAllowed('/pos/foodcourt/general/system-inquiry') ||
+                  isRouteAllowed('/pos/foodcourt/general/operation-inquiry')
+                ) && (
                   <>
                     <NavTitle>Communication</NavTitle>
-                    <NavItem to="/pos/foodcourt/general/notices" active={isActive('/pos/foodcourt/general/notices')} hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0} onClick={closeSidebar}>
-                      <NavIcon hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0}>◈</NavIcon>
-                      Notices
-                    </NavItem>
-                    <NavItem to="/pos/foodcourt/general/system-inquiry" active={isActive('/pos/foodcourt/general/system-inquiry')} hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
-                      <NavIcon hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0}>?</NavIcon>
-                      System Inquiry
-                    </NavItem>
-                    <NavItem to="/pos/foodcourt/general/operation-inquiry" active={isActive('/pos/foodcourt/general/operation-inquiry')} hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
-                      <NavIcon hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0}>◎</NavIcon>
-                      Inquiry Management
-                    </NavItem>
+                    {isRouteAllowed('/pos/foodcourt/general/notices') && (
+                      <NavItem to="/pos/foodcourt/general/notices" active={isActive('/pos/foodcourt/general/notices')} hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0} onClick={closeSidebar}>
+                        <NavIcon hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0}>◈</NavIcon>
+                        Notices
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/foodcourt/general/system-inquiry') && (
+                      <NavItem to="/pos/foodcourt/general/system-inquiry" active={isActive('/pos/foodcourt/general/system-inquiry')} hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
+                        <NavIcon hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0}>?</NavIcon>
+                        System Inquiry
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/foodcourt/general/operation-inquiry') && (
+                      <NavItem to="/pos/foodcourt/general/operation-inquiry" active={isActive('/pos/foodcourt/general/operation-inquiry')} hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
+                        <NavIcon hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0}>◎</NavIcon>
+                        Inquiry Management
+                      </NavItem>
+                    )}
                   </>
                 )}
 
                 {hasManagerPermission('plans_payments') && (
+                  isRouteAllowed('/pos/foodcourt/plans') ||
+                  isRouteAllowed('/pos/foodcourt/general/subscriptions') ||
+                  isRouteAllowed('/pos/foodcourt/payment-settings')
+                ) && (
                   <>
                     <NavTitle>Plans & Payments</NavTitle>
-                    <NavItem to="/pos/foodcourt/plans" active={isActive('/pos/foodcourt/plans')} onClick={closeSidebar}>
-                      <NavIcon>☰</NavIcon>
-                      Subscription Plans
-                    </NavItem>
-                    <NavItem to="/pos/foodcourt/general/subscriptions" active={isActive('/pos/foodcourt/general/subscriptions')} onClick={closeSidebar}>
-                      <NavIcon>◈</NavIcon>
-                      Subscriptions
-                    </NavItem>
-                    <NavItem to="/pos/foodcourt/payment-settings" active={isActive('/pos/foodcourt/payment-settings')} onClick={closeSidebar}>
-                      <NavIcon>$</NavIcon>
-                      Payment Settings
-                    </NavItem>
+                    {isRouteAllowed('/pos/foodcourt/plans') && (
+                      <NavItem to="/pos/foodcourt/plans" active={isActive('/pos/foodcourt/plans')} onClick={closeSidebar}>
+                        <NavIcon>☰</NavIcon>
+                        Subscription Plans
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/foodcourt/general/subscriptions') && (
+                      <NavItem to="/pos/foodcourt/general/subscriptions" active={isActive('/pos/foodcourt/general/subscriptions')} onClick={closeSidebar}>
+                        <NavIcon>◈</NavIcon>
+                        Subscriptions
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/foodcourt/payment-settings') && (
+                      <NavItem to="/pos/foodcourt/payment-settings" active={isActive('/pos/foodcourt/payment-settings')} onClick={closeSidebar}>
+                        <NavIcon>$</NavIcon>
+                        Payment Settings
+                      </NavItem>
+                    )}
                   </>
                 )}
               </>
@@ -1090,43 +1247,67 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             {/* ========== RESTAURANT OWNER ========== */}
             {user?.role === 'Restaurant Owner' && (
               <>
-                <NavItem to="/pos/owner/dashboard" active={isActive('/pos/owner/dashboard')} onClick={closeSidebar}>
-                  <NavIcon>■</NavIcon>
-                  Dashboard
-                </NavItem>
+                {isRouteAllowed('/pos/owner/dashboard') && (
+                  <NavItem to="/pos/owner/dashboard" active={isActive('/pos/owner/dashboard')} onClick={closeSidebar}>
+                    <NavIcon>■</NavIcon>
+                    Dashboard
+                  </NavItem>
+                )}
 
-                <NavItem to="/pos/owner/restaurants" active={isActive('/pos/owner/restaurants')} onClick={closeSidebar}>
-                  <NavIcon>◐</NavIcon>
-                  Restaurants
-                </NavItem>
+                {isRouteAllowed('/pos/owner/restaurants') && (
+                  <NavItem to="/pos/owner/restaurants" active={isActive('/pos/owner/restaurants')} onClick={closeSidebar}>
+                    <NavIcon>◐</NavIcon>
+                    Restaurants
+                  </NavItem>
+                )}
 
-                <NavTitle>Operations</NavTitle>
-                <NavItem to="/pos/owner/invoices" active={isActive('/pos/owner/invoices')} hasPending={badgeCounts.invoices > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={badgeCounts.invoices > 0}>▦</NavIcon>
-                  Invoices
-                </NavItem>
-                <NavItem to="/pos/owner/performance" active={isActive('/pos/owner/performance')} onClick={closeSidebar}>
-                  <NavIcon>◈</NavIcon>
-                  Performance
-                </NavItem>
-                <NavItem to="/pos/owner/reports" active={isActive('/pos/owner/reports')} onClick={closeSidebar}>
-                  <NavIcon>☰</NavIcon>
-                  Reports
-                </NavItem>
+                {(isRouteAllowed('/pos/owner/invoices') || isRouteAllowed('/pos/owner/performance') || isRouteAllowed('/pos/owner/reports')) && (
+                  <>
+                    <NavTitle>Operations</NavTitle>
+                    {isRouteAllowed('/pos/owner/invoices') && (
+                      <NavItem to="/pos/owner/invoices" active={isActive('/pos/owner/invoices')} hasPending={badgeCounts.invoices > 0} onClick={closeSidebar}>
+                        <NavIcon hasPending={badgeCounts.invoices > 0}>▦</NavIcon>
+                        Invoices
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/owner/performance') && (
+                      <NavItem to="/pos/owner/performance" active={isActive('/pos/owner/performance')} onClick={closeSidebar}>
+                        <NavIcon>◈</NavIcon>
+                        Performance
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/owner/reports') && (
+                      <NavItem to="/pos/owner/reports" active={isActive('/pos/owner/reports')} onClick={closeSidebar}>
+                        <NavIcon>☰</NavIcon>
+                        Reports
+                      </NavItem>
+                    )}
+                  </>
+                )}
 
-                <NavTitle>Communication</NavTitle>
-                <NavItem to="/pos/owner/notices" active={isActive('/pos/owner/notices')} hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0}>◈</NavIcon>
-                  Notices
-                </NavItem>
-                <NavItem to="/pos/owner/system-inquiry" active={isActive('/pos/owner/system-inquiry')} hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0}>◇</NavIcon>
-                  System Inquiry
-                </NavItem>
-                <NavItem to="/pos/owner/operation-inquiry" active={isActive('/pos/owner/operation-inquiry')} hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0}>◆</NavIcon>
-                  Operation Inquiry
-                </NavItem>
+                {(isRouteAllowed('/pos/owner/notices') || isRouteAllowed('/pos/owner/system-inquiry') || isRouteAllowed('/pos/owner/operation-inquiry')) && (
+                  <>
+                    <NavTitle>Communication</NavTitle>
+                    {isRouteAllowed('/pos/owner/notices') && (
+                      <NavItem to="/pos/owner/notices" active={isActive('/pos/owner/notices')} hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0} onClick={closeSidebar}>
+                        <NavIcon hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0}>◈</NavIcon>
+                        Notices
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/owner/system-inquiry') && (
+                      <NavItem to="/pos/owner/system-inquiry" active={isActive('/pos/owner/system-inquiry')} hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
+                        <NavIcon hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0}>◇</NavIcon>
+                        System Inquiry
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/owner/operation-inquiry') && (
+                      <NavItem to="/pos/owner/operation-inquiry" active={isActive('/pos/owner/operation-inquiry')} hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0} onClick={closeSidebar}>
+                        <NavIcon hasPending={badgeCounts.operationInquiry > 0 || badgeCounts.unreadComments?.operationInquiry > 0}>◆</NavIcon>
+                        Operation Inquiry
+                      </NavItem>
+                    )}
+                  </>
+                )}
               </>
             )}
 
